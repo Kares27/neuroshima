@@ -1,0 +1,65 @@
+<div class="damage-application-section">
+  <div class="damage-application-header">
+    <div class="header-content">
+      <h4><i class="fas fa-crosshairs"></i> Aplikuj Obrażenie</h4>
+    </div>
+    {{#if isGM}}
+    <button class="damage-collapse-toggle" data-toggle="damage-application" title="Zwiń/Rozwiń">
+      <i class="fas fa-chevron-up"></i>
+    </button>
+    {{/if}}
+  </div>
+  
+  <div class="damage-application-content-wrapper">
+  <div class="damage-application-tabs">
+    <button class="damage-tab-button active" data-tab="targeted">
+      <i class="fas fa-bullseye"></i> Targeted
+    </button>
+    <button class="damage-tab-button" data-tab="selected">
+      <i class="fas fa-hand-pointer"></i> Selected
+    </button>
+  </div>
+  
+  <div class="damage-application-content">
+    <!-- Targeted Tab -->
+    <div class="damage-tab-content active" data-tab-content="targeted">
+      {{#if targetedActor}}
+        <div class="target-info">
+          <img src="{{targetedActor.img}}" alt="{{targetedActor.name}}" class="target-avatar"/>
+          <div class="target-name">{{targetedActor.name}}</div>
+        </div>
+      {{else}}
+        <div class="no-target-message">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Brak targetowanego celu w momencie ataku</p>
+        </div>
+      {{/if}}
+    </div>
+    
+    <!-- Selected Tab -->
+    <div class="damage-tab-content" data-tab-content="selected">
+      <div class="selected-targets-list">
+        <!-- Dynamically populated via JavaScript with selected tokens -->
+        <div class="no-target-message">
+          <i class="fas fa-exclamation-triangle"></i>
+          <p>Brak wyselekcjonowanych tokenów na planszy</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="damage-application-actions">
+    <button class="apply-damage-button" 
+            data-attacker-id="{{attackerId}}"
+            data-weapon-name="{{weaponName}}"
+            data-damage-type="{{damageType}}"
+            data-location="{{location}}"
+            data-hit-count="{{hitCount}}"
+            data-penetration="{{penetration}}"
+            data-targeted-actor-id="{{targetedActorId}}">
+      <i class="fas fa-plus-circle"></i> Aplikuj Obrażenie
+    </button>
+    <div class="apply-damage-message" style="display: none;"></div>
+  </div>
+  </div>
+</div>

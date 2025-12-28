@@ -1,0 +1,46 @@
+{
+  "id": "neuroshima",
+  "title": "Neuroshima 1.5",
+  "description": "System dla gry RPG Neuroshima 1.5",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13"
+  },
+  "authors": [
+    {
+      "name": "Kares"
+    }
+  ],
+  "esmodules": ["neuroshima.mjs"],
+  "styles": ["neuroshima.css", "beast.css"],
+  "languages": [
+    {
+      "lang": "pl",
+      "name": "Polski",
+      "path": "lang/pl.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "character": {},
+      "npc": {},
+      "beast": {}
+    },
+    "Item": {
+      "weapon": {},
+      "armor": {},
+      "equipment": {},
+      "trick": {}
+    }
+  },
+  "gridDistance": 1,
+  "gridUnits": "m",
+  "primaryTokenAttribute": "health",
+  "secondaryTokenAttribute": null
+}

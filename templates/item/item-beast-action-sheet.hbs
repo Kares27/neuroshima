@@ -1,0 +1,143 @@
+<form class="{{cssClass}} {{item.type}} flexcol" autocomplete="off">
+  {{!-- Main header with icon and name --}}
+  <header class="sheet-header">
+    <div class="header-main">
+      <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" height="80" width="80"/>
+      <div class="header-fields">
+        <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="Nazwa zestawu akcji"/></h1>
+      </div>
+    </div>
+  </header>
+
+  {{!-- Navigation tabs --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="config">Konfiguracja</a>
+    <a class="item" data-tab="description">Opis</a>
+  </nav>
+
+  {{!-- Sheet body --}}
+  <section class="sheet-body">
+    
+    {{!-- Configuration Tab --}}
+    <div class="tab" data-group="primary" data-tab="config">
+      
+      {{!-- Action System Selection - Single Row --}}
+      <div class="form-group-row priority-section">
+        <div class="form-group">
+          <label title="System Sukcesów: Rzut 3k20 na początku tury, redukcja punktami Umiejętności, zliczenie sukcesów (≤ Współczynnik). System Segmentów: Każda akcja wymaga rzutu 3k20 (bez redukcji), bestia ma 3 segmenty na turę.">
+            System Akcji <i class="fas fa-info-circle" style="font-size: 10px; color: #8b5a3c;"></i>
+          </label>
+          <select name="system.actionSystem">
+            <option value="successes" {{#if (eq system.actionSystem "successes")}}selected{{/if}}>Sukcesy</option>
+            <option value="segments" {{#if (eq system.actionSystem "segments")}}selected{{/if}}>Segmenty</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Współczynnik</label>
+          <select name="system.attribute" id="attribute-select">
+            <option value="zr" {{#if (eq system.attribute "zr")}}selected{{/if}}>Zręczność (ZR)</option>
+            <option value="pc" {{#if (eq system.attribute "pc")}}selected{{/if}}>Percepcja (PC)</option>
+            <option value="ch" {{#if (eq system.attribute "ch")}}selected{{/if}}>Charakter (CH)</option>
+            <option value="sp" {{#if (eq system.attribute "sp")}}selected{{/if}}>Spryt (SP)</option>
+            <option value="bd" {{#if (eq system.attribute "bd")}}selected{{/if}}>Budowa (BD)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Umiejętność</label>
+          <select name="system.skill" id="skill-select">
+            {{!-- Skills will be populated dynamically based on selected attribute --}}
+          </select>
+        </div>
+      </div>
+
+      {{!-- Actions List with compact header --}}
+      <div class="actions-section-compact">
+        {{#if system.actions.length}}
+        <table class="actions-table">
+          <thead>
+            <tr>
+              <th>Akcja</th>
+              <th>Koszt</th>
+              <th>Obrażenia</th>
+              <th>Liczba</th>
+              <th>Typ</th>
+              <th>
+                <button type="button" class="add-action" title="Dodaj nową akcję">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </th>
+            </tr>
+          </thead>
+        <tbody>
+          {{#each system.actions as |action index|}}
+          <tr class="action-row" data-action-index="{{index}}">
+            <td>
+              <input type="text" name="system.actions.{{index}}.name" value="{{action.name}}" placeholder="Nazwa akcji"/>
+            </td>
+            <td>
+              <input type="number" name="system.actions.{{index}}.cost" value="{{action.cost}}" data-dtype="Number" min="1" max="10" style="width: 60px;"/>
+            </td>
+            <td>
+              <select name="system.actions.{{index}}.damage" style="width: 80px;">
+                <option value="" {{#unless action.damage}}selected{{/unless}}>-</option>
+                <option value="D" {{#if (eq action.damage "D")}}selected{{/if}}>D - Draśnięcie</option>
+                <option value="L" {{#if (eq action.damage "L")}}selected{{/if}}>L - Lekkie</option>
+                <option value="C" {{#if (eq action.damage "C")}}selected{{/if}}>C - Ciężkie</option>
+                <option value="K" {{#if (eq action.damage "K")}}selected{{/if}}>K - Krytyczne</option>
+                <option value="sD" {{#if (eq action.damage "sD")}}selected{{/if}}>sD - Siniak (Draśnięcie)</option>
+                <option value="sL" {{#if (eq action.damage "sL")}}selected{{/if}}>sL - Siniak (Lekkie)</option>
+                <option value="sC" {{#if (eq action.damage "sC")}}selected{{/if}}>sC - Siniak (Ciężkie)</option>
+                <option value="sK" {{#if (eq action.damage "sK")}}selected{{/if}}>sK - Siniak (Krytyczne)</option>
+              </select>
+            </td>
+            <td>
+              <input type="number" name="system.actions.{{index}}.damageCount" value="{{action.damageCount}}" data-dtype="Number" min="0" max="20" style="width: 50px;"/>
+            </td>
+            <td>
+              <select name="system.actions.{{index}}.actionType">
+                <option value="attack" {{#if (eq action.actionType "attack")}}selected{{/if}}>Atak</option>
+                <option value="defense" {{#if (eq action.actionType "defense")}}selected{{/if}}>Obrona</option>
+                <option value="special" {{#if (eq action.actionType "special")}}selected{{/if}}>Specjalna</option>
+                <option value="movement" {{#if (eq action.actionType "movement")}}selected{{/if}}>Ruch</option>
+              </select>
+            </td>
+            <td class="action-controls">
+              <button type="button" class="expand-action" data-action-index="{{index}}" title="Rozwiń szczegóły">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <button type="button" class="delete-action" data-action-index="{{index}}" title="Usuń akcję">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+          <tr class="action-details" data-action-index="{{index}}" style="display: none;">
+            <td colspan="5">
+              <div class="action-details-content">
+                <textarea name="system.actions.{{index}}.description" rows="3" placeholder="Dodatkowy opis akcji...">{{action.description}}</textarea>
+              </div>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+      {{else}}
+      <div class="empty-actions">
+        <p>Brak akcji.</p>
+        <button type="button" class="add-action add-action-large" title="Dodaj nową akcję">
+          <i class="fas fa-plus"></i> Dodaj pierwszą akcję
+        </button>
+      </div>
+      {{/if}}
+      </div>
+
+    </div>
+
+    {{!-- Description Tab --}}
+    <div class="tab" data-group="primary" data-tab="description">
+      <div class="editor-container">
+        {{editor system.description target="system.description" button=true owner=owner editable=editable}}
+      </div>
+    </div>
+
+  </section>
+</form>

@@ -1,0 +1,214 @@
+<div class="combat-container">
+  <div class="combat-content">
+    
+    {{!-- Top Row: Armor (Left) and Beast Actions (Right) --}}
+    <div class="combat-top-row">
+      
+      {{!-- Left: Beast Armor Section - Anatomical Layout --}}
+      <div class="armor-section-anatomical beast-armor-section">
+        <div class="armor-header">
+          <h3>Pancerz</h3>
+        </div>
+        
+        <div class="armor-anatomical-grid">
+          {{!-- Row 1: Head (Full Width) --}}
+          <div class="armor-location-box armor-head">
+            <div class="location-header">
+              <span class="location-name">Głowa</span>
+            </div>
+            <div class="beast-armor-inputs">
+              <input type="number" name="system.beastArmor.head.value" value="{{system.beastArmor.head.value}}" data-dtype="Number" class="armor-value-input" placeholder="0"/>
+              <label class="weak-point-label">
+                <input type="checkbox" name="system.beastArmor.head.weakPoint" {{checked system.beastArmor.head.weakPoint}}/>
+                Słaby punkt
+              </label>
+            </div>
+          </div>
+
+          {{!-- Row 2: Torso (Full Width) --}}
+          <div class="armor-location-box armor-torso">
+            <div class="location-header">
+              <span class="location-name">Tors</span>
+            </div>
+            <div class="beast-armor-inputs">
+              <input type="number" name="system.beastArmor.torso.value" value="{{system.beastArmor.torso.value}}" data-dtype="Number" class="armor-value-input" placeholder="0"/>
+              <label class="weak-point-label">
+                <input type="checkbox" name="system.beastArmor.torso.weakPoint" {{checked system.beastArmor.torso.weakPoint}}/>
+                Słaby punkt
+              </label>
+            </div>
+          </div>
+
+          {{!-- Row 3: Left Hand | Right Hand --}}
+          <div class="armor-location-box armor-left-hand">
+            <div class="location-header">
+              <span class="location-name">Lewa ręka</span>
+            </div>
+            <div class="beast-armor-inputs">
+              <input type="number" name="system.beastArmor.leftHand.value" value="{{system.beastArmor.leftHand.value}}" data-dtype="Number" class="armor-value-input" placeholder="0"/>
+              <label class="weak-point-label">
+                <input type="checkbox" name="system.beastArmor.leftHand.weakPoint" {{checked system.beastArmor.leftHand.weakPoint}}/>
+                Słaby punkt
+              </label>
+            </div>
+          </div>
+
+          <div class="armor-location-box armor-right-hand">
+            <div class="location-header">
+              <span class="location-name">Prawa ręka</span>
+            </div>
+            <div class="beast-armor-inputs">
+              <input type="number" name="system.beastArmor.rightHand.value" value="{{system.beastArmor.rightHand.value}}" data-dtype="Number" class="armor-value-input" placeholder="0"/>
+              <label class="weak-point-label">
+                <input type="checkbox" name="system.beastArmor.rightHand.weakPoint" {{checked system.beastArmor.rightHand.weakPoint}}/>
+                Słaby punkt
+              </label>
+            </div>
+          </div>
+
+          {{!-- Row 4: Left Leg | Right Leg --}}
+          <div class="armor-location-box armor-left-leg">
+            <div class="location-header">
+              <span class="location-name">Lewa noga</span>
+            </div>
+            <div class="beast-armor-inputs">
+              <input type="number" name="system.beastArmor.leftLeg.value" value="{{system.beastArmor.leftLeg.value}}" data-dtype="Number" class="armor-value-input" placeholder="0"/>
+              <label class="weak-point-label">
+                <input type="checkbox" name="system.beastArmor.leftLeg.weakPoint" {{checked system.beastArmor.leftLeg.weakPoint}}/>
+                Słaby punkt
+              </label>
+            </div>
+          </div>
+
+          <div class="armor-location-box armor-right-leg">
+            <div class="location-header">
+              <span class="location-name">Prawa noga</span>
+            </div>
+            <div class="beast-armor-inputs">
+              <input type="number" name="system.beastArmor.rightLeg.value" value="{{system.beastArmor.rightLeg.value}}" data-dtype="Number" class="armor-value-input" placeholder="0"/>
+              <label class="weak-point-label">
+                <input type="checkbox" name="system.beastArmor.rightLeg.weakPoint" {{checked system.beastArmor.rightLeg.weakPoint}}/>
+                Słaby punkt
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {{!-- Right: Beast Actions Section --}}
+      <div class="weapons-section beast-actions-section">
+        <div class="action-tracking-header">
+          <h3>Akcje 
+            <span class="action-tracking-display">
+              [ <span class="current-successes">{{system.actionTracking.currentSuccesses}}</span> / <span class="max-successes">{{system.actionTracking.maxSuccesses}}</span> ]
+            </span>
+          </h3>
+          <div class="action-header-controls">
+            <a class="item-control item-create" data-type="beast-action" title="Dodaj akcję">
+              <i class="fas fa-plus"></i>
+            </a>
+            <a class="reset-successes-button" title="Resetuj sukcesy do 0">
+              <i class="fas fa-sync-alt"></i>
+            </a>
+          </div>
+        </div>
+        
+        <div class="equipment-list">
+          {{#each beastActions as |action|}}
+          <div class="equipment-item action-item-clickable" data-item-id="{{action._id}}">
+            {{!-- Column 1: Action Image --}}
+            <img src="{{action.img}}" class="weapon-icon" alt="{{action.name}}"/>
+            
+            {{!-- Column 2: Name + Stats --}}
+            <div class="weapon-info-column">
+              {{!-- Row 1: Action Name --}}
+              <div class="weapon-name-rollable">{{action.name}}</div>
+              
+              {{!-- Row 2: Horizontal Stats --}}
+              <div class="weapon-stats-row">
+                <span class="stat-item">
+                  <span class="stat-label">System:</span>
+                  <span class="stat-value">{{#if (eq action.system.actionSystem "successes")}}Sukcesy{{else}}Segmenty{{/if}}</span>
+                </span>
+              </div>
+            </div>
+            
+            {{!-- Column 3: Edit & Delete Icons --}}
+            <div class="weapon-edit-column">
+              <a class="weapon-edit-icon" data-item-id="{{action._id}}" title="Edytuj akcję">
+                <i class="fas fa-edit"></i></a>
+              <a class="weapon-delete-icon" data-item-id="{{action._id}}" title="Usuń akcję">
+                <i class="fas fa-trash"></i></a>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    {{!-- Bottom Row: Wounds Section (Full Width) --}}
+    <div class="wounds-section">
+      <div class="wounds-penalty-total">
+        <div class="health-display">
+          <span class="health-label">Obrażenia: </span>
+          <span class="health-current">{{getCurrentHealthValue}}</span>
+          <span class="health-separator"> / </span>
+          <input type="number" name="system.health.max" value="{{#if system.health.max}}{{system.health.max}}{{else}}27{{/if}}" data-dtype="Number" min="1" class="health-max-input" title="Maksymalne punkty zdrowia"/>
+          <span class="health-penalty"> - Kara: <strong>{{getTotalWoundPenalty}}%</strong></span>
+        </div>
+      </div>
+      <div class="wounds-section-content" data-section-content="wounds">
+        <div class="wounds-header-row">
+          <div class="wound-icon-header"></div>
+          <div class="wound-name-header">Obrażenia</div>
+          <div class="wound-location-header" title="Lokalizacja">Lok.</div>
+          <div class="wound-type-header">Typ</div>
+          <div class="wound-penalty-header">Kara</div>
+          <div class="wound-active-header" title="Aktywne">Akt.</div>
+          <div class="wound-healing-header" title="Leczenie">Lecz.</div>
+          <div class="wound-controls-header">
+            <a class="item-control item-create" data-type="wounds" title="Dodaj obrażenie">
+              <i class="fas fa-plus"></i>
+            </a>
+            <a class="section-collapse-toggle" data-section="wounds" title="Zwiń/Rozwiń">
+              <i class="fas fa-chevron-down"></i>
+            </a>
+          </div>
+        </div>
+
+        <ol class="wounds-items-list">
+          {{#each wounds as |wound|}}
+          <li class="wound-entry item" data-item-id="{{wound._id}}">
+            <div class="wound-icon">
+              <img src="{{wound.img}}" alt="{{wound.name}}" />
+            </div>
+            <div class="wound-name">{{wound.name}}</div>
+            <div class="wound-location">{{getLocationName wound.system.location}}</div>
+            <div class="wound-type">{{{getWoundTypeName wound.system.type}}}</div>
+            <div class="wound-penalty">{{wound.system.penalty}}%</div>
+            <div class="wound-active">
+              <i class="{{#if wound.system.active}}fas fa-dot-circle{{else}}far fa-circle{{/if}} wound-active-toggle" data-item-id="{{wound._id}}" title="{{#if wound.system.active}}Aktywne{{else}}Nieaktywne{{/if}}"></i>
+            </div>
+            <div class="wound-healing">
+              <i class="fas fa-plus-circle wound-healing-toggle {{#if wound.system.healing}}healing-active{{else}}healing-inactive{{/if}}" data-item-id="{{wound._id}}" title="{{#if wound.system.healing}}W trakcie leczenia{{else}}Nie leczone{{/if}}"></i>
+            </div>
+            <div class="wound-controls">
+              <a class="item-control item-edit" data-item-id="{{wound._id}}" title="Edytuj"><i class="fas fa-edit"></i></a>
+              <a class="item-control item-delete" data-item-id="{{wound._id}}" title="Usuń"><i class="fas fa-trash"></i></a>
+            </div>
+          </li>
+          {{/each}}
+        </ol>
+
+        <div class="wounds-list-collapsed" style="display: none;">
+          {{#each wounds as |wound|}}
+          <div class="item-icon-collapsed" data-item-id="{{wound._id}}" title="{{wound.name}}">
+            <img src="{{wound.img}}" width="32" height="32"/>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

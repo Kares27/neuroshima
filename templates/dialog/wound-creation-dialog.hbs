@@ -1,0 +1,38 @@
+<form class="wound-creation-dialog">
+  <div class="form-group">
+    <label for="wound-count">Liczba obrażeń:</label>
+    <input type="number" id="wound-count" name="count" value="1" min="1" max="20"/>
+  </div>
+  
+  <div class="form-group">
+    <label for="wound-name">Nazwa obrażenia:</label>
+    <input type="text" id="wound-name" name="name" value="" placeholder="Nazwa obrażenia"/>
+  </div>
+  
+  <div class="form-group">
+    <label for="wound-location">Lokalizacja:</label>
+    <select id="wound-location" name="location">
+      {{#each woundLocations}}
+        <option value="{{@key}}">{{this}}</option>
+      {{/each}}
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label for="wound-type">Typ obrażenia:</label>
+    <select id="wound-type" name="type">
+      {{#each damageTypes}}
+        <option value="{{@key}}">{{this.label}}</option>
+      {{/each}}
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label for="wound-penalty">Kara (%):</label>
+    <input type="number" id="wound-penalty" name="penalty" value="0" min="0" max="100"/>
+  </div>
+  
+  <div class="form-group">
+    <p class="dialog-hint"><small><em>Obrażenia będą utworzone jako aktywne. Możesz je dezaktywować po utworzeniu.</em></small></p>
+  </div>
+</form>

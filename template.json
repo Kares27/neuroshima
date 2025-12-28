@@ -1,0 +1,596 @@
+{
+  "Actor": {
+    "types": ["character", "npc", "beast"],
+    "templates": {
+      "base": {
+        "health": {
+          "value": 0,
+          "max": 27
+        },
+        "armor": {
+          "head": 0,
+          "torso": 0,
+          "leftHand": 0,
+          "rightHand": 0,
+          "leftLeg": 0,
+          "rightLeg": 0
+        }
+      }
+    },
+    "character": {
+      "templates": ["base"],
+      "attributes": {
+        "zr": {
+          "value": 5,
+          "mod": 0
+        },
+        "pc": {
+          "value": 5,
+          "mod": 0
+        },
+        "ch": {
+          "value": 5,
+          "mod": 0
+        },
+        "sp": {
+          "value": 5,
+          "mod": 0
+        },
+        "bd": {
+          "value": 5,
+          "mod": 0
+        }
+      },
+      "specializations": {
+        "categories": {
+          "walka_wrecz": false,
+          "bron_strzelecka": false,
+          "bron_dystansowa": false,
+          "prowadzenie_pojazdow": false,
+          "zdolnosci_manualne": false,
+          "orientacja_w_terenie": false,
+          "spostrzegawczosc": false,
+          "kamuflaz": false,
+          "przetrwanie": false,
+          "negocjacje": false,
+          "empatia": false,
+          "sila_woli": false,
+          "medycyna": false,
+          "technika": false,
+          "sprzet": false,
+          "pirotechnika": false,
+          "wiedza1": false,
+          "wiedza2": false,
+          "sprawnosc": false,
+          "jezdictwo": false
+        }
+      },
+      "skills": {
+        "zr": {
+          "bijatyka": 0,
+          "bron_reczna": 0,
+          "rzucanie": 0,
+          "pistolety": 0,
+          "karabiny": 0,
+          "bron_maszynowa": 0,
+          "luk": 0,
+          "kusza": 0,
+          "proca": 0,
+          "samochod": 0,
+          "ciezarowka": 0,
+          "motocykl": 0,
+          "kradziez_kieszonkowa": 0,
+          "zwinne_dlonie": 0,
+          "otwieranie_zamkow": 0
+        },
+        "pc": {
+          "wyczucie_kierunku": 0,
+          "tropienie": 0,
+          "przygotowanie_pulapki": 0,
+          "nasluchiwanie": 0,
+          "wypatrywanie": 0,
+          "czujnosc": 0,
+          "skradanie_sie": 0,
+          "ukrywanie_sie": 0,
+          "maskowanie": 0,
+          "lowiectwo": 0,
+          "zdobywanie_wody": 0,
+          "znajomosc_terenu": 0
+        },
+        "ch": {
+          "perswazja": 0,
+          "zastraszanie": 0,
+          "zdolnosci_przywodcze": 0,
+          "postrzeganie_emocji": 0,
+          "blef": 0,
+          "opieka_nad_zwierzetami": 0,
+          "odpornosc_na_bol": 0,
+          "niezlomnosc": 0,
+          "morale": 0
+        },
+        "sp": {
+          "leczenie_ran": 0,
+          "leczenie_chorob": 0,
+          "pierwsza_pomoc": 0,
+          "mechanika": 0,
+          "elektronika": 0,
+          "komputery": 0,
+          "maszyny_ciezkie": 0,
+          "wozy_bojowe": 0,
+          "kutry": 0,
+          "rusznikarstwo": 0,
+          "wyrzutnie": 0,
+          "materialy_wybuchowe": 0,
+          "wiedza": {
+            "poziom1": 0,
+            "nazwa1": "",
+            "poziom2": 0,
+            "nazwa2": "",
+            "poziom3": 0,
+            "nazwa3": "",
+            "poziom4": 0,
+            "nazwa4": "",
+            "poziom5": 0,
+            "nazwa5": "",
+            "poziom6": 0,
+            "nazwa6": ""
+          }
+        },
+        "bd": {
+          "plywanie": 0,
+          "wspinaczka": 0,
+          "kondycja": 0,
+          "jazda_konna": 0,
+          "powodzenie": 0,
+          "ujezdzanie": 0
+        }
+      },
+      "info": {
+        "specialization": "",
+        "origin": "",
+        "profession": "",
+        "disease": "",
+        "medicine": ""
+      },
+      "experience": {
+        "total": 0,
+        "spent": 0,
+        "current": 0,
+        "log": []
+      },
+      "biography": "",
+      "notes": {
+        "general": "",
+        "tricks": "",
+        "equipment": ""
+      }
+    },
+    "npc": {
+      "templates": ["base"],
+      "attributes": {
+        "zr": {
+          "value": 5,
+          "mod": 0
+        },
+        "pc": {
+          "value": 5,
+          "mod": 0
+        },
+        "ch": {
+          "value": 5,
+          "mod": 0
+        },
+        "sp": {
+          "value": 5,
+          "mod": 0
+        },
+        "bd": {
+          "value": 5,
+          "mod": 0
+        }
+      },
+      "specializations": {
+        "categories": {
+          "walka_wrecz": false,
+          "bron_strzelecka": false,
+          "bron_dystansowa": false,
+          "prowadzenie_pojazdow": false,
+          "zdolnosci_manualne": false,
+          "orientacja_w_terenie": false,
+          "spostrzegawczosc": false,
+          "kamuflaz": false,
+          "przetrwanie": false,
+          "negocjacje": false,
+          "empatia": false,
+          "sila_woli": false,
+          "medycyna": false,
+          "technika": false,
+          "sprzet": false,
+          "pirotechnika": false,
+          "wiedza1": false,
+          "wiedza2": false,
+          "sprawnosc": false,
+          "jezdictwo": false
+        }
+      },
+      "skills": {
+        "zr": {
+          "bijatyka": 0,
+          "bron_reczna": 0,
+          "rzucanie": 0,
+          "pistolety": 0,
+          "karabiny": 0,
+          "bron_maszynowa": 0,
+          "luk": 0,
+          "kusza": 0,
+          "proca": 0,
+          "samochod": 0,
+          "ciezarowka": 0,
+          "motocykl": 0,
+          "kradziez_kieszonkowa": 0,
+          "zwinne_dlonie": 0,
+          "otwieranie_zamkow": 0
+        },
+        "pc": {
+          "wyczucie_kierunku": 0,
+          "tropienie": 0,
+          "przygotowanie_pulapki": 0,
+          "nasluchiwanie": 0,
+          "wypatrywanie": 0,
+          "czujnosc": 0,
+          "skradanie_sie": 0,
+          "ukrywanie_sie": 0,
+          "maskowanie": 0,
+          "lowiectwo": 0,
+          "zdobywanie_wody": 0,
+          "znajomosc_terenu": 0
+        },
+        "ch": {
+          "perswazja": 0,
+          "zastraszanie": 0,
+          "zdolnosci_przywodcze": 0,
+          "postrzeganie_emocji": 0,
+          "blef": 0,
+          "opieka_nad_zwierzetami": 0,
+          "odpornosc_na_bol": 0,
+          "niezlomnosc": 0,
+          "morale": 0
+        },
+        "sp": {
+          "leczenie_ran": 0,
+          "leczenie_chorob": 0,
+          "pierwsza_pomoc": 0,
+          "mechanika": 0,
+          "elektronika": 0,
+          "komputery": 0,
+          "maszyny_ciezkie": 0,
+          "wozy_bojowe": 0,
+          "kutry": 0,
+          "rusznikarstwo": 0,
+          "wyrzutnie": 0,
+          "materialy_wybuchowe": 0,
+          "wiedza": {
+            "poziom1": 0,
+            "nazwa1": "",
+            "poziom2": 0,
+            "nazwa2": "",
+            "poziom3": 0,
+            "nazwa3": "",
+            "poziom4": 0,
+            "nazwa4": "",
+            "poziom5": 0,
+            "nazwa5": "",
+            "poziom6": 0,
+            "nazwa6": ""
+          }
+        },
+        "bd": {
+          "plywanie": 0,
+          "wspinaczka": 0,
+          "kondycja": 0,
+          "jazda_konna": 0,
+          "powodzenie": 0,
+          "ujezdzanie": 0
+        }
+      },
+      "info": {
+        "specialization": "",
+        "origin": "",
+        "profession": "",
+        "disease": "",
+        "medicine": ""
+      },
+      "biography": "",
+      "notes": {
+        "general": "",
+        "tricks": "",
+        "equipment": ""
+      },
+      "description": ""
+    },
+    "beast": {
+      "templates": ["base"],
+      "attributes": {
+        "zr": {
+          "value": 5,
+          "mod": 0
+        },
+        "pc": {
+          "value": 5,
+          "mod": 0
+        },
+        "ch": {
+          "value": 5,
+          "mod": 0
+        },
+        "sp": {
+          "value": 5,
+          "mod": 0
+        },
+        "bd": {
+          "value": 5,
+          "mod": 0
+        }
+      },
+      "specializations": {
+        "categories": {
+          "walka_wrecz": false,
+          "bron_strzelecka": false,
+          "bron_dystansowa": false,
+          "prowadzenie_pojazdow": false,
+          "zdolnosci_manualne": false,
+          "orientacja_w_terenie": false,
+          "spostrzegawczosc": false,
+          "kamuflaz": false,
+          "przetrwanie": false,
+          "negocjacje": false,
+          "empatia": false,
+          "sila_woli": false,
+          "medycyna": false,
+          "technika": false,
+          "sprzet": false,
+          "pirotechnika": false,
+          "wiedza1": false,
+          "wiedza2": false,
+          "sprawnosc": false,
+          "jezdictwo": false
+        }
+      },
+      "skills": {
+        "zr": {
+          "bijatyka": 0,
+          "bron_reczna": 0,
+          "rzucanie": 0,
+          "pistolety": 0,
+          "karabiny": 0,
+          "bron_maszynowa": 0,
+          "luk": 0,
+          "kusza": 0,
+          "proca": 0,
+          "samochod": 0,
+          "ciezarowka": 0,
+          "motocykl": 0,
+          "kradziez_kieszonkowa": 0,
+          "zwinne_dlonie": 0,
+          "otwieranie_zamkow": 0
+        },
+        "pc": {
+          "wyczucie_kierunku": 0,
+          "tropienie": 0,
+          "przygotowanie_pulapki": 0,
+          "nasluchiwanie": 0,
+          "wypatrywanie": 0,
+          "czujnosc": 0,
+          "skradanie_sie": 0,
+          "ukrywanie_sie": 0,
+          "maskowanie": 0,
+          "lowiectwo": 0,
+          "zdobywanie_wody": 0,
+          "znajomosc_terenu": 0
+        },
+        "ch": {
+          "perswazja": 0,
+          "zastraszanie": 0,
+          "zdolnosci_przywodcze": 0,
+          "postrzeganie_emocji": 0,
+          "blef": 0,
+          "opieka_nad_zwierzetami": 0,
+          "odpornosc_na_bol": 0,
+          "niezlomnosc": 0,
+          "morale": 0
+        },
+        "sp": {
+          "leczenie_ran": 0,
+          "leczenie_chorob": 0,
+          "pierwsza_pomoc": 0,
+          "mechanika": 0,
+          "elektronika": 0,
+          "komputery": 0,
+          "maszyny_ciezkie": 0,
+          "wozy_bojowe": 0,
+          "kutry": 0,
+          "rusznikarstwo": 0,
+          "wyrzutnie": 0,
+          "materialy_wybuchowe": 0,
+          "wiedza": {
+            "poziom1": 0,
+            "nazwa1": "",
+            "poziom2": 0,
+            "nazwa2": "",
+            "poziom3": 0,
+            "nazwa3": "",
+            "poziom4": 0,
+            "nazwa4": "",
+            "poziom5": 0,
+            "nazwa5": "",
+            "poziom6": 0,
+            "nazwa6": ""
+          }
+        },
+        "bd": {
+          "plywanie": 0,
+          "wspinaczka": 0,
+          "kondycja": 0,
+          "jazda_konna": 0,
+          "powodzenie": 0,
+          "ujezdzanie": 0
+        }
+      },
+      "beastArmor": {
+        "head": {
+          "value": 0,
+          "weakPoint": false
+        },
+        "torso": {
+          "value": 0,
+          "weakPoint": false
+        },
+        "leftHand": {
+          "value": 0,
+          "weakPoint": false
+        },
+        "rightHand": {
+          "value": 0,
+          "weakPoint": false
+        },
+        "leftLeg": {
+          "value": 0,
+          "weakPoint": false
+        },
+        "rightLeg": {
+          "value": 0,
+          "weakPoint": false
+        }
+      },
+      "actionTracking": {
+        "currentSuccesses": 0,
+        "maxSuccesses": 3
+      },
+      "traits": "",
+      "notes": ""
+    }
+  },
+  "Item": {
+    "types": ["weapon-melee", "weapon-ranged", "weapon-thrown", "ammunition", "armor", "equipment", "trick", "wounds", "beast-action"],
+    "templates": {
+      "base": {
+        "weight": 0,
+        "cost": 0,
+        "quantity": 1
+      },
+      "equipable": {
+        "equipable": false,
+        "penalty": 0
+      }
+    },
+    "weapon-melee": {
+      "templates": ["base", "equipable"],
+      "description": "",
+      "damage": {
+        "oneSuccess": "L",
+        "twoSuccess": "C", 
+        "threeSuccess": "K"
+      },
+      "attribute": "zr",
+      "skill": "bijatyka",
+      "bonusAttack": 0,
+      "bonusDefense": 0,
+      "requiredBuild": 0
+    },
+    "weapon-ranged": {
+      "templates": ["base", "equipable"],
+      "description": "",
+      "weaponType": "",
+      "ammoType": "",
+      "capacity": "",
+      "damage": "L",
+      "penetration": 0,
+      "jam": {
+        "min": 0,
+        "max": 0
+      },
+      "rateOfFire": 0,
+      "selectedAmmo": "",
+      "attribute": "zr",
+      "skill": "pistolety",
+      "bonusAttack": 0,
+      "bonusDefense": 0,
+      "requiredBuild": 0
+    },
+    "weapon-thrown": {
+      "templates": ["base", "equipable"],
+      "description": ""
+    },
+    "ammunition": {
+      "templates": ["base"],
+      "description": "",
+      "ammo": {
+        "value": 0,
+        "max": 0
+      },
+      "isMagazine": false,
+      "isOverriding": false,
+      "overrides": {
+        "damage": "L",
+        "penetration": 0,
+        "jam": {
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    "armor": {
+      "templates": ["base", "equipable"],
+      "description": "",
+      "protection": {
+        "head": 0,
+        "torso": 0,
+        "leftHand": 0,
+        "rightHand": 0,
+        "leftLeg": 0,
+        "rightLeg": 0
+      },
+      "durability": {
+        "value": 0,
+        "max": 0
+      },
+      "damageAP": {
+        "head": 0,
+        "torso": 0,
+        "leftHand": 0,
+        "rightHand": 0,
+        "leftLeg": 0,
+        "rightLeg": 0
+      },
+      "damageDurability": 0
+    },
+    "equipment": {
+      "templates": ["base"],
+      "description": ""
+    },
+    "trick": {
+      "description": "",
+      "requirements": []
+    },
+    "wounds": {
+      "location": "torso",
+      "type": "L",
+      "penalty": 0,
+      "active": true,
+      "healing": false,
+      "description": "",
+      "resistanceTest": {
+        "performed": false,
+        "passed": false,
+        "successes": 0
+      }
+    },
+    "beast-action": {
+      "description": "",
+      "actionSystem": "successes",
+      "attribute": "zr",
+      "skill": "bijatyka",
+      "actions": []
+    }
+  }
+}

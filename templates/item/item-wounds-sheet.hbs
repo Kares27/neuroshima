@@ -1,0 +1,113 @@
+<form class="{{cssClass}} {{item.type}} flexcol" autocomplete="off">
+  {{!-- Main header with icon and name --}}
+  <header class="sheet-header">
+    <div class="header-main">
+      <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" height="80" width="80"/>
+      <div class="header-fields">
+        <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'NEUROSHIMA.ItemName'}}"/></h1>
+      </div>
+    </div>
+  </header>
+
+  {{!-- Navigation tabs --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="stats">Statystyki</a>
+    <a class="item" data-tab="description">Opis</a>
+    <a class="item" data-tab="effects">Effects</a>
+  </nav>
+
+  {{!-- Sheet body --}}
+  <section class="sheet-body">
+    
+    {{!-- Stats Tab --}}
+    <div class="tab" data-group="primary" data-tab="stats">
+      
+      {{!-- Location --}}
+      <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Location"}}</label>
+        <select name="system.location" data-dtype="String">
+          <option value="head" {{#if (eq system.location "head")}}selected{{/if}}>{{localize "NEUROSHIMA.Head"}}</option>
+          <option value="torso" {{#if (eq system.location "torso")}}selected{{/if}}>{{localize "NEUROSHIMA.Torso"}}</option>
+          <option value="leftArm" {{#if (eq system.location "leftArm")}}selected{{/if}}>{{localize "NEUROSHIMA.LeftArm"}}</option>
+          <option value="rightArm" {{#if (eq system.location "rightArm")}}selected{{/if}}>{{localize "NEUROSHIMA.RightArm"}}</option>
+          <option value="leftLeg" {{#if (eq system.location "leftLeg")}}selected{{/if}}>{{localize "NEUROSHIMA.LeftLeg"}}</option>
+          <option value="rightLeg" {{#if (eq system.location "rightLeg")}}selected{{/if}}>{{localize "NEUROSHIMA.RightLeg"}}</option>
+          <option value="other" {{#if (eq system.location "other")}}selected{{/if}}>{{localize "NEUROSHIMA.Other"}}</option>
+        </select>
+      </div>
+
+      {{!-- Wound Type --}}
+      <div class="form-group">
+        <label>{{localize "NEUROSHIMA.WoundType"}}</label>
+        <select name="system.type" data-dtype="String">
+          <option value="D" {{#if (eq system.type "D")}}selected{{/if}}>D - {{localize "NEUROSHIMA.Scratch"}}</option>
+          <option value="sD" {{#if (eq system.type "sD")}}selected{{/if}}>sD - Siniak (Draśnięcie)</option>
+          <option value="L" {{#if (eq system.type "L")}}selected{{/if}}>L - {{localize "NEUROSHIMA.Light"}}</option>
+          <option value="sL" {{#if (eq system.type "sL")}}selected{{/if}}>sL - Siniak (Lekkie)</option>
+          <option value="C" {{#if (eq system.type "C")}}selected{{/if}}>C - {{localize "NEUROSHIMA.Heavy"}}</option>
+          <option value="sC" {{#if (eq system.type "sC")}}selected{{/if}}>sC - Siniak (Ciężkie)</option>
+          <option value="K" {{#if (eq system.type "K")}}selected{{/if}}>K - {{localize "NEUROSHIMA.Critical"}}</option>
+          <option value="sK" {{#if (eq system.type "sK")}}selected{{/if}}>sK - Siniak (Krytyczne)</option>
+          <option value="none" {{#if (eq system.type "none")}}selected{{/if}}>Brak</option>
+        </select>
+      </div>
+
+      {{!-- Penalty --}}
+      <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Penalty"}} (%)</label>
+        <input type="number" name="system.penalty" value="{{system.penalty}}" data-dtype="Number" min="0" max="200"/>
+      </div>
+
+      {{!-- Active --}}
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="system.active" {{checked system.active}} data-dtype="Boolean"/>
+          {{localize "NEUROSHIMA.Active"}}
+        </label>
+      </div>
+
+      {{!-- Healing --}}
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="system.healing" {{checked system.healing}} data-dtype="Boolean"/>
+          Leczenie
+        </label>
+      </div>
+
+      {{!-- Resistance Test Info --}}
+      {{#if system.resistanceTest.performed}}
+      <div class="form-group wound-resistance-info" style="background: #f5f5f5; padding: 8px; border-radius: 4px; margin-top: 10px;">
+        <label style="font-weight: bold; display: block; margin-bottom: 5px;">Test Odporności na Ból</label>
+        <p style="margin: 3px 0; font-size: 0.9em;">
+          <strong>Status:</strong> 
+          {{#if system.resistanceTest.passed}}
+          <span style="color: green;">✓ ZDANY</span>
+          {{else}}
+          <span style="color: red;">✗ NIEZDANY</span>
+          {{/if}}
+        </p>
+        <p style="margin: 3px 0; font-size: 0.9em;">
+          <strong>Sukcesy:</strong> {{system.resistanceTest.successes}}/3
+        </p>
+        <p style="margin: 3px 0; font-size: 0.9em;">
+          <strong>Kara:</strong> {{system.penalty}}%
+        </p>
+      </div>
+      {{/if}}
+
+    </div>
+
+    {{!-- Description Tab --}}
+    <div class="tab" data-group="primary" data-tab="description">
+      <div class="editor-container">
+        {{editor enrichedDescription target="system.description" button=true editable=editable engine="prosemirror"}}
+      </div>
+    </div>
+
+    {{!-- Effects Tab --}}
+    <div class="tab" data-group="primary" data-tab="effects">
+      {{> "systems/neuroshima/templates/item/parts/item-effects.hbs"}}
+    </div>
+
+  </section>
+</form>

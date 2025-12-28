@@ -1,0 +1,65 @@
+<div class="neuroshima damage-application">
+  <div class="damage-header">
+    <div class="header-title">
+      <h3>🎯 Trafienie!</h3>
+      <p><strong>{{attackerName}}</strong> atakuje <strong>{{targetName}}</strong></p>
+    </div>
+    {{#if canApply}}
+    <button class="damage-toggle-button" data-action="toggle-damage-section" title="Rozwiń/zwiń opcje">
+      <i class="fas fa-chevron-up"></i>
+    </button>
+    {{/if}}
+  </div>
+  
+  <div class="damage-details">
+    <div class="damage-row">
+      <span class="damage-label">Broń:</span>
+      <span class="damage-value">{{weaponName}}</span>
+    </div>
+    
+    <div class="damage-row">
+      <span class="damage-label">Lokalizacja:</span>
+      <span class="damage-value">{{locationName}}</span>
+      {{#if weakPoint}}
+        <span class="weak-point-badge">⚠️ Słaby punkt!</span>
+      {{/if}}
+    </div>
+    
+    <div class="damage-row">
+      <span class="damage-label">Typ obrażenia:</span>
+      <span class="damage-value damage-type-{{damageType}}">{{damageTypeName}}</span>
+    </div>
+    
+    {{#if (gt hitCount 1)}}
+    <div class="damage-row">
+      <span class="damage-label">Liczba trafień:</span>
+      <span class="damage-value">{{hitCount}}x</span>
+    </div>
+    {{/if}}
+    
+    {{#if armorReduced}}
+    <div class="damage-row armor-info">
+      <span class="damage-label">Pancerz:</span>
+      <span class="damage-value">{{armor}}</span>
+      {{#if penetrationApplied}}
+        <span class="penetration-info">(Penetracja: -{{penetration}})</span>
+      {{/if}}
+    </div>
+    {{/if}}
+    
+    {{#if (gt effectiveArmor 0)}}
+    <div class="damage-row">
+      <span class="damage-label">Efektywny pancerz:</span>
+      <span class="damage-value">{{effectiveArmor}}</span>
+    </div>
+    {{/if}}
+  </div>
+  
+  {{#if canApply}}
+  <div class="damage-actions">
+    <button class="apply-damage-button" data-action="apply-damage">
+      <i class="fas fa-plus-circle"></i> Aplikuj obrażenie
+    </button>
+  </div>
+  {{/if}}
+</div>

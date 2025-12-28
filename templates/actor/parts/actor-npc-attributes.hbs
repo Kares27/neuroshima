@@ -1,0 +1,127 @@
+{{!-- Top section: Two columns --}}
+<div class="grid grid-2col">
+  <!-- Lewa kolumna - informacje o postaci -->
+  <div class="character-info">
+    <h2 class="character-info-title">Informacje o postaci</h2>
+    <div class="form-group">
+      <label>Profesja</label>
+      <input type="text" name="system.info.profession" value="{{system.info.profession}}" placeholder="Profesja"/>
+    </div>
+    <div class="form-group">
+      <label>Specjalizacja</label>
+      <input type="text" name="system.info.specialization" value="{{system.info.specialization}}" placeholder="Specjalizacja"/>
+    </div>
+    <div class="form-group">
+      <label>Pochodzenie</label>
+      <input type="text" name="system.info.origin" value="{{system.info.origin}}"/>
+    </div>
+    <div class="form-group">
+      <label>Choroba</label>
+      <input type="text" name="system.info.disease" value="{{system.info.disease}}"/>
+    </div>
+    <div class="form-group">
+      <label>Lek</label>
+      <input type="text" name="system.info.medicine" value="{{system.info.medicine}}"/>
+    </div>
+  </div>
+
+  <!-- Prawa kolumna - atrybuty i poziomy trudności -->
+  <div class="attributes-container">
+    <h2 class="attributes-title">Współczynniki</h2>
+    <div class="attributes-grid">
+      <table class="attributes-table">
+        <thead>
+          <tr>
+            <th rowspan="2">Współczynniki</th>
+            <th>ZR</th>
+            <th>PC</th>
+            <th>CH</th>
+            <th>SP</th>
+            <th>BD</th>
+          </tr>
+          <tr>
+            <th><input type="number" name="system.attributes.zr.value" value="{{system.attributes.zr.value}}" data-dtype="Number"/></th>
+            <th><input type="number" name="system.attributes.pc.value" value="{{system.attributes.pc.value}}" data-dtype="Number"/></th>
+            <th><input type="number" name="system.attributes.ch.value" value="{{system.attributes.ch.value}}" data-dtype="Number"/></th>
+            <th><input type="number" name="system.attributes.sp.value" value="{{system.attributes.sp.value}}" data-dtype="Number"/></th>
+            <th><input type="number" name="system.attributes.bd.value" value="{{system.attributes.bd.value}}" data-dtype="Number"/></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Modyfikator</td>
+            <td><input type="number" name="system.attributes.zr.mod" value="{{system.attributes.zr.mod}}" data-dtype="Number"/></td>
+            <td><input type="number" name="system.attributes.pc.mod" value="{{system.attributes.pc.mod}}" data-dtype="Number"/></td>
+            <td><input type="number" name="system.attributes.ch.mod" value="{{system.attributes.ch.mod}}" data-dtype="Number"/></td>
+            <td><input type="number" name="system.attributes.sp.mod" value="{{system.attributes.sp.mod}}" data-dtype="Number"/></td>
+            <td><input type="number" name="system.attributes.bd.mod" value="{{system.attributes.bd.mod}}" data-dtype="Number"/></td>
+          </tr>
+          <!-- Poziomy trudności: wartość atrybutu + modyfikator + modyfikator poziomu trudności -->
+          <!-- Łatwy: +2 do atrybutu -->
+          <tr>
+            <td class="difficulty-name">Łatwy</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.zr.value system.attributes.zr.mod 2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.pc.value system.attributes.pc.mod 2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.ch.value system.attributes.ch.mod 2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.sp.value system.attributes.sp.mod 2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.bd.value system.attributes.bd.mod 2}}</td>
+          </tr>
+          <!-- Przeciętny: +0 do atrybutu -->
+          <tr>
+            <td class="difficulty-name">Przeciętny</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.zr.value system.attributes.zr.mod 0}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.pc.value system.attributes.pc.mod 0}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.ch.value system.attributes.ch.mod 0}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.sp.value system.attributes.sp.mod 0}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.bd.value system.attributes.bd.mod 0}}</td>
+          </tr>
+          <!-- Problematyczny: -2 do atrybutu -->
+          <tr>
+            <td class="difficulty-name">Problematyczny</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.zr.value system.attributes.zr.mod -2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.pc.value system.attributes.pc.mod -2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.ch.value system.attributes.ch.mod -2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.sp.value system.attributes.sp.mod -2}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.bd.value system.attributes.bd.mod -2}}</td>
+          </tr>
+          <!-- Trudny: -5 do atrybutu -->
+          <tr>
+            <td class="difficulty-name">Trudny</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.zr.value system.attributes.zr.mod -5}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.pc.value system.attributes.pc.mod -5}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.ch.value system.attributes.ch.mod -5}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.sp.value system.attributes.sp.mod -5}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.bd.value system.attributes.bd.mod -5}}</td>
+          </tr>
+          <!-- Bardzo Trudny: -8 do atrybutu -->
+          <tr>
+            <td class="difficulty-name">Bardzo Trudny</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.zr.value system.attributes.zr.mod -8}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.pc.value system.attributes.pc.mod -8}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.ch.value system.attributes.ch.mod -8}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.sp.value system.attributes.sp.mod -8}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.bd.value system.attributes.bd.mod -8}}</td>
+          </tr>
+          <!-- Cholernie Trudny: -11 do atrybutu -->
+          <tr>
+            <td class="difficulty-name">Cholernie Trudny</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.zr.value system.attributes.zr.mod -11}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.pc.value system.attributes.pc.mod -11}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.ch.value system.attributes.ch.mod -11}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.sp.value system.attributes.sp.mod -11}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.bd.value system.attributes.bd.mod -11}}</td>
+          </tr>
+          <!-- Fart: -15 do atrybutu -->
+          <tr>
+            <td class="difficulty-name">Fart</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.zr.value system.attributes.zr.mod -15}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.pc.value system.attributes.pc.mod -15}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.ch.value system.attributes.ch.mod -15}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.sp.value system.attributes.sp.mod -15}}</td>
+            <td class="difficulty-value">{{difficultyValue system.attributes.bd.value system.attributes.bd.mod -15}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,47 @@
+<div class="tricks-tab">
+  <div class="tricks-section-full">
+    <div class="tricks-header">
+      <h3>Sztuczki</h3>
+      <a class="item-control trick-create" title="Dodaj nową sztuczkę">
+        <i class="fas fa-plus"></i> Sztuczkę
+      </a>
+    </div>
+    <div class="tricks-content">
+      {{#if actor.items}}
+        <ol class="tricks-list">
+          {{#each actor.items as |item id|}}
+            {{#if (eq item.type "trick")}}
+              <li class="trick-item" data-item-id="{{item._id}}">
+                <div class="trick-header">
+                  <div class="trick-icon">
+                    <i class="fas fa-magic"></i>
+                  </div>
+                  <h4 class="trick-name rollable" data-item-id="{{item._id}}">
+                    {{item.name}}
+                  </h4>
+                  <div class="trick-controls">
+                    <a class="item-control item-edit" data-item-id="{{item._id}}" title="Edytuj sztuczkę">
+                      <i class="fas fa-edit"></i>
+                    </a>
+                    <a class="item-control item-delete" data-item-id="{{item._id}}" title="Usuń sztuczkę">
+                      <i class="fas fa-trash"></i>
+                    </a>
+                  </div>
+                </div>
+                <div class="trick-summary" data-item-id="{{item._id}}">
+                  {{#if item.system.description}}
+                    {{{item.system.description}}}
+                  {{else}}
+                    <em>Brak opisu</em>
+                  {{/if}}
+                </div>
+              </li>
+            {{/if}}
+          {{/each}}
+        </ol>
+      {{else}}
+        <p class="tricks-empty"><em>Brak sztuczek. Kliknij "+ Sztuczkę" aby dodać nową.</em></p>
+      {{/if}}
+    </div>
+  </div>
+</div>

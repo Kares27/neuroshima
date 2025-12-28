@@ -1,0 +1,354 @@
+<div class="combat-container">
+  <div class="combat-content">
+    
+    {{!-- Top Row: Armor (Left) and Weapons (Right) --}}
+    <div class="combat-top-row">
+      
+      {{!-- Left: Armor Section - Anatomical Layout --}}
+      <div class="armor-section-anatomical">
+        <div class="armor-header">
+          <h3>Pancerz</h3>
+          <div class="armor-penalty">
+            <span>Łączna kara: <strong class="penalty-value">{{getTotalArmorPenalty}}%</strong></span>
+          </div>
+        </div>
+        
+        <div class="armor-anatomical-grid">
+          {{!-- Row 1: Head (Full Width) --}}
+          <div class="armor-location-box armor-head">
+            <div class="location-header">
+              <span class="location-name">Głowa</span>
+            </div>
+            <div class="armor-column-headers">
+              <span class="armor-header-icon"></span>
+              <span class="armor-header-name">Nazwa</span>
+              <span class="armor-header-dur">Dur</span>
+              <span class="armor-header-ap">AP</span>
+            </div>
+            <div class="location-armor-list">
+              {{#each equippedArmor as |item|}}
+                {{#if (protectsLocation item "head")}}
+                <div class="armor-item-row" data-item-id="{{item._id}}" data-location="head">
+                  <img src="{{item.img}}" class="armor-icon-tiny" alt="{{item.name}}"/>
+                  <span class="armor-name-tiny">{{item.name}}</span>
+                  <span class="armor-durability clickable" data-action="modify-durability" data-item-id="{{item._id}}" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentDurability item}}/{{item.system.durability.max}}
+                  </span>
+                  <span class="armor-ap-value clickable" data-action="modify-ap" data-item-id="{{item._id}}" data-location="head" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentAP item "head"}}/{{item.system.protection.head}}
+                  </span>
+                </div>
+                {{/if}}
+              {{/each}}
+            </div>
+          </div>
+
+          {{!-- Row 2: Torso (Full Width) --}}
+          <div class="armor-location-box armor-torso">
+            <div class="location-header">
+              <span class="location-name">Tors</span>
+            </div>
+            <div class="armor-column-headers">
+              <span class="armor-header-icon"></span>
+              <span class="armor-header-name">Nazwa</span>
+              <span class="armor-header-dur">Dur</span>
+              <span class="armor-header-ap">AP</span>
+            </div>
+            <div class="location-armor-list">
+              {{#each equippedArmor as |item|}}
+                {{#if (protectsLocation item "torso")}}
+                <div class="armor-item-row" data-item-id="{{item._id}}" data-location="torso">
+                  <img src="{{item.img}}" class="armor-icon-tiny" alt="{{item.name}}"/>
+                  <span class="armor-name-tiny">{{item.name}}</span>
+                  <span class="armor-durability clickable" data-action="modify-durability" data-item-id="{{item._id}}" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentDurability item}}/{{item.system.durability.max}}
+                  </span>
+                  <span class="armor-ap-value clickable" data-action="modify-ap" data-item-id="{{item._id}}" data-location="torso" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentAP item "torso"}}/{{item.system.protection.torso}}
+                  </span>
+                </div>
+                {{/if}}
+              {{/each}}
+            </div>
+          </div>
+
+          {{!-- Row 3: Left Hand | Right Hand --}}
+          <div class="armor-location-box armor-left-hand">
+            <div class="location-header">
+              <span class="location-name">Lewa ręka</span>
+            </div>
+            <div class="armor-column-headers">
+              <span class="armor-header-icon"></span>
+              <span class="armor-header-name">Nazwa</span>
+              <span class="armor-header-dur">Dur</span>
+              <span class="armor-header-ap">AP</span>
+            </div>
+            <div class="location-armor-list">
+              {{#each equippedArmor as |item|}}
+                {{#if (protectsLocation item "leftHand")}}
+                <div class="armor-item-row" data-item-id="{{item._id}}" data-location="leftHand">
+                  <img src="{{item.img}}" class="armor-icon-tiny" alt="{{item.name}}"/>
+                  <span class="armor-name-tiny">{{item.name}}</span>
+                  <span class="armor-durability clickable" data-action="modify-durability" data-item-id="{{item._id}}" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentDurability item}}/{{item.system.durability.max}}
+                  </span>
+                  <span class="armor-ap-value clickable" data-action="modify-ap" data-item-id="{{item._id}}" data-location="leftHand" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentAP item "leftHand"}}/{{item.system.protection.leftHand}}
+                  </span>
+                </div>
+                {{/if}}
+              {{/each}}
+            </div>
+          </div>
+
+          <div class="armor-location-box armor-right-hand">
+            <div class="location-header">
+              <span class="location-name">Prawa ręka</span>
+            </div>
+            <div class="armor-column-headers">
+              <span class="armor-header-icon"></span>
+              <span class="armor-header-name">Nazwa</span>
+              <span class="armor-header-dur">Dur</span>
+              <span class="armor-header-ap">AP</span>
+            </div>
+            <div class="location-armor-list">
+              {{#each equippedArmor as |item|}}
+                {{#if (protectsLocation item "rightHand")}}
+                <div class="armor-item-row" data-item-id="{{item._id}}" data-location="rightHand">
+                  <img src="{{item.img}}" class="armor-icon-tiny" alt="{{item.name}}"/>
+                  <span class="armor-name-tiny">{{item.name}}</span>
+                  <span class="armor-durability clickable" data-action="modify-durability" data-item-id="{{item._id}}" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentDurability item}}/{{item.system.durability.max}}
+                  </span>
+                  <span class="armor-ap-value clickable" data-action="modify-ap" data-item-id="{{item._id}}" data-location="rightHand" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentAP item "rightHand"}}/{{item.system.protection.rightHand}}
+                  </span>
+                </div>
+                {{/if}}
+              {{/each}}
+            </div>
+          </div>
+
+          {{!-- Row 4: Left Leg | Right Leg --}}
+          <div class="armor-location-box armor-left-leg">
+            <div class="location-header">
+              <span class="location-name">Lewa noga</span>
+            </div>
+            <div class="armor-column-headers">
+              <span class="armor-header-icon"></span>
+              <span class="armor-header-name">Nazwa</span>
+              <span class="armor-header-dur">Dur</span>
+              <span class="armor-header-ap">AP</span>
+            </div>
+            <div class="location-armor-list">
+              {{#each equippedArmor as |item|}}
+                {{#if (protectsLocation item "leftLeg")}}
+                <div class="armor-item-row" data-item-id="{{item._id}}" data-location="leftLeg">
+                  <img src="{{item.img}}" class="armor-icon-tiny" alt="{{item.name}}"/>
+                  <span class="armor-name-tiny">{{item.name}}</span>
+                  <span class="armor-durability clickable" data-action="modify-durability" data-item-id="{{item._id}}" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentDurability item}}/{{item.system.durability.max}}
+                  </span>
+                  <span class="armor-ap-value clickable" data-action="modify-ap" data-item-id="{{item._id}}" data-location="leftLeg" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentAP item "leftLeg"}}/{{item.system.protection.leftLeg}}
+                  </span>
+                </div>
+                {{/if}}
+              {{/each}}
+            </div>
+          </div>
+
+          <div class="armor-location-box armor-right-leg">
+            <div class="location-header">
+              <span class="location-name">Prawa noga</span>
+            </div>
+            <div class="armor-column-headers">
+              <span class="armor-header-icon"></span>
+              <span class="armor-header-name">Nazwa</span>
+              <span class="armor-header-dur">Dur</span>
+              <span class="armor-header-ap">AP</span>
+            </div>
+            <div class="location-armor-list">
+              {{#each equippedArmor as |item|}}
+                {{#if (protectsLocation item "rightLeg")}}
+                <div class="armor-item-row" data-item-id="{{item._id}}" data-location="rightLeg">
+                  <img src="{{item.img}}" class="armor-icon-tiny" alt="{{item.name}}"/>
+                  <span class="armor-name-tiny">{{item.name}}</span>
+                  <span class="armor-durability clickable" data-action="modify-durability" data-item-id="{{item._id}}" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentDurability item}}/{{item.system.durability.max}}
+                  </span>
+                  <span class="armor-ap-value clickable" data-action="modify-ap" data-item-id="{{item._id}}" data-location="rightLeg" title="LPM: Napraw | PPM: Uszkodź">
+                    {{getCurrentAP item "rightLeg"}}/{{item.system.protection.rightLeg}}
+                  </span>
+                </div>
+                {{/if}}
+              {{/each}}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {{!-- Right: Weapons Section --}}
+      <div class="weapons-section">
+        <h3>Bronie</h3>
+        <div class="equipment-list">
+          {{#each equippedWeapons as |item|}}
+          <div class="equipment-item weapon-item-clickable" data-item-id="{{item._id}}">
+            {{!-- Column 1: Weapon Image --}}
+            <img src="{{item.img}}" class="weapon-icon" alt="{{item.name}}"/>
+            
+            {{!-- Column 2: Name + Stats --}}
+            <div class="weapon-info-column">
+              {{!-- Row 1: Weapon Name --}}
+              <div class="weapon-name-rollable">{{item.name}}</div>
+              
+              {{!-- Row 2: Horizontal Stats --}}
+              <div class="weapon-stats-row">
+                {{#if (eq item.type "weapon-melee")}}
+                  <span class="stat-item">
+                    <span class="stat-label">Obrażenia:</span>
+                    <span class="stat-value">{{item.system.damage.oneSuccess}}/{{item.system.damage.twoSuccess}}/{{item.system.damage.threeSuccess}}</span>
+                  </span>
+                  <span class="stat-separator">|</span>
+                  <span class="stat-item">
+                    <span class="stat-label">Atak:</span>
+                    <span class="stat-value">{{#if item.system.bonusAttack}}+{{item.system.bonusAttack}}{{else}}0{{/if}}</span>
+                  </span>
+                  <span class="stat-separator">|</span>
+                  <span class="stat-item">
+                    <span class="stat-label">Obrona:</span>
+                    <span class="stat-value">{{#if item.system.bonusDefense}}+{{item.system.bonusDefense}}{{else}}0{{/if}}</span>
+                  </span>
+                {{else if (eq item.type "weapon-ranged")}}
+                  <span class="stat-item">
+                    <span class="stat-label">Obrażenia:</span>
+                    <span class="stat-value">{{item.system.damage}}</span>
+                  </span>
+                  <span class="stat-separator">|</span>
+                  <span class="stat-item">
+                    <span class="stat-label">PP:</span>
+                    <span class="stat-value">{{item.system.penetration}}</span>
+                  </span>
+                  <span class="stat-separator">|</span>
+                  <span class="stat-item">
+                    <span class="stat-label">RoF:</span>
+                    <span class="stat-value">{{item.system.rateOfFire}}</span>
+                  </span>
+                {{else if (eq item.type "weapon-thrown")}}
+                  <span class="stat-item">
+                    <span class="stat-label">Obrażenia:</span>
+                    <span class="stat-value">{{item.system.damage}}</span>
+                  </span>
+                  <span class="stat-separator">|</span>
+                  <span class="stat-item">
+                    <span class="stat-label">Zasięg:</span>
+                    <span class="stat-value">{{item.system.range}}</span>
+                  </span>
+                {{/if}}
+              </div>
+              
+              {{!-- Row 3: Magazine Info (only for ranged weapons) --}}
+              {{#if (eq item.type "weapon-ranged")}}
+              <div class="weapon-magazine-row">
+                <span class="stat-label">Magazynek:</span>
+                <span class="magazine-info">
+                  {{#if item.selectedAmmoData}}
+                    <span class="magazine-name">{{item.selectedAmmoData.name}}</span>
+                    <span class="magazine-count">({{item.selectedAmmoData.current}}/{{item.selectedAmmoData.max}})</span>
+                  {{else}}
+                    <span class="magazine-empty">Brak</span>
+                  {{/if}}
+                </span>
+              </div>
+              {{/if}}
+            </div>
+            
+            {{!-- Column 3: Edit Icon --}}
+            <div class="weapon-edit-column">
+              <a class="weapon-edit-icon" data-item-id="{{item._id}}" title="Edytuj broń">
+                <i class="fas fa-edit"></i>
+              </a>
+            </div>
+          </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    {{!-- Bottom Row: Wounds (Full Width) --}}
+    <div class="combat-bottom-row">
+      <div class="wounds-section">
+        <div class="wounds-penalty-total">
+          <div class="health-display">
+            <span class="health-current">{{getCurrentHealthValue}}</span>
+            <span class="health-separator"> / </span>
+            <input type="number" name="system.health.max" value="{{#if system.health.max}}{{system.health.max}}{{else}}27{{/if}}" data-dtype="Number" min="1" class="health-max-input" title="Maksymalne punkty zdrowia"/>
+            <span class="health-penalty"> - Kara: <strong>{{getTotalWoundPenalty}}%</strong></span>
+          </div>
+        </div>
+        <div class="wounds-section-content" data-section-content="wounds">
+          <div class="wounds-header-row">
+            <div class="wound-icon-header"></div>
+            <div class="wound-name-header">Obrażenia</div>
+            <div class="wound-location-header" title="Lokalizacja">Lok.</div>
+            <div class="wound-type-header">Typ</div>
+            <div class="wound-penalty-header">Kara</div>
+            <div class="wound-test-header" title="Test odporności">Test</div>
+            <div class="wound-active-header" title="Aktywne">Akt.</div>
+            <div class="wound-healing-header" title="Leczenie">Lecz.</div>
+            <div class="wound-controls-header">
+              <a class="item-control item-create" data-type="wounds" title="Dodaj obrażenie">
+                <i class="fas fa-plus"></i>
+              </a>
+              <a class="section-collapse-toggle" data-section="wounds" title="Zwiń/Rozwiń">
+                <i class="fas fa-chevron-down"></i>
+              </a>
+            </div>
+          </div>
+          
+          <ol class="wounds-items-list">
+            {{#each wounds as |wound|}}
+            <li class="wound-entry item" data-item-id="{{wound._id}}">
+              <div class="wound-icon">
+                <img src="{{wound.img}}" alt="{{wound.name}}" />
+              </div>
+              <div class="wound-name">{{wound.name}}</div>
+              <div class="wound-location">{{getLocationName wound.system.location}}</div>
+              <div class="wound-type">{{{getWoundTypeName wound.system.type}}}</div>
+              <div class="wound-penalty">{{wound.system.penalty}}%</div>
+              <div class="wound-test" title="{{#if wound.system.resistanceTest.performed}}{{#if wound.system.resistanceTest.passed}}Test zdany: {{wound.system.resistanceTest.successes}}/3{{else}}Test niezdany: {{wound.system.resistanceTest.successes}}/3{{/if}}{{else}}Test nie wykonany{{/if}}">
+                {{#if wound.system.resistanceTest.performed}}
+                  <span class="resistance-test-result {{#if wound.system.resistanceTest.passed}}passed{{else}}failed{{/if}}">
+                    {{#if wound.system.resistanceTest.passed}}✓{{else}}✗{{/if}} {{wound.system.resistanceTest.successes}}/3
+                  </span>
+                {{else}}
+                  <span class="resistance-test-pending">-</span>
+                {{/if}}
+              </div>
+              <div class="wound-active">
+                <i class="{{#if wound.system.active}}fas fa-dot-circle{{else}}far fa-circle{{/if}} wound-active-toggle" data-item-id="{{wound._id}}" title="{{#if wound.system.active}}Aktywne{{else}}Nieaktywne{{/if}}"></i>
+              </div>
+              <div class="wound-healing">
+                <i class="fas fa-plus-circle wound-healing-toggle {{#if wound.system.healing}}healing-active{{else}}healing-inactive{{/if}}" data-item-id="{{wound._id}}" title="{{#if wound.system.healing}}W trakcie leczenia{{else}}Nie leczone{{/if}}"></i>
+              </div>
+              <div class="wound-controls">
+                <a class="item-control item-edit" data-item-id="{{wound._id}}" title="Edytuj"><i class="fas fa-edit"></i></a>
+                <a class="item-control item-delete" data-item-id="{{wound._id}}" title="Usuń"><i class="fas fa-trash"></i></a>
+              </div>
+            </li>
+            {{/each}}
+          </ol>
+          
+          <div class="wounds-list-collapsed" style="display: none;">
+            {{#each wounds as |wound|}}
+            <div class="item-icon-collapsed" data-item-id="{{wound._id}}" title="{{wound.name}}">
+              <img src="{{wound.img}}" width="32" height="32"/>
+            </div>
+            {{/each}}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

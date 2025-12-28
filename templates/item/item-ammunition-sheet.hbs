@@ -1,0 +1,123 @@
+<form class="{{cssClass}} {{item.type}} flexcol" autocomplete="off">
+  {{!-- Main header with icon and name --}}
+  <header class="sheet-header">
+    <div class="header-main">
+      <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" height="80" width="80"/>
+      <div class="header-fields">
+        <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'NEUROSHIMA.ItemName'}}"/></h1>
+      </div>
+    </div>
+  </header>
+
+  {{!-- Navigation tabs --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="stats">Statystyki</a>
+    <a class="item" data-tab="description">Opis</a>
+    <a class="item" data-tab="effects">Effects</a>
+  </nav>
+
+  {{!-- Sheet body --}}
+  <section class="sheet-body">
+    
+    {{!-- Stats Tab --}}
+    <div class="tab" data-group="primary" data-tab="stats">
+      
+      {{!-- Basic Properties --}}
+      <div class="basic-properties-row">
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Weight"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.weight" value="{{system.weight}}" data-dtype="Number" step="0.1"/></div>
+          </div>
+        </div>
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Cost"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.cost" value="{{system.cost}}" data-dtype="Number"/></div>
+          </div>
+        </div>
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Quantity"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" min="1"/></div>
+          </div>
+        </div>
+      </div>
+
+      {{!-- Ammunition Stats --}}
+      <div class="form-group-row">
+        <div class="form-group">
+          <label>{{localize "NEUROSHIMA.CurrentAmmo"}}</label>
+          <input type="number" name="system.ammo.value" value="{{system.ammo.value}}" data-dtype="Number" min="0"/>
+        </div>
+        <div class="form-group">
+          <label>{{localize "NEUROSHIMA.MaxAmmo"}}</label>
+          <input type="number" name="system.ammo.max" value="{{system.ammo.max}}" data-dtype="Number" min="0"/>
+        </div>
+      </div>
+
+      {{!-- Ammunition Type --}}
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="system.isMagazine" {{checked system.isMagazine}} data-dtype="Boolean"/>
+          {{localize "NEUROSHIMA.IsMagazine"}}
+        </label>
+      </div>
+
+      {{!-- Override Stats --}}
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="system.isOverriding" {{checked system.isOverriding}} id="override-checkbox" data-dtype="Boolean"/>
+          {{localize "NEUROSHIMA.OverrideWeaponStats"}}
+        </label>
+      </div>
+
+      {{!-- Override Fields (shown only when isOverriding is true) --}}
+      <div class="override-section" style="{{#unless system.isOverriding}}display: none;{{/unless}}">
+        <h3>{{localize "NEUROSHIMA.OverrideSettings"}}</h3>
+        
+        <div class="form-group">
+          <label>{{localize "NEUROSHIMA.Damage"}}</label>
+          <select name="system.overrides.damage">
+            <option value="D" {{#if (eq system.overrides.damage "D")}}selected{{/if}}>D - {{localize "NEUROSHIMA.DamageScratch"}}</option>
+            <option value="sD" {{#if (eq system.overrides.damage "sD")}}selected{{/if}}>sD - Siniak (Draśnięcie)</option>
+            <option value="L" {{#if (eq system.overrides.damage "L")}}selected{{/if}}>L - {{localize "NEUROSHIMA.DamageLight"}}</option>
+            <option value="sL" {{#if (eq system.overrides.damage "sL")}}selected{{/if}}>sL - Siniak (Lekkie)</option>
+            <option value="C" {{#if (eq system.overrides.damage "C")}}selected{{/if}}>C - {{localize "NEUROSHIMA.DamageHeavy"}}</option>
+            <option value="sC" {{#if (eq system.overrides.damage "sC")}}selected{{/if}}>sC - Siniak (Ciężkie)</option>
+            <option value="K" {{#if (eq system.overrides.damage "K")}}selected{{/if}}>K - {{localize "NEUROSHIMA.DamageCritical"}}</option>
+            <option value="sK" {{#if (eq system.overrides.damage "sK")}}selected{{/if}}>sK - Siniak (Krytyczne)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label title="{{localize 'NEUROSHIMA.PenetrationPoints'}}">PP</label>
+          <input type="number" name="system.overrides.penetration" value="{{system.overrides.penetration}}" data-dtype="Number" min="0"/>
+        </div>
+
+        <div class="form-group">
+          <label>{{localize "NEUROSHIMA.JamRange"}}</label>
+          <div class="jam-range">
+            <input type="number" name="system.overrides.jam.min" value="{{system.overrides.jam.min}}" data-dtype="Number" min="0" max="20" placeholder="Min"/>
+            <span>-</span>
+            <input type="number" name="system.overrides.jam.max" value="{{system.overrides.jam.max}}" data-dtype="Number" min="0" max="20" placeholder="Max"/>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {{!-- Description Tab --}}
+    <div class="tab" data-group="primary" data-tab="description">
+      <div class="editor-container">
+        {{editor enrichedDescription target="system.description" button=true editable=editable engine="prosemirror"}}
+      </div>
+    </div>
+
+    {{!-- Effects Tab --}}
+    <div class="tab" data-group="primary" data-tab="effects">
+      {{> "systems/neuroshima/templates/item/parts/item-effects.hbs"}}
+    </div>
+
+  </section>
+</form>

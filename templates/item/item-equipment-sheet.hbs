@@ -1,0 +1,62 @@
+<form class="{{cssClass}} {{item.type}} flexcol" autocomplete="off">
+  {{!-- Main header with icon and name --}}
+  <header class="sheet-header">
+    <div class="header-main">
+      <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" height="80" width="80"/>
+      <div class="header-fields">
+        <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'NEUROSHIMA.ItemName'}}"/></h1>
+      </div>
+    </div>
+  </header>
+
+  {{!-- Navigation tabs --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="stats">Statystyki</a>
+    <a class="item" data-tab="description">Opis</a>
+    <a class="item" data-tab="effects">Effects</a>
+  </nav>
+
+  {{!-- Sheet body --}}
+  <section class="sheet-body">
+
+    {{!-- Stats Tab --}}
+    <div class="tab" data-group="primary" data-tab="stats">
+      
+      {{!-- Basic Properties --}}
+      <div class="basic-properties-row">
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Weight"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.weight" value="{{system.weight}}" data-dtype="Number" step="0.1"/></div>
+          </div>
+        </div>
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Cost"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.cost" value="{{system.cost}}" data-dtype="Number"/></div>
+          </div>
+        </div>
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Quantity"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" min="1"/></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {{!-- Description Tab --}}
+    <div class="tab" data-group="primary" data-tab="description">
+      <div class="editor-container">
+        {{editor enrichedDescription target="system.description" button=true editable=editable engine="prosemirror"}}
+      </div>
+    </div>
+
+    {{!-- Effects Tab --}}
+    <div class="tab" data-group="primary" data-tab="effects">
+      {{> "systems/neuroshima/templates/item/parts/item-effects.hbs"}}
+    </div>
+
+  </section>
+</form>

@@ -1,0 +1,124 @@
+<form class="{{cssClass}} {{item.type}} flexcol" autocomplete="off">
+  {{!-- Main header with icon and name --}}
+  <header class="sheet-header">
+    <div class="header-main">
+      <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" height="80" width="80"/>
+      <div class="header-fields">
+        <h1 class="charname"><input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'NEUROSHIMA.ItemName'}}"/></h1>
+      </div>
+    </div>
+  </header>
+
+  {{!-- Navigation tabs --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="stats">Statystyki</a>
+    <a class="item" data-tab="description">Opis</a>
+    <a class="item" data-tab="effects">Effects</a>
+  </nav>
+
+  {{!-- Sheet body --}}
+  <section class="sheet-body">
+    
+    {{!-- Stats Tab --}}
+    <div class="tab" data-group="primary" data-tab="stats">
+      
+      {{!-- Basic Properties with Equipped Checkbox --}}
+      <div class="basic-properties-row">
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Weight"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.weight" value="{{system.weight}}" data-dtype="Number" step="0.1"/></div>
+          </div>
+        </div>
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Cost"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.cost" value="{{system.cost}}" data-dtype="Number"/></div>
+          </div>
+        </div>
+        <div class="compact-field">
+          <div class="form-group">
+            <div class="label-wrapper"><label>{{localize "NEUROSHIMA.Quantity"}}</label></div>
+            <div class="input-wrapper"><input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" min="1"/></div>
+          </div>
+        </div>
+        <div class="equipped-field">
+          <div class="form-group">
+            <div class="label-wrapper">
+              <label class="checkbox">
+                <input type="checkbox" name="system.equipable" {{checked system.equipable}} data-dtype="Boolean"/>
+                {{localize "NEUROSHIMA.Equipable"}}
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="armor-stats-container">
+        {{!-- Left Column: Protection Values --}}
+        <div class="armor-stats-left">
+          <h3>Ochrona (AP)</h3>
+          
+          <div class="form-group-centered">
+            <label>Głowa</label>
+            <input type="number" name="system.protection.head" value="{{system.protection.head}}" data-dtype="Number" min="0"/>
+          </div>
+          
+          <div class="form-group-centered">
+            <label>Tors</label>
+            <input type="number" name="system.protection.torso" value="{{system.protection.torso}}" data-dtype="Number" min="0"/>
+          </div>
+          
+          <div class="form-group-centered">
+            <label>Lewa ręka</label>
+            <input type="number" name="system.protection.leftHand" value="{{system.protection.leftHand}}" data-dtype="Number" min="0"/>
+          </div>
+          
+          <div class="form-group-centered">
+            <label>Prawa ręka</label>
+            <input type="number" name="system.protection.rightHand" value="{{system.protection.rightHand}}" data-dtype="Number" min="0"/>
+          </div>
+          
+          <div class="form-group-centered">
+            <label>Lewa noga</label>
+            <input type="number" name="system.protection.leftLeg" value="{{system.protection.leftLeg}}" data-dtype="Number" min="0"/>
+          </div>
+          
+          <div class="form-group-centered">
+            <label>Prawa noga</label>
+            <input type="number" name="system.protection.rightLeg" value="{{system.protection.rightLeg}}" data-dtype="Number" min="0"/>
+          </div>
+        </div>
+
+        {{!-- Right Column: Durability and Penalty --}}
+        <div class="armor-stats-right">
+          <h3>Właściwości</h3>
+          
+          <div class="form-group">
+            <label>Wytrzymałość</label>
+            <input type="number" name="system.durability.max" value="{{system.durability.max}}" data-dtype="Number" min="0"/>
+          </div>
+          
+          <div class="form-group">
+            <label>Kara za pancerz (%)</label>
+            <input type="number" name="system.penalty" value="{{system.penalty}}" data-dtype="Number" min="0"/>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    {{!-- Description Tab --}}
+    <div class="tab" data-group="primary" data-tab="description">
+      <div class="editor-container">
+        {{editor enrichedDescription target="system.description" button=true editable=editable engine="prosemirror"}}
+      </div>
+    </div>
+
+    {{!-- Effects Tab --}}
+    <div class="tab" data-group="primary" data-tab="effects">
+      {{> "systems/neuroshima/templates/item/parts/item-effects.hbs"}}
+    </div>
+
+  </section>
+</form>

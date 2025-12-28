@@ -1,0 +1,6244 @@
+/* ----------------------------------------- */
+/*  Neuroshima System Styles                */
+/* ----------------------------------------- */
+
+/* ----------------------------------------- */
+/*  Post-Apocalyptic Color Palette          */
+/* ----------------------------------------- */
+/*
+  --rust-dark: #3d2817 - Ciemna rdza (główne tło)
+  --rust-medium: #5a3a1f - Średnia rdza (sekundarne tło)
+  --rust-light: #8b5a3c - Jasna rdza (hover states)
+  --dirt-brown: #4a3f35 - Brudny brąz (borders)
+  --ash-gray: #6b6b6b - Popielaty szary (tekst)
+  --smoke-white: #d4d4d4 - Dymny biały (jasny tekst)
+  --wasteland-green: #4a5c3a - Wyblakła zieleń (akcenty)
+  --blood-red: #8b2e2e - Zakrzepła krew (niebezpieczeństwo)
+  --metal-gray: #3a3a3a - Metalowy szary (ramki)
+  --paper-beige: #e8dcc8 - Stary papier (tło contentu)
+*/
+
+/* ----------------------------------------- */
+/*  Font Definitions                        */
+/* ----------------------------------------- */
+
+@font-face {
+  font-family: 'Special Elite';
+  src: url('assets/fonts/SpecialElite-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* ----------------------------------------- */
+/*  Global Actor and Item Styles           */
+/* ----------------------------------------- */
+
+.neuroshima {
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+/* Minimalne wymiary okna aktora */
+.window-app.sheet.actor.neuroshima {
+  min-width: 800px !important;
+  min-height: 800px !important;
+}
+
+/* Actor sheet form layout */
+.neuroshima.actor {
+  height: 100%;
+  min-width: 900px !important;
+  min-height: 800px !important;
+}
+
+.neuroshima.actor form {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Item sheets także używają Special Elite */
+.neuroshima.item {
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+/* ----------------------------------------- */
+/*  Sheet Header (Actor Sheets Only)        */
+/* ----------------------------------------- */
+
+.neuroshima.actor .sheet-header {
+  flex: 0; /* Nie rozszerza się w osi Y */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 10px;
+  padding: 8px;
+  border-bottom: 3px solid #4a3f35;
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.neuroshima.actor .sheet-header .profile-img {
+  border: 3px solid #4a3f35;
+  margin-right: 10px;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.neuroshima.actor .sheet-header .header-fields {
+  flex: 1;
+}
+
+.neuroshima.actor .sheet-header h1.charname {
+  margin: 0;
+  border-bottom: 0;
+}
+
+.neuroshima.actor .sheet-header h1.charname input {
+  font-size: 24px;
+  font-weight: bold;
+  background: transparent;
+  border: 1px solid transparent;
+  height: auto;
+  color: #d4d4d4;
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima.actor .sheet-header .resources {
+  margin-top: 10px;
+}
+
+.neuroshima.actor .sheet-header .resource {
+  margin-bottom: 8px;
+}
+
+.neuroshima.actor .sheet-header .resource-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 4px;
+  font-size: 14px;
+  color: #d4d4d4;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima.actor .sheet-header .resource-content {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.neuroshima.actor .sheet-header .resource-content input {
+  width: 60px;
+  text-align: center;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  padding: 4px;
+  background: #ffffff;
+  color: #3d2817;
+  font-weight: bold;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.3);
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima.actor .sheet-header .resource-content span {
+  font-weight: bold;
+  color: #d4d4d4;
+}
+
+/* ----------------------------------------- */
+/*  Navigation Tabs                         */
+/* ----------------------------------------- */
+
+.neuroshima .sheet-tabs {
+  flex: 0; /* Nie rozszerza się w osi Y */
+  border-bottom: 3px solid #4a3f35;
+  margin-bottom: 2px;
+  background: #5a3a1f;
+  padding: 0;
+}
+
+.neuroshima .sheet-tabs .item {
+  padding: 10px 18px;
+  border: none;
+  border-right: 1px solid #4a3f35;
+  margin-right: 0;
+  background: #5a3a1f;
+  color: #d4d4d4;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.neuroshima .sheet-tabs .item:hover {
+  background: #8b5a3c;
+  color: #e8dcc8;
+}
+
+.neuroshima .sheet-tabs .item.active {
+  background: #e8dcc8;
+  color: #3d2817;
+  border-bottom: none;
+  margin-bottom: 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ----------------------------------------- */
+/*  Sheet Body and Tabs Scrolling           */
+/* ----------------------------------------- */
+
+.neuroshima.actor .sheet-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.neuroshima.actor .sheet-body .tab {
+  display: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  padding: 10px;
+}
+
+.neuroshima.actor .sheet-body .tab.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ----------------------------------------- */
+/*  Grid Layout                             */
+/* ----------------------------------------- */
+
+.neuroshima .grid {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem;
+}
+
+.neuroshima .grid-2col {
+  grid-template-columns: 300px 1fr;
+}
+
+/* ----------------------------------------- */
+/*  Attributes Tab                          */
+/* ----------------------------------------- */
+
+.neuroshima .character-info {
+  padding: 5px;
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  background: #e8dcc8;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima .character-info-title {
+  margin: 0 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 3px solid #5a3a1f;
+  font-size: 16px;
+  font-weight: bold;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.neuroshima .attributes-container {
+  padding: 5px;
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  background: #e8dcc8;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima .attributes-title {
+  margin: 0 0 15px 0;
+  padding-bottom: 10px;
+  border-bottom: 3px solid #5a3a1f;
+  font-size: 16px;
+  font-weight: bold;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.neuroshima .attributes-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.neuroshima .attributes-table th,
+.neuroshima .attributes-table td {
+  border: 2px solid #4a3f35;
+  padding: 6px 2px 6px 2px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.neuroshima .attributes-table th {
+  background: linear-gradient(to bottom, #5a3a1f 0%, #4a3f35 100%);
+  font-weight: bold;
+  font-size: 13px;
+  color: #d4d4d4;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima .attributes-table td:first-child {
+  font-weight: bold;
+  background-color: #d4c4a8;
+  text-align: left;
+  padding-left: 12px;
+  color: #3d2817;
+}
+
+.neuroshima .attributes-table input[type="number"] {
+  width: 50px;
+  border: none;
+  background: #ffffff;
+  text-align: center;
+  font-weight: bold;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .difficulty-value {
+  font-weight: bold;
+  color: #3d2817;
+}
+
+.neuroshima .experience-group {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 2px solid #5a3a1f;
+}
+
+.neuroshima .experience-title {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima .experience-horizontal-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.neuroshima .experience-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.neuroshima .experience-item label {
+  flex: 0 0 60px;
+  font-size: 12px;
+  font-weight: normal;
+  color: #3d2817;
+}
+
+.neuroshima .experience-total {
+  width: 60px;
+}
+
+.neuroshima .experience-spent-display,
+.neuroshima .experience-current-display {
+  font-weight: bold;
+  padding: 2px 6px;
+  background: #d4c4a8;
+  border-radius: 0;
+  border: 2px solid #4a3f35;
+  color: #3d2817;
+}
+
+.neuroshima .form-group {
+  margin-bottom: 10px;
+}
+
+.neuroshima .form-group label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 2px;
+  color: #3d2817;
+}
+
+.neuroshima .form-group input,
+.neuroshima .form-group textarea {
+  width: 100%;
+  padding: 4px;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  background: #ffffff;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .experience-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 2px solid #5a3a1f;
+}
+
+.neuroshima .attributes-header,
+.neuroshima .attributes-values,
+.neuroshima .attributes-modifiers,
+.neuroshima .attribute-tests {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  padding: 5px 0;
+}
+
+.neuroshima .attributes-header {
+  font-weight: bold;
+  border-bottom: 2px solid #5a3a1f;
+  color: #3d2817;
+}
+
+.neuroshima .attribute-label {
+  flex: 0 0 100px;
+  font-weight: bold;
+  text-align: center;
+  color: #3d2817;
+}
+
+.neuroshima .attribute-column {
+  flex: 1;
+  text-align: center;
+  padding: 0 5px;
+}
+
+.neuroshima .attribute-column input {
+  width: 60px;
+  text-align: center;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .attribute-column button {
+  width: 80px;
+  font-size: 12px;
+}
+
+.neuroshima .difficulty-levels {
+  margin-top: 20px;
+}
+
+.neuroshima .difficulty-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
+  padding: 2px 0;
+}
+
+.neuroshima .difficulty-row:nth-child(even) {
+  background-color: #d4c4a8;
+}
+
+.neuroshima .difficulty-name {
+  flex: 0 0 120px;
+  font-weight: bold;
+  color: #3d2817;
+}
+
+.neuroshima .difficulty-percentage {
+  flex: 0 0 80px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.neuroshima .difficulty-modifier {
+  flex: 0 0 60px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.neuroshima .difficulty-value {
+  flex: 1;
+  text-align: center;
+  font-weight: bold;
+  color: #3d2817;
+}
+
+/* ----------------------------------------- */
+/*  Skills Tab                              */
+/* ----------------------------------------- */
+
+.neuroshima .skills-container {
+  padding: 0;
+}
+
+.neuroshima .skills-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  border: 3px solid #4a3f35;
+  table-layout: auto; /* Automatyczne dopasowanie kolumn */
+  background: #e8dcc8;
+}
+
+.neuroshima .skills-table tr {
+  height: 36px; /* Zmniejszona wysokość wiersza z 40px do 36px */
+}
+
+.neuroshima .skills-table td {
+  border: 2px solid #4a3f35;
+  padding: 3px 4px; /* Zmniejszony padding z 4px 6px do 3px 4px */
+  vertical-align: middle;
+  font-size: 12px; /* Zmniejszony font z 14px do 12px */
+  font-weight: bold; /* Dodany bold */
+  color: #3d2817;
+  height: 100%;
+}
+
+.neuroshima .attribute-cell {
+  background: linear-gradient(to bottom, #5a3a1f 0%, #4a3f35 100%);
+  border-right: 3px solid #4a3f35;
+  padding: 8px;
+  text-align: center;
+  vertical-align: middle;
+  width: 8%; /* Szerokość procentowa */
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .attribute-button {
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 0;
+  transition: background-color 0.2s;
+  color: #d4d4d4;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima .attribute-button:hover {
+  background-color: #8b5a3c;
+}
+
+.neuroshima .attribute-button h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .category-cell {
+  background-color: #d4c4a8;
+  font-weight: bold;
+  text-align: center;
+  width: 20%; /* Szerokość procentowa */
+  font-size: 11px;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .category-button {
+  color: #3d2817;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 0;
+  transition: background-color 0.2s;
+  font-weight: bold;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .category-button:hover {
+  background-color: #8b5a3c;
+  color: #e8dcc8;
+  text-decoration: none;
+}
+
+.neuroshima .skill-cell {
+  width: 6%; /* Szerokość procentowa */
+  text-align: center;
+  padding: 0 !important;
+  height: 100%;
+  vertical-align: middle;
+  position: relative;
+}
+
+.neuroshima .skill-cell input {
+  width: 100%;
+  min-width: 32px; /* Minimalna szerokość inputu */
+  height: 100%;
+  border: none;
+  background: #ffffff;
+  text-align: center;
+  font-size: 12px !important; /* Zmniejszony font z 14px do 12px */
+  font-weight: bold; /* Dodany bold */
+  padding: 0 4px;
+  margin: 0;
+  font-family: 'Special Elite', monospace, sans-serif;
+  color: #3d2817;
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.neuroshima .skill-name {
+  font-size: 12px; /* Zmniejszony font z 14px do 12px */
+  font-weight: bold; /* Dodany bold */
+  text-align: center; /* Wycentrowane umiejętności */
+  width: 18%; /* Szerokość procentowa */
+}
+
+.neuroshima .skill-name input[type="text"] {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 12px !important; /* Zmniejszony font z 14px do 12px */
+  font-weight: bold; /* Dodany bold */
+  padding: 2px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  color: #3d2817;
+}
+
+.neuroshima .skill-button {
+  color: #3d2817;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 0;
+  transition: background-color 0.2s;
+  display: block;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .skill-button:hover {
+  background-color: #8b5a3c;
+  color: #e8dcc8;
+  text-decoration: none;
+}
+
+.neuroshima .rollable {
+  cursor: pointer;
+}
+
+.neuroshima .rollable:hover {
+  background-color: #d4c4a8;
+}
+
+/* Specjalizacje - zakrzepła krew */
+.neuroshima .category-button.specialized {
+  background-color: transparent;
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+.neuroshima .specialized .skill-button {
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+/* Styles dla specializowanych kategorii */
+.neuroshima .skills-table tr.specialized .category-cell {
+  background-color: #d4c4a8;
+}
+
+.neuroshima .skills-table tr.specialized .skill-name a {
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+/* Wszystkie elementy w specializowanej kategorii mają kolor krwi */
+.neuroshima .category-cell.specialized .category-button {
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+.neuroshima .skill-button.specialized {
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+/* Styles dla "Test Wiedzy" */
+.neuroshima .knowledge-test {
+  font-size: 12px; /* Zwiększony font do 12px */
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.neuroshima .knowledge-test a {
+  color: #3d2817;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 0;
+  transition: background-color 0.2s;
+}
+
+.neuroshima .knowledge-test a:hover {
+  background-color: #8b5a3c;
+  color: #e8dcc8;
+  text-decoration: none;
+}
+
+/* ----------------------------------------- */
+/*  Window Content - Post-Apo Background    */
+/* ----------------------------------------- */
+
+/* Override Foundry VTT v13 default window-content background */
+.neuroshima.sheet .window-content {
+  background: #e8dcc8 !important;
+  background-color: #e8dcc8 !important;
+}
+
+/* Actor sheets have paper-like background */
+.neuroshima.actor .window-content {
+  background: #e8dcc8 !important;
+  background-color: #e8dcc8 !important;
+}
+
+/* Item sheets have paper-like background */
+.neuroshima.item .window-content {
+  background: #e8dcc8 !important;
+  background-color: #e8dcc8 !important;
+}
+
+/* ----------------------------------------- */
+/*  Item Sheet Styles                      */
+/* ----------------------------------------- */
+
+/* Item Sheet Header - Large Icon and Name */
+.neuroshima.item .sheet-header {
+  display: flex;
+  flex-direction: column; /* Force vertical stacking */
+  border: 3px solid #4a3f35;
+  border-bottom: 3px solid #4a3f35;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  height: auto; /* Force auto height */
+  min-height: 0; /* Remove minimum height */
+  flex: 0 0 auto; /* Don't grow or shrink */
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.neuroshima.item .header-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.neuroshima.item .header-main .profile-img {
+  border: 3px solid #4a3f35;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
+.neuroshima.item .header-main .header-fields {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  height: auto;
+  min-height: 0;
+}
+
+.neuroshima.item .header-main h1.charname {
+  margin: 0;
+  padding: 0;
+  border: none;
+  height: auto;
+  min-height: 0;
+  line-height: 1.2;
+}
+
+.neuroshima.item .header-main h1.charname input {
+  font-size: 20px;
+  font-weight: bold;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'Special Elite', monospace, sans-serif;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  line-height: 1.2;
+  color: #d4d4d4;
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Navigation Tabs */
+.neuroshima.item .sheet-tabs {
+  display: flex;
+  border-bottom: 3px solid #4a3f35;
+  margin-bottom: 10px;
+  gap: 0;
+  background: #5a3a1f;
+}
+
+.neuroshima.item .sheet-tabs .item {
+  padding: 10px 18px;
+  background: #5a3a1f;
+  border: none;
+  border-right: 1px solid #4a3f35;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #d4d4d4;
+  text-decoration: none;
+  margin-bottom: 0;
+}
+
+.neuroshima.item .sheet-tabs .item:hover {
+  background: #8b5a3c;
+  color: #e8dcc8;
+}
+
+.neuroshima.item .sheet-tabs .item.active {
+  background: #e8dcc8;
+  border-bottom: none;
+  color: #3d2817;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Sheet Body */
+.neuroshima.item .sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.neuroshima.item .sheet-body .tab {
+  display: none;
+}
+
+.neuroshima.item .sheet-body .tab.active {
+  display: block;
+}
+
+.neuroshima.item .form-group {
+  margin-bottom: 12px;
+}
+
+.neuroshima.item .form-group-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 12px;
+}
+
+.neuroshima.item .form-group-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.neuroshima.item .form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.neuroshima.item .form-group input[type="number"],
+.neuroshima.item .form-group input[type="text"],
+.neuroshima.item .form-group select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 13px;
+  color: #3d2817;
+  font-weight: bold;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.neuroshima.item .form-group label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 13px;
+}
+
+.neuroshima.item .form-group label.checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* Basic Properties Row - Compact Layout for Weight, Cost, Quantity, Equipped */
+.neuroshima.item .basic-properties-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  align-items: flex-end;
+}
+
+.neuroshima.item .basic-properties-row .compact-field {
+  flex: 0 0 auto;
+  min-width: 80px;
+  max-width: 100px;
+}
+
+.neuroshima.item .basic-properties-row .compact-field .form-group {
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.neuroshima.item .basic-properties-row .compact-field .label-wrapper {
+  text-align: center;
+  width: 100%;
+}
+
+.neuroshima.item .basic-properties-row .compact-field .label-wrapper label {
+  display: block;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.neuroshima.item .basic-properties-row .compact-field .input-wrapper {
+  text-align: center;
+  width: 100%;
+}
+
+.neuroshima.item .basic-properties-row .compact-field .input-wrapper input {
+  width: 100%;
+  text-align: center;
+}
+
+.neuroshima.item .basic-properties-row .equipped-field {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.neuroshima.item .basic-properties-row .equipped-field .form-group {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.neuroshima.item .basic-properties-row .equipped-field .label-wrapper {
+  text-align: center;
+  width: 100%;
+}
+
+.neuroshima.item .basic-properties-row .equipped-field .label-wrapper label.checkbox {
+  margin-bottom: 0;
+  padding-bottom: 6px;
+  text-align: center;
+}
+
+/* Armor Stats Container - Two Column Layout */
+.neuroshima.item .armor-stats-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 15px;
+}
+
+.neuroshima.item .armor-stats-left h3,
+.neuroshima.item .armor-stats-right h3 {
+  margin: 0 0 15px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #5a3a1f;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.neuroshima.item .form-group-centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.neuroshima.item .form-group-centered label {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  color: #3d2817;
+  text-align: center;
+}
+
+.neuroshima.item .form-group-centered input[type="number"] {
+  width: 80px;
+  text-align: center;
+}
+
+/* Priority Section - Attribute, Skill, and Build at Top */
+.neuroshima.item .priority-section {
+  background: #d4c4a8;
+  border: 3px solid #4a3f35;
+  padding: 10px;
+  margin-bottom: 15px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima.item .priority-section .form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.neuroshima.item .priority-section .form-group label {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  text-align: center;
+  color: #3d2817;
+}
+
+.neuroshima.item .priority-section .form-group input[type="number"] {
+  max-width: 80px;
+  margin: 0 auto;
+}
+
+/* Two Column Layout - Vertical Labels */
+.neuroshima.item .two-column-layout {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #e8dcc8;
+  border: 3px solid #4a3f35;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima.item .two-column-layout .column-left,
+.neuroshima.item .two-column-layout .column-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.neuroshima.item .two-column-layout .form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.neuroshima.item .two-column-layout .form-group label {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  text-align: center;
+  color: #3d2817;
+}
+
+.neuroshima.item label {
+  font-weight: bold;
+  margin-bottom: 4px;
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima.item input[type="text"],
+.neuroshima.item input[type="number"],
+.neuroshima.item textarea,
+.neuroshima.item select {
+  width: 100%;
+  padding: 5px 8px;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  background: #ffffff;
+  font-size: 11px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  color: #3d2817;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.neuroshima.item input[type="text"]:focus,
+.neuroshima.item input[type="number"]:focus,
+.neuroshima.item textarea:focus,
+.neuroshima.item select:focus {
+  outline: none;
+  border-color: #000000;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima.item textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.4;
+}
+
+.neuroshima.item .checkbox {
+  
+  align-items: center;
+  gap: 6px;
+}
+
+.neuroshima.item .checkbox input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+/* Damage System Styles */
+.neuroshima.item .damage-section {
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 5px;
+  background-color: #f8f9fa;
+  margin-bottom: 15px;
+}
+
+.neuroshima.item .damage-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.neuroshima.item .damage-row {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.neuroshima.item .damage-item {
+  flex: 1;
+  text-align: center;
+}
+
+.neuroshima.item .damage-item label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 4px;
+  cursor: help;
+}
+
+.neuroshima.item .damage-item select {
+  width: 100%;
+}
+
+/* Compact Stats Grid - Two Columns for Numeric Fields */
+.neuroshima.item .compact-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 15px;
+  margin-bottom: 12px;
+  padding: 10px;
+  background: #f9f9f9;
+  border: 2px solid #2a2a2a;
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.1);
+}
+
+.neuroshima.item .compact-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.neuroshima.item .compact-stat-item label {
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #2a2a2a;
+  font-family: 'Special Elite', monospace, sans-serif;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.neuroshima.item .compact-stat-item input[type="number"],
+.neuroshima.item .compact-stat-item input[type="text"] {
+  width: 100%;
+  max-width: 100px;
+  padding: 5px 8px;
+  border: 2px solid #2a2a2a;
+  border-radius: 0;
+  background: #ffffff;
+  font-size: 12px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  color: #2a2a2a;
+  text-align: center;
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.1);
+}
+
+/* Override Section Styles */
+.neuroshima.item .override-section {
+  border: 3px solid #8b5a3c;
+  background-color: #d4c4a8;
+  padding: 12px;
+  border-radius: 0;
+  margin-top: 15px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.neuroshima.item .override-section h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ----------------------------------------- */
+/*  Combat Tab Styles                      */
+/* ----------------------------------------- */
+
+.neuroshima .combat-container {
+  padding: 10px;
+}
+
+.neuroshima .combat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.neuroshima .combat-top-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.neuroshima .combat-bottom-row {
+  width: 100%;
+}
+
+/* Health Section */
+.neuroshima .health-section {
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  padding: 15px;
+  background-color: #e8dcc8;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.neuroshima .health-section h3 {
+  margin: 0 0 10px 0;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima .health-indicator {
+  text-align: center;
+  font-weight: bold;
+  padding: 5px;
+  border-radius: 3px;
+}
+
+.neuroshima .wound-critical { background: #8b2e2e; color: white; }
+.neuroshima .wound-heavy { background: #d4a574; color: #3d2817; }
+.neuroshima .wound-light { background: #8b5a3c; color: white; }
+.neuroshima .wound-scratch { background: #5a3a1f; color: white; }
+.neuroshima .wound-none { background: #6b6b6b; color: white; }
+
+/* Wounds Section */
+.neuroshima .wounds-section {
+  border: 3px solid #8b2e2e;
+  border-radius: 0;
+  padding: 4px;
+  background-color: #e8dcc8;
+  max-height: 300px;
+  min-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.neuroshima .wounds-penalty-total {
+  font-size: 14px;
+  color: #8b2e2e;
+  margin-bottom: 4px;
+  padding: 2px;
+  background-color: #d4c4a8;
+  border-radius: 0;
+  flex-shrink: 0;
+  border: 2px solid #8b2e2e;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima .health-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.neuroshima .health-current {
+  color: #8b2e2e;
+  font-size: 18px;
+  min-width: 30px;
+  text-align: right;
+}
+
+.neuroshima .health-separator {
+  color: #6b6b6b;
+  font-size: 16px;
+}
+
+.neuroshima .health-max-input {
+  width: 60px;
+  text-align: center;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  padding: 2px 4px;
+  font-size: 16px;
+  font-weight: bold;
+  background: #ffffff;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .health-penalty {
+  color: #8b2e2e;
+  font-size: 14px;
+}
+
+.neuroshima .wounds-header,
+.neuroshima .effects-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.neuroshima .wounds-header h3,
+.neuroshima .effects-header h3 {
+  margin: 0;
+  color: #8b2e2e;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima .wounds-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.neuroshima .add-wound-btn {
+  background: transparent;
+  color: #5a3a1f;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+
+.neuroshima .add-wound-btn:hover {
+  color: #8b5a3c;
+}
+
+.neuroshima .wounds-header-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 100px 42px 60px 50px 42px 42px 70px;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+  background: linear-gradient(to bottom, #5a3a1f, #3d2817);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  font-weight: bold;
+  color: #d4d4d4;
+  font-size: 10px;
+  height: 25px;
+  min-height: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima .wound-controls-header {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-controls-header .item-control {
+  color: #d4d4d4;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.neuroshima .wound-controls-header .item-control:hover {
+  color: #d4a574;
+}
+
+.neuroshima .wound-controls-header .section-collapse-toggle {
+  color: #d4d4d4;
+  cursor: pointer;
+  transition: transform 0.3s ease, color 0.2s;
+}
+
+.neuroshima .wound-controls-header .section-collapse-toggle:hover {
+  color: #d4a574;
+}
+
+/* Lista obrażeń - ukrycie numeracji */
+.neuroshima .wounds-items-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.neuroshima .wound-entry {
+  display: grid;
+  grid-template-columns: 32px 1fr 100px 42px 60px 50px 42px 42px 70px;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: -2px;
+  padding: 2px;
+  background-color: #d4c4a8;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  color: #3d2817;
+}
+
+.neuroshima .effect-entry {
+  display: grid;
+  grid-template-columns: 32px 1fr 100px 42px 60px 42px 42px 60px;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: -2px;
+  padding: 2px;
+  background-color: #d4c4a8;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  color: #3d2817;
+}
+
+.neuroshima .wound-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 0;
+  border: 2px solid #4a3f35;
+}
+
+.neuroshima .wound-name {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+  min-width: 80px;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  font-size: 13px;
+  padding-left: 4px;
+}
+
+.neuroshima .wound-name:hover {
+  color: #5a3a1f;
+  text-decoration: underline;
+}
+
+.neuroshima .wound-active {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-active-toggle {
+  font-size: 22px;
+  color: #8b5a3c;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.neuroshima .wound-active-toggle:hover {
+  color: #d4a574;
+}
+
+.neuroshima .wound-healing {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-healing-toggle {
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.neuroshima .wound-healing-toggle.healing-inactive {
+  color: #8b2e2e;
+}
+
+.neuroshima .wound-healing-toggle.healing-inactive:hover {
+  color: #a83838;
+}
+
+.neuroshima .wound-healing-toggle.healing-active {
+  color: #4a5c3a;
+}
+
+.neuroshima .wound-healing-toggle.healing-active:hover {
+  color: #5a7a4a;
+}
+
+.neuroshima .wound-penalty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-weight: bold;
+  color: #8b2e2e;
+  font-size: 15px;
+}
+
+.neuroshima .wound-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.neuroshima .wound-controls .item-control {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.neuroshima .wound-controls .item-edit {
+  color: #5a3a1f;
+}
+
+.neuroshima .wound-controls .item-edit:hover {
+  color: #8b5a3c;
+}
+
+.neuroshima .wound-controls .item-delete {
+  color: #8b2e2e;
+}
+
+.neuroshima .wound-controls .item-delete:hover {
+  color: #6b1e1e;
+}
+
+.neuroshima .wound-location {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a3a1f;
+  padding: 0 2px;
+}
+
+.neuroshima .wound-type {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15px;
+  cursor: help;
+  padding: 0 2px;
+}
+
+.neuroshima .wound-type-scratch {
+  color: #5a3a1f;
+}
+
+.neuroshima .wound-type-light {
+  color: #8b5a3c;
+}
+
+.neuroshima .wound-type-heavy {
+  color: #d4a574;
+}
+
+.neuroshima .wound-type-critical {
+  color: #8b2e2e;
+}
+
+/* Wounds table header alignment */
+.neuroshima .wound-icon-header {
+  text-align: center;
+}
+
+.neuroshima .wound-name-header {
+  text-align: left;
+  padding-left: 4px;
+}
+
+.neuroshima .wound-location-header {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-type-header {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-penalty-header {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-active-header {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-healing-header {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.neuroshima .wound-test-header {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.85em;
+}
+
+.neuroshima .wound-test {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+.neuroshima .resistance-test-result {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.neuroshima .resistance-test-result.passed {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.neuroshima .resistance-test-result.failed {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.neuroshima .resistance-test-pending {
+  color: #999;
+}
+
+.neuroshima .wound-controls-header {
+  text-align: center;
+}
+
+.neuroshima .effect-entry {
+  grid-template-columns: 1fr 1fr auto 2fr auto;
+}
+
+.neuroshima .wound-entry select,
+.neuroshima .wound-entry input,
+.neuroshima .effect-entry select,
+.neuroshima .effect-entry input {
+  font-size: 11px;
+  padding: 3px 6px;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .delete-wound {
+  background: transparent;
+  color: #8b2e2e;
+  border: none;
+  padding: 3px 6px;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+
+.neuroshima .delete-wound:hover {
+  color: #6b1e1e;
+}
+
+/* Other Effects */
+.neuroshima .other-effects {
+  margin-top: 20px;
+  border-top: 2px solid #5a3a1f;
+  padding-top: 15px;
+}
+
+/* Armor Section */
+.neuroshima .armor-section {
+  border: 3px solid #8b5a3c;
+  border-radius: 0;
+  padding: 15px;
+  background-color: #e8dcc8;
+  min-height: 350px;
+  max-height: 350px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.neuroshima .armor-section h3 {
+  margin: 0 0 10px 0;
+  color: #3d2817;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima .armor-penalty {
+  text-align: center;
+  font-size: 14px;
+  color: #3d2817;
+  margin-bottom: 15px;
+  padding: 5px;
+  background-color: #d4c4a8;
+  border-radius: 0;
+  flex-shrink: 0;
+  border: 2px solid #4a3f35;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.neuroshima .armor-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.neuroshima .armor-values {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.neuroshima .armor-location {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.neuroshima .armor-location input {
+  width: 60px;
+  text-align: center;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima .armor-list h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+}
+
+/* Weapons Section */
+.neuroshima .weapons-section {
+  border: 3px solid #8b5a3c;
+  border-radius: 0;
+  padding: 4px;
+  background-color: #e8dcc8;
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.neuroshima .weapons-section h3 {
+  margin: 0 0 8px 0;
+  padding: 6px 10px;
+  background: linear-gradient(to bottom, #5a3a1f, #3d2817);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  color: #d4d4d4;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-size: 14px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+/* Action Tracking Header with inline controls */
+.neuroshima .action-tracking-header {
+  margin: 0 0 8px 0;
+  padding: 6px 10px;
+  background: linear-gradient(to bottom, #5a3a1f, #3d2817);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.neuroshima .action-tracking-header h3 {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #d4d4d4;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-size: 14px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  box-shadow: none;
+  flex-shrink: 0;
+}
+
+.neuroshima .action-tracking-display {
+  margin-left: 8px;
+  font-size: 13px;
+  color: #d4a574;
+  font-weight: normal;
+}
+
+/* Plus button in action tracking header - simple style like wounds table */
+.neuroshima .action-tracking-header .item-create {
+  background: transparent;
+  border: none;
+  color: #d4d4d4;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s;
+  font-size: 14px;
+}
+
+.neuroshima .action-tracking-header .item-create:hover {
+  color: #d4a574;
+}
+
+/* Equipment List */
+.neuroshima .equipment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.neuroshima .equipment-item {
+  display: grid;
+  grid-template-columns: 50px 1fr 40px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px;
+  background-color: #d4c4a8;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  color: #3d2817;
+}
+
+.neuroshima .weapon-item-clickable {
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.neuroshima .weapon-item-clickable:hover {
+  background-color: #c4b498;
+  transform: translateY(-1px);
+}
+
+.neuroshima .weapon-item-clickable:active {
+  transform: translateY(0);
+}
+
+.neuroshima .action-item-clickable {
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.neuroshima .action-item-clickable:hover {
+  background-color: #c4b498;
+  transform: translateY(-1px);
+}
+
+.neuroshima .action-item-clickable:active {
+  transform: translateY(0);
+}
+
+/* Weapon icon - Column 1 */
+.neuroshima .weapon-icon {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 0;
+  border: 2px solid #4a3f35;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Legacy item icon support */
+.neuroshima .item-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 0;
+  border: 2px solid #4a3f35;
+}
+
+.neuroshima .item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.neuroshima .item-info .item-name {
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.neuroshima .item-info .item-name:hover {
+  background-color: #d4c4a8;
+  text-decoration: underline;
+}
+
+/* Weapon info column - Column 2 */
+.neuroshima .weapon-info-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* Allow text truncation */
+}
+
+.neuroshima .weapon-name-rollable {
+  font-weight: bold;
+  font-size: 15px;
+  color: #3d2817;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  text-align: left;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.neuroshima .weapon-name-rollable:hover {
+  color: #8b2e2e;
+  text-decoration: underline;
+}
+
+/* Weapon stats row - displays stats horizontally with separators */
+.neuroshima .weapon-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 8px;
+  flex-wrap: wrap;
+}
+
+.neuroshima .weapon-stats-row .stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.neuroshima .weapon-stats-row .stat-separator {
+  color: #8b6f47;
+  font-weight: 300;
+  font-size: 11px;
+  margin: 0 2px;
+}
+
+.neuroshima .weapon-stats-row .stat-label {
+  font-weight: 600;
+  color: #5a3a1f;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.neuroshima .weapon-stats-row .stat-value {
+  color: #3d2817;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Magazine row - full width and highlighted */
+.neuroshima .weapon-magazine-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(139, 69, 19, 0.1);
+  padding: 4px 8px;
+  border-left: 3px solid #8b4513;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.neuroshima .weapon-magazine-row .stat-label {
+  font-weight: 600;
+  font-size: 11px;
+  color: #8b4513;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.neuroshima .magazine-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.neuroshima .magazine-name {
+  font-weight: 700;
+  color: #3d2817;
+  font-size: 11px;
+}
+
+.neuroshima .magazine-count {
+  font-weight: 600;
+  color: #5a3a1f;
+  font-size: 11px;
+}
+
+.neuroshima .magazine-empty {
+  font-weight: 600;
+  color: #8b2e2e;
+  font-style: italic;
+  font-size: 11px;
+}
+
+/* Legacy support for old stat rows */
+.neuroshima .weapon-stats-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.neuroshima .weapon-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.neuroshima .weapon-stat-row .stat-label {
+  font-weight: 600;
+  color: #5a3a1f;
+  white-space: nowrap;
+}
+
+.neuroshima .weapon-stat-row .stat-value {
+  color: #3d2817;
+  font-weight: 500;
+}
+
+/* Ammo display in Combat tab */
+.neuroshima .weapon-stat-row .ammo-display {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 11px;
+  color: #3d2817;
+  font-weight: 500;
+}
+
+/* Weapon edit column - 4th column in weapon grid */
+.neuroshima .weapon-edit-column {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Weapon edit icon in Combat tab */
+.neuroshima .weapon-edit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #5a3a1f;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  border-radius: 3px;
+}
+
+.neuroshima .weapon-edit-icon:hover {
+  color: #8b4513;
+  background-color: rgba(139, 69, 19, 0.1);
+  border-color: #8b4513;
+}
+
+.neuroshima .weapon-edit-icon i {
+  font-size: 14px;
+}
+
+.neuroshima .ammo-select {
+  flex: 1;
+  min-width: 150px;
+  padding: 2px 4px;
+  font-size: 11px;
+  background: #f5ebe0;
+  border: 1px solid #c9b89a;
+  border-radius: 3px;
+  color: #3d2817;
+  cursor: pointer;
+}
+
+.neuroshima .ammo-select:hover {
+  background: #e8dcc8;
+  border-color: #b5a082;
+}
+
+.neuroshima .ammo-select:focus {
+  outline: none;
+  border-color: #8b6f47;
+  box-shadow: 0 0 3px rgba(139, 111, 71, 0.3);
+}
+
+.neuroshima .item-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #5a3a1f;
+}
+
+.neuroshima .item-controls {
+  display: flex;
+  gap: 5px;
+}
+
+.neuroshima .item-control {
+  background: transparent;
+  color: #5a3a1f;
+  border: none;
+  padding: 5px 8px;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+
+.neuroshima .item-control:hover {
+  color: #8b5a3c;
+}
+
+.neuroshima .item-control[data-action="roll-attack"] {
+  color: #8b5a3c;
+}
+
+.neuroshima .item-control[data-action="roll-attack"]:hover {
+  color: #5a3a1f;
+}
+
+.neuroshima .item-control[data-action="unequip-item"] {
+  color: #8b2e2e;
+}
+
+.neuroshima .item-control[data-action="unequip-item"]:hover {
+  color: #6b1e1e;
+}
+
+/* ----------------------------------------- */
+/*  Warhammer-Style Armor Section          */
+/* ----------------------------------------- */
+
+.neuroshima .armor-section-warhammer {
+  border: 3px solid #8b5a3c;
+  border-radius: 0;
+  padding: 15px;
+  background-color: #e8dcc8;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.neuroshima .armor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: linear-gradient(to bottom, #5a3a1f, #3d2817);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  height: 30px;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.neuroshima .armor-header h3 {
+  margin: 0;
+  color: #d4d4d4;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima .armor-header .armor-penalty {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  font-size: 12px;
+  font-weight: bold;
+  color: #d4d4d4;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima .armor-header .armor-penalty .penalty-value {
+  color: #d4a574;
+  font-weight: bold;
+}
+
+.neuroshima .armor-locations-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.neuroshima .armor-location-box {
+  border: 2px solid #4a3f35;
+  background: #d4c4a8;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.neuroshima .location-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-bottom: 2px solid #5a3a1f;
+  background: #8b5a3c;
+}
+
+.neuroshima .location-name {
+  font-weight: bold;
+  font-size: 12px;
+  color: #e8dcc8;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.neuroshima .armor-column-headers {
+  display: grid;
+  grid-template-columns: 18px 1fr 45px 40px;
+  gap: 2px;
+  align-items: center;
+  padding: 2px;
+  background: #6b4423;
+  border: 1px solid #4a3f35;
+  border-bottom: 2px solid #4a3f35;
+  font-size: 11px;
+  font-weight: bold;
+  color: #e8dcc8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.neuroshima .armor-header-icon {
+  width: 18px;
+}
+
+.neuroshima .armor-header-name {
+  text-align: left;
+}
+
+.neuroshima .armor-header-dur,
+.neuroshima .armor-header-ap {
+  text-align: center;
+  font-size: 12px;
+}
+
+.neuroshima .location-armor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 20px;
+}
+
+.neuroshima .armor-item-row {
+  display: grid;
+  grid-template-columns: 18px 1fr 45px 40px;
+  gap: 2px;
+  align-items: center;
+  padding: 1px;
+  background: #f5ebe0;
+  border: 1px solid #4a3f35;
+  transition: background-color 0.2s ease;
+}
+
+.neuroshima .armor-item-row:hover {
+  background: #e8dcc8;
+}
+
+.neuroshima .armor-icon-tiny {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border: 1px solid #4a3f35;
+}
+
+.neuroshima .armor-name-tiny {
+  font-size: 11px;
+  color: #3d2817;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  min-width: 0;
+}
+
+.neuroshima .armor-name-tiny:hover {
+  color: #5a3a1f;
+  text-decoration: underline;
+}
+
+.neuroshima .armor-durability {
+  font-size: 12px;
+  color: #5a3a1f;
+  font-weight: bold;
+  padding: 2px 3px;
+  background: #e8dcc8;
+  border: 1px solid #4a3f35;
+  width: 100%;
+  text-align: center;
+  border-radius: 2px;
+}
+
+.neuroshima .armor-ap-value {
+  font-size: 12px;
+  color: #3d2817;
+  font-weight: bold;
+  padding: 2px 3px;
+  background: #d4c4a8;
+  border: 1px solid #4a3f35;
+  width: 100%;
+  text-align: center;
+  border-radius: 2px;
+}
+
+.neuroshima .clickable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.neuroshima .clickable:hover {
+  background-color: #8b5a3c;
+  color: #e8dcc8;
+}
+
+/* ----------------------------------------- */
+/*  Anatomical Armor Section (Left Panel)  */
+/* ----------------------------------------- */
+
+.neuroshima .armor-section-anatomical {
+  border: 3px solid #8b5a3c;
+  border-radius: 0;
+  padding: 4px;
+  background-color: #e8dcc8;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.neuroshima .armor-anatomical-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto auto;
+  gap: 2px;
+  grid-template-areas:
+    "head head"
+    "torso torso"
+    "left-hand right-hand"
+    "left-leg right-leg";
+}
+
+.neuroshima .armor-head {
+  grid-area: head;
+}
+
+.neuroshima .armor-torso {
+  grid-area: torso;
+}
+
+.neuroshima .armor-left-hand {
+  grid-area: left-hand;
+}
+
+.neuroshima .armor-right-hand {
+  grid-area: right-hand;
+}
+
+.neuroshima .armor-left-leg {
+  grid-area: left-leg;
+}
+
+.neuroshima .armor-right-leg {
+  grid-area: right-leg;
+}
+
+/* ----------------------------------------- */
+/*  Equipment Tab Styles                   */
+/* ----------------------------------------- */
+
+.neuroshima .equipment-tab {
+  padding: 0;
+}
+
+.neuroshima .equipment-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.neuroshima .equipment-section {
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  padding: 4px;
+  background-color: #e8dcc8;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.neuroshima .items-header .header-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.neuroshima .item-create,
+.neuroshima .item-create-weapon {
+  background: transparent;
+  border: none;
+  color: #d4d4d4;
+  padding: 0;
+  text-decoration: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.neuroshima .item-create:hover,
+.neuroshima .item-create-weapon:hover {
+  color: #d4a574;
+  text-decoration: none;
+}
+
+.neuroshima .section-collapse-toggle {
+  background: transparent;
+  border: none;
+  color: #d4d4d4;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  transition: transform 0.3s ease, color 0.2s;
+}
+
+.neuroshima .section-collapse-toggle:hover {
+  color: #d4a574;
+}
+
+.neuroshima .section-collapse-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* Section content container */
+.neuroshima .section-content {
+  display: block;
+}
+
+/* Normal state - hide collapsed view */
+.neuroshima .section-content .items-list-collapsed {
+  display: none;
+}
+
+/* Collapsed state - hide list, show collapsed view */
+.neuroshima .section-content.collapsed .items-list {
+  display: none;
+}
+
+.neuroshima .section-content.collapsed .items-list-collapsed {
+  display: flex !important;
+}
+
+/* Wounds section collapse */
+.neuroshima .wounds-section-content {
+  display: block;
+}
+
+.neuroshima .wounds-section-content .wounds-list-collapsed {
+  display: none;
+}
+
+.neuroshima .wounds-section-content.collapsed .wounds-items-list {
+  display: none;
+}
+
+.neuroshima .wounds-section-content.collapsed .wounds-list-collapsed {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  background: #e8dcc8;
+  border: 2px solid #4a3f35;
+  border-top: none;
+}
+
+/* Items header row */
+.neuroshima .items-header {
+  display: grid;
+  grid-template-columns: 32px 2fr 30px 60px 60px 70px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  background: linear-gradient(to bottom, #5a3a1f 0%, #4a3f35 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: bold;
+  color: #d4d4d4;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.neuroshima .items-header > div {
+  text-align: center;
+}
+
+.neuroshima .items-header .header-name {
+  text-align: left;
+}
+
+/* Ammunition and Equipment sections - no equipped column */
+.neuroshima .equipment-section[data-section="ammunition"] .items-header,
+.neuroshima .equipment-section[data-section="equipment"] .items-header {
+  grid-template-columns: 32px 2fr 60px 60px 70px;
+}
+
+/* Items list - semantic OL */
+.neuroshima .items-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.neuroshima .items-list .item {
+  display: grid;
+  grid-template-columns: 32px 2fr 30px 60px 60px 70px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 8px;
+  background: #e8dcc8;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+}
+
+/* Ammunition and Equipment items - no equipped column */
+.neuroshima .equipment-section[data-section="ammunition"] .items-list .item,
+.neuroshima .equipment-section[data-section="equipment"] .items-list .item {
+  grid-template-columns: 32px 2fr 60px 60px 70px;
+}
+
+.neuroshima .item-image img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.neuroshima .item-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: bold;
+  color: #3d2817;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.neuroshima .item-name:hover {
+  background-color: #d4c4a8;
+  text-decoration: underline;
+}
+
+.neuroshima .item-type,
+.neuroshima .item-weight,
+.neuroshima .item-cost,
+.neuroshima .item-quantity,
+.neuroshima .item-ammo,
+.neuroshima .item-magazine,
+.neuroshima .item-protection {
+  font-size: 12px;
+  color: #5a3a1f;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.neuroshima .item-quantity {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  user-select: none;
+}
+
+.neuroshima .item-quantity:hover {
+  background-color: #d4a574;
+  color: #3d2817;
+  font-weight: bold;
+}
+
+.neuroshima .item-equipped {
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.neuroshima .item-equipped i {
+  font-size: 16px;
+  color: #8b5a3c;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.neuroshima .item-equipped i:hover {
+  color: #d4a574;
+}
+
+.neuroshima .items-list .item-controls {
+  display: flex;
+  
+  justify-content: center;
+}
+
+.neuroshima .item-edit,
+.neuroshima .item-delete {
+  background: transparent;
+  color: #8b5a3c;
+  padding: 2px 4px;
+  border-radius: 2px;
+  text-decoration: none;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.2;
+  transition: color 0.2s ease;
+}
+
+.neuroshima .item-edit i,
+.neuroshima .item-delete i {
+  font-size: 14px;
+}
+
+.neuroshima .item-edit:hover {
+  background: transparent;
+  text-decoration: none;
+  color: #d4a574;
+}
+
+.neuroshima .item-delete:hover {
+  background: transparent;
+  text-decoration: none;
+  color: #dc3545;
+}
+
+/* Collapsed view - only icons */
+.neuroshima .items-list-collapsed {
+  display: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+}
+
+.neuroshima .item-icon-collapsed {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.neuroshima .item-icon-collapsed img {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border: 2px solid #4a3f35;
+  border-radius: 2px;
+  display: block;
+}
+
+.neuroshima .item-icon-collapsed:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.neuroshima .item-icon-collapsed:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3d2817;
+  color: #d4d4d4;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* ----------------------------------------- */
+/*  Roll Dialog Styles                     */
+/* ----------------------------------------- */
+
+.neuroshima-roll-dialog .form-group {
+  margin-bottom: 15px;
+}
+
+.neuroshima-roll-dialog label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.neuroshima-roll-dialog select,
+.neuroshima-roll-dialog input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima-roll-dialog .difficulty-preview {
+  margin-top: 8px;
+  padding: 8px;
+  background: #e8f4f8;
+  border-left: 4px solid #007acc;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #333;
+}
+
+/* ----------------------------------------- */
+/*  Roll Results in Chat                   */
+/* ----------------------------------------- */
+
+/* Stylizacja zewnętrznego kontenera wiadomości czatu Foundry */
+#chat-log .chat-message:has(.neuroshima-roll-result) {
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+#chat-log .chat-message:has(.neuroshima-roll-result) .message-header {
+  background: linear-gradient(to right, #5a3a1f 0%, #3d2817 100%);
+  border-bottom: 2px solid #4a3f35;
+  border-radius: 0;
+  padding: 6px 10px;
+}
+
+#chat-log .chat-message:has(.neuroshima-roll-result) .message-sender {
+  color: #e8dcc8;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: 'Special Elite', monospace, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#chat-log .chat-message:has(.neuroshima-roll-result) .message-metadata .message-timestamp {
+  color: #c4b498;
+  font-size: 11px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+#chat-log .chat-message:has(.neuroshima-roll-result) .message-content {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #e8dcc8;
+  overflow: visible;
+}
+
+/* Usunięcie domyślnych marginesów i paddingów z flavor */
+#chat-log .chat-message:has(.neuroshima-roll-result) .message-content .flavor-text {
+  margin: 0;
+  padding: 0;
+}
+
+.neuroshima-roll-result {
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  padding: 15px;
+  margin: 10px 0;
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  font-family: 'Special Elite', monospace, sans-serif;
+  overflow: visible;
+  position: relative;
+}
+
+.neuroshima-roll-result h3 {
+  margin: 0 0 15px 0;
+  padding: 8px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid #4a3f35;
+  background: linear-gradient(to right, #5a3a1f 0%, #3d2817 100%);
+  color: #e8dcc8;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  overflow: visible;
+}
+
+.neuroshima-roll-result .skill-info-wrapper {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 100;
+}
+
+.neuroshima-roll-result .skill-info-icon {
+  font-size: 16px;
+  color: #d4a574;
+  cursor: help;
+  transition: color 0.2s ease, transform 0.2s ease;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima-roll-result .skill-info-icon:hover {
+  color: #e8dcc8;
+  transform: scale(1.15);
+}
+
+.neuroshima-roll-result .skill-info-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(to bottom, #3d2817 0%, #2a1a0f 100%);
+  border: 2px solid #d4a574;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 10000;
+  min-width: 200px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.neuroshima-roll-result .skill-info-wrapper:hover .skill-info-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.neuroshima-roll-result .skill-info-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  right: 8px;
+  border: 6px solid transparent;
+  border-bottom-color: #d4a574;
+}
+
+.neuroshima-roll-result .skill-info-tooltip .tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  gap: 12px;
+  border-bottom: 1px solid rgba(212, 165, 116, 0.3);
+}
+
+.neuroshima-roll-result .skill-info-tooltip .tooltip-row:last-child {
+  border-bottom: none;
+}
+
+.neuroshima-roll-result .skill-info-tooltip .tooltip-label {
+  color: #d4a574;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.neuroshima-roll-result .skill-info-tooltip .tooltip-value {
+  color: #e8dcc8;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.neuroshima-roll-result .roll-details p {
+  margin: 5px 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #d4d4d4;
+}
+
+.neuroshima-roll-result .roll-details strong {
+  color: #e8dcc8;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll-result .success {
+  color: #4a5c3a;
+  font-weight: bold;
+}
+
+.neuroshima-roll-result .failure {
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+/* Nowy format wyników rzutu */
+.neuroshima-roll-result .dice-results {
+  margin: 10px 0;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Grid dla wyników kości D1, D2, D3 */
+.neuroshima-roll-result .dice-results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.neuroshima-roll-result .dice-result-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px;
+  background: linear-gradient(135deg, #d4c4a8 0%, #c4b498 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4), inset 0 0 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+/* Tekstura rdzy dla domyślnych kości */
+.neuroshima-roll-result .dice-result-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(90, 58, 31, 0.05) 2px,
+      rgba(90, 58, 31, 0.05) 4px
+    );
+  pointer-events: none;
+  border-radius: 0;
+}
+
+.neuroshima-roll-result .dice-label {
+  font-weight: bold;
+  font-size: 10px;
+  color: #3d2817;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+  z-index: 1;
+}
+
+.neuroshima-roll-result .dice-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+  z-index: 1;
+}
+
+/* NATURALNA 1 - Krytyczny sukces (zielone tło) */
+.neuroshima-roll-result .dice-result-item.critical-success {
+  background: linear-gradient(135deg, #4a5c3a 0%, #3a4c2a 100%);
+  border-color: #2a3c1a;
+  box-shadow: 0 0 12px rgba(74, 92, 58, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll-result .dice-result-item.critical-success .dice-label,
+.neuroshima-roll-result .dice-result-item.critical-success .dice-value {
+  color: #e8dcc8;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* NATURALNA 20 - Krytyczna porażka (czerwone tło) */
+.neuroshima-roll-result .dice-result-item.critical-failure {
+  background: linear-gradient(135deg, #8b2e2e 0%, #6b1e1e 100%);
+  border-color: #4b0e0e;
+  box-shadow: 0 0 12px rgba(139, 46, 46, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll-result .dice-result-item.critical-failure .dice-label,
+.neuroshima-roll-result .dice-result-item.critical-failure .dice-value {
+  color: #e8dcc8;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* Sekcja redukcji (dla testów otwartych) */
+.neuroshima-roll-result .reduction-section {
+  margin: 15px 0 10px 0;
+  padding: 12px;
+  background: linear-gradient(to bottom, #5a3a1f 0%, #4a3f35 100%);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.neuroshima-roll-result .reduction-header {
+  font-weight: bold;
+  font-size: 12px;
+  color: #e8dcc8;
+  margin-bottom: 10px;
+  text-align: center;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Grid dla zredukowanych kości - domyślnie 2 kolumny (test otwarty) */
+.neuroshima-roll-result .reduction-dice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid #3d2817;
+  border-radius: 0;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* Grid dla testów zamkniętych - 3 kolumny z mniejszymi kośćmi */
+.neuroshima-roll-result .reduction-dice-grid.closed-test-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+/* Mniejsze kości dla testów zamkniętych */
+.neuroshima-roll-result .reduction-dice-grid.closed-test-grid .dice-result-item {
+  padding: 4px;
+}
+
+.neuroshima-roll-result .reduction-dice-grid.closed-test-grid .dice-label {
+  font-size: 9px;
+  margin-bottom: 2px;
+}
+
+.neuroshima-roll-result .reduction-dice-grid.closed-test-grid .dice-value {
+  font-size: 16px;
+}
+
+/* Pomarańczowo-złoty kolor dla kości po redukcji generującej sukcesy */
+.neuroshima-roll-result .dice-result-item.winning-dice {
+  background: linear-gradient(135deg, #d4a574 0%, #b8935e 100%);
+  border-color: #8b6f47;
+  box-shadow: 0 0 12px rgba(212, 165, 116, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll-result .dice-result-item.winning-dice .dice-label {
+  color: #3d2817;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.neuroshima-roll-result .dice-result-item.winning-dice .dice-value {
+  color: #3d2817;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.neuroshima-roll-result .advantage-result {
+  margin: 15px 0 10px 0;
+  padding: 10px;
+  background: linear-gradient(to right, #d4c4a8 0%, #c4b498 100%);
+  border: 3px solid #4a3f35;
+  border-left: 6px solid #8b5a3c;
+  border-radius: 0;
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.neuroshima-roll-result .advantage-result strong {
+  color: #3d2817;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.neuroshima-roll-result .working-dice,
+.neuroshima-roll-result .negative-threshold,
+.neuroshima-roll-result .critical-dice {
+  margin: 8px 0;
+  padding: 8px;
+  background: linear-gradient(to right, #d4c4a8 0%, #c4b498 100%);
+  border-radius: 0;
+  font-size: 12px;
+  color: #3d2817;
+  border: 2px solid #4a3f35;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima-roll-result .critical-dice small {
+  font-weight: bold;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.neuroshima-roll-result .critical-success-info {
+  padding: 6px 10px;
+  margin: 4px 0;
+  background: linear-gradient(to right, #4a5c3a 0%, #3a4c2a 100%);
+  border-left: 4px solid #2a3c1a;
+  color: #e8dcc8;
+  font-size: 13px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.neuroshima-roll-result .critical-failure-info {
+  padding: 6px 10px;
+  margin: 4px 0;
+  background: linear-gradient(to right, #8b2e2e 0%, #6b1e1e 100%);
+  border-left: 4px solid #4b0e0e;
+  color: #e8dcc8;
+  font-size: 13px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Sekcja sukcesów dla testu zamkniętego */
+.neuroshima-roll-result .closed-test-success {
+  margin: 15px 0 10px 0;
+  padding: 12px;
+  background: linear-gradient(to bottom, #5a3a1f 0%, #4a3f35 100%);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.neuroshima-roll-result .closed-test-success strong {
+  color: #e8dcc8;
+  font-size: 16px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ----------------------------------------- */
+/*  Ranged Weapon Attack Styles             */
+/* ----------------------------------------- */
+
+/* Stylizacja zewnętrznego kontenera dla ataków dystansowych */
+#chat-log .chat-message:has(.ranged-weapon-roll) {
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+#chat-log .chat-message:has(.ranged-weapon-roll) .message-header {
+  background: linear-gradient(to right, #5a3a1f 0%, #3d2817 100%);
+  border-bottom: 2px solid #4a3f35;
+  border-radius: 0;
+  padding: 6px 10px;
+}
+
+#chat-log .chat-message:has(.ranged-weapon-roll) .message-sender {
+  color: #e8dcc8;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: 'Special Elite', monospace, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#chat-log .chat-message:has(.ranged-weapon-roll) .message-metadata .message-timestamp {
+  color: #c4b498;
+  font-size: 11px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+#chat-log .chat-message:has(.ranged-weapon-roll) .message-content {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #e8dcc8;
+  overflow: visible;
+}
+
+.neuroshima-roll.ranged-weapon-roll {
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  padding: 15px;
+  margin: 10px 0;
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  font-family: 'Special Elite', monospace, sans-serif;
+  overflow: visible;
+  position: relative;
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-header h3 {
+  margin: 0 0 5px 0;
+  padding: 8px;
+  background: linear-gradient(to right, #5a3a1f 0%, #3d2817 100%);
+  color: #e8dcc8;
+  font-size: 18px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-wrapper {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 100;
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-icon {
+  font-size: 16px;
+  color: #d4a574;
+  cursor: help;
+  transition: color 0.2s ease, transform 0.2s ease;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-icon:hover {
+  color: #e8dcc8;
+  transform: scale(1.15);
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(to bottom, #3d2817 0%, #2a1a0f 100%);
+  border: 2px solid #d4a574;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 10000;
+  min-width: 220px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-wrapper:hover .ranged-info-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  right: 8px;
+  border: 6px solid transparent;
+  border-bottom-color: #d4a574;
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-tooltip .tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  gap: 12px;
+  border-bottom: 1px solid rgba(212, 165, 116, 0.3);
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-tooltip .tooltip-row:last-child {
+  border-bottom: none;
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-tooltip .tooltip-label {
+  color: #d4a574;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.neuroshima-roll.ranged-weapon-roll .ranged-info-tooltip .tooltip-value {
+  color: #e8dcc8;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-header .roll-subtitle {
+  margin: 5px 0 15px 0;
+  padding: 6px;
+  background: linear-gradient(to right, #d4c4a8 0%, #c4b498 100%);
+  color: #3d2817;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima-roll.ranged-weapon-roll .dice-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.neuroshima-roll.ranged-weapon-roll .dice-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #d4c4a8 0%, #c4b498 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+  position: relative;
+  min-width: 60px;
+}
+
+/* Tekstura dla kości */
+.neuroshima-roll.ranged-weapon-roll .dice-result::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(90, 58, 31, 0.05) 2px,
+      rgba(90, 58, 31, 0.05) 4px
+    );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.neuroshima-roll.ranged-weapon-roll .dice-result .dice-value,
+.neuroshima-roll.ranged-weapon-roll .dice-result .dice-reduced {
+  position: relative;
+  z-index: 2;
+}
+
+.neuroshima-roll.ranged-weapon-roll .dice-result .dice-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #3d2817;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.neuroshima-roll.ranged-weapon-roll .dice-result .dice-reduced {
+  font-size: 14px;
+  color: #e8dcc8;
+  margin-top: 4px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Sukces - zielona kość */
+.neuroshima-roll.ranged-weapon-roll .dice-result.success {
+  background: linear-gradient(135deg, #4a5c3a 0%, #3a4c2a 100%);
+  border-color: #2a3c1a;
+  box-shadow: 0 0 12px rgba(74, 92, 58, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.ranged-weapon-roll .dice-result.success .dice-value,
+.neuroshima-roll.ranged-weapon-roll .dice-result.success .dice-reduced {
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Porażka - czerwona kość */
+.neuroshima-roll.ranged-weapon-roll .dice-result.failure {
+  background: linear-gradient(135deg, #8b2e2e 0%, #6b1e1e 100%);
+  border-color: #4b0e0e;
+  box-shadow: 0 0 12px rgba(139, 46, 46, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.ranged-weapon-roll .dice-result.failure .dice-value,
+.neuroshima-roll.ranged-weapon-roll .dice-result.failure .dice-reduced {
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-info {
+  margin: 15px 0;
+  padding: 12px;
+  background: linear-gradient(to bottom, #5a3a1f 0%, #4a3f35 100%);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-info .info-line {
+  margin: 6px 0;
+  padding: 6px 10px;
+  background: linear-gradient(to right, #d4c4a8 0%, #c4b498 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  font-size: 13px;
+  color: #3d2817;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-info .info-line strong {
+  color: #3d2817;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-result {
+  margin: 15px 0 10px 0;
+  padding: 10px;
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-result.hit {
+  background: linear-gradient(135deg, #4a5c3a 0%, #3a4c2a 100%);
+  border-color: #2a3c1a;
+  box-shadow: 0 0 12px rgba(74, 92, 58, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-result.miss {
+  background: linear-gradient(135deg, #8b2e2e 0%, #6b1e1e 100%);
+  border-color: #4b0e0e;
+  box-shadow: 0 0 12px rgba(139, 46, 46, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-result .result-text {
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #e8dcc8;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  margin-bottom: 6px;
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-result .result-successes {
+  font-size: 13px;
+  font-weight: bold;
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-result .result-location {
+  font-size: 13px;
+  font-weight: bold;
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+  margin-top: 6px;
+}
+
+.neuroshima-roll.ranged-weapon-roll .roll-result .result-damage {
+  font-size: 13px;
+  font-weight: bold;
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(232, 220, 200, 0.3);
+}
+
+/* ----------------------------------------- */
+/*  Melee Weapon Attack Styles              */
+/* ----------------------------------------- */
+
+/* Stylizacja zewnętrznego kontenera dla ataków wręcz */
+#chat-log .chat-message:has(.melee-weapon-roll) {
+  background: linear-gradient(to bottom, #2a1a0f 0%, #3d2817 100%);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+#chat-log .chat-message:has(.melee-weapon-roll) .message-header {
+  background: linear-gradient(to right, #3d2817 0%, #2a1a0f 100%);
+  border-bottom: 2px solid #4a3f35;
+  border-radius: 0;
+  padding: 6px 10px;
+}
+
+#chat-log .chat-message:has(.melee-weapon-roll) .message-sender {
+  color: #e8dcc8;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: 'Special Elite', monospace, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#chat-log .chat-message:has(.melee-weapon-roll) .message-metadata .message-timestamp {
+  color: #c4b498;
+  font-size: 11px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+#chat-log .chat-message:has(.melee-weapon-roll) .message-content {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #e8dcc8;
+  overflow: visible;
+}
+
+.neuroshima-roll.melee-weapon-roll {
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  padding: 6px;
+  margin: 10px 0;
+  background: linear-gradient(to bottom, #2a1a0f 0%, #3d2817 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  font-family: 'Special Elite', monospace, sans-serif;
+  overflow: visible;
+  position: relative;
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-header h3 {
+  margin: 0 0 5px 0;
+  padding: 8px;
+  background: linear-gradient(to right, #3d2817 0%, #2a1a0f 100%);
+  color: #e8dcc8;
+  font-size: 18px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-wrapper {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 100;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-icon {
+  font-size: 16px;
+  color: #d4a574;
+  cursor: help;
+  transition: color 0.2s ease, transform 0.2s ease;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-icon:hover {
+  color: #e8dcc8;
+  transform: scale(1.15);
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(to bottom, #2a1a0f 0%, #1a0a00 100%);
+  border: 2px solid #d4a574;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 10000;
+  min-width: 220px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-wrapper:hover .melee-info-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  right: 8px;
+  border: 6px solid transparent;
+  border-bottom-color: #d4a574;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-tooltip .tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  gap: 12px;
+  border-bottom: 1px solid rgba(212, 165, 116, 0.3);
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-tooltip .tooltip-row:last-child {
+  border-bottom: none;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-tooltip .tooltip-row.tooltip-separator {
+  border-top: 2px solid rgba(212, 165, 116, 0.6);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-tooltip .tooltip-label {
+  color: #d4a574;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.neuroshima-roll.melee-weapon-roll .melee-info-tooltip .tooltip-value {
+  color: #e8dcc8;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-header .roll-subtitle {
+  margin: 5px 0 15px 0;
+  padding: 6px;
+  background: linear-gradient(to right, #d4c4a8 0%, #c4b498 100%);
+  color: #3d2817;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima-roll.melee-weapon-roll .dice-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 15px 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.neuroshima-roll.melee-weapon-roll .dice-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #d4c4a8 0%, #c4b498 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+  position: relative;
+  min-width: 60px;
+}
+
+/* Tekstura dla kości */
+.neuroshima-roll.melee-weapon-roll .dice-result::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(61, 40, 23, 0.05) 2px,
+      rgba(61, 40, 23, 0.05) 4px
+    );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.neuroshima-roll.melee-weapon-roll .dice-result .dice-value {
+  position: relative;
+  z-index: 2;
+  font-size: 20px;
+  font-weight: bold;
+  color: #3d2817;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Sukces - zielona kość */
+.neuroshima-roll.melee-weapon-roll .dice-result.success {
+  background: linear-gradient(135deg, #4a5c3a 0%, #3a4c2a 100%);
+  border-color: #2a3c1a;
+  box-shadow: 0 0 12px rgba(74, 92, 58, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.melee-weapon-roll .dice-result.success .dice-value {
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Porażka - czerwona kość */
+.neuroshima-roll.melee-weapon-roll .dice-result.failure {
+  background: linear-gradient(135deg, #8b2e2e 0%, #6b1e1e 100%);
+  border-color: #4b0e0e;
+  box-shadow: 0 0 12px rgba(139, 46, 46, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.melee-weapon-roll .dice-result.failure .dice-value {
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-result {
+  margin: 15px 0 10px 0;
+  padding: 10px;
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  text-align: center;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-result.hit {
+  background: linear-gradient(135deg, #4a5c3a 0%, #3a4c2a 100%);
+  border-color: #2a3c1a;
+  box-shadow: 0 0 12px rgba(74, 92, 58, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-result.miss {
+  background: linear-gradient(135deg, #8b2e2e 0%, #6b1e1e 100%);
+  border-color: #4b0e0e;
+  box-shadow: 0 0 12px rgba(139, 46, 46, 0.7), 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-result .result-text {
+  font-size: 16px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #e8dcc8;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  margin-bottom: 6px;
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-result .result-successes {
+  font-size: 13px;
+  font-weight: bold;
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-result .result-location {
+  font-size: 13px;
+  font-weight: bold;
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+  margin-top: 6px;
+}
+
+.neuroshima-roll.melee-weapon-roll .roll-result .result-damage {
+  font-size: 14px;
+  font-weight: bold;
+  color: #e8dcc8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(232, 220, 200, 0.3);
+}
+
+/* ----------------------------------------- */
+/*  Dialog Styles                           */
+/* ----------------------------------------- */
+
+.dialog .dialog-content form .form-group {
+  margin-bottom: 15px;
+}
+
+.dialog .dialog-content form .form-group label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
+  font-size: 12px;
+}
+
+.dialog .dialog-content form .form-group input,
+.dialog .dialog-content form .form-group select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  font-size: 14px;
+  background: #ffffff;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.dialog .dialog-content form .form-group input:focus,
+.dialog .dialog-content form .form-group select:focus {
+  outline: none;
+  border-color: #d4a574;
+  box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.2);
+}
+
+.dialog .dialog-content form .form-group input:focus,
+.dialog .dialog-content form .form-group select:focus {
+  outline: none;
+  border-color: #d4a574;
+  box-shadow: 0 0 0 2px rgba(212, 165, 116, 0.2);
+}
+
+.dialog .dialog-content form .form-group small {
+  color: #5a3a1f;
+  font-style: italic;
+}
+
+/* Wound Creation Dialog Specific Styles */
+.wound-creation-dialog {
+  background: #e8dcc8;
+  padding: 10px;
+}
+
+.wound-creation-dialog .form-group {
+  margin-bottom: 12px;
+}
+
+.wound-creation-dialog .form-group:first-child {
+  border-bottom: 1px solid #4a3f35;
+  padding-bottom: 12px;
+  margin-bottom: 15px;
+}
+
+.wound-creation-dialog .dialog-hint {
+  margin: 0;
+  padding: 8px;
+  background: rgba(212, 165, 116, 0.1);
+  border-left: 3px solid #d4a574;
+}
+
+.wound-creation-dialog .dialog-hint small {
+  color: #5a3a1f;
+  font-size: 11px;
+}
+
+/* Dialog buttons styling */
+.dialog .dialog-buttons {
+  border-top: 2px solid #4a3f35;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.dialog .dialog-buttons button {
+  background: linear-gradient(to bottom, #5a3a1f, #3d2817);
+  border: 2px solid #4a3f35;
+  color: #d4d4d4;
+  padding: 6px 16px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 0;
+}
+
+.dialog .dialog-buttons button:hover {
+  background: linear-gradient(to bottom, #6a4a2f, #4d3827);
+  color: #d4a574;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dialog .dialog-buttons button:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.dialog .dialog-buttons button i {
+  margin-right: 5px;
+}
+
+/* Wound Creation Dialog Specific Styles */
+.wound-creation-dialog {
+  background: #e8dcc8;
+  padding: 10px;
+}
+
+.wound-creation-dialog .form-group {
+  margin-bottom: 12px;
+}
+
+.wound-creation-dialog .form-group:first-child {
+  border-bottom: 1px solid #4a3f35;
+  padding-bottom: 12px;
+  margin-bottom: 15px;
+}
+
+.wound-creation-dialog .dialog-hint {
+  margin: 0;
+  padding: 8px;
+  background: rgba(212, 165, 116, 0.1);
+  border-left: 3px solid #d4a574;
+}
+
+.wound-creation-dialog .dialog-hint small {
+  color: #5a3a1f;
+  font-size: 11px;
+}
+
+/* Dialog buttons styling */
+.dialog .dialog-buttons {
+  border-top: 2px solid #4a3f35;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.dialog .dialog-buttons button {
+  background: linear-gradient(to bottom, #5a3a1f, #3d2817);
+  border: 2px solid #4a3f35;
+  color: #d4d4d4;
+  padding: 6px 16px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 0;
+}
+
+.dialog .dialog-buttons button:hover {
+  background: linear-gradient(to bottom, #6a4a2f, #4d3827);
+  color: #d4a574;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dialog .dialog-buttons button:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.dialog .dialog-buttons button i {
+  margin-right: 5px;
+}
+
+/* ----------------------------------------- */
+/*  Neuroshima Roll Dialog - Monochrome     */
+/*  "Pencil on Paper" Style                 */
+/* ----------------------------------------- */
+
+/* Dialog główny */
+.neuroshima-dialog .window-content {
+  background: #ffffff; /* Monochromatyczny biały */
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima-dialog .dialog-content {
+  background: #ffffff;
+}
+
+/* Formularz */
+.neuroshima-roll-dialog {
+  padding: 5px;
+  background: #e8dcc8 !important; /* Brązowe tło jak reszta arkusza */
+}
+
+/* Style dla okna dialogu broni zasięgowej i testów */
+.neuroshima-dialog .window-content {
+  background: #e8dcc8 !important;
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+  padding: 10px;
+}
+
+.neuroshima-dialog .dialog-buttons {
+  background: #d4c4a8 !important;
+  border-top: 2px solid #4a3f35;
+  padding: 8px;
+}
+
+.neuroshima-dialog .dialog-button {
+  background: #e8dcc8 !important;
+  border: 2px solid #4a3f35 !important;
+  color: #3d2817 !important;
+  font-family: 'Special Elite', monospace, sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  padding: 6px 12px;
+}
+
+.neuroshima-dialog .dialog-button:hover {
+  background: #d4c4a8 !important;
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Dwukolumnowy układ główny */
+.neuroshima-roll-dialog .dialog-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 8px;
+  margin-bottom: 10px;
+  background: transparent;
+}
+
+.neuroshima-roll-dialog .left-column {
+  grid-column: 1;
+  display: contents;
+  background: transparent;
+}
+
+.neuroshima-roll-dialog .right-column {
+  grid-column: 2;
+  display: contents;
+  background: transparent;
+}
+
+.neuroshima-roll-dialog .form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  background: transparent;
+}
+
+.neuroshima-roll-dialog .form-group label {
+  display: block;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #3d2817;
+  margin-bottom: 4px;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima-roll-dialog .form-group select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  color: #3d2817;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima-roll-dialog .form-group select:focus {
+  outline: none;
+  border-color: #5a3a1f;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Tabela modyfikatorów */
+.modifiers-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 3px solid #4a3f35;
+  background: #e8dcc8;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.modifiers-table .modifier-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  transition: background-color 0.2s;
+}
+
+.modifiers-table .modifier-item:hover {
+  background-color: #d4c4a8;
+}
+
+.modifiers-table .modifier-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: 'Special Elite', monospace, sans-serif;
+  flex: 0 0 110px;
+}
+
+/* Pudełko trudności w lewej kolumnie */
+.neuroshima-roll-dialog .difficulty-box {
+  padding: 8px;
+  border: 3px solid #4a3f35;
+  background: #e8dcc8;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Suwak celowania w lewej kolumnie */
+.neuroshima-roll-dialog .aiming-slider-group {
+  padding: 8px;
+  border: 3px solid #4a3f35;
+  background: #e8dcc8;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+  margin-top: 0;
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Suwak serii w prawej kolumnie */
+.neuroshima-roll-dialog .burst-slider-group {
+  padding: 8px;
+  border: 3px solid #4a3f35;
+  background: #e8dcc8;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+  margin-top: 0;
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Suwaki dla broni zasięgowej */
+.neuroshima-roll-dialog input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: #d4c4a8;
+  outline: none;
+  border: 2px solid #4a3f35;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.2);
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+/* Track dla Webkit (Chrome, Safari, Edge) */
+.neuroshima-roll-dialog input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: transparent;
+}
+
+/* Thumb dla Webkit */
+.neuroshima-roll-dialog input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #5a3a1f;
+  cursor: pointer;
+  border: 3px solid #3d2817;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+  margin-top: -6px; /* Wyśrodkowanie: (20px thumb - 8px track) / 2 = 6px */
+}
+
+.neuroshima-roll-dialog input[type="range"]::-webkit-slider-thumb:hover {
+  background: #8b5a3c;
+  transform: scale(1.1);
+}
+
+/* Track dla Firefox */
+.neuroshima-roll-dialog input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+}
+
+/* Thumb dla Firefox */
+.neuroshima-roll-dialog input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #5a3a1f;
+  cursor: pointer;
+  border: 3px solid #3d2817;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.neuroshima-roll-dialog input[type="range"]::-moz-range-thumb:hover {
+  background: #8b5a3c;
+  transform: scale(1.1);
+}
+
+/* Główny label suwaka z wartością */
+.neuroshima-roll-dialog .slider-main-label {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.neuroshima-roll-dialog .slider-main-label .aiming-display,
+.neuroshima-roll-dialog .slider-main-label .burst-display {
+  font-size: 20px;
+  color: #8b2e2e;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Informacja pod suwakiem */
+.neuroshima-roll-dialog .slider-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  color: #5a3a1f;
+}
+
+.neuroshima-roll-dialog .slider-value .slider-description {
+  color: #5a3a1f;
+  font-size: 12px;
+  font-weight: normal;
+}
+
+.neuroshima-roll-dialog .slider-value .dice-count,
+.neuroshima-roll-dialog .slider-value .bullets-count {
+  font-weight: bold;
+  color: #3d2817;
+  font-size: 13px;
+}
+
+/* Wyniki rzutu bronią zasięgową */
+.ranged-weapon-roll .dice-container {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.ranged-weapon-roll .dice-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 12px;
+  border: 3px solid #4a3f35;
+  background: #e8dcc8;
+  min-width: 60px;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.ranged-weapon-roll .dice-result.success {
+  background: #c8e8d4;
+  border-color: #2d5a3f;
+}
+
+.ranged-weapon-roll .dice-result.failure {
+  background: #e8c8c8;
+  border-color: #5a2d2d;
+}
+
+.ranged-weapon-roll .dice-value {
+  font-size: 24px;
+  font-weight: bold;
+  font-family: 'Special Elite', monospace, sans-serif;
+  color: #3d2817;
+}
+
+.ranged-weapon-roll .dice-reduced {
+  font-size: 14px;
+  color: #e8dcc8;
+  margin-top: 4px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ranged-weapon-roll .roll-info {
+  margin: 10px 0;
+  padding: 10px;
+  background: #e8dcc8;
+  border: 2px solid #4a3f35;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.ranged-weapon-roll .info-line {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #3d2817;
+}
+
+.ranged-weapon-roll .roll-result {
+  margin-top: 10px;
+  padding: 12px;
+  text-align: center;
+  border: 3px solid #4a3f35;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.ranged-weapon-roll .roll-result.hit {
+  background: #c8e8d4;
+  border-color: #2d5a3f;
+}
+
+.ranged-weapon-roll .roll-result.miss {
+  background: #e8c8c8;
+  border-color: #5a2d2d;
+}
+
+.ranged-weapon-roll .result-text {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #3d2817;
+  letter-spacing: 2px;
+}
+
+.ranged-weapon-roll .result-successes {
+  font-size: 14px;
+  color: #5a3a1f;
+}
+
+/* ----------------------------------------- */
+/*  ProseMirror Editor Styles              */
+/* ----------------------------------------- */
+
+.neuroshima.item .editor-container {
+  padding: 10px;
+  background: #e8dcc8;
+  border: 3px solid #4a3f35;
+  margin-bottom: 10px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima.item .editor {
+  min-height: 300px;
+  border: 2px solid #4a3f35;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.neuroshima.item .editor-content {
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #3d2817;
+}
+
+/* Editor toolbar buttons - post-apo style */
+.neuroshima.item .editor-container .editor-menu button,
+.neuroshima.item .prosemirror-menu button {
+  background: #5a3a1f;
+  color: #d4d4d4;
+  border: 2px solid #4a3f35;
+  padding: 4px 8px;
+  margin: 2px;
+  cursor: pointer;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 11px;
+  transition: background-color 0.2s;
+  border-radius: 0;
+}
+
+.neuroshima.item .editor-container .editor-menu button:hover,
+.neuroshima.item .prosemirror-menu button:hover {
+  background: #8b5a3c;
+  color: #e8dcc8;
+}
+
+.neuroshima.item .editor-container .editor-menu button.active,
+.neuroshima.item .prosemirror-menu button.active {
+  background: #3d2817;
+  color: #d4d4d4;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ----------------------------------------- */
+/*  Button Styles - Post-Apocalyptic       */
+/* ----------------------------------------- */
+
+.neuroshima.item button,
+.neuroshima button {
+  background: #5a3a1f;
+  color: #d4d4d4;
+  border: 3px solid #4a3f35;
+  padding: 6px 12px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+  border-radius: 0;
+}
+
+.neuroshima.item button:hover,
+.neuroshima button:hover {
+  background: #8b5a3c;
+  color: #e8dcc8;
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+}
+
+.neuroshima.item button:active,
+.neuroshima button:active {
+  background: #3d2817;
+  color: #d4d4d4;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  transform: translate(1px, 1px);
+}
+
+.neuroshima.item button:disabled,
+.neuroshima button:disabled {
+  background: #6b6b6b;
+  color: #3a3a3a;
+  border-color: #3a3a3a;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.modifiers-table .modifier-checkbox input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.modifiers-table .modifier-label {
+  font-size: 12px;
+  color: #3d2817;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modifiers-table .modifier-input {
+  width: 60px;
+  padding: 3px 5px;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  color: #3d2817;
+  text-align: center;
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.1);
+  margin-left: auto;
+}
+
+.modifiers-table .modifier-input:focus {
+  outline: none;
+  border-color: #000000;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+}
+
+.modifiers-table .modifier-value {
+  font-weight: bold;
+  font-size: 12px;
+  color: #2a2a2a;
+  margin-left: auto;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Podgląd trudności */
+.difficulty-preview-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 2px solid #2a2a2a;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
+  min-height: 140px;
+  max-height: 150px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.difficulty-preview-box .preview-line {
+  font-size: 14px;
+  color: #2a2a2a;
+  margin-bottom: 3px;
+  padding-left: 6px;
+  border-left: 2px solid #d0d0c8;
+}
+
+.difficulty-preview-box .preview-total {
+  font-weight: bold;
+  font-size: 12px;
+  color: #000000;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 2px solid #2a2a2a;
+  letter-spacing: 1px;
+}
+
+.difficulty-preview-box .preview-warning {
+  font-size: 10px;
+  color: #000000;
+  margin-top: 6px;
+  padding: 5px;
+  background: #e8e8e0;
+  border-left: 3px solid #2a2a2a;
+  font-weight: bold;
+}
+
+/* Przyciski dialogu */
+.neuroshima-dialog .dialog-buttons {
+  border-top: 2px solid #2a2a2a;
+  background: #f9f9f9;
+  padding: 8px;
+}
+
+.neuroshima-dialog .dialog-buttons button {
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 11px;
+  padding: 6px 14px;
+  border: 2px solid #2a2a2a;
+  border-radius: 0;
+  background: #ffffff;
+  color: #2a2a2a;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+}
+
+.neuroshima-dialog .dialog-buttons button:hover {
+  background: #2a2a2a;
+  color: #ffffff;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.25);
+  transform: translate(-1px, -1px);
+}
+
+.neuroshima-dialog .dialog-buttons button:active {
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.15);
+  transform: translate(1px, 1px);
+}
+
+.neuroshima-dialog .dialog-buttons button i {
+  margin-right: 4px;
+}
+
+/* Tytuł dialogu */
+.neuroshima-dialog .window-header {
+  background: #2a2a2a;
+  border-bottom: 3px solid #000000;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima-dialog .window-title {
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+/* ----------------------------------------- */
+/*  Combat Tab                              */
+/* ----------------------------------------- */
+
+.neuroshima .combat-tab {
+  padding: 0;
+}
+
+.neuroshima .armor-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.neuroshima .armor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.neuroshima .armor-location {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.neuroshima .armor-location label {
+  flex: 0 0 60px;
+  font-weight: bold;
+}
+
+.neuroshima .armor-location input {
+  width: 60px;
+  text-align: center;
+}
+
+.neuroshima .health-effects {
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.neuroshima .wounds-section,
+.neuroshima .effects-section {
+  margin-bottom: 15px;
+}
+
+.neuroshima .wounds-section label,
+.neuroshima .effects-section label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.neuroshima .wounds-section textarea,
+.neuroshima .effects-section textarea {
+  width: 100%;
+  resize: vertical;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+/* ----------------------------------------- */
+/*  Other Tabs                              */
+/* ----------------------------------------- */
+
+.neuroshima .tricks-tab,
+.neuroshima .equipment-tab,
+.neuroshima .notes-tab {
+  padding: 10px;
+}
+
+/* Tricks Section - Full Width in Tab */
+.neuroshima .tricks-section-full {
+  padding: 15px;
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  background: #e8dcc8;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima .tricks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid #5a3a1f;
+}
+
+.neuroshima .tricks-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #3d2817;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.neuroshima .tricks-header .trick-create {
+  background: transparent;
+  border: none;
+  color: #5a3a1f;
+  padding: 0;
+  text-decoration: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.neuroshima .tricks-header .trick-create:hover {
+  color: #8b5a3c;
+  text-decoration: none;
+}
+
+/* Tricks Content - Scrollable Container */
+.neuroshima .tricks-content {
+  max-height: 400px; /* Maksymalna wysokość ~5-6 sztuczek */
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 2px solid #4a3f35;
+  background: #ffffff;
+}
+
+/* Custom Scrollbar dla Tricks */
+.neuroshima .tricks-content::-webkit-scrollbar {
+  width: 12px;
+}
+
+.neuroshima .tricks-content::-webkit-scrollbar-track {
+  background: #d4c4a8;
+  border-left: 2px solid #4a3f35;
+}
+
+.neuroshima .tricks-content::-webkit-scrollbar-thumb {
+  background: #5a3a1f;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+}
+
+.neuroshima .tricks-content::-webkit-scrollbar-thumb:hover {
+  background: #8b5a3c;
+}
+
+/* Tricks List - Compact View */
+.neuroshima .tricks-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.neuroshima .tricks-empty {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+.neuroshima .trick-item {
+  border-bottom: 2px solid #4a3f35;
+  background: #ffffff;
+  transition: background-color 0.2s;
+}
+
+.neuroshima .trick-item:last-child {
+  border-bottom: none;
+}
+
+.neuroshima .trick-item:hover {
+  background-color: #f5f0e8;
+}
+
+/* Trick Header - Icon, Name, Controls */
+.neuroshima .trick-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+.neuroshima .trick-icon {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, #5a3a1f 0%, #4a3f35 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  color: #d4d4d4;
+  font-size: 16px;
+}
+
+.neuroshima .trick-name {
+  flex: 1;
+  font-weight: bold;
+  font-size: 14px;
+  color: #3d2817;
+  cursor: pointer;
+  margin: 0;
+  padding: 5px 0;
+  transition: color 0.2s;
+}
+
+.neuroshima .trick-name:hover {
+  color: #8b5a3c;
+}
+
+.neuroshima .trick-controls {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.neuroshima .trick-controls .item-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: #5a3a1f;
+  color: #d4d4d4;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 12px;
+}
+
+.neuroshima .trick-controls .item-control:hover {
+  background: #8b5a3c;
+}
+
+.neuroshima .trick-controls .item-edit {
+  background: #4a5c3a;
+}
+
+.neuroshima .trick-controls .item-edit:hover {
+  background: #5a7a4a;
+}
+
+.neuroshima .trick-controls .item-delete {
+  background: #8b2e2e;
+}
+
+.neuroshima .trick-controls .item-delete:hover {
+  background: #a83e3e;
+}
+
+/* Trick Summary - Collapsible Description */
+.neuroshima .trick-summary {
+  display: none; /* Hidden by default */
+  padding: 10px 15px 15px 15px; /* Left padding aligns with name */
+  background: #f5f0e8;
+  border-top: 1px solid #d4c4a8;
+  color: #3d2817;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.neuroshima .trick-summary em {
+  color: #999;
+  font-style: italic;
+}
+
+.neuroshima .trick-summary p {
+  margin: 0 0 8px 0;
+}
+
+.neuroshima .trick-summary p:last-child {
+  margin-bottom: 0;
+}
+
+.neuroshima .biography-section,
+.neuroshima .general-notes {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.neuroshima .biography-section h4,
+.neuroshima .general-notes h4 {
+  margin: 0 0 10px 0;
+  font-weight: bold;
+}
+
+.neuroshima .biography-section textarea,
+.neuroshima .general-notes textarea {
+  width: 100%;
+  resize: vertical;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+/* ----------------------------------------- */
+/*  Chat Messages                           */
+/* ----------------------------------------- */
+
+.neuroshima-roll {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  background: #f9f9f9;
+}
+
+.neuroshima-roll h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.neuroshima-roll p {
+  margin: 3px 0;
+  font-size: 13px;
+}
+
+.neuroshima-roll strong {
+  font-weight: bold;
+}
+
+/* ----------------------------------------- */
+/*  Utility Classes                         */
+/* ----------------------------------------- */
+
+.neuroshima .flexrow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.neuroshima .flexcol {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.neuroshima .rollable {
+  cursor: pointer;
+}
+
+.neuroshima .rollable:hover {
+  background-color: #f0f0f0;
+}
+
+/* ----------------------------------------- */
+/*  Item Sheets                             */
+/* ----------------------------------------- */
+
+.neuroshima.item {
+  min-width: 460px;
+  min-height: 400px;
+}
+
+/* Removed duplicate .sheet-header styles - see line 558 for main styles */
+
+.neuroshima.item .sheet-body {
+  padding: 0 10px;
+}
+/* ----------------------------------------- */
+/*  Beast Action Item Styles                */
+/* ----------------------------------------- */
+
+.beast-action .actions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #5a3a1f;
+  border: 2px solid #4a3f35;
+}
+
+.beast-action .actions-header h3 {
+  margin: 0;
+  color: #e8dcc8;
+  font-size: 16px;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.beast-action .add-action {
+  background: #4a5c3a;
+  color: #e8dcc8;
+  border: 2px solid #3a4a2a;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.beast-action .add-action:hover {
+  background: #5a6c4a;
+  border-color: #4a5a3a;
+}
+
+.beast-action .actions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.beast-action .actions-table thead {
+  background: #5a3a1f;
+  color: #e8dcc8;
+}
+
+.beast-action .actions-table th {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #4a3f35;
+  font-size: 12px;
+}
+
+.beast-action .actions-table td {
+  padding: 6px;
+  border: 1px solid #4a3f35;
+  background: #e8dcc8;
+}
+
+.beast-action .actions-table input[type="text"],
+.beast-action .actions-table input[type="number"],
+.beast-action .actions-table select {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #4a3f35;
+  background: #f5f0e8;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 11px;
+}
+
+.beast-action .actions-table input[type="number"] {
+  width: 60px;
+}
+
+.beast-action .action-controls {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+.beast-action .action-controls button {
+  background: #5a3a1f;
+  color: #e8dcc8;
+  border: 1px solid #4a3f35;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.beast-action .action-controls button:hover {
+  background: #6a4a2f;
+}
+
+.beast-action .delete-action:hover {
+  background: #8b2e2e !important;
+  border-color: #6b1e1e;
+}
+
+.beast-action .action-details {
+  background: #f5f0e8;
+}
+
+.beast-action .action-details-content {
+  padding: 10px;
+}
+
+.beast-action .action-details-content .form-group {
+  margin-bottom: 10px;
+}
+
+.beast-action .action-details-content label {
+  display: block;
+  margin-bottom: 4px;
+  color: #3d2817;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.beast-action .action-details-content input,
+.beast-action .action-details-content textarea {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #4a3f35;
+  background: #ffffff;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 11px;
+}
+
+.beast-action .empty-actions {
+  text-align: center;
+  padding: 40px;
+  color: #6b6b6b;
+  font-style: italic;
+}
+
+.beast-action .priority-section {
+  background: #f5f0e8;
+  padding: 12px;
+  border: 2px solid #4a5c3a;
+  margin-bottom: 15px;
+}
+
+.beast-action .form-group-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.beast-action .form-group-row .form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.beast-action .form-group-row .form-group label {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 4px;
+  color: #3d2817;
+}
+
+.beast-action .form-group-row .form-group select {
+  width: 100%;
+  padding: 6px;
+  border: 2px solid #4a3f35;
+  border-radius: 0;
+  background: #ffffff;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+  cursor: pointer;
+}
+
+.beast-action .empty-tab-message {
+  text-align: center;
+  padding: 40px;
+  color: #6b6b6b;
+  font-style: italic;
+}
+
+/* Compact Actions Section */
+.beast-action .actions-section-compact {
+  margin-top: 20px;
+}
+
+.beast-action .actions-table {
+  border: 2px solid #4a3f35;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.beast-action .actions-table thead tr {
+  background: #4a3f35;
+}
+
+.beast-action .actions-table thead th {
+  padding: 8px;
+  font-size: 11px;
+  color: #d4d4d4;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 2px solid #4a3f35;
+  text-align: left;
+}
+
+.beast-action .actions-table thead th:last-child {
+  text-align: center;
+  width: 60px;
+}
+
+.beast-action .actions-table thead th button.add-action {
+  padding: 4px 8px;
+  background: transparent;
+  color: #d4d4d4;
+  border: 1px solid #d4d4d4;
+  border-radius: 3px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.beast-action .actions-table thead th button.add-action:hover {
+  background: #d4a574;
+  color: #3d2817;
+  border-color: #d4a574;
+  transform: scale(1.05);
+}
+
+.beast-action .action-controls {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+}
+
+.beast-action .action-controls button {
+  padding: 3px 6px;
+  background: transparent;
+  color: #5a3a1f;
+  border: 1px solid #5a3a1f;
+  border-radius: 2px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.beast-action .action-controls button:hover {
+  background: #5a3a1f;
+  color: #e8dcc8;
+  transform: scale(1.1);
+}
+
+.beast-action .action-controls button.delete-action:hover {
+  background: #8b2e2e;
+  border-color: #8b2e2e;
+  color: #ffffff;
+}
+
+.beast-action .empty-actions {
+  padding: 30px;
+  text-align: center;
+  border: 2px solid #4a3f35;
+  background: #f5f0e8;
+}
+
+.beast-action .empty-actions p {
+  margin-bottom: 15px;
+  color: #5a3a1f;
+  font-size: 13px;
+}
+
+.beast-action .add-action-large {
+  padding: 10px 20px;
+  background: #5a3a1f;
+  color: #e8dcc8;
+  border: 2px solid #3d2817;
+  border-radius: 3px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.beast-action .add-action-large:hover {
+  background: #6b4a2f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.beast-action .actions-table tbody tr.action-row {
+  background: #f5f0e8;
+  border-bottom: 1px solid #d4c4a8;
+}
+
+.beast-action .actions-table tbody tr.action-row:hover {
+  background: #ebe1cf;
+}
+
+.beast-action .actions-table tbody td {
+  padding: 3px 2px;
+  border: 1px solid #d4c4a8;
+}
+
+.beast-action .actions-table tbody td input[type="text"],
+.beast-action .actions-table tbody td input[type="number"],
+.beast-action .actions-table tbody td select {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #4a3f35;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+}
+
+.beast-action .actions-table tbody td input[type="number"] {
+  width: 60px;
+}
+
+.beast-action .actions-table tbody td select {
+  cursor: pointer;
+}
+
+.beast-action .action-details {
+  background: #e8dcc8;
+}
+
+.beast-action .action-details td {
+  padding: 3px !important;
+}
+
+.beast-action .action-details-content {
+  padding: 4px;
+}
+
+.beast-action .action-details-content textarea {
+  width: 100%;
+  padding: 6px;
+  border: 2px solid #4a3f35;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #3d2817;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 12px;
+  resize: vertical;
+  min-height: 60px;
+  box-sizing: border-box;
+}
+
+/* ----------------------------------------- */
+/*  Beast Action System Styles              */
+/* ----------------------------------------- */
+
+/* Action tracking display in header */
+.action-tracking-display {
+  font-size: 14px;
+  color: #8b5a3c;
+  font-weight: normal;
+  margin-left: 8px;
+}
+
+.action-tracking-display .current-successes {
+  font-weight: bold;
+  color: #4a5c3a;
+}
+
+/* Execute action button in chat */
+.execute-action-button-container {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.execute-beast-action {
+  background: #4a5c3a;
+  color: #e8dcc8;
+  border: 2px solid #3d2817;
+  padding: 8px 16px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.execute-beast-action:hover {
+  background: #5a6c4a;
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+  transform: translate(-1px, -1px);
+}
+
+.execute-beast-action:active {
+  background: #3a4c2a;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  transform: translate(1px, 1px);
+}
+
+/* Action selection dialog */
+.action-selection-dialog .action-selection-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.action-selection-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #e8dcc8;
+  border: 2px solid #4a3f35;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-selection-item:hover {
+  background: #f0e8d8;
+  border-color: #8b5a3c;
+}
+
+.action-selection-radio {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.action-selection-radio input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.action-selection-label {
+  flex: 1;
+  cursor: pointer;
+  margin: 0;
+}
+
+.action-selection-name {
+  font-size: 14px;
+  font-weight: bold;
+  color: #3d2817;
+  margin-bottom: 6px;
+}
+
+.action-selection-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.action-detail-item {
+  font-size: 11px;
+  color: #5a3a1f;
+}
+
+.action-detail-item strong {
+  color: #3d2817;
+}
+
+.action-selection-description {
+  font-size: 11px;
+  color: #6b6b6b;
+  font-style: italic;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #4a3f35;
+}
+
+/* Action execution chat message */
+.neuroshima-action-execution {
+  background: #e8dcc8;
+  border: 2px solid #4a3f35;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.neuroshima-action-execution h3 {
+  margin: 0 0 10px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #4a3f35;
+  color: #3d2817;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.neuroshima-action-execution h3 i {
+  color: #4a5c3a;
+  margin-right: 6px;
+}
+
+.action-execution-name {
+  font-size: 14px;
+  color: #3d2817;
+  margin-bottom: 8px;
+}
+
+.action-execution-stats {
+  margin-bottom: 10px;
+}
+
+.action-execution-stats .stat-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.action-execution-stats .stat-label {
+  color: #5a3a1f;
+  font-weight: bold;
+}
+
+.action-execution-stats .stat-value {
+  color: #3d2817;
+}
+
+.action-execution-cost {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #4a3f35;
+}
+
+.action-execution-cost .cost-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.action-execution-cost .cost-label {
+  color: #5a3a1f;
+  font-weight: bold;
+}
+
+.action-execution-cost .cost-value {
+  color: #4a5c3a;
+  font-weight: bold;
+}
+
+/* ----------------------------------------- */
+/*  Damage Application Chat Messages        */
+/* ----------------------------------------- */
+
+.neuroshima.damage-application {
+  background: #e8dcc8;
+  border: 2px solid #4a3f35;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Special Elite', monospace, sans-serif;
+}
+
+.damage-application .damage-header {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #4a3f35;
+}
+
+.damage-application .damage-header h3 {
+  margin: 0 0 6px 0;
+  color: #3d2817;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.damage-application .damage-header p {
+  margin: 0;
+  font-size: 13px;
+  color: #5a3a1f;
+}
+
+.damage-application .damage-details {
+  margin-bottom: 12px;
+}
+
+.damage-application .damage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.damage-application .damage-label {
+  color: #5a3a1f;
+  font-weight: bold;
+  min-width: 120px;
+}
+
+.damage-application .damage-value {
+  color: #3d2817;
+  font-weight: normal;
+}
+
+.damage-application .weak-point-badge {
+  background: #8b2e2e;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+.damage-application .damage-type-D,
+.damage-application .damage-type-sD {
+  color: #4a5c3a;
+  font-weight: bold;
+}
+
+.damage-application .damage-type-L,
+.damage-application .damage-type-sL {
+  color: #8b5a3c;
+  font-weight: bold;
+}
+
+.damage-application .damage-type-C,
+.damage-application .damage-type-sC {
+  color: #8b4513;
+  font-weight: bold;
+}
+
+.damage-application .damage-type-K,
+.damage-application .damage-type-sK {
+  color: #8b2e2e;
+  font-weight: bold;
+}
+
+.damage-application .armor-info {
+  background: #d4c4a8;
+  padding: 4px 8px;
+  border-radius: 3px;
+  margin-top: 4px;
+}
+
+.damage-application .penetration-info {
+  color: #8b2e2e;
+  font-size: 11px;
+  font-style: italic;
+  margin-left: 8px;
+}
+
+.damage-application .damage-actions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid #4a3f35;
+  text-align: center;
+}
+
+.damage-application .apply-damage-button {
+  background: #4a5c3a;
+  color: #e8dcc8;
+  border: 2px solid #3d2817;
+  padding: 8px 16px;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.damage-application .apply-damage-button:hover {
+  background: #5a6c4a;
+  box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+  transform: translate(-1px, -1px);
+}
+
+.damage-application .apply-damage-button:active {
+  background: #3a4c2a;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  transform: translate(1px, 1px);
+}
+
+.damage-application .apply-damage-button:disabled {
+  background: #6b6b6b;
+  color: #d4d4d4;
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
+  transform: none;
+}
+
+.damage-application .damage-info {
+  margin-top: 8px;
+  padding: 8px;
+  background: #d4c4a8;
+  border-radius: 3px;
+  text-align: center;
+}
+
+.damage-application .damage-info p {
+  margin: 0;
+  font-size: 11px;
+  color: #5a3a1f;
+  font-style: italic;
+}
+
+/* ----------------------------------------- */
+/*  Damage Application Section (Integrated) */
+/* ----------------------------------------- */
+
+.damage-application-section {
+  margin-top: 16px;
+  padding: 12px;
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 4px;
+}
+
+.damage-application-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.damage-application-header .header-content {
+  flex: 1;
+}
+
+.damage-application-header h4 {
+  margin: 0;
+  color: #e8dcc8;
+  font-size: 15px;
+}
+
+.damage-collapse-toggle {
+  background: none;
+  border: none;
+  color: #d4d4d4;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  transition: color 0.2s;
+  margin-left: 8px;
+}
+
+.damage-collapse-toggle:hover {
+  color: #e8dcc8;
+}
+
+.damage-application-content-wrapper {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 1000px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.damage-application-content-wrapper.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.damage-application-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #4a3f35;
+}
+
+.damage-tab-button {
+  flex: 1;
+  padding: 8px 12px;
+  background: #5a3a1f;
+  border: none;
+  border-top: 2px solid #4a3f35;
+  border-left: 2px solid #4a3f35;
+  border-right: 2px solid #4a3f35;
+  color: #d4d4d4;
+  cursor: pointer;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.damage-tab-button:hover {
+  background: #8b5a3c;
+}
+
+.damage-tab-button.active {
+  background: #e8dcc8;
+  color: #3d2817;
+  font-weight: bold;
+}
+
+.damage-tab-button i {
+  margin-right: 6px;
+}
+
+.damage-application-content {
+  min-height: 80px;
+}
+
+.damage-tab-content {
+  display: none;
+}
+
+.damage-tab-content.active {
+  display: block;
+}
+
+.target-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: #e8dcc8;
+  border: 2px solid #4a3f35;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.target-avatar {
+  width: 50px;
+  height: 50px;
+  border: 2px solid #4a3f35;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.target-details {
+  flex: 1;
+}
+
+.target-name {
+  font-weight: bold;
+  font-size: 14px;
+  color: #3d2817;
+}
+
+.target-armor {
+  font-size: 12px;
+  color: #5a3a1f;
+}
+
+.armor-label {
+  font-weight: bold;
+}
+
+.armor-value {
+  color: #3d2817;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+.penetration-info {
+  color: #8b2e2e;
+  font-style: italic;
+  margin-left: 6px;
+}
+
+.effective-armor {
+  color: #4a5c3a;
+  font-weight: bold;
+  margin-left: 6px;
+}
+
+.weak-point-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #8b2e2e;
+  color: #e8dcc8;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.no-target-message {
+  text-align: center;
+  padding: 20px;
+  color: #d4d4d4;
+}
+
+.no-target-message i {
+  font-size: 24px;
+  margin-bottom: 8px;
+  display: block;
+  color: #ffa94d;
+}
+
+.no-target-message p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.selected-targets-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.selected-target-card {
+  cursor: default;
+}
+
+.damage-application-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.apply-damage-button {
+  padding: 10px 16px;
+  background: #4a5c3a;
+  color: #e8dcc8;
+  border: 2px solid #3a4a2a;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.apply-damage-button:hover {
+  background: #5a6c4a;
+}
+
+.apply-damage-button i {
+  margin-right: 6px;
+}
+
+.apply-damage-message {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.damage-toggle-button {
+  background: none;
+  border: none;
+  color: #3d2817;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  transition: color 0.2s;
+}
+
+.damage-toggle-button:hover {
+  color: #5a3a1f;
+}
+
+.damage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-title {
+  flex: 1;
+}
+
+.damage-actions.collapsed {
+  display: none;
+}
+
+/* ----------------------------------------- */
+/*  Wound Notification Styles               */
+/* ----------------------------------------- */
+
+#chat-log .chat-message:has(.wound-notification) {
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6);
+  overflow: visible !important;
+}
+
+#chat-log .chat-message:has(.wound-notification) .message-header {
+  background: linear-gradient(to right, #5a3a1f 0%, #3d2817 100%);
+  border-bottom: 2px solid #4a3f35;
+  border-radius: 0;
+  padding: 6px 10px;
+}
+
+#chat-log .chat-message:has(.wound-notification) .message-sender {
+  color: #e8dcc8;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  font-family: 'Special Elite', monospace, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#chat-log .chat-message:has(.wound-notification) .message-content {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #e8dcc8;
+  overflow: visible !important;
+}
+
+.wound-notification {
+  border: 3px solid #4a3f35;
+  border-radius: 0;
+  padding: 15px;
+  margin: 10px 0;
+  background: linear-gradient(to bottom, #3d2817 0%, #5a3a1f 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.6), inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  font-family: 'Special Elite', monospace, sans-serif;
+  overflow: visible !important;
+}
+
+.wound-notification-title {
+  margin: 0 0 12px 0;
+  padding: 8px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid #4a3f35;
+  background: linear-gradient(to right, #5a3a1f 0%, #3d2817 100%);
+  color: #e8dcc8;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  overflow: visible;
+}
+
+.wound-test-result {
+  position: relative;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-left: 4px solid;
+  background: rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  overflow: visible !important;
+}
+
+.wound-test-result.passed {
+  border-left-color: #4a5c3a;
+}
+
+.wound-test-result.failed {
+  border-left-color: #8b2e2e;
+}
+
+.test-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: help;
+  color: #e8dcc8;
+  font-weight: bold;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.test-count {
+  font-size: 16px;
+  font-weight: bold;
+  min-width: 20px;
+  text-align: center;
+}
+
+.wound-test-result.passed .test-count {
+  color: #4a5c3a;
+}
+
+.wound-test-result.failed .test-count {
+  color: #8b2e2e;
+}
+
+.test-label {
+  flex: 1;
+}
+
+/* ----------------------------------------- */
+/*  Wound Tooltip Styling                    */
+/* ----------------------------------------- */
+
+.wound-tooltip-custom {
+  position: fixed;
+  background: linear-gradient(to bottom, #3d2817 0%, #2a1a0f 100%);
+  border: 2px solid #d4a574;
+  border-radius: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.9);
+  padding: 12px 14px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: #e8dcc8;
+  font-family: 'Special Elite', monospace, sans-serif;
+  font-size: 11px;
+  z-index: 100000;
+  animation: tooltipFadeIn 0.15s ease-out;
+  pointer-events: auto;
+}
+
+.wound-tooltip-custom::-webkit-scrollbar {
+  width: 8px;
+}
+
+.wound-tooltip-custom::-webkit-scrollbar-track {
+  background: rgba(212, 165, 116, 0.1);
+  border-radius: 4px;
+}
+
+.wound-tooltip-custom::-webkit-scrollbar-thumb {
+  background: #d4a574;
+  border-radius: 4px;
+}
+
+.wound-tooltip-custom::-webkit-scrollbar-thumb:hover {
+  background: #e8dcc8;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.wound-tooltip-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 650px) {
+  .wound-tooltip-content {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+.wound-tooltip-content .tooltip-row {
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 3px solid #d4a574;
+  border-radius: 2px;
+  line-height: 1.6;
+}
+
+.wound-tooltip-content .tooltip-row:last-child {
+  margin-bottom: 0;
+}
+
+.wound-tooltip-content .tooltip-row strong {
+  color: #d4a574;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+}
+
+.wound-tooltip-content .tooltip-row div {
+  font-size: 10px;
+  color: #c4b498;
+}

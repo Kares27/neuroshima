@@ -1,0 +1,259 @@
+<div class="skills-container">
+  <!-- Umiejętności ZR -->
+  <table class="skills-table attribute-zr">
+    <tbody>
+      <!-- Zręczność -->
+      <tr class="attribute-row attribute-zr">
+        <td class="attribute-cell" rowspan="5">
+          <div class="attribute-button rollable" data-attribute="zr">
+            <h2>ZR</h2>
+          </div>
+        </td>
+        <td class="category-cell {{specializationClass system.specializations "walka_wrecz"}}"><a class="category-button {{#if (isSpecialized system.specializations "walka_wrecz")}}specialized{{/if}}" data-category="walka_wrecz">Walka Wręcz</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.bijatyka" value="{{#if system.skills.zr.bijatyka}}{{system.skills.zr.bijatyka}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="bijatyka">Bijatyka</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.bron_reczna" value="{{#if system.skills.zr.bron_reczna}}{{system.skills.zr.bron_reczna}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="bron_reczna">Broń Ręczna</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.rzucanie" value="{{#if system.skills.zr.rzucanie}}{{system.skills.zr.rzucanie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="rzucanie">Rzucanie</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="bron_strzelecka">Broń Strzelecka</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.pistolety" value="{{#if system.skills.zr.pistolety}}{{system.skills.zr.pistolety}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="pistolety">Pistolety</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.karabiny" value="{{#if system.skills.zr.karabiny}}{{system.skills.zr.karabiny}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="karabiny">Karabiny</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.bron_maszynowa" value="{{#if system.skills.zr.bron_maszynowa}}{{system.skills.zr.bron_maszynowa}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="bron_maszynowa">Broń Maszynowa</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="bron_dystansowa">Broń Dystansowa</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.luk" value="{{#if system.skills.zr.luk}}{{system.skills.zr.luk}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="luk">Łuk</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.kusza" value="{{#if system.skills.zr.kusza}}{{system.skills.zr.kusza}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="kusza">Kusza</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.proca" value="{{#if system.skills.zr.proca}}{{system.skills.zr.proca}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="proca">Proca</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="prowadzenie_pojazdow">Prowadzenie Pojazdów</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.samochod" value="{{#if system.skills.zr.samochod}}{{system.skills.zr.samochod}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="samochod">Samochód</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.ciezarowka" value="{{#if system.skills.zr.ciezarowka}}{{system.skills.zr.ciezarowka}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="ciezarowka">Ciężarówka</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.motocykl" value="{{#if system.skills.zr.motocykl}}{{system.skills.zr.motocykl}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="motocykl">Motocykl</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="zdolnosci_manualne">Zdolności Manualne</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.kradziez_kieszonkowa" value="{{#if system.skills.zr.kradziez_kieszonkowa}}{{system.skills.zr.kradziez_kieszonkowa}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="kradziez_kieszonkowa">Kradzież kieszonkowa</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.zwinne_dlonie" value="{{#if system.skills.zr.zwinne_dlonie}}{{system.skills.zr.zwinne_dlonie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="zwinne_dlonie">Zwinne Dłonie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.zr.otwieranie_zamkow" value="{{#if system.skills.zr.otwieranie_zamkow}}{{system.skills.zr.otwieranie_zamkow}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="zr" data-skill="otwieranie_zamkow">Otwieranie zamków</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Umiejętności PC -->
+  <table class="skills-table attribute-pc">
+    <tbody>
+      <!-- Percepcja -->
+      <tr class="attribute-row attribute-pc">
+        <td class="attribute-cell" rowspan="4">
+          <div class="attribute-button rollable" data-attribute="pc">
+            <h2>PC</h2>
+          </div>
+        </td>
+        <td class="category-cell"><a class="category-button" data-category="orientacja_w_terenie">Orientacja w terenie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.wyczucie_kierunku" value="{{#if system.skills.pc.wyczucie_kierunku}}{{system.skills.pc.wyczucie_kierunku}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="wyczucie_kierunku">Wyczucie kierunku</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.tropienie" value="{{#if system.skills.pc.tropienie}}{{system.skills.pc.tropienie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="tropienie">Tropienie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.przygotowanie_pulapki" value="{{#if system.skills.pc.przygotowanie_pulapki}}{{system.skills.pc.przygotowanie_pulapki}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="przygotowanie_pulapki">Przygotowanie pułapki</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="spostrzegawczosc">Spostrzegawczość</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.nasluchiwanie" value="{{#if system.skills.pc.nasluchiwanie}}{{system.skills.pc.nasluchiwanie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="nasluchiwanie">Nasłuchiwanie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.wypatrywanie" value="{{#if system.skills.pc.wypatrywanie}}{{system.skills.pc.wypatrywanie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="wypatrywanie">Wypatrywanie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.czujnosc" value="{{#if system.skills.pc.czujnosc}}{{system.skills.pc.czujnosc}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="czujnosc">Czujność</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="kamuflaz">Kamuflaż</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.skradanie_sie" value="{{#if system.skills.pc.skradanie_sie}}{{system.skills.pc.skradanie_sie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="skradanie_sie">Skradanie się</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.ukrywanie_sie" value="{{#if system.skills.pc.ukrywanie_sie}}{{system.skills.pc.ukrywanie_sie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="ukrywanie_sie">Ukrywanie się</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.maskowanie" value="{{#if system.skills.pc.maskowanie}}{{system.skills.pc.maskowanie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="maskowanie">Maskowanie</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="przetrwanie">Przetrwanie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.lowiectwo" value="{{#if system.skills.pc.lowiectwo}}{{system.skills.pc.lowiectwo}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="lowiectwo">Łowiectwo</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.zdobywanie_wody" value="{{#if system.skills.pc.zdobywanie_wody}}{{system.skills.pc.zdobywanie_wody}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="zdobywanie_wody">Zdobywanie wody</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.pc.znajomosc_terenu" value="{{#if system.skills.pc.znajomosc_terenu}}{{system.skills.pc.znajomosc_terenu}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="pc" data-skill="znajomosc_terenu">Znajomość terenu</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Umiejętności CH -->
+  <table class="skills-table attribute-ch">
+    <tbody>
+      <!-- Charyzma -->
+      <tr class="attribute-row attribute-ch">
+        <td class="attribute-cell" rowspan="3">
+          <div class="attribute-button rollable" data-attribute="ch">
+            <h2>CH</h2>
+          </div>
+        </td>
+        <td class="category-cell"><a class="category-button" data-category="negocjacje">Negocjacje</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.perswazja" value="{{#if system.skills.ch.perswazja}}{{system.skills.ch.perswazja}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="perswazja">Perswazja</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.zastraszanie" value="{{#if system.skills.ch.zastraszanie}}{{system.skills.ch.zastraszanie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="zastraszanie">Zastraszanie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.zdolnosci_przywodcze" value="{{#if system.skills.ch.zdolnosci_przywodcze}}{{system.skills.ch.zdolnosci_przywodcze}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="zdolnosci_przywodcze">Zdolności przywódcze</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="empatia">Empatia</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.postrzeganie_emocji" value="{{#if system.skills.ch.postrzeganie_emocji}}{{system.skills.ch.postrzeganie_emocji}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="postrzeganie_emocji">Postrzeganie emocji</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.blef" value="{{#if system.skills.ch.blef}}{{system.skills.ch.blef}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="blef">Blef</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.opieka_nad_zwierzetami" value="{{#if system.skills.ch.opieka_nad_zwierzetami}}{{system.skills.ch.opieka_nad_zwierzetami}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="opieka_nad_zwierzetami">Opieka nad zwierzętami</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="sila_woli">Siła woli</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.odpornosc_na_bol" value="{{#if system.skills.ch.odpornosc_na_bol}}{{system.skills.ch.odpornosc_na_bol}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="odpornosc_na_bol">Odporność na ból</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.niezlomnosc" value="{{#if system.skills.ch.niezlomnosc}}{{system.skills.ch.niezlomnosc}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="niezlomnosc">Niezłomność</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.ch.morale" value="{{#if system.skills.ch.morale}}{{system.skills.ch.morale}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="ch" data-skill="morale">Morale</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Umiejętności SP -->
+  <table class="skills-table attribute-sp">
+    <tbody>
+      <!-- Spryt -->
+      <tr class="attribute-row attribute-sp">
+        <td class="attribute-cell" rowspan="6">
+          <div class="attribute-button rollable" data-attribute="sp">
+            <h2>SP</h2>
+          </div>
+        </td>
+        <td class="category-cell"><a class="category-button" data-category="medycyna">Medycyna</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.leczenie_ran" value="{{#if system.skills.sp.leczenie_ran}}{{system.skills.sp.leczenie_ran}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="leczenie_ran">Leczenie ran</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.leczenie_chorob" value="{{#if system.skills.sp.leczenie_chorob}}{{system.skills.sp.leczenie_chorob}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="leczenie_chorob">Leczenie chorób</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.pierwsza_pomoc" value="{{#if system.skills.sp.pierwsza_pomoc}}{{system.skills.sp.pierwsza_pomoc}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="pierwsza_pomoc">Pierwsza pomoc</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="technika">Technika</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.mechanika" value="{{#if system.skills.sp.mechanika}}{{system.skills.sp.mechanika}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="mechanika">Mechanika</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.elektronika" value="{{#if system.skills.sp.elektronika}}{{system.skills.sp.elektronika}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="elektronika">Elektronika</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.komputery" value="{{#if system.skills.sp.komputery}}{{system.skills.sp.komputery}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="komputery">Komputery</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="sprzet">Sprzęt</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.maszyny_ciezkie" value="{{#if system.skills.sp.maszyny_ciezkie}}{{system.skills.sp.maszyny_ciezkie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="maszyny_ciezkie">Maszyny ciężkie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wozy_bojowe" value="{{#if system.skills.sp.wozy_bojowe}}{{system.skills.sp.wozy_bojowe}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="wozy_bojowe">Wozy bojowe</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.kutry" value="{{#if system.skills.sp.kutry}}{{system.skills.sp.kutry}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="kutry">Kutry</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="pirotechnika">Pirotechnika</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.rusznikarstwo" value="{{#if system.skills.sp.rusznikarstwo}}{{system.skills.sp.rusznikarstwo}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="rusznikarstwo">Rusznikarstwo</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wyrzutnie" value="{{#if system.skills.sp.wyrzutnie}}{{system.skills.sp.wyrzutnie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="wyrzutnie">Wyrzutnie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.materialy_wybuchowe" value="{{#if system.skills.sp.materialy_wybuchowe}}{{system.skills.sp.materialy_wybuchowe}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="sp" data-skill="materialy_wybuchowe">Materiały wybuchowe</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="wiedza1">Wiedza ogólna</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wiedza.poziom1" value="{{#if system.skills.sp.wiedza.poziom1}}{{system.skills.sp.wiedza.poziom1}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name">
+          <div class="knowledge-test"><a class="skill-button rollable" data-attribute="sp" data-skill="wiedza.poziom1">Test Wiedzy</a></div>
+          <input type="text" name="system.skills.sp.wiedza.nazwa1" value="{{system.skills.sp.wiedza.nazwa1}}" placeholder="Nazwa wiedzy"/>
+        </td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wiedza.poziom2" value="{{#if system.skills.sp.wiedza.poziom2}}{{system.skills.sp.wiedza.poziom2}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name">
+          <div class="knowledge-test"><a class="skill-button rollable" data-attribute="sp" data-skill="wiedza.poziom2">Test Wiedzy</a></div>
+          <input type="text" name="system.skills.sp.wiedza.nazwa2" value="{{system.skills.sp.wiedza.nazwa2}}" placeholder="Nazwa wiedzy"/>
+        </td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wiedza.poziom3" value="{{#if system.skills.sp.wiedza.poziom3}}{{system.skills.sp.wiedza.poziom3}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name">
+          <div class="knowledge-test"><a class="skill-button rollable" data-attribute="sp" data-skill="wiedza.poziom3">Test Wiedzy</a></div>
+          <input type="text" name="system.skills.sp.wiedza.nazwa3" value="{{system.skills.sp.wiedza.nazwa3}}" placeholder="Nazwa wiedzy"/>
+        </td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="wiedza2">Wiedza ogólna</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wiedza.poziom4" value="{{#if system.skills.sp.wiedza.poziom4}}{{system.skills.sp.wiedza.poziom4}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name">
+          <div class="knowledge-test"><a class="skill-button rollable" data-attribute="sp" data-skill="wiedza.poziom4">Test Wiedzy</a></div>
+          <input type="text" name="system.skills.sp.wiedza.nazwa4" value="{{system.skills.sp.wiedza.nazwa4}}" placeholder="Nazwa wiedzy"/>
+        </td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wiedza.poziom5" value="{{#if system.skills.sp.wiedza.poziom5}}{{system.skills.sp.wiedza.poziom5}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name">
+          <div class="knowledge-test"><a class="skill-button rollable" data-attribute="sp" data-skill="wiedza.poziom5">Test Wiedzy</a></div>
+          <input type="text" name="system.skills.sp.wiedza.nazwa5" value="{{system.skills.sp.wiedza.nazwa5}}" placeholder="Nazwa wiedzy"/>
+        </td>
+        <td class="skill-cell"><input type="text" name="system.skills.sp.wiedza.poziom6" value="{{#if system.skills.sp.wiedza.poziom6}}{{system.skills.sp.wiedza.poziom6}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name">
+          <div class="knowledge-test"><a class="skill-button rollable" data-attribute="sp" data-skill="wiedza.poziom6">Test Wiedzy</a></div>
+          <input type="text" name="system.skills.sp.wiedza.nazwa6" value="{{system.skills.sp.wiedza.nazwa6}}" placeholder="Nazwa wiedzy"/>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Umiejętności BD -->
+  <table class="skills-table attribute-bd">
+    <tbody>
+      <!-- Budowa -->
+      <tr class="attribute-row attribute-bd">
+        <td class="attribute-cell" rowspan="2">
+          <div class="attribute-button rollable" data-attribute="bd">
+            <h2>BD</h2>
+          </div>
+        </td>
+        <td class="category-cell"><a class="category-button" data-category="sprawnosc">Sprawność</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.bd.plywanie" value="{{#if system.skills.bd.plywanie}}{{system.skills.bd.plywanie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="bd" data-skill="plywanie">Pływanie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.bd.wspinaczka" value="{{#if system.skills.bd.wspinaczka}}{{system.skills.bd.wspinaczka}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="bd" data-skill="wspinaczka">Wspinaczka</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.bd.kondycja" value="{{#if system.skills.bd.kondycja}}{{system.skills.bd.kondycja}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="bd" data-skill="kondycja">Kondycja</a></td>
+      </tr>
+      <tr>
+        <td class="category-cell"><a class="category-button" data-category="jezdictwo">Jeździectwo</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.bd.jazda_konna" value="{{#if system.skills.bd.jazda_konna}}{{system.skills.bd.jazda_konna}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="bd" data-skill="jazda_konna">Jazda konna</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.bd.powodzenie" value="{{#if system.skills.bd.powodzenie}}{{system.skills.bd.powodzenie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="bd" data-skill="powodzenie">Powodzenie</a></td>
+        <td class="skill-cell"><input type="text" name="system.skills.bd.ujezdzanie" value="{{#if system.skills.bd.ujezdzanie}}{{system.skills.bd.ujezdzanie}}{{else}}0{{/if}}" data-dtype="Number"/></td>
+        <td class="skill-name"><a class="skill-button rollable" data-attribute="bd" data-skill="ujezdzanie">Ujeżdżanie</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,43 @@
+<form class="{{cssClass}} {{actor.type}} flexcol beast-sheet" autocomplete="off">
+
+  {{!-- Sheet Header --}}
+  <header class="sheet-header">
+    <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" height="100" width="100"/>
+    <div class="header-fields">
+      <h1 class="charname"><input name="name" type="text" value="{{actor.name}}" placeholder="Nazwa bestii"/></h1>
+    </div>
+  </header>
+
+  {{!-- Navigation Tabs --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="attributes">Współczynniki</a>
+    <a class="item" data-tab="skills">Umiejętności</a>
+    <a class="item" data-tab="combat">Walka</a>
+    <a class="item" data-tab="notes">Notatki</a>
+  </nav>
+
+  {{!-- Sheet Body --}}
+  <section class="sheet-body">
+
+    {{!-- Attributes Tab --}}
+    <div class="tab attributes" data-group="primary" data-tab="attributes">
+      {{> "systems/neuroshima/templates/actor/parts/beast-attributes.hbs"}}
+    </div>
+
+    {{!-- Skills Tab --}}
+    <div class="tab skills" data-group="primary" data-tab="skills">
+      {{> "systems/neuroshima/templates/actor/parts/actor-skills.hbs"}}
+    </div>
+
+    {{!-- Combat Tab --}}
+    <div class="tab combat" data-group="primary" data-tab="combat">
+      {{> "systems/neuroshima/templates/actor/parts/beast-combat.hbs"}}
+    </div>
+
+    {{!-- Notes Tab --}}
+    <div class="tab notes" data-group="primary" data-tab="notes">
+      {{> "systems/neuroshima/templates/actor/parts/beast-notes.hbs"}}
+    </div>
+
+  </section>
+</form>
