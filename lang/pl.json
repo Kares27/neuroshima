@@ -114,5 +114,12 @@
   "NEUROSHIMA.BEAST.Range": "Zasięg",
   "NEUROSHIMA.BEAST.Special": "Specjalne",
   "NEUROSHIMA.BEAST.AddAction": "Dodaj akcję",
-  "NEUROSHIMA.BEAST.NewAction": "Nowa akcja"
+  "NEUROSHIMA.BEAST.NewAction": "Nowa akcja",
+
+  "NEUROSHIMA.Effects": "Efekty",
+  "NEUROSHIMA.EditEffect": "Edytuj efekt",
+  "NEUROSHIMA.DeleteEffect": "Usuń efekt",
+  "NEUROSHIMA.ToggleEffect": "Włącz/wyłącz efekt",
+  "NEUROSHIMA.CreateEffect": "Utwórz efekt",
+  "NEUROSHIMA.NoEffects": "Brak efektów"
 }

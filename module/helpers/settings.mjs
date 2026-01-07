@@ -1,6 +1,8 @@
 /**
  * Register system settings for Neuroshima
  */
+import { shouldDebug } from "./utils.mjs";
+
 export function registerSystemSettings() {
   
   /**
@@ -21,7 +23,7 @@ export function registerSystemSettings() {
     },
     default: "gm",
     onChange: value => {
-      console.log(`Neuroshima | Damage application visibility changed to: ${value}`);
+      if (shouldDebug()) console.log(`Neuroshima | Damage application visibility changed to: ${value}`);
       // Refresh all chat messages to apply new visibility settings
       ui.chat.render(true);
     }
@@ -45,7 +47,7 @@ export function registerSystemSettings() {
     },
     default: "gm",
     onChange: value => {
-      console.log(`Neuroshima | Damage application permission changed to: ${value}`);
+      if (shouldDebug()) console.log(`Neuroshima | Damage application permission changed to: ${value}`);
     }
   });
 
@@ -61,7 +63,7 @@ export function registerSystemSettings() {
     type: Boolean,
     default: true,
     onChange: value => {
-      console.log(`Neuroshima | Auto-hide damage application: ${value}`);
+      if (shouldDebug()) console.log(`Neuroshima | Auto-hide damage application: ${value}`);
     }
   });
 
@@ -77,11 +79,27 @@ export function registerSystemSettings() {
     type: Boolean,
     default: true,
     onChange: value => {
-      console.log(`Neuroshima | Collapsable damage section: ${value}`);
+      if (shouldDebug()) console.log(`Neuroshima | Collapsable damage section: ${value}`);
     }
   });
 
-  console.log('Neuroshima | System settings registered');
+  /**
+   * Setting: Enable debug logging
+   * If enabled, the system will output debug information to console
+   */
+  game.settings.register("neuroshima", "debugMode", {
+    name: "Tryb debugowania",
+    hint: "Jeśli włączone, system będzie wypisywać informacje debugowania do konsoli przeglądarki. Przydatne do diagnozowania problemów.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: value => {
+      if (shouldDebug()) console.log(`Neuroshima | Debug mode: ${value}`);
+    }
+  });
+
+  if (shouldDebug()) console.log('Neuroshima | System settings registered');
 }
 
 /**
@@ -139,4 +157,12 @@ export function canApplyDamage(targetActor = null) {
  */
 export function shouldAutoHideDamageApplication() {
   return game.settings.get("neuroshima", "autoHideDamageApplication");
+}
+
+/**
+ * Check if debug mode is enabled
+ * @returns {boolean} True if debug mode is enabled
+ */
+export function isDebugMode() {
+  return game.settings.get("neuroshima", "debugMode");
 }

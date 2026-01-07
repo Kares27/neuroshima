@@ -1,6 +1,7 @@
 import {onManageActiveEffect, prepareActiveEffectCategories} from "../helpers/effects.mjs";
 import {NeuroshimaDiceRoller} from "../../dice-roller.js";
 import { createDamageData, createDamageChatMessage } from "../helpers/combat-utils.mjs";
+import { getDamageTypeName, getDifficultyName, shouldDebug } from "../helpers/utils.mjs";
 
 /**
  * Extend the basic ActorSheet for Beast type
@@ -493,7 +494,7 @@ export class NeuroshimaBeastSheet extends ActorSheet {
       const maxSuccesses = this.actor.system.actionTracking?.maxSuccesses || 3;
       const newSuccesses = Math.min(currentSuccesses + successCount, maxSuccesses);
       
-      console.log(`[Neuroshima Beast] Roll completed: successCount=${successCount}, currentSuccesses=${currentSuccesses}, newSuccesses=${newSuccesses}`);
+      if (shouldDebug()) console.log(`[Neuroshima Beast] Roll completed: successCount=${successCount}, currentSuccesses=${currentSuccesses}, newSuccesses=${newSuccesses}`);
       
       await this.actor.update({ 'system.actionTracking.currentSuccesses': newSuccesses });
       
@@ -899,18 +900,6 @@ export class NeuroshimaBeastSheet extends ActorSheet {
    * @private
    */
   async _displayActionExecution(action, item, previousSuccesses, newSuccesses) {
-    // Mapowanie typów obrażeń
-    const damageTypeNames = {
-      'D': 'Draśnięcie',
-      'sD': 'Siniak (Draśnięcie)',
-      'L': 'Lekkie',
-      'sL': 'Siniak (Lekkie)',
-      'C': 'Ciężkie',
-      'sC': 'Siniak (Ciężkie)',
-      'K': 'Krytyczne',
-      'sK': 'Siniak (Krytyczne)'
-    };
-    
     // Roll hit location if this is an attack
     let hitLocation = null;
     let locationKey = null;
@@ -970,7 +959,7 @@ export class NeuroshimaBeastSheet extends ActorSheet {
         <div class="action-execution-details">
           <div class="action-execution-name"><strong>${action.name}</strong></div>
           <div class="action-execution-stats">
-            ${action.damage ? `<div class="stat-row"><span class="stat-label">Obrażenia:</span> <span class="stat-value">${damageTypeNames[action.damage] || action.damage}</span></div>` : ''}
+            ${action.damage ? `<div class="stat-row"><span class="stat-label">Obrażenia:</span> <span class="stat-value">${getDamageTypeName(action.damage)}</span></div>` : ''}
             ${hitLocation ? `<div class="stat-row"><span class="stat-label">Lokacja:</span> <span class="stat-value">${hitLocation.name}</span></div>` : ''}
             ${action.range ? `<div class="stat-row"><span class="stat-label">Zasięg:</span> <span class="stat-value">${action.range}</span></div>` : ''}
             ${action.special ? `<div class="stat-row"><span class="stat-label">Specjalne:</span> <span class="stat-value">${action.special}</span></div>` : ''}
@@ -1037,9 +1026,9 @@ export class NeuroshimaBeastSheet extends ActorSheet {
     let availableActions = actions;
     if (systemType === 'successes') {
       // Only show actions with cost <= available successes
-      console.log(`[Neuroshima] Filtering actions: availableSuccesses=${availableSuccesses}, totalActions=${actions.length}`);
+      if (shouldDebug()) console.log(`[Neuroshima] Filtering actions: availableSuccesses=${availableSuccesses}, totalActions=${actions.length}`);
       availableActions = actions.filter(action => {
-        console.log(`[Neuroshima] Checking action '${action.name}': cost=${action.cost}, available=${availableSuccesses}, canUse=${action.cost <= availableSuccesses}`);
+        if (shouldDebug()) console.log(`[Neuroshima] Checking action '${action.name}': cost=${action.cost}, available=${availableSuccesses}, canUse=${action.cost <= availableSuccesses}`);
         return action.cost <= availableSuccesses;
       });
       
@@ -2115,15 +2104,6 @@ export class NeuroshimaBeastSheet extends ActorSheet {
    * @private
    */
   _getDifficultyDisplayName(difficulty) {
-    const names = {
-      'easy': 'Łatwy',
-      'average': 'Przeciętny',
-      'problematic': 'Problematyczny',
-      'hard': 'Trudny',
-      'veryHard': 'Bardzo Trudny',
-      'damnHard': 'Cholernie Trudny',
-      'luck': 'Fart'
-    };
-    return names[difficulty] || difficulty;
+    return getDifficultyName(difficulty);
   }
 }

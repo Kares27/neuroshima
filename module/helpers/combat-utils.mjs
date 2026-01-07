@@ -3,6 +3,8 @@
  * Handles damage application, location rolling, and combat-related calculations
  */
 
+import { reduceDiceResults, getDifficultyModifier, getDamageTypeName, shouldDebug } from "./utils.mjs";
+
 /**
  * Roll for hit location using d20
  * @param {string} targetLocation - Specific location or "random" for dice roll
@@ -153,42 +155,6 @@ export function createDamageData(options) {
 }
 
 /**
- * Calculate armor from all armor items (not just equipped)
- */
-function getCalculatedArmor(actor, locationKey) {
-  let equippedItems = [];
-  
-  if (actor.items && actor.items.contents) {
-    equippedItems = actor.items.contents;
-  } else if (Array.isArray(actor.items)) {
-    equippedItems = actor.items;
-  } else if (typeof actor.items[Symbol.iterator] === 'function') {
-    equippedItems = Array.from(actor.items);
-  }
-  
-  console.log(`Neuroshima: getCalculatedArmor for ${actor.name} - checking ${equippedItems.length} items`);
-  
-  const armorItems = equippedItems.filter(item => item.type === 'armor' && item.system?.protection);
-  console.log(`Neuroshima: Found ${armorItems.length} armor items with protection data`);
-  
-  let totalArmor = {head: 0, torso: 0, leftHand: 0, rightHand: 0, leftLeg: 0, rightLeg: 0};
-  
-  armorItems.forEach(armor => {
-    console.log(`Neuroshima: Processing armor ${armor.name}:`, armor.system.protection);
-    const damageAP = armor.system.damageAP || {};
-    totalArmor.head += Math.max(0, (armor.system.protection.head || 0) - (damageAP.head || 0));
-    totalArmor.torso += Math.max(0, (armor.system.protection.torso || 0) - (damageAP.torso || 0));
-    totalArmor.leftHand += Math.max(0, (armor.system.protection.leftHand || 0) - (damageAP.leftHand || 0));
-    totalArmor.rightHand += Math.max(0, (armor.system.protection.rightHand || 0) - (damageAP.rightHand || 0));
-    totalArmor.leftLeg += Math.max(0, (armor.system.protection.leftLeg || 0) - (damageAP.leftLeg || 0));
-    totalArmor.rightLeg += Math.max(0, (armor.system.protection.rightLeg || 0) - (damageAP.rightLeg || 0));
-  });
-  
-  console.log(`Neuroshima: Total armor for ${locationKey}:`, totalArmor[locationKey]);
-  return totalArmor[locationKey] || 0;
-}
-
-/**
  * Apply damage to target actor
  * Creates wound items on the target after reducing damage by armor
  * @param {Actor} target - The target actor
@@ -204,11 +170,11 @@ export async function applyDamage(target, damageData) {
   const locationMapping = CONFIG.NEUROSHIMA.locationMapping;
   const locationKey = locationMapping[damageData.location] || damageData.location;
   
-  console.log(`Neuroshima: Applying damage to ${target.name} (type: ${target.type}) at location "${damageData.location}" (mapped to "${locationKey}")`);
+  if (shouldDebug()) console.log(`Neuroshima: Applying damage to ${target.name} (type: ${target.type}) at location "${damageData.location}" (mapped to "${locationKey}")`);
   
   // For characters and NPCs, ensure armor is initialized from items before applying damage
   if ((target.type === 'character' || target.type === 'npc') && (!target.system.armor || Object.values(target.system.armor).every(v => !v))) {
-    console.log(`Neuroshima: Initializing armor for ${target.name} from items`);
+    if (shouldDebug()) console.log(`Neuroshima: Initializing armor for ${target.name} from items`);
     const initArmor = {head: 0, torso: 0, leftHand: 0, rightHand: 0, leftLeg: 0, rightLeg: 0};
     let items = [];
     if (target.items && target.items.contents) items = target.items.contents;
@@ -225,7 +191,7 @@ export async function applyDamage(target, damageData) {
       initArmor.rightLeg += Math.max(0, (armor.system.protection.rightLeg || 0) - (damageAP.rightLeg || 0));
     });
     target.system.armor = initArmor;
-    console.log(`Neuroshima: Armor initialized:`, initArmor);
+    if (shouldDebug()) console.log(`Neuroshima: Armor initialized:`, initArmor);
   }
   
   // Calculate total armor protection at this location
@@ -242,7 +208,7 @@ export async function applyDamage(target, damageData) {
     if (target.system.armor && target.system.armor[locationKey] !== undefined) {
       totalArmor = target.system.armor[locationKey] || 0;
     }
-    console.log(`Neuroshima: Reading armor for ${target.name} at ${locationKey}: ${totalArmor}`);
+    if (shouldDebug()) console.log(`Neuroshima: Reading armor for ${target.name} at ${locationKey}: ${totalArmor}`);
   } else if (target.system.armor && target.system.armor[locationKey] !== undefined) {
     // Fallback for other actor types
     totalArmor = target.system.armor[locationKey] || 0;
@@ -261,9 +227,9 @@ export async function applyDamage(target, damageData) {
   
   // Only create wounds if damage gets through armor
   if (finalDamageLevel > 0) {
-    const damageTypeName = CONFIG.NEUROSHIMA.damageTypes[finalDamageType]?.name || finalDamageType;
+    const damageTypeName = getDamageTypeName(finalDamageType);
     
-    console.log(`Neuroshima: Creating ${damageData.hitCount} wounds for ${target.name}: ${finalDamageType} wounds`);
+    if (shouldDebug()) console.log(`Neuroshima: Creating ${damageData.hitCount} wounds for ${target.name}: ${finalDamageType} wounds`);
     
     // Create wound items
     for (let i = 0; i < damageData.hitCount; i++) {
@@ -316,7 +282,7 @@ export async function applyDamage(target, damageData) {
         const status = flags.passed ? 'zdane' : 'niezdane';
         const diceStr = flags.diceRaw.join(',');
         const reducedStr = flags.diceReduced.join(',');
-        const woundTypeName = CONFIG.NEUROSHIMA.damageTypes[flags.woundType]?.name || flags.woundType;
+        const woundTypeName = getDamageTypeName(flags.woundType);
         const location = wound.system?.location || '';
         const locationName = CONFIG.NEUROSHIMA.woundLocations?.[location] || location;
         
@@ -411,9 +377,9 @@ export async function applyDamage(target, damageData) {
     return createdWoundIds.map(id => target.items.get(id));
   } else {
     // No wounds created due to armor
-    console.log(`Neuroshima: Damage blocked by armor for ${target.name} at ${damageData.locationName}. Armor: ${totalArmor}, Penetration: ${penetration}, Base Damage: ${damageData.damageType}`);
+    if (shouldDebug()) console.log(`Neuroshima: Damage blocked by armor for ${target.name} at ${damageData.locationName}. Armor: ${totalArmor}, Penetration: ${penetration}, Base Damage: ${damageData.damageType}`);
     
-    const damageTypeName = CONFIG.NEUROSHIMA.damageTypes[damageData.damageType]?.name || damageData.damageType;
+    const damageTypeName = getDamageTypeName(damageData.damageType);
     const speaker = ChatMessage.getSpeaker({ actor: target });
     const content = `
       <div class="wound-notification blocked" style="background: #d4edda; padding: 10px; border-radius: 5px;">
@@ -467,64 +433,6 @@ export async function createDamageChatMessage(damageData) {
 }
 
 /**
- * Handle "Apply Damage" button click from chat message
- * @param {HTMLElement} button - The clicked button element
- */
-export async function handleApplyDamageButton(button) {
-  if (!game.user.isGM) {
-    ui.notifications.error("Tylko GM może aplikować obrażenia");
-    return;
-  }
-
-  const messageId = button.closest(".chat-message").dataset.messageId;
-  const message = game.messages.get(messageId);
-  
-  if (!message) {
-    ui.notifications.error("Nie można znaleźć wiadomości czatu");
-    return;
-  }
-  
-  const damageData = message.flags?.neuroshima?.damageData;
-  if (!damageData) {
-    ui.notifications.error("Brak danych o obrażeniach");
-    return;
-  }
-  
-  const target = game.actors.get(damageData.targetId);
-  if (!target) {
-    ui.notifications.error("Nie można znaleźć celu");
-    return;
-  }
-  
-  const wounds = await applyDamage(target, damageData);
-  
-  button.disabled = true;
-  button.classList.add("applied");
-  button.innerHTML = '<i class="fas fa-check-circle"></i> Obrażenia zaaplikowane';
-  
-  ui.notifications.info(`Zaaplikowano ${wounds.length} obrażenie(ń) na ${target.name}`);
-}
-
-/**
- * Toggle damage application section visibility
- * @param {HTMLElement} toggle - The toggle button element
- */
-export function toggleDamageApplicationSection(toggle) {
-  const section = toggle.closest(".damage-application").querySelector(".damage-actions");
-  const icon = toggle.querySelector("i");
-  
-  if (section.classList.contains("collapsed")) {
-    section.classList.remove("collapsed");
-    icon.classList.remove("fa-chevron-down");
-    icon.classList.add("fa-chevron-up");
-  } else {
-    section.classList.add("collapsed");
-    icon.classList.remove("fa-chevron-up");
-    icon.classList.add("fa-chevron-down");
-  }
-}
-
-/**
  * Perform a resistance test for a single wound (closed test)
  * Automatically called when a wound item is created on an actor
  * @param {Actor} actor - The actor receiving the wound
@@ -532,13 +440,13 @@ export function toggleDamageApplicationSection(toggle) {
  * @returns {Promise<object>} Result with test details
  */
 export async function performWoundResistanceTest(actor, wound) {
-  console.log(`Neuroshima: performWoundResistanceTest START for wound "${wound.name}"`);
+  if (shouldDebug()) console.log(`Neuroshima: performWoundResistanceTest START for wound "${wound.name}"`);
   
   const woundType = wound.system.type;
   const consequence = CONFIG.NEUROSHIMA.woundConsequences[woundType];
   
   if (!consequence || consequence.testDifficulty === null) {
-    console.log(`Neuroshima: No consequence or testDifficulty for wound type ${woundType}`);
+    if (shouldDebug()) console.log(`Neuroshima: No consequence or testDifficulty for wound type ${woundType}`);
     return {
       woundId: wound._id,
       woundName: wound.name,
@@ -552,34 +460,14 @@ export async function performWoundResistanceTest(actor, wound) {
   const attributeValue = actor.system.attributes.ch.value + (actor.system.attributes.ch.mod || 0);
   const testDifficulty = consequence.testDifficulty;
   
-  const difficultyMods = { easy: 2, average: 0, problematic: -2, hard: -5, veryHard: -8, damnHard: -11, luck: -15 };
-  const diffMod = testDifficulty ? (difficultyMods[testDifficulty] || 0) : 0;
+  const diffMod = testDifficulty ? getDifficultyModifier(testDifficulty) : 0;
   const threshold = attributeValue + diffMod;
   
   const roll = new Roll('3d20', actor.getRollData ? actor.getRollData() : {});
   await roll.evaluate();
   const diceResults = roll.terms[0].results.map(r => r.result);
   
-  let reducedDice = [...diceResults];
-  let remainingPoints = skillValue;
-  
-  while (remainingPoints > 0) {
-    let maxIndex = 0;
-    let maxValue = reducedDice[0];
-    for (let j = 1; j < reducedDice.length; j++) {
-      if (reducedDice[j] > maxValue) {
-        maxValue = reducedDice[j];
-        maxIndex = j;
-      }
-    }
-    
-    if (reducedDice[maxIndex] > 1) {
-      reducedDice[maxIndex]--;
-      remainingPoints--;
-    } else {
-      break;
-    }
-  }
+  const reducedDice = skillValue > 0 ? reduceDiceResults(diceResults, skillValue) : [...diceResults];
   
   let successes = 0;
   for (let j = 0; j < reducedDice.length; j++) {
@@ -591,7 +479,7 @@ export async function performWoundResistanceTest(actor, wound) {
   const passed = successes >= 2;
   const penalty = passed ? consequence.passedPenalty : consequence.failedPenalty;
   
-  console.log(`Neuroshima: Wound test result - Raw[${diceResults}] → Reduced[${reducedDice}] vs Threshold${threshold} = ${successes} successes, Penalty: ${penalty}%`);
+  if (shouldDebug()) console.log(`Neuroshima: Wound test result - Raw[${diceResults}] → Reduced[${reducedDice}] vs Threshold${threshold} = ${successes} successes, Penalty: ${penalty}%`);
   
   return {
     woundId: wound._id,

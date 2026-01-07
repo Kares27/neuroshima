@@ -17,15 +17,15 @@ import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.mjs";
 import { NEUROSHIMA } from "./module/helpers/config.mjs";
 import { preloadHandlebarsTemplates } from "./module/helpers/templates.mjs";
 import { registerHandlebarsHelpers } from "./module/helpers/handlebars.mjs";
-import { handleApplyDamageButton } from "./module/helpers/combat-utils.mjs";
 import { registerSystemSettings, canSeeDamageApplication, canApplyDamage } from "./module/helpers/settings.mjs";
+import { escapeHtml, unescapeHtml, getDamageTypeName, shouldDebug } from "./module/helpers/utils.mjs";
 
 /* -------------------------------------------- */
 /*  Init Hook                                   */
 /* -------------------------------------------- */
 
 Hooks.once('init', function() {
-  console.log('Neuroshima | Initializing Neuroshima System');
+  if (shouldDebug()) console.log('Neuroshima | Initializing Neuroshima System');
 
   // Assign custom classes and constants here
   CONFIG.NEUROSHIMA = NEUROSHIMA;
@@ -69,7 +69,7 @@ Hooks.once('init', function() {
 /* -------------------------------------------- */
 
 Hooks.once("ready", function() {
-  console.log('Neuroshima | System ready');
+  if (shouldDebug()) console.log('Neuroshima | System ready');
 });
 
 /* -------------------------------------------- */
@@ -105,7 +105,7 @@ Hooks.on("renderChatMessage", (message, html, data) => {
     let currentSuccesses = parseInt(button.dataset.currentSuccesses) || 0;
     const maxSuccesses = actor.system.actionTracking?.maxSuccesses || 3;
     
-    console.log(`[Neuroshima] Execute Beast Action: currentSuccesses=${currentSuccesses} (from button), maxSuccesses=${maxSuccesses}, actionItem=${item.name}`);
+    if (shouldDebug()) console.log(`[Neuroshima] Execute Beast Action: currentSuccesses=${currentSuccesses} (from button), maxSuccesses=${maxSuccesses}, actionItem=${item.name}`);
     
     if (currentSuccesses < 1) {
       ui.notifications.warn(`Brak dostępnych sukcesów! (${currentSuccesses}/${maxSuccesses}). Wykonaj rzut akcją aby wygenerować sukcesy.`);
@@ -123,31 +123,25 @@ Hooks.on("renderChatMessage", (message, html, data) => {
     const selectedAction = await sheet._showActionSelectionDialog(item, 'successes', currentSuccesses);
     
     if (!selectedAction) {
-      console.log(`[Neuroshima] Action selection cancelled`);
+      if (shouldDebug()) console.log(`[Neuroshima] Action selection cancelled`);
       return;
     }
     
     // Deduct action cost from current successes
     const newSuccessCount = currentSuccesses - selectedAction.cost;
-    console.log(`[Neuroshima] Executing action: ${selectedAction.name}, cost=${selectedAction.cost}, remaining=${newSuccessCount}`);
+    if (shouldDebug()) console.log(`[Neuroshima] Executing action: ${selectedAction.name}, cost=${selectedAction.cost}, remaining=${newSuccessCount}`);
     
     // Update actor
-    console.log(`[Neuroshima] Updating actor: currentSuccesses ${currentSuccesses} -> ${newSuccessCount}`);
+    if (shouldDebug()) console.log(`[Neuroshima] Updating actor: currentSuccesses ${currentSuccesses} -> ${newSuccessCount}`);
     await actor.update({ 'system.actionTracking.currentSuccesses': newSuccessCount });
-    console.log(`[Neuroshima] Actor updated successfully`);
+    if (shouldDebug()) console.log(`[Neuroshima] Actor updated successfully`);
     
     // Display action execution in chat FIRST (before re-rendering sheet)
     if (sheet?._displayActionExecution) {
-      console.log(`[Neuroshima] Calling _displayActionExecution from sheet`);
+      if (shouldDebug()) console.log(`[Neuroshima] Calling _displayActionExecution from sheet`);
       await sheet._displayActionExecution(selectedAction, item, currentSuccesses, newSuccessCount);
     } else {
-      console.log(`[Neuroshima] Sheet unavailable, creating fallback action execution message`);
-      const damageTypeNames = {
-        'D': 'Draśnięcie', 'sD': 'Siniak (Draśnięcie)',
-        'L': 'Lekkie', 'sL': 'Siniak (Lekkie)',
-        'C': 'Ciężkie', 'sC': 'Siniak (Ciężkie)',
-        'K': 'Krytyczne', 'sK': 'Siniak (Krytyczne)'
-      };
+      if (shouldDebug()) console.log(`[Neuroshima] Sheet unavailable, creating fallback action execution message`);
       
       const content = `
         <div class="neuroshima-action-execution">
@@ -155,7 +149,7 @@ Hooks.on("renderChatMessage", (message, html, data) => {
           <div class="action-execution-details">
             <div class="action-execution-name"><strong>${selectedAction.name}</strong></div>
             <div class="action-execution-stats">
-              ${selectedAction.damage ? `<div class="stat-row"><span class="stat-label">Obrażenia:</span> <span class="stat-value">${damageTypeNames[selectedAction.damage] || selectedAction.damage}</span></div>` : ''}
+              ${selectedAction.damage ? `<div class="stat-row"><span class="stat-label">Obrażenia:</span> <span class="stat-value">${getDamageTypeName(selectedAction.damage)}</span></div>` : ''}
               ${selectedAction.range ? `<div class="stat-row"><span class="stat-label">Zasięg:</span> <span class="stat-value">${selectedAction.range}</span></div>` : ''}
             </div>
             <div class="action-execution-cost">
@@ -179,10 +173,10 @@ Hooks.on("renderChatMessage", (message, html, data) => {
     
     // THEN refresh sheet to show updated success count
     if (sheet?.render) {
-      console.log(`[Neuroshima] Refreshing sheet display...`);
+      if (shouldDebug()) console.log(`[Neuroshima] Refreshing sheet display...`);
       sheet.render(false);
     } else {
-      console.log(`[Neuroshima] No sheet to refresh`);
+      if (shouldDebug()) console.log(`[Neuroshima] No sheet to refresh`);
     }
   });
   
@@ -444,105 +438,6 @@ function populateSelectedTargetsList(listContainer, damageSection) {
 }
 
 /* -------------------------------------------- */
-/*  Handlebars Helpers                          */
-/* -------------------------------------------- */
-
-Hooks.once('init', function() {
-  // Register Handlebars helpers
-  Handlebars.registerHelper('concat', function() {
-    var outStr = '';
-    for (var arg in arguments) {
-      if (typeof arguments[arg] != 'object') {
-        outStr += arguments[arg];
-      }
-    }
-    return outStr;
-  });
-
-  Handlebars.registerHelper('toLowerCase', function(str) {
-    return str.toLowerCase();
-  });
-
-  Handlebars.registerHelper('eq', function(a, b) {
-    return a == b;
-  });
-
-  Handlebars.registerHelper('ne', function(a, b) {
-    return a != b;
-  });
-
-  Handlebars.registerHelper('gt', function(a, b) {
-    return a > b;
-  });
-
-  Handlebars.registerHelper('lt', function(a, b) {
-    return a < b;
-  });
-
-  Handlebars.registerHelper('math', function() {
-    let result = 0;
-    for (let i = 0; i < arguments.length - 1; i += 2) {
-      if (i === 0) {
-        result = parseFloat(arguments[i]) || 0;
-      } else {
-        const operator = arguments[i];
-        const operand = parseFloat(arguments[i + 1]) || 0;
-        
-        switch (operator) {
-          case '+':
-            result += operand;
-            break;
-          case '-':
-            result -= operand;
-            break;
-          case '*':
-            result *= operand;
-            break;
-          case '/':
-            result /= operand;
-            break;
-        }
-      }
-    }
-    return Math.max(1, result); // Minimum 1 dla progów testów
-  });
-
-  Handlebars.registerHelper('join', function(array, separator) {
-    if (Array.isArray(array)) {
-      return array.join(separator || ', ');
-    }
-    return '';
-  });
-
-  Handlebars.registerHelper('isSpecialized', function(specializations, category) {
-    return specializations?.categories?.[category] || false;
-  });
-
-  Handlebars.registerHelper('specializationClass', function(specializations, category) {
-    return (specializations?.categories?.[category]) ? 'specialized' : '';
-  });
-
-  // Helper do kalkulacji poziomów trudności w tabeli współczynników
-  // Kalkuluje: wartość_atrybutu + modyfikator_atrybutu + modyfikator_poziomu_trudności
-  // UWAGA: Może być ujemny! (np. przy Farcie z niskim atrybutem)
-  Handlebars.registerHelper('difficultyValue', function(attributeValue, attributeMod, difficultyMod) {
-    const result = (attributeValue || 0) + (attributeMod || 0) + difficultyMod;
-    return result; // Może być ujemny - to jest zgodne z regułami!
-  });
-
-  // Helper do tłumaczenia typów akcji bestii
-  Handlebars.registerHelper('getActionTypeName', function(actionType) {
-    const types = {
-      'attack': 'Atak',
-      'defense': 'Obrona',
-      'special': 'Specjalna',
-      'movement': 'Ruch'
-    };
-    return types[actionType] || actionType;
-  });
-});
-
-/* -------------------------------------------- */
 /*  Token Selection Hook                        */
 /* -------------------------------------------- */
 
@@ -577,17 +472,6 @@ Hooks.on('controlToken', (token, controlled) => {
 Hooks.on('renderChatMessageHTML', (message, html, data) => {
   const woundNotification = html.querySelector('.wound-notification');
   if (!woundNotification) return;
-  
-  const unescapeHtml = (text) => {
-    const map = {
-      '&amp;': '&',
-      '&lt;': '<',
-      '&gt;': '>',
-      '&quot;': '"',
-      '&#039;': "'"
-    };
-    return text.replace(/&(?:amp|lt|gt|quot|#039);/g, m => map[m]);
-  };
   
   const tooltipTriggers = html.querySelectorAll('.wound-test-tooltip-trigger');
   
@@ -662,5 +546,45 @@ Hooks.on('renderChatMessageHTML', (message, html, data) => {
       tooltipDiv.addEventListener('mouseleave', hideTooltip);
     });
   });
+});
+
+/* -------------------------------------------- */
+/*  Socket Event Handlers                       */
+/* -------------------------------------------- */
+
+game.socket.on("system.neuroshima", async (data) => {
+  // Only GM processes socket events
+  if (!game.user.isGM) return;
+
+  if (data.type === "performWoundResistanceTest") {
+    try {
+      const actor = game.actors.get(data.actorId);
+      const wound = actor?.items.get(data.woundId);
+
+      if (!actor || !wound) {
+        if (shouldDebug()) console.log("Neuroshima | Socket: Wound or actor not found for resistance test");
+        return;
+      }
+
+      const { performWoundResistanceTest } = await import("./module/helpers/combat-utils.mjs");
+      const testResult = await performWoundResistanceTest(actor, wound);
+
+      if (testResult.performedTest) {
+        const updateData = {
+          _id: wound._id,
+          'system.penalty': testResult.penalty,
+          'system.resistanceTest.performed': true,
+          'system.resistanceTest.passed': testResult.passed,
+          'system.resistanceTest.successes': testResult.successes,
+          'flags.neuroshima.resistanceTestResult': testResult
+        };
+
+        await actor.updateEmbeddedDocuments('Item', [updateData]);
+        if (shouldDebug()) console.log(`Neuroshima | Socket: Resistance test performed for wound ${wound.name}`);
+      }
+    } catch (error) {
+      console.error("Neuroshima | Socket error handling resistance test:", error);
+    }
+  }
 });
 

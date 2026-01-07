@@ -1,0 +1,159 @@
+<form class="{{cssClass}}" autocomplete="off">
+  {{!-- Header with effect icon and name --}}
+  <header class="sheet-header">
+    <div class="header-image">
+      <img src="{{document.img}}" data-edit="img" title="{{document.name}}" height="64" width="64"/>
+    </div>
+    <div class="header-fields">
+      <h1 class="charname">
+        <input name="name" type="text" value="{{document.name}}" placeholder="Nazwa efektu"/>
+      </h1>
+    </div>
+  </header>
+
+  {{!-- Navigation tabs --}}
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="details">Detale</a>
+    <a class="item" data-tab="duration">Czas trwania</a>
+    <a class="item" data-tab="effects">Zmiany</a>
+    <a class="item" data-tab="scripts">Skrypty</a>
+  </nav>
+
+  {{!-- Sheet body --}}
+  <section class="sheet-body">
+
+    {{!-- Details Tab --}}
+    <div class="tab" data-group="primary" data-tab="details">
+      <div class="form-group">
+        <label>{{localize "EFFECT.Label"}}</label>
+        <input type="text" name="name" value="{{document.name}}" placeholder="Nazwa wyświetlana"/>
+      </div>
+
+      <div class="form-group">
+        <label>{{localize "Origin"}}</label>
+        <input type="text" name="origin" value="{{document.origin}}" readonly />
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="disabled" {{checked document.disabled}}/>
+          {{localize "EFFECT.Disabled"}}
+        </label>
+      </div>
+    </div>
+
+    {{!-- Duration Tab --}}
+    <div class="tab" data-group="primary" data-tab="duration">
+      <div class="form-group">
+        <label>{{localize "EFFECT.DurationStartRound"}}</label>
+        <input type="number" name="duration.startRound" value="{{document.duration.startRound}}" data-dtype="Number" min="0"/>
+      </div>
+
+      <div class="form-group">
+        <label>{{localize "EFFECT.DurationStartTurn"}}</label>
+        <input type="number" name="duration.startTurn" value="{{document.duration.startTurn}}" data-dtype="Number" min="0"/>
+      </div>
+
+      <div class="form-group">
+        <label>{{localize "EFFECT.DurationRounds"}}</label>
+        <input type="number" name="duration.rounds" value="{{document.duration.rounds}}" data-dtype="Number" min="0"/>
+      </div>
+
+      <div class="form-group">
+        <label>{{localize "EFFECT.DurationTurns"}}</label>
+        <input type="number" name="duration.turns" value="{{document.duration.turns}}" data-dtype="Number" min="0"/>
+      </div>
+
+      <div class="form-group">
+        <label>{{localize "EFFECT.DurationSeconds"}}</label>
+        <input type="number" name="duration.seconds" value="{{document.duration.seconds}}" data-dtype="Number" min="0" step="0.1"/>
+      </div>
+
+      <div class="form-group">
+        <label>{{localize "EFFECT.DurationCombatTurn"}}</label>
+        <input type="checkbox" name="duration.combat" {{checked document.duration.combat}}/>
+      </div>
+    </div>
+
+    {{!-- Changes Tab (Effects) --}}
+    <div class="tab" data-group="primary" data-tab="effects">
+      <div class="changes-header">
+        <h3>{{localize "EFFECT.Changes"}}</h3>
+        {{#if editable}}
+          <button type="button" class="add-change" data-action="add-change">
+            <i class="fas fa-plus"></i> {{localize "EFFECT.AddChange"}}
+          </button>
+        {{/if}}
+      </div>
+
+      <div class="changes-list">
+        {{#each document.changes as |change idx|}}
+        <div class="change-item" data-change-index="{{idx}}">
+          <div class="form-group">
+            <label>Klucz atrybutu</label>
+            <div class="key-input-group">
+              <input type="text" name="changes.{{idx}}.key" value="{{change.key}}" placeholder="system.attributes.zr.value" class="key-input"/>
+              <select class="attribute-key-select">
+                <option value="">-- Wybierz z listy --</option>
+                {{#each ../attributeKeys as |option|}}
+                  <option value="{{option.key}}" {{#if (eq option.key change.key)}}selected{{/if}}>{{option.label}}</option>
+                {{/each}}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>{{localize "EFFECT.ChangeMode"}}</label>
+            <select name="changes.{{idx}}.mode">
+              <option value="OVERRIDE" {{#if (eq change.mode "OVERRIDE")}}selected{{/if}}>{{localize "EFFECT.MODE.Override"}}</option>
+              <option value="MULTIPLY" {{#if (eq change.mode "MULTIPLY")}}selected{{/if}}>{{localize "EFFECT.MODE.Multiply"}}</option>
+              <option value="ADD" {{#if (eq change.mode "ADD")}}selected{{/if}}>{{localize "EFFECT.MODE.Add"}}</option>
+              <option value="UPGRADE" {{#if (eq change.mode "UPGRADE")}}selected{{/if}}>{{localize "EFFECT.MODE.Upgrade"}}</option>
+              <option value="DOWNGRADE" {{#if (eq change.mode "DOWNGRADE")}}selected{{/if}}>{{localize "EFFECT.MODE.Downgrade"}}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>{{localize "EFFECT.ChangeValue"}}</label>
+            <input type="text" name="changes.{{idx}}.value" value="{{change.value}}" placeholder="wartość"/>
+          </div>
+
+          <div class="form-group">
+            <label>{{localize "Priority"}}</label>
+            <input type="number" name="changes.{{idx}}.priority" value="{{change.priority}}" data-dtype="Number" min="0"/>
+          </div>
+
+          {{#if editable}}
+          <div class="change-controls">
+            <button type="button" class="delete-change" data-change-index="{{idx}}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+          {{/if}}
+        </div>
+        {{/each}}
+      </div>
+    </div>
+
+    {{!-- Scripts Tab --}}
+    <div class="tab" data-group="primary" data-tab="scripts">
+      <p style="color: #999; font-size: 11px; margin-bottom: 12px;">
+        Zakładka Scripts - Zaawansowane funkcjonalności skryptowania będą dostępne w przyszłych wersjach.
+      </p>
+      
+      <div class="script-section">
+        <h3>Informacje o efekcie</h3>
+        <div class="form-group">
+          <label>ID efektu:</label>
+          <input type="text" value="{{document.id}}" readonly style="cursor: not-allowed;"/>
+        </div>
+        
+        <div class="form-group">
+          <label>UUID:</label>
+          <input type="text" value="{{document.uuid}}" readonly style="cursor: not-allowed;"/>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</form>

@@ -1,5 +1,6 @@
 import {onManageActiveEffect, prepareActiveEffectCategories} from "../helpers/effects.mjs";
 import { NeuroshimaActorSheet } from "./actor-sheet.mjs";
+import { escapeHtml, getDamageTypeName, shouldDebug } from "../helpers/utils.mjs";
 
 /**
  * Rozszerza arkusz postaci Character Sheet dla typu NPC.
@@ -87,7 +88,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
     context.config = CONFIG.NEUROSHIMA;
     context.collapsedSections = this.actor.getFlag('neuroshima', 'collapsedSections') || {};
 
-    console.log('Neuroshima NPC: Context before return:', {
+    if (shouldDebug()) console.log('Neuroshima NPC: Context before return:', {
       hasWeapons: !!context.weapons,
       hasArmor: !!context.armor,
       weaponsLength: context.weapons?.length,
@@ -122,7 +123,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
       item.type === 'armor' && item.system.equipable
     );
     
-    console.log('Neuroshima: Calculating armor from equipped items:', equippedArmor.length);
+    if (shouldDebug()) console.log('Neuroshima: Calculating armor from equipped items:', equippedArmor.length);
     
     let totalArmor = {
       head: 0,
@@ -135,7 +136,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
     
     equippedArmor.forEach(armor => {
       if (armor.system.protection) {
-        console.log(`Neuroshima: Adding armor ${armor.name}:`, armor.system.protection);
+        if (shouldDebug()) console.log(`Neuroshima: Adding armor ${armor.name}:`, armor.system.protection);
         const damageAP = armor.system.damageAP || {};
         
         // Calculate current AP (max - damage) for each location
@@ -148,7 +149,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
       }
     });
     
-    console.log('Neuroshima: Total armor calculated:', totalArmor);
+    if (shouldDebug()) console.log('Neuroshima: Total armor calculated:', totalArmor);
     
     // Update context armor values immediately for rendering
     context.system.armor = totalArmor;
@@ -162,7 +163,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
         currentArmor.leftLeg !== totalArmor.leftLeg ||
         currentArmor.rightLeg !== totalArmor.rightLeg) {
       
-      console.log('Neuroshima: Updating actor armor values from', currentArmor, 'to', totalArmor);
+      if (shouldDebug()) console.log('Neuroshima: Updating actor armor values from', currentArmor, 'to', totalArmor);
       
       // Update the armor values (this will be saved automatically)
       await this.actor.update({
@@ -176,7 +177,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
       
       // Also update local actor system to ensure synchronization
       this.actor.system.armor = totalArmor;
-      console.log('Neuroshima: Actor system armor updated:', this.actor.system.armor);
+      if (shouldDebug()) console.log('Neuroshima: Actor system armor updated:', this.actor.system.armor);
     }
   }
 
@@ -216,7 +217,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
       else if (i.type === 'armor') {
         armor.push(i);
         if (i.system.equipable) {
-          console.log('Neuroshima: Found equipped armor:', i.name, 'equipable:', i.system.equipable, 'protection:', i.system.protection);
+          if (shouldDebug()) console.log('Neuroshima: Found equipped armor:', i.name, 'equipable:', i.system.equipable, 'protection:', i.system.protection);
           equippedArmor.push(i);
         }
       }
@@ -237,7 +238,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
     context.equippedWeapons = equippedWeapons;
     context.equippedArmor = equippedArmor;
     
-    console.log('Neuroshima NPC: Context after _prepareItems:', {
+    if (shouldDebug()) console.log('Neuroshima NPC: Context after _prepareItems:', {
       weapons: weapons.length,
       armor: armor.length,
       equipment: equipment.length,
@@ -263,7 +264,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
       }
     });
     
-    console.log('Neuroshima: Total armor items:', armor.length, 'Equipped armor:', equippedArmor.length);
+    if (shouldDebug()) console.log('Neuroshima: Total armor items:', armor.length, 'Equipped armor:', equippedArmor.length);
     
     // Add helper functions to context
     context.getTotalWoundPenalty = this._getTotalWoundPenalty();
@@ -435,21 +436,9 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
                 passedTooltipContent += '</div>';
                 failedTooltipContent += '</div>';
                 
-                // Escape HTML entities in tooltip content for safe attribute usage
-                const escapeHtml = (text) => {
-                  const map = {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;'
-                  };
-                  return text.replace(/[&<>"']/g, m => map[m]);
-                };
-                
                 // Send consolidated chat notification with test summary
                 const speaker = ChatMessage.getSpeaker({ actor: this.actor });
-                const damageTypeName = CONFIG.NEUROSHIMA.damageTypes[data.type]?.name || data.type;
+                const damageTypeName = getDamageTypeName(data.type);
                 let content = `<div class="wound-notification">
                   <p class="wound-notification-title"><strong>${this.actor.name}</strong> otrzymał ${count} obrażenie(ń) typu <strong>${damageTypeName}</strong></p>`;
                 

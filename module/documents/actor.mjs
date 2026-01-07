@@ -2,6 +2,9 @@
  * Extend the base Actor document by defining a custom roll data structure which is ideal for the Simple system.
  * @extends {Actor}
  */
+
+import { reduceDiceResults, reduceSingleDie } from "../helpers/utils.mjs";
+
 export class NeuroshimaActor extends Actor {
 
   /** @override */
@@ -270,7 +273,7 @@ export class NeuroshimaActor extends Actor {
     
     if (reductionPoints > 0) {
       // Zredukuj wyniki kości
-      finalDice = this._reduceDiceResults(workingDice, reductionPoints);
+      finalDice = reduceDiceResults(workingDice, reductionPoints);
     }
 
     // Oblicz sukcesy (zgodnie z regułami - bierzemy najwyższą z dwóch najniższych kości)
@@ -311,36 +314,7 @@ export class NeuroshimaActor extends Actor {
     };
   }
 
-  /**
-   * Redukuje wyniki kości używając punktów umiejętności
-   */
-  _reduceDiceResults(dice, reductionPoints) {
-    const workingDice = [...dice].sort((a, b) => b - a); // Od najwyższej
-    let remainingPoints = reductionPoints;
-    
-    // Próbuj wyrównać kości zaczynając od najwyższej
-    while (remainingPoints > 0 && workingDice[0] > workingDice[1]) {
-      const difference = workingDice[0] - workingDice[1];
-      const pointsToUse = Math.min(difference, remainingPoints);
-      
-      workingDice[0] -= pointsToUse;
-      remainingPoints -= pointsToUse;
-    }
-    
-    // Jeśli zostały punkty, zredukuj obie kości równomiernie
-    while (remainingPoints > 0) {
-      if (remainingPoints >= 2) {
-        workingDice[0] -= 1;
-        workingDice[1] -= 1;
-        remainingPoints -= 2;
-      } else {
-        workingDice[0] -= 1;
-        remainingPoints -= 1;
-      }
-    }
-    
-    return workingDice.sort((a, b) => a - b);
-  }
+
 
   /**
    * Wykonuje rzut bronią białą (test zamknięty z redukcją kości)
@@ -404,9 +378,9 @@ export class NeuroshimaActor extends Actor {
       if (die === 20) difficultyAdjustment += 1; // Trudniej
     });
 
-    // Redukcja kości w teście zamkniętym (skill/4)
+    // Redukcja kości w teście zamkniętym
     const reductionAmount = skillLevel > 0 ? Math.floor(skillLevel / 4) : 0;
-    const reducedDice = dice.map(die => Math.max(1, die - reductionAmount));
+    const reducedDice = reductionAmount > 0 ? reduceDiceResults(dice, reductionAmount) : [...dice];
     
     // Policz sukcesy (każda zredukowana kość <= próg = 1 sukces)
     const successes = reducedDice.filter(die => die <= threshold).length;

@@ -58,6 +58,24 @@ export function registerHandlebarsHelpers() {
     });
   }
 
+  if (!Handlebars.helpers.ne) {
+    Handlebars.registerHelper('ne', function(a, b) {
+      return a != b;
+    });
+  }
+
+  if (!Handlebars.helpers.gt) {
+    Handlebars.registerHelper('gt', function(a, b) {
+      return a > b;
+    });
+  }
+
+  if (!Handlebars.helpers.lt) {
+    Handlebars.registerHelper('lt', function(a, b) {
+      return a < b;
+    });
+  }
+
   if (!Handlebars.helpers.checked) {
     Handlebars.registerHelper('checked', function(value) {
       return value ? 'checked' : '';
@@ -125,4 +143,83 @@ export function registerHandlebarsHelpers() {
   Handlebars.registerHelper('protectsLocation', function(item, location) {
     return (item.system.protection[location] || 0) > 0;
   });
+
+  // Helper for math operations (used in difficulty value calculations)
+  if (!Handlebars.helpers.math) {
+    Handlebars.registerHelper('math', function() {
+      let result = 0;
+      for (let i = 0; i < arguments.length - 1; i += 2) {
+        if (i === 0) {
+          result = parseFloat(arguments[i]) || 0;
+        } else {
+          const operator = arguments[i];
+          const operand = parseFloat(arguments[i + 1]) || 0;
+          
+          switch (operator) {
+            case '+':
+              result += operand;
+              break;
+            case '-':
+              result -= operand;
+              break;
+            case '*':
+              result *= operand;
+              break;
+            case '/':
+              result /= operand;
+              break;
+          }
+        }
+      }
+      return Math.max(1, result);
+    });
+  }
+
+  // Helper to check if character is specialized in a category
+  if (!Handlebars.helpers.isSpecialized) {
+    Handlebars.registerHelper('isSpecialized', function(specializations, category) {
+      return specializations?.categories?.[category] || false;
+    });
+  }
+
+  // Helper to get CSS class for specialized categories
+  if (!Handlebars.helpers.specializationClass) {
+    Handlebars.registerHelper('specializationClass', function(specializations, category) {
+      return (specializations?.categories?.[category]) ? 'specialized' : '';
+    });
+  }
+
+  // Helper for calculating difficulty values in threshold tables
+  if (!Handlebars.helpers.difficultyValue) {
+    Handlebars.registerHelper('difficultyValue', function(attributeValue, attributeMod, difficultyMod) {
+      const result = (attributeValue || 0) + (attributeMod || 0) + difficultyMod;
+      return result;
+    });
+  }
+
+  // Helper for translating beast action types
+  if (!Handlebars.helpers.getActionTypeName) {
+    Handlebars.registerHelper('getActionTypeName', function(actionType) {
+      const types = {
+        'attack': 'Atak',
+        'defense': 'Obrona',
+        'special': 'Specjalna',
+        'movement': 'Ruch'
+      };
+      return types[actionType] || actionType;
+    });
+  }
+
+  // Helper to check if effects object has any items
+  if (!Handlebars.helpers.anyEffects) {
+    Handlebars.registerHelper('anyEffects', function(effects) {
+      if (!effects || typeof effects !== 'object') return false;
+      for (const category of Object.values(effects)) {
+        if (category.effects && Array.isArray(category.effects) && category.effects.length > 0) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }
 }

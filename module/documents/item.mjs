@@ -2,6 +2,9 @@
  * Extend the base Item document by defining a custom roll data structure which is ideal for the Simple system.
  * @extends {Item}
  */
+
+import { escapeHtml } from "../helpers/utils.mjs";
+
 export class NeuroshimaItem extends Item {
 
   /** @override */
@@ -52,6 +55,22 @@ export class NeuroshimaItem extends Item {
 
   async _performResistanceTestOnCreation(skipAutoChat = false) {
     try {
+      // Check if current user has permission to update this actor's items
+      if (!this.actor.canUserModify(game.user, "update")) {
+        // User lacks permission - request GM to perform the resistance test
+        if (game.user.isGM) {
+          // GM should have permission, but if not, skip
+          return;
+        }
+        // For non-GM users without permission, emit socket request to GM
+        game.socket.emit("system.neuroshima", {
+          type: "performWoundResistanceTest",
+          woundId: this._id,
+          actorId: this.actor.id
+        });
+        return;
+      }
+
       // Check if this wound type should skip resistance test
       const woundType = this.system?.type;
       const damageTypeConfig = CONFIG.NEUROSHIMA.damageTypes[woundType];
@@ -97,17 +116,7 @@ export class NeuroshimaItem extends Item {
             </div>
           </div>`;
           
-          // Escape HTML for attribute
-          const escapeHtml = (text) => {
-            const map = {
-              '&': '&amp;',
-              '<': '&lt;',
-              '>': '&gt;',
-              '"': '&quot;',
-              "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, m => map[m]);
-          };
+
           
           const resultClass = testResult.passed ? 'passed' : 'failed';
           const resultLabel = testResult.passed ? 'Zdane' : 'Niezdane';

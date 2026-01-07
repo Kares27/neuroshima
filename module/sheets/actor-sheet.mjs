@@ -1,5 +1,6 @@
 import {onManageActiveEffect, prepareActiveEffectCategories} from "../helpers/effects.mjs";
 import { createDamageData, createDamageChatMessage } from "../helpers/combat-utils.mjs";
+import { escapeHtml, unescapeHtml, getDamageTypeName, getDifficultyName, shouldDebug } from "../helpers/utils.mjs";
 
 /**
  * Extend the basic ActorSheet with some very simple modifications
@@ -124,7 +125,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       item.type === 'armor' && item.system.equipable
     );
     
-    console.log('Neuroshima: Calculating armor from equipped items:', equippedArmor.length);
+    if (shouldDebug()) console.log('Neuroshima: Calculating armor from equipped items:', equippedArmor.length);
     
     let totalArmor = {
       head: 0,
@@ -137,7 +138,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
     
     equippedArmor.forEach(armor => {
       if (armor.system.protection) {
-        console.log(`Neuroshima: Adding armor ${armor.name}:`, armor.system.protection);
+        if (shouldDebug()) console.log(`Neuroshima: Adding armor ${armor.name}:`, armor.system.protection);
         const damageAP = armor.system.damageAP || {};
         
         // Calculate current AP (max - damage) for each location
@@ -150,7 +151,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       }
     });
     
-    console.log('Neuroshima: Total armor calculated:', totalArmor);
+    if (shouldDebug()) console.log('Neuroshima: Total armor calculated:', totalArmor);
     
     // Update context armor values immediately for rendering
     context.system.armor = totalArmor;
@@ -164,7 +165,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
         currentArmor.leftLeg !== totalArmor.leftLeg ||
         currentArmor.rightLeg !== totalArmor.rightLeg) {
       
-      console.log('Neuroshima: Updating actor armor values from', currentArmor, 'to', totalArmor);
+      if (shouldDebug()) console.log('Neuroshima: Updating actor armor values from', currentArmor, 'to', totalArmor);
       
       // Update the armor values (this will be saved automatically)
       await this.actor.update({
@@ -178,7 +179,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       
       // Also update local actor system to ensure synchronization
       this.actor.system.armor = totalArmor;
-      console.log('Neuroshima: Actor system armor updated:', this.actor.system.armor);
+      if (shouldDebug()) console.log('Neuroshima: Actor system armor updated:', this.actor.system.armor);
     }
   }
 
@@ -218,7 +219,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       else if (i.type === 'armor') {
         armor.push(i);
         if (i.system.equipable) {
-          console.log('Neuroshima: Found equipped armor:', i.name, 'equipable:', i.system.equipable, 'protection:', i.system.protection);
+          if (shouldDebug()) console.log('Neuroshima: Found equipped armor:', i.name, 'equipable:', i.system.equipable, 'protection:', i.system.protection);
           equippedArmor.push(i);
         }
       }
@@ -258,7 +259,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       }
     });
     
-    console.log('Neuroshima: Total armor items:', armor.length, 'Equipped armor:', equippedArmor.length);
+    if (shouldDebug()) console.log('Neuroshima: Total armor items:', armor.length, 'Equipped armor:', equippedArmor.length);
     
     // Add helper functions to context
     context.getTotalWoundPenalty = this._getTotalWoundPenalty();
@@ -931,16 +932,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
    * @private
    */
   _getDifficultyName(difficulty) {
-    const difficultyNames = {
-      'easy': 'Łatwy',
-      'average': 'Przeciętny',
-      'problematic': 'Problematyczny',
-      'hard': 'Trudny',
-      'veryHard': 'Bardzo Trudny',
-      'damnHard': 'Cholernie Trudny',
-      'luck': 'Fart'
-    };
-    return difficultyNames[difficulty] || difficulty;
+    return getDifficultyName(difficulty);
   }
 
   /**
@@ -1534,18 +1526,6 @@ export class NeuroshimaActorSheet extends ActorSheet {
     const actionTypeText = result.actionType === 'attack' ? 'ATAK' : 'OBRONA';
     const hitText = isHit ? (result.actionType === 'attack' ? 'TRAFIENIE' : 'OBRONA UDANA') : (result.actionType === 'attack' ? 'PUDŁO' : 'OBRONA NIEUDANA');
     
-    // Mapowanie typów obrażeń
-    const damageTypeNames = {
-      'D': 'Draśnięcie',
-      'sD': 'Siniak (Draśnięcie)',
-      'L': 'Lekkie',
-      'sL': 'Siniak (Lekkie)',
-      'C': 'Ciężkie',
-      'sC': 'Siniak (Ciężkie)',
-      'K': 'Krytyczne',
-      'sK': 'Siniak (Krytyczne)'
-    };
-    
     // Build tooltip content (HTML with rows) - pokazuje pełne rozliczenie progu
     let tooltipRows = [];
     tooltipRows.push(`<div class="tooltip-row"><span class="tooltip-label">Atrybut:</span><span class="tooltip-value">${result.attributeValue}</span></div>`);
@@ -1624,7 +1604,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       totalDice: result.dice.length,
       hitLocation: result.hitLocation,
       damageType: result.damageType,
-      damageTypeName: damageTypeNames[result.damageType] || result.damageType,
+      damageTypeName: getDamageTypeName(result.damageType),
       isGM: game.user.isGM,
       ...damageApplicationData
     };
@@ -1923,18 +1903,6 @@ export class NeuroshimaActorSheet extends ActorSheet {
     const hitClass = isHit ? 'hit' : 'miss';
     const hitText = isHit ? 'TRAFIENIE' : 'PUDŁO';
     
-    // Mapowanie typów obrażeń
-    const damageTypeNames = {
-      'D': 'Draśnięcie',
-      'sD': 'Siniak (Draśnięcie)',
-      'L': 'Lekkie',
-      'sL': 'Siniak (Lekkie)',
-      'C': 'Ciężkie',
-      'sC': 'Siniak (Ciężkie)',
-      'K': 'Krytyczne',
-      'sK': 'Siniak (Krytyczne)'
-    };
-    
     // Build tooltip content (HTML with rows)
     let tooltipRows = [];
     tooltipRows.push(`<div class="tooltip-row"><span class="tooltip-label">Próg:</span><span class="tooltip-value">${result.threshold}</span></div>`);
@@ -2027,7 +1995,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       successPoints: result.successPoints,
       hitLocation: result.hitLocation,
       damageType: result.damageType,
-      damageTypeName: damageTypeNames[result.damageType] || result.damageType,
+      damageTypeName: getDamageTypeName(result.damageType),
       isGM: game.user.isGM,
       ...damageApplicationData
     };
@@ -2059,7 +2027,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
   async _deductAmmunition(weapon, bulletsFired) {
     // Check if weapon has selected ammunition
     if (!weapon.system.selectedAmmo) {
-      console.log('Neuroshima: No ammunition selected for weapon:', weapon.name);
+      if (shouldDebug()) console.log('Neuroshima: No ammunition selected for weapon:', weapon.name);
       return;
     }
     
@@ -2085,7 +2053,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
     });
     
     // Log the deduction
-    console.log(`Neuroshima: Deducted ${bulletsFired} bullets from ${ammo.name}. Remaining: ${newAmmo}/${ammo.system.ammo.max}`);
+    if (shouldDebug()) console.log(`Neuroshima: Deducted ${bulletsFired} bullets from ${ammo.name}. Remaining: ${newAmmo}/${ammo.system.ammo.max}`);
     
     // Show notification if magazine is empty
     if (newAmmo === 0) {
@@ -2106,7 +2074,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
     const itemId = event.currentTarget.dataset.itemId;
     const location = event.currentTarget.dataset.location;
     
-    console.log('_onModifyAP called:', { itemId, location, eventType: event.type });
+    if (shouldDebug()) console.log('_onModifyAP called:', { itemId, location, eventType: event.type });
     
     const item = this.actor.items.get(itemId);
     
@@ -2126,7 +2094,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
     const maxAP = item.system.protection[location] || 0;
     const currentDamage = item.system.damageAP?.[location] || 0;
     
-    console.log('Current values:', { maxAP, currentDamage, protection: item.system.protection, damageAP: item.system.damageAP });
+    if (shouldDebug()) console.log('Current values:', { maxAP, currentDamage, protection: item.system.protection, damageAP: item.system.damageAP });
     
     // Determine if this is a repair (left click) or damage (right click)
     const isRepair = event.type === 'click';
@@ -2140,7 +2108,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       newDamage = Math.min(maxAP, currentDamage + 1);
     }
     
-    console.log('Updating damage:', { oldDamage: currentDamage, newDamage });
+    if (shouldDebug()) console.log('Updating damage:', { oldDamage: currentDamage, newDamage });
     
     // Update the item
     await item.update({
@@ -2355,7 +2323,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       const currentState = item.system.equipable;
       const newState = !currentState;
       
-      console.log('Neuroshima: Equipment toggle for item:', itemId, 'from:', currentState, 'to:', newState);
+      if (shouldDebug()) console.log('Neuroshima: Equipment toggle for item:', itemId, 'from:', currentState, 'to:', newState);
       
       await item.update({
         "system.equipable": newState
@@ -2399,7 +2367,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
       newQuantity = currentQuantity + change;
     }
     
-    console.log('Neuroshima: Quantity change for item:', itemId, 'from:', currentQuantity, 'to:', newQuantity);
+    if (shouldDebug()) console.log('Neuroshima: Quantity change for item:', itemId, 'from:', currentQuantity, 'to:', newQuantity);
     
     await item.update({
       "system.quantity": newQuantity
@@ -2423,7 +2391,7 @@ export class NeuroshimaActorSheet extends ActorSheet {
     const name = checkbox.name;
     const itemId = name.split('.')[1];
     
-    console.log('Neuroshima: Equipment checkbox changed for item:', itemId, 'equipped:', isEquipped);
+    if (shouldDebug()) console.log('Neuroshima: Equipment checkbox changed for item:', itemId, 'equipped:', isEquipped);
     
     const item = this.actor.items.get(itemId);
     if (item) {
@@ -2552,21 +2520,9 @@ export class NeuroshimaActorSheet extends ActorSheet {
                 passedTooltipContent += '</div>';
                 failedTooltipContent += '</div>';
                 
-                // Escape HTML entities in tooltip content for safe attribute usage
-                const escapeHtml = (text) => {
-                  const map = {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;'
-                  };
-                  return text.replace(/[&<>"']/g, m => map[m]);
-                };
-                
                 // Send consolidated chat notification with test summary
                 const speaker = ChatMessage.getSpeaker({ actor: this.actor });
-                const damageTypeName = CONFIG.NEUROSHIMA.damageTypes[data.type]?.name || data.type;
+                const damageTypeName = getDamageTypeName(data.type);
                 let content = `<div class="wound-notification">
                   <p class="wound-notification-title"><strong>${this.actor.name}</strong> otrzymał ${count} obrażenie(ń) typu <strong>${damageTypeName}</strong></p>`;
                 

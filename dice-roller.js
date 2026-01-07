@@ -1,3 +1,5 @@
+import { shouldDebug } from "./module/helpers/utils.mjs";
+
 /**
  * ===================================================================
  * NEUROSHIMA 1.5 - SYSTEM RZUTÓW KOŚĆMI
@@ -111,12 +113,12 @@ export class NeuroshimaDiceRoller {
     // Skill = 0: +1 poziom trudności (trudniej)
     if (skillLevel === 0) {
       adjustment = 1;
-      console.log(`SKILL ADJUSTMENT: Skill = 0, zwiększam trudność o 1 poziom`);
+      if (shouldDebug()) console.log(`SKILL ADJUSTMENT: Skill = 0, zwiększam trudność o 1 poziom`);
     }
     // Skill podzielny przez 4: -1 poziom trudności (łatwiej)
     else if (skillLevel > 0 && skillLevel % 4 === 0) {
       adjustment = -1;
-      console.log(`SKILL ADJUSTMENT: Skill ${skillLevel} podzielny przez 4, zmniejszam trudność o 1 poziom`);
+      if (shouldDebug()) console.log(`SKILL ADJUSTMENT: Skill ${skillLevel} podzielny przez 4, zmniejszam trudność o 1 poziom`);
     }
     
     return this.adjustDifficultyByLevel(currentDifficulty, adjustment);
@@ -159,7 +161,7 @@ export class NeuroshimaDiceRoller {
     const newIndex = Math.max(0, Math.min(difficultyOrder.length - 1, currentIndex + adjustment));
     const newDifficulty = difficultyOrder[newIndex];
     
-    console.log(`DIFFICULTY ADJUSTMENT: ${currentDifficulty} ${adjustment > 0 ? '+' : ''}${adjustment} → ${newDifficulty}`);
+    if (shouldDebug()) console.log(`DIFFICULTY ADJUSTMENT: ${currentDifficulty} ${adjustment > 0 ? '+' : ''}${adjustment} → ${newDifficulty}`);
     return newDifficulty;
   }
 
@@ -193,7 +195,7 @@ export class NeuroshimaDiceRoller {
    * @returns {Object} Obiekt Roll z wynikami w neuroshimaData
    */
   static async performRoll(actor, rollName, rollLevel, attributeValue, difficulty, difficultyMods, testType, rollType = 'skill', attributeKey = null, percentageModifier = 0) {
-    console.log(`
+    if (shouldDebug()) console.log(`
 === NEUROSHIMA DICE ROLL START ===
 Wykonuję ${testType} test dla ${rollType}: ${rollName}
 ${rollType === 'skill' ? `Atrybut: ${attributeKey} (${attributeValue}), Skill: ${rollLevel}` : ''}
@@ -205,7 +207,7 @@ Modyfikator procentowy: ${percentageModifier}%
     
     // KROK 1: Oblicz bazowy procent dla wybranego poziomu trudności
     const baseDifficultyPercentage = this.getDifficultyBasePercentage(difficulty);
-    console.log(`KROK 1: Bazowy procent poziomu ${difficulty}: ${baseDifficultyPercentage}%`);
+    if (shouldDebug()) console.log(`KROK 1: Bazowy procent poziomu ${difficulty}: ${baseDifficultyPercentage}%`);
     
     // Zachowaj oryginalny poziom trudności dla referencji
     const originalDifficulty = difficulty;
@@ -213,11 +215,11 @@ Modyfikator procentowy: ${percentageModifier}%
     
     // KROK 2: Zastosuj modyfikator procentowy od użytkownika
     let currentPercentage = baseDifficultyPercentage + percentageModifier;
-    console.log(`KROK 2: Po zastosowaniu modyfikatora ${percentageModifier}%: ${currentPercentage}%`);
+    if (shouldDebug()) console.log(`KROK 2: Po zastosowaniu modyfikatora ${percentageModifier}%: ${currentPercentage}%`);
     
     // KROK 3: Określ finalny poziom trudności na podstawie procenta
     const percentageAdjustedDifficulty = this.getDifficultyFromPercentage(currentPercentage);
-    console.log(`KROK 3: Poziom trudności po modyfikatorze procentowym: ${difficulty} → ${percentageAdjustedDifficulty}`);
+    if (shouldDebug()) console.log(`KROK 3: Poziom trudności po modyfikatorze procentowym: ${difficulty} → ${percentageAdjustedDifficulty}`);
     
     // KROK 4: Zastosuj modyfikatory za poziom umiejętności/wiedzy
     let levelAdjustedDifficulty;
@@ -228,12 +230,12 @@ Modyfikator procentowy: ${percentageModifier}%
     } else if (rollType === 'attribute') {
       // Dla czystych testów atrybutów nie ma adjustmentu za poziom
       levelAdjustedDifficulty = percentageAdjustedDifficulty;
-      console.log(`KROK 4: Test atrybutu - brak adjustmentu za poziom`);
+      if (shouldDebug()) console.log(`KROK 4: Test atrybutu - brak adjustmentu za poziom`);
     } else {
       levelAdjustedDifficulty = percentageAdjustedDifficulty; // fallback
     }
     
-    console.log(`KROK 4: Poziom trudności po adjustmencie za poziom: ${percentageAdjustedDifficulty} → ${levelAdjustedDifficulty}`);
+    if (shouldDebug()) console.log(`KROK 4: Poziom trudności po adjustmencie za poziom: ${percentageAdjustedDifficulty} → ${levelAdjustedDifficulty}`);
     
     // KROK 5: Wykonaj rzut 3k20 używając standardowego systemu Foundry
     // To zapewnia kompatybilność z modułami jak Dice So Nice
@@ -245,7 +247,7 @@ Modyfikator procentowy: ${percentageModifier}%
     
     // Pobierz wyniki kości
     const diceResults = rollResult.terms[0].results.map(r => r.result);
-    console.log(`KROK 5: Rzut 3k20: [${diceResults.join(', ')}]`);
+    if (shouldDebug()) console.log(`KROK 5: Rzut 3k20: [${diceResults.join(', ')}]`);
     
     // KROK 6: Sprawdź jedynki (1) i dwudziestki (20)
     // Jedynki zawsze ułatwiają test (w obu typach)
@@ -253,16 +255,16 @@ Modyfikator procentowy: ${percentageModifier}%
     const criticalSuccesses = diceResults.filter(result => result === 1).length;
     const criticalFailures = testType === "open" ? diceResults.filter(result => result === 20).length : 0;
     
-    console.log(`KROK 6: Jedynki (łatwiej): ${criticalSuccesses}, Dwudziestki (trudniej): ${criticalFailures}${testType === "closed" ? " (test zamknięty - dwudziestki nie liczą się jako porażka)" : ""}`);
+    if (shouldDebug()) console.log(`KROK 6: Jedynki (łatwiej): ${criticalSuccesses}, Dwudziestki (trudniej): ${criticalFailures}${testType === "closed" ? " (test zamknięty - dwudziestki nie liczą się jako porażka)" : ""}`);
     
     // Zastosuj modyfikacje trudności od jedynek i dwudziestek
     let finalDifficulty = levelAdjustedDifficulty;
     const netCriticalAdjustment = criticalSuccesses - criticalFailures;
     
     if (netCriticalAdjustment !== 0) {
-      console.log(`KROK 6: Adjustment od kości krytycznych: ${netCriticalAdjustment}`);
+      if (shouldDebug()) console.log(`KROK 6: Adjustment od kości krytycznych: ${netCriticalAdjustment}`);
       finalDifficulty = this.adjustDifficultyByLevel(levelAdjustedDifficulty, -netCriticalAdjustment);
-      console.log(`KROK 6: Finalny poziom trudności: ${levelAdjustedDifficulty} → ${finalDifficulty}`);
+      if (shouldDebug()) console.log(`KROK 6: Finalny poziom trudności: ${levelAdjustedDifficulty} → ${finalDifficulty}`);
     }
     
     // KROK 7: Oblicz próg trudności (atrybut + modyfikator poziomu trudności)
@@ -273,7 +275,7 @@ Modyfikator procentowy: ${percentageModifier}%
       console.error(`Dostępne modyfikatory:`, Object.keys(difficultyMods));
     }
     const difficultyValue = attributeValue + (difficultyModifier || 0);
-    console.log(`KROK 7: Próg trudności: ${attributeValue} + ${difficultyModifier || 0} = ${difficultyValue}${difficultyValue < 0 ? ' (UJEMNY!)' : ''}`);
+    if (shouldDebug()) console.log(`KROK 7: Próg trudności: ${attributeValue} + ${difficultyModifier || 0} = ${difficultyValue}${difficultyValue < 0 ? ' (UJEMNY!)' : ''}`);
     
     // KROK 8: Oblicz wyniki w zależności od typu testu
     let successCount = 0;
@@ -287,35 +289,35 @@ Modyfikator procentowy: ${percentageModifier}%
       // === TEST OTWARTY ===
       // Używamy dwóch najniższych kości i redukujemy je poziomem umiejętności
       const lowestTwo = sortedDice.slice(0, 2);
-      console.log(`TEST OTWARTY: Dwie najniższe kości: [${lowestTwo.join(', ')}]`);
+      if (shouldDebug()) console.log(`TEST OTWARTY: Dwie najniższe kości: [${lowestTwo.join(', ')}]`);
       
       // Rozprowadź punkty umiejętności między kości
       let remainingPoints = rollLevel;
-      console.log(`Punkty ${rollType} do rozprowadzenia: ${remainingPoints}`);
+      if (shouldDebug()) console.log(`Punkty ${rollType} do rozprowadzenia: ${remainingPoints}`);
       
       reducedDice = [...lowestTwo];
       
       // Strategia redukcji: najpierw wyrównaj kości, potem redukuj obie równomiernie
       while (remainingPoints > 0) {
-        console.log(`Pozostało punktów: ${remainingPoints}, Aktualne kości: [${reducedDice.join(', ')}]`);
+        if (shouldDebug()) console.log(`Pozostało punktów: ${remainingPoints}, Aktualne kości: [${reducedDice.join(', ')}]`);
         
         if (reducedDice[0] < reducedDice[1]) {
           // Redukuj wyższą kość
           reducedDice[1]--;
           remainingPoints--;
-          console.log(`Redukcja wyższej kości: [${reducedDice.join(', ')}]`);
+          if (shouldDebug()) console.log(`Redukcja wyższej kości: [${reducedDice.join(', ')}]`);
         } else {
           // Redukuj obie kości równomiernie
           if (remainingPoints >= 2) {
             reducedDice[0]--;
             reducedDice[1]--;
             remainingPoints -= 2;
-            console.log(`Redukcja obu kości: [${reducedDice.join(', ')}]`);
+            if (shouldDebug()) console.log(`Redukcja obu kości: [${reducedDice.join(', ')}]`);
           } else {
             // Zostało tylko 1 punkt - redukuj pierwszą kość
             reducedDice[0]--;
             remainingPoints--;
-            console.log(`Redukcja pierwszej kości: [${reducedDice.join(', ')}]`);
+            if (shouldDebug()) console.log(`Redukcja pierwszej kości: [${reducedDice.join(', ')}]`);
           }
         }
         
@@ -325,30 +327,30 @@ Modyfikator procentowy: ${percentageModifier}%
         
         // Jeśli obie kości są już na 1, przerwij
         if (reducedDice[0] === 1 && reducedDice[1] === 1) {
-          console.log(`Obie kości osiągnęły minimum (1), przerywam redukcję`);
+          if (shouldDebug()) console.log(`Obie kości osiągnęły minimum (1), przerywam redukcję`);
           break;
         }
       }
       
-      console.log(`Finalne zredukowane kości: [${reducedDice.join(', ')}]`);
+      if (shouldDebug()) console.log(`Finalne zredukowane kości: [${reducedDice.join(', ')}]`);
       
       // Wybierz WYŻSZĄ z dwóch zredukowanych kości jako finalny wynik
       finalResult = Math.max(reducedDice[0], reducedDice[1]);
-      console.log(`Finalny wynik (wyższa z dwóch): ${finalResult}`);
+      if (shouldDebug()) console.log(`Finalny wynik (wyższa z dwóch): ${finalResult}`);
       
       // Oblicz sukcesy (próg - wynik, może być ujemny jeśli próg ujemny lub wynik bardzo wysoki)
       successCount = difficultyValue - finalResult;
-      console.log(`Sukcesy: ${difficultyValue} - ${finalResult} = ${successCount}${successCount < 0 ? ' (PORAŻKA)' : ''}`);
+      if (shouldDebug()) console.log(`Sukcesy: ${difficultyValue} - ${finalResult} = ${successCount}${successCount < 0 ? ' (PORAŻKA)' : ''}`);
       
     } else {
       // === TEST ZAMKNIĘTY ===
       // Redukujemy wszystkie 3 kości poziomem umiejętności, potem liczymy ile <= próg
-      console.log(`TEST ZAMKNIĘTY: Kości przed redukcją: [${diceResults.join(', ')}]`);
+      if (shouldDebug()) console.log(`TEST ZAMKNIĘTY: Kości przed redukcją: [${diceResults.join(', ')}]`);
       
       // Kopiuj wszystkie kości do redukcji
       reducedDice = [...diceResults];
       let remainingPoints = rollLevel;
-      console.log(`Punkty ${rollType} do rozprowadzenia: ${remainingPoints}`);
+      if (shouldDebug()) console.log(`Punkty ${rollType} do rozprowadzenia: ${remainingPoints}`);
       
       // Strategia redukcji: redukuj najwyższe kości najpierw (aby zmaksymalizować szanse na sukces)
       while (remainingPoints > 0) {
@@ -366,28 +368,28 @@ Modyfikator procentowy: ${percentageModifier}%
         if (reducedDice[maxIndex] > 1) {
           reducedDice[maxIndex]--;
           remainingPoints--;
-          console.log(`Redukcja kości D${maxIndex + 1}: ${maxValue} → ${reducedDice[maxIndex]}, pozostało punktów: ${remainingPoints}`);
+          if (shouldDebug()) console.log(`Redukcja kości D${maxIndex + 1}: ${maxValue} → ${reducedDice[maxIndex]}, pozostało punktów: ${remainingPoints}`);
         } else {
           // Wszystkie kości są już na 1, przerwij
-          console.log(`Wszystkie kości osiągnęły minimum (1), przerywam redukcję`);
+          if (shouldDebug()) console.log(`Wszystkie kości osiągnęły minimum (1), przerywam redukcję`);
           break;
         }
       }
       
-      console.log(`Kości po redukcji: [${reducedDice.join(', ')}]`);
-      console.log(`Sprawdzam kości przeciw progowi ${difficultyValue}${difficultyValue < 0 ? ' (UJEMNY!)' : ''}`);
+      if (shouldDebug()) console.log(`Kości po redukcji: [${reducedDice.join(', ')}]`);
+      if (shouldDebug()) console.log(`Sprawdzam kości przeciw progowi ${difficultyValue}${difficultyValue < 0 ? ' (UJEMNY!)' : ''}`);
       
       // Liczymy ile kości wypadło <= próg trudności
       for (let i = 0; i < reducedDice.length; i++) {
         if (reducedDice[i] <= difficultyValue) {
           successCount++;
-          console.log(`Kość D${i + 1}: ${reducedDice[i]} <= ${difficultyValue} → SUKCES`);
+          if (shouldDebug()) console.log(`Kość D${i + 1}: ${reducedDice[i]} <= ${difficultyValue} → SUKCES`);
         } else {
-          console.log(`Kość D${i + 1}: ${reducedDice[i]} > ${difficultyValue} → PORAŻKA`);
+          if (shouldDebug()) console.log(`Kość D${i + 1}: ${reducedDice[i]} > ${difficultyValue} → PORAŻKA`);
         }
       }
       
-      console.log(`Łączna liczba sukcesów: ${successCount}${difficultyValue < 0 && successCount === 0 ? ' (próg ujemny = brak sukcesów)' : ''}`);
+      if (shouldDebug()) console.log(`Łączna liczba sukcesów: ${successCount}${difficultyValue < 0 && successCount === 0 ? ' (próg ujemny = brak sukcesów)' : ''}`);
     }
     
     // KROK 9: Przygotuj dane wyniku dla Foundry
@@ -442,7 +444,7 @@ Modyfikator procentowy: ${percentageModifier}%
       })
     };
     
-    console.log(`
+    if (shouldDebug()) console.log(`
 === NEUROSHIMA DICE ROLL COMPLETE ===
 Finalny wynik: ${successCount} sukcesów
 Poziom trudności: ${originalDifficulty} → ${finalDifficulty}

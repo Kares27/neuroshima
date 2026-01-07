@@ -2,6 +2,9 @@
  * Extend the basic ItemSheet with some very simple modifications
  * @extends {ItemSheet}
  */
+
+import { prepareActiveEffectCategories } from "../helpers/effects.mjs";
+
 export class NeuroshimaItemSheet extends ItemSheet {
 
   /** @override */
@@ -69,6 +72,9 @@ export class NeuroshimaItemSheet extends ItemSheet {
       }
     }
 
+    // Prepare active effects
+    context.effects = prepareActiveEffectCategories(this.item.effects);
+
     return context;
   }
 
@@ -91,6 +97,53 @@ export class NeuroshimaItemSheet extends ItemSheet {
     html.find('.add-action').click(this._onAddAction.bind(this));
     html.find('.delete-action').click(this._onDeleteAction.bind(this));
     html.find('.expand-action').click(this._onExpandAction.bind(this));
+
+    // Handle effect controls
+    html.find(".effect-create").click(ev => {
+      ev.preventDefault();
+      this.item.createEmbeddedDocuments("ActiveEffect", [{
+        name: "Nowy Efekt",
+        icon: "icons/svg/aura.svg",
+        origin: this.item.uuid
+      }]).then(effects => {
+        if (effects.length > 0) {
+          effects[0].sheet.render(true);
+        }
+      });
+    });
+    
+    html.find(".effect-edit").click(ev => {
+      ev.preventDefault();
+      const effectId = ev.currentTarget.closest(".effect").dataset.effectId;
+      const effect = this.item.effects.get(effectId);
+      if (effect) {
+        effect.sheet.render(true);
+      }
+    });
+    
+    html.find(".effect-toggle").click(ev => {
+      ev.preventDefault();
+      const effectId = ev.currentTarget.closest(".effect").dataset.effectId;
+      const effect = this.item.effects.get(effectId);
+      if (effect) {
+        effect.update({ disabled: !effect.disabled });
+      }
+    });
+    
+    html.find(".effect-delete").click(ev => {
+      ev.preventDefault();
+      const effectId = ev.currentTarget.closest(".effect").dataset.effectId;
+      this.item.deleteEmbeddedDocuments("ActiveEffect", [effectId]);
+    });
+    
+    html.find(".effect-click").click(ev => {
+      ev.preventDefault();
+      const effectId = ev.currentTarget.closest(".effect").dataset.effectId;
+      const effect = this.item.effects.get(effectId);
+      if (effect) {
+        effect.sheet.render(true);
+      }
+    });
 
     // Initialize skill dropdown on render
     this._initializeSkillDropdown(html);
