@@ -6,6 +6,7 @@ import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, Wou
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
+import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { EncumbranceConfig } from "./module/apps/encumbrance-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
@@ -19,6 +20,7 @@ Hooks.once('init', async function() {
         NeuroshimaActor,
         NeuroshimaItem,
         NeuroshimaDice,
+        CombatHelper,
         config: NEUROSHIMA,
         log: (...args) => {
             if (game.settings.get("neuroshima", "debugMode")) {
@@ -85,6 +87,7 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('eq', (a, b) => a === b);
     Handlebars.registerHelper('ne', (a, b) => a !== b);
     Handlebars.registerHelper('add', (a, b) => a + b);
+    Handlebars.registerHelper('json', (context) => JSON.stringify(context));
 
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
@@ -302,4 +305,184 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             NeuroshimaDice.updateRollMessage(message, false);
         }
     });
+
+    options.push({
+        name: "NEUROSHIMA.Roll.RefundAmmo",
+        icon: '<i class="fas fa-undo"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const flags = message?.getFlag("neuroshima", "rollData");
+            const alreadyRefunded = message?.getFlag("neuroshima", "ammoRefunded");
+            return flags?.isWeapon && (flags.bulletSequence?.length > 0) && !alreadyRefunded && game.user.isGM;
+        },
+        callback: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            CombatHelper.refundAmmunition(message);
+        }
+    });
+
+    options.push({
+        name: "NEUROSHIMA.Roll.ReverseDamage",
+        icon: '<i class="fas fa-history"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const isReport = message?.getFlag("neuroshima", "isPainResistanceReport");
+            const alreadyReversed = message?.getFlag("neuroshima", "isReversed");
+            return isReport && !alreadyReversed && game.user.isGM;
+        },
+        callback: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            CombatHelper.reverseDamage(message);
+        }
+    });
+});
+
+// Obsługa interakcji na kartach czatu
+Hooks.on("renderChatMessage", (message, html, data) => {
+    // html może być obiektem jQuery lub HTMLElement w zależności od wersji/kontekstu
+    const element = html instanceof HTMLElement ? html : html[0];
+    const card = element.querySelector(".neuroshima.roll-card");
+    if (!card) return;
+
+    // Obsługa rozwijanego menu (ogólna dla kart roll-card)
+    card.querySelectorAll(".collapsible-toggle").forEach(toggle => {
+        toggle.addEventListener("click", (event) => {
+            event.preventDefault();
+            const section = toggle.closest(".collapsible-section") || card;
+            const content = section.querySelector(".collapsible-content, .damage-application-content");
+            if (content) {
+                const isHidden = content.style.display === "none";
+                content.style.display = isHidden ? (content.classList.contains("damage-application-content") ? "flex" : "block") : "none";
+                const icon = toggle.querySelector("i");
+                if (icon) {
+                    icon.classList.toggle("fa-chevron-down", !isHidden);
+                    icon.classList.toggle("fa-chevron-up", isHidden);
+                }
+                
+                // Specyficzne odświeżanie dla taba obrażeń
+                if (isHidden && content.classList.contains("damage-application-content")) {
+                    const activeTab = card.querySelector(".damage-tab-header.active")?.dataset.tab || "targets";
+                    updateCardTargets(card, activeTab);
+                }
+            }
+        });
+    });
+
+    // Obsługa przełączania tabów obrażeń (tylko jeśli istnieją)
+    card.querySelectorAll(".damage-tab-header").forEach(tabHeader => {
+        tabHeader.addEventListener("click", () => {
+            const tab = tabHeader.dataset.tab;
+            
+            // Przełącz nagłówki
+            card.querySelectorAll(".damage-tab-header").forEach(h => h.classList.remove("active"));
+            tabHeader.classList.add("active");
+
+            // Przełącz kontenery
+            card.querySelectorAll(".target-list").forEach(l => {
+                l.style.display = l.dataset.tab === tab ? "block" : "none";
+            });
+
+            updateCardTargets(card, tab);
+        });
+    });
+
+    // Przycisk nakładania obrażeń
+    card.querySelectorAll(".apply-damage-button").forEach(btn => {
+        btn.addEventListener("click", (event) => {
+            event.preventDefault();
+            
+            game.neuroshima.group("Interfejs Obrażeń | Kliknięcie przycisku");
+            
+            const activeTab = card.querySelector(".damage-tab-header.active")?.dataset.tab;
+            let actors = [];
+            
+            if (activeTab === "targets") {
+                actors = Array.from(game.user.targets).map(t => t.actor).filter(a => a);
+                game.neuroshima.log("Pobieranie aktorów z namierzonych celów:", actors.map(a => a.name));
+            } else if (activeTab === "selected") {
+                actors = canvas.tokens.controlled.map(t => t.actor).filter(a => a);
+                game.neuroshima.log("Pobieranie aktorów z zaznaczonych tokenów:", actors.map(a => a.name));
+            }
+            
+            if (actors.length > 0) {
+                game.neuroshima.log("Wywoływanie CombatHelper.applyDamage...");
+                CombatHelper.applyDamage(message, actors);
+            } else {
+                game.neuroshima.log("Błąd: Nie znaleziono żadnych aktorów do nałożenia obrażeń.");
+                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoTokensSelectedOrTargeted"));
+            }
+            
+            game.neuroshima.groupEnd();
+        });
+    });
+
+    // Przycisk wycofywania obrażeń (Reverse Damage)
+    card.querySelectorAll(".reverse-damage-button").forEach(btn => {
+        btn.addEventListener("click", (event) => {
+            event.preventDefault();
+            const reportMessage = game.messages.get(message.id);
+            if (reportMessage) {
+                CombatHelper.reverseDamage(reportMessage);
+            }
+        });
+    });
+});
+
+/**
+ * Aktualizuje listę celów/zaznaczonych tokenów na karcie czatu.
+ */
+function updateCardTargets(card, tab) {
+    if (!card) return;
+    const targetList = card.querySelector(`.target-list[data-tab="${tab}"]`);
+    if (!targetList) return;
+    
+    let tokens = [];
+    let emptyLabel = "";
+
+    if (tab === "targets") {
+        tokens = Array.from(game.user.targets);
+        emptyLabel = game.i18n.localize("NEUROSHIMA.Roll.NoTargets");
+    } else {
+        tokens = canvas.tokens.controlled;
+        emptyLabel = game.i18n.localize("NEUROSHIMA.Roll.NoSelected");
+    }
+
+    if (tokens.length === 0) {
+        targetList.innerHTML = `<div class="target-item no-targets" style="opacity: 0.6; font-style: italic;">
+            ${emptyLabel}
+        </div>`;
+        return;
+    }
+
+    let html = "";
+    for (const token of tokens) {
+        const img = token.document?.texture?.src || token.data?.img;
+        html += `<div class="target-item">
+            <img src="${img}" width="20" height="20" style="object-fit: cover; border-radius: 4px; border: 1px solid #777; margin-right: 5px;"/>
+            <span>${token.name}</span>
+        </div>`;
+    }
+    targetList.innerHTML = html;
+}
+
+/**
+ * Odświeża listy celów na wszystkich widocznych sekcjach nakładania obrażeń.
+ */
+function refreshAllCombatCards() {
+    document.querySelectorAll(".neuroshima.roll-card").forEach(card => {
+        const content = card.querySelector(".damage-application-content");
+        if (content && content.style.display !== "none") {
+            const activeTab = card.querySelector(".damage-tab-header.active")?.dataset.tab || "targets";
+            updateCardTargets(card, activeTab);
+        }
+    });
+}
+
+// Rejestracja globalnych hooków dla odświeżania interfejsu
+Hooks.on("targetToken", (user) => {
+    if (user.id === game.user.id) refreshAllCombatCards();
+});
+
+Hooks.on("controlToken", () => {
+    refreshAllCombatCards();
 });

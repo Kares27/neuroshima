@@ -329,8 +329,14 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
       game.neuroshima.log("Przygotowanie danych amunicji do dodania", ammoData);
 
-      // Dodaj nową amunicję do magazynka (na górę stosu)
-      contents.push(ammoData);
+      // Dodaj nową amunicję do magazynka (na górę stosu) - Sprawdź czy można połączyć z ostatnim
+      const lastStack = contents[contents.length - 1];
+      if (this._isSameAmmo(lastStack, ammoData)) {
+          lastStack.quantity += ammoData.quantity;
+          game.neuroshima.log("Połączono ze stosującym się elementem w magazynku", { lastStack });
+      } else {
+          contents.push(ammoData);
+      }
 
       game.neuroshima.log("Aktualizacja zawartości magazynka", { contents });
       await magazine.update({ "system.contents": contents });
@@ -363,26 +369,26 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       const contents = magazine.system.contents;
       if (!contents.length) return;
 
+      // Group identical consecutive stacks in the magazine contents before unloading to inventory
+      // to avoid creating multiple separate items if they are already identical.
+      const groupedContents = [];
+      for (const stack of contents) {
+          const last = groupedContents[groupedContents.length - 1];
+          if (this._isSameAmmo(last, stack)) {
+              last.quantity += stack.quantity;
+          } else {
+              groupedContents.push(stack);
+          }
+      }
+
       const actor = this.document;
 
       // Zwróć amunicję do ekwipunku
-      for (const stack of contents) {
+      for (const stack of groupedContents) {
           // Szukaj istniejącej amunicji tego samego typu (nazwa, kaliber ORAZ identyczne nadpisania)
           let existingAmmo = actor.items.find(i => {
               if (i.type !== "ammo" || i.name !== stack.name || i.system.caliber !== magazine.system.caliber) return false;
-              
-              const s = i.system;
-              const o = stack.overrides || {};
-              
-              // Sprawdź czy wszystkie parametry nadpisywania są identyczne
-              const sameOverride = s.isOverride === (o.enabled || false);
-              const sameDamage = (s.overrideDamage === !!o.damage) && (s.damage === (o.damage || "L"));
-              const samePiercing = (s.overridePiercing === (o.piercing !== null)) && (s.piercing === (o.piercing || 0));
-              const sameJamming = (s.overrideJamming === (o.jamming !== null)) && (s.jamming === (o.jamming || 20));
-              // Sprawdzenie zgodności parametrów śrutu (typ i liczba śrucin) przy rozładowywaniu
-              const samePellet = (s.isPellet === (o.isPellet || false)) && (s.pelletCount === (o.pelletCount || 1));
-              
-              return sameOverride && sameDamage && samePiercing && sameJamming && samePellet;
+              return this._isSameAmmo(i, stack);
           });
           
           if (existingAmmo) {
@@ -414,6 +420,60 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
       await magazine.update({ "system.contents": [] });
       ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.MagazineUnloaded", { name: magazine.name }));
+  }
+
+  /**
+   * Compare two ammo stacks or an item and a stack definition to see if they are identical in stats.
+   * @private
+   */
+  _isSameAmmo(s1, s2) {
+      if (!s1 || !s2) return false;
+      if (s1.name !== s2.name) return false;
+      
+      // Handle comparing Actor Item to Magazine Stack or Magazine Stack to Magazine Stack
+      const getStats = (obj) => {
+          if (obj.system) { // Actor Item
+              const s = obj.system;
+              return {
+                  damage: s.damage ?? "L",
+                  piercing: s.piercing ?? 0,
+                  jamming: s.jamming ?? 20,
+                  isPellet: !!s.isPellet,
+                  pelletCount: s.pelletCount ?? 1,
+                  pelletRanges: s.pelletRanges || null,
+                  enabled: !!s.isOverride
+              };
+          } else { // Magazine Stack
+              const o = obj.overrides || {};
+              return {
+                  damage: o.damage ?? "L",
+                  piercing: o.piercing ?? 0,
+                  jamming: o.jamming ?? 20,
+                  isPellet: !!o.isPellet,
+                  pelletCount: o.pelletCount ?? 1,
+                  pelletRanges: o.pelletRanges || null,
+                  enabled: !!o.enabled
+              };
+          }
+      };
+
+      const stats1 = getStats(s1);
+      const stats2 = getStats(s2);
+
+      let samePelletStats = true;
+      if (stats1.isPellet && stats2.isPellet) {
+          samePelletStats = stats1.pelletCount === stats2.pelletCount;
+          if (samePelletStats && stats1.pelletRanges && stats2.pelletRanges) {
+              samePelletStats = JSON.stringify(stats1.pelletRanges) === JSON.stringify(stats2.pelletRanges);
+          }
+      }
+
+      return stats1.damage === stats2.damage && 
+             stats1.piercing === stats2.piercing && 
+             stats1.jamming === stats2.jamming && 
+             stats1.isPellet === stats2.isPellet &&
+             stats1.enabled === stats2.enabled &&
+             samePelletStats;
   }
 
   /**

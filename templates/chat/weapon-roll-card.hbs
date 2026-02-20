@@ -125,4 +125,39 @@
             {{/if}}
         {{/if}}
     </footer>
+
+    {{#if isGM}}
+    <hr class="dotted-hr">
+    <div class="apply-damage-section">
+        <div class="damage-application-header collapsible-toggle">
+            <span>{{localize "NEUROSHIMA.Roll.ApplyDamage"}}</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="damage-application-content" style="display: none;">
+            <div class="damage-tabs">
+                <div class="damage-tab-header active" data-tab="targets" title="{{localize 'NEUROSHIMA.Roll.ApplyToTargets'}}">
+                    <i class="fas fa-crosshairs"></i> {{localize "NEUROSHIMA.Roll.Targets"}}
+                </div>
+                <div class="damage-tab-header" data-tab="selected" title="{{localize 'NEUROSHIMA.Roll.ApplyToSelected'}}">
+                    <i class="fas fa-mouse-pointer"></i> {{localize "NEUROSHIMA.Roll.Selected"}}
+                </div>
+            </div>
+
+            <div class="target-list-section">
+                <div class="target-list active" data-tab="targets">
+                    <!-- Dynamicznie wypełniane przez JS -->
+                </div>
+                <div class="target-list" data-tab="selected" style="display: none;">
+                    <!-- Dynamicznie wypełniane przez JS -->
+                </div>
+            </div>
+            
+            <div class="damage-actions">
+                <button class="apply-damage-button" data-action="apply-damage">
+                    <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.Actions.Damage"}}
+                </button>
+            </div>
+        </div>
+    </div>
+    {{/if}}
 </div>

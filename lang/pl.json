@@ -64,6 +64,8 @@
             "EditRoll": "Edytuj Rzut",
             "SwitchToOpen": "Zmień na Test Otwarty",
             "SwitchToClosed": "Zmień na Test Zamknięty",
+            "RefundAmmo": "Refundacja amunicji",
+            "ReverseDamage": "Cofnij obrażenia",
             "BaseDifficulty": "Bazowa Trudność",
             "Difficulty": "Trudność",
             "Attribute": "Atrybut",
@@ -89,6 +91,13 @@
             "DiceCount": "Rzucane kości",
             "BulletsFired": "Wystrzelone pociski",
             "BulletsHit": "Trafione pociski",
+            "ApplyDamage": "Nałóż Obrażenia",
+            "Targets": "Namierzone",
+            "ApplyToTargets": "Nałóż na namierzone cele",
+            "NoTargets": "Brak namierzonych celów",
+            "NoSelected": "Brak zaznaczonych tokenów",
+            "Selected": "Wybrane",
+            "ApplyToSelected": "Nałóż na zaznaczone tokeny",
             "Segment": "Segment",
             "MeleeResults": "Wyniki walki wręcz",
             "Preview": {
@@ -112,7 +121,8 @@
             "Repair": "Napraw",
             "Damage": "Uszkodź",
             "Load": "Załaduj",
-            "Unload": "Rozładuj"
+            "Unload": "Rozładuj",
+            "ReverseDamage": "Cofnij obrażenia"
         },
         "Wound": {
             "TotalPenalty": "Suma Kar",
@@ -223,11 +233,24 @@
             "NoActorTokenOnCanvas": "Nie znaleziono aktywnego tokena Twojej postaci na mapie.",
             "MagazineFull": "Magazynek jest już pełny.",
             "AmmoLoaded": "Załadowano {amount}x {ammo} do {mag}.",
+            "AmmoRefunded": "Zwrócono {amount} szt. amunicji do {name}.",
+            "DamageApplied": "Nałożono {count} ran na {name}.",
+            "TriggeringPainResistance": "Inicjowanie testu Odporności na Ból dla {name}...",
             "MagazineUnloaded": "Rozładowano magazynek {name}.",
             "OutOfAmmoDuringBurst": "Zabrakło amunicji podczas serii!",
             "OutOfAmmo": "Brak amunicji typu {name}!",
+            "NoTokensSelectedOrTargeted": "Nie wybrano ani nie namierzono żadnych tokenów.",
             "NoMagazineSelected": "Nie wybrano magazynka dla tej broni!",
-            "Jamming": "ZACIĘCIE"
+            "ActorNotFound": "Nie znaleziono aktora powiązanego z tym rzutem.",
+            "Jamming": "ZACIĘCIE",
+            "DamageReversed": "Wycofano {count} ran u {name}.",
+            "NoWoundsFoundToReverse": "Nie znaleziono nałożonych ran do wycofania.",
+            "StatusReversed": "Obrażenia zostały wycofane przez MG."
+        },
+        "PainResistance": {
+            "ReportTitle": "Testy Odporności na Ból",
+            "Passed": "Zdane",
+            "Failed": "Niezdane"
         },
         "Tricks": {
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"

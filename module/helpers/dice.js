@@ -246,6 +246,7 @@ export class NeuroshimaDice {
     let successPoints = 0;
     let successCount = 0;
     let hitBullets = 0;
+    let finalHitSequence = [];
 
     let totalPelletSP = 0;
 
@@ -274,7 +275,15 @@ export class NeuroshimaDice {
         }
         modifiedResults = evalData.modifiedResults;
         
-        if (isSuccess) hitBullets = 1;
+        if (isSuccess) {
+            hitBullets = 1;
+            finalHitSequence = [{
+                damage: damageValue,
+                piercing: ammoPiercing,
+                successPoints: 1,
+                isPellet: false
+            }];
+        }
     } else {
         game.neuroshima.log("Rozpoczynam ewaluację Broni Dystansowej (Najlepsza kość)");
         modifiedResults = results.map((v, i) => {
@@ -308,7 +317,6 @@ export class NeuroshimaDice {
 
         // 5.1 Ewaluacja trafień w serii (Indywidualna dla każdego pocisku)
         if (isSuccess && !isJamming) {
-            const finalHitSequence = [];
             const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
             let totalPelletHits = 0;
 
@@ -360,7 +368,6 @@ export class NeuroshimaDice {
             // Aktualizacja danych rzutu
             hitBullets = finalHitSequence.length;
             totalPelletSP = totalPelletHits;
-            bulletSequence = finalHitSequence;
         } else {
             hitBullets = 0;
             totalPelletSP = 0;
@@ -411,7 +418,10 @@ export class NeuroshimaDice {
         showTooltip: true,
         burstLevel,
         aimingLevel,
+        distance,
         debugMode: game.settings.get("neuroshima", "debugMode"),
+        magazineId: (isRanged || isThrown) ? weapon.system.magazine : null,
+        ammoId: (isThrown) ? weapon.system.magazine : null,
         penalties: {
             mod: modifier,
             armor: armorPenalty,
@@ -420,7 +430,7 @@ export class NeuroshimaDice {
             base: basePenalty
         },
         bulletSequence: bulletSequence || [],
-        hitBulletsData: (isSuccess && !isJamming) ? (bulletSequence.length > 0 ? bulletSequence.slice(0, hitBullets) : []) : []
+        hitBulletsData: finalHitSequence
     };
 
     // Obsługa różnej amunicji w jednej serii (wyświetlanie wielu statystyk)
@@ -441,14 +451,18 @@ export class NeuroshimaDice {
     
     const hits = rollData.hitBulletsData;
     
-    // Grupowanie obrażeń
+    // Grupowanie obrażeń - uwzględniamy liczbę śrucin (successPoints) dla każdego trafienia
     const counts = hits.reduce((acc, h) => {
-        acc[h.damage] = (acc[h.damage] || 0) + 1;
+        const amount = h.isPellet ? (h.successPoints || 1) : 1;
+        acc[h.damage] = (acc[h.damage] || 0) + amount;
         return acc;
     }, {});
     
+    // Jeśli mamy tylko jeden typ obrażeń i jedną jednostkę, nie pokazujemy "1x"
+    const totalWounds = Object.values(counts).reduce((a, b) => a + b, 0);
+    
     rollData.damage = Object.entries(counts)
-        .map(([damage, count]) => hits.length > 1 ? `${count}x${damage}` : damage)
+        .map(([damage, count]) => totalWounds > 1 ? `${count}x${damage}` : damage)
         .join(", ");
 
     // Grupowanie przebicia
@@ -460,6 +474,9 @@ export class NeuroshimaDice {
     rollData.piercing = Object.entries(pCounts)
         .map(([piercing, count]) => hits.length > 1 ? `${count}x${piercing}` : piercing)
         .join(", ");
+    
+    // Aktualizacja flagi isPellet dla całej karty, jeśli choć jedno trafienie to śrut
+    rollData.isPellet = hits.some(h => h.isPellet);
   }
 
   /**
@@ -494,7 +511,8 @@ export class NeuroshimaDice {
     const content = await foundry.applications.handlebars.renderTemplate(template, {
         ...data,
         config: NEUROSHIMA,
-        showTooltip
+        showTooltip,
+        isGM: game.user.isGM
     });
 
     return ChatMessage.create({
@@ -519,6 +537,8 @@ export class NeuroshimaDice {
                     attributeBonus: data.attributeBonus,
                     baseSkill: data.baseSkill,
                     baseStat: data.baseStat,
+                    isSuccess: data.isSuccess,
+                    successPoints: data.successPoints,
                     difficultyLabel: data.difficultyLabel,
                     baseDifficultyLabel: data.baseDifficultyLabel,
                     label: data.label,
@@ -540,7 +560,8 @@ export class NeuroshimaDice {
         ...data,
         config: NEUROSHIMA,
         showTooltip,
-        damageTooltipLabel: this.getDamageTooltip(data.damage)
+        damageTooltipLabel: this.getDamageTooltip(data.damage),
+        isGM: game.user.isGM
     });
 
     return ChatMessage.create({
@@ -566,6 +587,8 @@ export class NeuroshimaDice {
                     attributeBonus: data.attributeBonus,
                     baseSkill: data.baseSkill,
                     baseStat: data.baseStat,
+                    isSuccess: data.isSuccess,
+                    successPoints: data.successPoints,
                     difficultyLabel: data.difficultyLabel,
                     finalLocation: data.finalLocation,
                     locationRoll: data.locationRoll,
@@ -579,7 +602,11 @@ export class NeuroshimaDice {
                     jamming: data.isJamming,
                     burstLevel: data.burstLevel,
                     aimingLevel: data.aimingLevel,
-                    label: data.label
+                    label: data.label,
+                    debugMode: data.debugMode,
+                    bulletSequence: data.bulletSequence,
+                    magazineId: data.magazineId,
+                    ammoId: data.ammoId
                 }
             }
         }
@@ -719,13 +746,19 @@ export class NeuroshimaDice {
    */
   static _getShiftedDifficulty(base, shift) {
     const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterfull", "grandmasterfull"];
-    const baseKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key].label === base.label);
+    
+    // Zabezpieczenie przed brakiem obiektu trudności
+    if (!base || !base.label) {
+        return NEUROSHIMA.difficulties.average;
+    }
+
+    const baseKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key]?.label === base.label);
     let index = order.indexOf(baseKey);
     
     if (index === -1) index = 1; // Domyślnie przeciętny
     
     let shiftedIndex = Math.clamp(index + shift, 0, order.length - 1);
-    return NEUROSHIMA.difficulties[order[shiftedIndex]];
+    return NEUROSHIMA.difficulties[order[shiftedIndex]] || NEUROSHIMA.difficulties.average;
   }
 
   /**
@@ -961,9 +994,11 @@ export class NeuroshimaDice {
     let modifiedResults = [];
     let hitBullets = 0;
     let totalPelletSP = 0;
+    let finalHitSequence = [];
 
     const isWeapon = flags.isWeapon;
     const isMelee = flags.isMelee;
+    const isJamming = flags.jamming === true || flags.isJamming === true;
 
     // Standard Roll or Melee weapon (both use 3 dice and pool points)
     if (!isWeapon || isMelee) {
@@ -987,7 +1022,16 @@ export class NeuroshimaDice {
             isSuccess = evalData.success;
         }
         modifiedResults = evalData.modifiedResults;
-        if (isWeapon && isSuccess) hitBullets = 1;
+        
+        if (isWeapon && isSuccess) {
+            hitBullets = 1;
+            finalHitSequence = [{
+                damage: flags.damage || "L",
+                piercing: flags.piercing || 0,
+                successPoints: 1,
+                isPellet: false
+            }];
+        }
     } else {
         // Ranged/Thrown weapon logic
         const bestResult = Math.min(...results);
@@ -1018,13 +1062,11 @@ export class NeuroshimaDice {
         }
 
         const pp = isSuccess ? (overflow + 1) : 0;
-        const isJamming = flags.jamming;
 
         if (isSuccess && !isJamming) {
-            const finalHitSequence = [];
             const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
             let totalPelletHits = 0;
-            const originalSequence = flags.hitBulletsData || [];
+            const originalSequence = flags.bulletSequence || flags.hitBulletsData || [];
 
             for (let j = 0; j < flags.bulletsFired; j++) {
                 if (pp <= j) break;
@@ -1061,11 +1103,14 @@ export class NeuroshimaDice {
     const updatedData = foundry.utils.mergeObject(flags, {
         isOpen,
         isSuccess,
+        isJamming,
         successPoints,
         successCount,
         modifiedResults,
         hitBullets,
-        totalPelletSP
+        totalPelletSP,
+        hitBulletsData: finalHitSequence,
+        debugMode: game.settings.get("neuroshima", "debugMode")
     });
 
     const template = isWeapon 
@@ -1076,7 +1121,8 @@ export class NeuroshimaDice {
         ...updatedData,
         config: NEUROSHIMA,
         showTooltip: this.canShowTooltip(actor),
-        damageTooltipLabel: isWeapon ? this.getDamageTooltip(updatedData.damage) : ""
+        damageTooltipLabel: isWeapon ? this.getDamageTooltip(updatedData.damage) : "",
+        isGM: game.user.isGM
     });
 
     await message.update({ content, flags: { neuroshima: { rollData: updatedData } } });

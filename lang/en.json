@@ -61,6 +61,8 @@
             "EditRoll": "Edit Roll",
             "SwitchToOpen": "Switch to Open Test",
             "SwitchToClosed": "Switch to Closed Test",
+            "RefundAmmo": "Refund Ammunition",
+            "ReverseDamage": "Reverse Damage",
             "BaseDifficulty": "Base Difficulty",
             "Difficulty": "Difficulty",
             "Attribute": "Attribute",
@@ -82,6 +84,13 @@
             "DiceCount": "Dice Count",
             "BulletsFired": "Bullets Fired",
             "BulletsHit": "Bullets Hit",
+            "ApplyDamage": "Apply Damage",
+            "Targets": "Targets",
+            "ApplyToTargets": "Apply to targeted tokens",
+            "NoTargets": "No targeted tokens",
+            "NoSelected": "No selected tokens",
+            "Selected": "Selected",
+            "ApplyToSelected": "Apply to selected tokens",
             "Segment": "Segment",
             "MeleeResults": "Melee Roll Results",
             "Preview": {
@@ -105,7 +114,13 @@
             "Create": "Create",
             "CreateBulkWounds": "Bulk Create Wounds",
             "Load": "Load",
-            "Unload": "Unload"
+            "Unload": "Unload",
+            "ReverseDamage": "Reverse Damage"
+        },
+        "PainResistance": {
+            "ReportTitle": "Pain Resistance Tests",
+            "Passed": "Passed",
+            "Failed": "Failed"
         },
         "Wound": {
             "TotalPenalty": "Total Wound Penalty",
@@ -216,11 +231,19 @@
             "NoActorTokenOnCanvas": "No active token found for your character on the map.",
             "MagazineFull": "Magazine is already full.",
             "AmmoLoaded": "Loaded {amount}x {ammo} into {mag}.",
+            "AmmoRefunded": "Refunded {amount}x ammo to {name}.",
+            "DamageApplied": "Applied {count} wounds to {name}.",
+            "TriggeringPainResistance": "Triggering Pain Resistance test for {name}...",
             "MagazineUnloaded": "Unloaded magazine {name}.",
             "OutOfAmmoDuringBurst": "Out of ammo during burst!",
             "OutOfAmmo": "No more {name} left!",
+            "NoTokensSelectedOrTargeted": "No tokens are selected or targeted.",
             "NoMagazineSelected": "No magazine selected for this weapon!",
-            "Jamming": "JAMMING!"
+            "ActorNotFound": "Could not find the actor associated with this roll.",
+            "Jamming": "JAMMING!",
+            "DamageReversed": "Reversed {count} wounds for {name}.",
+            "NoWoundsFoundToReverse": "No matching wounds found to reverse.",
+            "StatusReversed": "Damage has been reversed by GM."
         },
         "Difficulty": {
             "Easy": "Easy",

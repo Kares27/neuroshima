@@ -1,0 +1,54 @@
+<div class="neuroshima roll-card pain-resistance-report" 
+    data-actor-id="{{actorId}}" 
+    data-actor-uuid="{{actorUuid}}"
+    data-wound-ids='{{json woundIds}}'>
+    
+    <header class="roll-header">
+        <div class="weapon-title">
+            {{localize "NEUROSHIMA.PainResistance.ReportTitle"}}: {{actorName}}
+        </div>
+    </header>
+
+    <div class="report-summary">
+        <div class="summary-item passed">
+            <span class="label">{{localize "NEUROSHIMA.PainResistance.Passed"}}:</span>
+            <span class="value"><strong>{{passedCount}}</strong></span>
+        </div>
+        <div class="summary-divider">|</div>
+        <div class="summary-item failed">
+            <span class="label">{{localize "NEUROSHIMA.PainResistance.Failed"}}:</span>
+            <span class="value"><strong>{{failedCount}}</strong></span>
+        </div>
+    </div>
+
+    <hr class="dotted-hr">
+
+    <div class="collapsible-section">
+        <div class="damage-application-header collapsible-toggle">
+            <span>{{localize "NEUROSHIMA.Roll.Wounds"}} ({{results.length}})</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        
+        <div class="wound-list collapsible-content" style="display: none;">
+            {{#each results}}
+                <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}"
+                     data-tooltip="{{this.tooltip}}"
+                     data-tooltip-direction="LEFT">
+                    <div class="wound-icon">
+                        <i class="fas {{#if this.isPassed}}fa-check{{else}}fa-times{{/if}}"></i>
+                    </div>
+                    <div class="wound-info-main">
+                        <span class="wound-name">{{this.name}}</span>
+                        <span class="penalty-value"><strong>{{this.penalty}}%</strong></span>
+                    </div>
+                </div>
+            {{/each}}
+        </div>
+    </div>
+
+    {{#if isReversed}}
+    <div class="refund-status">
+        <em>{{localize "NEUROSHIMA.Notifications.StatusReversed"}}</em>
+    </div>
+    {{/if}}
+</div>
