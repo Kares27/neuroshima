@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "./module/config.js";
 import { NeuroshimaActor } from "./module/documents/actor.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
+import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActorData } from "./module/data/actor-data.js";
 import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
@@ -8,6 +9,7 @@ import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { EncumbranceConfig } from "./module/apps/encumbrance-config.js";
+import { CombatConfig } from "./module/apps/combat-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 
@@ -19,6 +21,7 @@ Hooks.once('init', async function() {
     game.neuroshima = {
         NeuroshimaActor,
         NeuroshimaItem,
+        NeuroshimaChatMessage,
         NeuroshimaDice,
         CombatHelper,
         config: NEUROSHIMA,
@@ -63,6 +66,7 @@ Hooks.once('init', async function() {
     // Zdefiniowanie niestandardowych klas dokumentów
     CONFIG.Actor.documentClass = NeuroshimaActor;
     CONFIG.Item.documentClass = NeuroshimaItem;
+    CONFIG.ChatMessage.documentClass = NeuroshimaChatMessage;
 
     // Rejestracja modeli danych
     CONFIG.Actor.dataModels.character = NeuroshimaActorData;
@@ -177,13 +181,47 @@ Hooks.once('init', async function() {
         name: "NEUROSHIMA.Settings.UsePelletCountLimit.Name",
         hint: "NEUROSHIMA.Settings.UsePelletCountLimit.Hint",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: true,
         requiresReload: true
     });
 
+    // Ustawienia widoczności interfejsu walki
+    game.settings.register("neuroshima", "damageApplicationMinRole", {
+        name: "NEUROSHIMA.Settings.DamageApplicationMinRole.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 4
+    });
+
+    game.settings.register("neuroshima", "painResistanceMinRole", {
+        name: "NEUROSHIMA.Settings.PainResistanceMinRole.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 4
+    });
+
+    game.settings.register("neuroshima", "combatActionsMinRole", {
+        name: "NEUROSHIMA.Settings.CombatActionsMinRole.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 4
+    });
+
     // Rejestracja menu ustawień
+    game.settings.registerMenu("neuroshima", "combatConfig", {
+        name: "NEUROSHIMA.Settings.CombatConfig.Label",
+        label: "NEUROSHIMA.Settings.CombatConfig.Title",
+        hint: "NEUROSHIMA.Settings.CombatConfig.Hint",
+        icon: "fas fa-swords",
+        type: CombatConfig,
+        restricted: true
+    });
+
     game.settings.registerMenu("neuroshima", "encumbranceConfig", {
         name: "NEUROSHIMA.Settings.EncumbranceConfig.Label",
         label: "NEUROSHIMA.Settings.EncumbranceConfig.Title",
@@ -313,7 +351,11 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const message = game.messages.get(li.dataset.messageId);
             const flags = message?.getFlag("neuroshima", "rollData");
             const alreadyRefunded = message?.getFlag("neuroshima", "ammoRefunded");
-            return flags?.isWeapon && (flags.bulletSequence?.length > 0) && !alreadyRefunded && game.user.isGM;
+            
+            // Refundacja zależna od ustawionej rangi
+            if (!CombatHelper.canPerformCombatAction()) return false;
+            
+            return flags?.isWeapon && (flags.bulletSequence?.length > 0) && !alreadyRefunded;
         },
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
@@ -328,7 +370,11 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const message = game.messages.get(li.dataset.messageId);
             const isReport = message?.getFlag("neuroshima", "isPainResistanceReport");
             const alreadyReversed = message?.getFlag("neuroshima", "isReversed");
-            return isReport && !alreadyReversed && game.user.isGM;
+            
+            // Reverse Damage zależna od ustawionej rangi
+            if (!CombatHelper.canPerformCombatAction()) return false;
+
+            return isReport && !alreadyReversed;
         },
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
@@ -337,11 +383,9 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
     });
 });
 
-// Obsługa interakcji na kartach czatu
-Hooks.on("renderChatMessage", (message, html, data) => {
-    // html może być obiektem jQuery lub HTMLElement w zależności od wersji/kontekstu
-    const element = html instanceof HTMLElement ? html : html[0];
-    const card = element.querySelector(".neuroshima.roll-card");
+// Obsługa interakcji na kartach czatu (v13: renderChatMessageHTML)
+Hooks.on("renderChatMessageHTML", (message, html) => {
+    const card = html.querySelector(".neuroshima.roll-card");
     if (!card) return;
 
     // Obsługa rozwijanego menu (ogólna dla kart roll-card)
@@ -426,6 +470,51 @@ Hooks.on("renderChatMessage", (message, html, data) => {
             }
         });
     });
+});
+
+// Hook do dynamicznego ukrywania elementów na kliencie na podstawie uprawnień (v13: renderChatMessageHTML)
+Hooks.on("renderChatMessageHTML", (message, html) => {
+    // Sprawdzenie uprawnień dla sekcji nakładania obrażeń
+    const damageApplicationMinRole = game.settings.get("neuroshima", "damageApplicationMinRole");
+    if (game.user.role < damageApplicationMinRole && !game.user.isGM) {
+        const damageSection = html.querySelector(".apply-damage-section");
+        if (damageSection) {
+            damageSection.style.display = "none";
+        }
+    }
+
+    // Sprawdzenie uprawnień dla szczegółów Odporności na Ból
+    const painResistanceMinRole = game.settings.get("neuroshima", "painResistanceMinRole");
+    if (game.user.role < painResistanceMinRole && !game.user.isGM) {
+        const painResistanceDetails = html.querySelector(".pain-resistance-details");
+        if (painResistanceDetails) {
+            painResistanceDetails.remove();
+        }
+    }
+
+    // Sprawdzenie uprawnień dla tooltipów w zwykłych rzutach
+    const rollTooltipMinRole = game.settings.get("neuroshima", "rollTooltipMinRole");
+    const rollTooltipOwnerVisibility = game.settings.get("neuroshima", "rollTooltipOwnerVisibility");
+    
+    // Pobranie ID aktora z flagi wiadomości
+    const actorId = message.flags?.neuroshima?.rollData?.actorId;
+    let actor = null;
+    if (actorId) {
+        actor = game.actors.get(actorId);
+    }
+    
+    // Sprawdzenie, czy użytkownik ma uprawnienia do widzenia tooltipu
+    const canShowTooltip = game.user.role >= rollTooltipMinRole || 
+                          (rollTooltipOwnerVisibility && (actor?.isOwner || game.user.isGM));
+    
+    if (!canShowTooltip) {
+        // Ukryj wszystkie data-tooltip w czacie
+        const tooltipElements = html.querySelectorAll("[data-tooltip]");
+        tooltipElements.forEach(el => {
+            el.removeAttribute("data-tooltip");
+            el.removeAttribute("data-tooltip-direction");
+        });
+    }
 });
 
 /**

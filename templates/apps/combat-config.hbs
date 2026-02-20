@@ -1,0 +1,60 @@
+<div class="combat-config-container">
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.UsePelletCountLimit.Name"}}</label>
+        <div class="form-fields">
+            <input type="checkbox" name="usePelletCountLimit" {{checked config.usePelletCountLimit}}>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.UsePelletCountLimit.Hint"}}</p>
+    </div>
+
+    <hr>
+    <h3>{{localize "NEUROSHIMA.Settings.CombatConfig.VisibilityTitle"}}</h3>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.DamageApplicationMinRole.Name"}}</label>
+        <div class="form-fields">
+            <select name="damageApplicationMinRole">
+                {{#select config.damageApplicationMinRole}}
+                {{#each roles as |name key|}}
+                <option value="{{key}}">{{localize name}}</option>
+                {{/each}}
+                {{/select}}
+            </select>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.DamageApplicationMinRole.Hint"}}</p>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.PainResistanceMinRole.Name"}}</label>
+        <div class="form-fields">
+            <select name="painResistanceMinRole">
+                {{#select config.painResistanceMinRole}}
+                {{#each roles as |name key|}}
+                <option value="{{key}}">{{localize name}}</option>
+                {{/each}}
+                {{/select}}
+            </select>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.PainResistanceMinRole.Hint"}}</p>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.CombatActionsMinRole.Name"}}</label>
+        <div class="form-fields">
+            <select name="combatActionsMinRole">
+                {{#select config.combatActionsMinRole}}
+                {{#each roles as |name key|}}
+                <option value="{{key}}">{{localize name}}</option>
+                {{/each}}
+                {{/select}}
+            </select>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.CombatActionsMinRole.Hint"}}</p>
+    </div>
+
+    <div class="form-footer">
+        <button type="submit" name="submit">
+            <i class="fas fa-save"></i> {{localize "NEUROSHIMA.Actions.Save"}}
+        </button>
+    </div>
+</div>

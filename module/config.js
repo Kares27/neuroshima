@@ -109,7 +109,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.D",
             difficulty: difficulties.average,
             penalties: [5, 10],
-            damagePoints: 1,
+            damageHealth: 1,   // Punkty HP
+            damagePoints: 1,   // Punkty redukcji pancerza [1]
             isBruise: false
         },
         "L": {
@@ -117,7 +118,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.L",
             difficulty: difficulties.problematic,
             penalties: [15, 30],
-            damagePoints: 3,
+            damageHealth: 3,   // Punkty HP
+            damagePoints: 2,   // Punkty redukcji pancerza [2]
             isBruise: false
         },
         "C": {
@@ -125,7 +127,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.C",
             difficulty: difficulties.hard,
             penalties: [30, 60],
-            damagePoints: 9,
+            damageHealth: 9,   // Punkty HP
+            damagePoints: 3,   // Punkty redukcji pancerza [3]
             isBruise: false
         },
         "K": {
@@ -133,7 +136,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.K",
             difficulty: null,
             penalties: [160],
-            damagePoints: 27,
+            damageHealth: 27,  // Punkty HP
+            damagePoints: 4,   // Punkty redukcji pancerza [4]
             isBruise: false
         },
         "sD": {
@@ -141,7 +145,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.sD",
             difficulty: difficulties.average,
             penalties: [5, 10],
-            damagePoints: 1,
+            damageHealth: 1,   // Punkty HP
+            damagePoints: 1,   // Punkty redukcji pancerza [1]
             isBruise: true
         },
         "sL": {
@@ -149,7 +154,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.sL",
             difficulty: difficulties.problematic,
             penalties: [15, 30],
-            damagePoints: 3,
+            damageHealth: 3,   // Punkty HP
+            damagePoints: 2,   // Punkty redukcji pancerza [2]
             isBruise: true
         },
         "sC": {
@@ -157,7 +163,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.sC",
             difficulty: difficulties.hard,
             penalties: [30, 60],
-            damagePoints: 9,
+            damageHealth: 9,   // Punkty HP
+            damagePoints: 3,   // Punkty redukcji pancerza [3]
             isBruise: true
         },
         "sK": {
@@ -165,7 +172,8 @@ export const NEUROSHIMA = {
             fullLabel: "NEUROSHIMA.Damage.Full.sK",
             difficulty: null,
             penalties: [160],
-            damagePoints: 27,
+            damageHealth: 27,  // Punkty HP
+            damagePoints: 4,   // Punkty redukcji pancerza [4]
             isBruise: true
         }
     },

@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -143,11 +144,19 @@ export class CombatHelper {
 
     let hitBulletsData = flags.hitBulletsData || [];
     
-    // If it's a failure but GM is forcing damage, we need at least one bullet's worth of data
+    // If it's a failure but GM is forcing damage, we need bullet data
     if (hitBulletsData.length === 0 && isGM) {
         game.neuroshima.log("Ostrzeżenie: Brak danych o trafieniach. Używam danych bazowych dla wymuszenia obrażeń przez MG.");
         if (flags.bulletSequence && flags.bulletSequence.length > 0) {
-            hitBulletsData = [flags.bulletSequence[0]];
+            // For GM force, use ALL bullets from sequence, not just first
+            hitBulletsData = flags.bulletSequence.map(bullet => ({
+                ...bullet,
+                successPoints: bullet.successPoints || 1
+            }));
+            game.neuroshima.log("Wymuszenie obrażeń: Użycie wszystkich pocisków z serii", {
+              bulletCount: hitBulletsData.length,
+              bullets: hitBulletsData.map(b => ({ damage: b.damage, piercing: b.piercing }))
+            });
         } else {
             // Fallback for melee or when no sequence exists
             hitBulletsData = [{
@@ -162,7 +171,17 @@ export class CombatHelper {
     const location = flags.finalLocation || "torso";
     const isMelee = flags.isMelee;
     
-    game.neuroshima.log("Logika obrażeń:", { isMelee, hitBulletsData, location });
+    game.neuroshima.log("Logika obrażeń:", { 
+      isMelee, 
+      location,
+      hitBulletsDataCount: hitBulletsData.length,
+      hitBulletsData: hitBulletsData.map(b => ({
+        damage: b.damage,
+        piercing: b.piercing,
+        isPellet: b.isPellet,
+        successPoints: b.successPoints
+      }))
+    });
 
     for (const actor of actors) {
         game.neuroshima.log(`Przetwarzanie aktora: ${actor.name}`);
@@ -170,44 +189,87 @@ export class CombatHelper {
         
         // Przygotowanie listy surowych danych o ranach
         const rawWounds = [];
+        const reducedDetails = []; // Track reduction details for tooltip
+        let totalProjectiles = 0;
+        let reducedProjectiles = 0;
 
         if (isMelee) {
+            totalProjectiles = 1;
             const damageType = flags.damage || "L";
-            rawWounds.push({
-                name: game.i18n.localize(NEUROSHIMA.woundConfiguration[damageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
-                damageType: damageType
-            });
+            const piercing = flags.piercing || 0;
+            
+            // Apply armor reduction for melee
+            const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing);
+            
+            // Only add wound if damage was not completely negated
+            if (reductionData.reducedDamageType) {
+                rawWounds.push({
+                    name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
+                    damageType: reductionData.reducedDamageType
+                });
+            } else {
+                reducedProjectiles++;
+                reducedDetails.push(reductionData);
+            }
         } else {
             for (const bullet of hitBulletsData) {
                 const count = bullet.isPellet ? (bullet.successPoints || 1) : 1;
                 const damageType = bullet.damage || (bullet.isPellet ? "D" : "L");
+                const piercing = bullet.piercing !== undefined ? bullet.piercing : 0;
+                
+                game.neuroshima.log(`Przetwarzanie pocisku: ${damageType} z przebiciem ${piercing}`, {
+                  bulletIndex: hitBulletsData.indexOf(bullet),
+                  bulletData: bullet
+                });
                 
                 for (let i = 0; i < count; i++) {
-                    rawWounds.push({
-                        name: game.i18n.localize(NEUROSHIMA.woundConfiguration[damageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
-                        damageType: damageType
-                    });
+                    totalProjectiles++;
+                    // Apply armor reduction for ranged
+                    const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing);
+                    
+                    // Only add wound if damage was not completely negated
+                    if (reductionData.reducedDamageType) {
+                        rawWounds.push({
+                            name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
+                            damageType: reductionData.reducedDamageType
+                        });
+                    } else {
+                        reducedProjectiles++;
+                        reducedDetails.push(reductionData);
+                    }
                 }
             }
         }
 
-        if (rawWounds.length > 0) {
-            // Wykonaj testy odporności na ból i uzyskaj finalne dane ran z karami
-            const { processedWounds, results } = await this.processPainResistance(actor, rawWounds, location, sourceInfo);
+        game.neuroshima.log(`Statystyka redukcji dla ${actor.name}`, {
+            totalProjectiles,
+            reducedProjectiles,
+            appliedWounds: rawWounds.length
+        });
+
+        if (rawWounds.length > 0 || reducedProjectiles > 0) {
+            // Wykonaj testy odporności na ból i uzyskaj finalne dane ran z karami (tylko jeśli są rany)
+            let results = [];
+            let woundIds = [];
             
-            game.neuroshima.log(`Tworzenie ${processedWounds.length} ran dla ${actor.name}`, processedWounds);
-            const createdWounds = await actor.createEmbeddedDocuments("Item", processedWounds);
-            const woundIds = createdWounds.map(w => w.id);
+            if (rawWounds.length > 0) {
+                const painResistanceData = await this.processPainResistance(actor, rawWounds, location, sourceInfo);
+                results = painResistanceData.results;
+                
+                game.neuroshima.log(`Tworzenie ${painResistanceData.processedWounds.length} ran dla ${actor.name}`, painResistanceData.processedWounds);
+                const createdWounds = await actor.createEmbeddedDocuments("Item", painResistanceData.processedWounds);
+                woundIds = createdWounds.map(w => w.id);
 
-            ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
-                count: processedWounds.length, 
-                name: actor.name 
-            }));
+                ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
+                    count: painResistanceData.processedWounds.length, 
+                    name: actor.name 
+                }));
+            }
 
-            // Renderowanie raportu na czacie
-            await this.renderPainResistanceReport(actor, results, woundIds);
+            // Renderowanie raportu pain-resistance z informacją o zredukowanych ranach
+            await this.renderPainResistanceReport(actor, results, woundIds, reducedProjectiles, reducedDetails);
         } else {
-            game.neuroshima.log(`Nie wygenerowano żadnych ran dla ${actor.name}`);
+            game.neuroshima.log(`Nie wygenerowano żadnych ran dla ${actor.name} - brak obrażeń`);
         }
     }
     game.neuroshima.groupEnd();
@@ -301,84 +363,16 @@ export class CombatHelper {
   }
 
   /**
-   * Renderuje raport z testów odporności na ból do czatu korzystając z HBS.
+   * Renderuje raport z testów odporności na ból do czatu.
+   * Deleguje do NeuroshimaChatMessage API.
+   * @param {Actor} actor
+   * @param {Array} results - Wyniki testów pain-resistance
+   * @param {Array<string>} woundIds - ID ran
+   * @param {number} reducedProjectiles - Liczba zredukowanych pocisków/ran
+   * @param {Array} reducedDetails - Szczegółowe dane o redukcji dla każdego zredukowanego pocisku
    */
-  static async renderPainResistanceReport(actor, results, woundIds) {
-    const template = "systems/neuroshima/templates/chat/pain-resistance-report.hbs";
-    const passedCount = results.filter(r => r.isPassed).length;
-    const failedCount = results.length - passedCount;
-
-    // Przygotuj wyniki z tooltipami (miniaturowa wersja rzutu na skill)
-    const resultsWithTooltips = results.map(r => {
-        let diceHtml = '<div class="dice-results-grid tiny">';
-        r.modifiedResults.forEach((d, i) => {
-            diceHtml += `
-                <div class="die-result ${d.ignored ? 'ignored' : ''}">
-                    <span class="die-label tiny">D${i+1}=</span>
-                    <div class="die-square-container tiny">
-                        <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
-                        ${r.skill > 0 && !d.ignored ? `
-                            <i class="fas fa-long-arrow-alt-right"></i> 
-                            <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
-                        ` : ''}
-                    </div>
-                </div>`;
-        });
-        diceHtml += '</div>';
-
-        const tooltip = `
-            <div class="neuroshima roll-card tooltip-mode">
-                <header class="roll-header tiny">
-                    ${game.i18n.localize(r.difficulty)}
-                </header>
-                <hr class="dotted-hr tiny">
-                ${diceHtml}
-                <hr class="dotted-hr tiny">
-                <footer class="roll-outcome tiny">
-                    <div class="outcome-item">
-                        <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
-                        <span class="value">${r.target}</span>
-                    </div>
-                    <div class="outcome-item">
-                        <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')}:</span>
-                        <span class="value"><strong>${r.successPoints}</strong></span>
-                    </div>
-                </footer>
-            </div>
-        `.trim();
-
-        return { ...r, tooltip };
-    });
-    
-    const data = {
-        actorId: actor.id,
-        actorUuid: actor.uuid,
-        actorName: actor.name,
-        woundIds: woundIds,
-        results: resultsWithTooltips,
-        passedCount: passedCount,
-        failedCount: failedCount,
-        isGM: game.user.isGM,
-        isReversed: false
-    };
-
-    const content = await foundry.applications.handlebars.renderTemplate(template, data);
-
-    await ChatMessage.create({
-        user: game.user.id,
-        speaker: ChatMessage.getSpeaker({ actor }),
-        content,
-        style: CONST.CHAT_MESSAGE_STYLES.OTHER,
-        flags: {
-            neuroshima: {
-                isPainResistanceReport: true,
-                actorId: actor.id,
-                actorUuid: actor.uuid,
-                woundIds: woundIds,
-                isReversed: false
-            }
-        }
-    });
+  static async renderPainResistanceReport(actor, results, woundIds, reducedProjectiles = 0, reducedDetails = []) {
+    return NeuroshimaChatMessage.renderPainResistance(actor, results, woundIds, reducedProjectiles, reducedDetails);
   }
 
   /**
@@ -473,6 +467,24 @@ export class CombatHelper {
   }
 
   /**
+   * Sprawdza czy użytkownik może zobaczyć szczegóły raportu Odporności na Ból.
+   */
+  static canShowPainResistanceDetails(actor) {
+    const minRole = game.settings.get("neuroshima", "painResistanceMinRole");
+    if (game.user.role >= minRole) return true;
+    if (actor?.isOwner || game.user.isGM) return true;
+    return false;
+  }
+
+  /**
+   * Sprawdza czy użytkownik może wykonywać akcje specjalne (Refundacja, Cofnięcie).
+   */
+  static canPerformCombatAction() {
+    const minRole = game.settings.get("neuroshima", "combatActionsMinRole");
+    return game.user.role >= minRole || game.user.isGM;
+  }
+
+  /**
    * Helper to shift hit location based on a numerical value.
    * Useful for pellet spread rules or other mechanics.
    * @param {string} originalLocation The starting location key (e.g., 'torso').
@@ -534,5 +546,199 @@ export class CombatHelper {
         actor: actor,
         isOpen: false // Usually a closed test
     });
+  }
+
+  /**
+   * Zmniejsza obrażenia i zwraca szczegółowe dane redukcji dla tooltipa.
+   * @private
+   */
+  static reduceArmorDamageWithDetails(actor, location, damageType, piercing) {
+    const reductionData = {
+      originalDamage: damageType,
+      piercing: piercing,
+      location: location,
+      armorDetails: [],
+      totalArmor: 0,
+      reduction: 0,
+      reducedDamageType: null
+    };
+
+    // Get effective armor value at hit location (ratings - damage, must be equipped)
+    const equipedArmor = actor.items.filter(item => 
+      item.type === "armor" && item.system.equipped === true
+    );
+    
+    let totalArmorRating = 0;
+    for (const armor of equipedArmor) {
+      const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
+      const ratings = armor.system.armor?.ratings?.[location] || 0;
+      const damage = armor.system.armor?.damage?.[location] || 0;
+      
+      totalArmorRating += effectiveValue;
+      reductionData.armorDetails.push({
+        name: armor.name,
+        ratings,
+        damage,
+        effective: effectiveValue
+      });
+    }
+
+    reductionData.totalArmor = totalArmorRating;
+    
+    // Calculate reduction: Armor - Piercing
+    const reduction = totalArmorRating - piercing;
+    let actualReduction = 0;
+    
+    if (reduction >= 1) {
+      actualReduction = Math.floor(reduction);
+      if (reduction % 1 >= 0.5) {
+        actualReduction += 1;
+      }
+    } else if (reduction > 0) {
+      actualReduction = 1;
+    }
+
+    reductionData.reduction = actualReduction;
+    
+    // Get wound reduction points from config (not HP points!)
+    const woundConfig = NEUROSHIMA.woundConfiguration[damageType];
+    const baseDamagePoints = woundConfig?.damagePoints || 1;
+    const reducedDamagePoints = Math.max(0, baseDamagePoints - actualReduction);
+    
+    // Map reduced points to damage type
+    let reducedDamageType = null;
+    
+    if (reducedDamagePoints === 0) {
+      reducedDamageType = null;
+    } else if (reducedDamagePoints >= 4) {
+      reducedDamageType = "K";
+    } else if (reducedDamagePoints === 3) {
+      reducedDamageType = "C";
+    } else if (reducedDamagePoints === 2) {
+      reducedDamageType = "L";
+    } else {
+      reducedDamageType = "D";
+    }
+
+    reductionData.reducedDamageType = reducedDamageType;
+    reductionData.baseDamagePoints = baseDamagePoints;
+    reductionData.reducedDamagePoints = reducedDamagePoints;
+
+    return reductionData;
+  }
+
+  /**
+   * Reduces damage based on actor's armor at the hit location.
+   * Applies armor reduction logic: Armor Rating - Piercing = Real Reduction
+   * If reduction is not complete (e.g., 2.5 armor, 2 piercing = 0.5), the remainder counts as 1 point.
+   * 
+   * Damage reduction uses wound reduction points (not HP points):
+   * - Draśnięcie [D]: 1 pkt redukcji
+   * - Lekka Rana [L]: 2 pkt redukcji
+   * - Ciężka Rana [C]: 3 pkt redukcji
+   * - Krytyczna Rana [K]: 4 pkt redukcji
+   * 
+   * @param {Actor} actor - Target actor
+   * @param {string} location - Hit location (torso, head, etc.)
+   * @param {string} damageType - Original damage type (D, L, C, K)
+   * @param {number} piercing - Piercing value from weapon/ammo
+   * @returns {string|null} Reduced damage type or null if completely negated
+   */
+  static reduceArmorDamage(actor, location, damageType, piercing) {
+    game.neuroshima.group("CombatHelper | reduceArmorDamage");
+    
+    game.neuroshima.log("Kalkulacja efektywnego AP pancerza", {
+      actor: actor.name,
+      location,
+      damageType,
+      piercing
+    });
+    
+    // Get effective armor value at hit location (ratings - damage, must be equipped)
+    const equipedArmor = actor.items.filter(item => 
+      item.type === "armor" && item.system.equipped === true
+    );
+    
+    let totalArmorRating = 0;
+    for (const armor of equipedArmor) {
+      const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
+      const ratings = armor.system.armor?.ratings?.[location] || 0;
+      const damage = armor.system.armor?.damage?.[location] || 0;
+      
+      game.neuroshima.log(`Pancerz: ${armor.name}`, {
+        location,
+        ratings,
+        damage,
+        effective: effectiveValue
+      });
+      
+      totalArmorRating += effectiveValue;
+    }
+    
+    game.neuroshima.log("Redukcja obrażeń przez pancerz", {
+      actor: actor.name,
+      location,
+      damageType,
+      piercing,
+      totalArmorRating
+    });
+    
+    // Calculate reduction: Armor - Piercing
+    const reduction = totalArmorRating - piercing;
+    let actualReduction = 0;
+    
+    if (reduction >= 1) {
+      // Full point reduction
+      actualReduction = Math.floor(reduction);
+      
+      // If there's a half point remainder, count it as 1 additional reduction
+      if (reduction % 1 >= 0.5) {
+        actualReduction += 1;
+      }
+    } else if (reduction > 0) {
+      // Partial reduction (e.g., 0.5 or 0.25) counts as 1
+      actualReduction = 1;
+    }
+    
+    game.neuroshima.log("Kalkulacja redukcji pancerza", {
+      rawReduction: reduction,
+      actualReduction
+    });
+    
+    // Get wound reduction points from config (not HP points!)
+    const woundConfig = NEUROSHIMA.woundConfiguration[damageType];
+    const baseDamagePoints = woundConfig?.damagePoints || 1;
+    const reducedDamagePoints = Math.max(0, baseDamagePoints - actualReduction);
+    
+    game.neuroshima.log("Redukcja punktów obrażeń (punkty redukcji)", {
+      baseDamagePoints,
+      actualReduction,
+      reducedDamagePoints
+    });
+    
+    // Map reduced points to damage type
+    let reducedDamageType = null;
+    
+    if (reducedDamagePoints === 0) {
+      // No damage after reduction
+      game.neuroshima.log("Obrażenia całkowicie zneutralizowane przez pancerz");
+      reducedDamageType = null;
+    } else if (reducedDamagePoints >= 4) {
+      reducedDamageType = "K";
+    } else if (reducedDamagePoints === 3) {
+      reducedDamageType = "C";
+    } else if (reducedDamagePoints === 2) {
+      reducedDamageType = "L";
+    } else {
+      reducedDamageType = "D";
+    }
+    
+    game.neuroshima.log("Ostateczny typ obrażeń", {
+      originalType: damageType,
+      reducedType: reducedDamageType
+    });
+    
+    game.neuroshima.groupEnd();
+    return reducedDamageType;
   }
 }

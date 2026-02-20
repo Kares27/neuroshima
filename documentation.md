@@ -33,6 +33,22 @@ Modele danych dla poszczególnych typów przedmiotów.
   - Wyświetlanie dialogu wyboru typu broni (`melee`, `ranged`, `thrown`) przy tworzeniu nowego przedmiotu.
 - **prepareDerivedData**: Oblicza `totalWeight` (waga * ilość).
 
+### Pancerz (ArmorData)
+- **Wartości**: Akceptuje liczby całkowite i połówki (krok 0.5)
+  - Można mieć pancerz o wartości 0, 0.5, 1, 1.5, 2, 2.5, itd.
+  - Każda lokacja anatomiczna ma osobną wartość pancerza
+  - Wszystkie ekwipowane pancerze na danej lokacji się sumują
+- **Uszkodzenia Pancerza**: Pancerz posiada dwa pola danych:
+  - **ratings**: Maksymalne punkty pancerza dla każdej lokacji
+  - **damage**: Obrażenia pancerza dla każdej lokacji (zwiększane gdy pancerz jest trafiony)
+- **Efektywny Pancerz (Effective Armor)**: Automatycznie obliczany jako `ratings - damage`, nigdy poniżej 0
+  - Używany do redukcji obrażeń i musi być uwzględniany przy każdym trafieniu
+
+### Rany - Punkty Obrażeń
+Każdy typ rany ma dwa rodzaje punktów w konfiguracji:
+- **damageHealth**: Punkty zdrowia (HP) - 1, 3, 9, 27 - do obliczania obrażeń dla HP aktora
+- **damagePoints**: Punkty redukcji pancerza - 1, 2, 3, 4 - do obliczania zmniejszenia obrażeń przez pancerz
+
 ## 3. Logika Rzutów (`module/helpers/dice.js`)
 
 ### `NeuroshimaDice`
@@ -97,10 +113,103 @@ Centralny obiekt konfiguracyjny.
 - `hitLocationTable`: Tabela losowania lokacji trafień (1k20).
 - `hitLocationModifiers`: Kary za celowanie w konkretne lokacje.
 
-## 7. Tryb Debugowania
+## 7. System Walki i Obrażeń (`module/helpers/combat-helper.js`)
+
+### `CombatHelper`
+Klasa wspomagająca mechaniki walki i zarządzanie obrażeniami.
+
+**Główne funkcje:**
+
+- **reduceArmorDamage**: Zmniejsza obrażenia na podstawie efektywnego pancerza aktora i przebicia broni.
+  - Oblicza efektywny pancerz dla każdego ekwipowanego pancerza: `effectiveArmor = ratings - damage` (min 0)
+  - Sumuje wszystkie efektywne punkty pancerza na danej lokacji
+  - Formuła redukcji: `Realna Redukcja = Suma Efektywnego Pancerza - Punkty Przebicia`
+  - Specjalny przypadek: Jeśli redukcja < 1 ale > 0 (np. 0.5), liczy się jako 1 pkt redukcji
+  - Mapuje obrażenia na typ rany (K/C/L/D) na podstawie punktów redukcji lub całkowite zneutralizowanie
+  - Zawsze wyświetla raport w czacie z liczbą zredukowanych pocisków/ran
+
+- **applyDamage**: Nakładanie obrażeń na wybranych aktorów na podstawie rzutu bronią.
+  - Automatycznie wykonuje testy Odporności na Ból dla każdej rany.
+  - Obsługuje zarówno bronie strzeleckie (Draśnięcia z pocisków, Rany zwykłe) jak i walkę wręcz.
+  - Renderuje raport w czacie pokazujący wyniki testów odporności.
+
+- **processPainResistance**: Seria testów odporności na ból (testy ZAMKNIĘTE).
+  - Wykonuje test zamknięty (3k20) dla każdej rany oddzielnie.
+  - Ignoruje kary z pancerza i istniejących ran (test czysty).
+  - Wymaga minimum 2 sukcesów dla zdanego testu.
+  - Przydzielanie kar na podstawie konfiguracji (`woundConfiguration`).
+  - Zwraca szczegółowe dane o każdym teście (wyniki, trudność, kara).
+
+- **renderPainResistanceReport**: Renderowanie raportu odporności na ból do czatu.
+  - Wyświetla podsumowanie (zdane/niezdane/zredukowane).
+  - Collapsible lista ran z wskaźnikami zdania/porażki/zredukcji.
+  - Mini tooltips dla każdej rany pokazujące kości, trudność i wynik.
+  - **Zredukowane Obrażenia**: Wyświetlane z ikoną tarczy (szara), pełną nazwą typu obrażenia i myślnikiem "-" zamiast procentu kary.
+  - **Tooltip Redukcji**: Pokazuje szczegóły kalkulacji:
+    - Pełna nazwa lokacji trafienia
+    - Poszczególne pancerze aktora z ich efektywną wartością (ratings - damage)
+    - Wartość przebicia broni/amunicji
+    - Całkowita kalkulacja AP (suma pancerzy - przebicie = redukcja)
+    - Podsumowanie obrażeń (typ [punkty] - redukcja = zredukowane)
+
+- **refundAmmunition**: Zwrot amunicji użytej w rzucie.
+  - Obsługuje zarówno magazynki (magazynek LIFO) jak i bezpośrednią amunicję.
+  - Inteligentne łączenie (merging) amunicji tego samego typu.
+  - Porównuje wszystkie parametry (obrażenia, przebicie, zacięcie, śrutowe parametry).
+
+- **reverseDamage**: Cofnięcie nałożonych obrażeń (usuwanie ran z aktora).
+  - Pracuje zarówno z Actor Library jak i Token Actors (poprzez UUID resolution).
+  - Obsługuje sytuacje, gdy GM usunął manualnie część ran.
+  - Dodaje wizualny wskaźnik do wiadomości.
+
+- **canShowPainResistanceDetails / canPerformCombatAction**: Funkcje sprawdzające uprawnienia użytkownika.
+  - Oparte na ustawieniach roli w Combat Settings.
+
+- **getShiftedLocation / getShiftedLocationByRoll**: Pomocnicze funkcje do zmiany lokacji trafienia.
+  - Przydatne do przyszłych reguł rozprzestrzeniania się pocisków śrutowych.
+
+### Pain Resistance Test - Detale Mechaniki
+Zgodnie z zasadami Neuroshima 1.5:
+- Każda rana wymaga osobnego testu odporności.
+- Test jest testem **ZAMKNIĘTYM** (nie bierze suwaków).
+- Bazowa trudność zależy od typu rany (D, L, C, K).
+- Test się udaje, jeśli liczba sukcesów >= 2.
+- Kara przydzielana na podstawie wyniku:
+  - `penalties[0]` - gdy test ZDANY
+  - `penalties[1]` - gdy test NIEZDANY
+
+## 8. System Uprawnień i Widoczności (`module/apps/combat-config.js`)
+
+### `CombatConfig` (Application V2)
+Dedykowana aplikacja do zarządzania ustawieniami walki.
+
+**Konfigurowane ustawienia:**
+
+- **usePelletCountLimit**: Czy stosować limit liczby śrucin w serii.
+- **damageApplicationMinRole**: Minimalna rola wymagana do widoczności sekcji nakładania obrażeń.
+- **painResistanceMinRole**: Minimalna rola wymagana do widoczności szczegółów testów odporności na ból.
+- **combatActionsMinRole**: Minimalna rola wymagana do akcji specjalnych (Refundacja, Cofnięcie).
+
+Role: 0 = Brak, 1 = Gracz, 2 = Zaufany Gracz, 3 = Asystent GM, 4 = Gamemaster.
+
+### renderChatMessage Hook - Dynamiczna Widoczność
+Hook `renderChatMessage` w `system.js` implementuje **client-side dynamic visibility**:
+- Sprawdza uprawnienia użytkownika dla każdego elementu.
+- Usuwa atrybuty `data-tooltip` jeśli użytkownik nie ma dostępu.
+- Ukrywa sekcje obrażeń i szczegóły testów odporności na ból.
+- Każdy klient niezależnie egzekwuje reguły widoczności.
+
+## 9. Tryb Debugowania
 System korzysta z ustawienia `debugMode`. Logi w konsoli powinny być warunkowane sprawdzeniem tego booleana:
 ```javascript
 if (game.settings.get("neuroshima", "debugMode")) {
     console.log("Neuroshima 1.5 | ...", data);
 }
+```
+
+Dla strukturyzowanych logów w grupach:
+```javascript
+game.neuroshima.group("Opis operacji");
+game.neuroshima.log("Dane", { /* data */ });
+game.neuroshima.groupEnd();
 ```

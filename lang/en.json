@@ -91,6 +91,7 @@
             "NoSelected": "No selected tokens",
             "Selected": "Selected",
             "ApplyToSelected": "Apply to selected tokens",
+            "DetailsHidden": "Details hidden (higher rank required)",
             "Segment": "Segment",
             "MeleeResults": "Melee Roll Results",
             "Preview": {
@@ -120,7 +121,8 @@
         "PainResistance": {
             "ReportTitle": "Pain Resistance Tests",
             "Passed": "Passed",
-            "Failed": "Failed"
+            "Failed": "Failed",
+            "Reduced": "Reduced"
         },
         "Wound": {
             "TotalPenalty": "Total Wound Penalty",
@@ -134,6 +136,13 @@
                 "Label": "Configure Encumbrance",
                 "Hint": "Opens the configuration menu for calculating actor encumbrance.",
                 "Saved": "Encumbrance settings have been saved and updated."
+            },
+            "CombatConfig": {
+                "Title": "Combat Settings",
+                "Label": "Configure Combat",
+                "Hint": "Opens the configuration menu for combat mechanics and interface visibility.",
+                "Saved": "Combat settings saved.",
+                "VisibilityTitle": "Permissions & Visibility"
             },
             "EnableEncumbrance": {
                 "Name": "Encumbrance System",
@@ -162,6 +171,18 @@
             "UsePelletCountLimit": {
                 "Name": "Pellet count limit",
                 "Hint": "Enables limiting the number of hits based on the 'Pellet Count' parameter from ammunition (buckshot/birdshot simulation)."
+            },
+            "DamageApplicationMinRole": {
+                "Name": "Damage Panel Visibility",
+                "Hint": "Minimum role required to see the damage application panel on weapon roll cards."
+            },
+            "PainResistanceMinRole": {
+                "Name": "Pain Resistance Details",
+                "Hint": "Minimum role required to see the detailed wound list in the Pain Resistance Report."
+            },
+            "CombatActionsMinRole": {
+                "Name": "Context Menu Actions",
+                "Hint": "Minimum role required to use Refund Ammunition and Reverse Damage options in the chat context menu."
             },
             "Roles": {
                 "None": "Everyone (None)",
@@ -450,6 +471,11 @@
             "TotalPenalty": "Total Penalty",
             "None": "No armor",
             "SumAP": "Sum AP"
+        },
+        "Chat": {
+            "ArmorReduction": "Armor Reduction",
+            "ArmorReductionStats": "{reduced} out of {total} projectiles reduced by armor at {location}",
+            "AllDamageNegated": "All damage has been completely negated by the armor!"
         },
         "Location": {
             "Head": "Head",

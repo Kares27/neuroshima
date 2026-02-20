@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 
 /**
  * Helper class for Neuroshima 1.5 dice rolling logic.
@@ -357,8 +358,22 @@ export class NeuroshimaDice {
                     }
                 } else {
                     // LOGIKA STANDARDOWEGO POCISKU
+                    // Ensure damage and piercing are explicitly preserved for different ammo types
+                    const bulletDamage = bullet.damage !== undefined ? bullet.damage : ammoDamage;
+                    const bulletPiercing = bullet.piercing !== undefined ? bullet.piercing : ammoPiercing;
+                    
+                    game.neuroshima.log(`Standardowy pocisk ${j + 1}`, {
+                      bullet: bullet,
+                      bulletDamage,
+                      bulletPiercing,
+                      fallbackDamage: ammoDamage,
+                      fallbackPiercing: ammoPiercing
+                    });
+                    
                     finalHitSequence.push({
                         ...bullet,
+                        damage: bulletDamage,
+                        piercing: bulletPiercing,
                         successPoints: 1, 
                         shellIndex: j + 1
                     });
@@ -439,7 +454,7 @@ export class NeuroshimaDice {
     game.neuroshima.log("Generowanie karty czatu", rollData);
     game.neuroshima.groupEnd();
 
-    return this.renderWeaponRollCard(rollData, actor, roll);
+    return NeuroshimaChatMessage.renderWeaponRoll(rollData, actor, roll);
   }
 
   /**
@@ -501,117 +516,7 @@ export class NeuroshimaDice {
     return "D"; // Default if beyond all ranges
   }
 
-  /**
-   * Render standard roll result to chat.
-   */
-  static async renderRollCard(data, actor, roll) {
-    const template = "systems/neuroshima/templates/chat/roll-card.hbs";
-    const showTooltip = this.canShowTooltip(actor);
 
-    const content = await foundry.applications.handlebars.renderTemplate(template, {
-        ...data,
-        config: NEUROSHIMA,
-        showTooltip,
-        isGM: game.user.isGM
-    });
-
-    return ChatMessage.create({
-        user: game.user.id,
-        speaker: ChatMessage.getSpeaker({ actor }),
-        content,
-        rolls: [roll],
-        style: CONST.CHAT_MESSAGE_STYLES.OTHER,
-        flags: {
-            neuroshima: {
-                rollData: {
-                    isWeapon: false,
-                    actorId: actor?.id,
-                    isOpen: data.isOpen,
-                    results: data.rawResults,
-                    rawResults: data.rawResults,
-                    totalPenalty: data.totalPenalty,
-                    penalties: data.penalties,
-                    target: data.target,
-                    skill: data.skill,
-                    skillBonus: data.skillBonus,
-                    attributeBonus: data.attributeBonus,
-                    baseSkill: data.baseSkill,
-                    baseStat: data.baseStat,
-                    isSuccess: data.isSuccess,
-                    successPoints: data.successPoints,
-                    difficultyLabel: data.difficultyLabel,
-                    baseDifficultyLabel: data.baseDifficultyLabel,
-                    label: data.label,
-                    isDebug: data.isDebug
-                }
-            }
-        }
-    });
-  }
-
-  /**
-   * Render weapon roll result to chat.
-   */
-  static async renderWeaponRollCard(data, actor, roll) {
-    const template = "systems/neuroshima/templates/chat/weapon-roll-card.hbs";
-    const showTooltip = this.canShowTooltip(actor);
-
-    const content = await foundry.applications.handlebars.renderTemplate(template, {
-        ...data,
-        config: NEUROSHIMA,
-        showTooltip,
-        damageTooltipLabel: this.getDamageTooltip(data.damage),
-        isGM: game.user.isGM
-    });
-
-    return ChatMessage.create({
-        user: game.user.id,
-        speaker: ChatMessage.getSpeaker({ actor }),
-        content,
-        rolls: [roll],
-        style: CONST.CHAT_MESSAGE_STYLES.OTHER,
-        flags: {
-            neuroshima: {
-                rollData: {
-                    isWeapon: true,
-                    isMelee: data.isMelee,
-                    weaponId: data.weaponId,
-                    actorId: actor?.id,
-                    isOpen: data.isOpen,
-                    results: data.results,
-                    totalPenalty: data.totalPenalty,
-                    penalties: data.penalties,
-                    target: data.target,
-                    skill: data.skill,
-                    skillBonus: data.skillBonus,
-                    attributeBonus: data.attributeBonus,
-                    baseSkill: data.baseSkill,
-                    baseStat: data.baseStat,
-                    isSuccess: data.isSuccess,
-                    successPoints: data.successPoints,
-                    difficultyLabel: data.difficultyLabel,
-                    finalLocation: data.finalLocation,
-                    locationRoll: data.locationRoll,
-                    bulletsFired: data.bulletsFired,
-                    hitBullets: data.hitBullets,
-                    hitBulletsData: data.hitBulletsData,
-                    totalPelletSP: data.totalPelletSP,
-                    isPellet: data.isPellet,
-                    distance: data.distance,
-                    damage: data.damage,
-                    jamming: data.isJamming,
-                    burstLevel: data.burstLevel,
-                    aimingLevel: data.aimingLevel,
-                    label: data.label,
-                    debugMode: data.debugMode,
-                    bulletSequence: data.bulletSequence,
-                    magazineId: data.magazineId,
-                    ammoId: data.ammoId
-                }
-            }
-        }
-    });
-  }
 
   /**
    * Calculate PT (difficulty modifier) based on total percentage penalty.
@@ -736,7 +641,7 @@ export class NeuroshimaDice {
     game.neuroshima.log("Wyniki po modyfikacji (użycie umiejętności)", rollData.modifiedResults);
     game.neuroshima.groupEnd();
 
-    await this.renderRollCard(rollData, actor, roll);
+    await NeuroshimaChatMessage.renderRoll(rollData, actor, roll);
     return roll;
   }
 
@@ -921,30 +826,15 @@ export class NeuroshimaDice {
     return shift;
   }
 
-  /**
-   * Get formatted damage string for tooltip.
-   */
-  static getDamageTooltip(damage) {
-    if (!damage) return "";
-    const types = damage.split(",").map(d => d.trim().split("x").pop());
-    const uniqueTypes = [...new Set(types)];
-    
-    return uniqueTypes.map(t => {
-        const config = NEUROSHIMA.woundConfiguration[t];
-        return config ? game.i18n.localize(config.fullLabel) : t;
-    }).join(" / ");
-  }
+
 
   /**
-   * Check if current user can see detailed roll breakdown.
+   * Check if user can see damage application section on weapon card.
    */
-  static canShowTooltip(actor) {
-    const minRole = game.settings.get("neuroshima", "rollTooltipMinRole");
-    const ownerVisibility = game.settings.get("neuroshima", "rollTooltipOwnerVisibility");
-    
+  static canShowDamageApplication(actor) {
+    const minRole = game.settings.get("neuroshima", "damageApplicationMinRole");
     if (game.user.role >= minRole) return true;
-    if (ownerVisibility && (actor?.isOwner || game.user.isGM)) return true;
-    
+    if (actor?.isOwner || game.user.isGM) return true;
     return false;
   }
 
@@ -1117,11 +1007,12 @@ export class NeuroshimaDice {
         ? "systems/neuroshima/templates/chat/weapon-roll-card.hbs"
         : "systems/neuroshima/templates/chat/roll-card.hbs";
 
+    const showTooltip = NeuroshimaChatMessage._canShowTooltip(actor);
     const content = await foundry.applications.handlebars.renderTemplate(template, {
         ...updatedData,
         config: NEUROSHIMA,
-        showTooltip: this.canShowTooltip(actor),
-        damageTooltipLabel: isWeapon ? this.getDamageTooltip(updatedData.damage) : "",
+        showTooltip,
+        damageTooltipLabel: isWeapon ? NeuroshimaChatMessage._getDamageTooltip(updatedData.damage) : "",
         isGM: game.user.isGM
     });
 

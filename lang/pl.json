@@ -98,6 +98,7 @@
             "NoSelected": "Brak zaznaczonych tokenów",
             "Selected": "Wybrane",
             "ApplyToSelected": "Nałóż na zaznaczone tokeny",
+            "DetailsHidden": "Szczegóły ukryte (wymagana wyższa ranga)",
             "Segment": "Segment",
             "MeleeResults": "Wyniki walki wręcz",
             "Preview": {
@@ -137,6 +138,13 @@
                 "Hint": "Otwiera menu konfiguracji obliczania udźwigu dla aktorów.",
                 "Saved": "Ustawienia udźwigu zostały zapisane i zaktualizowane."
             },
+            "CombatConfig": {
+                "Title": "Ustawienia Walki",
+                "Label": "Skonfiguruj Walkę",
+                "Hint": "Otwiera menu konfiguracji mechanik walki i widoczności interfejsu.",
+                "Saved": "Ustawienia walki zostały zapisane.",
+                "VisibilityTitle": "Uprawnienia i Widoczność"
+            },
             "EnableEncumbrance": {
                 "Name": "System obciążenia",
                 "Hint": "Włącza system wagi przedmiotów i obliczanie obciążenia postaci."
@@ -164,6 +172,18 @@
             "UsePelletCountLimit": {
                 "Name": "Limit liczby śrucin",
                 "Hint": "Włącza limit liczby draśnięć na podstawie parametru 'Liczba śrucin' z amunicji (symulacja buckshot/birdshot)."
+            },
+            "DamageApplicationMinRole": {
+                "Name": "Widoczność panelu obrażeń",
+                "Hint": "Minimalna ranga wymagana do zobaczenia panelu nakładania obrażeń na karcie broni."
+            },
+            "PainResistanceMinRole": {
+                "Name": "Szczegóły Odporności na Ból",
+                "Hint": "Minimalna ranga wymagana do zobaczenia szczegółowej listy ran w raporcie Odporności na Ból."
+            },
+            "CombatActionsMinRole": {
+                "Name": "Akcje specjalne w menu",
+                "Hint": "Minimalna ranga wymagana do korzystania z opcji Refundacja amunicji i Cofnij obrażenia w menu kontekstowym czatu."
             },
             "Roles": {
                 "None": "Wszyscy (Brak)",
@@ -250,7 +270,8 @@
         "PainResistance": {
             "ReportTitle": "Testy Odporności na Ból",
             "Passed": "Zdane",
-            "Failed": "Niezdane"
+            "Failed": "Niezdane",
+            "Reduced": "Zredukowane"
         },
         "Tricks": {
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"
@@ -469,6 +490,11 @@
             "TotalPenalty": "Kara",
             "None": "Brak pancerza",
             "SumAP": "Suma AP"
+        },
+        "Chat": {
+            "ArmorReduction": "Redukcja Pancerza",
+            "ArmorReductionStats": "{reduced} z {total} pocisków zredukowanych przez pancerz na {location}",
+            "AllDamageNegated": "Wszystkie obrażenia zostały całkowicie zneutralizowane przez pancerz!"
         },
         "Location": {
             "Head": "Głowa",

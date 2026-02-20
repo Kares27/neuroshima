@@ -66,12 +66,12 @@ function armorSchema() {
   const fields = foundry.data.fields;
   return {
     ratings: new fields.SchemaField({
-      head: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      torso: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      leftArm: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      rightArm: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      leftLeg: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      rightLeg: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+      head: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      torso: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      leftArm: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      rightArm: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      leftLeg: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      rightLeg: new fields.NumberField({ initial: 0, min: 0, step: 0.5 })
     }),
     durability: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
     durabilityDamage: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
@@ -99,6 +99,22 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
       ...equipableSchema(),
       armor: new fields.SchemaField(armorSchema())
     };
+  }
+
+  /**
+   * Getter zwracający efektywne wartości pancerza (ratings - damage, min 0)
+   */
+  get effectiveArmor() {
+    const effective = {};
+    const locations = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
+    
+    for (const loc of locations) {
+      const rating = this.armor.ratings?.[loc] || 0;
+      const damageVal = this.armor.damage?.[loc] || 0;
+      effective[loc] = Math.max(0, rating - damageVal);
+    }
+    
+    return effective;
   }
 }
 

@@ -5,7 +5,11 @@
     
     <header class="roll-header">
         <div class="weapon-title">
-            {{localize "NEUROSHIMA.PainResistance.ReportTitle"}}: {{actorName}}
+            {{#if armorReductionOnly}}
+                🛡️ {{localize "NEUROSHIMA.Chat.ArmorReduction"}}
+            {{else}}
+                {{localize "NEUROSHIMA.PainResistance.ReportTitle"}}: {{actorName}}
+            {{/if}}
         </div>
     </header>
 
@@ -14,18 +18,28 @@
             <span class="label">{{localize "NEUROSHIMA.PainResistance.Passed"}}:</span>
             <span class="value"><strong>{{passedCount}}</strong></span>
         </div>
+        {{#if failedCount}}
         <div class="summary-divider">|</div>
         <div class="summary-item failed">
             <span class="label">{{localize "NEUROSHIMA.PainResistance.Failed"}}:</span>
             <span class="value"><strong>{{failedCount}}</strong></span>
         </div>
+        {{/if}}
+        {{#if reducedCount}}
+        <div class="summary-divider">|</div>
+        <div class="summary-item reduced">
+            <span class="label">{{localize "NEUROSHIMA.PainResistance.Reduced"}}:</span>
+            <span class="value"><strong>{{reducedCount}}</strong></span>
+        </div>
+        {{/if}}
     </div>
 
+    {{#if results.length}}
     <hr class="dotted-hr">
 
-    <div class="collapsible-section">
+    <div class="collapsible-section pain-resistance-details">
         <div class="damage-application-header collapsible-toggle">
-            <span>{{localize "NEUROSHIMA.Roll.Wounds"}} ({{results.length}})</span>
+            <span>{{localize "NEUROSHIMA.Roll.Wounds"}} ({{results.length}}{{#if reducedDetails.length}} + {{reducedDetails.length}}{{/if}})</span>
             <i class="fas fa-chevron-down"></i>
         </div>
         
@@ -43,12 +57,60 @@
                     </div>
                 </div>
             {{/each}}
+
+            {{#if reducedDetails.length}}
+            {{#each reducedDetails}}
+                <div class="wound-item reduced"
+                     data-tooltip="{{this.tooltip}}"
+                     data-tooltip-direction="LEFT">
+                    <div class="wound-icon">
+                        <i class="fas fa-shield"></i>
+                    </div>
+                    <div class="wound-info-main">
+                        <span class="wound-name">{{this.fullName}}</span>
+                        <span class="penalty-value">-</span>
+                    </div>
+                </div>
+            {{/each}}
+            {{/if}}
         </div>
     </div>
+    {{else if reducedDetails.length}}
+    <hr class="dotted-hr">
+
+    <div class="collapsible-section pain-resistance-details">
+        <div class="damage-application-header collapsible-toggle">
+            <span>{{localize "NEUROSHIMA.Roll.Wounds"}} ({{reducedDetails.length}})</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        
+        <div class="wound-list collapsible-content" style="display: none;">
+            {{#each reducedDetails}}
+                <div class="wound-item reduced"
+                     data-tooltip="{{this.tooltip}}"
+                     data-tooltip-direction="LEFT">
+                    <div class="wound-icon">
+                        <i class="fas fa-shield"></i>
+                    </div>
+                    <div class="wound-info-main">
+                        <span class="wound-name">{{this.fullName}}</span>
+                        <span class="penalty-value">-</span>
+                    </div>
+                </div>
+            {{/each}}
+        </div>
+    </div>
+    {{/if}}
 
     {{#if isReversed}}
     <div class="refund-status">
         <em>{{localize "NEUROSHIMA.Notifications.StatusReversed"}}</em>
+    </div>
+    {{/if}}
+
+    {{#if sourceInfo}}
+    <div class="source-info" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.2); font-size: 0.85em; color: rgba(0,0,0,0.6);">
+        {{{sourceInfo}}}
     </div>
     {{/if}}
 </div>

@@ -756,6 +756,11 @@ body.theme-dark {
     border-left-color: #dc3545;
 }
 
+.pain-resistance-report .wound-item.reduced {
+    background: rgba(108, 117, 125, 0.05);
+    border-left-color: #6c757d;
+}
+
 .pain-resistance-report .wound-icon {
     width: 16px;
     text-align: center;
@@ -764,12 +769,27 @@ body.theme-dark {
 
 .pain-resistance-report .wound-item.success .wound-icon { color: #28a745; }
 .pain-resistance-report .wound-item.failure .wound-icon { color: #dc3545; }
+.pain-resistance-report .wound-item.reduced .wound-icon { color: #6c757d; }
 
 .pain-resistance-report .wound-info-main {
     flex: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.report-restricted-info {
+    text-align: center;
+    padding: 10px;
+    font-style: italic;
+    opacity: 0.6;
+    font-size: 0.9em;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 4px;
+}
+
+.theme-dark .report-restricted-info {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 /* Custom Roll Tooltip Styles & Tiny Roll Card */

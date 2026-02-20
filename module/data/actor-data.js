@@ -171,7 +171,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         totalDamagePoints: items.reduce((total, i) => {
           if (i.type === "wound" && i.system.isActive) {
             const type = i.system.damageType;
-            const points = NEUROSHIMA.woundConfiguration[type]?.damagePoints || 0;
+            const points = NEUROSHIMA.woundConfiguration[type]?.damageHealth || 0;
             return total + points;
           }
           return total;
