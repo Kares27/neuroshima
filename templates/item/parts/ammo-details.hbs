@@ -1,0 +1,104 @@
+<div class="flexcol ammo-stats">
+    <div class="form-group row-group caliber-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</label>
+        <input type="text" name="system.caliber" value="{{system.caliber}}" list="caliber-list-{{item.id}}"/>
+        <datalist id="caliber-list-{{item.id}}">
+            {{#each worldCalibers as |caliber|}}
+            <option value="{{caliber}}"></option>
+            {{/each}}
+        </datalist>
+    </div>
+
+    <hr>
+
+    <div class="ammo-columns-container flexrow">
+        {{!-- Left Column: Override Stats --}}
+        <div class="ammo-column override-column flex1">
+            <div class="form-group checkbox-right override-toggle">
+                <input type="checkbox" name="system.isOverride" {{checked system.isOverride}}/>
+                <label>{{localize "NEUROSHIMA.Items.Fields.IsOverride"}}</label>
+            </div>
+
+            {{#if system.isOverride}}
+            <div class="override-fields-container secondary-box">
+                <div class="form-group override-row">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+                    <input type="checkbox" name="system.overrideDamage" {{checked system.overrideDamage}} {{#if system.isPellet}}disabled{{/if}}/>
+                    {{#if system.overrideDamage}}
+                    <select name="system.damage" {{#if system.isPellet}}disabled{{/if}}>
+                        {{selectOptions damageTypes selected=system.damage localize=true}}
+                    </select>
+                    {{/if}}
+                </div>
+
+                <div class="form-group override-row">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.Piercing"}}</label>
+                    <input type="checkbox" name="system.overridePiercing" {{checked system.overridePiercing}}/>
+                    {{#if system.overridePiercing}}
+                    <input type="number" name="system.piercing" value="{{system.piercing}}" data-dtype="Number" min="0"/>
+                    {{/if}}
+                </div>
+
+                <div class="form-group override-row">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.Jamming"}}</label>
+                    <input type="checkbox" name="system.overrideJamming" {{checked system.overrideJamming}}/>
+                    {{#if system.overrideJamming}}
+                    <input type="number" name="system.jamming" value="{{system.jamming}}" data-dtype="Number" min="0" max="20"/>
+                    {{/if}}
+                </div>
+            </div>
+            {{/if}}
+        </div>
+
+        {{!-- Right Column: Pellet Stats --}}
+        <div class="ammo-column pellet-column flex1">
+            <div class="form-group checkbox-right pellet-toggle">
+                <input type="checkbox" name="system.isPellet" {{checked system.isPellet}}/>
+                <label>{{localize "NEUROSHIMA.Items.Fields.IsPellet"}}</label>
+            </div>
+
+            {{#if system.isPellet}}
+            <div class="pellet-section secondary-box">
+                {{#if usePelletCountLimit}}
+                <div class="form-group pellet-count-row">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.PelletCount"}}</label>
+                    <input type="number" name="system.pelletCount" value="{{system.pelletCount}}" data-dtype="Number" min="1"/>
+                </div>
+                <hr>
+                {{/if}}
+                <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.PelletRanges"}}</label>
+                <div class="pellet-ranges-table">
+                    <div class="pellet-header flexrow">
+                        <span class="range-col">{{localize "NEUROSHIMA.Items.Fields.Distance"}} (m)</span>
+                        <span class="damage-col">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span>
+                    </div>
+                    <div class="pellet-row flexrow">
+                        <input type="number" name="system.pelletRanges.range1.distance" value="{{system.pelletRanges.range1.distance}}" data-dtype="Number" min="0"/>
+                        <select name="system.pelletRanges.range1.damage">
+                            {{selectOptions damageTypes selected=system.pelletRanges.range1.damage localize=true}}
+                        </select>
+                    </div>
+                    <div class="pellet-row flexrow">
+                        <input type="number" name="system.pelletRanges.range2.distance" value="{{system.pelletRanges.range2.distance}}" data-dtype="Number" min="0"/>
+                        <select name="system.pelletRanges.range2.damage">
+                            {{selectOptions damageTypes selected=system.pelletRanges.range2.damage localize=true}}
+                        </select>
+                    </div>
+                    <div class="pellet-row flexrow">
+                        <input type="number" name="system.pelletRanges.range3.distance" value="{{system.pelletRanges.range3.distance}}" data-dtype="Number" min="0"/>
+                        <select name="system.pelletRanges.range3.damage">
+                            {{selectOptions damageTypes selected=system.pelletRanges.range3.damage localize=true}}
+                        </select>
+                    </div>
+                    <div class="pellet-row flexrow">
+                        <input type="number" name="system.pelletRanges.range4.distance" value="{{system.pelletRanges.range4.distance}}" data-dtype="Number" min="0"/>
+                        <select name="system.pelletRanges.range4.damage">
+                            {{selectOptions damageTypes selected=system.pelletRanges.range4.damage localize=true}}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            {{/if}}
+        </div>
+    </div>
+</div>

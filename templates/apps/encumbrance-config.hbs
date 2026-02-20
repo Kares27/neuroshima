@@ -1,0 +1,57 @@
+<section>
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.EnableEncumbrance.Name"}}</label>
+        <div class="form-fields">
+            <input type="checkbox" name="enableEncumbrance" {{checked config.enableEncumbrance}}>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.EnableEncumbrance.Hint"}}</p>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.BaseEncumbrance.Name"}}</label>
+        <div class="form-fields">
+            <input type="number" name="baseEncumbrance" value="{{config.baseEncumbrance}}" step="0.5" min="0">
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.BaseEncumbrance.Hint"}}</p>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.UseConstitutionBonus.Name"}}</label>
+        <div class="form-fields">
+            <input type="checkbox" name="useConstitutionBonus" {{checked config.useConstitutionBonus}}>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.UseConstitutionBonus.Hint"}}</p>
+    </div>
+
+    <div class="constitution-bonus-field" style="{{#unless config.useConstitutionBonus}}display: none;{{/unless}}">
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.EncumbranceThreshold.Name"}}</label>
+            <div class="form-fields">
+                <input type="number" name="encumbranceThreshold" value="{{config.encumbranceThreshold}}" min="0">
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.EncumbranceThreshold.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.EncumbranceBonusInterval.Name"}}</label>
+            <div class="form-fields">
+                <input type="number" name="encumbranceBonusInterval" value="{{config.encumbranceBonusInterval}}" min="1">
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.EncumbranceBonusInterval.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.EncumbranceBonusValue.Name"}}</label>
+            <div class="form-fields">
+                <input type="number" name="encumbranceBonusValue" value="{{config.encumbranceBonusValue}}" step="0.5" min="0">
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.EncumbranceBonusValue.Hint"}}</p>
+        </div>
+    </div>
+
+    <footer class="sheet-footer flexrow">
+        <button type="submit" name="submit">
+            <i class="fas fa-save"></i> {{localize "SETTINGS.Save"}}
+        </button>
+    </footer>
+</section>

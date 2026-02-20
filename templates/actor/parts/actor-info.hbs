@@ -1,0 +1,10 @@
+<div class="info-fields">
+    {{#each infoFields as |label key|}}
+    <div class="form-group">
+        <label>{{localize label}}</label>
+        <div class="form-fields">
+            <input type="text" name="system.{{key}}" value="{{lookup ../system key}}" data-dtype="{{#if (eq key 'xp')}}Number{{else}}String{{/if}}"/>
+        </div>
+    </div>
+    {{/each}}
+</div>

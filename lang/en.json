@@ -1,0 +1,443 @@
+{
+    "NEUROSHIMA": {
+        "Sheet": {
+            "ActorCharacter": "Actor Sheet",
+            "Item": "Item Sheet",
+            "Edit": "Edit",
+            "Finish": "Finish",
+            "SaveAndFinish": "Save and Finish"
+        },
+        "Attributes": {
+            "Attributes": "Attributes",
+            "Base": "Base",
+            "Modifier": "Modifier",
+            "Dexterity": "Dexterity",
+            "Perception": "Perception",
+            "Charisma": "Charisma",
+            "Cleverness": "Cleverness",
+            "Constitution": "Constitution",
+            "Abbr": {
+                "Dexterity": "Dex",
+                "Perception": "Per",
+                "Charisma": "Cha",
+                "Cleverness": "Cle",
+                "Constitution": "Con"
+            }
+        },
+        "Info": {
+            "Specialization": "Specialization",
+            "Origin": "Origin",
+            "Profession": "Profession"
+        },
+        "XP": {
+            "Label": "Experience",
+            "Current": "Current",
+            "Spent": "Spent",
+            "Total": "Total"
+        },
+        "Roll": {
+            "PenaltyLabel": "Test Penalty",
+            "Target": "Threshold",
+            "Successes": "Successes",
+            "SuccessesAbbr": "succ.",
+            "CritSuccess": "CRITICAL SUCCESS!",
+            "CritFailure": "CRITICAL FAILURE!",
+            "OpenTest": "Open Test",
+            "ClosedTest": "Closed Test",
+            "Success": "Success",
+            "Failure": "Failure",
+            "Jamming": "JAMMING",
+            "SuccessPoints": "Success Points",
+            "SuccessPointsAbbr": "Advantage Points",
+            "SuccessCount": "Success Count",
+            "FailurePoints": "Failure Points",
+            "Penalties": "Penalties",
+            "PenaltyMod": "Modifier",
+            "PenaltyWounds": "Wounds",
+            "PenaltyArmor": "Armor",
+            "Test": "Test",
+            "TestType": "Test Type",
+            "On": "on",
+            "EditRoll": "Edit Roll",
+            "SwitchToOpen": "Switch to Open Test",
+            "SwitchToClosed": "Switch to Closed Test",
+            "BaseDifficulty": "Base Difficulty",
+            "Difficulty": "Difficulty",
+            "Attribute": "Attribute",
+            "Modifier": "Modifier",
+            "Armor": "Armor",
+            "Wounds": "Wounds",
+            "Summary": "Summary",
+            "TotalModifier": "Total Modifier",
+            "FinalDifficulty": "Final Difficulty",
+            "SkillBonus": "Skill Bonus",
+            "SkillBonusAbbr": "Skill Bon.",
+            "AttributeBonus": "Attribute Bonus",
+            "AttributeBonusAbbr": "Attr. Bon.",
+            "Distance": "Distance (m)",
+            "Aiming": "Aiming",
+            "Burst": "Burst",
+            "HitLocation": "Hit Location",
+            "RandomLocation": "Random Location",
+            "DiceCount": "Dice Count",
+            "BulletsFired": "Bullets Fired",
+            "BulletsHit": "Bullets Hit",
+            "Segment": "Segment",
+            "MeleeResults": "Melee Roll Results",
+            "Preview": {
+                "Base": "Base",
+                "Armor": "Armor",
+                "Wounds": "Wounds",
+                "Location": "Location",
+                "Total": "TOTAL",
+                "FinalLevel": "Actual Level"
+            }
+        },
+        "Actions": {
+            "Roll": "Roll dice",
+            "Cancel": "Cancel",
+            "Save": "Save",
+            "Repair": "Repair",
+            "Damage": "Damage",
+            "Shoot": "Shoot",
+            "Strike": "Strike",
+            "ConfigureHP": "Configure HP",
+            "Create": "Create",
+            "CreateBulkWounds": "Bulk Create Wounds",
+            "Load": "Load",
+            "Unload": "Unload"
+        },
+        "Wound": {
+            "TotalPenalty": "Total Wound Penalty",
+            "TotalPenaltyAbbr": "Penalty",
+            "TotalDamage": "Total Damage / Max HP"
+        },
+        "Encumbrance": "Encumbrance",
+        "Settings": {
+            "EncumbranceConfig": {
+                "Title": "Encumbrance Settings",
+                "Label": "Configure Encumbrance",
+                "Hint": "Opens the configuration menu for calculating actor encumbrance.",
+                "Saved": "Encumbrance settings have been saved and updated."
+            },
+            "EnableEncumbrance": {
+                "Name": "Encumbrance System",
+                "Hint": "Enables item weight system and character encumbrance calculation."
+            },
+            "DebugMode": {
+                "Name": "Debug Mode",
+                "Hint": "Enables additional logs in the developer console for diagnostic purposes."
+            },
+            "RequireBuildOnItems": {
+                "Name": "Require build on weapons and armors",
+                "Hint": "Determines if the system should check build requirement for weapons and armors."
+            },
+            "AllowCombatShift": {
+                "Name": "Allow Suwak in combat",
+                "Hint": "Enables the Suwak rule (difficulty shifts) during combat actions."
+            },
+            "RollTooltipMinRole": {
+                "Name": "Minimum Role for Tooltip",
+                "Hint": "Minimum user role required to see the detailed penalty breakdown in the roll tooltip."
+            },
+            "RollTooltipOwnerVisibility": {
+                "Name": "Show Tooltip to Owner",
+                "Hint": "Always show the detailed penalty breakdown to the owner of the roll (and GM), regardless of their role."
+            },
+            "UsePelletCountLimit": {
+                "Name": "Pellet count limit",
+                "Hint": "Enables limiting the number of hits based on the 'Pellet Count' parameter from ammunition (buckshot/birdshot simulation)."
+            },
+            "Roles": {
+                "None": "Everyone (None)",
+                "Player": "Player",
+                "Trusted": "Trusted Player",
+                "Assistant": "Assistant GM",
+                "Gamemaster": "Gamemaster Only"
+            },
+            "BaseEncumbrance": {
+                "Name": "Base Encumbrance",
+                "Hint": "Base weight capacity for every actor (in kg)."
+            },
+            "UseConstitutionBonus": {
+                "Name": "Constitution Bonus",
+                "Hint": "Whether to include weight capacity bonus from Constitution attribute."
+            },
+            "EncumbranceThreshold": {
+                "Name": "Encumbrance Threshold",
+                "Hint": "At what Constitution value to start counting weight bonuses."
+            },
+            "EncumbranceBonusInterval": {
+                "Name": "Bonus Interval",
+                "Hint": "How many points of Constitution above threshold are required for each bonus step."
+            },
+            "EncumbranceBonusValue": {
+                "Name": "Bonus Value",
+                "Hint": "How many kilograms are added to capacity for each bonus step."
+            }
+        },
+        "Tabs": {
+            "Attributes": "Attributes",
+            "Skills": "Skills",
+            "Tricks": "Tricks",
+            "Combat": "Combat",
+            "Inventory": "Inventory",
+            "Notes": "Notes",
+            "Stats": "Stats",
+            "Description": "Description",
+            "Effects": "Effects",
+            "EffectsPlaceholder": "Item effects (TBD)"
+        },
+        "Dialog": {
+            "WeaponType": {
+                "Title": "Select Weapon Type",
+                "Content": "What type of weapon do you want to create?"
+            },
+            "MaxHP": {
+                "Title": "Configure Max HP",
+                "Label": "Max HP Value"
+            },
+            "BulkWound": {
+                "Title": "Bulk Create Wounds",
+                "Count": "Number of Wounds"
+            },
+            "AmmoLoading": {
+                "Title": "Ammo Loading",
+                "Content": "How many {name} do you want to load into {mag}? (Max: {max})",
+                "Amount": "Amount"
+            },
+            "CaliberMismatch": {
+                "Title": "Caliber Mismatch",
+                "Content": "You are trying to load {ammo} ammo into a {mag} caliber magazine. Are you sure you want to continue?"
+            }
+        },
+        "Notifications": {
+            "SelectTargetOrPoint": "Select a target on the map (LMB) to measure distance. RMB to cancel.",
+            "NoActorTokenOnCanvas": "No active token found for your character on the map.",
+            "MagazineFull": "Magazine is already full.",
+            "AmmoLoaded": "Loaded {amount}x {ammo} into {mag}.",
+            "MagazineUnloaded": "Unloaded magazine {name}.",
+            "OutOfAmmoDuringBurst": "Out of ammo during burst!",
+            "OutOfAmmo": "No more {name} left!",
+            "NoMagazineSelected": "No magazine selected for this weapon!",
+            "Jamming": "JAMMING!"
+        },
+        "Difficulty": {
+            "Easy": "Easy",
+            "Average": "Average",
+            "Problematic": "Problematic",
+            "Hard": "Hard",
+            "VeryHard": "Very Hard",
+            "DamnHard": "Damn Hard",
+            "Luck": "Luck",
+            "Masterfull": "Masterfull",
+            "Grandmasterfull": "Grandmasterfull",
+            "ShowMore": "Show difficulty thresholds",
+            "ShowLess": "Hide difficulty thresholds"
+        },
+        "Damage": {
+            "D": "D",
+            "L": "L",
+            "C": "C",
+            "K": "K",
+            "sD": "sD",
+            "sL": "sL",
+            "sC": "sC",
+            "sK": "sK",
+            "Full": {
+                "D": "Scratched",
+                "L": "Light Wound",
+                "C": "Serious Wound",
+                "K": "Critical Wound",
+                "sD": "Scratched (Siniak)",
+                "sL": "Light Wound (Siniak)",
+                "sC": "Serious Wound (Siniak)",
+                "sK": "Critical Wound (Siniak)"
+            }
+        },
+        "WeaponSubtype": {
+            "pistols": "P",
+            "submachineRifles": "PM",
+            "rifles": "K",
+            "sniperRifles": "S",
+            "shotguns": "SR"
+        },
+        "Specializations": {
+            "melee": "Melee",
+            "firearms": "Firearms",
+            "ranged": "Ranged Weapons",
+            "driving": "Driving",
+            "manual": "Manual Skills",
+            "tracking": "Tracking",
+            "alertness": "Alertness",
+            "stealth": "Stealth",
+            "survival": "Survival",
+            "negotiation": "Negotiation",
+            "empathy": "Empathy",
+            "willpower": "Willpower",
+            "medicine": "Medicine",
+            "technology": "Technology",
+            "equipment": "Equipment",
+            "pyrotechnics": "Pyrotechnics",
+            "generalKnowledge1": "General Knowledge",
+            "generalKnowledge2": "General Knowledge",
+            "fitness": "Fitness",
+            "riding": "Riding"
+        },
+        "Skills": {
+            "brawl": "Brawl",
+            "handWeapon": "Hand Weapon",
+            "throwing": "Throwing",
+            "pistols": "Pistols",
+            "rifles": "Rifles",
+            "machineGuns": "Machine Guns",
+            "bow": "Bow",
+            "crossbow": "Crossbow",
+            "sling": "Sling",
+            "car": "Car",
+            "truck": "Truck",
+            "motorcycle": "Motorcycle",
+            "pickpocketing": "Pickpocketing",
+            "sleightOfHand": "Sleight of Hand",
+            "lockpicking": "Lockpicking",
+            "directionSense": "Direction Sense",
+            "tracking": "Tracking",
+            "traps": "Traps",
+            "listening": "Listening",
+            "spotting": "Spotting",
+            "vigilance": "Vigilance",
+            "sneaking": "Sneaking",
+            "hiding": "Hiding",
+            "camouflage": "Camouflage",
+            "hunting": "Hunting",
+            "waterGathering": "Water Gathering",
+            "terrainKnowledge": "Terrain Knowledge",
+            "persuasion": "Persuasion",
+            "intimidation": "Intimidation",
+            "leadership": "Leadership",
+            "emotionPerception": "Emotion Perception",
+            "bluff": "Bluff",
+            "animalCare": "Animal Care",
+            "painResistance": "Pain Resistance",
+            "steadfastness": "Steadfastness",
+            "morale": "Morale",
+            "woundTreatment": "Wound Treatment",
+            "diseaseTreatment": "Disease Treatment",
+            "firstAid": "First Aid",
+            "mechanics": "Mechanics",
+            "electronics": "Electronics",
+            "computers": "Computers",
+            "heavyMachinery": "Heavy Machinery",
+            "combatVehicles": "Combat Vehicles",
+            "boats": "Boats",
+            "gunsmithing": "Gunsmithing",
+            "launchers": "Launchers",
+            "explosives": "Explosives",
+            "knowledge1": "Knowledge Test 1",
+            "knowledge2": "Knowledge Test 2",
+            "knowledge3": "Knowledge Test 3",
+            "knowledge4": "Knowledge Test 4",
+            "knowledge5": "Knowledge Test 5",
+            "knowledge6": "Knowledge Test 6",
+            "swimming": "Swimming",
+            "climbing": "Climbing",
+            "stamina": "Stamina",
+            "horseRiding": "Horse Riding",
+            "drivingCarriage": "Driving Carriage",
+            "taming": "Taming"
+        },
+        "Items": {
+            "Type": {
+                "Weapon": "Weapon",
+                "WeaponMelee": "Melee Weapon",
+                "WeaponRanged": "Ranged Weapon",
+                "WeaponThrown": "Thrown Weapon",
+                "Armor": "Armor",
+                "Gear": "Gear",
+                "Trick": "Trick",
+                "Ammo": "Ammo",
+                "Magazine": "Magazine",
+                "Magazines": "Magazines",
+                "Wound": "Wound"
+            },
+            "Fields": {
+                "Weight": "Weight",
+                "Cost": "Cost",
+                "Quantity": "Quantity",
+                "Description": "Description",
+                "Equipped": "Equipped",
+                "EquippedAbbr": "Equipped",
+                "IsEquipable": "Is Equipable",
+                "Damage": "Damage",
+                "Speed": "Speed",
+                "Range": "Range",
+                "AmmoType": "Ammunition",
+                "Ammo": "Ammo",
+                "Attribute": "Attribute",
+                "Skill": "Skill",
+                "AttackBonus": "Attack Bonus",
+                "AttackBonusAbbr": "ATK",
+                "DefenseBonus": "Defense Bonus",
+                "DefenseBonusAbbr": "DEF",
+                "MeleeDamageTypes": "Damage Types",
+                "WeaponSubtype": "Weapon Subtype",
+                "Magazine": "Magazine",
+                "Piercing": "Piercing",
+                "PiercingAbbr": "PP",
+                "FireRate": "Fire Rate",
+                "FireRateAbbr": "Rate",
+                "Capacity": "Capacity",
+                "Jamming": "Jamming",
+                "JammingAbbr": "Jam.",
+                "None": "None",
+                "Armor": "Armor",
+                "Melee": "Melee",
+                "Ranged": "Ranged",
+                "Thrown": "Thrown",
+                "Rating": "Armor Points",
+                "Durability": "Durability",
+                "DurabilityAbbr": "Dur.",
+                "ArmorDamage": "Armor Damage",
+                "ArmorPenalty": "Penalty",
+                "RequiredBuild": "Required Build",
+                "IsPellet": "Pellet Ammunition",
+                "PelletCount": "Pellet Count",
+                "PelletRanges": "Pellet Ranges",
+                "Distance": "Distance",
+                "Head": "Head",
+                "Torso": "Torso",
+                "LeftArm": "Left Arm",
+                "RightArm": "Right Arm",
+                "LeftLeg": "Left Leg",
+                "RightLeg": "Right Leg",
+                "Location": "Location",
+                "IsHealing": "Is Healing",
+                "IsActive": "Is Active",
+                "Penalty": "Penalty",
+                "DamageType": "Damage Type",
+                "Caliber": "Caliber",
+                "MagazineContents": "Magazine contents",
+                "IsOverride": "Override stats",
+                "OverrideDamage": "Override damage",
+                "OverridePiercing": "Override piercing",
+                "OverrideJamming": "Override jamming"
+            }
+        },
+        "Armor": {
+            "TotalPenalty": "Total Penalty",
+            "None": "No armor",
+            "SumAP": "Sum AP"
+        },
+        "Location": {
+            "Head": "Head",
+            "Torso": "Torso",
+            "LeftArm": "Left Arm",
+            "RightArm": "Right Arm",
+            "LeftLeg": "Left Leg",
+            "RightLeg": "Right Leg"
+        }
+    },
+    "TOKEN": {
+        "Title": "Prototype Token"
+    }
+}

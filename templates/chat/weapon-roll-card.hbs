@@ -1,0 +1,128 @@
+<div class="neuroshima roll-card weapon-roll-card" 
+    data-weapon-id="{{weaponId}}"
+    data-actor-id="{{actorId}}"
+    data-hit-bullets="{{hitBullets}}"
+    data-total-pellet-sp="{{totalPelletSP}}"
+    data-is-pellet="{{isPellet}}"
+    data-damage="{{damage}}"
+    {{#if showTooltip}}
+    data-tooltip="<strong>{{localize 'NEUROSHIMA.Items.Fields.BaseDifficulty'}}:</strong> {{localize difficultyLabel}} ({{penalties.base}}%)<br>
+                  <strong>{{localize 'NEUROSHIMA.Roll.Modifier'}}:</strong> {{penalties.mod}}%<br>
+                  <strong>{{localize 'NEUROSHIMA.Roll.PenaltyArmor'}}:</strong> {{penalties.armor}}%<br>
+                  <strong>{{localize 'NEUROSHIMA.Roll.PenaltyWounds'}}:</strong> {{penalties.wounds}}%<br>
+                  {{#if penalties.location}}<strong>{{localize 'NEUROSHIMA.Roll.HitLocation'}}:</strong> {{penalties.location}}%<br>{{/if}}
+                  <strong>{{localize 'NEUROSHIMA.Roll.TotalModifier'}}:</strong> {{totalPenalty}}%<br>
+                  {{#if (ne distance 0)}}<strong>{{localize 'NEUROSHIMA.Roll.Distance'}}:</strong> {{distance}}m<br>{{/if}}
+                  <hr>
+                  <strong>{{localize 'NEUROSHIMA.Attributes.Attributes'}}:</strong> {{baseStat}}<br>
+                  {{#if (ne attributeBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.AttributeBonusAbbr'}}:</strong> {{attributeBonus}}<br>{{/if}}
+                  <strong>{{localize 'NEUROSHIMA.Items.Fields.Skill'}}:</strong> {{baseSkill}}<br>
+                  {{#if (ne skillBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.SkillBonusAbbr'}}:</strong> {{skillBonus}}<br>{{/if}}
+                  <strong>{{localize 'NEUROSHIMA.Roll.Target'}}:</strong> {{target}}
+                  {{#if totalPelletSP}}<br><strong>Śrut:</strong> {{totalPelletSP}}xD{{/if}}
+                  {{#if (gt hitBullets 1)}}<br><strong>Trafienia:</strong> {{hitBullets}}{{/if}}"
+    data-tooltip-direction="LEFT"
+    {{/if}}>
+    
+    <header class="roll-header">
+        <div class="weapon-title">
+            {{label}}: {{actionLabel}}
+        </div>
+        <div class="test-type">
+            {{localize difficultyLabel}}
+            {{#if isOpen}}
+                | {{localize "NEUROSHIMA.Roll.OpenTest"}}
+            {{else}}
+                | {{localize "NEUROSHIMA.Roll.ClosedTest"}}
+            {{/if}}
+        </div>
+    </header>
+    <hr class="dotted-hr">
+    <div class="weapon-details">
+        {{#if (gt bulletsFired 1)}}
+        <div class="detail-item">
+            <span class="label">Pociski:</span>
+            <span class="value"><strong>{{bulletsFired}}</strong></span>
+        </div>
+        {{/if}}
+        <div class="detail-item">
+            <span class="label">Lokacja:</span>
+            <span class="value"><strong>{{localize locationLabel}}</strong> {{#if locationRoll}}({{locationRoll}}){{/if}}</span>
+        </div>
+        {{#if damage}}
+        <div class="detail-item">
+            <span class="label">Obrażenia:</span>
+            <span class="value"><strong {{#if damageTooltipLabel}}data-tooltip="{{damageTooltipLabel}}"{{/if}}>{{damage}}</strong></span>
+        </div>
+        {{/if}}
+        {{#if isPellet}}
+        <div class="detail-item">
+            <span class="label">Śrut:</span>
+            <span class="value"><strong>{{totalPelletSP}}xD</strong></span>
+        </div>
+        {{/if}}
+    </div>
+
+    <div class="dice-results-grid">
+        {{#each modifiedResults}}
+            <div class="die-result {{#if this.isBest}}{{#unless ../isMelee}}best{{/unless}}{{/if}}">
+                <span class="die-label">
+                    D{{add @index 1}} =
+                </span>
+                <div class="die-square-container">
+                    <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}}">
+                        {{this.original}}
+                    </span>
+                    
+                    {{#if (or ../isMelee this.isBest)}}
+                        {{#if (gt ../skill 0)}}
+                            <i class="fas fa-long-arrow-alt-right"></i> 
+                            <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
+                                {{this.modified}}
+                            </span>
+                        {{else}}
+                            <i class="fas fa-long-arrow-alt-right invisible"></i> 
+                            <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
+                                {{this.modified}}
+                            </span>
+                        {{/if}}
+                    {{/if}}
+                </div>
+            </div>
+        {{/each}}
+    </div>
+
+    <hr class="dotted-hr">
+    {{#if (and hitBulletsData debugMode)}}
+    <div class="pellet-hits-section">
+        {{#each hitBulletsData}}
+            <div class="pellet-hit-item">
+                <span class="pellet-label">Pocisk {{add @index 1}}:</span>
+                <span class="pellet-damage"><strong>{{this.damage}}</strong></span>
+                {{#if this.isPellet}}
+                <span class="pellet-sp">({{this.successPoints}} śrucin)</span>
+                {{/if}}
+            </div>
+        {{/each}}
+    </div>
+    <hr class="dotted-hr">
+    {{/if}}
+    <footer class="roll-outcome {{#if isJamming}}failure{{else}}{{#if isSuccess}}success{{else}}failure{{/if}}{{/if}}">
+        {{#if isJamming}}
+            <div class="outcome-item jamming-alert">
+                <span class="value"><strong>{{localize "NEUROSHIMA.Roll.Jamming"}}!</strong></span>
+            </div>
+        {{else}}
+            <div class="outcome-item success-points">
+                <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
+                <span class="value"><strong>{{successPoints}}</strong></span>
+            </div>
+            {{#if (and (not isMelee) (gt bulletsFired 1))}}
+            <div class="outcome-item hit-bullets">
+                <span class="label">{{localize "NEUROSHIMA.Roll.BulletsHit"}}:</span>
+                <span class="value"><strong>{{hitBullets}}</strong></span>
+            </div>
+            {{/if}}
+        {{/if}}
+    </footer>
+</div>

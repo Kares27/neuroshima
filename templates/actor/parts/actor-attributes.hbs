@@ -1,0 +1,64 @@
+<section class="tab attributes {{tabs.attributes.cssClass}}" data-group="primary" data-tab="attributes" data-application-part="attributes">
+    <div class="attributes-table">
+        <table>
+            <thead>
+                <tr>
+                    <th class="label-column"></th>
+                    {{#each attributeList as |attr key|}}
+                    <th title="{{localize attr.label}}" class="attribute-header-cell clickable" data-action="rollAttribute" data-attribute="{{key}}">
+                        <div class="attribute-abbr">{{localize attr.abbr}}</div>
+                    </th>
+                    {{/each}}
+                </tr>
+            </thead>
+            <tbody>
+                {{!-- Base Attribute Values --}}
+                <tr class="attribute-row">
+                    <td class="label-column"><strong>{{localize "NEUROSHIMA.Attributes.Base"}}</strong></td>
+                    {{#each attributeList as |attr key|}}
+                    <td>
+                        <input type="number" name="system.attributes.{{key}}" value="{{lookup ../system.attributes key}}" min="0" max="40"/>
+                    </td>
+                    {{/each}}
+                </tr>
+                {{!-- Modifiers --}}
+                <tr class="attribute-row">
+                    <td class="label-column"><strong>{{localize "NEUROSHIMA.Attributes.Modifier"}}</strong></td>
+                    {{#each attributeList as |attr key|}}
+                    <td>
+                        <input type="number" name="system.modifiers.{{key}}" value="{{lookup ../system.modifiers key}}"/>
+                    </td>
+                    {{/each}}
+                </tr>
+                {{!-- Toggle Row --}}
+                <tr class="toggle-row-wrapper">
+                    <td colspan="6" class="toggle-cell">
+                        <button type="button" class="toggle-difficulties-btn" data-action="toggleDifficulties">
+                            <i class="fas {{#if difficultiesCollapsed}}fa-chevron-down{{else}}fa-chevron-up{{/if}}"></i>
+                            <span>
+                                {{#if difficultiesCollapsed}}
+                                    {{localize "NEUROSHIMA.Difficulty.ShowMore"}}
+                                {{else}}
+                                    {{localize "NEUROSHIMA.Difficulty.ShowLess"}}
+                                {{/if}}
+                            </span>
+                        </button>
+                    </td>
+                </tr>
+                {{!-- Difficulty Thresholds --}}
+                {{#unless difficultiesCollapsed}}
+                {{#each difficulties as |diff diffKey|}}
+                <tr class="difficulty-row">
+                    <td class="label-column">{{localize diff.label}} ({{#if (gt diff.mod 0)}}+{{/if}}{{diff.mod}})</td>
+                    {{#each ../attributeList as |attr attrKey|}}
+                    <td class="text-center">
+                        {{lookup (lookup ../../system.thresholds attrKey) diffKey}}
+                    </td>
+                    {{/each}}
+                </tr>
+                {{/each}}
+                {{/unless}}
+            </tbody>
+        </table>
+    </div>
+</section>

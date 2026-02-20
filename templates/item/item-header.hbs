@@ -1,0 +1,51 @@
+<header class="sheet-header flexrow">
+    <div class="profile-container flex0">
+        <img class="profile-img" src="{{item.img}}" data-action="editImage" title="{{item.name}}" height="100" width="100"/>
+    </div>
+    <div class="header-details flexcol">
+        <div class="item-subtitle flexrow">
+            <h4 class="item-type">{{localize typeLabel}}</h4>
+            {{#unless (eq item.type "wound")}}
+            <div class="item-qty flexrow">
+                <input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" title="{{localize 'NEUROSHIMA.Items.Fields.Quantity'}}"/>
+                <div class="qty-x">×</div>
+            </div>
+            {{/unless}}
+        </div>
+        <div class="item-name-row flexrow">
+            <h1>
+                <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'Name'}}"/>
+            </h1>
+        </div>
+        <div class="item-header-stats flexrow">
+            {{#unless (eq item.type "wound")}}
+            {{#if enableEncumbrance}}
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.Weight"}}</label>
+                <input type="number" name="system.weight" value="{{system.weight}}" data-dtype="Number" step="0.5"/>
+            </div>
+            {{/if}}
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.Cost"}}</label>
+                <input type="number" name="system.cost" value="{{system.cost}}" data-dtype="Number"/>
+            </div>
+            {{#unless (eq system.equipped undefined)}}
+            <div class="form-group checkbox row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.Equipped"}}</label>
+                <input type="checkbox" name="system.equipped" {{checked system.equipped}}/>
+            </div>
+            {{/unless}}
+            {{/unless}}
+            {{#if (eq item.type "wound")}}
+            <div class="form-group checkbox row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.IsActive"}}</label>
+                <input type="checkbox" name="system.isActive" {{checked system.isActive}}/>
+            </div>
+            <div class="form-group checkbox row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.IsHealing"}}</label>
+                <input type="checkbox" name="system.isHealing" {{checked system.isHealing}}/>
+            </div>
+            {{/if}}
+        </div>
+    </div>
+</header>

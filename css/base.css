@@ -1,0 +1,608 @@
+body.theme-light {
+    /* === BAZA LIGHT (Domyślny - Papierowy) === */
+    
+    /* Główne Tła */
+    --ns-bg-sheet: #f0f0e0;       /* Kolor papieru */
+    --ns-bg-panel: rgba(0, 0, 0, 0.02); /* Tło pod panelami */
+    
+    /* Interaktywne (Inputy, Tabele) */
+    --ns-bg-input: rgba(0, 0, 0, 0.05); /* Lekko ciemniejszy od tła */
+    --ns-bg-header: rgba(0, 0, 0, 0.1); /* Nagłówki tabel */
+    --ns-bg-hover: rgba(255, 0, 0, 0.05); /* Hover myszką */
+
+    /* Ramki i Linie */
+    --ns-border-main: #7a7971;    /* Twój główny szary kolor ramek */
+    --ns-border-light: rgba(122, 121, 113, 0.3); /* Delikatne linie */
+    --ns-border-focus: #a02e2e;   /* Akcent (np. przy kliknięciu) */
+
+    /* Tekst */
+    --ns-text-main: #191813;      /* Prawie czarny */
+    --ns-text-light: #4b4a44;     /* Ciemnoszary */
+    --ns-text-header: #000000;    /* Czarny */
+    --ns-text-accent: #a02e2e;    /* Czerwony Neuroshimy */
+    --ns-text-clickable:#a0692e;
+}
+
+/* === BAZA DARK (Tryb Nocny) === */
+body.theme-dark {
+    /* Główne Tła */
+    --ns-bg-sheet: #121212;       /* Bardzo ciemny grafit */
+    --ns-bg-panel: rgba(0, 0, 0, 0.4);
+
+    /* Interaktywne */
+    --ns-bg-input: rgba(255, 255, 255, 0.05);
+    --ns-bg-header: #rgba(0,0,0,0.4);      /* Czarne nagłówki sekcji jak na screenie */
+    --ns-bg-hover: rgba(255, 255, 255, 0.1);
+    --ns-bg-armor: #3f3f3f;
+
+    /* Ramki */
+    --ns-border-main: #7a7971;    /* Ciemniejszy szary */
+    --ns-border-light: rgba(255, 255, 255, 0.1);
+    --ns-border-focus: #ff6400;   /* Domyślny akcent Foundry (pomarańcz) */
+
+    /* Tekst */
+    --ns-text-main: #f0f0e0;      /* Standardowy kolor tekstu Foundry */
+    --ns-text-light: #a0a090;
+    --ns-text-header: #ffffff;
+    --ns-text-accent: #a02e2e;    /* Jasna czerwień Neuroshimy dla Dark Mode */
+    --ns-text-clickable:#945e23;
+    --ns-text-attribute: #a02e2e;
+}
+
+@font-face {
+    font-family: 'SpecialElite';
+    src: url('../fonts/SpecialElite.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Global System Styles - Scoped to .neuroshima */
+.neuroshima {
+    letter-spacing: 1px;
+}
+
+/* Stosujemy czcionkę tylko do pól wprowadzania i etykiet */
+.neuroshima input, 
+.neuroshima select, 
+.neuroshima textarea,
+.neuroshima label,
+.neuroshima span,
+.neuroshima .item-type,
+.neuroshima .charname,
+.neuroshima .section-label,
+.neuroshima nav.tabs .item {
+    font-family: 'SpecialElite', "Signika", sans-serif;
+}
+
+.neuroshima [hidden] {
+    display: none !important;
+}
+
+.neuroshima .grid {
+    display: grid;
+}
+
+.neuroshima .grid-2col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.neuroshima .grid-3col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.neuroshima .grid-4col {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.neuroshima .grid-5col {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.neuroshima .text-center {
+    text-align: center;
+}
+
+.neuroshima .invisible {
+    visibility: hidden;
+}
+
+.neuroshima .flexcol {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima .flexrow {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.neuroshima .flex-right {
+    justify-content: flex-end;
+}
+
+.neuroshima .flex0 {
+    flex: 0;
+}
+
+/* DialogV2 Styles */
+.neuroshima.dialog-vertical .dialog-buttons,
+.neuroshima.dialog-vertical .standard-form .form-footer {
+    flex-direction: column;
+    gap: 5px;
+}
+
+.neuroshima.dialog-vertical button {
+    width: 100%;
+    margin: 0;
+}
+
+/* Chat Message Styling */
+.chat-message:has(.neuroshima.roll-card) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+
+/* Dark Mode Overrides */
+.theme-dark .chat-message:has(.neuroshima.roll-card) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.roll-card .roll-header {
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.roll-card .die-square {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+    box-shadow: inset 0 0 4px #ffffff11;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.nat-1 {
+    background: #332b00;
+    border-color: #fbc02d;
+    color: #ffeb3b;
+    box-shadow: 0 0 8px #fbc02d44;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.nat-20 {
+    background: #3d0c0c;
+    border-color: #d32f2f;
+    color: #ff8a80;
+    box-shadow: 0 0 8px #d32f2f44;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.modified.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.modified.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.theme-dark .neuroshima.roll-card .die-square-container i {
+    color: #a0a090;
+}
+
+.theme-dark .neuroshima.roll-card .roll-outcome {
+    border-color: #5a5a54;
+}
+
+.chat-message:has(.neuroshima.roll-card) .message-header {
+    border-bottom: 1px solid #7a797144;
+    padding-bottom: 3px;
+    margin-bottom: 5px;
+}
+
+.neuroshima.roll-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.roll-card .roll-header {
+    font-weight: bold;
+    font-size: 1.05em;
+    border-bottom: 2px solid #7a7971;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.neuroshima.roll-card .base-difficulty {
+    opacity: 0.6;
+    font-weight: normal;
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima.roll-card .die-result {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.neuroshima.roll-card .die-result.ignored {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.neuroshima.roll-card .die-label {
+    min-width: 35px;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .die-square-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.neuroshima.roll-card .die-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: #ffffff;
+    border: 1px solid #7a7971;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 4px;
+    box-shadow: inset 0 0 4px #00000022;
+}
+
+.neuroshima.roll-card .die-square.nat-1 {
+    background: #fff9c4;
+    border-color: #fbc02d;
+    color: #f57f17;
+    box-shadow: 0 0 5px #fbc02d;
+}
+
+.neuroshima.roll-card .die-square.nat-20 {
+    background: #ffcdd2;
+    border-color: #d32f2f;
+    color: #b71c1c;
+}
+
+.neuroshima.roll-card .die-square.modified.success {
+    background: #e8f5e9;
+    border-color: #4caf50;
+    color: #1b5e20;
+}
+
+.neuroshima.roll-card .die-square.modified.failure {
+    background: #ffebee;
+    border-color: #ef5350;
+    color: #c62828;
+}
+
+.neuroshima.roll-card .die-square-container i {
+    font-size: 0.9em;
+    color: #7a7971;
+}
+
+.neuroshima.roll-card .die-result.best .die-square.original {
+    box-shadow: 0 0 10px rgba(160, 46, 46, 0.4);
+    border-color: #a02e2e;
+}
+
+.neuroshima.roll-card .test-type {
+    font-size: 0.8em;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+.neuroshima.roll-card hr.dotted-hr {
+    border: none;
+    border-top: 1px dotted var(--ns-border-main);
+    margin: 5px 0;
+    width: 100%;
+}
+
+.neuroshima.roll-card .weapon-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.9em;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.theme-dark .neuroshima.roll-card .weapon-details {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.roll-card .roll-outcome {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .outcome-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.roll-card .roll-outcome.success .success-points {
+    color: #1b5e20;
+}
+
+.theme-dark .neuroshima.roll-card .roll-outcome.success .success-points {
+    color: #a5d6a7;
+}
+
+.neuroshima.roll-card .roll-outcome.failure .success-points {
+    color: #c62828;
+}
+
+.theme-dark .neuroshima.roll-card .roll-outcome.failure .success-points {
+    color: #ef9a9a;
+}
+
+.neuroshima.roll-card .roll-outcome.success {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.roll-card .roll-outcome.failure {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.debug-roll-dialog .notes {
+    flex: 0 0 100%;
+    margin: 4px 0 0 0;
+    font-size: 0.9em;
+    font-style: italic;
+    color: #444;
+}
+
+.neuroshima.debug-roll-dialog .dice-inputs {
+    justify-content: space-around;
+    margin: 10px 0;
+}
+
+.neuroshima.debug-roll-dialog .die-input {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.neuroshima.debug-roll-dialog .die-input label {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.neuroshima.debug-roll-dialog .die-input input {
+    width: 50px;
+    text-align: center;
+}
+
+.neuroshima.debug-roll-dialog .flex-center {
+    justify-content: center;
+}
+
+.neuroshima.debug-roll-dialog .roll-button {
+    width: 200px;
+    height: 35px;
+}
+
+.neuroshima.edit-roll-dialog .save-button {
+    width: 150px;
+    height: 30px;
+}
+
+.neuroshima.edit-roll-dialog .flex-center {
+    justify-content: center;
+}
+
+/* Encumbrance Config Layout */
+.neuroshima.encumbrance-config .form-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #7a797144;
+}
+
+.neuroshima.encumbrance-config .form-group:last-of-type {
+    border-bottom: none;
+}
+
+.neuroshima.encumbrance-config .form-group label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.neuroshima.encumbrance-config .form-group .form-fields {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.neuroshima.encumbrance-config .form-group .notes {
+    flex: 0 0 100%;
+    margin: 4px 0 0 0;
+    font-size: 0.9em;
+    font-style: italic;
+    color: #444;
+}
+
+.neuroshima.encumbrance-config footer {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 2px solid #7a7971;
+}
+
+/* Roll Dialog Window Overrides */
+.neuroshima.roll-dialog-window {
+    min-width: 450px !important;
+    width: 450px !important;
+    max-width: 450px !important;
+}
+
+.neuroshima.roll-dialog-window .window-content {
+    width: 100% !important;
+    padding: 10px !important;
+}
+
+/* Roll Dialog Content */
+.neuroshima.roll-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.neuroshima.roll-dialog .dialog-columns {
+    display: flex;
+    gap: 10px;
+}
+
+.neuroshima.roll-dialog .column {
+    flex: 1;
+    display: flex;
+    justify-content: space-evenly;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.neuroshima.roll-dialog .form-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.neuroshima.roll-dialog .form-group label {
+    flex: 1;
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.roll-dialog .form-group input[type="number"],
+.neuroshima.roll-dialog .form-group select {
+    flex: 0 0 75px;
+    height: 22px;
+}
+
+.neuroshima.roll-dialog .form-group.vertical {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.neuroshima.roll-dialog .form-group.vertical label {
+    width: 100%;
+    text-align: center;
+    margin-bottom: -2px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.neuroshima.roll-dialog .form-group.vertical select {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.neuroshima.roll-dialog .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+
+.neuroshima.roll-dialog .checkbox-wrapper input[type="checkbox"] {
+    margin: 0;
+}
+
+.neuroshima.roll-dialog .summary-section {
+    border-top: 1px solid #7a7971;
+    padding-top: 5px;
+}
+
+.neuroshima.roll-dialog .summary-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    border: none;
+}
+
+.neuroshima.roll-dialog .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.neuroshima.roll-dialog .summary-table td {
+    padding: 5px;
+}
+
+.neuroshima.roll-dialog .summary-table td:last-child {
+    text-align: right;
+    font-weight: bold;
+}
+
+/* Weapon Roll Dialog specific */
+.neuroshima.weapon-roll-dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0;
+}
+
+.neuroshima.weapon-roll-dialog-content .dialog-columns.sliders-row {
+    margin-top: 5px;
+    border-top: 1px dashed var(--ns-border-main);
+    padding-top: 8px;
+}
+
+.neuroshima.weapon-roll-dialog-content .slider-hint {
+    text-align: center;
+    font-size: 0.8em;
+    font-style: italic;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.weapon-roll-dialog form .form-footer {
+    border-top: 1px solid var(--ns-border-main);
+    margin-top: 10px;
+    padding-top: 10px;
+}
+

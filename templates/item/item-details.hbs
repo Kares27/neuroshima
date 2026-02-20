@@ -1,0 +1,93 @@
+<section class="tab tab-stats {{tabs.stats.cssClass}}" data-group="primary" data-tab="stats">
+    {{#if (eq item.type "armor")}}
+        <div class="stats-grid flexrow">
+            {{!-- Left: Armor Ratings (2 cols, 3 rows) --}}
+            <div class="armor-ratings-table flex2">
+                <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.Rating"}}</label>
+                <div class="grid grid-2col">
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.Head"}}</label>
+                        <input type="number" name="system.armor.ratings.head" value="{{system.armor.ratings.head}}" data-dtype="Number" min="0"/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.Torso"}}</label>
+                        <input type="number" name="system.armor.ratings.torso" value="{{system.armor.ratings.torso}}" data-dtype="Number" min="0"/>
+                    </div>
+                    
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.LeftArm"}}</label>
+                        <input type="number" name="system.armor.ratings.leftArm" value="{{system.armor.ratings.leftArm}}" data-dtype="Number" min="0"/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.RightArm"}}</label>
+                        <input type="number" name="system.armor.ratings.rightArm" value="{{system.armor.ratings.rightArm}}" data-dtype="Number" min="0"/>
+                    </div>
+
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.LeftLeg"}}</label>
+                        <input type="number" name="system.armor.ratings.leftLeg" value="{{system.armor.ratings.leftLeg}}" data-dtype="Number" min="0"/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.RightLeg"}}</label>
+                        <input type="number" name="system.armor.ratings.rightLeg" value="{{system.armor.ratings.rightLeg}}" data-dtype="Number" min="0"/>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- Right: Durability and Penalty (Single Box) --}}
+            <div class="armor-secondary-stats flex1 flexcol">
+                <div class="item-features secondary-box">
+                    <label class="section-label">{{localize "NEUROSHIMA.Tabs.Stats"}}</label>
+                    <div class="grid grid-1col">
+                        <div class="form-group row-group">
+                            <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
+                            <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="0"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
+                            <input type="number" name="system.armor.durability" value="{{system.armor.durability}}" data-dtype="Number" min="0"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
+                            <input type="number" name="system.armor.penalty" value="{{system.armor.penalty}}" data-dtype="Number" min="0"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "weapon")}}
+        <div class="item-features weapon-stats secondary-box">
+             {{#if (eq system.weaponType "melee")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-melee.hbs"}}
+             {{/if}}
+
+             {{#if (eq system.weaponType "ranged")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-ranged.hbs"}}
+             {{/if}}
+
+             {{#if (eq system.weaponType "thrown")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-thrown.hbs"}}
+             {{/if}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "wound")}}
+        <div class="item-features wound-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/wound-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "ammo")}}
+        <div class="item-features ammo-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/ammo-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "magazine")}}
+        <div class="item-features magazine-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/magazine-details.hbs"}}
+        </div>
+    {{/if}}
+</section>

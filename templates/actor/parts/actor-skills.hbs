@@ -1,0 +1,55 @@
+<section class="tab skills {{tabs.attributes.cssClass}}" data-group="primary" data-tab="attributes" data-application-part="skills">
+    <div class="skill-table" id="skills-{{actor.id}}" data-scrollable>
+        <div class="skills-container">
+            {{#each skillGroups as |attribute attrKey|}}
+            <div class="attribute-skill-group" data-attribute="{{attrKey}}">
+                <div class="attr-abbr-column clickable" data-action="rollAttribute" data-attribute="{{attrKey}}" title="{{localize "NEUROSHIMA.Actions.Roll"}}">
+                    <div class="attr-abbr-wrapper">
+                        <strong>{{localize attribute.abbr}}</strong>
+                    </div>
+                </div>
+                
+                <div class="specializations-column">
+                    {{#each attribute.specializations as |spec specKey|}}
+                    <div class="specialization-row {{#if spec.owned}}owned{{/if}}">
+                        <div class="spec-name-cell">
+                            <label class="spec-toggle">
+                                <input type="checkbox" name="system.specializations.{{specKey}}" {{checked spec.owned}} hidden>
+                                <span class="spec-name">{{localize spec.label}}</span>
+                            </label>
+                        </div>
+
+                        <div class="skills-horizontal-grid">
+                            {{#each spec.skills as |skill|}}
+                            <div class="skill-item">
+                                <a class="roll-skill-btn" data-action="rollSkill" data-skill="{{skill.key}}" title="{{localize "NEUROSHIMA.Actions.Roll"}}">
+                                    <i class="fas fa-dice-d20"></i>
+                                </a>
+                                <div class="skill-input-wrapper">
+                                    <input type="number" 
+                                           name="system.skills.{{skill.key}}.value" 
+                                           value="{{skill.value}}" 
+                                           min="0" max="20" 
+                                           class="skill-input">
+                                </div>
+                                {{#if skill.isKnowledge}}
+                                    <input type="text" 
+                                           name="system.skills.{{skill.key}}.label" 
+                                           value="{{skill.customLabel}}" 
+                                           placeholder="{{localize skill.label}}"
+                                           class="skill-label-input"
+                                           title="{{skill.customLabel}}">
+                                {{else}}
+                                    <span class="skill-name" title="{{localize skill.label}}">{{localize skill.label}}</span>
+                                {{/if}}
+                            </div>
+                            {{/each}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+</section>

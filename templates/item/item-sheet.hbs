@@ -1,0 +1,17 @@
+<form class="{{cssClass}}" autocomplete="off">
+    {{> "systems/neuroshima/templates/item/item-header.hbs"}}
+    
+    <nav class="sheet-tabs tabs" data-group="primary">
+        {{#each tabs}}
+            <a class="item {{this.cssClass}}" data-action="tab" data-group="{{this.group}}" data-tab="{{this.id}}">
+                {{localize this.label}}
+            </a>
+        {{/each}}
+    </nav>
+
+    <section class="sheet-body">
+        {{> "systems/neuroshima/templates/item/item-details.hbs"}}
+        {{> "systems/neuroshima/templates/item/item-description.hbs"}}
+        {{> "systems/neuroshima/templates/item/item-effects.hbs"}}
+    </section>
+</form>

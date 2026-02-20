@@ -1,0 +1,54 @@
+<div class="neuroshima roll-card" 
+    {{#if showTooltip}}
+    data-tooltip="<strong>{{localize 'NEUROSHIMA.Attributes.Attributes'}}:</strong> {{baseStat}}<br>
+                  {{#if (ne attributeBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.AttributeBonusAbbr'}}:</strong> {{attributeBonus}}<br>{{/if}}
+                  <strong>{{localize 'NEUROSHIMA.Items.Fields.Skill'}}:</strong> {{baseSkill}}<br>
+                  {{#if (ne skillBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.SkillBonusAbbr'}}:</strong> {{skillBonus}}<br>{{/if}}
+                  <strong>{{localize 'NEUROSHIMA.Roll.Penalties'}}:</strong><br>
+                  &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyMod'}}: {{penalties.mod}}%<br>
+                  &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyWounds'}}: {{penalties.wounds}}%<br>
+                  &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyArmor'}}: {{penalties.armor}}%<br>
+                  <strong>{{localize 'NEUROSHIMA.Roll.TotalModifier'}}:</strong> {{totalPenalty}}%<br>
+                  <strong>{{localize 'NEUROSHIMA.Roll.BaseDifficulty'}}:</strong> {{localize baseDifficultyLabel}}<br>
+                  <strong>{{localize 'NEUROSHIMA.Roll.Target'}}:</strong> {{target}}"
+    data-tooltip-direction="LEFT"
+    {{/if}}>
+    <header class="roll-header">
+        {{#if isDebug}}[!DEBUG] {{/if}}
+        {{localize difficultyLabel}}
+        {{#if isOpen}}
+            {{localize "NEUROSHIMA.Roll.OpenTest"}}
+        {{else}}
+            {{localize "NEUROSHIMA.Roll.ClosedTest"}}
+        {{/if}}
+        {{localize "NEUROSHIMA.Roll.On"}} {{label}}
+    </header>
+    <hr class="dotted-hr">
+
+    <div class="dice-results-grid">
+        {{#each modifiedResults}}
+            <div class="die-result {{#if this.ignored}}ignored{{/if}}">
+                <span class="die-label">D{{add @index 1}} = </span>
+                <div class="die-square-container">
+                    <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}}">
+                        {{this.original}}
+                    </span>
+                    {{#if (gt ../skill 0)}}
+                        <i class="fas fa-long-arrow-alt-right"></i> 
+                        <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
+                            {{this.modified}}
+                        </span>
+                    {{/if}}
+                </div>
+            </div>
+        {{/each}}
+    </div>
+
+    <hr class="dotted-hr">
+    <footer class="roll-outcome">
+        <div class="outcome-item">
+            <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
+            <span class="value"><strong>{{#if isOpen}}{{successPoints}}{{else}}{{successCount}}{{/if}}</strong></span>
+        </div>
+    </footer>
+</div>

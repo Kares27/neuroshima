@@ -1,0 +1,23 @@
+<div class="grid grid-3col">
+    {{!-- Lokalizacja --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Location"}}</label>
+        <select name="system.location">
+            {{selectOptions locations selected=system.location localize=true}}
+        </select>
+    </div>
+
+    {{!-- Typ obrażeń --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</label>
+        <select name="system.damageType">
+            {{selectOptions damageTypes selected=system.damageType localize=true}}
+        </select>
+    </div>
+
+    {{!-- Kara --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Penalty"}} (%)</label>
+        <input type="number" name="system.penalty" value="{{system.penalty}}" data-dtype="Number" min="0"/>
+    </div>
+</div>

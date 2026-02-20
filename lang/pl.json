@@ -1,0 +1,459 @@
+{
+    "TOKEN": {
+        "Title": "Prototyp Tokena"
+    },
+    "NEUROSHIMA": {
+        "Sheet": {
+            "ActorCharacter": "Arkusz Postaci",
+            "Item": "Arkusz Przedmiotu",
+            "Edit": "Edytuj",
+            "Finish": "Zakończ",
+            "SaveAndFinish": "Zapisz i zakończ"
+        },
+        "Attributes": {
+            "Attributes": "Współczynniki",
+            "Base": "Baza",
+            "Modifier": "Modyfikator",
+            "Dexterity": "Zręczność",
+            "Perception": "Percepcja",
+            "Charisma": "Charyzma",
+            "Cleverness": "Spryt",
+            "Constitution": "Budowa",
+            "Abbr": {
+                "Dexterity": "Zr",
+                "Perception": "Pc",
+                "Charisma": "Ch",
+                "Cleverness": "Sp",
+                "Constitution": "Bd"
+            }
+        },
+        "Info": {
+            "Specialization": "Specjalizacja",
+            "Origin": "Pochodzenie",
+            "Profession": "Profesja"
+        },
+        "XP": {
+            "Label": "Doświadczenie",
+            "Current": "Obecne",
+            "Spent": "Wydane",
+            "Total": "Razem"
+        },
+        "Roll": {
+            "PenaltyLabel": "Kara do testu",
+            "Target": "Próg",
+            "Successes": "Sukcesy",
+            "SuccessesAbbr": "suk.",
+            "CritSuccess": "KRYTYCZNY SUKCES!",
+            "CritFailure": "KRYTYCZNA PORAŻKA!",
+            "OpenTest": "Test Otwarty",
+            "ClosedTest": "Test Zamknięty",
+            "Success": "Sukces",
+            "Failure": "Porażka",
+            "Jamming": "ZACIĘCIE",
+            "SuccessPoints": "Punkty Sukcesu",
+            "SuccessPointsAbbr": "Punkty Przewagi",
+            "SuccessCount": "Liczba sukcesów",
+            "FailurePoints": "Punkty Porażki",
+            "Penalties": "Kary",
+            "PenaltyMod": "Modyfikator",
+            "PenaltyWounds": "Rany",
+            "PenaltyArmor": "Pancerz",
+            "Test": "Test",
+            "TestType": "Typ Testu",
+            "On": "na",
+            "EditRoll": "Edytuj Rzut",
+            "SwitchToOpen": "Zmień na Test Otwarty",
+            "SwitchToClosed": "Zmień na Test Zamknięty",
+            "BaseDifficulty": "Bazowa Trudność",
+            "Difficulty": "Trudność",
+            "Attribute": "Atrybut",
+            "Modifier": "Modyfikator",
+            "Armor": "Pancerz",
+            "Wounds": "Rany",
+            "Summary": "Podsumowanie",
+            "TotalModifier": "Suma modyfikatorów",
+            "FinalDifficulty": "Ostateczna Trudność",
+            "SkillBonus": "Bonus do Umiejętności",
+            "SkillBonusAbbr": "Bon. do Umiejętności",
+            "AttributeBonus": "Bonus do Atrybutu",
+            "AttributeBonusAbbr": "Bon. do Atrybutu",
+            "Distance": "Dystans (m)",
+            "Aiming": "Celowanie",
+            "Burst": "Seria",
+            "BurstSingle": "Pojedyńcza",
+            "BurstShort": "Krótka seria",
+            "BurstLong": "Długa seria",
+            "BurstFull": "Ogień ciągły",
+            "HitLocation": "Lokacja Trafienia",
+            "RandomLocation": "Losuj lokację",
+            "DiceCount": "Rzucane kości",
+            "BulletsFired": "Wystrzelone pociski",
+            "BulletsHit": "Trafione pociski",
+            "Segment": "Segment",
+            "MeleeResults": "Wyniki walki wręcz",
+            "Preview": {
+                "Base": "Bazowy",
+                "Armor": "Pancerz",
+                "Wounds": "Obrażenia",
+                "Location": "Lokacja",
+                "Total": "RAZEM",
+                "FinalLevel": "Faktyczny poziom"
+            }
+        },
+        "Actions": {
+            "Roll": "Rzuć kością",
+            "Cancel": "Anuluj",
+            "Save": "Zapisz",
+            "Shoot": "Strzał",
+            "Strike": "Atak",
+            "ConfigureHP": "Konfiguruj HP",
+            "Create": "Stwórz",
+            "CreateBulkWounds": "Dodaj wiele ran",
+            "Repair": "Napraw",
+            "Damage": "Uszkodź",
+            "Load": "Załaduj",
+            "Unload": "Rozładuj"
+        },
+        "Wound": {
+            "TotalPenalty": "Suma Kar",
+            "TotalPenaltyAbbr": "Kara",
+            "TotalDamage": "Suma Obrażeń / Max HP"
+        },
+        "Encumbrance": "Obciążenie",
+        "Settings": {
+            "EncumbranceConfig": {
+                "Title": "Ustawienia Udźwigu",
+                "Label": "Skonfiguruj Udźwig",
+                "Hint": "Otwiera menu konfiguracji obliczania udźwigu dla aktorów.",
+                "Saved": "Ustawienia udźwigu zostały zapisane i zaktualizowane."
+            },
+            "EnableEncumbrance": {
+                "Name": "System obciążenia",
+                "Hint": "Włącza system wagi przedmiotów i obliczanie obciążenia postaci."
+            },
+            "DebugMode": {
+                "Name": "Tryb debugowania",
+                "Hint": "Włącza dodatkowe logi w konsoli deweloperskiej dla celów diagnostycznych."
+            },
+            "RequireBuildOnItems": {
+                "Name": "Wymagaj budowy na broni i pancerzach",
+                "Hint": "Określa czy system ma sprawdzać wymóg budowy dla broni i pancerzy."
+            },
+            "AllowCombatShift": {
+                "Name": "Pozwól na Suwak w walce",
+                "Hint": "Włącza zasadę Suwaka (przesunięcia PT) podczas akcji bojowych."
+            },
+            "RollTooltipMinRole": {
+                "Name": "Minimalna ranga dla Tooltipa",
+                "Hint": "Minimalna ranga użytkownika wymagana do zobaczenia szczegółowego rozbicia kar w tooltipie rzutu."
+            },
+            "RollTooltipOwnerVisibility": {
+                "Name": "Pokazuj Tooltip Właścicielowi",
+                "Hint": "Zawsze pokazuj szczegółowe rozbicie kar właścicielowi rzutu (oraz MG), niezależnie od jego rangi."
+            },
+            "UsePelletCountLimit": {
+                "Name": "Limit liczby śrucin",
+                "Hint": "Włącza limit liczby draśnięć na podstawie parametru 'Liczba śrucin' z amunicji (symulacja buckshot/birdshot)."
+            },
+            "Roles": {
+                "None": "Wszyscy (Brak)",
+                "Player": "Gracz",
+                "Trusted": "Zaufany Gracz",
+                "Assistant": "Asystent MG",
+                "Gamemaster": "Tylko MG"
+            },
+            "BaseEncumbrance": {
+                "Name": "Bazowy udźwig",
+                "Hint": "Podstawowa wartość udźwigu dla każdego aktora (w kg)."
+            },
+            "UseConstitutionBonus": {
+                "Name": "Bonus z budowy",
+                "Hint": "Czy uwzględniać bonus do udźwigu wynikający z atrybutu Budowa."
+            },
+            "EncumbranceThreshold": {
+                "Name": "Próg udźwigu",
+                "Hint": "Od jakiej wartości Budowy zacząć liczyć bonusy do udźwigu."
+            },
+            "EncumbranceBonusInterval": {
+                "Name": "Interwał bonusu",
+                "Hint": "Co ile punktów Budowy powyżej progu przyznawany jest kolejny bonus."
+            },
+            "EncumbranceBonusValue": {
+                "Name": "Wartość bonusu",
+                "Hint": "O ile kilogramów zwiększa się udźwig za każdy interwał."
+            }
+        },
+        "Tabs": {
+            "Attributes": "Współczynniki",
+            "Skills": "Umiejętności",
+            "Tricks": "Sztuczki",
+            "Combat": "Walka",
+            "Inventory": "Ekwipunek",
+            "Notes": "Notatki",
+            "Stats": "Statystyki",
+            "Description": "Opis",
+            "Effects": "Efekty",
+            "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)"
+        },
+        "Dialog": {
+            "WeaponType": {
+                "Title": "Wybierz typ broni",
+                "Content": "Jakiego typu broń chcesz utworzyć?"
+            },
+            "MaxHP": {
+                "Title": "Konfiguracja HP",
+                "Label": "Wartość Max HP"
+            },
+            "BulkWound": {
+                "Title": "Masowe dodawanie ran",
+                "Count": "Liczba obrażeń"
+            },
+            "AmmoLoading": {
+                "Title": "Ładowanie amunicji",
+                "Content": "Ile sztuk {name} chcesz załadować do {mag}? (Max: {max})",
+                "Amount": "Liczba sztuk"
+            },
+            "CaliberMismatch": {
+                "Title": "Niezgodność kalibru",
+                "Content": "Próbujesz załadować amunicję {ammo} do magazynka na kaliber {mag}. Czy na pewno chcesz kontynuować?"
+            }
+        },
+        "Notifications": {
+            "SelectTargetOrPoint": "Wybierz cel na mapie (LPM), aby zmierzyć dystans. PPM, aby anulować.",
+            "NoActorTokenOnCanvas": "Nie znaleziono aktywnego tokena Twojej postaci na mapie.",
+            "MagazineFull": "Magazynek jest już pełny.",
+            "AmmoLoaded": "Załadowano {amount}x {ammo} do {mag}.",
+            "MagazineUnloaded": "Rozładowano magazynek {name}.",
+            "OutOfAmmoDuringBurst": "Zabrakło amunicji podczas serii!",
+            "OutOfAmmo": "Brak amunicji typu {name}!",
+            "NoMagazineSelected": "Nie wybrano magazynka dla tej broni!",
+            "Jamming": "ZACIĘCIE"
+        },
+        "Tricks": {
+            "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"
+        },
+        "Damage": {
+            "D": "D",
+            "L": "L",
+            "C": "C",
+            "K": "K",
+            "sD": "sD",
+            "sL": "sL",
+            "sC": "sC",
+            "sK": "sK",
+            "Full": {
+                "D": "Draśnięcie",
+                "L": "Lekka Rana",
+                "C": "Ciężka Rana",
+                "K": "Krytyczna Rana",
+                "sD": "Draśnięcie (Siniak)",
+                "sL": "Lekka Rana (Siniak)",
+                "sC": "Ciężka Rana (Siniak)",
+                "sK": "Krytyczna Rana (Siniak)"
+            }
+        },
+        "WeaponSubtype": {
+            "pistols": "P",
+            "submachineRifles": "PM",
+            "rifles": "K",
+            "sniperRifles": "S",
+            "shotguns": "ŚR"
+        },
+        "Difficulty": {
+            "Easy": "Łatwy",
+            "Average": "Przeciętny",
+            "Problematic": "Problematyczny",
+            "Hard": "Trudny",
+            "VeryHard": "Bardzo Trudny",
+            "DamnHard": "Cholernie Trudny",
+            "Luck": "Fart",
+            "Masterfull": "Mistrzowski",
+            "Grandmasterfull": "Arcymistrzowski",
+            "ShowMore": "Pokaż progi trudności",
+            "ShowLess": "Ukryj progi trudności"
+        },
+        "Specializations": {
+            "melee": "Walka wręcz",
+            "firearms": "Broń Strzelecka",
+            "ranged": "Broń Dystansowa",
+            "driving": "Prowadzenie Pojazdów",
+            "manual": "Zdolności Manualne",
+            "tracking": "Orientacja w Terenie",
+            "alertness": "Spostrzegawczość",
+            "stealth": "Kamuflaż",
+            "survival": "Przetrwanie",
+            "negotiation": "Negocjacje",
+            "empathy": "Empatia",
+            "willpower": "Siła woli",
+            "medicine": "Medycyna",
+            "technology": "Technika",
+            "equipment": "Sprzęt",
+            "pyrotechnics": "Pirotechnika",
+            "generalKnowledge1": "Wiedza Ogólna",
+            "generalKnowledge2": "Wiedza Ogólna",
+            "fitness": "Sprawność",
+            "riding": "Jeździectwo"
+        },
+        "Skills": {
+            "brawl": "Bijatyka",
+            "handWeapon": "Broń ręczna",
+            "throwing": "Rzucanie",
+            "pistols": "Pistolety",
+            "rifles": "Karabiny",
+            "machineGuns": "Broń Maszynowa",
+            "bow": "Łuk",
+            "crossbow": "Kusza",
+            "sling": "Proca",
+            "car": "Samochód",
+            "truck": "Ciężarówka",
+            "motorcycle": "Motocykl",
+            "pickpocketing": "Kradzież kieszonkowa",
+            "sleightOfHand": "Zwinne dłonie",
+            "lockpicking": "Otwieranie zamków",
+            "directionSense": "Wyczucie kierunku",
+            "tracking": "Tropienie",
+            "traps": "Przygotowanie pułapki",
+            "listening": "Nasłuchiwanie",
+            "spotting": "Wypatrywanie",
+            "vigilance": "Czujność",
+            "sneaking": "Skradanie się",
+            "hiding": "Ukrywanie Się",
+            "camouflage": "Maskowanie",
+            "hunting": "Łowiectwo",
+            "waterGathering": "Zdobywanie wody",
+            "terrainKnowledge": "Znajomość Terenu",
+            "persuasion": "Perswazja",
+            "intimidation": "Zastraszanie",
+            "leadership": "Zdolności Przywódcze",
+            "emotionPerception": "Postrzeganie Emocji",
+            "bluff": "Blef",
+            "animalCare": "Opieka nad zwierzętami",
+            "painResistance": "Odporność na ból",
+            "steadfastness": "Niezłomność",
+            "morale": "Morale",
+            "woundTreatment": "Leczenie Ran",
+            "diseaseTreatment": "Leczenie chorób",
+            "firstAid": "Pierwsza pomoc",
+            "mechanics": "Mechanika",
+            "electronics": "Elektronika",
+            "computers": "Komputery",
+            "heavyMachinery": "Maszyny Ciężkie",
+            "combatVehicles": "Wozy Bojowe",
+            "boats": "Kutry",
+            "gunsmithing": "Rusznikarstwo",
+            "launchers": "Wyrzutnie",
+            "explosives": "Materiały Wybuchowe",
+            "knowledge1": "Test Wiedzy 1",
+            "knowledge2": "Test Wiedzy 2",
+            "knowledge3": "Test Wiedzy 3",
+            "knowledge4": "Test Wiedzy 4",
+            "knowledge5": "Test Wiedzy 5",
+            "knowledge6": "Test Wiedzy 6",
+            "swimming": "Pływanie",
+            "climbing": "Wspinaczka",
+            "stamina": "Kondycja",
+            "horseRiding": "Jazda Konna",
+            "drivingCarriage": "Powożenie",
+            "taming": "Ujeżdżanie"
+        },
+        "Rolls": {
+            "Success": "Sukces",
+            "Failure": "Porażka",
+            "Target": "Cel",
+            "ModifiedResult": "Wynik",
+            "Difficulty": "Trudność",
+            "CritSuccess": "KRYTYCZNY SUKCES!",
+            "CritFailure": "KRYTYCZNA PORAŻKA!"
+        },
+        "Items": {
+            "Type": {
+                "Weapon": "Broń",
+                "WeaponMelee": "Broń Ręczna",
+                "WeaponRanged": "Broń Dystansowa",
+                "WeaponThrown": "Broń Miotana",
+                "Armor": "Pancerz",
+                "Gear": "Ekwipunek",
+                "Trick": "Sztuczka",
+                "Ammo": "Amunicja",
+                "Magazine": "Magazynek",
+                "Magazines": "Magazynki",
+                "Wound": "Rana"
+            },
+            "Fields": {
+                "Weight": "Waga",
+                "Cost": "Koszt",
+                "Quantity": "Ilość",
+                "Description": "Opis",
+                "Equipped": "Założone",
+                "EquippedAbbr": "Dobyty",
+                "IsEquipable": "Można założyć",
+                "Damage": "Obrażenia",
+                "Speed": "Prędkość",
+                "Range": "Zasięg",
+                "AmmoType": "Amunicja",
+                "Ammo": "Amunicja",
+                "Attribute": "Atrybut",
+                "Skill": "Umiejętność",
+                "AttackBonus": "Bonus do ataku",
+                "AttackBonusAbbr": "ATK",
+                "DefenseBonus": "Bonus do obrony",
+                "DefenseBonusAbbr": "OBR",
+                "MeleeDamageTypes": "Rodzaj obrażeń",
+                "WeaponSubtype": "Typ broni",
+                "Magazine": "Magazynek",
+                "Piercing": "Punkty Przebicia",
+                "PiercingAbbr": "PP",
+                "FireRate": "Szybkostrzelność",
+                "FireRateAbbr": "Szybkostrz.",
+                "Capacity": "Pojemność",
+                "Jamming": "Zacięcie",
+                "JammingAbbr": "Zac.",
+                "None": "Brak",
+                "Armor": "Pancerz",
+                "Melee": "Walka wręcz",
+                "Ranged": "Broń dystansowa",
+                "Thrown": "Broń miotana",
+                "Rating": "Punkty Pancerza",
+                "Durability": "Wytrzymałość",
+                "DurabilityAbbr": "Wytrz.",
+                "ArmorDamage": "Obrażenia Pancerza",
+                "ArmorPenalty": "Kara",
+                "RequiredBuild": "Budowa",
+                "IsPellet": "Amunicja Śrutowa",
+                "PelletCount": "Liczba śrucin",
+                "PelletRanges": "Zasięgi Śrutu",
+                "Distance": "Dystans",
+                "Head": "Głowa",
+                "Torso": "Tors",
+                "LeftArm": "Lewa Ręka",
+                "RightArm": "Prawa Ręka",
+                "LeftLeg": "Lewa Noga",
+                "RightLeg": "Prawa Noga",
+                "Location": "Lokalizacja",
+                "IsHealing": "W trakcie leczenia",
+                "IsActive": "Aktywna",
+                "Penalty": "Kara",
+                "DamageType": "Typ obrażeń",
+                "Caliber": "Kaliber",
+                "MagazineContents": "Zawartość magazynka",
+                "IsOverride": "Nadpisz statystyki broni",
+                "OverrideDamage": "Nadpisz obrażenia",
+                "OverridePiercing": "Nadpisz przebicie",
+                "OverrideJamming": "Nadpisz zacięcie"
+            }
+        },
+        "Armor": {
+            "TotalPenalty": "Kara",
+            "None": "Brak pancerza",
+            "SumAP": "Suma AP"
+        },
+        "Location": {
+            "Head": "Głowa",
+            "Torso": "Tors",
+            "LeftArm": "Lewa Ręka",
+            "RightArm": "Prawa Ręka",
+            "LeftLeg": "Lewa Noga",
+            "RightLeg": "Prawa Noga"
+        }
+    }
+}

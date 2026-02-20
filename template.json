@@ -1,0 +1,16 @@
+{
+  "Actor": {
+    "types": ["character"],
+    "character": {}
+  },
+  "Item": {
+    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound"],
+    "weapon": {},
+    "armor": {},
+    "gear": {},
+    "trick": {},
+    "ammo": {},
+    "magazine": {},
+    "wound": {}
+  }
+}

@@ -1,0 +1,572 @@
+/* Item Sheet Specific Styles Scoped to .neuroshima */
+.neuroshima.sheet.item {
+    min-width: 550px;
+    min-height: 500px;
+    background-color: var(--ns-bg-sheet);
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.item .sheet-header {
+    flex: 0 0 auto;
+    border-bottom: 2px solid var(--ns-border-main);
+    margin-bottom: 5px;
+    padding-bottom: 2px;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.neuroshima.sheet.item .profile-container {
+    flex: 0 0 100px;
+}
+
+.neuroshima.sheet.item .profile {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.item .header-details {
+    flex: 1;
+    gap: 0;
+    border-left: 2px solid var(--ns-border-main);
+    padding-left: 10px;
+}
+
+.neuroshima.sheet.item .item-subtitle {
+    border-bottom: 2px solid var(--ns-border-main);
+    margin-bottom: 2px;
+    justify-content: space-between;
+    align-items: center;
+    height: 28px;
+}
+
+.neuroshima.sheet.item .item-type {
+    margin: 0;
+    font-size: 1.1em;
+    color: var(--ns-text-light);
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.item .item-qty {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    margin-right: 5px;
+}
+
+.neuroshima.sheet.item .item-qty input {
+    width: 85px;
+    height: 22px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+    background: transparent;
+    border: 1px solid rgba(0,0,0,0.1);
+    padding: 0 4px;
+}
+
+.neuroshima.sheet.item .qty-x {
+    font-weight: bold;
+    font-size: 1em;
+    margin-top: -2px;
+}
+
+.neuroshima.sheet.item .item-name-row {
+    margin-bottom: 0px;
+    border-bottom: 1px solid var(--ns-border-main);
+    height: 36px;
+    display: flex;
+    align-items: stretch;
+}
+
+.neuroshima.sheet.item .item-name-row h1 {
+    flex: 1;
+    margin: 0;
+    border: none;
+    display: flex;
+    align-items: stretch;
+}
+
+.neuroshima.sheet.item h1 input {
+    flex: 1;
+    height: 100%;
+    font-size: 0.6em;
+    font-weight: bold;
+    padding: 0 5px;
+    background: transparent;
+}
+
+.neuroshima.sheet.item .item-header-stats {
+    gap: 10px;
+    margin-top: 0;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 5px 0;
+}
+
+.neuroshima.sheet.item .item-header-stats .form-group.row-group {
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--ns-border-main);
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--ns-bg-panel);
+}
+
+.neuroshima.sheet.item .item-header-stats .form-group.row-group label {
+    font-size: 0.75em;
+    font-weight: bold;
+    white-space: nowrap;
+    text-transform: uppercase;
+    flex: 0 0 auto;
+}
+
+.neuroshima.sheet.item .item-header-stats input[type="number"] {
+    text-align: center;
+    width: 100%;
+    height: 20px;
+    background: transparent;
+    border: none;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.item .item-header-stats input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.neuroshima.sheet.item .item-header-stats .form-group.checkbox.row-group {
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+.neuroshima.sheet.item .item-header-stats .form-group.checkbox.row-group label {
+    margin: 0;
+    line-height: 1;
+}
+
+.neuroshima.sheet.item .item-header-stats .form-group.checkbox.row-group input {
+    flex: 0 0 20px;
+}
+
+.neuroshima.sheet.item nav.tabs {
+    flex: 0 0 32px;
+    border-bottom: 1px solid var(--ns-border-main);
+    margin-bottom: 10px;
+    display: flex;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.item nav.tabs .item {
+    line-height: 32px;
+    padding: 0 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 5px 5px 0 0;
+}
+
+.neuroshima.sheet.item nav.tabs .item.active {
+    background: var(--ns-bg-input);
+    border-color: var(--ns-border-main);
+    border-bottom: 1px solid var(--ns-bg-input);
+    margin-bottom: -1px;
+    color: red;
+}
+
+.neuroshima.sheet.item .sheet-body {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.neuroshima.sheet.item [data-application-part] {
+    display: none;
+    padding-top: 5px;
+}
+
+.neuroshima.sheet.item [data-application-part].active {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.neuroshima.sheet.item [data-application-part="header"],
+.neuroshima.sheet.item [data-application-part="tabs"] {
+    display: flex;
+}
+
+/* Stats Tab Grid Layout */
+.neuroshima.sheet.item .stats-grid {
+    gap: 10px;
+    align-items: stretch;
+}
+
+.neuroshima.sheet.item .section-label {
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--ns-border-main);
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .item-features.secondary-box,
+.neuroshima.sheet.item .secondary-box,
+.neuroshima.sheet.item .armor-ratings-table {
+    background: transparent;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.neuroshima.sheet.item .armor-ratings-table {
+    flex: 2;
+}
+
+.neuroshima.sheet.item .armor-ratings-table .grid-2col {
+    gap: 8px 15px;
+}
+
+.neuroshima.sheet.item .armor-ratings-table .form-group.row-group,
+.neuroshima.sheet.item .armor-secondary-stats .form-group.row-group {
+    justify-content: space-between;
+    margin: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.sheet.item .armor-ratings-table .form-group.row-group label,
+.neuroshima.sheet.item .armor-secondary-stats .form-group.row-group label {
+    flex: 1;
+    text-align: left;
+    font-size: 0.85em;
+    font-weight: bold;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.item .armor-ratings-table input,
+.neuroshima.sheet.item .armor-secondary-stats input {
+    width: 60px;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .armor-secondary-stats {
+    gap: 10px;
+    flex: 1;
+}
+
+.neuroshima.sheet.item .armor-secondary-stats .grid-1col {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.neuroshima .flex2 { flex: 2; }
+.neuroshima .flex1 { flex: 1; }
+
+/* Weapon Stats Layout */
+.neuroshima.sheet.item .weapon-stats-container.flexrow {
+    align-items: stretch;
+    gap: 15px;
+    display: flex;
+}
+
+.neuroshima.sheet.item .weapon-stats-container .stats-left {
+    flex: 1;
+    align-content: space-between;
+    gap: 5px 10px;
+}
+
+.neuroshima.sheet.item .weapon-stats-container .stats-right {
+    flex: 1;
+    border-left: 1px solid var(--ns-border-main);
+    padding-left: 10px;
+    justify-content: flex-start;
+}
+
+.neuroshima.sheet.item .weapon-stats .form-group.row-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+.neuroshima.sheet.item .weapon-stats .form-group.row-group label {
+    text-align: center;
+    width: 100%;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.item .weapon-stats .form-group.row-group input,
+.neuroshima.sheet.item .weapon-stats .form-group.row-group select {
+    width: 100%;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .damage-horizontal-grid {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    justify-content: center;
+    width: 100%;
+}
+
+.neuroshima.sheet.item .damage-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    flex: 1;
+}
+
+.neuroshima.sheet.item .damage-number {
+    font-weight: bold;
+    font-size: 0.85em;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.item .weapon-stats .horizontal-labels {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 5px 15px;
+    display: grid;
+}
+
+.neuroshima.sheet.item .weapon-stats .horizontal-labels label {
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: left;
+}
+
+.neuroshima.sheet.item .weapon-stats .flexcol select {
+    min-width: 0;
+    width: 100%;
+}
+
+.neuroshima.sheet.item .wound-stats select,
+.neuroshima.sheet.item .wound-stats input[type="number"] {
+    width: 100%;
+}
+
+.neuroshima.sheet.item .ammunition-stats .ammo-main-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+}
+
+.neuroshima.sheet.item .ammunition-stats .ammo-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.neuroshima.sheet.item .ammunition-stats .ammo-inputs {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.sheet.item .ammunition-stats .ammo-inputs input {
+    width: 60px;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .ammunition-stats .separator {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.neuroshima.sheet.item .ammo-stats .form-group.checkbox-right,
+.neuroshima.sheet.item .magazine-stats .form-group.checkbox-right,
+.neuroshima.sheet.item .ammunition-stats .form-group.checkbox-right {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .ammo-stats .form-group.checkbox-right label,
+.neuroshima.sheet.item .magazine-stats .form-group.checkbox-right label,
+.neuroshima.sheet.item .ammunition-stats .form-group.checkbox-right label {
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.item .ammo-stats .caliber-group,
+.neuroshima.sheet.item .magazine-stats .caliber-group {
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.item .ammo-stats .override-fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.neuroshima.sheet.item .item-features.secondary-box {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.neuroshima.sheet.item .ammo-stats .override-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+    justify-content: flex-start;
+}
+
+.neuroshima.sheet.item .ammo-stats .override-row label {
+    flex: 0 0 100px;
+    text-align: left;
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .ammo-stats .override-row input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .ammo-stats .override-row input[type="number"],
+.neuroshima.sheet.item .ammo-stats .override-row select {
+    flex: 0 0 80px;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .magazine-stats .magazine-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.item .magazine-stats .magazine-row label {
+    flex: 0 0 auto;
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.item .magazine-stats .magazine-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .magazine-stats .ammo-info-display {
+    flex: 0 0 auto;
+    font-weight: bold;
+    font-size: 1em;
+    background: rgba(0,0,0,0.1);
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-left: 5px;
+}
+
+.neuroshima.sheet.item .magazine-contents-section {
+    margin-top: 10px;
+}
+
+.neuroshima.sheet.item .contents-list-items {
+    max-height: 150px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.05);
+    padding: 5px;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.item .content-stack {
+    padding: 2px 5px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.neuroshima.sheet.item .content-stack:last-child {
+    border-bottom: none;
+}
+
+/* Pellet Section Styles */
+.neuroshima.sheet.item .ammo-columns-container {
+    gap: 15px;
+    align-items: flex-start;
+    margin-top: 10px;
+}
+
+.neuroshima.sheet.item .ammo-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.neuroshima.sheet.item .pellet-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.item .pellet-ranges-table {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.neuroshima.sheet.item .pellet-header {
+    font-weight: bold;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--ns-border-main);
+    padding-bottom: 2px;
+    margin-bottom: 5px;
+}
+
+.neuroshima.sheet.item .pellet-header .range-col,
+.neuroshima.sheet.item .pellet-row input {
+    flex: 1;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .pellet-header .damage-col,
+.neuroshima.sheet.item .pellet-row select {
+    flex: 2;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .pellet-row {
+    gap: 10px;
+    align-items: center;
+}
+
+
+
+
+

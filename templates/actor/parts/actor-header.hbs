@@ -1,0 +1,54 @@
+<header class="sheet-header" data-application-part="header">
+    <img class="profile-img" src="{{actor.img}}" data-action="editImage" title="{{actor.name}}" height="128" width="128"/>
+    <div class="header-fields">
+        <h1 class="charname">
+            <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
+        </h1>
+
+        <div class="header-details flexrow">
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Info.Specialization"}}</label>
+                <input type="text" name="system.specialization" value="{{system.specialization}}"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Info.Origin"}}</label>
+                <input type="text" name="system.origin" value="{{system.origin}}"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Info.Profession"}}</label>
+                <input type="text" name="system.profession" value="{{system.profession}}"/>
+            </div>
+        </div>
+
+        <div class="xp-row-container">
+            <div class="xp-row-label">
+                <span>{{localize "NEUROSHIMA.XP.Label"}}</span>
+            </div>
+            <div class="xp-fields-row">
+                <div class="xp-field-item">
+                    <label>{{localize "NEUROSHIMA.XP.Current"}}</label>
+                    <input type="number" name="system.xp.current" value="{{system.xp.current}}" min="0"/>
+                </div>
+                <div class="xp-field-item">
+                    <label>{{localize "NEUROSHIMA.XP.Spent"}}</label>
+                    <input type="number" name="system.xp.spent" value="{{system.xp.spent}}" min="0"/>
+                </div>
+                <div class="xp-field-item">
+                    <label>{{localize "NEUROSHIMA.XP.Total"}}</label>
+                    <input type="number" name="system.xp.total" value="{{system.xp.total}}" min="0"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-stats-row">
+            <div class="stat-box penalty-summary" title="{{combat.penaltyTooltip}}">
+                <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
+                <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
+            </div>
+            <div class="stat-box hp-summary" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
+                <label>HP</label>
+                <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
+            </div>
+        </div>
+    </div>
+</header>

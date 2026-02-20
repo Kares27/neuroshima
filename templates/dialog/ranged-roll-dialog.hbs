@@ -1,0 +1,127 @@
+<div class="neuroshima roll-dialog weapon-roll-dialog-content">
+    <div class="dialog-columns">
+        <div class="column left">
+            <div class="form-group vertical">
+                <label>{{localize "NEUROSHIMA.Roll.Test"}}</label>
+                <select name="isOpen">
+                    <option value="true" {{#if isOpen}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.OpenTest"}}</option>
+                    <option value="false" {{#unless isOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.Roll.ClosedTest"}}</option>
+                </select>
+            </div>
+            <div class="form-group vertical">
+                <label>{{localize "NEUROSHIMA.Roll.Difficulty"}}</label>
+                <select name="baseDifficulty">
+                    {{#each difficulties}}
+                    <option value="{{@key}}" {{#if (eq @key ../baseDifficulty)}}selected{{/if}}>
+                        {{localize label}}
+                    </option>
+                    {{/each}}
+                </select>
+            </div>
+            <div class="form-group vertical">
+                <label>{{localize "NEUROSHIMA.Roll.HitLocation"}}</label>
+                <select name="hitLocation">
+                    <option value="random" {{#if (eq hitLocation "random")}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.RandomLocation"}}</option>
+                    {{#each hitLocations}}
+                    <option value="{{key}}" {{#if (eq key ../hitLocation)}}selected{{/if}}>{{localize label}} (+{{modifier}}%)</option>
+                    {{/each}}
+                </select>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.Modifier"}} (%)</label>
+                <input type="number" name="modifier" value="{{percentageModifier}}" placeholder="0"/>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useArmorPenalty" {{#if applyArmorPenalty}}checked{{/if}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Armor"}} (%)</label>
+                </div>
+                <input type="number" name="armorPenalty" value="{{armorPenalty}}" placeholder="0" disabled/>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useWoundPenalty" {{#if applyWoundPenalty}}checked{{/if}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Wounds"}} (%)</label>
+                </div>
+                <input type="number" name="woundPenalty" value="{{woundPenalty}}" placeholder="0" disabled/>
+            </div>
+        </div>
+    </div>
+
+    <div class="dialog-columns bonuses-row">
+        <div class="column left">
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.SkillBonus'}}">{{localize "NEUROSHIMA.Roll.SkillBonusAbbr"}}</label>
+                <input type="number" name="skillBonus" value="0" placeholder="0"/>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.AttributeBonus'}}">{{localize "NEUROSHIMA.Roll.AttributeBonusAbbr"}}</label>
+                <input type="number" name="attributeBonus" value="0" placeholder="0"/>
+            </div>
+        </div>
+    </div>
+
+    {{#if (eq rollType "ranged")}}
+    <div class="dialog-columns distance-row">
+        <div class="column left">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.Distance"}} (m)</label>
+                <input type="number" name="distance" value="{{distance}}" step="0.1" min="0"/>
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
+    {{#if (eq rollType "ranged")}}
+    <div class="dialog-columns sliders-row">
+        <div class="column left">
+            <div class="form-group vertical slider-group">
+                <label>{{localize 'NEUROSHIMA.Roll.Aiming'}}: <span class="aiming-display">{{aimingLevel}}</span></label>
+                <input type="range" name="aimingLevel" min="0" max="2" value="{{aimingLevel}}" step="1">
+                <div class="slider-hint">
+                    {{localize 'NEUROSHIMA.Roll.DiceCount'}}: <span class="dice-count">{{add aimingLevel 1}}</span>k20
+                </div>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group vertical slider-group">
+                <label>{{localize 'NEUROSHIMA.Roll.Burst'}}: <span class="burst-display">{{burstLevel}}</span></label>
+                <input type="range" name="burstLevel" min="0" max="3" value="{{burstLevel}}" step="1" {{#if (eq weapon.system.fireRate 0)}}disabled{{/if}}>
+                <div class="slider-hint">
+                    {{localize 'NEUROSHIMA.Roll.BulletsFired'}}: <span class="bullets-count">1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{else}}
+    <input type="hidden" name="aimingLevel" value="2">
+    <input type="hidden" name="burstLevel" value="0">
+    {{/if}}
+
+    <div class="summary-section">
+        <h3>{{localize "NEUROSHIMA.Roll.Summary"}}</h3>
+        <table class="summary-table">
+            <tr>
+                <td>{{localize "NEUROSHIMA.Roll.TotalModifier"}}</td>
+                <td class="total-modifier">0%</td>
+            </tr>
+            <tr>
+                <td>{{localize "NEUROSHIMA.Roll.FinalDifficulty"}}</td>
+                <td class="final-difficulty">-</td>
+            </tr>
+        </table>
+    </div>
+
+    <footer class="form-footer">
+        <button type="submit" data-action="roll" class="" autofocus="">
+            <span>{{localize "NEUROSHIMA.Actions.Roll"}}</span>
+        </button>
+        <button type="submit" data-action="cancel" class="">
+            <span>{{localize "NEUROSHIMA.Actions.Cancel"}}</span>
+        </button>
+    </footer>
+</div>

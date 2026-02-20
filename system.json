@@ -1,0 +1,51 @@
+{
+    "id": "neuroshima",
+    "title": "Neuroshima 1.5",
+    "description": "System do gry fabularnej Neuroshima 1.5.",
+    "version": "0.1.3",
+    "compatibility": {
+        "minimum": "13",
+        "verified": "13"
+    },
+    "authors": [
+        {
+            "name": "Kares"
+        }
+    ],
+    "esmodules": [
+        "system.js"
+    ],
+    "styles": [
+        "css/base.css",
+        "css/actor.css",
+        "css/items.css"
+    ],
+    "packs": [],
+    "languages": [
+        {
+            "lang": "en",
+            "name": "English",
+            "path": "lang/en.json"
+        },
+        {
+            "lang": "pl",
+            "name": "Polski",
+            "path": "lang/pl.json"
+        }
+    ],
+    "actorTypes": [
+        "character"
+    ],
+    "itemTypes": [
+        "weapon",
+        "armor",
+        "gear",
+        "trick",
+        "ammo",
+        "magazine",
+        "wound"
+    ],
+    "url": "",
+    "manifest": "",
+    "download": ""
+}

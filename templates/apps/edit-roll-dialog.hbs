@@ -1,0 +1,17 @@
+<section class="neuroshima edit-roll-dialog">
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Roll.TestType"}}</label>
+        <div class="form-fields">
+            <select name="isOpen">
+                <option value="false" {{#unless rollData.isOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.Roll.ClosedTest"}}</option>
+                <option value="true" {{#if rollData.isOpen}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.OpenTest"}}</option>
+            </select>
+        </div>
+    </div>
+
+    <footer class="sheet-footer flexrow flex-center">
+        <button type="submit" name="submit" class="save-button">
+            <i class="fas fa-save"></i> {{localize "SETTINGS.Save"}}
+        </button>
+    </footer>
+</section>
