@@ -63,7 +63,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       rollWeapon: this.prototype._onRollWeapon,
       unloadMagazine: this.prototype._onUnloadMagazine,
       showPatientCard: this.prototype._onShowPatientCard,
-      requestHealing: this.prototype._onRequestHealing
+      requestHealing: this.prototype._onRequestHealing,
+      toggleCombatLayout: this.prototype._onToggleCombatLayout
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -90,6 +91,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     skills: { template: "systems/neuroshima/templates/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
     tricks: { template: "systems/neuroshima/templates/actor/parts/actor-tricks.hbs" },
     combat: { template: "systems/neuroshima/templates/actor/parts/actor-combat.hbs",  scrollable: [""] },
+    combatPaperDoll: { template: "systems/neuroshima/templates/actor/parts/wounds-paper-doll-partial.hbs" ,  scrollable: [".paper-doll-scrollable"]},
+    combatWoundsList: { template: "systems/neuroshima/templates/actor/parts/wounds-list-partial.hbs" ,  scrollable: [".wounds-list-container"]},
     inventory: { template: "systems/neuroshima/templates/actor/parts/actor-inventory.hbs", scrollable: [""]},
     notes: { template: "systems/neuroshima/templates/actor/parts/actor-notes.hbs" }
   };
@@ -99,7 +102,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     super(options);
     this._difficultiesCollapsed = true;
     this._isRolling = false;
-    this._selectedWoundLocation = "head";
+    this._selectedWoundLocation = null;
   }
 
   /** @override */
@@ -148,43 +151,73 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty;
     const penaltyTooltip = `${game.i18n.localize("NEUROSHIMA.Armor.TotalPenalty")}: ${totalArmorPenalty}% | ${game.i18n.localize("NEUROSHIMA.Wound.TotalPenalty")}: ${totalWoundPenalty}%`;
 
+    const healingRate = system.healingRate || 5;
+    
     // Get patient card version for healing panel
     const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
     
+    // Load saved wound location from actor flags, default to torso
+    // Only load from flags on first init or if explicitly unset (allows renderPartial to preserve state)
+    if (this._selectedWoundLocation === null || this._selectedWoundLocation === undefined) {
+      this._selectedWoundLocation = actor.getFlag("neuroshima", "selectedWoundLocation") || "torso";
+    }
+    
+    game.neuroshima?.log("_prepareContext selectedWoundLocation", { 
+      value: this._selectedWoundLocation,
+      type: typeof this._selectedWoundLocation
+    });
+    
     // Prepare patient data for extended healing panel
-    let patientData = null;
+    // BUILD DATA ALWAYS - needed for extended wounds display
+    let patientData = CombatHelper.generatePatientCard(actor);
     let locationsMap = {};
     let woundsByLocation = {};
-    if (patientCardVersion === "extended") {
-      patientData = CombatHelper.generatePatientCard(actor);
-      locationsMap = {};
-      woundsByLocation = {};
-      
-      // Create wounds organized by location for extended wounds editing
-      for (const location of patientData.locations) {
-        locationsMap[location.key] = location;
-        woundsByLocation[location.key] = location.wounds
-          .map(woundData => {
-            const woundItem = actor.items.get(woundData.id);
-            if (!woundItem) return null;
-            return {
-              id: woundItem.id,
-              uuid: woundItem.uuid,
-              name: woundItem.name,
-              img: woundItem.img,
-              system: woundItem.system,
-              damageType: woundItem.system.damageType || "D",
-              penalty: woundItem.system.penalty || 0,
-              isHealing: woundItem.system.isHealing || false,
-              hadFirstAid: woundItem.system.hadFirstAid || false,
-              healingAttempts: woundItem.system.healingAttempts || 0,
-              estimatedHealingDays: Math.ceil((woundItem.system.penalty || 0) / 5),
-              fullWoundName: woundData.fullWoundName
-            };
-          })
-          .filter(w => w !== null);
-      }
+    
+    // Create wounds organized by location for extended wounds editing
+    for (const location of patientData.locations) {
+      locationsMap[location.key] = location;
+      location.wounds = location.wounds
+        .map(woundData => {
+          const woundItem = actor.items.get(woundData.id);
+          if (!woundItem) return null;
+          return {
+            ...woundData,
+            uuid: woundItem.uuid,
+            img: woundItem.img,
+            system: woundItem.system,
+            damageType: woundItem.system.damageType || "D",
+            penalty: woundItem.system.penalty || 0,
+            isHealing: woundItem.system.isHealing || false,
+            hadFirstAid: woundItem.system.hadFirstAid || false,
+            healingAttempts: woundItem.system.healingAttempts || 0,
+            estimatedHealingDays: Math.ceil((woundItem.system.penalty || 0) / 5)
+          };
+        })
+        .filter(w => w !== null);
+      woundsByLocation[location.key] = location.wounds;
     }
+    
+    // IMPORTANT: Filter patientData.locations to only include the selected location
+    // This ensures the template loop only iterates over the active location
+    const selectedLocation = patientData.locations.find(loc => loc.key === this._selectedWoundLocation);
+    let locationsForTemplate = selectedLocation ? [selectedLocation] : patientData.locations.slice(0, 1);
+    
+    // Safety check: ensure locationsForTemplate is not empty
+    if (locationsForTemplate.length === 0 && patientData.locations.length > 0) {
+      locationsForTemplate = [patientData.locations[0]];
+      game.neuroshima?.log("WARNING: locationsForTemplate was empty, using first location as fallback");
+    }
+
+    const selectedLocationLabel = locationsForTemplate[0]?.label || "";
+    
+    game.neuroshima?.log("Filtering locations for template", {
+      selectedLocationKey: this._selectedWoundLocation,
+      foundSelectedLocation: !!selectedLocation,
+      locationsForTemplateCount: locationsForTemplate.length,
+      allLocationsCount: patientData.locations.length,
+      selectedLocationLabel: selectedLocationLabel,
+      selectedLocationKey2: locationsForTemplate[0]?.key || "none"
+    });
 
     // Prepare Combat Tab Data
     context.combat = {
@@ -199,12 +232,23 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       totalDamagePoints: system.combat.totalDamagePoints,
       currentHP: system.hp.value || 0,
       maxHP: system.hp.max || 27,
+      healingRate: healingRate,
+      healingDaysRequired: Math.ceil(totalWoundPenalty / healingRate),
       anatomicalArmor: this._prepareAnatomicalArmor(items.filter(i => i.type === "armor" && i.system.equipped)),
       patientCardVersion: patientCardVersion,
-      patientData: patientData,
+      patientData: { ...patientData, locations: patientData.locations }, // Przekazujemy wszystkie lokacje
       locationsMap: locationsMap,
-      woundsByLocation: woundsByLocation
+      woundsByLocation: woundsByLocation,
+      selectedWoundLocation: this._selectedWoundLocation,
+      selectedLocationLabel: selectedLocationLabel,
+      woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false
     };
+    
+    game.neuroshima?.log("_prepareContext context.combat.selectedWoundLocation", {
+      value: context.combat.selectedWoundLocation,
+      patientDataLocationsCount: context.combat.patientData?.locations?.length || 0,
+      locations: context.combat.patientData?.locations?.map(l => ({ key: l.key, label: l.label })) || []
+    });
 
     // Prepare notes object
     context.notes = {
@@ -223,6 +267,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   /** @override */
   _prepareSubmitData(event, form, formData) {
     game.neuroshima.log("_prepareSubmitData triggered", {event, formData});
+
+    // Zapisz pozycję scrollu wounds-list-container przed edycją
+    const woundsListContainer = this.element?.querySelector(".wounds-list-container");
+    this._woundsScrollTop = woundsListContainer?.scrollTop ?? 0;
 
     const data = formData.object;
     // Handle embedded items updates (e.g. from wounds table)
@@ -297,21 +345,138 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     });
 
     // Add listeners for paper doll in extended healing panel
-    const hotspots = html.querySelectorAll('.body-location-hotspot');
-    hotspots.forEach(hotspot => {
-      hotspot.addEventListener('click', (event) => {
-        event.preventDefault();
-        // Save selected location before updating UI
-        this._selectedWoundLocation = event.currentTarget.dataset.location;
-        this._onPaperDollLocationSelect(event, event.currentTarget);
+    // We check for hotspots repeatedly for a short period if not found immediately
+    // to account for ApplicationV2 part injection timing
+    const setupHotspots = () => {
+      const hotspots = html.querySelectorAll('.body-location-hotspot');
+      if (hotspots.length > 0) {
+        hotspots.forEach(hotspot => {
+          // Avoid duplicate listeners
+          if (hotspot.getAttribute('data-listener-active')) return;
+          hotspot.setAttribute('data-listener-active', 'true');
+          
+          hotspot.addEventListener('click', (event) => {
+            event.preventDefault();
+            // Save selected location to actor flags
+            const locationKey = event.currentTarget.dataset.location;
+            this._selectedWoundLocation = locationKey;
+            this.document.setFlag("neuroshima", "selectedWoundLocation", locationKey);
+            // Render wounds list to show selected location BEFORE updating visual state
+            this.render({ parts: ["combatWoundsList"] }).then(() => {
+              // Update visual state after render completes
+              this._onPaperDollLocationSelect(event, event.currentTarget);
+            });
+          });
+        });
+        
+        // Initialize paper doll with saved location
+        this._initializeWoundLocationPanel(this.element);
+        return true;
+      }
+      return false;
+    };
+
+    if (!setupHotspots()) {
+      // Try again after a short delay if not found immediately
+      setTimeout(setupHotspots, 100);
+    }
+    
+    // Re-attach listeners to wounds list if it was updated
+    const woundItems = html.querySelectorAll('.wounds-list-part .wound-item');
+    if (woundItems.length > 0) {
+      game.neuroshima?.log("_onRender: Wound items found, listeners should be handled by form", {
+        count: woundItems.length
       });
+    }
+
+    // Przywróć scroll wounds-list-container jeśli był zapisany
+    if (this._woundsScrollTop != null) {
+      const container = html.querySelector(".wounds-list-container");
+      if (container) {
+        container.scrollTop = this._woundsScrollTop;
+      }
+      this._woundsScrollTop = null;
+    }
+  }
+
+  /**
+   * Initialize wound location panel - ensures active class is set and wounds are visible
+   * @private
+   */
+  _initializeWoundLocationPanel(html) {
+    const hotspots = html.querySelectorAll('.body-location-hotspot');
+    const targetHotspot = Array.from(hotspots).find(h => h.dataset.location === this._selectedWoundLocation);
+    
+    game.neuroshima?.log("_initializeWoundLocationPanel", {
+      hotspotsFound: hotspots.length,
+      selectedLocation: this._selectedWoundLocation,
+      targetFound: !!targetHotspot
     });
     
-    // Initialize paper doll with saved location instead of always first location
-    const targetHotspot = Array.from(hotspots).find(h => h.dataset.location === this._selectedWoundLocation) || hotspots[0];
     if (targetHotspot) {
       this._onPaperDollLocationSelect(null, targetHotspot);
+    } else if (hotspots.length > 0) {
+      // Fallback: if saved location not found, use first available (torso)
+      const torsoHotspot = Array.from(hotspots).find(h => h.dataset.location === "torso") || hotspots[0];
+      this._selectedWoundLocation = torsoHotspot.dataset.location;
+      game.neuroshima?.log("_initializeWoundLocationPanel fallback", {
+        usedLocation: this._selectedWoundLocation
+      });
+      this._onPaperDollLocationSelect(null, torsoHotspot);
+    } else {
+      game.neuroshima?.log("_initializeWoundLocationPanel ERROR: No hotspots found!");
     }
+  }
+
+  /** @override */
+  _onUpdate(changed, options, userId) {
+    const changedKeys = Object.keys(changed);
+    let itemsChanged = false;
+    let onlyWoundsChanged = true;
+    let hpChanged = false;
+
+    // Zapisz pozycję scrolla wounds-list-container
+    const woundsListContainer = this.element?.querySelector('.wounds-list-container');
+    const scrollPosition = woundsListContainer?.scrollTop || 0;
+
+    for (const key of changedKeys) {
+      if (key.startsWith("items")) {
+        itemsChanged = true;
+        const parts = key.split(".");
+        const itemId = parts[1];
+        const item = this.document.items.get(itemId);
+        if (item && item.type !== "wound") onlyWoundsChanged = false;
+      } else if (key.includes("hp") || key.includes("health")) {
+        hpChanged = true;
+      } else {
+        onlyWoundsChanged = false;
+      }
+    }
+
+    let renderPromise;
+    if (itemsChanged) {
+      if (onlyWoundsChanged) {
+        renderPromise = this.render({ parts: ["header", "combatWoundsList"] });
+      } else {
+        renderPromise = this.render({ parts: ["header", "combat", "combatPaperDoll", "combatWoundsList", "inventory"] });
+      }
+    } else if (hpChanged) {
+      renderPromise = this.render({ parts: ["header", "combat", "combatPaperDoll", "combatWoundsList"] });
+    } else {
+      return super._onUpdate(changed, options, userId);
+    }
+
+    // Przywróć scrollPosition
+    if (renderPromise && onlyWoundsChanged) {
+      renderPromise.then(() => {
+        const newWoundsListContainer = this.element?.querySelector('.wounds-list-container');
+        if (newWoundsListContainer) {
+          newWoundsListContainer.scrollTop = scrollPosition;
+        }
+      });
+    }
+
+    return renderPromise;
   }
 
   /** @override */
@@ -938,6 +1103,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const li = target.closest(".item");
     const item = this.document.items.get(li.dataset.itemId);
     if (!item || item.type !== "wound") return;
+    // _onUpdate hook will handle selective rendering of combat part only
     return item.update({ "system.isHealing": !item.system.isHealing });
   }
 
@@ -1218,6 +1384,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       game.neuroshima?.log("_onCreateItem setting wound location", { location, itemData });
     }
 
+    // Create the item - _onUpdate hook will handle selective rendering
     return this.document.createEmbeddedDocuments("Item", [itemData]);
   }
 
@@ -1279,6 +1446,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const li = target.closest("[data-item-id]");
     const item = this.document.items.get(li.dataset.itemId);
     if (!item) return;
+    // _onUpdate hook will handle selective rendering of combat part only
     return item.delete();
   }
 
@@ -1470,68 +1638,33 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   }
 
   /**
+   * Toggle the layout of the combat tab (top-row vs wounds-section order).
+   */
+  async _onToggleCombatLayout(event, target) {
+    event.preventDefault();
+    const actor = this.document;
+    const current = actor.getFlag("neuroshima", "woundsFirst") || false;
+    await actor.setFlag("neuroshima", "woundsFirst", !current);
+    await this.render();
+  }
+
+  /**
    * Handle paper doll location selection in extended healing panel
    */
   _onPaperDollLocationSelect(event, hotspot) {
     const locationKey = hotspot.dataset.location;
     
-    game.neuroshima?.log("_onPaperDollLocationSelect start", { locationKey });
+    game.neuroshima?.log("_onPaperDollLocationSelect visually marking hotspot", { locationKey });
     
-    // Remove selected class from all hotspots
+    // Remove selected class from all hotspots in the diagram
     this.element.querySelectorAll('.body-location-hotspot').forEach(hs => {
       hs.classList.remove('selected');
     });
     
-    // Add selected class to clicked hotspot
+    // Add selected class to the current hotspot
     hotspot.classList.add('selected');
     
-    // Update selected location info display
-    const selectedLocationInfo = this.element.querySelector('.selected-location-info p');
-    if (selectedLocationInfo && locationKey) {
-      const locationLabel = game.i18n.localize(NEUROSHIMA.bodyLocations[locationKey]?.label || "NEUROSHIMA.Location.Unknown");
-      selectedLocationInfo.textContent = locationLabel;
-    }
-    
-    // Show/hide wound groups and highlight headers based on selected location
-    const woundGroups = this.element.querySelectorAll('.location-wounds-group');
-    const locationHeaders = this.element.querySelectorAll('.location-wounds-header');
-    
-    game.neuroshima?.log("_onPaperDollLocationSelect groups count", { 
-      woundGroupsCount: woundGroups.length,
-      locationHeadersCount: locationHeaders.length
-    });
-    
-    woundGroups.forEach((group, idx) => {
-      const groupLocation = group.dataset.location;
-      const shouldBeActive = groupLocation === locationKey;
-      
-      if (shouldBeActive) {
-        group.classList.add('active');
-      } else {
-        group.classList.remove('active');
-      }
-      
-      if (idx < 3) { // Log first 3 for debugging
-        game.neuroshima?.log(`Group ${idx}: location=${groupLocation}, shouldBeActive=${shouldBeActive}, hasActiveClass=${group.classList.contains('active')}`);
-      }
-    });
-    
-    locationHeaders.forEach((header, idx) => {
-      const headerLocation = header.dataset.location;
-      const shouldBeActive = headerLocation === locationKey;
-      
-      if (shouldBeActive) {
-        header.classList.add('active');
-      } else {
-        header.classList.remove('active');
-      }
-      
-      if (idx < 3) { // Log first 3 for debugging
-        game.neuroshima?.log(`Header ${idx}: location=${headerLocation}, shouldBeActive=${shouldBeActive}, hasActiveClass=${header.classList.contains('active')}`);
-      }
-    });
-    
-    game.neuroshima?.log("Paper doll location selected", { location: locationKey });
+    game.neuroshima?.log("Paper doll location selected visually", { location: locationKey });
   }
 
   /**

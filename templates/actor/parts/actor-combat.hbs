@@ -1,5 +1,12 @@
 <section class="tab combat {{tabs.combat.cssClass}}" data-group="primary" data-tab="combat" data-application-part="combat">
-    <div class="combat-grid">
+    {{!-- Swap Layout Action --}}
+    <div class="combat-tab-actions">
+        <a class="item-control" data-action="toggleCombatLayout" title="{{localize 'NEUROSHIMA.Actions.ToggleLayout'}}">
+            <i class="fas fa-arrows-alt-v"></i>
+        </a>
+    </div>
+
+    <div class="combat-grid {{#if combat.woundsFirst}}wounds-first{{/if}}">
         {{!-- Top Row: Armor and Weapons --}}
         <div class="combat-top-row">
             {{!-- Anatomical Armor Section --}}
@@ -133,7 +140,49 @@
 
         {{!-- Bottom Row: Wounds --}}
         {{#if (eq combat.patientCardVersion "extended")}}
-            {{>systems/neuroshima/templates/actor/parts/wounds-extended.hbs}}
+            {{!-- Extended Wounds Section --}}
+            <section class="combat-section wounds-section wounds-section-extended">
+                <div class="section-header">
+                    <div class="header-title">
+                        <i class="fas fa-crutch"></i>
+                        <span>{{localize "NEUROSHIMA.Items.Type.Wound"}}</span>
+                    </div>
+                    
+                    <div class="wound-stats-total">
+                        <span class="hp-sum" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
+                            <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                        </span>
+                        <span class="penalty-sum" title="{{localize "NEUROSHIMA.Wound.TotalPenalty"}}">
+                            <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                        </span>
+                        <span class="healing-days-sum" title="Dni do wyleczenia (5% dziennie)">
+                            <i class="fas fa-calendar"></i> {{combat.healingDaysRequired}}d
+                            <div class="healing-rate-input-wrapper">
+                                <input type="number" name="system.healingRate" value="{{combat.healingRate}}" min="1" max="100" class="healing-rate-input" title="Procent leczenia na dzień" />%
+                            </div>
+                        </span>
+                    </div>
+
+                    <div class="header-actions">
+                        {{#if owner}}
+                        <a class="item-control" data-action="requestHealing" title="{{localize 'NEUROSHIMA.PatientCard.ShowPatientCard'}}">
+                            <i class="fas fa-file-medical"></i>
+                        </a>
+                        {{#if @root.game.user.isGM}}
+                        <a class="item-control" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                        {{/if}}
+                        {{/if}}
+                    </div>
+                </div>
+
+                {{!-- Extended Wounds Layout - Now INSIDE wounds-section --}}
+                <div class="healing-panel-layout">
+                    <div data-application-part="combatPaperDoll"></div>
+                    <div data-application-part="combatWoundsList"></div>
+                </div>
+            </section>
         {{else}}
             {{!-- Simple Wounds Table --}}
             <section class="combat-section wounds-section">

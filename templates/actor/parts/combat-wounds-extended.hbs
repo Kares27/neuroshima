@@ -1,0 +1,39 @@
+{{!-- Extended Wounds Section - paper doll and wounds list partials --}}
+<section class="combat-section wounds-section healing-panel-section">
+    <div class="section-header">
+        <div class="header-title">
+            <i class="fas fa-crutch"></i>
+            <span>{{localize "NEUROSHIMA.Items.Type.Wound"}}</span>
+        </div>
+        
+        <div class="wound-stats-total">
+            <span class="hp-sum" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
+                <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
+            </span>
+            <span class="penalty-sum" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}">
+                <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+            </span>
+        </div>
+
+        <div class="header-actions">
+            {{#if owner}}
+            <a class="item-control" data-action="requestHealing" title="{{localize 'NEUROSHIMA.PatientCard.ShowPatientCard'}}">
+                <i class="fas fa-file-medical"></i>
+            </a>
+            {{#if @root.game.user.isGM}}
+            <a class="item-control" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                <i class="fas fa-cog"></i>
+            </a>
+            {{/if}}
+            {{/if}}
+        </div>
+    </div>
+
+    <div class="healing-panel-layout">
+        {{!-- Paper Doll Partial --}}
+        {{>systems/neuroshima/templates/actor/parts/wounds-paper-doll-partial.hbs}}
+        
+        {{!-- Wounds List Partial --}}
+        {{>systems/neuroshima/templates/actor/parts/wounds-list-partial.hbs}}
+    </div>
+</section>

@@ -221,7 +221,52 @@ Metoda `applyHealingEffects()` obsługuje:
 
 Szczegółowa dokumentacja: [HEALING_SYSTEM_PHASE4.md](./HEALING_SYSTEM_PHASE4.md)
 
-## 9. Tryb Debugowania
+## 8.2. Panel Rozszerzonego Leczenia (Extended Wounds Panel)
+
+**Pliki**: `templates/actor/parts/actor-combat.hbs`, `templates/actor/parts/wounds-list-partial.hbs`, `templates/actor/parts/wounds-paper-doll-partial.hbs`, `css/actor.css`, `module/sheets/actor-sheet.js`
+
+### Strukturura UI
+Panel rozszerzony ma dwie główne części:
+1. **Paper Doll (Diagram Anatomiczny)**: Interaktywny schemat ludzkiego ciała z hotspotami dla każdej lokacji anatomicznej
+2. **Wounds List Container**: Lista ran organizowana według wybranej lokacji
+
+### Logika Selekcji Lokacji
+- Klik na hotspot w diagramie zapisuje lokację w actor flag (`neuroshima.selectedWoundLocation`)
+- Lokacja domyślna: `torso`
+- Po wyrenderowaniu szablonu `combatWoundsList` wyświetla się aktualna selekcja
+- Nagłówki lokacji mają klasę `active` (controlowana przez Handlebars: `{{#if (eq location.key ../combat.selectedWoundLocation)}}active{{/if}}`)
+
+### Wygląd Ran
+- **Kolory tła**: 
+  - Brak leczenia: `rgba(245, 40, 40, 0.15)` (czerwony/salmon)
+  - W trakcie leczenia (`isHealing: true`): `rgba(76, 175, 80, 0.3)` (zielony)
+- Kolory są aplikowane za pośrednictwem klasy `.is-healing` na elemencie `.wound-item`
+
+### Konfiguracja Tempa Leczenia
+- Input pole `healing-rate-input` pozwala ustawić procent leczenia na dzień (domyślnie 5%)
+- Przechowywane w `system.healingRate` (zakres 1-100)
+- Dni do wyleczenia są obliczane dynamicznie: `Math.ceil(totalWoundPenalty / healingRate)`
+- Pozwala na uwzględnienie modyfikatorów GM (ulgi medyczne, specjalne terapie itp.)
+
+### Statystyki w Nagłówku (Extended Mode)
+- **HP-sum**: Całkowite obrażenia / Max HP (kolor czerwony #ff4444)
+- **penalty-sum**: Całkowita kara od ran (kolor pomarańczowy #ff9800)
+- **healing-days-sum**: Dni do pełnego wyleczenia (kolor zielony #4caf50)
+- Statystyki wyświetlane w centrum nagłówka sekcji ran, w specjalnie stylizowanym pudełku z `rgba(0, 0, 0, 0.3)` tłem
+
+### Toggle Layoutu Walki
+- Przycisk w górnym prawym rogu combat tab (ikona strzałek) zmienia kolejność sekcji
+- Przycisk zmienia wartość flagi: `actor.setFlag("neuroshima", "woundsFirst", !current)`
+- CSS klasa `.wounds-first` na `.combat-grid` zmienia `flex-direction` na `column-reverse`
+- `await this.render()` wymusza pełne przerenderowanie kontekstu i zastosowanie zmiany
+
+### Hotspot Initialization
+- Po wyrenderowaniu szablonu poszukiwane są elementy `.body-location-hotspot`
+- Jeśli hotspoty nie są od razu dostępne (asynchronizm ApplicationV2), system powtarza próbę po 100ms
+- Każdy hotspot ma listener zabezpieczony atrybutem `data-listener-active` aby uniknąć duplikatów
+- Klik na hotspot renderuje `combatWoundsList` PRZED aktualizacją stanu wizualnego, aby zapobiec flimmerowaniu
+
+## 9. Tryb Debugowania (Changed from 9 to account for new 8.2 section)
 System korzysta z ustawienia `debugMode`. Logi w konsoli powinny być warunkowane sprawdzeniem tego booleana:
 ```javascript
 if (game.settings.get("neuroshima", "debugMode")) {

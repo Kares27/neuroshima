@@ -356,6 +356,16 @@
     flex-direction: row;
 }
 
+.neuroshima.sheet.actor [data-application-part="combatPaperDoll"],
+.neuroshima.sheet.actor [data-application-part="combatWoundsList"] {
+    display: none;
+}
+
+.neuroshima.sheet.actor .tab.active[data-tab="combat"] [data-application-part="combatPaperDoll"],
+.neuroshima.sheet.actor .tab.active[data-tab="combat"] [data-application-part="combatWoundsList"] {
+    display: flex !important;
+}
+
 .neuroshima.sheet.actor [data-application-part="attributes"].active {
     flex: 0 0 auto;
     display: block !important;
@@ -1148,11 +1158,90 @@
 }
 
 /* Combat Weapon Cards */
-.neuroshima.sheet.actor .combat-weapons-list {
+.neuroshima.sheet.actor .combat {
+    position: relative;
+    padding-top: 45px;
+}
+
+.combat-tab-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+}
+
+.combat-tab-actions .item-control {
+    font-size: 1.2em;
+    color: var(--ns-text-light);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    cursor: pointer;
+}
+
+.combat-tab-actions .item-control:hover {
+    opacity: 1;
+}
+
+.combat-grid {
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding: 10px;
+    gap: 15px;
+}
+
+.combat-grid.wounds-first {
+    flex-direction: column-reverse;
+}
+
+.wounds-section-extended .section-header {
+    display: flex;
+    align-items: center;
+}
+
+.wounds-section-extended .wound-stats-total {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    background: rgba(0, 0, 0, 0.3);
+    margin: 0 20px;
+    padding: 6px 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.wounds-section-extended .hp-sum,
+.wounds-section-extended .penalty-sum,
+.wounds-section-extended .healing-days-sum {
+    flex: 0 0 auto !important;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    font-size: 1.1em;
+}
+
+.wounds-section-extended .hp-sum { color: #ff4444; }
+.wounds-section-extended .penalty-sum { color: #ff9800; }
+.wounds-section-extended .healing-days-sum { color: #4caf50; }
+
+.wounds-section-extended .hp-sum i,
+.wounds-section-extended .penalty-sum i,
+.wounds-section-extended .healing-days-sum i {
+    font-size: 0.9em;
+}
+
+.wounds-section-extended .header-title {
+    flex: 0 0 auto !important;
+}
+
+.wounds-section-extended .header-actions {
+    flex: 0 0 auto !important;
 }
 
 .neuroshima.sheet.actor .equipment-item {
@@ -1312,6 +1401,46 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     text-align: center;
 }
 
+.neuroshima.sheet.actor .wounds-section .healing-days-sum {
+    flex: 1.5;
+    text-align: center;
+    color: #4caf50;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.healing-rate-input-wrapper {
+    display: flex;
+    align-items: center;
+    font-size: 0.8em;
+    font-weight: normal;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    margin-left: 4px;
+}
+
+.healing-rate-input {
+    width: 35px !important;
+    height: 18px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: #4caf50 !important;
+    text-align: center !important;
+    font-weight: bold !important;
+}
+
+.healing-rate-input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 .neuroshima.sheet.actor .wounds-section .header-actions {
     flex: 0 0 90px;
     padding-right: 8px;
@@ -1463,19 +1592,25 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 /* Extended Wounds Editable Elements */
 .location-wounds-header {
-  display: flex;
+  display: none;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: 3px;
-  background: rgba(100, 150, 200, 0.1);
-  border-left: 2px solid rgba(100, 150, 200, 0.3);
+  background: rgba(100, 150, 200, 0.08);
+  border-left: 2px solid rgba(100, 150, 200, 0.2);
   transition: all 0.2s ease;
+  font-family: 'SpecialElite', serif;
+  font-size: 1.15em;
+  font-weight: bold;
+  min-height: 32px;
+  visibility: visible !important;
 }
 
 .location-wounds-header.active {
+  display: flex !important;
   background: rgba(100, 150, 200, 0.2);
   border-left-color: rgba(100, 150, 200, 0.8);
   color: #fff;
@@ -1600,17 +1735,31 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
   gap: 15px;
-  height: 100%;
+  height: 450px;
 }
 
 .healing-panel-section.paper-doll-section {
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .healing-panel-section.wounds-list-section {
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: 'SpecialElite', serif;
+  font-size: 1.1em;
+}
+
+.wounds-list-container {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .section-title {
@@ -1620,16 +1769,26 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   color: var(--ns-text-main);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.paper-doll-scrollable {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 1 auto;
+  
 }
 
 .paper-doll-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px;
+  padding: 4px 10px;
   background: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
-  min-height: 300px;
+  flex-shrink: 0;
+  height: 100px;
 }
 
 .body-diagram {
@@ -1677,7 +1836,13 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .location-wounds-group {
+  display: none;
+  flex-direction: column;
   gap: 6px;
+}
+
+.location-wounds-group.active {
+  display: flex !important;
 }
 
 .location-wounds-title {
@@ -1695,6 +1860,116 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   padding: 8px;
   margin: 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 40, 40, 0.15);
+  transition: background 0.2s ease;
+}
+
+.wound-item.is-healing {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+.wound-item-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  z-index: 10;
+}
+
+.wound-type-select {
+  flex-shrink: 0;
+  padding: 2px 4px;
+  font-size: 0.85em;
+  width: 40px;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.wound-item-name {
+  flex: 0 1 auto;
+  min-width: 60px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'SpecialElite', serif;
+  font-size: 1.05em;
+}
+
+.wound-penalty-input {
+  flex-shrink: 0;
+  width: 40px;
+  padding: 2px 4px;
+  font-size: 0.85em;
+  text-align: center;
+  background: rgba(255, 153, 0, 0.15) !important;
+  border: 1px solid rgba(255, 153, 0, 0.4) !important;
+  color: #ff9900 !important;
+  border-radius: 2px;
+  cursor: text !important;
+  pointer-events: auto !important;
+}
+
+.wound-penalty-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: auto !important;
+}
+
+.wound-days {
+  flex-shrink: 0;
+  min-width: 30px;
+  text-align: center;
+  font-size: 0.85em;
+  display: none;
+}
+
+.wound-status-icons {
+  flex-shrink: 0;
+  display: flex;
+  gap: 3px;
+}
+
+.wound-inline-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  z-index: 20;
+  position: relative;
+  pointer-events: auto !important;
+}
+
+.wound-inline-controls .item-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: rgba(100, 150, 200, 0.2);
+  color: rgba(100, 150, 200, 0.8);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9em;
+}
+
+.wound-inline-controls .item-control:hover {
+  background: rgba(100, 150, 200, 0.4);
+  color: rgba(100, 150, 200, 1);
+}
+
+.wound-inline-controls .item-control.active {
+  background: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
 }
 
 .wound-item:last-child {
@@ -1810,5 +2085,38 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .selected-location-info .no-selection {
   opacity: 0.6;
   margin: 0;
+}
+
+.combat-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.combat-grid.wounds-first {
+    flex-direction: column-reverse;
+}
+
+.combat-tab-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: -20px;
+    position: relative;
+    z-index: 10;
+    padding-right: 5px;
+}
+
+.combat-tab-actions .item-control {
+    color: var(--ns-text-light);
+    opacity: 0.6;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    font-size: 1.1em;
+}
+
+.combat-tab-actions .item-control:hover {
+    color: var(--ns-text-main);
+    opacity: 1;
+    transform: scale(1.1);
 }
 

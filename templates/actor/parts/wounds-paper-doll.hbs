@@ -1,0 +1,86 @@
+{{!-- Paper Doll Part - Fully independent, never updates from wound changes --}}
+<div class="tab combat" data-group="primary" data-tab="combat" data-application-part="combatPaperDoll">
+    {{#if (eq @root.combat.patientCardVersion "extended")}}
+    <section class="combat-section wounds-section healing-panel-section paper-doll-part">
+        <div class="section-header">
+            <div class="header-title">
+                <i class="fas fa-crutch"></i>
+                <span>{{localize "NEUROSHIMA.Items.Type.Wound"}}</span>
+            </div>
+            
+            <div class="wound-stats-total">
+                <span class="hp-sum" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
+                    <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                </span>
+                <span class="penalty-sum" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}">
+                    <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                </span>
+            </div>
+
+            <div class="header-actions">
+                {{#if owner}}
+                <a class="item-control" data-action="requestHealing" title="{{localize 'NEUROSHIMA.PatientCard.ShowPatientCard'}}">
+                    <i class="fas fa-file-medical"></i>
+                </a>
+                {{#if @root.game.user.isGM}}
+                <a class="item-control" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+                {{/if}}
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="healing-panel-layout">
+            {{!-- Paper Doll Section --}}
+            <div class="healing-panel-section paper-doll-section">
+                <h3 class="section-title">{{localize "NEUROSHIMA.HealingRequest.PaperDoll"}}</h3>
+                
+                <div class="selected-location-info">
+                    <p class="no-selection">{{localize "NEUROSHIMA.HealingRequest.SelectLocation"}}</p>
+                </div>
+                
+                <div class="paper-doll-container">
+                    <svg class="body-diagram" viewBox="0 0 240 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                        {{!-- Głowa --}}
+                        <g data-location="head">
+                            <circle cx="120" cy="55" r="42" class="body-location-hotspot" data-location="head" data-tooltip="{{localize 'NEUROSHIMA.Location.Head'}}" />
+                            <text x="120" y="60" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.head.wounds.length}}</text>
+                        </g>
+                        
+                        {{!-- Tułów --}}
+                        <g data-location="torso">
+                            <rect x="92" y="110" width="56" height="160" class="body-location-hotspot" data-location="torso" data-tooltip="{{localize 'NEUROSHIMA.Location.Torso'}}" />
+                            <text x="120" y="192" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.torso.wounds.length}}</text>
+                        </g>
+                        
+                        {{!-- Lewe ramię --}}
+                        <g data-location="leftArm">
+                            <rect x="40" y="125" width="45" height="110" class="body-location-hotspot" data-location="leftArm" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftArm'}}" />
+                            <text x="62" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.leftArm.wounds.length}}</text>
+                        </g>
+                        
+                        {{!-- Prawe ramię --}}
+                        <g data-location="rightArm">
+                            <rect x="155" y="125" width="45" height="110" class="body-location-hotspot" data-location="rightArm" data-tooltip="{{localize 'NEUROSHIMA.Location.RightArm'}}" />
+                            <text x="177" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.rightArm.wounds.length}}</text>
+                        </g>
+                        
+                        {{!-- Lewa noga --}}
+                        <g data-location="leftLeg">
+                            <rect x="75" y="290" width="40" height="135" class="body-location-hotspot" data-location="leftLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftLeg'}}" />
+                            <text x="95" y="357" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.leftLeg.wounds.length}}</text>
+                        </g>
+                        
+                        {{!-- Prawa noga --}}
+                        <g data-location="rightLeg">
+                            <rect x="125" y="290" width="40" height="135" class="body-location-hotspot" data-location="rightLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.RightLeg'}}" />
+                            <text x="145" y="357" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.rightLeg.wounds.length}}</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+    {{/if}}
+</div>

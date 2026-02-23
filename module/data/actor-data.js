@@ -85,6 +85,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         value: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         max: new fields.NumberField({ integer: true, initial: 27, min: 1 })
       }),
+      healingRate: new fields.NumberField({ integer: true, initial: 5, min: 1, max: 100 }),
       encumbrance: new fields.SchemaField({
         value: new fields.NumberField({ initial: 0, min: 0 }),
         max: new fields.NumberField({ initial: 0, min: 0 }),

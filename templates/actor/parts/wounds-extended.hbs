@@ -86,8 +86,8 @@
                 {{#if combat.wounds.length}}
                     {{#each combat.patientData.locations as |location|}}
                     
-                    {{!-- Location Header WYCIĄGNIĘTY POZA #with --}}
-                    <div class="location-wounds-header {{#if (eq location.key "head")}}active{{/if}}" data-location="{{location.key}}">
+                    {{!-- Location Header --}}
+                    <div class="location-wounds-header {{#if (eq location.key @root.combat.selectedWoundLocation)}}active{{/if}}" data-location="{{location.key}}">
                         <h4 class="location-wounds-title" data-location-debug="{{location.key}}">{{location.label}}</h4>
                         {{#if ../owner}}
                         <button type="button" class="btn-add-wound" data-action="createItem" data-type="wound" data-location="{{location.key}}" title="{{localize 'DOCUMENT.Create'}}">
@@ -97,9 +97,9 @@
                     </div>
                     
                     {{!-- Wounds Group (Always rendered, shows wounds only if they exist) --}}
-                    {{#with (lookup ../combat.woundsByLocation location.key) as |locationWounds|}}
-                    <div class="location-wounds-group {{#if (eq ../location.key "head")}}active{{/if}}" data-location="{{../location.key}}">
-                        {{#if (or locationWounds locationWounds.length)}}
+                    {{#with (lookup @root.combat.woundsByLocation location.key) as |locationWounds|}}
+                    <div class="location-wounds-group {{#if (eq location.key @root.combat.selectedWoundLocation)}}active{{/if}}" data-location="{{location.key}}">
+                        {{#if (gt locationWounds.length 0)}}
                             {{#each locationWounds as |wound|}}
                             <div class="wound-item wound-item-inline item" data-item-id="{{wound.id}}" data-uuid="{{wound.uuid}}" draggable="true">
                                 {{!-- Type, Name, and Inline Editing --}}
