@@ -146,13 +146,16 @@ body.theme-dark {
 }
 
 /* Chat Message Styling */
-.chat-message:has(.neuroshima.roll-card) {
+.chat-message:has(.neuroshima.roll-card),
+.chat-message:has(.neuroshima.patient-card) {
     background: #f0f0e0;
     border: 1px solid #7a7971;
 }
 
 /* Dark Mode Overrides */
-.theme-dark .chat-message:has(.neuroshima.roll-card) {
+.theme-dark .chat-message:has(.neuroshima.roll-card),
+.theme-dark .chat-message:has(.neuroshima.patient-card),
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) {
     background: #0b0a13e6;
     border-color: #5a5a54;
     color: #e0e0d0;
@@ -160,7 +163,13 @@ body.theme-dark {
 
 .theme-dark .chat-message:has(.neuroshima.roll-card) .message-header,
 .theme-dark .chat-message:has(.neuroshima.roll-card) .message-header .message-sender,
-.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header .message-metadata {
+.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header .message-metadata,
+.theme-dark .chat-message:has(.neuroshima.patient-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.patient-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.patient-card) .message-header .message-metadata,
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-metadata {
     color: #e0e0d0;
 }
 
@@ -326,6 +335,61 @@ body.theme-dark {
 
 .theme-dark .neuroshima.roll-card .apply-damage-section {
     background: rgba(160, 46, 46, 0.15);
+}
+
+/* Healing Effects Section */
+.neuroshima.roll-card .healing-effects-section {
+    margin-top: 4px;
+    background: rgba(76, 175, 80, 0.05);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    overflow: hidden;
+    padding: 8px;
+}
+
+.theme-dark .neuroshima.roll-card .healing-effects-section {
+    background: rgba(76, 175, 80, 0.15);
+}
+
+.neuroshima.roll-card .healing-effects-title {
+    font-size: 0.85em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    margin: 0 0 8px 0;
+    padding: 0;
+}
+
+.neuroshima.roll-card .healing-effects-table {
+    width: 100%;
+    font-size: 0.75em;
+    border-collapse: collapse;
+}
+
+.neuroshima.roll-card .healing-effects-table th,
+.neuroshima.roll-card .healing-effects-table td {
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.neuroshima.roll-card .healing-effects-table th {
+    background: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.theme-dark .neuroshima.roll-card .healing-effects-table th {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .healing-effects-table td.reduction.positive {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .healing-effects-table td.reduction.negative {
+    color: #ff6b6b;
+    font-weight: bold;
 }
 
 .neuroshima.roll-card .damage-application-header {
@@ -778,6 +842,116 @@ body.theme-dark {
     align-items: center;
 }
 
+/* Healing Batch Report Styles */
+.healing-batch-report .wound-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    margin: 2px 0;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    cursor: help;
+}
+
+.healing-batch-report .wound-item.success {
+    background: rgba(40, 167, 69, 0.05);
+    border-left-color: #28a745;
+}
+
+.healing-batch-report .wound-item.failure {
+    background: rgba(220, 53, 69, 0.05);
+    border-left-color: #dc3545;
+}
+
+.healing-batch-report .wound-icon {
+    width: 16px;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.healing-batch-report .wound-item.success .wound-icon { color: #28a745; }
+.healing-batch-report .wound-item.failure .wound-icon { color: #dc3545; }
+
+.healing-batch-report .wound-info-main {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.healing-batch-report .wound-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reroll-healing-btn {
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    cursor: pointer;
+    color: #666;
+    font-size: 0.8em;
+    transition: color 0.2s;
+}
+
+.reroll-healing-btn:hover {
+    color: #007bff;
+}
+
+.theme-dark .reroll-healing-btn {
+    color: #aaa;
+}
+
+.theme-dark .reroll-healing-btn:hover {
+    color: #4da6ff;
+}
+
+.healing-apply-footer {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin-top: 8px;
+}
+
+.apply-healing-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.apply-healing-btn:hover {
+    background: #218838;
+}
+
+.apply-healing-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.theme-dark .healing-apply-footer {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-dark .apply-healing-btn {
+    background: #1e7e34;
+}
+
+.theme-dark .apply-healing-btn:hover {
+    background: #198754;
+}
+
 .report-restricted-info {
     text-align: center;
     padding: 10px;
@@ -845,4 +1019,1254 @@ body.theme-dark {
     min-width: 150px;
 }
 
+/* === PATIENT CARD === */
+.neuroshima.patient-card {
+    background-color: var(--ns-bg-sheet);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--ns-text-main);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
+.patient-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--ns-border-light);
+}
+
+.patient-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.patient-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--ns-border-main);
+}
+
+.patient-details {
+    flex: 1;
+}
+
+.patient-name {
+    margin: 0 0 6px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+}
+
+.patient-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.9em;
+}
+
+.patient-stats span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-hp, .stat-penalty, .stat-wounds {
+    color: var(--ns-text-light);
+}
+
+.stat-hp i {
+    color: #d94a4a;
+}
+
+.stat-penalty i {
+    color: #d9a024;
+}
+
+.stat-wounds i {
+    color: #9494d9;
+}
+
+/* Rany po lokacjach */
+.patient-wounds {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.wounds-toggle-header {
+    margin-bottom: 8px;
+}
+
+.collapsible-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 8px 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.95em;
+    color: var(--ns-text-header);
+    transition: background-color 0.2s;
+}
+
+.collapsible-btn:hover {
+    background-color: var(--ns-bg-input);
+    border-radius: 4px;
+}
+
+.collapsible-btn i {
+    transition: transform 0.2s;
+}
+
+.collapsible-btn[data-collapsed="true"] i {
+    transform: rotate(-90deg);
+}
+
+.location-group {
+    background-color: var(--ns-bg-input);
+    border-left: 3px solid var(--ns-text-accent);
+    padding: 0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.location-toggle {
+    width: 100%;
+    padding: 10px;
+}
+
+.location-wound-count {
+    font-size: 0.85em;
+    color: var(--ns-text-light);
+    font-weight: normal;
+    margin-left: auto;
+}
+
+.wounds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--ns-border-light);
+}
+
+.wound-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 3px;
+    font-size: 0.9em;
+    border-left: 2px solid transparent;
+    flex-wrap: nowrap;
+}
+
+.wound-row:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-left-color: var(--ns-text-accent);
+}
+
+.wound-type {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    width: 24px;
+    height: 24px;
+    background-color: var(--ns-text-accent);
+    color: white;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 12px;
+    cursor: help;
+    flex-shrink: 0;
+}
+
+.wound-type i {
+    display: none;
+}
+
+.wound-name {
+    flex: 1 1 auto;
+    min-width: 120px;
+    color: var(--ns-text-main);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wound-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+    padding: 2px 6px;
+    background-color: rgba(217, 160, 36, 0.15);
+    border-radius: 3px;
+}
+
+.wound-status i {
+    display: inline;
+}
+
+.wound-penalty {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.penalty-badge {
+    background-color: rgba(217, 46, 46, 0.2);
+    color: #d92e2e;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+.penalty-badge.no-penalty {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+/* Brak ran */
+.patient-no-wounds {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--ns-text-light);
+    font-size: 1em;
+}
+
+.patient-no-wounds i {
+    font-size: 2em;
+    color: #4caf50;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.patient-no-wounds p {
+    margin: 8px 0 0 0;
+}
+
+/* === HEALING REQUEST CARD === */
+.healing-request-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+}
+
+.healing-request-info {
+    font-size: 0.9em;
+    color: var(--ns-text-light);
+    margin-top: 4px;
+}
+
+.healing-request-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ns-border-light);
+    justify-content: flex-end;
+}
+
+.btn.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: var(--ns-color-accent);
+    color: white;
+    border: 1px solid var(--ns-color-accent);
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95em;
+}
+
+.btn.btn-primary:hover {
+    background-color: var(--ns-color-accent-darker);
+    border-color: var(--ns-color-accent-darker);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn.btn-primary:active {
+    transform: scale(0.98);
+}
+
+/* === HEALING REQUEST CARD === */
+.neuroshima.heal-request-card {
+    background-color: var(--ns-bg-sheet);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--ns-text-main);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode styling for healing request cards in chat */
+.message.dark-mode .neuroshima.heal-request-card {
+    background-color: var(--ns-bg-sheet);
+    color: var(--ns-text-main);
+}
+
+.theme-dark .neuroshima.heal-request-card {
+    background-color: #0b0a13e6;
+    color: #e0e0d0;
+    border-color: #5a5a54;
+}
+
+.theme-dark .neuroshima.heal-request-card .patient-header {
+    border-bottom-color: #5a5a54;
+}
+
+.theme-dark .neuroshima.heal-request-card .patient-name {
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.heal-request-card .patient-stats span {
+    color: #b0b0a0;
+}
+
+.theme-dark .neuroshima.heal-request-card .location-group {
+    background-color: #1a1a14;
+    border-left-color: #9494d9;
+}
+
+.theme-dark .neuroshima.heal-request-card .wound-row {
+    background-color: rgba(224, 224, 208, 0.05);
+    border-left-color: rgba(148, 148, 217, 0.3);
+}
+
+/* === HEALING APP === */
+.healing-app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--ns-bg-sheet);
+    color: var(--ns-text-main);
+}
+
+.healing-app-header {
+    padding: 16px;
+    border-bottom: 2px solid var(--ns-border-main);
+    background-color: var(--ns-bg-input);
+    flex-shrink: 0;
+}
+
+.patient-header-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.patient-avatar-container {
+    flex-shrink: 0;
+}
+
+.patient-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--ns-border-main);
+}
+
+.patient-header-details {
+    flex: 1;
+}
+
+.patient-name {
+    margin: 0 0 8px 0;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+}
+
+.patient-vital-signs {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.vital-sign {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.95em;
+}
+
+.vital-sign i {
+    font-size: 1.1em;
+    color: var(--ns-color-accent);
+}
+
+.vital-label {
+    font-weight: 600;
+    color: var(--ns-text-light);
+}
+
+.vital-value {
+    color: var(--ns-text-main);
+    font-weight: bold;
+}
+
+/* Main container */
+.healing-app-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background-color: rgba(217, 46, 46, 0.1);
+    border: 1px solid rgba(217, 46, 46, 0.3);
+    border-radius: 4px;
+    margin: 20px;
+    color: #d92e2e;
+}
+
+.error-message i {
+    font-size: 1.5em;
+}
+
+/* Layout */
+.healing-app-layout {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    overflow: hidden;
+    padding: 16px;
+}
+
+.healing-app-section {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 6px;
+    background-color: var(--ns-bg-sheet);
+    overflow: hidden;
+}
+
+.paper-doll-section {
+    flex: 0 0 35%;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.wounds-list-section {
+    flex: 1;
+    min-width: 300px;
+    padding: 16px;
+}
+
+.section-title {
+    margin: 0 0 12px 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ns-border-light);
+}
+
+/* Paper Doll */
+.paper-doll-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    min-height: 300px;
+    background-color: var(--ns-bg-input);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.body-diagram {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.body-location-hotspot {
+    fill: var(--ns-color-accent);
+    opacity: 0.7;
+    stroke: var(--ns-border-main);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.body-location-hotspot:hover {
+    opacity: 0.9;
+    stroke-width: 3;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.body-location-hotspot.selected {
+    opacity: 1;
+    stroke-width: 4;
+    stroke: var(--ns-color-accent-darker);
+    filter: drop-shadow(0 0 12px var(--ns-color-accent));
+}
+
+.wound-count-badge {
+    font-size: 26px;
+    font-weight: bold;
+    fill: white;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.selected-location-info {
+    order: -1;
+    margin-bottom: 12px;
+    padding: 12px;
+    background-color: var(--ns-bg-input);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.location-name {
+    margin: 0;
+    font-weight: bold;
+    color: var(--ns-text-header);
+    font-size: 1em;
+}
+
+.no-selection {
+    margin: 0;
+    color: var(--ns-text-light);
+    font-style: italic;
+    font-size: 0.95em;
+}
+
+/* Wounds List */
+.wounds-list-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.wounds-all-locations {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.all-wounds-location {
+    background-color: var(--ns-bg-input);
+    border-left: 3px solid var(--ns-text-accent);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.location-wounds-group {
+    display: none;
+    background-color: var(--ns-bg-input);
+    border-left: 3px solid var(--ns-color-accent);
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.location-wounds-group.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.location-wounds-title {
+    margin: 0 0 8px 0;
+    font-size: 0.95em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+}
+
+.wound-item {
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 3px;
+    padding: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wound-checkbox {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--ns-color-accent);
+}
+
+.wound-item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.wound-item-name {
+    flex: 1;
+    font-weight: 500;
+    color: var(--ns-text-main);
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wound-healing-badge {
+    background-color: rgba(217, 160, 36, 0.2);
+    color: #d9a024;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.wound-item-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.wound-penalty {
+    background-color: rgba(217, 46, 46, 0.2);
+    color: #d92e2e;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 0.75em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.heal-wound-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    background-color: var(--ns-color-accent);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 0.75em;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.heal-wound-btn:hover {
+    background-color: var(--ns-color-accent-darker);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.heal-wound-btn:active {
+    transform: scale(0.98);
+}
+
+.heal-wound-btn i {
+    font-size: 0.9em;
+}
+
+.wound-item-compact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.healing-actions-footer {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ns-border-light);
+    justify-content: flex-end;
+}
+
+.heal-selected-wounds:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.no-wounds-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--ns-text-light);
+    text-align: center;
+}
+
+.no-wounds-message i {
+    font-size: 2.5em;
+    color: #4caf50;
+    margin-bottom: 12px;
+}
+
+.no-wounds-message p {
+    margin: 0;
+}
+
+/* === HEALING DIALOG === */
+.healing-dialog {
+    padding: 16px;
+    text-align: center;
+}
+
+.healing-dialog p {
+    margin: 8px 0;
+    font-size: 0.95em;
+}
+
+.healing-dialog p:first-child {
+    font-size: 1.1em;
+    margin-bottom: 12px;
+}
+
+.healing-dialog p:last-child {
+    color: var(--ns-text-light);
+    font-size: 0.9em;
+    margin-top: 16px;
+}
+
+/* === MEDIC SELECTION DIALOG === */
+.medic-selection-dialog {
+    padding: 16px;
+}
+
+.medic-selection-dialog .form-group {
+    margin-bottom: 12px;
+}
+
+.medic-selection-dialog label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--ns-text-header);
+    font-size: 0.95em;
+}
+
+.medic-selection-dialog select {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: var(--ns-bg-input);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    font-size: 0.95em;
+    cursor: pointer;
+}
+
+.medic-selection-dialog select:hover {
+    border-color: var(--ns-color-accent);
+}
+
+.medic-selection-dialog select:focus {
+    outline: none;
+    border-color: var(--ns-color-accent);
+    box-shadow: 0 0 0 3px rgba(148, 148, 217, 0.1);
+}
+
+/* === HEALING METHOD DIALOG === */
+.healing-method-dialog {
+    padding: 16px;
+}
+
+.healing-method-dialog > p {
+    margin-bottom: 16px;
+    font-weight: 600;
+    color: var(--ns-text-header);
+}
+
+.healing-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.healing-method-option {
+    padding: 12px;
+    background-color: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+}
+
+.healing-method-option h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.95em;
+    color: var(--ns-text-header);
+    font-weight: bold;
+}
+
+.healing-method-description {
+    margin: 0 0 8px 0;
+    font-size: 0.85em;
+    color: var(--ns-text-light);
+    font-style: italic;
+}
+
+.healing-method-rules {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.8em;
+    color: var(--ns-text-main);
+}
+
+.healing-method-rules li {
+    margin-bottom: 4px;
+}
+
+/* Healing Roll Dialog */
+.neuroshima.healing-roll-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.neuroshima.healing-roll-dialog .dialog-columns {
+    display: flex;
+    gap: 10px;
+}
+
+.neuroshima.healing-roll-dialog .column {
+    flex: 1;
+    display: flex;
+    justify-content: space-evenly;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.neuroshima.healing-roll-dialog .form-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.neuroshima.healing-roll-dialog .form-group label {
+    flex: 1;
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .form-group input[type="number"],
+.neuroshima.healing-roll-dialog .form-group select {
+    flex: 0 0 75px;
+    height: 22px;
+}
+
+.neuroshima.healing-roll-dialog .form-group.vertical {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.neuroshima.healing-roll-dialog .form-group.vertical label {
+    width: 100%;
+    text-align: center;
+    margin-bottom: -2px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.neuroshima.healing-roll-dialog .form-group.vertical select {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.neuroshima.healing-roll-dialog .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+
+.neuroshima.healing-roll-dialog .checkbox-wrapper input[type="checkbox"] {
+    margin: 0;
+}
+
+.neuroshima.healing-roll-dialog .summary-section {
+    border-top: 1px solid #7a7971;
+    padding-top: 5px;
+}
+
+.neuroshima.healing-roll-dialog .summary-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    border: none;
+}
+
+.neuroshima.healing-roll-dialog .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.neuroshima.healing-roll-dialog .summary-table td {
+    padding: 5px;
+}
+
+.neuroshima.healing-roll-dialog .summary-table td:last-child {
+    text-align: right;
+    font-weight: bold;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section {
+    border-top: 1px solid #7a7971;
+    padding-top: 5px;
+    margin-top: 5px;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.1em;
+    border: none;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section p {
+    margin: 4px 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section p span {
+    font-weight: bold;
+}
+
+/* Healing Batch Report Styles */
+.neuroshima.roll-card.healing-batch-report {
+    background: rgba(76, 175, 80, 0.03);
+}
+
+.theme-dark .neuroshima.roll-card.healing-batch-report {
+    background: rgba(76, 175, 80, 0.08);
+}
+
+.healing-batch-report .report-summary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0;
+    font-size: 0.95em;
+}
+
+.healing-batch-report .summary-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.healing-batch-report .summary-item.success .value {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.healing-batch-report .summary-item.failed .value {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.healing-batch-report .summary-divider {
+    color: var(--ns-border-light);
+}
+
+.healing-batch-report .healing-details {
+    margin-top: 4px;
+}
+
+.healing-batch-report .healing-results-header {
+    background: rgba(76, 175, 80, 0.1);
+    padding: 6px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 3px;
+}
+
+.theme-dark .healing-batch-report .healing-results-header {
+    background: rgba(76, 175, 80, 0.15);
+}
+
+.healing-batch-report .wound-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 0;
+}
+
+.healing-batch-report .wound-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    cursor: help;
+}
+
+.healing-batch-report .wound-item.success {
+    background: rgba(76, 175, 80, 0.08);
+    border-left-color: #4caf50;
+}
+
+.healing-batch-report .wound-item.failure {
+    background: rgba(255, 107, 107, 0.08);
+    border-left-color: #ff6b6b;
+}
+
+.healing-batch-report .wound-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 0.9em;
+    flex-shrink: 0;
+}
+
+.healing-batch-report .wound-item.success .wound-icon {
+    color: #4caf50;
+}
+
+.healing-batch-report .wound-item.failure .wound-icon {
+    color: #ff6b6b;
+}
+
+.healing-batch-report .wound-info-main {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.healing-batch-report .wound-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.healing-batch-report .penalty-value {
+    min-width: 50px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.healing-batch-report .wound-item.success .penalty-value {
+    color: #4caf50;
+}
+
+.healing-batch-report .wound-item.failure .penalty-value {
+    color: #ff6b6b;
+}
+
+/* Wounds Configuration Table in Dialog */
+.neuroshima.healing-roll-dialog .wounds-configuration-section {
+    margin: 12px 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wounds-configuration-section {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.neuroshima.healing-roll-dialog .wounds-configuration-section h3 {
+    margin: 0 0 8px 0;
+    padding: 0;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table {
+    width: 100%;
+    font-size: 0.85em;
+    border-collapse: collapse;
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th,
+.neuroshima.healing-roll-dialog .wounds-config-table td {
+    padding: 6px 4px;
+    text-align: left;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.healing-roll-dialog .wound-modifier {
+    width: 60px;
+    padding: 3px 4px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .wound-difficulty {
+    font-weight: 500;
+}
+
+.neuroshima.healing-roll-dialog .wound-healing-percent {
+    font-weight: 600;
+    color: var(--ns-text-accent);
+    text-align: center;
+}
+
+/* Healing Roll Dialog Styles */
+.neuroshima.healing-roll-dialog .wounds-summary-section {
+    margin: 8px 0;
+    padding: 8px;
+    background: rgba(76, 175, 80, 0.03);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+}
+
+.neuroshima.healing-roll-dialog .wounds-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.neuroshima.healing-roll-dialog .wounds-summary-section h3 {
+    margin: 0;
+    padding: 0;
+    font-size: 0.9em;
+    font-weight: bold;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.neuroshima.healing-roll-dialog .wound-symbols {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.neuroshima.healing-roll-dialog .wound-group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    background: rgba(76, 175, 80, 0.15);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-weight: 500;
+    cursor: help;
+}
+
+.neuroshima.healing-roll-dialog .wound-group-badge strong {
+    color: var(--ns-text-accent);
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wound-group-badge {
+    background: rgba(76, 175, 80, 0.2);
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table {
+    width: 100%;
+    font-size: 0.85em;
+    border-collapse: collapse;
+    margin-top: 6px;
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th,
+.neuroshima.healing-roll-dialog .wounds-config-table td {
+    padding: 6px 4px;
+    text-align: left;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.healing-roll-dialog .wound-type-cell {
+    font-weight: 600;
+    text-align: center;
+    min-width: 30px;
+}
+
+.neuroshima.healing-roll-dialog .wound-modifier {
+    width: 55px;
+    padding: 4px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .wound-difficulty-select {
+    padding: 0;
+}
+
+.neuroshima.healing-roll-dialog .difficulty-select {
+    width: 100%;
+    padding: 4px 3px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+    font-size: 0.85em;
+    background: white;
+    cursor: pointer;
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .difficulty-select {
+    background: var(--color-shadow-dark);
+    color: var(--color-text-light);
+}

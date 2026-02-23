@@ -132,76 +132,84 @@
         </div>
 
         {{!-- Bottom Row: Wounds --}}
-        <section class="combat-section wounds-section">
-            <div class="section-header">
-                <div class="header-title">
-                    <i class="fas fa-crutch"></i>
-                    <span>{{localize "NEUROSHIMA.Items.Type.Wound"}}</span>
-                </div>
-                
-                <div class="wound-stats-total">
-                    <span class="hp-sum" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
-                        <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
-                    </span>
-                    <span class="penalty-sum" title="{{localize "NEUROSHIMA.Wound.TotalPenalty"}}">
-                        <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
-                    </span>
-                </div>
+        {{#if (eq combat.patientCardVersion "extended")}}
+            {{>systems/neuroshima/templates/actor/parts/wounds-extended.hbs}}
+        {{else}}
+            {{!-- Simple Wounds Table --}}
+            <section class="combat-section wounds-section">
+                <div class="section-header">
+                    <div class="header-title">
+                        <i class="fas fa-crutch"></i>
+                        <span>{{localize "NEUROSHIMA.Items.Type.Wound"}}</span>
+                    </div>
+                    
+                    <div class="wound-stats-total">
+                        <span class="hp-sum" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
+                            <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                        </span>
+                        <span class="penalty-sum" title="{{localize "NEUROSHIMA.Wound.TotalPenalty"}}">
+                            <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                        </span>
+                    </div>
 
-                <div class="header-actions">
-                    {{#if owner}}
-                    {{#if @root.game.user.isGM}}
-                    <a class="item-control" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
-                        <i class="fas fa-cog"></i>
-                    </a>
-                    {{/if}}
-                    <a class="item-control" data-action="createItem" data-type="wound" title="{{localize 'DOCUMENT.Create'}}">
-                        <i class="fas fa-plus"></i>
-                    </a>
-                    {{/if}}
-                </div>
-            </div>
-            <div class="combat-table wounds-table">
-                <div class="table-header">
-                    <div class="col-name">{{localize "Name"}}</div>
-                    <div class="col-location">{{localize "NEUROSHIMA.Items.Fields.Location"}}</div>
-                    <div class="col-type">{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</div>
-                    <div class="col-penalty">{{localize "NEUROSHIMA.Items.Fields.Penalty"}}</div>
-                    <div class="col-controls"></div>
-                </div>
-                {{#each combat.wounds}}
-                <div class="table-row item" data-item-id="{{this.id}}" data-uuid="{{this.uuid}}" draggable="true">
-                    <div class="col-name item-name clickable" data-action="editItem">
-                        <img src="{{this.img}}" title="{{this.name}}" width="24" height="24"/>
-                        <span>{{this.name}}</span>
-                    </div>
-                    <div class="col-location">
-                        <select name="items.{{this.id}}.system.location">
-                            {{selectOptions @root.config.locations selected=this.system.location localize=true}}
-                        </select>
-                    </div>
-                    <div class="col-type">
-                        <select name="items.{{this.id}}.system.damageType">
-                            {{selectOptions @root.config.damageTypes selected=this.system.damageType localize=true}}
-                        </select>
-                    </div>
-                    <div class="col-penalty">
-                        <input type="number" name="items.{{this.id}}.system.penalty" value="{{this.system.penalty}}" data-dtype="Number" min="0" />
-                    </div>
-                    <div class="col-controls">
-                        <a class="item-control {{#if this.system.isHealing}}active{{/if}}" data-action="toggleHealing" title="{{localize 'NEUROSHIMA.Actions.Healing'}}">
-                            <i class="fas fa-medkit"></i>
+                    <div class="header-actions">
+                        {{#if owner}}
+                        <a class="item-control" data-action="requestHealing" title="{{localize 'NEUROSHIMA.PatientCard.ShowPatientCard'}}">
+                            <i class="fas fa-file-medical"></i>
                         </a>
-                        <a class="item-control" data-action="editItem" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
-                            <i class="fas fa-edit"></i>
+                        {{#if @root.game.user.isGM}}
+                        <a class="item-control" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                            <i class="fas fa-cog"></i>
                         </a>
-                        <a class="item-control" data-action="deleteItem" title="{{localize 'DOCUMENT.Delete'}}">
-                            <i class="fas fa-trash"></i>
+                        {{/if}}
+                        <a class="item-control" data-action="createItem" data-type="wound" title="{{localize 'DOCUMENT.Create'}}">
+                            <i class="fas fa-plus"></i>
                         </a>
+                        {{/if}}
                     </div>
                 </div>
-                {{/each}}
-            </div>
-        </section>
+                <div class="combat-table wounds-table">
+                    <div class="table-header">
+                        <div class="col-name">{{localize "Name"}}</div>
+                        <div class="col-location">{{localize "NEUROSHIMA.Items.Fields.Location"}}</div>
+                        <div class="col-type">{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</div>
+                        <div class="col-penalty">{{localize "NEUROSHIMA.Items.Fields.Penalty"}}</div>
+                        <div class="col-controls"></div>
+                    </div>
+                    {{#each combat.wounds}}
+                    <div class="table-row item" data-item-id="{{this.id}}" data-uuid="{{this.uuid}}" draggable="true">
+                        <div class="col-name item-name clickable" data-action="editItem">
+                            <img src="{{this.img}}" title="{{this.name}}" width="24" height="24"/>
+                            <span>{{this.name}}</span>
+                        </div>
+                        <div class="col-location">
+                            <select name="items.{{this.id}}.system.location">
+                                {{selectOptions @root.config.locations selected=this.system.location localize=true}}
+                            </select>
+                        </div>
+                        <div class="col-type">
+                            <select name="items.{{this.id}}.system.damageType">
+                                {{selectOptions @root.config.damageTypes selected=this.system.damageType localize=true}}
+                            </select>
+                        </div>
+                        <div class="col-penalty">
+                            <input type="number" name="items.{{this.id}}.system.penalty" value="{{this.system.penalty}}" data-dtype="Number" min="0" />
+                        </div>
+                        <div class="col-controls">
+                            <a class="item-control {{#if this.system.isHealing}}active{{/if}}" data-action="toggleHealing" title="{{localize 'NEUROSHIMA.Actions.Healing'}}">
+                                <i class="fas fa-medkit"></i>
+                            </a>
+                            <a class="item-control" data-action="editItem" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a class="item-control" data-action="deleteItem" title="{{localize 'DOCUMENT.Delete'}}">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </section>
+        {{/if}}
     </div>
 </section>

@@ -14,11 +14,9 @@
         <label>{{localize "NEUROSHIMA.Settings.DamageApplicationMinRole.Name"}}</label>
         <div class="form-fields">
             <select name="damageApplicationMinRole">
-                {{#select config.damageApplicationMinRole}}
-                {{#each roles as |name key|}}
-                <option value="{{key}}">{{localize name}}</option>
+                {{#each roleOptions as |label key|}}
+                <option value="{{key}}" {{#if (eq key ../config.damageApplicationMinRole)}}selected{{/if}}>{{label}}</option>
                 {{/each}}
-                {{/select}}
             </select>
         </div>
         <p class="notes">{{localize "NEUROSHIMA.Settings.DamageApplicationMinRole.Hint"}}</p>
@@ -28,11 +26,9 @@
         <label>{{localize "NEUROSHIMA.Settings.PainResistanceMinRole.Name"}}</label>
         <div class="form-fields">
             <select name="painResistanceMinRole">
-                {{#select config.painResistanceMinRole}}
-                {{#each roles as |name key|}}
-                <option value="{{key}}">{{localize name}}</option>
+                {{#each roleOptions as |label key|}}
+                <option value="{{key}}" {{#if (eq key ../config.painResistanceMinRole)}}selected{{/if}}>{{label}}</option>
                 {{/each}}
-                {{/select}}
             </select>
         </div>
         <p class="notes">{{localize "NEUROSHIMA.Settings.PainResistanceMinRole.Hint"}}</p>
@@ -42,11 +38,9 @@
         <label>{{localize "NEUROSHIMA.Settings.CombatActionsMinRole.Name"}}</label>
         <div class="form-fields">
             <select name="combatActionsMinRole">
-                {{#select config.combatActionsMinRole}}
-                {{#each roles as |name key|}}
-                <option value="{{key}}">{{localize name}}</option>
+                {{#each roleOptions as |label key|}}
+                <option value="{{key}}" {{#if (eq key ../config.combatActionsMinRole)}}selected{{/if}}>{{label}}</option>
                 {{/each}}
-                {{/select}}
             </select>
         </div>
         <p class="notes">{{localize "NEUROSHIMA.Settings.CombatActionsMinRole.Hint"}}</p>

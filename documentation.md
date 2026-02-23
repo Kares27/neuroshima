@@ -199,6 +199,28 @@ Hook `renderChatMessage` w `system.js` implementuje **client-side dynamic visibi
 - Ukrywa sekcje obrażeń i szczegóły testów odporności na ból.
 - Każdy klient niezależnie egzekwuje reguły widoczności.
 
+## 8.1. System Leczenia (Healing System)
+
+Pełny system leczenia ran w systemie Neuroshima 1.5. Podzielony na 4 fazy:
+
+### Faza 1-3: Interfejs i Selekcja
+- Pacjent prosi medyka o leczenie (dualne tryby: Simple/Extended)
+- Medyk wybiera rany do leczenia w panelu HealingApp
+- Klik "Heal Selected Wounds" otwiera dialog rzutu
+
+### Faza 4: Auto-Aplikowanie Efektów
+**Plik**: `module/helpers/dice.js`
+
+Metoda `applyHealingEffects()` obsługuje:
+1. Obliczenie wyniku testu (2+ sukcesy = sukces)
+2. Ustalenie procent redukcji kar:
+   - **Pierwsza Pomoc**: ±5% (sukces/porażka)
+   - **Leczenie Ran**: ±15% (sukces) / -5% (porażka)
+3. Aktualizację penalty każdej rany
+4. Zwrot danych do renderowania na czacie
+
+Szczegółowa dokumentacja: [HEALING_SYSTEM_PHASE4.md](./HEALING_SYSTEM_PHASE4.md)
+
 ## 9. Tryb Debugowania
 System korzysta z ustawienia `debugMode`. Logi w konsoli powinny być warunkowane sprawdzeniem tego booleana:
 ```javascript

@@ -60,6 +60,9 @@
             "PenaltyArmor": "Pancerz",
             "Test": "Test",
             "TestType": "Typ Testu",
+            "TestResults": "Wyniki Testu",
+            "Dice": "Rzut Kośćmi",
+            "Best": "Najlepszy Wynik",
             "On": "na",
             "EditRoll": "Edytuj Rzut",
             "SwitchToOpen": "Zmień na Test Otwarty",
@@ -79,6 +82,7 @@
             "SkillBonusAbbr": "Bon. do Umiejętności",
             "AttributeBonus": "Bonus do Atrybutu",
             "AttributeBonusAbbr": "Bon. do Atrybutu",
+            "Slider": "Suwak (Umiejętność + Kości)",
             "Distance": "Dystans (m)",
             "Aiming": "Celowanie",
             "Burst": "Seria",
@@ -110,8 +114,22 @@
                 "FinalLevel": "Faktyczny poziom"
             }
         },
+        "Difficulty": {
+            "Easy": "Łatwy",
+            "Average": "Przeciętny",
+            "Problematic": "Problematyczny",
+            "Difficult": "Trudny",
+            "Hard": "Bardzo Trudny",
+            "VeryHard": "Okropnie Trudny",
+            "DamnHard": "Czartownie Trudny",
+            "Luck": "Szczęście",
+            "Masterfull": "Mistrowski",
+            "Grandmasterfull": "Wielkomistrowski",
+            "Impossible": "Niemożliwy"
+        },
         "Actions": {
             "Roll": "Rzuć kością",
+            "Reroll": "Przerzuć",
             "Cancel": "Anuluj",
             "Save": "Zapisz",
             "Shoot": "Strzał",
@@ -128,7 +146,9 @@
         "Wound": {
             "TotalPenalty": "Suma Kar",
             "TotalPenaltyAbbr": "Kara",
-            "TotalDamage": "Suma Obrażeń / Max HP"
+            "TotalDamage": "Suma Obrażeń / Max HP",
+            "Days": "Dni",
+            "AttemptCount": "Próby"
         },
         "Encumbrance": "Obciążenie",
         "Settings": {
@@ -211,6 +231,25 @@
             "EncumbranceBonusValue": {
                 "Name": "Wartość bonusu",
                 "Hint": "O ile kilogramów zwiększa się udźwig za każdy interwał."
+            },
+            "PatientCardVersion": {
+                "Name": "Wersja Karty Pacjenta",
+                "Hint": "Wybierz wersję Karty Pacjenta wyświetlaną na czacie. Uproszczona to szybki przegląd ran, Rozszerzona zawiera panel leczenia.",
+                "Simple": "Uproszczona (przegląd ran)",
+                "Extended": "Rozszerzona (panel leczenia)"
+            },
+            "HealingConfig": {
+                "Title": "Ustawienia Leczenia",
+                "Label": "Skonfiguruj Leczenie",
+                "Hint": "Otwiera menu konfiguracji bazowych trudności testów leczenia dla każdego typu obrażenia.",
+                "Description": "Tutaj możesz ustawić bazową trudność testu leczenia dla każdego typu obrażenia. Te ustawienia będą użyte w dialogu leczenia.",
+                "DamageTypeDifficulties": "Bazowe Trudności Leczenia",
+                "DifficultyHelp": "Wybierz poziom trudności, który będzie używany jako domyślny dla każdego typu obrażenia.",
+                "Saved": "Ustawienia leczenia zostały zapisane."
+            },
+            "HealingDifficulties": {
+                "Name": "Bazowe trudności leczenia",
+                "Hint": "Konfiguracja bazowych trudności testów leczenia dla każdego typu obrażenia."
             }
         },
         "Tabs": {
@@ -225,7 +264,13 @@
             "Effects": "Efekty",
             "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)"
         },
+        "Dialogs": {
+            "ConfirmReroll": "Potwierdź przerzut",
+            "RerollWoundQuestion": "Czy na pewno chcesz przerzucić test na tę ranę?",
+            "RerollTestQuestion": "Czy na pewno chcesz przerzucić ten test?"
+        },
         "Dialog": {
+            "Cancel": "Anuluj",
             "WeaponType": {
                 "Title": "Wybierz typ broni",
                 "Content": "Jakiego typu broń chcesz utworzyć?"
@@ -277,6 +322,7 @@
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"
         },
         "Damage": {
+            "Type": "Typ Obrażenia",
             "D": "D",
             "L": "L",
             "C": "C",
@@ -503,6 +549,76 @@
             "RightArm": "Prawa Ręka",
             "LeftLeg": "Lewa Noga",
             "RightLeg": "Prawa Noga"
+        },
+        "PatientCard": {
+            "Title": "Karta Pacjenta",
+            "Wounds": "Rany na ciele",
+            "Wound": "Rana",
+            "NoWounds": "Pacjent nie ma żadnych ran",
+            "ShowPatientCard": "Pokaż Kartę Pacjenta",
+            "Penalty": "Kara",
+            "Medic": "Medyk",
+            "Patient": "Pacjent"
+        },
+        "HealingRequest": {
+            "Title": "Prośba o Leczenie",
+            "RequestedBy": "Prośbę wysłał",
+            "SelectMedic": "Wybierz Medyka",
+            "ChooseMedic": "Wybierz medyka z listy",
+            "SendRequest": "Wyślij Prośbę",
+            "NoMedicsAvailable": "Nie ma dostępnych medyków",
+            "MedicNotFound": "Nie znaleziono wybranego medyka",
+            "RequestSent": "Prośba o leczenie wysłana do {medic}",
+            "OnlyMedicCanOpen": "Tylko wyznaczony medyk może otworzyć panel leczenia",
+            "OpenPanel": "Otwórz Panel Leczenia",
+            "PaperDoll": "Anatomia Pacjenta",
+            "SelectLocation": "Kliknij na część ciała aby wybrać",
+            "HealWound": "Leczy tę ranę",
+            "Heal": "Leczyć",
+            "HealSelected": "Leczyć zaznaczone rany",
+            "NoWoundsSelected": "Nie zaznaczono żadnych ran do leczenia",
+            "ActorNotFound": "Nie znaleziono aktora pacjenta",
+            "WoundNotFound": "Nie znaleziono rany do leczenia",
+            "WoundHealed": "Rana {woundName} - {action}",
+            "HealingFailed": "Błąd podczas leczenia rany",
+            "HealingProgress": "Gojąca się: {days} dni",
+            "SelectAction": "Wybierz akcję leczenia:",
+            "SelectHealingMethod": "Wybierz metodę leczenia",
+            "Method": "Metoda Leczenia",
+            "PatientInfo": "Informacje o Pacjencie",
+            "MethodDetails": {
+                "FirstAid": "Pierwsza Pomoc",
+                "FirstAidDesc": "Szybkie opatrzenie rany zaraz po jej otrzymaniu",
+                "FirstAidReduction": "Zdany test: anuluje 5% kary",
+                "FirstAidFailure": "Niezdany test: zwiększa karę o 5%",
+                "FirstAidMax": "Maksymalnie 5% redukcji kary",
+                "TreatWounds": "Leczenie Ran",
+                "TreatWoundsDesc": "Profesjonalne leczenie rany, trwa około kwadransa",
+                "TreatWoundsReduction": "Zdany test: anuluje 15% kary (lub 10% jeśli wcześniej Pierwsza pomoc)",
+                "TreatWoundsFailure": "Niezdany test: zwiększa karę o 5%",
+                "TreatWoundsMax": "Maksymalnie 15% redukcji kary"
+            },
+            "HealingSuccess": "Leczenie Udane",
+            "HealingFailure": "Leczenie Nieudane",
+            "ApplyHealing": "Zastosuj Leczenie",
+            "HealingApplied": "Leczenie zostało zastosowane. Rany oznaczone jako w trakcie leczenia. W pełni wyleczone rany usunięte.",
+            "OldPenalty": "Stara Kara",
+            "NewPenalty": "Nowa Kara",
+            "Reduction": "Redukcja Kary",
+            "HealingPercent": "Redukcja %",
+            "HealingModifier": "Modyfikator Leczenia",
+            "DifficultyModifier": "Modyfikator Trudności",
+            "AdjustedPerWound": "Dostosowana dla każdej rany",
+            "WoundsCount": "Rany",
+            "SuccessTargetAvg": "Cel Sukcesu",
+            "Successful": "Udane",
+            "Failed": "Nieudane",
+            "HealingResults": "Wyniki Leczenia",
+            "Action": {
+                "start": "Rozpocznij Leczenie",
+                "progress": "Postęp Leczenia",
+                "complete": "Ukończ Leczenie"
+            }
         }
     }
 }

@@ -390,6 +390,263 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
+   * Renderuje kartę pacjenta - zestawienie ran aktora dla medyka.
+   * 
+   * @param {Actor} actor - Aktor pacjenta
+   * @returns {Promise<ChatMessage>}
+   */
+  static async renderPatientCard(actor) {
+    game.neuroshima.group("NeuroshimaChatMessage | renderPatientCard");
+    game.neuroshima.log("Renderowanie karty pacjenta", { actorName: actor.name });
+
+    // Wygeneruj dane karty (late binding aby uniknąć circular dependency)
+    const patientData = game.neuroshima.CombatHelper.generatePatientCard(actor);
+
+    // Renderuj szablon
+    const template = "systems/neuroshima/templates/chat/patient-card.hbs";
+    const content = await this._renderTemplate(template, {
+      ...patientData,
+      config: NEUROSHIMA
+    });
+
+    game.neuroshima.log("Karta pacjenta utworzona", { messageType: "patientCard" });
+    game.neuroshima.groupEnd();
+
+    return this.create({
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content,
+      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      flags: {
+        neuroshima: {
+          messageType: "patientCard",
+          isPatientCard: true,
+          actorId: actor.id
+        }
+      }
+    });
+  }
+
+  /**
+   * Renderuje kartę pro­śby o leczenie - wyświetlana medykowi do zaakceptowania
+   * 
+   * @param {Actor} patientActor - Aktor pacjenta
+   * @param {string} medicUserId - ID usera medyka
+   * @param {string} requesterUserId - ID usera proszącego o leczenie
+   * @returns {Promise<ChatMessage>}
+   */
+  static async renderHealingRequest(patientActor, medicUserId, requesterUserId) {
+    game.neuroshima.group("NeuroshimaChatMessage | renderHealingRequest");
+    game.neuroshima.log("Renderowanie pro­śby o leczenie", { 
+      patientName: patientActor.name,
+      medicUserId: medicUserId,
+      requesterUserId: requesterUserId
+    });
+
+    // Generuj sessionId
+    const sessionId = foundry.utils.randomID();
+    
+    // Wygeneruj dane karty pacjenta
+    const patientData = game.neuroshima.CombatHelper.generatePatientCard(patientActor);
+    
+    // Pobierz dane usera proszącego
+    const requesterUser = game.users.get(requesterUserId);
+    const requesterName = requesterUser?.name || "Nieznany";
+
+    // Pobierz wersję karty pacjenta
+    const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
+
+    // Renderuj szablon
+    const template = "systems/neuroshima/templates/chat/healing-request.hbs";
+    const content = await this._renderTemplate(template, {
+      ...patientData,
+      sessionId: sessionId,
+      patientActorUuid: patientActor.uuid,
+      medicUserId: medicUserId,
+      requesterUserId: requesterUserId,
+      requesterName: requesterName,
+      patientCardVersion: patientCardVersion,
+      config: NEUROSHIMA
+    });
+
+    game.neuroshima.log("Pro­śba o leczenie utworzona", { 
+      messageType: "healingRequest",
+      sessionId: sessionId
+    });
+    game.neuroshima.groupEnd();
+
+    // Tworzymy whisper do medyka (i opcjonalnie do pacjenta)
+    // Jeśli pacjent to ten sam user co medical, dostaje tylko on
+    const whisperTo = [medicUserId];
+    
+    return this.create({
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor: patientActor }),
+      content,
+      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      whisper: whisperTo,
+      flags: {
+        neuroshima: {
+          messageType: "healingRequest",
+          isHealingRequest: true,
+          sessionId: sessionId,
+          patientActorUuid: patientActor.uuid,
+          patientActorId: patientActor.id,
+          medicUserId: medicUserId,
+          requesterUserId: requesterUserId
+        }
+      }
+    });
+  }
+
+  /**
+   * Renderuje kartę rzutu leczenia (Pierwsza Pomoc / Leczenie Ran)
+   * 
+   * @param {Actor} medicActor - Medyk wykonujący test
+   * @param {Object} rollData - Dane z NeuroshimaDice.rollHealingTest()
+   * @returns {Promise<ChatMessage>}
+   */
+  static async renderHealingRoll(medicActor, rollData) {
+    game.neuroshima?.group("NeuroshimaChatMessage | renderHealingRoll");
+    game.neuroshima?.log("Renderowanie karty rzutu leczenia", {
+      medic: medicActor?.name,
+      patient: rollData.patientActor?.name,
+      method: rollData.healingMethod
+    });
+
+    const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
+    const content = await this._renderTemplate(template, {
+      ...rollData,
+      config: NEUROSHIMA
+    });
+
+    game.neuroshima?.log("Karta czatu leczenia utworzona");
+    game.neuroshima?.groupEnd();
+
+    return this.create({
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor: medicActor }),
+      content,
+      rolls: [],
+      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      flags: {
+        neuroshima: {
+          messageType: "healingRoll",
+          isHealingRoll: true,
+          medicActorId: medicActor.id,
+          patientActorUuid: rollData.patientActor.uuid,
+          healingMethod: rollData.healingMethod,
+          rollData: rollData
+        }
+      }
+    });
+  }
+
+  /**
+   * Renderuje raport batch healing results na wzór pain-resistance
+   */
+  static async renderHealingBatchResults(medicActor, patientActor, healingMethod, results, successCount, failureCount, rerollData = {}) {
+    game.neuroshima?.group("NeuroshimaChatMessage | renderHealingBatchResults");
+    game.neuroshima?.log("Renderowanie batch raportu leczenia", {
+      medic: medicActor?.name,
+      patient: patientActor?.name,
+      totalWounds: results.length,
+      successes: successCount,
+      failures: failureCount
+    });
+
+    const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
+
+    // Build tooltips for each result
+    const resultsWithTooltips = results.map(r => {
+      // Build dice results HTML
+      let diceHtml = '<div class="dice-results-grid tiny">';
+      r.modifiedResults.forEach((d, i) => {
+        diceHtml += `
+          <div class="die-result ${d.ignored ? 'ignored' : ''}">
+            <span class="die-label tiny">D${i + 1}=</span>
+            <div class="die-square-container tiny">
+              <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
+              ${r.skill > 0 && !d.ignored ? `
+                <i class="fas fa-long-arrow-alt-right"></i> 
+                <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
+              ` : ''}
+            </div>
+          </div>`;
+      });
+      diceHtml += '</div>';
+
+      const tooltip = `
+        <div class="neuroshima roll-card tooltip-mode">
+          <header class="roll-header tiny">
+            ${game.i18n.localize(r.difficultyLabel)}
+            ${game.i18n.localize("NEUROSHIMA.Roll.ClosedTest")}
+            ${game.i18n.localize("NEUROSHIMA.Roll.On")}
+            ${healingMethod === "firstAid" ? game.i18n.localize("NEUROSHIMA.Skills.firstAid") : game.i18n.localize("NEUROSHIMA.Skills.woundTreatment")}
+          </header>
+          <hr class="dotted-hr tiny">
+          ${diceHtml}
+          <hr class="dotted-hr tiny">
+          <footer class="roll-outcome tiny">
+            <div class="outcome-item">
+              <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
+              <span class="value">${r.baseStat || 0}</span>
+            </div>
+            <div class="outcome-item">
+              <span class="label">Umiejętność:</span>
+              <span class="value">${r.skill || 0}</span>
+            </div>
+            <div class="outcome-item">
+              <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
+              <span class="value">${r.testTarget}</span>
+            </div>
+            <div class="outcome-item">
+              <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')}:</span>
+              <span class="value"><strong>${r.successCount}</strong></span>
+            </div>
+          </footer>
+        </div>
+      `.trim();
+
+      return { ...r, tooltip };
+    });
+
+    const content = await this._renderTemplate(template, {
+      actorId: patientActor.id,
+      actorUuid: patientActor.uuid,
+      patientActor: patientActor,
+      results: resultsWithTooltips,
+      successCount: successCount,
+      failureCount: failureCount,
+      isGM: game.user.isGM
+    });
+
+    game.neuroshima?.log("Batch healing raport utworzony");
+    game.neuroshima?.groupEnd();
+
+    return this.create({
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor: medicActor }),
+      content,
+      rolls: [],
+      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      flags: {
+        neuroshima: {
+          messageType: "healingBatchResults",
+          isHealingBatchResults: true,
+          medicActorId: medicActor.id,
+          patientActorUuid: patientActor.uuid,
+          healingMethod: healingMethod,
+          successCount: successCount,
+          failureCount: failureCount,
+          rerollData: rerollData,
+          results: results
+        }
+      }
+    });
+  }
+
+  /**
    * Sprawdza czy to raport odporności na ból.
    */
   get isPainResistanceReport() {

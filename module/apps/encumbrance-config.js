@@ -18,7 +18,9 @@ export class EncumbranceConfig extends HandlebarsApplicationMixin(ApplicationV2)
             height: "auto"
         },
         form: {
-            handler: EncumbranceConfig.#onSubmit,
+            handler: async function(event, form, formData) {
+                await this._onSubmit(event, form, formData);
+            },
             submitOnChange: false,
             closeOnSubmit: true
         }
@@ -51,7 +53,7 @@ export class EncumbranceConfig extends HandlebarsApplicationMixin(ApplicationV2)
      * @param {HTMLFormElement} form 
      * @param {FormDataExtended} formData 
      */
-    static async #onSubmit(event, form, formData) {
+    async _onSubmit(event, form, formData) {
         const data = formData.object;
         if (game.settings.get("neuroshima", "debugMode")) {
             console.log("Neuroshima | Próba zapisu danych udźwigu:", data);

@@ -1,0 +1,54 @@
+<section class="neuroshima healing-config">
+    <h2>{{localize "NEUROSHIMA.Settings.HealingConfig.Title"}}</h2>
+    <p class="hint">{{localize "NEUROSHIMA.Settings.HealingConfig.Description"}}</p>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.PatientCardVersion.Name"}}</label>
+        <div class="form-fields">
+            <select name="patientCardVersion" required>
+                {{#each patientCardOptions as |label key|}}
+                <option value="{{key}}" {{#if (eq key ../config.patientCardVersion)}}selected{{/if}}>{{label}}</option>
+                {{/each}}
+            </select>
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.PatientCardVersion.Hint"}}</p>
+    </div>
+
+    <hr>
+
+    <div class="form-group">
+        <h3>{{localize "NEUROSHIMA.Settings.HealingConfig.DamageTypeDifficulties"}}</h3>
+        <p class="help-text">{{localize "NEUROSHIMA.Settings.HealingConfig.DifficultyHelp"}}</p>
+        
+        <table class="healing-difficulties-table">
+            <thead>
+                <tr>
+                    <th>{{localize "NEUROSHIMA.Damage.Type"}}</th>
+                    <th>{{localize "NEUROSHIMA.Roll.BaseDifficulty"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each damageTypes as |damageType|}}
+                <tr>
+                    <td>
+                        <strong>{{damageType.abbr}}</strong> - {{damageType.label}}
+                    </td>
+                    <td>
+                        <select name="difficulty-{{damageType.key}}" required>
+                            {{#each ../difficultyOptions as |label key|}}
+                            <option value="{{key}}" {{#if (eq key (lookup ../config.healingDifficulties damageType.key))}}selected{{/if}}>{{label}}</option>
+                            {{/each}}
+                        </select>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+
+    <footer class="sheet-footer flexrow">
+        <button type="submit" name="submit">
+            <i class="fas fa-save"></i> {{localize "NEUROSHIMA.Actions.Save"}}
+        </button>
+    </footer>
+</section>

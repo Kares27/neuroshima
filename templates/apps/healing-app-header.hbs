@@ -1,0 +1,27 @@
+<header class="healing-app-header">
+    <div class="patient-header-info">
+        <div class="patient-avatar-container">
+            <img src="{{actor.img}}" class="patient-avatar" alt="{{actor.name}}">
+        </div>
+        <div class="patient-header-details">
+            <h2 class="patient-name">{{actor.name}}</h2>
+            <div class="patient-vital-signs">
+                <span class="vital-sign hp">
+                    <i class="fas fa-heart"></i>
+                    <span class="vital-label">HP:</span>
+                    <span class="vital-value">{{patientData.currentHP}} / {{patientData.totalHP}}</span>
+                </span>
+                <span class="vital-sign penalty">
+                    <i class="fas fa-percent"></i>
+                    <span class="vital-label">{{localize "NEUROSHIMA.PatientCard.Penalty"}}:</span>
+                    <span class="vital-value">{{patientData.totalPenalty}}%</span>
+                </span>
+                <span class="vital-sign wounds">
+                    <i class="fas fa-crutch"></i>
+                    <span class="vital-label">{{localize "NEUROSHIMA.PatientCard.Wounds"}}:</span>
+                    <span class="vital-value">{{patientData.woundCount}}</span>
+                </span>
+            </div>
+        </div>
+    </div>
+</header>

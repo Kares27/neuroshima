@@ -1063,4 +1063,739 @@ export class NeuroshimaDice {
     
     return Math.round(distance * 10) / 10;
   }
+
+  /**
+   * Oblicza efekty leczenia BEZ aktualizacji ran (tylko do wyświetlenia)
+   * @param {Actor} patientActor - Pacjent
+   * @param {Array} woundIds - IDs ran do leczenia
+   * @param {string} healingMethod - "firstAid" lub "woundTreatment"
+   * @param {number} successCount - Liczba sukcesów z testu
+   * @param {boolean} hadFirstAid - Czy rana miała First Aid
+   * @param {number} healingModifier - Modyfikator do redukcji % (per-typ rany)
+   * @returns {Object} Informacje o obliczonych zmianach (bez aktualizacji!)
+   */
+  static calculateHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0) {
+    game.neuroshima?.group("NeuroshimaDice | calculateHealingEffects");
+    game.neuroshima?.log("Obliczanie efektów leczenia", {
+      patient: patientActor.name,
+      method: healingMethod,
+      successCount: successCount,
+      woundIds: woundIds,
+      hadFirstAid: hadFirstAid
+    });
+
+    const isFirstAid = healingMethod === "firstAid";
+    const isSuccess = successCount >= 2;
+    
+    // Ustal zmianę kary na podstawie wyniku i metody
+    // Ujemna = zmniejsza karę (leczenie), dodatnia = zwiększa karę (porażka)
+    let penaltyChange = 0;
+    if (isSuccess) {
+      // Sukces: zmniejsza karę
+      if (isFirstAid) {
+        penaltyChange = -5;
+      } else {
+        // Leczenie ran: 15% if fresh, 10% if had First Aid
+        penaltyChange = hadFirstAid ? -10 : -15;
+      }
+    } else {
+      // Porażka: zawsze zwiększa karę o 5%
+      penaltyChange = 5;
+    }
+    
+    // Add per-wound healing modifier
+    penaltyChange += healingModifier;
+
+    game.neuroshima?.log("Zmiana kary ustalona", {
+      penaltyChange: penaltyChange,
+      baseChange: isSuccess ? (isFirstAid ? -5 : (hadFirstAid ? -10 : -15)) : 5,
+      healingModifier: healingModifier,
+      isSuccess: isSuccess,
+      hadFirstAid: hadFirstAid
+    });
+
+    const healingResults = [];
+
+    // Oblicz efekty na każdą ranę (bez aktualizacji!)
+    for (const woundId of woundIds) {
+      const wound = patientActor.items.get(woundId);
+      if (!wound || wound.type !== "wound") continue;
+
+      const oldPenalty = wound.system.penalty || 0;
+      const newPenalty = Math.max(0, oldPenalty + penaltyChange);
+
+      game.neuroshima?.log("Obliczenie kary na ranie", {
+        woundName: wound.name,
+        oldPenalty: oldPenalty,
+        newPenalty: newPenalty,
+        penaltyChange: penaltyChange
+      });
+
+      healingResults.push({
+        woundId: woundId,
+        woundName: wound.name,
+        damageType: wound.system.damageType || "D",
+        oldPenalty: oldPenalty,
+        newPenalty: newPenalty,
+        penaltyChange: penaltyChange,
+        hadFirstAid: hadFirstAid
+      });
+    }
+
+    game.neuroshima?.log("Efekty leczenia obliczone", {
+      resultsCount: healingResults.length
+    });
+
+    game.neuroshima?.groupEnd();
+
+    return {
+      isSuccess: isSuccess,
+      healingMethod: healingMethod,
+      penaltyChange: penaltyChange,
+      results: healingResults
+    };
+  }
+
+  /**
+   * Aplikuje efekty leczenia na wybrane rany
+   * @param {Actor} patientActor - Pacjent
+   * @param {Array} woundIds - IDs ran do leczenia
+   * @param {string} healingMethod - "firstAid" lub "woundTreatment"
+   * @param {number} successCount - Liczba sukcesów z testu
+   * @param {boolean} hadFirstAid - Czy rana miała First Aid
+   * @param {number} healingModifier - Modyfikator do redukcji % (per-typ rany)
+   * @returns {Promise<Object>} Informacje o zastosowanych zmianach
+   */
+  /**
+   * PHASE 5 - APPLY HEALING FUNCTIONALITY
+   * Calculate and apply healing effects to wounds
+   * Oblicza i aplikuje efekty leczenia do ran na podstawie wyniku testu
+   * 
+   * @param {Actor} patientActor - Postać pacjenta
+   * @param {Array} woundIds - ID ran do leczenia
+   * @param {string} healingMethod - "firstAid" lub "woundTreatment"
+   * @param {number} successCount - Liczba wyników sukcesu (ze zmienionego wyniku - 3 sukcesy = 2+ PT)
+   * @param {boolean} hadFirstAid - Czy rana była już opatrzona
+   * @param {number} healingModifier - Dodatkowy procent modyfikatora leczenia
+   */
+  static async applyHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0) {
+    game.neuroshima?.group("NeuroshimaDice | applyHealingEffects");
+    game.neuroshima?.log("Aplikowanie efektów leczenia", {
+      patient: patientActor.name,
+      method: healingMethod,
+      successCount: successCount,
+      woundIds: woundIds,
+      hadFirstAid: hadFirstAid
+    });
+
+    // PHASE 2: Determine healing reduction based on method and result
+    const isFirstAid = healingMethod === "firstAid";
+    const isSuccess = successCount >= 2;
+    
+    // PHASE 2: Calculate penalty change based on method and result
+    // Ujemna = zmniejsza karę (leczenie), dodatnia = zwiększa karę (porażka)
+    // Pierwsza pomoc: -5% (sukces) / +5% (porażka)
+    // Leczenie ran: -15% fresh / -10% (opatrzona) na sukces, +5% na porażkę
+    let penaltyChange = 0;
+    if (isSuccess) {
+      // Sukces: zmniejsza karę
+      if (isFirstAid) {
+        penaltyChange = -5;
+      } else {
+        // Treat Wounds: 15% if fresh wound, 10% if had First Aid
+        penaltyChange = hadFirstAid ? -10 : -15;
+      }
+    } else {
+      // Porażka: zawsze zwiększa karę o 5%
+      penaltyChange = 5;
+    }
+    
+    // PHASE 1: Add per-wound healing modifier (% to change)
+    penaltyChange += healingModifier;
+
+    game.neuroshima?.log("Zmiana kary ustalona", {
+      penaltyChange: penaltyChange,
+      baseChange: isSuccess ? (isFirstAid ? -5 : (hadFirstAid ? -10 : -15)) : 5,
+      healingModifier: healingModifier,
+      isSuccess: isSuccess,
+      hadFirstAid: hadFirstAid
+    });
+
+    const healingResults = [];
+    const woundsToUpdate = [];
+
+    // PHASE 5: Apply healing effects to each wound
+    // Aktualizuj każdą ranę: zmniejsz karę, oznacz jako w trakcie leczenia, czy dodaj hadFirstAid
+    for (const woundId of woundIds) {
+      const wound = patientActor.items.get(woundId);
+      if (!wound || wound.type !== "wound") continue;
+
+      // PHASE 5: Calculate new wound penalty after healing
+      // Kara nie może być poniżej 0%
+      const oldPenalty = wound.system.penalty || 0;
+      const newPenalty = Math.max(0, oldPenalty + penaltyChange);
+
+      game.neuroshima?.log("Zmiana kary na ranie", {
+        woundName: wound.name,
+        oldPenalty: oldPenalty,
+        newPenalty: newPenalty,
+        penaltyChange: penaltyChange
+      });
+
+      // PHASE 5: Prepare update data for wound
+      // Zmiana: penalty + system.isHealing = true + hadFirstAid jeśli First Aid was successful
+      const updateData = {
+        _id: woundId,
+        "system.penalty": newPenalty,
+        "system.isHealing": true
+      };
+      if (isFirstAid && isSuccess) {
+        updateData["system.hadFirstAid"] = true;
+      }
+
+      woundsToUpdate.push(updateData);
+
+      healingResults.push({
+        woundId: woundId,
+        woundName: wound.name,
+        damageType: wound.system.damageType || "D",
+        oldPenalty: oldPenalty,
+        newPenalty: newPenalty,
+        penaltyChange: penaltyChange
+      });
+    }
+
+    // PHASE 5: Update all wounds at once (batch update)
+    // Aktualizuj wszystkie rany jednym calliem do bazy danych
+    if (woundsToUpdate.length > 0) {
+      await patientActor.updateEmbeddedDocuments("Item", woundsToUpdate);
+    }
+
+    game.neuroshima?.log("Efekty leczenia zastosowane", {
+      resultsCount: healingResults.length
+    });
+
+    game.neuroshima?.groupEnd();
+
+    return {
+      isSuccess: isSuccess,
+      healingMethod: healingMethod,
+      penaltyChange: penaltyChange,
+      results: healingResults
+    };
+  }
+
+  /**
+   * Perform a healing test (First Aid or Treat Wounds)
+   */
+  static async rollHealingTest(params) {
+    const {
+      medicActor,
+      patientActor,
+      healingMethod,
+      skillValue,
+      stat,
+      penalties = {},
+      isOpen = false,
+      baseDifficulty = "average",
+      wounds = [],
+      skillBonus = 0,
+      attributeBonus = 0
+    } = params;
+
+    game.neuroshima?.group("NeuroshimaDice | rollHealingTest");
+    game.neuroshima?.log("Parametry rzutu leczenia:", {
+      medicName: medicActor?.name,
+      patientName: patientActor?.name,
+      healingMethod,
+      skillValue,
+      stat,
+      skillBonus,
+      attributeBonus,
+      baseDifficulty,
+      woundCount: wounds.length
+    });
+
+    // 1. Kalkulacja kar procentowych
+    const basePenalty = NEUROSHIMA.difficulties[baseDifficulty]?.min || 0;
+    const modifier = parseInt(penalties.mod) || 0;
+    const armorPenalty = parseInt(penalties.armor) || 0;
+    const woundPenalty = parseInt(penalties.wounds) || 0;
+    const totalPenalty = basePenalty + modifier + armorPenalty + woundPenalty;
+
+    game.neuroshima?.log("Kalkulacja kar (%)", {
+      basePenalty,
+      modifier,
+      armorPenalty,
+      woundPenalty,
+      totalPenalty
+    });
+
+    // 2. Wykonaj rzut kośćmi (3k20)
+    const roll = new Roll("3d20");
+    await roll.evaluate();
+    
+    const rawResults = roll.terms[0].results.map(r => r.result);
+
+    // 3. Oblicz bonusy do umiejętności
+    const totalSkill = (skillValue || 0) + skillBonus;
+    const skillShift = this.getSkillShift(totalSkill);
+
+    // 4. Oblicz finalny atrybut
+    const finalStat = stat + attributeBonus;
+
+    // 5. Oblicz wynik testu
+    const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
+    const finalDiff = this._getShiftedDifficulty(penaltyDiff, -skillShift);
+    const testTarget = finalStat + (finalDiff.mod || 0);
+
+    game.neuroshima?.log("Wyniki rzutu kośćmi", {
+      rawResults,
+      testTarget,
+      skillValue,
+      skillBonus,
+      totalSkill
+    });
+
+    // 6. Ewaluuj test (ZAWSZE Closed Test)
+    const healingMethodLabel = healingMethod === "firstAid" ? game.i18n.localize("NEUROSHIMA.Items.Fields.Skills.firstAid") : game.i18n.localize("NEUROSHIMA.Items.Fields.Skills.woundTreatment");
+    let rollData = {
+      medicActor,
+      patientActor,
+      healingMethod,
+      label: `${healingMethodLabel} - ${patientActor.name}`,
+      baseStat: stat,
+      baseSkill: skillValue,
+      skillBonus,
+      attributeBonus,
+      stat: finalStat,
+      skill: totalSkill,
+      target: testTarget,
+      penalties: {
+        mod: (NEUROSHIMA.difficulties[baseDifficulty]?.min || 0) + modifier,
+        armor: armorPenalty,
+        wounds: woundPenalty
+      },
+      totalPenalty,
+      baseDifficultyLabel: NEUROSHIMA.difficulties[baseDifficulty]?.label || "NEUROSHIMA.Roll.Average",
+      difficultyLabel: finalDiff.label,
+      ptMod: finalDiff.mod || 0,
+      testTarget,
+      isOpen: false,
+      isCombat: false,
+      isDebug: false,
+      rawResults,
+      isCritSuccess: false,
+      isCritFailure: false,
+      isGM: game.user.isGM,
+      wounds: wounds
+    };
+
+    // Stwórz obiekty kości do ewaluacji
+    const diceObjects = rawResults.map((result, idx) => ({
+      original: result,
+      modified: result,
+      isSuccess: result <= testTarget,
+      isNat1: result === 1,
+      isNat20: result === 20,
+      ignored: false,
+      cost: 0,
+      index: idx
+    }));
+
+    // Ewaluuj closed test
+    this._evaluateClosedTest(rollData, diceObjects);
+
+    game.neuroshima?.log("Rezultat testu leczenia", {
+      metoda: healingMethod,
+      pacjent: patientActor.name,
+      succesCount: rollData.successCount,
+      target: testTarget
+    });
+
+    // 7. Aplikuj efekty leczenia na wybrane rany
+    const woundIds = wounds.map(w => w.id).filter(id => id);
+    let healingEffects = null;
+    if (woundIds.length > 0) {
+      healingEffects = await this.applyHealingEffects(
+        patientActor,
+        woundIds,
+        healingMethod,
+        rollData.successCount
+      );
+      rollData.healingEffects = healingEffects;
+    }
+
+    game.neuroshima?.log("Przygotowanie do renderowania karty leczenia", {
+      healingEffectsApplied: !!healingEffects,
+      woundCount: woundIds.length
+    });
+
+    // 8. Renderuj kartę czatu rzutu leczenia
+    await NeuroshimaChatMessage.renderHealingRoll(medicActor, rollData);
+
+    game.neuroshima?.log("Karta leczenia renderowana");
+    game.neuroshima?.groupEnd();
+  }
+
+  /**
+   * Batch healing rolls - one test per wound
+   */
+  /**
+   * PHASE 2 - CLOSED TEST LOGIC & PHASE 1 - CORE HEALING
+   * Perform individual closed tests for each wound
+   * Wykonuje oddzielne testy (3k20) dla każdej rany z uwzględnieniem:
+   * - Zamkniętych testów (closed test evaluation)
+   * - Przesunięć umiejętności i kości
+   * - Dynamicznego dostosowania trudności testu
+   * - Obliczania efektów leczenia
+   */
+  static async rollBatchHealingTests({
+    medicActor,
+    patientActor,
+    healingMethod,
+    woundConfigs,
+    stat = null,
+    skillBonus = 0,
+    attributeBonus = 0
+  }) {
+    game.neuroshima?.group("NeuroshimaDice | rollBatchHealingTests");
+    game.neuroshima?.log("Rozpoczęcie batch rzutu leczenia", {
+      medyk: medicActor?.name,
+      pacjent: patientActor?.name,
+      metoda: healingMethod,
+      liczbaRan: woundConfigs.length
+    });
+
+    // PHASE 2: Prepare base stats for closed test evaluation
+    // Atrybut bazowy (normalnie Zręczność, ale może być wybrany inny)
+    let baseStat = stat;
+    if (!baseStat) {
+      baseStat = medicActor.system.attributes.dexterity + (medicActor.system.modifiers.dexterity || 0);
+    }
+    
+    // PHASE 1: Get skill value based on healing method
+    // Pierwsza pomoc vs Leczenie ran
+    const skillName = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
+    const skillValue = medicActor.system.skills?.[skillName]?.value || 0;
+    const totalSkill = skillValue + skillBonus;
+    // PHASE 2: Calculate skill shift (from skill points)
+    const skillShift = this.getSkillShift(totalSkill);
+    const finalStat = baseStat + attributeBonus;
+
+    const results = [];
+    const healingResults = [];
+
+    // PHASE 1: Roll for each wound individually (separate 3k20 for each)
+    // Każda rana dostaje oddzielny test (nie bulk)
+    for (const config of woundConfigs) {
+      game.neuroshima?.log("Rzucanie test dla rany", {
+        woundName: config.woundName,
+        difficulty: config.difficulty,
+        modifier: config.modifier
+      });
+
+      // PHASE 2: Step 1 - Roll dice (always 3k20 for healing)
+      const roll = new Roll("3d20");
+      await roll.evaluate();
+      
+      const rawResults = roll.terms[0].results.map(r => r.result);
+
+      // PHASE 2: Step 2 - Calculate test difficulty with modifiers
+      // Base difficulty (z ustawień) + modyfikator trudności (global + pancerz + rany)
+      const baseDifficultyKey = config.difficulty || 'average';
+      const baseDifficultyData = NEUROSHIMA.difficulties[baseDifficultyKey] || NEUROSHIMA.difficulties.average;
+      const totalPenalty = (baseDifficultyData.min || 0) + config.modifier;
+      const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
+      
+      // PHASE 2: Calculate total shift for difficulty adjustment (skill + dice)
+      // Przesunięcie umiejętności (ze skill points) + przesunięcie kości (1 lub 20)
+      const diceShift = this.getDiceShift(rawResults);
+      const totalShift = -skillShift + diceShift;
+      const finalDiff = this._getShiftedDifficulty(penaltyDiff, totalShift);
+      const testTarget = finalStat + (finalDiff.mod || 0);
+      
+      // PHASE 2: Get final difficulty label after all shifts
+      const difficultyLabel = finalDiff.label;
+
+      // PHASE 2: Step 3 - Create dice objects for closed test evaluation
+      // Każda kość ma: original, modified, success status, nat1/20 status
+      const diceObjects = rawResults.map((result, idx) => ({
+        original: result,
+        modified: result,
+        isSuccess: result <= testTarget,
+        isNat1: result === 1,
+        isNat20: result === 20,
+        ignored: false,
+        cost: 0,
+        index: idx
+      }));
+
+      // PHASE 2: Step 4 - Evaluate closed test (count successes)
+      const testRollData = {
+        medicActor,
+        patientActor,
+        healingMethod,
+        rawResults,
+        testTarget,
+        target: testTarget,
+        woundId: config.woundId,
+        woundName: config.woundName,
+        damageType: config.damageType,
+        difficulty: config.difficulty,
+        difficultyLabel: difficultyLabel,
+        baseSkill: skillValue,
+        skillBonus: skillBonus,
+        baseStat: stat,
+        attributeBonus: attributeBonus,
+        stat: finalStat,
+        skill: totalSkill,
+        ptMod: finalDiff.mod || 0,
+        isOpen: false,
+        isCombat: false,
+        successCount: 0,
+        isCritSuccess: false,
+        isCritFailure: false,
+        isGM: game.user.isGM
+      };
+
+      // Evaluate closed test
+      this._evaluateClosedTest(testRollData, diceObjects);
+
+      game.neuroshima?.log("Wynik testu na rani", {
+        woundName: config.woundName,
+        successCount: testRollData.successCount,
+        isSuccess: testRollData.successCount >= 2
+      });
+
+      // 5. Calculate healing effects to this wound (don't apply yet!)
+      const healingEffectResults = game.neuroshima.HealingApp.calculateHealingResults(
+        patientActor,
+        [config.woundId],
+        testRollData.successCount,
+        healingMethod,
+        config.hadFirstAid,
+        config.healingModifier
+      );
+
+      // Collect result for reporting
+      const isSuccess = testRollData.successCount >= 2;
+      results.push({
+        woundId: config.woundId,
+        woundName: config.woundName,
+        damageType: config.damageType,
+        difficulty: config.difficulty,
+        testTarget,
+        successCount: testRollData.successCount,
+        isSuccess: isSuccess,
+        modifiedResults: testRollData.modifiedResults,
+        rawResults: rawResults,
+        baseStat: baseStat,
+        skill: totalSkill,
+        skillBonus: skillBonus,
+        attributeBonus: attributeBonus,
+        finalStat: finalStat,
+        ptMod: testRollData.ptMod,
+        difficultyLabel: testRollData.difficultyLabel,
+        skillShift: -skillShift,
+        diceShift: diceShift,
+        healingEffect: healingEffectResults[0]
+      });
+
+      healingResults.push({
+        woundId: config.woundId,
+        woundName: config.woundName,
+        isSuccess: isSuccess,
+        oldPenalty: healingEffectResults[0].oldPenalty,
+        newPenalty: healingEffectResults[0].newPenalty,
+        penaltyChange: healingEffectResults[0].penaltyChange
+      });
+    }
+
+    // Count successes and failures
+    const successCount = results.filter(r => r.isSuccess).length;
+    const failureCount = results.length - successCount;
+
+    game.neuroshima?.log("Batch rzut zakończony", {
+      totalWounds: results.length,
+      successes: successCount,
+      failures: failureCount
+    });
+
+    // 6. Render batch results
+    await NeuroshimaChatMessage.renderHealingBatchResults(
+      medicActor,
+      patientActor,
+      healingMethod,
+      results,
+      successCount,
+      failureCount,
+      {
+        woundConfigs: woundConfigs,
+        stat: baseStat,
+        skillBonus: skillBonus,
+        attributeBonus: attributeBonus
+      }
+    );
+
+    game.neuroshima?.groupEnd();
+    return results;
+  }
+
+  /**
+   * Przerzut na konkretną ranę w healing (bez tworzenia chat message)
+   */
+  static async rerollHealingTest(medicActor, patientActor, healingMethod, woundConfig, baseStat, skillBonus, attributeBonus) {
+    game.neuroshima?.group("NeuroshimaDice | rerollHealingTest");
+    game.neuroshima?.log("Przerzut testu na ranie", {
+      woundName: woundConfig.woundName,
+      damageType: woundConfig.damageType,
+      difficulty: woundConfig.difficulty
+    });
+
+    const skillName = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
+    const skillValue = medicActor.system.skills?.[skillName]?.value || 0;
+    const totalSkill = skillValue + skillBonus;
+    const skillShift = this.getSkillShift(totalSkill);
+    const finalStat = baseStat + attributeBonus;
+
+    // Roll dice
+    const roll = new Roll("3d20");
+    await roll.evaluate();
+    
+    const rawResults = roll.terms[0].results.map(r => r.result);
+
+    // Calculate difficulty
+    const baseDifficultyKey = woundConfig.difficulty || 'average';
+    const baseDifficultyData = NEUROSHIMA.difficulties[baseDifficultyKey] || NEUROSHIMA.difficulties.average;
+    const totalPenalty = (baseDifficultyData.min || 0) + woundConfig.modifier;
+    const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
+    
+    // Calculate total shift (skill + dice)
+    const diceShift = this.getDiceShift(rawResults);
+    const totalShift = -skillShift + diceShift;
+    const finalDiff = this._getShiftedDifficulty(penaltyDiff, totalShift);
+    const testTarget = finalStat + (finalDiff.mod || 0);
+
+    // Create dice objects
+    const diceObjects = rawResults.map((result, idx) => ({
+      original: result,
+      modified: result,
+      isSuccess: result <= testTarget,
+      isNat1: result === 1,
+      isNat20: result === 20,
+      ignored: false,
+      cost: 0,
+      index: idx
+    }));
+
+    // Evaluate closed test
+    const testRollData = {
+      medicActor,
+      patientActor,
+      healingMethod,
+      rawResults,
+      testTarget,
+      target: testTarget,
+      woundId: woundConfig.woundId,
+      woundName: woundConfig.woundName,
+      damageType: woundConfig.damageType,
+      difficulty: woundConfig.difficulty,
+      difficultyLabel: finalDiff.label,
+      baseSkill: skillValue,
+      skillBonus: skillBonus,
+      baseStat: baseStat,
+      attributeBonus: attributeBonus,
+      stat: finalStat,
+      skill: totalSkill,
+      ptMod: finalDiff.mod || 0,
+      isOpen: false,
+      isCombat: false,
+      successCount: 0,
+      isCritSuccess: false,
+      isCritFailure: false,
+      isGM: game.user.isGM
+    };
+
+    // Evaluate
+    this._evaluateClosedTest(testRollData, diceObjects);
+
+    game.neuroshima?.log("Wynik przerzutu na ranie", {
+      woundName: woundConfig.woundName,
+      successCount: testRollData.successCount,
+      isSuccess: testRollData.successCount >= 2
+    });
+
+    // Calculate healing effects (don't apply yet - user clicks Apply Healing button)
+    const isSuccess = testRollData.successCount >= 2;
+    const healingEffect = this.calculateHealingEffects(
+      patientActor,
+      [woundConfig.woundId],
+      healingMethod,
+      testRollData.successCount,
+      woundConfig.hadFirstAid,
+      woundConfig.healingModifier
+    );
+
+    // Build tooltip (same as batch report)
+    let diceHtml = '<div class="dice-results-grid tiny">';
+    testRollData.modifiedResults.forEach((d, i) => {
+      diceHtml += `
+        <div class="die-result ${d.ignored ? 'ignored' : ''}">
+          <span class="die-label tiny">D${i + 1}=</span>
+          <div class="die-square-container tiny">
+            <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
+            ${totalSkill > 0 && !d.ignored ? `
+              <i class="fas fa-long-arrow-alt-right"></i> 
+              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
+            ` : ''}
+          </div>
+        </div>`;
+    });
+    diceHtml += '</div>';
+
+    const tooltip = `
+      <div class="neuroshima roll-card tooltip-mode">
+        <header class="roll-header tiny">
+          ${game.i18n.localize(testRollData.difficultyLabel)}
+          ${game.i18n.localize("NEUROSHIMA.Roll.ClosedTest")}
+          ${game.i18n.localize("NEUROSHIMA.Roll.On")}
+          ${healingMethod === "firstAid" ? game.i18n.localize("NEUROSHIMA.Skills.firstAid") : game.i18n.localize("NEUROSHIMA.Skills.woundTreatment")}
+        </header>
+        <hr class="dotted-hr tiny">
+        ${diceHtml}
+        <hr class="dotted-hr tiny">
+        <footer class="roll-outcome tiny">
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
+            <span class="value">${testRollData.baseStat || 0}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">Umiejętność:</span>
+            <span class="value">${testRollData.skill || 0}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
+            <span class="value">${testRollData.testTarget}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')}:</span>
+            <span class="value"><strong>${testRollData.successCount}</strong></span>
+          </div>
+        </footer>
+      </div>
+    `.trim();
+
+    game.neuroshima?.groupEnd();
+
+    return {
+      woundId: woundConfig.woundId,
+      woundName: woundConfig.woundName,
+      damageType: woundConfig.damageType,
+      successCount: testRollData.successCount,
+      isSuccess: isSuccess,
+      healingEffect: healingEffect.results[0],
+      tooltip: tooltip
+    };
+  }
 }

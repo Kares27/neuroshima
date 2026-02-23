@@ -224,7 +224,9 @@ export class WoundData extends foundry.abstract.TypeDataModel {
       }),
       penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       isHealing: new fields.BooleanField({ initial: false }),
-      isActive: new fields.BooleanField({ initial: true })
+      isActive: new fields.BooleanField({ initial: true }),
+      hadFirstAid: new fields.BooleanField({ initial: false }),
+      healingAttempts: new fields.NumberField({ integer: true, initial: 0, min: 0 })
     };
   }
 }

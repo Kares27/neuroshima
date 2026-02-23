@@ -12,13 +12,45 @@ export class CombatHelper {
    */
   static async refundAmmunition(message) {
     const flags = message.getFlag("neuroshima", "rollData");
-    if (!flags || !flags.isWeapon) return false;
+    
+    game.neuroshima.group("CombatHelper | refundAmmunition");
+    game.neuroshima.log("Parametry refundacji:", {
+      hasFlags: !!flags,
+      isWeapon: flags?.isWeapon,
+      actorId: flags?.actorId,
+      bulletSequenceLength: flags?.bulletSequence?.length,
+      magazineId: flags?.magazineId,
+      ammoId: flags?.ammoId
+    });
+
+    if (!flags || !flags.isWeapon) {
+      game.neuroshima.log("Błąd: Brak flag lub wiadomość nie dotyczy broni");
+      game.neuroshima.groupEnd();
+      return false;
+    }
     
     const actor = game.actors.get(flags.actorId);
-    if (!actor) return false;
+    if (!actor) {
+      game.neuroshima.log("Błąd: Nie znaleziono aktora", { actorId: flags.actorId });
+      game.neuroshima.groupEnd();
+      return false;
+    }
+
+    game.neuroshima.log("Aktor znaleziony:", {
+      name: actor.name,
+      type: actor.type,
+      itemsCount: actor.items.size,
+      allItemIds: Array.from(actor.items.keys())
+    });
 
     const bulletSequence = flags.bulletSequence;
-    if (!bulletSequence || bulletSequence.length === 0) return false;
+    if (!bulletSequence || bulletSequence.length === 0) {
+      game.neuroshima.log("Błąd: Brak danych o trafionych pociskach (bulletSequence pusty)");
+      game.neuroshima.groupEnd();
+      return false;
+    }
+
+    game.neuroshima.log("Sekwencja pocisków do refundu:", bulletSequence);
 
     // Refund ammo in reverse order (LIFO)
     const refundSequence = [...bulletSequence].reverse();
@@ -26,19 +58,40 @@ export class CombatHelper {
     const magazineId = flags.magazineId;
     const ammoId = flags.ammoId;
 
+    game.neuroshima.log("Próba refundu:", { magazineId, ammoId });
+
     if (magazineId) {
         const magazine = actor.items.get(magazineId);
+        game.neuroshima.log("Szukanie magazynka:", {
+          magazineId,
+          found: !!magazine,
+          type: magazine?.type,
+          magazineInActorItems: Array.from(actor.items.keys()).includes(magazineId)
+        });
+
         if (magazine && magazine.type === "magazine") {
             const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
+            game.neuroshima.log("Zawartość przed refundem:", contents);
             
             for (const bullet of refundSequence) {
                 const lastStack = contents[contents.length - 1];
+                const canMerge = this._isSameAmmo(lastStack, bullet);
                 
+                game.neuroshima.log("Refund pocisku:", { 
+                  bulletName: bullet.name, 
+                  canMerge,
+                  lastStackBefore: lastStack ? { name: lastStack.name, quantity: lastStack.quantity } : null
+                });
+
                 // Compare with current stack to see if we can merge
-                if (this._isSameAmmo(lastStack, bullet)) {
+                if (canMerge) {
                     lastStack.quantity += 1;
+                    game.neuroshima.log("Zwiększono quantity:", { 
+                      name: lastStack.name, 
+                      newQuantity: lastStack.quantity 
+                    });
                 } else {
-                    contents.push({
+                    const newStack = {
                         name: bullet.name,
                         img: bullet.img || "systems/neuroshima/assets/img/ammo.svg",
                         quantity: 1,
@@ -51,11 +104,22 @@ export class CombatHelper {
                             pelletCount: bullet.pelletCount,
                             pelletRanges: bullet.pelletRanges
                         }
-                    });
+                    };
+                    contents.push(newStack);
+                    game.neuroshima.log("Dodano nowy stos:", newStack);
                 }
             }
             
-            await magazine.update({ "system.contents": contents });
+            game.neuroshima.log("Zawartość po refundzie:", contents);
+            
+            try {
+                await magazine.update({ "system.contents": contents });
+                game.neuroshima.log("Magazynek zaktualizowany, nowa zawartość:", magazine.system.contents);
+            } catch (e) {
+                game.neuroshima.error("Błąd podczas aktualizacji magazynka:", e);
+                game.neuroshima.groupEnd();
+                return false;
+            }
             
             ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.AmmoRefunded", { 
                 amount: bulletSequence.length, 
@@ -63,13 +127,20 @@ export class CombatHelper {
             }));
 
             await message.setFlag("neuroshima", "ammoRefunded", true);
+            game.neuroshima.groupEnd();
             return true;
         }
     } else if (ammoId) {
         // Handle thrown weapons (direct ammo consumption)
         const ammo = actor.items.get(ammoId);
+        game.neuroshima.log("Amunicja (thrown):", { found: !!ammo, type: ammo?.type });
+
         if (ammo && ammo.type === "ammo") {
-            await ammo.update({ "system.quantity": ammo.system.quantity + bulletSequence.length });
+            const oldQuantity = ammo.system.quantity;
+            const newQuantity = oldQuantity + bulletSequence.length;
+            game.neuroshima.log("Aktualizacja ilości amunicji:", { oldQuantity, newQuantity });
+
+            await ammo.update({ "system.quantity": newQuantity });
             
             ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.AmmoRefunded", { 
                 amount: bulletSequence.length, 
@@ -77,10 +148,13 @@ export class CombatHelper {
             }));
 
             await message.setFlag("neuroshima", "ammoRefunded", true);
+            game.neuroshima.groupEnd();
             return true;
         }
     }
 
+    game.neuroshima.log("Błąd: Nie znaleziono magazynka ani amunicji");
+    game.neuroshima.groupEnd();
     return false;
   }
 
@@ -741,4 +815,109 @@ export class CombatHelper {
     game.neuroshima.groupEnd();
     return reducedDamageType;
   }
+
+  /**
+   * Generuje dane Karty Pacjenta - zestawienie wszystkich ran aktora zgrupowanych po lokacjach
+   * @param {Actor} actor - Aktor pacjenta
+   * @returns {Object} Dane do szablonu karty pacjenta
+   */
+  static generatePatientCard(actor) {
+    game.neuroshima.group("CombatHelper | generatePatientCard");
+    
+    // Sprawdzenie HP - mogą być na różnych ścieżkach
+    const hpValue = actor.system.hp?.value ?? actor.system.health?.value ?? 0;
+    const hpMax = actor.system.hp?.max ?? actor.system.health?.max ?? 27;
+    
+    game.neuroshima.log("Generowanie karty pacjenta:", { 
+      actorName: actor.name,
+      hpValue: hpValue,
+      hpMax: hpMax,
+      systemHp: actor.system.hp,
+      systemHealth: actor.system.health
+    });
+
+    // Pobierz wszystkie rany
+    const wounds = actor.items.filter(item => item.type === "wound");
+    
+    game.neuroshima.log("Znalezione rany:", { count: wounds.length, wounds: wounds.map(w => ({ name: w.name, location: w.system.location, type: w.system.damageType, penalty: w.system.penalty })) });
+
+    // Zgrupuj rany po lokacjach
+    const woundsByLocation = {};
+    let totalPenalty = 0;
+
+    for (const wound of wounds) {
+      const location = wound.system.location || "unknown";
+      const damageType = wound.system.damageType || "L";
+      const penalty = wound.system.penalty || 0;
+
+      totalPenalty += penalty;
+
+      if (!woundsByLocation[location]) {
+        woundsByLocation[location] = [];
+      }
+
+      // Pobierz pełną nazwę typu obrażenia z konfiguracji
+      const woundConfig = NEUROSHIMA.woundConfiguration[damageType] || {};
+      const fullWoundName = game.i18n.localize(woundConfig.fullLabel || "NEUROSHIMA.Items.Type.Wound");
+
+      // Usuń "Rana" z nazwy jeśli na końcu
+      let displayName = wound.name;
+      if (displayName.endsWith(" Rana")) {
+        displayName = displayName.slice(0, -5).trim();
+      } else if (displayName.endsWith("Rana")) {
+        displayName = displayName.slice(0, -4).trim();
+      }
+
+      // Estimate healing days: 1 day = 5% reduction
+      const estimatedHealingDays = Math.ceil(penalty / 5);
+      
+      woundsByLocation[location].push({
+        id: wound.id,
+        name: displayName,
+        damageType: damageType,
+        fullWoundName: fullWoundName,
+        penalty: penalty,
+        isHealing: wound.system.isHealing || false,
+        healingDays: wound.system.healingDays || 0,
+        hadFirstAid: wound.system.hadFirstAid || false,
+        healingAttempts: wound.system.healingAttempts || 0,
+        estimatedHealingDays: estimatedHealingDays
+      });
+    }
+
+    // Konwertuj do tablicy z informacjami o lokacjach (wszystkie lokacje, nawet bez ran)
+    const locationsList = Object.entries(NEUROSHIMA.bodyLocations).map(([locationKey, locationData]) => {
+      const wounds = woundsByLocation[locationKey] || [];
+      const locationLabel = locationData.label || "NEUROSHIMA.Location.Unknown";
+      return {
+        key: locationKey,
+        label: game.i18n.localize(locationLabel),
+        wounds: wounds
+      };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+
+    const patientCardData = {
+      actorName: actor.name,
+      actorId: actor.id,
+      actorImg: actor.img,
+      totalHP: hpMax,
+      currentHP: hpValue,
+      totalPenalty: totalPenalty,
+      woundCount: wounds.length,
+      locations: locationsList,
+      hasWounds: wounds.length > 0,
+      config: NEUROSHIMA
+    };
+
+    game.neuroshima.log("Karta pacjenta wygenerowana:", { 
+      actorName: patientCardData.actorName,
+      currentHP: patientCardData.currentHP,
+      totalHP: patientCardData.totalHP,
+      woundCount: patientCardData.woundCount
+    });
+    game.neuroshima.groupEnd();
+
+    return patientCardData;
+  }
+
 }

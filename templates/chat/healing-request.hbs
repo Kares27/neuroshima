@@ -1,0 +1,102 @@
+<div class="neuroshima heal-request-card" 
+    data-session-id="{{sessionId}}"
+    data-patient-actor-uuid="{{patientActorUuid}}"
+    data-medic-user-id="{{medicUserId}}"
+    data-requester-user-id="{{requesterUserId}}">
+    
+    <header class="roll-header">
+        <div class="healing-request-title">
+            <i class="fas fa-heartbeat"></i>
+            {{localize "NEUROSHIMA.HealingRequest.Title"}}
+        </div>
+        <div class="healing-request-info">
+            {{localize "NEUROSHIMA.HealingRequest.RequestedBy"}}: <strong>{{requesterName}}</strong>
+        </div>
+    </header>
+
+    <hr class="dotted-hr">
+
+    <div class="patient-header">
+        <div class="patient-info">
+            <img src="{{actorImg}}" class="patient-avatar" alt="{{actorName}}">
+            <div class="patient-details">
+                <h3 class="patient-name">{{actorName}}</h3>
+                <div class="patient-stats">
+                    <span class="stat-hp">
+                        <i class="fas fa-heart"></i>
+                        <span class="hp-value">{{currentHP}} / {{totalHP}}</span>
+                    </span>
+                    <span class="stat-penalty">
+                        <i class="fas fa-percent"></i>
+                        <span class="penalty-value">{{totalPenalty}}%</span>
+                    </span>
+                    <span class="stat-wounds">
+                        <i class="fas fa-crutch"></i>
+                        <span class="wounds-count">{{woundCount}}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{#if (ne patientCardVersion "extended")}}
+    {{#if hasWounds}}
+    <div class="patient-wounds">
+        <div class="wounds-toggle-header">
+            <button class="collapsible-btn wounds-main-toggle" data-collapsed="true">
+                <i class="fas fa-chevron-down"></i>
+                <span>{{localize "NEUROSHIMA.PatientCard.Wounds"}} ({{woundCount}})</span>
+            </button>
+        </div>
+        
+        <div class="wounds-container" style="display: none;">
+            {{#each locations}}
+            <div class="location-group">
+                <button class="collapsible-btn location-toggle" data-collapsed="true">
+                    <i class="fas fa-chevron-down"></i>
+                    <span class="location-name">{{label}}</span>
+                    <span class="location-wound-count">({{this.wounds.length}})</span>
+                </button>
+                <div class="wounds-list" style="display: none;">
+                    {{#each this.wounds}}
+                    <div class="wound-row">
+                        <span class="wound-type" title="{{fullWoundName}}">
+                            {{damageType}}
+                        </span>
+                        <span class="wound-name">{{name}}</span>
+                        {{#if isHealing}}
+                        <span class="wound-status healing" title="Gojąca się, {{healingDays}} dni">
+                            <i class="fas fa-bandage"></i>
+                        </span>
+                        {{/if}}
+                        <span class="wound-penalty">
+                            {{#if penalty}}
+                            <span class="penalty-badge" title="Kara do testów">−{{penalty}}%</span>
+                            {{else}}
+                            <span class="penalty-badge no-penalty">−0%</span>
+                            {{/if}}
+                        </span>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+    {{else}}
+    <div class="patient-no-wounds">
+        <i class="fas fa-check-circle"></i>
+        <p>{{localize "NEUROSHIMA.PatientCard.NoWounds"}}</p>
+    </div>
+    {{/if}}
+    {{/if}}
+
+    <hr class="dotted-hr">
+
+    <div class="healing-request-actions">
+        <button class="btn btn-primary open-heal-panel">
+            <i class="fas fa-stethoscope"></i>
+            {{localize "NEUROSHIMA.HealingRequest.OpenPanel"}}
+        </button>
+    </div>
+</div>

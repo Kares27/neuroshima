@@ -1,0 +1,70 @@
+<div class="neuroshima roll-card healing-batch-report" data-actor-id="{{actorId}}" data-actor-uuid="{{actorUuid}}">
+    <header class="roll-header">
+        <div class="weapon-title">
+            {{localize "NEUROSHIMA.HealingRequest.HealingResults"}}: {{patientActor.name}}
+        </div>
+    </header>
+
+    <div class="report-summary">
+        <div class="summary-item success">
+            <span class="label">{{localize "NEUROSHIMA.HealingRequest.Successful"}}:</span>
+            <span class="value"><strong>{{successCount}}</strong></span>
+        </div>
+        {{#if failedCount}}
+        <div class="summary-divider">|</div>
+        <div class="summary-item failed">
+            <span class="label">{{localize "NEUROSHIMA.HealingRequest.Failed"}}:</span>
+            <span class="value"><strong>{{failedCount}}</strong></span>
+        </div>
+        {{/if}}
+    </div>
+
+    {{#if results.length}}
+    <hr class="dotted-hr">
+
+    <div class="collapsible-section healing-details">
+        <div class="healing-results-header collapsible-toggle">
+            <span>{{localize "NEUROSHIMA.PatientCard.Wounds"}} ({{results.length}})</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        
+        <div class="wound-list collapsible-content" style="display: none;">
+            {{#each results}}
+                <div class="wound-item {{#if this.isSuccess}}success{{else}}failure{{/if}}"
+                     data-tooltip="{{this.tooltip}}"
+                     data-tooltip-direction="LEFT"
+                     data-wound-id="{{this.woundId}}">
+                    <div class="wound-actions-left">
+                        <button class="reroll-healing-btn" 
+                                data-action="reroll-healing" 
+                                data-wound-id="{{this.woundId}}" 
+                                title="{{localize 'NEUROSHIMA.Actions.Reroll'}}">
+                            <i class="fas fa-arrow-rotate-left"></i>
+                        </button>
+                    </div>
+                    <div class="wound-icon">
+                        <i class="fas {{#if this.isSuccess}}fa-check{{else}}fa-times{{/if}}"></i>
+                    </div>
+                    <div class="wound-info-main">
+                        <span class="wound-name">{{this.woundName}} ({{this.damageType}})</span>
+                        <span class="penalty-value">
+                            {{#if (lt this.healingEffect.penaltyChange 0)}}
+                                -{{abs this.healingEffect.penaltyChange}}%
+                            {{else}}
+                                +{{this.healingEffect.penaltyChange}}%
+                            {{/if}}
+                        </span>
+                    </div>
+                </div>
+            {{/each}}
+        </div>
+        <div class="healing-apply-footer">
+            <button class="apply-healing-btn" 
+                    data-action="apply-healing" 
+                    title="{{localize 'NEUROSHIMA.HealingRequest.ApplyHealing'}}">
+                <i class="fas fa-check-circle"></i> {{localize "NEUROSHIMA.HealingRequest.ApplyHealing"}}
+            </button>
+        </div>
+    </div>
+    {{/if}}
+</div>

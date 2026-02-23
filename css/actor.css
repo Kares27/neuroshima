@@ -1320,4 +1320,495 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 10px;
 }
 
+/* Wound Grid Layout */
+.healing-app-section .wound-item {
+  padding: 8px 0;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.healing-app-section .wound-item:last-child {
+  border-bottom: none;
+}
+
+.healing-app-section .wound-checkbox {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.wound-item-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.wound-grid-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wound-grid-section.wound-penalty-section,
+.wound-grid-section.wound-days-section {
+  align-items: center;
+}
+
+.wound-type {
+  font-weight: bold;
+  color: #ff6b6b;
+}
+
+.wound-item-name {
+  color: var(--ns-text-main);
+}
+
+.wound-penalty-label,
+.wound-days-label {
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
+.wound-penalty {
+  font-weight: bold;
+  color: #ff9900;
+}
+
+.wound-days {
+  font-weight: bold;
+  color: #66bb6a;
+}
+
+.wound-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.wound-badge {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+  font-size: 1.1em;
+}
+
+.wound-badge[title] {
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.wound-badge[title]:hover {
+  opacity: 1;
+}
+
+.wound-badge.first-aid-badge {
+  color: #42a5f5;
+}
+
+.wound-badge.healing-badge {
+  color: #66bb6a;
+}
+
+.wound-badge.attempts-badge {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+/* Compact wound item */
+.wound-item-compact {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wound-item-compact:last-child {
+  border-bottom: none;
+}
+
+.wound-days-compact {
+  font-weight: bold;
+  color: #66bb6a;
+}
+
+.wound-badge-compact {
+  display: inline-flex;
+  cursor: help;
+  font-size: 1em;
+}
+
+.wound-badge-compact[title] {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.wound-badge-compact[title]:hover {
+  opacity: 1;
+}
+
+.wound-badge-compact.first-aid {
+  color: #42a5f5;
+}
+
+.wound-badge-compact.attempts {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+/* Extended Wounds Editable Elements */
+.location-wounds-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: rgba(100, 150, 200, 0.1);
+  border-left: 2px solid rgba(100, 150, 200, 0.3);
+  transition: all 0.2s ease;
+}
+
+.location-wounds-header.active {
+  background: rgba(100, 150, 200, 0.2);
+  border-left-color: rgba(100, 150, 200, 0.8);
+  color: #fff;
+}
+
+.location-wounds-header .location-wounds-title {
+  margin: 0;
+  flex: 1;
+}
+
+.btn-add-wound {
+  padding: 4px 8px;
+  min-width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(100, 150, 200, 0.2);
+  border: 1px solid rgba(100, 150, 200, 0.4);
+  color: rgba(100, 150, 200, 0.8);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9em;
+}
+
+.btn-add-wound:hover {
+  background: rgba(100, 150, 200, 0.3);
+  border-color: rgba(100, 150, 200, 0.6);
+  color: rgba(100, 150, 200, 1);
+}
+
+.wound-item-editable {
+  padding: 8px;
+  margin: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+
+.wound-item-editable:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wound-item-editable .wound-item-grid {
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 8px;
+}
+
+.wound-type-select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(100, 150, 200, 0.4);
+  color: #ff6b6b;
+  padding: 4px 6px;
+  border-radius: 2px;
+  font-weight: bold;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wound-type-select:hover,
+.wound-type-select:focus {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(100, 150, 200, 0.6);
+  outline: none;
+}
+
+.wound-penalty-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 153, 0, 0.4);
+  color: #ff9900;
+  padding: 4px 6px;
+  border-radius: 2px;
+  font-weight: bold;
+  font-size: 0.95em;
+  width: 50px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.wound-penalty-input:hover,
+.wound-penalty-input:focus {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 153, 0, 0.6);
+  outline: none;
+}
+
+.wound-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.wound-item-editable .item-control {
+  padding: 4px 6px;
+  font-size: 0.9em;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.6;
+  color: var(--ns-text-light);
+}
+
+.wound-item-editable .item-control:hover {
+  opacity: 1;
+  color: var(--ns-text-main);
+}
+
+.wound-item-editable .item-control.active {
+  color: #66bb6a;
+  opacity: 1;
+}
+
+/* Extended Healing Panel in Actor Sheet */
+.healing-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.healing-panel-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 15px;
+  height: 100%;
+}
+
+.healing-panel-section.paper-doll-section {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.healing-panel-section.wounds-list-section {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 0.95em;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--ns-text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.paper-doll-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  min-height: 300px;
+}
+
+.body-diagram {
+  width: 100%;
+  height: auto;
+  max-width: 180px;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
+}
+
+.body-location-hotspot {
+  cursor: pointer;
+  fill: rgba(100, 150, 200, 0.3);
+  stroke: rgba(100, 150, 200, 0.6);
+  stroke-width: 1.5;
+  transition: all 0.2s ease;
+}
+
+.body-location-hotspot:hover {
+  fill: rgba(100, 150, 200, 0.5);
+  stroke: rgba(100, 150, 200, 0.9);
+  stroke-width: 2;
+}
+
+.body-location-hotspot.selected {
+  fill: rgba(255, 100, 100, 0.5);
+  stroke: rgba(255, 100, 100, 1);
+  stroke-width: 2.5;
+}
+
+.wound-count-badge {
+  font-size: 12px;
+  font-weight: bold;
+  fill: white;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.wounds-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.location-wounds-group {
+  gap: 6px;
+}
+
+.location-wounds-title {
+  font-size: 0.85em;
+  font-weight: 600;
+  margin: 6px 0 4px 0;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wound-item {
+  padding: 8px;
+  margin: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wound-item:last-child {
+  border-bottom: none;
+}
+
+.wound-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 2px;
+}
+
+.wound-item-grid {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.wound-grid-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wound-grid-section.wound-penalty-section,
+.wound-grid-section.wound-days-section {
+  align-items: center;
+}
+
+.wound-type {
+  font-weight: bold;
+  color: #ff6b6b;
+  font-size: 0.85em;
+}
+
+.wound-item-name {
+  color: var(--ns-text-main);
+  font-size: 0.9em;
+}
+
+.wound-penalty-label,
+.wound-days-label {
+  font-size: 0.65em;
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+.wound-penalty {
+  font-weight: bold;
+  color: #ff9900;
+  font-size: 0.95em;
+}
+
+.wound-days {
+  font-weight: bold;
+  color: #66bb6a;
+  font-size: 0.95em;
+}
+
+.wound-badges {
+  display: flex;
+  gap: 6px;
+}
+
+.wound-badge {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+  font-size: 1em;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.wound-badge[title]:hover {
+  opacity: 1;
+}
+
+.wound-badge.first-aid-badge {
+  color: #42a5f5;
+}
+
+.wound-badge.healing-badge {
+  color: #66bb6a;
+}
+
+.wound-badge.attempts-badge {
+  color: #ff9800;
+  font-weight: bold;
+  font-size: 0.85em;
+}
+
+.no-wounds-message {
+  padding: 20px;
+  text-align: center;
+  opacity: 0.6;
+  font-style: italic;
+  color: var(--ns-text-main);
+}
+
+.selected-location-info {
+  padding: 8px;
+  text-align: center;
+  font-size: 0.9em;
+  color: rgba(255, 255, 255, 0.7);
+  min-height: 24px;
+}
+
+.selected-location-info .location-name {
+  font-weight: 600;
+  color: var(--ns-text-main);
+}
+
+.selected-location-info .no-selection {
+  opacity: 0.6;
+  margin: 0;
+}
 

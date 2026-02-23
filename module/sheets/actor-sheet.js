@@ -3,6 +3,7 @@ import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/weapon-roll-dialog.js";
 import { AmmunitionLoadingDialog } from "../apps/ammo-loading-dialog.js";
+import { CombatHelper } from "../helpers/combat-helper.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -60,7 +61,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       toggleHealing: this.prototype._onToggleHealing,
       configureHP: this.prototype._onConfigureHP,
       rollWeapon: this.prototype._onRollWeapon,
-      unloadMagazine: this.prototype._onUnloadMagazine
+      unloadMagazine: this.prototype._onUnloadMagazine,
+      showPatientCard: this.prototype._onShowPatientCard,
+      requestHealing: this.prototype._onRequestHealing
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -96,6 +99,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     super(options);
     this._difficultiesCollapsed = true;
     this._isRolling = false;
+    this._selectedWoundLocation = "head";
   }
 
   /** @override */
@@ -144,6 +148,44 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty;
     const penaltyTooltip = `${game.i18n.localize("NEUROSHIMA.Armor.TotalPenalty")}: ${totalArmorPenalty}% | ${game.i18n.localize("NEUROSHIMA.Wound.TotalPenalty")}: ${totalWoundPenalty}%`;
 
+    // Get patient card version for healing panel
+    const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
+    
+    // Prepare patient data for extended healing panel
+    let patientData = null;
+    let locationsMap = {};
+    let woundsByLocation = {};
+    if (patientCardVersion === "extended") {
+      patientData = CombatHelper.generatePatientCard(actor);
+      locationsMap = {};
+      woundsByLocation = {};
+      
+      // Create wounds organized by location for extended wounds editing
+      for (const location of patientData.locations) {
+        locationsMap[location.key] = location;
+        woundsByLocation[location.key] = location.wounds
+          .map(woundData => {
+            const woundItem = actor.items.get(woundData.id);
+            if (!woundItem) return null;
+            return {
+              id: woundItem.id,
+              uuid: woundItem.uuid,
+              name: woundItem.name,
+              img: woundItem.img,
+              system: woundItem.system,
+              damageType: woundItem.system.damageType || "D",
+              penalty: woundItem.system.penalty || 0,
+              isHealing: woundItem.system.isHealing || false,
+              hadFirstAid: woundItem.system.hadFirstAid || false,
+              healingAttempts: woundItem.system.healingAttempts || 0,
+              estimatedHealingDays: Math.ceil((woundItem.system.penalty || 0) / 5),
+              fullWoundName: woundData.fullWoundName
+            };
+          })
+          .filter(w => w !== null);
+      }
+    }
+
     // Prepare Combat Tab Data
     context.combat = {
       armor: items.filter(i => i.type === "armor" && i.system.equipped),
@@ -155,8 +197,13 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       totalCombatPenalty: totalCombatPenalty,
       penaltyTooltip: penaltyTooltip,
       totalDamagePoints: system.combat.totalDamagePoints,
+      currentHP: system.hp.value || 0,
       maxHP: system.hp.max || 27,
-      anatomicalArmor: this._prepareAnatomicalArmor(items.filter(i => i.type === "armor" && i.system.equipped))
+      anatomicalArmor: this._prepareAnatomicalArmor(items.filter(i => i.type === "armor" && i.system.equipped)),
+      patientCardVersion: patientCardVersion,
+      patientData: patientData,
+      locationsMap: locationsMap,
+      woundsByLocation: woundsByLocation
     };
 
     // Prepare notes object
@@ -248,6 +295,23 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         this._onModifyAP(event, event.currentTarget);
       });
     });
+
+    // Add listeners for paper doll in extended healing panel
+    const hotspots = html.querySelectorAll('.body-location-hotspot');
+    hotspots.forEach(hotspot => {
+      hotspot.addEventListener('click', (event) => {
+        event.preventDefault();
+        // Save selected location before updating UI
+        this._selectedWoundLocation = event.currentTarget.dataset.location;
+        this._onPaperDollLocationSelect(event, event.currentTarget);
+      });
+    });
+    
+    // Initialize paper doll with saved location instead of always first location
+    const targetHotspot = Array.from(hotspots).find(h => h.dataset.location === this._selectedWoundLocation) || hotspots[0];
+    if (targetHotspot) {
+      this._onPaperDollLocationSelect(null, targetHotspot);
+    }
   }
 
   /** @override */
@@ -1109,7 +1173,26 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    * Handle creating a new Item.
    */
   async _onCreateItem(event, target) {
-    const type = target.dataset.type;
+    // If target is an icon or nested element, find the closest button/action element
+    const actionElement = target.closest("[data-action]") || target;
+    const type = actionElement.dataset.type;
+    let location = actionElement.dataset.location || actionElement.dataset.locationKey;
+    
+    // Fallback: check if there's a parent location header to get location from
+    if (!location && type === "wound") {
+      const headerElement = actionElement.closest(".location-wounds-header");
+      if (headerElement) {
+        location = headerElement.dataset.location;
+      }
+    }
+    
+    game.neuroshima?.log("_onCreateItem", { 
+      type, 
+      location, 
+      targetTag: target.tagName,
+      actionElementTag: actionElement.tagName,
+      target: actionElement.outerHTML.substring(0, 150)
+    });
     
     // Default name based on type
     let label = game.i18n.localize(`NEUROSHIMA.Items.Type.${type.charAt(0).toUpperCase() + type.slice(1)}`);
@@ -1125,8 +1208,14 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       system: {}
     };
 
-    if (target.dataset.weaponType) {
-      itemData.system.weaponType = target.dataset.weaponType;
+    if (actionElement.dataset.weaponType) {
+      itemData.system.weaponType = actionElement.dataset.weaponType;
+    }
+
+    // Pre-fill location if creating wound from extended section
+    if (location && type === "wound") {
+      itemData.system.location = location;
+      game.neuroshima?.log("_onCreateItem setting wound location", { location, itemData });
     }
 
     return this.document.createEmbeddedDocuments("Item", [itemData]);
@@ -1255,6 +1344,194 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       }
     }
     return groups;
+  }
+
+  /**
+   * Pokaż kartę pacjenta na czacie.
+   */
+  async _onShowPatientCard(event) {
+    event.preventDefault();
+    game.neuroshima.log("Wyświetlanie karty pacjenta dla:", this.actor.name);
+    
+    await game.neuroshima.NeuroshimaChatMessage.renderPatientCard(this.actor);
+  }
+
+  /**
+   * Poproś medyka o leczenie - zachowanie zależy od ustawienia patientCardVersion
+   * - "simple": pokaż zwykłą kartę pacjenta
+   * - "extended": pokaż dialog wyboru medyka i wyślij prośbę o leczenie
+   */
+  async _onRequestHealing(event) {
+    event.preventDefault();
+    game.neuroshima.log("Prosimy o leczenie dla:", this.actor.name);
+
+    // Sprawdź wersję karty pacjenta
+    const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
+    
+    game.neuroshima.log("Wersja karty pacjenta:", { version: patientCardVersion });
+
+    // Wersja uproszczona - pokaż kartę pacjenta bez prośby
+    if (patientCardVersion === "simple") {
+      game.neuroshima.log("Wyświetlanie uproszczonej karty pacjenta (bez prośby do medyka)");
+      await game.neuroshima.NeuroshimaChatMessage.renderPatientCard(this.actor);
+      ui.notifications.info(game.i18n.localize("NEUROSHIMA.PatientCard.ShowPatientCard"));
+      return;
+    }
+
+    // Wersja rozszerzona - pokaż dialog i wyślij prośbę
+    game.neuroshima.log("Wersja rozszerzona: wyświetlanie dialoga wyboru medyka");
+
+    // Pobierz lista aktywnych userów (oprócz siebie)
+    const activeUsers = game.users.filter(u => 
+      u.active && u.id !== game.user.id
+    );
+
+    if (activeUsers.length === 0) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.NoMedicsAvailable"));
+      return;
+    }
+
+    // Stwórz dialog wyboru medyka (DialogV2)
+    const medicChoices = {};
+    for (const user of activeUsers) {
+      medicChoices[user.id] = user.name;
+    }
+
+    const content = `
+      <form class="neuroshima medic-selection-dialog">
+        <div class="form-group">
+          <label for="medic-select">${game.i18n.localize("NEUROSHIMA.HealingRequest.ChooseMedic")}:</label>
+          <select id="medic-select" name="medicId">
+            ${Object.entries(medicChoices).map(([id, name]) => 
+              `<option value="${id}">${name}</option>`
+            ).join("")}
+          </select>
+        </div>
+      </form>
+    `;
+
+    const medicUserId = await foundry.applications.api.DialogV2.wait({
+      window: {
+        title: game.i18n.localize("NEUROSHIMA.HealingRequest.SelectMedic"),
+        classes: ["neuroshima", "medic-selection"]
+      },
+      content: content,
+      buttons: [
+        {
+          action: "confirm",
+          label: game.i18n.localize("NEUROSHIMA.HealingRequest.SendRequest"),
+          default: true,
+          icon: "fas fa-check",
+          callback: (event) => {
+            const form = event.target.closest("form");
+            return form.querySelector("#medic-select").value;
+          }
+        },
+        {
+          action: "cancel",
+          label: game.i18n.localize("NEUROSHIMA.Dialog.Cancel"),
+          icon: "fas fa-times",
+          callback: () => null
+        }
+      ]
+    });
+
+    if (!medicUserId) {
+      game.neuroshima.log("Anulowano wysyłanie prośby o leczenie");
+      return;
+    }
+
+    const medicUser = game.users.get(medicUserId);
+    if (!medicUser) {
+      ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.MedicNotFound"));
+      return;
+    }
+
+    try {
+      game.neuroshima.log("Wysyłanie prośby o leczenie", {
+        pacjent: this.actor.name,
+        medyk: medicUser.name
+      });
+
+      // Renderuj kartę prośby o leczenie
+      await game.neuroshima.NeuroshimaChatMessage.renderHealingRequest(
+        this.actor,
+        medicUserId,
+        game.user.id
+      );
+
+      ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.RequestSent", {
+        medic: medicUser.name
+      }));
+    } catch (err) {
+      game.neuroshima.log("Błąd podczas wysyłania prośby:", err);
+      ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingFailed"));
+    }
+  }
+
+  /**
+   * Handle paper doll location selection in extended healing panel
+   */
+  _onPaperDollLocationSelect(event, hotspot) {
+    const locationKey = hotspot.dataset.location;
+    
+    game.neuroshima?.log("_onPaperDollLocationSelect start", { locationKey });
+    
+    // Remove selected class from all hotspots
+    this.element.querySelectorAll('.body-location-hotspot').forEach(hs => {
+      hs.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked hotspot
+    hotspot.classList.add('selected');
+    
+    // Update selected location info display
+    const selectedLocationInfo = this.element.querySelector('.selected-location-info p');
+    if (selectedLocationInfo && locationKey) {
+      const locationLabel = game.i18n.localize(NEUROSHIMA.bodyLocations[locationKey]?.label || "NEUROSHIMA.Location.Unknown");
+      selectedLocationInfo.textContent = locationLabel;
+    }
+    
+    // Show/hide wound groups and highlight headers based on selected location
+    const woundGroups = this.element.querySelectorAll('.location-wounds-group');
+    const locationHeaders = this.element.querySelectorAll('.location-wounds-header');
+    
+    game.neuroshima?.log("_onPaperDollLocationSelect groups count", { 
+      woundGroupsCount: woundGroups.length,
+      locationHeadersCount: locationHeaders.length
+    });
+    
+    woundGroups.forEach((group, idx) => {
+      const groupLocation = group.dataset.location;
+      const shouldBeActive = groupLocation === locationKey;
+      
+      if (shouldBeActive) {
+        group.classList.add('active');
+      } else {
+        group.classList.remove('active');
+      }
+      
+      if (idx < 3) { // Log first 3 for debugging
+        game.neuroshima?.log(`Group ${idx}: location=${groupLocation}, shouldBeActive=${shouldBeActive}, hasActiveClass=${group.classList.contains('active')}`);
+      }
+    });
+    
+    locationHeaders.forEach((header, idx) => {
+      const headerLocation = header.dataset.location;
+      const shouldBeActive = headerLocation === locationKey;
+      
+      if (shouldBeActive) {
+        header.classList.add('active');
+      } else {
+        header.classList.remove('active');
+      }
+      
+      if (idx < 3) { // Log first 3 for debugging
+        game.neuroshima?.log(`Header ${idx}: location=${headerLocation}, shouldBeActive=${shouldBeActive}, hasActiveClass=${header.classList.contains('active')}`);
+      }
+    });
+    
+    game.neuroshima?.log("Paper doll location selected", { location: locationKey });
   }
 
   /**

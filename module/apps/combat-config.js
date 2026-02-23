@@ -18,7 +18,9 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             height: "auto"
         },
         form: {
-            handler: CombatConfig.#onSubmit,
+            handler: async function(event, form, formData) {
+                await this._onSubmit(event, form, formData);
+            },
             submitOnChange: false,
             closeOnSubmit: true
         }
@@ -33,6 +35,15 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
 
     /** @inheritdoc */
     async _prepareContext(options) {
+        // Build role options
+        const roleOptions = {
+            0: game.i18n.localize("NEUROSHIMA.Settings.Roles.None"),
+            1: game.i18n.localize("NEUROSHIMA.Settings.Roles.Player"),
+            2: game.i18n.localize("NEUROSHIMA.Settings.Roles.Trusted"),
+            3: game.i18n.localize("NEUROSHIMA.Settings.Roles.Assistant"),
+            4: game.i18n.localize("NEUROSHIMA.Settings.Roles.Gamemaster")
+        };
+
         return {
             config: {
                 usePelletCountLimit: game.settings.get("neuroshima", "usePelletCountLimit"),
@@ -40,13 +51,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 painResistanceMinRole: game.settings.get("neuroshima", "painResistanceMinRole"),
                 combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole")
             },
-            roles: {
-                0: "NEUROSHIMA.Settings.Roles.None",
-                1: "NEUROSHIMA.Settings.Roles.Player",
-                2: "NEUROSHIMA.Settings.Roles.Trusted",
-                3: "NEUROSHIMA.Settings.Roles.Assistant",
-                4: "NEUROSHIMA.Settings.Roles.Gamemaster"
-            }
+            roleOptions: roleOptions
         };
     }
 
@@ -56,7 +61,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {HTMLFormElement} form 
      * @param {FormDataExtended} formData 
      */
-    static async #onSubmit(event, form, formData) {
+    async _onSubmit(event, form, formData) {
         const data = formData.object;
         
         try {

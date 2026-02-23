@@ -57,6 +57,9 @@
             "PenaltyArmor": "Armor",
             "Test": "Test",
             "TestType": "Test Type",
+            "TestResults": "Test Results",
+            "Dice": "Dice Roll",
+            "Best": "Best Result",
             "On": "on",
             "EditRoll": "Edit Roll",
             "SwitchToOpen": "Switch to Open Test",
@@ -76,6 +79,7 @@
             "SkillBonusAbbr": "Skill Bon.",
             "AttributeBonus": "Attribute Bonus",
             "AttributeBonusAbbr": "Attr. Bon.",
+            "Slider": "Slider (Skill + Dice)",
             "Distance": "Distance (m)",
             "Aiming": "Aiming",
             "Burst": "Burst",
@@ -103,8 +107,22 @@
                 "FinalLevel": "Actual Level"
             }
         },
+        "Difficulty": {
+            "Easy": "Easy",
+            "Average": "Average",
+            "Problematic": "Problematic",
+            "Difficult": "Difficult",
+            "Hard": "Hard",
+            "VeryHard": "Very Hard",
+            "DamnHard": "Damn Hard",
+            "Luck": "Luck",
+            "Masterfull": "Masterfull",
+            "Grandmasterfull": "Grandmasterfull",
+            "Impossible": "Impossible"
+        },
         "Actions": {
             "Roll": "Roll dice",
+            "Reroll": "Reroll",
             "Cancel": "Cancel",
             "Save": "Save",
             "Repair": "Repair",
@@ -127,7 +145,9 @@
         "Wound": {
             "TotalPenalty": "Total Wound Penalty",
             "TotalPenaltyAbbr": "Penalty",
-            "TotalDamage": "Total Damage / Max HP"
+            "TotalDamage": "Total Damage / Max HP",
+            "Days": "Days",
+            "AttemptCount": "Attempts"
         },
         "Encumbrance": "Encumbrance",
         "Settings": {
@@ -210,6 +230,25 @@
             "EncumbranceBonusValue": {
                 "Name": "Bonus Value",
                 "Hint": "How many kilograms are added to capacity for each bonus step."
+            },
+            "PatientCardVersion": {
+                "Name": "Patient Card Version",
+                "Hint": "Choose which version of Patient Card to display in chat. Simple shows quick wound overview, Extended includes healing panel.",
+                "Simple": "Simple (wounds overview)",
+                "Extended": "Extended (healing panel)"
+            },
+            "HealingConfig": {
+                "Title": "Healing Settings",
+                "Label": "Configure Healing",
+                "Hint": "Opens the configuration menu for base difficulty of healing tests for each damage type.",
+                "Description": "Here you can set the base difficulty of healing tests for each damage type. These settings will be used in the healing dialog.",
+                "DamageTypeDifficulties": "Base Healing Difficulties",
+                "DifficultyHelp": "Select the difficulty level to be used as default for each damage type.",
+                "Saved": "Healing settings have been saved."
+            },
+            "HealingDifficulties": {
+                "Name": "Base healing difficulties",
+                "Hint": "Configuration of base difficulty levels for healing tests by damage type."
             }
         },
         "Tabs": {
@@ -224,7 +263,13 @@
             "Effects": "Effects",
             "EffectsPlaceholder": "Item effects (TBD)"
         },
+        "Dialogs": {
+            "ConfirmReroll": "Confirm Reroll",
+            "RerollWoundQuestion": "Are you sure you want to reroll this wound test?",
+            "RerollTestQuestion": "Are you sure you want to reroll this test?"
+        },
         "Dialog": {
+            "Cancel": "Cancel",
             "WeaponType": {
                 "Title": "Select Weapon Type",
                 "Content": "What type of weapon do you want to create?"
@@ -280,6 +325,7 @@
             "ShowLess": "Hide difficulty thresholds"
         },
         "Damage": {
+            "Type": "Damage Type",
             "D": "D",
             "L": "L",
             "C": "C",
@@ -484,6 +530,76 @@
             "RightArm": "Right Arm",
             "LeftLeg": "Left Leg",
             "RightLeg": "Right Leg"
+        },
+        "PatientCard": {
+            "Title": "Patient Card",
+            "Wounds": "Body Wounds",
+            "Wound": "Wound",
+            "NoWounds": "Patient has no wounds",
+            "ShowPatientCard": "Show Patient Card",
+            "Penalty": "Penalty",
+            "Medic": "Medic",
+            "Patient": "Patient"
+        },
+        "HealingRequest": {
+            "Title": "Healing Request",
+            "RequestedBy": "Requested by",
+            "SelectMedic": "Select Medic",
+            "ChooseMedic": "Choose a medic from the list",
+            "SendRequest": "Send Request",
+            "NoMedicsAvailable": "No medics available",
+            "MedicNotFound": "Selected medic not found",
+            "RequestSent": "Healing request sent to {medic}",
+            "OnlyMedicCanOpen": "Only the designated medic can open the healing panel",
+            "OpenPanel": "Open Healing Panel",
+            "PaperDoll": "Patient Anatomy",
+            "SelectLocation": "Click on a body part to select",
+            "HealWound": "Heals this wound",
+            "Heal": "Heal",
+            "HealSelected": "Heal selected wounds",
+            "NoWoundsSelected": "No wounds selected for healing",
+            "ActorNotFound": "Patient actor not found",
+            "WoundNotFound": "Wound not found",
+            "WoundHealed": "Wound {woundName} - {action}",
+            "HealingFailed": "Error during wound healing",
+            "HealingProgress": "Healing: {days} days",
+            "SelectAction": "Select healing action:",
+            "SelectHealingMethod": "Select healing method",
+            "Method": "Healing Method",
+            "PatientInfo": "Patient Information",
+            "MethodDetails": {
+                "FirstAid": "First Aid",
+                "FirstAidDesc": "Quick wound treatment immediately after injury",
+                "FirstAidReduction": "Successful test: removes 5% penalty",
+                "FirstAidFailure": "Failed test: increases penalty by 5%",
+                "FirstAidMax": "Maximum 5% penalty reduction",
+                "TreatWounds": "Treat Wounds",
+                "TreatWoundsDesc": "Professional wound treatment, takes about 15 minutes",
+                "TreatWoundsReduction": "Successful test: removes 15% penalty (or 10% if First Aid was used first)",
+                "TreatWoundsFailure": "Failed test: increases penalty by 5%",
+                "TreatWoundsMax": "Maximum 15% penalty reduction"
+            },
+            "HealingSuccess": "Healing Successful",
+            "HealingFailure": "Healing Failed",
+            "ApplyHealing": "Apply Healing",
+            "HealingApplied": "Healing applied. Wounds marked as healing. Fully healed wounds removed.",
+            "OldPenalty": "Old Penalty",
+            "NewPenalty": "New Penalty",
+            "Reduction": "Penalty Reduction",
+            "HealingPercent": "Healing %",
+            "HealingModifier": "Healing Modifier",
+            "DifficultyModifier": "Difficulty Modifier",
+            "AdjustedPerWound": "Adjusted per wound",
+            "WoundsCount": "Wounds",
+            "SuccessTargetAvg": "Success Target",
+            "Successful": "Successful",
+            "Failed": "Failed",
+            "HealingResults": "Healing Results",
+            "Action": {
+                "start": "Start Healing",
+                "progress": "Progress Healing",
+                "complete": "Complete Healing"
+            }
         }
     },
     "TOKEN": {
