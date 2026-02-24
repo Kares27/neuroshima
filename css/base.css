@@ -1227,8 +1227,11 @@ body.theme-dark {
 .wound-penalty {
     display: flex;
     align-items: center;
-    flex-shrink: 0;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.85em;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .penalty-badge {
@@ -1360,87 +1363,7 @@ body.theme-dark {
     border-left-color: rgba(148, 148, 217, 0.3);
 }
 
-/* === HEALING APP === */
-.healing-app {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background-color: var(--ns-bg-sheet);
-    color: var(--ns-text-main);
-}
-
-.healing-app-header {
-    padding: 16px;
-    border-bottom: 2px solid var(--ns-border-main);
-    background-color: var(--ns-bg-input);
-    flex-shrink: 0;
-}
-
-.patient-header-info {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.patient-avatar-container {
-    flex-shrink: 0;
-}
-
-.patient-avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--ns-border-main);
-}
-
-.patient-header-details {
-    flex: 1;
-}
-
-.patient-name {
-    margin: 0 0 8px 0;
-    font-size: 1.3em;
-    font-weight: bold;
-    color: var(--ns-text-header);
-}
-
-.patient-vital-signs {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.vital-sign {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.95em;
-}
-
-.vital-sign i {
-    font-size: 1.1em;
-    color: var(--ns-color-accent);
-}
-
-.vital-label {
-    font-weight: 600;
-    color: var(--ns-text-light);
-}
-
-.vital-value {
-    color: var(--ns-text-main);
-    font-weight: bold;
-}
-
-/* Main container */
-.healing-app-container {
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
+/* === HEALING APP (moved to actor.css) === */
 .error-message {
     display: flex;
     align-items: center;
@@ -1476,7 +1399,7 @@ body.theme-dark {
 }
 
 .paper-doll-section {
-    flex: 0 0 35%;
+    flex: 0 0 45%;
     padding: 16px;
     display: flex;
     flex-direction: column;
@@ -1539,7 +1462,7 @@ body.theme-dark {
 }
 
 .wound-count-badge {
-    font-size: 26px;
+    font-size: 12px;
     font-weight: bold;
     fill: white;
     pointer-events: none;
@@ -1664,17 +1587,6 @@ body.theme-dark {
     align-items: center;
     gap: 6px;
     justify-content: flex-end;
-    flex-shrink: 0;
-}
-
-.wound-penalty {
-    background-color: rgba(217, 46, 46, 0.2);
-    color: #d92e2e;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-weight: bold;
-    font-size: 0.75em;
-    white-space: nowrap;
     flex-shrink: 0;
 }
 

@@ -269,8 +269,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     game.neuroshima.log("_prepareSubmitData triggered", {event, formData});
 
     // Zapisz pozycję scrollu wounds-list-container przed edycją
-    const woundsListContainer = this.element?.querySelector(".wounds-list-container");
-    this._woundsScrollTop = woundsListContainer?.scrollTop ?? 0;
+    this._saveWoundsScroll();
 
     const data = formData.object;
     // Handle embedded items updates (e.g. from wounds table)
@@ -436,11 +435,18 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     let hpChanged = false;
 
     // Zapisz pozycję scrolla wounds-list-container
-    const woundsListContainer = this.element?.querySelector('.wounds-list-container');
-    const scrollPosition = woundsListContainer?.scrollTop || 0;
+    this._saveWoundsScroll();
 
     for (const key of changedKeys) {
-      if (key.startsWith("items")) {
+      if (key === "items") {
+        itemsChanged = true;
+        // Check array-based update
+        const updates = Array.isArray(changed.items) ? changed.items : [];
+        for (const itemData of updates) {
+          const item = this.document.items.get(itemData._id);
+          if (item && item.type !== "wound") onlyWoundsChanged = false;
+        }
+      } else if (key.startsWith("items.")) {
         itemsChanged = true;
         const parts = key.split(".");
         const itemId = parts[1];
@@ -466,17 +472,42 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       return super._onUpdate(changed, options, userId);
     }
 
-    // Przywróć scrollPosition
-    if (renderPromise && onlyWoundsChanged) {
-      renderPromise.then(() => {
-        const newWoundsListContainer = this.element?.querySelector('.wounds-list-container');
-        if (newWoundsListContainer) {
-          newWoundsListContainer.scrollTop = scrollPosition;
-        }
-      });
-    }
-
     return renderPromise;
+  }
+
+  /**
+   * Zapisuje aktualną pozycję scrolla listy ran.
+   * @private
+   */
+  _saveWoundsScroll() {
+    const container = this.element?.querySelector(".wounds-list-container");
+    if (container) {
+      this._woundsScrollTop = container.scrollTop;
+    }
+  }
+
+  /** @override */
+  _onCreateDocuments(documents, options, userId) {
+    if (documents.some(d => d.type === "wound")) {
+      this._saveWoundsScroll();
+    }
+    return super._onCreateDocuments(documents, options, userId);
+  }
+
+  /** @override */
+  _onUpdateDocuments(documents, options, userId) {
+    if (documents.some(d => d.type === "wound")) {
+      this._saveWoundsScroll();
+    }
+    return super._onUpdateDocuments(documents, options, userId);
+  }
+
+  /** @override */
+  _onDeleteDocuments(documents, options, userId) {
+    if (documents.some(d => d.type === "wound")) {
+      this._saveWoundsScroll();
+    }
+    return super._onDeleteDocuments(documents, options, userId);
   }
 
   /** @override */
@@ -1103,6 +1134,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const li = target.closest(".item");
     const item = this.document.items.get(li.dataset.itemId);
     if (!item || item.type !== "wound") return;
+    
+    this._saveWoundsScroll();
     // _onUpdate hook will handle selective rendering of combat part only
     return item.update({ "system.isHealing": !item.system.isHealing });
   }
@@ -1380,6 +1413,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
     // Pre-fill location if creating wound from extended section
     if (location && type === "wound") {
+      this._saveWoundsScroll();
       itemData.system.location = location;
       game.neuroshima?.log("_onCreateItem setting wound location", { location, itemData });
     }
@@ -1446,6 +1480,12 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const li = target.closest("[data-item-id]");
     const item = this.document.items.get(li.dataset.itemId);
     if (!item) return;
+    
+    // Save scroll position for wounds list before deletion re-render
+    if (item.type === "wound") {
+      this._saveWoundsScroll();
+    }
+
     // _onUpdate hook will handle selective rendering of combat part only
     return item.delete();
   }

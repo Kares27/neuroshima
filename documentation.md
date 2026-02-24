@@ -266,6 +266,25 @@ Panel rozszerzony ma dwie główne części:
 - Każdy hotspot ma listener zabezpieczony atrybutem `data-listener-active` aby uniknąć duplikatów
 - Klik na hotspot renderuje `combatWoundsList` PRZED aktualizacją stanu wizualnego, aby zapobiec flimmerowaniu
 
+### Zachowanie Pozycji Scrolla (Scroll Preservation)
+- System automatycznie zapamiętuje pozycję paska przewijania w zakładce Walka (`combat`) przed każdą aktualizacją aktora (edycja rany, zmiana statusu leczenia, usunięcie/dodanie rany).
+- Po przerenderowaniu arkusza pozycja scrolla jest przywracana, co eliminuje uciążliwe resetowanie widoku do góry strony przy każdej interakcji.
+
+## 8.3. Panel Medyka (HealingApp)
+Dedykowana aplikacja dla medyka obsługująca prośby o leczenie.
+
+### Usprawnienia UI i UX (v1.5.1)
+- **Układ Ran**: Elementy rany są ułożone liniowo i wyrównane do lewej w kolejności: `[Checkbox] [Typ Obrażeń] [Kara %] [Ikony Statusu] [Nazwa]`.
+- **Interaktywny Diagram (Paper Doll)**:
+  - Powiększony obszar diagramu dla lepszej precyzji.
+  - Naprawiona blokada kliknięć przez etykiety (użycie `pointer-events: none`).
+  - Dynamiczne podświetlanie wybranej lokacji.
+- **Nagłówek Pacjenta**: Wyświetla awatar, punkty życia (HP), sumaryczną karę oraz liczbę ran w czytelnej formie.
+- **Stabilność Okna**: 
+  - Wyłączone automatyczne centrowanie przy zmianie lokacji, co zapobiega "skakaniu" okna.
+  - Poprawiona obsługa zmiany rozmiaru (resizable) bez resetowania pozycji.
+- **Konsolidacja Stylu**: Style aplikacji zostały przeniesione do `actor.css`, zapewniając spójność z resztą systemu przy zachowaniu unikalnego wyglądu panelu medycznego.
+
 ## 9. Tryb Debugowania (Changed from 9 to account for new 8.2 section)
 System korzysta z ustawienia `debugMode`. Logi w konsoli powinny być warunkowane sprawdzeniem tego booleana:
 ```javascript

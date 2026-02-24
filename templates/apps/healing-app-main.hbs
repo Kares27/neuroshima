@@ -23,38 +23,38 @@
                 <svg class="body-diagram" viewBox="0 0 240 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
                     <!-- Głowa -->
                     <g data-location="head">
-                        <circle cx="120" cy="55" r="42" class="body-location-hotspot {{#if (eq selectedLocation 'head')}}selected{{/if}}" data-location="head" data-tooltip="{{localize 'NEUROSHIMA.Location.Head'}}" />
+                        <circle cx="120" cy="55" r="48" class="body-location-hotspot {{#if (eq selectedLocation 'head')}}selected{{/if}}" data-location="head" data-tooltip="{{localize 'NEUROSHIMA.Location.Head'}}" />
                         <text x="120" y="60" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.head.wounds.length}}</text>
                     </g>
                     
                     <!-- Tułów -->
                     <g data-location="torso">
-                        <rect x="92" y="110" width="56" height="160" class="body-location-hotspot {{#if (eq selectedLocation 'torso')}}selected{{/if}}" data-location="torso" data-tooltip="{{localize 'NEUROSHIMA.Location.Torso'}}" />
+                        <rect x="88" y="110" width="64" height="170" class="body-location-hotspot {{#if (eq selectedLocation 'torso')}}selected{{/if}}" data-location="torso" data-tooltip="{{localize 'NEUROSHIMA.Location.Torso'}}" />
                         <text x="120" y="192" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.torso.wounds.length}}</text>
                     </g>
                     
                     <!-- Lewe ramię -->
                     <g data-location="leftArm">
-                        <rect x="40" y="125" width="45" height="110" class="body-location-hotspot {{#if (eq selectedLocation 'leftArm')}}selected{{/if}}" data-location="leftArm" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftArm'}}" />
-                        <text x="62" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.leftArm.wounds.length}}</text>
+                        <rect x="35" y="125" width="50" height="120" class="body-location-hotspot {{#if (eq selectedLocation 'leftArm')}}selected{{/if}}" data-location="leftArm" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftArm'}}" />
+                        <text x="60" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.leftArm.wounds.length}}</text>
                     </g>
                     
                     <!-- Prawe ramię -->
                     <g data-location="rightArm">
-                        <rect x="155" y="125" width="45" height="110" class="body-location-hotspot {{#if (eq selectedLocation 'rightArm')}}selected{{/if}}" data-location="rightArm" data-tooltip="{{localize 'NEUROSHIMA.Location.RightArm'}}" />
-                        <text x="177" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.rightArm.wounds.length}}</text>
+                        <rect x="155" y="125" width="50" height="120" class="body-location-hotspot {{#if (eq selectedLocation 'rightArm')}}selected{{/if}}" data-location="rightArm" data-tooltip="{{localize 'NEUROSHIMA.Location.RightArm'}}" />
+                        <text x="180" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.rightArm.wounds.length}}</text>
                     </g>
                     
                     <!-- Lewa noga -->
                     <g data-location="leftLeg">
-                        <rect x="75" y="290" width="40" height="135" class="body-location-hotspot {{#if (eq selectedLocation 'leftLeg')}}selected{{/if}}" data-location="leftLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftLeg'}}" />
-                        <text x="95" y="357" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.leftLeg.wounds.length}}</text>
+                        <rect x="70" y="290" width="48" height="150" class="body-location-hotspot {{#if (eq selectedLocation 'leftLeg')}}selected{{/if}}" data-location="leftLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftLeg'}}" />
+                        <text x="94" y="365" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.leftLeg.wounds.length}}</text>
                     </g>
                     
                     <!-- Prawa noga -->
                     <g data-location="rightLeg">
-                        <rect x="125" y="290" width="40" height="135" class="body-location-hotspot {{#if (eq selectedLocation 'rightLeg')}}selected{{/if}}" data-location="rightLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.RightLeg'}}" />
-                        <text x="145" y="357" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.rightLeg.wounds.length}}</text>
+                        <rect x="122" y="290" width="48" height="150" class="body-location-hotspot {{#if (eq selectedLocation 'rightLeg')}}selected{{/if}}" data-location="rightLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.RightLeg'}}" />
+                        <text x="146" y="365" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.rightLeg.wounds.length}}</text>
                     </g>
                 </svg>
             </div>
@@ -67,28 +67,17 @@
                 {{#if patientData.hasWounds}}
                     {{#if selectedLocation}}
                         {{#if selectedLocationWounds.length}}
-                        <div class="location-wounds-group">
+                        <div class="location-wounds-group active">
                             <h4 class="location-wounds-title">{{#each patientData.locations}}{{#if (eq this.key ../selectedLocation)}}{{this.label}}{{/if}}{{/each}}</h4>
                             {{#each selectedLocationWounds}}
                             <div class="wound-item">
-                                <input type="checkbox" class="wound-checkbox" data-wound-id="{{id}}" title="Zaznacz ranę do leczenia">
                                 <div class="wound-item-grid">
-                                    <!-- Typ i nazwa rany -->
-                                    <div class="wound-grid-section">
-                                        <span class="wound-type" title="{{fullWoundName}}">{{damageType}}</span>
-                                        <span class="wound-item-name">{{name}}</span>
-                                    </div>
+                                    <input type="checkbox" class="wound-checkbox" data-wound-id="{{id}}" title="Zaznacz ranę do leczenia">
                                     
-                                    <!-- Kara -->
+                                    <span class="wound-type" title="{{fullWoundName}}">{{damageType}}</span>
+                                    
                                     <div class="wound-grid-section wound-penalty-section">
-                                        <span class="wound-penalty-label">Kara:</span>
                                         <span class="wound-penalty">{{penalty}}%</span>
-                                    </div>
-                                    
-                                    <!-- Dni leczenia -->
-                                    <div class="wound-grid-section wound-days-section">
-                                        <span class="wound-days-label">Dni:</span>
-                                        <span class="wound-days">{{estimatedHealingDays}}d</span>
                                     </div>
                                     
                                     <!-- Statusy -->
@@ -109,6 +98,8 @@
                                         </span>
                                         {{/if}}
                                     </div>
+
+                                    <span class="wound-item-name">{{name}}</span>
                                 </div>
                             </div>
                             {{/each}}
@@ -122,27 +113,33 @@
                     {{else}}
                         <div class="wounds-all-locations">
                             {{#each patientData.locations}}
+                            {{#if this.wounds.length}}
                             <div class="all-wounds-location">
                                 <h4 class="location-wounds-title">{{label}} ({{this.wounds.length}})</h4>
                                 {{#each this.wounds}}
                                 <div class="wound-item wound-item-compact">
-                                    <span class="wound-type" title="{{fullWoundName}}">{{damageType}}</span>
-                                    <span class="wound-item-name">{{name}}</span>
-                                    <span class="wound-penalty">{{penalty}}%</span>
-                                    <span class="wound-days-compact">{{estimatedHealingDays}}d</span>
-                                    {{#if hadFirstAid}}
-                                    <span class="wound-badge-compact first-aid" title="Pierwsza pomoc">
-                                        <i class="fas fa-syringe"></i>
-                                    </span>
-                                    {{/if}}
-                                    {{#if (gt healingAttempts 0)}}
-                                    <span class="wound-badge-compact attempts" title="Próby: {{healingAttempts}}">
-                                        {{healingAttempts}}×
-                                    </span>
-                                    {{/if}}
+                                    <div class="wound-item-grid">
+                                        <input type="checkbox" class="wound-checkbox" data-wound-id="{{id}}" title="Zaznacz ranę do leczenia">
+                                        <span class="wound-type" title="{{fullWoundName}}">{{damageType}}</span>
+                                        <span class="wound-penalty">{{penalty}}%</span>
+                                        <div class="wound-grid-section wound-badges">
+                                            {{#if hadFirstAid}}
+                                            <span class="wound-badge-compact first-aid" title="Pierwsza pomoc">
+                                                <i class="fas fa-syringe"></i>
+                                            </span>
+                                            {{/if}}
+                                            {{#if (gt healingAttempts 0)}}
+                                            <span class="wound-badge-compact attempts" title="Próby: {{healingAttempts}}">
+                                                {{healingAttempts}}×
+                                            </span>
+                                            {{/if}}
+                                        </div>
+                                        <span class="wound-item-name">{{name}}</span>
+                                    </div>
                                 </div>
                                 {{/each}}
                             </div>
+                            {{/if}}
                             {{/each}}
                         </div>
                     {{/if}}

@@ -180,16 +180,11 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             title: "NEUROSHIMA.HealingRequest.Title",
             resizable: true,
             minimizable: true,
-            constraints: {
-                max: {
-                    width: 650,
-                    height: 650
-                }
-            }
+            centered: false
         },
         position: {
-            width: 650,
-            height: 650
+            width: 800,
+            height: 800
         }
     };
 
@@ -319,8 +314,48 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this.selectedLocation = this.selectedLocation === locationKey ? null : locationKey;
         
-        await this.render();
+        // Manualnie aktualizuj stan paper doll i listę ran bez pełnego renderowania (jeśli możliwe)
+        // lub użyj renderowania bez re-centeringu
+        this.render();
         game.neuroshima?.groupEnd();
+    }
+
+    /** @inheritdoc */
+    async _onRender(context, options) {
+        await super._onRender(context, options);
+        
+        // Aktywuj tooltips dla ApplicationV2
+        foundry.applications.ux.TooltipManager.activateEventListeners(this.element);
+
+        // Zainicjuj paper doll
+        this._initializeWoundLocationPanel(this.element);
+    }
+
+    /**
+     * Inicjalizuje wizualny stan paper doll
+     * @private
+     */
+    _initializeWoundLocationPanel(html) {
+        const hotspots = html.querySelectorAll('.body-location-hotspot');
+        const targetHotspot = Array.from(hotspots).find(h => h.dataset.location === this.selectedLocation);
+        
+        if (targetHotspot) {
+            this._onPaperDollLocationSelect(targetHotspot);
+        }
+    }
+
+    /**
+     * Wizualnie zaznacza wybraną lokację na paper doll
+     * @private
+     */
+    _onPaperDollLocationSelect(hotspot) {
+        // Usuń klasę selected ze wszystkich hotspotów
+        this.element.querySelectorAll('.body-location-hotspot').forEach(hs => {
+            hs.classList.remove('selected');
+        });
+        
+        // Dodaj klasę selected do aktualnego
+        hotspot.classList.add('selected');
     }
 
     /**
