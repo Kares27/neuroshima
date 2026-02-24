@@ -21,6 +21,7 @@ body.theme-light {
     --ns-text-header: #000000;    /* Czarny */
     --ns-text-accent: #a02e2e;    /* Czerwony Neuroshimy */
     --ns-text-clickable:#a0692e;
+    --ns-text-woundpenalty:#ff8400;
 }
 
 /* === BAZA DARK (Tryb Nocny) === */
@@ -47,6 +48,7 @@ body.theme-dark {
     --ns-text-accent: #a02e2e;    /* Jasna czerwień Neuroshimy dla Dark Mode */
     --ns-text-clickable:#945e23;
     --ns-text-attribute: #a02e2e;
+    --ns-text-woundpenalty:#ff8400;
 }
 
 @font-face {

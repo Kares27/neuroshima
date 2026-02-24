@@ -180,11 +180,12 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             title: "NEUROSHIMA.HealingRequest.Title",
             resizable: true,
             minimizable: true,
-            centered: false
+            icon: "fas fa-heartbeat",
+            centered: true
         },
         position: {
             width: 800,
-            height: 800
+            height: 700
         }
     };
 
@@ -246,11 +247,26 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectedLocationWounds = locationsMap[this.selectedLocation]?.wounds || [];
         }
 
+        // Oblicz sumy typów obrażeń i kar
+        const summary = {
+            K: 0, C: 0, L: 0, D: 0,
+            penalty: 0
+        };
+
+        const woundsToSum = this.selectedLocation ? selectedLocationWounds : patientData.locations.flatMap(l => l.wounds);
+        for (const wound of woundsToSum) {
+            if (summary[wound.damageType] !== undefined) {
+                summary[wound.damageType]++;
+            }
+            summary.penalty += wound.penalty || 0;
+        }
+
         game.neuroshima?.log("Przygotowanie kontekstu panelu leczenia", {
             actorName: actor.name,
             woundCount: patientData.woundCount,
             totalPenalty: patientData.totalPenalty,
-            selectedLocation: this.selectedLocation
+            selectedLocation: this.selectedLocation,
+            summary: summary
         });
 
         const context = {
@@ -260,6 +276,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             sessionId: this.sessionId,
             selectedLocation: this.selectedLocation,
             selectedLocationWounds: selectedLocationWounds,
+            summary: summary,
             isMedic: game.user.isGM || true, // TODO: Sprawdzić czy user to medyk dla tego sessiona
             config: game.neuroshima.config
         };
@@ -286,8 +303,25 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
             // Obsługa checkboxów ran
             htmlElement.querySelectorAll(".wound-checkbox").forEach(checkbox => {
-                checkbox.addEventListener("change", () => {
+                checkbox.addEventListener("change", (event) => {
+                    event.stopPropagation(); // Zapobiegaj triggerowaniu kliknięcia na wiersz
                     this._updateHealButton(htmlElement);
+                });
+            });
+
+            // Obsługa kliknięcia na cały wiersz rany (toggle checkbox)
+            htmlElement.querySelectorAll(".wound-item").forEach(item => {
+                item.style.cursor = "pointer";
+                item.addEventListener("click", (event) => {
+                    // Jeśli kliknięto bezpośrednio w checkbox, nie rób nic (zostaw naturalny change event)
+                    if (event.target.classList.contains("wound-checkbox")) return;
+                    
+                    const checkbox = item.querySelector(".wound-checkbox");
+                    if (checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        // Manualnie wywołaj zdarzenie change aby przycisk się zaktualizował
+                        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+                    }
                 });
             });
 
@@ -300,8 +334,20 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
             }
 
-            // Ustaw początkowy stan przycisku
+            // Zainicjuj stan przycisku leczenia i checkboxa "zaznacz wszystko"
             this._updateHealButton(htmlElement);
+
+            // Obsługa checkboxa "zaznacz wszystko"
+            const selectAllBtn = htmlElement.querySelector(".select-all-wounds");
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener("change", (event) => {
+                    const isChecked = event.target.checked;
+                    htmlElement.querySelectorAll(".wound-checkbox").forEach(cb => {
+                        cb.checked = isChecked;
+                    });
+                    this._updateHealButton(htmlElement);
+                });
+            }
         }
     }
 
@@ -314,9 +360,9 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         this.selectedLocation = this.selectedLocation === locationKey ? null : locationKey;
         
-        // Manualnie aktualizuj stan paper doll i listę ran bez pełnego renderowania (jeśli możliwe)
-        // lub użyj renderowania bez re-centeringu
-        this.render();
+        // Manualnie aktualizuj stan paper doll i listę ran bez pełnego renderowania
+        // Używamy partial render aby uniknąć skakania okna i utraty stanu scrolla
+        this.render({ parts: ["main"] });
         game.neuroshima?.groupEnd();
     }
 
@@ -324,9 +370,6 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async _onRender(context, options) {
         await super._onRender(context, options);
         
-        // Aktywuj tooltips dla ApplicationV2
-        foundry.applications.ux.TooltipManager.activateEventListeners(this.element);
-
         // Zainicjuj paper doll
         this._initializeWoundLocationPanel(this.element);
     }
@@ -562,15 +605,24 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * Zaktualizuj stan przycisku leczenia na podstawie liczby zaznaczonych ran
      */
     _updateHealButton(htmlElement) {
-        const checkboxes = htmlElement.querySelectorAll(".wound-checkbox:checked");
+        const allCheckboxes = htmlElement.querySelectorAll(".wound-checkbox");
+        const checkedCheckboxes = htmlElement.querySelectorAll(".wound-checkbox:checked");
         const healBtn = htmlElement.querySelector(".heal-selected-wounds");
+        const selectAllBtn = htmlElement.querySelector(".select-all-wounds");
         
         if (healBtn) {
-            healBtn.disabled = checkboxes.length === 0;
-            game.neuroshima?.log("Zaktualizowano przycisk leczenia", {
-                checkedWounds: checkboxes.length
-            });
+            healBtn.disabled = checkedCheckboxes.length === 0;
         }
+
+        if (selectAllBtn && allCheckboxes.length > 0) {
+            selectAllBtn.checked = allCheckboxes.length === checkedCheckboxes.length;
+            selectAllBtn.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
+        }
+
+        game.neuroshima?.log("Zaktualizowano przycisk leczenia", {
+            checkedWounds: checkedCheckboxes.length,
+            totalWounds: allCheckboxes.length
+        });
     }
 
     /**

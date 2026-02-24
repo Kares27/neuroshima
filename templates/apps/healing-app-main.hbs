@@ -63,6 +63,25 @@
         <!-- Prawa strona: Lista ran -->
         <div class="healing-app-section wounds-list-section">
             <h3 class="section-title">{{localize "NEUROSHIMA.PatientCard.Wounds"}}</h3>
+            
+            <div class="wounds-summary-bar">
+                <div class="select-all-container">
+                    <input type="checkbox" class="select-all-wounds" title="{{localize 'NEUROSHIMA.HealingRequest.SelectAllWounds'}}">
+                </div>
+                <div class="wound-type-counts">
+                    <span class="count-item" title="Krytyczne"><strong>{{summary.K}}</strong>xK</span>
+                    <span class="count-item" title="Ciężkie"><strong>{{summary.C}}</strong>xC</span>
+                    <span class="count-item" title="Lekkie"><strong>{{summary.L}}</strong>xL</span>
+                    <span class="count-item" title="Draśnięcia"><strong>{{summary.D}}</strong>xD</span>
+                </div>
+                {{#if selectedLocation}}
+                <div class="location-penalty-sum">
+                    <i class="fas fa-percent"></i>
+                    {{localize "NEUROSHIMA.Wound.TotalPenalty"}}: <strong>{{summary.penalty}}%</strong>
+                </div>
+                {{/if}}
+            </div>
+
             <div class="wounds-list-container">
                 {{#if patientData.hasWounds}}
                     {{#if selectedLocation}}

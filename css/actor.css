@@ -1681,7 +1681,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .wound-penalty-input {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 153, 0, 0.4);
-  color: #ff9900;
+  color: var(--ns-text-woundpenalty);
   padding: 4px 6px;
   border-radius: 2px;
   font-weight: bold;
@@ -1909,7 +1909,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   text-align: center;
   background: rgba(255, 153, 0, 0.15) !important;
   border: 1px solid rgba(255, 153, 0, 0.4) !important;
-  color: #ff9900 !important;
+  color: var(--ns-text-woundpenalty) !important;
   border-radius: 2px;
   cursor: text !important;
   pointer-events: auto !important;
@@ -1993,6 +1993,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     display: flex;
     flex-direction: column;
     height: 100%;
+    max-height: 95vh;
 }
 
 .healing-app-header {
@@ -2116,13 +2117,56 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .healing-app .paper-doll-container {
-    height: 600px;
+    flex: 1;
+    min-height: 0;
     background: rgba(0, 0, 0, 0.1);
     border-top: 1px solid var(--ns-border-main);
     padding: 10px;
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.healing-app .wounds-summary-bar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--ns-border-light);
+    font-size: 0.9em;
+}
+
+.healing-app .select-all-container {
+    display: flex;
+    align-items: center;
+    padding-right: 12px;
+    border-right: 1px solid var(--ns-border-light);
+    height: 100%;
+}
+
+.healing-app .select-all-wounds {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.healing-app .wound-type-counts {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+}
+
+.healing-app .location-penalty-sum {
+    color: var(--ns-text-woundpenalty);
+    font-weight: 500;
+    margin-left: auto;
+}
+
+.healing-app .location-penalty-sum strong {
+    font-size: 1.1em;
 }
 
 .healing-app .body-diagram {
@@ -2147,7 +2191,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .healing-app .wound-penalty {
-    color: var(--ns-text-main);
+    color: var(--ns-text-woundpenalty);
     font-size: 1em;
     font-weight: bold;
     background: transparent;
