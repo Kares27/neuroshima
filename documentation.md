@@ -26,6 +26,7 @@ Modele danych dla poszczególnych typów przedmiotów.
 
 ### `NeuroshimaActor`
 - **prepareDerivedData**: Wywołuje logikę modelu danych.
+- **_preCreate**: Automatycznie ustawia `prototypeToken.actorLink: true` dla aktorów typu `character`.
 
 ### `NeuroshimaItem`
 - **_preCreate**: 
@@ -281,8 +282,16 @@ Dedykowana aplikacja dla medyka obsługująca prośby o leczenie.
   - Dynamiczne podświetlanie wybranej lokacji.
 - **Nagłówek Pacjenta**: Wyświetla awatar, punkty życia (HP), sumaryczną karę oraz liczbę ran w czytelnej formie.
 - **Stabilność Okna**: 
-  - Wyłączone automatyczne centrowanie przy zmianie lokacji, co zapobiega "skakaniu" okna.
-  - Poprawiona obsługa zmiany rozmiaru (resizable) bez resetowania pozycji.
+  - Wyłączone automatyczne centrowanie przy zmianie lokacji oraz zastosowanie częściowego renderowania (`parts: ["main"]`), co całkowicie eliminuje "skakanie" okna.
+  - Naprawiony błąd `TypeError` przy renderowaniu (brak `TooltipManager`).
+  - Poprawiona obsługa zmiany rozmiaru (resizable) – ustawienie stałej wysokości początkowej umożliwia swobodne skalowanie pionowe.
+- **Interakcja**: 
+  - Całe wiersze ran (`wound-item`) są klikalne, co przełącza stan powiązanego checkboxa.
+  - Dodano checkbox "Zaznacz wszystkie" z obsługą stanu nieokreślonego (indeterminate), pozwalający na błyskawiczne zarządzanie selekcją.
+- **Podsumowanie Obrażeń (Summary Bar)**: 
+  - Dodano pasek podsumowania między tytułem sekcji a listą ran.
+  - Wyświetla skrótową sumę typów obrażeń (np. `[Suma]xK [Suma]xC [Suma]xL [Suma]xD`).
+  - Dla konkretnych części ciała wyświetla również sumę kar na tej lokacji.
 - **Konsolidacja Stylu**: Style aplikacji zostały przeniesione do `actor.css`, zapewniając spójność z resztą systemu przy zachowaniu unikalnego wyglądu panelu medycznego.
 
 ## 9. Tryb Debugowania (Changed from 9 to account for new 8.2 section)

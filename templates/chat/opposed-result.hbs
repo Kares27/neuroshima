@@ -1,0 +1,13 @@
+<div class="neuroshima opposed-result" data-request-id="{{requestId}}">
+    {{{opposedResultHTML}}}
+    
+    {{#if (and (eq winner "attacker") (gt spDifference 0))}}
+        {{#if isGM}}
+            <div class="result-actions">
+                <button class="apply-damage-button" data-action="applyDamage">
+                    <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.Roll.ApplyDamage"}}
+                </button>
+            </div>
+        {{/if}}
+    {{/if}}
+</div>

@@ -1,0 +1,31 @@
+<form class="neuroshima melee-defense-dialog">
+    <p class="dialog-help">{{localize "NEUROSHIMA.MeleeDefense.Help"}}</p>
+    
+    <div class="defense-options-grid">
+        {{#each options as |opt key|}}
+            {{#if opt.available}}
+                <div class="defense-option-item">
+                    <input type="radio" name="defenseType" id="defense-{{key}}" value="{{key}}" {{#if (eq key ../preferredDefense)}}checked{{/if}}>
+                    <label for="defense-{{key}}" class="defense-label">
+                        <div class="option-name">
+                            <strong>{{opt.label}}</strong>
+                            {{#if opt.weapon}}<span class="weapon-name">({{opt.weapon.name}})</span>{{/if}}
+                        </div>
+                        <div class="option-stats">
+                            {{opt.stat}} + {{opt.skill}} = <strong>{{opt.total}}</strong>
+                        </div>
+                    </label>
+                </div>
+            {{/if}}
+        {{/each}}
+    </div>
+
+    <footer class="dialog-buttons">
+        <button type="submit" class="confirm-button" data-action="confirm">
+            <i class="fas fa-check"></i> {{localize "NEUROSHIMA.Actions.Roll"}}
+        </button>
+        <button type="button" class="cancel-button" data-action="close">
+            <i class="fas fa-times"></i> {{localize "NEUROSHIMA.Actions.Cancel"}}
+        </button>
+    </footer>
+</form>

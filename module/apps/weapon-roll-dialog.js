@@ -12,6 +12,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     this.actor = options.actor;
     this.weapon = options.weapon;
     this.rollType = options.rollType || "ranged";
+    this.targets = options.targets || [];
     const lastRoll = options.lastRoll || {};
     
     game.neuroshima.group("NeuroshimaWeaponRollDialog.constructor");
@@ -243,6 +244,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const rollData = {
         weapon: this.weapon,
         actor: this.actor,
+        targets: this.targets,
         isOpen: formData.isOpen === "true",
         aimingLevel: aimingLevel,
         burstLevel: burstLevel,

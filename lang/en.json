@@ -27,7 +27,10 @@
         "Info": {
             "Specialization": "Specialization",
             "Origin": "Origin",
-            "Profession": "Profession"
+            "Profession": "Profession",
+            "DefenseSuccessful": "{defender} defended successfully!",
+            "DefenseBlockedDamage": "Defense blocked the damage.",
+            "CriticalHit": "{attacker} scored a critical hit!"
         },
         "XP": {
             "Label": "Experience",
@@ -89,6 +92,7 @@
             "BulletsFired": "Bullets Fired",
             "BulletsHit": "Bullets Hit",
             "ApplyDamage": "Apply Damage",
+            "DamageApplied": "Damage Applied",
             "Targets": "Targets",
             "ApplyToTargets": "Apply to targeted tokens",
             "NoTargets": "No targeted tokens",
@@ -107,6 +111,23 @@
                 "FinalLevel": "Actual Level"
             }
         },
+        "MeleeOpposed": {
+            "Reactions": "Pending Reactions",
+            "NoReactions": "No pending reactions.",
+            "ChooseDefense": "Choose Defense",
+            "Result": "Opposed Result",
+            "Winner": "Winner",
+            "Tie": "Tie",
+            "Difference": "Advantage",
+            "Attacker": "Attacker",
+            "Defender": "Defender",
+            "Status": {
+                "Waiting": "Waiting for reaction",
+                "Ready": "Ready to resolve",
+                "Resolved": "Resolved",
+                "Expired": "Expired"
+            }
+        },
         "Difficulty": {
             "Easy": "Easy",
             "Average": "Average",
@@ -118,7 +139,9 @@
             "Luck": "Luck",
             "Masterfull": "Masterfull",
             "Grandmasterfull": "Grandmasterfull",
-            "Impossible": "Impossible"
+            "Impossible": "Impossible",
+            "ShowMore": "Show difficulty thresholds",
+            "ShowLess": "Hide difficulty thresholds"
         },
         "Actions": {
             "Roll": "Roll dice",
@@ -179,6 +202,20 @@
             "AllowCombatShift": {
                 "Name": "Allow Suwak in combat",
                 "Hint": "Enables the Suwak rule (difficulty shifts) during combat actions."
+            },
+            "OpposedMeleeMode": {
+                "Name": "Opposed Melee Mode",
+                "Hint": "Choose how to resolve opposed tests in melee combat.",
+                "SP": "Success Points (Advantage)",
+                "Dice": "Segments (Die vs Die)"
+            },
+            "OpposedMeleeTier2At": {
+                "Name": "2 Damage Success Threshold (SP)",
+                "Hint": "Success Points advantage required to deal damage from the second field (Light/L)."
+            },
+            "OpposedMeleeTier3At": {
+                "Name": "3 Damage Success Threshold (SP)",
+                "Hint": "Success Points advantage required to deal damage from the third field (Serious/C)."
             },
             "RollTooltipMinRole": {
                 "Name": "Minimum Role for Tooltip",
@@ -251,6 +288,9 @@
                 "Hint": "Configuration of base difficulty levels for healing tests by damage type."
             }
         },
+        "Warnings": {
+            "DamageAlreadyApplied": "Damage from this result has already been applied."
+        },
         "Tabs": {
             "Attributes": "Attributes",
             "Skills": "Skills",
@@ -290,7 +330,11 @@
             "CaliberMismatch": {
                 "Title": "Caliber Mismatch",
                 "Content": "You are trying to load {ammo} ammo into a {mag} caliber magazine. Are you sure you want to continue?"
-            }
+            },
+            "MeleeDefenseTitle": "{name} - Defend Against Attack",
+            "ChooseDefenseType": "Choose defense method:",
+            "DefenseExists": "Defense already rolled",
+            "DefenseExistsContent": "A defense roll already exists for this attack. Do you want to roll again?"
         },
         "Notifications": {
             "SelectTargetOrPoint": "Select a target on the map (LMB) to measure distance. RMB to cancel.",
@@ -377,6 +421,7 @@
         "Skills": {
             "brawl": "Brawl",
             "handWeapon": "Hand Weapon",
+            "dodge": "Dodge",
             "throwing": "Throwing",
             "pistols": "Pistols",
             "rifles": "Rifles",
@@ -600,7 +645,38 @@
                 "progress": "Progress Healing",
                 "complete": "Complete Healing"
             }
-        }
+        },
+        "DefenseType": {
+            "brawl": "Brawl",
+            "melee": "Melee Weapon",
+            "dodge": "Dodge"
+        },
+        "MeleeDefense": {
+            "Title": "Defense",
+            "Help": "Choose your defense type against this attack.",
+            "Button": "Defend"
+        },
+        "Defense": {
+            "Label": "{type} vs {attacker}"
+        },
+        "MeleeOpposed": {
+            "Title": "Opposed Test Result",
+            "BothFailed": "{attacker} and {defender} both failed.",
+            "AttackFailed": "{attacker} missed.",
+            "DefenseFailed": "{defender} failed to defend ({defenseType}).",
+            "AttackerWon": "{attacker} hit {defender} (advantage: {advantage}).",
+            "DefenderWon": "{defender} defended ({defenseType}) with {advantage} advantage.",
+            "Tie": "{attacker} and {defender} tied - defense successful."
+        },
+        "Warnings": {
+            "NoMeleeTarget": "No melee target selected. You can roll, but defense won't be available.",
+            "CannotDefend": "You cannot defend against this attack (no controlled character among targets).",
+            "MeleeNeedsDefense": "Melee attacks require defense roll before applying damage."
+        },
+        "Errors": {
+            "NotMeleeAttack": "This is not a melee attack."
+        },
+        "Cancel": "Cancel"
     },
     "TOKEN": {
         "Title": "Prototype Token"

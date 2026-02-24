@@ -15,6 +15,8 @@ import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
+import { NeuroshimaMeleeDefenseDialog } from "./module/dialogs/melee-defense-dialog.js";
+import { NeuroshimaMeleeOpposed } from "./module/helpers/melee-opposed.js";
 
 // Inicjalizacja systemu Neuroshima 1.5
 Hooks.once('init', async function() {
@@ -26,6 +28,8 @@ Hooks.once('init', async function() {
         NeuroshimaItem,
         NeuroshimaChatMessage,
         NeuroshimaDice,
+        NeuroshimaMeleeOpposed,
+        NeuroshimaMeleeDefenseDialog,
         CombatHelper,
         HealingApp,
         showHealingRollDialog,
@@ -191,6 +195,41 @@ Hooks.once('init', async function() {
         type: Boolean,
         default: true,
         requiresReload: true
+    });
+
+    // Ustawienia walki wręcz (Opposed Melee)
+    game.settings.register("neuroshima", "opposedMeleeMode", {
+        name: "NEUROSHIMA.Settings.OpposedMeleeMode.Name",
+        hint: "NEUROSHIMA.Settings.OpposedMeleeMode.Hint",
+        scope: "world",
+        config: true,
+        type: String,
+        choices: {
+            "sp": "NEUROSHIMA.Settings.OpposedMeleeMode.SP",
+            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice"
+        },
+        default: "sp",
+        requiresReload: false
+    });
+
+    game.settings.register("neuroshima", "opposedMeleeTier2At", {
+        name: "NEUROSHIMA.Settings.OpposedMeleeTier2At.Name",
+        hint: "NEUROSHIMA.Settings.OpposedMeleeTier2At.Hint",
+        scope: "world",
+        config: true,
+        type: Number,
+        default: 3,
+        requiresReload: false
+    });
+
+    game.settings.register("neuroshima", "opposedMeleeTier3At", {
+        name: "NEUROSHIMA.Settings.OpposedMeleeTier3At.Name",
+        hint: "NEUROSHIMA.Settings.OpposedMeleeTier3At.Hint",
+        scope: "world",
+        config: true,
+        type: Number,
+        default: 6,
+        requiresReload: false
     });
 
     // Ustawienia widoczności interfejsu walki
@@ -372,7 +411,10 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/patient-card.hbs",
         "systems/neuroshima/templates/chat/pain-resistance-report.hbs",
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
-        "systems/neuroshima/templates/chat/healing-request.hbs"
+        "systems/neuroshima/templates/chat/healing-request.hbs",
+        "systems/neuroshima/templates/chat/opposed-handler.hbs",
+        "systems/neuroshima/templates/chat/opposed-result.hbs",
+        "systems/neuroshima/templates/dialog/melee-defense.hbs"
     ]);
 
     console.log("Neuroshima 1.5 | Szablony wczytane");
@@ -452,6 +494,31 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
     });
 
     options.push({
+        name: "NEUROSHIMA.Actions.StartMeleeOpposed",
+        icon: '<i class="fas fa-swords"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const flags = message?.getFlag("neuroshima", "rollData");
+            const messageType = message?.getFlag("neuroshima", "messageType");
+            return flags?.isWeapon && flags.isMelee && game.user.isGM;
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const targets = Array.from(game.user.targets);
+            if (targets.length === 0) {
+                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoTargetSelected"));
+                return;
+            }
+            
+            for (const target of targets) {
+                if (target.actor) {
+                    await NeuroshimaChatMessage.createOpposedHandler(message, target.actor);
+                }
+            }
+        }
+    });
+
+    options.push({
         name: "NEUROSHIMA.Actions.Reroll",
         icon: '<i class="fas fa-arrow-rotate-left"></i>',
         condition: li => {
@@ -526,6 +593,9 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 
 // Obsługa interakcji na kartach czatu (v13: renderChatMessageHTML)
 Hooks.on("renderChatMessageHTML", (message, html) => {
+    // Inicjalizacja akcji Neuroshima
+    NeuroshimaChatMessage.onChatAction(html);
+
     // Obsługa Patient Card
     const patientCard = html.querySelector(".neuroshima.patient-card");
     if (patientCard) {
@@ -1077,10 +1147,11 @@ function updateCardTargets(card, tab) {
 
     let html = "";
     for (const token of tokens) {
-        const img = token.document?.texture?.src || token.data?.img;
+        if (!token) continue;
+        const img = token.document?.texture?.src || token.data?.img || token.img;
         html += `<div class="target-item">
             <img src="${img}" width="20" height="20" style="object-fit: cover; border-radius: 4px; border: 1px solid #777; margin-right: 5px;"/>
-            <span>${token.name}</span>
+            <span>${token.name || "Unknown"}</span>
         </div>`;
     }
     targetList.innerHTML = html;
@@ -1103,35 +1174,42 @@ function refreshAllCombatCards() {
 Hooks.on("ready", () => {
     game.socket.on("system.neuroshima", async (data) => {
         if (!game.user.isGM) return;
-        if (data.type !== "heal.apply") return;
         
-        game.neuroshima?.group("Socket | heal.apply");
-        game.neuroshima?.log("Otrzymanie żądania leczenia od medyka", {
-            patientActorUuid: data.patientActorUuid,
-            woundId: data.woundId,
-            action: data.action
-        });
-
+        game.neuroshima?.group(`Socket | ${data.type}`);
+        
         try {
-            // Pobierz aktora pacjenta
-            const actor = await fromUuid(data.patientActorUuid);
-            if (!actor) {
-                game.neuroshima?.log("Błąd: Nie znaleziono aktora pacjenta");
-                game.neuroshima?.groupEnd();
-                return;
+            if (data.type === "heal.apply") {
+                game.neuroshima?.log("Otrzymanie żądania leczenia od medyka", {
+                    patientActorUuid: data.patientActorUuid,
+                    woundId: data.woundId,
+                    action: data.action
+                });
+                const actor = await fromUuid(data.patientActorUuid);
+                if (actor) await game.neuroshima.HealingApp.healWound(actor, data.woundId, data.action);
+            } else if (data.type === "opposed.setPending") {
+                game.neuroshima?.log("Otrzymanie żądania ustawienia flagi pending", data);
+                const actor = await fromUuid(data.actorUuid);
+                if (actor) {
+                    if (data.clearExisting) {
+                        const pending = actor.getFlag("neuroshima", "opposedPending") || {};
+                        const updates = {};
+                        for (const id of Object.keys(pending)) {
+                            updates[`flags.neuroshima.opposedPending.-=${id}`] = null;
+                        }
+                        if (Object.keys(updates).length > 0) await actor.update(updates);
+                    }
+                    await actor.setFlag("neuroshima", "opposedPending", { [data.flagData.requestId]: data.flagData });
+                }
+            } else if (data.type === "opposed.clearPending") {
+                game.neuroshima?.log("Otrzymanie żądania usunięcia flagi pending", data);
+                const actor = await fromUuid(data.actorUuid);
+                if (actor) {
+                    await actor.update({ [`flags.neuroshima.opposedPending.-=${data.requestId}`]: null });
+                }
             }
-
-            // Wykonaj akcję leczenia
-            await game.neuroshima.HealingApp.healWound(actor, data.woundId, data.action);
-            
-            game.neuroshima?.log("Leczenie rany ukończone", {
-                actorName: actor.name,
-                woundId: data.woundId
-            });
-            game.neuroshima?.groupEnd();
-            
         } catch (err) {
-            game.neuroshima?.log("Błąd podczas leczenia rany:", err);
+            game.neuroshima?.error(`Błąd podczas obsługi socketu ${data.type}:`, err);
+        } finally {
             game.neuroshima?.groupEnd();
         }
     });
@@ -1144,4 +1222,38 @@ Hooks.on("targetToken", (user) => {
 
 Hooks.on("controlToken", () => {
     refreshAllCombatCards();
+});
+
+// Automatyczne linkowanie rzutów do oczekujących testów przeciwstawnych
+Hooks.on("createChatMessage", async (message, options, userId) => {
+    if (userId !== game.user.id) return;
+    
+    const rollData = message.getFlag("neuroshima", "rollData");
+    if (!rollData || !rollData.actorId) return;
+    
+    const actor = game.actors.get(rollData.actorId);
+    if (!actor) return;
+    
+    const pendingOpposed = actor.getFlag("neuroshima", "opposedPending") || {};
+    const requestIds = Object.keys(pendingOpposed);
+    
+    if (requestIds.length > 0) {
+        // Melee zawsze 1v1 - bierzemy pierwszy (i jedyny) oczekujący test
+        const requestId = requestIds[0];
+        const pendingData = pendingOpposed[requestId];
+        const handlerMessage = game.messages.get(pendingData.handlerMessageId);
+        
+        if (handlerMessage) {
+            const opposedData = handlerMessage.getFlag("neuroshima", "opposedData");
+            if (opposedData && opposedData.status === "waiting") {
+                // Linkuj ten rzut jako rzut obronny i od razu rozwiąż
+                game.neuroshima.log("Linkowanie rzutu do testu przeciwstawnego", { requestId, messageId: message.id });
+                
+                // Rozwiązujemy test automatycznie
+                await NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: message.id });
+                
+                ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.LinkedToTest"));
+            }
+        }
+    }
 });

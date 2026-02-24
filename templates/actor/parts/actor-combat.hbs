@@ -7,6 +7,31 @@
     </div>
 
     <div class="combat-grid {{#if combat.woundsFirst}}wounds-first{{/if}}">
+        {{!-- Pending Reactions Section --}}
+        {{#if hasPendingOpposed}}
+        <section class="combat-section reactions-section">
+            <div class="section-header">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>{{localize "NEUROSHIMA.MeleeOpposed.Reactions"}}</span>
+            </div>
+            <div class="reactions-list">
+                {{#each pendingOpposed}}
+                <div class="reaction-item" data-handler-id="{{this.handlerMessageId}}" data-request-id="{{this.requestId}}">
+                    <span class="attacker-name"><i class="fas fa-swords"></i> {{this.attackerName}}</span>
+                    <div class="reaction-actions">
+                        <button class="respond-button" data-action="respondToOpposed" data-handler-id="{{this.handlerMessageId}}">
+                            {{localize "NEUROSHIMA.MeleeDefense.Button"}}
+                        </button>
+                        <a class="item-control dismiss-reaction" data-action="dismissOpposed" data-request-id="{{this.requestId}}" title="{{localize "NEUROSHIMA.MeleeOpposed.Dismiss"}}">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </section>
+        {{/if}}
+
         {{!-- Top Row: Armor and Weapons --}}
         <div class="combat-top-row">
             {{!-- Anatomical Armor Section --}}

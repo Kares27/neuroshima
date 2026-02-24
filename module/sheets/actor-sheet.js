@@ -64,7 +64,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       unloadMagazine: this.prototype._onUnloadMagazine,
       showPatientCard: this.prototype._onShowPatientCard,
       requestHealing: this.prototype._onRequestHealing,
-      toggleCombatLayout: this.prototype._onToggleCombatLayout
+      toggleCombatLayout: this.prototype._onToggleCombatLayout,
+      respondToOpposed: this.prototype._onRespondToOpposed,
+      dismissOpposed: this.prototype._onDismissOpposed
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -145,6 +147,19 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     };
     context.tricks = items.filter(i => i.type === "trick");
     context.wounds = items.filter(i => i.type === "wound");
+
+    // Prepare pending opposed tests
+    const pendingOpposed = actor.getFlag("neuroshima", "opposedPending") || {};
+    context.hasPendingOpposed = Object.keys(pendingOpposed).length > 0;
+    context.pendingOpposed = Object.values(pendingOpposed).map(p => {
+        const handler = game.messages.get(p.handlerMessageId);
+        const opposedData = handler?.getFlag("neuroshima", "opposedData");
+        return {
+            ...p,
+            attackerName: opposedData?.attackerName || game.actors.get(opposedData?.attackerId)?.name || "Unknown Attacker",
+            status: opposedData?.status || "waiting"
+        };
+    }).filter(p => p.status !== "resolved");
 
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
@@ -1196,16 +1211,22 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
         const lastRoll = this.document.system.lastWeaponRoll || {};
         let distance = 0;
+        const targets = Array.from(game.user.targets ?? []);
+        const targetIds = targets.map(t => t.document.actorId);
+
+        // Ostrzeżenie dla melee bez targeta
+        if (weapon.system.weaponType === "melee" && targetIds.length === 0) {
+            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
+        }
 
         // Obsługa automatycznego wyboru celu dla broni dystansowej/miotanej
         if (isRanged || isThrown) {
-            const targets = game.user.targets;
             const actorToken = this._getSourceToken();
             game.neuroshima.log("Źródłowy token aktora:", actorToken?.name || "Brak");
 
-            if (targets.size > 0 && actorToken) {
+            if (targets.length > 0 && actorToken) {
                 // Jeśli mamy już cele, pobierz dystans do pierwszego z nich
-                const targetToken = Array.from(targets)[0]; 
+                const targetToken = targets[0]; 
                 distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, targetToken);
                 game.neuroshima.log(`Znaleziono aktywny target: ${targetToken.name}, dystans: ${distance}m`);
             } else {
@@ -1241,6 +1262,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
           actor: this.document,
           weapon: weapon,
           rollType: weapon.system.weaponType === "melee" ? "melee" : "ranged",
+          targets: targetIds,
           lastRoll: {
               ...lastRoll,
               distance: distance || lastRoll.distance
@@ -1722,5 +1744,28 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       v.cssClass = v.active ? "active" : "";
     }
     return tabs;
+  }
+
+  /**
+   * Obsługa odpowiedzi na test przeciwstawny z arkusza.
+   */
+  async _onRespondToOpposed(event, target) {
+    const handlerId = target.dataset.handlerId;
+    const message = game.messages.get(handlerId);
+    if (!message) return;
+    
+    const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+    return NeuroshimaChatMessage.onClickOpposedResponse(event, message);
+  }
+
+  /**
+   * Dismisses a pending opposed test from the actor sheet.
+   */
+  async _onDismissOpposed(event, target) {
+    const requestId = target.dataset.requestId;
+    if (!requestId) return;
+    
+    const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+    return NeuroshimaChatMessage.clearOpposedPendingFlag(this.document, requestId);
   }
 }

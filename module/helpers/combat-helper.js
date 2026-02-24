@@ -189,6 +189,123 @@ export class CombatHelper {
   }
 
   /**
+   * Apply damage to a single actor with optional opposed test data.
+   * @param {Actor} actor The defender actor.
+   * @param {Object} attackData The rollData from the attack.
+   * @param {Object} options Additional options (isOpposed, spDifference, attackerMessageId).
+   */
+  static async applyDamageToActor(actor, attackData, options = {}) {
+    game.neuroshima.group(`CombatHelper | applyDamageToActor: ${actor.name}`);
+    
+    // We can reuse the applyDamage logic by creating a mock message if needed,
+    // but it's better to refactor applyDamage to call this, or just implement it here.
+    
+    const location = attackData.finalLocation || "torso";
+    const isMelee = attackData.isMelee;
+    const initialDamageType = attackData.damage || "L";
+    const piercing = attackData.piercing || 0;
+    const spDifference = options.spDifference ?? attackData.successPoints ?? 0;
+    
+    // Dla walki wręcz wybieramy odpowiednie pole obrażeń (damageMelee1/2/3) na podstawie spDifference
+    let damageType = initialDamageType;
+    if (isMelee) {
+        if (spDifference <= 0 && options.isOpposed) {
+            game.neuroshima.log("Walka wręcz: spDifference <= 0, brak obrażeń.");
+            game.neuroshima.groupEnd();
+            return;
+        }
+        
+        // Próba pobrania bezpośrednich pól z broni jeśli mamy weaponId
+        const attacker = attackData.actorId ? game.actors.get(attackData.actorId) : null;
+        const weapon = attacker && attackData.weaponId ? attacker.items.get(attackData.weaponId) : null;
+        
+        let damageProfiles = [];
+        if (weapon && weapon.system.weaponType === "melee") {
+            damageProfiles = [
+                weapon.system.damageMelee1 || "D",
+                weapon.system.damageMelee2 || "L",
+                weapon.system.damageMelee3 || "C"
+            ];
+            game.neuroshima.log("Walka wręcz: Pobrane profile bezpośrednio z broni", damageProfiles);
+        } else {
+            damageProfiles = initialDamageType.split("/").map(s => s.trim());
+        }
+
+        const tier = Math.clamp(spDifference, 1, 3);
+        damageType = damageProfiles[tier - 1] || damageProfiles[0] || "L";
+        game.neuroshima.log(`Walka wręcz: spDifference=${spDifference}, wybrany profil obrażeń=${damageType} (z ${initialDamageType})`);
+    }
+
+    const sourceInfo = `<p><em>Źródło: ${attackData.label || "Broń"} ${options.attackerMessageId ? `(${options.attackerMessageId})` : ""}</em></p>`;
+    
+    const rawWounds = [];
+    const reducedDetails = [];
+    let totalProjectiles = 0;
+    let reducedProjectiles = 0;
+
+    if (isMelee) {
+        totalProjectiles = 1;
+        
+        // Apply armor reduction
+        const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing);
+        
+        if (reductionData.reducedDamageType) {
+            rawWounds.push({
+                name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
+                damageType: reductionData.reducedDamageType
+            });
+        } else {
+            reducedProjectiles++;
+            reducedDetails.push(reductionData);
+        }
+    } else {
+        const hitBulletsData = attackData.hitBulletsData || [{
+            damage: damageType,
+            piercing: piercing,
+            successPoints: attackData.successPoints || 1
+        }];
+
+        for (const bullet of hitBulletsData) {
+            const count = bullet.isPellet ? (bullet.successPoints || 1) : 1;
+            for (let i = 0; i < count; i++) {
+                totalProjectiles++;
+                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bullet.damage || damageType, bullet.piercing ?? piercing);
+                if (reductionData.reducedDamageType) {
+                    rawWounds.push({
+                        name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
+                        damageType: reductionData.reducedDamageType
+                    });
+                } else {
+                    reducedProjectiles++;
+                    reducedDetails.push(reductionData);
+                }
+            }
+        }
+    }
+
+    if (rawWounds.length > 0 || reducedProjectiles > 0) {
+        let results = [];
+        let woundIds = [];
+        
+        if (rawWounds.length > 0) {
+            const painResistanceData = await this.processPainResistance(actor, rawWounds, location, sourceInfo);
+            results = painResistanceData.results;
+            const createdWounds = await actor.createEmbeddedDocuments("Item", painResistanceData.processedWounds);
+            woundIds = createdWounds.map(w => w.id);
+
+            ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
+                count: painResistanceData.processedWounds.length, 
+                name: actor.name 
+            }));
+        }
+
+        await this.renderPainResistanceReport(actor, results, woundIds, reducedProjectiles, reducedDetails);
+    }
+    
+    game.neuroshima.groupEnd();
+  }
+
+  /**
    * Apply damage from a weapon roll to a set of actors.
    * @param {ChatMessage} message The roll chat message.
    * @param {Array<Actor>} actors Array of actors to apply damage to.
@@ -204,6 +321,23 @@ export class CombatHelper {
         game.neuroshima.log("Błąd: Brak flag lub wiadomość nie dotyczy broni.");
         game.neuroshima.groupEnd();
         return;
+    }
+
+    // Sprawdź, czy to atak melee oczekujący na obronę
+    if (flags.isMelee && flags.targets?.length > 0) {
+        // Jeśli nie ma wyniku opposed, nie pozwól na Apply Damage
+        if (!flags.opposedResult) {
+            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.MeleeNeedsDefense"));
+            game.neuroshima.groupEnd();
+            return;
+        }
+
+        // Jeśli obrona wygrała, nie stosuj obrażeń
+        if (flags.opposedResult.winner !== "attacker") {
+            ui.notifications.info(game.i18n.localize("NEUROSHIMA.Info.DefenseBlockedDamage"));
+            game.neuroshima.groupEnd();
+            return;
+        }
     }
 
     // Allow GM to force damage application even on failed tests
@@ -258,93 +392,7 @@ export class CombatHelper {
     });
 
     for (const actor of actors) {
-        game.neuroshima.log(`Przetwarzanie aktora: ${actor.name}`);
-        const sourceInfo = `<p><em>Źródło: ${flags.label || "Broń"} (${message.id})</em></p>`;
-        
-        // Przygotowanie listy surowych danych o ranach
-        const rawWounds = [];
-        const reducedDetails = []; // Track reduction details for tooltip
-        let totalProjectiles = 0;
-        let reducedProjectiles = 0;
-
-        if (isMelee) {
-            totalProjectiles = 1;
-            const damageType = flags.damage || "L";
-            const piercing = flags.piercing || 0;
-            
-            // Apply armor reduction for melee
-            const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing);
-            
-            // Only add wound if damage was not completely negated
-            if (reductionData.reducedDamageType) {
-                rawWounds.push({
-                    name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
-                    damageType: reductionData.reducedDamageType
-                });
-            } else {
-                reducedProjectiles++;
-                reducedDetails.push(reductionData);
-            }
-        } else {
-            for (const bullet of hitBulletsData) {
-                const count = bullet.isPellet ? (bullet.successPoints || 1) : 1;
-                const damageType = bullet.damage || (bullet.isPellet ? "D" : "L");
-                const piercing = bullet.piercing !== undefined ? bullet.piercing : 0;
-                
-                game.neuroshima.log(`Przetwarzanie pocisku: ${damageType} z przebiciem ${piercing}`, {
-                  bulletIndex: hitBulletsData.indexOf(bullet),
-                  bulletData: bullet
-                });
-                
-                for (let i = 0; i < count; i++) {
-                    totalProjectiles++;
-                    // Apply armor reduction for ranged
-                    const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing);
-                    
-                    // Only add wound if damage was not completely negated
-                    if (reductionData.reducedDamageType) {
-                        rawWounds.push({
-                            name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
-                            damageType: reductionData.reducedDamageType
-                        });
-                    } else {
-                        reducedProjectiles++;
-                        reducedDetails.push(reductionData);
-                    }
-                }
-            }
-        }
-
-        game.neuroshima.log(`Statystyka redukcji dla ${actor.name}`, {
-            totalProjectiles,
-            reducedProjectiles,
-            appliedWounds: rawWounds.length
-        });
-
-        if (rawWounds.length > 0 || reducedProjectiles > 0) {
-            // Wykonaj testy odporności na ból i uzyskaj finalne dane ran z karami (tylko jeśli są rany)
-            let results = [];
-            let woundIds = [];
-            
-            if (rawWounds.length > 0) {
-                const painResistanceData = await this.processPainResistance(actor, rawWounds, location, sourceInfo);
-                results = painResistanceData.results;
-                
-                game.neuroshima.log(`Tworzenie ${painResistanceData.processedWounds.length} ran dla ${actor.name}`, painResistanceData.processedWounds);
-                const createdWounds = await actor.createEmbeddedDocuments("Item", painResistanceData.processedWounds);
-                woundIds = createdWounds.map(w => w.id);
-
-                ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
-                    count: painResistanceData.processedWounds.length, 
-                    name: actor.name 
-                }));
-            }
-
-            // Renderowanie raportu pain-resistance z informacją o zredukowanych ranach
-            await this.renderPainResistanceReport(actor, results, woundIds, reducedProjectiles, reducedDetails);
-        } else {
-            game.neuroshima.log(`Nie wygenerowano żadnych ran dla ${actor.name} - brak obrażeń`);
-        }
+        await this.applyDamageToActor(actor, flags, { attackerMessageId: message.id });
     }
     game.neuroshima.groupEnd();
   }

@@ -30,7 +30,10 @@
         "Info": {
             "Specialization": "Specjalizacja",
             "Origin": "Pochodzenie",
-            "Profession": "Profesja"
+            "Profession": "Profesja",
+            "DefenseSuccessful": "{defender} skutecznie się obronił!",
+            "DefenseBlockedDamage": "Obrona zablokowała obrażenia.",
+            "CriticalHit": "{attacker} zadał decydujące trafienie!"
         },
         "XP": {
             "Label": "Doświadczenie",
@@ -96,6 +99,7 @@
             "BulletsFired": "Wystrzelone pociski",
             "BulletsHit": "Trafione pociski",
             "ApplyDamage": "Nałóż Obrażenia",
+            "DamageApplied": "Obrażenia Nałożone",
             "Targets": "Namierzone",
             "ApplyToTargets": "Nałóż na namierzone cele",
             "NoTargets": "Brak namierzonych celów",
@@ -114,6 +118,23 @@
                 "FinalLevel": "Faktyczny poziom"
             }
         },
+        "MeleeOpposed": {
+            "Reactions": "Oczekujące Reakcje",
+            "NoReactions": "Brak oczekujących reakcji.",
+            "ChooseDefense": "Wybierz Obronę",
+            "Result": "Wynik Starcia",
+            "Winner": "Zwycięzca",
+            "Tie": "Remis",
+            "Difference": "Przewaga",
+            "Attacker": "Atakujący",
+            "Defender": "Obrońca",
+            "Status": {
+                "Waiting": "Oczekiwanie na reakcję",
+                "Ready": "Gotowe do rozstrzygnięcia",
+                "Resolved": "Rozstrzygnięte",
+                "Expired": "Wygasło"
+            }
+        },
         "Difficulty": {
             "Easy": "Łatwy",
             "Average": "Przeciętny",
@@ -125,7 +146,9 @@
             "Luck": "Szczęście",
             "Masterfull": "Mistrowski",
             "Grandmasterfull": "Wielkomistrowski",
-            "Impossible": "Niemożliwy"
+            "Impossible": "Niemożliwy",
+            "ShowMore": "Pokaż progi trudności",
+            "ShowLess": "Ukryj progi trudności"
         },
         "Actions": {
             "Roll": "Rzuć kością",
@@ -180,6 +203,20 @@
             "AllowCombatShift": {
                 "Name": "Pozwól na Suwak w walce",
                 "Hint": "Włącza zasadę Suwaka (przesunięcia PT) podczas akcji bojowych."
+            },
+            "OpposedMeleeMode": {
+                "Name": "Tryb walki wręcz (Opposed Melee)",
+                "Hint": "Wybierz sposób rozliczania testów przeciwstawnych w walce wręcz.",
+                "SP": "Punkty Sukcesu (Przewaga)",
+                "Dice": "Segmenty (Kość vs Kość)"
+            },
+            "OpposedMeleeTier2At": {
+                "Name": "Próg 2 sukcesów obrażeń (SP)",
+                "Hint": "Wartość przewagi Punktów Sukcesu wymagana do zadania obrażeń z drugiego pola (Lekka/L)."
+            },
+            "OpposedMeleeTier3At": {
+                "Name": "Próg 3 sukcesów obrażeń (SP)",
+                "Hint": "Wartość przewagi Punktów Sukcesu wymagana do zadania obrażeń z trzeciego pola (Ciężka/C)."
             },
             "RollTooltipMinRole": {
                 "Name": "Minimalna ranga dla Tooltipa",
@@ -252,6 +289,9 @@
                 "Hint": "Konfiguracja bazowych trudności testów leczenia dla każdego typu obrażenia."
             }
         },
+        "Warnings": {
+            "DamageAlreadyApplied": "Obrażenia z tego wyniku zostały już nałożone."
+        },
         "Tabs": {
             "Attributes": "Współczynniki",
             "Skills": "Umiejętności",
@@ -291,7 +331,11 @@
             "CaliberMismatch": {
                 "Title": "Niezgodność kalibru",
                 "Content": "Próbujesz załadować amunicję {ammo} do magazynka na kaliber {mag}. Czy na pewno chcesz kontynuować?"
-            }
+            },
+            "MeleeDefenseTitle": "{name} - Obrona przed atakiem",
+            "ChooseDefenseType": "Wybierz sposób obrony:",
+            "DefenseExists": "Obrona już została wykonana",
+            "DefenseExistsContent": "Dla tego ataku już wykonano rzut obronny. Czy chcesz wykonać nowy?"
         },
         "Notifications": {
             "SelectTargetOrPoint": "Wybierz cel na mapie (LPM), aby zmierzyć dystans. PPM, aby anulować.",
@@ -349,19 +393,6 @@
             "sniperRifles": "S",
             "shotguns": "ŚR"
         },
-        "Difficulty": {
-            "Easy": "Łatwy",
-            "Average": "Przeciętny",
-            "Problematic": "Problematyczny",
-            "Hard": "Trudny",
-            "VeryHard": "Bardzo Trudny",
-            "DamnHard": "Cholernie Trudny",
-            "Luck": "Fart",
-            "Masterfull": "Mistrzowski",
-            "Grandmasterfull": "Arcymistrzowski",
-            "ShowMore": "Pokaż progi trudności",
-            "ShowLess": "Ukryj progi trudności"
-        },
         "Specializations": {
             "melee": "Walka wręcz",
             "firearms": "Broń Strzelecka",
@@ -387,6 +418,7 @@
         "Skills": {
             "brawl": "Bijatyka",
             "handWeapon": "Broń ręczna",
+            "dodge": "Unik",
             "throwing": "Rzucanie",
             "pistols": "Pistolety",
             "rifles": "Karabiny",
@@ -445,15 +477,6 @@
             "horseRiding": "Jazda Konna",
             "drivingCarriage": "Powożenie",
             "taming": "Ujeżdżanie"
-        },
-        "Rolls": {
-            "Success": "Sukces",
-            "Failure": "Porażka",
-            "Target": "Cel",
-            "ModifiedResult": "Wynik",
-            "Difficulty": "Trudność",
-            "CritSuccess": "KRYTYCZNY SUKCES!",
-            "CritFailure": "KRYTYCZNA PORAŻKA!"
         },
         "Items": {
             "Type": {
@@ -619,6 +642,37 @@
                 "progress": "Postęp Leczenia",
                 "complete": "Ukończ Leczenie"
             }
-        }
+        },
+        "DefenseType": {
+            "brawl": "Bijatyka",
+            "melee": "Broń ręczna",
+            "dodge": "Unik"
+        },
+        "MeleeDefense": {
+            "Title": "Obrona",
+            "Help": "Wybierz typ obrony przed tym atakiem.",
+            "Button": "Broń się"
+        },
+        "Defense": {
+            "Label": "{type} vs {attacker}"
+        },
+        "MeleeOpposed": {
+            "Title": "Wynik pojedynku",
+            "BothFailed": "{attacker} i {defender} nie trafili.",
+            "AttackFailed": "{attacker} chybił.",
+            "DefenseFailed": "{defender} nie zdołał się obronić ({defenseType}).",
+            "AttackerWon": "{attacker} trafił {defender} (przewaga: {advantage}).",
+            "DefenderWon": "{defender} obronił się ({defenseType}) z przewagą {advantage}.",
+            "Tie": "{attacker} i {defender} remis - obrona skuteczna."
+        },
+        "Warnings": {
+            "NoMeleeTarget": "Brak celu ataku wręcz. Możesz rzucić, ale nie będzie możliwości obrony.",
+            "CannotDefend": "Nie możesz się bronić przed tym atakiem (brak kontrolowanej postaci wśród celów).",
+            "MeleeNeedsDefense": "Ataki wręcz wymagają rzutu obronnego przed zastosowaniem obrażeń."
+        },
+        "Errors": {
+            "NotMeleeAttack": "To nie jest atak wręcz."
+        },
+        "Cancel": "Anuluj"
     }
 }

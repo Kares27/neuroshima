@@ -40,6 +40,11 @@ export class NeuroshimaDice {
     const isMelee = weapon.system.weaponType === "melee";
     const diceCount = isMelee ? 3 : (aimingLevel + 1);
     
+    // Obliczamy bazowe obrażenia (zostaną zaktualizowane później dla amunicji dystansowej)
+    let damageValue = isMelee 
+        ? [weapon.system.damageMelee1, weapon.system.damageMelee2, weapon.system.damageMelee3].filter(d => d).join("/")
+        : (weapon.system.damage || "0");
+
     // Wykonanie rzutu kośćmi
     const roll = new Roll(`${diceCount}d20`);
     await roll.evaluate();
@@ -48,8 +53,12 @@ export class NeuroshimaDice {
     const results = roll.terms[0].results.map(r => r.result);
     const bestResult = Math.min(...results);
 
-    // Finalny stan otwartości testu (melee może być otwarte lub zamknięte zgodnie z wyborem)
-    const finalIsOpen = isOpen;
+    // Finalny stan otwartości testu (melee wymusza tryb zgodny z ustawieniem opposedMeleeMode)
+    let finalIsOpen = isOpen;
+    if (isMelee) {
+        const mode = game.settings.get("neuroshima", "opposedMeleeMode");
+        finalIsOpen = (mode === "sp");
+    }
 
     game.neuroshima.log("Wyniki rzutu kośćmi", {
         weaponType: weapon.system.weaponType,
@@ -150,6 +159,7 @@ export class NeuroshimaDice {
         if (bulletSequence.length > 0) {
             const firstBullet = bulletSequence[0];
             ammoDamage = firstBullet.damage;
+            damageValue = ammoDamage;
             ammoPiercing = firstBullet.piercing;
             const seqJamming = bulletSequence.map(b => b.jamming);
             ammoJamming = seqJamming.length > 0 ? Math.min(...seqJamming) : (weapon.system.jamming || 20);
@@ -166,7 +176,10 @@ export class NeuroshimaDice {
         if (ammoItem && ammoItem.type === "ammo") {
             if (ammoItem.system.quantity > 0) {
                 if (ammoItem.system.isOverride) {
-                    if (ammoItem.system.overrideDamage) ammoDamage = ammoItem.system.damage;
+                    if (ammoItem.system.overrideDamage) {
+                        ammoDamage = ammoItem.system.damage;
+                        damageValue = ammoDamage;
+                    }
                     if (ammoItem.system.overridePiercing) ammoPiercing = ammoItem.system.piercing;
                     if (ammoItem.system.overrideJamming) ammoJamming = ammoItem.system.jamming;
                 }
@@ -270,8 +283,9 @@ export class NeuroshimaDice {
             isSuccess = evalData.success;
         } else {
             this._evaluateClosedTest(evalData, diceObjects);
-            successPoints = evalData.success ? 1 : 0;
-            isSuccess = evalData.success;
+            // W trybie DICE dla melee, successPoints to liczba sukcesów (0-3)
+            successPoints = evalData.successCount;
+            isSuccess = evalData.successCount > 0;
             successCount = evalData.successCount;
         }
         modifiedResults = evalData.modifiedResults;
@@ -392,15 +406,12 @@ export class NeuroshimaDice {
     game.neuroshima.log("Wynik końcowy testu", { isSuccess, successPoints, isJamming, hitBullets, jammingOnDie: results[0] });
 
     // 6. Przygotowanie danych do karty czatu
-    const damageValue = isMelee 
-        ? [weapon.system.damageMelee1, weapon.system.damageMelee2, weapon.system.damageMelee3].filter(d => d).join("/")
-        : ammoDamage;
-
     const rollData = {
         label: weapon.name,
         actionLabel: burstLabel,
         isWeapon: true,
         isMelee,
+        targets: isMelee ? (params.targets ?? []) : [],
         weaponId: weapon.id,
         actorId: actor.id,
         damage: damageValue,
@@ -454,7 +465,25 @@ export class NeuroshimaDice {
     game.neuroshima.log("Generowanie karty czatu", rollData);
     game.neuroshima.groupEnd();
 
-    return NeuroshimaChatMessage.renderWeaponRoll(rollData, actor, roll);
+    const rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rollData, actor, roll);
+
+    if (rollMessage) {
+        const flags = rollMessage.getFlag("neuroshima", "rollData") ?? {};
+        flags.messageId = rollMessage.id;
+        await rollMessage.setFlag("neuroshima", "rollData", flags);
+
+        // Melee Opposed Test Start (WFRP4e Pattern)
+        if (isMelee && rollData.targets?.length > 0) {
+            for (const targetId of rollData.targets) {
+                const targetActor = game.actors.get(targetId);
+                if (targetActor) {
+                    await NeuroshimaChatMessage.createOpposedHandler(rollMessage, targetActor);
+                }
+            }
+        }
+    }
+
+    return rollMessage;
   }
 
   /**
@@ -641,8 +670,7 @@ export class NeuroshimaDice {
     game.neuroshima.log("Wyniki po modyfikacji (użycie umiejętności)", rollData.modifiedResults);
     game.neuroshima.groupEnd();
 
-    await NeuroshimaChatMessage.renderRoll(rollData, actor, roll);
-    return roll;
+    return NeuroshimaChatMessage.renderRoll(rollData, actor, roll);
   }
 
   /**

@@ -1,0 +1,37 @@
+<div class="neuroshima opposed-handler" data-request-id="{{requestId}}">
+    <header class="opposed-header">
+        {{localize "NEUROSHIMA.MeleeOpposed.Title"}}: {{attacker.name}} vs {{defender.name}}
+    </header>
+    <div class="opposed-context">
+        <div class="attacker-info">
+            <img src="{{attacker.img}}" title="{{attacker.name}}" width="32" height="32"/>
+            <span>{{attacker.name}}</span>
+        </div>
+        <div class="vs-label">VS</div>
+        <div class="defender-info">
+            <img src="{{defender.img}}" title="{{defender.name}}" width="32" height="32"/>
+            <span>{{defender.name}}</span>
+        </div>
+    </div>
+    <hr class="dotted-hr">
+    <div class="opposed-actions">
+        {{#if (eq status "waiting")}}
+            <button class="opposed-response-button" data-action="clickOpposedResponse">
+                <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.MeleeDefense.Button"}}
+            </button>
+        {{else if (eq status "ready")}}
+            <div class="status-ready">
+                <i class="fas fa-check-circle"></i> {{localize "NEUROSHIMA.MeleeOpposed.ReadyToResolve"}}
+            </div>
+            {{#if isGM}}
+                <button class="resolve-opposed-button" data-action="resolveOpposed">
+                    <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeOpposed.Resolve"}}
+                </button>
+            {{/if}}
+        {{else if (eq status "resolved")}}
+            <div class="status-resolved">
+                <i class="fas fa-flag-checkered"></i> {{localize "NEUROSHIMA.MeleeOpposed.Resolved"}}
+            </div>
+        {{/if}}
+    </div>
+</div>
