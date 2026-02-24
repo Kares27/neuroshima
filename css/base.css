@@ -326,7 +326,214 @@ body.theme-dark {
     border-color: #a02e2e;
 }
 
-/* Apply Damage Section */
+/* Opposed Tests Styling */
+.neuroshima.roll-card.opposed-handler,
+.neuroshima.roll-card.opposed-result {
+    padding: 2px;
+}
+
+.neuroshima.roll-card .opposed-context-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 5px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 4px;
+    margin: 5px 0;
+}
+
+.theme-dark .neuroshima.roll-card .opposed-context-flex {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .participant {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+}
+
+.neuroshima.roll-card .participant img {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.neuroshima.roll-card .participant .name {
+    font-weight: bold;
+    font-size: 0.9em;
+    line-height: 1.1;
+    max-width: 80px;
+    word-wrap: break-word;
+}
+
+.neuroshima.roll-card .participant .role {
+    font-size: 0.7em;
+    opacity: 0.6;
+    text-transform: uppercase;
+}
+
+.neuroshima.roll-card .vs-divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 10px;
+    color: var(--ns-text-accent);
+}
+
+.neuroshima.roll-card .vs-text {
+    font-weight: bold;
+    font-size: 1.2em;
+    font-style: italic;
+}
+
+.neuroshima.roll-card .opposed-actions,
+.neuroshima.roll-card .result-actions {
+    margin-top: 5px;
+}
+
+.neuroshima.roll-card .status-msg {
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card .status-msg.ready {
+    background: rgba(76, 175, 80, 0.1);
+    color: #2e7d32;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.neuroshima.roll-card .status-msg.resolved {
+    background: rgba(0, 0, 0, 0.05);
+    opacity: 0.8;
+}
+
+.theme-dark .neuroshima.roll-card .status-msg.ready {
+    background: rgba(76, 175, 80, 0.2);
+    color: #a5d6a7;
+}
+
+.neuroshima.roll-card button.opposed-response-button,
+.neuroshima.roll-card button.resolve-opposed-button,
+.neuroshima.roll-card button.apply-opposed-damage-button {
+    width: 100%;
+    height: 32px;
+    background: var(--ns-bg-header);
+    border: 1px solid var(--ns-border-main);
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.neuroshima.roll-card button:hover {
+    background: var(--ns-bg-hover);
+    box-shadow: 0 0 5px var(--ns-border-focus);
+}
+
+.neuroshima.roll-card .melee-opposed-result {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    border: 1px solid var(--ns-border-light);
+    margin-top: 5px;
+}
+
+.theme-dark .neuroshima.roll-card .melee-opposed-result {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    gap: 10px;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-attacker,
+.neuroshima.roll-card .melee-opposed-result .opposed-defender {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-attacker {
+    text-align: left;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-defender {
+    text-align: right;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-attacker .name,
+.neuroshima.roll-card .melee-opposed-result .opposed-defender .name {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-attacker .value,
+.neuroshima.roll-card .melee-opposed-result .opposed-defender .value {
+    font-size: 1.1em;
+    color: var(--ns-text-accent);
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-vs {
+    font-size: 0.9em;
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-outcome {
+    margin-top: 8px;
+    padding-top: 8px;
+    text-align: center;
+    font-style: italic;
+    font-size: 0.9em;
+    border-top: 1px dotted var(--ns-border-main);
+    line-height: 1.3;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-sp-diff {
+    text-align: center;
+    font-weight: bold;
+    color: #800;
+    margin-top: 5px;
+    font-size: 1em;
+}
+
+.theme-dark .neuroshima.roll-card .melee-opposed-result .opposed-sp-diff {
+    color: #ef9a9a;
+}
+
+.neuroshima.roll-card .melee-opposed-result .segment-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85em;
+    padding: 2px 0;
+}
+
+.neuroshima.roll-card .melee-opposed-result .opposed-details {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dotted var(--ns-border-main);
+}
 .neuroshima.roll-card .apply-damage-section {
     margin-top: 4px;
     background: rgba(160, 46, 46, 0.05);

@@ -139,14 +139,12 @@
             "Easy": "Łatwy",
             "Average": "Przeciętny",
             "Problematic": "Problematyczny",
-            "Difficult": "Trudny",
-            "Hard": "Bardzo Trudny",
-            "VeryHard": "Okropnie Trudny",
-            "DamnHard": "Czartownie Trudny",
-            "Luck": "Szczęście",
+            "Hard": "Trudny",
+            "VeryHard": "Bardzo Trudny",
+            "DamnHard": "Cholernie Trudny",
+            "Luck": "Fart",
             "Masterfull": "Mistrowski",
-            "Grandmasterfull": "Wielkomistrowski",
-            "Impossible": "Niemożliwy",
+            "Grandmasterfull": "Arcymistrzowki",
             "ShowMore": "Pokaż progi trudności",
             "ShowLess": "Ukryj progi trudności"
         },
@@ -668,7 +666,10 @@
         "Warnings": {
             "NoMeleeTarget": "Brak celu ataku wręcz. Możesz rzucić, ale nie będzie możliwości obrony.",
             "CannotDefend": "Nie możesz się bronić przed tym atakiem (brak kontrolowanej postaci wśród celów).",
-            "MeleeNeedsDefense": "Ataki wręcz wymagają rzutu obronnego przed zastosowaniem obrażeń."
+            "MeleeNeedsDefense": "Ataki wręcz wymagają rzutu obronnego przed zastosowaniem obrażeń.",
+            "NotYourActor": "Nie masz uprawnień do tego aktora.",
+            "DamageAlreadyApplied": "Obrażenia zostały już nałożone.",
+            "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane."
         },
         "Errors": {
             "NotMeleeAttack": "To nie jest atak wręcz."

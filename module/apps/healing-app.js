@@ -205,32 +205,84 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         // Przechowuj sessionId, patientActorUuid i medicActorId z opcji
         this.sessionId = options.sessionId;
         this.patientActorUuid = options.patientActorUuid;
+        this.patientActorId = options.patientActorId;
         this.medicActorId = options.medicActorId;
+        
+        // Jeśli nie ma UUID w opcjach bezpośrednio, sprawdź w options.options (v13 pattern)
+        if (!this.patientActorUuid && options.options) {
+            this.patientActorUuid = options.options.patientActorUuid;
+            this.patientActorId = options.options.patientActorId;
+            this.sessionId = options.options.sessionId;
+            this.medicActorId = options.options.medicActorId;
+        }
         
         // Stan UI
         this.selectedLocation = null;
         
-        game.neuroshima?.log("HealingApp konstruktor", {
+        console.log("Neuroshima | HealingApp konstruktor", {
+            options: options,
             sessionId: this.sessionId,
             patientActorUuid: this.patientActorUuid,
+            patientActorId: this.patientActorId,
             medicActorId: this.medicActorId
         });
     }
 
     /** @inheritdoc */
     async _prepareContext(options) {
-        game.neuroshima?.group("HealingApp | _prepareContext");
+        console.group("Neuroshima | HealingApp | _prepareContext");
+        console.log("Dane wejściowe:", {
+            sessionId: this.sessionId,
+            patientActorUuid: this.patientActorUuid,
+            patientActorId: this.patientActorId,
+            medicActorId: this.medicActorId
+        });
         
         // Pobierz aktora pacjenta
-        const actor = await fromUuid(this.patientActorUuid);
+        let actor = null;
+        
+        // 1. Spróbuj przez UUID (najdokładniejsze, wspiera tokeny)
+        if (this.patientActorUuid) {
+            actor = await fromUuid(this.patientActorUuid);
+        }
+
+        // 2. Fallback: Spróbuj przez patientActorId jeśli UUID zawiodło lub go brak
+        if (!actor && this.patientActorId) {
+            actor = game.actors.get(this.patientActorId);
+        }
+
+        // 3. Fallback: Jeśli UUID to po prostu ID (czasem tak się zdarza przy błędnym przekazywaniu)
+        if (!actor && this.patientActorUuid && !this.patientActorUuid.includes(".")) {
+            actor = game.actors.get(this.patientActorUuid);
+        }
+        
+        // 4. Fallback: Przeszukaj sceny jeśli UUID wygląda na token
+        if (!actor && this.patientActorUuid?.includes(".")) {
+            const parts = this.patientActorUuid.split(".");
+            const tokenId = parts[parts.length - 1];
+            for (const scene of game.scenes) {
+                const token = scene.tokens.get(tokenId);
+                if (token) {
+                    actor = token.actor;
+                    break;
+                }
+            }
+        }
+
         if (!actor) {
-            game.neuroshima?.log("Błąd: Nie znaleziono aktora pacjenta", { uuid: this.patientActorUuid });
-            game.neuroshima?.groupEnd();
+            console.error("Błąd: Nie znaleziono aktora pacjenta", { 
+                uuid: this.patientActorUuid,
+                id: this.patientActorId,
+                actorsCount: game.actors.size
+            });
+            console.groupEnd();
             return {
                 error: true,
-                errorMessage: "Nie znaleziono aktora pacjenta"
+                errorMessage: `Nie znaleziono aktora pacjenta (UUID: ${this.patientActorUuid || 'Brak'})`
             };
         }
+
+        console.log("Znaleziono aktora:", actor.name, actor);
 
         // Wygeneruj dane karty pacjenta
         const patientData = game.neuroshima.CombatHelper.generatePatientCard(actor);

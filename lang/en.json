@@ -671,7 +671,10 @@
         "Warnings": {
             "NoMeleeTarget": "No melee target selected. You can roll, but defense won't be available.",
             "CannotDefend": "You cannot defend against this attack (no controlled character among targets).",
-            "MeleeNeedsDefense": "Melee attacks require defense roll before applying damage."
+            "MeleeNeedsDefense": "Melee attacks require defense roll before applying damage.",
+            "NotYourActor": "You do not have permissions for this actor.",
+            "DamageAlreadyApplied": "Damage has already been applied.",
+            "HealingAlreadyApplied": "Healing has already been applied."
         },
         "Errors": {
             "NotMeleeAttack": "This is not a melee attack."

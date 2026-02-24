@@ -126,29 +126,14 @@
         {{/if}}
     </footer>
 
-    <hr class="dotted-hr">
-    {{#if isMelee}}
-        {{#if (gt targets.length 0)}}
-            <div class="melee-defense-section">
-                <button 
-                    class="melee-defend-button" 
-                    data-action="melee-defend"
-                >
-                    <i class="fas fa-shield-alt"></i>
-                    {{localize "NEUROSHIMA.MeleeDefense.Button"}}
-                </button>
-            </div>
-            <hr class="dotted-hr">
-        {{/if}}
-    {{/if}}
-
     {{#if opposedResult}}
+        <hr class="dotted-hr">
         <div class="opposed-result-section">
             {{{opposedResultHTML}}}
         </div>
-        <hr class="dotted-hr">
     {{/if}}
 
+    {{#unless isMelee}}
     <div class="apply-damage-section">
         <div class="damage-application-header collapsible-toggle">
             <span>{{localize "NEUROSHIMA.Roll.ApplyDamage"}}</span>
@@ -180,4 +165,5 @@
             </div>
         </div>
     </div>
+    {{/unless}}
 </div>

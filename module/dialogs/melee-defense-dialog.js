@@ -120,22 +120,33 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
    * Obsługa zatwierdzenia formularza
    */
   static async _onSubmit(event, form, formData) {
-    const dialog = this;
+    console.log("Neuroshima | MeleeDefenseDialog._onSubmit started", { event, form, formData });
+    
+    // ApplicationV2 automatically prevents default if handler is present
+    
     const defenseType = formData.object.defenseType;
-    const options = NeuroshimaMeleeDefenseDialog._prepareDefenseOptions(dialog.defender);
+    const options = NeuroshimaMeleeDefenseDialog._prepareDefenseOptions(this.defender);
     const selectedOpt = options[defenseType];
     
-    await NeuroshimaMeleeDefenseDialog._executeDefense(
-      dialog.defender,
-      dialog.message,
-      selectedOpt
-    );
+    console.log("Neuroshima | Selected defense option:", selectedOpt);
+    
+    try {
+        await NeuroshimaMeleeDefenseDialog._executeDefense(
+          this.defender,
+          this.message,
+          selectedOpt
+        );
+        console.log("Neuroshima | MeleeDefenseDialog._onSubmit finished successfully");
+    } catch (err) {
+        console.error("Neuroshima | Error in MeleeDefenseDialog._onSubmit:", err);
+    }
   }
 
   /**
    * Wykonuje rzut obronny
    */
   static async _executeDefense(defender, message, defenseOption) {
+    console.log("Neuroshima | MeleeDefenseDialog._executeDefense started", { defender: defender.name, defenseOption });
     const isHandler = message.getFlag("neuroshima", "messageType") === "opposedHandler";
     const opposedData = isHandler ? message.getFlag("neuroshima", "opposedData") : null;
     const attackMessage = isHandler ? game.messages.get(opposedData.attackMessageId) : message;
@@ -148,6 +159,7 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
     const mode = opposedData?.mode || game.settings.get("neuroshima", "opposedMeleeMode") || "sp";
     const isOpen = (mode === "sp");
 
+    console.log("Neuroshima | Calling rollTest...");
     const defenseMessage = await game.neuroshima.NeuroshimaDice.rollTest({
       stat: defenseOption.stat,
       skill: defenseOption.skill,
@@ -162,7 +174,11 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
       actor: defender
     });
 
-    if (!defenseMessage) return;
+    if (!defenseMessage) {
+        console.warn("Neuroshima | rollTest did not return a message");
+        return;
+    }
+    console.log("Neuroshima | rollTest completed, message created:", defenseMessage.id);
 
     const defenseFlags = defenseMessage.getFlag('neuroshima', 'rollData') ?? {};
     defenseFlags.isDefense = true;
@@ -170,9 +186,11 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
     defenseFlags.defendingAgainst = attackMessage?.id;
     defenseFlags.messageId = defenseMessage.id;
     
+    console.log("Neuroshima | Setting flags on defense message...");
     await defenseMessage.setFlag('neuroshima', 'rollData', defenseFlags);
 
     if (isHandler) {
+      console.log("Neuroshima | Updating opposed handler message...");
       const updatedData = foundry.utils.mergeObject(opposedData, {
           status: "ready",
           defenseMessageId: defenseMessage.id
@@ -192,8 +210,7 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
           content,
           flags: { neuroshima: { opposedData: updatedData } }
       });
-    } else {
-      await game.neuroshima.NeuroshimaChatMessage.resolveOpposedMelee(attackMessage, defenseMessage);
+      console.log("Neuroshima | Handler message updated");
     }
   }
 

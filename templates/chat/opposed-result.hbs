@@ -1,10 +1,28 @@
-<div class="neuroshima opposed-result" data-request-id="{{requestId}}">
-    {{{opposedResultHTML}}}
+<div class="neuroshima roll-card opposed-result" data-request-id="{{requestId}}">
+    <header class="roll-header">
+        <div class="weapon-title">
+            {{localize "NEUROSHIMA.MeleeOpposed.ResultTitle"}}
+        </div>
+        <div class="test-type">
+            {{#if (eq winner "attacker")}}
+                {{localize "NEUROSHIMA.MeleeOpposed.AttackerWonShort"}}
+            {{else if (eq winner "defender")}}
+                {{localize "NEUROSHIMA.MeleeOpposed.DefenderWonShort"}}
+            {{else}}
+                {{localize "NEUROSHIMA.MeleeOpposed.TieShort"}}
+            {{/if}}
+        </div>
+    </header>
+
+    <div class="opposed-result-content">
+        {{{opposedResultHTML}}}
+    </div>
     
     {{#if (and (eq winner "attacker") (gt spDifference 0))}}
         {{#if isGM}}
+            <hr class="dotted-hr">
             <div class="result-actions">
-                <button class="apply-damage-button" data-action="applyDamage">
+                <button type="button" class="apply-opposed-damage-button" data-action="applyOpposedDamage">
                     <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.Roll.ApplyDamage"}}
                 </button>
             </div>

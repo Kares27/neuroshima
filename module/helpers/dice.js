@@ -583,6 +583,7 @@ export class NeuroshimaDice {
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    */
   static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0 } = {}) {
+    console.log("Neuroshima | rollTest started", { label, actor: actor?.name });
     // Rozpoczęcie grupy logów dla testu standardowego
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
     
@@ -594,8 +595,10 @@ export class NeuroshimaDice {
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     
     // 2. Wykonanie rzutu 3k20
+    console.log("Neuroshima | Evaluating roll 3d20...");
     const roll = new Roll("3d20");
     await roll.evaluate();
+    console.log("Neuroshima | Roll evaluated:", roll.total);
 
     // Obsługa rzutów wymuszonych (do celów debugowania)
     if (fixedDice && fixedDice.length === 3) {

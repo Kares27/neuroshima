@@ -2,7 +2,7 @@
     "id": "neuroshima",
     "title": "Neuroshima 1.5",
     "description": "System do gry fabularnej Neuroshima 1.5.",
-    "version": "0.1.5",
+    "version": "0.2.2",
     "compatibility": {
         "minimum": "13",
         "verified": "13"

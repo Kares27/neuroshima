@@ -288,6 +288,9 @@ Dedykowana aplikacja dla medyka obsługująca prośby o leczenie.
 - **Interakcja**: 
   - Całe wiersze ran (`wound-item`) są klikalne, co przełącza stan powiązanego checkboxa.
   - Dodano checkbox "Zaznacz wszystkie" z obsługą stanu nieokreślonego (indeterminate), pozwalający na błyskawiczne zarządzanie selekcją.
+- **Odporność na Błędy (v1.5.2)**:
+  - **Resilient Actor Retrieval**: System wyszukiwania pacjenta wspiera teraz `UUID`, `ID` aktora oraz przeszukiwanie scen w poszukiwaniu niepowiązanych tokenów (unlinked tokens). Rozwiązuje to błędy "Nie znaleziono aktora" w sytuacjach, gdy użytkownik nie ma przypisanej postaci głównej.
+  - **Blokada Podwójnej Aplikacji**: Wprowadzono flagę `healingApplied` na wiadomościach czatu z raportem leczenia. Uniemożliwia to wielokrotne nakładanie leczenia z tej samej karty, nawet po odświeżeniu strony. Przycisk aplikacji i przerzutu są automatycznie blokowane po użyciu.
 - **Podsumowanie Obrażeń (Summary Bar)**: 
   - Dodano pasek podsumowania między tytułem sekcji a listą ran.
   - Wyświetla skrótową sumę typów obrażeń (np. `[Suma]xK [Suma]xC [Suma]xL [Suma]xD`).
@@ -308,3 +311,19 @@ game.neuroshima.group("Opis operacji");
 game.neuroshima.log("Dane", { /* data */ });
 game.neuroshima.groupEnd();
 ```
+
+## 10. Testy Przeciwstawne (Opposed Tests - WFRP4e Pattern)
+
+Zaimplementowano zaawansowany cykl życia testu przeciwstawnego dla walki wręcz (Melee):
+- **Handler (Oczekiwanie)**: Po ataku melee system tworzy wiadomość `opposedHandler` z unikalnym `requestId`.
+- **Pending Flag**: Na aktorze obrońcy ustawiana jest flaga `opposedPending`. Wyświetla ona oczekującą reakcję w arkuszu aktora (zakładka Walka), co pozwala na szybki rzut obronny.
+- **Auto-Resolve**: Hook `createChatMessage` wykrywa rzut obronny, dopasowuje go do handlera i automatycznie wywołuje rozstrzygnięcie (`resolveOpposed`).
+- **Result (Wynik)**: Wynik porównuje Punkty Sukcesu (SP) obu stron (nawet przy obustronnej porażce). Różnica SP mapowana jest na progi obrażeń broni (D/L/C).
+
+## 11. Dobre Praktyki ApplicationV2
+
+### Unikanie Zagnieżdżonych Formularzy (Krytyczne)
+ApplicationV2 domyślnie generuje kontener `<form>` (ustawienie `tag: "form"`). 
+- **Zasada**: Szablony `.hbs` używane w ApplicationV2 **nie mogą** zawierać tagu `<form>`.
+- **Skutek błędu**: Zagnieżdżenie tagów `<form>` powoduje błąd DOM, który w Foundry V13 wymusza pełne przeładowanie przeglądarki (navigation loop) i niszczy style interfejsu (HUD).
+- **Rozwiązanie**: Szablon powinien być opakowany w `<div>` lub `<section>`, a przyciski wysyłające powinny korzystać z `type="submit"` lub `data-action` obsługiwanego przez `_onAction`.

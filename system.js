@@ -684,6 +684,14 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 // Otwórz panel leczenia
                 const sessionId = healingRequestCard.dataset.sessionId;
                 const patientActorUuid = healingRequestCard.dataset.patientActorUuid;
+                const patientActorId = healingRequestCard.dataset.patientActorId;
+                
+                console.log("Neuroshima | Kliknięto Otwórz panel leczenia", {
+                    sessionId,
+                    patientActorUuid,
+                    patientActorId,
+                    dataset: healingRequestCard.dataset
+                });
                 
                 // Pobierz aktora medyka
                 const medicUser = game.users.get(medicUserId);
@@ -692,6 +700,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 game.neuroshima.log("Otwieranie HealingApp", {
                     sessionId: sessionId,
                     patientActorUuid: patientActorUuid,
+                    patientActorId: patientActorId,
                     medicActorId: medicActorId,
                     medicUserId: medicUserId
                 });
@@ -699,6 +708,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 const app = new game.neuroshima.HealingApp({
                     sessionId: sessionId,
                     patientActorUuid: patientActorUuid,
+                    patientActorId: patientActorId,
                     medicActorId: medicActorId
                 });
                 app.render(true);
@@ -711,9 +721,17 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     // Obsługa Healing Batch Report
     const healingBatchReport = html.querySelector(".neuroshima.healing-batch-report");
     if (healingBatchReport) {
+        const isApplied = message.getFlag("neuroshima", "healingApplied") === true;
+        
         // Przycisk aplikacji leczenia
         const applyBtn = healingBatchReport.querySelector(".apply-healing-btn");
         if (applyBtn) {
+            if (isApplied) {
+                applyBtn.disabled = true;
+                applyBtn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.HealingRequest.ApplyHealing");
+                applyBtn.classList.add("applied");
+            }
+            
             applyBtn.addEventListener("click", async (event) => {
                 event.preventDefault();
                 
@@ -731,6 +749,12 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 
                 if (!medicActorId || !patientActorUuid || !results || !Array.isArray(results)) {
                     ui.notifications.error("Brak wymaganych danych do aplikacji leczenia");
+                    return;
+                }
+
+                // Zapobieganie podwójnej aplikacji leczenia
+                if (message.getFlag("neuroshima", "healingApplied")) {
+                    ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.HealingAlreadyApplied"));
                     return;
                 }
 
@@ -835,6 +859,9 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                         totalProcessed: allResults.length
                     });
 
+                    // Oznacz wiadomość jako "leczenie zaaplikowane"
+                    await message.setFlag("neuroshima", "healingApplied", true);
+
                     ui.notifications.info(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingApplied"));
                     applyBtn.disabled = true;
                     applyBtn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.HealingRequest.ApplyHealing");
@@ -849,6 +876,13 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
         // Przycisk przerzutu
         healingBatchReport.querySelectorAll(".reroll-healing-btn").forEach(btn => {
+            if (isApplied) {
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+                btn.style.cursor = "not-allowed";
+                btn.title = game.i18n.localize("NEUROSHIMA.Warnings.HealingAlreadyApplied");
+            }
+            
             btn.addEventListener("click", async (event) => {
                 event.preventDefault();
                 const woundId = btn.dataset.woundId;
@@ -1226,16 +1260,24 @@ Hooks.on("controlToken", () => {
 
 // Automatyczne linkowanie rzutów do oczekujących testów przeciwstawnych
 Hooks.on("createChatMessage", async (message, options, userId) => {
+    console.log("Neuroshima | createChatMessage Hook triggered", { messageId: message.id, userId });
     if (userId !== game.user.id) return;
     
     const rollData = message.getFlag("neuroshima", "rollData");
-    if (!rollData || !rollData.actorId) return;
+    if (!rollData || !rollData.actorId) {
+        console.log("Neuroshima | createChatMessage - No rollData or actorId, skipping automation");
+        return;
+    }
     
     const actor = game.actors.get(rollData.actorId);
-    if (!actor) return;
+    if (!actor) {
+        console.log("Neuroshima | createChatMessage - Actor not found:", rollData.actorId);
+        return;
+    }
     
     const pendingOpposed = actor.getFlag("neuroshima", "opposedPending") || {};
     const requestIds = Object.keys(pendingOpposed);
+    console.log("Neuroshima | createChatMessage - Pending opposed tests:", requestIds);
     
     if (requestIds.length > 0) {
         // Melee zawsze 1v1 - bierzemy pierwszy (i jedyny) oczekujący test
@@ -1243,16 +1285,27 @@ Hooks.on("createChatMessage", async (message, options, userId) => {
         const pendingData = pendingOpposed[requestId];
         const handlerMessage = game.messages.get(pendingData.handlerMessageId);
         
+        console.log("Neuroshima | createChatMessage - Linked handler found:", { 
+            handlerId: pendingData.handlerMessageId, 
+            exists: !!handlerMessage 
+        });
+
         if (handlerMessage) {
             const opposedData = handlerMessage.getFlag("neuroshima", "opposedData");
+            console.log("Neuroshima | createChatMessage - Opposed data status:", opposedData?.status);
+            
             if (opposedData && opposedData.status === "waiting") {
                 // Linkuj ten rzut jako rzut obronny i od razu rozwiąż
-                game.neuroshima.log("Linkowanie rzutu do testu przeciwstawnego", { requestId, messageId: message.id });
+                console.log("Neuroshima | createChatMessage - Auto-resolving opposed test", { requestId, messageId: message.id });
                 
-                // Rozwiązujemy test automatycznie
-                await NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: message.id });
-                
-                ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.LinkedToTest"));
+                try {
+                    // Rozwiązujemy test automatycznie
+                    await NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: message.id });
+                    console.log("Neuroshima | createChatMessage - Auto-resolve finished");
+                    ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.LinkedToTest"));
+                } catch (err) {
+                    console.error("Neuroshima | Error in auto-resolve hook:", err);
+                }
             }
         }
     }

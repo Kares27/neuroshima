@@ -230,21 +230,22 @@ export class NeuroshimaMeleeOpposed {
     const defVal = opposed.mode === 'dice' ? `${opposed.details.filter(d => d.defSuccess).length} ✓` : `${opposed.defenseSP} SP`;
 
     return `
-      <div class="melee-opposed-result ${outcomeClass}" style="padding: 5px; border: 1px solid #999; border-radius: 3px; background: rgba(0,0,0,0.05);">
-        <h3 style="margin: 0 0 5px 0; border-bottom: 1px solid #999;">${game.i18n.localize('NEUROSHIMA.MeleeOpposed.Title')} (${opposed.mode.toUpperCase()})</h3>
-        <div class="opposed-summary" style="display: flex; justify-content: space-between; align-items: center; font-weight: bold;">
-          <div class="opposed-attacker" style="text-align: left; flex: 1;">
-            ${atkName}<br>${atkVal}
+      <div class="melee-opposed-result ${outcomeClass}">
+        <div class="opposed-summary">
+          <div class="opposed-attacker">
+            <span class="name">${atkName}</span>
+            <span class="value">${atkVal}</span>
           </div>
-          <div class="opposed-vs" style="margin: 0 10px;">vs</div>
-          <div class="opposed-defender" style="text-align: right; flex: 1;">
-            ${defName} (${defType})<br>${defVal}
+          <div class="opposed-vs">vs</div>
+          <div class="opposed-defender">
+            <span class="name">${defName} (${defType})</span>
+            <span class="value">${defVal}</span>
           </div>
         </div>
-        <div class="opposed-outcome" style="margin-top: 5px; text-align: center; font-style: italic; border-top: 1px solid #ccc; padding-top: 5px;">
+        <div class="opposed-outcome">
           ${outcomeText}
         </div>
-        ${opposed.spDifference > 0 ? `<div class="opposed-sp-diff" style="text-align: center; font-weight: bold; color: #800;">+${opposed.spDifference} Sukcesy Obrażeń</div>` : ''}
+        ${opposed.spDifference > 0 ? `<div class="opposed-sp-diff">+${opposed.spDifference} ${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')} Obrażeń</div>` : ''}
         ${detailsHtml}
       </div>
     `;

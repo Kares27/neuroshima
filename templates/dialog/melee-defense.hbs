@@ -1,6 +1,6 @@
-<form class="neuroshima melee-defense-dialog">
+<div class="melee-defense-container">
     <p class="dialog-help">{{localize "NEUROSHIMA.MeleeDefense.Help"}}</p>
-    
+
     <div class="defense-options-grid">
         {{#each options as |opt key|}}
             {{#if opt.available}}
@@ -21,11 +21,11 @@
     </div>
 
     <footer class="dialog-buttons">
-        <button type="submit" class="confirm-button" data-action="confirm">
+        <button type="submit" class="confirm-button">
             <i class="fas fa-check"></i> {{localize "NEUROSHIMA.Actions.Roll"}}
         </button>
         <button type="button" class="cancel-button" data-action="close">
             <i class="fas fa-times"></i> {{localize "NEUROSHIMA.Actions.Cancel"}}
         </button>
     </footer>
-</form>
+</div>

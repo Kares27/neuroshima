@@ -156,94 +156,128 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Może być wywołane przez kliknięcie (event) lub automatycznie przez hook (options).
    */
   static async resolveOpposed(event, message, options = {}) {
+    console.log("Neuroshima | resolveOpposed started", { 
+        messageId: message.id, 
+        options,
+        byHook: !!options.defenseMessageId 
+    });
+
     const opposedData = message.getFlag("neuroshima", "opposedData");
-    if (!opposedData) return;
+    if (!opposedData) {
+        console.warn("Neuroshima | resolveOpposed - No opposedData found on message");
+        return;
+    }
     
     // Status musi być 'ready' dla kliknięć, ale dla auto-resolve pozwalamy jeśli mamy defenseMessageId
     const defenseMessageId = options.defenseMessageId || opposedData.defenseMessageId;
+    console.log("Neuroshima | resolveOpposed state:", {
+        status: opposedData.status,
+        defenseMessageId,
+        alreadyResolved: opposedData.status === "resolved"
+    });
+
     if (opposedData.status === "resolved") return;
-    if (opposedData.status !== "ready" && !options.defenseMessageId) return;
+    if (opposedData.status !== "ready" && !options.defenseMessageId) {
+        console.log("Neuroshima | resolveOpposed - Not ready and no defenseMessageId provided");
+        return;
+    }
 
     const attackMessage = game.messages.get(opposedData.attackMessageId);
     const defenseMessage = game.messages.get(defenseMessageId);
 
     if (!attackMessage || !defenseMessage) {
+        console.error("Neuroshima | resolveOpposed - Missing messages:", { 
+            attackMessage: !!attackMessage, 
+            defenseMessage: !!defenseMessage 
+        });
         if (!options.defenseMessageId) {
             ui.notifications.error(game.i18n.localize("NEUROSHIMA.Errors.MissingOpposedMessages"));
         }
         return;
     }
 
-    // Importy
-    const { NeuroshimaMeleeOpposed } = await import('../helpers/melee-opposed.js');
+    console.log("Neuroshima | resolveOpposed - Messages found, starting computation...");
 
-    // Oblicz wynik
-    const attackFlags = attackMessage.getFlag("neuroshima", "rollData");
-    const defenseFlags = defenseMessage.getFlag("neuroshima", "rollData");
-    
-    const opposedOptions = {
-      mode: opposedData.mode,
-      tier2At: game.settings.get("neuroshima", "opposedMeleeTier2At"),
-      tier3At: game.settings.get("neuroshima", "opposedMeleeTier3At")
-    };
-    
-    const result = NeuroshimaMeleeOpposed.compute(attackFlags, defenseFlags, opposedOptions);
-    
-    // Pobierz aktorów do renderowania
-    const attacker = game.actors.get(opposedData.attackerId);
-    const defender = game.actors.get(opposedData.defenderId);
+    try {
+        // Importy
+        const { NeuroshimaMeleeOpposed } = await import('../helpers/melee-opposed.js');
 
-    const opposedHTML = NeuroshimaMeleeOpposed.renderOpposedResult(result, attacker, defender);
+        // Oblicz wynik
+        const attackFlags = attackMessage.getFlag("neuroshima", "rollData");
+        const defenseFlags = defenseMessage.getFlag("neuroshima", "rollData");
+        
+        const opposedOptions = {
+          mode: opposedData.mode,
+          tier2At: game.settings.get("neuroshima", "opposedMeleeTier2At"),
+          tier3At: game.settings.get("neuroshima", "opposedMeleeTier3At")
+        };
+        
+        console.log("Neuroshima | resolveOpposed - Computing results...");
+        const result = NeuroshimaMeleeOpposed.compute(attackFlags, defenseFlags, opposedOptions);
+        console.log("Neuroshima | resolveOpposed - Result computed:", result);
+        
+        // Pobierz aktorów do renderowania
+        const attacker = game.actors.get(opposedData.attackerId);
+        const defender = game.actors.get(opposedData.defenderId);
 
-    // Stwórz wiadomość wyniku
-    const template = "systems/neuroshima/templates/chat/opposed-result.hbs";
-    const content = await this._renderTemplate(template, {
-      requestId: opposedData.requestId,
-      opposedResultHTML: opposedHTML,
-      winner: result.winner,
-      spDifference: result.spDifference,
-      isGM: game.user.isGM
-    });
+        const opposedHTML = NeuroshimaMeleeOpposed.renderOpposedResult(result, attacker, defender);
 
-    const resultMessage = await this.create({
-      user: game.user.id,
-      content,
-      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
-      flags: {
-        neuroshima: {
-          messageType: "opposedResult",
-          opposedResult: result,
+        // Stwórz wiadomość wyniku
+        const template = "systems/neuroshima/templates/chat/opposed-result.hbs";
+        const content = await this._renderTemplate(template, {
           requestId: opposedData.requestId,
-          attackMessageId: attackMessage.id,
+          opposedResultHTML: opposedHTML,
+          winner: result.winner,
+          spDifference: result.spDifference,
+          isGM: game.user.isGM
+        });
+
+        console.log("Neuroshima | resolveOpposed - Creating result message...");
+        const resultMessage = await this.create({
+          user: game.user.id,
+          content,
+          style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+          flags: {
+            neuroshima: {
+              messageType: "opposedResult",
+              opposedResult: result,
+              requestId: opposedData.requestId,
+              attackMessageId: attackMessage.id,
+              defenseMessageId: defenseMessage.id,
+              defenderId: defender.id
+            }
+          }
+        });
+
+        console.log("Neuroshima | resolveOpposed - Updating handler status to resolved...");
+        // Zaktualizuj handler
+        const updatedOpposedData = foundry.utils.mergeObject(opposedData, {
+          status: "resolved",
           defenseMessageId: defenseMessage.id,
-          defenderId: defender.id
-        }
-      }
-    });
+          resultMessageId: resultMessage.id
+        });
+        
+        const handlerTemplate = "systems/neuroshima/templates/chat/opposed-handler.hbs";
+        const handlerContent = await this._renderTemplate(handlerTemplate, {
+          requestId: opposedData.requestId,
+          status: "resolved",
+          attacker: { name: attacker?.name, img: attacker?.img },
+          defender: { name: defender.name, img: defender.img },
+          isGM: game.user.isGM
+        });
 
-    // Zaktualizuj handler
-    const updatedOpposedData = foundry.utils.mergeObject(opposedData, {
-      status: "resolved",
-      defenseMessageId: defenseMessage.id,
-      resultMessageId: resultMessage.id
-    });
-    
-    const handlerTemplate = "systems/neuroshima/templates/chat/opposed-handler.hbs";
-    const handlerContent = await this._renderTemplate(handlerTemplate, {
-      requestId: opposedData.requestId,
-      status: "resolved",
-      attacker: { name: attacker?.name, img: attacker?.img },
-      defender: { name: defender.name, img: defender.img },
-      isGM: game.user.isGM
-    });
+        await message.update({
+          content: handlerContent,
+          flags: { neuroshima: { opposedData: updatedOpposedData } }
+        });
 
-    await message.update({
-      content: handlerContent,
-      flags: { neuroshima: { opposedData: updatedOpposedData } }
-    });
-
-    // Wyczyść flagę pending na obrońcy
-    await this.clearOpposedPendingFlag(defender, opposedData.requestId);
+        console.log("Neuroshima | resolveOpposed - Clearing pending flag...");
+        // Wyczyść flagę pending na obrońcy
+        await this.clearOpposedPendingFlag(defender, opposedData.requestId);
+        console.log("Neuroshima | resolveOpposed - DONE");
+    } catch (err) {
+        console.error("Neuroshima | Error in resolveOpposed:", err);
+    }
   }
 
   /**
@@ -753,6 +787,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     // Renderuj szablon
     const template = "systems/neuroshima/templates/chat/healing-request.hbs";
+    console.log("Neuroshima | Tworzenie prośby o leczenie", {
+      patientName: patientActor.name,
+      patientUuid: patientActor.uuid,
+      patientId: patientActor.id,
+      isToken: !!patientActor.token
+    });
+
     const content = await this._renderTemplate(template, {
       ...patientData,
       sessionId: sessionId,
@@ -1079,6 +1120,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
       return;
     }
 
+    if (attackFlags.opposedResolved || defenseFlags.opposedResolved) return;
+
     // Import klasy opposed
     const { NeuroshimaMeleeOpposed } = await import('../helpers/melee-opposed.js');
 
@@ -1112,7 +1155,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
       {
         opposedResult: opposed,
         opposedResultHTML: opposedHTML,
-        opposedDefenseId: defenseMessage.id
+        opposedDefenseId: defenseMessage.id,
+        opposedResolved: true
       }
     );
 
@@ -1121,7 +1165,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
       {
         opposedResult: opposed,
         opposedResultHTML: opposedHTML,
-        opposedAttackId: attackMessage.id
+        opposedAttackId: attackMessage.id,
+        opposedResolved: true
       }
     );
 
