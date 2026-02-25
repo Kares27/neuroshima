@@ -64,8 +64,12 @@ Główna klasa obsługująca rzuty.
     - Maksymalna liczba śrucin w łusce jest również redukowana o pozycję w serii (`pelletCount - j`), co symuluje rozrzut i odrzut (recoil).
     - Logika ta poprawnie obsługuje **amunicję mieszaną** w magazynku (np. naprzemienne ładowanie śrutu i kul).
   - **Zasady Serii**: Liczba wystrzelonych pocisków to `ROF * mnożnik segmentu` (Krótka: 1x, Długa: 3x, Ciągła: 6x).
-  - **Zacięcie vs Amunicja**: Sprawdzenie zacięcia broni (`jamming`) odbywa się przed faktycznym odjęciem amunicji. Jeśli broń się zatnie, amunicja nie jest pobierana z magazynka/ekwipunku.
-  - **Walka Wręcz (Melee)**: Zawsze rzuca 3k20. Korzysta z logiki testów standardowych (2/3 sukcesy w zamkniętym, punkty przewagi w otwartym). Umiejętność traktowana jest jako pula punktów do optymalnego rozdzielenia między wszystkie kości. W teście zamkniętym nadmiarowe punkty umiejętności są rozdzielane równomiernie na kości sukcesu, aby obniżyć ich wyniki.
+  - **Zasady Walki Wręcz (Melee Opposed)**: 
+    - Atak wręcz na stargetowany cel tworzy handler testu przeciwstawnego.
+    - System oczekuje na rzut obronny obrońcy (broń, bijatyka lub unik).
+    - Wynik jest automatycznie rozstrzygany (`resolveOpposed`) i wyświetlany jako nowa karta na czacie.
+    - Zwycięzca zadaje obrażenia zależne od różnicy Punktów Przewagi (`spDifference`).
+  - **Walka Wręcz (Melee - Rzut)**: Zawsze rzuca 3k20. Korzysta z logiki testów standardowych (2/3 sukcesy w zamkniętym, punkty przewagi w otwartym). Umiejętność traktowana jest jako pula punktów do optymalnego rozdzielenia między wszystkie kości.
   - Automatycznie ogranicza liczbę pocisków do stanu magazynka. Przed otwarciem dialogu rzutu system sprawdza, czy broń dystansowa posiada załadowany magazynek i amunicję.
 - **rollSkill / rollAttribute**: Standardowe testy oparte na atrybutach i umiejętnościach.
   - **Dynamiczny Atrybut**: W oknie dialogowym rzutu na umiejętność gracz może tymczasowo wybrać inny atrybut bazowy dla testu (zmiana nie zapisuje się na stałe).
@@ -205,9 +209,10 @@ Hook `renderChatMessage` w `system.js` implementuje **client-side dynamic visibi
 Pełny system leczenia ran w systemie Neuroshima 1.5. Podzielony na 4 fazy:
 
 ### Faza 1-3: Interfejs i Selekcja
-- Pacjent prosi medyka o leczenie (dualne tryby: Simple/Extended)
-- Medyk wybiera rany do leczenia w panelu HealingApp
-- Klik "Heal Selected Wounds" otwiera dialog rzutu
+- Pacjent prosi medyka o leczenie (wybór medyka ograniczony do Postaci Graczy przypisanych do użytkowników)
+- System wykorzystuje referencje (`patientRef`, `medicRef`) oparte na UUID, wspierające zarówno tokeny (także unlinked) jak i aktorów z biblioteki.
+- Medyk wybiera rany do leczenia w panelu HealingApp. Uprawnienia weryfikowane są na podstawie ownershipu do aktora medyka.
+- Klik "Heal Selected Wounds" otwiera dialog rzutu.
 
 ### Faza 4: Auto-Aplikowanie Efektów
 **Plik**: `module/helpers/dice.js`

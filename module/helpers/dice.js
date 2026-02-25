@@ -474,9 +474,10 @@ export class NeuroshimaDice {
 
         // Melee Opposed Test Start (WFRP4e Pattern)
         if (isMelee && rollData.targets?.length > 0) {
-            for (const targetId of rollData.targets) {
-                const targetActor = game.actors.get(targetId);
-                if (targetActor) {
+            for (const targetUuid of rollData.targets) {
+                const targetDoc = await fromUuid(targetUuid);
+                const targetActor = targetDoc?.actor || targetDoc;
+                if (targetActor instanceof Actor) {
                     await NeuroshimaChatMessage.createOpposedHandler(rollMessage, targetActor);
                 }
             }

@@ -1,8 +1,4 @@
-<div class="neuroshima heal-request-card" 
-    data-session-id="{{sessionId}}"
-    data-patient-actor-uuid="{{patientActorUuid}}"
-    data-medic-user-id="{{medicUserId}}"
-    data-requester-user-id="{{requesterUserId}}">
+<div class="neuroshima heal-request-card">
     
     <header class="roll-header">
         <div class="healing-request-title">
@@ -94,7 +90,7 @@
     <hr class="dotted-hr">
 
     <div class="healing-request-actions">
-        <button class="btn btn-primary open-heal-panel">
+        <button class="btn btn-primary" data-action="openHealPanel">
             <i class="fas fa-stethoscope"></i>
             {{localize "NEUROSHIMA.HealingRequest.OpenPanel"}}
         </button>

@@ -1212,10 +1212,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const lastRoll = this.document.system.lastWeaponRoll || {};
         let distance = 0;
         const targets = Array.from(game.user.targets ?? []);
-        const targetIds = targets.map(t => t.document.actorId);
+        const targetUuids = targets.map(t => t.document.uuid);
 
         // Ostrzeżenie dla melee bez targeta
-        if (weapon.system.weaponType === "melee" && targetIds.length === 0) {
+        if (weapon.system.weaponType === "melee" && targetUuids.length === 0) {
             ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
         }
 
@@ -1262,7 +1262,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
           actor: this.document,
           weapon: weapon,
           rollType: weapon.system.weaponType === "melee" ? "melee" : "ranged",
-          targets: targetIds,
+          targets: targetUuids,
           lastRoll: {
               ...lastRoll,
               distance: distance || lastRoll.distance
@@ -1591,6 +1591,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    * - "simple": pokaż zwykłą kartę pacjenta
    * - "extended": pokaż dialog wyboru medyka i wyślij prośbę o leczenie
    */
+  /**
+   * Prośba o leczenie dla medyka.
+   */
   async _onRequestHealing(event) {
     event.preventDefault();
     game.neuroshima.log("Prosimy o leczenie dla:", this.actor.name);
@@ -1598,8 +1601,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     // Sprawdź wersję karty pacjenta
     const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
     
-    game.neuroshima.log("Wersja karty pacjenta:", { version: patientCardVersion });
-
     // Wersja uproszczona - pokaż kartę pacjenta bez prośby
     if (patientCardVersion === "simple") {
       game.neuroshima.log("Wyświetlanie uproszczonej karty pacjenta (bez prośby do medyka)");
@@ -1611,36 +1612,36 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     // Wersja rozszerzona - pokaż dialog i wyślij prośbę
     game.neuroshima.log("Wersja rozszerzona: wyświetlanie dialoga wyboru medyka");
 
-    // Pobierz lista aktywnych userów (oprócz siebie)
-    const activeUsers = game.users.filter(u => 
-      u.active && u.id !== game.user.id
-    );
+    // Pobierz listę potencjalnych medyków (tylko PC aktywnych graczy)
+    const possibleMedics = game.users
+        .filter(u => u.active && !u.isGM && u.character)
+        .filter(u => u.character.id !== this.actor.id);
 
-    if (activeUsers.length === 0) {
+    if (possibleMedics.length === 0) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.NoMedicsAvailable"));
       return;
     }
 
-    // Stwórz dialog wyboru medyka (DialogV2)
     const medicChoices = {};
-    for (const user of activeUsers) {
-      medicChoices[user.id] = user.name;
+    for (const user of possibleMedics) {
+      medicChoices[user.id] = `${user.character.name} (${user.name})`;
     }
 
     const content = `
-      <form class="neuroshima medic-selection-dialog">
+      <div class="neuroshima medic-selection-dialog">
         <div class="form-group">
+          <p style="margin-bottom: 10px;">${game.i18n.localize("NEUROSHIMA.HealingRequest.RequestHealingHint")}</p>
           <label for="medic-select">${game.i18n.localize("NEUROSHIMA.HealingRequest.ChooseMedic")}:</label>
-          <select id="medic-select" name="medicId">
-            ${Object.entries(medicChoices).map(([id, name]) => 
-              `<option value="${id}">${name}</option>`
+          <select id="medic-select">
+            ${Object.entries(medicChoices).map(([userId, label]) => 
+              `<option value="${userId}">${label}</option>`
             ).join("")}
           </select>
         </div>
-      </form>
+      </div>
     `;
 
-    const medicUserId = await foundry.applications.api.DialogV2.wait({
+    const selectedUserId = await foundry.applications.api.DialogV2.wait({
       window: {
         title: game.i18n.localize("NEUROSHIMA.HealingRequest.SelectMedic"),
         classes: ["neuroshima", "medic-selection"]
@@ -1652,9 +1653,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
           label: game.i18n.localize("NEUROSHIMA.HealingRequest.SendRequest"),
           default: true,
           icon: "fas fa-check",
-          callback: (event) => {
-            const form = event.target.closest("form");
-            return form.querySelector("#medic-select").value;
+          callback: (event, button) => {
+            const select = button.form.querySelector("#medic-select");
+            return select.value;
           }
         },
         {
@@ -1666,13 +1667,11 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       ]
     });
 
-    if (!medicUserId) {
-      game.neuroshima.log("Anulowano wysyłanie prośby o leczenie");
-      return;
-    }
+    if (!selectedUserId) return;
 
-    const medicUser = game.users.get(medicUserId);
-    if (!medicUser) {
+    const medicUser = game.users.get(selectedUserId);
+    const medicActor = medicUser?.character;
+    if (!medicActor) {
       ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.MedicNotFound"));
       return;
     }
@@ -1680,18 +1679,18 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     try {
       game.neuroshima.log("Wysyłanie prośby o leczenie", {
         pacjent: this.actor.name,
-        medyk: medicUser.name
+        medyk: medicActor.name
       });
 
       // Renderuj kartę prośby o leczenie
       await game.neuroshima.NeuroshimaChatMessage.renderHealingRequest(
         this.actor,
-        medicUserId,
+        medicActor,
         game.user.id
       );
 
       ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.RequestSent", {
-        medic: medicUser.name
+        medic: medicActor.name
       }));
     } catch (err) {
       game.neuroshima.log("Błąd podczas wysyłania prośby:", err);

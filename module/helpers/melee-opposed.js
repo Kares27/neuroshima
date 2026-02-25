@@ -1,3 +1,5 @@
+import { NEUROSHIMA } from "../config.js";
+
 /**
  * Logika testów przeciwstawnych dla walki wręcz
  * Wzorowana na WFRP4e OpposedTest
@@ -70,6 +72,11 @@ export class NeuroshimaMeleeOpposed {
       if (result.attackSuccess) {
         result.spDifference = this._mapAdvantageToTier(advantage, options);
       } else {
+        // Jeśli atak nie był sukcesem, ale atakujący wygrał (both-failed), 
+        // to nadal może zadać minimalne obrażenia (SP=1 -> Draśnięcie) jeśli advantage jest wysokie?
+        // Zgodnie z zasadami 1.5, jeśli obie strony przegrały, to ten kto wygrał (mniej przegrał) 
+        // zadaje obrażenia tylko jeśli wynik rzutu ataku na to pozwalał.
+        // Uproszczenie: tylko przy sukcesie ataku zadajemy obrażenia.
         result.spDifference = 0;
       }
     } else if (advantage < 0) {
@@ -142,16 +149,13 @@ export class NeuroshimaMeleeOpposed {
 
   /**
    * Mapuje surową przewagę na tier obrażeń (1-3)
+   * Zgodnie z wytycznymi użytkownika: 1->T1, 2->T2, 3+->T3
    * @private
    */
   static _mapAdvantageToTier(advantage, options = {}) {
     if (advantage <= 0) return 0;
-    
-    const tier2 = options.tier2At || game.settings.get("neuroshima", "opposedMeleeTier2At") || 3;
-    const tier3 = options.tier3At || game.settings.get("neuroshima", "opposedMeleeTier3At") || 6;
-
-    if (advantage < tier2) return 1;
-    if (advantage < tier3) return 2;
+    if (advantage === 1) return 1;
+    if (advantage === 2) return 2;
     return 3;
   }
 
@@ -230,7 +234,7 @@ export class NeuroshimaMeleeOpposed {
     const defVal = opposed.mode === 'dice' ? `${opposed.details.filter(d => d.defSuccess).length} ✓` : `${opposed.defenseSP} SP`;
 
     return `
-      <div class="melee-opposed-result ${outcomeClass}">
+      <div class="neuroshima melee-opposed-result ${outcomeClass}">
         <div class="opposed-summary">
           <div class="opposed-attacker">
             <span class="name">${atkName}</span>
@@ -254,11 +258,12 @@ export class NeuroshimaMeleeOpposed {
   /**
    * Sprawdza, czy dany actor może się bronić w tym teście
    * @param {Actor} actor
-   * @param {Array<string>} targetIds - lista actorId z ataku
+   * @param {Array<string>} targetUuids - lista UUID tokenów/aktorów z ataku
    * @returns {boolean}
    */
-  static canDefend(actor, targetIds) {
-    if (!actor || !targetIds?.length) return false;
-    return targetIds.includes(actor.id);
+  static canDefend(actor, targetUuids) {
+    if (!actor || !targetUuids?.length) return false;
+    // Sprawdzamy zarówno UUID aktora jak i UUID dokumentu (jeśli to token)
+    return targetUuids.includes(actor.uuid) || targetUuids.includes(actor.id);
   }
 }

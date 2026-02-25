@@ -112,21 +112,43 @@
             }
         },
         "MeleeOpposed": {
+            "Title": "Melee Combat",
+            "WaitingForDefense": "Waiting for reaction",
             "Reactions": "Pending Reactions",
             "NoReactions": "No pending reactions.",
             "ChooseDefense": "Choose Defense",
             "Result": "Opposed Result",
+            "ResultTitle": "Melee Combat Result",
             "Winner": "Winner",
             "Tie": "Tie",
+            "TieShort": "Tie",
             "Difference": "Advantage",
             "Attacker": "Attacker",
             "Defender": "Defender",
+            "BothFailed": "Both combatants failed their tests, but {attacker} won by difference of {advantage} SP.",
+            "AttackFailed": "{attacker} failed the attack, {defender} wins the exchange.",
+            "DefenseFailed": "{defender} failed the defense, {attacker} wins with {spDiff} success points.",
+            "AttackerWon": "{attacker} wins the exchange with {spDiff} success points.",
+            "AttackerWonShort": "Attacker Wins",
+            "DefenderWon": "{defender} wins the exchange.",
+            "DefenderWonShort": "Defender Wins",
+            "LinkedToTest": "Roll linked to pending opposed test.",
+            "SelectLocation": "Select Hit Location",
+            "ReadyToResolve": "Ready to resolve",
+            "Resolved": "Resolved",
+            "Resolve": "Resolve Combat",
             "Status": {
                 "Waiting": "Waiting for reaction",
                 "Ready": "Ready to resolve",
                 "Resolved": "Resolved",
                 "Expired": "Expired"
             }
+        },
+        "DefenseType": {
+            "brawl": "Brawl",
+            "melee": "Melee",
+            "dodge": "Dodge",
+            "unknown": "Unknown"
         },
         "Difficulty": {
             "Easy": "Easy",

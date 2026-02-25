@@ -119,21 +119,43 @@
             }
         },
         "MeleeOpposed": {
+            "Title": "Walka Wręcz",
+            "WaitingForDefense": "Oczekiwanie na reakcję",
             "Reactions": "Oczekujące Reakcje",
             "NoReactions": "Brak oczekujących reakcji.",
             "ChooseDefense": "Wybierz Obronę",
             "Result": "Wynik Starcia",
+            "ResultTitle": "Wynik Walki Wręcz",
             "Winner": "Zwycięzca",
             "Tie": "Remis",
+            "TieShort": "Remis",
             "Difference": "Przewaga",
             "Attacker": "Atakujący",
             "Defender": "Obrońca",
+            "BothFailed": "Obaj uczestnicy nie zdali testu, ale {attacker} wygrywa różnicą {advantage} SP.",
+            "AttackFailed": "{attacker} nie trafił, {defender} wygrywa wymianę.",
+            "DefenseFailed": "{defender} nie obronił się, {attacker} wygrywa zadając {spDiff} pkt. obrażeń.",
+            "AttackerWon": "{attacker} wygrywa wymianę zadając {spDiff} pkt. obrażeń.",
+            "AttackerWonShort": "Atakujący Wygrywa",
+            "DefenderWon": "{defender} wygrywa wymianę.",
+            "DefenderWonShort": "Obrońca Wygrywa",
+            "LinkedToTest": "Rzut podpięty do oczekującego testu przeciwstawnego.",
+            "SelectLocation": "Wybierz lokację trafienia",
+            "ReadyToResolve": "Gotowe do rozstrzygnięcia",
+            "Resolved": "Rozstrzygnięte",
+            "Resolve": "Rozstrzygnij Starcie",
             "Status": {
                 "Waiting": "Oczekiwanie na reakcję",
                 "Ready": "Gotowe do rozstrzygnięcia",
                 "Resolved": "Rozstrzygnięte",
                 "Expired": "Wygasło"
             }
+        },
+        "DefenseType": {
+            "brawl": "Bijatyka",
+            "melee": "Broń biała",
+            "dodge": "Unik",
+            "unknown": "Nieznana"
         },
         "Difficulty": {
             "Easy": "Łatwy",

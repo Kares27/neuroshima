@@ -1,4 +1,5 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
+import { resolveRef } from "../helpers/refs.js";
 
 /**
  * Dialog wyboru typu obrony w walce wręcz (ApplicationV2)
@@ -196,7 +197,7 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
           defenseMessageId: defenseMessage.id
       });
       
-      const attacker = game.actors.get(opposedData.attackerId);
+      const { actor: attacker } = await resolveRef(opposedData.attackerRef || { kind: "actor", uuid: `Actor.${opposedData.attackerId}` });
       const template = "systems/neuroshima/templates/chat/opposed-handler.hbs";
       const content = await game.neuroshima.NeuroshimaChatMessage._renderTemplate(template, {
           requestId: opposedData.requestId,

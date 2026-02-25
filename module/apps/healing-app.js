@@ -202,90 +202,51 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     constructor(options = {}) {
         super(options);
         
-        // Przechowuj sessionId, patientActorUuid i medicActorId z opcji
+        // Przechowuj sessionId, patientRef i medicRef z opcji
         this.sessionId = options.sessionId;
-        this.patientActorUuid = options.patientActorUuid;
-        this.patientActorId = options.patientActorId;
-        this.medicActorId = options.medicActorId;
+        this.patientRef = options.patientRef;
+        this.medicRef = options.medicRef;
         
-        // Jeśli nie ma UUID w opcjach bezpośrednio, sprawdź w options.options (v13 pattern)
-        if (!this.patientActorUuid && options.options) {
-            this.patientActorUuid = options.options.patientActorUuid;
-            this.patientActorId = options.options.patientActorId;
+        // Jeśli nie ma refów w opcjach bezpośrednio, sprawdź w options.options (v13 pattern)
+        if (!this.patientRef && options.options) {
+            this.patientRef = options.options.patientRef;
+            this.medicRef = options.options.medicRef;
             this.sessionId = options.options.sessionId;
-            this.medicActorId = options.options.medicActorId;
         }
         
         // Stan UI
         this.selectedLocation = null;
         
-        console.log("Neuroshima | HealingApp konstruktor", {
-            options: options,
+        game.neuroshima?.log("HealingApp konstruktor", {
             sessionId: this.sessionId,
-            patientActorUuid: this.patientActorUuid,
-            patientActorId: this.patientActorId,
-            medicActorId: this.medicActorId
+            patientRef: this.patientRef,
+            medicRef: this.medicRef
         });
     }
 
     /** @inheritdoc */
     async _prepareContext(options) {
-        console.group("Neuroshima | HealingApp | _prepareContext");
-        console.log("Dane wejściowe:", {
-            sessionId: this.sessionId,
-            patientActorUuid: this.patientActorUuid,
-            patientActorId: this.patientActorId,
-            medicActorId: this.medicActorId
-        });
+        game.neuroshima?.group("HealingApp | _prepareContext");
         
-        // Pobierz aktora pacjenta
-        let actor = null;
-        
-        // 1. Spróbuj przez UUID (najdokładniejsze, wspiera tokeny)
-        if (this.patientActorUuid) {
-            actor = await fromUuid(this.patientActorUuid);
-        }
+        // Rozwiąż referencje
+        const { actor: patientActor } = await game.neuroshima.resolveRef(this.patientRef);
+        const { actor: medicActor } = await game.neuroshima.resolveRef(this.medicRef);
 
-        // 2. Fallback: Spróbuj przez patientActorId jeśli UUID zawiodło lub go brak
-        if (!actor && this.patientActorId) {
-            actor = game.actors.get(this.patientActorId);
-        }
-
-        // 3. Fallback: Jeśli UUID to po prostu ID (czasem tak się zdarza przy błędnym przekazywaniu)
-        if (!actor && this.patientActorUuid && !this.patientActorUuid.includes(".")) {
-            actor = game.actors.get(this.patientActorUuid);
-        }
-        
-        // 4. Fallback: Przeszukaj sceny jeśli UUID wygląda na token
-        if (!actor && this.patientActorUuid?.includes(".")) {
-            const parts = this.patientActorUuid.split(".");
-            const tokenId = parts[parts.length - 1];
-            for (const scene of game.scenes) {
-                const token = scene.tokens.get(tokenId);
-                if (token) {
-                    actor = token.actor;
-                    break;
-                }
-            }
-        }
-
-        if (!actor) {
-            console.error("Błąd: Nie znaleziono aktora pacjenta", { 
-                uuid: this.patientActorUuid,
-                id: this.patientActorId,
-                actorsCount: game.actors.size
-            });
-            console.groupEnd();
+        if (!patientActor) {
+            game.neuroshima?.error("Nie znaleziono aktora pacjenta", this.patientRef);
+            game.neuroshima?.groupEnd();
             return {
                 error: true,
-                errorMessage: `Nie znaleziono aktora pacjenta (UUID: ${this.patientActorUuid || 'Brak'})`
+                errorMessage: `Nie znaleziono aktora pacjenta (UUID: ${this.patientRef?.uuid || 'Brak'})`
             };
         }
 
-        console.log("Znaleziono aktora:", actor.name, actor);
+        // Uprawnienia: Medyk (Owner medyka lub GM)
+        const isGM = game.user.isGM;
+        const isMedic = isGM || (medicActor ? medicActor.testUserPermission(game.user, "OWNER") : false);
 
         // Wygeneruj dane karty pacjenta
-        const patientData = game.neuroshima.CombatHelper.generatePatientCard(actor);
+        const patientData = game.neuroshima.CombatHelper.generatePatientCard(patientActor);
 
         // Przygotuj mapę lokacji dla szybkiego dostępu
         const locationsMap = {};
@@ -314,28 +275,26 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         game.neuroshima?.log("Przygotowanie kontekstu panelu leczenia", {
-            actorName: actor.name,
-            woundCount: patientData.woundCount,
-            totalPenalty: patientData.totalPenalty,
+            actorName: patientActor.name,
+            isMedic: isMedic,
             selectedLocation: this.selectedLocation,
             summary: summary
         });
 
         const context = {
-            actor: actor,
+            actor: patientActor,
+            medicActor: medicActor,
             patientData: patientData,
             locationsMap: locationsMap,
             sessionId: this.sessionId,
             selectedLocation: this.selectedLocation,
             selectedLocationWounds: selectedLocationWounds,
             summary: summary,
-            isMedic: game.user.isGM || true, // TODO: Sprawdzić czy user to medyk dla tego sessiona
+            isMedic: isMedic,
             config: game.neuroshima.config
         };
 
-        game.neuroshima?.log("Kontekst HealingApp przygotowany", context);
         game.neuroshima?.groupEnd();
-
         return context;
     }
 
@@ -460,7 +419,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         game.neuroshima?.group("HealingApp | _onHealWound");
         game.neuroshima?.log("Inicjowanie leczenia rany", { woundId: woundId });
 
-        const actor = await fromUuid(this.patientActorUuid);
+        const { actor } = await game.neuroshima.resolveRef(this.patientRef);
         if (!actor) {
             ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.ActorNotFound"));
             game.neuroshima?.groupEnd();
@@ -486,30 +445,42 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         game.neuroshima?.log("Wybranie akcji leczenia", { action: action });
 
-        // Wyślij socket do GM
-        try {
-            game.socket.emit("system.neuroshima", {
-                type: "heal.apply",
-                patientActorUuid: this.patientActorUuid,
-                woundId: woundId,
-                action: action
-            });
+        // Jeśli user jest GM, aplikuj od razu. Inaczej wyślij socket.
+        if (game.user.isGM) {
+            await HealingApp.healWound(actor, woundId, action);
+            this.render();
+        } else {
+            // Wyślij socket do GM
+            try {
+                game.socket.emit("system.neuroshima", {
+                    type: "heal.apply",
+                    patientRef: this.patientRef,
+                    medicRef: this.medicRef,
+                    woundId: woundId,
+                    action: action,
+                    sessionId: this.sessionId
+                });
 
-            game.neuroshima?.log("Socket wysłany do GM", { action: action });
-            
-            // Odśwież interfejs po leczeniu
-            setTimeout(() => {
-                this.render();
-            }, 500);
+                game.neuroshima?.log("Socket wysłany do GM", { 
+                    action: action, 
+                    patientRef: this.patientRef,
+                    medicRef: this.medicRef
+                });
+                
+                // Odśwież interfejs po leczeniu (tymczasowo lokalnie, GM wyśle raport)
+                setTimeout(() => {
+                    this.render();
+                }, 500);
 
-            ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.WoundHealed", {
-                woundName: wound.name,
-                action: game.i18n.localize(`NEUROSHIMA.HealingRequest.Action.${action}`)
-            }));
+                ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.WoundHealed", {
+                    woundName: wound.name,
+                    action: game.i18n.localize(`NEUROSHIMA.HealingRequest.Action.${action}`)
+                }));
 
-        } catch (err) {
-            game.neuroshima?.log("Błąd przy wysyłaniu socketu:", err);
-            ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingFailed"));
+            } catch (err) {
+                game.neuroshima?.log("Błąd przy wysyłaniu socketu:", err);
+                ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingFailed"));
+            }
         }
 
         game.neuroshima?.groupEnd();
@@ -697,9 +668,9 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        // Pobierz aktora pacjenta i medyka
-        const patientActor = await fromUuid(this.patientActorUuid);
-        const medicActor = game.actors.get(this.medicActorId);
+        // Rozwiąż referencje
+        const { actor: patientActor } = await game.neuroshima.resolveRef(this.patientRef);
+        const { actor: medicActor } = await game.neuroshima.resolveRef(this.medicRef);
         
         if (!patientActor || !medicActor) {
             ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.ActorNotFound"));
@@ -718,7 +689,8 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return {
                 id: woundId,
                 name: wound?.name || "Unknown",
-                damageType: wound?.system.damageType || "D"
+                damageType: wound?.system.damageType || "D",
+                hadFirstAid: wound?.system.hadFirstAid || false
             };
         });
 

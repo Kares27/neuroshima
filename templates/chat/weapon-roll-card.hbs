@@ -117,12 +117,6 @@
                 <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
                 <span class="value"><strong>{{successPoints}}</strong></span>
             </div>
-            {{#if (and (not isMelee) (gt bulletsFired 1))}}
-            <div class="outcome-item hit-bullets">
-                <span class="label">{{localize "NEUROSHIMA.Roll.BulletsHit"}}:</span>
-                <span class="value"><strong>{{hitBullets}}</strong></span>
-            </div>
-            {{/if}}
         {{/if}}
     </footer>
 

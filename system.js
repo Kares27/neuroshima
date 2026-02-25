@@ -8,6 +8,7 @@ import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
+import { buildRef, resolveRef } from "./module/helpers/refs.js";
 import { EncumbranceConfig } from "./module/apps/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/combat-config.js";
 import { HealingConfig } from "./module/apps/healing-config.js";
@@ -33,6 +34,8 @@ Hooks.once('init', async function() {
         CombatHelper,
         HealingApp,
         showHealingRollDialog,
+        buildRef,
+        resolveRef,
         config: NEUROSHIMA,
         log: (...args) => {
             if (game.settings.get("neuroshima", "debugMode")) {
@@ -99,6 +102,9 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('le', (a, b) => a <= b);
     Handlebars.registerHelper('eq', (a, b) => a === b);
     Handlebars.registerHelper('ne', (a, b) => a !== b);
+    Handlebars.registerHelper('and', (a, b) => a && b);
+    Handlebars.registerHelper('or', (a, b) => a || b);
+    Handlebars.registerHelper('not', (a) => !a);
     Handlebars.registerHelper('add', (a, b) => a + b);
     Handlebars.registerHelper('abs', (a) => Math.abs(a));
     Handlebars.registerHelper('json', (context) => JSON.stringify(context));
@@ -377,7 +383,7 @@ Hooks.once('init', async function() {
     });
 
     // Wczytanie szablonów (v13 namespaced)
-    await foundry.applications.handlebars.loadTemplates([
+    const templates = [
         "systems/neuroshima/templates/actor/parts/actor-header.hbs",
         "systems/neuroshima/templates/actor/parts/actor-info.hbs",
         "systems/neuroshima/templates/actor/parts/actor-attributes.hbs",
@@ -395,8 +401,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/weapon-melee.hbs",
         "systems/neuroshima/templates/item/parts/weapon-ranged.hbs",
         "systems/neuroshima/templates/item/parts/weapon-thrown.hbs",
-        "systems/neuroshima/templates/item/parts/wound-details.hbs",
         "systems/neuroshima/templates/item/parts/ammo-details.hbs",
+        "systems/neuroshima/templates/item/parts/wound-details.hbs",
         "systems/neuroshima/templates/item/parts/magazine-details.hbs",
         "systems/neuroshima/templates/item/parts/ammunition-details.hbs",
         "systems/neuroshima/templates/apps/healing-config.hbs",
@@ -415,7 +421,17 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/opposed-handler.hbs",
         "systems/neuroshima/templates/chat/opposed-result.hbs",
         "systems/neuroshima/templates/dialog/melee-defense.hbs"
-    ]);
+    ];
+    
+    await foundry.applications.handlebars.loadTemplates(templates);
+    
+    // Ręczna rejestracja partiali (na wypadek gdyby loadTemplates w AppV2 tego nie robiło globalnie)
+    for (const path of templates) {
+        if (path.includes("/parts/")) {
+            const template = await getTemplate(path);
+            Handlebars.registerPartial(path, template);
+        }
+    }
 
     console.log("Neuroshima 1.5 | Szablony wczytane");
 });
@@ -593,10 +609,10 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 
 // Obsługa interakcji na kartach czatu (v13: renderChatMessageHTML)
 Hooks.on("renderChatMessageHTML", (message, html) => {
-    // Inicjalizacja akcji Neuroshima
+    // Inicjalizacja akcji Neuroshima (Dispatcher)
     NeuroshimaChatMessage.onChatAction(html);
 
-    // Obsługa Patient Card
+    // Obsługa Patient Card (UI toggles)
     const patientCard = html.querySelector(".neuroshima.patient-card");
     if (patientCard) {
         // Główny toggle dla wszystkich ran
@@ -623,7 +639,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     }
 
-    // Obsługa Healing Request Card
+    // Obsługa Healing Request Card (UI toggles)
     const healingRequestCard = html.querySelector(".neuroshima.heal-request-card");
     if (healingRequestCard) {
         // Główny toggle dla wszystkich ran
@@ -648,377 +664,46 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 }
             });
         });
-
-        // Przycisk otwarcia panelu leczenia
-        const openHealPanelBtn = healingRequestCard.querySelector(".open-heal-panel");
-        if (openHealPanelBtn) {
-            openHealPanelBtn.addEventListener("click", (event) => {
-                event.preventDefault();
-                
-                game.neuroshima.group("Healing Request Card | Open Heal Panel");
-                game.neuroshima.log("Otwieranie panelu leczenia", {
-                    sessionId: healingRequestCard.dataset.sessionId,
-                    patientActorUuid: healingRequestCard.dataset.patientActorUuid
-                });
-
-                // Sprawdzenie uprawnień: medyk, pacjent lub GM
-                const medicUserId = healingRequestCard.dataset.medicUserId;
-                const requesterUserId = healingRequestCard.dataset.requesterUserId;
-                const currentUserId = game.user.id;
-
-                const isMedic = medicUserId === currentUserId;
-                const isRequester = requesterUserId === currentUserId;
-                const isGM = game.user.isGM;
-
-                if (!isMedic && !isRequester && !isGM) {
-                    game.neuroshima.log("Odmowa: User nie ma uprawnień do otwarcia tego panelu", {
-                        medicUserId: medicUserId,
-                        requesterUserId: requesterUserId,
-                        currentUserId: currentUserId,
-                        isGM: isGM
-                    });
-                    ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.OnlyMedicCanOpen"));
-                    return;
-                }
-
-                // Otwórz panel leczenia
-                const sessionId = healingRequestCard.dataset.sessionId;
-                const patientActorUuid = healingRequestCard.dataset.patientActorUuid;
-                const patientActorId = healingRequestCard.dataset.patientActorId;
-                
-                console.log("Neuroshima | Kliknięto Otwórz panel leczenia", {
-                    sessionId,
-                    patientActorUuid,
-                    patientActorId,
-                    dataset: healingRequestCard.dataset
-                });
-                
-                // Pobierz aktora medyka
-                const medicUser = game.users.get(medicUserId);
-                const medicActorId = medicUser?.character?.id;
-                
-                game.neuroshima.log("Otwieranie HealingApp", {
-                    sessionId: sessionId,
-                    patientActorUuid: patientActorUuid,
-                    patientActorId: patientActorId,
-                    medicActorId: medicActorId,
-                    medicUserId: medicUserId
-                });
-
-                const app = new game.neuroshima.HealingApp({
-                    sessionId: sessionId,
-                    patientActorUuid: patientActorUuid,
-                    patientActorId: patientActorId,
-                    medicActorId: medicActorId
-                });
-                app.render(true);
-                
-                game.neuroshima.groupEnd();
-            });
-        }
     }
 
-    // Obsługa Healing Batch Report
+    // Obsługa Healing Batch Report - stan wizualny przycisków
     const healingBatchReport = html.querySelector(".neuroshima.healing-batch-report");
     if (healingBatchReport) {
         const isApplied = message.getFlag("neuroshima", "healingApplied") === true;
         
         // Przycisk aplikacji leczenia
         const applyBtn = healingBatchReport.querySelector(".apply-healing-btn");
-        if (applyBtn) {
-            if (isApplied) {
-                applyBtn.disabled = true;
-                applyBtn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.HealingRequest.ApplyHealing");
-                applyBtn.classList.add("applied");
-            }
-            
-            applyBtn.addEventListener("click", async (event) => {
-                event.preventDefault();
-                
-                const messageId = healingBatchReport.closest(".chat-message")?.dataset.messageId;
-
-                if (!messageId) {
-                    ui.notifications.error("Brak wymaganych danych do aplikacji leczenia");
-                    return;
-                }
-
-                const message = game.messages.get(messageId);
-                const medicActorId = message?.getFlag("neuroshima", "medicActorId");
-                const patientActorUuid = message?.getFlag("neuroshima", "patientActorUuid");
-                const results = message?.getFlag("neuroshima", "results");
-                
-                if (!medicActorId || !patientActorUuid || !results || !Array.isArray(results)) {
-                    ui.notifications.error("Brak wymaganych danych do aplikacji leczenia");
-                    return;
-                }
-
-                // Zapobieganie podwójnej aplikacji leczenia
-                if (message.getFlag("neuroshima", "healingApplied")) {
-                    ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.HealingAlreadyApplied"));
-                    return;
-                }
-
-                game.neuroshima?.log("Dane results do aplikacji", { results: results });
-
-                // Sprawdzenie uprawnień (medyk lub GM)
-                const medicActor = game.actors.get(medicActorId);
-                if (!medicActor) {
-                    ui.notifications.error("Nie można znaleźć aktora medyka");
-                    return;
-                }
-
-                if (medicActor.id !== game.user.character?.id && !game.user.isGM) {
-                    ui.notifications.warn("Tylko medyk lub GM może aplikować leczenie");
-                    return;
-                }
-
-                const patientActor = await fromUuid(patientActorUuid);
-                if (!patientActor) {
-                    ui.notifications.error("Nie można znaleźć aktora pacjenta");
-                    return;
-                }
-
-                game.neuroshima?.group("Apply Healing");
-                game.neuroshima?.log("Aplikowanie leczenia", {
-                    medic: medicActor.name,
-                    patient: patientActor.name,
-                    totalWounds: results.length,
-                    successfulWounds: results.filter(r => r.successCount >= 2).length,
-                    failedWounds: results.filter(r => r.successCount < 2).length
-                });
-
-                // Zbierz wszystkie rany (zarówno udane jak i nieudane)
-                // Porażka też musi być aplikowana (+5% kary)
-                const allResults = results;
-                const allWoundIds = allResults.map(r => r.woundId).filter(id => id);
-
-                if (allWoundIds.length === 0) {
-                    ui.notifications.info("Brak testów leczenia do aplikacji");
-                    game.neuroshima?.groupEnd();
-                    return;
-                }
-
-                // Pobierz metodę leczenia z message flags
-                const healingMethod = message.getFlag("neuroshima", "healingMethod") || "woundTreatment";
-                
-                // Get wound configs with healing modifiers from rerollData
-                const rerollData = message.getFlag("neuroshima", "rerollData") || {};
-                const woundConfigs = rerollData.woundConfigs || [];
-                const woundModifierMap = {};
-                woundConfigs.forEach(config => {
-                    woundModifierMap[config.woundId] = config.healingModifier || 0;
-                });
-                
-                game.neuroshima?.log("Przygotowanie do aplikacji efektów", {
-                    totalWoundCount: allWoundIds.length,
-                    healingMethod: healingMethod,
-                    woundIds: allWoundIds,
-                    woundModifierMap: woundModifierMap
-                });
-
-                // Aplikuj efekty leczenia dla każdej rany
-                try {
-                    const applicationResults = [];
-                    
-                    // Aplikuj dla każdej rany (sukces i porażka)
-                    for (const result of allResults) {
-                        game.neuroshima?.log("Aplikowanie efektu dla rany", {
-                            woundId: result.woundId,
-                            woundName: result.woundName,
-                            successCount: result.successCount
-                        });
-
-                        const wound = patientActor.items.get(result.woundId);
-                        if (!wound) {
-                            game.neuroshima?.log("Rana nie znaleziona", { woundId: result.woundId });
-                            continue;
-                        }
-
-                        // Get the healing modifier for this specific wound
-                        const healingModifier = woundModifierMap[result.woundId] || 0;
-                        
-                        // Aplikuj leczenie tej rany używając HealingApp.applyHealingToWounds
-                        const healingResults = await game.neuroshima.HealingApp.applyHealingToWounds(
-                            patientActor,
-                            [result.woundId],
-                            result.successCount,
-                            healingMethod,
-                            result.healingEffect?.hadFirstAid || false,
-                            healingModifier
-                        );
-
-                        applicationResults.push({
-                            woundId: result.woundId,
-                            woundName: result.woundName,
-                            healingResults: healingResults
-                        });
-                    }
-
-                    game.neuroshima?.log("Efekty leczenia zastosowane pomyślnie", {
-                        appliedCount: applicationResults.length,
-                        totalProcessed: allResults.length
-                    });
-
-                    // Oznacz wiadomość jako "leczenie zaaplikowane"
-                    await message.setFlag("neuroshima", "healingApplied", true);
-
-                    ui.notifications.info(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingApplied"));
-                    applyBtn.disabled = true;
-                    applyBtn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.HealingRequest.ApplyHealing");
-                } catch (error) {
-                    game.neuroshima?.log("Błąd podczas aplikacji leczenia", { error: error.message });
-                    ui.notifications.error("Błąd podczas aplikacji leczenia: " + error.message);
-                } finally {
-                    game.neuroshima?.groupEnd();
-                }
-            });
+        if (applyBtn && isApplied) {
+            applyBtn.disabled = true;
+            applyBtn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.HealingRequest.ApplyHealing");
+            applyBtn.classList.add("applied");
         }
 
         // Przycisk przerzutu
-        healingBatchReport.querySelectorAll(".reroll-healing-btn").forEach(btn => {
-            if (isApplied) {
+        if (isApplied) {
+            healingBatchReport.querySelectorAll(".reroll-healing-btn").forEach(btn => {
                 btn.disabled = true;
                 btn.style.opacity = "0.5";
                 btn.style.cursor = "not-allowed";
                 btn.title = game.i18n.localize("NEUROSHIMA.Warnings.HealingAlreadyApplied");
-            }
-            
-            btn.addEventListener("click", async (event) => {
-                event.preventDefault();
-                const woundId = btn.dataset.woundId;
-                const messageId = healingBatchReport.closest(".chat-message")?.dataset.messageId;
-                
-                if (!messageId) {
-                    ui.notifications.error("Nie można znaleźć wiadomości czatu");
-                    return;
-                }
-
-                const message = game.messages.get(messageId);
-                if (!message) {
-                    ui.notifications.error("Nie można znaleźć wiadomości czatu");
-                    return;
-                }
-
-                const flags = message.getFlag("neuroshima", "rerollData");
-                const results = message.getFlag("neuroshima", "results");
-                const healingMethod = message.getFlag("neuroshima", "healingMethod");
-                const medicActorId = message.getFlag("neuroshima", "medicActorId");
-                const patientActorUuid = message.getFlag("neuroshima", "patientActorUuid");
-
-                if (!flags || !results || !healingMethod) {
-                    ui.notifications.error("Brak danych do przerzutu");
-                    return;
-                }
-
-                // Sprawdzenie uprawnień (medyk lub GM)
-                const medicActor = game.actors.get(medicActorId);
-                if (!medicActor) {
-                    ui.notifications.error("Nie można znaleźć aktora medyka");
-                    return;
-                }
-
-                if (medicActor.id !== game.user.character?.id && !game.user.isGM) {
-                    ui.notifications.warn("Tylko medyk lub GM może przerzucać testy");
-                    return;
-                }
-
-                // Dialog potwierdzenia (DialogV2)
-                const confirmed = await new Promise(resolve => {
-                    const dialog = new foundry.applications.api.DialogV2({
-                        window: {
-                            title: game.i18n.localize("NEUROSHIMA.Dialogs.ConfirmReroll"),
-                            icon: "fas fa-exclamation-triangle"
-                        },
-                        content: `<p style="padding: 10px;">${game.i18n.localize("NEUROSHIMA.Dialogs.RerollWoundQuestion")}</p>`,
-                        buttons: [
-                            {
-                                action: "yes",
-                                label: game.i18n.localize("NEUROSHIMA.Actions.Reroll"),
-                                default: true,
-                                callback: () => resolve(true)
-                            },
-                            {
-                                action: "no",
-                                label: game.i18n.localize("NEUROSHIMA.Actions.Cancel"),
-                                callback: () => resolve(false)
-                            }
-                        ]
-                    });
-                    dialog.render(true);
-                });
-
-                if (!confirmed) return;
-
-                // Przerzut na konkretną ranę
-                const patientActor = await fromUuid(patientActorUuid);
-                if (!patientActor) {
-                    ui.notifications.error("Nie można znaleźć aktora pacjenta");
-                    return;
-                }
-
-                game.neuroshima?.group("Healing Batch Report | Reroll Wound");
-                game.neuroshima?.log("Przerzucanie testu na rani", {
-                    woundId: woundId,
-                    medicActor: medicActor.name,
-                    patientActor: patientActor.name
-                });
-
-                // Znaleźć konfigurację dla konkretnej rany
-                const woundConfig = flags.woundConfigs.find(w => w.woundId === woundId);
-                if (!woundConfig) {
-                    ui.notifications.error("Nie można znaleźć konfiguracji rany");
-                    game.neuroshima?.groupEnd();
-                    return;
-                }
-
-                // Przerzucić test na tę ranę (bez tworzenia nowego chat message)
-                const rerollResult = await game.neuroshima.NeuroshimaDice.rerollHealingTest(
-                    medicActor,
-                    patientActor,
-                    healingMethod,
-                    woundConfig,
-                    flags.stat,
-                    flags.skillBonus,
-                    flags.attributeBonus
-                );
-
-                // Aktualizuj wynik w UI (znaleź wiersz rany i zmień status)
-                const woundItem = btn.closest(".wound-item");
-                if (woundItem && rerollResult) {
-                    const successIcon = woundItem.querySelector("i.fas");
-                    const penaltyValue = woundItem.querySelector(".penalty-value");
-                    const isNowSuccess = rerollResult.successCount >= 2;
-                    const wasSuccess = woundItem.classList.contains("success");
-                    
-                    // Aktualizuj ikonę i kolory
-                    if (isNowSuccess !== wasSuccess) {
-                        if (successIcon) {
-                            successIcon.classList.toggle("fa-check");
-                            successIcon.classList.toggle("fa-times");
-                        }
-                        woundItem.classList.toggle("success");
-                        woundItem.classList.toggle("failure");
-                    }
-                    
-                    // Aktualizuj % leczenia
-                    if (penaltyValue && rerollResult.healingEffect) {
-                        const reduction = rerollResult.healingEffect.reduction;
-                        if (isNowSuccess) {
-                            penaltyValue.textContent = `${reduction > 0 ? '-' : ''}${reduction}%`;
-                        } else {
-                            penaltyValue.textContent = `+${reduction}%`;
-                        }
-                    }
-                    
-                    // Aktualizuj tooltip
-                    if (rerollResult.tooltip) {
-                        woundItem.dataset.tooltip = rerollResult.tooltip;
-                    }
-                }
-
-                game.neuroshima?.groupEnd();
             });
+        }
+    }
+
+    // Obsługa wyboru lokacji (Melee Opposed Result oraz Ranged Roll)
+    const locationDropdown = html.querySelector(".opposed-location-dropdown");
+    if (locationDropdown) {
+        locationDropdown.addEventListener("change", async (ev) => {
+            const newLocation = ev.target.value;
+            await message.setFlag("neuroshima", "selectedLocation", newLocation);
+            game.neuroshima?.log("Zmieniono wybraną lokację na karcie", { messageId: message.id, newLocation });
         });
+
+        // Przywróć poprzednio wybraną lokację z flag
+        const savedLocation = message.getFlag("neuroshima", "selectedLocation");
+        if (savedLocation) {
+            locationDropdown.value = savedLocation;
+        }
     }
 
     const card = html.querySelector(".neuroshima.roll-card");
@@ -1214,12 +899,53 @@ Hooks.on("ready", () => {
         try {
             if (data.type === "heal.apply") {
                 game.neuroshima?.log("Otrzymanie żądania leczenia od medyka", {
-                    patientActorUuid: data.patientActorUuid,
+                    patientRef: data.patientRef,
+                    medicRef: data.medicRef,
                     woundId: data.woundId,
-                    action: data.action
+                    action: data.action,
+                    sessionId: data.sessionId
                 });
-                const actor = await fromUuid(data.patientActorUuid);
-                if (actor) await game.neuroshima.HealingApp.healWound(actor, data.woundId, data.action);
+                
+                // Ponowny resolve refs po stronie GM (Security)
+                const { actor: patientActor } = await game.neuroshima.resolveRef(data.patientRef);
+                const { actor: medicActor } = await game.neuroshima.resolveRef(data.medicRef);
+
+                if (!patientActor) {
+                    game.neuroshima?.error("Socket heal.apply: Nie znaleziono aktora pacjenta", data.patientRef);
+                    return;
+                }
+
+                // Opcjonalna walidacja sesji jeśli sessionId zostało przekazane
+                if (data.sessionId) {
+                    const message = game.messages.find(m => m.getFlag("neuroshima", "sessionId") === data.sessionId);
+                    if (message) {
+                        const messageMedicRef = message.getFlag("neuroshima", "medicRef");
+                        if (messageMedicRef && messageMedicRef.uuid !== data.medicRef?.uuid) {
+                             game.neuroshima?.error("Socket heal.apply: Medyk nie zgadza się z sesją", {
+                                 sessionMedic: messageMedicRef.uuid,
+                                 requestMedic: data.medicRef?.uuid
+                             });
+                             return;
+                        }
+                    }
+                }
+
+                // Wykonaj leczenie
+                await game.neuroshima.HealingApp.healWound(patientActor, data.woundId, data.action);
+                
+                // Feedback na czacie (opcjonalnie)
+                if (medicActor) {
+                    const wound = patientActor.items.get(data.woundId);
+                    // Jeśli rany już nie ma, znaczy że została wyleczona całkowicie (usunięta)
+                    const woundName = wound?.name || "Rana";
+                    const actionLabel = game.i18n.localize(`NEUROSHIMA.HealingRequest.Action.${data.action}`);
+                    
+                    ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.WoundHealedBy", {
+                        wound: woundName,
+                        medic: medicActor.name,
+                        action: actionLabel
+                    }));
+                }
             } else if (data.type === "opposed.setPending") {
                 game.neuroshima?.log("Otrzymanie żądania ustawienia flagi pending", data);
                 const actor = await fromUuid(data.actorUuid);
@@ -1239,6 +965,12 @@ Hooks.on("ready", () => {
                 const actor = await fromUuid(data.actorUuid);
                 if (actor) {
                     await actor.update({ [`flags.neuroshima.opposedPending.-=${data.requestId}`]: null });
+                }
+            } else if (data.type === "opposed.resolve") {
+                game.neuroshima?.log("Otrzymanie żądania rozstrzygnięcia testu przeciwstawnego", data);
+                const handlerMessage = game.messages.get(data.handlerMessageId);
+                if (handlerMessage) {
+                    await NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: data.defenseMessageId });
                 }
             }
         } catch (err) {

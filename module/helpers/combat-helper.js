@@ -200,7 +200,7 @@ export class CombatHelper {
     // We can reuse the applyDamage logic by creating a mock message if needed,
     // but it's better to refactor applyDamage to call this, or just implement it here.
     
-    const location = attackData.finalLocation || "torso";
+    const location = options.location || attackData.finalLocation || "torso";
     const isMelee = attackData.isMelee;
     const initialDamageType = attackData.damage || "L";
     const piercing = attackData.piercing || 0;
@@ -312,9 +312,26 @@ export class CombatHelper {
    * @returns {Promise<void>}
    */
   static async applyDamage(message, actors) {
-    const flags = message.getFlag("neuroshima", "rollData");
-    
+    let flags = message.getFlag("neuroshima", "rollData");
+    const opposedResult = message.getFlag("neuroshima", "opposedResult");
+    const attackMessageId = message.getFlag("neuroshima", "attackMessageId");
+
     game.neuroshima.group("CombatHelper | applyDamage");
+    
+    // Jeśli wiadomość to raport wyniku starcia (Opposed Result), pobierz dane z oryginalnego ataku
+    if (!flags && opposedResult && attackMessageId) {
+        const attackMessage = game.messages.get(attackMessageId);
+        if (attackMessage) {
+            flags = attackMessage.getFlag("neuroshima", "rollData");
+            if (flags) {
+                flags = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
+                    opposedResult: opposedResult
+                });
+                game.neuroshima.log("Pobrano dane ataku z powiązanej wiadomości:", { attackMessageId });
+            }
+        }
+    }
+
     game.neuroshima.log("Parametry wejściowe:", { messageId: message.id, flags, actors: actors.map(a => a.name) });
 
     if (!flags || !flags.isWeapon) {
@@ -376,13 +393,17 @@ export class CombatHelper {
         }
     }
 
-    const location = flags.finalLocation || "torso";
     const isMelee = flags.isMelee;
+    
+    // Pobierz wybraną lokację z flag (nadpisuje domyślną z rzutu)
+    const selectedLocation = message.getFlag("neuroshima", "selectedLocation");
+    const location = selectedLocation || flags.finalLocation || "torso";
     
     game.neuroshima.log("Logika obrażeń:", { 
       isMelee, 
       location,
-      hitBulletsDataCount: hitBulletsData.length,
+      selectedLocation,
+      finalLocationFromFlags: flags.finalLocation,
       hitBulletsData: hitBulletsData.map(b => ({
         damage: b.damage,
         piercing: b.piercing,
@@ -392,7 +413,12 @@ export class CombatHelper {
     });
 
     for (const actor of actors) {
-        await this.applyDamageToActor(actor, flags, { attackerMessageId: message.id });
+        await this.applyDamageToActor(actor, flags, { 
+            attackerMessageId: message.id,
+            location: location,
+            spDifference: flags.opposedResult?.spDifference,
+            isOpposed: !!flags.opposedResult
+        });
     }
     game.neuroshima.groupEnd();
   }
