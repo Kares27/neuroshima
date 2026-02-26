@@ -26,14 +26,18 @@
     
     <header class="roll-header">
         <div class="weapon-title">
-            {{label}}: {{actionLabel}}
+            {{label}}{{#if actionLabel}}: {{actionLabel}}{{/if}}
         </div>
         <div class="test-type">
             {{localize difficultyLabel}}
-            {{#if isOpen}}
-                | {{localize "NEUROSHIMA.Roll.OpenTest"}}
+            {{#if isMelee}}
+                | {{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.Actions.Attack"}}{{else}}{{localize "NEUROSHIMA.Actions.Defense"}}{{/if}}
             {{else}}
-                | {{localize "NEUROSHIMA.Roll.ClosedTest"}}
+                {{#if isOpen}}
+                    | {{localize "NEUROSHIMA.Roll.OpenTest"}}
+                {{else}}
+                    | {{localize "NEUROSHIMA.Roll.ClosedTest"}}
+                {{/if}}
             {{/if}}
         </div>
     </header>

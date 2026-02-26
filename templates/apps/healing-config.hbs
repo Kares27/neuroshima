@@ -7,7 +7,7 @@
         <div class="form-fields">
             <select name="patientCardVersion" required>
                 {{#each patientCardOptions as |label key|}}
-                <option value="{{key}}" {{#if (eq key ../config.patientCardVersion)}}selected{{/if}}>{{label}}</option>
+                <option value="{{key}}" {{#if (eq key @root.config.patientCardVersion)}}selected{{/if}}>{{label}}</option>
                 {{/each}}
             </select>
         </div>
@@ -35,8 +35,8 @@
                     </td>
                     <td>
                         <select name="difficulty-{{damageType.key}}" required>
-                            {{#each ../difficultyOptions as |label key|}}
-                            <option value="{{key}}" {{#if (eq key (lookup ../config.healingDifficulties damageType.key))}}selected{{/if}}>{{label}}</option>
+                            {{#each @root.difficultyOptions as |label key|}}
+                            <option value="{{key}}" {{#if (eq key (lookup @root.config.healingDifficulties damageType.key))}}selected{{/if}}>{{label}}</option>
                             {{/each}}
                         </select>
                     </td>

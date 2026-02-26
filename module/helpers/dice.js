@@ -9,7 +9,7 @@ export class NeuroshimaDice {
    * Perform a weapon-specific roll (shooting or striking).
    */
   static async rollWeaponTest(params) {
-    const { weapon, actor, aimingLevel, burstLevel, difficulty, hitLocation, modifier, applyArmor, applyWounds, isOpen, skillBonus = 0, attributeBonus = 0, distance = 0 } = params;
+    const { weapon, actor, aimingLevel, burstLevel, difficulty, hitLocation, modifier, applyArmor, applyWounds, isOpen, skillBonus = 0, attributeBonus = 0, distance = 0, meleeAction = "attack" } = params;
     
     // Rozpoczęcie grupy logów dla rzutu bronią
     game.neuroshima.group("Inicjalizacja rzutu bronią");
@@ -22,6 +22,14 @@ export class NeuroshimaDice {
     const armorPenalty = applyArmor ? (actor.system.combat?.totalArmorPenalty || 0) : 0;
     const woundPenalty = applyWounds ? (actor.system.combat?.totalWoundPenalty || 0) : 0;
     
+    const isMelee = weapon.system.weaponType === "melee";
+    
+    // Weapon bonus for melee
+    let weaponBonus = 0;
+    if (isMelee) {
+        weaponBonus = meleeAction === "attack" ? (weapon.system.attackBonus || 0) : (weapon.system.defenseBonus || 0);
+    }
+
     const locationPenalty = this.getLocationPenalty(weapon.system.weaponType, hitLocation);
     const totalPenalty = basePenalty + modifier + armorPenalty + woundPenalty + locationPenalty;
 
@@ -31,13 +39,13 @@ export class NeuroshimaDice {
         armorPenalty,
         woundPenalty,
         locationPenalty,
-        totalPenalty
+        totalPenalty,
+        weaponBonus
     });
 
     // 2. Obsługa celowania i liczby kości
     // Broń dystansowa: 1-3 kości w zależności od poziomu celowania (wybieramy najlepszą).
     // Walka wręcz: Zawsze 3 kości (zasada testu 3k20).
-    const isMelee = weapon.system.weaponType === "melee";
     const diceCount = isMelee ? 3 : (aimingLevel + 1);
     
     // Obliczamy bazowe obrażenia (zostaną zaktualizowane później dla amunicji dystansowej)
@@ -53,11 +61,10 @@ export class NeuroshimaDice {
     const results = roll.terms[0].results.map(r => r.result);
     const bestResult = Math.min(...results);
 
-    // Finalny stan otwartości testu (melee wymusza tryb zgodny z ustawieniem opposedMeleeMode)
+    // Finalny stan otwartości testu (melee wymusza test zamknięty 3k20)
     let finalIsOpen = isOpen;
     if (isMelee) {
-        const mode = game.settings.get("neuroshima", "opposedMeleeMode");
-        finalIsOpen = (mode === "sp");
+        finalIsOpen = false;
     }
 
     game.neuroshima.log("Wyniki rzutu kośćmi", {
@@ -241,9 +248,9 @@ export class NeuroshimaDice {
     const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
     const finalDiff = shiftedDifficulty;
     
-    // Próg sukcesu (Współczynnik + modyfikator PT + bonus do atrybutu)
+    // Próg sukcesu (Współczynnik + modyfikator PT + bonus do atrybutu + bonus broni)
     const baseAttr = actor.system.attributes[weapon.system.attribute] || 10;
-    const finalStat = baseAttr + attributeBonus;
+    const finalStat = baseAttr + attributeBonus + weaponBonus;
     const target = finalStat + finalDiff.mod;
 
     game.neuroshima.log("Kalkulacja trudności i Suwaka", {
@@ -411,6 +418,10 @@ export class NeuroshimaDice {
         actionLabel: burstLabel,
         isWeapon: true,
         isMelee,
+        meleeAction: isMelee ? (params.meleeAction || "attack") : null,
+        damageMelee1: isMelee ? weapon.system.damageMelee1 : null,
+        damageMelee2: isMelee ? weapon.system.damageMelee2 : null,
+        damageMelee3: isMelee ? weapon.system.damageMelee3 : null,
         targets: isMelee ? (params.targets ?? []) : [],
         weaponId: weapon.id,
         actorId: actor.id,

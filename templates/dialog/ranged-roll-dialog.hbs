@@ -2,11 +2,20 @@
     <div class="dialog-columns">
         <div class="column left">
             <div class="form-group vertical">
+                {{#if isMelee}}
+                <label>{{localize "NEUROSHIMA.MeleeOpposed.Title"}}</label>
+                <select name="meleeAction">
+                    <option value="attack" {{#if (eq meleeAction "attack")}}selected{{/if}}>{{localize "NEUROSHIMA.Actions.Attack"}}</option>
+                    <option value="defense" {{#if (eq meleeAction "defense")}}selected{{/if}}>{{localize "NEUROSHIMA.Actions.Defense"}}</option>
+                </select>
+                <input type="hidden" name="isOpen" value="false">
+                {{else}}
                 <label>{{localize "NEUROSHIMA.Roll.Test"}}</label>
                 <select name="isOpen">
                     <option value="true" {{#if isOpen}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.OpenTest"}}</option>
                     <option value="false" {{#unless isOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.Roll.ClosedTest"}}</option>
                 </select>
+                {{/if}}
             </div>
             <div class="form-group vertical">
                 <label>{{localize "NEUROSHIMA.Roll.Difficulty"}}</label>

@@ -215,12 +215,20 @@ export class CombatHelper {
             return;
         }
         
-        // Próba pobrania bezpośrednich pól z broni jeśli mamy weaponId
+        // Próba pobrania bezpośrednich pól z broni lub z zapisanych danych rzutu
         const attacker = attackData.actorId ? game.actors.get(attackData.actorId) : null;
         const weapon = attacker && attackData.weaponId ? attacker.items.get(attackData.weaponId) : null;
         
         let damageProfiles = [];
-        if (weapon && weapon.system.weaponType === "melee") {
+        if (attackData.damageMelee1) {
+            // Używamy danych zapisanych w rzucie (najbezpieczniejsze dla persistence)
+            damageProfiles = [
+                attackData.damageMelee1,
+                attackData.damageMelee2 || "L",
+                attackData.damageMelee3 || "C"
+            ];
+            game.neuroshima.log("Walka wręcz: Pobrane profile z danych rzutu", damageProfiles);
+        } else if (weapon && weapon.system.weaponType === "melee") {
             damageProfiles = [
                 weapon.system.damageMelee1 || "D",
                 weapon.system.damageMelee2 || "L",

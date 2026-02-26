@@ -100,8 +100,8 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('lt', (a, b) => a < b);
     Handlebars.registerHelper('ge', (a, b) => a >= b);
     Handlebars.registerHelper('le', (a, b) => a <= b);
-    Handlebars.registerHelper('eq', (a, b) => a === b);
-    Handlebars.registerHelper('ne', (a, b) => a !== b);
+    Handlebars.registerHelper('eq', (a, b) => a == b);
+    Handlebars.registerHelper('ne', (a, b) => a != b);
     Handlebars.registerHelper('and', (a, b) => a && b);
     Handlebars.registerHelper('or', (a, b) => a || b);
     Handlebars.registerHelper('not', (a) => !a);
@@ -159,7 +159,7 @@ Hooks.once('init', async function() {
         name: "NEUROSHIMA.Settings.AllowCombatShift.Name",
         hint: "NEUROSHIMA.Settings.AllowCombatShift.Hint",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         requiresReload: false
@@ -208,13 +208,14 @@ Hooks.once('init', async function() {
         name: "NEUROSHIMA.Settings.OpposedMeleeMode.Name",
         hint: "NEUROSHIMA.Settings.OpposedMeleeMode.Hint",
         scope: "world",
-        config: true,
+        config: false,
         type: String,
         choices: {
             "sp": "NEUROSHIMA.Settings.OpposedMeleeMode.SP",
-            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice"
+            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice",
+            "successes": "NEUROSHIMA.Settings.OpposedMeleeMode.Successes"
         },
-        default: "sp",
+        default: "successes",
         requiresReload: false
     });
 
@@ -222,7 +223,7 @@ Hooks.once('init', async function() {
         name: "NEUROSHIMA.Settings.OpposedMeleeTier2At.Name",
         hint: "NEUROSHIMA.Settings.OpposedMeleeTier2At.Hint",
         scope: "world",
-        config: true,
+        config: false,
         type: Number,
         default: 3,
         requiresReload: false
@@ -232,7 +233,7 @@ Hooks.once('init', async function() {
         name: "NEUROSHIMA.Settings.OpposedMeleeTier3At.Name",
         hint: "NEUROSHIMA.Settings.OpposedMeleeTier3At.Hint",
         scope: "world",
-        config: true,
+        config: false,
         type: Number,
         default: 6,
         requiresReload: false

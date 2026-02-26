@@ -14,7 +14,7 @@ export class NeuroshimaMeleeOpposed {
    * @returns {Object} Wynik pojedynku
    */
   static compute(attackFlags, defenseFlags, options = {}) {
-    const mode = options.mode || game.settings.get("neuroshima", "opposedMeleeMode") || "sp";
+    const mode = options.mode || game.settings.get("neuroshima", "opposedMeleeMode") || "successes";
     const atkSuccess = attackFlags.isSuccess ?? false;
     const defSuccess = defenseFlags.isSuccess ?? false;
     
@@ -34,6 +34,8 @@ export class NeuroshimaMeleeOpposed {
 
     if (mode === "dice") {
       this._computeDiceMode(attackFlags, defenseFlags, result);
+    } else if (mode === "successes") {
+      this._computeSuccessesMode(attackFlags, defenseFlags, result, options);
     } else {
       this._computeSPMode(attackFlags, defenseFlags, result, options);
     }
@@ -42,7 +44,98 @@ export class NeuroshimaMeleeOpposed {
   }
 
   /**
-   * Logika trybu SP (Punkty Sukcesu)
+   * Logika trybu Successes (Liczba sukcesów w teście zamkniętym)
+   * @private
+   */
+  static _computeSuccessesMode(attackFlags, defenseFlags, result, options) {
+    const atkSuccesses = attackFlags.successCount ?? 0;
+    const defSuccesses = defenseFlags.successCount ?? 0;
+    const advantage = atkSuccesses - defSuccesses;
+
+    result.attackSP = atkSuccesses;
+    result.defenseSP = defSuccesses;
+    result.advantage = advantage;
+
+    if (advantage > 0) {
+      result.winner = 'attacker';
+      result.outcome = 'attacker-won';
+      // Wygrał z przewagą, spDifference to różnica sukcesów (1-3)
+      result.spDifference = Math.clamp(advantage, 0, 3);
+    } else if (advantage < 0) {
+      result.winner = 'defender';
+      result.outcome = 'defender-won';
+      result.spDifference = 0;
+    } else {
+      // Remis sprzyja obrońcy
+      result.winner = 'defender';
+      result.outcome = 'tie';
+      result.spDifference = 0;
+    }
+  }
+
+  /**
+   * Logika trybu Dice (Segmenty - porównanie zmodyfikowanych wyników)
+   * @private
+   */
+  static _computeDiceMode(attackFlags, defenseFlags, result) {
+    const atkResults = (attackFlags.modifiedResults || []).sort((a, b) => a.index - b.index);
+    const defResults = (defenseFlags.modifiedResults || []).sort((a, b) => a.index - b.index);
+
+    let attackerWins = 0;
+    let defenderWins = 0;
+
+    // Porównujemy każdą z 3 kości (segmenty) - bierzemy wyniki ZMODYFIKOWANE przez umiejętność
+    for (let i = 0; i < 3; i++) {
+      const atk = atkResults[i];
+      const def = defResults[i];
+
+      if (!atk || !def) continue;
+
+      let segmentWinner = 'tie';
+      // W Neuroshimie NIŻSZY wynik jest LEPSZY.
+      // Atakujący wygrywa segment, jeśli jego zmodyfikowany wynik jest NIŻSZY od obrońcy.
+      if (atk.modified < def.modified) {
+        segmentWinner = 'attacker';
+        attackerWins++;
+      } else if (atk.modified > def.modified) {
+        segmentWinner = 'defender';
+        defenderWins++;
+      } else {
+        // Remis w segmencie sprzyja obrońcy? 
+        // W przykładzie 13 vs 11 = Obrońca wygrywa (bo 11 < 13).
+        // Załóżmy że przy równej wartości obrońca wygrywa segment.
+        segmentWinner = 'defender';
+        defenderWins++;
+      }
+
+      result.details.push({
+        segment: i + 1,
+        winner: segmentWinner,
+        atkVal: atk.modified,
+        defVal: def.modified
+      });
+    }
+
+    result.advantage = `${attackerWins} - ${defenderWins}`;
+    
+    if (attackerWins > defenderWins) {
+      result.winner = 'attacker';
+      result.outcome = 'attacker-won';
+      result.spDifference = Math.clamp(attackerWins, 0, 3);
+    } else if (defenderWins > attackerWins) {
+      result.winner = 'defender';
+      result.outcome = 'defender-won';
+      result.spDifference = 0;
+    } else {
+      // Ogólny remis sprzyja obrońcy
+      result.winner = 'defender';
+      result.outcome = 'tie';
+      result.spDifference = 0;
+    }
+  }
+
+  /**
+   * Logika trybu SP (Punkty Sukcesu - test otwarty)
    * @private
    */
   static _computeSPMode(attackFlags, defenseFlags, result, options) {
@@ -54,10 +147,6 @@ export class NeuroshimaMeleeOpposed {
     result.defenseSP = defSP;
     result.advantage = advantage;
 
-    // Testy przeciwstawne w Neuroshimie zawsze porównują SP, 
-    // nawet jeśli obie strony mają ujemne SP (porażka).
-    // Zwycięzcą jest ten, kto ma WIĘCEJ Punktów Sukcesu (lub mniej Punktów Porażki).
-
     if (advantage > 0) {
       result.winner = 'attacker';
       if (result.attackSuccess && result.defenseSuccess === false) {
@@ -65,18 +154,12 @@ export class NeuroshimaMeleeOpposed {
       } else if (result.attackSuccess && result.defenseSuccess) {
           result.outcome = 'attacker-won';
       } else {
-          result.outcome = 'both-failed'; // Atakujący wygrał, bo mniej przegrał
+          result.outcome = 'both-failed';
       }
 
-      // Obrażenia zadaje tylko jeśli atak był sukcesem (atkSP >= 0)
       if (result.attackSuccess) {
         result.spDifference = this._mapAdvantageToTier(advantage, options);
       } else {
-        // Jeśli atak nie był sukcesem, ale atakujący wygrał (both-failed), 
-        // to nadal może zadać minimalne obrażenia (SP=1 -> Draśnięcie) jeśli advantage jest wysokie?
-        // Zgodnie z zasadami 1.5, jeśli obie strony przegrały, to ten kto wygrał (mniej przegrał) 
-        // zadaje obrażenia tylko jeśli wynik rzutu ataku na to pozwalał.
-        // Uproszczenie: tylko przy sukcesie ataku zadajemy obrażenia.
         result.spDifference = 0;
       }
     } else if (advantage < 0) {
@@ -84,66 +167,15 @@ export class NeuroshimaMeleeOpposed {
       if (!result.attackSuccess && result.defenseSuccess) {
           result.outcome = 'attack-failed';
       } else if (!result.attackSuccess && !result.defenseSuccess) {
-          result.outcome = 'both-failed'; // Obrońca wygrał, bo mniej przegrał
+          result.outcome = 'both-failed';
       } else {
           result.outcome = 'defender-won';
       }
       result.spDifference = 0;
     } else {
-      // Remis sprzyja obrońcy
       result.winner = 'defender';
       result.outcome = 'tie';
       result.spDifference = 0;
-    }
-  }
-
-  /**
-   * Logika trybu Dice (Segmenty)
-   * @private
-   */
-  static _computeDiceMode(attackFlags, defenseFlags, result) {
-    const atkResults = (attackFlags.modifiedResults || []).sort((a, b) => a.index - b.index);
-    const defResults = (defenseFlags.modifiedResults || []).sort((a, b) => a.index - b.index);
-
-    let attackerWins = 0;
-    let defenderWins = 0;
-
-    // Porównujemy każdą z 3 kości (segmenty)
-    for (let i = 0; i < 3; i++) {
-      const atk = atkResults[i];
-      const def = defResults[i];
-
-      if (!atk || !def) continue;
-
-      let segmentWinner = 'tie';
-      if (atk.isSuccess && !def.isSuccess) {
-        segmentWinner = 'attacker';
-        attackerWins++;
-      } else if (!atk.isSuccess && def.isSuccess) {
-        segmentWinner = 'defender';
-        defenderWins++;
-      }
-
-      result.details.push({
-        segment: i + 1,
-        winner: segmentWinner,
-        atkSuccess: atk.isSuccess,
-        defSuccess: def.isSuccess
-      });
-    }
-
-    result.advantage = attackerWins;
-    result.spDifference = Math.clamp(attackerWins, 0, 3);
-
-    if (attackerWins > defenderWins) {
-      result.winner = 'attacker';
-      result.outcome = 'attacker-won';
-    } else if (defenderWins > attackerWins) {
-      result.winner = 'defender';
-      result.outcome = 'defender-won';
-    } else {
-      result.winner = 'tie';
-      result.outcome = 'tie';
     }
   }
 
@@ -216,22 +248,45 @@ export class NeuroshimaMeleeOpposed {
 
     let detailsHtml = '';
     if (opposed.mode === 'dice' && opposed.details?.length > 0) {
-      detailsHtml = '<div class="opposed-details" style="font-size: 0.9em; margin-top: 5px; border-top: 1px dotted #ccc; padding-top: 5px;">';
+      detailsHtml = '<div class="opposed-details-grid">';
+      detailsHtml += `
+        <div class="grid-header">
+            <span class="col-seg"></span>
+            <span class="col-name">${atkName.split(' ')[0]}</span>
+            <span class="col-vs"></span>
+            <span class="col-name">${defName.split(' ')[0]}</span>
+            <span class="col-win"></span>
+        </div>`;
       opposed.details.forEach(d => {
         const winnerIcon = d.winner === 'attacker' ? '<i class="fas fa-swords"></i>' : (d.winner === 'defender' ? '<i class="fas fa-shield-alt"></i>' : '<i class="fas fa-balance-scale"></i>');
+        const atkClass = d.winner === 'attacker' ? 'winner' : (d.winner === 'defender' ? 'loser' : '');
+        const defClass = d.winner === 'defender' ? 'winner' : (d.winner === 'attacker' ? 'loser' : '');
+        
         detailsHtml += `
-          <div class="segment-row" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>S${d.segment}:</span>
-            <span>A: ${d.atkSuccess ? '✓' : '✗'}</span>
-            <span>D: ${d.defSuccess ? '✓' : '✗'}</span>
-            <span>${winnerIcon}</span>
+          <div class="grid-row">
+            <span class="col-seg">S${d.segment}</span>
+            <span class="col-val ${atkClass}">${d.atkVal}</span>
+            <span class="col-vs">vs</span>
+            <span class="col-val ${defClass}">${d.defVal}</span>
+            <span class="col-win">${winnerIcon}</span>
           </div>`;
       });
       detailsHtml += '</div>';
     }
 
-    const atkVal = opposed.mode === 'dice' ? `${opposed.advantage} ✓` : `${opposed.attackSP} SP`;
-    const defVal = opposed.mode === 'dice' ? `${opposed.details.filter(d => d.defSuccess).length} ✓` : `${opposed.defenseSP} SP`;
+    let atkVal = '';
+    let defVal = '';
+    if (opposed.mode === 'dice') {
+        const parts = opposed.advantage.split(' - ');
+        atkVal = `${parts[0]} <i class="fas fa-check"></i>`;
+        defVal = `${parts[1]} <i class="fas fa-check"></i>`; 
+    } else if (opposed.mode === 'successes') {
+        atkVal = `${opposed.attackSP} ${game.i18n.localize('NEUROSHIMA.Roll.SuccessesAbbr')}`;
+        defVal = `${opposed.defenseSP} ${game.i18n.localize('NEUROSHIMA.Roll.SuccessesAbbr')}`;
+    } else {
+        atkVal = `${opposed.attackSP} SP`;
+        defVal = `${opposed.defenseSP} SP`;
+    }
 
     return `
       <div class="neuroshima melee-opposed-result ${outcomeClass}">

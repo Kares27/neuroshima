@@ -26,6 +26,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       isOpen: lastRoll.isOpen ?? false,
       difficulty: lastRoll.difficulty || "average",
       hitLocation: "random",
+      meleeAction: lastRoll.meleeAction || "attack",
       aimingLevel: this.rollType === "melee" ? 2 : (lastRoll.aimingLevel || 0), // 2 means 3 dice for display
       burstLevel: 0,
       percentageModifier: lastRoll.percentageModifier || 0,
@@ -98,6 +99,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     context.isOpen = this.rollOptions.isOpen;
     context.baseDifficulty = this.rollOptions.difficulty;
     context.hitLocation = this.rollOptions.hitLocation;
+    context.meleeAction = this.rollOptions.meleeAction;
+    context.isMelee = this.rollType === "melee";
     context.aimingLevel = this.rollOptions.aimingLevel;
     context.burstLevel = this.rollOptions.burstLevel;
     context.percentageModifier = this.rollOptions.percentageModifier;
@@ -186,13 +189,29 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const armorPenalty = formData.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0;
     const woundPenalty = formData.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0;
     
+    // Weapon bonus for melee
+    let weaponBonus = 0;
+    if (this.rollType === "melee") {
+        const action = formData.meleeAction || "attack";
+        weaponBonus = action === "attack" ? (this.weapon.system.attackBonus || 0) : (this.weapon.system.defenseBonus || 0);
+    }
+
     const locationPenalty = game.neuroshima.NeuroshimaDice.getLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
 
     const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + locationPenalty;
 
     // Update preview box
     const totalElement = html.querySelector('.total-modifier') || html.querySelector('#preview-total');
-    if (totalElement) totalElement.innerText = `${totalPct}%`;
+    if (totalElement) {
+        let text = `${totalPct}%`;
+        if (weaponBonus !== 0) {
+            text += ` (${weaponBonus > 0 ? '+' : ''}${weaponBonus} ${game.i18n.localize("NEUROSHIMA.Roll.Summary")})`; // Simplified, using Summary as placeholder for 'Bonus' if needed
+            // Actually, let's just show the bonus if it exists
+            const bonusLabel = weaponBonus > 0 ? `+${weaponBonus}` : `${weaponBonus}`;
+            text = `${totalPct}% [${bonusLabel}]`;
+        }
+        totalElement.innerText = text;
+    }
 
     // Determine actual level
     const actualDiff = game.neuroshima.NeuroshimaDice.getDifficultyFromPercent(totalPct);
@@ -229,8 +248,9 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     // Save persistence data to actor
     await this.actor.update({
         "system.lastWeaponRoll": {
-            isOpen: formData.isOpen === "true",
+            isOpen: this.rollType === "melee" ? false : (formData.isOpen === "true"),
             difficulty: formData.baseDifficulty,
+            meleeAction: formData.meleeAction,
             percentageModifier: parseInt(formData.modifier) || 0,
             useArmorPenalty: !!formData.useArmorPenalty,
             useWoundPenalty: !!formData.useWoundPenalty
@@ -245,7 +265,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         weapon: this.weapon,
         actor: this.actor,
         targets: this.targets,
-        isOpen: formData.isOpen === "true",
+        isOpen: this.rollType === "melee" ? false : (formData.isOpen === "true"),
+        meleeAction: formData.meleeAction,
         aimingLevel: aimingLevel,
         burstLevel: burstLevel,
         difficulty: formData.baseDifficulty, // This is selected base difficulty

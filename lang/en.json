@@ -144,6 +144,14 @@
                 "Expired": "Expired"
             }
         },
+        "MeleeDefense": {
+            "Title": "Defense",
+            "Help": "Choose your defense type against this attack.",
+            "Button": "Defend"
+        },
+        "Defense": {
+            "Label": "{type} vs {attacker}"
+        },
         "DefenseType": {
             "brawl": "Brawl",
             "melee": "Melee",
@@ -166,6 +174,8 @@
             "ShowLess": "Hide difficulty thresholds"
         },
         "Actions": {
+            "Attack": "Attack",
+            "Defense": "Defense",
             "Roll": "Roll dice",
             "Reroll": "Reroll",
             "Cancel": "Cancel",
@@ -229,7 +239,8 @@
                 "Name": "Opposed Melee Mode",
                 "Hint": "Choose how to resolve opposed tests in melee combat.",
                 "SP": "Success Points (Advantage)",
-                "Dice": "Segments (Die vs Die)"
+                "Dice": "Segments (Dice Comparison)",
+                "Successes": "Successes Difference (Closed Test)"
             },
             "OpposedMeleeTier2At": {
                 "Name": "2 Damage Success Threshold (SP)",
@@ -310,8 +321,17 @@
                 "Hint": "Configuration of base difficulty levels for healing tests by damage type."
             }
         },
+        "Errors": {
+            "NotMeleeAttack": "This is not a melee attack."
+        },
+        "Cancel": "Cancel",
         "Warnings": {
-            "DamageAlreadyApplied": "Damage from this result has already been applied."
+            "NoMeleeTarget": "No melee target selected. You can roll, but defense won't be available.",
+            "CannotDefend": "You cannot defend against this attack (no controlled character among targets).",
+            "MeleeNeedsDefense": "Melee attacks require defense roll before applying damage.",
+            "NotYourActor": "You do not have permissions for this actor.",
+            "DamageAlreadyApplied": "Damage has already been applied.",
+            "HealingAlreadyApplied": "Healing has already been applied."
         },
         "Tabs": {
             "Attributes": "Attributes",
@@ -376,19 +396,6 @@
             "DamageReversed": "Reversed {count} wounds for {name}.",
             "NoWoundsFoundToReverse": "No matching wounds found to reverse.",
             "StatusReversed": "Damage has been reversed by GM."
-        },
-        "Difficulty": {
-            "Easy": "Easy",
-            "Average": "Average",
-            "Problematic": "Problematic",
-            "Hard": "Hard",
-            "VeryHard": "Very Hard",
-            "DamnHard": "Damn Hard",
-            "Luck": "Luck",
-            "Masterfull": "Masterfull",
-            "Grandmasterfull": "Grandmasterfull",
-            "ShowMore": "Show difficulty thresholds",
-            "ShowLess": "Hide difficulty thresholds"
         },
         "Damage": {
             "Type": "Damage Type",
@@ -667,41 +674,7 @@
                 "progress": "Progress Healing",
                 "complete": "Complete Healing"
             }
-        },
-        "DefenseType": {
-            "brawl": "Brawl",
-            "melee": "Melee Weapon",
-            "dodge": "Dodge"
-        },
-        "MeleeDefense": {
-            "Title": "Defense",
-            "Help": "Choose your defense type against this attack.",
-            "Button": "Defend"
-        },
-        "Defense": {
-            "Label": "{type} vs {attacker}"
-        },
-        "MeleeOpposed": {
-            "Title": "Opposed Test Result",
-            "BothFailed": "{attacker} and {defender} both failed.",
-            "AttackFailed": "{attacker} missed.",
-            "DefenseFailed": "{defender} failed to defend ({defenseType}).",
-            "AttackerWon": "{attacker} hit {defender} (advantage: {advantage}).",
-            "DefenderWon": "{defender} defended ({defenseType}) with {advantage} advantage.",
-            "Tie": "{attacker} and {defender} tied - defense successful."
-        },
-        "Warnings": {
-            "NoMeleeTarget": "No melee target selected. You can roll, but defense won't be available.",
-            "CannotDefend": "You cannot defend against this attack (no controlled character among targets).",
-            "MeleeNeedsDefense": "Melee attacks require defense roll before applying damage.",
-            "NotYourActor": "You do not have permissions for this actor.",
-            "DamageAlreadyApplied": "Damage has already been applied.",
-            "HealingAlreadyApplied": "Healing has already been applied."
-        },
-        "Errors": {
-            "NotMeleeAttack": "This is not a melee attack."
-        },
-        "Cancel": "Cancel"
+        }
     },
     "TOKEN": {
         "Title": "Prototype Token"

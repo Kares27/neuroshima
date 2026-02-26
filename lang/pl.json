@@ -151,6 +151,14 @@
                 "Expired": "Wygasło"
             }
         },
+        "MeleeDefense": {
+            "Title": "Obrona",
+            "Help": "Wybierz typ obrony przed tym atakiem.",
+            "Button": "Broń się"
+        },
+        "Defense": {
+            "Label": "{type} vs {attacker}"
+        },
         "DefenseType": {
             "brawl": "Bijatyka",
             "melee": "Broń biała",
@@ -171,6 +179,8 @@
             "ShowLess": "Ukryj progi trudności"
         },
         "Actions": {
+            "Attack": "Atak",
+            "Defense": "Obrona",
             "Roll": "Rzuć kością",
             "Reroll": "Przerzuć",
             "Cancel": "Anuluj",
@@ -228,7 +238,8 @@
                 "Name": "Tryb walki wręcz (Opposed Melee)",
                 "Hint": "Wybierz sposób rozliczania testów przeciwstawnych w walce wręcz.",
                 "SP": "Punkty Sukcesu (Przewaga)",
-                "Dice": "Segmenty (Kość vs Kość)"
+                "Dice": "Segmenty (Porównanie kości)",
+                "Successes": "Różnica sukcesów (Test zamknięty)"
             },
             "OpposedMeleeTier2At": {
                 "Name": "Próg 2 sukcesów obrażeń (SP)",
@@ -309,8 +320,17 @@
                 "Hint": "Konfiguracja bazowych trudności testów leczenia dla każdego typu obrażenia."
             }
         },
+        "Errors": {
+            "NotMeleeAttack": "To nie jest atak wręcz."
+        },
+        "Cancel": "Anuluj",
         "Warnings": {
-            "DamageAlreadyApplied": "Obrażenia z tego wyniku zostały już nałożone."
+            "NoMeleeTarget": "Brak celu ataku wręcz. Możesz rzucić, ale nie będzie możliwości obrony.",
+            "CannotDefend": "Nie możesz się bronić przed tym atakiem (brak kontrolowanej postaci wśród celów).",
+            "MeleeNeedsDefense": "Ataki wręcz wymagają rzutu obronnego przed zastosowaniem obrażeń.",
+            "NotYourActor": "Nie masz uprawnień do tego aktora.",
+            "DamageAlreadyApplied": "Obrażenia z tego wyniku zostały już nałożone.",
+            "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane."
         },
         "Tabs": {
             "Attributes": "Współczynniki",
@@ -662,40 +682,6 @@
                 "progress": "Postęp Leczenia",
                 "complete": "Ukończ Leczenie"
             }
-        },
-        "DefenseType": {
-            "brawl": "Bijatyka",
-            "melee": "Broń ręczna",
-            "dodge": "Unik"
-        },
-        "MeleeDefense": {
-            "Title": "Obrona",
-            "Help": "Wybierz typ obrony przed tym atakiem.",
-            "Button": "Broń się"
-        },
-        "Defense": {
-            "Label": "{type} vs {attacker}"
-        },
-        "MeleeOpposed": {
-            "Title": "Wynik pojedynku",
-            "BothFailed": "{attacker} i {defender} nie trafili.",
-            "AttackFailed": "{attacker} chybił.",
-            "DefenseFailed": "{defender} nie zdołał się obronić ({defenseType}).",
-            "AttackerWon": "{attacker} trafił {defender} (przewaga: {advantage}).",
-            "DefenderWon": "{defender} obronił się ({defenseType}) z przewagą {advantage}.",
-            "Tie": "{attacker} i {defender} remis - obrona skuteczna."
-        },
-        "Warnings": {
-            "NoMeleeTarget": "Brak celu ataku wręcz. Możesz rzucić, ale nie będzie możliwości obrony.",
-            "CannotDefend": "Nie możesz się bronić przed tym atakiem (brak kontrolowanej postaci wśród celów).",
-            "MeleeNeedsDefense": "Ataki wręcz wymagają rzutu obronnego przed zastosowaniem obrażeń.",
-            "NotYourActor": "Nie masz uprawnień do tego aktora.",
-            "DamageAlreadyApplied": "Obrażenia zostały już nałożone.",
-            "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane."
-        },
-        "Errors": {
-            "NotMeleeAttack": "To nie jest atak wręcz."
-        },
-        "Cancel": "Anuluj"
+        }
     }
 }
