@@ -108,6 +108,7 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('add', (a, b) => a + b);
     Handlebars.registerHelper('abs', (a) => Math.abs(a));
     Handlebars.registerHelper('json', (context) => JSON.stringify(context));
+    Handlebars.registerHelper('number', (v) => Number(v));
 
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
@@ -225,6 +226,21 @@ Hooks.once('init', async function() {
             "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice"
         },
         default: "successes",
+        requiresReload: false
+    });
+
+    game.settings.register("neuroshima", "meleeBonusMode", {
+        name: "NEUROSHIMA.Settings.MeleeBonusMode.Name",
+        hint: "NEUROSHIMA.Settings.MeleeBonusMode.Hint",
+        scope: "world",
+        config: false,
+        type: String,
+        choices: {
+            "attribute": "NEUROSHIMA.Settings.MeleeBonusMode.Attribute",
+            "skill": "NEUROSHIMA.Settings.MeleeBonusMode.Skill",
+            "both": "NEUROSHIMA.Settings.MeleeBonusMode.Both"
+        },
+        default: "attribute",
         requiresReload: false
     });
 
@@ -532,8 +548,9 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const rollData = message?.getFlag("neuroshima", "rollData");
             const messageType = message?.getFlag("neuroshima", "messageType");
             
-            // Tylko dla skill/attrybut testów (nie weapon)
-            if (!rollData || messageType === "weapon") return false;
+            // Tylko dla skill/attrybut testów i broni
+            if (!rollData) return false;
+            if (messageType !== "roll" && messageType !== "weapon") return false;
             
             // GM lub aktor który wykonał test
             const actor = game.actors.get(rollData.actorId);
@@ -542,6 +559,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
             const rollData = message?.getFlag("neuroshima", "rollData");
+            const messageType = message?.getFlag("neuroshima", "messageType");
             const actor = game.actors.get(rollData?.actorId);
             
             if (!actor || !rollData) {
@@ -572,26 +590,63 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                     ]
                 });
                 dialog.render(true);
-            }).then(confirmed => {
+            }).then(async confirmed => {
                 if (!confirmed) return;
 
-                game.neuroshima?.group("Reroll Skill Test");
+                game.neuroshima?.group("Reroll Test");
                 game.neuroshima?.log("Przerzucanie testu", {
                     actor: actor.name,
-                    label: rollData.label
+                    label: rollData.label,
+                    type: messageType
                 });
 
-                // Powtórz test z tymi samymi parametrami
-                game.neuroshima.NeuroshimaDice.rollTest({
-                    actor: actor,
-                    skillId: rollData.skillId,
-                    attributeId: rollData.attributeId,
-                    isOpen: rollData.isOpen,
-                    isCombat: rollData.isCombat,
-                    difficulty: rollData.difficulty || "average"
-                }).finally(() => {
-                    game.neuroshima?.groupEnd();
-                });
+                if (messageType === "weapon") {
+                    const weapon = actor.items.get(rollData.weaponId);
+                    if (!weapon) {
+                        ui.notifications.error("Nie można znaleźć broni do przerzutu");
+                        game.neuroshima?.groupEnd();
+                        return;
+                    }
+
+                    // Powtórz test broni
+                    await game.neuroshima.NeuroshimaDice.rollWeaponTest({
+                        weapon: weapon,
+                        actor: actor,
+                        aimingLevel: rollData.aimingLevel || 0,
+                        burstLevel: rollData.burstLevel || 0,
+                        difficulty: rollData.difficulty || "average",
+                        hitLocation: rollData.hitLocation || "random",
+                        modifier: rollData.modifier || 0,
+                        applyArmor: rollData.applyArmor !== false,
+                        applyWounds: rollData.applyWounds !== false,
+                        isOpen: rollData.isOpen || false,
+                        skillBonus: rollData.skillBonus || 0,
+                        attributeBonus: rollData.attributeBonus || 0,
+                        distance: rollData.distance || 0,
+                        meleeAction: rollData.meleeAction || "attack",
+                        isReroll: true,
+                        rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
+                    }).finally(() => {
+                        game.neuroshima?.groupEnd();
+                    });
+                } else {
+                    // Powtórz test standardowy
+                    await game.neuroshima.NeuroshimaDice.rollTest({
+                        actor: actor,
+                        label: rollData.label,
+                        stat: rollData.baseStat,
+                        skill: rollData.baseSkill,
+                        skillBonus: rollData.skillBonus || 0,
+                        attributeBonus: rollData.attributeBonus || 0,
+                        penalties: rollData.penalties || { mod: 0, wounds: 0, armor: 0 },
+                        isOpen: rollData.isOpen,
+                        isCombat: rollData.isCombat || false,
+                        isReroll: true,
+                        rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
+                    }).finally(() => {
+                        game.neuroshima?.groupEnd();
+                    });
+                }
             });
         }
     });

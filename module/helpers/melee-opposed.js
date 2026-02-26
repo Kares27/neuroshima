@@ -90,18 +90,28 @@ export class NeuroshimaMeleeOpposed {
       if (!atk || !def) continue;
 
       let segmentWinner = 'tie';
-      // W Neuroshimie NIŻSZY wynik jest LEPSZY.
-      // Atakujący wygrywa segment, jeśli jego zmodyfikowany wynik jest NIŻSZY od obrońcy.
-      if (atk.modified < def.modified) {
+      
+      // Nowa logika: kość brana pod uwagę tylko jeśli jest sukcesem (<= target)
+      // Logika sukcesów jest już przeliczona w rollTest i zapisana w atk.isSuccess / def.isSuccess
+      
+      if (atk.isSuccess && !def.isSuccess) {
         segmentWinner = 'attacker';
         attackerWins++;
-      } else if (atk.modified > def.modified) {
+      } else if (!atk.isSuccess && def.isSuccess) {
         segmentWinner = 'defender';
         defenderWins++;
+      } else if (atk.isSuccess && def.isSuccess) {
+        // Obaj mają sukces - wygrywa ten z niższym wynikiem (bliżej 1)
+        if (atk.modified < def.modified) {
+          segmentWinner = 'attacker';
+          attackerWins++;
+        } else {
+          // Remis w segmencie przy obu sukcesach sprzyja obrońcy
+          segmentWinner = 'defender';
+          defenderWins++;
+        }
       } else {
-        // Remis w segmencie sprzyja obrońcy? 
-        // W przykładzie 13 vs 11 = Obrońca wygrywa (bo 11 < 13).
-        // Załóżmy że przy równej wartości obrońca wygrywa segment.
+        // Obaj porażka - obrońca wygrywa segment (lub remis)
         segmentWinner = 'defender';
         defenderWins++;
       }

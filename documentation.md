@@ -55,8 +55,9 @@ Każdy typ rany ma dwa rodzaje punktów w konfiguracji:
 ### `NeuroshimaDice`
 Główna klasa obsługująca rzuty.
 - **rollTest**: Standardowy test (3k20). Obsługuje mechanikę Suwaka, testy otwarte/zamknięte i kary procentowe.
+  - **Suwak**: Przesuwa poziom trudności na podstawie umiejętności (co 4 pkt = -1 stopień) oraz kości (naturalna 1 = -1 stopień, naturalna 20 = +1 stopień). Umiejętność 0 generuje automatyczną karę +1 stopień trudności.
 - **rollWeaponTest**: Specjalistyczny rzut dla broni. 
-  - **Broń Dystansowa**: Uwzględnia celowanie (liczba kości), ogień ciągły (liczba pocisków) oraz lokacje trafień. Umiejętność odejmowana jest w całości od najlepszej kości. Sukcesy w serii liczone są na podstawie nadwyżki (Punkty Przewagi) nad progiem sukcesu.
+  - **Przerzuty (Reroll)**: Wszystkie rzuty (broń i skille) wspierają mechanikę przerzutu z zachowaniem oryginalnych parametrów. Wiadomości oznaczone są tagiem `isReroll`.  - **Broń Dystansowa**: Uwzględnia celowanie (liczba kości), ogień ciągły (liczba pocisków) oraz lokacje trafień. Umiejętność odejmowana jest w całości od najlepszej kości. Sukcesy w serii liczone są na podstawie nadwyżki (Punkty Przewagi) nad progiem sukcesu.
   - **Dystans**: Automatycznie mierzony między wybranym tokenem a celem (Target) za pomocą `Ray` i `canvas.grid.measureDistance`. Wynik trafia do rzutu i wpływa na obrażenia śrutu.
   - **Mechanika Śrutu**: 
     - Obrażenia bazowe (K, C, L, D) są dobierane dynamicznie z tabeli zasięgu amunicji na podstawie dystansu.
@@ -69,13 +70,16 @@ Główna klasa obsługująca rzuty.
     - System oczekuje na rzut obronny obrońcy (broń, bijatyka lub unik).
     - Wynik jest automatycznie rozstrzygany (`resolveOpposed`) i wyświetlany jako nowa karta na czacie.
     - Zwycięzca zadaje obrażenia zależne od różnicy Punktów Przewagi (`spDifference`).
+    - **Tryb Sukcesów**: Porównanie liczby sukcesów w testach zamkniętych.
+    - **Tryb Kości (Segmenty)**: Porównanie korespondencyjne kości. Kość brana pod uwagę tylko jeśli jest sukcesem (<= Target po modyfikacji). Wygrywa niższy wynik.
+    - **Aplikacja Bonusów**: Ustawienie `meleeBonusMode` definiuje czy bonus broni trafia do Atrybutu, Umiejętności, czy obu.
   - **Walka Wręcz (Melee - Rzut)**: Zawsze rzuca 3k20. Korzysta z logiki testów standardowych (2/3 sukcesy w zamkniętym, punkty przewagi w otwartym). Umiejętność traktowana jest jako pula punktów do optymalnego rozdzielenia między wszystkie kości.
   - Automatycznie ogranicza liczbę pocisków do stanu magazynka. Przed otwarciem dialogu rzutu system sprawdza, czy broń dystansowa posiada załadowany magazynek i amunicję.
 - **rollSkill / rollAttribute**: Standardowe testy oparte na atrybutach i umiejętnościach.
   - **Dynamiczny Atrybut**: W oknie dialogowym rzutu na umiejętność gracz może tymczasowo wybrać inny atrybut bazowy dla testu (zmiana nie zapisuje się na stałe).
 - **reEvaluateWeaponRoll**: Pozwala na ponowne przeliczenie rzutu (np. przy zmianie typu testu na czacie) bez ponownego rzucania kośćmi.
-- **getSkillShift**: Dynamicznie oblicza przesunięcie trudności (Suwak) jako `floor(Umiejętność / 4)`.
-- **_getShiftedDifficulty**: Helper przesuwający poziom trudności o zadaną liczbę stopni (mechanika Suwaka).
+- **getSkillShift**: Dynamicznie oblicza przesunięcie trudności (Suwak) jako `floor(Umiejętność / 4)`. Dla umiejętności <= 0 zwraca -1 (kara +1 stopień).
+- **_getShiftedDifficulty**: Helper przesuwający poziom trudności o zadaną liczbę stopni (mechanika Suwaka). Bonusy skracają dystans do PT (odejmują od indeksu), kary zwiększają.
 - **getDifficultyFromPercent**: Zwraca obiekt trudności z konfiguracji na podstawie sumy kar procentowych.
 - **renderRollCard / renderWeaponRollCard**: Renderuje wyniki rzutu na czacie przy użyciu szablonów Handlebars. Wyświetla "Punkty Przewagi" jako uniwersalną miarę sukcesu (1 w teście zamkniętym, nadwyżka w otwartym).
 

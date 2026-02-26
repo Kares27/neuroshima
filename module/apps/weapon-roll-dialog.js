@@ -232,7 +232,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         const shift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
         
         if (shift !== 0) {
-            const shifted = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, shift);
+            const shifted = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, -shift);
             previewLevelLabel = `${levelLabel} → ${game.i18n.localize(shifted.label)}`;
         }
     }

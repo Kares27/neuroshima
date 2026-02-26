@@ -471,7 +471,7 @@ export class CombatHelper {
         if (allowShift) {
             const skillShift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
             const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
-            totalShift = skillShift + diceShift;
+            totalShift = -skillShift + diceShift;
         }
         
         const shiftedDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);

@@ -14,7 +14,8 @@
     data-tooltip-direction="LEFT"
     {{/if}}>
     <header class="roll-header">
-        {{#if isDebug}}[!DEBUG] {{/if}}
+        {{#if isDebug}}<span class="debug-tag">[DEBUG]</span> {{/if}}
+        {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
         {{localize difficultyLabel}}
         {{#if isOpen}}
             {{localize "NEUROSHIMA.Roll.OpenTest"}}

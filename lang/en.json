@@ -64,6 +64,7 @@
             "Dice": "Dice Roll",
             "Best": "Best Result",
             "On": "on",
+            "Reroll": "Reroll",
             "EditRoll": "Edit Roll",
             "SwitchToOpen": "Switch to Open Test",
             "SwitchToClosed": "Switch to Closed Test",
@@ -190,7 +191,8 @@
             "CreateBulkWounds": "Bulk Create Wounds",
             "Load": "Load",
             "Unload": "Unload",
-            "ReverseDamage": "Reverse Damage"
+            "ReverseDamage": "Reverse Damage",
+            "StartMeleeOpposed": "Start Melee Opposed"
         },
         "PainResistance": {
             "ReportTitle": "Pain Resistance Tests",
@@ -245,6 +247,13 @@
                 "Hint": "Choose how to resolve opposed tests in melee combat.",
                 "Dice": "Segments (Dice Comparison)",
                 "Successes": "Successes Difference (Closed Test)"
+            },
+            "MeleeBonusMode": {
+                "Name": "Melee Weapon Bonus Application",
+                "Hint": "Select where the melee weapon attack/defense bonus is applied.",
+                "Attribute": "To Attribute (Target)",
+                "Skill": "To Skill (Points)",
+                "Both": "To Both (Attribute and Skill)"
             },
             "RollTooltipMinRole": {
                 "Name": "Minimum Role for Tooltip",

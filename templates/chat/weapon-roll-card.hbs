@@ -26,6 +26,7 @@
     
     <header class="roll-header">
         <div class="weapon-title">
+            {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
             {{label}}{{#if actionLabel}}: {{actionLabel}}{{/if}}
         </div>
         <div class="test-type">

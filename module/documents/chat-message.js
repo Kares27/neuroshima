@@ -394,12 +394,14 @@ export class NeuroshimaChatMessage extends ChatMessage {
             rawResults: rollData.rawResults,
             totalPenalty: rollData.totalPenalty,
             penalties: rollData.penalties,
+            penalty: rollData.penalty,
             target: rollData.target,
             skill: rollData.skill,
             skillBonus: rollData.skillBonus,
             attributeBonus: rollData.attributeBonus,
             baseSkill: rollData.baseSkill,
             baseStat: rollData.baseStat,
+            baseDifficulty: rollData.baseDifficulty,
             isSuccess: rollData.isSuccess,
             successPoints: rollData.successPoints,
             successCount: rollData.successCount,
@@ -407,6 +409,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
             difficultyLabel: rollData.difficultyLabel,
             baseDifficultyLabel: rollData.baseDifficultyLabel,
             label: rollData.label,
+            isReroll: rollData.isReroll,
             isDebug: rollData.isDebug,
             rollMode: rollMode
           }
@@ -506,6 +509,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
             bulletSequence: rollData.bulletSequence,
             magazineId: rollData.magazineId,
             ammoId: rollData.ammoId,
+            hitLocation: rollData.hitLocation,
+            modifier: rollData.modifier,
+            aimingLevel: rollData.aimingLevel,
+            burstLevel: rollData.burstLevel,
+            distance: rollData.distance,
+            meleeAction: rollData.meleeAction,
+            applyArmor: rollData.applyArmor,
+            applyWounds: rollData.applyWounds,
+            isReroll: rollData.isReroll,
             rollMode: rollMode
           }
         }

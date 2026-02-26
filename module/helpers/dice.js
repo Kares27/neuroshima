@@ -9,7 +9,7 @@ export class NeuroshimaDice {
    * Perform a weapon-specific roll (shooting or striking).
    */
   static async rollWeaponTest(params) {
-    const { weapon, actor, aimingLevel, burstLevel, difficulty, hitLocation, modifier, applyArmor, applyWounds, isOpen, skillBonus = 0, attributeBonus = 0, distance = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode") } = params;
+    const { weapon, actor, aimingLevel, burstLevel, difficulty, hitLocation, modifier, applyArmor, applyWounds, isOpen, skillBonus = 0, attributeBonus = 0, distance = 0, meleeAction = "attack", isReroll = false, rollMode = game.settings.get("core", "rollMode") } = params;
     
     // Rozpoczęcie grupy logów dla rzutu bronią
     game.neuroshima.group("Inicjalizacja rzutu bronią");
@@ -238,13 +238,20 @@ export class NeuroshimaDice {
     // Wyznaczenie ostatecznej trudności po uwzględnieniu Suwaka
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     const opposedMode = game.settings.get("neuroshima", "opposedMeleeMode");
+    const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
     
     let skillValue = 0;
     const skillKey = weapon.system.skill;
     if (skillKey) {
         skillValue = (actor.system.skills[skillKey]?.value || 0) + skillBonus;
-        // Bonus broni do umiejętności tylko w trybie 'dice' lub dla broni dystansowej
-        if (!isMelee || opposedMode === "dice") {
+        
+        // Bonus broni do umiejętności (tylko w melee i jeśli ustawienie na to pozwala)
+        if (isMelee) {
+            if (bonusMode === "skill" || bonusMode === "both") {
+                skillValue += weaponBonus;
+            }
+        } else {
+            // Dla broni dystansowej/miotanej bonus zawsze do umiejętności (tradycyjnie)
             skillValue += weaponBonus;
         }
     }
@@ -253,7 +260,7 @@ export class NeuroshimaDice {
     let totalShift = 0;
     const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
     if (allowCombatShift) {
-        totalShift += this.getSkillShift(skillValue);
+        totalShift -= this.getSkillShift(skillValue);
         totalShift += this.getDiceShift(results);
     }
 
@@ -263,8 +270,9 @@ export class NeuroshimaDice {
     // Próg sukcesu (Współczynnik + modyfikator PT + bonus do atrybutu)
     const baseAttr = actor.system.attributes[weapon.system.attribute] || 10;
     let finalStat = baseAttr + attributeBonus;
-    // Bonus broni do atrybutu (progu) tylko w trybie 'successes' dla broni białej
-    if (isMelee && opposedMode === "successes") {
+    
+    // Bonus broni do atrybutu (progu) - tylko w Melee jeśli ustawienie na to pozwala
+    if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) {
         finalStat += weaponBonus;
     }
     const target = finalStat + finalDiff.mod;
@@ -455,12 +463,21 @@ export class NeuroshimaDice {
         baseStat: finalStat - attributeBonus,
         attributeBonus: attributeBonus,
         stat: finalStat,
+        isReroll,
         isSuccess,
         successPoints,
         hitBullets,
         totalPelletSP: totalPelletSP || 0,
         isPellet: !!bulletSequence[0]?.isPellet,
         isOpen: finalIsOpen,
+        isMelee,
+        meleeAction,
+        applyArmor,
+        applyWounds,
+        hitLocation,
+        modifier,
+        weaponId: weapon.id,
+        actorId: actor.id,
         finalLocation,
         locationLabel: NEUROSHIMA.bodyLocations[finalLocation]?.label || finalLocation,
         locationRoll: locationRoll?.total,
@@ -639,7 +656,7 @@ export class NeuroshimaDice {
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode") } = {}) {
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode") } = {}) {
     console.log("Neuroshima | rollTest started", { label, actor: actor?.name });
     // Rozpoczęcie grupy logów dla testu standardowego
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
@@ -714,7 +731,9 @@ export class NeuroshimaDice {
       attributeBonus,
       baseStat: stat,
       baseSkill: skill,
+      baseDifficulty: baseDifficulty,
       penalties,
+      penalty: totalPenalty,
       totalPenalty,
       baseDifficultyLabel: baseDifficulty.label,
       difficultyLabel: shiftedDifficulty.label,
@@ -722,6 +741,7 @@ export class NeuroshimaDice {
       target,
       isOpen: finalIsOpen,
       isCombat,
+      isReroll,
       isDebug,
       rollMode,
       rawResults,
@@ -928,7 +948,7 @@ export class NeuroshimaDice {
    * Helper to calculate skill shift (Suwak).
    */
   static getSkillShift(skill) {
-    if (skill <= 0) return 0;
+    if (skill <= 0) return -1;
     return Math.floor(skill / 4);
   }
 
