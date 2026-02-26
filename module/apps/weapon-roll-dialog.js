@@ -32,7 +32,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       percentageModifier: lastRoll.percentageModifier || 0,
       useArmorPenalty: lastRoll.useArmorPenalty ?? true,
       useWoundPenalty: lastRoll.useWoundPenalty ?? true,
-      distance: lastRoll.distance || 0
+      distance: lastRoll.distance || 0,
+      rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode")
     };
     this._onCloseCallback = options.onClose;
   }
@@ -106,6 +107,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     context.percentageModifier = this.rollOptions.percentageModifier;
     context.applyArmorPenalty = this.rollOptions.useArmorPenalty;
     context.applyWoundPenalty = this.rollOptions.useWoundPenalty;
+    context.rollMode = this.rollOptions.rollMode;
+    context.rollModes = CONFIG.Dice.rollModes;
     
     // Auto-calculate distance if targets exist, otherwise use from options
     let distance = this.rollOptions.distance || 0;
@@ -253,7 +256,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
             meleeAction: formData.meleeAction,
             percentageModifier: parseInt(formData.modifier) || 0,
             useArmorPenalty: !!formData.useArmorPenalty,
-            useWoundPenalty: !!formData.useWoundPenalty
+            useWoundPenalty: !!formData.useWoundPenalty,
+            rollMode: formData.rollMode
         }
     });
 
@@ -276,7 +280,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         applyWounds: !!formData.useWoundPenalty,
         skillBonus: parseInt(formData.skillBonus) || 0,
         attributeBonus: parseInt(formData.attributeBonus) || 0,
-        distance: parseFloat(formData.distance) || 0
+        distance: parseFloat(formData.distance) || 0,
+        rollMode: formData.rollMode
     };
 
     this.close();

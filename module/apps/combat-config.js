@@ -45,18 +45,16 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         };
 
         const opposedModeOptions = {
-            "sp": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.SP"),
-            "dice": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Dice"),
-            "successes": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Successes")
+            "successes": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Successes"),
+            "dice": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Dice")
         };
 
         return {
             config: {
                 usePelletCountLimit: game.settings.get("neuroshima", "usePelletCountLimit"),
                 allowCombatShift: game.settings.get("neuroshima", "allowCombatShift"),
+                allowPainResistanceShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
                 opposedMeleeMode: game.settings.get("neuroshima", "opposedMeleeMode"),
-                opposedMeleeTier2At: game.settings.get("neuroshima", "opposedMeleeTier2At"),
-                opposedMeleeTier3At: game.settings.get("neuroshima", "opposedMeleeTier3At"),
                 damageApplicationMinRole: game.settings.get("neuroshima", "damageApplicationMinRole"),
                 painResistanceMinRole: game.settings.get("neuroshima", "painResistanceMinRole"),
                 combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole")
@@ -79,9 +77,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             const updates = [
                 game.settings.set("neuroshima", "usePelletCountLimit", !!data.usePelletCountLimit),
                 game.settings.set("neuroshima", "allowCombatShift", !!data.allowCombatShift),
+                game.settings.set("neuroshima", "allowPainResistanceShift", !!data.allowPainResistanceShift),
                 game.settings.set("neuroshima", "opposedMeleeMode", data.opposedMeleeMode),
-                game.settings.set("neuroshima", "opposedMeleeTier2At", Number(data.opposedMeleeTier2At)),
-                game.settings.set("neuroshima", "opposedMeleeTier3At", Number(data.opposedMeleeTier3At)),
                 game.settings.set("neuroshima", "damageApplicationMinRole", Number(data.damageApplicationMinRole)),
                 game.settings.set("neuroshima", "painResistanceMinRole", Number(data.painResistanceMinRole)),
                 game.settings.set("neuroshima", "combatActionsMinRole", Number(data.combatActionsMinRole))

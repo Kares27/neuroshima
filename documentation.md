@@ -204,7 +204,20 @@ Hook `renderChatMessage` w `system.js` implementuje **client-side dynamic visibi
 - Ukrywa sekcje obrażeń i szczegóły testów odporności na ból.
 - Każdy klient niezależnie egzekwuje reguły widoczności.
 
-## 8.1. System Leczenia (Healing System)
+### 8.1. System Rzutów i Widoczność (Roll Modes)
+System w pełni integruje się z systemowymi trybami rzutu Foundry VTT (`CONST.DICE_ROLL_MODES`):
+- **Public Roll**: Wiadomość widoczna dla wszystkich.
+- **Private GM Roll**: Wiadomość widoczna tylko dla rzucającego i GM.
+- **Blind GM Roll**: Wiadomość widoczna tylko dla GM (rzucający nie widzi wyniku).
+- **Self Roll**: Wiadomość widoczna tylko dla rzucającego.
+
+**Wizualizacja**:
+- Każdy tryb rzutu posiada dedykowany kolor obramowania wiadomości (np. czerwony dla rzutów prywatnych GM, różowy dla własnych).
+- Nad nagłówkiem karty wyświetlana jest etykieta z nazwą trybu rzutu w odpowiednim kolorze.
+
+Logika rzutu (`NeuroshimaDice`) oraz renderowania wiadomości (`NeuroshimaChatMessage`) wykorzystuje `ChatMessage.applyRollMode` do poprawnego ustawienia uprawnień `whisper` i `blind`. Wybrany tryb jest zapamiętywany w `lastRoll` aktora.
+
+### 8.2. System Leczenia (Healing System)
 
 Pełny system leczenia ran w systemie Neuroshima 1.5. Podzielony na 4 fazy:
 
@@ -323,7 +336,10 @@ Zaimplementowano zaawansowany cykl życia testu przeciwstawnego dla walki wręcz
 - **Handler (Oczekiwanie)**: Po ataku melee system tworzy wiadomość `opposedHandler` z unikalnym `requestId`.
 - **Pending Flag**: Na aktorze obrońcy ustawiana jest flaga `opposedPending`. Wyświetla ona oczekującą reakcję w arkuszu aktora (zakładka Walka), co pozwala na szybki rzut obronny.
 - **Auto-Resolve**: Hook `createChatMessage` wykrywa rzut obronny, dopasowuje go do handlera i automatycznie wywołuje rozstrzygnięcie (`resolveOpposed`).
-- **Result (Wynik)**: Wynik porównuje Punkty Sukcesu (SP) obu stron (nawet przy obustronnej porażce). Różnica SP mapowana jest na progi obrażeń broni (D/L/C).
+- **Result (Wynik)**: Wynik porównuje Punkty Sukcesu (SP) obu stron (nawet przy obustronnej porażce).
+- **Automatyzacja Obrażeń**: Różnica SP automatycznie wybiera tier obrażeń broni (`damageMelee1/2/3`). Przewaga 1 SP = D, 2 SP = L, 3+ SP = C.
+- **Bonusy Broni**: W trybie "Successes" bonusy ataku/obrony modyfikują Atrybut (zmieniając próg sukcesu). W trybie "Dice" modyfikują Umiejętność (zmieniając pulę punktów).
+- **Zabezpieczenia**: System uniemożliwia "self-targeting" – obrońca nie może zainicjować testu przeciwstawnego przeciw samemu sobie podczas rzutu obronnego.
 
 ## 11. Dobre Praktyki ApplicationV2
 

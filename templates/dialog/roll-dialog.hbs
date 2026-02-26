@@ -68,6 +68,15 @@
         </div>
     </div>
 
+    <div class="roll-mode-row">
+        <div class="form-group vertical">
+            <label>{{localize "NEUROSHIMA.Roll.RollMode"}}</label>
+            <select name="rollMode">
+                {{selectOptions rollModes selected=rollMode localize=true}}
+            </select>
+        </div>
+    </div>
+
     <div class="summary-section">
         <h3>{{localize "NEUROSHIMA.Roll.Summary"}}</h3>
         <table class="summary-table">

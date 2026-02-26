@@ -67,6 +67,7 @@
             "EditRoll": "Edit Roll",
             "SwitchToOpen": "Switch to Open Test",
             "SwitchToClosed": "Switch to Closed Test",
+            "RollMode": "Roll Mode",
             "RefundAmmo": "Refund Ammunition",
             "ReverseDamage": "Reverse Damage",
             "BaseDifficulty": "Base Difficulty",
@@ -235,20 +236,15 @@
                 "Name": "Allow Suwak in combat",
                 "Hint": "Enables the Suwak rule (difficulty shifts) during combat actions."
             },
+            "AllowPainResistanceShift": {
+                "Name": "Allow Suwak in pain resistance",
+                "Hint": "Enables the Suwak rule during automatic pain resistance tests."
+            },
             "OpposedMeleeMode": {
                 "Name": "Opposed Melee Mode",
                 "Hint": "Choose how to resolve opposed tests in melee combat.",
-                "SP": "Success Points (Advantage)",
                 "Dice": "Segments (Dice Comparison)",
                 "Successes": "Successes Difference (Closed Test)"
-            },
-            "OpposedMeleeTier2At": {
-                "Name": "2 Damage Success Threshold (SP)",
-                "Hint": "Success Points advantage required to deal damage from the second field (Light/L)."
-            },
-            "OpposedMeleeTier3At": {
-                "Name": "3 Damage Success Threshold (SP)",
-                "Hint": "Success Points advantage required to deal damage from the third field (Serious/C)."
             },
             "RollTooltipMinRole": {
                 "Name": "Minimum Role for Tooltip",

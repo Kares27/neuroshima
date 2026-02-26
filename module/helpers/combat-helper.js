@@ -453,8 +453,12 @@ export class CombatHelper {
     for (const wound of rawWounds) {
         const damageType = wound.damageType;
         const config = NEUROSHIMA.woundConfiguration[damageType];
-        const baseDifficultyKey = config?.difficulty || "average";
-        const baseDifficulty = NEUROSHIMA.difficulties[baseDifficultyKey];
+        
+        // Trudność bazowa z konfiguracji rany
+        let baseDifficulty = config?.difficulty || NEUROSHIMA.difficulties.average;
+        
+        // Jeśli konfiguracja rany ma null (np. rany typu K), użyj domyślnego lub skip
+        if (!baseDifficulty) baseDifficulty = NEUROSHIMA.difficulties.average;
         
         // Rzut odporności na ból (test ZAMKNIĘTY zgodnie z zasadami 1.5, ignoruje kary z ran/pancerza)
         const roll = new Roll("3d20");
@@ -462,9 +466,13 @@ export class CombatHelper {
         const diceResults = roll.terms[0].results.map(r => r.result);
         
         // Obliczanie Suwaka (tylko umiejętność i kości naturalne)
-        const skillShift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
-        const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
-        const totalShift = skillShift + diceShift;
+        const allowShift = game.settings.get("neuroshima", "allowPainResistanceShift");
+        let totalShift = 0;
+        if (allowShift) {
+            const skillShift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
+            const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
+            totalShift = skillShift + diceShift;
+        }
         
         const shiftedDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);
         const target = statValue + shiftedDiff.mod;
@@ -485,11 +493,13 @@ export class CombatHelper {
         
         const isPassed = evalData.success; // true if successCount >= 2
         // Penalties: [zdany, niezdany]
-        const appliedPenalty = isPassed ? (config.penalties[0] || 0) : (config.penalties[1] || 0);
+        const appliedPenalty = isPassed ? (config?.penalties[0] || 0) : (config?.penalties[1] || 0);
         
         results.push({
             name: wound.name,
             damageType,
+            baseDifficulty: baseDifficulty.label,
+            totalShift: totalShift,
             difficulty: shiftedDiff.label,
             isPassed,
             penalty: appliedPenalty,

@@ -165,6 +165,16 @@ Hooks.once('init', async function() {
         requiresReload: false
     });
 
+    game.settings.register("neuroshima", "allowPainResistanceShift", {
+        name: "NEUROSHIMA.Settings.AllowPainResistanceShift.Name",
+        hint: "NEUROSHIMA.Settings.AllowPainResistanceShift.Hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        requiresReload: false
+    });
+
     game.settings.register("neuroshima", "rollTooltipMinRole", {
         name: "NEUROSHIMA.Settings.RollTooltipMinRole.Name",
         hint: "NEUROSHIMA.Settings.RollTooltipMinRole.Hint",
@@ -211,31 +221,10 @@ Hooks.once('init', async function() {
         config: false,
         type: String,
         choices: {
-            "sp": "NEUROSHIMA.Settings.OpposedMeleeMode.SP",
-            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice",
-            "successes": "NEUROSHIMA.Settings.OpposedMeleeMode.Successes"
+            "successes": "NEUROSHIMA.Settings.OpposedMeleeMode.Successes",
+            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice"
         },
         default: "successes",
-        requiresReload: false
-    });
-
-    game.settings.register("neuroshima", "opposedMeleeTier2At", {
-        name: "NEUROSHIMA.Settings.OpposedMeleeTier2At.Name",
-        hint: "NEUROSHIMA.Settings.OpposedMeleeTier2At.Hint",
-        scope: "world",
-        config: false,
-        type: Number,
-        default: 3,
-        requiresReload: false
-    });
-
-    game.settings.register("neuroshima", "opposedMeleeTier3At", {
-        name: "NEUROSHIMA.Settings.OpposedMeleeTier3At.Name",
-        hint: "NEUROSHIMA.Settings.OpposedMeleeTier3At.Hint",
-        scope: "world",
-        config: false,
-        type: Number,
-        default: 6,
         requiresReload: false
     });
 

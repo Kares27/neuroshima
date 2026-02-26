@@ -157,8 +157,8 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
       attacker: attackMessage?.getFlag('neuroshima', 'rollData')?.label ?? 'Unknown'
     });
 
-    const mode = opposedData?.mode || game.settings.get("neuroshima", "opposedMeleeMode") || "sp";
-    const isOpen = (mode === "sp");
+    const mode = opposedData?.mode || game.settings.get("neuroshima", "opposedMeleeMode") || "successes";
+    const isOpen = false; // Obrona zawsze zamknięta (3k20)
 
     console.log("Neuroshima | Calling rollTest...");
     const defenseMessage = await game.neuroshima.NeuroshimaDice.rollTest({
@@ -172,7 +172,8 @@ export class NeuroshimaMeleeDefenseDialog extends HandlebarsApplicationMixin(App
       isOpen,
       isCombat: true,
       label,
-      actor: defender
+      actor: defender,
+      meleeAction: "defense"
     });
 
     if (!defenseMessage) {

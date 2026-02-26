@@ -125,6 +125,15 @@
         </table>
     </div>
 
+    <div class="roll-mode-row">
+        <div class="form-group vertical">
+            <label>{{localize "NEUROSHIMA.Roll.RollMode"}}</label>
+            <select name="rollMode">
+                {{selectOptions rollModes selected=rollMode localize=true}}
+            </select>
+        </div>
+    </div>
+
     <footer class="form-footer">
         <button type="submit" data-action="roll" class="" autofocus="">
             <span>{{localize "NEUROSHIMA.Actions.Roll"}}</span>

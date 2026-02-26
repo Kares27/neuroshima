@@ -842,7 +842,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       useArmorPenalty: lastRoll.useArmorPenalty ?? true,
       useWoundPenalty: lastRoll.useWoundPenalty ?? true,
       isOpen: lastRoll.isOpen ?? true,
-      isSkill: isSkill
+      isSkill: isSkill,
+      rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode"),
+      rollModes: CONFIG.Dice.rollModes
     };
     const content = await foundry.applications.handlebars.renderTemplate(template, data);
 
@@ -863,6 +865,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             const isOpen = form.elements.isOpen.value === "true";
             const baseDiffKey = form.elements.baseDifficulty.value;
             const modifier = parseInt(form.elements.modifier.value) || 0;
+            const rollMode = form.elements.rollMode.value;
             const useArmor = form.elements.useArmorPenalty.checked;
             const armorPenalty = useArmor ? (parseInt(form.elements.armorPenalty.value) || 0) : 0;
             const useWound = form.elements.useWoundPenalty.checked;
@@ -884,7 +887,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                 baseDifficulty: baseDiffKey,
                 useArmorPenalty: useArmor,
                 useWoundPenalty: useWound,
-                isOpen
+                isOpen,
+                rollMode
               }
             });
 
@@ -900,7 +904,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
               label,
               actor,
               skillBonus,
-              attributeBonus
+              attributeBonus,
+              rollMode
             });
           }
         },

@@ -70,6 +70,7 @@
             "EditRoll": "Edytuj Rzut",
             "SwitchToOpen": "Zmień na Test Otwarty",
             "SwitchToClosed": "Zmień na Test Zamknięty",
+            "RollMode": "Tryb rzutu",
             "RefundAmmo": "Refundacja amunicji",
             "ReverseDamage": "Cofnij obrażenia",
             "BaseDifficulty": "Bazowa Trudność",
@@ -234,20 +235,15 @@
                 "Name": "Pozwól na Suwak w walce",
                 "Hint": "Włącza zasadę Suwaka (przesunięcia PT) podczas akcji bojowych."
             },
+            "AllowPainResistanceShift": {
+                "Name": "Pozwól na Suwak w odporności na ból",
+                "Hint": "Włącza zasadę Suwaka podczas automatycznych testów odporności na ból."
+            },
             "OpposedMeleeMode": {
                 "Name": "Tryb walki wręcz (Opposed Melee)",
                 "Hint": "Wybierz sposób rozliczania testów przeciwstawnych w walce wręcz.",
-                "SP": "Punkty Sukcesu (Przewaga)",
                 "Dice": "Segmenty (Porównanie kości)",
                 "Successes": "Różnica sukcesów (Test zamknięty)"
-            },
-            "OpposedMeleeTier2At": {
-                "Name": "Próg 2 sukcesów obrażeń (SP)",
-                "Hint": "Wartość przewagi Punktów Sukcesu wymagana do zadania obrażeń z drugiego pola (Lekka/L)."
-            },
-            "OpposedMeleeTier3At": {
-                "Name": "Próg 3 sukcesów obrażeń (SP)",
-                "Hint": "Wartość przewagi Punktów Sukcesu wymagana do zadania obrażeń z trzeciego pola (Ciężka/C)."
             },
             "RollTooltipMinRole": {
                 "Name": "Minimalna ranga dla Tooltipa",

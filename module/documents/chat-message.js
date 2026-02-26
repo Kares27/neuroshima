@@ -56,10 +56,19 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     const content = await this._renderTemplate(template, context);
 
+    // Dziedzicz widoczność z ataku, ale zapewnij, że obrońca widzi handler
+    let whisper = attackMessage.whisper || [];
+    if (whisper.length > 0) {
+        const defenderUsers = game.users.filter(u => defender.testUserPermission(u, "OWNER")).map(u => u.id);
+        whisper = Array.from(new Set([...whisper, ...defenderUsers]));
+    }
+
     const handlerMessage = await this.create({
       user: game.user.id,
       content,
       style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      whisper: whisper,
+      blind: attackMessage.blind,
       flags: {
         neuroshima: {
           messageType: "opposedHandler",
@@ -173,22 +182,30 @@ export class NeuroshimaChatMessage extends ChatMessage {
         return;
     }
     
+    if (opposedData.status === "resolved" || opposedData.isProcessing) {
+        console.log("Neuroshima | resolveOpposed - Already resolved or processing");
+        return;
+    }
+    
     // Status musi być 'ready' dla kliknięć, ale dla auto-resolve pozwalamy jeśli mamy defenseMessageId
     const defenseMessageId = options.defenseMessageId || opposedData.defenseMessageId;
+    
+    // Ustawienie flagi przetwarzania aby uniknąć race condition
+    await message.setFlag("neuroshima", "opposedData.isProcessing", true);
+
     console.log("Neuroshima | resolveOpposed state:", {
         status: opposedData.status,
         defenseMessageId,
         alreadyResolved: opposedData.status === "resolved"
     });
 
-    if (opposedData.status === "resolved") return;
-    
     // Sprawdź uprawnienia do aktualizacji wiadomości handlera
     if (!message.isOwner && !game.user.isGM) {
         console.log("Neuroshima | resolveOpposed - No permission to update handler, emitting socket", {
             handlerId: message.id,
             defenseId: defenseMessageId
         });
+        await message.setFlag("neuroshima", "opposedData.isProcessing", false);
         game.socket.emit("system.neuroshima", {
             type: "opposed.resolve",
             handlerMessageId: message.id,
@@ -199,6 +216,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     if (opposedData.status !== "ready" && !options.defenseMessageId) {
         console.log("Neuroshima | resolveOpposed - Not ready and no defenseMessageId provided");
+        await message.setFlag("neuroshima", "opposedData.isProcessing", false);
         return;
     }
 
@@ -210,6 +228,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
             attackMessage: !!attackMessage, 
             defenseMessage: !!defenseMessage 
         });
+        await message.setFlag("neuroshima", "opposedData.isProcessing", false);
         if (!options.defenseMessageId) {
             ui.notifications.error(game.i18n.localize("NEUROSHIMA.Errors.MissingOpposedMessages"));
         }
@@ -227,13 +246,22 @@ export class NeuroshimaChatMessage extends ChatMessage {
         const defenseFlags = defenseMessage.getFlag("neuroshima", "rollData");
         
         const opposedOptions = {
-          mode: opposedData.mode,
-          tier2At: game.settings.get("neuroshima", "opposedMeleeTier2At"),
-          tier3At: game.settings.get("neuroshima", "opposedMeleeTier3At")
+          mode: opposedData.mode
         };
         
         console.log("Neuroshima | resolveOpposed - Computing results...");
         const result = NeuroshimaMeleeOpposed.compute(attackFlags, defenseFlags, opposedOptions);
+        
+        // Automatyczne przypisanie konkretnych obrażeń z broni na podstawie spDifference
+        if (result.winner === 'attacker' && result.spDifference > 0) {
+            const damageKey = `damageMelee${result.spDifference}`;
+            result.finalDamageValue = attackFlags[damageKey] || attackFlags.damage || "D";
+            game.neuroshima.log("Przypisano obrażenia z poziomu (Tier):", { 
+                spDifference: result.spDifference, 
+                damage: result.finalDamageValue 
+            });
+        }
+
         console.log("Neuroshima | resolveOpposed - Result computed:", result);
         
         // Pobierz aktorów do renderowania
@@ -258,10 +286,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
         });
 
         console.log("Neuroshima | resolveOpposed - Creating result message...");
-        const resultMessage = await this.create({
+        const resultMessage = await NeuroshimaChatMessage.create({
           user: game.user.id,
           content,
           style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+          whisper: attackMessage.whisper,
+          blind: attackMessage.blind,
           flags: {
             neuroshima: {
               messageType: "opposedResult",
@@ -275,9 +305,11 @@ export class NeuroshimaChatMessage extends ChatMessage {
         });
 
         console.log("Neuroshima | resolveOpposed - Updating handler status to resolved...");
-        // Zaktualizuj handler
-        const updatedOpposedData = foundry.utils.mergeObject(opposedData, {
+        // Zaktualizuj handler i zresetuj flagę przetwarzania
+        const currentData = message.getFlag("neuroshima", "opposedData");
+        const updatedOpposedData = foundry.utils.mergeObject(currentData, {
           status: "resolved",
+          isProcessing: false,
           defenseMessageId: defenseMessage.id,
           resultMessageId: resultMessage.id
         });
@@ -302,6 +334,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         console.log("Neuroshima | resolveOpposed - DONE");
     } catch (err) {
         console.error("Neuroshima | Error in resolveOpposed:", err);
+        await message.setFlag("neuroshima", "opposedData.isProcessing", false);
     }
   }
 
@@ -342,7 +375,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
     game.neuroshima.log("Karta czatu utworzona", { messageType: this.TYPES.ROLL });
     game.neuroshima.groupEnd();
 
-    return this.create({
+    // Use provided rollMode or default
+    const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");
+    const chatData = {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
       content,
@@ -367,15 +402,20 @@ export class NeuroshimaChatMessage extends ChatMessage {
             baseStat: rollData.baseStat,
             isSuccess: rollData.isSuccess,
             successPoints: rollData.successPoints,
+            successCount: rollData.successCount,
             modifiedResults: rollData.modifiedResults,
             difficultyLabel: rollData.difficultyLabel,
             baseDifficultyLabel: rollData.baseDifficultyLabel,
             label: rollData.label,
-            isDebug: rollData.isDebug
+            isDebug: rollData.isDebug,
+            rollMode: rollMode
           }
         }
       }
-    });
+    };
+
+    ChatMessage.applyRollMode(chatData, rollMode);
+    return this.create(chatData);
   }
 
   /**
@@ -418,7 +458,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
     game.neuroshima.log("Karta czatu broni utworzona", { messageType: this.TYPES.WEAPON });
     game.neuroshima.groupEnd();
 
-    return this.create({
+    // Use provided rollMode or default
+    const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");
+    const chatData = {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
       content,
@@ -444,6 +486,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
             baseStat: rollData.baseStat,
             isSuccess: rollData.isSuccess,
             successPoints: rollData.successPoints,
+            successCount: rollData.successCount,
             modifiedResults: rollData.modifiedResults,
             difficultyLabel: rollData.difficultyLabel,
             finalLocation: rollData.finalLocation,
@@ -462,11 +505,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
             debugMode: rollData.debugMode,
             bulletSequence: rollData.bulletSequence,
             magazineId: rollData.magazineId,
-            ammoId: rollData.ammoId
+            ammoId: rollData.ammoId,
+            rollMode: rollMode
           }
         }
       }
-    });
+    };
+
+    ChatMessage.applyRollMode(chatData, rollMode);
+    return this.create(chatData);
   }
 
   /**
@@ -553,6 +600,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
       const tooltip = `
         <div class="neuroshima roll-card tooltip-mode">
           <header class="roll-header tiny">
+            ${game.i18n.localize(r.baseDifficulty)} 
+            ${r.totalShift !== 0 ? `(${r.totalShift > 0 ? '+' : ''}${r.totalShift} Suwak)` : ''}
+            <i class="fas fa-long-arrow-alt-right"></i>
             ${game.i18n.localize(r.difficulty)}
           </header>
           <hr class="dotted-hr tiny">
@@ -591,7 +641,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
     game.neuroshima.log("Raport odporności na ból utworzony", { messageType: this.TYPES.PAIN_RESISTANCE });
     game.neuroshima.groupEnd();
 
-    return this.create({
+    const rollMode = game.settings.get("core", "rollMode");
+    const chatData = {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
       content,
@@ -606,7 +657,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
           isReversed: false
         }
       }
-    });
+    };
+
+    ChatMessage.applyRollMode(chatData, rollMode);
+    return this.create(chatData);
   }
 
   /**
@@ -1498,9 +1552,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     // Oblicz wynik pojedynku
     const opposedOptions = {
-      mode: game.settings.get("neuroshima", "opposedMeleeMode"),
-      tier2At: game.settings.get("neuroshima", "opposedMeleeTier2At"),
-      tier3At: game.settings.get("neuroshima", "opposedMeleeTier3At")
+      mode: game.settings.get("neuroshima", "opposedMeleeMode")
     };
     const opposed = NeuroshimaMeleeOpposed.compute(attackFlags, defenseFlags, opposedOptions);
 

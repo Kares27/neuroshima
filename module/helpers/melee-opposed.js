@@ -34,10 +34,8 @@ export class NeuroshimaMeleeOpposed {
 
     if (mode === "dice") {
       this._computeDiceMode(attackFlags, defenseFlags, result);
-    } else if (mode === "successes") {
-      this._computeSuccessesMode(attackFlags, defenseFlags, result, options);
     } else {
-      this._computeSPMode(attackFlags, defenseFlags, result, options);
+      this._computeSuccessesMode(attackFlags, defenseFlags, result, options);
     }
 
     return result;
@@ -121,7 +119,7 @@ export class NeuroshimaMeleeOpposed {
     if (attackerWins > defenderWins) {
       result.winner = 'attacker';
       result.outcome = 'attacker-won';
-      result.spDifference = Math.clamp(attackerWins, 0, 3);
+      result.spDifference = Math.clamp(attackerWins - defenderWins, 0, 3);
     } else if (defenderWins > attackerWins) {
       result.winner = 'defender';
       result.outcome = 'defender-won';
@@ -132,63 +130,6 @@ export class NeuroshimaMeleeOpposed {
       result.outcome = 'tie';
       result.spDifference = 0;
     }
-  }
-
-  /**
-   * Logika trybu SP (Punkty Sukcesu - test otwarty)
-   * @private
-   */
-  static _computeSPMode(attackFlags, defenseFlags, result, options) {
-    const atkSP = attackFlags.successPoints ?? 0;
-    const defSP = defenseFlags.successPoints ?? 0;
-    const advantage = atkSP - defSP;
-
-    result.attackSP = atkSP;
-    result.defenseSP = defSP;
-    result.advantage = advantage;
-
-    if (advantage > 0) {
-      result.winner = 'attacker';
-      if (result.attackSuccess && result.defenseSuccess === false) {
-          result.outcome = 'defense-failed';
-      } else if (result.attackSuccess && result.defenseSuccess) {
-          result.outcome = 'attacker-won';
-      } else {
-          result.outcome = 'both-failed';
-      }
-
-      if (result.attackSuccess) {
-        result.spDifference = this._mapAdvantageToTier(advantage, options);
-      } else {
-        result.spDifference = 0;
-      }
-    } else if (advantage < 0) {
-      result.winner = 'defender';
-      if (!result.attackSuccess && result.defenseSuccess) {
-          result.outcome = 'attack-failed';
-      } else if (!result.attackSuccess && !result.defenseSuccess) {
-          result.outcome = 'both-failed';
-      } else {
-          result.outcome = 'defender-won';
-      }
-      result.spDifference = 0;
-    } else {
-      result.winner = 'defender';
-      result.outcome = 'tie';
-      result.spDifference = 0;
-    }
-  }
-
-  /**
-   * Mapuje surową przewagę na tier obrażeń (1-3)
-   * Zgodnie z wytycznymi użytkownika: 1->T1, 2->T2, 3+->T3
-   * @private
-   */
-  static _mapAdvantageToTier(advantage, options = {}) {
-    if (advantage <= 0) return 0;
-    if (advantage === 1) return 1;
-    if (advantage === 2) return 2;
-    return 3;
   }
 
   /**
@@ -280,12 +221,9 @@ export class NeuroshimaMeleeOpposed {
         const parts = opposed.advantage.split(' - ');
         atkVal = `${parts[0]} <i class="fas fa-check"></i>`;
         defVal = `${parts[1]} <i class="fas fa-check"></i>`; 
-    } else if (opposed.mode === 'successes') {
+    } else {
         atkVal = `${opposed.attackSP} ${game.i18n.localize('NEUROSHIMA.Roll.SuccessesAbbr')}`;
         defVal = `${opposed.defenseSP} ${game.i18n.localize('NEUROSHIMA.Roll.SuccessesAbbr')}`;
-    } else {
-        atkVal = `${opposed.attackSP} SP`;
-        defVal = `${opposed.defenseSP} SP`;
     }
 
     return `
@@ -304,7 +242,7 @@ export class NeuroshimaMeleeOpposed {
         <div class="opposed-outcome">
           ${outcomeText}
         </div>
-        ${opposed.spDifference > 0 ? `<div class="opposed-sp-diff">+${opposed.spDifference} ${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')} Obrażeń</div>` : ''}
+        ${opposed.finalDamageValue ? `<div class="opposed-sp-diff">${game.i18n.localize('NEUROSHIMA.Roll.Damage')}: <strong>${opposed.finalDamageValue}</strong> (+${opposed.spDifference} PP)</div>` : (opposed.spDifference > 0 ? `<div class="opposed-sp-diff">+${opposed.spDifference} ${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')} Obrażeń</div>` : '')}
         ${detailsHtml}
       </div>
     `;

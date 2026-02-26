@@ -2449,3 +2449,94 @@ body.theme-dark {
     background: var(--color-shadow-dark);
     color: var(--color-text-light);
 }
+
+/* Roll Mode Row in Dialogs */
+.neuroshima .roll-mode-row {
+    margin: 10px 0;
+    padding: 0 5px;
+}
+
+/* Roll Mode Specific Styles on Chat Messages */
+.chat-message:has(.neuroshima.roll-card.gmroll) {
+    border: 2px solid #4a5a96 !important;
+}
+
+.chat-message:has(.neuroshima.roll-card.blindroll) {
+    border: 2px solid #964a4a !important;
+}
+
+.chat-message:has(.neuroshima.roll-card.selfroll) {
+    border: 2px solid #4a964a !important;
+}
+
+/* Flavor text for roll modes */
+.neuroshima.roll-card.gmroll::before,
+.neuroshima.roll-card.blindroll::before,
+.neuroshima.roll-card.selfroll::before {
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+    opacity: 0.7;
+}
+
+.neuroshima.roll-card.gmroll::before {
+    content: "PRIVATE GM ROLL";
+}
+
+.neuroshima.roll-card.blindroll::before {
+    content: "BLIND GM ROLL";
+}
+
+.neuroshima.roll-card.selfroll::before {
+    content: "SELF ROLL";
+}
+
+.theme-dark .chat-message:has(.neuroshima.roll-card.gmroll) { border-color: #6a7ab6 !important; }
+.theme-dark .chat-message:has(.neuroshima.roll-card.blindroll) { border-color: #b66a6a !important; }
+.theme-dark .chat-message:has(.neuroshima.roll-card.selfroll) { border-color: #6ab66a !important; }
+
+/* Neuroshima Config Apps (Compact Mode) */
+.neuroshima-config {
+    padding: 5px;
+}
+
+.neuroshima-config .config-section {
+    border-bottom: 1px solid var(--ns-border-light);
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+}
+
+.neuroshima-config .config-section:last-of-type {
+    border-bottom: none;
+}
+
+.neuroshima-config h3 {
+    margin: 5px 0 10px 0;
+    font-size: 1.1em;
+    border-bottom: 1px solid var(--ns-border-main);
+    color: var(--ns-text-accent);
+}
+
+.neuroshima-config .form-group {
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.neuroshima-config .form-group label {
+    font-size: 0.9em;
+    flex: 2;
+}
+
+.neuroshima-config .form-group .form-fields {
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.neuroshima-config .notes {
+    font-size: 0.75em;
+    margin-top: -2px;
+    opacity: 0.8;
+    line-height: 1.1;
+}
