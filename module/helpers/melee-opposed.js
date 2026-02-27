@@ -34,6 +34,10 @@ export class NeuroshimaMeleeOpposed {
 
     if (mode === "dice") {
       this._computeDiceMode(attackFlags, defenseFlags, result);
+    } else if (mode === "vanilla") {
+      // W trybie vanilla nie obliczamy od razu wyniku końcowego tutaj, 
+      // bo zwarcie toczy się w panelu.
+      result.outcome = 'pending-vanilla';
     } else {
       this._computeSuccessesMode(attackFlags, defenseFlags, result, options);
     }

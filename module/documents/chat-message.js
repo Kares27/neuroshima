@@ -455,7 +455,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
       config: NEUROSHIMA,
       showTooltip: this._canShowTooltip(actor),
       damageTooltipLabel: this._getDamageTooltip(rollData.damage),
-      isGM: game.user.isGM
+      isGM: game.user.isGM,
+      opposedMode: game.settings.get("neuroshima", "opposedMeleeMode")
     });
 
     game.neuroshima.log("Karta czatu broni utworzona", { messageType: this.TYPES.WEAPON });

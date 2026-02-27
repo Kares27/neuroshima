@@ -36,6 +36,7 @@
                 <select name="opposedMeleeMode">
                     <option value="successes" {{#if (eq config.opposedMeleeMode "successes")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Successes"}}</option>
                     <option value="dice" {{#if (eq config.opposedMeleeMode "dice")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Dice"}}</option>
+                    <option value="vanilla" {{#if (eq config.opposedMeleeMode "vanilla")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Vanilla"}}</option>
                 </select>
             </div>
             <p class="notes">{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Hint"}}</p>

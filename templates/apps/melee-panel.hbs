@@ -1,0 +1,99 @@
+<div class="melee-grid-container">
+    {{#if noCombat}}
+        <p class="error">{{localize "NEUROSHIMA.Warnings.NoCombatActive"}}</p>
+    {{else if noMelee}}
+        <p class="info">{{localize "NEUROSHIMA.Warnings.NoMeleeActive"}}</p>
+    {{else}}
+        
+        {{!-- Row 1: Labels --}}
+        <div class="grid-area attacker-label-area">
+            {{localize "NEUROSHIMA.MeleeOpposed.Attacker"}}
+        </div>
+        <div class="grid-area defender-label-area">
+            {{localize "NEUROSHIMA.MeleeOpposed.Defender"}}
+        </div>
+
+        {{!-- Row 2: Actor Cards --}}
+        <div class="grid-area attacker-actor-area">
+            <img src="{{attacker.img}}" class="actor-card-img">
+            <div class="actor-name">{{attacker.name}}</div>
+        </div>
+        <div class="grid-area defender-actor-area">
+            <img src="{{defender.img}}" class="actor-card-img">
+            <div class="actor-name">{{defender.name}}</div>
+        </div>
+
+        {{!-- Row 3: Pools & Actions --}}
+        <div class="grid-area attacker-pool-area">
+            {{#each pools.attacker.dice as |die idx|}}
+                <button class="die-btn {{#if (lookup ../pools.attacker.used idx)}}used{{/if}} {{#if (eq ../pools.attacker.selected idx)}}selected{{/if}}" 
+                        data-action="selectDie" data-side="attacker" data-index="{{idx}}"
+                        {{#if (or (lookup ../pools.attacker.used idx) (not ../isAttacker))}}disabled{{/if}}>
+                    D{{add idx 1}}: <span>{{die}}</span>
+                </button>
+            {{/each}}
+            {{#if (and isAttacker (eq pending.awaiting "attacker-pool"))}}
+                <button class="action-btn primary" data-action="rollPool" data-side="attacker">
+                    <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.Actions.Roll"}}
+                </button>
+            {{/if}}
+        </div>
+
+        <div class="grid-area actions-area">
+            <div class="status-info">
+                <div class="segment-tag">SEGMENT {{segmentIndex}} / {{segmentsLeft}}</div>
+                {{#if leader}}
+                    <div class="leader-info">{{leader.name}} {{localize "NEUROSHIMA.MeleeOpposed.Winner"}}</div>
+                {{/if}}
+            </div>
+
+            <div class="control-buttons">
+                {{#if (and isGM (eq pending.awaiting "initiative"))}}
+                    <button data-action="rollInitiative" class="action-btn primary">
+                        {{localize "NEUROSHIMA.Actions.StartMeleeOpposed"}}
+                    </button>
+                {{/if}}
+
+                {{#if (and isGM (and (ne pools.attacker.selected null) (ne pools.defender.selected null)))}}
+                    <button data-action="resolveSegment" class="action-btn resolve">
+                        {{localize "NEUROSHIMA.MeleeOpposed.Resolve"}}
+                    </button>
+                {{/if}}
+
+                {{#if isGM}}
+                    <button data-action="endMelee" class="action-btn cancel">
+                        {{localize "NEUROSHIMA.Actions.Cancel"}}
+                    </button>
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="grid-area defender-pool-area">
+            {{#each pools.defender.dice as |die idx|}}
+                <button class="die-btn {{#if (lookup ../pools.defender.used idx)}}used{{/if}} {{#if (eq ../pools.defender.selected idx)}}selected{{/if}}" 
+                        data-action="selectDie" data-side="defender" data-index="{{idx}}"
+                        {{#if (or (lookup ../pools.defender.used idx) (not ../isDefender))}}disabled{{/if}}>
+                    D{{add idx 1}}: <span>{{die}}</span>
+                </button>
+            {{/each}}
+            {{#if (and isDefender (eq pending.awaiting "defender-pool"))}}
+                <button class="action-btn primary" data-action="rollPool" data-side="defender">
+                    <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.Actions.Roll"}}
+                </button>
+            {{/if}}
+        </div>
+
+        {{!-- Row 4: Logs --}}
+        <div class="grid-area logs-area">
+            <div class="log-list">
+                {{#each log as |entry|}}
+                    <div class="log-entry {{entry.outcomeClass}}">
+                        <span class="seg-val">S{{entry.segment}}</span>
+                        <span class="dice-val">{{entry.attackDie}} vs {{entry.defenseDie}}</span>
+                        <span class="out-val">{{entry.outcome}}</span>
+                    </div>
+                {{/each}}
+            </div>
+        </div>
+    {{/if}}
+</div>

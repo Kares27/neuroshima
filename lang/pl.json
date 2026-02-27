@@ -259,7 +259,8 @@
                 "Name": "Tryb walki wręcz (Opposed Melee)",
                 "Hint": "Wybierz sposób rozliczania testów przeciwstawnych w walce wręcz.",
                 "Dice": "Segmenty (Porównanie kości)",
-                "Successes": "Różnica sukcesów (Test zamknięty)"
+                "Successes": "Różnica sukcesów (Test zamknięty)",
+                "Vanilla": "Vanilla (Pula segmentów)"
             },
             "MeleeBonusMode": {
                 "Name": "Aplikacja bonusów broni w Melee",
@@ -345,6 +346,8 @@
         "Cancel": "Anuluj",
         "Warnings": {
             "NoMeleeTarget": "Brak celu ataku wręcz. Możesz rzucić, ale nie będzie możliwości obrony.",
+            "NoCombatActive": "Zaczynanie zwarcia wymaga aktywnej walki (Combat).",
+            "NoMeleeActive": "Brak aktywnego zwarcia.",
             "CannotDefend": "Nie możesz się bronić przed tym atakiem (brak kontrolowanej postaci wśród celów).",
             "MeleeNeedsDefense": "Ataki wręcz wymagają rzutu obronnego przed zastosowaniem obrażeń.",
             "NotYourActor": "Nie masz uprawnień do tego aktora.",

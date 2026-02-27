@@ -18,7 +18,8 @@
     "styles": [
         "css/base.css",
         "css/actor.css",
-        "css/items.css"
+        "css/items.css",
+        "css/melee.css"
     ],
     "packs": [],
     "languages": [

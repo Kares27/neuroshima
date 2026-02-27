@@ -15,6 +15,7 @@ import { HealingConfig } from "./module/apps/healing-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
+import { NeuroshimaMeleePanel } from "./module/apps/melee-panel.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
 import { NeuroshimaMeleeDefenseDialog } from "./module/dialogs/melee-defense-dialog.js";
 import { NeuroshimaMeleeOpposed } from "./module/helpers/melee-opposed.js";
@@ -72,7 +73,8 @@ Hooks.once('init', async function() {
             fixedDice: dice,
             isDebug: true,
             label: "Debug Attribute Roll"
-        })
+        }),
+        meleePanel: new NeuroshimaMeleePanel()
     };
 
     // Zdefiniowanie niestandardowych klas dokumentów
@@ -223,7 +225,8 @@ Hooks.once('init', async function() {
         type: String,
         choices: {
             "successes": "NEUROSHIMA.Settings.OpposedMeleeMode.Successes",
-            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice"
+            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice",
+            "vanilla": "NEUROSHIMA.Settings.OpposedMeleeMode.Vanilla"
         },
         default: "successes",
         requiresReload: false
@@ -846,6 +849,37 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     });
 
+    // Przycisk Start Vanilla Melee
+    card.querySelectorAll(".start-vanilla-melee").forEach(btn => {
+        btn.addEventListener("click", async (event) => {
+            event.preventDefault();
+            const rollData = message.getFlag("neuroshima", "rollData");
+            if (!rollData) return;
+
+            const attacker = game.actors.get(rollData.actorId);
+            
+            // 1. Spróbuj znaleźć obrońcę w danych rzutu
+            let defender = null;
+            const targetUuid = rollData.targets?.[0];
+            if (targetUuid) {
+                const targetDoc = await fromUuid(targetUuid);
+                defender = targetDoc?.actor || targetDoc;
+            }
+
+            // 2. Jeśli nie ma w rzucie, weź aktualnie namierzony cel (User Targets)
+            if (!defender) {
+                const userTarget = Array.from(game.user.targets)[0];
+                defender = userTarget?.actor;
+            }
+
+            if (attacker && defender) {
+                await CombatHelper.startVanillaMelee(attacker, defender);
+            } else {
+                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
+            }
+        });
+    });
+
     // Przycisk wycofywania obrażeń (Reverse Damage)
     card.querySelectorAll(".reverse-damage-button").forEach(btn => {
         btn.addEventListener("click", (event) => {
@@ -1037,6 +1071,12 @@ Hooks.on("ready", () => {
                 if (handlerMessage) {
                     await NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: data.defenseMessageId });
                 }
+            } else if (data.type === "selectMeleeDie") {
+                if (!game.user.isGM) return;
+                const combat = game.combats.get(data.combatId);
+                if (combat) {
+                    await game.neuroshima.CombatHelper.selectMeleeDie(combat, data.side, data.index);
+                }
             }
         } catch (err) {
             game.neuroshima?.error(`Błąd podczas obsługi socketu ${data.type}:`, err);
@@ -1047,6 +1087,14 @@ Hooks.on("ready", () => {
 });
 
 // Rejestracja globalnych hooków dla odświeżania interfejsu
+Hooks.on("updateCombat", (combat, changed, options, userId) => {
+    if (changed.flags?.neuroshima?.melee) {
+        if (game.neuroshima.meleePanel?.rendered) {
+            game.neuroshima.meleePanel.render();
+        }
+    }
+});
+
 Hooks.on("targetToken", (user) => {
     if (user.id === game.user.id) refreshAllCombatCards();
 });

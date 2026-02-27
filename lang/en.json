@@ -260,7 +260,8 @@
                 "Name": "Opposed Melee Mode",
                 "Hint": "Choose how to resolve opposed tests in melee combat.",
                 "Dice": "Segments (Dice Comparison)",
-                "Successes": "Successes Difference (Closed Test)"
+                "Successes": "Successes Difference (Closed Test)",
+                "Vanilla": "Vanilla (Segments Pool)"
             },
             "MeleeBonusMode": {
                 "Name": "Melee Weapon Bonus Application",
@@ -346,6 +347,8 @@
         "Cancel": "Cancel",
         "Warnings": {
             "NoMeleeTarget": "No melee target selected. You can roll, but defense won't be available.",
+            "NoCombatActive": "Starting melee requires an active Combat.",
+            "NoMeleeActive": "No active melee.",
             "CannotDefend": "You cannot defend against this attack (no controlled character among targets).",
             "MeleeNeedsDefense": "Melee attacks require defense roll before applying damage.",
             "NotYourActor": "You do not have permissions for this actor.",

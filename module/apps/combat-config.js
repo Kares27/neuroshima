@@ -46,7 +46,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
 
         const opposedModeOptions = {
             "successes": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Successes"),
-            "dice": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Dice")
+            "dice": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Dice"),
+            "vanilla": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Vanilla")
         };
 
         return {

@@ -1,0 +1,163 @@
+.neuroshima.melee-panel {
+    min-height: 550px;
+    min-width: 700px;
+    background: #1a1a1a;
+    color: #eee;
+    font-family: "BigNoodleTooOblique", sans-serif;
+}
+
+.melee-grid-container {
+    display: grid;
+    grid-template-areas: 
+        "att-label      .              def-label"
+        "att-actor      .              def-actor"
+        "att-pool       actions        def-pool"
+        "logs           logs           logs";
+    grid-template-columns: 200px 1fr 200px;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 10px;
+    padding: 15px;
+    height: 100%;
+}
+
+.grid-area {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Labels (Row 1) */
+.attacker-label-area { 
+    grid-area: att-label; 
+    background: #ff5252; 
+    color: white; 
+    text-align: center;
+    padding: 5px;
+    font-size: 1.4em;
+    text-transform: uppercase;
+}
+.defender-label-area { 
+    grid-area: def-label; 
+    background: #2196f3; 
+    color: white; 
+    text-align: center;
+    padding: 5px;
+    font-size: 1.4em;
+    text-transform: uppercase;
+}
+
+/* Actor Cards (Row 2) */
+.attacker-actor-area { 
+    grid-area: att-actor; 
+    background: #fb8c00; 
+    padding: 10px;
+    align-items: center;
+}
+.defender-actor-area { 
+    grid-area: def-actor; 
+    background: #fb8c00; 
+    padding: 10px;
+    align-items: center;
+}
+.actor-card-img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border: 3px solid #333;
+    background: #000;
+}
+.actor-name {
+    margin-top: 5px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #000;
+    text-align: center;
+}
+
+/* Pools (Row 3) */
+.attacker-pool-area { 
+    grid-area: att-pool; 
+    background: #795548; 
+    padding: 10px;
+    gap: 5px;
+}
+.defender-pool-area { 
+    grid-area: def-pool; 
+    background: #795548; 
+    padding: 10px;
+    gap: 5px;
+}
+
+.die-btn {
+    height: 50px;
+    background: #3e2723;
+    color: #fff;
+    border: 2px solid #5d4037;
+    font-size: 1.3em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    cursor: pointer;
+}
+.die-btn span { font-size: 1.5em; color: #ffeb3b; }
+.die-btn.selected { border-color: #ffeb3b; box-shadow: 0 0 10px #ffeb3b; }
+.die-btn.used { opacity: 0.4; filter: grayscale(0.8); }
+.die-btn:disabled { cursor: not-allowed; }
+
+/* Actions (Row 3 Center) */
+.actions-area { 
+    grid-area: actions; 
+    background: #2e7d32; 
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+.status-info {
+    color: white;
+    margin-bottom: 15px;
+}
+.segment-tag { font-size: 1.8em; border-bottom: 2px solid rgba(255,255,255,0.3); margin-bottom: 5px; }
+.leader-info { font-size: 1.2em; color: #ffeb3b; }
+
+.action-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.4em;
+    font-family: inherit;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 2px solid #1b5e20;
+    margin-top: 5px;
+}
+.action-btn.primary { background: #4caf50; color: white; }
+.action-btn.resolve { background: #ff9800; color: white; border-color: #ef6c00; }
+.action-btn.cancel { background: #f44336; color: white; border-color: #c62828; }
+
+/* Logs (Row 4) */
+.logs-area { 
+    grid-area: logs; 
+    background: #4527a0; 
+    padding: 10px;
+    min-height: 120px;
+}
+.log-list {
+    max-height: 150px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 5px;
+}
+.log-entry {
+    background: rgba(0,0,0,0.3);
+    padding: 5px 15px;
+    display: grid;
+    grid-template-columns: 50px 120px 1fr;
+    font-size: 1.1em;
+    border-left: 5px solid transparent;
+}
+.log-entry.hit { border-left-color: #ff5252; }
+.log-entry.miss { border-left-color: #2196f3; }
+.log-entry .dice-val { color: #ffeb3b; font-weight: bold; }

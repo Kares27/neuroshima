@@ -132,6 +132,14 @@
         </div>
     {{/if}}
 
+    {{#if (and isMelee (eq opposedMode "vanilla"))}}
+        <div class="vanilla-melee-start">
+            <button class="start-vanilla-melee" data-action="start-vanilla-melee">
+                <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.Actions.StartMeleeOpposed"}}
+            </button>
+        </div>
+    {{/if}}
+
     {{#unless isMelee}}
     <div class="apply-damage-section">
         <div class="damage-application-header collapsible-toggle">

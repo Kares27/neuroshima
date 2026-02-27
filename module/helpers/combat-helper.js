@@ -6,6 +6,227 @@ import { NeuroshimaChatMessage } from "../documents/chat-message.js";
  */
 export class CombatHelper {
   /**
+   * Starts a vanilla melee combat between two actors.
+   */
+  static async startVanillaMelee(attacker, defender) {
+    const combat = game.combat;
+    if (!combat) {
+        ui.notifications.warn("Zaczynanie zwarcia wymaga aktywnej walki (Combat).");
+        return;
+    }
+
+    // Wylicz segmentsLeft na podstawie aktualnego segmentu tury (Neuroshima 1.5)
+    // Jeśli nie mamy segmentów w trackerze, domyślnie 3.
+    const segmentsLeft = 3; // TODO: Podpiąć pod realny segment z trackera jeśli istnieje
+
+    const meleeState = {
+        active: true,
+        attackerId: attacker.uuid,
+        defenderId: defender.uuid,
+        leaderId: null,
+        segmentIndex: 1,
+        segmentsLeft: segmentsLeft,
+        pools: {
+            attacker: { dice: [], used: [], selected: null },
+            defender: { dice: [], used: [], selected: null }
+        },
+        pending: {
+            awaiting: "initiative"
+        },
+        log: [],
+        meta: {
+            createdRound: combat.round,
+            createdTurn: combat.turn
+        }
+    };
+
+    await combat.setFlag("neuroshima", "melee", meleeState);
+    
+    if (game.neuroshima.meleePanel) {
+        game.neuroshima.meleePanel.render(true);
+    }
+    
+    ui.notifications.info(`Rozpoczęto zwarcie: ${attacker.name} vs ${defender.name}`);
+  }
+
+  /**
+   * Rozstrzyga inicjatywę zwarcia.
+   */
+  static async resolveMeleeInitiative(combat) {
+    if (!game.user.isGM) return;
+    const melee = combat.getFlag("neuroshima", "melee");
+    if (!melee) return;
+
+    const attacker = await fromUuid(melee.attackerId);
+    const defender = await fromUuid(melee.defenderId);
+
+    // Prosty rzut na Zręczność lub test porównawczy
+    // MVP: Wyższa Zręczność wygrywa, przy remisie rzut 1k20
+    const atkDex = (attacker.actor || attacker).system.attributes.dexterity || 10;
+    const defDex = (defender.actor || defender).system.attributes.dexterity || 10;
+
+    let leaderId = null;
+    if (atkDex > defDex) {
+        leaderId = melee.attackerId;
+    } else if (defDex > atkDex) {
+        leaderId = melee.defenderId;
+    } else {
+        const roll = await new Roll("1d20").evaluate();
+        leaderId = roll.total <= 10 ? melee.attackerId : melee.defenderId;
+    }
+
+    await combat.setFlag("neuroshima", "melee.leaderId", leaderId);
+    await combat.setFlag("neuroshima", "melee.pending.awaiting", "attacker-pool");
+  }
+
+  /**
+   * Generuje pulę kości dla danej strony.
+   */
+  static async rollMeleePool(combat, side) {
+    const melee = combat.getFlag("neuroshima", "melee");
+    if (!melee) return;
+
+    const actorUuid = side === "attacker" ? melee.attackerId : melee.defenderId;
+    const actorDoc = await fromUuid(actorUuid);
+    const actor = actorDoc.actor || actorDoc;
+
+    // Pobierz broń (zakładamy wybraną lub domyślną wręcz)
+    const weapon = actor.items.find(i => i.type === "weapon" && i.system.weaponType === "melee");
+    if (!weapon) {
+        ui.notifications.error("Nie znaleziono broni białej.");
+        return;
+    }
+
+    const segmentsLeft = melee.segmentsLeft;
+    const skillKey = weapon.system.skill;
+    const skillValue = actor.system.skills[skillKey]?.value || 0;
+    const statKey = weapon.system.attribute;
+    const statValue = actor.system.attributes[statKey] || 10;
+
+    // Próg sukcesu (bazowy 1.5 - bez PT na razie dla uproszczenia MVP)
+    const target = statValue; 
+
+    // Rzut pulą
+    const roll = await new Roll(`${segmentsLeft}d20`).evaluate();
+    const rawResults = roll.terms[0].results.map(r => r.result);
+    
+    // Zapisz wyniki i progi w meta danych zwarcia, aby potem móc rozstrzygać segmenty
+    const update = {};
+    update[`melee.pools.${side}`] = { 
+        dice: rawResults, 
+        used: new Array(segmentsLeft).fill(false), 
+        selected: null,
+        target: target,
+        skill: skillValue
+    };
+    
+    if (side === "attacker") {
+        update["melee.pending.awaiting"] = "defender-pool";
+    } else {
+        update["melee.pending.awaiting"] = "segment-picks";
+    }
+
+    await combat.setFlag("neuroshima", "melee", update);
+  }
+
+  /**
+   * Wybiera kość z puli.
+   */
+  static async selectMeleeDie(combat, side, index) {
+    const melee = combat.getFlag("neuroshima", "melee");
+    if (!melee) return;
+
+    const update = {};
+    update[`melee.pools.${side}.selected`] = index;
+    await combat.setFlag("neuroshima", "melee", update);
+  }
+
+  /**
+   * Rozstrzyga aktualny segment zwarcia.
+   */
+  static async resolveMeleeSegment(combat) {
+    if (!game.user.isGM) return;
+    const melee = combat.getFlag("neuroshima", "melee");
+    if (!melee) return;
+
+    const atkPool = melee.pools.attacker;
+    const defPool = melee.pools.defender;
+
+    if (atkPool.selected === null || defPool.selected === null) return;
+
+    const atkDie = atkPool.dice[atkPool.selected];
+    const defDie = defPool.dice[defPool.selected];
+
+    // Oznacz jako użyte
+    const newAtkUsed = [...atkPool.used];
+    const newDefUsed = [...defPool.used];
+    newAtkUsed[atkPool.selected] = true;
+    newDefUsed[defPool.selected] = true;
+
+    // Logika sukcesu (Neuroshima 1.5)
+    // Sukces to die <= target (po uwzględnieniu umiejętności - czyli die - skill <= target)
+    const atkModified = Math.max(1, atkDie - (atkPool.skill || 0));
+    const defModified = Math.max(1, defDie - (defPool.skill || 0));
+
+    const atkSuccess = atkModified <= (atkPool.target || 10) && atkDie !== 20;
+    const defSuccess = defModified <= (defPool.target || 10) && defDie !== 20;
+
+    let outcome = "Remis / Brak trafienia";
+    let outcomeClass = "tie";
+    
+    if (atkSuccess && !defSuccess) {
+        outcome = "Trafienie!";
+        outcomeClass = "hit";
+    } else if (!atkSuccess && defSuccess) {
+        outcome = "Obrona!";
+        outcomeClass = "defense";
+    } else if (atkSuccess && defSuccess) {
+        // Obaj mają sukces - obrona wygrywa w 1.5 (lub porównanie jeśli tak ustalicie)
+        outcome = "Sparowanie!";
+        outcomeClass = "parry";
+    }
+
+    const logEntry = {
+        segment: melee.segmentIndex,
+        attackDie: atkDie,
+        defenseDie: defDie,
+        atkModified,
+        defModified,
+        outcome: outcome,
+        outcomeClass: outcomeClass
+    };
+
+    const newLog = [...melee.log, logEntry];
+    const newSegmentIndex = melee.segmentIndex + 1;
+
+    const update = {
+        "melee.pools.attacker.used": newAtkUsed,
+        "melee.pools.defender.used": newDefUsed,
+        "melee.pools.attacker.selected": null,
+        "melee.pools.defender.selected": null,
+        "melee.log": newLog,
+        "melee.segmentIndex": newSegmentIndex
+    };
+
+    if (newSegmentIndex > melee.segmentsLeft) {
+        update["melee.pending.awaiting"] = "none";
+    }
+
+    await combat.setFlag("neuroshima", "melee", update);
+  }
+
+  /**
+   * Kończy zwarcie.
+   */
+  static async endMelee(combat) {
+    if (!game.user.isGM) return;
+    await combat.unsetFlag("neuroshima", "melee");
+    if (game.neuroshima.meleePanel) {
+        game.neuroshima.meleePanel.close();
+    }
+  }
+
+  /**
    * Refund ammunition consumed during a weapon roll.
    * @param {ChatMessage} message The roll chat message.
    * @returns {Promise<boolean>} Success status.
