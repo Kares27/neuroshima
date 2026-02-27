@@ -74,6 +74,7 @@
             "RollMode": "Tryb rzutu",
             "RefundAmmo": "Refundacja amunicji",
             "ReverseDamage": "Cofnij obrażenia",
+            "ReverseRest": "Cofnij odpoczynek",
             "BaseDifficulty": "Bazowa Trudność",
             "Difficulty": "Trudność",
             "Attribute": "Atrybut",
@@ -197,7 +198,20 @@
             "Load": "Załaduj",
             "Unload": "Rozładuj",
             "ReverseDamage": "Cofnij obrażenia",
-            "StartMeleeOpposed": "Rozpocznij starcie"
+            "StartMeleeOpposed": "Rozpocznij starcie",
+            "Rest": "Odpocznij"
+        },
+        "Rest": {
+            "Title": "Odpoczynek",
+            "Days": "Dni",
+            "RegularHealing": "Leczenie Ran",
+            "BruiseHealing": "Leczenie Siniaków",
+            "Content": "Skonfiguruj parametry odpoczynku.",
+            "Description": "Skonfiguruj parametry odpoczynku.",
+            "Whisper": "{actor} odpoczywał przez {days} dni. Zredukowano {count} ran.",
+            "WhisperDetail": "Rana {name} ({location}): {old}% -> {new}%",
+            "WhisperRemoved": "Rana {name} ({location}) została całkowicie wyleczona.",
+            "Button": "Odpocznij"
         },
         "Wound": {
             "TotalPenalty": "Suma Kar",
@@ -398,6 +412,7 @@
             "ActorNotFound": "Nie znaleziono aktora powiązanego z tym rzutem.",
             "Jamming": "ZACIĘCIE",
             "DamageReversed": "Wycofano {count} ran u {name}.",
+            "RestReversed": "Cofnięto odpoczynek u {name}.",
             "NoWoundsFoundToReverse": "Nie znaleziono nałożonych ran do wycofania.",
             "StatusReversed": "Obrażenia zostały wycofane przez MG."
         },

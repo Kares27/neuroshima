@@ -633,6 +633,89 @@ export class CombatHelper {
   }
 
   /**
+   * Reverse the rest action, restoring wound penalties and recreating deleted wounds.
+   * @param {ChatMessage} message The chat message with rest report.
+   */
+  static async reverseRest(message) {
+    if (!game.user.isGM) return;
+
+    game.neuroshima.group("CombatHelper | reverseRest");
+    
+    const actorUuid = message.getFlag("neuroshima", "actorUuid");
+    const actorId = message.getFlag("neuroshima", "actorId");
+    const restorationData = message.getFlag("neuroshima", "restorationData");
+    const isReversed = message.getFlag("neuroshima", "isReversed");
+
+    if (isReversed) {
+        game.neuroshima.log("Anulowano: Odpoczynek został już wycofany.");
+        game.neuroshima.groupEnd();
+        return;
+    }
+
+    if (!restorationData) {
+        game.neuroshima.error("Brak danych do wycofania odpoczynku.");
+        game.neuroshima.groupEnd();
+        return;
+    }
+
+    // Resolve actor
+    let actor = null;
+    if (actorUuid) {
+        const doc = await fromUuid(actorUuid);
+        actor = doc?.actor || doc;
+    }
+    if (!actor && actorId) {
+        actor = game.actors.get(actorId);
+    }
+
+    if (!actor) {
+        game.neuroshima.error("Nie znaleziono aktora.", { actorUuid, actorId });
+        ui.notifications.error(game.i18n.localize("NEUROSHIMA.Notifications.ActorNotFound"));
+        game.neuroshima.groupEnd();
+        return;
+    }
+
+    // 1. Restore updated wounds
+    if (restorationData.updates.length > 0) {
+        // Only update wounds that still exist
+        const validUpdates = restorationData.updates.filter(u => actor.items.has(u._id));
+        if (validUpdates.length > 0) {
+            await actor.updateEmbeddedDocuments("Item", validUpdates);
+        }
+    }
+
+    // 2. Recreate deleted wounds
+    if (restorationData.deletions.length > 0) {
+        await actor.createEmbeddedDocuments("Item", restorationData.deletions);
+    }
+
+    ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.RestReversed", { 
+        name: actor.name 
+    }));
+
+    // Update flag and message UI
+    await message.setFlag("neuroshima", "isReversed", true);
+
+    const html = document.createElement("div");
+    html.innerHTML = message.content;
+    
+    const statusDiv = document.createElement("div");
+    statusDiv.className = "refund-status";
+    statusDiv.style.textAlign = "center";
+    statusDiv.style.fontStyle = "italic";
+    statusDiv.style.opacity = "0.7";
+    statusDiv.style.marginTop = "5px";
+    statusDiv.style.borderTop = "1px dashed #777";
+    statusDiv.style.paddingTop = "5px";
+    statusDiv.textContent = game.i18n.localize("NEUROSHIMA.Notifications.StatusReversed");
+    
+    html.appendChild(statusDiv);
+    await message.update({ content: html.innerHTML });
+
+    game.neuroshima.groupEnd();
+  }
+
+  /**
    * Sprawdza czy użytkownik może zobaczyć szczegóły raportu Odporności na Ból.
    */
   static canShowPainResistanceDetails(actor) {
@@ -1010,6 +1093,128 @@ export class CombatHelper {
     game.neuroshima.groupEnd();
 
     return patientCardData;
+  }
+
+  /**
+   * Perform rest for an actor, reducing wound penalties.
+   * @param {Actor} actor The actor resting.
+   * @param {Object} restData Data from the RestDialog (days, regularPenalty, bruisePenalty).
+   * @returns {Promise<void>}
+   */
+  static async rest(actor, restData) {
+    const days = parseInt(restData.days);
+    const regularPenalty = parseInt(restData.regularPenalty);
+    const bruisePenalty = parseInt(restData.bruisePenalty);
+
+    // Validate data
+    if (isNaN(days) || isNaN(regularPenalty) || isNaN(bruisePenalty)) {
+        game.neuroshima.error("CombatHelper | rest | Błędne dane odpoczynku:", restData);
+        return;
+    }
+
+    const wounds = actor.items.filter(i => i.type === "wound");
+    
+    if (wounds.length === 0) return;
+
+    game.neuroshima.group("CombatHelper | rest");
+    game.neuroshima.log("Odpoczynek dla aktora:", { 
+      name: actor.name, 
+      days, 
+      regularPenalty, 
+      bruisePenalty 
+    });
+
+    const updates = [];
+    const idsToDelete = [];
+    const healingDetails = [];
+    const restorationData = {
+        updates: [],
+        deletions: []
+    };
+
+    // Separate updates and deletions to avoid validation issues during sequential operations
+    for (const wound of wounds) {
+        const damageType = wound.system.damageType || "D";
+        const isBruise = damageType.startsWith('s');
+        const dailyRate = isBruise ? bruisePenalty : regularPenalty;
+        const totalReduction = days * dailyRate;
+        
+        const oldPenalty = wound.system.penalty || 0;
+        const newPenalty = Math.max(0, Math.round(oldPenalty - totalReduction));
+        
+        if (newPenalty === 0) {
+            idsToDelete.push(wound.id);
+            healingDetails.push({
+                name: wound.name,
+                location: game.i18n.localize(NEUROSHIMA.bodyLocations[wound.system.location]?.label || "NEUROSHIMA.Location.Torso"),
+                damageType: damageType,
+                img: wound.img,
+                old: oldPenalty,
+                new: 0,
+                removed: true
+            });
+            // Store full item data to recreate it later if reversed
+            restorationData.deletions.push(wound.toObject());
+        } else if (newPenalty !== oldPenalty) {
+            updates.push({
+                _id: wound.id,
+                "system.penalty": newPenalty
+            });
+            healingDetails.push({
+                name: wound.name,
+                location: game.i18n.localize(NEUROSHIMA.bodyLocations[wound.system.location]?.label || "NEUROSHIMA.Location.Torso"),
+                damageType: damageType,
+                img: wound.img,
+                old: oldPenalty,
+                new: newPenalty,
+                removed: false
+            });
+            // Store old penalty to restore it later if reversed
+            restorationData.updates.push({
+                _id: wound.id,
+                "system.penalty": oldPenalty
+            });
+        }
+    }
+
+    // Perform deletions first for wounds that reach 0%
+    if (idsToDelete.length > 0) {
+        await actor.deleteEmbeddedDocuments("Item", idsToDelete);
+    }
+
+    // Perform updates for remaining wounds
+    if (updates.length > 0) {
+        await actor.updateEmbeddedDocuments("Item", updates);
+    }
+
+    if (healingDetails.length > 0) {
+        // Send whisper to player and GM
+        const content = await foundry.applications.handlebars.renderTemplate("systems/neuroshima/templates/chat/rest-report.hbs", {
+            actor: actor.name,
+            days,
+            count: healingDetails.length,
+            details: healingDetails
+        });
+
+        await ChatMessage.create({
+            user: game.user.id,
+            speaker: ChatMessage.getSpeaker({ actor }),
+            content: content,
+            whisper: [game.user.id, ...game.users.filter(u => u.isGM).map(u => u.id)],
+            style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+            flags: {
+                neuroshima: {
+                    messageType: "rest",
+                    actorUuid: actor.uuid,
+                    actorId: actor.id,
+                    restorationData: restorationData,
+                    isReversed: false
+                }
+            }
+        });
+    }
+
+    game.neuroshima.groupEnd();
   }
 
 }

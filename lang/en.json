@@ -71,6 +71,7 @@
             "RollMode": "Roll Mode",
             "RefundAmmo": "Refund Ammunition",
             "ReverseDamage": "Reverse Damage",
+            "ReverseRest": "Reverse Rest",
             "BaseDifficulty": "Base Difficulty",
             "Difficulty": "Difficulty",
             "Attribute": "Attribute",
@@ -192,7 +193,20 @@
             "Load": "Load",
             "Unload": "Unload",
             "ReverseDamage": "Reverse Damage",
-            "StartMeleeOpposed": "Start Melee Opposed"
+            "StartMeleeOpposed": "Start Melee Opposed",
+            "Rest": "Rest"
+        },
+        "Rest": {
+            "Title": "Rest",
+            "Days": "Days",
+            "RegularHealing": "Healing Wounds",
+            "BruiseHealing": "Healing Bruises",
+            "Content": "Configure rest parameters.",
+            "Description": "Configure rest parameters.",
+            "Whisper": "{actor} rested for {days} days. Reduced {count} wounds.",
+            "WhisperDetail": "Wound {name} ({location}): {old}% -> {new}%",
+            "WhisperRemoved": "Wound {name} ({location}) was completely healed.",
+            "Button": "Rest"
         },
         "PainResistance": {
             "ReportTitle": "Pain Resistance Tests",
@@ -399,6 +413,7 @@
             "ActorNotFound": "Could not find the actor associated with this roll.",
             "Jamming": "JAMMING!",
             "DamageReversed": "Reversed {count} wounds for {name}.",
+            "RestReversed": "Reversed rest for {name}.",
             "NoWoundsFoundToReverse": "No matching wounds found to reverse.",
             "StatusReversed": "Damage has been reversed by GM."
         },

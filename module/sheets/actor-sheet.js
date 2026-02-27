@@ -3,6 +3,7 @@ import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/weapon-roll-dialog.js";
 import { AmmunitionLoadingDialog } from "../apps/ammo-loading-dialog.js";
+import { RestDialog } from "../apps/rest-dialog.js";
 import { CombatHelper } from "../helpers/combat-helper.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -66,7 +67,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       requestHealing: this.prototype._onRequestHealing,
       toggleCombatLayout: this.prototype._onToggleCombatLayout,
       respondToOpposed: this.prototype._onRespondToOpposed,
-      dismissOpposed: this.prototype._onDismissOpposed
+      dismissOpposed: this.prototype._onDismissOpposed,
+      rest: this.prototype._onRest
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -1771,5 +1773,19 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     
     const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
     return NeuroshimaChatMessage.clearOpposedPendingFlag(this.document, requestId);
+  }
+
+  /**
+   * Handle the rest action.
+   * @private
+   */
+  async _onRest(event, target) {
+    const actor = this.document;
+    const restData = await RestDialog.wait();
+    
+    // Check if restData is valid and has expected properties
+    if (restData && typeof restData === 'object' && restData.days !== undefined) {
+      await CombatHelper.rest(actor, restData);
+    }
   }
 }

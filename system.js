@@ -422,10 +422,12 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/roll-card.hbs",
         "systems/neuroshima/templates/chat/patient-card.hbs",
         "systems/neuroshima/templates/chat/pain-resistance-report.hbs",
+        "systems/neuroshima/templates/chat/rest-report.hbs",
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
         "systems/neuroshima/templates/chat/opposed-handler.hbs",
         "systems/neuroshima/templates/chat/opposed-result.hbs",
+        "systems/neuroshima/templates/dialog/rest-dialog.hbs",
         "systems/neuroshima/templates/dialog/melee-defense.hbs"
     ];
     
@@ -512,6 +514,24 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
             CombatHelper.reverseDamage(message);
+        }
+    });
+
+    options.push({
+        name: "NEUROSHIMA.Roll.ReverseRest",
+        icon: '<i class="fas fa-bed"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const messageType = message?.getFlag("neuroshima", "messageType");
+            const alreadyReversed = message?.getFlag("neuroshima", "isReversed");
+            
+            if (!CombatHelper.canPerformCombatAction()) return false;
+
+            return messageType === "rest" && !alreadyReversed;
+        },
+        callback: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            CombatHelper.reverseRest(message);
         }
     });
 

@@ -676,11 +676,14 @@
 
 .neuroshima.sheet.actor .combat-section .section-header .header-actions {
     margin-left: auto;
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 .neuroshima.sheet.actor .combat-section .section-header .item-control {
     color: white;
-    font-size: 0.8em;
+    font-size: 1.1em;
 }
 
 .neuroshima.sheet.actor .combat-table {
@@ -2320,5 +2323,116 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-style: italic;
     color: var(--ns-text-light);
     font-size: 0.85em;
+}
+
+/* Rest Dialog Styles */
+.rest-dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+}
+
+.rest-dialog-content p {
+    margin: 0;
+    text-align: center;
+    font-size: 0.95em;
+    line-height: 1.4;
+}
+
+.rest-config-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px 20px;
+}
+
+.rest-config-grid label {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.input-with-unit input {
+    width: 50px !important;
+    height: 30px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--ns-border-main);
+    color: var(--ns-text-light);
+    font-family: 'SpecialElite', serif;
+}
+
+.input-with-unit .unit {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 1.1em;
+    width: 20px;
+    text-align: left;
+    opacity: 0.8;
+}
+
+/* Rest Report Chat Card Styles */
+.rest-report .rest-wound-line {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 5px;
+    font-size: 0.9em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.rest-report .rest-wound-line:last-child {
+    border-bottom: none;
+}
+
+.rest-report .wound-type {
+    flex: 0 0 35px;
+    font-size: 0.85em;
+    opacity: 0.7;
+    text-align: center;
+}
+
+.rest-report .wound-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rest-report .wound-path {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.rest-report .old-penalty {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.rest-report .new-penalty {
+    font-weight: bold;
+    color: #4caf50;
+}
+
+.rest-report .new-penalty.removed {
+    color: #4caf50;
+}
+
+.rest-report .fa-long-arrow-alt-right {
+    opacity: 0.4;
+    font-size: 0.8em;
 }
 
