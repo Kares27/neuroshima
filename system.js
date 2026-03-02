@@ -1,5 +1,7 @@
 import { NEUROSHIMA } from "./module/config.js";
 import { NeuroshimaActor } from "./module/documents/actor.js";
+import { NeuroshimaCombat } from "./module/documents/combat.js";
+import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActorData } from "./module/data/actor-data.js";
@@ -14,6 +16,7 @@ import { CombatConfig } from "./module/apps/combat-config.js";
 import { HealingConfig } from "./module/apps/healing-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
+import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
 
@@ -33,6 +36,7 @@ Hooks.once('init', async function() {
         NeuroshimaMeleeDuel,
         NeuroshimaMeleeDuelSockets,
         NeuroshimaMeleeDuelResolver,
+        NeuroshimaInitiativeRollDialog,
         NeuroshimaDice,
         CombatHelper,
         HealingApp,
@@ -85,8 +89,13 @@ Hooks.once('init', async function() {
 
     // Zdefiniowanie niestandardowych klas dokumentów
     CONFIG.Actor.documentClass = NeuroshimaActor;
+    CONFIG.Combat.documentClass = NeuroshimaCombat;
+    CONFIG.Combatant.documentClass = NeuroshimaCombatant;
     CONFIG.Item.documentClass = NeuroshimaItem;
     CONFIG.ChatMessage.documentClass = NeuroshimaChatMessage;
+
+    // Inicjatywa
+    CONFIG.Combat.initiative.formula = "0";
 
     // Rejestracja modeli danych
     CONFIG.Actor.dataModels.character = NeuroshimaActorData;
@@ -236,6 +245,16 @@ Hooks.once('init', async function() {
             "both": "NEUROSHIMA.Settings.MeleeBonusMode.Both"
         },
         default: "attribute",
+        requiresReload: false
+    });
+
+    game.settings.register("neuroshima", "doubleSkillAction", {
+        name: "NEUROSHIMA.Settings.DoubleSkillAction.Name",
+        hint: "NEUROSHIMA.Settings.DoubleSkillAction.Hint",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false,
         requiresReload: false
     });
 
@@ -1093,17 +1112,16 @@ function initializeSocketlib() {
         if (!message) return;
         const duel = NeuroshimaMeleeDuel.fromMessage(message);
         if (duel) {
-            const state = duel.state;
-            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actorDoc = await fromUuid(actorUuid);
-            const actor = actorDoc?.actor || actorDoc;
+            await duel.rollInitiative(data.role);
+        }
+    });
 
-            const userId = this.socketdata.userId;
-            const user = game.users.get(userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.rollInitiative(data.role);
-            }
+    game.neuroshima.socket.register("updateMeleeInitiative", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            await duel.updateInitiative(data.role, data.rollResult);
         }
     });
 

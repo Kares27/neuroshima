@@ -400,7 +400,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static TYPES = {
     ROLL: 'roll',
     WEAPON: 'weapon',
-    PAIN_RESISTANCE: 'painResistance'
+    PAIN_RESISTANCE: 'painResistance',
+    INITIATIVE: 'initiative'
   };
 
   /**
@@ -424,6 +425,39 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: this.TYPES.ROLL,
+          rollData: {
+            ...rollData,
+            rollMode: rollMode
+          }
+        }
+      }
+    };
+
+    ChatMessage.applyRollMode(chatData, rollMode);
+    return this.create(chatData);
+  }
+
+  /**
+   * Renderuje kartę testu inicjatywy.
+   */
+  static async renderInitiativeRoll(rollData, actor, roll) {
+    const template = "systems/neuroshima/templates/chat/initiative-roll-card.hbs";
+    const content = await this._renderTemplate(template, {
+      ...rollData,
+      config: NEUROSHIMA,
+      showTooltip: this._canShowTooltip(actor)
+    });
+
+    const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");
+    const chatData = {
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content,
+      rolls: [roll],
+      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      flags: {
+        neuroshima: {
+          messageType: this.TYPES.INITIATIVE,
           rollData: {
             ...rollData,
             rollMode: rollMode

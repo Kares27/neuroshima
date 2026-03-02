@@ -786,7 +786,7 @@ export class CombatHelper {
     const skillKey = "painResistance";
     const skillValue = actor.system.skills[skillKey]?.value || 0;
     const statKey = "charisma"; // Default for Pain Resistance
-    const statValue = actor.system.attributes[statKey] || 10;
+    const statValue = actor.system.attributeTotals?.[statKey] || 10;
 
     // Notify the user
     ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.TriggeringPainResistance", { name: actor.name }));

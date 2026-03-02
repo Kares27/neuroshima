@@ -30,6 +30,29 @@ export class NeuroshimaMeleeDuel {
   }
 
   /**
+   * Automatycznie optymalizuje rzuty kośćmi używając punktów umiejętności.
+   * Wybiera kości najbliższe progu sukcesu i obniża je tak, aby stały się sukcesami.
+   */
+  static _autoOptimizeDice(dice, target, skillPoints) {
+    let mods = [0, 0, 0];
+    let remaining = skillPoints;
+    
+    // Tylko kości, które NIE są sukcesami i NIE są naturalnymi 20
+    let candidates = dice.map((v, i) => ({ value: v, index: i }))
+                        .filter(c => c.value > target && c.value !== 20)
+                        .sort((a, b) => (a.value - target) - (b.value - target)); 
+    
+    for (const c of candidates) {
+        const needed = c.value - target;
+        if (needed <= remaining) {
+            mods[c.index] = needed;
+            remaining -= needed;
+        }
+    }
+    return mods;
+  }
+
+  /**
    * Fabryka: Tworzy nową instancję starcia na podstawie rzutu atakującego.
    */
   static async createFromAttack(attackerActor, attackRollData, weaponId, targets = []) {
@@ -58,23 +81,14 @@ export class NeuroshimaMeleeDuel {
     const attackerActorDoc = await fromUuid(attackerActor.uuid);
     const attacker = attackerActorDoc?.actor || attackerActorDoc;
 
-    // Automatyczny rzut na inicjatywę dla atakującego
-    const { NeuroshimaDice } = await import("../helpers/dice.js");
-    let attackerDex = 10;
-    if (attacker.system.attributes?.dexterity !== undefined) {
-        const val = attacker.system.attributes.dexterity;
-        attackerDex = typeof val === 'object' ? (Number(val.value) || 10) : (Number(val) || 10);
+    let modSelf = [0, 0, 0];
+    const attackerDiceRaw = (attackRollData.rawResults || []).map(r => typeof r === 'object' ? r.value : r);
+    const attackerStat = attackRollData.target || 10;
+    const attackerSkill = attackRollData.skill || 0;
+
+    if (!game.settings.get("neuroshima", "doubleSkillAction")) {
+        modSelf = this._autoOptimizeDice(attackerDiceRaw, attackerStat, attackerSkill);
     }
-    
-    const initRollAttacker = await NeuroshimaDice.rollTest({
-        stat: attackerDex,
-        isOpen: true,
-        label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeTest"),
-        actor: attacker,
-        chatMessage: false,
-        isInitiative: true
-    });
-    const initTooltipAttacker = NeuroshimaDice._buildOpenTestTooltip(initRollAttacker, "NEUROSHIMA.MeleeOpposed.InitiativeTest");
 
     const state = {
       requestId: foundry.utils.randomID(),
@@ -88,14 +102,14 @@ export class NeuroshimaMeleeDuel {
         tokenUuid: attackerActor.token?.uuid || null,
         name: attackerActor.name,
         img: attackerActor.img || "icons/svg/mystery-man.svg",
-        stat: attackRollData.stat || 10,
-        skillPoints: attackRollData.skill || 0,
-        modSelf: [0, 0, 0],
+        stat: attackerStat,
+        skillPoints: attackerSkill,
+        modSelf: modSelf,
         modOpponent: [0, 0, 0],
         ready: false,
         diceSpent: [false, false, false],
-        initiativeRoll: initRollAttacker.totalSuccesses || initRollAttacker.successCount || 0,
-        initiativeTooltip: initTooltipAttacker
+        initiativeRoll: null,
+        initiativeTooltip: ""
       },
       defender: { 
         actorUuid: null, 
@@ -116,7 +130,7 @@ export class NeuroshimaMeleeDuel {
       },
       defense: { weaponId: null, rollData: null },
       dice: {
-        attacker: (attackRollData.rawResults || []).map(r => typeof r === 'object' ? r.value : r),
+        attacker: attackerDiceRaw,
         defender: []
       },
       segments: [
@@ -133,24 +147,30 @@ export class NeuroshimaMeleeDuel {
     const context = {
       ...state,
       config: NEUROSHIMA,
+      doubleSkillAction: game.settings.get("neuroshima", "doubleSkillAction"),
       status: state.status,
       attacker: state.attacker,
       defender: state.defender,
-      attackerDice: (state.dice.attacker || []).map((v, i) => ({
-        original: v,
-        modified: v,
-        modSelf: 0,
-        modOpponent: 0,
-        isNat1: v === 1,
-        isNat20: v === 20,
-        isSuccess: v <= state.attacker.stat
-      })),
+      attackerDice: (state.dice.attacker || []).map((v, i) => {
+        const modified = v - state.attacker.modSelf[i];
+        return {
+          original: v,
+          modified: modified,
+          modSelf: state.attacker.modSelf[i],
+          modOpponent: 0,
+          isNat1: v === 1,
+          isNat20: v === 20,
+          isSuccess: modified <= state.attacker.stat
+        };
+      }),
       defenderDice: [],
       attackerSkillTotal: state.attacker.skillPoints,
-      attackerSkillRemaining: state.attacker.skillPoints,
+      attackerSkillRemaining: state.attacker.skillPoints - state.attacker.modSelf.reduce((a,b)=>a+b,0),
       defenderSkillTotal: 0,
       defenderSkillRemaining: 0,
       attackerTargets: state.attackerTargets,
+      attackerTargetNumber: state.attacker.stat,
+      defenderTargetNumber: state.defender.stat,
       isAttacker: game.user.isGM || attackerActorDoc?.isOwner || false,
       isDefender: false,
       isReady: { attacker: false, defender: false },
@@ -195,82 +215,28 @@ export class NeuroshimaMeleeDuel {
     const state = foundry.utils.deepClone(this.state);
     if (state.status !== "waiting-defender") return;
 
-    // Automatyczny rzut na inicjatywę dla obrońcy
-    const { NeuroshimaDice } = await import("../helpers/dice.js");
-    let defenderDex = 10;
-    if (defenderActor.system.attributes?.dexterity !== undefined) {
-        const val = defenderActor.system.attributes.dexterity;
-        defenderDex = typeof val === 'object' ? (Number(val.value) || 10) : (Number(val) || 10);
-    }
-    
-    const initRollDefender = await NeuroshimaDice.rollTest({
-        stat: defenderDex,
-        isOpen: true,
-        label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeTest"),
-        actor: defenderActor,
-        chatMessage: false,
-        isInitiative: true
-    });
-    let initTooltipDefender = NeuroshimaDice._buildOpenTestTooltip(initRollDefender, "NEUROSHIMA.MeleeOpposed.InitiativeTest");
-    let initTooltipAttacker = state.attacker.initiativeTooltip;
+    const defenderDiceRaw = (defenseRollData.rawResults || []).map(r => typeof r === 'object' ? r.value : r);
+    const defenderStat = defenseRollData.target || 10;
+    const defenderSkill = defenseRollData.skill || 0;
+    let modSelf = [0, 0, 0];
 
-    const dice = defenseRollData.rawResults.map(r => ({
-      original: r.value,
-      modified: r.value,
-      nat20: r.isNat20
-    }));
-
-    // Pobierz dane atakującego ze stanu
-    const attackerActorDoc = await fromUuid(state.attacker.actorUuid);
-    const attacker = attackerActorDoc?.actor || attackerActorDoc;
-    let attackerDex = 10;
-    if (attacker?.system?.attributes?.dexterity !== undefined) {
-        const val = attacker.system.attributes.dexterity;
-        attackerDex = typeof val === 'object' ? (Number(val.value) || 10) : (Number(val) || 10);
+    if (!game.settings.get("neuroshima", "doubleSkillAction")) {
+        modSelf = NeuroshimaMeleeDuel._autoOptimizeDice(defenderDiceRaw, defenderStat, defenderSkill);
     }
 
-    // Rozstrzygnięcie inicjatywy (automatyczny reroll przy remisie)
-    let aInit = state.attacker.initiativeRoll || 0;
-    let dInit = initRollDefender.totalSuccesses || initRollDefender.successCount || 0;
-
-    while (aInit === dInit) {
-        const rerollA = await NeuroshimaDice.rollTest({
-            stat: attackerDex,
-            isOpen: true,
-            label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeTest") + " (Reroll)",
-            actor: attacker,
-            chatMessage: false,
-            isInitiative: true
-        });
-        const rerollD = await NeuroshimaDice.rollTest({
-            stat: defenderDex,
-            isOpen: true,
-            label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeTest") + " (Reroll)",
-            actor: defenderActor,
-            chatMessage: false,
-            isInitiative: true
-        });
-        initTooltipAttacker = NeuroshimaDice._buildOpenTestTooltip(rerollA, "NEUROSHIMA.MeleeOpposed.InitiativeTest");
-        initTooltipDefender = NeuroshimaDice._buildOpenTestTooltip(rerollD, "NEUROSHIMA.MeleeOpposed.InitiativeTest");
-        aInit = rerollA.totalSuccesses || rerollA.successCount || 0;
-        dInit = rerollD.totalSuccesses || rerollD.successCount || 0;
-    }
-
-    state.attacker.initiativeRoll = aInit;
-    state.attacker.initiativeTooltip = initTooltipAttacker;
     state.defender = {
       actorUuid: defenderActor.uuid,
       tokenUuid: defenderActor.token?.uuid || null,
       name: defenderActor.name,
       img: defenderActor.img,
-      stat: defenseRollData.stat || 10,
-      skillPoints: defenseRollData.skill || 0,
-      modSelf: [0, 0, 0],
+      stat: defenderStat,
+      skillPoints: defenderSkill,
+      modSelf: modSelf,
       modOpponent: [0, 0, 0],
       ready: false,
       diceSpent: [false, false, false],
-      initiativeRoll: dInit,
-      initiativeTooltip: initTooltipDefender
+      initiativeRoll: null,
+      initiativeTooltip: ""
     };
 
     state.defense = {
@@ -279,10 +245,10 @@ export class NeuroshimaMeleeDuel {
     };
 
     // Zapisanie kości obrońcy
-    state.dice.defender = (defenseRollData.rawResults || []).map(r => typeof r === 'object' ? r.value : r);
+    state.dice.defender = defenderDiceRaw;
 
-    state.initiative = aInit > dInit ? "attacker" : "defender";
-    state.phase = "modification";
+    state.initiative = null;
+    state.phase = "initiative";
     state.status = "active";
 
     state.version += 1;
@@ -290,56 +256,77 @@ export class NeuroshimaMeleeDuel {
   }
 
   /**
-   * Wykonuje rzut na Inicjatywę zwarcia (Zręczność otwarta).
+   * Inicjuje proces rzutu na inicjatywę dla danej roli.
+   * Otwiera dialog dla właściciela aktora.
    * @param {string} role - 'attacker' lub 'defender'
    */
   async rollInitiative(role) {
-    if (!game.user.isGM) {
-        return game.neuroshima.socket.executeAsGM("rollMeleeInitiative", {
-            messageId: this.message.id,
-            role: role
-        });
-    }
-
-    const state = foundry.utils.deepClone(this.state);
-    if (state.phase !== "initiative") return;
-
+    const state = this.state;
     const side = state[role];
     const actorDoc = await fromUuid(side.actorUuid);
-    // W v13 actorDoc może być TokenDocument lub Actor
     const actor = actorDoc?.actor || actorDoc;
-    
-    if (!actor || !actor.system) {
-        game.neuroshima?.error("Nie znaleziono aktora dla rzutu inicjatywy:", side.actorUuid);
+
+    if (!actor || (!actor.isOwner && !game.user.isGM)) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NotYourActor"));
         return;
     }
 
-    // Rzut na Zręczność (otwarty)
-    const { NeuroshimaDice } = await import("../helpers/dice.js");
+    const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
     
-    // Pobieranie wartości atrybutu - obsługa różnych formatów dla pewności
-    let dex = 10;
-    if (actor.system.attributes?.dexterity !== undefined) {
-        const val = actor.system.attributes.dexterity;
-        dex = typeof val === 'object' ? (Number(val.value) || 10) : (Number(val) || 10);
+    // Sugerowanie umiejętności na podstawie użytej broni
+    let suggestedSkill = "";
+    if (role === "attacker") {
+        suggestedSkill = state.attack.rollData?.weapon?.system?.skill || "";
+    } else if (role === "defender") {
+        suggestedSkill = state.defense.rollData?.weapon?.system?.skill || "";
     }
-    
-    game.neuroshima?.log("Inicjatywa: Pobrano Zręczność", {
-        actor: actor.name,
-        dex: dex,
-        rawDex: actor.system.attributes?.dexterity
-    });
 
-    const rollResult = await NeuroshimaDice.rollTest({
-        stat: dex,
-        isOpen: true,
-        label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeTest"),
-        actor: actor
+    const dialog = new NeuroshimaInitiativeRollDialog({
+        actor: actor,
+        skill: suggestedSkill,
+        isMeleeInitiative: true,
+        onRoll: async (rollData) => {
+            const rollResult = await game.neuroshima.NeuroshimaDice.rollInitiative({
+                ...rollData,
+                actor: actor,
+                chatMessage: false
+            });
+            
+            // Wyślij wynik do MG aby zaktualizował wiadomość duelu
+            if (game.user.isGM) {
+                await this.updateInitiative(role, {
+                    successPoints: rollResult.successPoints,
+                    tooltip: rollResult.tooltip || ""
+                });
+            } else {
+                await game.neuroshima.socket.executeAsGM("updateMeleeInitiative", {
+                    messageId: this.message.id,
+                    role: role,
+                    rollResult: {
+                        successPoints: rollResult.successPoints,
+                        tooltip: rollResult.tooltip || ""
+                    }
+                });
+            }
+            return rollResult;
+        }
     });
+    dialog.render(true);
+  }
 
-    side.initiativeRoll = rollResult.totalSuccesses || rollResult.successCount || 0;
+  /**
+   * Aktualizuje wynik inicjatywy w stanie starcia (wywoływane przez GM).
+   */
+  async updateInitiative(role, rollResult) {
+    if (!game.user.isGM) return;
+
+    const state = foundry.utils.deepClone(this.state);
+    const side = state[role];
     
-    // Jeśli obaj rzucili, rozstrzygnij
+    side.initiativeRoll = rollResult.successPoints;
+    side.initiativeTooltip = rollResult.tooltip;
+
+    // Jeśli obie strony rzuciły, rozstrzygnij inicjatywę
     if (state.attacker.initiativeRoll !== null && state.defender.initiativeRoll !== null) {
         if (state.attacker.initiativeRoll > state.defender.initiativeRoll) {
             state.initiative = "attacker";
@@ -348,7 +335,7 @@ export class NeuroshimaMeleeDuel {
             state.initiative = "defender";
             state.phase = "modification";
         } else {
-            // Remis - reset rzutów i powtórka
+            // Remis - reset rzutów i powiadomienie
             state.attacker.initiativeRoll = null;
             state.defender.initiativeRoll = null;
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeDraw"));
@@ -394,14 +381,19 @@ export class NeuroshimaMeleeDuel {
         return;
     }
 
+    const targetDieValue = state.dice[targetRole][idx];
+    if (targetDieValue === 20) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.Natural20CannotBeModified"));
+        return;
+    }
+
     if (actorRole === targetRole) {
         // Modyfikacja własnej kości (tylko obniżanie)
         const currentMod = side.modSelf[idx];
         const newMod = Math.max(0, currentMod + d);
         
         // Nie można obniżyć kości poniżej 1
-        const originalVal = state.dice[actorRole][idx];
-        if (originalVal - newMod < 1 && d > 0) return;
+        if (targetDieValue - newMod < 1 && d > 0) return;
         
         side.modSelf[idx] = newMod;
     } else {
@@ -410,9 +402,8 @@ export class NeuroshimaMeleeDuel {
         const newMod = Math.max(0, currentMod + d);
         
         // Nie można podwyższyć kości powyżej 20
-        const originalVal = state.dice[targetRole][idx];
         const opponentModSelf = state[targetRole].modSelf[idx];
-        if (originalVal - opponentModSelf + newMod > 20 && d > 0) return;
+        if (targetDieValue - opponentModSelf + newMod > 20 && d > 0) return;
         
         side.modOpponent[idx] = newMod;
     }
@@ -787,6 +778,7 @@ export class NeuroshimaMeleeDuel {
     const context = {
         ...newState,
         config: NEUROSHIMA,
+        doubleSkillAction: game.settings.get("neuroshima", "doubleSkillAction"),
         attacker: newState.attacker,
         defender: newState.defender,
         attackerDice,

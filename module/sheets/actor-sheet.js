@@ -782,7 +782,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const actor = this.document;
     const system = actor.system;
     
-    const attrValue = system.attributes[attrKey] + (system.modifiers[attrKey] || 0);
+    const attrValue = system.attributeTotals[attrKey];
     const label = game.i18n.localize(NEUROSHIMA.attributes[attrKey].label);
 
     return this._showRollDialog({
@@ -811,7 +811,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       if (attrKey) break;
     }
 
-    const statValue = system.attributes[attrKey] + (system.modifiers[attrKey] || 0);
+    const statValue = system.attributeTotals[attrKey];
     const skillValue = system.skills[skillKey].value;
     const label = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
 
@@ -881,7 +881,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             let finalStat = stat;
             if (isSkill && form.elements.attribute) {
               const selectedAttr = form.elements.attribute.value;
-              finalStat = actor.system.attributes[selectedAttr] + (actor.system.modifiers[selectedAttr] || 0);
+              finalStat = actor.system.attributeTotals[selectedAttr];
             }
 
             // Save last roll data
@@ -957,7 +957,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         let currentStatValue = stat;
         if (isSkill && html.find('[name="attribute"]').length) {
           const selectedAttr = html.find('[name="attribute"]').val();
-          currentStatValue = actor.system.attributes[selectedAttr] + (actor.system.modifiers[selectedAttr] || 0);
+          currentStatValue = actor.system.attributeTotals[selectedAttr];
         }
         const finalStat = currentStatValue + attributeBonus;
 

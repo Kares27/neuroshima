@@ -146,16 +146,18 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       else if (system.encumbrance.pct >= 50) color = "#ffff44"; // Yellow (>= 50%)
       system.encumbrance.color = color;
 
-      // 5. Progi atrybutów - bezpieczna iteracja po kluczach atrybutów
+      // 5. Atrybuty całkowite i Progi - bezpieczna iteracja po kluczach atrybutów
+      this.attributeTotals = {};
       this.thresholds = {};
       for (let key of Object.keys(NEUROSHIMA.attributes)) {
         const attrValue = Number(this.attributes[key]) || 0;
         const modValue = Number(this.modifiers[key]) || 0;
-        const baseValue = attrValue + modValue;
+        const totalValue = attrValue + modValue;
         
+        this.attributeTotals[key] = totalValue;
         this.thresholds[key] = {};
         for (let [diffKey, diffValue] of Object.entries(NEUROSHIMA.difficulties)) {
-          this.thresholds[key][diffKey] = baseValue + (diffValue.mod || 0);
+          this.thresholds[key][diffKey] = totalValue + (diffValue.mod || 0);
         }
       }
 

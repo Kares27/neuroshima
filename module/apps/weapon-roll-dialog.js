@@ -67,6 +67,9 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
   /** @override */
   get title() {
+    if (this.rollType === "melee") {
+        return `${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Title")}: ${this.weapon.name}`;
+    }
     const label = this.rollType === "ranged" ? "NEUROSHIMA.Actions.Shoot" : "NEUROSHIMA.Actions.Strike";
     return `${game.i18n.localize(label)}: ${this.weapon.name}`;
   }
@@ -192,9 +195,12 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const armorPenalty = formData.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0;
     const woundPenalty = formData.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0;
     
-    // Weapon bonus for melee
+    // Weapon bonus for melee and setting check
     let weaponBonus = 0;
-    if (this.rollType === "melee") {
+    const isMelee = this.rollType === "melee";
+    const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
+
+    if (isMelee) {
         const action = formData.meleeAction || "attack";
         weaponBonus = action === "attack" ? (this.weapon.system.attackBonus || 0) : (this.weapon.system.defenseBonus || 0);
     }
@@ -206,14 +212,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     // Update preview box
     const totalElement = html.querySelector('.total-modifier') || html.querySelector('#preview-total');
     if (totalElement) {
-        let text = `${totalPct}%`;
-        if (weaponBonus !== 0) {
-            text += ` (${weaponBonus > 0 ? '+' : ''}${weaponBonus} ${game.i18n.localize("NEUROSHIMA.Roll.Summary")})`; // Simplified, using Summary as placeholder for 'Bonus' if needed
-            // Actually, let's just show the bonus if it exists
-            const bonusLabel = weaponBonus > 0 ? `+${weaponBonus}` : `${weaponBonus}`;
-            text = `${totalPct}% [${bonusLabel}]`;
-        }
-        totalElement.innerText = text;
+        totalElement.innerText = `${totalPct}%`;
     }
 
     // Determine actual level
@@ -221,14 +220,21 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const levelLabel = game.i18n.localize(actualDiff.label);
     
     // Apply skill-based Suwak shift for preview if setting is enabled
+    // Only for non-melee weapons (Melee uses skill points manually in duel)
     const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
     let previewLevelLabel = levelLabel;
     
-    if (allowCombatShift) {
+    if (allowCombatShift && !isMelee) {
         const skillKey = this.weapon.system.skill;
         const baseSkillValue = skillKey ? (this.actor.system.skills[skillKey]?.value || 0) : 0;
         const skillBonus = parseInt(formData.skillBonus) || 0;
-        const skillValue = baseSkillValue + skillBonus;
+        let skillValue = baseSkillValue + skillBonus;
+        
+        // Add weapon bonus if applicable
+        if (bonusMode === "skill" || bonusMode === "both") {
+            skillValue += weaponBonus;
+        }
+
         const shift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
         
         if (shift !== 0) {
@@ -239,6 +245,36 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
     const finalLevelElement = html.querySelector('.final-difficulty') || html.querySelector('#preview-final-level');
     if (finalLevelElement) finalLevelElement.innerText = previewLevelLabel;
+
+    // Update target number
+    const attrKey = this.weapon.system.attribute;
+    const attrTotal = Number(this.actor.system.attributeTotals[attrKey]) || 0;
+    const attrBonus = parseInt(formData.attributeBonus) || 0;
+    
+    // Use shifted difficulty if Suwak is active, otherwise actualDiff
+    let activeDiff = actualDiff;
+    if (allowCombatShift && !isMelee) {
+        const skillKey = this.weapon.system.skill;
+        let skillValue = (this.actor.system.skills[skillKey]?.value || 0) + (parseInt(formData.skillBonus) || 0);
+        
+        if (bonusMode === "skill" || bonusMode === "both") {
+            skillValue += weaponBonus;
+        }
+
+        const shift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
+        activeDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, -shift);
+    }
+    
+    // Apply weapon bonus to attribute if setting allows
+    let effectiveWeaponBonus = 0;
+    if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) {
+        effectiveWeaponBonus = weaponBonus;
+    }
+
+    const targetElement = html.querySelector('.final-target');
+    if (targetElement) {
+        targetElement.innerText = attrTotal + attrBonus + activeDiff.mod + effectiveWeaponBonus;
+    }
   }
 
   async _onRoll(event, target) {

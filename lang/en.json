@@ -86,6 +86,9 @@
             "SkillBonusAbbr": "Skill Bon.",
             "AttributeBonus": "Attribute Bonus",
             "AttributeBonusAbbr": "Attr. Bon.",
+            "IncludeSkill": "Include Skill",
+            "NoSkill": "No Skill",
+            "CurrentWeaponSkill": "Current weapon skill",
             "Slider": "Slider (Skill + Dice)",
             "Distance": "Distance (m)",
             "Aiming": "Aiming",
@@ -217,6 +220,10 @@
                 "Skill": "To Skill (Points)",
                 "Both": "To Both (Attribute and Skill)"
             },
+            "DoubleSkillAction": {
+                "Name": "Double Skill Action Rule",
+                "Hint": "If disabled, the system automatically optimizes rolls. If enabled, it allows manual point subtraction from own dice and addition to opponent's dice."
+            },
             "RollTooltipMinRole": {
                 "Name": "Minimum Role for Tooltip",
                 "Hint": "Minimum user role required to see the detailed penalty breakdown in the roll tooltip."
@@ -304,6 +311,7 @@
             "HealingAlreadyApplied": "Healing has already been applied."
         },
         "MeleeOpposed": {
+            "Title": "Melee Action",
             "Duel": "Melee Duel",
             "WaitingForDefense": "Waiting for defense...",
             "WaitingForDefender": "Waiting for defender...",
@@ -326,6 +334,8 @@
             "PhaseInitiative": "Initiative",
             "PhaseModification": "Modification",
             "PhaseSegments": "Segments",
+            "PhaseResolved": "Resolution",
+            "Initiative": "Initiative",
             "DiceSpent": "Spent",
             "DiceAvailable": "Available",
             "Segment": "Segment",
@@ -338,6 +348,7 @@
             "DefenseSuccess": "Defense successful!",
             "DefenseFailed": "Defense failed (Need: {need}, Have: {have})! Damage applies.",
             "AdvantagePoints": "Advantage Points (Initiative)",
+            "WaitingForInitiative": "Waiting for initiative resolution...",
             "ErrorNoSuccessesInAction": "Selected dice must contain at least one success!",
             "ErrorNoDiceSelected": "You must select at least one die!",
             "ErrorInsufficientDefense": "You need at least {need} successes for defense!"

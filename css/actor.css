@@ -2498,3 +2498,81 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     100% { box-shadow: 0 0 0 0 rgba(102, 0, 0, 0); }
 }
 
+/* Melee Opposed Handler - Hidden Dice Placeholder */
+.melee-opposed-handler .dice-hidden-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    margin: 10px 0;
+    width: 100%;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.melee-opposed-handler .dice-hidden-placeholder i {
+    font-size: 1.5em;
+    opacity: 0.3;
+}
+
+.melee-opposed-handler.phase-initiative .participant-section.attacker .dice-results-grid,
+.melee-opposed-handler.phase-initiative .participant-section.defender .dice-results-grid {
+    border: none;
+    background: transparent;
+}
+
+/* Roll Card in Tooltip Mode */
+.neuroshima.roll-card.tooltip-mode {
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid var(--ns-border-main);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    width: 280px;
+    font-size: 1.3em;
+    pointer-events: none;
+}
+
+.neuroshima.roll-card.tooltip-mode .dice-results-grid {
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.neuroshima.roll-card.tooltip-mode .die-result {
+    font-size: 1em;
+}
+
+.neuroshima.roll-card.tooltip-mode .die-square {
+    width: 26px;
+    height: 26px;
+    line-height: 26px;
+    font-size: 1.1em;
+}
+
+.neuroshima.roll-card.tooltip-mode .roll-header {
+    font-size: 1.1em;
+    padding: 2px 0;
+    text-transform: uppercase;
+}
+
+.neuroshima.roll-card.tooltip-mode hr {
+    margin: 6px 0;
+}
+
+.neuroshima.roll-card.tooltip-mode .roll-outcome {
+    margin-top: 8px;
+}
+
+.neuroshima.roll-card.tooltip-mode .outcome-item {
+    font-size: 0.9em;
+}
+
+
+
+

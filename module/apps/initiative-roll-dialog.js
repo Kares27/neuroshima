@@ -1,0 +1,288 @@
+import { NEUROSHIMA } from "../config.js";
+
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { ApplicationV2 } = foundry.applications.api;
+
+/**
+ * Dialog for unified initiative rolls.
+ */
+export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
+  constructor(options={}) {
+    super(options);
+    this.actor = options.actor;
+    this.combatant = options.combatant;
+    
+    // Initial options
+    this.rollOptions = {
+      attribute: options.attribute || "dexterity",
+      skill: options.skill || "",
+      useSkill: options.useSkill ?? true,
+      modifier: options.modifier || 0,
+      difficulty: options.difficulty || "average",
+      useArmorPenalty: options.useArmorPenalty ?? false,
+      useWoundPenalty: options.useWoundPenalty ?? true,
+      rollMode: options.rollMode || game.settings.get("core", "rollMode")
+    };
+    
+    this._onRollCallback = options.onRoll;
+    this._onCloseCallback = options.onClose;
+  }
+
+  /** @override */
+  async close(options={}) {
+    if (this._onCloseCallback) this._onCloseCallback();
+    return super.close(options);
+  }
+
+  static DEFAULT_OPTIONS = {
+    tag: "form",
+    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "initiative-roll-dialog"],
+    position: { width: 480, height: "auto" },
+    window: {
+      resizable: false,
+      minimizable: false
+    },
+    form: {
+        handler: NeuroshimaInitiativeRollDialog.prototype._onSubmit,
+        submitOnChange: false,
+        closeOnSubmit: true
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    form: {
+      template: "systems/neuroshima/templates/dialog/initiative-roll-dialog.hbs"
+    }
+  };
+
+  /**
+   * Handle form submission.
+   */
+  async _onSubmit(event, form, formData) {
+    const result = await this._onRoll(event, form);
+    this.close();
+    return result;
+  }
+
+  /** @override */
+  get title() {
+    return `${game.i18n.localize("NEUROSHIMA.Roll.RollInitiative")}: ${this.actor.name}`;
+  }
+
+  /** @override */
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+    
+    // Penalties from actor
+    const armorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
+    const woundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
+
+    context.actor = this.actor;
+    context.attributes = NEUROSHIMA.attributes;
+    context.difficulties = NEUROSHIMA.difficulties;
+    
+    // Prepare skills list
+    const equippedWeapon = this.actor.items.find(i => i.type === "weapon" && i.system.equipped);
+    const weaponSkillKey = equippedWeapon?.system.skill;
+
+    const skills = {};
+    for (const [key, skill] of Object.entries(this.actor.system.skills)) {
+        let label = game.i18n.localize(`NEUROSHIMA.Skills.${key}`);
+        if (key === weaponSkillKey) {
+            label = `+ ${label}`;
+        }
+        skills[key] = {
+            key: key,
+            label: label,
+            value: skill.value || 0
+        };
+    }
+    context.skills = skills;
+    context.weaponSkillKey = weaponSkillKey;
+
+    context.armorPenalty = armorPenalty;
+    context.woundPenalty = woundPenalty;
+    
+    // State values
+    context.currentAttribute = this.rollOptions.attribute;
+    context.currentSkill = this.rollOptions.skill || (weaponSkillKey || "");
+    context.useSkill = this.rollOptions.useSkill;
+    context.currentDifficulty = this.rollOptions.difficulty;
+    context.modifier = this.rollOptions.modifier;
+    context.useArmorPenalty = this.rollOptions.useArmorPenalty;
+    context.useWoundPenalty = this.rollOptions.useWoundPenalty;
+    context.rollMode = this.rollOptions.rollMode;
+    context.rollModes = CONFIG.Dice.rollModes;
+    
+    // Buttons for footer
+    context.buttons = [
+        {
+            type: "submit",
+            action: "roll",
+            label: "NEUROSHIMA.Actions.Roll",
+            class: "bright",
+            autofocus: true
+        },
+        {
+            type: "submit",
+            action: "cancel",
+            label: "NEUROSHIMA.Actions.Cancel",
+            class: ""
+        }
+    ];
+    
+    return context;
+  }
+
+  /** @override */
+  _onRender(context, options) {
+    super._onRender(context, options);
+    const html = this.element;
+    
+    // Attach event listeners for real-time preview
+    html.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', (event) => this._updatePreview(event));
+    });
+
+    // Cancel button listener
+    const cancelBtn = html.querySelector('[data-action="cancel"]');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => this.close());
+    }
+
+    this._updatePreview();
+  }
+
+  /**
+   * Update the difficulty preview box in real-time.
+   */
+  _updatePreview(event) {
+    const html = this.element;
+    const form = html.tagName === "FORM" ? html : html.querySelector('form');
+    if (!form) return;
+
+    const formData = new foundry.applications.ux.FormDataExtended(form).object;
+    
+    // Calculate total percentage
+    const basePenalty = NEUROSHIMA.difficulties[formData.difficulty]?.min || 0;
+    const modifier = parseInt(formData.modifier) || 0;
+    const armorPenalty = formData.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0;
+    const woundPenalty = formData.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0;
+    
+    const totalPct = basePenalty + modifier + armorPenalty + woundPenalty;
+
+    // Update preview box
+    const totalElement = html.querySelector('.total-modifier');
+    if (totalElement) {
+        totalElement.innerText = `${totalPct}%`;
+    }
+
+    // Update target number
+    const attrKey = formData.attribute;
+    const attrTotal = Number(this.actor.system.attributeTotals[attrKey]) || 0;
+    const attrBonus = parseInt(formData.attributeBonus) || 0;
+
+    // Calculate Shifted Difficulty (Suwak)
+    const skillKey = formData.skill;
+    const skillValue = formData.useSkill ? (Number(this.actor.system.skills[skillKey]?.value) || 0) : 0;
+    const skillBonus = formData.useSkill ? (parseInt(formData.skillBonus) || 0) : 0;
+    const finalSkill = skillValue + skillBonus;
+    
+    // Skill shift logic from NeuroshimaDice
+    const skillShift = (finalSkill <= 0) ? -1 : Math.floor(finalSkill / 4);
+    
+    // Find base difficulty from total percentage
+    const baseDifficulty = game.neuroshima.NeuroshimaDice.getDifficultyFromPercent(totalPct);
+    
+    // Find shifted difficulty
+    const difficulties = Object.values(NEUROSHIMA.difficulties);
+    const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterfull", "grandmasterfull"];
+    const baseDiffKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key].label === baseDifficulty.label);
+    const baseDiffIndex = order.indexOf(baseDiffKey);
+    const shiftedIndex = Math.max(0, Math.min(order.length - 1, baseDiffIndex - skillShift));
+    const shiftedDifficulty = NEUROSHIMA.difficulties[order[shiftedIndex]];
+
+    const shiftedElement = html.querySelector('.shifted-difficulty');
+    if (shiftedElement) {
+        shiftedElement.innerText = game.i18n.localize(shiftedDifficulty.label);
+    }
+    
+    // Update target with the shifted difficulty modifier
+    const targetElement = html.querySelector('.final-target');
+    if (targetElement) {
+        targetElement.innerText = attrTotal + attrBonus + shiftedDifficulty.mod;
+    }
+
+    // Toggle skill select disability
+    const skillSelect = html.querySelector('select[name="skill"]');
+    const skillBonusInput = html.querySelector('input[name="skillBonus"]');
+    if (skillSelect) skillSelect.disabled = !formData.useSkill;
+    if (skillBonusInput) skillBonusInput.disabled = !formData.useSkill;
+  }
+
+  /** @override */
+  _prepareSubmitData(event, form, formData) {
+    const data = super._prepareSubmitData(event, form, formData);
+    return data;
+  }
+
+  /** @override */
+  async _processSubmitData(event, form, formData) {
+    const submitter = event.submitter || event.target;
+    const action = submitter?.dataset.action || submitter?.getAttribute("action");
+    
+    if (action === "cancel") {
+        return this.close();
+    }
+    
+    await this._onRoll(event, form);
+    this.close();
+  }
+
+  async _onRoll(event, target) {
+    const form = this.element.tagName === "FORM" ? this.element : this.element.querySelector("form");
+    const formData = new foundry.applications.ux.FormDataExtended(form).object;
+    
+    // Convert form fields to correct types
+    const penalties = {
+        mod: parseInt(formData.modifier) || 0,
+        armor: formData.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0,
+        wounds: formData.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0
+    };
+
+    const rollData = {
+        attribute: formData.attribute,
+        skill: formData.skill,
+        useSkill: !!formData.useSkill,
+        difficulty: formData.difficulty,
+        modifier: penalties.mod,
+        useArmorPenalty: !!formData.useArmorPenalty,
+        useWoundPenalty: !!formData.useWoundPenalty,
+        skillBonus: parseInt(formData.skillBonus) || 0,
+        attributeBonus: parseInt(formData.attributeBonus) || 0,
+        rollMode: formData.rollMode
+    };
+
+    let result;
+    if (this._onRollCallback) {
+        result = await this._onRollCallback(rollData);
+    } else {
+        result = await game.neuroshima.NeuroshimaDice.rollInitiative({
+            ...rollData,
+            actor: this.actor
+        });
+    }
+
+    // Jeśli mamy combatanta i nie jesteśmy w melee, zaktualizuj go
+    if (this.combatant && !this.options.isMeleeInitiative) {
+        await this.combatant.update({ initiative: result.successPoints });
+    }
+
+    return result;
+  }
+
+  _onCancel(event, target) {
+    this.close();
+  }
+}

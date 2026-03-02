@@ -185,7 +185,7 @@ export async function showHealingRollDialog({
             liczbaRan: woundConfigs.length
           });
 
-          const attrValue = medicActor.system.attributes[selectedAttr] + (medicActor.system.modifiers[selectedAttr] || 0);
+          const attrValue = medicActor.system.attributeTotals[selectedAttr];
 
           await NeuroshimaDice.rollBatchHealingTests({
             medicActor: medicActor,

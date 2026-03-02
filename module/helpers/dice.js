@@ -6,6 +6,68 @@ import { NeuroshimaChatMessage } from "../documents/chat-message.js";
  */
 export class NeuroshimaDice {
   /**
+   * Wykonuje rzut na Inicjatywę (Zręczność, Test Otwarty).
+   * @param {Object} params 
+   * @returns {Promise<Object>} Dane rzutu i wynik SP
+   */
+  static async rollInitiative(params) {
+    const { actor, attribute = "dexterity", skill = "", useSkill = true, difficulty = "average", modifier = 0, useArmorPenalty = false, useWoundPenalty = true, attributeBonus = 0, skillBonus = 0, rollMode = game.settings.get("core", "rollMode") } = params;
+    
+    game.neuroshima.group(`Rzut na Inicjatywę: ${actor.name}`);
+    
+    // 1. Pobranie wartości atrybutu i umiejętności
+    const attrValue = Number(actor.system.attributeTotals[attribute]) || 10;
+    const skillValue = useSkill ? (Number(actor.system.skills[skill]?.value) || 0) : 0;
+    
+    // 2. Kalkulacja kar (%)
+    const basePenalty = NEUROSHIMA.difficulties[difficulty]?.min || 0;
+    const armorPenalty = useArmorPenalty ? (actor.system.combat?.totalArmorPenalty || 0) : 0;
+    const woundPenalty = useWoundPenalty ? (actor.system.combat?.totalWoundPenalty || 0) : 0;
+    const totalPenalty = basePenalty + modifier + armorPenalty + woundPenalty;
+    
+    const baseDiffObj = NEUROSHIMA.difficulties[difficulty] || NEUROSHIMA.difficulties.average;
+    
+    // 3. Wykonanie rzutu testowego (Otwarty)
+    const rollResult = await this.rollTest({
+        stat: attrValue,
+        skill: skillValue,
+        penalties: {
+            mod: modifier + basePenalty,
+            armor: armorPenalty,
+            wounds: woundPenalty
+        },
+        isOpen: true,
+        isInitiative: true,
+        label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeTest"),
+        actor: actor,
+        attributeBonus: attributeBonus,
+        skillBonus: skillBonus,
+        rollMode: rollMode,
+        chatMessage: false 
+    });
+    
+    // Add tooltip to rollResult for reuse in duels
+    const template = "systems/neuroshima/templates/chat/initiative-roll-card.hbs";
+    rollResult.tooltip = await renderTemplate(template, {
+        ...rollResult,
+        config: NEUROSHIMA,
+        showTooltip: true, 
+        isTooltip: true 
+    });
+    
+    // 4. Stworzenie wiadomości na czacie (jeśli nie wyłączono)
+    if (params.chatMessage !== false) {
+        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        await NeuroshimaChatMessage.renderInitiativeRoll(rollResult, actor, rollResult.roll);
+    }
+
+    game.neuroshima.log("Wynik inicjatywy:", rollResult.successPoints);
+    game.neuroshima.groupEnd();
+    
+    return rollResult;
+  }
+
+  /**
    * Perform a weapon-specific roll (shooting or striking).
    */
   static async rollWeaponTest(params) {
@@ -271,8 +333,7 @@ export class NeuroshimaDice {
     const finalDiff = shiftedDifficulty;
     
     // Próg sukcesu (Współczynnik + modyfikator PT + bonus do atrybutu)
-    const rawAttr = actor.system.attributes[weapon.system.attribute];
-    const baseAttr = typeof rawAttr === 'object' ? (Number(rawAttr.value) || 10) : (Number(rawAttr) || 10);
+    const baseAttr = Number(actor.system.attributeTotals[weapon.system.attribute]) || 10;
     let finalStat = baseAttr + attributeBonus;
     
     // Bonus broni do atrybutu (progu) - tylko w Melee jeśli ustawienie na to pozwala
@@ -1986,57 +2047,6 @@ export class NeuroshimaDice {
       healingEffect: healingEffect.results[0],
       tooltip: this._buildClosedTestTooltip(testRollData, healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment")
     };
-  }
-
-  /**
-   * Pomocnicza metoda do budowania tooltipa dla testu otwartego (Inicjatywa).
-   * @private
-   */
-  static _buildOpenTestTooltip(testRollData, headerLabel) {
-    let diceHtml = '<div class="dice-results-grid tiny">';
-    testRollData.modifiedResults.forEach((d, i) => {
-      diceHtml += `
-        <div class="die-result ${d.ignored ? 'ignored' : ''}">
-          <span class="die-label tiny">D${i + 1}=</span>
-          <div class="die-square-container tiny">
-            <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
-            ${testRollData.skill > 0 && !d.ignored ? `
-              <i class="fas fa-long-arrow-alt-right"></i> 
-              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
-            ` : ''}
-          </div>
-        </div>`;
-    });
-    diceHtml += '</div>';
-
-    return `
-      <div class="neuroshima roll-card tooltip-mode">
-        <header class="roll-header tiny">
-          ${game.i18n.localize(testRollData.difficultyLabel || "")}
-        </header>
-        <hr class="dotted-hr tiny">
-        ${diceHtml}
-        <hr class="dotted-hr tiny">
-        <footer class="roll-outcome tiny">
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
-            <span class="value">${testRollData.baseStat || testRollData.stat || 0}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">Umiejętność:</span>
-            <span class="value">${testRollData.skill || 0}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
-            <span class="value">${testRollData.target}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Successes')}:</span>
-            <span class="value"><strong>${testRollData.successCount}</strong></span>
-          </div>
-        </footer>
-      </div>
-    `.trim();
   }
 
   /**

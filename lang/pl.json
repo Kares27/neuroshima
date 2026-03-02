@@ -89,6 +89,9 @@
             "SkillBonusAbbr": "Bon. do Umiejętności",
             "AttributeBonus": "Bonus do Atrybutu",
             "AttributeBonusAbbr": "Bon. do Atrybutu",
+            "IncludeSkill": "Uwzględnij Umiejętność",
+            "NoSkill": "Bez Umiejętności",
+            "CurrentWeaponSkill": "Umiejętność używanej broni",
             "Slider": "Suwak (Umiejętność + Kości)",
             "Distance": "Dystans (m)",
             "Aiming": "Celowanie",
@@ -216,6 +219,10 @@
                 "Skill": "Do Umiejętności (Punktów)",
                 "Both": "Do obu (Atrybutu i Umiejętności)"
             },
+            "DoubleSkillAction": {
+                "Name": "Podwójne działanie Umiejętności walki",
+                "Hint": "Jeśli wyłączone, system automatycznie optymalizuje rzuty. Jeśli włączone, pozwala na manualne odejmowanie punktów od własnych kości i dodawanie do kości przeciwnika."
+            },
             "RollTooltipMinRole": {
                 "Name": "Minimalna ranga dla Tooltipa",
                 "Hint": "Minimalna ranga użytkownika wymagana do zobaczenia szczegółowego rozbicia kar w tooltipie rzutu."
@@ -303,6 +310,7 @@
             "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane."
         },
         "MeleeOpposed": {
+            "Title": "Akcja w zwarciu",
             "Duel": "Starcie w zwarciu",
             "WaitingForDefense": "Oczekiwanie na obronę...",
             "WaitingForDefender": "Oczekiwanie na obrońcę...",
@@ -325,6 +333,8 @@
             "PhaseInitiative": "Inicjatywa",
             "PhaseModification": "Modyfikacje",
             "PhaseSegments": "Segmenty",
+            "PhaseResolved": "Rozstrzygnięcie",
+            "Initiative": "Inicjatywa",
             "DiceSpent": "Wydana",
             "DiceAvailable": "Dostępna",
             "Segment": "Segment",
@@ -337,6 +347,7 @@
             "DefenseSuccess": "Obrona udana!",
             "DefenseFailed": "Obrona nieudana (Potrzeba: {need}, Masz: {have})! Obrażenia wchodzą.",
             "AdvantagePoints": "Punkty Przewagi (Inicjatywa)",
+            "WaitingForInitiative": "Oczekiwanie na rozstrzygnięcie inicjatywy...",
             "ErrorNoSuccessesInAction": "Wybrane kości muszą zawierać przynajmniej jeden sukces!",
             "ErrorNoDiceSelected": "Musisz zaznaczyć przynajmniej jedną kość!",
             "ErrorInsufficientDefense": "Potrzebujesz przynajmniej {need} sukcesów do obrony!"

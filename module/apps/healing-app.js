@@ -795,9 +795,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         // Pobierz wartości umiejętności i atrybutu
         const skillValue = medicActor.system.skills[skillKey]?.value || 0;
-        const stat = medicActor.system.attributes.cleverness || 10;
-        const modifier = medicActor.system.modifiers?.cleverness || 0;
-        const finalStat = stat + modifier;
+        const finalStat = Number(medicActor.system.attributeTotals?.cleverness) || 10;
 
         game.neuroshima?.log("Wartości medyka", {
             cleverness: finalStat,

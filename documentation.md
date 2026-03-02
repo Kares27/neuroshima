@@ -11,6 +11,7 @@ Model danych dla Aktorów.
   - Oblicza udźwig (`encumbrance`) na podstawie Kondycji i ustawień systemu.
   - Sumuje wagę przedmiotów.
   - Generuje progi sukcesu (`thresholds`) dla każdego atrybutu i poziomu trudności.
+  - **attributeTotals**: Centralizuje obliczenia atrybutów: `Base + Modifier + Effects` (używane we wszystkich testach).
   - Sumuje kary z pancerza i ran (`combat.totalArmorPenalty`, `combat.totalWoundPenalty`).
   - Oblicza sumę punktów obrażeń (`combat.totalDamagePoints`).
 
@@ -34,6 +35,9 @@ Modele danych dla poszczególnych typów przedmiotów.
   - Wyświetlanie dialogu wyboru typu broni (`melee`, `ranged`, `thrown`) przy tworzeniu nowego przedmiotu.
 - **prepareDerivedData**: Oblicza `totalWeight` (waga * ilość).
 
+### `NeuroshimaCombat` / `NeuroshimaCombatant`
+- **rollInitiative**: Nadpisanie standardowej metody Foundry VTT. Otwiera `NeuroshimaInitiativeRollDialog` i zapisuje wynik jako Punkty Przewagi (Advantage Points) w Combat Trackerze.
+
 ### Pancerz (ArmorData)
 - **Wartości**: Akceptuje liczby całkowite i połówki (krok 0.5)
   - Można mieć pancerz o wartości 0, 0.5, 1, 1.5, 2, 2.5, itd.
@@ -56,6 +60,7 @@ Każdy typ rany ma dwa rodzaje punktów w konfiguracji:
 Główna klasa obsługująca rzuty.
 - **rollTest**: Standardowy test (3k20). Obsługuje mechanikę Suwaka, testy otwarte/zamknięte i kary procentowe.
   - **Suwak**: Przesuwa poziom trudności na podstawie umiejętności (co 4 pkt = -1 stopień) oraz kości (naturalna 1 = -1 stopień, naturalna 20 = +1 stopień). Umiejętność 0 generuje automatyczną karę +1 stopień trudności.
+- **rollInitiative**: Ujednolicony rzut na inicjatywę (3k20 vs Zręczność). Obsługuje "milczące rzuty" (bez wiadomości na czacie) zwracając tooltip HTML dla starć wręcz.
 - **rollWeaponTest**: Specjalistyczny rzut dla broni. 
   - **Przerzuty (Reroll)**: Wszystkie rzuty (broń i skille) wspierają mechanikę przerzutu z zachowaniem oryginalnych parametrów. Wiadomości oznaczone są tagiem `isReroll`.  - **Broń Dystansowa**: Uwzględnia celowanie (liczba kości), ogień ciągły (liczba pocisków) oraz lokacje trafień. Umiejętność odejmowana jest w całości od najlepszej kości. Sukcesy w serii liczone są na podstawie nadwyżki (Punkty Przewagi) nad progiem sukcesu.
   - **Dystans**: Automatycznie mierzony między wybranym tokenem a celem (Target) za pomocą `Ray` i `canvas.grid.measureDistance`. Wynik trafia do rzutu i wpływa na obrażenia śrutu.
@@ -108,6 +113,11 @@ Główna klasa obsługująca rzuty.
 Dialog wywoływany przy ładowaniu amunicji do magazynka.
 - Waliduje kaliber amunicji względem magazynka.
 - Pozwala wybrać ilość ładowanych kul z uwzględnieniem dostępnego `quantity` i wolnego miejsca w magazynku.
+
+### `NeuroshimaInitiativeRollDialog` (ApplicationV2)
+Zintegrowany dialog rzutu na inicjatywę. 
+- Obsługuje rzuty z atrybutu Zręczność z opcjonalnym uwzględnieniem umiejętności broni.
+- Wykorzystywany przez Combat Tracker oraz system walki wręcz.
 
 ### `NeuroshimaWeaponRollDialog` (ApplicationV2)
 Zaawansowane okno rzutu bronią.
@@ -202,6 +212,7 @@ Dedykowana aplikacja do zarządzania ustawieniami walki.
 - **damageApplicationMinRole**: Minimalna rola wymagana do widoczności sekcji nakładania obrażeń.
 - **painResistanceMinRole**: Minimalna rola wymagana do widoczności szczegółów testów odporności na ból.
 - **combatActionsMinRole**: Minimalna rola wymagana do akcji specjalnych (Refundacja, Cofnięcie).
+- **doubleSkillAction**: Zasada dodatkowa pozwalająca na ręczne rozdzielanie punktów umiejętności w zwarciu (obniżanie własnych kości LUB podwyższanie kości przeciwnika).
 
 Role: 0 = Brak, 1 = Gracz, 2 = Zaufany Gracz, 3 = Asystent GM, 4 = Gamemaster.
 
@@ -338,16 +349,20 @@ game.neuroshima.log("Dane", { /* data */ });
 game.neuroshima.groupEnd();
 ```
 
-## 10. Testy Przeciwstawne (Opposed Tests - WFRP4e Pattern)
+## 10. Testy Przeciwstawne i Duple (Melee Duel v2)
 
-Zaimplementowano zaawansowany cykl życia testu przeciwstawnego dla walki wręcz (Melee):
-- **Handler (Oczekiwanie)**: Po ataku melee system tworzy wiadomość `opposedHandler` z unikalnym `requestId`.
-- **Pending Flag**: Na aktorze obrońcy ustawiana jest flaga `opposedPending`. Wyświetla ona oczekującą reakcję w arkuszu aktora (zakładka Walka), co pozwala na szybki rzut obronny.
-- **Auto-Resolve**: Hook `createChatMessage` wykrywa rzut obronny, dopasowuje go do handlera i automatycznie wywołuje rozstrzygnięcie (`resolveOpposed`).
+Zaimplementowano zaawansowany cykl życia starcia w zwarciu:
+- **Handler (Oczekiwanie)**: Po ataku melee system tworzy wiadomość `meleeOpposedHandler`.
+- **Cykl Życia**: `Initiative -> Modification -> Segments -> Resolved`.
+- **Ujednolicona Inicjatywa**: Uczestnicy wykonują rzuty inicjatywy za pomocą `NeuroshimaInitiativeRollDialog`. Wyniki są wyświetlane jako tooltipy nad plakietką Punktów Przewagi, co eliminuje nadmiar wiadomości na czacie.
+- **Ukrywanie Kości**: Wyniki rzutów są wizualnie ukryte dopóki oba rzuty na inicjatywę nie zostaną wykonane.
+- **Automatyczna Optymalizacja**: W standardowym trybie system automatycznie wydaje punkty umiejętności, aby przekształcić porażki w sukcesy (zgodnie z progiem sukcesu uwzględniającym Suwak).
+- **Zasada Double Skill Action**: Opcjonalne ustawienie pozwalające na manualną alokację punktów umiejętności (obniżanie własnych wyników lub podwyższanie wyników przeciwnika).
+- **Zabezpieczenia**: Naturalne 20 są zawsze porażką i nie mogą być modyfikowane.
+- **Auto-Resolve**: Hook `createChatMessage` wykrywa rzut obronny i automatycznie dołącza obrońcę do starcia.
 - **Result (Wynik)**: Wynik porównuje Punkty Sukcesu (SP) obu stron (nawet przy obustronnej porażce).
 - **Automatyzacja Obrażeń**: Różnica SP automatycznie wybiera tier obrażeń broni (`damageMelee1/2/3`). Przewaga 1 SP = D, 2 SP = L, 3+ SP = C.
-- **Bonusy Broni**: W trybie "Successes" bonusy ataku/obrony modyfikują Atrybut (zmieniając próg sukcesu). W trybie "Dice" modyfikują Umiejętność (zmieniając pulę punktów).
-- **Zabezpieczenia**: System uniemożliwia "self-targeting" – obrońca nie może zainicjować testu przeciwstawnego przeciw samemu sobie podczas rzutu obronnego.
+- **Socketlib Integration**: Wszystkie operacje na danych (aktualizacja flag wiadomości, modyfikacja statystyk) są wykonywane przez GM za pomocą `socketlib`.
 
 ## 11. Dobre Praktyki ApplicationV2
 
