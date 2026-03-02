@@ -55,6 +55,7 @@
             "Jamming": "ZACIĘCIE",
             "SuccessPoints": "Punkty Sukcesu",
             "SuccessPointsAbbr": "Punkty Przewagi",
+            "DamageAbbr": "Obr.",
             "SuccessCount": "Liczba sukcesów",
             "FailurePoints": "Punkty Porażki",
             "Penalties": "Kary",
@@ -121,53 +122,6 @@
                 "FinalLevel": "Faktyczny poziom"
             }
         },
-        "MeleeOpposed": {
-            "Title": "Walka Wręcz",
-            "WaitingForDefense": "Oczekiwanie na reakcję",
-            "Reactions": "Oczekujące Reakcje",
-            "NoReactions": "Brak oczekujących reakcji.",
-            "ChooseDefense": "Wybierz Obronę",
-            "Result": "Wynik Starcia",
-            "ResultTitle": "Wynik Walki Wręcz",
-            "Winner": "Zwycięzca",
-            "Tie": "Remis",
-            "TieShort": "Remis",
-            "Difference": "Przewaga",
-            "Attacker": "Atakujący",
-            "Defender": "Obrońca",
-            "BothFailed": "Obaj uczestnicy nie zdali testu, ale {attacker} wygrywa różnicą {advantage} SP.",
-            "AttackFailed": "{attacker} nie trafił, {defender} wygrywa wymianę.",
-            "DefenseFailed": "{defender} nie obronił się, {attacker} wygrywa zadając {spDiff} pkt. obrażeń.",
-            "AttackerWon": "{attacker} wygrywa wymianę zadając {spDiff} pkt. obrażeń.",
-            "AttackerWonShort": "Atakujący Wygrywa",
-            "DefenderWon": "{defender} wygrywa wymianę.",
-            "DefenderWonShort": "Obrońca Wygrywa",
-            "LinkedToTest": "Rzut podpięty do oczekującego testu przeciwstawnego.",
-            "SelectLocation": "Wybierz lokację trafienia",
-            "ReadyToResolve": "Gotowe do rozstrzygnięcia",
-            "Resolved": "Rozstrzygnięte",
-            "Resolve": "Rozstrzygnij Starcie",
-            "Status": {
-                "Waiting": "Oczekiwanie na reakcję",
-                "Ready": "Gotowe do rozstrzygnięcia",
-                "Resolved": "Rozstrzygnięte",
-                "Expired": "Wygasło"
-            }
-        },
-        "MeleeDefense": {
-            "Title": "Obrona",
-            "Help": "Wybierz typ obrony przed tym atakiem.",
-            "Button": "Broń się"
-        },
-        "Defense": {
-            "Label": "{type} vs {attacker}"
-        },
-        "DefenseType": {
-            "brawl": "Bijatyka",
-            "melee": "Broń biała",
-            "dodge": "Unik",
-            "unknown": "Nieznana"
-        },
         "Difficulty": {
             "Easy": "Łatwy",
             "Average": "Przeciętny",
@@ -197,8 +151,8 @@
             "Damage": "Uszkodź",
             "Load": "Załaduj",
             "Unload": "Rozładuj",
+            "Ignore": "Ignoruj",
             "ReverseDamage": "Cofnij obrażenia",
-            "StartMeleeOpposed": "Rozpocznij starcie",
             "Rest": "Odpocznij"
         },
         "Rest": {
@@ -254,13 +208,6 @@
             "AllowPainResistanceShift": {
                 "Name": "Pozwól na Suwak w odporności na ból",
                 "Hint": "Włącza zasadę Suwaka podczas automatycznych testów odporności na ból."
-            },
-            "OpposedMeleeMode": {
-                "Name": "Tryb walki wręcz (Opposed Melee)",
-                "Hint": "Wybierz sposób rozliczania testów przeciwstawnych w walce wręcz.",
-                "Dice": "Segmenty (Porównanie kości)",
-                "Successes": "Różnica sukcesów (Test zamknięty)",
-                "Vanilla": "Vanilla (Pula segmentów)"
             },
             "MeleeBonusMode": {
                 "Name": "Aplikacja bonusów broni w Melee",
@@ -351,8 +298,48 @@
             "CannotDefend": "Nie możesz się bronić przed tym atakiem (brak kontrolowanej postaci wśród celów).",
             "MeleeNeedsDefense": "Ataki wręcz wymagają rzutu obronnego przed zastosowaniem obrażeń.",
             "NotYourActor": "Nie masz uprawnień do tego aktora.",
+            "NoSkillPoints": "Nie masz więcej punktów umiejętności do wydania.",
             "DamageAlreadyApplied": "Obrażenia z tego wyniku zostały już nałożone.",
             "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane."
+        },
+        "MeleeOpposed": {
+            "Duel": "Starcie w zwarciu",
+            "WaitingForDefense": "Oczekiwanie na obronę...",
+            "WaitingForDefender": "Oczekiwanie na obrońcę...",
+            "InstructionDefender": "Wybierz broń na swoim arkuszu, aby wykonać rzut obronny.",
+            "Resolve": "Rozstrzygnij starcie",
+            "Ready": "Gotowy",
+            "AttackerWins": "Atakujący wygrywa!",
+            "DefenderWins": "Obrońca wygrywa!",
+            "DefenderWinsParry": "Obrońca wygrywa starcie (parowanie/unik).",
+            "WaitingForOpponent": "Oczekiwanie na przeciwnika...",
+            "WaitingForDuel": "Inicjowanie starcia...",
+            "DuelResult": "Wynik starcia",
+            "PendingAttacker": "Oczekujący Atakujący",
+            "Join": "Dołącz",
+            "Targeting": "Celuje w",
+            "InitiativeTest": "Inicjatywa Zwarcia",
+            "InitiativeDraw": "Remis w inicjatywie! Rzućcie jeszcze raz.",
+            "RollInitiative": "Rzuć na Inicjatywę",
+            "InitiativeWaiting": "Oczekiwanie na rzut przeciwnika...",
+            "PhaseInitiative": "Inicjatywa",
+            "PhaseModification": "Modyfikacje",
+            "PhaseSegments": "Segmenty",
+            "DiceSpent": "Wydana",
+            "DiceAvailable": "Dostępna",
+            "Segment": "Segment",
+            "ActionSingle": "Pojedynczy atak",
+            "ActionCompound": "Cios złożony",
+            "WaitingForResponse": "Oczekiwanie na reakcję...",
+            "SelectDiceInstruction": "Zaznacz kości (sukcesy), których chcesz użyć.",
+            "TakeoverInitiative": "Przejmij Inicjatywę",
+            "InitiativeTakenBy": "{name} przejmuje Inicjatywę!",
+            "DefenseSuccess": "Obrona udana!",
+            "DefenseFailed": "Obrona nieudana (Potrzeba: {need}, Masz: {have})! Obrażenia wchodzą.",
+            "AdvantagePoints": "Punkty Przewagi (Inicjatywa)",
+            "ErrorNoSuccessesInAction": "Wybrane kości muszą zawierać przynajmniej jeden sukces!",
+            "ErrorNoDiceSelected": "Musisz zaznaczyć przynajmniej jedną kość!",
+            "ErrorInsufficientDefense": "Potrzebujesz przynajmniej {need} sukcesów do obrony!"
         },
         "Tabs": {
             "Attributes": "Współczynniki",

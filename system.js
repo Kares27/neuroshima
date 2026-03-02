@@ -15,23 +15,25 @@ import { HealingConfig } from "./module/apps/healing-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
-import { NeuroshimaMeleePanel } from "./module/apps/melee-panel.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
-import { NeuroshimaMeleeDefenseDialog } from "./module/dialogs/melee-defense-dialog.js";
-import { NeuroshimaMeleeOpposed } from "./module/helpers/melee-opposed.js";
+
+import { NeuroshimaMeleeDuel } from "./module/combat/melee-duel.js";
+import { NeuroshimaMeleeDuelSockets } from "./module/combat/melee-duel-sockets.js";
+import { NeuroshimaMeleeDuelResolver } from "./module/combat/melee-duel-resolver.js";
 
 // Inicjalizacja systemu Neuroshima 1.5
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
 
-    // Przypisanie niestandardowych klas i stałych
-    game.neuroshima = {
+    // Przypisanie niestandardowych klas i stałych (bezpieczne merge, aby nie usunąć socketu)
+    game.neuroshima = Object.assign(game.neuroshima || {}, {
         NeuroshimaActor,
         NeuroshimaItem,
         NeuroshimaChatMessage,
+        NeuroshimaMeleeDuel,
+        NeuroshimaMeleeDuelSockets,
+        NeuroshimaMeleeDuelResolver,
         NeuroshimaDice,
-        NeuroshimaMeleeOpposed,
-        NeuroshimaMeleeDefenseDialog,
         CombatHelper,
         HealingApp,
         showHealingRollDialog,
@@ -51,6 +53,11 @@ Hooks.once('init', async function() {
         groupEnd: () => {
             if (game.settings.get("neuroshima", "debugMode")) {
                 console.groupEnd();
+            }
+        },
+        warn: (...args) => {
+            if (game.settings.get("neuroshima", "debugMode")) {
+                console.warn("Neuroshima 1.5 |", ...args);
             }
         },
         error: (...args) => {
@@ -73,9 +80,8 @@ Hooks.once('init', async function() {
             fixedDice: dice,
             isDebug: true,
             label: "Debug Attribute Roll"
-        }),
-        meleePanel: new NeuroshimaMeleePanel()
-    };
+        })
+    });
 
     // Zdefiniowanie niestandardowych klas dokumentów
     CONFIG.Actor.documentClass = NeuroshimaActor;
@@ -111,6 +117,8 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('abs', (a) => Math.abs(a));
     Handlebars.registerHelper('json', (context) => JSON.stringify(context));
     Handlebars.registerHelper('number', (v) => Number(v));
+    Handlebars.registerHelper('inc', (v) => Number(v) + 1);
+    Handlebars.registerHelper('ifThen', (c, a, b) => c ? a : b);
 
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
@@ -214,22 +222,6 @@ Hooks.once('init', async function() {
         type: Boolean,
         default: true,
         requiresReload: true
-    });
-
-    // Ustawienia walki wręcz (Opposed Melee)
-    game.settings.register("neuroshima", "opposedMeleeMode", {
-        name: "NEUROSHIMA.Settings.OpposedMeleeMode.Name",
-        hint: "NEUROSHIMA.Settings.OpposedMeleeMode.Hint",
-        scope: "world",
-        config: false,
-        type: String,
-        choices: {
-            "successes": "NEUROSHIMA.Settings.OpposedMeleeMode.Successes",
-            "dice": "NEUROSHIMA.Settings.OpposedMeleeMode.Dice",
-            "vanilla": "NEUROSHIMA.Settings.OpposedMeleeMode.Vanilla"
-        },
-        default: "successes",
-        requiresReload: false
     });
 
     game.settings.register("neuroshima", "meleeBonusMode", {
@@ -428,10 +420,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/rest-report.hbs",
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
-        "systems/neuroshima/templates/chat/opposed-handler.hbs",
-        "systems/neuroshima/templates/chat/opposed-result.hbs",
-        "systems/neuroshima/templates/dialog/rest-dialog.hbs",
-        "systems/neuroshima/templates/dialog/melee-defense.hbs"
+        "systems/neuroshima/templates/dialog/rest-dialog.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);
@@ -535,31 +524,6 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
             CombatHelper.reverseRest(message);
-        }
-    });
-
-    options.push({
-        name: "NEUROSHIMA.Actions.StartMeleeOpposed",
-        icon: '<i class="fas fa-swords"></i>',
-        condition: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const flags = message?.getFlag("neuroshima", "rollData");
-            const messageType = message?.getFlag("neuroshima", "messageType");
-            return flags?.isWeapon && flags.isMelee && game.user.isGM;
-        },
-        callback: async li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const targets = Array.from(game.user.targets);
-            if (targets.length === 0) {
-                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoTargetSelected"));
-                return;
-            }
-            
-            for (const target of targets) {
-                if (target.actor) {
-                    await NeuroshimaChatMessage.createOpposedHandler(message, target.actor);
-                }
-            }
         }
     });
 
@@ -849,37 +813,6 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     });
 
-    // Przycisk Start Vanilla Melee
-    card.querySelectorAll(".start-vanilla-melee").forEach(btn => {
-        btn.addEventListener("click", async (event) => {
-            event.preventDefault();
-            const rollData = message.getFlag("neuroshima", "rollData");
-            if (!rollData) return;
-
-            const attacker = game.actors.get(rollData.actorId);
-            
-            // 1. Spróbuj znaleźć obrońcę w danych rzutu
-            let defender = null;
-            const targetUuid = rollData.targets?.[0];
-            if (targetUuid) {
-                const targetDoc = await fromUuid(targetUuid);
-                defender = targetDoc?.actor || targetDoc;
-            }
-
-            // 2. Jeśli nie ma w rzucie, weź aktualnie namierzony cel (User Targets)
-            if (!defender) {
-                const userTarget = Array.from(game.user.targets)[0];
-                defender = userTarget?.actor;
-            }
-
-            if (attacker && defender) {
-                await CombatHelper.startVanillaMelee(attacker, defender);
-            } else {
-                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
-            }
-        });
-    });
-
     // Przycisk wycofywania obrażeń (Reverse Damage)
     card.querySelectorAll(".reverse-damage-button").forEach(btn => {
         btn.addEventListener("click", (event) => {
@@ -935,6 +868,76 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             el.removeAttribute("data-tooltip-direction");
         });
     }
+
+    // Ukrywanie przycisków w starciach w zwarciu (Opposed Melee)
+    const meleeDuel = html.querySelector(".melee-opposed-handler");
+    if (meleeDuel) {
+        const duelFlag = message.getFlag("neuroshima", "meleeDuel");
+        if (duelFlag) {
+            const attackerUuid = duelFlag.attacker?.actorUuid;
+            const defenderUuid = duelFlag.defender?.actorUuid;
+            
+            const attackerActor = attackerUuid ? fromUuidSync(attackerUuid) : null;
+            const defenderActor = defenderUuid ? fromUuidSync(defenderUuid) : null;
+            
+            const isAttacker = game.user.isGM || attackerActor?.isOwner;
+            const isDefender = game.user.isGM || defenderActor?.isOwner;
+            
+            // Jeśli nie jest atakującym, ukryj jego kontrolki
+            if (!isAttacker) {
+                html.querySelectorAll('.die-mod[data-side="attacker"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('.ready-button[data-role="attacker"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('.reset-pool-button[data-role="attacker"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('.pool-line[data-role="attacker"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('[data-action="select-die"][data-side="attacker"]').forEach(el => el.classList.remove('interactive'));
+            }
+            
+            // Jeśli nie jest obrońcą, ukryj jego kontrolki
+            if (!isDefender) {
+                html.querySelectorAll('.die-mod[data-side="defender"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('.ready-button[data-role="defender"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('.reset-pool-button[data-role="defender"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('.pool-line[data-role="defender"]').forEach(b => b.style.display = "none");
+                html.querySelectorAll('[data-action="select-die"][data-side="defender"]').forEach(el => el.classList.remove('interactive'));
+                
+                // Przycisk dołączania do walki powinien być widoczny dla osób będących celem
+                const joinBtn = html.querySelector('.join-duel-button');
+                if (joinBtn) {
+                    const targets = duelFlag.attackerTargets || [];
+                    const isTarget = targets.some(t => {
+                        const tUuid = typeof t === 'string' ? t : t.uuid;
+                        const tActor = fromUuidSync(tUuid);
+                        return tActor?.isOwner;
+                    });
+                    if (!isTarget && !game.user.isGM) {
+                        joinBtn.style.display = "none";
+                    }
+                }
+            }
+
+            // Kontrolki segmentów (ukrywaj jeśli nie twoja kolej lub rola)
+            const isActive = (duelFlag.initiative === "attacker" && isAttacker) || (duelFlag.initiative === "defender" && isDefender);
+            if (!isActive && !game.user.isGM) {
+                html.querySelectorAll('.active-controls').forEach(el => el.style.display = "none");
+            }
+
+            const isResponder = (duelFlag.initiative === "attacker" && isDefender) || (duelFlag.initiative === "defender" && isAttacker);
+            if (!isResponder && !game.user.isGM) {
+                html.querySelectorAll('.responder-controls').forEach(el => el.style.display = "none");
+            }
+
+            // Przejmowanie inicjatywy (tylko dla pasywnej strony)
+            if (isActive && !game.user.isGM) {
+                html.querySelectorAll('.takeover-ui').forEach(el => el.style.display = "none");
+            }
+
+            // Przycisk rozstrzygnięcia widoczny tylko dla GM
+            const resolveBtn = html.querySelector('.resolve-duel-button');
+            if (resolveBtn && !game.user.isGM) {
+                resolveBtn.style.display = "none";
+            }
+        }
+    }
 });
 
 /**
@@ -988,102 +991,290 @@ function refreshAllCombatCards() {
     });
 }
 
-// Socket handlers dla leczenia ran (tylko GM)
-Hooks.on("ready", () => {
-    game.socket.on("system.neuroshima", async (data) => {
-        if (!game.user.isGM) return;
-        
-        game.neuroshima?.group(`Socket | ${data.type}`);
-        
-        try {
-            if (data.type === "heal.apply") {
-                game.neuroshima?.log("Otrzymanie żądania leczenia od medyka", {
-                    patientRef: data.patientRef,
-                    medicRef: data.medicRef,
-                    woundId: data.woundId,
-                    action: data.action,
-                    sessionId: data.sessionId
-                });
-                
-                // Ponowny resolve refs po stronie GM (Security)
-                const { actor: patientActor } = await game.neuroshima.resolveRef(data.patientRef);
-                const { actor: medicActor } = await game.neuroshima.resolveRef(data.medicRef);
+/**
+ * Inicjalizacja socketlib dla systemu.
+ */
+function initializeSocketlib() {
+    if (typeof socketlib === "undefined") return;
+    if (!game.neuroshima) {
+        game.neuroshima = {}; // Awaryjna inicjalizacja jeśli system.js init jeszcze nie przeszedł
+    }
+    if (game.neuroshima.socket) return; // Już zainicjalizowane
 
-                if (!patientActor) {
-                    game.neuroshima?.error("Socket heal.apply: Nie znaleziono aktora pacjenta", data.patientRef);
-                    return;
-                }
+    game.neuroshima.socket = socketlib.registerSystem("neuroshima");
+    if (!game.neuroshima.socket) return;
 
-                // Opcjonalna walidacja sesji jeśli sessionId zostało przekazane
-                if (data.sessionId) {
-                    const message = game.messages.find(m => m.getFlag("neuroshima", "sessionId") === data.sessionId);
-                    if (message) {
-                        const messageMedicRef = message.getFlag("neuroshima", "medicRef");
-                        if (messageMedicRef && messageMedicRef.uuid !== data.medicRef?.uuid) {
-                             game.neuroshima?.error("Socket heal.apply: Medyk nie zgadza się z sesją", {
-                                 sessionMedic: messageMedicRef.uuid,
-                                 requestMedic: data.medicRef?.uuid
-                             });
-                             return;
-                        }
-                    }
-                }
+    console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
+    
+    // Melee Duel functions
+    game.neuroshima.socket.register("setPending", NeuroshimaMeleeDuelSockets._onSetPending);
+    game.neuroshima.socket.register("clearPending", NeuroshimaMeleeDuelSockets._onClearPending);
+    game.neuroshima.socket.register("modifyMeleeDie", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            // Walidacja uprawnień (GM side)
+            const state = duel.state;
+            const actorUuid = data.side === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+            
+            // Pobierz ID użytkownika wysyłającego żądanie
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
 
-                // Wykonaj leczenie
-                await game.neuroshima.HealingApp.healWound(patientActor, data.woundId, data.action);
-                
-                // Feedback na czacie (opcjonalnie)
-                if (medicActor) {
-                    const wound = patientActor.items.get(data.woundId);
-                    // Jeśli rany już nie ma, znaczy że została wyleczona całkowicie (usunięta)
-                    const woundName = wound?.name || "Rana";
-                    const actionLabel = game.i18n.localize(`NEUROSHIMA.HealingRequest.Action.${data.action}`);
-                    
-                    ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.WoundHealedBy", {
-                        wound: woundName,
-                        medic: medicActor.name,
-                        action: actionLabel
-                    }));
-                }
-            } else if (data.type === "opposed.setPending") {
-                game.neuroshima?.log("Otrzymanie żądania ustawienia flagi pending", data);
-                const actor = await fromUuid(data.actorUuid);
-                if (actor) {
-                    if (data.clearExisting) {
-                        const pending = actor.getFlag("neuroshima", "opposedPending") || {};
-                        const updates = {};
-                        for (const id of Object.keys(pending)) {
-                            updates[`flags.neuroshima.opposedPending.-=${id}`] = null;
-                        }
-                        if (Object.keys(updates).length > 0) await actor.update(updates);
-                    }
-                    await actor.setFlag("neuroshima", "opposedPending", { [data.flagData.requestId]: data.flagData });
-                }
-            } else if (data.type === "opposed.clearPending") {
-                game.neuroshima?.log("Otrzymanie żądania usunięcia flagi pending", data);
-                const actor = await fromUuid(data.actorUuid);
-                if (actor) {
-                    await actor.update({ [`flags.neuroshima.opposedPending.-=${data.requestId}`]: null });
-                }
-            } else if (data.type === "opposed.resolve") {
-                game.neuroshima?.log("Otrzymanie żądania rozstrzygnięcia testu przeciwstawnego", data);
-                const handlerMessage = game.messages.get(data.handlerMessageId);
-                if (handlerMessage) {
-                    await NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: data.defenseMessageId });
-                }
-            } else if (data.type === "selectMeleeDie") {
-                if (!game.user.isGM) return;
-                const combat = game.combats.get(data.combatId);
-                if (combat) {
-                    await game.neuroshima.CombatHelper.selectMeleeDie(combat, data.side, data.index);
-                }
+            // Tylko GM lub właściciel aktora może modyfikować
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.modifyDie(data.side, data.target, data.index, data.delta);
+            } else {
+                console.warn(`Neuroshima 1.5 | Brak uprawnień użytkownika ${userId} do roli ${data.side}`);
             }
-        } catch (err) {
-            game.neuroshima?.error(`Błąd podczas obsługi socketu ${data.type}:`, err);
-        } finally {
-            game.neuroshima?.groupEnd();
         }
     });
+
+    game.neuroshima.socket.register("resetMeleePool", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const state = duel.state;
+            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.resetPool(data.role);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("toggleMeleeReady", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const state = duel.state;
+            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.toggleReady(data.role);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("joinMeleeDuel", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const actorDoc = await fromUuid(data.defenderData.actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+            
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.joinDefender(actor, data.defenderData.rollData, data.defenderData.weaponId);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("rollMeleeInitiative", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const state = duel.state;
+            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.rollInitiative(data.role);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("resolveMeleeDuel", NeuroshimaMeleeDuelSockets._onResolve);
+    game.neuroshima.socket.register("applyMeleeDamage", NeuroshimaMeleeDuelSockets._onApplyDamage);
+    
+    // Healing functions
+    game.neuroshima.socket.register("applyHealing", async (data) => {
+        const { actor: patientActor } = await game.neuroshima.resolveRef(data.patientRef);
+        if (!patientActor) return;
+        
+        await game.neuroshima.HealingApp.healWound(patientActor, data.woundId, data.action);
+        
+        const medicActor = data.medicRef ? (await game.neuroshima.resolveRef(data.medicRef))?.actor : null;
+        if (medicActor) {
+            const wound = patientActor.items.get(data.woundId);
+            const woundName = wound?.name || "Rana";
+            const actionLabel = game.i18n.localize(`NEUROSHIMA.HealingRequest.Action.${data.action}`);
+            
+            ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.WoundHealedBy", {
+                wound: woundName,
+                medic: medicActor.name,
+                action: actionLabel
+            }));
+        }
+    });
+
+    game.neuroshima.socket.register("selectMeleeDie", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const state = duel.state;
+            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.selectDie(data.role, data.index);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("declareMeleeAction", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const state = duel.state;
+            const role = data.role; // attacker/defender
+            const actorUuid = role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.declareAction(role, data.type);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("respondMeleeAction", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const state = duel.state;
+            if (!state.currentAction) return;
+
+            const responderRole = state.currentAction.side === "attacker" ? "defender" : "attacker";
+            const actorUuid = responderRole === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.respondToAction(data.response);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("takeoverMeleeInitiative", async function(data) {
+        const message = game.messages.get(data.messageId);
+        if (!message) return;
+        const duel = NeuroshimaMeleeDuel.fromMessage(message);
+        if (duel) {
+            const state = duel.state;
+            // Przejęcie może zrobić tylko ten, kto NIE MA obecnie inicjatywy
+            const roleToTakeover = state.initiative === "attacker" ? "defender" : "attacker";
+            const actorUuid = roleToTakeover === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actorDoc = await fromUuid(actorUuid);
+            const actor = actorDoc?.actor || actorDoc;
+
+            const userId = this.socketdata.userId;
+            const user = game.users.get(userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.takeoverInitiative();
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("applyHealingBatch", async (data) => {
+        const doc = await fromUuid(data.patientUuid);
+        const patient = doc?.actor || doc;
+        if (!patient) return;
+
+        const results = data.results || [];
+        const updates = [];
+        const toDelete = [];
+        
+        const message = data.messageId ? game.messages.get(data.messageId) : null;
+        const method = message?.getFlag("neuroshima", "healingMethod");
+
+        for (const r of results) {
+            const wound = patient.items.get(r.woundId);
+            if (!wound || wound.type !== "wound") continue;
+
+            const hEffect = r.healingEffect;
+            if (!hEffect) continue;
+
+            if (hEffect.newPenalty <= 0) {
+                toDelete.push(r.woundId);
+            } else {
+                const currentAttempts = wound.system.healingAttempts || 0;
+                const updateData = {
+                    _id: r.woundId,
+                    "system.penalty": hEffect.newPenalty,
+                    "system.healingAttempts": currentAttempts + 1
+                };
+                
+                if (r.isSuccess) {
+                    updateData["system.isHealing"] = true;
+                    if (method === "firstAid") {
+                        updateData["system.hadFirstAid"] = true;
+                    }
+                }
+                
+                updates.push(updateData);
+            }
+        }
+
+        if (updates.length > 0) {
+            await patient.updateEmbeddedDocuments("Item", updates);
+        }
+
+        if (toDelete.length > 0) {
+            await patient.deleteEmbeddedDocuments("Item", toDelete);
+        }
+
+        if (message) {
+            await message.setFlag("neuroshima", "healingApplied", true);
+        }
+    });
+}
+
+// Rejestracja socketlib po załadowaniu modułu
+Hooks.once("socketlib.ready", () => {
+    initializeSocketlib();
+});
+
+// Zapasowa inicjalizacja w setup (na wypadek gdyby hook socketlib.ready już przeszedł)
+Hooks.once("setup", () => {
+    initializeSocketlib();
 });
 
 // Rejestracja globalnych hooków dla odświeżania interfejsu
@@ -1101,57 +1292,4 @@ Hooks.on("targetToken", (user) => {
 
 Hooks.on("controlToken", () => {
     refreshAllCombatCards();
-});
-
-// Automatyczne linkowanie rzutów do oczekujących testów przeciwstawnych
-Hooks.on("createChatMessage", async (message, options, userId) => {
-    console.log("Neuroshima | createChatMessage Hook triggered", { messageId: message.id, userId });
-    if (userId !== game.user.id) return;
-    
-    const rollData = message.getFlag("neuroshima", "rollData");
-    if (!rollData || !rollData.actorId) {
-        console.log("Neuroshima | createChatMessage - No rollData or actorId, skipping automation");
-        return;
-    }
-    
-    const actor = game.actors.get(rollData.actorId);
-    if (!actor) {
-        console.log("Neuroshima | createChatMessage - Actor not found:", rollData.actorId);
-        return;
-    }
-    
-    const pendingOpposed = actor.getFlag("neuroshima", "opposedPending") || {};
-    const requestIds = Object.keys(pendingOpposed);
-    console.log("Neuroshima | createChatMessage - Pending opposed tests:", requestIds);
-    
-    if (requestIds.length > 0) {
-        // Melee zawsze 1v1 - bierzemy pierwszy (i jedyny) oczekujący test
-        const requestId = requestIds[0];
-        const pendingData = pendingOpposed[requestId];
-        const handlerMessage = game.messages.get(pendingData.handlerMessageId);
-        
-        console.log("Neuroshima | createChatMessage - Linked handler found:", { 
-            handlerId: pendingData.handlerMessageId, 
-            exists: !!handlerMessage 
-        });
-
-        if (handlerMessage) {
-            const opposedData = handlerMessage.getFlag("neuroshima", "opposedData");
-            console.log("Neuroshima | createChatMessage - Opposed data status:", opposedData?.status);
-            
-            if (opposedData && opposedData.status === "waiting") {
-                // Linkuj ten rzut jako rzut obronny i od razu rozwiąż
-                console.log("Neuroshima | createChatMessage - Auto-resolving opposed test", { requestId, messageId: message.id });
-                
-                try {
-                    // Rozwiązujemy test automatycznie
-                    await NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: message.id });
-                    console.log("Neuroshima | createChatMessage - Auto-resolve finished");
-                    ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.LinkedToTest"));
-                } catch (err) {
-                    console.error("Neuroshima | Error in auto-resolve hook:", err);
-                }
-            }
-        }
-    }
 });

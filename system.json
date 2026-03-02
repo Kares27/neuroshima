@@ -2,7 +2,7 @@
     "id": "neuroshima",
     "title": "Neuroshima 1.5",
     "description": "System do gry fabularnej Neuroshima 1.5.",
-    "version": "0.2.8",
+    "version": "0.2.9",
     "compatibility": {
         "minimum": "13",
         "verified": "13"
@@ -15,11 +15,11 @@
     "esmodules": [
         "system.js"
     ],
+    "socket": true,
     "styles": [
         "css/base.css",
         "css/actor.css",
-        "css/items.css",
-        "css/melee.css"
+        "css/items.css"
     ],
     "packs": [],
     "languages": [
@@ -48,5 +48,14 @@
     ],
     "url": "",
     "manifest": "",
-    "download": ""
+    "download": "",
+    "relationships": {
+    "requires": [
+            {
+            "id": "socketlib",
+            "type": "module",
+            "manifest": "https://github.com/farling42/foundryvtt-socketlib/releases/latest/download/module.json"
+            }
+        ]
+    }
 }

@@ -26,7 +26,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       isOpen: lastRoll.isOpen ?? false,
       difficulty: lastRoll.difficulty || "average",
       hitLocation: "random",
-      meleeAction: lastRoll.meleeAction || "attack",
+      meleeAction: options.meleeAction || lastRoll.meleeAction || "attack",
       aimingLevel: this.rollType === "melee" ? 2 : (lastRoll.aimingLevel || 0), // 2 means 3 dice for display
       burstLevel: 0,
       percentageModifier: lastRoll.percentageModifier || 0,

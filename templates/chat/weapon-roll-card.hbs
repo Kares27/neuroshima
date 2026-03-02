@@ -79,7 +79,7 @@
                         {{this.original}}
                     </span>
                     
-                    {{#if (or ../isMelee this.isBest)}}
+                    {{#if (and (not (and ../isMelee (eq ../opposedMode "dice"))) (or ../isMelee this.isBest))}}
                         {{#if (gt ../skill 0)}}
                             <i class="fas fa-long-arrow-alt-right"></i> 
                             <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
@@ -118,10 +118,18 @@
                 <span class="value"><strong>{{localize "NEUROSHIMA.Roll.Jamming"}}!</strong></span>
             </div>
         {{else}}
-            <div class="outcome-item success-points">
-                <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
-                <span class="value"><strong>{{successPoints}}</strong></span>
-            </div>
+            {{#unless (and isMelee (eq opposedMode "dice"))}}
+                <div class="outcome-item success-points">
+                    <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
+                    <span class="value"><strong>{{successPoints}}</strong></span>
+                </div>
+                
+                <div class="outcome-item roll-status">
+                    <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">
+                        <strong>{{#if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
+                    </span>
+                </div>
+            {{/unless}}
         {{/if}}
     </footer>
 
@@ -129,14 +137,6 @@
         <hr class="dotted-hr">
         <div class="opposed-result-section">
             {{{opposedResultHTML}}}
-        </div>
-    {{/if}}
-
-    {{#if (and isMelee (eq opposedMode "vanilla"))}}
-        <div class="vanilla-melee-start">
-            <button class="start-vanilla-melee" data-action="start-vanilla-melee">
-                <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.Actions.StartMeleeOpposed"}}
-            </button>
         </div>
     {{/if}}
 

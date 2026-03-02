@@ -1,0 +1,240 @@
+<div class="neuroshima roll-card melee-opposed-handler {{status}} phase-{{phase}}"
+    data-attacker-id="{{attacker.id}}"
+    data-defender-id="{{defender.id}}">
+    
+    <header class="opposed-header">
+        <div class="duel-title">{{localize "NEUROSHIMA.MeleeOpposed.Duel"}} - {{localize (concat "NEUROSHIMA.MeleeOpposed.Phase" (capitalize phase))}}</div>
+        
+        <div class="duel-participants">
+            <div class="participant-summary attacker {{#if (eq initiative 'attacker')}}has-initiative{{/if}}">
+                <div class="pool-line" data-role="attacker">
+                    {{#if (ne phase 'initiative')}}
+                    <div class="pool-badge" title="{{localize 'NEUROSHIMA.Items.Fields.Skill'}}">
+                        <i class="fas fa-star"></i> {{attackerSkillRemaining}} / {{attackerSkillTotal}}
+                    </div>
+                    {{/if}}
+                </div>
+                <img src="{{attacker.img}}" width="32" height="32" title="{{attacker.name}}"/>
+                <div class="name">
+                    {{#if (eq initiative 'attacker')}}<i class="fas fa-bolt initiative-icon" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}"></i>{{/if}}
+                    <i class="fas fa-swords"></i> {{attacker.name}}
+                    {{#if (ne attacker.initiativeRoll null)}}
+                        <div class="advantage-badge" 
+                             data-tooltip="{{attacker.initiativeTooltip}}"
+                             data-tooltip-class="neuroshima-tooltip">
+                            {{attacker.initiativeRoll}} {{localize "NEUROSHIMA.Roll.SuccessesAbbr"}}
+                        </div>
+                    {{/if}}
+                </div>
+            </div>
+            
+            <div class="duel-vs">VS</div>
+            
+            <div class="participant-summary defender {{#if (not defender)}}waiting{{/if}} {{#if (eq initiative 'defender')}}has-initiative{{/if}}">
+                {{#if defender}}
+                    <div class="pool-line" data-role="defender">
+                        {{#if (ne phase 'initiative')}}
+                        <div class="pool-badge" title="{{localize 'NEUROSHIMA.Items.Fields.Skill'}}">
+                            <i class="fas fa-star"></i> {{defenderSkillRemaining}} / {{defenderSkillTotal}}
+                        </div>
+                        {{/if}}
+                    </div>
+                    <img src="{{defender.img}}" width="32" height="32" title="{{defender.name}}"/>
+                    <div class="name">
+                        {{#if (eq initiative 'defender')}}<i class="fas fa-bolt initiative-icon" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}"></i>{{/if}}
+                        <i class="fas fa-shield-alt"></i> {{defender.name}}
+                        {{#if (ne defender.initiativeRoll null)}}
+                            <div class="advantage-badge"
+                                 data-tooltip="{{defender.initiativeTooltip}}"
+                                 data-tooltip-class="neuroshima-tooltip">
+                                {{defender.initiativeRoll}} {{localize "NEUROSHIMA.Roll.SuccessesAbbr"}}
+                            </div>
+                        {{/if}}
+                    </div>
+                {{else}}
+                    <div class="pool-line"></div>
+                    <div class="waiting-placeholder">?</div>
+                    <div class="name">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForDefender"}}</div>
+                {{/if}}
+            </div>
+        </div>
+    </header>
+
+    <div class="opposed-content">
+        {{!-- Faza Modyfikacji lub Segmentów --}}
+        <div class="participant-section attacker {{#if (and (eq phase 'segments') canSelectDice.attacker)}}active-selection{{/if}}">
+            <div class="test-type-label">
+                {{localize "NEUROSHIMA.Actions.Attack"}}
+                {{#if (and isAttacker (eq phase 'modification'))}}
+                    <button type="button" class="reset-pool-button" data-action="reset-pool" data-role="attacker" title="{{localize 'NEUROSHIMA.Actions.Reset'}}">
+                        <i class="fas fa-arrow-rotate-left"></i>
+                    </button>
+                {{/if}}
+            </div>
+            <div class="dice-results-grid">
+                {{#each attackerDice}}
+                    <div class="die-result {{#if this.spent}}spent{{/if}} {{#if this.selected}}selected{{/if}}" data-index="{{@index}}" data-owner="attacker">
+                        {{#if (eq ../phase 'modification')}}
+                            <button type="button" class="die-mod minus" data-action="mod-die" data-side="attacker" data-target="attacker" data-index="{{@index}}" data-delta="1" {{#if (or (not ../isAttacker) (eq ../isReady.attacker true))}}disabled{{/if}}>-</button>
+                        {{/if}}
+                        
+                        <div class="die-square-container {{#if (and (eq ../phase 'segments') (and ../canSelectDice.attacker ../isAttacker))}}interactive{{/if}}" data-action="select-die" data-side="attacker" data-index="{{@index}}">
+                            <span class="die-square modified {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}} {{#if ../showTooltip}} {{#if (lte this.modified ../attackerTargetNumber)}}success{{else}}failure{{/if}} {{/if}}"
+                                {{#if ../showTooltip}}
+                                    data-tooltip="{{localize (ifThen (lte this.modified ../attackerTargetNumber) 'NEUROSHIMA.Roll.Success' 'NEUROSHIMA.Roll.Failure')}} ({{this.modified}} / {{../attackerTargetNumber}})"
+                                {{/if}}>
+                                {{this.modified}}
+                            </span>
+                        </div>
+
+                        {{#if (eq ../phase 'modification')}}
+                            <button type="button" class="die-mod plus" data-action="mod-die" data-side="defender" data-target="attacker" data-index="{{@index}}" data-delta="1" {{#if (or (not ../isDefender) (eq ../isReady.defender true))}}disabled{{/if}}>+</button>
+                        {{/if}}
+                    </div>
+                {{/each}}
+            </div>
+            <div class="allocation-ui">
+                {{#if (eq phase 'modification')}}
+                    <button type="button" class="ready-button {{#if isReady.attacker}}active{{/if}}" data-action="toggle-ready" data-role="attacker" {{#if (not isAttacker)}}disabled{{/if}}>
+                        <i class="fas {{#if isReady.attacker}}fa-check-circle{{else}}fa-circle{{/if}}"></i> {{localize "NEUROSHIMA.MeleeOpposed.Ready"}}
+                    </button>
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="participant-section defender {{#if (not defender)}}waiting{{/if}} {{#if (and (eq phase 'segments') canSelectDice.defender)}}active-selection{{/if}}">
+            <div class="test-type-label">
+                {{localize "NEUROSHIMA.Actions.Defense"}}
+                {{#if (and isDefender (eq phase 'modification'))}}
+                    <button type="button" class="reset-pool-button" data-action="reset-pool" data-role="defender" title="{{localize 'NEUROSHIMA.Actions.Reset'}}">
+                        <i class="fas fa-arrow-rotate-left"></i>
+                    </button>
+                {{/if}}
+            </div>
+            
+            {{#if defender}}
+                <div class="dice-results-grid">
+                    {{#each defenderDice}}
+                        <div class="die-result {{#if this.spent}}spent{{/if}} {{#if this.selected}}selected{{/if}}" data-index="{{@index}}" data-owner="defender">
+                            {{#if (eq ../phase 'modification')}}
+                                <button type="button" class="die-mod minus" data-action="mod-die" data-side="defender" data-target="defender" data-index="{{@index}}" data-delta="1" {{#if (or (not ../isDefender) (eq ../isReady.defender true))}}disabled{{/if}}>-</button>
+                            {{/if}}
+                            
+                            <div class="die-square-container {{#if (and (eq ../phase 'segments') (and ../canSelectDice.defender ../isDefender))}}interactive{{/if}}" data-action="select-die" data-side="defender" data-index="{{@index}}">
+                                <span class="die-square modified {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}} {{#if ../showTooltip}} {{#if (lte this.modified ../defenderTargetNumber)}}success{{else}}failure{{/if}} {{/if}}"
+                                    {{#if ../showTooltip}}
+                                        data-tooltip="{{localize (ifThen (lte this.modified ../defenderTargetNumber) 'NEUROSHIMA.Roll.Success' 'NEUROSHIMA.Roll.Failure')}} ({{this.modified}} / {{../defenderTargetNumber}})"
+                                    {{/if}}>
+                                    {{this.modified}}
+                                </span>
+                            </div>
+
+                            {{#if (eq ../phase 'modification')}}
+                                <button type="button" class="die-mod plus" data-action="mod-die" data-side="attacker" data-target="defender" data-index="{{@index}}" data-delta="1" {{#if (or (not ../isAttacker) (eq ../isReady.attacker true))}}disabled{{/if}}>+</button>
+                            {{/if}}
+                        </div>
+                    {{/each}}
+                </div>
+                <div class="allocation-ui">
+                    {{#if (eq phase 'modification')}}
+                        <button type="button" class="ready-button {{#if isReady.defender}}active{{/if}}" data-action="toggle-ready" data-role="defender" {{#if (not isDefender)}}disabled{{/if}}>
+                            <i class="fas {{#if isReady.defender}}fa-check-circle{{else}}fa-circle{{/if}}"></i> {{localize "NEUROSHIMA.MeleeOpposed.Ready"}}
+                        </button>
+                    {{/if}}
+                </div>
+            {{else}}
+                <div class="waiting-ui">
+                    <p>{{localize "NEUROSHIMA.MeleeOpposed.InstructionDefender"}}</p>
+                    <button type="button" class="join-duel-button" data-action="join-melee">
+                        <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.Actions.Defense"}}
+                    </button>
+                </div>
+            {{/if}}
+        </div>
+    </div>
+
+    {{#if (eq phase 'segments')}}
+        <div class="segments-resolution-ui">
+            <div class="current-segment-info">
+                {{localize "NEUROSHIMA.MeleeOpposed.Segment"}} {{currentSegment}} / 3
+            </div>
+            
+            {{#if currentAction}}
+                {{!-- Akcja w toku - reakcja obrońcy --}}
+                <div class="action-declaration {{currentAction.side}}">
+                    <div class="action-desc">
+                        <strong>{{currentAction.sideName}}</strong>: 
+                        {{localize (concat "NEUROSHIMA.MeleeOpposed.Action" (capitalize currentAction.type))}} 
+                        ({{currentAction.power}} {{localize "NEUROSHIMA.Roll.SuccessesAbbr"}})
+                    </div>
+                    
+                    {{#if isCurrentResponder}}
+                        <div class="responder-controls">
+                            <button type="button" class="segment-btn defend" data-action="respond-melee" data-response="defend">
+                                <i class="fas fa-shield-halved"></i> {{localize "NEUROSHIMA.Actions.Defense"}}
+                            </button>
+                            <button type="button" class="segment-btn take-damage" data-action="respond-melee" data-response="take-damage">
+                                <i class="fas fa-tint"></i> {{localize "NEUROSHIMA.Actions.Damage"}}
+                            </button>
+                        </div>
+                    {{else}}
+                        <div class="action-waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForResponse"}}</div>
+                    {{/if}}
+                </div>
+            {{else}}
+                {{!-- Brak akcji - wybór aktywnej strony --}}
+                {{#if isCurrentActive}}
+                    <div class="active-controls">
+                        <div class="instruction">{{localize "NEUROSHIMA.MeleeOpposed.SelectDiceInstruction"}}</div>
+                        <div class="action-buttons">
+                            <button type="button" class="segment-btn attack" data-action="declare-melee" data-type="attack" {{#if (not canDeclareAttack)}}disabled{{/if}}>
+                                <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.Actions.Attack"}}
+                            </button>
+                            <button type="button" class="segment-btn pass" data-action="declare-melee" data-type="pass">
+                                <i class="fas fa-forward"></i> {{localize "NEUROSHIMA.Actions.Ignore"}}
+                            </button>
+                        </div>
+                    </div>
+                {{else}}
+                    <div class="action-waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForOpponent"}}</div>
+                {{/if}}
+            {{/if}}
+
+            {{#if canTakeoverInitiative}}
+                <div class="takeover-ui">
+                    <button type="button" class="takeover-btn" data-action="takeover-initiative">
+                        <i class="fas fa-bolt"></i> {{localize "NEUROSHIMA.MeleeOpposed.TakeoverInitiative"}}
+                    </button>
+                </div>
+            {{/if}}
+        </div>
+    {{/if}}
+
+    {{#if (eq phase 'resolved')}}
+        <div class="duel-resolution">
+            <div class="result-msg">{{resultMsg}}</div>
+            <div class="success-summary">
+                <span class="atk-succ">{{attackerSuccesses}}</span>
+                <span class="sep">:</span>
+                <span class="def-succ">{{defenderSuccesses}}</span>
+            </div>
+            {{#if damageResult}}
+                <div class="damage-result">
+                    <span class="label">{{localize "NEUROSHIMA.Roll.Damage"}}:</span>
+                    <span class="value"><strong>{{damageResult}}</strong></span>
+                </div>
+            {{/if}}
+
+            {{#if segments}}
+                <div class="segments-summary">
+                    {{#each segments}}
+                        <div class="segment-summary-item">
+                            <span class="segment-label">{{localize "NEUROSHIMA.MeleeOpposed.Segment"}} {{inc @index}}:</span>
+                            <span class="segment-result">{{#if this.result}}{{localize "NEUROSHIMA.Roll.DamageAbbr"}}: {{this.result}}{{else}}{{localize "NEUROSHIMA.MeleeOpposed.DefenseSuccess"}}{{/if}}</span>
+                        </div>
+                    {{/each}}
+                </div>
+            {{/if}}
+        </div>
+    {{/if}}
+</div>

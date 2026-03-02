@@ -450,10 +450,9 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             await HealingApp.healWound(actor, woundId, action);
             this.render();
         } else {
-            // Wyślij socket do GM
+            // Wyślij socket do GM przez socketlib
             try {
-                game.socket.emit("system.neuroshima", {
-                    type: "heal.apply",
+                game.neuroshima.socket.executeAsGM("applyHealing", {
                     patientRef: this.patientRef,
                     medicRef: this.medicRef,
                     woundId: woundId,
@@ -461,7 +460,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     sessionId: this.sessionId
                 });
 
-                game.neuroshima?.log("Socket wysłany do GM", { 
+                game.neuroshima?.log("Socket wysłany do GM przez socketlib", { 
                     action: action, 
                     patientRef: this.patientRef,
                     medicRef: this.medicRef

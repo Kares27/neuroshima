@@ -31,18 +31,6 @@
         <h3>{{localize "NEUROSHIMA.MeleeOpposed.Title"}}</h3>
 
         <div class="form-group">
-            <label>{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Name"}}</label>
-            <div class="form-fields">
-                <select name="opposedMeleeMode">
-                    <option value="successes" {{#if (eq config.opposedMeleeMode "successes")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Successes"}}</option>
-                    <option value="dice" {{#if (eq config.opposedMeleeMode "dice")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Dice"}}</option>
-                    <option value="vanilla" {{#if (eq config.opposedMeleeMode "vanilla")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Vanilla"}}</option>
-                </select>
-            </div>
-            <p class="notes">{{localize "NEUROSHIMA.Settings.OpposedMeleeMode.Hint"}}</p>
-        </div>
-
-        <div class="form-group">
             <label>{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Name"}}</label>
             <div class="form-fields">
                 <select name="meleeBonusMode">

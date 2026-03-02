@@ -6,13 +6,13 @@
     </header>
 
     <div class="report-summary">
-        <div class="summary-item success">
+        <div class="summary-item success" data-tooltip="{{successTooltip}}">
             <span class="label">{{localize "NEUROSHIMA.HealingRequest.Successful"}}:</span>
             <span class="value"><strong>{{successCount}}</strong></span>
         </div>
         {{#if failedCount}}
         <div class="summary-divider">|</div>
-        <div class="summary-item failed">
+        <div class="summary-item failed" data-tooltip="{{failedTooltip}}">
             <span class="label">{{localize "NEUROSHIMA.HealingRequest.Failed"}}:</span>
             <span class="value"><strong>{{failedCount}}</strong></span>
         </div>

@@ -298,6 +298,42 @@ body.theme-dark {
     box-shadow: 0 0 5px #fbc02d;
 }
 
+.neuroshima.roll-card .melee-targets {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 4px 0;
+}
+
+.neuroshima.roll-card .melee-targets .targets-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.neuroshima.roll-card .melee-targets .target-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.theme-dark .neuroshima.roll-card .melee-targets .target-item {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .melee-targets img {
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+}
+
+.neuroshima.roll-card .melee-targets .name {
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
 .neuroshima.roll-card .die-square.nat-20 {
     background: #ffcdd2;
     border-color: #d32f2f;
@@ -316,6 +352,48 @@ body.theme-dark {
     color: #c62828;
 }
 
+/* Wyraźne zaznaczenie wybranej kości w duelu */
+@keyframes die-pulse {
+    0% { transform: scale(1.15); box-shadow: 0 0 10px #f57c00; }
+    50% { transform: scale(1.22); box-shadow: 0 0 20px #f57c00, 0 0 8px rgba(255, 255, 255, 0.4); }
+    100% { transform: scale(1.15); box-shadow: 0 0 10px #f57c00; }
+}
+
+.neuroshima.roll-card .die-result.selected .die-square {
+    animation: die-pulse 1.5s infinite ease-in-out;
+    border: 3px solid #f57c00 !important;
+    z-index: 10;
+    position: relative;
+}
+
+.neuroshima.roll-card .die-result.selected .die-square::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #f57c00;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+.neuroshima.roll-card .die-square-container.interactive:hover .die-square {
+    cursor: pointer;
+    border-color: #f57c00;
+    box-shadow: 0 0 8px rgba(245, 124, 0, 0.5);
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
 .neuroshima.roll-card .die-square-container i {
     font-size: 0.9em;
     color: #7a7971;
@@ -324,272 +402,6 @@ body.theme-dark {
 .neuroshima.roll-card .die-result.best .die-square.original {
     box-shadow: 0 0 10px rgba(160, 46, 46, 0.4);
     border-color: #a02e2e;
-}
-
-/* Opposed Tests Styling */
-.neuroshima.roll-card.opposed-handler,
-.neuroshima.roll-card.opposed-result {
-    padding: 2px;
-}
-
-.neuroshima.roll-card .opposed-context-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 5px;
-    background: rgba(0, 0, 0, 0.03);
-    border-radius: 4px;
-    margin: 5px 0;
-}
-
-.theme-dark .neuroshima.roll-card .opposed-context-flex {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.neuroshima.roll-card .participant {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    text-align: center;
-}
-
-.neuroshima.roll-card .participant img {
-    width: 40px;
-    height: 40px;
-    border: 1px solid var(--ns-border-main);
-    border-radius: 4px;
-    object-fit: cover;
-}
-
-.neuroshima.roll-card .participant .name {
-    font-weight: bold;
-    font-size: 0.9em;
-    line-height: 1.1;
-    max-width: 80px;
-    word-wrap: break-word;
-}
-
-.neuroshima.roll-card .participant .role {
-    font-size: 0.7em;
-    opacity: 0.6;
-    text-transform: uppercase;
-}
-
-.neuroshima.roll-card .vs-divider {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 0 10px;
-    color: var(--ns-text-accent);
-}
-
-.neuroshima.roll-card .vs-text {
-    font-weight: bold;
-    font-size: 1.2em;
-    font-style: italic;
-}
-
-.neuroshima.roll-card .opposed-actions,
-.neuroshima.roll-card .result-actions {
-    margin-top: 5px;
-}
-
-.neuroshima.roll-card .status-msg {
-    text-align: center;
-    padding: 8px;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 0.9em;
-}
-
-.neuroshima.roll-card .status-msg.ready {
-    background: rgba(76, 175, 80, 0.1);
-    color: #2e7d32;
-    border: 1px solid rgba(76, 175, 80, 0.3);
-}
-
-.neuroshima.roll-card .status-msg.resolved {
-    background: rgba(0, 0, 0, 0.05);
-    opacity: 0.8;
-}
-
-.theme-dark .neuroshima.roll-card .status-msg.ready {
-    background: rgba(76, 175, 80, 0.2);
-    color: #a5d6a7;
-}
-
-.neuroshima.roll-card button.opposed-response-button,
-.neuroshima.roll-card button.resolve-opposed-button,
-.neuroshima.roll-card button.apply-opposed-damage-button {
-    width: 100%;
-    height: 32px;
-    background: var(--ns-bg-header);
-    border: 1px solid var(--ns-border-main);
-    font-family: 'SpecialElite', serif;
-    font-size: 0.9em;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all 0.2s;
-}
-
-.neuroshima.roll-card button:hover {
-    background: var(--ns-bg-hover);
-    box-shadow: 0 0 5px var(--ns-border-focus);
-}
-
-.neuroshima.roll-card .melee-opposed-result {
-    padding: 8px;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-    border: 1px solid var(--ns-border-light);
-    margin-top: 5px;
-}
-
-.theme-dark .neuroshima.roll-card .melee-opposed-result {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    gap: 10px;
-    background: none;
-    border: none;
-    padding: 0;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-attacker,
-.neuroshima.roll-card .melee-opposed-result .opposed-defender {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-attacker {
-    text-align: left;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-defender {
-    text-align: right;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-attacker .name,
-.neuroshima.roll-card .melee-opposed-result .opposed-defender .name {
-    font-size: 0.85em;
-    opacity: 0.8;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-attacker .value,
-.neuroshima.roll-card .melee-opposed-result .opposed-defender .value {
-    font-size: 1.1em;
-    color: var(--ns-text-accent);
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-vs {
-    font-size: 0.9em;
-    opacity: 0.5;
-    font-style: italic;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-outcome {
-    margin-top: 8px;
-    padding-top: 8px;
-    text-align: center;
-    font-style: italic;
-    font-size: 0.9em;
-    border-top: 1px dotted var(--ns-border-main);
-    line-height: 1.3;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-sp-diff {
-    text-align: center;
-    font-weight: bold;
-    color: #800;
-    margin-top: 5px;
-    font-size: 1em;
-}
-
-.theme-dark .neuroshima.roll-card .melee-opposed-result .opposed-sp-diff {
-    color: #ef9a9a;
-}
-
-.neuroshima.roll-card .melee-opposed-result .segment-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85em;
-    padding: 2px 0;
-}
-
-.neuroshima.roll-card .melee-opposed-result .opposed-details-grid {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dotted var(--ns-border-main);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.neuroshima.roll-card .melee-opposed-result .grid-header {
-    display: grid;
-    grid-template-columns: 30px 1fr 20px 1fr 30px;
-    align-items: center;
-    font-size: 0.75em;
-    font-weight: bold;
-    text-transform: uppercase;
-    opacity: 0.7;
-    text-align: center;
-    margin-bottom: 2px;
-}
-
-.neuroshima.roll-card .melee-opposed-result .grid-row {
-    display: grid;
-    grid-template-columns: 30px 1fr 20px 1fr 30px;
-    align-items: center;
-    font-size: 0.85em;
-    text-align: center;
-    background: rgba(0, 0, 0, 0.03);
-    border-radius: 2px;
-    padding: 1px 0;
-}
-
-.theme-dark .neuroshima.roll-card .melee-opposed-result .grid-row {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.neuroshima.roll-card .melee-opposed-result .col-seg {
-    font-size: 0.8em;
-    opacity: 0.6;
-}
-
-.neuroshima.roll-card .melee-opposed-result .col-val.winner {
-    font-weight: bold;
-    color: #1b5e20;
-}
-
-.theme-dark .neuroshima.roll-card .melee-opposed-result .col-val.winner {
-    color: #a5d6a7;
-}
-
-.neuroshima.roll-card .melee-opposed-result .col-val.loser {
-    opacity: 0.5;
-}
-
-.neuroshima.roll-card .melee-opposed-result .col-vs {
-    opacity: 0.4;
-    font-size: 0.8em;
-}
-
-.neuroshima.roll-card .melee-opposed-result .col-win {
-    font-size: 0.9em;
 }
 
 .neuroshima.roll-card .apply-damage-section {
@@ -602,6 +414,439 @@ body.theme-dark {
 
 .theme-dark .neuroshima.roll-card .apply-damage-section {
     background: rgba(160, 46, 46, 0.15);
+}
+
+/* Melee Opposed Duel Handler */
+.neuroshima.melee-opposed-handler {
+    background: url('../ui/NS_paper_bg.webp');
+    padding: 10px;
+    border: 1px solid #444;
+    font-family: 'SpecialElite', serif;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler {
+    background: #222;
+    color: #eee;
+}
+
+.neuroshima.melee-opposed-handler .opposed-header {
+    text-align: center;
+    border-bottom: 2px solid #600;
+    margin-bottom: 10px;
+}
+
+.neuroshima.melee-opposed-handler .duel-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.neuroshima.melee-opposed-handler .duel-participants {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .duel-participants {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.melee-opposed-handler .participant-summary {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.melee-opposed-handler .pool-line {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px;
+    min-height: 20px;
+}
+
+.neuroshima.melee-opposed-handler .pool-badge {
+    background: #600;
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .pool-badge {
+    background: #800;
+}
+
+.neuroshima.melee-opposed-handler .participant-summary img {
+    border-radius: 50%;
+    border: 2px solid #600;
+    object-fit: cover;
+    background: #000;
+}
+
+.neuroshima.melee-opposed-handler .participant-summary.waiting .waiting-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.5);
+    border: 2px dashed #666;
+}
+
+.neuroshima.melee-opposed-handler .participant-summary .name {
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.neuroshima.melee-opposed-handler .duel-vs {
+    padding: 0 10px;
+    font-weight: bold;
+    font-style: italic;
+    color: #600;
+}
+
+.neuroshima.melee-opposed-handler .targeting-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 5px;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.neuroshima.melee-opposed-handler .target-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .target-chip {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .target-chip img {
+    border-radius: 50%;
+    border: 1px solid #777;
+    object-fit: cover;
+}
+
+.neuroshima.melee-opposed-handler .opposed-content {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.neuroshima.melee-opposed-handler .participant-section {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .participant-section {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.neuroshima.melee-opposed-handler .participant-section.active-selection {
+    border-color: #f57c00;
+    background: rgba(245, 124, 0, 0.05);
+    box-shadow: 0 0 8px rgba(245, 124, 0, 0.2);
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .participant-section.active-selection {
+    background: rgba(245, 124, 0, 0.1);
+    border-color: #fb8c00;
+}
+
+.neuroshima.melee-opposed-handler .participant-section.waiting {
+    opacity: 0.7;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(0, 0, 0, 0.03) 10px,
+        rgba(0, 0, 0, 0.03) 20px
+    );
+}
+
+.neuroshima.melee-opposed-handler .section-label {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--ns-text-accent);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .section-label {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .test-type-label {
+    font-size: 0.7em;
+    text-align: center;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 12px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 1.4em;
+}
+
+.neuroshima.melee-opposed-handler .reset-pool-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 1.1em;
+    color: var(--ns-text-accent);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 15%;
+}
+
+.neuroshima.melee-opposed-handler .reset-pool-button:hover {
+    opacity: 1;
+}
+
+.neuroshima.melee-opposed-handler .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 10px 0;
+    align-items: center;
+}
+
+.neuroshima.melee-opposed-handler .die-result {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+}
+
+.neuroshima.melee-opposed-handler .die-mod {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    line-height: 18px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .die-mod {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.neuroshima.melee-opposed-handler .die-mod:hover:not(:disabled) {
+    background: var(--ns-bg-accent);
+    color: white;
+}
+
+.neuroshima.melee-opposed-handler .die-square {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+}
+
+.neuroshima.melee-opposed-handler .allocation-ui {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.neuroshima.melee-opposed-handler .ready-button {
+    width: auto;
+    min-width: 100px;
+    padding: 3px 10px;
+    font-size: 0.8em;
+    font-family: 'SpecialElite', serif;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.neuroshima.melee-opposed-handler .ready-button:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .ready-button.active {
+    background: #2e7d32;
+    color: white;
+    border-color: #1b5e20;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .ready-button {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #eee;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .ready-button.active {
+    background: #388e3c;
+}
+
+.neuroshima.melee-opposed-handler .skill-pool {
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.neuroshima.melee-opposed-handler .waiting-ui {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 15px 5px;
+    text-align: center;
+}
+
+.neuroshima.melee-opposed-handler .waiting-ui p {
+    font-size: 0.85em;
+    font-style: italic;
+    opacity: 0.7;
+    margin-bottom: 10px;
+}
+
+.neuroshima.melee-opposed-handler .join-duel-button,
+.neuroshima.melee-opposed-handler .resolve-duel-button {
+    width: 100%;
+    background: #600;
+    color: white;
+    border: 1px solid #300;
+    padding: 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    cursor: pointer;
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima.melee-opposed-handler .resolve-duel-button {
+    margin-top: 15px;
+}
+
+.neuroshima.melee-opposed-handler .join-duel-button:hover,
+.neuroshima.melee-opposed-handler .resolve-duel-button:hover {
+    background: #800;
+}
+
+.neuroshima.melee-opposed-handler .duel-resolution {
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(100, 0, 0, 0.05);
+    border: 1px solid #600;
+    border-radius: 4px;
+    text-align: center;
+    box-shadow: inset 0 0 10px rgba(100, 0, 0, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .result-msg {
+    font-weight: bold;
+    font-size: 1em;
+    margin-bottom: 8px;
+    color: #600;
+    text-transform: uppercase;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .result-msg {
+    color: #f66;
+}
+
+.neuroshima.melee-opposed-handler .success-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.neuroshima.melee-opposed-handler .success-summary span {
+    font-size: 1.8em;
+    font-weight: bold;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.melee-opposed-handler .success-summary .atk-succ { color: #600; }
+.theme-dark .neuroshima.melee-opposed-handler .success-summary .atk-succ { color: #f66; }
+
+.neuroshima.melee-opposed-handler .success-summary .sep { opacity: 0.5; }
+
+.neuroshima.melee-opposed-handler .damage-result {
+    border-top: 1px dashed rgba(100, 0, 0, 0.3);
+    padding-top: 8px;
+    font-size: 1.1em;
+}
+
+.neuroshima.melee-opposed-handler .damage-result .label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-right: 5px;
+}
+
+.neuroshima.melee-opposed-handler .damage-result .value {
+    color: #600;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .damage-result .value {
+    color: #f66;
 }
 
 /* Healing Effects Section */
@@ -2552,4 +2797,218 @@ body.theme-dark {
     color: #7b1fa2;
     font-weight: bold;
     font-size: 0.9em;
+}
+
+/* Opposed Handler Styles */
+.neuroshima.opposed-handler {
+    min-width: 350px;
+}
+
+.opposed-context-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 4px;
+    margin: 5px 0;
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+
+.opposed-context-flex .participant {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+    min-width: 0;
+}
+
+.opposed-context-flex .participant img {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.opposed-context-flex .participant .name {
+    font-weight: bold;
+    font-size: 0.75em;
+    line-height: 1.1;
+    width: 100%;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.opposed-context-flex .participant .role {
+    font-size: 0.6em;
+    opacity: 0.6;
+    text-transform: uppercase;
+}
+
+.opposed-context-flex .vs-divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0 5px;
+    color: var(--ns-text-accent);
+    flex: 0 0 30px;
+}
+
+.opposed-context-flex .vs-text {
+    font-weight: bold;
+    font-size: 1em;
+    font-style: italic;
+}
+
+.opposed-context-flex .vs-divider i {
+    font-size: 0.9em;
+    opacity: 0.5;
+}
+
+/* Allocation Section */
+.opposed-allocation-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.allocation-column {
+    flex: 1 1 120px;
+    min-width: 0;
+}
+
+/* Dice Allocation UI */
+.dice-pool-allocation {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 3px;
+    border-radius: 4px;
+    border: 1px solid var(--ns-border-light);
+}
+
+.theme-dark .dice-pool-allocation {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.skill-pool {
+    display: none;
+}
+
+.pool-header {
+    font-size: 0.75em;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--ns-border-light);
+    padding-bottom: 2px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+}
+
+.pool-header i {
+    color: var(--ns-text-accent);
+}
+
+.pool-value {
+    color: #ffc107;
+    text-shadow: 0 0 2px black;
+}
+
+.theme-light .pool-value {
+    color: #a0692e;
+    text-shadow: none;
+}
+
+.target-info {
+    font-size: 0.65em;
+    opacity: 0.7;
+    text-align: center;
+    margin-bottom: 3px;
+    font-style: italic;
+}
+
+.dice-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.die-allocation-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.theme-dark .die-allocation-box {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.die-allocation-box .die-val {
+    opacity: 0.6;
+    width: 15px;
+    font-weight: bold;
+}
+
+.allocation-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.allocation-controls .control-btn {
+    cursor: pointer;
+    color: var(--ns-text-light);
+    transition: color 0.1s;
+    font-size: 1em;
+    padding: 0 2px;
+}
+
+.allocation-controls .control-btn:hover {
+    color: var(--ns-text-accent);
+}
+
+.allocation-controls .modified-val {
+    font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+    padding: 0 3px;
+    border-radius: 2px;
+    font-size: 1em;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.allocation-controls .modified-val.success {
+    color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.allocation-controls .modified-val.failure {
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.opposed-actions {
+    margin-top: 10px;
+}
+
+.resolve-opposed-button {
+    width: 100%;
+    background: #4a5a96;
+    color: white;
+    border: 1px solid #6a7ab6;
+    font-family: inherit;
+    padding: 8px;
+    cursor: pointer;
 }

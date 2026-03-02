@@ -15,11 +15,6 @@ export class NeuroshimaDice {
     game.neuroshima.group("Inicjalizacja rzutu bronią");
     game.neuroshima.log("Parametry wejściowe rzutu:", params);
 
-    // Sprawdzenie czy aktor ma oczekujący test przeciwstawny (Obrona)
-    const pendingOpposed = actor?.getFlag("neuroshima", "opposedPending") || {};
-    const pendingIds = Object.keys(pendingOpposed);
-    const isActuallyDefending = meleeAction === "defense" || pendingIds.length > 0;
-    
     let bulletSequence = [];
     
     // 1. Kalkulacja kar procentowych (trudność bazowa, rany, pancerz, lokacja)
@@ -64,11 +59,16 @@ export class NeuroshimaDice {
     
     // Pobranie wyników i wyznaczenie najlepszej kości (najniższej)
     const results = roll.terms[0].results.map(r => r.result);
+    const rawResults = results.map(v => ({
+        value: v,
+        isNat1: v === 1,
+        isNat20: v === 20
+    }));
     const bestResult = Math.min(...results);
 
-    // Finalny stan otwartości testu (melee lub obrona wymusza test zamknięty 3k20)
+    // Finalny stan otwartości testu (melee wymusza test zamknięty 3k20)
     let finalIsOpen = isOpen;
-    if (isMelee || isActuallyDefending) {
+    if (isMelee) {
         finalIsOpen = false;
     }
 
@@ -237,7 +237,6 @@ export class NeuroshimaDice {
 
     // Wyznaczenie ostatecznej trudności po uwzględnieniu Suwaka
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
-    const opposedMode = game.settings.get("neuroshima", "opposedMeleeMode");
     const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
     
     let skillValue = 0;
@@ -260,7 +259,11 @@ export class NeuroshimaDice {
     let totalShift = 0;
     const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
     if (allowCombatShift) {
-        totalShift -= this.getSkillShift(skillValue);
+        // W walce wręcz nie używamy umiejętności do przesuwania suwaka automatycznie, 
+        // cała pula umiejętności będzie dostępna do ręcznej alokacji.
+        if (!isMelee) {
+            totalShift -= this.getSkillShift(skillValue);
+        }
         totalShift += this.getDiceShift(results);
     }
 
@@ -268,7 +271,8 @@ export class NeuroshimaDice {
     const finalDiff = shiftedDifficulty;
     
     // Próg sukcesu (Współczynnik + modyfikator PT + bonus do atrybutu)
-    const baseAttr = actor.system.attributes[weapon.system.attribute] || 10;
+    const rawAttr = actor.system.attributes[weapon.system.attribute];
+    const baseAttr = typeof rawAttr === 'object' ? (Number(rawAttr.value) || 10) : (Number(rawAttr) || 10);
     let finalStat = baseAttr + attributeBonus;
     
     // Bonus broni do atrybutu (progu) - tylko w Melee jeśli ustawienie na to pozwala
@@ -279,7 +283,6 @@ export class NeuroshimaDice {
 
     game.neuroshima.log("Kalkulacja trudności i Suwaka", {
         bazowaTrudnosc: baseDifficulty.label,
-        opposedMode,
         przesuniecieSuwaka: totalShift,
         ostatecznaTrudnosc: finalDiff.label,
         progSukcesu: target,
@@ -313,6 +316,20 @@ export class NeuroshimaDice {
             this._evaluateOpenTest(evalData, diceObjects);
             successPoints = evalData.successPoints;
             isSuccess = evalData.success;
+        } else if (isMelee) {
+            // W nowym systemie walki wręcz nie wydawaj punktów automatycznie na karcie rzutu,
+            // bo gracz zrobi to ręcznie w handlerze testu przeciwstawnego.
+            evalData.modifiedResults = diceObjects.map(d => ({
+                ...d,
+                modified: d.original,
+                isSuccess: d.original <= target && d.original !== 20,
+                isNat1: d.original === 1,
+                isNat20: d.original === 20
+            }));
+            const succCount = evalData.modifiedResults.filter(r => r.isSuccess).length;
+            successPoints = succCount;
+            isSuccess = succCount > 0;
+            successCount = succCount;
         } else {
             this._evaluateClosedTest(evalData, diceObjects);
             // W trybie DICE dla melee, successPoints to liczba sukcesów (0-3)
@@ -456,6 +473,7 @@ export class NeuroshimaDice {
         bestResult,
         modifiedResults,
         results,
+        rawResults,
         target,
         skill: skillValue,
         baseSkill: skillValue - skillBonus,
@@ -511,49 +529,124 @@ export class NeuroshimaDice {
     game.neuroshima.log("Generowanie karty czatu", rollData);
     game.neuroshima.groupEnd();
 
+    // Obsługa testu przeciwstawnego dla walki wręcz (Plan Neuroshima 1.5)
+    if (isMelee) {
+        if (meleeAction === "attack") {
+            // Atakujący od razu tworzy Handler Starcia
+            const handler = await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(
+                actor, 
+                rollData, 
+                weapon.id, 
+                rollData.targets || []
+            );
+            
+            // Powiadom cele o ataku (przez flagę na aktorze)
+            if (handler && rollData.targets?.length > 0) {
+                const handlerId = handler.id; // Pobieramy ID po utworzeniu
+                const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(handler);
+                const requestId = duel?.state?.requestId || handler.getFlag("neuroshima", "meleeDuel")?.requestId;
+
+                for (const targetUuid of rollData.targets) {
+                    const targetDoc = await fromUuid(targetUuid);
+                    const targetActor = targetDoc?.actor || targetDoc;
+                    if (targetActor) {
+                        const pendingData = {
+                            requestId: requestId || handlerId,
+                            attackerName: actor.name,
+                            attackerUuid: actor.uuid,
+                            messageId: handlerId,
+                            tokenUuid: targetUuid, // Przechowuj token UUID pomocniczo
+                            timestamp: Date.now()
+                        };
+                        
+                        game.neuroshima.log(`Ustawianie opposedPending dla ${targetActor?.name || targetUuid}`, pendingData);
+                        
+                        if (targetActor?.isOwner || game.user.isGM) {
+                            await targetActor.setFlag("neuroshima", `opposedPending.${pendingData.requestId}`, pendingData);
+                            if (typeof targetActor.render === "function") targetActor.render(false);
+                        } else if (game.neuroshima.socket) {
+                            game.neuroshima.log(`Wysyłanie socketu opposed.setPending przez socketlib dla ${targetActor?.name || targetUuid}`, { targetUuid });
+                            game.neuroshima.socket.executeAsGM("setPending", {
+                                actorUuid: targetUuid,
+                                flagData: pendingData
+                            });
+                        } else {
+                            game.neuroshima.error("Socketlib nie jest zainicjalizowany! Nie można wysłać powiadomienia o ataku do obrońcy.");
+                            ui.notifications.error("Błąd systemu socketów. Powiadomienie obrońcy nie zostało wysłane.");
+                        }
+                    }
+                }
+            }
+            
+            return handler;
+        } else {
+            // Obrona - szukamy Handlera Starcia
+            const opposedPending = actor.getFlag("neuroshima", "opposedPending") || {};
+            
+            game.neuroshima.log("Obrona: sprawdzanie flagi opposedPending", opposedPending);
+
+            // Szukamy wpisu z messageId, co oznacza starcie wręcz
+            const pendingList = Object.values(opposedPending).filter(p => p.messageId);
+            const pending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
+
+            if (pending?.messageId) {
+                const handlerMessageId = String(pending.messageId).trim();
+                game.neuroshima.log("Obrona: przygotowanie do dołączenia do starcia", handlerMessageId);
+                
+                const joinData = {
+                    messageId: handlerMessageId,
+                    action: "join",
+                    defenderData: {
+                        actorUuid: actor.uuid,
+                        rollData: rollData,
+                        weaponId: weapon.id
+                    }
+                };
+                
+                // Jeśli nie jesteśmy GM, musimy wysłać żądanie do GM przez socketlib
+                if (game.user.isGM) {
+                    game.neuroshima.log("GM Dołącza do starcia lokalnie", joinData);
+                    const message = game.messages.get(handlerMessageId);
+                    if (message) {
+                        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+                        if (duel) {
+                            await duel.joinDefender(actor, rollData, weapon.id);
+                        }
+                    }
+                } else {
+                    game.neuroshima.log("Wysyłanie żądania dołączenia do GM przez socketlib", joinData);
+                    game.neuroshima.socket.executeAsGM("joinMeleeDuel", {
+                        messageId: handlerMessageId,
+                        defenderData: {
+                            actorUuid: actor.uuid,
+                            rollData: rollData,
+                            weaponId: weapon.id
+                        }
+                    });
+                }
+                
+                // Czyścimy flagę pending u siebie (lokalnie jeśli owner, lub przez socketlib)
+                if (game.user.isGM || actor.isOwner) {
+                    await actor.unsetFlag("neuroshima", `opposedPending.${pending.requestId}`);
+                    if (typeof actor.render === "function") actor.render(false);
+                } else {
+                    game.neuroshima.socket.executeAsGM("clearPending", {
+                        actorUuid: actor.uuid,
+                        requestId: pending.requestId
+                    });
+                }
+                
+                return null; // Rzut bronią jest obsługiwany przez handler starcia
+            }
+        }
+    }
+
     const rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rollData, actor, roll);
 
     if (rollMessage) {
         const flags = rollMessage.getFlag("neuroshima", "rollData") ?? {};
         flags.messageId = rollMessage.id;
-        
-        // Jeśli to obrona, oznacz to w flagach
-        if (isActuallyDefending) {
-            flags.isDefense = true;
-            flags.meleeAction = "defense";
-        }
-        
         await rollMessage.setFlag("neuroshima", "rollData", flags);
-
-        // Jeśli to jest obrona, spróbuj rozstrzygnąć oczekujący test
-        if (isActuallyDefending && pendingIds.length > 0) {
-            const lastPending = pendingOpposed[pendingIds[pendingIds.length - 1]];
-            const handlerMessage = game.messages.get(lastPending.handlerMessageId);
-            if (handlerMessage) {
-                // Mały opóźnienie, aby upewnić się, że flagi są zapisane
-                setTimeout(() => {
-                    NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: rollMessage.id });
-                }, 100);
-            }
-        }
-
-        // Melee Opposed Test Start (WFRP4e Pattern)
-        // Nie twórz nowego handlera jeśli to jest rzut obronny
-        if (isMelee && rollData.targets?.length > 0 && !isActuallyDefending) {
-            for (const targetUuid of rollData.targets) {
-                const targetDoc = await fromUuid(targetUuid);
-                const targetActor = targetDoc?.actor || targetDoc;
-                if (targetActor instanceof Actor) {
-                    // Zabezpieczenie: nie twórz testu przeciwstawnego na samego siebie
-                    if (targetActor.id === actor.id) {
-                        game.neuroshima.log("Pominięto tworzenie handlera: cel jest rzucającym");
-                        continue;
-                    }
-                    
-                    await NeuroshimaChatMessage.createOpposedHandler(rollMessage, targetActor);
-                }
-            }
-        }
     }
 
     return rollMessage;
@@ -656,8 +749,11 @@ export class NeuroshimaDice {
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode") } = {}) {
-    console.log("Neuroshima | rollTest started", { label, actor: actor?.name });
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false } = {}) {
+    console.log("Neuroshima | rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
+    if (isNaN(stat)) {
+        console.warn("Neuroshima | rollTest received NaN stat!", { stat, label });
+    }
     // Rozpoczęcie grupy logów dla testu standardowego
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
     
@@ -666,20 +762,21 @@ export class NeuroshimaDice {
     const pendingIds = Object.keys(pendingOpposed);
     const isActuallyDefending = meleeAction === "defense" || pendingIds.length > 0;
     
-    // Obrona wymusza test zamknięty
+    // Obrona wymusza test zamknięty (chyba że to test Inicjatywy)
     let finalIsOpen = isOpen;
-    if (isActuallyDefending) {
+    if (isActuallyDefending && !isInitiative) {
         finalIsOpen = false;
     }
 
-    const finalSkill = skill + skillBonus;
-    const finalStat = stat + attributeBonus;
+    const finalSkill = Number(skill || 0) + Number(skillBonus || 0);
+    const finalStat = (Number(stat) || 0) + Number(attributeBonus || 0);
 
     // 1. Obliczanie całkowitej kary i trudności bazowej
-    const totalPenalty = (penalties.mod || 0) + (penalties.wounds || 0) + (penalties.armor || 0);
+    const totalPenalty = (Number(penalties.mod) || 0) + (Number(penalties.wounds) || 0) + (Number(penalties.armor) || 0);
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     
     // 2. Wykonanie rzutu 3k20
+    console.log("Neuroshima | rollTest internal values", { stat, attributeBonus, finalStat, finalSkill });
     console.log("Neuroshima | Evaluating roll 3d20...");
     const roll = new Roll("3d20");
     await roll.evaluate();
@@ -754,6 +851,18 @@ export class NeuroshimaDice {
     if (finalIsOpen) {
       game.neuroshima.log("Ewaluacja: TEST OTWARTY");
       this._evaluateOpenTest(rollData, dice);
+    } else if (isActuallyDefending) {
+        // W nowym systemie dla obrony również nie wydawaj punktów automatycznie
+        rollData.modifiedResults = dice.map(d => ({
+            ...d,
+            modified: d.original,
+            isSuccess: d.original <= target && d.original !== 20,
+            isNat1: d.original === 1,
+            isNat20: d.original === 20
+        }));
+        const successes = rollData.modifiedResults.filter(r => r.isSuccess).length;
+        rollData.successCount = successes;
+        rollData.success = successes >= 2;
     } else {
       game.neuroshima.log("Ewaluacja: TEST ZAMKNIĘTY");
       this._evaluateClosedTest(rollData, dice);
@@ -762,23 +871,14 @@ export class NeuroshimaDice {
     game.neuroshima.log("Wyniki po modyfikacji (użycie umiejętności)", rollData.modifiedResults);
     game.neuroshima.groupEnd();
 
-    const rollMessage = await NeuroshimaChatMessage.renderRoll(rollData, actor, roll);
-
-    if (rollMessage && isActuallyDefending && pendingIds.length > 0) {
-        const flags = rollMessage.getFlag("neuroshima", "rollData") ?? {};
-        flags.messageId = rollMessage.id;
-        flags.isDefense = true;
-        await rollMessage.setFlag("neuroshima", "rollData", flags);
-
-        const lastPending = pendingOpposed[pendingIds[pendingIds.length - 1]];
-        const handlerMessage = game.messages.get(lastPending.handlerMessageId);
-        if (handlerMessage) {
-            // Mały opóźnienie, aby upewnić się, że flagi są zapisane
-            setTimeout(() => {
-                NeuroshimaChatMessage.resolveOpposed(null, handlerMessage, { defenseMessageId: rollMessage.id });
-            }, 100);
-        }
+    if (!chatMessage) {
+        return {
+            ...rollData,
+            roll
+        };
     }
+
+    const rollMessage = await NeuroshimaChatMessage.renderRoll(rollData, actor, roll);
 
     return rollMessage;
   }
@@ -938,6 +1038,7 @@ export class NeuroshimaDice {
     const successPoints = target - finalHigherDie;
     
     data.successPoints = successPoints;
+    data.successCount = successPoints;
     data.success = successPoints >= 0;
     
     // Przywrócenie kolejności kości
@@ -1684,7 +1785,7 @@ export class NeuroshimaDice {
         difficultyLabel: difficultyLabel,
         baseSkill: skillValue,
         skillBonus: skillBonus,
-        baseStat: stat,
+        baseStat: baseStat,
         attributeBonus: attributeBonus,
         stat: finalStat,
         skill: totalSkill,
@@ -1737,7 +1838,8 @@ export class NeuroshimaDice {
         difficultyLabel: testRollData.difficultyLabel,
         skillShift: -skillShift,
         diceShift: diceShift,
-        healingEffect: healingEffectResults[0]
+        healingEffect: healingEffectResults[0],
+        tooltip: this._buildClosedTestTooltip(testRollData, healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment")
       });
 
       healingResults.push({
@@ -1764,10 +1866,8 @@ export class NeuroshimaDice {
     await NeuroshimaChatMessage.renderHealingBatchResults(
       medicActor,
       patientActor,
-      healingMethod,
       results,
-      successCount,
-      failureCount,
+      healingMethod,
       {
         woundConfigs: woundConfigs,
         stat: baseStat,
@@ -1875,55 +1975,6 @@ export class NeuroshimaDice {
       woundConfig.healingModifier
     );
 
-    // Build tooltip (same as batch report)
-    let diceHtml = '<div class="dice-results-grid tiny">';
-    testRollData.modifiedResults.forEach((d, i) => {
-      diceHtml += `
-        <div class="die-result ${d.ignored ? 'ignored' : ''}">
-          <span class="die-label tiny">D${i + 1}=</span>
-          <div class="die-square-container tiny">
-            <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
-            ${totalSkill > 0 && !d.ignored ? `
-              <i class="fas fa-long-arrow-alt-right"></i> 
-              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
-            ` : ''}
-          </div>
-        </div>`;
-    });
-    diceHtml += '</div>';
-
-    const tooltip = `
-      <div class="neuroshima roll-card tooltip-mode">
-        <header class="roll-header tiny">
-          ${game.i18n.localize(testRollData.difficultyLabel)}
-          ${game.i18n.localize("NEUROSHIMA.Roll.ClosedTest")}
-          ${game.i18n.localize("NEUROSHIMA.Roll.On")}
-          ${healingMethod === "firstAid" ? game.i18n.localize("NEUROSHIMA.Skills.firstAid") : game.i18n.localize("NEUROSHIMA.Skills.woundTreatment")}
-        </header>
-        <hr class="dotted-hr tiny">
-        ${diceHtml}
-        <hr class="dotted-hr tiny">
-        <footer class="roll-outcome tiny">
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
-            <span class="value">${testRollData.baseStat || 0}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">Umiejętność:</span>
-            <span class="value">${testRollData.skill || 0}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
-            <span class="value">${testRollData.testTarget}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')}:</span>
-            <span class="value"><strong>${testRollData.successCount}</strong></span>
-          </div>
-        </footer>
-      </div>
-    `.trim();
-
     game.neuroshima?.groupEnd();
 
     return {
@@ -1933,7 +1984,119 @@ export class NeuroshimaDice {
       successCount: testRollData.successCount,
       isSuccess: isSuccess,
       healingEffect: healingEffect.results[0],
-      tooltip: tooltip
+      tooltip: this._buildClosedTestTooltip(testRollData, healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment")
     };
+  }
+
+  /**
+   * Pomocnicza metoda do budowania tooltipa dla testu otwartego (Inicjatywa).
+   * @private
+   */
+  static _buildOpenTestTooltip(testRollData, headerLabel) {
+    let diceHtml = '<div class="dice-results-grid tiny">';
+    testRollData.modifiedResults.forEach((d, i) => {
+      diceHtml += `
+        <div class="die-result ${d.ignored ? 'ignored' : ''}">
+          <span class="die-label tiny">D${i + 1}=</span>
+          <div class="die-square-container tiny">
+            <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
+            ${testRollData.skill > 0 && !d.ignored ? `
+              <i class="fas fa-long-arrow-alt-right"></i> 
+              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
+            ` : ''}
+          </div>
+        </div>`;
+    });
+    diceHtml += '</div>';
+
+    return `
+      <div class="neuroshima roll-card tooltip-mode">
+        <header class="roll-header tiny">
+          ${game.i18n.localize(testRollData.difficultyLabel || "")}
+        </header>
+        <hr class="dotted-hr tiny">
+        ${diceHtml}
+        <hr class="dotted-hr tiny">
+        <footer class="roll-outcome tiny">
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
+            <span class="value">${testRollData.baseStat || testRollData.stat || 0}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">Umiejętność:</span>
+            <span class="value">${testRollData.skill || 0}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
+            <span class="value">${testRollData.target}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Successes')}:</span>
+            <span class="value"><strong>${testRollData.successCount}</strong></span>
+          </div>
+        </footer>
+      </div>
+    `.trim();
+  }
+
+  /**
+   * Pomocnicza metoda do budowania tooltipa dla testu zamkniętego (leczenie, odporność na ból itp.).
+   * @private
+   */
+  static _buildClosedTestTooltip(testRollData, headerLabel) {
+    let diceHtml = '<div class="dice-results-grid tiny">';
+    testRollData.modifiedResults.forEach((d, i) => {
+      diceHtml += `
+        <div class="die-result ${d.ignored ? 'ignored' : ''}">
+          <span class="die-label tiny">D${i + 1}=</span>
+          <div class="die-square-container tiny">
+            <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
+            ${testRollData.skill > 0 && !d.ignored ? `
+              <i class="fas fa-long-arrow-alt-right"></i> 
+              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
+            ` : ''}
+          </div>
+        </div>`;
+    });
+    diceHtml += '</div>';
+
+    return `
+      <div class="neuroshima roll-card tooltip-mode">
+        <header class="roll-header tiny">
+          ${game.i18n.localize(testRollData.difficultyLabel || "")}
+        </header>
+        <hr class="dotted-hr tiny">
+        ${diceHtml}
+        <hr class="dotted-hr tiny">
+        <footer class="roll-outcome tiny">
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
+            <span class="value">${testRollData.baseStat || testRollData.stat || 0}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">Umiejętność:</span>
+            <span class="value">${testRollData.skill || 0}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
+            <span class="value">${testRollData.testTarget || testRollData.target}</span>
+          </div>
+          <div class="outcome-item">
+            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')}:</span>
+            <span class="value"><strong>${testRollData.successCount}</strong></span>
+          </div>
+        </footer>
+      </div>
+    `.trim();
+  }
+
+  /**
+   * Pomocnicza metoda do budowania tooltipa dla rzutu leczenia.
+   * @deprecated Używaj _buildClosedTestTooltip
+   * @private
+   */
+  static _buildHealingTooltip(testRollData, healingMethod) {
+    const label = healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment";
+    return this._buildClosedTestTooltip(testRollData, label);
   }
 }

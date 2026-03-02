@@ -71,8 +71,12 @@ Główna klasa obsługująca rzuty.
     - Wynik jest automatycznie rozstrzygany (`resolveOpposed`) i wyświetlany jako nowa karta na czacie.
     - Zwycięzca zadaje obrażenia zależne od różnicy Punktów Przewagi (`spDifference`).
     - **Tryb Sukcesów**: Porównanie liczby sukcesów w testach zamkniętych.
-    - **Tryb Kości (Segmenty)**: Porównanie korespondencyjne kości. Kość brana pod uwagę tylko jeśli jest sukcesem (<= Target po modyfikacji). Wygrywa niższy wynik.
+    - **Tryb Kości (Segmenty)**: Porównanie korespondencyjne kości (3 segmenty). Atakujący i obrońca mogą wybierać dowolne kości (także porażki), aby je "spalić" lub wykorzystać do obrony.
+    - **Cios Złożony**: Wymaga przynajmniej jednego sukcesu w zaznaczonej grupie kości. Siła ciosu równa jest liczbie sukcesów.
+    - **Obrona**: Skuteczna, jeśli liczba wybranych sukcesów >= siła ataku. Nieskuteczna obrona nadal zużywa wybrane kości (zasada "daremnej obrony").
+    - **Inicjatywa Zwarcia**: Automatyczny test otwarty (3k20 vs Zręczność) wykonywany w tle podczas dołączania do walki. Wyniki (Punkty Przewagi) są wyświetlane jako plakietki pod nazwami postaci z pełnym tooltipem rzutu. System automatycznie wykonuje przerzuty przy remisach.
     - **Aplikacja Bonusów**: Ustawienie `meleeBonusMode` definiuje czy bonus broni trafia do Atrybutu, Umiejętności, czy obu.
+    - **Socketlib Integration**: Wszystkie operacje na danych (aktualizacja flag wiadomości, modyfikacja statystyk) są wykonywane przez GM za pomocą `socketlib`, co zapewnia bezpieczeństwo i brak błędów uprawnień.
   - **Walka Wręcz (Melee - Rzut)**: Zawsze rzuca 3k20. Korzysta z logiki testów standardowych (2/3 sukcesy w zamkniętym, punkty przewagi w otwartym). Umiejętność traktowana jest jako pula punktów do optymalnego rozdzielenia między wszystkie kości.
   - Automatycznie ogranicza liczbę pocisków do stanu magazynka. Przed otwarciem dialogu rzutu system sprawdza, czy broń dystansowa posiada załadowany magazynek i amunicję.
 - **rollSkill / rollAttribute**: Standardowe testy oparte na atrybutach i umiejętnościach.

@@ -44,25 +44,17 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             4: game.i18n.localize("NEUROSHIMA.Settings.Roles.Gamemaster")
         };
 
-        const opposedModeOptions = {
-            "successes": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Successes"),
-            "dice": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Dice"),
-            "vanilla": game.i18n.localize("NEUROSHIMA.Settings.OpposedMeleeMode.Vanilla")
-        };
-
         return {
             config: {
                 usePelletCountLimit: game.settings.get("neuroshima", "usePelletCountLimit"),
                 allowCombatShift: game.settings.get("neuroshima", "allowCombatShift"),
                 allowPainResistanceShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
-                opposedMeleeMode: game.settings.get("neuroshima", "opposedMeleeMode"),
                 meleeBonusMode: game.settings.get("neuroshima", "meleeBonusMode"),
                 damageApplicationMinRole: game.settings.get("neuroshima", "damageApplicationMinRole"),
                 painResistanceMinRole: game.settings.get("neuroshima", "painResistanceMinRole"),
                 combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole")
             },
-            roleOptions: roleOptions,
-            opposedModeOptions: opposedModeOptions
+            roleOptions: roleOptions
         };
     }
 
@@ -80,7 +72,6 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 game.settings.set("neuroshima", "usePelletCountLimit", !!data.usePelletCountLimit),
                 game.settings.set("neuroshima", "allowCombatShift", !!data.allowCombatShift),
                 game.settings.set("neuroshima", "allowPainResistanceShift", !!data.allowPainResistanceShift),
-                game.settings.set("neuroshima", "opposedMeleeMode", data.opposedMeleeMode),
                 game.settings.set("neuroshima", "meleeBonusMode", data.meleeBonusMode),
                 game.settings.set("neuroshima", "damageApplicationMinRole", Number(data.damageApplicationMinRole)),
                 game.settings.set("neuroshima", "painResistanceMinRole", Number(data.painResistanceMinRole)),

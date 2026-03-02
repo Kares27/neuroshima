@@ -150,18 +150,11 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     context.tricks = items.filter(i => i.type === "trick");
     context.wounds = items.filter(i => i.type === "wound");
 
-    // Prepare pending opposed tests
-    const pendingOpposed = actor.getFlag("neuroshima", "opposedPending") || {};
-    context.hasPendingOpposed = Object.keys(pendingOpposed).length > 0;
-    context.pendingOpposed = Object.values(pendingOpposed).map(p => {
-        const handler = game.messages.get(p.handlerMessageId);
-        const opposedData = handler?.getFlag("neuroshima", "opposedData");
-        return {
-            ...p,
-            attackerName: opposedData?.attackerName || game.actors.get(opposedData?.attackerId)?.name || "Unknown Attacker",
-            status: opposedData?.status || "waiting"
-        };
-    }).filter(p => p.status !== "resolved");
+    // Prepare pending melee attack (pick from opposedPending)
+    const opposedPending = actor.getFlag("neuroshima", "opposedPending") || {};
+    const pendingList = Object.values(opposedPending).filter(p => p.messageId);
+    const meleePending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
+    game.neuroshima?.log("_prepareContext meleePending (from opposedPending)", meleePending);
 
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
@@ -258,7 +251,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       woundsByLocation: woundsByLocation,
       selectedWoundLocation: this._selectedWoundLocation,
       selectedLocationLabel: selectedLocationLabel,
-      woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false
+      woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false,
+      meleePending: meleePending
     };
     
     game.neuroshima?.log("_prepareContext context.combat.selectedWoundLocation", {
@@ -413,6 +407,14 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       }
       this._woundsScrollTop = null;
     }
+
+    // Listenery dla walki wręcz (Neuroshima 1.5)
+    html.querySelectorAll('[data-action="ignore-melee"]').forEach(el => {
+      el.addEventListener('click', (event) => {
+        event.preventDefault();
+        this._onIgnoreMelee(event);
+      });
+    });
   }
 
   /**
@@ -1219,11 +1221,25 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const lastRoll = this.document.system.lastWeaponRoll || {};
         let distance = 0;
         const targets = Array.from(game.user.targets ?? []);
-        const targetUuids = targets.map(t => t.document.uuid);
+        // Dla melee targetujemy bezpośrednio aktorów (zapewnia spójność flag pending)
+        const targetUuids = weapon.system.weaponType === "melee" 
+            ? targets.map(t => t.actor?.uuid).filter(Boolean)
+            : targets.map(t => t.document.uuid);
 
-        // Ostrzeżenie dla melee bez targeta
-        if (weapon.system.weaponType === "melee" && targetUuids.length === 0) {
-            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
+        // Wykrywanie ataku vs obrony w melee
+        let meleeAction = "attack";
+        if (weapon.system.weaponType === "melee") {
+            const opposedPending = this.document.getFlag("neuroshima", "opposedPending") || {};
+            const pendingList = Object.values(opposedPending).filter(p => p.messageId);
+            const pending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
+            
+            if (pending) {
+                meleeAction = "defense";
+                game.neuroshima.log(`Wykryto flagę opposedPending (melee): Atakujący: ${pending.attackerName}`);
+            } else if (targetUuids.length === 0) {
+                // Ostrzeżenie o braku celu tylko dla atakującego
+                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
+            }
         }
 
         // Obsługa automatycznego wyboru celu dla broni dystansowej/miotanej
@@ -1270,6 +1286,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
           weapon: weapon,
           rollType: weapon.system.weaponType === "melee" ? "melee" : "ranged",
           targets: targetUuids,
+          meleeAction: meleeAction,
           lastRoll: {
               ...lastRoll,
               distance: distance || lastRoll.distance
@@ -1703,6 +1720,31 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       game.neuroshima.log("Błąd podczas wysyłania prośby:", err);
       ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingFailed"));
     }
+  }
+
+  /**
+   * Ignoruje oczekujący atak melee.
+   */
+  async _onIgnoreMelee(event) {
+    const actor = this.document;
+    const opposedPending = actor.getFlag("neuroshima", "opposedPending") || {};
+    const pendingList = Object.values(opposedPending).filter(p => p.messageId);
+    const pending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
+    
+    if (pending?.requestId) {
+        game.neuroshima.log("Ignorowanie ataku melee (requestId):", pending.requestId);
+        if (this.document.isOwner || game.user.isGM) {
+            await actor.unsetFlag("neuroshima", `opposedPending.${pending.requestId}`);
+        } else {
+            await game.neuroshima.socket.executeAsGM("clearPending", {
+                actorUuid: actor.uuid,
+                requestId: pending.requestId
+            });
+        }
+    } else {
+        await actor.unsetFlag("neuroshima", "meleePending");
+    }
+    this.render();
   }
 
   /**

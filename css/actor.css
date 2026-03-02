@@ -2436,3 +2436,65 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-size: 0.8em;
 }
 
+/* Melee Pending Attacker Section */
+.neuroshima.sheet.actor .melee-pending-attacker {
+    background: #600;
+    color: white;
+    padding: 8px 12px;
+    margin: 5px 0 10px 0;
+    border: 1px solid #300;
+    border-radius: 4px;
+    font-family: 'SpecialElite', serif;
+    animation: pulse-red 2s infinite;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-header {
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-name {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .action-btn.ignore {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .action-btn.ignore:hover {
+    background: #f00;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-instruction {
+    font-size: 0.75em;
+    font-style: italic;
+    margin-top: 6px;
+    opacity: 0.9;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(102, 0, 0, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(102, 0, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(102, 0, 0, 0); }
+}
+
