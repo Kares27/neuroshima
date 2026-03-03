@@ -307,7 +307,8 @@
             "NotYourActor": "Nie masz uprawnień do tego aktora.",
             "NoSkillPoints": "Nie masz więcej punktów umiejętności do wydania.",
             "DamageAlreadyApplied": "Obrażenia z tego wyniku zostały już nałożone.",
-            "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane."
+            "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane.",
+            "Natural20CannotBeModified": "Naturalna 20 nie może być modyfikowana!"
         },
         "MeleeOpposed": {
             "Title": "Akcja w zwarciu",
@@ -335,11 +336,13 @@
             "PhaseSegments": "Segmenty",
             "PhaseResolved": "Rozstrzygnięcie",
             "Initiative": "Inicjatywa",
+            "InitiativeAbbr": "Inicj.",
             "DiceSpent": "Wydana",
             "DiceAvailable": "Dostępna",
             "Segment": "Segment",
             "ActionSingle": "Pojedynczy atak",
             "ActionCompound": "Cios złożony",
+            "ActionFailure": "Nieudany atak",
             "WaitingForResponse": "Oczekiwanie na reakcję...",
             "SelectDiceInstruction": "Zaznacz kości (sukcesy), których chcesz użyć.",
             "TakeoverInitiative": "Przejmij Inicjatywę",
@@ -350,7 +353,8 @@
             "WaitingForInitiative": "Oczekiwanie na rozstrzygnięcie inicjatywy...",
             "ErrorNoSuccessesInAction": "Wybrane kości muszą zawierać przynajmniej jeden sukces!",
             "ErrorNoDiceSelected": "Musisz zaznaczyć przynajmniej jedną kość!",
-            "ErrorInsufficientDefense": "Potrzebujesz przynajmniej {need} sukcesów do obrony!"
+            "ErrorInsufficientDefense": "Potrzebujesz przynajmniej {need} sukcesów do obrony!",
+            "ErrorMustSelectExactDice": "Musisz wybrać dokładnie {count} kości do obrony!"
         },
         "Tabs": {
             "Attributes": "Współczynniki",

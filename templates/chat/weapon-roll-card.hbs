@@ -29,7 +29,7 @@
             {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
             {{label}}{{#if actionLabel}}: {{actionLabel}}{{/if}}
         </div>
-        <div class="test-type">
+        <div class="test-type" {{#if tooltip}}data-tooltip="{{tooltip}}" data-tooltip-direction="LEFT"{{/if}}>
             {{localize difficultyLabel}}
             {{#if isMelee}}
                 | {{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.Actions.Attack"}}{{else}}{{localize "NEUROSHIMA.Actions.Defense"}}{{/if}}

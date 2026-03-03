@@ -14,7 +14,8 @@
                     </div>
                     {{/if}}
                 </div>
-                <img src="{{attacker.img}}" width="32" height="32" title="{{attacker.name}}"/>
+                <img src="{{attacker.img}}" width="32" height="32" title="{{attacker.name}}" 
+                     {{#if attacker.rollTooltip}}data-tooltip="{{attacker.rollTooltip}}" data-tooltip-class="neuroshima-tooltip" data-tooltip-direction="LEFT"{{/if}}/>
                 <div class="name">
                     {{#if (eq initiative 'attacker')}}<i class="fas fa-bolt initiative-icon" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}"></i>{{/if}}
                     <i class="fas fa-swords"></i> {{attacker.name}}
@@ -25,9 +26,9 @@
                             {{attacker.initiativeRoll}} {{localize "NEUROSHIMA.Roll.SuccessesAbbr"}}
                         </div>
                     {{else}}
-                        {{#if (and (eq phase 'initiative') isAttacker)}}
+                        {{#if (and (and (eq phase 'initiative') (eq status 'active')) isAttacker)}}
                             <button type="button" class="melee-init-btn" data-action="roll-initiative" data-role="attacker">
-                                <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeOpposed.RollInitiative"}}
+                                <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeOpposed.Initiative"}}
                             </button>
                         {{/if}}
                     {{/if}}
@@ -45,7 +46,8 @@
                         </div>
                         {{/if}}
                     </div>
-                    <img src="{{defender.img}}" width="32" height="32" title="{{defender.name}}"/>
+                    <img src="{{defender.img}}" width="32" height="32" title="{{defender.name}}"
+                         {{#if defender.rollTooltip}}data-tooltip="{{defender.rollTooltip}}" data-tooltip-class="neuroshima-tooltip" data-tooltip-direction="LEFT"{{/if}}/>
                     <div class="name">
                         {{#if (eq initiative 'defender')}}<i class="fas fa-bolt initiative-icon" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}"></i>{{/if}}
                         <i class="fas fa-shield-alt"></i> {{defender.name}}
@@ -56,9 +58,9 @@
                                 {{defender.initiativeRoll}} {{localize "NEUROSHIMA.Roll.SuccessesAbbr"}}
                             </div>
                         {{else}}
-                            {{#if (and (eq phase 'initiative') isDefender)}}
+                            {{#if (and (and (eq phase 'initiative') (eq status 'active')) isDefender)}}
                                 <button type="button" class="melee-init-btn" data-action="roll-initiative" data-role="defender">
-                                    <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeOpposed.RollInitiative"}}
+                                    <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeOpposed.Initiative"}}
                                 </button>
                             {{/if}}
                         {{/if}}

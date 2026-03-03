@@ -109,7 +109,8 @@ export class NeuroshimaMeleeDuel {
         ready: false,
         diceSpent: [false, false, false],
         initiativeRoll: null,
-        initiativeTooltip: ""
+        initiativeTooltip: "",
+        rollTooltip: attackRollData.tooltip || ""
       },
       defender: { 
         actorUuid: null, 
@@ -236,7 +237,8 @@ export class NeuroshimaMeleeDuel {
       ready: false,
       diceSpent: [false, false, false],
       initiativeRoll: null,
-      initiativeTooltip: ""
+      initiativeTooltip: "",
+      rollTooltip: defenseRollData.tooltip || ""
     };
 
     state.defense = {
@@ -531,11 +533,11 @@ export class NeuroshimaMeleeDuel {
     if (state.initiative !== role) return;
 
     const side = state[role];
+    const selected = side.selectedDice || [];
     
     if (type === "attack") {
-        const selected = side.selectedDice || [];
         if (selected.length === 0) return;
-
+        
         // Oblicz siłę (liczba sukcesów wśród zaznaczonych)
         const dice = state.dice[role];
         const modsSelf = side.modSelf || [0, 0, 0];
@@ -549,17 +551,12 @@ export class NeuroshimaMeleeDuel {
             if (val <= stat) totalSuccesses++;
         }
 
-        // Atak musi mieć przynajmniej jeden sukces, aby był atakiem (nawet jeśli wybieramy porażki do kompletu)
-        if (totalSuccesses === 0) {
-            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposed.ErrorNoSuccessesInAction"));
-            return;
-        }
-
         state.currentAction = {
             side: role,
             sideName: side.name,
-            type: totalSuccesses === 1 ? "single" : "compound",
+            type: totalSuccesses === 0 ? "failure" : (totalSuccesses === 1 ? "single" : "compound"),
             power: totalSuccesses,
+            diceCount: selected.length,
             diceIndices: [...selected]
         };
         
@@ -600,8 +597,10 @@ export class NeuroshimaMeleeDuel {
 
     if (response === "defend") {
         const selected = responder.selectedDice || [];
-        if (selected.length === 0) {
-            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposed.ErrorNoDiceSelected"));
+        const requiredDice = action.diceIndices.length;
+
+        if (selected.length !== requiredDice) {
+            ui.notifications.warn(game.i18n.format("NEUROSHIMA.MeleeOpposed.ErrorMustSelectExactDice", { count: requiredDice }));
             return;
         }
 
@@ -618,11 +617,19 @@ export class NeuroshimaMeleeDuel {
             if (val <= stat) totalDefenseSuccesses++;
         }
 
-        if (totalDefenseSuccesses < action.power) {
-            // OBRONA NIESKUTECZNA - kości zużyte, obrażenia wchodzą
-            for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
-            for (const i of selected) responder.diceSpent[i] = true;
+        // Kości zużyte przez obie strony
+        for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
+        for (const i of selected) responder.diceSpent[i] = true;
 
+        // Logika Przejęcia Inicjatywy (Reversal)
+        // Jeśli Atakujący wyrzucił porażkę (power=0), a Obrońca sukces (>0), Inicjatywa przechodzi
+        if (action.power === 0 && totalDefenseSuccesses > 0) {
+            state.initiative = responderRole;
+            ui.notifications.info(game.i18n.format("NEUROSHIMA.MeleeOpposed.InitiativeTakenBy", { name: responder.name }));
+        }
+
+        if (totalDefenseSuccesses < action.power) {
+            // OBRONA NIESKUTECZNA - obrażenia wchodzą
             const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
             const dmg = NeuroshimaMeleeDuelResolver.calculateSegmentDamage(state, action);
             if (dmg) {
@@ -630,23 +637,29 @@ export class NeuroshimaMeleeDuel {
                 state.segments[state.currentSegment - 1].result = dmg;
             }
             ui.notifications.warn(game.i18n.format("NEUROSHIMA.MeleeOpposed.DefenseFailed", { need: action.power, have: totalDefenseSuccesses }));
-        } else {
-            // OBRONA UDANA - kości zużyte, brak obrażeń
-            for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
-            for (const i of selected) responder.diceSpent[i] = true;
-            
+        } else if (action.power > 0) {
+            // OBRONA UDANA
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.DefenseSuccess"));
         }
     } else {
         // Przyjęcie obrażeń - zużyj kości atakującego
         for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
         
-        // TODO: Aplikacja obrażeń dla segmentu (jeśli to był atak)
-        if (action.side === "attacker") {
+        // Zawsze zużyj kości obrońcy (Daremna obrona)
+        const requiredDice = action.diceIndices.length;
+        // W przypadku przyjęcia obrażeń bez zaznaczenia, system zużyje pierwsze dostępne kości obrońcy
+        let spentCount = 0;
+        for (let i = 0; i < 3 && spentCount < requiredDice; i++) {
+            if (!responder.diceSpent[i]) {
+                responder.diceSpent[i] = true;
+                spentCount++;
+            }
+        }
+        
+        if (action.power > 0) {
             const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
             const dmg = NeuroshimaMeleeDuelResolver.calculateSegmentDamage(state, action);
             if (dmg) {
-                // Dodaj do raportu tury
                 if (!state.segments) state.segments = [{}, {}, {}];
                 state.segments[state.currentSegment - 1].result = dmg;
             }
@@ -657,7 +670,7 @@ export class NeuroshimaMeleeDuel {
     state.currentAction = null;
     responder.selectedDice = [];
     
-    await this._advanceSegment(state);
+    await this._advanceSegment(state, action.diceIndices.length);
     state.version += 1;
     await this.update(state);
   }
@@ -686,8 +699,8 @@ export class NeuroshimaMeleeDuel {
    * Przesuwa starcie do następnego segmentu lub kończy turę.
    * @private
    */
-  async _advanceSegment(state) {
-    state.currentSegment += 1;
+  async _advanceSegment(state, consumed = 1) {
+    state.currentSegment += consumed;
     
     // Sprawdź czy koniec tury (3 segmenty lub brak kości)
     const attackerDone = state.attacker.diceSpent.every(s => s);

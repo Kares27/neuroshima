@@ -748,6 +748,31 @@ body.theme-dark {
     font-size: 0.8em;
 }
 
+.neuroshima.melee-opposed-handler .melee-init-btn {
+    width: auto;
+    padding: 2px 8px;
+    font-size: 0.85em;
+    font-family: 'SpecialElite', serif;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    transition: all 0.2s;
+}
+
+.neuroshima.melee-opposed-handler .melee-init-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .melee-init-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
 .neuroshima.melee-opposed-handler .waiting-ui {
     display: flex;
     flex-direction: column;

@@ -79,7 +79,7 @@ Główna klasa obsługująca rzuty.
     - **Tryb Kości (Segmenty)**: Porównanie korespondencyjne kości (3 segmenty). Atakujący i obrońca mogą wybierać dowolne kości (także porażki), aby je "spalić" lub wykorzystać do obrony.
     - **Cios Złożony**: Wymaga przynajmniej jednego sukcesu w zaznaczonej grupie kości. Siła ciosu równa jest liczbie sukcesów.
     - **Obrona**: Skuteczna, jeśli liczba wybranych sukcesów >= siła ataku. Nieskuteczna obrona nadal zużywa wybrane kości (zasada "daremnej obrony").
-    - **Inicjatywa Zwarcia**: Automatyczny test otwarty (3k20 vs Zręczność) wykonywany w tle podczas dołączania do walki. Wyniki (Punkty Przewagi) są wyświetlane jako plakietki pod nazwami postaci z pełnym tooltipem rzutu. System automatycznie wykonuje przerzuty przy remisach.
+    - **Inicjatywa Zwarcia**: Automatyczny test otwarty (3k20 vs Zręczność) wykonywany w tle podczas dołączania do walki. Wyniki (Punkty Przewagi) są wyświetlane jako plakietki pod nazwami postaci z pełnym tooltipem rzutu. System automatycznie wykonuje przerzuty przy remisach. Tooltipy są generowane przez `_buildOpenTestTooltip` i zawierają szczegółowy rozbiór atrybutów, umiejętności oraz bonusów.
     - **Aplikacja Bonusów**: Ustawienie `meleeBonusMode` definiuje czy bonus broni trafia do Atrybutu, Umiejętności, czy obu.
     - **Socketlib Integration**: Wszystkie operacje na danych (aktualizacja flag wiadomości, modyfikacja statystyk) są wykonywane przez GM za pomocą `socketlib`, co zapewnia bezpieczeństwo i brak błędów uprawnień.
   - **Walka Wręcz (Melee - Rzut)**: Zawsze rzuca 3k20. Korzysta z logiki testów standardowych (2/3 sukcesy w zamkniętym, punkty przewagi w otwartym). Umiejętność traktowana jest jako pula punktów do optymalnego rozdzielenia między wszystkie kości.
@@ -90,7 +90,7 @@ Główna klasa obsługująca rzuty.
 - **getSkillShift**: Dynamicznie oblicza przesunięcie trudności (Suwak) jako `floor(Umiejętność / 4)`. Dla umiejętności <= 0 zwraca -1 (kara +1 stopień).
 - **_getShiftedDifficulty**: Helper przesuwający poziom trudności o zadaną liczbę stopni (mechanika Suwaka). Bonusy skracają dystans do PT (odejmują od indeksu), kary zwiększają.
 - **getDifficultyFromPercent**: Zwraca obiekt trudności z konfiguracji na podstawie sumy kar procentowych.
-- **renderRollCard / renderWeaponRollCard**: Renderuje wyniki rzutu na czacie przy użyciu szablonów Handlebars. Wyświetla "Punkty Przewagi" jako uniwersalną miarę sukcesu (1 w teście zamkniętym, nadwyżka w otwartym).
+- **renderRollCard / renderWeaponRollCard**: Renderuje wyniki rzutu na czacie przy użyciu szablonów Handlebars. Wyświetla "Punkty Przewagi" jako uniwersalną miarę sukcesu. Dodano bogate tooltipy HTML (`_buildOpenTestTooltip`, `_buildClosedTestTooltip`) na etykietach typu testu, pokazujące szczegółowy rozbiór modyfikatorów, bonusów i kości.
 
 ## 4. Arkusz Aktora (`module/sheets/actor-sheet.js`)
 
@@ -355,7 +355,8 @@ Zaimplementowano zaawansowany cykl życia starcia w zwarciu:
 - **Handler (Oczekiwanie)**: Po ataku melee system tworzy wiadomość `meleeOpposedHandler`.
 - **Cykl Życia**: `Initiative -> Modification -> Segments -> Resolved`.
 - **Ujednolicona Inicjatywa**: Uczestnicy wykonują rzuty inicjatywy za pomocą `NeuroshimaInitiativeRollDialog`. Wyniki są wyświetlane jako tooltipy nad plakietką Punktów Przewagi, co eliminuje nadmiar wiadomości na czacie.
-- **Ukrywanie Kości**: Wyniki rzutów są wizualnie ukryte dopóki oba rzuty na inicjatywę nie zostaną wykonane.
+- **Ukrywanie Kości**: Wyniki rzutów są wizualnie ukryte dopóki oba rzuty na inicjatywę nie zostaną wykonane. Przyciski inicjatywy pojawiają się sekwencyjnie dopiero po sformowaniu pełnego starcia (Atakujący + Obrońca).
+- **Szczegółowe Tooltipy**: Pełna kalkulacja rzutów 3k20 (atrybuty, umiejętności, bonusy, PT) jest dostępna w formie bogatych tooltipów HTML po najechaniu na portrety uczestników w nagłówku starcia oraz na etykiety typu testu na kartach rzutu bronią.
 - **Automatyczna Optymalizacja**: W standardowym trybie system automatycznie wydaje punkty umiejętności, aby przekształcić porażki w sukcesy (zgodnie z progiem sukcesu uwzględniającym Suwak).
 - **Zasada Double Skill Action**: Opcjonalne ustawienie pozwalające na manualną alokację punktów umiejętności (obniżanie własnych wyników lub podwyższanie wyników przeciwnika).
 - **Zabezpieczenia**: Naturalne 20 są zawsze porażką i nie mogą być modyfikowane.

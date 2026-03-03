@@ -308,7 +308,8 @@
             "NotYourActor": "You do not have permissions for this actor.",
             "NoSkillPoints": "You have no more skill points to spend.",
             "DamageAlreadyApplied": "Damage has already been applied.",
-            "HealingAlreadyApplied": "Healing has already been applied."
+            "HealingAlreadyApplied": "Healing has already been applied.",
+            "Natural20CannotBeModified": "Natural 20 cannot be modified!"
         },
         "MeleeOpposed": {
             "Title": "Melee Action",
@@ -336,11 +337,13 @@
             "PhaseSegments": "Segments",
             "PhaseResolved": "Resolution",
             "Initiative": "Initiative",
+            "InitiativeAbbr": "Init.",
             "DiceSpent": "Spent",
             "DiceAvailable": "Available",
             "Segment": "Segment",
             "ActionSingle": "Single Attack",
             "ActionCompound": "Compound Strike",
+            "ActionFailure": "Failed attack",
             "WaitingForResponse": "Waiting for reaction...",
             "SelectDiceInstruction": "Select dice (successes) you want to use.",
             "TakeoverInitiative": "Takeover Initiative",
@@ -351,7 +354,8 @@
             "WaitingForInitiative": "Waiting for initiative resolution...",
             "ErrorNoSuccessesInAction": "Selected dice must contain at least one success!",
             "ErrorNoDiceSelected": "You must select at least one die!",
-            "ErrorInsufficientDefense": "You need at least {need} successes for defense!"
+            "ErrorInsufficientDefense": "You need at least {need} successes for defense!",
+            "ErrorMustSelectExactDice": "You must select exactly {count} dice for defense!"
         },
         "Tabs": {
             "Attributes": "Attributes",
