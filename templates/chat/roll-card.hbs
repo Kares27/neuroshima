@@ -1,28 +1,35 @@
-<div class="neuroshima roll-card {{rollMode}}" 
-    {{#if showTooltip}}
-    data-tooltip="<strong>{{localize 'NEUROSHIMA.Attributes.Attributes'}}:</strong> {{baseStat}}<br>
-                  {{#if (ne attributeBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.AttributeBonusAbbr'}}:</strong> {{attributeBonus}}<br>{{/if}}
-                  <strong>{{localize 'NEUROSHIMA.Items.Fields.Skill'}}:</strong> {{baseSkill}}<br>
-                  {{#if (ne skillBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.SkillBonusAbbr'}}:</strong> {{skillBonus}}<br>{{/if}}
-                  <strong>{{localize 'NEUROSHIMA.Roll.Penalties'}}:</strong><br>
-                  &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyMod'}}: {{penalties.mod}}%<br>
-                  &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyWounds'}}: {{penalties.wounds}}%<br>
-                  &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyArmor'}}: {{penalties.armor}}%<br>
-                  <strong>{{localize 'NEUROSHIMA.Roll.TotalModifier'}}:</strong> {{totalPenalty}}%<br>
-                  <strong>{{localize 'NEUROSHIMA.Roll.BaseDifficulty'}}:</strong> {{localize baseDifficultyLabel}}<br>
-                  <strong>{{localize 'NEUROSHIMA.Roll.Target'}}:</strong> {{target}}"
-    data-tooltip-direction="LEFT"
-    {{/if}}>
+<div class="neuroshima roll-card {{rollMode}}">
     <header class="roll-header">
-        {{#if isDebug}}<span class="debug-tag">[DEBUG]</span> {{/if}}
-        {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
-        {{localize difficultyLabel}}
-        {{#if isOpen}}
-            {{localize "NEUROSHIMA.Roll.OpenTest"}}
-        {{else}}
-            {{localize "NEUROSHIMA.Roll.ClosedTest"}}
-        {{/if}}
-        {{localize "NEUROSHIMA.Roll.On"}} {{label}}
+        <div class="actor-image-container" 
+            {{#if showTooltip}}
+            data-tooltip="<strong>{{localize 'NEUROSHIMA.Attributes.Attributes'}}:</strong> {{baseStat}}<br>
+                          {{#if (ne attributeBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.AttributeBonusAbbr'}}:</strong> {{attributeBonus}}<br>{{/if}}
+                          <strong>{{localize 'NEUROSHIMA.Items.Fields.Skill'}}:</strong> {{baseSkill}}<br>
+                          {{#if (ne skillBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.SkillBonusAbbr'}}:</strong> {{skillBonus}}<br>{{/if}}
+                          <strong>{{localize 'NEUROSHIMA.Roll.Penalties'}}:</strong><br>
+                          &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyMod'}}: {{penalties.mod}}%<br>
+                          &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyWounds'}}: {{penalties.wounds}}%<br>
+                          &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyArmor'}}: {{penalties.armor}}%<br>
+                          <strong>{{localize 'NEUROSHIMA.Roll.TotalModifier'}}:</strong> {{totalPenalty}}%<br>
+                          <strong>{{localize 'NEUROSHIMA.Roll.BaseDifficulty'}}:</strong> {{localize baseDifficultyLabel}}<br>
+                          <strong>{{localize 'NEUROSHIMA.Roll.Target'}}:</strong> {{target}}"
+            data-tooltip-direction="LEFT"
+            {{/if}}>
+            <img src="{{actorImg}}" width="32" height="32" />
+        </div>
+        <div class="header-details">
+            {{#if isDebug}}<span class="debug-tag">[DEBUG]</span> {{/if}}
+            {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
+            <div class="test-info">
+                {{localize difficultyLabel}}
+                {{#if isOpen}}
+                    {{localize "NEUROSHIMA.Roll.OpenTest"}}
+                {{else}}
+                    {{localize "NEUROSHIMA.Roll.ClosedTest"}}
+                {{/if}}
+                {{localize "NEUROSHIMA.Roll.On"}} {{label}}
+            </div>
+        </div>
     </header>
     <hr class="dotted-hr">
 

@@ -85,6 +85,9 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         value: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         max: new fields.NumberField({ integer: true, initial: 27, min: 1 })
       }),
+      combat: new fields.SchemaField({
+        meleeInitiative: new fields.NumberField({ integer: true, initial: 0 })
+      }),
       healingRate: new fields.NumberField({ integer: true, initial: 5, min: 1, max: 100 }),
       encumbrance: new fields.SchemaField({
         value: new fields.NumberField({ initial: 0, min: 0 }),
@@ -161,8 +164,8 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         }
       }
 
-      // 6. Statystyki bojowe (kary)
-      this.combat = {
+      // 6. Statystyki bojowe (kary) - merge derived data into the combat object
+      const combatUpdates = {
         totalArmorPenalty: items.reduce((total, i) => {
           if (i.type === "armor" && i.system.equipped) return total + (i.system.armor?.penalty || 0);
           return total;
@@ -180,6 +183,11 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
           return total;
         }, 0)
       };
+
+      // Safely merge properties into the existing combat object to preserve meleeInitiative
+      for (let [key, value] of Object.entries(combatUpdates)) {
+        this.combat[key] = value;
+      }
     } catch (err) {
       if (game.settings.get("neuroshima", "debugMode")) {
         console.error("Neuroshima 1.5 | Błąd krytyczny w prepareDerivedData:", err);

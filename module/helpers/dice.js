@@ -43,7 +43,9 @@ export class NeuroshimaDice {
         attributeBonus: attributeBonus,
         skillBonus: skillBonus,
         rollMode: rollMode,
-        chatMessage: false 
+        chatMessage: false,
+        attributeKey: attribute,
+        skillKey: skill
     });
     
     // Add tooltip to rollResult for reuse in duels
@@ -52,7 +54,23 @@ export class NeuroshimaDice {
     // 4. Stworzenie wiadomości na czacie (jeśli nie wyłączono)
     if (params.chatMessage !== false) {
         const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
-        await NeuroshimaChatMessage.renderInitiativeRoll(rollResult, actor, rollResult.roll);
+        const rollMessage = await NeuroshimaChatMessage.renderInitiativeRoll(rollResult, actor, rollResult.roll);
+        
+        // Integracja Dice So Nice: czekaj na animację przed zwróceniem wyniku
+        if (game.dice3d) {
+            await new Promise((resolve) => {
+                const timeout = setTimeout(resolve, 5000); // Fail-safe timeout
+                Hooks.once("diceSoNiceRollComplete", (messageId) => {
+                    if (messageId === rollMessage.id) {
+                        clearTimeout(timeout);
+                        resolve();
+                    }
+                });
+            });
+        }
+    } else if (game.dice3d) {
+        // Jeśli nie ma wiadomości (np. rzut w tle), ale chcemy kości 3D
+        await game.dice3d.showForRoll(rollResult.roll, game.user, true);
     }
 
     game.neuroshima.log("Wynik inicjatywy:", rollResult.successPoints);
@@ -522,6 +540,7 @@ export class NeuroshimaDice {
         targets: isMelee ? (params.targets ?? []) : [],
         weaponId: weapon.id,
         actorId: actor.id,
+        actorImg: actor.img,
         damage: damageValue,
         piercing: ammoPiercing,
         isJamming,
@@ -591,10 +610,14 @@ export class NeuroshimaDice {
     game.neuroshima.log("Generowanie karty czatu", rollData);
     game.neuroshima.groupEnd();
 
-    // Obsługa testu przeciwstawnego dla walki wręcz (Plan Neuroshima 1.5)
+    // 7. Obsługa Walki Wręcz (Melee Opposed Logic)
+    // Zgodnie z Planem Neuroshima 1.5, rzut bronią melee nie kończy się na karcie czatu,
+    // lecz inicjuje lub kontynuuje Starcie Przeciwstawne (Duel).
     if (isMelee) {
         if (meleeAction === "attack") {
-            // Atakujący od razu tworzy Handler Starcia
+            // SCENARIUSZ A: ATAK WRĘCZ
+            // Atakujący wykonuje pierwszy rzut. System tworzy nową wiadomość "Handler Starcia",
+            // która będzie przechowywać stan całego pojedynku.
             const handler = await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(
                 actor, 
                 rollData, 
@@ -602,9 +625,11 @@ export class NeuroshimaDice {
                 rollData.targets || []
             );
             
-            // Powiadom cele o ataku (przez flagę na aktorze)
+            // POWIADOMIENIE OBROŃCY:
+            // Dla każdego stargetowanego celu ustawiamy flagę "opposedPending".
+            // Powoduje to wyświetlenie przycisku obrony na karcie postaci obrońcy.
             if (handler && rollData.targets?.length > 0) {
-                const handlerId = handler.id; // Pobieramy ID po utworzeniu
+                const handlerId = handler.id;
                 const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(handler);
                 const requestId = duel?.state?.requestId || handler.getFlag("neuroshima", "meleeDuel")?.requestId;
 
@@ -617,37 +642,37 @@ export class NeuroshimaDice {
                             attackerName: actor.name,
                             attackerUuid: actor.uuid,
                             messageId: handlerId,
-                            tokenUuid: targetUuid, // Przechowuj token UUID pomocniczo
+                            tokenUuid: targetUuid, 
                             timestamp: Date.now()
                         };
                         
                         game.neuroshima.log(`Ustawianie opposedPending dla ${targetActor?.name || targetUuid}`, pendingData);
                         
+                        // Flagi muszą być ustawione przez GM (socketlib) jeśli obecny użytkownik nie ma uprawnień do celu.
                         if (targetActor?.isOwner || game.user.isGM) {
                             await targetActor.setFlag("neuroshima", `opposedPending.${pendingData.requestId}`, pendingData);
                             if (typeof targetActor.render === "function") targetActor.render(false);
                         } else if (game.neuroshima.socket) {
-                            game.neuroshima.log(`Wysyłanie socketu opposed.setPending przez socketlib dla ${targetActor?.name || targetUuid}`, { targetUuid });
                             game.neuroshima.socket.executeAsGM("setPending", {
                                 actorUuid: targetUuid,
                                 flagData: pendingData
                             });
-                        } else {
-                            game.neuroshima.error("Socketlib nie jest zainicjalizowany! Nie można wysłać powiadomienia o ataku do obrońcy.");
-                            ui.notifications.error("Błąd systemu socketów. Powiadomienie obrońcy nie zostało wysłane.");
                         }
                     }
                 }
             }
             
+            // Zwracamy handler (wiadomość czatu), rzut standardowy nie jest renderowany.
             return handler;
         } else {
-            // Obrona - szukamy Handlera Starcia
+            // SCENARIUSZ B: OBRONA WRĘCZ
+            // Gracz kliknął "Broń się" na swojej karcie postaci w odpowiedzi na atak.
+            // System szuka aktywnego starcia (flaga opposedPending) i dołącza obrońcę do handlera.
             const opposedPending = actor.getFlag("neuroshima", "opposedPending") || {};
             
             game.neuroshima.log("Obrona: sprawdzanie flagi opposedPending", opposedPending);
 
-            // Szukamy wpisu z messageId, co oznacza starcie wręcz
+            // Wybieramy najnowsze oczekujące starcie.
             const pendingList = Object.values(opposedPending).filter(p => p.messageId);
             const pending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
 
@@ -655,19 +680,8 @@ export class NeuroshimaDice {
                 const handlerMessageId = String(pending.messageId).trim();
                 game.neuroshima.log("Obrona: przygotowanie do dołączenia do starcia", handlerMessageId);
                 
-                const joinData = {
-                    messageId: handlerMessageId,
-                    action: "join",
-                    defenderData: {
-                        actorUuid: actor.uuid,
-                        rollData: rollData,
-                        weaponId: weapon.id
-                    }
-                };
-                
-                // Jeśli nie jesteśmy GM, musimy wysłać żądanie do GM przez socketlib
+                // Proces dołączania (Join Defender) aktualizuje wiadomość handlera o wyniki obrońcy.
                 if (game.user.isGM) {
-                    game.neuroshima.log("GM Dołącza do starcia lokalnie", joinData);
                     const message = game.messages.get(handlerMessageId);
                     if (message) {
                         const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
@@ -676,7 +690,7 @@ export class NeuroshimaDice {
                         }
                     }
                 } else {
-                    game.neuroshima.log("Wysyłanie żądania dołączenia do GM przez socketlib", joinData);
+                    // Żądanie do GM przez socketlib (obrońca zazwyczaj nie może edytować wiadomości atakującego).
                     game.neuroshima.socket.executeAsGM("joinMeleeDuel", {
                         messageId: handlerMessageId,
                         defenderData: {
@@ -687,7 +701,7 @@ export class NeuroshimaDice {
                     });
                 }
                 
-                // Czyścimy flagę pending u siebie (lokalnie jeśli owner, lub przez socketlib)
+                // Po dołączeniu czyścimy powiadomienie o oczekującym ataku.
                 if (game.user.isGM || actor.isOwner) {
                     await actor.unsetFlag("neuroshima", `opposedPending.${pending.requestId}`);
                     if (typeof actor.render === "function") actor.render(false);
@@ -698,7 +712,8 @@ export class NeuroshimaDice {
                     });
                 }
                 
-                return null; // Rzut bronią jest obsługiwany przez handler starcia
+                // Zwracamy null, ponieważ wynik obrony zostanie wyrenderowany wewnątrz Handlera Starcia.
+                return null; 
             }
         }
     }
@@ -811,7 +826,7 @@ export class NeuroshimaDice {
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false } = {}) {
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null } = {}) {
     console.log("Neuroshima | rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
     if (isNaN(stat)) {
         console.warn("Neuroshima | rollTest received NaN stat!", { stat, label });
@@ -906,7 +921,11 @@ export class NeuroshimaDice {
       rawResults,
       isCritSuccess: false,
       isCritFailure: false,
-      isGM: game.user.isGM
+      isGM: game.user.isGM,
+      actorId: actor?.id,
+      actorImg: actor?.img,
+      attributeKey,
+      skillKey
     };
 
     // 4. Ewaluacja testu w zależności od typu (Otwarty / Zamknięty)
@@ -1047,8 +1066,9 @@ export class NeuroshimaDice {
     
     // Optymalizacja: chcemy zminimalizować wyższy z dwóch pozostałych wyników.
     // Krok 1: Zbijamy gorszą kość (d2) do poziomu lepszej kości (d1).
+    // ZGODNIE Z ZASADAMI: naturalna 20 nie może być modyfikowana i jest automatyczną porażką.
     const diff = d2.original - d1.original;
-    const maxSpendTo1_d2 = Math.max(0, d2.original - 1);
+    const maxSpendTo1_d2 = d2.original === 20 ? 0 : Math.max(0, d2.original - 1);
     const spentToMatch = tempSkill > 0 ? Math.min(tempSkill, diff, maxSpendTo1_d2) : 0;
     d2.modified = d2.original - spentToMatch;
     tempSkill -= spentToMatch;
@@ -1059,18 +1079,19 @@ export class NeuroshimaDice {
     // Krok 2: Jeśli zostały punkty umiejętności, obniżamy obie kości po równo.
     if (tempSkill > 0) {
         // Obliczamy ile maksymalnie możemy wydać na każdą kość aby nie spadła poniżej 1
-        const maxSpend_d1 = Math.max(0, d1.original - 1);
-        const maxSpend_d2 = Math.max(0, d2.modified - 1);
+        // Naturalna 20 nie może być modyfikowana.
+        const maxSpend_d1 = d1.original === 20 ? 0 : Math.max(0, d1.original - 1);
+        const maxSpend_d2 = d2.original === 20 ? 0 : Math.max(0, d2.modified - 1);
         
         // Obniżamy obie o tyle ile się da, nie przekraczając tempSkill
         let spentOnBoth = 0;
-        while (tempSkill > 0 && (d1.modified > 1 || d2.modified > 1)) {
-            if (d1.modified > 1 && tempSkill > 0) {
+        while (tempSkill > 0 && ((d1.modified > 1 && d1.original !== 20) || (d2.modified > 1 && d2.original !== 20))) {
+            if (d1.modified > 1 && d1.original !== 20 && tempSkill > 0) {
                 d1.modified -= 1;
                 tempSkill -= 1;
                 spentOnBoth += 1;
             }
-            if (d2.modified > 1 && tempSkill > 0) {
+            if (d2.modified > 1 && d2.original !== 20 && tempSkill > 0) {
                 d2.modified -= 1;
                 tempSkill -= 1;
                 spentOnBoth += 1;
@@ -1085,9 +1106,9 @@ export class NeuroshimaDice {
         d2.modified = d2.original;
     }
 
-    // Sukces na kościach otwartego testu
-    d1.isSuccess = d1.modified <= target;
-    d2.isSuccess = d2.modified <= target;
+    // Sukces na kościach otwartego testu (20 zawsze porażka)
+    d1.isSuccess = d1.modified <= target && d1.original !== 20;
+    d2.isSuccess = d2.modified <= target && d2.original !== 20;
 
     // Flagi naturalnych wyników
     diceObjects.forEach(d => {
@@ -2088,23 +2109,25 @@ export class NeuroshimaDice {
         <hr class="dotted-hr tiny">
         <footer class="roll-outcome tiny">
           <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
+            <span class="label">${testRollData.attributeKey ? game.i18n.localize(`NEUROSHIMA.Attributes.${testRollData.attributeKey}`) : game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
             <span class="value">${testRollData.baseStat || testRollData.stat || 0}</span>
           </div>
           ${testRollData.attributeBonus ? `
           <div class="outcome-item">
-            <span class="label">Bonus Atrybutu:</span>
-            <span class="value">${testRollData.attributeBonus}</span>
+            <span class="label">Bonus:</span>
+            <span class="value">${testRollData.attributeBonus > 0 ? '+' : ''}${testRollData.attributeBonus}</span>
           </div>
           ` : ''}
+          ${(testRollData.baseSkill > 0 || testRollData.skill > 0) ? `
           <div class="outcome-item">
-            <span class="label">Umiejętność:</span>
+            <span class="label">${testRollData.skillKey ? game.i18n.localize(`NEUROSHIMA.Skills.${testRollData.skillKey}`) : game.i18n.localize('NEUROSHIMA.Skills.Skill')}:</span>
             <span class="value">${testRollData.baseSkill || testRollData.skill || 0}</span>
           </div>
+          ` : ''}
           ${testRollData.skillBonus ? `
           <div class="outcome-item">
-            <span class="label">Bonus Umiejętności:</span>
-            <span class="value">${testRollData.skillBonus}</span>
+            <span class="label">Bonus:</span>
+            <span class="value">${testRollData.skillBonus > 0 ? '+' : ''}${testRollData.skillBonus}</span>
           </div>
           ` : ''}
           <div class="outcome-item">
@@ -2154,23 +2177,25 @@ export class NeuroshimaDice {
         <hr class="dotted-hr tiny">
         <footer class="roll-outcome tiny">
           <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
+            <span class="label">${testRollData.attributeKey ? game.i18n.localize(`NEUROSHIMA.Attributes.${testRollData.attributeKey}`) : game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
             <span class="value">${testRollData.baseStat || testRollData.stat || 0}</span>
           </div>
           ${testRollData.attributeBonus ? `
           <div class="outcome-item">
-            <span class="label">Bonus Atrybutu:</span>
-            <span class="value">${testRollData.attributeBonus}</span>
+            <span class="label">Bonus:</span>
+            <span class="value">${testRollData.attributeBonus > 0 ? '+' : ''}${testRollData.attributeBonus}</span>
           </div>
           ` : ''}
+          ${(testRollData.baseSkill > 0 || testRollData.skill > 0) ? `
           <div class="outcome-item">
-            <span class="label">Umiejętność:</span>
+            <span class="label">${testRollData.skillKey ? game.i18n.localize(`NEUROSHIMA.Skills.${testRollData.skillKey}`) : game.i18n.localize('NEUROSHIMA.Skills.Skill')}:</span>
             <span class="value">${testRollData.baseSkill || testRollData.skill || 0}</span>
           </div>
+          ` : ''}
           ${testRollData.skillBonus ? `
           <div class="outcome-item">
-            <span class="label">Bonus Umiejętności:</span>
-            <span class="value">${testRollData.skillBonus}</span>
+            <span class="label">Bonus:</span>
+            <span class="value">${testRollData.skillBonus > 0 ? '+' : ''}${testRollData.skillBonus}</span>
           </div>
           ` : ''}
           <div class="outcome-item">

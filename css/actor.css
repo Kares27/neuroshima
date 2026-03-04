@@ -681,6 +681,72 @@
     align-items: center;
 }
 
+.neuroshima.sheet.actor .combat-section.weapons-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Allow shrinking */
+}
+
+.neuroshima.sheet.actor .weapons-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .weapons-group:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .combat-weapons-list {
+    flex: 0 0 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 102px; /* Fits exactly 2 items (~50px each + borders) */
+}
+
+.neuroshima.sheet.actor .combat-section .section-header.melee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .header-left-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .melee-initiative-input {
+    width: 45px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+    margin: 0 5px;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .roll-melee-initiative {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.2s;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .roll-melee-initiative:hover {
+    color: white;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .header-label {
+    flex: 0;
+    white-space: nowrap;
+}
+
 .neuroshima.sheet.actor .combat-section .section-header .item-control {
     color: white;
     font-size: 1.1em;
@@ -2537,6 +2603,46 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     width: 280px;
     font-size: 1.3em;
     pointer-events: none;
+}
+
+.neuroshima.roll-card .roll-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.neuroshima.roll-card .roll-header .actor-image-container {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--ns-border-main);
+    cursor: help;
+}
+
+.neuroshima.roll-card .roll-header .actor-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.neuroshima.roll-card .roll-header .header-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.neuroshima.roll-card .roll-header .header-details .weapon-title,
+.neuroshima.roll-card .roll-header .header-details .test-info {
+    line-height: 1.2;
+}
+
+.neuroshima.roll-card .roll-header .header-details .test-info,
+.neuroshima.roll-card .roll-header .header-details .initiative-tag {
+    font-size: 0.85em;
+    opacity: 0.8;
 }
 
 .neuroshima.roll-card.tooltip-mode .dice-results-grid {

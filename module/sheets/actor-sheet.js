@@ -62,6 +62,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       toggleHealing: this.prototype._onToggleHealing,
       configureHP: this.prototype._onConfigureHP,
       rollWeapon: this.prototype._onRollWeapon,
+      rollMeleeInitiative: this.prototype._onRollMeleeInitiative,
       unloadMagazine: this.prototype._onUnloadMagazine,
       showPatientCard: this.prototype._onShowPatientCard,
       requestHealing: this.prototype._onRequestHealing,
@@ -230,9 +231,11 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     });
 
     // Prepare Combat Tab Data
+    const weapons = this._prepareCombatWeapons(items);
     context.combat = {
       armor: items.filter(i => i.type === "armor" && i.system.equipped),
-      weapons: this._prepareCombatWeapons(items),
+      weaponsRanged: weapons.filter(w => w.type === "ranged" || w.type === "thrown"),
+      weaponsMelee: weapons.filter(w => w.type === "melee"),
       wounds: context.wounds,
       activeWounds: items.filter(i => i.type === "wound" && i.system.isActive),
       totalArmorPenalty: totalArmorPenalty,
@@ -240,13 +243,14 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       totalCombatPenalty: totalCombatPenalty,
       penaltyTooltip: penaltyTooltip,
       totalDamagePoints: system.combat.totalDamagePoints,
+      meleeInitiative: system.combat.meleeInitiative || 0,
       currentHP: system.hp.value || 0,
       maxHP: system.hp.max || 27,
       healingRate: healingRate,
       healingDaysRequired: Math.ceil(totalWoundPenalty / healingRate),
       anatomicalArmor: this._prepareAnatomicalArmor(items.filter(i => i.type === "armor" && i.system.equipped)),
       patientCardVersion: patientCardVersion,
-      patientData: { ...patientData, locations: patientData.locations }, // Przekazujemy wszystkie lokacje
+      patientData: { ...patientData, locations: patientData.locations }, 
       locationsMap: locationsMap,
       woundsByLocation: woundsByLocation,
       selectedWoundLocation: this._selectedWoundLocation,
@@ -1598,6 +1602,43 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       }
     }
     return groups;
+  }
+
+  /**
+   * Rzut na inicjatywę melee z poziomu arkusza.
+   */
+  async _onRollMeleeInitiative(event) {
+    event.preventDefault();
+    const actor = this.document;
+
+    const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+    
+    const dialog = new NeuroshimaInitiativeRollDialog({
+        actor: actor,
+        skill: "", // Gracz wybierze sam
+        isMeleeInitiative: true,
+        onRoll: async (rollData) => {
+            const rollResult = await game.neuroshima.NeuroshimaDice.rollInitiative({
+                ...rollData,
+                actor: actor,
+                chatMessage: true // Ten rzut chcemy widzieć na czacie
+            });
+            
+            // Zapisz wynik w systemie aktora
+            game.neuroshima.log("Aktualizacja inicjatywy melee:", {
+                successPoints: rollResult.successPoints,
+                actor: actor.name,
+                path: "system.combat.meleeInitiative"
+            });
+            await actor.update({ "system.combat.meleeInitiative": rollResult.successPoints });
+            
+            // Wymuś odświeżenie UI jeśli rzut był bez DSN (dla pewności)
+            if (!game.dice3d) this.render(false);
+            
+            return rollResult;
+        }
+    });
+    dialog.render(true);
   }
 
   /**

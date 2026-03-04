@@ -3,7 +3,16 @@ import { NEUROSHIMA } from "../config.js";
 
 /**
  * Klasa zarządzająca stanem i logiką starcia w zwarciu (Opposed Melee).
- * Centralizuje wszystkie operacje na starciu, zapewniając spójność danych.
+ * Centralizuje wszystkie operacje na starciu, zapewniając spójność danych między klientami.
+ * 
+ * Cykl życia starcia (MELEE DUEL):
+ * 1. createFromAttack: Atakujący rzuca 3k20, tworzona jest wiadomość z handlerem (status: "waiting-defender").
+ * 2. joinDefender: Obrońca (stargetowany aktor) rzuca 3k20 i dołącza do wiadomości (status: "active", phase: "initiative").
+ * 3. rollInitiative: Obie strony rzucają na Inicjatywę (Zręczność 3k20).
+ * 4. updateInitiative: Po obu rzutach system ustala zwycięzcę (phase: "modification").
+ * 5. modifyDie: (Opcjonalnie przy doubleSkillAction) Gracze rozdzielają punkty umiejętności.
+ * 6. declareAction (Segments): Gracze wybierają kości do kolejnych 3 segmentów walki (phase: "segments").
+ * 7. resolve (Duel Resolver): System rozstrzyga porównania kości i zadaje rany (phase: "resolved").
  */
 export class NeuroshimaMeleeDuel {
   /**
@@ -31,7 +40,8 @@ export class NeuroshimaMeleeDuel {
 
   /**
    * Automatycznie optymalizuje rzuty kośćmi używając punktów umiejętności.
-   * Wybiera kości najbliższe progu sukcesu i obniża je tak, aby stały się sukcesami.
+   * Wybiera kości najbliższe progu sukcesu (target) i obniża je tak, aby stały się sukcesami.
+   * Algorytm zachłanny: Najpierw naprawia kości, którym brakuje najmniej do sukcesu.
    */
   static _autoOptimizeDice(dice, target, skillPoints) {
     let mods = [0, 0, 0];
@@ -86,17 +96,19 @@ export class NeuroshimaMeleeDuel {
     const attackerStat = attackRollData.target || 10;
     const attackerSkill = attackRollData.skill || 0;
 
+    // Jeśli automatyczna optymalizacja jest włączona (brak reguły podwójnego działania), 
+    // system sam rozdziela punkty skilla aby zmaksymalizować sukcesy gracza.
     if (!game.settings.get("neuroshima", "doubleSkillAction")) {
         modSelf = this._autoOptimizeDice(attackerDiceRaw, attackerStat, attackerSkill);
     }
 
     const state = {
-      requestId: foundry.utils.randomID(),
+      requestId: foundry.utils.randomID(), // Unikalny ID dla celów socketów i pending flags
       status: "waiting-defender",
       phase: "initiative", // initiative -> modification -> segments -> resolved
       turn: 1,
       currentSegment: 1,
-      initiative: null, // 'attacker' or 'defender'
+      initiative: null, // 'attacker' lub 'defender'
       attacker: {
         actorUuid: attackerActor.uuid,
         tokenUuid: attackerActor.token?.uuid || null,
@@ -104,8 +116,8 @@ export class NeuroshimaMeleeDuel {
         img: attackerActor.img || "icons/svg/mystery-man.svg",
         stat: attackerStat,
         skillPoints: attackerSkill,
-        modSelf: modSelf,
-        modOpponent: [0, 0, 0],
+        modSelf: modSelf, // Tablica [x, y, z] modyfikatorów odjętych od odpowiednich kości
+        modOpponent: [0, 0, 0], // (DoubleSkillAction) Tablica modyfikatorów dodanych kościom przeciwnika
         ready: false,
         diceSpent: [false, false, false],
         initiativeRoll: null,
@@ -283,6 +295,9 @@ export class NeuroshimaMeleeDuel {
         suggestedSkill = state.defense.rollData?.weapon?.system?.skill || "";
     }
 
+    // Inicjatywa jest rzucana "cicho" (chatMessage: false).
+    // Wynik jest zapisywany tylko we flagach duelu, a tooltip rzutu podpinany
+    // pod plakietkę PP (Punkty Przewagi) w UI handlera.
     const dialog = new NeuroshimaInitiativeRollDialog({
         actor: actor,
         skill: suggestedSkill,
@@ -294,7 +309,8 @@ export class NeuroshimaMeleeDuel {
                 chatMessage: false
             });
             
-            // Wyślij wynik do MG aby zaktualizował wiadomość duelu
+            // Wyślij wynik do MG aby zaktualizował wiadomość duelu (synchronizacja stanu).
+            // Używamy socketlib, ponieważ tylko GM może edytować flagi wiadomości systemowych.
             if (game.user.isGM) {
                 await this.updateInitiative(role, {
                     successPoints: rollResult.successPoints,
@@ -318,6 +334,7 @@ export class NeuroshimaMeleeDuel {
 
   /**
    * Aktualizuje wynik inicjatywy w stanie starcia (wywoływane przez GM).
+   * Rozstrzyga, kto jest atakującym w tej turze walki wręcz.
    */
   async updateInitiative(role, rollResult) {
     if (!game.user.isGM) return;
@@ -328,7 +345,9 @@ export class NeuroshimaMeleeDuel {
     side.initiativeRoll = rollResult.successPoints;
     side.initiativeTooltip = rollResult.tooltip;
 
-    // Jeśli obie strony rzuciły, rozstrzygnij inicjatywę
+    // Po uzyskaniu obu wyników sprawdzamy kto wygrał:
+    // Wyższe SP (Punkty Sukcesu) dają Inicjatywę. 
+    // Przy remisie obie strony muszą rzucić ponownie (standard NS 1.5).
     if (state.attacker.initiativeRoll !== null && state.defender.initiativeRoll !== null) {
         if (state.attacker.initiativeRoll > state.defender.initiativeRoll) {
             state.initiative = "attacker";
@@ -337,7 +356,7 @@ export class NeuroshimaMeleeDuel {
             state.initiative = "defender";
             state.phase = "modification";
         } else {
-            // Remis - reset rzutów i powiadomienie
+            // Remis - resetujemy rzuty i czekamy na ponowny roll.
             state.attacker.initiativeRoll = null;
             state.defender.initiativeRoll = null;
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeDraw"));
@@ -349,13 +368,15 @@ export class NeuroshimaMeleeDuel {
   }
 
   /**
-   * Modyfikuje wynik kości (wersja bezkonfliktowa).
-   * @param {string} actorRole - Rola aktora wykonującego modyfikację ('attacker' lub 'defender')
-   * @param {string} targetRole - Rola aktora, którego kość jest modyfikowana ('attacker' lub 'defender')
-   * @param {number} dieIndex - Indeks kości (0-2)
-   * @param {number} delta - Zmiana (+1 lub -1)
+   * Modyfikuje wynik kości (ręczne rozdzielanie umiejętności).
+   * @param {string} actorRole - Rola gracza modyfikującego ('attacker' lub 'defender')
+   * @param {string} targetRole - Rola gracza, którego kość jest modyfikowana (może być ten sam gracz)
+   * @param {number} dieIndex - Indeks kości (0, 1 lub 2)
+   * @param {number} delta - Zmiana (+1 wydaje punkt umiejętności, -1 go cofa)
    */
   async modifyDie(actorRole, targetRole, dieIndex, delta) {
+    // Wszystkie modyfikacje przechodzą przez GM (socketlib), 
+    // aby zapewnić atomowość operacji i spójność stanu flag.
     if (!game.user.isGM) {
         return game.neuroshima.socket.executeAsGM("modifyMeleeDie", {
             messageId: this.message.id,
@@ -375,14 +396,16 @@ export class NeuroshimaMeleeDuel {
     const side = state[actorRole];
     if (!side) return;
 
-    // Oblicz aktualne wydatki punktów
+    // Obliczamy ile punktów skilla gracz już wydał w sumie (na siebie + na przeciwnika).
     const currentSpent = side.modSelf.reduce((a, b) => a + b, 0) + side.modOpponent.reduce((a, b) => a + b, 0);
     
+    // Walidacja dostępnych punktów (nie można wydać więcej niż skillValue).
     if (d > 0 && currentSpent >= side.skillPoints) {
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoSkillPoints"));
         return;
     }
 
+    // Naturalna 20 (fumble) nie może być modyfikowana żadną umiejętnością (Zasady NS 1.5).
     const targetDieValue = state.dice[targetRole][idx];
     if (targetDieValue === 20) {
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.Natural20CannotBeModified"));
@@ -390,20 +413,21 @@ export class NeuroshimaMeleeDuel {
     }
 
     if (actorRole === targetRole) {
-        // Modyfikacja własnej kości (tylko obniżanie)
+        // Obniżanie własnej kości (zwiększanie szansy na sukces).
         const currentMod = side.modSelf[idx];
         const newMod = Math.max(0, currentMod + d);
         
-        // Nie można obniżyć kości poniżej 1
+        // Kość nie może spaść poniżej 1 (naturalna 1 to krytyk).
         if (targetDieValue - newMod < 1 && d > 0) return;
         
         side.modSelf[idx] = newMod;
     } else {
-        // Modyfikacja kości przeciwnika (tylko podwyższanie)
+        // Podwyższanie kości przeciwnika (tylko przy doubleSkillAction).
+        // Gracz zmusza przeciwnika do rzutu wyższego, co może zmienić sukces w porażkę.
         const currentMod = side.modOpponent[idx];
         const newMod = Math.max(0, currentMod + d);
         
-        // Nie można podwyższyć kości powyżej 20
+        // Kość nie może wzrosnąć powyżej 20 (uwzględniając ewentualne obniżenie przez przeciwnika).
         const opponentModSelf = state[targetRole].modSelf[idx];
         if (targetDieValue - opponentModSelf + newMod > 20 && d > 0) return;
         
@@ -475,6 +499,7 @@ export class NeuroshimaMeleeDuel {
 
   /**
    * Zaznacza/odznacza kość do akcji w segmencie.
+   * Gracz wybiera od 1 do 3 kości, aby stworzyć cios (atak) lub obronę.
    */
   async selectDie(role, index) {
     if (!game.user.isGM) {
@@ -489,9 +514,10 @@ export class NeuroshimaMeleeDuel {
     if (state.phase !== "segments") return;
 
     // Kto może teraz wybierać kości?
-    let allowedRole = state.initiative; // Domyślnie aktywny (atakujący w danym segmencie)
+    // Jeśli nie ma zadeklarowanej akcji, kości wybiera ten, kto ma aktualnie inicjatywę (atakujący).
+    // Jeśli akcja jest zadeklarowana, to druga strona musi wybrać kości do obrony (respondent).
+    let allowedRole = state.initiative; 
     if (state.currentAction) {
-        // Jeśli jest zadeklarowana akcja, to responder (obrońca) wybiera kości
         allowedRole = state.currentAction.side === "attacker" ? "defender" : "attacker";
     }
 
@@ -500,13 +526,14 @@ export class NeuroshimaMeleeDuel {
     const side = state[role];
     if (!side.selectedDice) side.selectedDice = [];
 
+    // Nie można wybrać kości, która została już zużyta w poprzednim segmencie.
     if (side.diceSpent[index]) return;
 
     const idx = side.selectedDice.indexOf(index);
     if (idx > -1) {
         side.selectedDice.splice(idx, 1);
     } else {
-        // Max 3 kości
+        // Max 3 kości zgodnie z mechaniką ciosów złożonych NS 1.5.
         if (side.selectedDice.length < 3) {
             side.selectedDice.push(index);
         }
@@ -518,6 +545,7 @@ export class NeuroshimaMeleeDuel {
 
   /**
    * Deklaruje akcję w segmencie (Atak lub Pas).
+   * Atakujący (ten z inicjatywą) wybiera kości i tworzy propozycję ciosu.
    */
   async declareAction(role, type) {
     if (!game.user.isGM) {
@@ -538,7 +566,8 @@ export class NeuroshimaMeleeDuel {
     if (type === "attack") {
         if (selected.length === 0) return;
         
-        // Oblicz siłę (liczba sukcesów wśród zaznaczonych)
+        // Oblicz siłę ciosu (Power): liczba sukcesów wśród zaznaczonych kości.
+        // Uwzględniamy modyfikatory własne (modSelf) oraz modyfikatory narzucone przez przeciwnika (modOpponent).
         const dice = state.dice[role];
         const modsSelf = side.modSelf || [0, 0, 0];
         const otherRole = role === "attacker" ? "defender" : "attacker";
@@ -551,6 +580,7 @@ export class NeuroshimaMeleeDuel {
             if (val <= stat) totalSuccesses++;
         }
 
+        // Akcja zostaje zapisana w stanie jako "oczekująca na reakcję obrońcy".
         state.currentAction = {
             side: role,
             sideName: side.name,
@@ -560,16 +590,15 @@ export class NeuroshimaMeleeDuel {
             diceIndices: [...selected]
         };
         
-        // Wyczyść zaznaczenie
+        // Czyścimy tymczasowe zaznaczenie po deklaracji.
         side.selectedDice = [];
     } else if (type === "pass") {
-        // Pasowanie segmentu - zużywa jedną kość (najsłabszą/porażkę jeśli jest?)
-        // Wg zasad po prostu przechodzimy dalej, oznaczając jedną kość jako wydaną jeśli trzeba
-        // ale zwykle pas to po prostu brak akcji w tym segmencie.
-        // Implementacja: oznacz pierwszą wolną kość jako wydaną.
+        // Pasowanie segmentu - gracz z inicjatywą oddaje ruch bez ataku.
+        // Zużywa jedną dostępną kość (zazwyczaj tę o najgorszym wyniku).
         const firstFree = side.diceSpent.indexOf(false);
         if (firstFree > -1) side.diceSpent[firstFree] = true;
         
+        // Przechodzimy do kolejnego segmentu (lub kończymy starcie).
         await this._advanceSegment(state);
     }
 
@@ -599,12 +628,13 @@ export class NeuroshimaMeleeDuel {
         const selected = responder.selectedDice || [];
         const requiredDice = action.diceIndices.length;
 
+        // Zasada NS 1.5: Obrona przed ciosem złożonym wymaga przeznaczenia DOKŁADNIE tylu samo kości.
         if (selected.length !== requiredDice) {
             ui.notifications.warn(game.i18n.format("NEUROSHIMA.MeleeOpposed.ErrorMustSelectExactDice", { count: requiredDice }));
             return;
         }
 
-        // Oblicz siłę obrony
+        // Oblicz siłę obrony (liczba sukcesów).
         const dice = state.dice[responderRole];
         const modsSelf = responder.modSelf || [0, 0, 0];
         const opponentRole = action.side;
@@ -617,19 +647,22 @@ export class NeuroshimaMeleeDuel {
             if (val <= stat) totalDefenseSuccesses++;
         }
 
-        // Kości zużyte przez obie strony
+        // Kości zostają oznaczone jako zużyte u obu stron, niezależnie od wyniku obrony.
         for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
         for (const i of selected) responder.diceSpent[i] = true;
 
-        // Logika Przejęcia Inicjatywy (Reversal)
-        // Jeśli Atakujący wyrzucił porażkę (power=0), a Obrońca sukces (>0), Inicjatywa przechodzi
+        // LOGIKA PRZEJĘCIA INICJATYWY (Reversal):
+        // Jeśli Atakujący wyrzucił porażkę (power=0), a Obrońca wyrzucił przynajmniej jeden sukces (totalDefenseSuccesses > 0),
+        // to Obrońca przejmuje inicjatywę i staje się atakującym w następnych segmentach.
         if (action.power === 0 && totalDefenseSuccesses > 0) {
             state.initiative = responderRole;
             ui.notifications.info(game.i18n.format("NEUROSHIMA.MeleeOpposed.InitiativeTakenBy", { name: responder.name }));
         }
 
+        // Sprawdzenie skuteczności obrony:
+        // Obrona jest skuteczna, jeśli liczba sukcesów obrońcy >= liczbie sukcesów (power) atakującego.
         if (totalDefenseSuccesses < action.power) {
-            // OBRONA NIESKUTECZNA - obrażenia wchodzą
+            // OBRONA NIESKUTECZNA - obliczamy i zapisujemy obrażenia segmentu.
             const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
             const dmg = NeuroshimaMeleeDuelResolver.calculateSegmentDamage(state, action);
             if (dmg) {
@@ -638,16 +671,17 @@ export class NeuroshimaMeleeDuel {
             }
             ui.notifications.warn(game.i18n.format("NEUROSHIMA.MeleeOpposed.DefenseFailed", { need: action.power, have: totalDefenseSuccesses }));
         } else if (action.power > 0) {
-            // OBRONA UDANA
+            // OBRONA UDANA - atak został sparowany/uniknięty.
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.DefenseSuccess"));
         }
     } else {
-        // Przyjęcie obrażeń - zużyj kości atakującego
+        // PRZYJĘCIE OBRAŻEŃ (lub brak obrony):
+        // Kości atakującego zostają zużyte.
         for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
         
-        // Zawsze zużyj kości obrońcy (Daremna obrona)
+        // ZASADA DAREMNEJ OBRONY: Nawet jeśli gracz nie broni się skutecznie, 
+        // to i tak musi "spalić" kości w odpowiedzi na atak przeciwnika.
         const requiredDice = action.diceIndices.length;
-        // W przypadku przyjęcia obrażeń bez zaznaczenia, system zużyje pierwsze dostępne kości obrońcy
         let spentCount = 0;
         for (let i = 0; i < 3 && spentCount < requiredDice; i++) {
             if (!responder.diceSpent[i]) {
@@ -656,6 +690,7 @@ export class NeuroshimaMeleeDuel {
             }
         }
         
+        // Obrażenia wchodzą automatycznie jeśli atak był sukcesem.
         if (action.power > 0) {
             const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
             const dmg = NeuroshimaMeleeDuelResolver.calculateSegmentDamage(state, action);

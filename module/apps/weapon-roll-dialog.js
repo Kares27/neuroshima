@@ -159,6 +159,15 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       el.addEventListener('input', (event) => this._updatePreview(event));
     });
 
+    // Cancel button listener
+    const cancelBtn = html.querySelector('[data-action="cancel"]');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            this.close();
+        });
+    }
+
     this._updatePreview();
   }
 

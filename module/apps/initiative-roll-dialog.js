@@ -60,8 +60,68 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
    * Handle form submission.
    */
   async _onSubmit(event, form, formData) {
-    const result = await this._onRoll(event, form);
+    const action = event.submitter?.dataset.action || event.submitter?.getAttribute("action");
+    
+    if (action === "cancel") {
+        return this.close();
+    }
+    
+    // Extract data from formData object
+    const rollData = this._extractRollData(formData.object);
+    
+    // Close dialog IMMEDIATELY
     this.close();
+    
+    // Perform roll (this will await for Dice So Nice if configured)
+    const result = await this._performRoll(rollData);
+    
+    // Update combatant if needed
+    if (this.combatant && !this.options.isMeleeInitiative) {
+        await this.combatant.update({ initiative: result.successPoints });
+    }
+    
+    return result;
+  }
+
+  /**
+   * Extracts and converts form data into roll options.
+   * @private
+   */
+  _extractRollData(data) {
+    const penalties = {
+        mod: parseInt(data.modifier) || 0,
+        armor: data.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0,
+        wounds: data.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0
+    };
+
+    return {
+        attribute: data.attribute,
+        skill: data.skill,
+        useSkill: !!data.useSkill,
+        difficulty: data.difficulty,
+        modifier: penalties.mod,
+        useArmorPenalty: !!data.useArmorPenalty,
+        useWoundPenalty: !!data.useWoundPenalty,
+        skillBonus: parseInt(data.skillBonus) || 0,
+        attributeBonus: parseInt(data.attributeBonus) || 0,
+        rollMode: data.rollMode
+    };
+  }
+
+  /**
+   * Executes the roll using the provided data.
+   * @private
+   */
+  async _performRoll(rollData) {
+    let result;
+    if (this._onRollCallback) {
+        result = await this._onRollCallback(rollData);
+    } else {
+        result = await game.neuroshima.NeuroshimaDice.rollInitiative({
+            ...rollData,
+            actor: this.actor
+        });
+    }
     return result;
   }
 
@@ -148,7 +208,10 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     // Cancel button listener
     const cancelBtn = html.querySelector('[data-action="cancel"]');
     if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => this.close());
+        cancelBtn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            this.close();
+        });
     }
 
     this._updatePreview();
@@ -225,61 +288,6 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
   _prepareSubmitData(event, form, formData) {
     const data = super._prepareSubmitData(event, form, formData);
     return data;
-  }
-
-  /** @override */
-  async _processSubmitData(event, form, formData) {
-    const submitter = event.submitter || event.target;
-    const action = submitter?.dataset.action || submitter?.getAttribute("action");
-    
-    if (action === "cancel") {
-        return this.close();
-    }
-    
-    await this._onRoll(event, form);
-    this.close();
-  }
-
-  async _onRoll(event, target) {
-    const form = this.element.tagName === "FORM" ? this.element : this.element.querySelector("form");
-    const formData = new foundry.applications.ux.FormDataExtended(form).object;
-    
-    // Convert form fields to correct types
-    const penalties = {
-        mod: parseInt(formData.modifier) || 0,
-        armor: formData.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0,
-        wounds: formData.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0
-    };
-
-    const rollData = {
-        attribute: formData.attribute,
-        skill: formData.skill,
-        useSkill: !!formData.useSkill,
-        difficulty: formData.difficulty,
-        modifier: penalties.mod,
-        useArmorPenalty: !!formData.useArmorPenalty,
-        useWoundPenalty: !!formData.useWoundPenalty,
-        skillBonus: parseInt(formData.skillBonus) || 0,
-        attributeBonus: parseInt(formData.attributeBonus) || 0,
-        rollMode: formData.rollMode
-    };
-
-    let result;
-    if (this._onRollCallback) {
-        result = await this._onRollCallback(rollData);
-    } else {
-        result = await game.neuroshima.NeuroshimaDice.rollInitiative({
-            ...rollData,
-            actor: this.actor
-        });
-    }
-
-    // Jeśli mamy combatanta i nie jesteśmy w melee, zaktualizuj go
-    if (this.combatant && !this.options.isMeleeInitiative) {
-        await this.combatant.update({ initiative: result.successPoints });
-    }
-
-    return result;
   }
 
   _onCancel(event, target) {

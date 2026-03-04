@@ -365,7 +365,23 @@ Zaimplementowano zaawansowany cykl życia starcia w zwarciu:
 - **Automatyzacja Obrażeń**: Różnica SP automatycznie wybiera tier obrażeń broni (`damageMelee1/2/3`). Przewaga 1 SP = D, 2 SP = L, 3+ SP = C.
 - **Socketlib Integration**: Wszystkie operacje na danych (aktualizacja flag wiadomości, modyfikacja statystyk) są wykonywane przez GM za pomocą `socketlib`.
 
-## 11. Dobre Praktyki ApplicationV2
+## 12. Arkusz Aktora - Usprawnienia Walki (Character Sheet v1.6)
+
+### Sekcja Walki (Combat Tab)
+- **Podział Broni**: Bronie w zakładce Walka zostały podzielone na dwie wyraźne grupy pionowe: **Dystansowa (Ranged/Thrown)** i **Wręcz (Melee)**.
+- **Inicjatywa Zwarcia (Melee Initiative)**: Nagłówek sekcji walki wręcz zawiera teraz dedykowany input `system.combat.meleeInitiative` oraz przycisk rzutu (ikona kostki), pozwalający na szybkie planowanie pojedynków bez otwierania combat trackera.
+- **Dynamiczna Wysokość**: Listy broni mają ograniczoną wysokość (ok. 2 elementy) z automatycznym przewijaniem, co oszczędza miejsce na arkuszu przy dużej liczbie ekwipunku.
+- **Synchronizacja z Dice So Nice**: Wszystkie rzuty inicjatywy (zarówno w trackerze, jak i na arkuszu) oraz starcia melee czekają na zakończenie animacji rzutu kośćmi 3D za pomocą hooka `diceSoNiceRollComplete`. Zapobiega to przedwczesnej aktualizacji danych w bazie (np. wpisaniu wyniku do Combat Trackera) zanim gracz zobaczy wynik na kościach.
+- **Bogate Tooltipy na Awatarach**: Na kartach czatu (rzuty standardowe, broń, inicjatywa) awatar aktora posiada teraz bogaty tooltip HTML pokazujący pełną matematykę rzutu: bazowy atrybut, modyfikatory PT, kary za rany i pancerz oraz bonusy umiejętności.
+- **Poprawki UX Dialogów**: Dialogi rzutu (Initiative, Weapon) zamykają się natychmiast po kliknięciu "Rzuć", a asynchroniczna logika rzutu kontynuuje pracę w tle (czekając na kości 3D). Przycisk "Anuluj" poprawnie blokuje wysyłanie formularza.
+- **Logika Open Test (Inicjatywa)**: Naturalna 20 na dowolnej kości jest teraz twardo zablokowana jako automatyczna porażka i nie może zostać zmodyfikowana przez punkty umiejętności.
+- **Melee Header**: Zoptymalizowano układ nagłówka walki wręcz na arkuszu - kontrolki (input inicjatywy, rzut) znajdują się po lewej stronie przy ikonach, a etykieta sekcji po prawej. Listy broni posiadają teraz sztywny limit wysokości (max 2 przedmioty) z płynnym przewijaniem.
+
+### Architektura Danych
+- **Trwałość Danych**: `prepareDerivedData` w modelu aktora bezpiecznie łączy dane obliczeniowe z polami bazy danych, co zapobiega nadpisywaniu manualnie ustawionych wartości (np. inicjatywy melee) podczas odświeżania arkusza.
+- **Jedno Źródło Prawdy**: Wszelkie kalkulacje progów bazują na `attributeTotals`, co gwarantuje spójność wyników między arkuszem a logiką rzutów.
+
+## 13. Dobre Praktyki ApplicationV2
 
 ### Unikanie Zagnieżdżonych Formularzy (Krytyczne)
 ApplicationV2 domyślnie generuje kontener `<form>` (ustawienie `tag: "form"`). 

@@ -28,7 +28,7 @@
                     {{else}}
                         {{#if (and (and (eq phase 'initiative') (eq status 'active')) isAttacker)}}
                             <button type="button" class="melee-init-btn" data-action="roll-initiative" data-role="attacker">
-                                <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeOpposed.Initiative"}}
+                                {{localize "NEUROSHIMA.MeleeOpposed.Initiative"}}
                             </button>
                         {{/if}}
                     {{/if}}
@@ -60,7 +60,7 @@
                         {{else}}
                             {{#if (and (and (eq phase 'initiative') (eq status 'active')) isDefender)}}
                                 <button type="button" class="melee-init-btn" data-action="roll-initiative" data-role="defender">
-                                    <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeOpposed.Initiative"}}
+                                    {{localize "NEUROSHIMA.MeleeOpposed.Initiative"}}
                                 </button>
                             {{/if}}
                         {{/if}}

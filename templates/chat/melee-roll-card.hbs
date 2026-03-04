@@ -1,29 +1,19 @@
 <div class="neuroshima roll-card weapon-roll-card melee {{rollMode}}" 
     data-weapon-id="{{weaponId}}"
-    data-actor-id="{{actorId}}"
-    {{#if showTooltip}}
-    data-tooltip="<strong>{{localize 'NEUROSHIMA.Items.Fields.BaseDifficulty'}}:</strong> {{localize difficultyLabel}} ({{penalties.base}}%)<br>
-                  <strong>{{localize 'NEUROSHIMA.Roll.Modifier'}}:</strong> {{penalties.mod}}%<br>
-                  <strong>{{localize 'NEUROSHIMA.Roll.PenaltyArmor'}}:</strong> {{penalties.armor}}%<br>
-                  <strong>{{localize 'NEUROSHIMA.Roll.PenaltyWounds'}}:</strong> {{penalties.wounds}}%<br>
-                  {{#if penalties.location}}<strong>{{localize 'NEUROSHIMA.Roll.HitLocation'}}:</strong> {{penalties.location}}%<br>{{/if}}
-                  <strong>{{localize 'NEUROSHIMA.Roll.TotalModifier'}}:</strong> {{totalPenalty}}%<br>
-                  <hr>
-                  <strong>{{localize 'NEUROSHIMA.Attributes.Attributes'}}:</strong> {{baseStat}}<br>
-                  {{#if (ne attributeBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.AttributeBonusAbbr'}}:</strong> {{attributeBonus}}<br>{{/if}}
-                  <strong>{{localize 'NEUROSHIMA.Items.Fields.Skill'}}:</strong> {{baseSkill}}<br>
-                  {{#if (ne skillBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.SkillBonusAbbr'}}:</strong> {{skillBonus}}<br>{{/if}}
-                  <strong>{{localize 'NEUROSHIMA.Roll.Target'}}:</strong> {{target}}"
-    data-tooltip-direction="LEFT"
-    {{/if}}>
+    data-actor-id="{{actorId}}">
     
     <header class="roll-header">
-        <div class="weapon-title">
-            {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
-            {{label}}
+        <div class="actor-image-container" {{#if showTooltip}}data-tooltip="{{tooltip}}" data-tooltip-direction="LEFT"{{/if}}>
+            <img src="{{actorImg}}" width="32" height="32" />
         </div>
-        <div class="test-type">
-            {{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.Actions.Attack"}}{{else}}{{localize "NEUROSHIMA.Actions.Defense"}}{{/if}}
+        <div class="header-details">
+            <div class="weapon-title">
+                {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
+                {{label}}
+            </div>
+            <div class="test-type">
+                {{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.Actions.Attack"}}{{else}}{{localize "NEUROSHIMA.Actions.Defense"}}{{/if}}
+            </div>
         </div>
     </header>
     <hr class="dotted-hr">
