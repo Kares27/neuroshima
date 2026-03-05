@@ -9,15 +9,15 @@
     {{#if combat.meleePending}}
     <div class="melee-pending-attacker">
         <div class="attacker-header">
-            <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeOpposed.PendingAttacker"}}
+            <i class="fas fa-hand-fist"></i> {{localize "NEUROSHIMA.MeleeOpposed.PendingAttacker"}}
         </div>
         <div class="attacker-details">
             <span class="attacker-name">{{combat.meleePending.attackerName}}</span>
             <div class="attacker-actions">
-                <a class="action-btn join" data-action="respondToOpposed" data-handler-id="{{combat.meleePending.messageId}}" title="{{localize 'NEUROSHIMA.MeleeOpposed.Join'}}">
+                <a class="action-btn join" data-action="respondToOpposed" data-duel-id="{{combat.meleePending.duelId}}" title="{{localize 'NEUROSHIMA.MeleeOpposed.Join'}}">
                     <i class="fas fa-check"></i>
                 </a>
-                <a class="action-btn ignore" data-action="dismissOpposed" data-request-id="{{combat.meleePending.requestId}}" title="{{localize 'NEUROSHIMA.Actions.Ignore'}}">
+                <a class="action-btn ignore" data-action="dismissOpposed" data-duel-id="{{combat.meleePending.duelId}}" title="{{localize 'NEUROSHIMA.Actions.Ignore'}}">
                     <i class="fas fa-times"></i>
                 </a>
             </div>

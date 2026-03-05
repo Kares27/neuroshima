@@ -151,7 +151,8 @@
             "Unload": "Unload",
             "Ignore": "Ignore",
             "ReverseDamage": "Reverse Damage",
-            "Rest": "Rest"
+            "Rest": "Rest",
+            "Refresh": "Refresh"
         },
         "Rest": {
             "Title": "Rest",
@@ -311,6 +312,10 @@
             "HealingAlreadyApplied": "Healing has already been applied.",
             "Natural20CannotBeModified": "Natural 20 cannot be modified!"
         },
+        "Combat": {
+            "Combatants": "Combatants",
+            "Turn": "Turn"
+        },
         "MeleeOpposed": {
             "Title": "Melee Action",
             "Duel": "Melee Duel",
@@ -328,10 +333,14 @@
             "PendingAttacker": "Pending Attacker",
             "Join": "Join",
             "Targeting": "Targeting",
+            "MeleeTurn": "Turn",
             "InitiativeTest": "Melee Initiative",
             "InitiativeDraw": "Initiative draw! Roll again.",
             "RollInitiative": "Roll Initiative",
             "InitiativeWaiting": "Waiting for opponent's roll...",
+            "DuelStarted": "Duel started!",
+            "AttackInstruction": "attacks! Select a weapon on your sheet to roll defense.",
+            "InitiativeTakenBy": "{name} takes over Initiative!",
             "PhaseInitiative": "Initiative",
             "PhaseModification": "Modification",
             "PhaseSegments": "Segments",
@@ -347,7 +356,6 @@
             "WaitingForResponse": "Waiting for reaction...",
             "SelectDiceInstruction": "Select dice (successes) you want to use.",
             "TakeoverInitiative": "Takeover Initiative",
-            "InitiativeTakenBy": "{name} takes over Initiative!",
             "DefenseSuccess": "Defense successful!",
             "DefenseFailed": "Defense failed (Need: {need}, Have: {have})! Damage applies.",
             "AdvantagePoints": "Advantage Points (Initiative)",
@@ -355,7 +363,18 @@
             "ErrorNoSuccessesInAction": "Selected dice must contain at least one success!",
             "ErrorNoDiceSelected": "You must select at least one die!",
             "ErrorInsufficientDefense": "You need at least {need} successes for defense!",
-            "ErrorMustSelectExactDice": "You must select exactly {count} dice for defense!"
+            "ErrorMustSelectExactDice": "You must select exactly {count} dice for defense!",
+            "ShowActiveDuels": "Show Active Duels",
+            "OpenDuelTracker": "Open Duel Tracker",
+            "FinishDuel": "Finish Duel",
+            "DuelIgnored": "Duel ignored.",
+            "WaitingForReady": "Waiting for ready...",
+            "WaitingForAction": "Waiting for action...",
+            "ResolveSegment": "Resolve segment",
+            "NextTurn": "Next turn",
+            "ResolveDuel": "Resolve duel",
+            "Roll3k20": "Roll 3k20",
+            "WaitingForRoll": "Waiting for roll..."
         },
         "Tabs": {
             "Attributes": "Attributes",

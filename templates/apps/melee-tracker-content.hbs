@@ -1,0 +1,75 @@
+<div class="melee-tracker-content">
+    <div class="dice-pools">
+        {{!-- Pula Atakującego --}}
+        <div class="dice-pool attacker {{#if (eq initiative 'attacker')}}active{{/if}}">
+            <div class="pool-title">
+                {{localize "NEUROSHIMA.Actions.Attack"}} ({{attacker.stat}})
+            </div>
+            <div class="dice-grid">
+                {{#if attackerDice.length}}
+                    {{#each attackerDice}}
+                        <div class="die-container {{#if this.spent}}spent{{/if}} {{#if this.selected}}selected{{/if}}" 
+                             data-index="{{@index}}" data-owner="attacker">
+                            
+                            {{#if ../canModify}}
+                                <div class="die-mods">
+                                    <button type="button" data-action="modDie" data-side="attacker" data-target-side="attacker" data-index="{{@index}}" data-delta="1" {{#if (not ../isAttacker)}}disabled{{/if}}>-</button>
+                                    <button type="button" data-action="modDie" data-side="defender" data-target-side="attacker" data-index="{{@index}}" data-delta="1" {{#if (not ../isDefender)}}disabled{{/if}}>+</button>
+                                </div>
+                            {{/if}}
+
+                            <div class="die {{#if this.isSuccess}}success{{else}}failure{{/if}} {{#if this.isNat20}}nat-20{{/if}}"
+                                 {{#if ../canSelect}}data-action="declareAction" data-index="{{@index}}"{{/if}}>
+                                {{this.modified}}
+                            </div>
+                        </div>
+                    {{/each}}
+                {{else}}
+                    {{#if isAttacker}}
+                        <button type="button" class="reroll-btn" data-action="reroll3k20" data-role="attacker">
+                            <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.MeleeOpposed.Roll3k20"}}
+                        </button>
+                    {{else}}
+                        <div class="waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}</div>
+                    {{/if}}
+                {{/if}}
+            </div>
+        </div>
+
+        {{!-- Pula Obrońcy --}}
+        <div class="dice-pool defender {{#if (eq initiative 'defender')}}active{{/if}}">
+            <div class="pool-title">
+                {{localize "NEUROSHIMA.Actions.Defense"}} ({{defender.stat}})
+            </div>
+            <div class="dice-grid">
+                {{#if defenderDice.length}}
+                    {{#each defenderDice}}
+                        <div class="die-container {{#if this.spent}}spent{{/if}} {{#if this.selected}}selected{{/if}}" 
+                             data-index="{{@index}}" data-owner="defender">
+                            
+                            {{#if ../canModify}}
+                                <div class="die-mods">
+                                    <button type="button" data-action="modDie" data-side="defender" data-target-side="defender" data-index="{{@index}}" data-delta="1" {{#if (not ../isDefender)}}disabled{{/if}}>-</button>
+                                    <button type="button" data-action="modDie" data-side="attacker" data-target-side="defender" data-index="{{@index}}" data-delta="1" {{#if (not ../isAttacker)}}disabled{{/if}}>+</button>
+                                </div>
+                            {{/if}}
+
+                            <div class="die {{#if this.isSuccess}}success{{else}}failure{{/if}} {{#if this.isNat20}}nat-20{{/if}}"
+                                 {{#if ../canSelect}}data-action="declareAction" data-index="{{@index}}"{{/if}}>
+                                {{this.modified}}
+                            </div>
+                        </div>
+                    {{/each}}
+                {{else}}
+                    {{#if isDefender}}
+                        <button type="button" class="reroll-btn" data-action="reroll3k20" data-role="defender">
+                            <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.MeleeOpposed.Roll3k20"}}
+                        </button>
+                    {{else}}
+                        <div class="waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}</div>
+                    {{/if}}
+                {{/if}}
+            </div>
+        </div>
+    </div>
+</div>

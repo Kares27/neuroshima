@@ -388,3 +388,40 @@ ApplicationV2 domyślnie generuje kontener `<form>` (ustawienie `tag: "form"`).
 - **Zasada**: Szablony `.hbs` używane w ApplicationV2 **nie mogą** zawierać tagu `<form>`.
 - **Skutek błędu**: Zagnieżdżenie tagów `<form>` powoduje błąd DOM, który w Foundry V13 wymusza pełne przeładowanie przeglądarki (navigation loop) i niszczy style interfejsu (HUD).
 - **Rozwiązanie**: Szablon powinien być opakowany w `<div>` lub `<section>`, a przyciski wysyłające powinny korzystać z `type="submit"` lub `data-action` obsługiwanego przez `_onAction`.
+
+## 14. Integracja Combat Trackera (Melee Duel Integration)
+
+### `NeuroshimaCombatTracker` (Application V2)
+- **Bezpieczne Wstrzykiwanie Treści**: System nie nadpisuje statycznej właściwości `PARTS`, aby uniknąć konfliktów z rdzeniem Foundry VTT. Zamiast tego, hook `_onRender` wstrzykuje HTML podsumowania walk (`melee-summary.hbs`) bezpośrednio do DOM paska bocznego przy użyciu `insertAdjacentHTML`.
+- **Podsumowanie Walk Wręcz**: Wyświetla listę aktywnych starć bezpośrednio nad listą inicjatywy. Każdy wpis zawiera:
+  - Nazwy/Ikony uczestników (Atakujący vs Obrońca).
+  - Aktualny segment i turę starcia.
+  - Przyciski szybkiego dostępu: "Otwórz Panel" oraz "Zakończ Starcie" (X).
+- **Reaktywność**: Tracker odświeża się automatycznie przy każdej zmianie flag w dokumencie `Combat`, co gwarantuje spójność danych u wszystkich graczy.
+
+## 15. Zaawansowany Cykl Życia Walki Wręcz
+
+### Automatyzacja Workflow
+- **Inicjacja Ataku**: Rzut bronią melee na stargetowanego przeciwnika automatycznie tworzy dokument starcia (`NeuroshimaMeleeDuel`) i zapisuje go w flagach aktywnej walki (Combat).
+- **Auto-Open**: Hook `createChatMessage` natychmiast otwiera `NeuroshimaMeleeDuelTracker` u atakującego, obrońcy oraz MG.
+- **Obsługa Tokenów Syntetycznych (UUID)**: System identyfikacji uczestników bazuje na `UUID` tokenów, co pozwala na prowadzenie wielu niezależnych starć z udziałem NPC (unlinked tokens) na tej samej scenie.
+- **Powiadomienia na Arkuszu**: Jeśli aktor jest celem aktywnego ataku, na jego arkuszu w sekcji walki pojawia się czerwony panel informacyjny z przyciskiem szybkiej reakcji (rzut obronny).
+
+### Zarządzanie Starciem
+- **Finish Duel**: Akcja zakończenia starcia całkowicie czyści flagi z dokumentu Combat i zamyka powiązane interfejsy.
+- **Trwałość Stanu**: Wszystkie informacje o segmentach, wykorzystanych kościach i inicjatywie zwarcia są przechowywane w bazie danych, co pozwala na przerwanie i wznowienie walki w dowolnym momencie.
+
+## 16. Integracja z Combat Trackerem (Application V2)
+
+System Neuroshima 1.5 rozszerza natywny interfejs **Combat Trackera** o dedykowaną sekcję walki wręcz.
+
+### Rozszerzenie Sidebar (NeuroshimaCombatTracker)
+- **Dynamiczna Iniekcja HTML**: Podsumowanie aktywnych starć (`melee-summary.hbs`) jest wstrzykiwane bezpośrednio do DOM paska bocznego przy każdym renderowaniu.
+- **Wizualizacja Dueli**: Każde aktywne starcie jest wyświetlane jako wiersz z ikonami uczestników, aktualnym segmentem oraz przyciskami sterującymi (`openDuelTracker`, `finishDuel`).
+- **Interaktywność**: Kliknięcie ikony "pięści" otwiera panel starcia, a przycisk "X" usuwa je z walki.
+
+### Odświeżanie Reaktywne
+- **Hook updateCombat**: Każda zmiana flag w dokumencie Combat wymusza natychmiastowe odświeżenie Sidebar u wszystkich graczy.
+- **Status Tury**: System automatycznie przelicza i wyświetla etykietę aktualnego segmentu/tury dla każdego pojedynku w trackerze.
+- **Obsługa Błędów Renderowania**: Zastosowanie natywnych metod DOM (`querySelector`) gwarantuje kompatybilność z Application V2 i zapobiega błędom ładowania Sidebar.
+

@@ -2679,6 +2679,120 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-size: 0.9em;
 }
 
+/* Melee Summary in Combat Tracker */
+.active-duels-wrapper {
+    margin: 5px;
+    border: 1px solid var(--ns-border-main, #444);
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    overflow: hidden;
+    font-family: 'SpecialElite', serif;
+}
+
+.active-duels-section .section-header {
+    background: #600;
+    color: white;
+    padding: 4px 8px;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.melee-duels-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.melee-duel-item {
+    padding: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.melee-duel-item:first-child {
+    border-top: none;
+}
+
+.melee-duel-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.duel-participants {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.participant img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--ns-border-main, #444);
+    object-fit: cover;
+}
+
+.vs {
+    font-size: 0.8em;
+    font-weight: bold;
+    opacity: 0.6;
+    color: #ff4444;
+}
+
+.duel-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8em;
+    line-height: 1.2;
+}
+
+.duel-meta .turn {
+    font-weight: bold;
+    color: #eee;
+}
+
+.duel-meta .phase {
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.duel-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.duel-actions a {
+    color: #eee;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.duel-actions a:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.duel-actions a.finish-duel:hover {
+    color: #ff4444;
+}
+
+.melee-status-icon {
+    animation: pulse-red-icon 2s infinite;
+}
+
+@keyframes pulse-red-icon {
+    0% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 68, 68, 0); }
+    50% { transform: scale(1.2); text-shadow: 0 0 5px rgba(255, 68, 68, 0.8); }
+    100% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 68, 68, 0); }
+}
+
 
 
 

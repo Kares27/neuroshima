@@ -131,8 +131,272 @@ body.theme-dark {
     justify-content: flex-end;
 }
 
-.neuroshima .flex0 {
-    flex: 0;
+/* Melee Duel Integration in Sidebar */
+.active-duels-wrapper {
+    margin: 5px 0;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.active-duels-section {
+    background: var(--ns-bg-panel);
+    padding: 5px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.active-duels-section .section-header {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.9em;
+    border-bottom: 1px solid var(--ns-border-light);
+    margin-bottom: 5px;
+    padding-bottom: 2px;
+    color: var(--ns-text-accent);
+}
+
+.melee-duels-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.melee-duel-item {
+    padding: 5px;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.melee-duel-item:last-child {
+    border-bottom: none;
+}
+
+.duel-participants {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.duel-participants .participant img {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+}
+
+.duel-participants .vs {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+}
+
+.duel-participants .duel-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75em;
+    line-height: 1.1;
+    overflow: hidden;
+}
+
+.duel-participants .duel-meta .turn,
+.duel-participants .duel-meta .phase {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.duel-participants .duel-meta .phase {
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.duel-participants .duel-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.duel-participants .open-duel,
+.duel-participants .finish-duel {
+    color: var(--ns-text-main);
+    padding: 5px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.duel-participants .open-duel:hover {
+    background: var(--ns-bg-hover);
+    color: var(--ns-text-accent);
+}
+
+.duel-participants .finish-duel:hover {
+    background: rgba(160, 46, 46, 0.2);
+    color: #ff4444;
+}
+
+/* Melee Duel Tracker Application */
+.melee-duel-tracker {
+    min-height: 400px;
+}
+
+.melee-duel-tracker .tracker-header {
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.melee-duel-tracker .gm-controls {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.melee-duel-tracker .control-btn.finish {
+    color: var(--ns-text-accent);
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.melee-duel-tracker .control-btn.finish:hover {
+    transform: scale(1.2);
+}
+
+.melee-duel-tracker .duel-status {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.melee-duel-tracker .participant-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 15px;
+}
+
+.melee-duel-tracker .participant-card {
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+}
+
+.melee-duel-tracker .participant-card.active {
+    border-color: var(--ns-text-accent);
+    box-shadow: 0 0 10px rgba(160, 46, 46, 0.3);
+}
+
+.melee-duel-tracker .participant-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.melee-duel-tracker .participant-info img {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 4px;
+}
+
+.melee-duel-tracker .participant-info .name {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.melee-duel-tracker .stat-line {
+    font-size: 0.9em;
+    display: flex;
+    gap: 10px;
+}
+
+.melee-duel-tracker .dice-pool {
+    display: flex;
+    justify-content: space-around;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.theme-dark .melee-duel-tracker .dice-pool {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.melee-duel-tracker .die-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.melee-duel-tracker .mod-btn {
+    font-size: 0.7em;
+    padding: 2px 5px;
+    line-height: 1;
+}
+
+.melee-duel-tracker .segment-controls {
+    grid-column: span 2;
+    padding: 10px 15px;
+    border-top: 1px solid var(--ns-border-light);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.melee-duel-tracker .segment-header {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    text-align: center;
+    font-size: 1.2em;
+}
+
+.melee-duel-tracker .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.melee-duel-tracker .ready-banner {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #4caf50;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.melee-duel-tracker .initiative-badge {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    background: var(--ns-text-accent);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 5;
 }
 
 /* DialogV2 Styles */
@@ -3037,3 +3301,222 @@ body.theme-dark {
     padding: 8px;
     cursor: pointer;
 }
+
+/* Melee Duel Tracker */
+.melee-duel-tracker {
+    font-family: 'SpecialElite', sans-serif;
+    background: var(--ns-bg-sheet);
+    border: 2px solid var(--ns-border-main);
+}
+
+.melee-duel-tracker .participants-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+}
+
+.melee-duel-tracker .participant {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.melee-duel-tracker .participant img {
+    width: 48px;
+    height: 48px;
+    border: 1px solid var(--ns-border-main);
+}
+
+.melee-duel-tracker .participant.has-initiative {
+    box-shadow: 0 0 10px var(--ns-text-accent);
+    border: 1px solid var(--ns-text-accent);
+}
+
+.melee-duel-tracker .vs {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    padding: 0 20px;
+}
+
+.melee-duel-tracker .dice-pools {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+}
+
+.melee-duel-tracker .dice-pool {
+    flex: 1;
+    text-align: center;
+}
+
+.melee-duel-tracker .dice-grid {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.melee-duel-tracker .die-container {
+    position: relative;
+    width: 50px;
+}
+
+.melee-duel-tracker .die {
+    width: 50px;
+    height: 50px;
+    line-height: 50px;
+    font-size: 1.2em;
+    border: 2px solid var(--ns-border-main);
+    background: var(--ns-bg-input);
+    cursor: pointer;
+    text-align: center;
+}
+
+.melee-duel-tracker .die.success {
+    border-color: #2e7d32;
+    background: rgba(46, 125, 50, 0.1);
+}
+
+.melee-duel-tracker .die.failure {
+    border-color: #c62828;
+    background: rgba(198, 40, 40, 0.1);
+}
+
+.melee-duel-tracker .die.spent {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.melee-duel-tracker .die-mods {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.melee-duel-tracker .die-mods button {
+    padding: 0 5px;
+    font-size: 0.8em;
+}
+
+.melee-duel-tracker .melee-tracker-footer {
+    padding: 10px;
+    border-top: 2px solid var(--ns-border-main);
+    text-align: center;
+}
+
+.melee-duel-tracker .ready-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.melee-duel-tracker .ready-btn {
+    padding: 5px 15px;
+    border: 1px solid var(--ns-border-main);
+    cursor: pointer;
+}
+
+.melee-duel-tracker .ready-btn.active {
+    background: #2e7d32;
+    color: white;
+}
+
+/* Combat Tracker Tabs */
+.neuroshima.combat-tracker .neuroshima-tracker-tabs {
+    flex: 0 0 32px;
+    border-top: 1px solid var(--ns-border-main);
+    border-bottom: 1px solid var(--ns-border-main);
+    background: var(--ns-bg-header);
+    display: flex;
+    justify-content: space-around;
+}
+
+.neuroshima.combat-tracker .neuroshima-tracker-tabs .item {
+    line-height: 32px;
+    font-size: 1.2rem;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+}
+
+.neuroshima.combat-tracker .neuroshima-tracker-tabs .item.active {
+    text-shadow: 0 0 10px var(--ns-border-focus);
+    border-bottom: 3px solid var(--ns-border-focus);
+}
+
+.neuroshima.combat-tracker .melee-tab {
+    padding: 5px;
+    overflow-y: auto;
+}
+
+.neuroshima.combat-tracker .tab:not(.active) {
+    display: none !important;
+}
+
+.neuroshima.combat-tracker .melee-duels-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.neuroshima.combat-tracker .melee-duel-item {
+    border: 1px solid var(--ns-border-main);
+    background: var(--ns-bg-panel);
+    margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.neuroshima.combat-tracker .duel-participants {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.neuroshima.combat-tracker .participant {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.neuroshima.combat-tracker .participant img {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.combat-tracker .vs {
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.neuroshima.combat-tracker .duel-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+    border-top: 1px dashed var(--ns-border-light);
+    padding-top: 3px;
+    font-size: 0.9rem;
+}
+
+.neuroshima.combat-tracker .open-duel {
+    color: var(--ns-text-clickable);
+    cursor: pointer;
+}
+
+.neuroshima.combat-tracker .open-duel:hover {
+    text-shadow: 0 0 5px var(--ns-text-clickable);
+}
+

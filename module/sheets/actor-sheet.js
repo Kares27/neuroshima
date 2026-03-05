@@ -151,11 +151,31 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     context.tricks = items.filter(i => i.type === "trick");
     context.wounds = items.filter(i => i.type === "wound");
 
-    // Prepare pending melee attack (pick from opposedPending)
-    const opposedPending = actor.getFlag("neuroshima", "opposedPending") || {};
-    const pendingList = Object.values(opposedPending).filter(p => p.messageId);
-    const meleePending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
-    game.neuroshima?.log("_prepareContext meleePending (from opposedPending)", meleePending);
+    // Prepare pending melee attack from active duels
+    let meleePending = null;
+    const activeDuel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(actor);
+    if (activeDuel) {
+        const state = activeDuel.state;
+        // Check if we are a potential defender waiting to join
+        const isPotentialDefender = state.status === "waiting-defender" && 
+            (state.attackerTargets || []).some(t => t.uuid === actor.uuid || t.id === actor.id || t.uuid === actor.token?.uuid);
+        
+        // Or if we are the joined defender but haven't rolled yet
+        const isJoinedDefenderWaiting = state.status === "active" && 
+            (state.defender?.actorUuid === actor.uuid || state.defender?.tokenUuid === actor.token?.uuid) && 
+            state.defender.initiativeRoll === null;
+        
+        if (isPotentialDefender || isJoinedDefenderWaiting) {
+            meleePending = {
+                attackerName: state.attacker.name,
+                duelId: state.id,
+                requestId: state.id,
+                isPotential: isPotentialDefender,
+                isJoined: isJoinedDefenderWaiting
+            };
+        }
+    }
+    game.neuroshima?.log("_prepareContext meleePending (from activeDuel)", meleePending);
 
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
@@ -1230,18 +1250,22 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             ? targets.map(t => t.actor?.uuid).filter(Boolean)
             : targets.map(t => t.document.uuid);
 
-        // Wykrywanie ataku vs obrony w melee
+        // Wykrywanie ataku vs obrony w melee przy użyciu MeleeDuel API
         let meleeAction = "attack";
         if (weapon.system.weaponType === "melee") {
-            const opposedPending = this.document.getFlag("neuroshima", "opposedPending") || {};
-            const pendingList = Object.values(opposedPending).filter(p => p.messageId);
-            const pending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
-            
-            if (pending) {
-                meleeAction = "defense";
-                game.neuroshima.log(`Wykryto flagę opposedPending (melee): Atakujący: ${pending.attackerName}`);
+            const activeDuel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(this.document);
+            if (activeDuel) {
+                const state = activeDuel.state;
+                // Jeśli jesteśmy obrońcą i czekamy na naszą reakcję
+                const isPotentialDefender = state.status === "waiting-defender" && 
+                    (state.attackerTargets || []).some(t => t.uuid === this.document.uuid || t.id === this.document.id);
+                
+                if (isPotentialDefender || (state.defender?.actorUuid === this.document.uuid)) {
+                    meleeAction = "defense";
+                    game.neuroshima.log(`Wykryto aktywny pojedynek (melee) jako obrońca: ${state.attacker.name}`);
+                }
             } else if (targetUuids.length === 0) {
-                // Ostrzeżenie o braku celu tylko dla atakującego
+                // Ostrzeżenie o braku celu tylko dla nowego ataku
                 ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
             }
         }
@@ -1839,23 +1863,41 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    * Obsługa odpowiedzi na test przeciwstawny z arkusza.
    */
   async _onRespondToOpposed(event, target) {
-    const handlerId = target.dataset.handlerId;
-    const message = game.messages.get(handlerId);
-    if (!message) return;
+    const duelId = target.dataset.duelId;
+    if (!duelId) return;
     
-    const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
-    return NeuroshimaChatMessage.onClickOpposedResponse(event, message);
+    // Poinformuj o instrukcji
+    ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.InstructionDefender"));
+    
+    // Otwórz tracker dla wygody
+    game.neuroshima.NeuroshimaMeleeDuelTracker.open(duelId);
+    
+    // Odśwież widok
+    this.render();
   }
 
   /**
-   * Dismisses a pending opposed test from the actor sheet.
+   * Odrzuca prośbę o dołączenie do starcia (tylko lokalnie usuwa wizualny indykator 
+   * jeżeli gracz nie chce brać w tym udziału, lub jeśli GM chce wyczyścić).
+   * UWAGA: To nie usuwa Starcia z flag Combata!
    */
   async _onDismissOpposed(event, target) {
-    const requestId = target.dataset.requestId;
-    if (!requestId) return;
+    const duelId = target.dataset.duelId;
+    if (!duelId) return;
     
-    const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
-    return NeuroshimaChatMessage.clearOpposedPendingFlag(this.document, requestId);
+    // W systemie opartym na flagach Combata 'dismiss' na arkuszu 
+    // jest głównie wizualny dla gracza. Jeśli jednak to GM, może zapytać o usunięcie duelu.
+    if (game.user.isGM) {
+        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
+        if (duel) await duel.finish();
+    } else {
+        // Dla gracza po prostu odświeżamy sheet, co przy braku opposedPending 
+        // i tak by go ukryło, ale tutaj polegamy na tym że gracz po prostu 
+        // ignoruje sekcję. W V13 z findActiveDuelForActor będzie się to pokazywać
+        // dopóki status jest waiting-defender.
+        ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.DuelIgnored"));
+    }
+    this.render();
   }
 
   /**

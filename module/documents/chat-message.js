@@ -11,16 +11,17 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Wywoływany z hooka renderChatMessageHTML w system.js.
    */
   static onChatAction(html) {
-    const chatCard = html[0] || html;
-    if (!chatCard) return;
+    // Application V2 compatibility: html can be a HTMLElement or a jQuery object
+    const root = (html instanceof HTMLElement) ? html : html[0];
+    if (!root) return;
 
     // Pobierz wiadomość powiązaną z HTMLem
-    const messageId = chatCard.closest(".chat-message")?.dataset.messageId;
+    const messageId = root.closest(".chat-message")?.dataset.messageId;
     const message = game.messages.get(messageId);
     if (!message) return;
 
     // Delegacja zdarzeń dla przycisków akcji
-    chatCard.querySelectorAll("[data-action]").forEach(btn => {
+    root.querySelectorAll("[data-action]").forEach(btn => {
       btn.addEventListener("click", event => {
         event.preventDefault();
         const action = btn.dataset.action;
@@ -71,12 +72,21 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
+   * Helper do pobierania instancji starcia z wiadomości.
+   */
+  static _getDuelFromMessage(message) {
+    const duelId = message.getFlag("neuroshima", "duelId");
+    if (!duelId) return null;
+    return game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
+  }
+
+  /**
    * Wybór kości do segmentu.
    */
   static async _onSelectMeleeDie(event, message) {
     const btn = event.currentTarget;
     const { side, index } = btn.dataset;
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         await duel.selectDie(side, parseInt(index));
     }
@@ -88,7 +98,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _onDeclareMeleeAction(event, message) {
     const btn = event.currentTarget;
     const { type } = btn.dataset;
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         const role = duel.state.initiative;
         await duel.declareAction(role, type);
@@ -101,7 +111,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _onRespondMeleeAction(event, message) {
     const btn = event.currentTarget;
     const { response } = btn.dataset;
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         await duel.respondToAction(response);
     }
@@ -111,7 +121,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Przejęcie inicjatywy.
    */
   static async _onTakeoverMeleeInitiative(event, message) {
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         await duel.takeoverInitiative();
     }
@@ -123,7 +133,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _onModDie(event, message) {
     const btn = event.currentTarget;
     const { side, target, index, delta } = btn.dataset;
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         // side: kogo punkty wydajemy ('attacker'/'defender')
         // target: czyje kości modyfikujemy ('attacker'/'defender')
@@ -137,7 +147,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _onToggleReady(event, message) {
     const btn = event.currentTarget;
     const { role } = btn.dataset;
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         await duel.toggleReady(role);
     }
@@ -149,7 +159,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _onRollInitiative(event, message) {
     const btn = event.currentTarget;
     const { role } = btn.dataset;
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         await duel.rollInitiative(role);
     }
@@ -161,7 +171,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async _onResetPool(event, message) {
     const btn = event.currentTarget;
     const { role } = btn.dataset;
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         await duel.resetPool(role);
     }
@@ -171,7 +181,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Delegacja rozstrzygnięcia starcia do klasy NeuroshimaMeleeDuel.
    */
   static async _onResolveDuel(event, message) {
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (duel) {
         await duel.resolve();
     }
@@ -345,24 +355,16 @@ export class NeuroshimaChatMessage extends ChatMessage {
         return;
     }
 
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
+    const duel = this._getDuelFromMessage(message);
     if (!duel) return;
 
     const targets = duel.state.attackerTargets || [];
     // Sprawdzamy UUID oraz ID aktora dla kompatybilności
-    const isTarget = targets.some(t => t === actor.uuid || t === actor.id || (typeof t === 'object' && t.uuid === actor.uuid));
+    const isTarget = targets.some(t => t.uuid === actor.uuid || t.id === actor.id);
     
     if (!isTarget && !game.user.isGM) {
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.CannotDefend"));
         return;
-    }
-
-    // Wyczyszczenie flagi pending
-    const requestId = duel.state.requestId;
-    if (requestId) {
-        await this.clearOpposedPendingFlag(actor, requestId);
-    } else {
-        await this.clearOpposedPendingFlag(actor, "meleePending");
     }
 
     ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.InstructionDefender"));

@@ -1,0 +1,195 @@
+import { NEUROSHIMA } from "../config.js";
+import { NeuroshimaMeleeDuel } from "../combat/melee-duel.js";
+
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+const { ApplicationV2 } = foundry.applications.api;
+
+/**
+ * Application V2 dla trackera walki wręcz (Melee Duel).
+ * Obsługuje wiele niezależnych instancji starć na raz korzystając z Combat Flags.
+ */
+export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(ApplicationV2) {
+  /** @static */
+  static instances = new Map();
+
+  constructor(options={}) {
+    super(options);
+    this.duelId = options.duelId;
+  }
+
+  /**
+   * Fabryka: Pobiera lub tworzy instancję trackera dla konkretnego pojedynku.
+   * @param {string} duelId 
+   * @returns {NeuroshimaMeleeDuelTracker}
+   */
+  static async open(duelId) {
+    if (this.instances.has(duelId)) {
+        const app = this.instances.get(duelId);
+        app.render(true);
+        return app;
+    }
+    const app = new NeuroshimaMeleeDuelTracker({ duelId });
+    this.instances.set(duelId, app);
+    app.render(true);
+    return app;
+  }
+
+  static DEFAULT_OPTIONS = {
+    tag: "div",
+    classes: ["neuroshima", "melee-duel-tracker", "standard-form"],
+    position: { width: 550, height: "auto" },
+    window: {
+      resizable: true,
+      minimizable: true,
+      controls: [
+        {
+          icon: "fas fa-sync",
+          label: "NEUROSHIMA.Actions.Refresh",
+          action: "refresh"
+        }
+      ]
+    },
+    actions: {
+        refresh: function() { this.render(true); },
+        reroll3k20: NeuroshimaMeleeDuelTracker.prototype._onReroll3k20,
+        rollInitiative: NeuroshimaMeleeDuelTracker.prototype._onRollInitiative,
+        modDie: NeuroshimaMeleeDuelTracker.prototype._onModDie,
+        toggleReady: NeuroshimaMeleeDuelTracker.prototype._onToggleReady,
+        declareAction: NeuroshimaMeleeDuelTracker.prototype._onDeclareAction,
+        selectDie: NeuroshimaMeleeDuelTracker.prototype._onSelectDie,
+        respondAction: NeuroshimaMeleeDuelTracker.prototype._onRespondAction,
+        takeoverInitiative: NeuroshimaMeleeDuelTracker.prototype._onTakeoverInitiative,
+        nextTurn: NeuroshimaMeleeDuelTracker.prototype._onNextTurn,
+        finishDuel: NeuroshimaMeleeDuelTracker.prototype._onFinishDuel
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    header: {
+        template: "systems/neuroshima/templates/apps/melee-tracker-header.hbs"
+    },
+    content: {
+        template: "systems/neuroshima/templates/apps/melee-tracker-content.hbs"
+    },
+    footer: {
+        template: "systems/neuroshima/templates/apps/melee-tracker-footer.hbs"
+    }
+  };
+
+  /** @override */
+  get title() {
+    const duel = this.duel;
+    if (!duel) return game.i18n.localize("NEUROSHIMA.MeleeOpposed.Duel");
+    const state = duel.state;
+    if (!state) return game.i18n.localize("NEUROSHIMA.MeleeOpposed.Duel");
+    return `${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Duel")}: ${state.attacker.name} vs ${state.defender.name || '?'}`;
+  }
+
+  /**
+   * Pobiera instancję logiki pojedynku.
+   */
+  get duel() {
+    return NeuroshimaMeleeDuel.fromId(this.duelId);
+  }
+
+  /** @override */
+  async _prepareContext(options) {
+    const duel = this.duel;
+    const state = duel?.state;
+    if (!state) {
+        this.close();
+        return { error: "Duel not found" };
+    }
+
+    const isAttacker = game.user.isGM || (game.user.character?.uuid === state.attacker.actorUuid) || (fromUuidSync(state.attacker.actorUuid)?.isOwner);
+    const isDefender = game.user.isGM || (state.defender.actorUuid && (game.user.character?.uuid === state.defender.actorUuid || fromUuidSync(state.defender.actorUuid)?.isOwner));
+
+    const prepareDice = (role) => {
+        const side = state[role];
+        const otherRole = role === "attacker" ? "defender" : "attacker";
+        const otherSide = state[otherRole];
+        return state.dice[role].map((v, i) => ({
+            index: i,
+            original: v,
+            modified: v - side.modSelf[i] + otherSide.modOpponent[i],
+            spent: side.diceSpent[i],
+            selected: side.selectedDice?.includes(i),
+            isSuccess: (v - side.modSelf[i] + otherSide.modOpponent[i]) <= side.stat && v !== 20,
+            isNat20: v === 20
+        }));
+    };
+
+    return {
+      ...state,
+      duelId: this.duelId,
+      config: NEUROSHIMA,
+      isAttacker,
+      isDefender,
+      attackerDice: prepareDice("attacker"),
+      defenderDice: prepareDice("defender"),
+      currentSegmentData: state.segments[state.currentSegment - 1],
+      canModify: state.phase === "modification",
+      canSelect: state.phase === "segments",
+      isGM: game.user.isGM
+    };
+  }
+
+  /* -------------------------------------------- */
+  /*  Event Handlers                              */
+  /* -------------------------------------------- */
+
+  async _onReroll3k20(event, target) {
+    const role = target.dataset.role;
+    await this.duel?.reroll3k20(role);
+  }
+
+  async _onRollInitiative(event, target) {
+    const role = target.dataset.role;
+    await this.duel?.rollInitiative(role);
+  }
+
+  async _onModDie(event, target) {
+    const { side, targetSide, index, delta } = target.dataset;
+    await this.duel?.modifyDie(side, targetSide, parseInt(index), parseInt(delta));
+  }
+
+  async _onToggleReady(event, target) {
+    const role = target.dataset.role;
+    await this.duel?.toggleReady(role);
+  }
+
+  async _onSelectDie(event, target) {
+    const { role, index } = target.dataset;
+    await this.duel?.selectDie(role, parseInt(index));
+  }
+
+  async _onDeclareAction(event, target) {
+    const { role, type } = target.dataset;
+    await this.duel?.declareAction(role, type);
+  }
+
+  async _onRespondAction(event, target) {
+    const { response } = target.dataset;
+    await this.duel?.respondToAction(response);
+  }
+
+  async _onTakeoverInitiative(event, target) {
+    await this.duel?.takeoverInitiative();
+  }
+
+  async _onNextTurn(event, target) {
+    await this.duel?.nextTurn();
+  }
+
+  async _onFinishDuel(event, target) {
+    await this.duel?.finish();
+    this.close();
+  }
+
+  /** @override */
+  _onClose(options) {
+    NeuroshimaMeleeDuelTracker.instances.delete(this.duelId);
+    super._onClose(options);
+  }
+}

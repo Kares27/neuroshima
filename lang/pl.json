@@ -156,7 +156,8 @@
             "Unload": "Rozładuj",
             "Ignore": "Ignoruj",
             "ReverseDamage": "Cofnij obrażenia",
-            "Rest": "Odpocznij"
+            "Rest": "Odpocznij",
+            "Refresh": "Odśwież"
         },
         "Rest": {
             "Title": "Odpoczynek",
@@ -310,6 +311,10 @@
             "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane.",
             "Natural20CannotBeModified": "Naturalna 20 nie może być modyfikowana!"
         },
+        "Combat": {
+            "Combatants": "Uczestnicy",
+            "Turn": "Tura"
+        },
         "MeleeOpposed": {
             "Title": "Akcja w zwarciu",
             "Duel": "Starcie w zwarciu",
@@ -327,10 +332,14 @@
             "PendingAttacker": "Oczekujący Atakujący",
             "Join": "Dołącz",
             "Targeting": "Celuje w",
+            "MeleeTurn": "Tura",
             "InitiativeTest": "Inicjatywa Zwarcia",
             "InitiativeDraw": "Remis w inicjatywie! Rzućcie jeszcze raz.",
             "RollInitiative": "Rzuć na Inicjatywę",
             "InitiativeWaiting": "Oczekiwanie na rzut przeciwnika...",
+            "DuelStarted": "Pojedynek rozpoczęty!",
+            "AttackInstruction": "atakuje! Wybierz broń na swoim arkuszu, aby wykonać rzut obronny.",
+            "InitiativeTakenBy": "{name} przejmuje Inicjatywę!",
             "PhaseInitiative": "Inicjatywa",
             "PhaseModification": "Modyfikacje",
             "PhaseSegments": "Segmenty",
@@ -346,7 +355,6 @@
             "WaitingForResponse": "Oczekiwanie na reakcję...",
             "SelectDiceInstruction": "Zaznacz kości (sukcesy), których chcesz użyć.",
             "TakeoverInitiative": "Przejmij Inicjatywę",
-            "InitiativeTakenBy": "{name} przejmuje Inicjatywę!",
             "DefenseSuccess": "Obrona udana!",
             "DefenseFailed": "Obrona nieudana (Potrzeba: {need}, Masz: {have})! Obrażenia wchodzą.",
             "AdvantagePoints": "Punkty Przewagi (Inicjatywa)",
@@ -354,7 +362,18 @@
             "ErrorNoSuccessesInAction": "Wybrane kości muszą zawierać przynajmniej jeden sukces!",
             "ErrorNoDiceSelected": "Musisz zaznaczyć przynajmniej jedną kość!",
             "ErrorInsufficientDefense": "Potrzebujesz przynajmniej {need} sukcesów do obrony!",
-            "ErrorMustSelectExactDice": "Musisz wybrać dokładnie {count} kości do obrony!"
+            "ErrorMustSelectExactDice": "Musisz wybrać dokładnie {count} kości do obrony!",
+            "ShowActiveDuels": "Pokaż aktywne starcia",
+            "OpenDuelTracker": "Otwórz panel starcia",
+            "FinishDuel": "Zakończ starcie",
+            "DuelIgnored": "Starcie zignorowane.",
+            "WaitingForReady": "Oczekiwanie na gotowość...",
+            "WaitingForAction": "Oczekiwanie na akcję...",
+            "ResolveSegment": "Rozstrzygnij segment",
+            "NextTurn": "Następna tura",
+            "ResolveDuel": "Rozstrzygnij starcie",
+            "Roll3k20": "Rzuć 3k20",
+            "WaitingForRoll": "Oczekiwanie na rzut..."
         },
         "Tabs": {
             "Attributes": "Współczynniki",

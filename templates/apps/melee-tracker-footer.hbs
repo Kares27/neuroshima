@@ -1,0 +1,47 @@
+<footer class="melee-tracker-footer">
+    <div class="segment-tracker">
+        <div class="segment-info">
+            {{localize "NEUROSHIMA.MeleeOpposed.Segment"}} {{currentSegment}} / 3
+        </div>
+
+        <div class="action-summary">
+            {{#if (eq phase 'modification')}}
+                <div class="waiting-msg">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForReady"}}</div>
+                <div class="ready-buttons">
+                    <button type="button" class="ready-btn {{#if attacker.ready}}active{{/if}}" 
+                            data-action="toggleReady" data-role="attacker" {{#if (not isAttacker)}}disabled{{/if}}>
+                        {{#if attacker.ready}}<i class="fas fa-check"></i>{{/if}} {{attacker.name}} {{localize "NEUROSHIMA.MeleeOpposed.Ready"}}
+                    </button>
+                    <button type="button" class="ready-btn {{#if defender.ready}}active{{/if}}" 
+                            data-action="toggleReady" data-role="defender" {{#if (not isDefender)}}disabled{{/if}}>
+                        {{#if defender.ready}}<i class="fas fa-check"></i>{{/if}} {{defender.name}} {{localize "NEUROSHIMA.MeleeOpposed.Ready"}}
+                    </button>
+                </div>
+            {{/if}}
+
+            {{#if (eq phase 'segments')}}
+                <div class="current-action">
+                    {{#if currentSegmentData.attackerAction}}
+                        <strong>{{attacker.name}}</strong>: {{localize (concat "NEUROSHIMA.MeleeOpposed.Action" (capitalize currentSegmentData.attackerAction.type))}}
+                        ({{currentSegmentData.attackerAction.power}}s)
+                    {{else}}
+                        {{localize "NEUROSHIMA.MeleeOpposed.WaitingForAction"}}
+                    {{/if}}
+                </div>
+                
+                {{#if (and isGM (and currentSegmentData.attackerAction currentSegmentData.defenderAction))}}
+                    <button type="button" class="resolve-btn" data-action="resolveSegment">
+                        {{localize "NEUROSHIMA.MeleeOpposed.ResolveSegment"}}
+                    </button>
+                {{/if}}
+            {{/if}}
+
+            {{#if (eq phase 'resolved')}}
+                <div class="result-msg">{{resultMsg}}</div>
+                <button type="button" class="next-turn-btn" data-action="nextTurn">
+                    {{localize "NEUROSHIMA.MeleeOpposed.NextTurn"}}
+                </button>
+            {{/if}}
+        </div>
+    </div>
+</footer>

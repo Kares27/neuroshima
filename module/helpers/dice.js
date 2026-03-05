@@ -612,87 +612,36 @@ export class NeuroshimaDice {
 
     // 7. Obsługa Walki Wręcz (Melee Opposed Logic)
     // Zgodnie z Planem Neuroshima 1.5, rzut bronią melee nie kończy się na karcie czatu,
-    // lecz inicjuje lub kontynuuje Starcie Przeciwstawne (Duel).
+    // lecz inicjuje lub kontynuuje Starcie Przeciwstawne (Duel) w flagach Combata.
     if (isMelee) {
         if (meleeAction === "attack") {
             // SCENARIUSZ A: ATAK WRĘCZ
-            // Atakujący wykonuje pierwszy rzut. System tworzy nową wiadomość "Handler Starcia",
-            // która będzie przechowywać stan całego pojedynku.
-            const handler = await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(
+            const duel = await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(
                 actor, 
                 rollData, 
                 weapon.id, 
                 rollData.targets || []
             );
             
-            // POWIADOMIENIE OBROŃCY:
-            // Dla każdego stargetowanego celu ustawiamy flagę "opposedPending".
-            // Powoduje to wyświetlenie przycisku obrony na karcie postaci obrońcy.
-            if (handler && rollData.targets?.length > 0) {
-                const handlerId = handler.id;
-                const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(handler);
-                const requestId = duel?.state?.requestId || handler.getFlag("neuroshima", "meleeDuel")?.requestId;
-
-                for (const targetUuid of rollData.targets) {
-                    const targetDoc = await fromUuid(targetUuid);
-                    const targetActor = targetDoc?.actor || targetDoc;
-                    if (targetActor) {
-                        const pendingData = {
-                            requestId: requestId || handlerId,
-                            attackerName: actor.name,
-                            attackerUuid: actor.uuid,
-                            messageId: handlerId,
-                            tokenUuid: targetUuid, 
-                            timestamp: Date.now()
-                        };
-                        
-                        game.neuroshima.log(`Ustawianie opposedPending dla ${targetActor?.name || targetUuid}`, pendingData);
-                        
-                        // Flagi muszą być ustawione przez GM (socketlib) jeśli obecny użytkownik nie ma uprawnień do celu.
-                        if (targetActor?.isOwner || game.user.isGM) {
-                            await targetActor.setFlag("neuroshima", `opposedPending.${pendingData.requestId}`, pendingData);
-                            if (typeof targetActor.render === "function") targetActor.render(false);
-                        } else if (game.neuroshima.socket) {
-                            game.neuroshima.socket.executeAsGM("setPending", {
-                                actorUuid: targetUuid,
-                                flagData: pendingData
-                            });
-                        }
-                    }
-                }
+            // Informujemy o rozpoczęciu starcia
+            if (duel) {
+                game.neuroshima.log(`Rozpoczęto pojedynek melee: ${duel.duelId}`);
+                ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.DuelStarted"));
             }
-            
-            // Zwracamy handler (wiadomość czatu), rzut standardowy nie jest renderowany.
-            return handler;
+            return duel;
         } else {
             // SCENARIUSZ B: OBRONA WRĘCZ
-            // Gracz kliknął "Broń się" na swojej karcie postaci w odpowiedzi na atak.
-            // System szuka aktywnego starcia (flaga opposedPending) i dołącza obrońcę do handlera.
-            const opposedPending = actor.getFlag("neuroshima", "opposedPending") || {};
+            const duel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(actor);
             
-            game.neuroshima.log("Obrona: sprawdzanie flagi opposedPending", opposedPending);
-
-            // Wybieramy najnowsze oczekujące starcie.
-            const pendingList = Object.values(opposedPending).filter(p => p.messageId);
-            const pending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
-
-            if (pending?.messageId) {
-                const handlerMessageId = String(pending.messageId).trim();
-                game.neuroshima.log("Obrona: przygotowanie do dołączenia do starcia", handlerMessageId);
+            if (duel) {
+                game.neuroshima.log(`Dołączanie do starcia: ${duel.duelId}`);
                 
-                // Proces dołączania (Join Defender) aktualizuje wiadomość handlera o wyniki obrońcy.
                 if (game.user.isGM) {
-                    const message = game.messages.get(handlerMessageId);
-                    if (message) {
-                        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromMessage(message);
-                        if (duel) {
-                            await duel.joinDefender(actor, rollData, weapon.id);
-                        }
-                    }
+                    await duel.joinDefender(actor, rollData, weapon.id);
                 } else {
-                    // Żądanie do GM przez socketlib (obrońca zazwyczaj nie może edytować wiadomości atakującego).
+                    // Żądanie do GM przez socketlib
                     game.neuroshima.socket.executeAsGM("joinMeleeDuel", {
-                        messageId: handlerMessageId,
+                        duelId: duel.duelId,
                         defenderData: {
                             actorUuid: actor.uuid,
                             rollData: rollData,
@@ -700,20 +649,9 @@ export class NeuroshimaDice {
                         }
                     });
                 }
-                
-                // Po dołączeniu czyścimy powiadomienie o oczekującym ataku.
-                if (game.user.isGM || actor.isOwner) {
-                    await actor.unsetFlag("neuroshima", `opposedPending.${pending.requestId}`);
-                    if (typeof actor.render === "function") actor.render(false);
-                } else {
-                    game.neuroshima.socket.executeAsGM("clearPending", {
-                        actorUuid: actor.uuid,
-                        requestId: pending.requestId
-                    });
-                }
-                
-                // Zwracamy null, ponieważ wynik obrony zostanie wyrenderowany wewnątrz Handlera Starcia.
-                return null; 
+                return duel;
+            } else {
+                game.neuroshima.warn("Nie znaleziono aktywnego starcia do dołączenia.");
             }
         }
     }
