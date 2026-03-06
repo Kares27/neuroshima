@@ -1250,27 +1250,76 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             ? targets.map(t => t.actor?.uuid).filter(Boolean)
             : targets.map(t => t.document.uuid);
 
-        // Wykrywanie ataku vs obrony w melee przy użyciu MeleeDuel API
-        let meleeAction = "attack";
-        if (weapon.system.weaponType === "melee") {
-            const activeDuel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(this.document);
-            if (activeDuel) {
-                const state = activeDuel.state;
-                // Jeśli jesteśmy obrońcą i czekamy na naszą reakcję
-                const isPotentialDefender = state.status === "waiting-defender" && 
-                    (state.attackerTargets || []).some(t => t.uuid === this.document.uuid || t.id === this.document.id);
-                
-                if (isPotentialDefender || (state.defender?.actorUuid === this.document.uuid)) {
-                    meleeAction = "defense";
-                    game.neuroshima.log(`Wykryto aktywny pojedynek (melee) jako obrońca: ${state.attacker.name}`);
-                }
-            } else if (targetUuids.length === 0) {
-                // Ostrzeżenie o braku celu tylko dla nowego ataku
+    // Wykrywanie ataku vs obrony w melee przy użyciu MeleeDuel API
+    if (weapon.system.weaponType === "melee") {
+        const activeDuel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(this.document);
+        
+        // Jeśli nie ma pojedynku i atakujemy (mamy targety), otwieramy dialog inicjatywy zamiast broni
+        if (!activeDuel) {
+            if (targetUuids.length === 0) {
                 ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
+                this._isRolling = false;
+                game.neuroshima.groupEnd();
+                return;
+            }
+
+            game.neuroshima.log("Brak aktywnego pojedynku. Otwieram dialog inicjatywy walki wręcz.");
+            const initDialog = new game.neuroshima.NeuroshimaInitiativeRollDialog({
+                actor: this.document,
+                weaponId: weapon.id,
+                targets: targetUuids,
+                isMelee: true,
+                onClose: () => { this._isRolling = false; }
+            });
+            await initDialog.render(true);
+            game.neuroshima.groupEnd();
+            return;
+        }
+
+        // Jeśli pojedynek istnieje, sprawdźmy stan
+        const state = activeDuel.state;
+        const isPotentialDefender = state.status === "waiting-defender" && 
+            (state.attackerTargets || []).some(t => t.uuid === this.document.uuid || t.id === this.document.id);
+        
+        if (isPotentialDefender || (state.defender?.actorUuid === this.document.uuid)) {
+            // Jeśli obrońca nie rzucił jeszcze inicjatywy
+            if (state.status === "waiting-defender" || !state.defender?.initiativeRoll) {
+                game.neuroshima.log("Obrońca dołącza do pojedynku. Otwieram dialog inicjatywy.");
+                const initDialog = new game.neuroshima.NeuroshimaInitiativeRollDialog({
+                    actor: this.document,
+                    duelId: activeDuel.duelId,
+                    weaponId: weapon.id,
+                    isMelee: true,
+                    onClose: () => { this._isRolling = false; }
+                });
+                await initDialog.render(true);
+                game.neuroshima.groupEnd();
+                return;
+            }
+
+            // Jeśli obrońca rzucił inicjatywę, ale musi rzucić pulę
+            const side = (state.attacker.actorUuid === this.document.uuid || state.attacker.tokenUuid === this.document.token?.uuid) ? "attacker" : "defender";
+            if (state.phase === "pool-roll" && (!state.dice[side] || state.dice[side].length === 0)) {
+                game.neuroshima.log("Pojedynek w fazie rzutu pulą. Otwieram dialog puli.");
+                await activeDuel.rollPool(side);
+                this._isRolling = false;
+                game.neuroshima.groupEnd();
+                return;
             }
         }
 
-        // Obsługa automatycznego wyboru celu dla broni dystansowej/miotanej
+        // Atakujący też może chcieć rzucić pulę klikając broń
+        const side = (state.attacker.actorUuid === this.document.uuid || state.attacker.tokenUuid === this.document.token?.uuid) ? "attacker" : "defender";
+        if (state.phase === "pool-roll" && (!state.dice[side] || state.dice[side].length === 0)) {
+            game.neuroshima.log("Pojedynek w fazie rzutu pulą (atakujący). Otwieram dialog puli.");
+            await activeDuel.rollPool(side);
+            this._isRolling = false;
+            game.neuroshima.groupEnd();
+            return;
+        }
+    }
+
+    // Obsługa automatycznego wyboru celu dla broni dystansowej/miotanej
         if (isRanged || isThrown) {
             const actorToken = this._getSourceToken();
             game.neuroshima.log("Źródłowy token aktora:", actorToken?.name || "Brak");

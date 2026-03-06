@@ -51,7 +51,10 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
     },
     actions: {
         refresh: function() { this.render(true); },
-        reroll3k20: NeuroshimaMeleeDuelTracker.prototype._onReroll3k20,
+        selectManeuver: NeuroshimaMeleeDuelTracker.prototype._onSelectManeuver,
+        selectDie: NeuroshimaMeleeDuelTracker.prototype._onSelectDie,
+        reroll3k20: NeuroshimaMeleeDuelTracker.prototype._onRollPool,
+        rollPool: NeuroshimaMeleeDuelTracker.prototype._onRollPool,
         rollInitiative: NeuroshimaMeleeDuelTracker.prototype._onRollInitiative,
         modDie: NeuroshimaMeleeDuelTracker.prototype._onModDie,
         toggleReady: NeuroshimaMeleeDuelTracker.prototype._onToggleReady,
@@ -102,20 +105,21 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
         return { error: "Duel not found" };
     }
 
-    const isAttacker = game.user.isGM || (game.user.character?.uuid === state.attacker.actorUuid) || (fromUuidSync(state.attacker.actorUuid)?.isOwner);
-    const isDefender = game.user.isGM || (state.defender.actorUuid && (game.user.character?.uuid === state.defender.actorUuid || fromUuidSync(state.defender.actorUuid)?.isOwner));
+    const isAttacker = game.user.isGM || (state.attacker.actorUuid === game.user.character?.uuid) || (fromUuidSync(state.attacker.actorUuid)?.isOwner);
+    const isDefender = game.user.isGM || (state.defender?.actorUuid && (state.defender.actorUuid === game.user.character?.uuid || fromUuidSync(state.defender.actorUuid)?.isOwner));
 
     const prepareDice = (role) => {
         const side = state[role];
+        const dice = state.dice[role] || [];
         const otherRole = role === "attacker" ? "defender" : "attacker";
         const otherSide = state[otherRole];
-        return state.dice[role].map((v, i) => ({
+        return dice.map((v, i) => ({
             index: i,
             original: v,
-            modified: v - side.modSelf[i] + otherSide.modOpponent[i],
+            modified: v - (side.modSelf?.[i] || 0) + (otherSide?.modOpponent?.[i] || 0),
             spent: side.diceSpent[i],
             selected: side.selectedDice?.includes(i),
-            isSuccess: (v - side.modSelf[i] + otherSide.modOpponent[i]) <= side.stat && v !== 20,
+            isSuccess: (v - (side.modSelf?.[i] || 0) + (otherSide?.modOpponent?.[i] || 0)) <= side.stat && v !== 20,
             isNat20: v === 20
         }));
     };
@@ -129,8 +133,12 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
       attackerDice: prepareDice("attacker"),
       defenderDice: prepareDice("defender"),
       currentSegmentData: state.segments[state.currentSegment - 1],
-      canModify: state.phase === "modification",
+      isManeuverPhase: state.phase === "maneuver",
+      isInitiativePhase: state.phase === "initiative",
+      isPoolRollPhase: state.phase === "pool-roll" || (state.phase === "maneuver" && state.attacker.maneuver !== "none" && state.defender?.maneuver !== "none"),
+      canModify: state.phase === "modification" && game.settings.get("neuroshima", "doubleSkillAction"),
       canSelect: state.phase === "segments",
+      doubleSkillAction: game.settings.get("neuroshima", "doubleSkillAction"),
       isGM: game.user.isGM
     };
   }
@@ -139,9 +147,14 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
   /*  Event Handlers                              */
   /* -------------------------------------------- */
 
-  async _onReroll3k20(event, target) {
+  async _onSelectManeuver(event, target) {
+    const { role, maneuver } = target.dataset;
+    await this.duel?.selectManeuver(role, maneuver);
+  }
+
+  async _onRollPool(event, target) {
     const role = target.dataset.role;
-    await this.duel?.reroll3k20(role);
+    await this.duel?.rollPool(role);
   }
 
   async _onRollInitiative(event, target) {

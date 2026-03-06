@@ -5,6 +5,42 @@
         </div>
 
         <div class="action-summary">
+            {{#if (eq phase 'initiative')}}
+                <div class="waiting-msg">{{localize "NEUROSHIMA.MeleeOpposed.RollInitiative"}}</div>
+                <div class="ready-buttons">
+                    <button type="button" class="ready-btn {{#if attacker.initiativeRoll}}active{{/if}}" 
+                            data-action="rollInitiative" data-role="attacker" {{#if (or (not isAttacker) attacker.initiativeRoll)}}disabled{{/if}}>
+                        {{#if attacker.initiativeRoll}}<i class="fas fa-check"></i> {{attacker.initiativeRoll}} SP{{else}}{{localize "NEUROSHIMA.Actions.Roll"}} ({{attacker.name}}){{/if}}
+                    </button>
+                    <button type="button" class="ready-btn {{#if defender.initiativeRoll}}active{{/if}}" 
+                            data-action="rollInitiative" data-role="defender" {{#if (or (not isDefender) (or (not defender.actorUuid) defender.initiativeRoll))}}disabled{{/if}}>
+                        {{#if defender.initiativeRoll}}<i class="fas fa-check"></i> {{defender.initiativeRoll}} SP{{else}}{{localize "NEUROSHIMA.Actions.Roll"}} ({{defender.name}}){{/if}}
+                    </button>
+                </div>
+            {{/if}}
+
+            {{#if (eq phase 'maneuver')}}
+                <div class="waiting-msg">{{localize "NEUROSHIMA.MeleeOpposed.SelectManeuver"}}</div>
+                <div class="maneuver-status">
+                    <span class="{{#if (ne attacker.maneuver 'none')}}success{{/if}}">{{attacker.name}}: {{#if (ne attacker.maneuver 'none')}}{{localize (concat "NEUROSHIMA.MeleeOpposed.Maneuvers." (capitalize attacker.maneuver))}}{{else}}{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.None"}}{{/if}}</span>
+                    <span class="{{#if (ne defender.maneuver 'none')}}success{{/if}}">{{defender.name}}: {{#if (ne defender.maneuver 'none')}}{{localize (concat "NEUROSHIMA.MeleeOpposed.Maneuvers." (capitalize defender.maneuver))}}{{else}}{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.None"}}{{/if}}</span>
+                </div>
+            {{/if}}
+
+            {{#if (eq phase 'pool-roll')}}
+                <div class="waiting-msg">{{localize "NEUROSHIMA.MeleeOpposed.Roll3k20Pool"}}</div>
+                <div class="ready-buttons">
+                    <button type="button" class="ready-btn {{#if attackerDice}}active{{/if}}" 
+                            data-action="rollPool" data-role="attacker" {{#if (or (not isAttacker) attackerDice)}}disabled{{/if}}>
+                        {{#if attackerDice}}<i class="fas fa-check"></i> {{attacker.name}}{{else}}{{localize "NEUROSHIMA.Actions.Roll"}} ({{attacker.name}}){{/if}}
+                    </button>
+                    <button type="button" class="ready-btn {{#if defenderDice}}active{{/if}}" 
+                            data-action="rollPool" data-role="defender" {{#if (or (not isDefender) defenderDice)}}disabled{{/if}}>
+                        {{#if defenderDice}}<i class="fas fa-check"></i> {{defender.name}}{{else}}{{localize "NEUROSHIMA.Actions.Roll"}} ({{defender.name}}){{/if}}
+                    </button>
+                </div>
+            {{/if}}
+
             {{#if (eq phase 'modification')}}
                 <div class="waiting-msg">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForReady"}}</div>
                 <div class="ready-buttons">
@@ -21,19 +57,34 @@
 
             {{#if (eq phase 'segments')}}
                 <div class="current-action">
-                    {{#if currentSegmentData.attackerAction}}
-                        <strong>{{attacker.name}}</strong>: {{localize (concat "NEUROSHIMA.MeleeOpposed.Action" (capitalize currentSegmentData.attackerAction.type))}}
-                        ({{currentSegmentData.attackerAction.power}}s)
+                    {{#if currentAction}}
+                        <strong>{{currentAction.sideName}}</strong> {{localize "NEUROSHIMA.MeleeOpposed.Declares"}} 
+                        <strong>{{localize (concat "NEUROSHIMA.MeleeOpposed.Actions." (capitalize currentAction.type))}}</strong>
+                        ({{currentAction.power}}s)
                     {{else}}
-                        {{localize "NEUROSHIMA.MeleeOpposed.WaitingForAction"}}
+                        {{localize (concat "NEUROSHIMA.MeleeOpposed.TurnOf." (capitalize initiative))}}
                     {{/if}}
                 </div>
                 
-                {{#if (and isGM (and currentSegmentData.attackerAction currentSegmentData.defenderAction))}}
-                    <button type="button" class="resolve-btn" data-action="resolveSegment">
-                        {{localize "NEUROSHIMA.MeleeOpposed.ResolveSegment"}}
-                    </button>
-                {{/if}}
+                <div class="action-buttons">
+                    {{#if (and (eq initiative 'attacker') isAttacker (not currentAction))}}
+                        <button type="button" data-action="declareAction" data-role="attacker" data-type="attack">{{localize "NEUROSHIMA.Actions.Attack"}}</button>
+                        <button type="button" data-action="declareAction" data-role="attacker" data-type="pass">{{localize "NEUROSHIMA.Actions.Pass"}}</button>
+                    {{/if}}
+                    {{#if (and (eq initiative 'defender') isDefender (not currentAction))}}
+                        <button type="button" data-action="declareAction" data-role="defender" data-type="attack">{{localize "NEUROSHIMA.Actions.Attack"}}</button>
+                        <button type="button" data-action="declareAction" data-role="defender" data-type="pass">{{localize "NEUROSHIMA.Actions.Pass"}}</button>
+                    {{/if}}
+
+                    {{#if (and currentAction (not (eq currentAction.side 'attacker')) isAttacker)}}
+                        <button type="button" data-action="respondAction" data-response="defend">{{localize "NEUROSHIMA.Actions.Defense"}}</button>
+                        <button type="button" data-action="respondAction" data-response="ignore">{{localize "NEUROSHIMA.Actions.Ignore"}}</button>
+                    {{/if}}
+                    {{#if (and currentAction (not (eq currentAction.side 'defender')) isDefender)}}
+                        <button type="button" data-action="respondAction" data-response="defend">{{localize "NEUROSHIMA.Actions.Defense"}}</button>
+                        <button type="button" data-action="respondAction" data-response="ignore">{{localize "NEUROSHIMA.Actions.Ignore"}}</button>
+                    {{/if}}
+                </div>
             {{/if}}
 
             {{#if (eq phase 'resolved')}}

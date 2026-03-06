@@ -11,10 +11,24 @@ export class NeuroshimaDice {
    * @returns {Promise<Object>} Dane rzutu i wynik SP
    */
   static async rollInitiative(params) {
-    const { actor, attribute = "dexterity", skill = "", useSkill = true, difficulty = "average", modifier = 0, useArmorPenalty = false, useWoundPenalty = true, attributeBonus = 0, skillBonus = 0, rollMode = game.settings.get("core", "rollMode") } = params;
+    const { actor, attribute = "dexterity", skill = "", useSkill = true, difficulty = "average", modifier = 0, useArmorPenalty = false, useWoundPenalty = true, attributeBonus = 0, skillBonus = 0, isMeleeInitiative = false, rollMode = game.settings.get("core", "rollMode") } = params;
     
     game.neuroshima.group(`Rzut na Inicjatywę: ${actor.name}`);
     
+    // Check for Charge maneuver bonus
+    let chargeBonus = 0;
+    if (isMeleeInitiative) {
+        const duel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(actor);
+        if (duel) {
+            const role = duel.state.attacker.actorUuid === actor.uuid || duel.state.attacker.tokenUuid === actor.uuid ? "attacker" : "defender";
+            if (duel.state[role].maneuver === "charge") {
+                // Rule: +1 to +3 bonus. For automation we can use a fixed +2 or ask, 
+                // but let's assume +2 as standard charge or check actor skills.
+                chargeBonus = 2; 
+            }
+        }
+    }
+
     // 1. Pobranie wartości atrybutu i umiejętności
     const attrValue = Number(actor.system.attributeTotals[attribute]) || 10;
     const skillValue = useSkill ? (Number(actor.system.skills[skill]?.value) || 0) : 0;
@@ -29,7 +43,7 @@ export class NeuroshimaDice {
     
     // 3. Wykonanie rzutu testowego (Otwarty)
     const rollResult = await this.rollTest({
-        stat: attrValue,
+        stat: attrValue + chargeBonus,
         skill: skillValue,
         penalties: {
             mod: modifier + basePenalty,
@@ -83,7 +97,7 @@ export class NeuroshimaDice {
    * Perform a weapon-specific roll (shooting or striking).
    */
   static async rollWeaponTest(params) {
-    const { weapon, actor, aimingLevel, burstLevel, difficulty, hitLocation, modifier, applyArmor, applyWounds, isOpen, skillBonus = 0, attributeBonus = 0, distance = 0, meleeAction = "attack", isReroll = false, rollMode = game.settings.get("core", "rollMode") } = params;
+    const { weapon, actor, aimingLevel, burstLevel, difficulty, hitLocation, modifier, applyArmor, applyWounds, isOpen, skillBonus = 0, attributeBonus = 0, distance = 0, meleeAction = "attack", isReroll = false, chatMessage = true, rollMode = game.settings.get("core", "rollMode") } = params;
     
     // Rozpoczęcie grupy logów dla rzutu bronią
     game.neuroshima.group("Inicjalizacja rzutu bronią");
@@ -610,50 +624,14 @@ export class NeuroshimaDice {
     game.neuroshima.log("Generowanie karty czatu", rollData);
     game.neuroshima.groupEnd();
 
-    // 7. Obsługa Walki Wręcz (Melee Opposed Logic)
-    // Zgodnie z Planem Neuroshima 1.5, rzut bronią melee nie kończy się na karcie czatu,
-    // lecz inicjuje lub kontynuuje Starcie Przeciwstawne (Duel) w flagach Combata.
-    if (isMelee) {
-        if (meleeAction === "attack") {
-            // SCENARIUSZ A: ATAK WRĘCZ
-            const duel = await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(
-                actor, 
-                rollData, 
-                weapon.id, 
-                rollData.targets || []
-            );
-            
-            // Informujemy o rozpoczęciu starcia
-            if (duel) {
-                game.neuroshima.log(`Rozpoczęto pojedynek melee: ${duel.duelId}`);
-                ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.DuelStarted"));
-            }
-            return duel;
-        } else {
-            // SCENARIUSZ B: OBRONA WRĘCZ
-            const duel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(actor);
-            
-            if (duel) {
-                game.neuroshima.log(`Dołączanie do starcia: ${duel.duelId}`);
-                
-                if (game.user.isGM) {
-                    await duel.joinDefender(actor, rollData, weapon.id);
-                } else {
-                    // Żądanie do GM przez socketlib
-                    game.neuroshima.socket.executeAsGM("joinMeleeDuel", {
-                        duelId: duel.duelId,
-                        defenderData: {
-                            actorUuid: actor.uuid,
-                            rollData: rollData,
-                            weaponId: weapon.id
-                        }
-                    });
-                }
-                return duel;
-            } else {
-                game.neuroshima.warn("Nie znaleziono aktywnego starcia do dołączenia.");
-            }
-        }
+    // W nowym systemie (v1.5) walka wręcz jest zarządzana przez MeleeDuel i trackera.
+    // Standardowa karta czatu jest renderowana tylko jeśli rzut nie został 
+    // przechwycony przez logikę rzutu puli (chatMessage: false).
+    if (!chatMessage) {
+        return {
+            ...rollData,
+            roll
+        };
     }
 
     const rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rollData, actor, roll);

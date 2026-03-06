@@ -11,15 +11,15 @@
                         <div class="die-container {{#if this.spent}}spent{{/if}} {{#if this.selected}}selected{{/if}}" 
                              data-index="{{@index}}" data-owner="attacker">
                             
-                            {{#if ../canModify}}
+                            {{#if (and ../canModify ../doubleSkillAction)}}
                                 <div class="die-mods">
                                     <button type="button" data-action="modDie" data-side="attacker" data-target-side="attacker" data-index="{{@index}}" data-delta="1" {{#if (not ../isAttacker)}}disabled{{/if}}>-</button>
                                     <button type="button" data-action="modDie" data-side="defender" data-target-side="attacker" data-index="{{@index}}" data-delta="1" {{#if (not ../isDefender)}}disabled{{/if}}>+</button>
                                 </div>
                             {{/if}}
 
-                            <div class="die {{#if this.isSuccess}}success{{else}}failure{{/if}} {{#if this.isNat20}}nat-20{{/if}}"
-                                 {{#if ../canSelect}}data-action="declareAction" data-index="{{@index}}"{{/if}}>
+                            <div class="die {{#if this.isSuccess}}success{{else}}failure{{/if}} {{#if this.isNat20}}nat-20{{/if}} {{#if this.selected}}selected{{/if}}"
+                                 {{#if ../canSelect}}data-action="selectDie" data-index="{{@index}}" data-role="attacker"{{/if}}>
                                 {{this.modified}}
                             </div>
                         </div>
@@ -47,15 +47,15 @@
                         <div class="die-container {{#if this.spent}}spent{{/if}} {{#if this.selected}}selected{{/if}}" 
                              data-index="{{@index}}" data-owner="defender">
                             
-                            {{#if ../canModify}}
+                            {{#if (and ../canModify ../doubleSkillAction)}}
                                 <div class="die-mods">
                                     <button type="button" data-action="modDie" data-side="defender" data-target-side="defender" data-index="{{@index}}" data-delta="1" {{#if (not ../isDefender)}}disabled{{/if}}>-</button>
                                     <button type="button" data-action="modDie" data-side="attacker" data-target-side="defender" data-index="{{@index}}" data-delta="1" {{#if (not ../isAttacker)}}disabled{{/if}}>+</button>
                                 </div>
                             {{/if}}
 
-                            <div class="die {{#if this.isSuccess}}success{{else}}failure{{/if}} {{#if this.isNat20}}nat-20{{/if}}"
-                                 {{#if ../canSelect}}data-action="declareAction" data-index="{{@index}}"{{/if}}>
+                            <div class="die {{#if this.isSuccess}}success{{else}}failure{{/if}} {{#if this.isNat20}}nat-20{{/if}} {{#if this.selected}}selected{{/if}}"
+                                 {{#if ../canSelect}}data-action="selectDie" data-index="{{@index}}" data-role="defender"{{/if}}>
                                 {{this.modified}}
                             </div>
                         </div>

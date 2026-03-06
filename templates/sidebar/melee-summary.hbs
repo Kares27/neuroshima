@@ -8,11 +8,11 @@
             {{#each activeDuels}}
             <li class="melee-duel-item {{this.status}}" data-duel-id="{{this.id}}" data-action="openDuel" title="{{localize 'NEUROSHIMA.MeleeOpposed.OpenDuelTracker'}}">
                 <div class="duel-participants">
-                    <div class="participant attacker" title="{{this.attacker.name}}">
+                    <div class="participant attacker {{#if (eq this.initiative 'attacker')}}has-initiative{{/if}}" title="{{this.attacker.name}}">
                         <img src="{{this.attacker.img}}">
                     </div>
                     <div class="vs">VS</div>
-                    <div class="participant defender" title="{{this.defender.name}}">
+                    <div class="participant defender {{#if (eq this.initiative 'defender')}}has-initiative{{/if}}" title="{{this.defender.name}}">
                         <img src="{{this.defender.img}}">
                     </div>
                     <div class="duel-meta">

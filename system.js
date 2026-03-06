@@ -135,6 +135,10 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('number', (v) => Number(v));
     Handlebars.registerHelper('inc', (v) => Number(v) + 1);
     Handlebars.registerHelper('ifThen', (c, a, b) => c ? a : b);
+    Handlebars.registerHelper('capitalize', (str) => {
+        if (!str || typeof str !== 'string') return '';
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    });
 
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
@@ -1037,6 +1041,21 @@ function initializeSocketlib() {
     console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
     
     // Melee Duel functions
+    game.neuroshima.socket.register("selectMeleeManeuver", async function(data) {
+        const { duelId, role, maneuver } = data;
+        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
+        if (duel) {
+            const state = duel.state;
+            const actorUuid = role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
+            const user = game.users.get(this.socketdata.userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.selectManeuver(role, maneuver);
+            }
+        }
+    });
+
     game.neuroshima.socket.register("modifyMeleeDie", async function(data) {
         const { duelId, side } = data;
         const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
@@ -1067,6 +1086,16 @@ function initializeSocketlib() {
         }
     });
 
+    game.neuroshima.socket.register("createMeleeDuel", async function(data) {
+        const attacker = (await fromUuid(data.attackerUuid))?.actor || (await fromUuid(data.attackerUuid));
+        const weapon = attacker?.items.get(data.weaponId);
+        const user = game.users.get(this.socketdata.userId);
+
+        if (user?.isGM || attacker?.testUserPermission(user, "OWNER")) {
+            await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(attacker, weapon, data.targets, data.initiativeResult);
+        }
+    });
+
     game.neuroshima.socket.register("joinMeleeDuel", async function(data) {
         const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
         if (duel) {
@@ -1074,7 +1103,21 @@ function initializeSocketlib() {
             const user = game.users.get(this.socketdata.userId);
 
             if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.joinDefender(actor, data.defenderData.rollData, data.defenderData.weaponId);
+                await game.neuroshima.NeuroshimaMeleeDuel.join(data.duelId, actor, data.defenderData.rollResult, data.defenderData.weaponId);
+            }
+        }
+    });
+
+    game.neuroshima.socket.register("updateMeleePool", async function(data) {
+        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
+        if (duel) {
+            const state = duel.state;
+            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
+            const user = game.users.get(this.socketdata.userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.updatePool(data.role, data.rollResult);
             }
         }
     });
@@ -1147,6 +1190,19 @@ function initializeSocketlib() {
 
     game.neuroshima.socket.register("finishMeleeDuel", NeuroshimaMeleeDuelSockets._onFinishDuel);
     game.neuroshima.socket.register("nextMeleeTurn", NeuroshimaMeleeDuelSockets._onNextTurn);
+    game.neuroshima.socket.register("rerollMelee3k20", async function(data) {
+        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
+        if (duel) {
+            const state = duel.state;
+            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
+            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
+            const user = game.users.get(this.socketdata.userId);
+
+            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
+                await duel.rollPool(data.role);
+            }
+        }
+    });
 
     game.neuroshima.socket.register("applyHealingBatch", async (data) => {
         const doc = await fromUuid(data.patientUuid);
@@ -1283,7 +1339,7 @@ Hooks.on("updateCombat", (combat, changed, options, userId) => {
         }
         
         // Refresh Sidebar if active
-        const combatTab = ui.sidebar?.tabs.combat;
+        const combatTab = ui.sidebar?.tabs?.combat;
         if (combatTab && typeof combatTab.render === "function") {
             combatTab.render();
         }

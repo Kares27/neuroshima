@@ -9,6 +9,45 @@
  */
 export class NeuroshimaMeleeDuelResolver {
   /**
+   * Pobiera efektywne PT (Współczynnik) dla danej roli uwzględniając manewry.
+   */
+  static getEffectiveStat(state, role) {
+    const side = state[role];
+    const otherRole = role === "attacker" ? "defender" : "attacker";
+    const otherSide = state[otherRole];
+    let stat = side.stat;
+
+    // Furia: +2 do Zręczności w ataku
+    if (side.maneuver === "fury" && state.initiative === role) {
+        stat += 2;
+    }
+
+    // Pełna Obrona: +2 do Zręczności w obronie
+    if (side.maneuver === "fullDefense" && state.initiative !== role) {
+        stat += 2;
+    }
+
+    // Szarża: Bonus został już rozliczony w Inicjatywie, 
+    // ale kara po przegranej Inicjatywie (-1 do -3 do Zręczności w 1. turze)
+    // TODO: Zaimplementować karę za przegraną szarżę jeśli turn === 1
+
+    return stat;
+  }
+
+  /**
+   * Sprawdza czy kość jest sukcesem.
+   */
+  static isSuccess(value, index, role, state) {
+    if (value === 20) return false;
+    const side = state[role];
+    const otherRole = role === "attacker" ? "defender" : "attacker";
+    const otherSide = state[otherRole];
+    const effectiveStat = this.getEffectiveStat(state, role);
+    const modified = value - side.modSelf[index] + otherSide.modOpponent[index];
+    return modified <= effectiveStat;
+  }
+
+  /**
    * Główna funkcja rozstrzygająca wynik całego starcia (tryb uproszczony/Successes).
    * @param {Object} state - Stan starcia z flags.neuroshima.meleeDuel
    * @returns {Object} Wynik starcia
@@ -18,21 +57,8 @@ export class NeuroshimaMeleeDuelResolver {
       return { winner: "none", tier: 0, explain: "Brak danych rzutów." };
     }
 
-    const attackerTarget = state.attacker.stat;
-    const defenderTarget = state.defender.stat;
-
-    // Oblicz sukcesy uwzględniając modyfikatory obu stron (DoubleSkillAction logic).
-    // Finalna kość Atakującego [i] = rzut - własne obniżenie + podwyższenie przez obrońcę.
-    const attackerSuccesses = state.dice.attacker.filter((v, i) => {
-        const modified = v - state.attacker.modSelf[i] + state.defender.modOpponent[i];
-        return modified <= attackerTarget && v !== 20;
-    }).length;
-
-    // Finalna kość Obrońcy [i] = rzut - własne obniżenie + podwyższenie przez atakującego.
-    const defenderSuccesses = state.dice.defender.filter((v, i) => {
-        const modified = v - state.defender.modSelf[i] + state.attacker.modOpponent[i];
-        return modified <= defenderTarget && v !== 20;
-    }).length;
+    const attackerSuccesses = state.dice.attacker.filter((v, i) => this.isSuccess(v, i, "attacker", state)).length;
+    const defenderSuccesses = state.dice.defender.filter((v, i) => this.isSuccess(v, i, "defender", state)).length;
 
     const spDifference = attackerSuccesses - defenderSuccesses;
     let winner = "none";
@@ -69,13 +95,19 @@ export class NeuroshimaMeleeDuelResolver {
    * @returns {string} Kod obrażeń pobrany ze statystyk broni
    */
   static calculateSegmentDamage(state, action) {
-    const weapon = state.attack.rollData;
+    const rollData = state.attack?.rollData;
+    if (!rollData) return "D";
+
     const power = action.power; // Liczba sukcesów przeznaczonych na ten cios (1, 2 lub 3)
 
-    // Zgodnie z rozdziałem Zbrojownia: 1s = Melee1, 2s = Melee2, 3s = Melee3.
-    if (power === 1) return weapon.damageMelee1 || "L";
-    if (power === 2) return weapon.damageMelee2 || "C";
-    if (power >= 3) return weapon.damageMelee3 || "K";
+    // Próba pobrania z różnych struktur (system.damageMeleeX lub płaskie damageMeleeX)
+    const d1 = rollData.system?.damageMelee1 || rollData.damageMelee1 || "D";
+    const d2 = rollData.system?.damageMelee2 || rollData.damageMelee2 || "L";
+    const d3 = rollData.system?.damageMelee3 || rollData.damageMelee3 || "C";
+
+    if (power === 1) return d1;
+    if (power === 2) return d2;
+    if (power >= 3) return d3;
     
     return null;
   }

@@ -3382,9 +3382,36 @@ body.theme-dark {
     background: rgba(46, 125, 50, 0.1);
 }
 
-.melee-duel-tracker .die.failure {
-    border-color: #c62828;
-    background: rgba(198, 40, 40, 0.1);
+.melee-duel-tracker .die.selected {
+    border-color: #f57c00;
+    box-shadow: 0 0 15px rgba(245, 124, 0, 0.6);
+    transform: scale(1.1);
+    z-index: 5;
+}
+
+.melee-duel-tracker .die.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #f57c00;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid white;
+}
+
+.melee-duel-tracker .die:hover:not(.spent) {
+    border-color: var(--ns-text-accent);
+    background: var(--ns-bg-hover);
 }
 
 .melee-duel-tracker .die.spent {

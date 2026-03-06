@@ -35,6 +35,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       distance: lastRoll.distance || 0,
       rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode")
     };
+    this.isPoolRoll = options.isPoolRoll || false;
+    this.onPoolRoll = options.onRoll;
     this._onCloseCallback = options.onClose;
   }
 
@@ -330,6 +332,16 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     };
 
     this.close();
+    
+    // Jeśli to rzut puli dla Melee Duel, rzucamy 3k20 i nie wysyłamy na czat (MeleeDuel zajmie się logiką)
+    if (this.isPoolRoll && this.onPoolRoll) {
+        const rollResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({
+            ...rollData,
+            chatMessage: false
+        });
+        return this.onPoolRoll(rollResult);
+    }
+
     return game.neuroshima.NeuroshimaDice.rollWeaponTest(rollData);
   }
 

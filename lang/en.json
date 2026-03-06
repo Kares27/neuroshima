@@ -108,6 +108,12 @@
             "ApplyToSelected": "Apply to selected tokens",
             "DetailsHidden": "Details hidden (higher rank required)",
             "Segment": "Segment",
+            "Maneuvers": {
+                "None": "None",
+                "Charge": "Charge",
+                "Fury": "Fury",
+                "FullDefense": "Full Defense"
+            },
             "MeleeResults": "Melee Roll Results",
             "Preview": {
                 "Base": "Base",
@@ -341,10 +347,33 @@
             "DuelStarted": "Duel started!",
             "AttackInstruction": "attacks! Select a weapon on your sheet to roll defense.",
             "InitiativeTakenBy": "{name} takes over Initiative!",
+            "PhaseManeuver": "Maneuvers",
             "PhaseInitiative": "Initiative",
             "PhaseModification": "Modification",
             "PhaseSegments": "Segments",
             "PhaseResolved": "Resolution",
+            "SelectManeuver": "Select maneuver for this turn.",
+            "WaitingForReady": "Waiting for both sides to be ready...",
+            "Declares": "declares",
+            "Actions": {
+                "Attack": "Attack",
+                "Pass": "Pass",
+                "Defense": "Defense",
+                "Ignore": "Ignore",
+                "Single": "Single Attack",
+                "Compound": "Compound Strike",
+                "Failure": "Failed attack"
+            },
+            "TurnOf": {
+                "Attacker": "Attacker's Turn",
+                "Defender": "Defender's Turn"
+            },
+            "Maneuvers": {
+                "None": "None",
+                "Charge": "Charge",
+                "Fury": "Fury",
+                "FullDefense": "Full Defense"
+            },
             "Initiative": "Initiative",
             "InitiativeAbbr": "Init.",
             "DiceSpent": "Spent",
@@ -356,7 +385,10 @@
             "WaitingForResponse": "Waiting for reaction...",
             "SelectDiceInstruction": "Select dice (successes) you want to use.",
             "TakeoverInitiative": "Takeover Initiative",
-            "DefenseSuccess": "Defense successful!",
+            "DefenseSuccess": "{defender} defends against {attacker}'s attack!",
+            "HitSuccess": "{attacker} hits {defender} causing: {damage}!",
+            "HitIgnored": "{defender} ignores defense! {attacker} hits causing: {damage}!",
+            "FuryHitBack": "Fury! {attacker} hits {defender} while taking initiative causing: {damage}!",
             "DefenseFailed": "Defense failed (Need: {need}, Have: {have})! Damage applies.",
             "AdvantagePoints": "Advantage Points (Initiative)",
             "WaitingForInitiative": "Waiting for initiative resolution...",
@@ -373,6 +405,7 @@
             "ResolveSegment": "Resolve segment",
             "NextTurn": "Next turn",
             "ResolveDuel": "Resolve duel",
+            "TurnSummary": "Turn Summary",
             "Roll3k20": "Roll 3k20",
             "WaitingForRoll": "Waiting for roll..."
         },

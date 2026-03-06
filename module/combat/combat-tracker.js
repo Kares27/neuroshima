@@ -9,14 +9,20 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         actions: {
             openDuel: function(event, target) {
                 const duelId = target.dataset.duelId;
+                game.neuroshima.log("CombatTracker | Akcja openDuel", { duelId });
                 game.neuroshima.NeuroshimaMeleeDuelTracker.open(duelId);
             },
             finishDuel: async function(event, target) {
                 const duelId = target.dataset.duelId;
                 const combat = this.viewed;
+                game.neuroshima.log("CombatTracker | Akcja finishDuel kliknięta", { duelId, combatId: combat?.id });
+                
                 const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId, combat);
                 if (duel) {
+                    game.neuroshima.log("CombatTracker | Znaleziono pojedynek, wywołuję finish()");
                     await duel.finish();
+                } else {
+                    game.neuroshima.warn("CombatTracker | Nie znaleziono pojedynku o ID:", duelId);
                 }
             }
         }
@@ -35,14 +41,18 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         }
 
         context.activeDuels = Object.values(duels).map(duel => {
+            const phase = duel.phase || "initiative";
+            const capitalizedPhase = phase.charAt(0).toUpperCase() + phase.slice(1);
             return {
                 id: duel.id,
                 attacker: duel.attacker,
                 defender: duel.defender,
                 turn: duel.turn,
-                phase: duel.phase,
+                phase: phase,
+                phaseLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposed.Phase${capitalizedPhase}`),
                 status: duel.status,
-                currentSegment: duel.currentSegment || 1
+                currentSegment: duel.currentSegment || 1,
+                initiative: duel.initiative
             };
         });
         
@@ -58,14 +68,16 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             console.log("Neuroshima 1.5 | CombatTracker _onRender triggered", { context, element: this.element });
         }
 
-        // Remove existing summary to avoid duplicates
+        // Remove existing summary and status icons to avoid duplicates or leftovers
         this.element.querySelectorAll(".active-duels-wrapper").forEach(el => el.remove());
+        this.element.querySelectorAll(".melee-status-icon").forEach(el => el.remove());
 
         // Add icons for combatants participating in an active melee duel
         const combat = this.viewed || game.combat;
         if (!combat) return;
 
         const duels = combat.getFlag("neuroshima", "duels") || {};
+        game.neuroshima.log("CombatTracker | _onRender - Aktywne flagi duels:", duels);
         const participantUuids = new Set();
         
         for (const duel of Object.values(duels)) {
@@ -114,7 +126,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         if (!context.activeDuels?.length) return;
 
         // Render our summary template
-        const summaryHtml = await renderTemplate("systems/neuroshima/templates/sidebar/melee-summary.hbs", context);
+        const summaryHtml = await foundry.applications.handlebars.renderTemplate("systems/neuroshima/templates/sidebar/melee-summary.hbs", context);
         
         // Insertion point (AppV2 often wraps content in specific containers)
         const insertionPoint = this.element.querySelector("ol, #combat-tracker, .directory-list") || this.element;

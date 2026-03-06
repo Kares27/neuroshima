@@ -11,6 +11,20 @@
             <img src="{{attacker.img}}" title="{{attacker.name}}">
             <div class="info">
                 <span class="name">{{attacker.name}}</span>
+                {{#if (eq phase 'maneuver')}}
+                    {{#if isAttacker}}
+                    <div class="maneuver-selector">
+                        <select data-action="selectManeuver" data-role="attacker">
+                            <option value="none" {{#if (eq attacker.maneuver 'none')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.None"}}</option>
+                            <option value="charge" {{#if (eq attacker.maneuver 'charge')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.Charge"}}</option>
+                            <option value="fury" {{#if (eq attacker.maneuver 'fury')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.Fury"}}</option>
+                            <option value="fullDefense" {{#if (eq attacker.maneuver 'fullDefense')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.FullDefense"}}</option>
+                        </select>
+                    </div>
+                    {{else}}
+                    <span class="maneuver-label">{{localize (concat "NEUROSHIMA.MeleeOpposed.Maneuvers." (capitalize attacker.maneuver))}}</span>
+                    {{/if}}
+                {{/if}}
                 {{#if (ne attacker.initiativeRoll null)}}
                     <span class="initiative-value" data-tooltip="{{attacker.initiativeTooltip}}">
                         <i class="fas fa-bolt"></i> {{attacker.initiativeRoll}} PP
@@ -30,6 +44,20 @@
         <div class="participant defender {{#if (eq initiative 'defender')}}has-initiative{{/if}}">
             <div class="info">
                 <span class="name">{{defender.name}}</span>
+                {{#if (eq phase 'maneuver')}}
+                    {{#if isDefender}}
+                    <div class="maneuver-selector">
+                        <select data-action="selectManeuver" data-role="defender">
+                            <option value="none" {{#if (eq defender.maneuver 'none')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.None"}}</option>
+                            <option value="charge" {{#if (eq defender.maneuver 'charge')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.Charge"}}</option>
+                            <option value="fury" {{#if (eq defender.maneuver 'fury')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.Fury"}}</option>
+                            <option value="fullDefense" {{#if (eq defender.maneuver 'fullDefense')}}selected{{/if}}>{{localize "NEUROSHIMA.MeleeOpposed.Maneuvers.FullDefense"}}</option>
+                        </select>
+                    </div>
+                    {{else}}
+                    <span class="maneuver-label">{{localize (concat "NEUROSHIMA.MeleeOpposed.Maneuvers." (capitalize defender.maneuver))}}</span>
+                    {{/if}}
+                {{/if}}
                 {{#if (ne defender.initiativeRoll null)}}
                     <span class="initiative-value" data-tooltip="{{defender.initiativeTooltip}}">
                         <i class="fas fa-bolt"></i> {{defender.initiativeRoll}} PP

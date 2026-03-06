@@ -30,32 +30,37 @@ export class NeuroshimaMeleeDuel {
     
     // Get all relevant IDs for this actor/token
     const actorUuid = actor.uuid;
-    const tokenUuid = actor.isToken ? actor.uuid : actor.token?.uuid;
-    const tokenId = actor.isToken ? actor.id : actor.token?.id;
     const actorId = actor.id;
+    const tokenUuid = actor.token?.uuid || (actor.isToken ? actor.uuid : null);
+    
+    game.neuroshima.log("findActiveDuelForActor | Sprawdzanie aktora:", {
+        actorName: actor.name,
+        actorUuid,
+        tokenUuid,
+        actorId
+    });
 
     for (const duelId in duels) {
       const duel = duels[duelId];
       if (duel.status === "finished") continue;
       
       const isAttacker = duel.attacker.actorUuid === actorUuid || 
-                         duel.attacker.tokenUuid === tokenUuid ||
+                         (tokenUuid && duel.attacker.tokenUuid === tokenUuid) ||
                          duel.attacker.actorUuid === actorId;
 
       const isDefender = duel.defender?.actorUuid === actorUuid || 
-                         duel.defender?.tokenUuid === tokenUuid ||
+                         (tokenUuid && duel.defender?.tokenUuid === tokenUuid) ||
                          duel.defender?.actorUuid === actorId;
 
       const isPotentialTarget = duel.status === "waiting-defender" && 
                                 (duel.attackerTargets || []).some(t => 
                                     t.uuid === actorUuid || 
                                     t.id === actorId || 
-                                    t.uuid === tokenUuid ||
-                                    t.id === tokenId ||
-                                    (actor.isToken && actor.token.document && t.uuid === actor.token.document.uuid)
+                                    (tokenUuid && t.uuid === tokenUuid)
                                 );
 
       if (isAttacker || isDefender || isPotentialTarget) {
+          game.neuroshima.log(`findActiveDuelForActor | Znaleziono pojedynek ${duelId}`, { isAttacker, isDefender, isPotentialTarget });
           return new NeuroshimaMeleeDuel(duelId, combat);
       }
     }
@@ -97,18 +102,25 @@ export class NeuroshimaMeleeDuel {
   }
 
   /**
-   * Fabryka: Tworzy nową instancję starcia na podstawie rzutu atakującego.
+   * Fabryka: Tworzy nową instancję starcia na podstawie rzutu inicjatywy atakującego.
    * Zapisuje stan w flagach Combata.
    */
-  static async createFromAttack(attackerActor, attackRollData, weaponId, targets = []) {
+  static async createFromAttack(attackerActor, weapon, targets = [], initiativeResult) {
+    if (!game.user.isGM) {
+        return game.neuroshima.socket.executeAsGM("createMeleeDuel", {
+            attackerUuid: attackerActor.uuid,
+            weaponId: weapon.id,
+            targets: targets,
+            initiativeResult: initiativeResult
+        });
+    }
+
     if (!game.combat) {
         ui.notifications.error(game.i18n.localize("NEUROSHIMA.Warnings.NoCombatActive"));
         return null;
     }
 
     const duelId = foundry.utils.randomID();
-    const dice = attackRollData.rawResults.map(r => typeof r === 'object' ? r.value : r);
-
     const targetsInfo = [];
     for (const uuid of targets) {
         const doc = await fromUuid(uuid);
@@ -123,14 +135,6 @@ export class NeuroshimaMeleeDuel {
         }
     }
 
-    const attackerStat = attackRollData.target || 10;
-    const attackerSkill = attackRollData.skill || 0;
-    let modSelf = [0, 0, 0];
-
-    if (!game.settings.get("neuroshima", "doubleSkillAction")) {
-        modSelf = this._autoOptimizeDice(dice, attackerStat, attackerSkill);
-    }
-
     const state = {
       id: duelId,
       status: "waiting-defender",
@@ -143,15 +147,16 @@ export class NeuroshimaMeleeDuel {
         tokenUuid: attackerActor.token?.uuid || null,
         name: attackerActor.name,
         img: attackerActor.img || "icons/svg/mystery-man.svg",
-        stat: attackerStat,
-        skillPoints: attackerSkill,
-        modSelf: modSelf,
+        stat: 10,
+        skillPoints: 0,
+        modSelf: [0, 0, 0],
         modOpponent: [0, 0, 0],
         ready: false,
         diceSpent: [false, false, false],
-        initiativeRoll: null,
-        initiativeTooltip: "",
-        rollTooltip: attackRollData.tooltip || ""
+        initiativeRoll: initiativeResult.successPoints,
+        initiativeTooltip: initiativeResult.tooltip || "",
+        rollTooltip: "",
+        maneuver: "none"
       },
       defender: { 
         actorUuid: null, 
@@ -164,12 +169,13 @@ export class NeuroshimaMeleeDuel {
         modOpponent: [0, 0, 0],
         ready: false,
         diceSpent: [false, false, false],
-        initiativeRoll: null
+        initiativeRoll: null,
+        maneuver: "none"
       },
-      attack: { weaponId, rollData: attackRollData },
-      defense: { weaponId: null, rollData: null },
+      attack: { weaponId: weapon.id, weaponName: weapon.name },
+      defense: { weaponId: null, weaponName: null },
       dice: {
-        attacker: dice,
+        attacker: [],
         defender: []
       },
       segments: [
@@ -196,10 +202,113 @@ export class NeuroshimaMeleeDuel {
   }
 
   /**
+   * Dołącza obrońcę do starcia na podstawie rzutu inicjatywy.
+   */
+  static async join(duelId, defenderActor, initiativeResult, weaponId = null) {
+    if (!game.user.isGM) {
+        game.neuroshima.log(`MeleeDuel | Wywołano join() przez użytkownika, deleguję do GM-a. Duel: ${duelId}`);
+        return game.neuroshima.socket.executeAsGM("joinMeleeDuel", {
+            duelId: duelId,
+            defenderData: {
+                actorUuid: defenderActor.uuid,
+                rollResult: initiativeResult,
+                weaponId: weaponId
+            }
+        });
+    }
+
+    game.neuroshima.group(`MeleeDuel | join() as GM: ${duelId}`);
+    const duel = NeuroshimaMeleeDuel.fromId(duelId);
+    if (!duel) {
+        game.neuroshima.error(`MeleeDuel | Nie znaleziono pojedynku o ID: ${duelId}`);
+        game.neuroshima.groupEnd();
+        return;
+    }
+
+    const state = foundry.utils.deepClone(duel.state);
+    if (!state) {
+        game.neuroshima.error(`MeleeDuel | Stan pojedynku jest pusty!`);
+        game.neuroshima.groupEnd();
+        return;
+    }
+
+    if (state.status !== "waiting-defender") {
+        game.neuroshima.warn(`MeleeDuel | Pojedynek nie jest w stanie oczekiwania na obrońcę (status: ${state.status})`);
+        game.neuroshima.groupEnd();
+        return;
+    }
+
+    const weapon = defenderActor.items.get(weaponId);
+    game.neuroshima.log(`Obrońca: ${defenderActor.name}, Broń: ${weapon?.name || "Brak"}, Inicjatywa: ${initiativeResult.successPoints} SP`);
+
+    const defenderRollData = {
+        damageMelee1: weapon?.system?.damageMelee1 || "D",
+        damageMelee2: weapon?.system?.damageMelee2 || "L",
+        damageMelee3: weapon?.system?.damageMelee3 || "C"
+    };
+
+    state.defender = {
+      actorUuid: defenderActor.uuid,
+      tokenUuid: defenderActor.token?.uuid || null,
+      name: defenderActor.name,
+      img: defenderActor.img || "icons/svg/mystery-man.svg",
+      stat: 10,
+      skillPoints: 0,
+      modSelf: [0, 0, 0],
+      modOpponent: [0, 0, 0],
+      ready: false,
+      diceSpent: [false, false, false],
+      initiativeRoll: initiativeResult.successPoints,
+      initiativeTooltip: initiativeResult.tooltip || "",
+      maneuver: "none"
+    };
+
+    state.defense = { 
+        weaponId, 
+        weaponName: weapon?.name || null,
+        rollData: defenderRollData
+    };
+    state.status = "active";
+    state.phase = "initiative";
+    state.version += 1;
+
+    // Resolve initial initiative if both rolled
+    if (state.attacker.initiativeRoll !== null && state.defender.initiativeRoll !== null) {
+        game.neuroshima.log(`Rozstrzyganie inicjatywy: ${state.attacker.initiativeRoll} vs ${state.defender.initiativeRoll}`);
+        if (state.attacker.initiativeRoll > state.defender.initiativeRoll) {
+            state.initiative = "attacker";
+            state.phase = "maneuver";
+        } else if (state.defender.initiativeRoll > state.attacker.initiativeRoll) {
+            state.initiative = "defender";
+            state.phase = "maneuver";
+        } else {
+            // Tie - reset initiative to reroll
+            state.attacker.initiativeRoll = null;
+            state.defender.initiativeRoll = null;
+            state.phase = "initiative";
+            ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeDraw"));
+        }
+    }
+
+    await duel.update(state);
+    game.neuroshima.log("Pojedynek zaktualizowany pomyślnie.");
+    game.neuroshima.groupEnd();
+  }
+
+  /**
    * Pobiera instancję duelu z ID.
    */
-  static fromId(duelId, combat = game.combat) {
+  static fromId(duelId, combat = null) {
+    if (!combat) {
+        // Try to find combat containing this duelId
+        combat = game.combats.find(c => {
+            const duels = c.getFlag("neuroshima", "duels") || {};
+            return !!duels[duelId];
+        });
+    }
+    if (!combat) combat = game.combat;
     if (!combat) return null;
+    
     const duels = combat.getFlag("neuroshima", "duels") || {};
     if (!duels[duelId]) return null;
     return new NeuroshimaMeleeDuel(duelId, combat);
@@ -217,43 +326,120 @@ export class NeuroshimaMeleeDuel {
   }
 
   /**
-   * Dołącza obrońcę do starcia.
+   * Wykonuje rzut pulą 3k20 dla danej strony.
    */
-  async joinDefender(defenderActor, defenseRollData, weaponId) {
-    const state = foundry.utils.deepClone(this.state);
-    if (!state || state.status !== "waiting-defender") return;
+  async rollPool(role) {
+    const state = this.state;
+    const side = state[role];
+    const actorDoc = await fromUuid(side.actorUuid);
+    const actor = actorDoc?.actor || actorDoc;
 
-    const defenderDiceRaw = (defenseRollData.rawResults || []).map(r => typeof r === 'object' ? r.value : r);
-    const defenderStat = defenseRollData.target || 10;
-    const defenderSkill = defenseRollData.skill || 0;
-    let modSelf = [0, 0, 0];
-
-    if (!game.settings.get("neuroshima", "doubleSkillAction")) {
-        modSelf = NeuroshimaMeleeDuel._autoOptimizeDice(defenderDiceRaw, defenderStat, defenderSkill);
+    if (!actor || (!actor.isOwner && !game.user.isGM)) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NotYourActor"));
+        return;
     }
 
-    state.defender = {
-      actorUuid: defenderActor.uuid,
-      tokenUuid: defenderActor.token?.uuid || null,
-      name: defenderActor.name,
-      img: defenderActor.img || "icons/svg/mystery-man.svg",
-      stat: defenderStat,
-      skillPoints: defenderSkill,
-      modSelf: modSelf,
-      modOpponent: [0, 0, 0],
-      ready: false,
-      diceSpent: [false, false, false],
-      initiativeRoll: null,
-      initiativeTooltip: "",
-      rollTooltip: defenseRollData.tooltip || ""
-    };
+    const weaponId = role === "attacker" ? state.attack.weaponId : state.defense.weaponId;
+    const weapon = actor.items.get(weaponId);
 
-    state.defense = { weaponId, rollData: defenseRollData };
-    state.dice.defender = defenderDiceRaw;
-    state.phase = "initiative";
-    state.status = "active";
+    const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+    const dialog = new NeuroshimaWeaponRollDialog({
+        actor: actor,
+        weapon: weapon,
+        rollType: "melee",
+        isPoolRoll: true,
+        duelId: this.duelId,
+        onRoll: async (rollResult) => {
+            if (game.user.isGM) {
+                await this.updatePool(role, rollResult);
+            } else {
+                await game.neuroshima.socket.executeAsGM("updateMeleePool", {
+                    duelId: this.duelId,
+                    role: role,
+                    rollResult: rollResult
+                });
+            }
+        }
+    });
+    dialog.render(true);
+  }
+
+  async updatePool(role, rollResult) {
+    if (!game.user.isGM) return;
+    
+    game.neuroshima.log(`MeleeDuel | updatePool(${role})`, rollResult);
+    
+    if (!rollResult) {
+        game.neuroshima.error("MeleeDuel | Brak rollResult w updatePool!");
+        return;
+    }
+
+    const state = foundry.utils.deepClone(this.state);
+    const side = state[role];
+    
+    // Pobieramy kości w sposób bezpieczny, wspierając różne formaty rollResult
+    let rawDice = [];
+    if (rollResult.rawResults && Array.isArray(rollResult.rawResults)) {
+        rawDice = rollResult.rawResults;
+    } else if (rollResult.results && Array.isArray(rollResult.results)) {
+        rawDice = rollResult.results;
+    } else if (rollResult.roll?.terms?.[0]?.results) {
+        rawDice = rollResult.roll.terms[0].results;
+    }
+
+    const dice = rawDice.map(r => {
+        if (typeof r === 'object') return r.result ?? r.value ?? r.original ?? 0;
+        return r;
+    });
+
+    if (dice.length === 0) {
+        game.neuroshima.error("MeleeDuel | Nie udało się wyodrębnić kości z rollResult!", rollResult);
+        return;
+    }
+
+    state.dice[role] = dice;
+    side.stat = rollResult.target || rollResult.stat || 10;
+    side.skillPoints = rollResult.skill || 0;
+    side.rollTooltip = rollResult.tooltip || "";
+    side.ready = true;
+
+    // Auto-optimize if setting is off
+    if (!game.settings.get("neuroshima", "doubleSkillAction")) {
+        side.modSelf = NeuroshimaMeleeDuel._autoOptimizeDice(dice, side.stat, side.skillPoints);
+    }
+
+    // Check if both sides are ready
+    if (state.dice.attacker.length > 0 && state.dice.defender.length > 0) {
+        state.phase = game.settings.get("neuroshima", "doubleSkillAction") ? "modification" : "segments";
+        state.attacker.ready = false;
+        state.defender.ready = false;
+        state.currentSegment = 1;
+    }
+
     state.version += 1;
+    await this.update(state);
+  }
 
+  async selectManeuver(role, maneuver) {
+    if (!game.user.isGM) {
+        return game.neuroshima.socket.executeAsGM("selectMeleeManeuver", {
+            duelId: this.duelId,
+            role,
+            maneuver
+        });
+    }
+
+    const state = foundry.utils.deepClone(this.state);
+    if (!state || state.phase !== "maneuver") return;
+
+    state[role].maneuver = maneuver;
+    
+    // If both maneuvers selected, move to pool-roll phase
+    if (state.attacker.maneuver !== "none" && state.defender?.maneuver !== "none") {
+        state.phase = "pool-roll";
+    }
+
+    state.version += 1;
     await this.update(state);
   }
 
@@ -345,6 +531,14 @@ export class NeuroshimaMeleeDuel {
 
     const state = foundry.utils.deepClone(this.state);
     if (!state || state.status !== "active") return;
+
+    const isModifyingSelf = actorRole === targetRole;
+    const isDoubleSkillEnabled = game.settings.get("neuroshima", "doubleSkillAction");
+
+    if (!isModifyingSelf && !isDoubleSkillEnabled) {
+        ui.notifications.warn("Podwójne działanie umiejętności (modyfikowanie kości przeciwnika) jest wyłączone w ustawieniach systemu.");
+        return;
+    }
     
     const side = state[actorRole];
     const currentSpent = side.modSelf.reduce((a, b) => a + b, 0) + side.modOpponent.reduce((a, b) => a + b, 0);
@@ -382,7 +576,11 @@ export class NeuroshimaMeleeDuel {
     if (!state || state.status !== "active") return;
     
     state[role].ready = !state[role].ready;
-    if (state.phase === "modification" && state.attacker.ready && state.defender.ready) {
+    if (state.phase === "maneuver" && state.attacker.ready && state.defender.ready) {
+        state.phase = "initiative";
+        state.attacker.ready = false;
+        state.defender.ready = false;
+    } else if (state.phase === "modification" && state.attacker.ready && state.defender.ready) {
         state.phase = "segments";
         state.currentSegment = 1;
         state.attacker.ready = false;
@@ -439,16 +637,20 @@ export class NeuroshimaMeleeDuel {
     const selected = side.selectedDice || [];
     
     if (type === "attack") {
-        if (selected.length === 0) return;
+        if (selected.length === 0) {
+            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposed.SelectDiceInstruction"));
+            return;
+        }
+        
+        const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
         const dice = state.dice[role];
         const stat = side.stat;
-        const opponentRole = role === "attacker" ? "defender" : "attacker";
-        const modsOpponent = state[opponentRole].modOpponent;
 
         let totalSuccesses = 0;
         for (const i of selected) {
-            const val = dice[i] - side.modSelf[i] + modsOpponent[i];
-            if (val <= stat) totalSuccesses++;
+            if (NeuroshimaMeleeDuelResolver.isSuccess(dice[i], i, role, state)) {
+                totalSuccesses++;
+            }
         }
 
         state.currentAction = {
@@ -492,34 +694,107 @@ export class NeuroshimaMeleeDuel {
             return;
         }
 
+        const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
         const dice = state.dice[responderRole];
-        const stat = responder.stat;
-        const opponentRole = action.side;
-        const modsOpponent = state[opponentRole].modOpponent;
-
+        
         let totalDefenseSuccesses = 0;
         for (const i of selected) {
-            const val = dice[i] - responder.modSelf[i] + modsOpponent[i];
-            if (val <= stat) totalDefenseSuccesses++;
+            if (NeuroshimaMeleeDuelResolver.isSuccess(dice[i], i, responderRole, state)) {
+                totalDefenseSuccesses++;
+            }
         }
 
+        // Marking dice as spent
         for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
         for (const i of selected) responder.diceSpent[i] = true;
 
-        if (action.power === 0 && totalDefenseSuccesses > 0) {
-            state.initiative = responderRole;
-            ui.notifications.info(game.i18n.format("NEUROSHIMA.MeleeOpposed.InitiativeTakenBy", { name: responder.name }));
+        const initiatorRole = action.side;
+        
+        // RESOLUTION LOGIC
+        // 1. Success vs Success: Draw
+        // 2. Success vs Failure: Hit
+        // 3. Failure vs Success: Initiative Takeover
+        // 4. Failure vs Failure: Draw
+
+        // For compound hits, power is the number of successes in the attack.
+        // Defense must have SAME OR MORE successes to block.
+        const hit = action.power > totalDefenseSuccesses;
+        
+        // Takeover logic: Attacker 0s vs Defender > 0s
+        let takeover = action.power === 0 && totalDefenseSuccesses > 0;
+        
+        // Full Defense adjustment: needs 2 successes to takeover
+        if (takeover && responder.maneuver === "fullDefense" && totalDefenseSuccesses < 2) {
+            takeover = false;
         }
 
-        if (totalDefenseSuccesses < action.power) {
-            const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
+        let resultMsg = "";
+        const attackerName = state[action.side].name;
+        const defenderName = responder.name;
+
+        if (takeover) {
+            state.initiative = responderRole;
+            resultMsg = game.i18n.format("NEUROSHIMA.MeleeOpposed.InitiativeTakenBy", { name: defenderName });
+            
+            // Fury maneuver: losing initiative results in being hit
+            if (state[action.side].maneuver === "fury") {
+                const defenderWeapon = state.defense.rollData || { damageMelee1: "D", damageMelee2: "L", damageMelee3: "C" };
+                const dmg = defenderWeapon.damageMelee1;
+                if (!state.segments) state.segments = [{ result: null }, { result: null }, { result: null }];
+                state.segments[state.currentSegment - 1].resultDefender = dmg;
+                resultMsg += " " + game.i18n.format("NEUROSHIMA.MeleeOpposed.FuryHitBack", { 
+                    attacker: defenderName, 
+                    defender: attackerName,
+                    damage: dmg 
+                });
+            }
+            ui.notifications.info(resultMsg);
+        }
+
+        if (hit && action.power > 0) {
             const dmg = NeuroshimaMeleeDuelResolver.calculateSegmentDamage(state, action);
             if (dmg) {
                 if (!state.segments) state.segments = [{}, {}, {}];
                 state.segments[state.currentSegment - 1].result = dmg;
+                resultMsg = game.i18n.format("NEUROSHIMA.MeleeOpposed.HitSuccess", { 
+                    attacker: attackerName, 
+                    defender: defenderName,
+                    damage: dmg 
+                });
             }
+        } else if (!takeover) {
+            resultMsg = game.i18n.format("NEUROSHIMA.MeleeOpposed.DefenseSuccess", { 
+                attacker: attackerName, 
+                defender: defenderName 
+            });
         }
+        
+        // Create chat message for feedback
+        await ChatMessage.create({
+            user: game.user.id,
+            speaker: ChatMessage.getSpeaker({ actor: await fromUuid(state[action.side].actorUuid) }),
+            content: `<div class="neuroshima chat-card melee-segment-result">
+                <h3>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Segment")} ${state.currentSegment}</h3>
+                <p>${resultMsg}</p>
+                <div class="dice-info">
+                    <span>${attackerName}: ${action.power}s</span> vs 
+                    <span>${defenderName}: ${totalDefenseSuccesses}s</span>
+                </div>
+            </div>`,
+            flags: { neuroshima: { duelId: this.duelId } }
+        });
+
+        // Special case for Fury maneuver: Failure vs Success is a hit for defender
+        if (!takeover && action.power === 0 && totalDefenseSuccesses > 0 && state[action.side].maneuver === "fury") {
+             const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
+             // Fury damage is always at least 1s? Or based on defender's weapon?
+             // Rules say "każde przejęcie inicjatywy jest celnym ciosem". 
+             // We'll treat it as 1s hit from defender.
+             // TODO: Logic for defender hit back in fury
+        }
+
     } else {
+        // Ignored defense
         for (const i of action.diceIndices) state[action.side].diceSpent[i] = true;
         let spentCount = 0;
         for (let i = 0; i < 3 && spentCount < action.diceIndices.length; i++) {
@@ -528,12 +803,28 @@ export class NeuroshimaMeleeDuel {
                 spentCount++;
             }
         }
+        
         if (action.power > 0) {
             const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
             const dmg = NeuroshimaMeleeDuelResolver.calculateSegmentDamage(state, action);
             if (dmg) {
                 if (!state.segments) state.segments = [{}, {}, {}];
                 state.segments[state.currentSegment - 1].result = dmg;
+                const attackerName = state[action.side].name;
+                const defenderName = responder.name;
+                
+                await ChatMessage.create({
+                    user: game.user.id,
+                    content: `<div class="neuroshima chat-card melee-segment-result ignored">
+                        <h3>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Segment")} ${state.currentSegment}</h3>
+                        <p>${game.i18n.format("NEUROSHIMA.MeleeOpposed.HitIgnored", { 
+                            attacker: attackerName, 
+                            defender: defenderName,
+                            damage: dmg 
+                        })}</p>
+                    </div>`,
+                    flags: { neuroshima: { duelId: this.duelId } }
+                });
             }
         }
     }
@@ -555,20 +846,57 @@ export class NeuroshimaMeleeDuel {
         state.phase = "resolved";
         const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
         state.result = NeuroshimaMeleeDuelResolver.resolve(state);
+        
+        // Create turn summary message
+        const attackerName = state.attacker.name;
+        const defenderName = state.defender.name;
+        
+        let summaryHtml = `<div class="neuroshima chat-card melee-turn-summary">
+            <h3>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.TurnSummary")} ${state.turn}</h3>
+            <ul>`;
+        
+        (state.segments || []).forEach((seg, i) => {
+            if (seg.result || seg.resultDefender) {
+                summaryHtml += `<li><strong>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Segment")} ${i + 1}:</strong> `;
+                if (seg.result) summaryHtml += `${attackerName} -> ${seg.result} `;
+                if (seg.resultDefender) summaryHtml += `${defenderName} -> ${seg.resultDefender}`;
+                summaryHtml += `</li>`;
+            }
+        });
+        
+        summaryHtml += `</ul></div>`;
+        
+        await ChatMessage.create({
+            user: game.user.id,
+            content: summaryHtml,
+            flags: { neuroshima: { duelId: this.duelId } }
+        });
     }
   }
 
   async finish() {
+    game.neuroshima.log("MeleeDuel | Wywołano finish()", { duelId: this.duelId, isGM: game.user.isGM });
+    
     if (!game.user.isGM) {
+        game.neuroshima.log("MeleeDuel | Przekierowanie finish() przez socket");
         return game.neuroshima.socket.executeAsGM("finishMeleeDuel", { duelId: this.duelId });
     }
-    const duels = this.combat.getFlag("neuroshima", "duels") || {};
-    const newDuels = { ...duels };
-    delete newDuels[this.duelId];
-    await this.combat.setFlag("neuroshima", "duels", newDuels);
+    
+    const combat = this.combat || game.combat;
+    if (!combat) {
+        game.neuroshima.error("MeleeDuel | Brak dokumentu Combat w finish()");
+        return;
+    }
+
+    game.neuroshima.log("MeleeDuel | Usuwanie pojedynku z flag metodą explicit delete", this.duelId);
+    await combat.setFlag("neuroshima", `duels.-=${this.duelId}`, null);
+    game.neuroshima.log("MeleeDuel | Flagi zaktualizowane pomyślnie");
     
     // Explicitly refresh combat tracker
-    ui.combat?.render(true);
+    if (ui.sidebar?.tabs?.combat) {
+        game.neuroshima.log("MeleeDuel | Wymuszanie renderowania paska bocznego");
+        ui.sidebar.tabs.combat.render(true);
+    }
   }
 
   async takeoverInitiative() {
@@ -631,10 +959,13 @@ export class NeuroshimaMeleeDuel {
     
     state.dice[role] = dice;
     state[role].modSelf = [0, 0, 0];
+    state[role].modOpponent = [0, 0, 0];
     
     const side = state[role];
     if (!game.settings.get("neuroshima", "doubleSkillAction")) {
-        side.modSelf = NeuroshimaMeleeDuel._autoOptimizeDice(dice, side.stat, side.skillPoints);
+        const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
+        const effectiveStat = NeuroshimaMeleeDuelResolver.getEffectiveStat(state, role);
+        side.modSelf = NeuroshimaMeleeDuel._autoOptimizeDice(dice, effectiveStat, side.skillPoints);
     }
 
     state.version += 1;
@@ -643,9 +974,12 @@ export class NeuroshimaMeleeDuel {
 
   async update(newState) {
     if (!game.user.isGM) return;
-    const duels = this.combat.getFlag("neuroshima", "duels") || {};
+    const combat = this.combat || game.combat;
+    if (!combat) return;
+
+    const duels = foundry.utils.deepClone(combat.getFlag("neuroshima", "duels") || {});
     duels[this.duelId] = newState;
-    await this.combat.setFlag("neuroshima", "duels", duels);
+    await combat.setFlag("neuroshima", "duels", duels);
     
     // Notify trackers
     const tracker = Object.values(foundry.applications.instances).find(a => a instanceof game.neuroshima.NeuroshimaMeleeDuelTracker && a.duelId === this.duelId);

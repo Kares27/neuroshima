@@ -115,6 +115,12 @@
             "ApplyToSelected": "Nałóż na zaznaczone tokeny",
             "DetailsHidden": "Szczegóły ukryte (wymagana wyższa ranga)",
             "Segment": "Segment",
+            "Maneuvers": {
+                "None": "Brak",
+                "Charge": "Szarża",
+                "Fury": "Furia",
+                "FullDefense": "Pełna obrona"
+            },
             "MeleeResults": "Wyniki walki wręcz",
             "Preview": {
                 "Base": "Bazowy",
@@ -340,10 +346,33 @@
             "DuelStarted": "Pojedynek rozpoczęty!",
             "AttackInstruction": "atakuje! Wybierz broń na swoim arkuszu, aby wykonać rzut obronny.",
             "InitiativeTakenBy": "{name} przejmuje Inicjatywę!",
+            "PhaseManeuver": "Manewry",
             "PhaseInitiative": "Inicjatywa",
             "PhaseModification": "Modyfikacje",
             "PhaseSegments": "Segmenty",
             "PhaseResolved": "Rozstrzygnięcie",
+            "SelectManeuver": "Wybierz manewr na tę turę.",
+            "WaitingForReady": "Oczekiwanie na gotowość obu stron...",
+            "Declares": "deklaruje",
+            "Actions": {
+                "Attack": "Atak",
+                "Pass": "Pas",
+                "Defense": "Obrona",
+                "Ignore": "Zignoruj",
+                "Single": "Atak pojedynczy",
+                "Compound": "Cios złożony",
+                "Failure": "Atak nieudany"
+            },
+            "TurnOf": {
+                "Attacker": "Tura Atakującego",
+                "Defender": "Tura Obrońcy"
+            },
+            "Maneuvers": {
+                "None": "Brak",
+                "Charge": "Szarża",
+                "Fury": "Furia",
+                "FullDefense": "Pełna obrona"
+            },
             "Initiative": "Inicjatywa",
             "InitiativeAbbr": "Inicj.",
             "DiceSpent": "Wydana",
@@ -355,7 +384,10 @@
             "WaitingForResponse": "Oczekiwanie na reakcję...",
             "SelectDiceInstruction": "Zaznacz kości (sukcesy), których chcesz użyć.",
             "TakeoverInitiative": "Przejmij Inicjatywę",
-            "DefenseSuccess": "Obrona udana!",
+            "DefenseSuccess": "{defender} broni się przed atakiem {attacker}!",
+            "HitSuccess": "{attacker} trafia {defender} zadając rany: {damage}!",
+            "HitIgnored": "{defender} ignoruje obronę! {attacker} trafia zadając rany: {damage}!",
+            "FuryHitBack": "Furia! {attacker} trafia {defender} podczas przejęcia inicjatywy zadając rany: {damage}!",
             "DefenseFailed": "Obrona nieudana (Potrzeba: {need}, Masz: {have})! Obrażenia wchodzą.",
             "AdvantagePoints": "Punkty Przewagi (Inicjatywa)",
             "WaitingForInitiative": "Oczekiwanie na rozstrzygnięcie inicjatywy...",
@@ -372,7 +404,9 @@
             "ResolveSegment": "Rozstrzygnij segment",
             "NextTurn": "Następna tura",
             "ResolveDuel": "Rozstrzygnij starcie",
+            "TurnSummary": "Podsumowanie tury",
             "Roll3k20": "Rzuć 3k20",
+            "Roll3k20Pool": "Rzuć pulę 3k20",
             "WaitingForRoll": "Oczekiwanie na rzut..."
         },
         "Tabs": {
