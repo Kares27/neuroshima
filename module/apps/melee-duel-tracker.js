@@ -124,21 +124,54 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
         }));
     };
 
+    const PHASES = NeuroshimaMeleeDuel.PHASES;
+    const canSelect = state.phase === PHASES.SEGMENTS;
+    const doubleSkillAction = game.settings.get("neuroshima", "doubleSkillAction");
+
+    const attackerCanRoll = state.phase === PHASES.POOL_ROLL;
+    const defenderCanRoll = state.phase === PHASES.POOL_ROLL && state.defender?.actorUuid !== null;
+
+    // Check whose turn it is specifically to act
+    let isMyTurn = false;
+    if (state.phase === PHASES.SEGMENTS) {
+        if (state.currentAction) {
+            // Defense phase: responder's turn
+            const responderRole = state.currentAction.side === "attacker" ? "defender" : "attacker";
+            isMyTurn = (responderRole === "attacker" && isAttacker) || (responderRole === "defender" && isDefender);
+        } else {
+            // Declaration phase: initiative holder's turn
+            isMyTurn = (state.initiative === "attacker" && isAttacker) || (state.initiative === "defender" && isDefender);
+        }
+    } else if (state.phase === PHASES.INITIATIVE || state.phase === PHASES.POOL_ROLL || state.phase === PHASES.MODIFICATION) {
+        // Shared phases: my turn if I haven't finished my task
+        const myRole = isAttacker ? "attacker" : (isDefender ? "defender" : null);
+        if (myRole) {
+            const side = state[myRole];
+            if (state.phase === PHASES.INITIATIVE) isMyTurn = side.initiativeRoll === null;
+            if (state.phase === PHASES.POOL_ROLL) isMyTurn = state.dice[myRole].length === 0;
+            if (state.phase === PHASES.MODIFICATION) isMyTurn = !side.ready;
+        }
+    }
+
     return {
       ...state,
+      PHASES,
       duelId: this.duelId,
       config: NEUROSHIMA,
       isAttacker,
       isDefender,
+      isMyTurn,
       attackerDice: prepareDice("attacker"),
       defenderDice: prepareDice("defender"),
+      attackerCanRoll,
+      defenderCanRoll,
       currentSegmentData: state.segments[state.currentSegment - 1],
-      isManeuverPhase: state.phase === "maneuver",
-      isInitiativePhase: state.phase === "initiative",
-      isPoolRollPhase: state.phase === "pool-roll" || (state.phase === "maneuver" && state.attacker.maneuver !== "none" && state.defender?.maneuver !== "none"),
-      canModify: state.phase === "modification" && game.settings.get("neuroshima", "doubleSkillAction"),
-      canSelect: state.phase === "segments",
-      doubleSkillAction: game.settings.get("neuroshima", "doubleSkillAction"),
+      isManeuverPhase: false,
+      isInitiativePhase: state.phase === PHASES.INITIATIVE,
+      isPoolRollPhase: state.phase === PHASES.POOL_ROLL,
+      canModify: state.phase === PHASES.MODIFICATION && doubleSkillAction,
+      canSelect,
+      doubleSkillAction,
       isGM: game.user.isGM
     };
   }

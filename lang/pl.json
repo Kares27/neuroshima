@@ -343,6 +343,7 @@
             "InitiativeDraw": "Remis w inicjatywie! Rzućcie jeszcze raz.",
             "RollInitiative": "Rzuć na Inicjatywę",
             "InitiativeWaiting": "Oczekiwanie na rzut przeciwnika...",
+            "ErrorRollInitiativeFirst": "Musisz najpierw rzucić na inicjatywę!",
             "DuelStarted": "Pojedynek rozpoczęty!",
             "AttackInstruction": "atakuje! Wybierz broń na swoim arkuszu, aby wykonać rzut obronny.",
             "InitiativeTakenBy": "{name} przejmuje Inicjatywę!",

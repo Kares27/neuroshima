@@ -325,10 +325,24 @@ body.theme-dark {
 
 .melee-duel-tracker .dice-pool {
     display: flex;
-    justify-content: space-around;
-    padding: 5px;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
     background: rgba(0, 0, 0, 0.05);
     border-radius: 4px;
+}
+
+.melee-duel-tracker .pool-title {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    color: var(--ns-text-accent);
+    border-bottom: 1px solid var(--ns-border-light);
+    width: 100%;
+    text-align: center;
+    padding-bottom: 5px;
 }
 
 .theme-dark .melee-duel-tracker .dice-pool {

@@ -344,6 +344,7 @@
             "InitiativeDraw": "Initiative draw! Roll again.",
             "RollInitiative": "Roll Initiative",
             "InitiativeWaiting": "Waiting for opponent's roll...",
+            "ErrorRollInitiativeFirst": "You must roll initiative first!",
             "DuelStarted": "Duel started!",
             "AttackInstruction": "attacks! Select a weapon on your sheet to roll defense.",
             "InitiativeTakenBy": "{name} takes over Initiative!",

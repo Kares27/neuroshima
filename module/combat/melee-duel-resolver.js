@@ -95,7 +95,9 @@ export class NeuroshimaMeleeDuelResolver {
    * @returns {string} Kod obrażeń pobrany ze statystyk broni
    */
   static calculateSegmentDamage(state, action) {
-    const rollData = state.attack?.rollData;
+    const role = action.side; // attacker lub defender
+    const rollData = role === "attacker" ? state.attack?.rollData : state.defense?.rollData;
+    
     if (!rollData) return "D";
 
     const power = action.power; // Liczba sukcesów przeznaczonych na ten cios (1, 2 lub 3)

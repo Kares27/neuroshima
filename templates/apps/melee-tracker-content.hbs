@@ -25,12 +25,22 @@
                         </div>
                     {{/each}}
                 {{else}}
-                    {{#if isAttacker}}
-                        <button type="button" class="reroll-btn" data-action="reroll3k20" data-role="attacker">
-                            <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.MeleeOpposed.Roll3k20"}}
-                        </button>
+                    {{#if attackerCanRoll}}
+                        {{#if isAttacker}}
+                            <button type="button" class="reroll-btn" data-action="reroll3k20" data-role="attacker">
+                                <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.MeleeOpposed.Roll3k20"}}
+                            </button>
+                        {{else}}
+                            <div class="waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}</div>
+                        {{/if}}
                     {{else}}
-                        <div class="waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}</div>
+                        <div class="waiting">
+                            {{#if (eq phase PHASES.INITIATIVE)}}
+                                {{localize "NEUROSHIMA.MeleeOpposed.WaitingForDuel"}}
+                            {{else}}
+                                {{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}
+                            {{/if}}
+                        </div>
                     {{/if}}
                 {{/if}}
             </div>
@@ -61,12 +71,22 @@
                         </div>
                     {{/each}}
                 {{else}}
-                    {{#if isDefender}}
-                        <button type="button" class="reroll-btn" data-action="reroll3k20" data-role="defender">
-                            <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.MeleeOpposed.Roll3k20"}}
-                        </button>
+                    {{#if defenderCanRoll}}
+                        {{#if isDefender}}
+                            <button type="button" class="reroll-btn" data-action="reroll3k20" data-role="defender">
+                                <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.MeleeOpposed.Roll3k20"}}
+                            </button>
+                        {{else}}
+                            <div class="waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}</div>
+                        {{/if}}
                     {{else}}
-                        <div class="waiting">{{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}</div>
+                        <div class="waiting">
+                            {{#if (eq phase PHASES.INITIATIVE)}}
+                                {{localize "NEUROSHIMA.MeleeOpposed.WaitingForDuel"}}
+                            {{else}}
+                                {{localize "NEUROSHIMA.MeleeOpposed.WaitingForRoll"}}
+                            {{/if}}
+                        </div>
                     {{/if}}
                 {{/if}}
             </div>

@@ -7,6 +7,17 @@ import { NEUROSHIMA } from "../config.js";
  */
 export class NeuroshimaMeleeDuel {
   /**
+   * Stałe faz starcia (Enum).
+   */
+  static PHASES = Object.freeze({
+    INITIATIVE: "initiative",
+    POOL_ROLL: "pool-roll",
+    MODIFICATION: "modification",
+    SEGMENTS: "segments",
+    RESOLVED: "resolved"
+  });
+
+  /**
    * @param {string} duelId - Unikalny identyfikator pojedynku w flagach Combata.
    * @param {Combat} combat - Dokument Combat, w którym toczy się starcie.
    */
@@ -138,7 +149,7 @@ export class NeuroshimaMeleeDuel {
     const state = {
       id: duelId,
       status: "waiting-defender",
-      phase: "initiative",
+      phase: NeuroshimaMeleeDuel.PHASES.INITIATIVE,
       turn: 1,
       currentSegment: 1,
       initiative: null,
@@ -269,7 +280,7 @@ export class NeuroshimaMeleeDuel {
         rollData: defenderRollData
     };
     state.status = "active";
-    state.phase = "initiative";
+    state.phase = NeuroshimaMeleeDuel.PHASES.INITIATIVE;
     state.version += 1;
 
     // Resolve initial initiative if both rolled
@@ -277,15 +288,15 @@ export class NeuroshimaMeleeDuel {
         game.neuroshima.log(`Rozstrzyganie inicjatywy: ${state.attacker.initiativeRoll} vs ${state.defender.initiativeRoll}`);
         if (state.attacker.initiativeRoll > state.defender.initiativeRoll) {
             state.initiative = "attacker";
-            state.phase = "maneuver";
+            state.phase = NeuroshimaMeleeDuel.PHASES.POOL_ROLL;
         } else if (state.defender.initiativeRoll > state.attacker.initiativeRoll) {
             state.initiative = "defender";
-            state.phase = "maneuver";
+            state.phase = NeuroshimaMeleeDuel.PHASES.POOL_ROLL;
         } else {
             // Tie - reset initiative to reroll
             state.attacker.initiativeRoll = null;
             state.defender.initiativeRoll = null;
-            state.phase = "initiative";
+            state.phase = NeuroshimaMeleeDuel.PHASES.INITIATIVE;
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeDraw"));
         }
     }
@@ -330,6 +341,13 @@ export class NeuroshimaMeleeDuel {
    */
   async rollPool(role) {
     const state = this.state;
+    
+    // Block pool roll if initiative is not yet established
+    if (state.phase === NeuroshimaMeleeDuel.PHASES.INITIATIVE || (state.attacker.initiativeRoll === null || state.defender.initiativeRoll === null)) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposed.ErrorRollInitiativeFirst"));
+        return;
+    }
+
     const side = state[role];
     const actorDoc = await fromUuid(side.actorUuid);
     const actor = actorDoc?.actor || actorDoc;
@@ -410,7 +428,7 @@ export class NeuroshimaMeleeDuel {
 
     // Check if both sides are ready
     if (state.dice.attacker.length > 0 && state.dice.defender.length > 0) {
-        state.phase = game.settings.get("neuroshima", "doubleSkillAction") ? "modification" : "segments";
+        state.phase = game.settings.get("neuroshima", "doubleSkillAction") ? NeuroshimaMeleeDuel.PHASES.MODIFICATION : NeuroshimaMeleeDuel.PHASES.SEGMENTS;
         state.attacker.ready = false;
         state.defender.ready = false;
         state.currentSegment = 1;
@@ -503,10 +521,10 @@ export class NeuroshimaMeleeDuel {
     if (state.attacker.initiativeRoll !== null && state.defender.initiativeRoll !== null) {
         if (state.attacker.initiativeRoll > state.defender.initiativeRoll) {
             state.initiative = "attacker";
-            state.phase = "modification";
+            state.phase = NeuroshimaMeleeDuel.PHASES.POOL_ROLL;
         } else if (state.defender.initiativeRoll > state.attacker.initiativeRoll) {
             state.initiative = "defender";
-            state.phase = "modification";
+            state.phase = NeuroshimaMeleeDuel.PHASES.POOL_ROLL;
         } else {
             state.attacker.initiativeRoll = null;
             state.defender.initiativeRoll = null;
@@ -576,12 +594,8 @@ export class NeuroshimaMeleeDuel {
     if (!state || state.status !== "active") return;
     
     state[role].ready = !state[role].ready;
-    if (state.phase === "maneuver" && state.attacker.ready && state.defender.ready) {
-        state.phase = "initiative";
-        state.attacker.ready = false;
-        state.defender.ready = false;
-    } else if (state.phase === "modification" && state.attacker.ready && state.defender.ready) {
-        state.phase = "segments";
+    if (state.phase === NeuroshimaMeleeDuel.PHASES.MODIFICATION && state.attacker.ready && state.defender.ready) {
+        state.phase = NeuroshimaMeleeDuel.PHASES.SEGMENTS;
         state.currentSegment = 1;
         state.attacker.ready = false;
         state.defender.ready = false;
@@ -601,7 +615,7 @@ export class NeuroshimaMeleeDuel {
     }
 
     const state = foundry.utils.deepClone(this.state);
-    if (!state || state.phase !== "segments") return;
+    if (!state || state.phase !== NeuroshimaMeleeDuel.PHASES.SEGMENTS) return;
 
     let allowedRole = state.initiative; 
     if (state.currentAction) {
@@ -631,7 +645,7 @@ export class NeuroshimaMeleeDuel {
     }
 
     const state = foundry.utils.deepClone(this.state);
-    if (!state || state.phase !== "segments" || state.currentAction || state.initiative !== role) return;
+    if (!state || state.phase !== NeuroshimaMeleeDuel.PHASES.SEGMENTS || state.currentAction || state.initiative !== role) return;
 
     const side = state[role];
     const selected = side.selectedDice || [];
@@ -681,7 +695,7 @@ export class NeuroshimaMeleeDuel {
     }
 
     const state = foundry.utils.deepClone(this.state);
-    if (!state || state.phase !== "segments" || !state.currentAction) return;
+    if (!state || state.phase !== NeuroshimaMeleeDuel.PHASES.SEGMENTS || !state.currentAction) return;
 
     const action = state.currentAction;
     const responderRole = action.side === "attacker" ? "defender" : "attacker";
@@ -738,8 +752,12 @@ export class NeuroshimaMeleeDuel {
             
             // Fury maneuver: losing initiative results in being hit
             if (state[action.side].maneuver === "fury") {
-                const defenderWeapon = state.defense.rollData || { damageMelee1: "D", damageMelee2: "L", damageMelee3: "C" };
-                const dmg = defenderWeapon.damageMelee1;
+                const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
+                const dmg = NeuroshimaMeleeDuelResolver.calculateSegmentDamage(state, { 
+                    side: responderRole, 
+                    power: 1 
+                });
+                
                 if (!state.segments) state.segments = [{ result: null }, { result: null }, { result: null }];
                 state.segments[state.currentSegment - 1].resultDefender = dmg;
                 resultMsg += " " + game.i18n.format("NEUROSHIMA.MeleeOpposed.FuryHitBack", { 
@@ -843,7 +861,7 @@ export class NeuroshimaMeleeDuel {
 
     if (state.currentSegment > 3 || (attackerDone && defenderDone)) {
         state.status = "resolved";
-        state.phase = "resolved";
+        state.phase = NeuroshimaMeleeDuel.PHASES.RESOLVED;
         const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
         state.result = NeuroshimaMeleeDuelResolver.resolve(state);
         
@@ -904,7 +922,7 @@ export class NeuroshimaMeleeDuel {
         return game.neuroshima.socket.executeAsGM("takeoverMeleeInitiative", { duelId: this.duelId });
     }
     const state = foundry.utils.deepClone(this.state);
-    if (!state || state.phase !== "segments") return;
+    if (!state || state.phase !== NeuroshimaMeleeDuel.PHASES.SEGMENTS) return;
     state.initiative = state.initiative === "attacker" ? "defender" : "attacker";
     state.version += 1;
     await this.update(state);
@@ -919,9 +937,7 @@ export class NeuroshimaMeleeDuel {
     
     state.turn += 1;
     state.currentSegment = 1;
-    state.phase = "initiative";
     state.status = "active";
-    state.initiative = null;
     state.currentAction = null;
     state.result = null;
     state.segments = [{ result: null }, { result: null }, { result: null }];
@@ -930,17 +946,26 @@ export class NeuroshimaMeleeDuel {
     for (const role of ["attacker", "defender"]) {
         state[role].ready = false;
         state[role].diceSpent = [false, false, false];
-        state[role].initiativeRoll = null;
         state[role].selectedDice = [];
+        state[role].modSelf = [0, 0, 0];
         state[role].modOpponent = [0, 0, 0];
-        // Keep modSelf if not rerolling, but typically rules say new roll each turn
-        // For simplicity, we'll keep the current dice but reset spent status
+        // Persistent initiative: DO NOT clear initiativeRoll (SP values)
+        // Clearing dice forces a new roll for the turn.
     }
-    
-    // However, rules say "At the beginning of each turn, fighters roll 3k20"
-    // So we should probably clear the dice to force a reroll
+
     state.dice.attacker = [];
     state.dice.defender = [];
+
+    // Persist initiative if it was already established
+    if (state.initiative) {
+        state.phase = NeuroshimaMeleeDuel.PHASES.POOL_ROLL;
+        // Also keep the initiative roll values for reference if needed, 
+        // but typically pool roll is next.
+    } else {
+        state.phase = NeuroshimaMeleeDuel.PHASES.INITIATIVE;
+        state.attacker.initiativeRoll = null;
+        state.defender.initiativeRoll = null;
+    }
     
     state.version += 1;
     await this.update(state);
@@ -952,6 +977,11 @@ export class NeuroshimaMeleeDuel {
     }
     const state = foundry.utils.deepClone(this.state);
     if (!state) return;
+
+    if (state.phase === "initiative" || (state.attacker.initiativeRoll === null || state.defender.initiativeRoll === null)) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposed.ErrorRollInitiativeFirst"));
+        return;
+    }
 
     const roll = new Roll("3d20");
     await roll.evaluate();
