@@ -411,17 +411,44 @@ ApplicationV2 domyślnie generuje kontener `<form>` (ustawienie `tag: "form"`).
 - **Finish Duel**: Akcja zakończenia starcia całkowicie czyści flagi z dokumentu Combat i zamyka powiązane interfejsy.
 - **Trwałość Stanu**: Wszystkie informacje o segmentach, wykorzystanych kościach i inicjatywie zwarcia są przechowywane w bazie danych, co pozwala na przerwanie i wznowienie walki w dowolnym momencie.
 
-## 16. Integracja z Combat Trackerem (Application V2)
+## 17. Architektura Faz i Logika Starcia (Melee Duel v3)
 
-System Neuroshima 1.5 rozszerza natywny interfejs **Combat Trackera** o dedykowaną sekcję walki wręcz.
+Wprowadzono znaczące usprawnienia w stabilności i zgodności z zasadami Neuroshima 1.5.
 
-### Rozszerzenie Sidebar (NeuroshimaCombatTracker)
-- **Dynamiczna Iniekcja HTML**: Podsumowanie aktywnych starć (`melee-summary.hbs`) jest wstrzykiwane bezpośrednio do DOM paska bocznego przy każdym renderowaniu.
-- **Wizualizacja Dueli**: Każde aktywne starcie jest wyświetlane jako wiersz z ikonami uczestników, aktualnym segmentem oraz przyciskami sterującymi (`openDuelTracker`, `finishDuel`).
-- **Interaktywność**: Kliknięcie ikony "pięści" otwiera panel starcia, a przycisk "X" usuwa je z walki.
+### System Faz (Enums)
+- **PHASES**: Zastąpiono surowe stringi obiektem zamrożonym `PHASES` (`INITIATIVE`, `ROLL_POOL`, `SEGMENTS`, `RESOLVED`).
+- **Zalety**: Eliminuje błędy literówek, ułatwia debugowanie i zapewnia jedno źródło prawdy dla stanu starcia.
 
-### Odświeżanie Reaktywne
-- **Hook updateCombat**: Każda zmiana flag w dokumencie Combat wymusza natychmiastowe odświeżenie Sidebar u wszystkich graczy.
-- **Status Tury**: System automatycznie przelicza i wyświetla etykietę aktualnego segmentu/tury dla każdego pojedynku w trackerze.
-- **Obsługa Błędów Renderowania**: Zastosowanie natywnych metod DOM (`querySelector`) gwarantuje kompatybilność z Application V2 i zapobiega błędom ładowania Sidebar.
+### Inicjatywa i Tury
+- **Trwałość Inicjatywy**: Inicjatywa zwarcia (melee initiative) jest teraz trwała przez całe starcie. Nie jest resetowana przy przejściu do kolejnej tury 3-segmentowej.
+- **Zmiana Inicjatywy**: Przejęcie inicjatywy następuje dynamicznie w trakcie segmentów (np. gdy atakujący spudłuje, a obrońca odniesie sukces). Zmiana ta jest zachowywana w kolejnych turach, dopóki starcie nie zostanie przerwane lub rozstrzygnięte.
+- **Blokada Akcji**: Przycisk rzutu 3k20 na broń jest ukryty, dopóki obaj uczestnicy nie wykonają rzutu na inicjatywę. Zapobiega to rzutom "w ciemno" przed ustaleniem kolejności działań.
+
+### Logika Ciosów i Obrażeń
+- **Ciosy Łączone (1s, 2s, 3s)**: 
+    - Atakujący może zadeklarować cios za 1, 2 lub 3 sukcesy.
+    - **Obrażenia**: System automatycznie mapuje liczbę sukcesów na odpowiedni poziom obrażeń broni (`damageMelee1`, `damageMelee2`, `damageMelee3`).
+    - **Obrona**: Aby skutecznie obronić się przed ciosem za X sukcesów, obrońca musi przeznaczyć dokładnie X kości sukcesu. Jeśli przeznaczy mniej, otrzymuje trafienie (nawet jeśli jego kości były sukcesami).
+- **Maneuvery**: Tymczasowo wyłączono interfejs manewrów, aby uprościć workflow i skupić się na poprawnej implementacji bazowych zasad przejmowania inicjatywy.
+
+### Usprawnienia UI
+- **Układ Pool-Title**: Napis "Pula kości" oraz informacje o kościach zostały przeniesione nad wyniki rzutów, zapewniając bardziej pionowy i czytelny układ.
+- **Widoczność Przycisków**: Przyciski akcji (Atak/Obrona) pojawiają się selektywnie tylko użytkownikowi, którego jest teraz kolej na wybór kości, co eliminuje chaos przy jednoczesnej grze wielu osób.
+
+## 18. Usprawnienia UX i Stabilności (Melee & Ranged v1.7)
+
+Wprowadzono pakiet poprawek wizualnych i funkcjonalnych, zwiększających czytelność walki oraz stabilność systemu rzutów.
+
+### Usprawnienia Interfejsu Starcia (Melee Duel Tracker)
+- **Wizualizacja Aktywnej Tury**: System dynamicznie podświetla portret aktywnego uczestnika (pomarańczowa, pulsująca obwódka). Podświetlenie aktywuje się po zakończeniu fazy przygotowawczej (inicjatywa + rzut 3k20).
+- **Nagłówek Informacyjny**: Przeniesiono informacje o tura/segment nad sekcję rzutów, co poprawia hierarchię informacji.
+- **Prywatność Danych**: Ukryto jawne progi sukcesu w nazwach puli kości. Pełna matematyka rzutu (atrybuty, modyfikatory, kary) jest dostępna w formie bogatych tooltipów HTML widocznych wyłącznie dla właściciela postaci i GM.
+
+### Ujednolicony System Celowania (Unified Targeting)
+- **Melee Map Targeting**: Broń biała korzysta teraz z tego samego mechanizmu co dystansowa. Jeśli przy inicjowaniu rzutu nie ma zaznaczonego celu, system wymusza wybór tokena lub punktu na mapie (minimalizując arkusz postaci), aby poprawnie zmierzyć dystans i zidentyfikować cel starcia.
+
+### Logika Bojowa i Poprawki
+- **Zarządzanie Amunicją**: Zintegrowano logikę refundacji amunicji z przyciskiem "Przerzut" na karcie czatu. System automatycznie zwraca pocisk zużyty w poprzednim rzucie przed wykonaniem nowego, co zapobiega nadmiarowemu pobieraniu amunicji przy przerzutach.
+- **Optymalizacja Karty Rzutu**: Wyeliminowano błędy wizualne na kartach czatu dla postaci z umiejętnością 0 (ukrywanie zbędnych strzałek i "pustych" kwadratów kości).
+- **Stabilność Rzutów Dystansowych**: Naprawiono błąd `meleeAction is not defined`, który uniemożliwiał strzelanie przy braku aktywnego starcia wręcz.
 

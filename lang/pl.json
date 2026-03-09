@@ -324,6 +324,7 @@
         "MeleeOpposed": {
             "Title": "Akcja w zwarciu",
             "Duel": "Starcie w zwarciu",
+            "Turn": "Tura",
             "WaitingForDefense": "Oczekiwanie na obronę...",
             "WaitingForDefender": "Oczekiwanie na obrońcę...",
             "InstructionDefender": "Wybierz broń na swoim arkuszu, aby wykonać rzut obronny.",
@@ -338,7 +339,10 @@
             "PendingAttacker": "Oczekujący Atakujący",
             "Join": "Dołącz",
             "Targeting": "Celuje w",
+            "Segment": "Segment",
+            "Turn": "Tura",
             "MeleeTurn": "Tura",
+            "SegmentAbbr": "Seg.",
             "InitiativeTest": "Inicjatywa Zwarcia",
             "InitiativeDraw": "Remis w inicjatywie! Rzućcie jeszcze raz.",
             "RollInitiative": "Rzuć na Inicjatywę",

@@ -131,27 +131,33 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
     const attackerCanRoll = state.phase === PHASES.POOL_ROLL;
     const defenderCanRoll = state.phase === PHASES.POOL_ROLL && state.defender?.actorUuid !== null;
 
-    // Check whose turn it is specifically to act
-    let isMyTurn = false;
-    if (state.phase === PHASES.SEGMENTS) {
-        if (state.currentAction) {
-            // Defense phase: responder's turn
-            const responderRole = state.currentAction.side === "attacker" ? "defender" : "attacker";
-            isMyTurn = (responderRole === "attacker" && isAttacker) || (responderRole === "defender" && isDefender);
-        } else {
-            // Declaration phase: initiative holder's turn
-            isMyTurn = (state.initiative === "attacker" && isAttacker) || (state.initiative === "defender" && isDefender);
-        }
-    } else if (state.phase === PHASES.INITIATIVE || state.phase === PHASES.POOL_ROLL || state.phase === PHASES.MODIFICATION) {
-        // Shared phases: my turn if I haven't finished my task
-        const myRole = isAttacker ? "attacker" : (isDefender ? "defender" : null);
-        if (myRole) {
-            const side = state[myRole];
-            if (state.phase === PHASES.INITIATIVE) isMyTurn = side.initiativeRoll === null;
-            if (state.phase === PHASES.POOL_ROLL) isMyTurn = state.dice[myRole].length === 0;
-            if (state.phase === PHASES.MODIFICATION) isMyTurn = !side.ready;
+    // Check specifically which side(s) should act
+    let attackerActive = false;
+    let defenderActive = false;
+
+    // Show active highlighting only after setup is done (both initiative and pool rolls are in)
+    // This starts from MODIFICATION (if double skill is on) or SEGMENTS phase.
+    const setupComplete = state.dice.attacker.length > 0 && state.dice.defender.length > 0;
+    if (setupComplete && (state.phase === PHASES.MODIFICATION || state.phase === PHASES.SEGMENTS)) {
+        if (state.phase === PHASES.SEGMENTS) {
+            if (state.currentAction) {
+                // Defense phase: responder's turn
+                const responderRole = state.currentAction.side === "attacker" ? "defender" : "attacker";
+                attackerActive = (responderRole === "attacker");
+                defenderActive = (responderRole === "defender");
+            } else {
+                // Declaration phase: initiative holder's turn
+                attackerActive = (state.initiative === "attacker");
+                defenderActive = (state.initiative === "defender");
+            }
+        } else if (state.phase === PHASES.MODIFICATION) {
+            // Shared phase: active if haven't finished task
+            attackerActive = !state.attacker.ready;
+            defenderActive = !state.defender.ready;
         }
     }
+
+    const isMyTurn = (attackerActive && isAttacker) || (defenderActive && isDefender);
 
     return {
       ...state,
@@ -161,6 +167,8 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
       isAttacker,
       isDefender,
       isMyTurn,
+      attackerActive,
+      defenderActive,
       attackerDice: prepareDice("attacker"),
       defenderDice: prepareDice("defender"),
       attackerCanRoll,

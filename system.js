@@ -629,6 +629,12 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                         return;
                     }
 
+                    // Refund ammunition before rerolling to avoid double consumption
+                    // Only refund if the previous roll actually consumed ammunition (no jamming)
+                    if (!rollData.isJamming) {
+                        await CombatHelper.refundAmmunition(message);
+                    }
+
                     // Powtórz test broni
                     await game.neuroshima.NeuroshimaDice.rollWeaponTest({
                         weapon: weapon,

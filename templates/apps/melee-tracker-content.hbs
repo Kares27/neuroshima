@@ -1,9 +1,17 @@
 <div class="melee-tracker-content">
+    <div class="duel-status-info">
+        <div class="turn-counter">
+            {{localize "NEUROSHIMA.MeleeOpposed.Turn"}} {{turn}}
+        </div>
+        <div class="segment-info">
+            {{localize "NEUROSHIMA.MeleeOpposed.Segment"}} {{currentSegment}} / 3
+        </div>
+    </div>
     <div class="dice-pools">
         {{!-- Pula Atakującego --}}
-        <div class="dice-pool attacker {{#if (eq initiative 'attacker')}}active{{/if}}">
-            <div class="pool-title">
-                {{localize "NEUROSHIMA.Actions.Attack"}} ({{attacker.stat}})
+        <div class="dice-pool attacker {{#if (eq initiative 'attacker')}}has-initiative{{/if}} {{#if attackerActive}}active{{/if}}">
+            <div class="pool-title" {{#if (or isAttacker isGM)}}data-tooltip="{{attacker.rollTooltip}}"{{/if}}>
+                {{localize "NEUROSHIMA.Actions.Attack"}}
             </div>
             <div class="dice-grid">
                 {{#if attackerDice.length}}
@@ -47,9 +55,9 @@
         </div>
 
         {{!-- Pula Obrońcy --}}
-        <div class="dice-pool defender {{#if (eq initiative 'defender')}}active{{/if}}">
-            <div class="pool-title">
-                {{localize "NEUROSHIMA.Actions.Defense"}} ({{defender.stat}})
+        <div class="dice-pool defender {{#if (eq initiative 'defender')}}has-initiative{{/if}} {{#if defenderActive}}active{{/if}}">
+            <div class="pool-title" {{#if (or isDefender isGM)}}data-tooltip="{{defender.rollTooltip}}"{{/if}}>
+                {{localize "NEUROSHIMA.Actions.Defense"}}
             </div>
             <div class="dice-grid">
                 {{#if defenderDice.length}}

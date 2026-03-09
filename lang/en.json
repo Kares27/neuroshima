@@ -325,6 +325,7 @@
         "MeleeOpposed": {
             "Title": "Melee Action",
             "Duel": "Melee Duel",
+            "Turn": "Turn",
             "WaitingForDefense": "Waiting for defense...",
             "WaitingForDefender": "Waiting for defender...",
             "InstructionDefender": "Select a weapon on your sheet to roll defense.",
@@ -339,7 +340,10 @@
             "PendingAttacker": "Pending Attacker",
             "Join": "Join",
             "Targeting": "Targeting",
+            "Segment": "Segment",
+            "Turn": "Turn",
             "MeleeTurn": "Turn",
+            "SegmentAbbr": "Seg.",
             "InitiativeTest": "Melee Initiative",
             "InitiativeDraw": "Initiative draw! Roll again.",
             "RollInitiative": "Roll Initiative",

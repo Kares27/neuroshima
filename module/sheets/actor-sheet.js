@@ -1244,37 +1244,66 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
         const lastRoll = this.document.system.lastWeaponRoll || {};
         let distance = 0;
-        const targets = Array.from(game.user.targets ?? []);
-        // Dla melee targetujemy bezpośrednio aktorów (zapewnia spójność flag pending)
-        const targetUuids = weapon.system.weaponType === "melee" 
+        let targets = Array.from(game.user.targets ?? []);
+        let targetUuids = weapon.system.weaponType === "melee" 
             ? targets.map(t => t.actor?.uuid).filter(Boolean)
             : targets.map(t => t.document.uuid);
 
-    // Wykrywanie ataku vs obrony w melee przy użyciu MeleeDuel API
-    if (weapon.system.weaponType === "melee") {
-        const activeDuel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(this.document);
-        
-        // Jeśli nie ma pojedynku i atakujemy (mamy targety), otwieramy dialog inicjatywy zamiast broni
-        if (!activeDuel) {
-            if (targetUuids.length === 0) {
-                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
+        // Wykrywanie aktywnego pojedynku dla broni wręcz
+        const activeDuel = weapon.system.weaponType === "melee" 
+            ? game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(this.document)
+            : null;
+
+        // Tryb wyboru na mapie jeśli brak targetów (zarówno dla ranged jak i melee, jeśli nie jesteśmy w pojedynku)
+        if (targetUuids.length === 0 && !activeDuel) {
+            game.neuroshima.log("Brak aktywnych targetów, przechodzę do trybu wyboru na mapie");
+            await this.minimize();
+            const targetData = await this._waitForTarget();
+            await this.maximize();
+
+            if (targetData) {
+                game.neuroshima.log("Otrzymano dane z mapy:", targetData);
+                distance = targetData.distance || 0;
+                
+                if (targetData.token) {
+                    targetData.token.setTarget(true, { releaseOthers: true });
+                    // Odśwież listę targetów po wyborze
+                    targets = [targetData.token];
+                    targetUuids = weapon.system.weaponType === "melee" 
+                        ? targets.map(t => t.actor?.uuid).filter(Boolean)
+                        : targets.map(t => t.document.uuid);
+                }
+            } else {
+                game.neuroshima.log("Anulowano wybór celu na mapie");
                 this._isRolling = false;
                 game.neuroshima.groupEnd();
                 return;
             }
-
-            game.neuroshima.log("Brak aktywnego pojedynku. Otwieram dialog inicjatywy walki wręcz.");
-            const initDialog = new game.neuroshima.NeuroshimaInitiativeRollDialog({
-                actor: this.document,
-                weaponId: weapon.id,
-                targets: targetUuids,
-                isMelee: true,
-                onClose: () => { this._isRolling = false; }
-            });
-            await initDialog.render(true);
-            game.neuroshima.groupEnd();
-            return;
+        } else if (weapon.system.weaponType !== "melee") {
+            // Jeśli mamy już cele dla broni dystansowej, pobierz dystans do pierwszego
+            const actorToken = this._getSourceToken();
+            if (actorToken && targets.length > 0) {
+                distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, targets[0]);
+                game.neuroshima.log(`Znaleziono aktywny target: ${targets[0].name}, dystans: ${distance}m`);
+            }
         }
+
+        // Wykrywanie ataku vs obrony w melee przy użyciu MeleeDuel API
+        if (weapon.system.weaponType === "melee") {
+            // Jeśli nie ma pojedynku i atakujemy (mamy targety), otwieramy dialog inicjatywy zamiast broni
+            if (!activeDuel) {
+                game.neuroshima.log("Brak aktywnego pojedynku. Otwieram dialog inicjatywy walki wręcz.");
+                const initDialog = new game.neuroshima.NeuroshimaInitiativeRollDialog({
+                    actor: this.document,
+                    weaponId: weapon.id,
+                    targets: targetUuids,
+                    isMelee: true,
+                    onClose: () => { this._isRolling = false; }
+                });
+                await initDialog.render(true);
+                game.neuroshima.groupEnd();
+                return;
+            }
 
         // Jeśli pojedynek istnieje, sprawdźmy stan
         const state = activeDuel.state;
@@ -1317,61 +1346,29 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             game.neuroshima.groupEnd();
             return;
         }
+        
+        // Jeśli już rzucono pulę, po prostu otwórz tracker (lub nic nie rób)
+        this._isRolling = false;
+        game.neuroshima.groupEnd();
+        return;
     }
 
-    // Obsługa automatycznego wyboru celu dla broni dystansowej/miotanej
-        if (isRanged || isThrown) {
-            const actorToken = this._getSourceToken();
-            game.neuroshima.log("Źródłowy token aktora:", actorToken?.name || "Brak");
+    game.neuroshima.log("Otwieranie dialogu rzutu z dystansem:", distance);
+    game.neuroshima.groupEnd();
 
-            if (targets.length > 0 && actorToken) {
-                // Jeśli mamy już cele, pobierz dystans do pierwszego z nich
-                const targetToken = targets[0]; 
-                distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, targetToken);
-                game.neuroshima.log(`Znaleziono aktywny target: ${targetToken.name}, dystans: ${distance}m`);
-            } else {
-                // Brak celi lub tokena źródłowego - uruchom tryb wyboru na mapie
-                game.neuroshima.log("Brak aktywnych targetów, przechodzę do trybu wyboru na mapie");
-                await this.minimize();
-                
-                const targetData = await this._waitForTarget();
-                
-                await this.maximize();
-        
-                if (targetData) {
-                    distance = targetData.distance;
-                    game.neuroshima.log("Otrzymano dane z mapy:", targetData);
-                    if (targetData.token) {
-                        targetData.token.setTarget(true, { releaseOthers: true });
-                    } else {
-                        // Jeśli kliknięto w mapę (nie w token), wyczyść stare targety
-                        game.user.targets.clear();
-                    }
-                } else {
-                    game.neuroshima.log("Anulowano wybór celu na mapie");
-                    this._isRolling = false;
-                    return;
-                }
-            }
-        }
-
-        game.neuroshima.log("Otwieranie dialogu rzutu z dystansem:", distance);
-        game.neuroshima.groupEnd();
-
-        const dialog = new NeuroshimaWeaponRollDialog({
-          actor: this.document,
-          weapon: weapon,
-          rollType: weapon.system.weaponType === "melee" ? "melee" : "ranged",
-          targets: targetUuids,
-          meleeAction: meleeAction,
-          lastRoll: {
-              ...lastRoll,
-              distance: distance || lastRoll.distance
-          },
-          onClose: () => { this._isRolling = false; }
-        });
-        
-        await dialog.render(true);
+    const dialog = new NeuroshimaWeaponRollDialog({
+      actor: this.document,
+      weapon: weapon,
+      rollType: (isRanged || isThrown) ? "ranged" : "melee",
+      targets: targetUuids,
+      lastRoll: {
+          ...lastRoll,
+          distance: distance || lastRoll.distance
+      },
+      onClose: () => { this._isRolling = false; }
+    });
+    
+    await dialog.render(true);
     } catch (err) {
         game.neuroshima.log("Przerwano rzut bronią lub wystąpił błąd:", err.message);
         this._isRolling = false;

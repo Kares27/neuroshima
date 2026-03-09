@@ -576,8 +576,6 @@ export class NeuroshimaDice {
         totalPelletSP: totalPelletSP || 0,
         isPellet: !!bulletSequence[0]?.isPellet,
         isOpen: finalIsOpen,
-        isMelee,
-        meleeAction,
         applyArmor,
         applyWounds,
         hitLocation,

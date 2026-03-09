@@ -62,18 +62,13 @@
                     D{{add @index 1}} =
                 </span>
                 <div class="die-square-container">
-                    <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}}">
+                    <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}} {{#if (eq ../skill 0)}}{{#if this.isSuccess}}success{{else}}failure{{/if}}{{/if}}">
                         {{this.original}}
                     </span>
                     
                     {{#if (and (not (and ../isMelee (eq ../opposedMode "dice"))) (or ../isMelee this.isBest))}}
-                        {{#if (gt ../skill 0)}}
+                        {{#if (ne ../skill 0)}}
                             <i class="fas fa-long-arrow-alt-right"></i> 
-                            <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
-                                {{this.modified}}
-                            </span>
-                        {{else}}
-                            <i class="fas fa-long-arrow-alt-right invisible"></i> 
                             <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
                                 {{this.modified}}
                             </span>

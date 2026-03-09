@@ -436,6 +436,24 @@ export class NeuroshimaMeleeDuel {
 
     state.version += 1;
     await this.update(state);
+
+    // Create a chat message for the pool roll if rollResult contains data
+    const actorDoc = await fromUuid(side.actorUuid);
+    const actor = actorDoc?.actor || actorDoc;
+    if (actor && rollResult.modifiedResults) {
+        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        const roll = rollResult.roll || new Roll("3d20", {}, { results: dice });
+        const message = await NeuroshimaChatMessage.renderWeaponRoll({
+            ...rollResult,
+            isPoolRoll: true,
+            duelId: this.duelId
+        }, actor, roll);
+        
+        if (message) {
+            await message.setFlag("neuroshima", "isPoolRoll", true);
+            await message.setFlag("neuroshima", "duelId", this.duelId);
+        }
+    }
   }
 
   async selectManeuver(role, maneuver) {

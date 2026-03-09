@@ -7,7 +7,7 @@
     </div>
     {{/if}}
     <div class="participants-header">
-        <div class="participant attacker {{#if (eq initiative 'attacker')}}has-initiative{{/if}} {{#if (and isMyTurn isAttacker)}}is-active-turn{{/if}}">
+        <div class="participant attacker {{#if (eq initiative 'attacker')}}has-initiative{{/if}} {{#if attackerActive}}is-active-turn{{/if}}">
             <img src="{{attacker.img}}" title="{{attacker.name}}">
             <div class="info">
                 <span class="name">{{attacker.name}}</span>
@@ -27,7 +27,7 @@
 
         <div class="vs">VS</div>
 
-        <div class="participant defender {{#if (eq initiative 'defender')}}has-initiative{{/if}} {{#if (and isMyTurn isDefender)}}is-active-turn{{/if}}">
+        <div class="participant defender {{#if (eq initiative 'defender')}}has-initiative{{/if}} {{#if defenderActive}}is-active-turn{{/if}}">
             <div class="info">
                 <span class="name">{{defender.name}}</span>
                 {{#if (ne defender.initiativeRoll null)}}
