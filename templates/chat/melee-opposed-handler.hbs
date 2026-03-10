@@ -6,7 +6,7 @@
         <div class="duel-title">{{localize "NEUROSHIMA.MeleeOpposed.Duel"}} - {{localize (concat "NEUROSHIMA.MeleeOpposed.Phase" (capitalize phase))}}</div>
         
         <div class="duel-participants">
-            <div class="participant-summary attacker {{#if (eq initiative 'attacker')}}has-initiative{{/if}}">
+            <div class="participant-summary attacker {{#if (eq initiative 'attacker')}}has-initiative{{/if}} {{#if attackerActive}}active-turn{{/if}}">
                 <div class="pool-line" data-role="attacker">
                     {{#if (and (ne phase 'initiative') doubleSkillAction)}}
                     <div class="pool-badge" title="{{localize 'NEUROSHIMA.Items.Fields.Skill'}}">
@@ -37,7 +37,7 @@
             
             <div class="duel-vs">VS</div>
             
-            <div class="participant-summary defender {{#if (not defender)}}waiting{{/if}} {{#if (eq initiative 'defender')}}has-initiative{{/if}}">
+            <div class="participant-summary defender {{#if (not defender)}}waiting{{/if}} {{#if (eq initiative 'defender')}}has-initiative{{/if}} {{#if defenderActive}}active-turn{{/if}}">
                 {{#if defender}}
                     <div class="pool-line" data-role="defender">
                         {{#if (and (ne phase 'initiative') doubleSkillAction)}}
@@ -74,10 +74,21 @@
         </div>
     </header>
 
+    {{#if (eq phase 'segments')}}
+    <div class="segments-header-info">
+        <div class="turn-count">
+            {{localize "NEUROSHIMA.MeleeOpposed.Turn"}} {{turn}}
+        </div>
+        <div class="current-segment-info">
+            {{localize "NEUROSHIMA.MeleeOpposed.Segment"}} {{currentSegment}} / 3
+        </div>
+    </div>
+    {{/if}}
+
     <div class="opposed-content">
         {{!-- Faza Modyfikacji lub Segmentów --}}
         <div class="participant-section attacker {{#if (and (eq phase 'segments') canSelectDice.attacker)}}active-selection{{/if}}">
-            <div class="test-type-label">
+            <div class="test-type-label" {{#if showAttackerTooltip}}data-tooltip="{{localize 'NEUROSHIMA.MeleeOpposed.TargetNumber'}}: {{attackerTargetNumber}}"{{/if}}>
                 {{localize "NEUROSHIMA.Actions.Attack"}}
                 {{#if (and (and isAttacker (eq phase 'modification')) doubleSkillAction)}}
                     <button type="button" class="reset-pool-button" data-action="reset-pool" data-role="attacker" title="{{localize 'NEUROSHIMA.Actions.Reset'}}">
@@ -124,7 +135,7 @@
         </div>
 
         <div class="participant-section defender {{#if (not defender)}}waiting{{/if}} {{#if (and (eq phase 'segments') canSelectDice.defender)}}active-selection{{/if}}">
-            <div class="test-type-label">
+            <div class="test-type-label" {{#if showDefenderTooltip}}data-tooltip="{{localize 'NEUROSHIMA.MeleeOpposed.TargetNumber'}}: {{defenderTargetNumber}}"{{/if}}>
                 {{localize "NEUROSHIMA.Actions.Defense"}}
                 {{#if (and (and isDefender (eq phase 'modification')) doubleSkillAction)}}
                     <button type="button" class="reset-pool-button" data-action="reset-pool" data-role="defender" title="{{localize 'NEUROSHIMA.Actions.Reset'}}">
@@ -183,10 +194,6 @@
 
     {{#if (eq phase 'segments')}}
         <div class="segments-resolution-ui">
-            <div class="current-segment-info">
-                {{localize "NEUROSHIMA.MeleeOpposed.Segment"}} {{currentSegment}} / 3
-            </div>
-            
             {{#if currentAction}}
                 {{!-- Akcja w toku - reakcja obrońcy --}}
                 <div class="action-declaration {{currentAction.side}}">

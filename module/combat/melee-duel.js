@@ -146,6 +146,12 @@ export class NeuroshimaMeleeDuel {
         }
     }
 
+    const attackerRollData = {
+        damageMelee1: weapon?.system?.damageMelee1 || "D",
+        damageMelee2: weapon?.system?.damageMelee2 || "L",
+        damageMelee3: weapon?.system?.damageMelee3 || "C"
+    };
+
     const state = {
       id: duelId,
       status: "waiting-defender",
@@ -183,7 +189,7 @@ export class NeuroshimaMeleeDuel {
         initiativeRoll: null,
         maneuver: "none"
       },
-      attack: { weaponId: weapon.id, weaponName: weapon.name },
+      attack: { weaponId: weapon.id, weaponName: weapon.name, rollData: attackerRollData },
       defense: { weaponId: null, weaponName: null },
       dice: {
         attacker: [],
@@ -202,11 +208,13 @@ export class NeuroshimaMeleeDuel {
     duels[duelId] = state;
     await game.combat.setFlag("neuroshima", "duels", duels);
 
-    // Create a notification message
-    await ChatMessage.create({
-        user: game.user.id,
-        content: `<h3>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.DuelStarted")}</h3><p>${attackerActor.name} ${game.i18n.localize("NEUROSHIMA.MeleeOpposed.AttackInstruction")}</p>`,
-        flags: { neuroshima: { duelId } }
+    // Create a notification message using the template
+    const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+    await NeuroshimaChatMessage.renderMeleeDuelStarted({
+        duelId: duelId,
+        attackerName: attackerActor.name,
+        attackerImg: attackerActor.img,
+        weaponName: weapon.name
     });
 
     return new NeuroshimaMeleeDuel(duelId);
@@ -420,6 +428,17 @@ export class NeuroshimaMeleeDuel {
     side.skillPoints = rollResult.skill || 0;
     side.rollTooltip = rollResult.tooltip || "";
     side.ready = true;
+
+    // Save weapon damage stats to rollData for resolver
+    if (rollResult.isMelee) {
+        const weaponData = {
+            damageMelee1: rollResult.damageMelee1 || "D",
+            damageMelee2: rollResult.damageMelee2 || "L",
+            damageMelee3: rollResult.damageMelee3 || "C"
+        };
+        if (role === "attacker") state.attack.rollData = weaponData;
+        else state.defense.rollData = weaponData;
+    }
 
     // Auto-optimize if setting is off
     if (!game.settings.get("neuroshima", "doubleSkillAction")) {
@@ -806,18 +825,17 @@ export class NeuroshimaMeleeDuel {
         }
         
         // Create chat message for feedback
-        await ChatMessage.create({
-            user: game.user.id,
-            speaker: ChatMessage.getSpeaker({ actor: await fromUuid(state[action.side].actorUuid) }),
-            content: `<div class="neuroshima chat-card melee-segment-result">
-                <h3>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Segment")} ${state.currentSegment}</h3>
-                <p>${resultMsg}</p>
-                <div class="dice-info">
-                    <span>${attackerName}: ${action.power}s</span> vs 
-                    <span>${defenderName}: ${totalDefenseSuccesses}s</span>
-                </div>
-            </div>`,
-            flags: { neuroshima: { duelId: this.duelId } }
+        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        await NeuroshimaChatMessage.renderMeleeSegmentResult({
+            duelId: this.duelId,
+            segment: state.currentSegment,
+            resultMsg: resultMsg,
+            attackerName: action.side === "attacker" ? attackerName : defenderName,
+            defenderName: action.side === "attacker" ? defenderName : attackerName,
+            attackerImg: state[action.side].img,
+            attackerPower: action.power,
+            defenderPower: totalDefenseSuccesses,
+            isIgnored: false
         });
 
         // Special case for Fury maneuver: Failure vs Success is a hit for defender
@@ -849,17 +867,19 @@ export class NeuroshimaMeleeDuel {
                 const attackerName = state[action.side].name;
                 const defenderName = responder.name;
                 
-                await ChatMessage.create({
-                    user: game.user.id,
-                    content: `<div class="neuroshima chat-card melee-segment-result ignored">
-                        <h3>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Segment")} ${state.currentSegment}</h3>
-                        <p>${game.i18n.format("NEUROSHIMA.MeleeOpposed.HitIgnored", { 
-                            attacker: attackerName, 
-                            defender: defenderName,
-                            damage: dmg 
-                        })}</p>
-                    </div>`,
-                    flags: { neuroshima: { duelId: this.duelId } }
+                const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+                await NeuroshimaChatMessage.renderMeleeSegmentResult({
+                    duelId: this.duelId,
+                    segment: state.currentSegment,
+                    resultMsg: game.i18n.format("NEUROSHIMA.MeleeOpposed.HitIgnored", { 
+                        attacker: attackerName, 
+                        defender: defenderName,
+                        damage: dmg 
+                    }),
+                    attackerName: attackerName,
+                    defenderName: defenderName,
+                    attackerImg: state[action.side].img,
+                    isIgnored: true
                 });
             }
         }
@@ -883,29 +903,14 @@ export class NeuroshimaMeleeDuel {
         const { NeuroshimaMeleeDuelResolver } = await import("./melee-duel-resolver.js");
         state.result = NeuroshimaMeleeDuelResolver.resolve(state);
         
-        // Create turn summary message
-        const attackerName = state.attacker.name;
-        const defenderName = state.defender.name;
-        
-        let summaryHtml = `<div class="neuroshima chat-card melee-turn-summary">
-            <h3>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.TurnSummary")} ${state.turn}</h3>
-            <ul>`;
-        
-        (state.segments || []).forEach((seg, i) => {
-            if (seg.result || seg.resultDefender) {
-                summaryHtml += `<li><strong>${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Segment")} ${i + 1}:</strong> `;
-                if (seg.result) summaryHtml += `${attackerName} -> ${seg.result} `;
-                if (seg.resultDefender) summaryHtml += `${defenderName} -> ${seg.resultDefender}`;
-                summaryHtml += `</li>`;
-            }
-        });
-        
-        summaryHtml += `</ul></div>`;
-        
-        await ChatMessage.create({
-            user: game.user.id,
-            content: summaryHtml,
-            flags: { neuroshima: { duelId: this.duelId } }
+        // Create turn summary message using the template
+        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        await NeuroshimaChatMessage.renderMeleeTurnSummary({
+            duelId: this.duelId,
+            turn: state.turn,
+            attackerName: state.attacker.name,
+            defenderName: state.defender.name,
+            segments: state.segments || []
         });
     }
   }

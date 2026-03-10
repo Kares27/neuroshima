@@ -1,0 +1,32 @@
+<div class="neuroshima roll-card melee-segment-result {{#if isIgnored}}ignored{{/if}}">
+    <header class="roll-header">
+        <div class="actor-image-container">
+            <img src="{{attackerImg}}" width="32" height="32" />
+        </div>
+        <div class="header-details">
+            <div class="weapon-title">
+                {{localize "NEUROSHIMA.MeleeOpposed.Segment"}} {{segment}}
+            </div>
+            <div class="test-type">
+                {{attackerName}} vs {{defenderName}}
+            </div>
+        </div>
+    </header>
+    <hr class="dotted-hr">
+    <div class="segment-details">
+        <p class="result-message">{{{resultMsg}}}</p>
+        {{#unless isIgnored}}
+        <div class="dice-info">
+            <div class="dice-side attacker">
+                <span class="label">{{attackerName}}:</span>
+                <span class="value"><strong>{{attackerPower}}s</strong></span>
+            </div>
+            <div class="dice-vs">vs</div>
+            <div class="dice-side defender">
+                <span class="label">{{defenderName}}:</span>
+                <span class="value"><strong>{{defenderPower}}s</strong></span>
+            </div>
+        </div>
+        {{/unless}}
+    </div>
+</div>

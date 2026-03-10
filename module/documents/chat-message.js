@@ -397,6 +397,48 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
 
   /**
+   * Renderuje powiadomienie o rozpoczęciu pojedynku.
+   */
+  static async renderMeleeDuelStarted(data) {
+    const template = "systems/neuroshima/templates/chat/melee-duel-started.hbs";
+    const content = await renderTemplate(template, data);
+    
+    return ChatMessage.create({
+        user: game.user.id,
+        content: content,
+        flags: { neuroshima: { duelId: data.duelId } }
+    });
+  }
+
+  /**
+   * Renderuje wynik segmentu walki wręcz.
+   */
+  static async renderMeleeSegmentResult(data) {
+    const template = "systems/neuroshima/templates/chat/melee-segment-result.hbs";
+    const content = await renderTemplate(template, data);
+    
+    return ChatMessage.create({
+        user: game.user.id,
+        content: content,
+        flags: { neuroshima: { duelId: data.duelId } }
+    });
+  }
+
+  /**
+   * Renderuje podsumowanie tury walki wręcz.
+   */
+  static async renderMeleeTurnSummary(data) {
+    const template = "systems/neuroshima/templates/chat/melee-turn-summary.hbs";
+    const content = await renderTemplate(template, data);
+    
+    return ChatMessage.create({
+        user: game.user.id,
+        content: content,
+        flags: { neuroshima: { duelId: data.duelId } }
+    });
+  }
+
+  /**
    * Typ wiadomości: 'roll' | 'weapon' | 'painResistance'
    */
   static TYPES = {

@@ -108,20 +108,32 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
     const isAttacker = game.user.isGM || (state.attacker.actorUuid === game.user.character?.uuid) || (fromUuidSync(state.attacker.actorUuid)?.isOwner);
     const isDefender = game.user.isGM || (state.defender?.actorUuid && (state.defender.actorUuid === game.user.character?.uuid || fromUuidSync(state.defender.actorUuid)?.isOwner));
 
+    // Visibility logic for tooltips/thresholds
+    const showAttackerDetails = game.user.isGM || isAttacker;
+    const showDefenderDetails = game.user.isGM || isDefender;
+
     const prepareDice = (role) => {
         const side = state[role];
         const dice = state.dice[role] || [];
         const otherRole = role === "attacker" ? "defender" : "attacker";
         const otherSide = state[otherRole];
-        return dice.map((v, i) => ({
-            index: i,
-            original: v,
-            modified: v - (side.modSelf?.[i] || 0) + (otherSide?.modOpponent?.[i] || 0),
-            spent: side.diceSpent[i],
-            selected: side.selectedDice?.includes(i),
-            isSuccess: (v - (side.modSelf?.[i] || 0) + (otherSide?.modOpponent?.[i] || 0)) <= side.stat && v !== 20,
-            isNat20: v === 20
-        }));
+        const showDetails = role === "attacker" ? showAttackerDetails : showDefenderDetails;
+
+        return dice.map((v, i) => {
+            const modVal = v - (side.modSelf?.[i] || 0) + (otherSide?.modOpponent?.[i] || 0);
+            return {
+                index: i,
+                original: v,
+                modified: modVal,
+                spent: side.diceSpent[i],
+                selected: side.selectedDice?.includes(i),
+                isSuccess: modVal <= side.stat && v !== 20,
+                isNat1: v === 1,
+                isNat20: v === 20,
+                showTooltip: showDetails,
+                targetNumber: side.stat
+            };
+        });
     };
 
     const PHASES = NeuroshimaMeleeDuel.PHASES;
@@ -159,6 +171,22 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
 
     const isMyTurn = (attackerActive && isAttacker) || (defenderActive && isDefender);
 
+    let resultMsg = "";
+    if (state.phase === PHASES.RESOLVED && state.result) {
+        const res = state.result;
+        if (res.winner === "attacker") {
+            resultMsg = game.i18n.format("NEUROSHIMA.MeleeOpposed.AttackerWonRound", { hits: res.attackerHits });
+        } else if (res.winner === "defender") {
+            resultMsg = game.i18n.format("NEUROSHIMA.MeleeOpposed.DefenderWonRound", { hits: res.defenderHits });
+        } else {
+            resultMsg = game.i18n.localize("NEUROSHIMA.MeleeOpposed.RoundDraw");
+        }
+        
+        if (res.damageList?.length) {
+            resultMsg += ` (${res.damageList.join(", ")})`;
+        }
+    }
+
     return {
       ...state,
       PHASES,
@@ -169,6 +197,10 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
       isMyTurn,
       attackerActive,
       defenderActive,
+      showAttackerTooltip: showAttackerDetails,
+      showDefenderTooltip: showDefenderDetails,
+      attackerTargetNumber: state.attacker.stat,
+      defenderTargetNumber: state.defender?.stat,
       attackerDice: prepareDice("attacker"),
       defenderDice: prepareDice("defender"),
       attackerCanRoll,
@@ -180,7 +212,8 @@ export class NeuroshimaMeleeDuelTracker extends HandlebarsApplicationMixin(Appli
       canModify: state.phase === PHASES.MODIFICATION && doubleSkillAction,
       canSelect,
       doubleSkillAction,
-      isGM: game.user.isGM
+      isGM: game.user.isGM,
+      resultMsg
     };
   }
 

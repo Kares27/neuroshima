@@ -448,6 +448,23 @@ Wprowadzono pakiet poprawek wizualnych i funkcjonalnych, zwiększających czytel
 - **Melee Map Targeting**: Broń biała korzysta teraz z tego samego mechanizmu co dystansowa. Jeśli przy inicjowaniu rzutu nie ma zaznaczonego celu, system wymusza wybór tokena lub punktu na mapie (minimalizując arkusz postaci), aby poprawnie zmierzyć dystans i zidentyfikować cel starcia.
 
 ### Logika Bojowa i Poprawki
+- **Segment-based Resolution**: Refaktoryzacja `NeuroshimaMeleeDuelResolver`. System teraz poprawnie zlicza trafienia i parowania w każdym segmencie osobno, zgodnie z zasadami 1.5.1.
+- **Naprawa Błędu Segmentu**: Usunięto błąd `TypeError` uniemożliwiający rozstrzygnięcie turny, gdy w ostatnim segmencie nastąpił obustronny brak sukcesów.
+- **Prywatność i Tooltipy**: Pełna matematyka rzutów (atrybuty, modyfikatory, kary) jest dostępna w formie bogatych tooltipów HTML na etykietach sekcji, widocznych wyłącznie dla właściciela postaci i MG.
+
+## 19. System Komunikatów i Raportowania (Melee Feedback v1.1)
+
+Wprowadzono ujednolicony system raportowania przebiegu walki wręcz na czacie, korzystający z dedykowanych szablonów wizualnych.
+
+### Rodzaje Komunikatów
+- **Melee Duel Started**: Nowa karta powitalna starcia, pokazująca portret atakującego, używaną broń oraz instrukcję obrony dla celu.
+- **Melee Segment Result**: Szczegółowy raport z każdego segmentu. Zawiera porównanie mocy ataku vs obrony, informację o zadanych ranach (D, L, C) lub skutecznym parowaniu/przejęciu inicjatywy.
+- **Melee Turn Summary**: Podsumowanie całej tury 3-segmentowej. Zbiera wyniki wszystkich akcji w jedną czytelną listę, pozwalając na szybką analizę przebiegu starcia.
+
+### Architektura Komunikatów
+- **Standardizacja**: Wszystkie komunikaty korzystają z klasy `.neuroshima.roll-card`, co zapewnia spójność z rzutami umiejętności i broni dystansowej.
+- **Lokalizacja**: Pełne wsparcie dla języka polskiego i angielskiego w opisach wyników segmentów.
+- **Data Persistence**: Komunikaty przechowują `duelId` we flagach, co umożliwia przyszłe rozszerzenia (np. interaktywne przyciski na karcie wyniku).
 - **Zarządzanie Amunicją**: Zintegrowano logikę refundacji amunicji z przyciskiem "Przerzut" na karcie czatu. System automatycznie zwraca pocisk zużyty w poprzednim rzucie przed wykonaniem nowego, co zapobiega nadmiarowemu pobieraniu amunicji przy przerzutach.
 - **Optymalizacja Karty Rzutu**: Wyeliminowano błędy wizualne na kartach czatu dla postaci z umiejętnością 0 (ukrywanie zbędnych strzałek i "pustych" kwadratów kości).
 - **Stabilność Rzutów Dystansowych**: Naprawiono błąd `meleeAction is not defined`, który uniemożliwiał strzelanie przy braku aktywnego starcia wręcz.
