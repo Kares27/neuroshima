@@ -51,4 +51,19 @@
             <span class="outcome-value success">{{successPoints}}</span>
         </div>
     </footer>
+
+    {{#if meleeTargets.length}}
+    <hr class="dotted-hr">
+    <div class="melee-targets-section">
+        <div class="targets-header">{{localize "NEUROSHIMA.MeleeOpposed.Participants"}}:</div>
+        <div class="targets-list">
+            {{#each meleeTargets}}
+            <div class="target-item" data-actor-id="{{this.id}}">
+                <img src="{{this.img}}" width="24" height="24" />
+                <span>{{this.name}}</span>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+    {{/if}}
 </div>

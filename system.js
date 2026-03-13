@@ -20,12 +20,6 @@ import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-di
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
 
-import { NeuroshimaMeleeDuel } from "./module/combat/melee-duel.js";
-import { NeuroshimaMeleeDuelSockets } from "./module/combat/melee-duel-sockets.js";
-import { NeuroshimaMeleeDuelResolver } from "./module/combat/melee-duel-resolver.js";
-
-import { NeuroshimaMeleeDuelTracker } from "./module/apps/melee-duel-tracker.js";
-
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 
 // Inicjalizacja systemu Neuroshima 1.5
@@ -39,10 +33,6 @@ Hooks.once('init', async function() {
         NeuroshimaActor,
         NeuroshimaItem,
         NeuroshimaChatMessage,
-        NeuroshimaMeleeDuel,
-        NeuroshimaMeleeDuelSockets,
-        NeuroshimaMeleeDuelResolver,
-        NeuroshimaMeleeDuelTracker,
         NeuroshimaInitiativeRollDialog,
         NeuroshimaDice,
         CombatHelper,
@@ -443,10 +433,6 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/edit-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/debug-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/combat-config.hbs",
-        "systems/neuroshima/templates/apps/melee-tracker-header.hbs",
-        "systems/neuroshima/templates/apps/melee-tracker-content.hbs",
-        "systems/neuroshima/templates/apps/melee-tracker-footer.hbs",
-        "systems/neuroshima/templates/sidebar/melee-summary.hbs",
         "systems/neuroshima/templates/chat/weapon-roll-card.hbs",
         "systems/neuroshima/templates/chat/roll-card.hbs",
         "systems/neuroshima/templates/chat/patient-card.hbs",
@@ -908,76 +894,6 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             el.removeAttribute("data-tooltip-direction");
         });
     }
-
-    // Ukrywanie przycisków w starciach w zwarciu (Opposed Melee)
-    const meleeDuel = html.querySelector(".melee-opposed-handler");
-    if (meleeDuel) {
-        const duelFlag = message.getFlag("neuroshima", "meleeDuel");
-        if (duelFlag) {
-            const attackerUuid = duelFlag.attacker?.actorUuid;
-            const defenderUuid = duelFlag.defender?.actorUuid;
-            
-            const attackerActor = attackerUuid ? fromUuidSync(attackerUuid) : null;
-            const defenderActor = defenderUuid ? fromUuidSync(defenderUuid) : null;
-            
-            const isAttacker = game.user.isGM || attackerActor?.isOwner;
-            const isDefender = game.user.isGM || defenderActor?.isOwner;
-            
-            // Jeśli nie jest atakującym, ukryj jego kontrolki
-            if (!isAttacker) {
-                html.querySelectorAll('.die-mod[data-side="attacker"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('.ready-button[data-role="attacker"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('.reset-pool-button[data-role="attacker"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('.pool-line[data-role="attacker"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('[data-action="select-die"][data-side="attacker"]').forEach(el => el.classList.remove('interactive'));
-            }
-            
-            // Jeśli nie jest obrońcą, ukryj jego kontrolki
-            if (!isDefender) {
-                html.querySelectorAll('.die-mod[data-side="defender"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('.ready-button[data-role="defender"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('.reset-pool-button[data-role="defender"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('.pool-line[data-role="defender"]').forEach(b => b.style.display = "none");
-                html.querySelectorAll('[data-action="select-die"][data-side="defender"]').forEach(el => el.classList.remove('interactive'));
-                
-                // Przycisk dołączania do walki powinien być widoczny dla osób będących celem
-                const joinBtn = html.querySelector('.join-duel-button');
-                if (joinBtn) {
-                    const targets = duelFlag.attackerTargets || [];
-                    const isTarget = targets.some(t => {
-                        const tUuid = typeof t === 'string' ? t : t.uuid;
-                        const tActor = fromUuidSync(tUuid);
-                        return tActor?.isOwner;
-                    });
-                    if (!isTarget && !game.user.isGM) {
-                        joinBtn.style.display = "none";
-                    }
-                }
-            }
-
-            // Kontrolki segmentów (ukrywaj jeśli nie twoja kolej lub rola)
-            const isActive = (duelFlag.initiative === "attacker" && isAttacker) || (duelFlag.initiative === "defender" && isDefender);
-            if (!isActive && !game.user.isGM) {
-                html.querySelectorAll('.active-controls').forEach(el => el.style.display = "none");
-            }
-
-            const isResponder = (duelFlag.initiative === "attacker" && isDefender) || (duelFlag.initiative === "defender" && isAttacker);
-            if (!isResponder && !game.user.isGM) {
-                html.querySelectorAll('.responder-controls').forEach(el => el.style.display = "none");
-            }
-
-            // Przejmowanie inicjatywy (tylko dla pasywnej strony)
-            if (isActive && !game.user.isGM) {
-                html.querySelectorAll('.takeover-ui').forEach(el => el.style.display = "none");
-            }
-
-            // Przycisk rozstrzygnięcia widoczny tylko dla GM
-            const resolveBtn = html.querySelector('.resolve-duel-button');
-            if (resolveBtn && !game.user.isGM) {
-                resolveBtn.style.display = "none";
-            }
-        }
-    }
 });
 
 /**
@@ -1046,170 +962,7 @@ function initializeSocketlib() {
 
     console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
     
-    // Melee Duel functions
-    game.neuroshima.socket.register("selectMeleeManeuver", async function(data) {
-        const { duelId, role, maneuver } = data;
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
-        if (duel) {
-            const state = duel.state;
-            const actorUuid = role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.selectManeuver(role, maneuver);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("modifyMeleeDie", async function(data) {
-        const { duelId, side } = data;
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
-        if (duel) {
-            const state = duel.state;
-            const actorUuid = side === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.modifyDie(data.side, data.target, data.index, data.delta);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("toggleMeleeReady", async function(data) {
-        const { duelId, role } = data;
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
-        if (duel) {
-            const state = duel.state;
-            const actorUuid = role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.toggleReady(role);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("createMeleeDuel", async function(data) {
-        const attacker = (await fromUuid(data.attackerUuid))?.actor || (await fromUuid(data.attackerUuid));
-        const weapon = attacker?.items.get(data.weaponId);
-        const user = game.users.get(this.socketdata.userId);
-
-        if (user?.isGM || attacker?.testUserPermission(user, "OWNER")) {
-            await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(attacker, weapon, data.targets, data.initiativeResult);
-        }
-    });
-
-    game.neuroshima.socket.register("joinMeleeDuel", async function(data) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
-        if (duel) {
-            const actor = (await fromUuid(data.defenderData.actorUuid))?.actor || (await fromUuid(data.defenderData.actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await game.neuroshima.NeuroshimaMeleeDuel.join(data.duelId, actor, data.defenderData.rollResult, data.defenderData.weaponId);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("updateMeleePool", async function(data) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
-        if (duel) {
-            const state = duel.state;
-            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.updatePool(data.role, data.rollResult);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("updateMeleeInitiative", async function(data) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
-        if (duel) await duel.updateInitiative(data.role, data.rollResult);
-    });
-
-    game.neuroshima.socket.register("selectMeleeDie", async function(data) {
-        const { duelId, role } = data;
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
-        if (duel) {
-            const state = duel.state;
-            const actorUuid = role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.selectDie(role, data.index);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("declareMeleeAction", async function(data) {
-        const { duelId, role } = data;
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
-        if (duel) {
-            const state = duel.state;
-            const actorUuid = role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.declareAction(role, data.type);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("respondMeleeAction", async function(data) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
-        if (duel) {
-            const state = duel.state;
-            if (!state.currentAction) return;
-            const responderRole = state.currentAction.side === "attacker" ? "defender" : "attacker";
-            const actorUuid = responderRole === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.respondToAction(data.response);
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("takeoverMeleeInitiative", async function(data) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
-        if (duel) {
-            const state = duel.state;
-            const roleToTakeover = state.initiative === "attacker" ? "defender" : "attacker";
-            const actorUuid = roleToTakeover === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.takeoverInitiative();
-            }
-        }
-    });
-
-    game.neuroshima.socket.register("finishMeleeDuel", NeuroshimaMeleeDuelSockets._onFinishDuel);
-    game.neuroshima.socket.register("nextMeleeTurn", NeuroshimaMeleeDuelSockets._onNextTurn);
-    game.neuroshima.socket.register("rerollMelee3k20", async function(data) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(data.duelId);
-        if (duel) {
-            const state = duel.state;
-            const actorUuid = data.role === "attacker" ? state.attacker.actorUuid : state.defender.actorUuid;
-            const actor = (await fromUuid(actorUuid))?.actor || (await fromUuid(actorUuid));
-            const user = game.users.get(this.socketdata.userId);
-
-            if (user?.isGM || actor?.testUserPermission(user, "OWNER")) {
-                await duel.rollPool(data.role);
-            }
-        }
-    });
-
+    // Healing batch application
     game.neuroshima.socket.register("applyHealingBatch", async (data) => {
         const doc = await fromUuid(data.patientUuid);
         const patient = doc?.actor || doc;
@@ -1275,88 +1028,10 @@ Hooks.once("setup", () => {
 });
 
 // Rejestracja globalnych hooków dla odświeżania interfejsu
-Hooks.on("updateCombat", (combat, changed, options, userId) => {
-    if (changed.flags?.neuroshima?.melee) {
-        if (game.neuroshima.meleePanel?.rendered) {
-            game.neuroshima.meleePanel.render();
-        }
-    }
-});
-
 Hooks.on("targetToken", (user) => {
     if (user.id === game.user.id) refreshAllCombatCards();
 });
 
 Hooks.on("controlToken", () => {
     refreshAllCombatCards();
-});
-
-// Hooks dla Melee Duel Trackera
-Hooks.on("createChatMessage", (message, options, userId) => {
-    const duelId = message.getFlag("neuroshima", "duelId");
-    if (!duelId) return;
-
-    // Get duel instance from flags stored in combat
-    const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
-    if (!duel) return;
-    
-    const state = duel.state;
-    if (!state) return;
-
-    // Otwórz tracker dla uczestników i GM-a
-    const isAttacker = state.attacker.actorUuid === game.user.character?.uuid || fromUuidSync(state.attacker.actorUuid)?.isOwner;
-    const isDefender = state.defender?.actorUuid === game.user.character?.uuid || (state.defender?.actorUuid && fromUuidSync(state.defender.actorUuid)?.isOwner);
-    const isTarget = (state.attackerTargets || []).some(t => fromUuidSync(t.uuid)?.isOwner);
-
-    if (game.user.isGM || isAttacker || isDefender || isTarget) {
-        game.neuroshima.NeuroshimaMeleeDuelTracker.open(duelId);
-    }
-});
-
-/**
- * Combat Tracker Integration for Melee Duels.
- */
-Hooks.on("renderCombatTracker", (app, html, data) => {
-    // Application V2 passes the root HTMLElement as the second argument
-    const root = (html instanceof HTMLElement) ? html : html[0];
-    if (!root) return;
-
-    // Add icon for combatants participating in an active melee duel
-    // No longer adding individual buttons to combatants here, 
-    // using NeuroshimaCombatTracker unified view instead.
-});
-
-Hooks.on("updateCombat", (combat, changed, options, userId) => {
-    // Only proceed if duels flag was updated
-    if (!foundry.utils.hasProperty(changed, "flags.neuroshima.duels")) return;
-
-    try {
-        const duels = combat.getFlag("neuroshima", "duels") || {};
-        
-        // Refresh or Close trackers
-        if (NeuroshimaMeleeDuelTracker?.instances) {
-            for (const [id, app] of NeuroshimaMeleeDuelTracker.instances) {
-                if (!duels[id]) {
-                    app.close();
-                } else {
-                    app.render();
-                }
-            }
-        }
-        
-        // Refresh Sidebar if active
-        const combatTab = ui.sidebar?.tabs?.combat;
-        if (combatTab && typeof combatTab.render === "function") {
-            combatTab.render();
-        }
-
-        // Refresh open actor sheets to show/hide pending melee notifications
-        for (const app of Object.values(foundry.applications.instances)) {
-            if (app instanceof NeuroshimaActorSheet) {
-                app.render();
-            }
-        }
-    } catch (err) {
-        console.error("Neuroshima 1.5 | Error in updateCombat hook:", err);
-    }
 });

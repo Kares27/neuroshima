@@ -58,32 +58,4 @@ export class NeuroshimaCombat extends Combat {
 
     return this;
   }
-
-  /** @override */
-  async _preDeleteEmbeddedDocuments(embeddedName, result, options, userId) {
-    await super._preDeleteEmbeddedDocuments(embeddedName, result, options, userId);
-    
-    if (embeddedName === "Combatant" && game.user.id === userId) {
-        const duels = this.getFlag("neuroshima", "duels") || {};
-        if (Object.keys(duels).length === 0) return;
-
-        const deletedActorUuids = result.map(id => this.combatants.get(id)?.actor?.uuid).filter(Boolean);
-        const newDuels = { ...duels };
-        let changed = false;
-
-        for (const [id, duel] of Object.entries(duels)) {
-            // Jeśli którykolwiek z walczących został usunięty, usuń cały pojedynek
-            if (deletedActorUuids.includes(duel.attacker.actorUuid) || 
-                (duel.defender?.actorUuid && deletedActorUuids.includes(duel.defender.actorUuid))) {
-                delete newDuels[id];
-                changed = true;
-                game.neuroshima?.log(`Automatyczne usuwanie pojedynku ${id} z powodu usunięcia uczestnika.`);
-            }
-        }
-
-        if (changed) {
-            await this.setFlag("neuroshima", "duels", newDuels);
-        }
-    }
-  }
 }

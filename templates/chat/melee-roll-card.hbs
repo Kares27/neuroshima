@@ -1,6 +1,7 @@
-<div class="neuroshima roll-card weapon-roll-card melee {{rollMode}}" 
+<div class="neuroshima roll-card melee-roll-card {{rollMode}}" 
     data-weapon-id="{{weaponId}}"
-    data-actor-id="{{actorId}}">
+    data-actor-id="{{actorId}}"
+    data-damage="{{damage}}">
     
     <header class="roll-header">
         <div class="actor-image-container" {{#if showTooltip}}data-tooltip="{{tooltip}}" data-tooltip-direction="LEFT"{{/if}}>
@@ -9,61 +10,74 @@
         <div class="header-details">
             <div class="weapon-title">
                 {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
-                {{label}}
+                {{label}}{{#if actionLabel}}: {{actionLabel}}{{/if}}
             </div>
             <div class="test-type">
-                {{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.Actions.Attack"}}{{else}}{{localize "NEUROSHIMA.Actions.Defense"}}{{/if}}
+                {{localize difficultyLabel}} | {{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.Actions.Attack"}}{{else}}{{localize "NEUROSHIMA.Actions.Defense"}}{{/if}}
             </div>
         </div>
     </header>
     <hr class="dotted-hr">
 
-    {{#if meleeTargets}}
-    <div class="melee-targets">
-        <span class="label">{{localize "NEUROSHIMA.Roll.Targets"}}:</span>
-        <div class="targets-list">
-            {{#each meleeTargets}}
-            <div class="target-item" data-actor-id="{{this.id}}">
-                <img src="{{this.img}}" title="{{this.name}}" width="24" height="24"/>
-                <span class="name">{{this.name}}</span>
-            </div>
-            {{/each}}
-        </div>
-    </div>
-    <hr class="dotted-hr">
-    {{/if}}
-
     <div class="weapon-details">
         <div class="detail-item">
-            <span class="label">Lokacja:</span>
+            <span class="label">{{localize "NEUROSHIMA.Roll.Location"}}:</span>
             <span class="value"><strong>{{localize locationLabel}}</strong> {{#if locationRoll}}({{locationRoll}}){{/if}}</span>
         </div>
         {{#if damage}}
         <div class="detail-item">
-            <span class="label">Obrażenia:</span>
+            <span class="label">{{localize "NEUROSHIMA.Roll.Damage"}}:</span>
             <span class="value"><strong>{{damage}}</strong></span>
         </div>
         {{/if}}
     </div>
 
     <div class="dice-results-grid">
-        {{#each rawResults}}
+        {{#each modifiedResults}}
             <div class="die-result">
-                <span class="die-label">
-                    D{{add @index 1}} =
-                </span>
+                <span class="die-label">D{{add @index 1}} = </span>
                 <div class="die-square-container">
                     <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}}">
-                        {{this.value}}
+                        {{this.original}}
                     </span>
+                    {{#if (ne ../skill 0)}}
+                        <i class="fas fa-long-arrow-alt-right"></i> 
+                        <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
+                            {{this.modified}}
+                        </span>
+                    {{/if}}
                 </div>
             </div>
         {{/each}}
     </div>
 
-    <footer class="roll-outcome">
-        <div class="outcome-item status-waiting">
-            <span class="value"><i>{{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.MeleeOpposed.WaitingForDefense"}}{{else}}{{localize "NEUROSHIMA.MeleeOpposed.WaitingForDuel"}}{{/if}}</i></span>
+    <hr class="dotted-hr">
+
+    <footer class="roll-outcome {{#if isSuccess}}success{{else}}failure{{/if}}">
+        <div class="outcome-item success-points">
+            <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
+            <span class="value"><strong>{{successPoints}}</strong></span>
+        </div>
+        
+        <div class="outcome-item roll-status">
+            <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">
+                <strong>{{#if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
+            </span>
         </div>
     </footer>
+
+    {{#if meleeTargets.length}}
+    <hr class="dotted-hr">
+    <div class="melee-targets-section">
+        <div class="targets-header">{{localize "NEUROSHIMA.MeleeOpposed.Participants"}}:</div>
+        <div class="targets-list">
+            {{#each meleeTargets}}
+            <div class="target-item" data-actor-id="{{this.id}}">
+                <img src="{{this.img}}" width="24" height="24" />
+                <span>{{this.name}}</span>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+    {{/if}}
 </div>

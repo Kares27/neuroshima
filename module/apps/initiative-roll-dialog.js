@@ -14,6 +14,7 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     this.weaponId = options.weaponId;
     this.targets = options.targets;
     this.duelId = options.duelId;
+    this.encounterId = options.encounterId;
     this.isMelee = options.isMelee;
     
     // Initial options
@@ -82,22 +83,6 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     // Update combatant if needed
     if (this.combatant && !this.options.isMeleeInitiative) {
         await this.combatant.update({ initiative: result.successPoints });
-    }
-
-    // Handle Melee Duel integration
-    if (this.isMelee) {
-        if (this.duelId) {
-            // Joining existing duel (Defender)
-            game.neuroshima.log(`InitiativeRollDialog | Joining duel ${this.duelId}`);
-            await game.neuroshima.NeuroshimaMeleeDuel.join(this.duelId, this.actor, result, this.weaponId);
-        } else if (this.weaponId && this.targets?.length > 0) {
-            // New attack (Attacker)
-            game.neuroshima.log("InitiativeRollDialog | Creating new duel from attack");
-            const weapon = this.actor.items.get(this.weaponId);
-            await game.neuroshima.NeuroshimaMeleeDuel.createFromAttack(this.actor, weapon, this.targets, result);
-        } else {
-            game.neuroshima.warn("InitiativeRollDialog | Melee roll without duelId or targets!");
-        }
     }
     
     return result;

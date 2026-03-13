@@ -67,8 +67,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       showPatientCard: this.prototype._onShowPatientCard,
       requestHealing: this.prototype._onRequestHealing,
       toggleCombatLayout: this.prototype._onToggleCombatLayout,
-      respondToOpposed: this.prototype._onRespondToOpposed,
-      dismissOpposed: this.prototype._onDismissOpposed,
       rest: this.prototype._onRest
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -150,32 +148,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     };
     context.tricks = items.filter(i => i.type === "trick");
     context.wounds = items.filter(i => i.type === "wound");
-
-    // Prepare pending melee attack from active duels
-    let meleePending = null;
-    const activeDuel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(actor);
-    if (activeDuel) {
-        const state = activeDuel.state;
-        // Check if we are a potential defender waiting to join
-        const isPotentialDefender = state.status === "waiting-defender" && 
-            (state.attackerTargets || []).some(t => t.uuid === actor.uuid || t.id === actor.id || t.uuid === actor.token?.uuid);
-        
-        // Or if we are the joined defender but haven't rolled yet
-        const isJoinedDefenderWaiting = state.status === "active" && 
-            (state.defender?.actorUuid === actor.uuid || state.defender?.tokenUuid === actor.token?.uuid) && 
-            state.defender.initiativeRoll === null;
-        
-        if (isPotentialDefender || isJoinedDefenderWaiting) {
-            meleePending = {
-                attackerName: state.attacker.name,
-                duelId: state.id,
-                requestId: state.id,
-                isPotential: isPotentialDefender,
-                isJoined: isJoinedDefenderWaiting
-            };
-        }
-    }
-    game.neuroshima?.log("_prepareContext meleePending (from activeDuel)", meleePending);
 
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
@@ -275,8 +247,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       woundsByLocation: woundsByLocation,
       selectedWoundLocation: this._selectedWoundLocation,
       selectedLocationLabel: selectedLocationLabel,
-      woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false,
-      meleePending: meleePending
+      woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false
     };
     
     game.neuroshima?.log("_prepareContext context.combat.selectedWoundLocation", {
@@ -1245,17 +1216,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const lastRoll = this.document.system.lastWeaponRoll || {};
         let distance = 0;
         let targets = Array.from(game.user.targets ?? []);
-        let targetUuids = weapon.system.weaponType === "melee" 
-            ? targets.map(t => t.actor?.uuid).filter(Boolean)
-            : targets.map(t => t.document.uuid);
+        let targetUuids = targets.map(t => t.document.uuid);
 
-        // Wykrywanie aktywnego pojedynku dla broni wręcz
-        const activeDuel = weapon.system.weaponType === "melee" 
-            ? game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(this.document)
-            : null;
-
-        // Tryb wyboru na mapie jeśli brak targetów (zarówno dla ranged jak i melee, jeśli nie jesteśmy w pojedynku)
-        if (targetUuids.length === 0 && !activeDuel) {
+        // Tryb wyboru na mapie jeśli brak targetów
+        if (targetUuids.length === 0) {
             game.neuroshima.log("Brak aktywnych targetów, przechodzę do trybu wyboru na mapie");
             await this.minimize();
             const targetData = await this._waitForTarget();
@@ -1269,9 +1233,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                     targetData.token.setTarget(true, { releaseOthers: true });
                     // Odśwież listę targetów po wyborze
                     targets = [targetData.token];
-                    targetUuids = weapon.system.weaponType === "melee" 
-                        ? targets.map(t => t.actor?.uuid).filter(Boolean)
-                        : targets.map(t => t.document.uuid);
+                    targetUuids = targets.map(t => t.document.uuid);
                 }
             } else {
                 game.neuroshima.log("Anulowano wybór celu na mapie");
@@ -1279,8 +1241,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                 game.neuroshima.groupEnd();
                 return;
             }
-        } else if (weapon.system.weaponType !== "melee") {
-            // Jeśli mamy już cele dla broni dystansowej, pobierz dystans do pierwszego
+        }
+        // Detect distance for ranged/thrown weapons
+        if (weapon.system.weaponType !== "melee") {
             const actorToken = this._getSourceToken();
             if (actorToken && targets.length > 0) {
                 distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, targets[0]);
@@ -1288,87 +1251,22 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             }
         }
 
-        // Wykrywanie ataku vs obrony w melee przy użyciu MeleeDuel API
-        if (weapon.system.weaponType === "melee") {
-            // Jeśli nie ma pojedynku i atakujemy (mamy targety), otwieramy dialog inicjatywy zamiast broni
-            if (!activeDuel) {
-                game.neuroshima.log("Brak aktywnego pojedynku. Otwieram dialog inicjatywy walki wręcz.");
-                const initDialog = new game.neuroshima.NeuroshimaInitiativeRollDialog({
-                    actor: this.document,
-                    weaponId: weapon.id,
-                    targets: targetUuids,
-                    isMelee: true,
-                    onClose: () => { this._isRolling = false; }
-                });
-                await initDialog.render(true);
-                game.neuroshima.groupEnd();
-                return;
-            }
-
-        // Jeśli pojedynek istnieje, sprawdźmy stan
-        const state = activeDuel.state;
-        const isPotentialDefender = state.status === "waiting-defender" && 
-            (state.attackerTargets || []).some(t => t.uuid === this.document.uuid || t.id === this.document.id);
-        
-        if (isPotentialDefender || (state.defender?.actorUuid === this.document.uuid)) {
-            // Jeśli obrońca nie rzucił jeszcze inicjatywy
-            if (state.status === "waiting-defender" || !state.defender?.initiativeRoll) {
-                game.neuroshima.log("Obrońca dołącza do pojedynku. Otwieram dialog inicjatywy.");
-                const initDialog = new game.neuroshima.NeuroshimaInitiativeRollDialog({
-                    actor: this.document,
-                    duelId: activeDuel.duelId,
-                    weaponId: weapon.id,
-                    isMelee: true,
-                    onClose: () => { this._isRolling = false; }
-                });
-                await initDialog.render(true);
-                game.neuroshima.groupEnd();
-                return;
-            }
-
-            // Jeśli obrońca rzucił inicjatywę, ale musi rzucić pulę
-            const side = (state.attacker.actorUuid === this.document.uuid || state.attacker.tokenUuid === this.document.token?.uuid) ? "attacker" : "defender";
-            if (state.phase === "pool-roll" && (!state.dice[side] || state.dice[side].length === 0)) {
-                game.neuroshima.log("Pojedynek w fazie rzutu pulą. Otwieram dialog puli.");
-                await activeDuel.rollPool(side);
-                this._isRolling = false;
-                game.neuroshima.groupEnd();
-                return;
-            }
-        }
-
-        // Atakujący też może chcieć rzucić pulę klikając broń
-        const side = (state.attacker.actorUuid === this.document.uuid || state.attacker.tokenUuid === this.document.token?.uuid) ? "attacker" : "defender";
-        if (state.phase === "pool-roll" && (!state.dice[side] || state.dice[side].length === 0)) {
-            game.neuroshima.log("Pojedynek w fazie rzutu pulą (atakujący). Otwieram dialog puli.");
-            await activeDuel.rollPool(side);
-            this._isRolling = false;
-            game.neuroshima.groupEnd();
-            return;
-        }
-        
-        // Jeśli już rzucono pulę, po prostu otwórz tracker (lub nic nie rób)
-        this._isRolling = false;
+        game.neuroshima.log("Otwieranie dialogu rzutu z dystansem:", distance);
         game.neuroshima.groupEnd();
-        return;
-    }
 
-    game.neuroshima.log("Otwieranie dialogu rzutu z dystansem:", distance);
-    game.neuroshima.groupEnd();
-
-    const dialog = new NeuroshimaWeaponRollDialog({
-      actor: this.document,
-      weapon: weapon,
-      rollType: (isRanged || isThrown) ? "ranged" : "melee",
-      targets: targetUuids,
-      lastRoll: {
-          ...lastRoll,
-          distance: distance || lastRoll.distance
-      },
-      onClose: () => { this._isRolling = false; }
-    });
-    
-    await dialog.render(true);
+        const dialog = new NeuroshimaWeaponRollDialog({
+            actor: this.document,
+            weapon: weapon,
+            rollType: (isRanged || isThrown) ? "ranged" : "melee",
+            targets: targetUuids,
+            lastRoll: {
+                ...lastRoll,
+                distance: distance || lastRoll.distance
+            },
+            onClose: () => { this._isRolling = false; }
+        });
+        
+        await dialog.render(true);
     } catch (err) {
         game.neuroshima.log("Przerwano rzut bronią lub wystąpił błąd:", err.message);
         this._isRolling = false;
@@ -1834,31 +1732,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   }
 
   /**
-   * Ignoruje oczekujący atak melee.
-   */
-  async _onIgnoreMelee(event) {
-    const actor = this.document;
-    const opposedPending = actor.getFlag("neuroshima", "opposedPending") || {};
-    const pendingList = Object.values(opposedPending).filter(p => p.messageId);
-    const pending = pendingList.sort((a,b) => b.timestamp - a.timestamp)[0];
-    
-    if (pending?.requestId) {
-        game.neuroshima.log("Ignorowanie ataku melee (requestId):", pending.requestId);
-        if (this.document.isOwner || game.user.isGM) {
-            await actor.unsetFlag("neuroshima", `opposedPending.${pending.requestId}`);
-        } else {
-            await game.neuroshima.socket.executeAsGM("clearPending", {
-                actorUuid: actor.uuid,
-                requestId: pending.requestId
-            });
-        }
-    } else {
-        await actor.unsetFlag("neuroshima", "meleePending");
-    }
-    this.render();
-  }
-
-  /**
    * Toggle the layout of the combat tab (top-row vs wounds-section order).
    */
   async _onToggleCombatLayout(event, target) {
@@ -1903,47 +1776,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       v.cssClass = v.active ? "active" : "";
     }
     return tabs;
-  }
-
-  /**
-   * Obsługa odpowiedzi na test przeciwstawny z arkusza.
-   */
-  async _onRespondToOpposed(event, target) {
-    const duelId = target.dataset.duelId;
-    if (!duelId) return;
-    
-    // Poinformuj o instrukcji
-    ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.InstructionDefender"));
-    
-    // Otwórz tracker dla wygody
-    game.neuroshima.NeuroshimaMeleeDuelTracker.open(duelId);
-    
-    // Odśwież widok
-    this.render();
-  }
-
-  /**
-   * Odrzuca prośbę o dołączenie do starcia (tylko lokalnie usuwa wizualny indykator 
-   * jeżeli gracz nie chce brać w tym udziału, lub jeśli GM chce wyczyścić).
-   * UWAGA: To nie usuwa Starcia z flag Combata!
-   */
-  async _onDismissOpposed(event, target) {
-    const duelId = target.dataset.duelId;
-    if (!duelId) return;
-    
-    // W systemie opartym na flagach Combata 'dismiss' na arkuszu 
-    // jest głównie wizualny dla gracza. Jeśli jednak to GM, może zapytać o usunięcie duelu.
-    if (game.user.isGM) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.fromId(duelId);
-        if (duel) await duel.finish();
-    } else {
-        // Dla gracza po prostu odświeżamy sheet, co przy braku opposedPending 
-        // i tak by go ukryło, ale tutaj polegamy na tym że gracz po prostu 
-        // ignoruje sekcję. W V13 z findActiveDuelForActor będzie się to pokazywać
-        // dopóki status jest waiting-defender.
-        ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposed.DuelIgnored"));
-    }
-    this.render();
   }
 
   /**
