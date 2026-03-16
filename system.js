@@ -10,6 +10,7 @@ import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
+import { NeuroshimaMeleeCombat } from "./module/combat/melee-combat.js";
 import { buildRef, resolveRef } from "./module/helpers/refs.js";
 import { EncumbranceConfig } from "./module/apps/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/combat-config.js";
@@ -21,12 +22,23 @@ import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
 
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
+import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 
 // Inicjalizacja systemu Neuroshima 1.5
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
 
     CONFIG.ui.combat = NeuroshimaCombatTracker;
+    MeleeCombatApp.registerHooks();
+
+    // Hook to re-render actor sheets when combat updates (for melee pendings)
+    Hooks.on("updateCombat", (combat, updates, options, userId) => {
+        Object.values(ui.windows).forEach(app => {
+            if (app instanceof NeuroshimaActorSheet) {
+                app.render(false);
+            }
+        });
+    });
 
     // Przypisanie niestandardowych klas i stałych (bezpieczne merge, aby nie usunąć socketu)
     game.neuroshima = Object.assign(game.neuroshima || {}, {
@@ -36,6 +48,7 @@ Hooks.once('init', async function() {
         NeuroshimaInitiativeRollDialog,
         NeuroshimaDice,
         CombatHelper,
+        NeuroshimaMeleeCombat,
         HealingApp,
         showHealingRollDialog,
         buildRef,
@@ -125,6 +138,8 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('number', (v) => Number(v));
     Handlebars.registerHelper('inc', (v) => Number(v) + 1);
     Handlebars.registerHelper('ifThen', (c, a, b) => c ? a : b);
+    Handlebars.registerHelper('meleeDieUsed', (list, index) => list?.includes(index));
+    Handlebars.registerHelper('meleeDieSelected', (list, index) => list?.includes(index));
     Handlebars.registerHelper('capitalize', (str) => {
         if (!str || typeof str !== 'string') return '';
         return str.charAt(0).toUpperCase() + str.slice(1);

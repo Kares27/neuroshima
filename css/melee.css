@@ -1,0 +1,559 @@
+:root {
+    --attacker-color: #c0392b;
+    --defender-color: #16a085;
+    --border-color: #444;
+}
+
+.melee-duel-container {
+    padding: 10px;
+    height: 100%;
+}
+
+.melee-duel-grid {
+    display: grid;
+    grid-template-columns: 1fr 200px 1fr;
+    gap: 15px;
+    height: 100%;
+}
+
+.combatant-section {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    background: rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.combatant-section.attacker {
+    border-color: var(--attacker-color);
+    background: rgba(192, 57, 43, 0.05);
+}
+
+.combatant-section.attacker.is-user {
+    background: rgba(192, 57, 43, 0.15);
+    box-shadow: inset 0 0 20px rgba(192, 57, 43, 0.1);
+}
+
+.combatant-section.defender {
+    border-color: var(--defender-color);
+    background: rgba(22, 160, 133, 0.05);
+}
+
+.combatant-section.defender.is-user {
+    background: rgba(22, 160, 133, 0.15);
+    box-shadow: inset 0 0 20px rgba(22, 160, 133, 0.1);
+}
+
+.combatant-header {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.actor-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    margin-bottom: 5px;
+}
+
+.role-tag {
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: white;
+}
+
+.weapon-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 5px;
+    background: rgba(255,255,255,0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.weapon-info img {
+    border: none;
+}
+
+.attacker .role-tag { background: var(--attacker-color); }
+.defender .role-tag { background: var(--defender-color); }
+
+.target-info {
+    margin-top: 5px;
+    font-size: 0.9em;
+    background: rgba(0,0,0,0.3);
+    padding: 2px 10px;
+    border-radius: 10px;
+}
+
+.dice-pool {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.die-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #333;
+    padding: 10px;
+    border-radius: 4px;
+    border: 2px solid #555;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.die-control.success {
+    border-color: #27ae60;
+    box-shadow: 0 0 5px rgba(39, 174, 96, 0.5);
+}
+
+.die-control.failure {
+    border-color: #c0392b;
+    opacity: 0.8;
+}
+
+.die-control.selected {
+    background: #444;
+    border-color: #f1c40f;
+    box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+    transform: translateY(-2px);
+}
+
+.die-control.used {
+    opacity: 0.3;
+    filter: grayscale(1);
+    pointer-events: none;
+}
+
+.die-value {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.die-modifiers {
+    display: flex;
+    gap: 5px;
+}
+
+.die-modifiers button {
+    padding: 2px 8px;
+    font-size: 0.8em;
+}
+
+.roll-pool-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.2em;
+    background: #2c3e50;
+    color: white;
+    border: 2px solid #34495e;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    grid-column: span 3;
+}
+
+.roll-pool-btn:hover {
+    background: #34495e;
+    box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
+}
+
+.skill-info {
+    margin-top: 15px;
+    padding: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    width: 100%;
+    text-align: center;
+}
+
+.action-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+}
+
+.segment-indicator {
+    font-size: 1.2em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.combat-log {
+    width: 100%;
+    flex-grow: 1;
+    overflow-y: auto;
+    background: #111;
+    margin-top: 15px;
+    padding: 5px;
+    font-family: monospace;
+    font-size: 0.9em;
+    border: 1px solid #444;
+}
+
+.multi-opponents {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #444;
+}
+
+.opponents-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Melee Pending Card in Actor Sheet */
+.melee-pending-attacker-card {
+    background: rgba(192, 57, 43, 0.1);
+    border: 2px solid var(--attacker-color);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.melee-pending-attacker-card .card-header {
+    background: var(--attacker-color);
+    color: white;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+}
+
+.melee-pending-attacker-card .header-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.animate-fist {
+    animation: punch 2s infinite ease-in-out;
+}
+
+@keyframes punch {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2) rotate(-10deg); color: #f1c40f; }
+}
+
+.melee-pending-attacker-card .dismiss-btn {
+    color: rgba(255, 255, 255, 0.7);
+    transition: all 0.2s;
+}
+
+.melee-pending-attacker-card .dismiss-btn:hover {
+    color: white;
+    transform: scale(1.2);
+}
+
+.melee-pending-attacker-card .card-content {
+    padding: 12px;
+}
+
+.attacker-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.attacker-identity {
+    display: flex;
+    flex-direction: column;
+}
+
+.attacker-label {
+    font-size: 0.75em;
+    color: #aaa;
+    text-transform: uppercase;
+}
+
+.attacker-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #eee;
+}
+
+.initiative-badge {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.initiative-badge .label {
+    font-size: 0.6em;
+    text-transform: uppercase;
+    color: #888;
+}
+
+.initiative-badge .value {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #f1c40f;
+}
+
+.melee-pending-attacker-card .instruction {
+    font-size: 0.9em;
+    font-style: italic;
+    color: #ccc;
+    margin-bottom: 12px;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.pulse-button {
+    width: 100%;
+    padding: 8px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 0 rgba(39, 174, 96, 0.4);
+    animation: pulse 2s infinite;
+    transition: all 0.2s;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(39, 174, 96, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
+}
+
+.pulse-button:hover {
+    background: #2ecc71;
+    transform: translateY(-1px);
+}
+
+/* Combat Tracker Layout */
+.neuroshima.combat-tracker[data-view="encounter"] [data-application-part="melee"] {
+    display: none !important;
+}
+
+.neuroshima.combat-tracker[data-view="melee"] > [data-application-part]:not([data-application-part="tabs"]):not([data-application-part="melee"]) {
+    display: none !important;
+}
+
+.neuroshima.combat-tracker [data-application-part="tabs"] {
+    order: -2;
+}
+
+.neuroshima.combat-tracker [data-application-part="melee"] {
+    flex: 1;
+    overflow-y: auto;
+    order: -1;
+}
+
+.neuroshima.combat-tracker .combat-tabs {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid #444;
+    background: rgba(0,0,0,0.2);
+    margin-bottom: 5px;
+}
+
+.neuroshima.combat-tracker .combat-tabs .item {
+    flex: 1;
+    text-align: center;
+    padding: 8px 5px;
+    font-size: 0.85em;
+    font-weight: bold;
+    color: #888;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.neuroshima.combat-tracker .combat-tabs .item:hover {
+    color: #ccc;
+    background: rgba(255,255,255,0.05);
+}
+
+.neuroshima.combat-tracker .combat-tabs .item.active {
+    color: #f1c40f;
+    border-bottom-color: #f1c40f;
+    background: rgba(241, 196, 15, 0.1);
+}
+
+.neuroshima.combat-tracker .combat-tabs .item i {
+    margin-right: 5px;
+}
+
+.neuroshima.combat-tracker .combatant.melee-active {
+    border-left: 3px solid #f1c40f;
+    background: rgba(241, 196, 15, 0.05);
+}
+
+.neuroshima.combat-tracker .combatant.melee-pending {
+    border-left: 3px solid #3498db;
+    background: rgba(52, 152, 219, 0.05);
+}
+
+.neuroshima.combat-tracker .active-melee-panel.mini {
+    background: rgba(192, 57, 43, 0.2);
+    border: 1px solid var(--attacker-color);
+    margin: 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.neuroshima.combat-tracker .active-melee-panel.mini:hover {
+    background: rgba(192, 57, 43, 0.3);
+    box-shadow: 0 0 10px rgba(192, 57, 43, 0.2);
+}
+
+.melee-view-container {
+    padding: 10px;
+}
+
+.active-melee-panel.full-view {
+    border: 2px solid #f1c40f;
+    background: rgba(241, 196, 15, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.active-melee-panel.full-view:hover {
+    background: rgba(241, 196, 15, 0.15);
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.2);
+}
+
+.pending-melee-panel.full-view {
+    border: 2px solid #3498db;
+    background: rgba(52, 152, 219, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.melee-header {
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.melee-participants {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin: 10px 0;
+}
+
+.participant {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.8em;
+}
+
+.participant img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-bottom: 4px;
+}
+
+.vs {
+    font-weight: bold;
+    font-style: italic;
+    color: #888;
+}
+
+.melee-status, .melee-instruction {
+    text-align: center;
+    font-size: 0.85em;
+    font-style: italic;
+    color: #aaa;
+    margin-top: 5px;
+}
+
+.pending-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.action-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.3);
+    cursor: pointer;
+}
+
+.action-btn.dismiss:hover { background: #c0392b; color: white; }
+
+.join-melee-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.join-melee-btn:hover { background: #2ecc71; }
+
+.no-melee-active {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.no-melee-active i { font-size: 3em; margin-bottom: 15px; }
+.no-melee-active p { font-weight: bold; margin-bottom: 5px; }

@@ -18,10 +18,11 @@ export class NeuroshimaDice {
     // Check for Charge maneuver bonus
     let chargeBonus = 0;
     if (isMeleeInitiative) {
-        const duel = game.neuroshima.NeuroshimaMeleeDuel.findActiveDuelForActor(actor);
+        const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+        const duel = NeuroshimaMeleeCombat.findActiveDuelForActor(actor);
         if (duel) {
-            const role = duel.state.attacker.actorUuid === actor.uuid || duel.state.attacker.tokenUuid === actor.uuid ? "attacker" : "defender";
-            if (duel.state[role].maneuver === "charge") {
+            const role = duel.attacker.id === actor.id ? "attacker" : "defender";
+            if (duel[role].maneuver === "charge") {
                 // Rule: +1 to +3 bonus. For automation we can use a fixed +2 or ask, 
                 // but let's assume +2 as standard charge or check actor skills.
                 chargeBonus = 2; 

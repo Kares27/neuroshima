@@ -36,9 +36,35 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "openHealPanel":
             this.onOpenHealPanel(event, message);
             break;
+          case "start-melee":
+            this.onStartMeleeDuel(event, message);
+            break;
         }
       });
     });
+  }
+
+  /**
+   * Rozpoczyna starcie w zwarciu na podstawie rzutu bronią.
+   */
+  static async onStartMeleeDuel(event, message) {
+    const flags = message.getFlag("neuroshima", "rollData");
+    if (!flags || !flags.isMelee) return;
+
+    const attackerId = flags.actorId;
+    const targets = flags.targets || [];
+
+    if (targets.length === 0) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoMeleeTarget"));
+        return;
+    }
+
+    // Jeśli jest wielu przeciwników, bierzemy pierwszego jako głównego (standard 1v1)
+    // TODO: Obsługa wielu przeciwników w NeuroshimaMeleeCombat.startDuel
+    const defenderId = targets[0];
+
+    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+    await NeuroshimaMeleeCombat.startDuel(attackerId, defenderId);
   }
 
   /**

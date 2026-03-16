@@ -1,0 +1,183 @@
+<div class="combat-tracker-content">
+    <nav class="combat-tabs tabs" data-group="primary">
+        <a class="item {{#if (eq currentView 'encounter')}}active{{/if}}" data-action="set-view" data-tab="encounter">
+            <i class="fas fa-list-ol"></i> {{localize "COMBAT.Encounter"}}
+        </a>
+        <a class="item {{#if (eq currentView 'melee')}}active{{/if}}" data-action="set-view" data-tab="melee">
+            <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.Title"}}
+        </a>
+    </nav>
+
+    {{#if (eq currentView "melee")}}
+        <div class="melee-view-container">
+            {{#each activeMeleeDuels as |duel|}}
+            <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{duel.id}}">
+                <div class="melee-header">
+                    <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.Active"}}
+                </div>
+                <div class="melee-participants">
+                    <div class="participant attacker">
+                        <img src="{{duel.attacker.img}}" title="{{duel.attacker.name}}">
+                        <span>{{duel.attacker.name}}</span>
+                    </div>
+                    <div class="vs">VS</div>
+                    <div class="participant defender">
+                        <img src="{{duel.defender.img}}" title="{{duel.defender.name}}">
+                        <span>{{duel.defender.name}}</span>
+                    </div>
+                </div>
+                <div class="melee-status">
+                    {{localize "NEUROSHIMA.MeleeDuel.ClickToOpen"}}
+                </div>
+            </div>
+            {{/each}}
+
+            {{#each pendingMeleeDuels as |pending|}}
+            <div class="pending-melee-panel full-view" data-pending-id="{{pending.id}}">
+                <div class="melee-header">
+                    <i class="fas fa-hourglass-half"></i> {{localize "NEUROSHIMA.MeleeDuel.Pending"}}
+                    <div class="pending-controls">
+                        <a class="action-btn dismiss" data-action="dismiss-melee" data-pending-id="{{pending.id}}" title="{{localize 'NEUROSHIMA.Actions.Dismiss'}}">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="melee-participants">
+                    <span>{{pending.attackerName}}</span>
+                    <i class="fas fa-arrow-right"></i>
+                    <span>{{pending.defenderName}}</span>
+                </div>
+                <div class="melee-instruction">
+                    {{localize "NEUROSHIMA.MeleeDuel.WaitingForDefender"}}
+                </div>
+                {{#if (eq @root.user.character.id pending.defenderId)}}
+                <button type="button" class="join-melee-btn" data-action="join-melee" data-pending-id="{{pending.id}}">
+                    <i class="fas fa-check"></i> {{localize "NEUROSHIMA.MeleeOpposed.Join"}}
+                </button>
+                {{/if}}
+            </div>
+            {{/each}}
+
+            {{#if (and (not activeMeleeDuels.length) (not pendingMeleeDuels.length))}}
+            <div class="no-melee-active">
+                <i class="fas fa-info-circle"></i>
+                <p>{{localize "NEUROSHIMA.MeleeDuel.NoActiveFights"}}</p>
+                <small>{{localize "NEUROSHIMA.MeleeDuel.StartInstruction"}}</small>
+            </div>
+            {{/if}}
+        </div>
+    {{else}}
+        <header class="combat-tracker-header">
+            {{#if combatCount}}
+            <nav class="encounters flexrow" aria-label="{{localize 'COMBAT.NavLabel'}}">
+                <a class="combat-button combat-create" data-action="createCombat" title="{{localize 'COMBAT.Create'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
+                {{#if previousId}}
+                <a class="combat-button combat-cycle" data-action="cycleCombat" data-direction="-1" title="{{localize 'COMBAT.EncounterPrev'}}">
+                    <i class="fas fa-caret-left"></i>
+                </a>
+                {{/if}}
+                <h4 class="encounter">{{localize "COMBAT.Encounter"}} {{currentIndex}} / {{combatCount}}</h4>
+                {{#if nextId}}
+                <a class="combat-button combat-cycle" data-action="cycleCombat" data-direction="1" title="{{localize 'COMBAT.EncounterNext'}}">
+                    <i class="fas fa-caret-right"></i>
+                </a>
+                {{/if}}
+                <a class="combat-button combat-settings" data-action="editSettings" title="{{localize 'COMBAT.Settings'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+            </nav>
+            {{/if}}
+
+            <div class="combat-controls flexrow">
+                {{#if user.isGM}}
+                <a class="combat-control" data-action="rollAll" title="{{localize 'COMBAT.RollAll'}}">
+                    <i class="fas fa-users"></i>
+                </a>
+                <a class="combat-control" data-action="rollNPC" title="{{localize 'COMBAT.RollNPC'}}">
+                    <i class="fas fa-users-cog"></i>
+                </a>
+                <a class="combat-control" data-action="resetInitiative" title="{{localize 'COMBAT.InitiativeReset'}}">
+                    <i class="fas fa-undo"></i>
+                </a>
+                <a class="combat-control" data-action="clearCombat" title="{{localize 'COMBAT.Delete'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+                {{/if}}
+
+                {{#if round}}
+                <h3 class="round">{{localize "COMBAT.Round"}} {{round}}</h3>
+                {{else}}
+                <h3 class="round">{{localize "COMBAT.NotStarted"}}</h3>
+                {{/if}}
+
+                {{#if user.isGM}}
+                <a class="combat-control" data-action="nextRound" title="{{localize 'COMBAT.RoundNext'}}">
+                    <i class="fas fa-step-forward"></i>
+                </a>
+                {{/if}}
+            </div>
+        </header>
+
+        {{#if activeMeleeDuel}}
+        <div class="active-melee-panel mini" data-action="open-melee" title="{{localize 'NEUROSHIMA.MeleeDuel.OpenActive'}}">
+             <i class="fas fa-swords"></i> {{activeMeleeDuel.attacker.name}} vs {{activeMeleeDuel.defender.name}}
+        </div>
+        {{/if}}
+
+        <ol id="combat-tracker" class="directory-list">
+            {{#each turns}}
+            <li class="combatant {{this.css}} {{#if this.hidden}}hidden{{/if}} {{#if this.defeated}}defeated{{/if}} {{#if this.active}}active{{/if}} {{#if isMeleeDuelParticipant}}melee-active{{/if}} {{#if isMeleePendingParticipant}}melee-pending{{/if}}" 
+                data-combatant-id="{{this.id}}">
+                <img class="token-image" src="{{this.img}}" title="{{this.name}}"/>
+                <div class="token-name">
+                    <h4>{{this.name}}</h4>
+                    <div class="combatant-controls">
+                        {{#if this.canPing}}
+                        <a class="combatant-control" data-action="pingCombatant" title="{{localize 'COMBAT.Ping'}}">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </a>
+                        {{/if}}
+                        <a class="combatant-control {{#if this.hidden}}active{{/if}}" data-action="toggleHidden" title="{{localize 'COMBAT.ToggleVis'}}">
+                            <i class="fas fa-eye-slash"></i>
+                        </a>
+                        <a class="combatant-control {{#if this.defeated}}active{{/if}}" data-action="toggleDefeated" title="{{localize 'COMBAT.ToggleDead'}}">
+                            <i class="fas fa-skull"></i>
+                        </a>
+                    </div>
+                </div>
+
+                {{#if this.hasResource}}
+                <div class="token-resource">
+                    <span class="resource">{{this.resource}}</span>
+                </div>
+                {{/if}}
+
+                <div class="token-initiative">
+                    {{#if this.hasInitiative}}
+                    <span class="initiative">{{this.initiative}}</span>
+                    {{else if this.owner}}
+                    <a class="combatant-control roll" data-action="rollInitiative" title="{{localize 'COMBAT.InitiativeRoll'}}">
+                        <i class="fas fa-dice-d20"></i>
+                    </a>
+                    {{/if}}
+                </div>
+            </li>
+            {{/each}}
+        </ol>
+
+        <footer class="combat-footer">
+            {{#if user.isGM}}
+                {{#if round}}
+                <button class="combat-control" data-action="nextTurn">{{localize "COMBAT.TurnNext"}}</button>
+                <button class="combat-control" data-action="endCombat">{{localize "COMBAT.End"}}</button>
+                {{else}}
+                <button class="combat-control" data-action="startCombat">{{localize "COMBAT.Start"}}</button>
+                {{/if}}
+            {{else if control}}
+                <button class="combat-control" data-action="nextTurn">{{localize "COMBAT.TurnEnd"}}</button>
+            {{/if}}
+        </footer>
+    {{/if}}
+</div>

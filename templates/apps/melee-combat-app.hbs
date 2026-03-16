@@ -1,0 +1,142 @@
+<div class="melee-duel-container {{meleeData.phase}}">
+    <div class="melee-duel-grid">
+        <!-- SEKCJA ATAKUJĄCEGO -->
+        <section class="combatant-section attacker {{#if attackerOwned}}is-user{{/if}}">
+            <header class="combatant-header">
+                <img src="{{meleeData.attacker.img}}" class="actor-img" />
+                <h3>{{meleeData.attacker.name}}</h3>
+                <div class="role-tag">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}</div>
+                {{#if meleeData.attacker.weaponName}}
+                <div class="weapon-info">
+                    <img src="{{meleeData.attacker.weaponImg}}" width="24" height="24" />
+                    <span>{{meleeData.attacker.weaponName}}</span>
+                </div>
+                {{/if}}
+                <div class="target-info">
+                    {{localize "NEUROSHIMA.MeleeDuel.TargetValue"}}: <strong>{{meleeData.attacker.effectiveTarget}}</strong>
+                </div>
+            </header>
+
+            <div class="dice-pool">
+                {{#if meleeData.attacker.dice.length}}
+                    {{#each meleeData.attacker.dice}}
+                        <div class="die-control {{#if (meleeDieUsed ../meleeData.attacker.usedDiceIndices @index)}}used{{/if}} {{#if (meleeDieSelected ../meleeData.attacker.selectedIndices @index)}}selected{{/if}} {{#if (lte this ../meleeData.attacker.effectiveTarget)}}success{{else}}failure{{/if}}" 
+                             data-action="selectDice" data-role="attacker" data-index="{{@index}}">
+                            <span class="die-value">{{this}}</span>
+                            {{#if (and ../doubleSkill ../attackerOwned)}}
+                            <div class="die-modifiers">
+                                <button type="button" data-action="modifyDie" data-role="attacker" data-index="{{@index}}" data-amount="-1">-</button>
+                                <button type="button" data-action="modifyDie" data-role="attacker" data-index="{{@index}}" data-amount="1">+</button>
+                            </div>
+                            {{/if}}
+                        </div>
+                    {{/each}}
+                {{else}}
+                    {{#if attackerOwned}}
+                        <button type="button" class="roll-pool-btn" data-action="rollPool" data-actor-id="{{meleeData.attacker.id}}">
+                            <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+                            <small>({{meleeData.attacker.skillName}}: {{meleeData.attacker.skillValue}}, PT: {{meleeData.attacker.effectiveTarget}})</small>
+                        </button>
+                    {{else}}
+                        <div class="waiting">{{localize "NEUROSHIMA.MeleeDuel.WaitingForPool"}}</div>
+                    {{/if}}
+                {{/if}}
+            </div>
+            
+            {{#if (or attackerOwned isGM)}}
+            <div class="skill-info">
+                {{localize "NEUROSHIMA.MeleeDuel.SkillPoints"}}: <strong>{{meleeData.attacker.skillPointsRemaining}}</strong>
+            </div>
+            {{/if}}
+        </section>
+
+        <!-- SEKCJA CENTRUM (SEGMENTY) -->
+        <section class="action-center">
+            <div class="segment-indicator">
+                {{localize "NEUROSHIMA.Roll.Segment"}} {{meleeData.currentSegment}} / 3
+            </div>
+
+            <div class="duel-status">
+                {{#if (eq meleeData.phase "pool-roll")}}
+                    <p>{{localize "NEUROSHIMA.MeleeDuel.PhaseRollPool"}}</p>
+                {{else}}
+                    <p>{{localize "NEUROSHIMA.MeleeDuel.PhaseSegments"}}</p>
+                    <button type="button" data-action="resolveSegment" {{#unless canResolve}}disabled{{/unless}}>
+                        {{localize "NEUROSHIMA.MeleeDuel.ResolveSegment"}}
+                    </button>
+                {{/if}}
+            </div>
+
+            <div class="combat-log">
+                <!-- Logi walki będą tu lądować dynamicznie -->
+            </div>
+        </section>
+
+        <!-- SEKCJA OBROŃCY -->
+        <section class="combatant-section defender {{#if defenderOwned}}is-user{{/if}}">
+            <header class="combatant-header">
+                <img src="{{meleeData.defender.img}}" class="actor-img" />
+                <h3>{{meleeData.defender.name}}</h3>
+                <div class="role-tag">{{localize "NEUROSHIMA.MeleeDuel.Defender"}}</div>
+                {{#if meleeData.defender.weaponName}}
+                <div class="weapon-info">
+                    <img src="{{meleeData.defender.weaponImg}}" width="24" height="24" />
+                    <span>{{meleeData.defender.weaponName}}</span>
+                </div>
+                {{/if}}
+                <div class="target-info">
+                    {{localize "NEUROSHIMA.MeleeDuel.TargetValue"}}: <strong>{{meleeData.defender.effectiveTarget}}</strong>
+                </div>
+            </header>
+
+            <div class="dice-pool">
+                {{#if meleeData.defender.dice.length}}
+                    {{#each meleeData.defender.dice}}
+                        <div class="die-control {{#if (meleeDieUsed ../meleeData.defender.usedDiceIndices @index)}}used{{/if}} {{#if (meleeDieSelected ../meleeData.defender.selectedIndices @index)}}selected{{/if}} {{#if (lte this ../meleeData.defender.effectiveTarget)}}success{{else}}failure{{/if}}" 
+                             data-action="selectDice" data-role="defender" data-index="{{@index}}">
+                            <span class="die-value">{{this}}</span>
+                            {{#if (and ../doubleSkill ../defenderOwned)}}
+                            <div class="die-modifiers">
+                                <button type="button" data-action="modifyDie" data-role="defender" data-index="{{@index}}" data-amount="-1">-</button>
+                                <button type="button" data-action="modifyDie" data-role="defender" data-index="{{@index}}" data-amount="1">+</button>
+                            </div>
+                            {{/if}}
+                        </div>
+                    {{/each}}
+                {{else}}
+                    {{#if defenderOwned}}
+                        <button type="button" class="roll-pool-btn" data-action="rollPool" data-actor-id="{{meleeData.defender.id}}">
+                            <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+                            <small>({{meleeData.defender.skillName}}: {{meleeData.defender.skillValue}}, PT: {{meleeData.defender.effectiveTarget}})</small>
+                        </button>
+                    {{else}}
+                        <div class="waiting">{{localize "NEUROSHIMA.MeleeDuel.WaitingForPool"}}</div>
+                    {{/if}}
+                {{/if}}
+            </div>
+
+            {{#if (or defenderOwned isGM)}}
+            <div class="skill-info">
+                {{localize "NEUROSHIMA.MeleeDuel.SkillPoints"}}: <strong>{{meleeData.defender.skillPointsRemaining}}</strong>
+            </div>
+            {{/if}}
+        </section>
+    </div>
+
+    {{#if meleeData.multiOpponents.length}}
+    <section class="multi-opponents">
+        <h4>{{localize "NEUROSHIMA.MeleeOpposed.Participants"}} ({{meleeData.multiOpponents.length}})</h4>
+        <div class="opponents-list">
+            {{#each multiOpponentsData}}
+                <div class="opponent-item">
+                    <img src="{{this.img}}" width="32" height="32" />
+                    <span>{{this.name}}</span>
+                    <button type="button" data-action="freeDefense" data-actor-id="{{this.id}}">
+                        <i class="fas fa-shield-alt"></i>
+                    </button>
+                </div>
+            {{/each}}
+        </div>
+    </section>
+    {{/if}}
+</div>

@@ -1,0 +1,41 @@
+<div class="neuroshima roll-card melee-free-defense {{#if isSuccess}}success{{else}}failure{{/if}}">
+    <header class="roll-header">
+        <div class="actor-image-container">
+            <img src="{{defender.img}}" width="32" height="32" />
+        </div>
+        <div class="header-details">
+            <div class="weapon-title">
+                {{localize "NEUROSHIMA.MeleeDuel.FreeDefense"}}
+            </div>
+            <div class="test-type">
+                {{localize "NEUROSHIMA.MeleeDuel.Against"}}: {{attacker.name}}
+            </div>
+        </div>
+    </header>
+    <hr class="dotted-hr">
+
+    <div class="dice-results-grid">
+        {{#each results}}
+            <div class="die-result">
+                <span class="die-label">D{{add @index 1}} = </span>
+                <div class="die-square-container">
+                    <span class="die-square modified {{#if (le this ../targetValue)}}success{{else}}failure{{/if}}">
+                        {{this}}
+                    </span>
+                </div>
+            </div>
+        {{/each}}
+    </div>
+
+    <footer class="roll-outcome">
+        <div class="outcome-item">
+            <span class="label">{{localize "NEUROSHIMA.Roll.Target"}}:</span>
+            <span class="value"><strong>{{targetValue}}</strong></span>
+        </div>
+        <div class="outcome-item roll-status">
+            <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">
+                <strong>{{#if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
+            </span>
+        </div>
+    </footer>
+</div>

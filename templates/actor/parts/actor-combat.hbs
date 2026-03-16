@@ -6,27 +6,37 @@
         </a>
     </div>
 
-    {{#if combat.meleePending}}
-    <div class="melee-pending-attacker">
-        <div class="attacker-header">
-            <i class="fas fa-hand-fist"></i> {{localize "NEUROSHIMA.MeleeOpposed.PendingAttacker"}}
+    {{#each combat.meleePendings as |pending|}}
+    <div class="melee-pending-attacker-card clickable" data-action="respondToOpposed" data-pending-id="{{pending.id}}" title="{{localize 'NEUROSHIMA.MeleeOpposed.Join'}}">
+        <div class="card-header">
+            <div class="header-main">
+                <i class="fas fa-hand-fist animate-fist"></i>
+                <span>{{localize "NEUROSHIMA.MeleeOpposed.PendingAttacker"}}</span>
+            </div>
+            <a class="dismiss-btn" data-action="dismissOpposed" data-pending-id="{{pending.id}}" title="{{localize 'NEUROSHIMA.Actions.Dismiss'}}">
+                <i class="fas fa-times"></i>
+            </a>
         </div>
-        <div class="attacker-details">
-            <span class="attacker-name">{{combat.meleePending.attackerName}}</span>
-            <div class="attacker-actions">
-                <a class="action-btn join" data-action="respondToOpposed" data-duel-id="{{combat.meleePending.duelId}}" title="{{localize 'NEUROSHIMA.MeleeOpposed.Join'}}">
-                    <i class="fas fa-check"></i>
-                </a>
-                <a class="action-btn ignore" data-action="dismissOpposed" data-duel-id="{{combat.meleePending.duelId}}" title="{{localize 'NEUROSHIMA.Actions.Ignore'}}">
-                    <i class="fas fa-times"></i>
-                </a>
+        <div class="card-content">
+            <div class="attacker-row">
+                <div class="attacker-identity">
+                    <span class="attacker-label">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}:</span>
+                    <span class="attacker-name">{{pending.attackerName}}</span>
+                </div>
+                <div class="initiative-badge">
+                    <span class="label">{{localize "NEUROSHIMA.MeleeOpposed.InitiativeAbbr"}}</span>
+                    <span class="value">{{pending.attackerInitiative}}</span>
+                </div>
+            </div>
+            <p class="instruction">{{localize "NEUROSHIMA.MeleeOpposed.InstructionDefender"}}</p>
+            <div class="card-actions">
+                <button type="button" class="join-melee-btn pulse-button">
+                    <i class="fas fa-check"></i> {{localize "NEUROSHIMA.MeleeOpposed.Join"}}
+                </button>
             </div>
         </div>
-        <div class="attacker-instruction">
-            {{localize "NEUROSHIMA.MeleeOpposed.InstructionDefender"}}
-        </div>
     </div>
-    {{/if}}
+    {{/each}}
 
     <div class="combat-grid {{#if combat.woundsFirst}}wounds-first{{/if}}">
         

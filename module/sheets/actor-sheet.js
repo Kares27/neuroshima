@@ -63,6 +63,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       configureHP: this.prototype._onConfigureHP,
       rollWeapon: this.prototype._onRollWeapon,
       rollMeleeInitiative: this.prototype._onRollMeleeInitiative,
+      respondToOpposed: this.prototype._onRespondToOpposed,
+      dismissOpposed: this.prototype._onDismissOpposed,
       unloadMagazine: this.prototype._onUnloadMagazine,
       showPatientCard: this.prototype._onShowPatientCard,
       requestHealing: this.prototype._onRequestHealing,
@@ -247,8 +249,16 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       woundsByLocation: woundsByLocation,
       selectedWoundLocation: this._selectedWoundLocation,
       selectedLocationLabel: selectedLocationLabel,
-      woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false
+      woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false,
+      meleePendings: Object.values(game.combat?.getFlag("neuroshima", "meleePendings") || {})
+        .filter(p => p.active && (p.defenderId === actor.uuid || (actor.token && p.defenderId === actor.token.uuid)))
     };
+    
+    game.neuroshima?.log("_prepareContext meleePendings sync", {
+      actorName: actor.name,
+      myUuids: [actor.uuid, actor.token?.uuid].filter(Boolean),
+      allPendings: game.combat?.getFlag("neuroshima", "meleePendings")
+    });
     
     game.neuroshima?.log("_prepareContext context.combat.selectedWoundLocation", {
       value: context.combat.selectedWoundLocation,
@@ -1254,6 +1264,109 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         game.neuroshima.log("Otwieranie dialogu rzutu z dystansem:", distance);
         game.neuroshima.groupEnd();
 
+    // Jeśli to broń biała i (mamy cel LUB mamy oczekującego atakującego LUB jesteśmy w aktywnym pojedynku), inicjujemy/kontynuujemy
+    if (weapon.system.weaponType === "melee") {
+        const combat = game.combat;
+        const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
+        
+        // Ignoruj cele, które są nami samymy
+        const actualTargets = targetUuids.filter(uuid => uuid !== this.document.uuid && (!this.document.token || uuid !== this.document.token.uuid));
+        let targetUuid = actualTargets[0];
+        let existingPending = null;
+
+        const myUuids = [this.document.uuid];
+        if (this.document.token) myUuids.push(this.document.token.uuid);
+
+        // 1. Sprawdź czy ktoś nas atakuje (Pending)
+        // Jeśli mamy cel, który nas atakuje - to on jest priorytetem
+        if (targetUuid) {
+            existingPending = Object.values(pendings).find(p => myUuids.includes(p.defenderId) && p.attackerId === targetUuid);
+        } 
+        
+        // Jeśli nie mamy wybranego atakującego jako celu, ale KTOŚ nas atakuje, odpowiedzmy na pierwszy dostępny atak
+        if (!existingPending) {
+            existingPending = Object.values(pendings).find(p => myUuids.includes(p.defenderId) && p.active);
+            if (existingPending) targetUuid = existingPending.attackerId;
+        }
+
+        // 2. Jeśli mamy na sobie atak - musimy na niego odpowiedzieć
+        if (existingPending) {
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const initiativeDialog = new NeuroshimaInitiativeRollDialog({
+                actor: this.document,
+                isMelee: true,
+                weaponId: weapon.id,
+                targets: [targetUuid],
+                onRoll: async (rollData) => {
+                    const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
+                        ...rollData,
+                        actor: this.document,
+                        isMeleeInitiative: true
+                    });
+                    
+                    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+                    // Używamy UUID zapisanego w pendingu jako klucza (id)
+                    await NeuroshimaMeleeCombat.respondToMeleePending(existingPending.id, result.successPoints, weapon.id);
+                    
+                    this._isRolling = false;
+                    return result;
+                },
+                onClose: () => { this._isRolling = false; }
+            });
+            await initiativeDialog.render(true);
+            return;
+        }
+
+        // 3. Jeśli nie ma pendingu, ale jesteśmy w aktywnym starciu - otwórz panel
+        const activeDuelId = this.document.getFlag("neuroshima", "activeMeleeDuel");
+        if (activeDuelId && !targetUuid) {
+            const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+            NeuroshimaMeleeCombat.openMeleeApp(activeDuelId);
+            this._isRolling = false;
+            return;
+        }
+
+        // 4. Jeśli mamy cel i nie ma na nas pendingu - inicjujemy nowy atak
+        if (targetUuid) {
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const initiativeDialog = new NeuroshimaInitiativeRollDialog({
+                actor: this.document,
+                isMelee: true,
+                weaponId: weapon.id,
+                targets: [targetUuid],
+                onRoll: async (rollData) => {
+                    const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
+                        ...rollData,
+                        actor: this.document,
+                        isMeleeInitiative: true
+                    });
+                    
+                    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+                    const myFinalUuid = (this.document.token?.uuid) || this.document.uuid;
+
+                    game.neuroshima.log("Inicjalizacja nowego Pendingu.");
+                    await NeuroshimaMeleeCombat.initiateMeleePending(
+                        myFinalUuid, 
+                        targetUuid, 
+                        result.successPoints, 
+                        weapon.id
+                    );
+                    
+                    // Czyścimy targetowanie na canvasie po inicjacji starcia (WFRP-style)
+                    if (game.user.targets.size > 0) {
+                        game.user.targets.clear();
+                    }
+                    
+                    this._isRolling = false;
+                    return result;
+                },
+                onClose: () => { this._isRolling = false; }
+            });
+            await initiativeDialog.render(true);
+            return;
+        }
+    }
+
         const dialog = new NeuroshimaWeaponRollDialog({
             actor: this.document,
             weapon: weapon,
@@ -1573,6 +1686,17 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   }
 
   /**
+   * Publiczna metoda rzutu na inicjatywę, wywoływana np. z trackera.
+   */
+  async rollInitiative(options = {}) {
+    if (options.isMelee) {
+        return this._onRespondToOpposed(null, { dataset: { pendingId: options.pendingId } });
+    }
+    // Domyślny rzut na inicjatywę (nie-melee)
+    return this._onRollMeleeInitiative(new Event("click"));
+  }
+
+  /**
    * Rzut na inicjatywę melee z poziomu arkusza.
    */
   async _onRollMeleeInitiative(event) {
@@ -1607,6 +1731,52 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         }
     });
     dialog.render(true);
+  }
+
+  /**
+   * Reakcja obrońcy na starcie - rzut na inicjatywę i start pojedynku.
+   */
+  async _onRespondToOpposed(event, target) {
+      if (this._isRolling) return;
+      
+      const activeDuelId = this.document.getFlag("neuroshima", "activeMeleeDuel");
+      if (activeDuelId) {
+          const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+          return NeuroshimaMeleeCombat.openMeleeApp(activeDuelId);
+      }
+
+      this._isRolling = true;
+      const pendingId = target.dataset.pendingId;
+      const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+      const dialog = new NeuroshimaInitiativeRollDialog({
+          actor: this.document,
+          isMelee: true,
+          onRoll: async (rollData) => {
+              const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
+                  ...rollData,
+                  actor: this.document,
+                  isMeleeInitiative: true
+              });
+              
+              const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+              await NeuroshimaMeleeCombat.respondToMeleePending(pendingId, result.successPoints);
+              
+              this._isRolling = false;
+              return result;
+          },
+          onClose: () => { this._isRolling = false; }
+      });
+      await dialog.render(true);
+  }
+
+  /**
+   * Anuluje oczekujące starcie.
+   */
+  async _onDismissOpposed(event, target) {
+      if (event) event.stopPropagation();
+      const pendingId = target.dataset.pendingId;
+      const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+      await NeuroshimaMeleeCombat.dismissMeleePending(pendingId);
   }
 
   /**

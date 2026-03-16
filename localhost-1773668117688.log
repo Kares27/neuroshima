@@ -1,0 +1,106 @@
+VM2171:1 Console was cleared
+undefined
+system.js:48 Neuroshima 1.5 | _prepareContext selectedWoundLocation {value: 'torso', type: 'string'}
+system.js:53 Neuroshima 1.5 | CombatHelper | generatePatientCard
+system.js:48 Neuroshima 1.5 | Generowanie karty pacjenta: {actorName: 'Wojownik A', hpValue: 0, hpMax: 27, systemHp: {…}, systemHealth: undefined}
+system.js:48 Neuroshima 1.5 | Znalezione rany: {count: 0, wounds: Array(0)}
+system.js:48 Neuroshima 1.5 | Karta pacjenta wygenerowana: {actorName: 'Wojownik A', currentHP: 0, totalHP: 27, woundCount: 0}
+system.js:48 Neuroshima 1.5 | Filtering locations for template {selectedLocationKey: 'torso', foundSelectedLocation: true, locationsForTemplateCount: 1, allLocationsCount: 6, selectedLocationLabel: 'Tors', …}
+system.js:48 Neuroshima 1.5 | _prepareContext context.combat.selectedWoundLocation {value: 'torso', patientDataLocationsCount: 6, locations: Array(6)}
+system.js:48 Neuroshima 1.5 | _initializeWoundLocationPanel {hotspotsFound: 6, selectedLocation: 'torso', targetFound: true}
+system.js:48 Neuroshima 1.5 | _onPaperDollLocationSelect visually marking hotspot {locationKey: 'torso'}
+system.js:48 Neuroshima 1.5 | Paper doll location selected visually {location: 'torso'}
+system.js:48 Neuroshima 1.5 | _prepareContext selectedWoundLocation {value: 'torso', type: 'string'}
+system.js:53 Neuroshima 1.5 | CombatHelper | generatePatientCard
+system.js:48 Neuroshima 1.5 | Generowanie karty pacjenta: {actorName: 'Wojownik A', hpValue: 0, hpMax: 27, systemHp: {…}, systemHealth: undefined}
+system.js:48 Neuroshima 1.5 | Znalezione rany: {count: 0, wounds: Array(0)}
+system.js:48 Neuroshima 1.5 | Karta pacjenta wygenerowana: {actorName: 'Wojownik A', currentHP: 0, totalHP: 27, woundCount: 0}
+system.js:48 Neuroshima 1.5 | Filtering locations for template {selectedLocationKey: 'torso', foundSelectedLocation: true, locationsForTemplateCount: 1, allLocationsCount: 6, selectedLocationLabel: 'Tors', …}
+system.js:48 Neuroshima 1.5 | _prepareContext context.combat.selectedWoundLocation {value: 'torso', patientDataLocationsCount: 6, locations: Array(6)}
+system.js:48 Neuroshima 1.5 | _initializeWoundLocationPanel {hotspotsFound: 6, selectedLocation: 'torso', targetFound: true}
+system.js:48 Neuroshima 1.5 | _onPaperDollLocationSelect visually marking hotspot {locationKey: 'torso'}
+system.js:48 Neuroshima 1.5 | Paper doll location selected visually {location: 'torso'}
+system.js:53 Neuroshima 1.5 | _onRollWeapon: Łom
+system.js:48 Neuroshima 1.5 | Inicjalizacja rzutu bronią
+system.js:48 Neuroshima 1.5 | Otwieranie dialogu rzutu z dystansem: 0
+system.js:53 Neuroshima 1.5 | Rzut na Inicjatywę: Wojownik A
+dice.js:744 Neuroshima | rollTest started {stat: 12, skill: 0, label: 'Inicjatywa Zwarcia', actor: 'Wojownik A', isInitiative: true}
+system.js:53 Neuroshima 1.5 | Inicjalizacja testu: Inicjatywa Zwarcia
+dice.js:770 Neuroshima | rollTest internal values {stat: 12, attributeBonus: 0, finalStat: 12, finalSkill: 0}
+dice.js:771 Neuroshima | Evaluating roll 3d20...
+dice.js:774 Neuroshima | Roll evaluated: 45
+system.js:48 Neuroshima 1.5 | Parametry testu {stat: 12, skill: 0, kary: 0, prog: 7, suwak: 2}
+system.js:48 Neuroshima 1.5 | Surowe wyniki kości (3) [17, 8, 20]
+system.js:48 Neuroshima 1.5 | Ewaluacja: TEST OTWARTY
+system.js:48 Neuroshima 1.5 | _evaluateOpenTest: Ignoruję kość D3 (20). Pula: 0
+system.js:48 Neuroshima 1.5 | Wyniki po modyfikacji (użycie umiejętności) (3) [{…}, {…}, {…}]
+system.js:48 Neuroshima 1.5 | Wynik inicjatywy: -10
+system.js:48 Neuroshima 1.5 | _prepareContext selectedWoundLocation {value: 'torso', type: 'string'}
+system.js:53 Neuroshima 1.5 | CombatHelper | generatePatientCard
+system.js:48 Neuroshima 1.5 | Generowanie karty pacjenta: {actorName: 'Wojownik A', hpValue: 0, hpMax: 27, systemHp: {…}, systemHealth: undefined}
+system.js:48 Neuroshima 1.5 | Znalezione rany: {count: 0, wounds: Array(0)}
+system.js:48 Neuroshima 1.5 | Karta pacjenta wygenerowana: {actorName: 'Wojownik A', currentHP: 0, totalHP: 27, woundCount: 0}
+system.js:48 Neuroshima 1.5 | Filtering locations for template {selectedLocationKey: 'torso', foundSelectedLocation: true, locationsForTemplateCount: 1, allLocationsCount: 6, selectedLocationLabel: 'Tors', …}
+system.js:48 Neuroshima 1.5 | _prepareContext context.combat.selectedWoundLocation {value: 'torso', patientDataLocationsCount: 6, locations: Array(6)}
+foundry.mjs:117311 NEUROSHIMA.MeleeDuel.PendingNotification 
+system.js:48 Neuroshima 1.5 | _initializeWoundLocationPanel {hotspotsFound: 6, selectedLocation: 'torso', targetFound: true}
+system.js:48 Neuroshima 1.5 | _onPaperDollLocationSelect visually marking hotspot {locationKey: 'torso'}
+system.js:48 Neuroshima 1.5 | Paper doll location selected visually {location: 'torso'}
+system.js:48 Neuroshima 1.5 | _prepareContext selectedWoundLocation {value: 'torso', type: 'string'}
+system.js:53 Neuroshima 1.5 | CombatHelper | generatePatientCard
+system.js:48 Neuroshima 1.5 | Generowanie karty pacjenta: {actorName: 'Wojownik C', hpValue: 0, hpMax: 27, systemHp: {…}, systemHealth: undefined}
+system.js:48 Neuroshima 1.5 | Znalezione rany: {count: 0, wounds: Array(0)}
+system.js:48 Neuroshima 1.5 | Karta pacjenta wygenerowana: {actorName: 'Wojownik C', currentHP: 0, totalHP: 27, woundCount: 0}
+system.js:48 Neuroshima 1.5 | Filtering locations for template {selectedLocationKey: 'torso', foundSelectedLocation: true, locationsForTemplateCount: 1, allLocationsCount: 6, selectedLocationLabel: 'Tors', …}
+system.js:48 Neuroshima 1.5 | _prepareContext context.combat.selectedWoundLocation {value: 'torso', patientDataLocationsCount: 6, locations: Array(6)}
+system.js:48 Neuroshima 1.5 | _initializeWoundLocationPanel {hotspotsFound: 6, selectedLocation: 'torso', targetFound: true}
+system.js:48 Neuroshima 1.5 | _onPaperDollLocationSelect visually marking hotspot {locationKey: 'torso'}
+system.js:48 Neuroshima 1.5 | Paper doll location selected visually {location: 'torso'}
+system.js:53 Neuroshima 1.5 | _onRollWeapon: Pałka
+system.js:48 Neuroshima 1.5 | Inicjalizacja rzutu bronią
+system.js:48 Neuroshima 1.5 | Brak aktywnych targetów, przechodzę do trybu wyboru na mapie
+system.js:48 Neuroshima 1.5 | _waitForTarget: Rozpoczynam przechwytywanie kliknięcia (window capture)
+foundry.mjs:117311 Wybierz cel na mapie (LPM), aby zmierzyć dystans. PPM, aby anulować. 
+system.js:48 Neuroshima 1.5 | _waitForTarget: Pozycja kliknięcia (world): {x: 2428.706909049796, y: 1932.7941159134127}
+system.js:48 Neuroshima 1.5 | _waitForTarget: Wybrano token: Wojownik A. Ustawiam jako target.
+dice.js:1282 Neuroshima 1.5 | measureDistance Debug (V13)
+dice.js:1283 Pozycja 1: q {x: 2550, y: 2050}
+dice.js:1284 Pozycja 2: q {x: 2450, y: 1950}
+dice.js:1285 Wynik measurePath: {waypoints: Array(2), segments: Array(1), distance: 1, cost: 1, spaces: 1, …}
+dice.js:1286 Skala sceny (grid): 100 px = 1 m
+system.js:48 Neuroshima 1.5 | _waitForTarget: Obliczony dystans do tokena: 1m
+system.js:48 Neuroshima 1.5 | Otrzymano dane z mapy: {distance: 1, token: Token}
+system.js:48 Neuroshima 1.5 | Otwieranie dialogu rzutu z dystansem: 1
+system.js:53 Neuroshima 1.5 | Rzut na Inicjatywę: Wojownik C
+dice.js:744 Neuroshima | rollTest started {stat: 6, skill: 0, label: 'Inicjatywa Zwarcia', actor: 'Wojownik C', isInitiative: true}
+system.js:53 Neuroshima 1.5 | Inicjalizacja testu: Inicjatywa Zwarcia
+dice.js:770 Neuroshima | rollTest internal values {stat: 6, attributeBonus: 0, finalStat: 6, finalSkill: 0}
+dice.js:771 Neuroshima | Evaluating roll 3d20...
+dice.js:774 Neuroshima | Roll evaluated: 32
+system.js:48 Neuroshima 1.5 | Parametry testu {stat: 6, skill: 0, kary: 0, prog: 4, suwak: 1}
+system.js:48 Neuroshima 1.5 | Surowe wyniki kości (3) [13, 12, 7]
+system.js:48 Neuroshima 1.5 | Ewaluacja: TEST OTWARTY
+system.js:48 Neuroshima 1.5 | _evaluateOpenTest: Ignoruję kość D1 (13). Pula: 0
+system.js:48 Neuroshima 1.5 | Wyniki po modyfikacji (użycie umiejętności) (3) [{…}, {…}, {…}]
+system.js:48 Neuroshima 1.5 | Wynik inicjatywy: -8
+system.js:48 Neuroshima 1.5 | _prepareContext selectedWoundLocation {value: 'torso', type: 'string'}
+system.js:53 Neuroshima 1.5 | CombatHelper | generatePatientCard
+system.js:48 Neuroshima 1.5 | Generowanie karty pacjenta: {actorName: 'Wojownik A', hpValue: 0, hpMax: 27, systemHp: {…}, systemHealth: undefined}
+system.js:48 Neuroshima 1.5 | Znalezione rany: {count: 0, wounds: Array(0)}
+system.js:48 Neuroshima 1.5 | Karta pacjenta wygenerowana: {actorName: 'Wojownik A', currentHP: 0, totalHP: 27, woundCount: 0}
+system.js:48 Neuroshima 1.5 | Filtering locations for template {selectedLocationKey: 'torso', foundSelectedLocation: true, locationsForTemplateCount: 1, allLocationsCount: 6, selectedLocationLabel: 'Tors', …}
+system.js:48 Neuroshima 1.5 | _prepareContext context.combat.selectedWoundLocation {value: 'torso', patientDataLocationsCount: 6, locations: Array(6)}
+system.js:48 Neuroshima 1.5 | _prepareContext selectedWoundLocation {value: 'torso', type: 'string'}
+system.js:53 Neuroshima 1.5 | CombatHelper | generatePatientCard
+system.js:48 Neuroshima 1.5 | Generowanie karty pacjenta: {actorName: 'Wojownik C', hpValue: 0, hpMax: 27, systemHp: {…}, systemHealth: undefined}
+system.js:48 Neuroshima 1.5 | Znalezione rany: {count: 0, wounds: Array(0)}
+system.js:48 Neuroshima 1.5 | Karta pacjenta wygenerowana: {actorName: 'Wojownik C', currentHP: 0, totalHP: 27, woundCount: 0}
+system.js:48 Neuroshima 1.5 | Filtering locations for template {selectedLocationKey: 'torso', foundSelectedLocation: true, locationsForTemplateCount: 1, allLocationsCount: 6, selectedLocationLabel: 'Tors', …}
+system.js:48 Neuroshima 1.5 | _prepareContext context.combat.selectedWoundLocation {value: 'torso', patientDataLocationsCount: 6, locations: Array(6)}
+foundry.mjs:117311 NEUROSHIMA.MeleeDuel.PendingNotification 
+system.js:48 Neuroshima 1.5 | _initializeWoundLocationPanel {hotspotsFound: 6, selectedLocation: 'torso', targetFound: true}
+system.js:48 Neuroshima 1.5 | _onPaperDollLocationSelect visually marking hotspot {locationKey: 'torso'}
+system.js:48 Neuroshima 1.5 | Paper doll location selected visually {location: 'torso'}
+system.js:48 Neuroshima 1.5 | _initializeWoundLocationPanel {hotspotsFound: 6, selectedLocation: 'torso', targetFound: true}
+system.js:48 Neuroshima 1.5 | _onPaperDollLocationSelect visually marking hotspot {locationKey: 'torso'}
+system.js:48 Neuroshima 1.5 | Paper doll location selected visually {location: 'torso'}
