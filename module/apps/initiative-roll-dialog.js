@@ -16,6 +16,8 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     this.duelId = options.duelId;
     this.encounterId = options.encounterId;
     this.isMelee = options.isMelee;
+    this.meleeMode = options.meleeMode || "initiate"; // "initiate", "respond", "join"
+    this.pendingId = options.pendingId || null;
     
     // Initial options
     this.rollOptions = {
@@ -86,13 +88,24 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     }
     
     // Handle Melee Initiation if this was a melee initiative roll
-    if (this.isMelee && result) {
+    if (this.isMelee && result && this.meleeMode === "initiate") {
         if (this.duelId || this.encounterId) {
             // Joining or responding to an existing encounter
             // This will be handled by the caller or a specific service
         } else if (this.targets && this.targets.length === 1) {
-            const target = this.targets[0];
-            const targetActor = target.actor || target;
+            const rawTarget = this.targets[0];
+            let targetDoc = rawTarget;
+            
+            // Normalize target if it's a UUID string
+            if (typeof rawTarget === "string") {
+                targetDoc = fromUuidSync(rawTarget);
+            }
+            
+            const targetActor = targetDoc?.actor || targetDoc;
+            if (!targetActor?.getFlag) {
+                console.warn("Neuroshima | Invalid melee target passed to initiative dialog", rawTarget);
+                return result;
+            }
             
             // If we are initiating a NEW melee from a weapon click
             const { MeleeEncounter } = await import("../combat/melee-encounter.js");

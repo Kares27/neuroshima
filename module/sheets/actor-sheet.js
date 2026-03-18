@@ -1307,6 +1307,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             const initiativeDialog = new NeuroshimaInitiativeRollDialog({
                 actor: this.document,
                 isMelee: true,
+                meleeMode: "respond",
+                pendingId: existingPending.id,
                 weaponId: weapon.id,
                 targets: [targetUuid],
                 onRoll: async (rollData) => {
@@ -1344,6 +1346,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             const initiativeDialog = new NeuroshimaInitiativeRollDialog({
                 actor: this.document,
                 isMelee: true,
+                meleeMode: "initiate",
                 weaponId: weapon.id,
                 targets: targets,
                 onRoll: async (rollData) => {
