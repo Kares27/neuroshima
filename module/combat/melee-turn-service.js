@@ -37,7 +37,7 @@ export class MeleeTurnService {
   }
 
   /**
-   * Sets the 3k20 pool for a participant.
+   * Sets the 3k20 pool for a participant and snapshots their combat values for the turn.
    */
   static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0) {
     const encounter = MeleeStore.getEncounter(id);
@@ -46,6 +46,27 @@ export class MeleeTurnService {
     const updated = foundry.utils.deepClone(encounter);
     const p = updated.participants[participantId];
     if (!p) return;
+
+    // Fetch actor to calculate current snapshots
+    const doc = fromUuidSync(p.actorUuid);
+    const actor = doc?.actor || doc;
+    
+    if (actor) {
+      const weapon = actor.items.get(p.weaponId);
+      const attribute = weapon?.system.attribute || "dexterity";
+      const baseTarget = actor.system.attributeTotals?.[attribute] || 10;
+      
+      // Calculate effective target with current wounds/armor and maneuver bonuses
+      let maneuverBonus = 0;
+      if (maneuver === "fury" || maneuver === "fullDefense") maneuverBonus = 2;
+      
+      p.targetValue = baseTarget;
+      p.attackBonusSnapshot = weapon?.system.attackBonus || 0;
+      p.defenseBonusSnapshot = weapon?.system.defenseBonus || 0;
+      
+      // Initial effective target (will be shifted by Increased Tempo during resolution)
+      p.effectiveTargetSnapshot = baseTarget + maneuverBonus;
+    }
 
     p.pool = results;
     p.maneuver = maneuver;

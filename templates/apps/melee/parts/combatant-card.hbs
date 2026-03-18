@@ -12,7 +12,7 @@
     {{#if participant.pool.length}}
       <div class="dice-pool">
         {{#each participant.pool}}
-          <div class="die {{#if (meleeDieUsed ../participant.usedDice @index)}}used{{/if}} {{#if (meleeDieSelected (lookup ../../currentExchange (concat ../participant.team "-SelectedDice")) @index)}}selected{{/if}} {{#if (lte this ../participant.effectiveTargetSnapshot)}}success{{else}}failure{{/if}}" 
+          <div class="die {{#if (meleeDieUsed ../participant.usedDice @index)}}used{{/if}} {{#if (meleeDieSelected ../participant.selectedDiceIndices @index)}}selected{{/if}} {{#if (lte this ../participant.effectiveTarget)}}success{{else}}failure{{/if}}" 
                data-id="{{../participant.id}}" data-index="{{@index}}" data-action="selectDie">
             {{this}}
           </div>

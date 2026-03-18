@@ -85,6 +85,14 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       
       // Calculate effective target (snapshot or dynamic)
       p.effectiveTarget = p.effectiveTargetSnapshot || p.targetValue || 10;
+
+      // Prepare selected dice information for templates
+      p.selectedDiceIndices = [];
+      if (pId === context.currentExchange.attackerId) {
+        p.selectedDiceIndices = context.currentExchange.attackerSelectedDice || [];
+      } else if (pId === context.currentExchange.defenderId) {
+        p.selectedDiceIndices = context.currentExchange.defenderSelectedDice || [];
+      }
     }
 
     return context;
@@ -130,12 +138,17 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!p || p.usedDice.includes(index)) return;
 
     const exchange = updated.currentExchange;
-    const teamKey = p.team === "A" ? "attackerSelectedDice" : "defenderSelectedDice";
+    let roleKey = null;
     
-    if (exchange[teamKey].includes(index)) {
-      exchange[teamKey] = exchange[teamKey].filter(i => i !== index);
+    if (participantId === exchange.attackerId) roleKey = "attackerSelectedDice";
+    else if (participantId === exchange.defenderId) roleKey = "defenderSelectedDice";
+    
+    if (!roleKey) return; // Participant not in current exchange
+
+    if (exchange[roleKey].includes(index)) {
+      exchange[roleKey] = exchange[roleKey].filter(i => i !== index);
     } else {
-      exchange[teamKey].push(index);
+      exchange[roleKey].push(index);
     }
 
     await MeleeStore.updateEncounter(this.encounterId, updated);
@@ -149,14 +162,26 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!encounter) return;
 
     const updated = foundry.utils.deepClone(encounter);
+    const attacker = updated.participants[participantId];
+    if (!attacker) return;
+
+    // Use currentTargetId if set, otherwise find a target from the opposing team
+    let targetId = attacker.currentTargetId;
+    if (!targetId || !updated.participants[targetId]) {
+      const opposingTeam = attacker.team === "A" ? "B" : "A";
+      targetId = updated.teams[opposingTeam].find(id => updated.participants[id]?.isActive);
+    }
+
+    if (!targetId) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NoTargetFound"));
+      return;
+    }
+
     updated.currentExchange.attackerId = participantId;
+    updated.currentExchange.defenderId = targetId;
     updated.currentExchange.declaredAction = "attack";
     updated.currentExchange.declaredDiceCount = diceCount;
     updated.turnState.phase = "exchange-response";
-    
-    // Find target (simple 1v1 logic for now)
-    const targetId = Object.keys(updated.participants).find(id => id !== participantId);
-    updated.currentExchange.defenderId = targetId;
     updated.turnState.selectionTurn = targetId;
 
     await MeleeStore.updateEncounter(this.encounterId, updated);

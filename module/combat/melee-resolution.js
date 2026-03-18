@@ -20,36 +20,60 @@ export class MeleeResolution {
 
     if (!attacker || !defender) return;
 
-    // 1. Calculate successes for both sides
-    const attackerSuccesses = this._calculateSuccesses(attacker, exchange.attackerSelectedDice);
-    const defenderSuccesses = this._calculateSuccesses(defender, exchange.defenderSelectedDice);
+    // 1. Calculate Tempo Shift (PT podsunięcie)
+    const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
+    const { NeuroshimaDice } = game.neuroshima;
+    
+    const applyTempo = (participant) => {
+      if (tempoLevel === 0) return participant.effectiveTargetSnapshot;
+      const baseDiffObj = NeuroshimaDice.getDifficultyFromPercent(0); // Average
+      const shifted = NeuroshimaDice._getShiftedDifficulty(baseDiffObj, tempoLevel);
+      return participant.effectiveTargetSnapshot + shifted.mod;
+    };
+
+    const attackerTarget = applyTempo(attacker);
+    const defenderTarget = applyTempo(defender);
+
+    // 2. Calculate successes
+    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => attacker.pool[idx] <= attackerTarget).length;
+    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => defender.pool[idx] <= defenderTarget).length;
 
     const diceCount = exchange.declaredDiceCount;
     let resultType = "miss"; // miss, hit, block, takeover
     let logText = "";
 
-    // 2. Compare based on rules
+    // 3. Neuroshima Rule Resolution
     if (attackerSuccesses >= diceCount && defenderSuccesses >= diceCount) {
       resultType = "block";
       logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogBlock", { attacker: attacker.name, defender: defender.name });
     } else if (attackerSuccesses >= diceCount && defenderSuccesses < diceCount) {
       resultType = "hit";
       logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogHit", { attacker: attacker.name, defender: defender.name, s: diceCount });
-      // TODO: Trigger damage calculation
+      
+      // Damage pipeline
+      await this.applyDamage(updated, exchange.attackerId, exchange.defenderId, diceCount, exchange.attackerSelectedDice[0]);
     } else if (attackerSuccesses < diceCount && defenderSuccesses >= diceCount) {
-      // Check for Pełna obrona (requires 2 successes advantage for takeover)
-      if (defender.maneuver === "fullDefense") {
-          // This needs state across exchanges or a different rule interpretation
-          // According to instructions: "takeover dopiero przy przewadze 2 sukcesów"
-          // Let's assume for now 1v1 takeover logic
-          resultType = "takeover";
+      // Rule: Pełna obrona (takeover requires 2 successes advantage)
+      const takeoverSuccessesRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
+      const actualAdvantage = defenderSuccesses - attackerSuccesses;
+
+      if (actualAdvantage >= takeoverSuccessesRequired) {
+        resultType = "takeover";
+        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogTakeover", { attacker: defender.name, oldAttacker: attacker.name });
+        
+        // Rule: Furia (attacker takeover is a hit)
+        if (attacker.maneuver === "fury") {
+            logText += " " + game.i18n.format("NEUROSHIMA.MeleeDuel.LogFuryHit", { name: defender.name });
+            // Fury hit is always 1s
+            await this.applyDamage(updated, exchange.defenderId, exchange.attackerId, 1, exchange.defenderSelectedDice[0]);
+        }
       } else {
-          resultType = "takeover";
+        resultType = "miss";
+        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogDefensiveMiss", { attacker: attacker.name, defender: defender.name });
       }
-      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogTakeover", { attacker: defender.name, oldAttacker: attacker.name });
     } else {
       resultType = "miss";
-      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogMiss", { attacker: attacker.name, defender: defender.name });
+      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogDoubleMiss", { attacker: attacker.name, defender: defender.name });
     }
 
     // 3. Update state
@@ -86,21 +110,56 @@ export class MeleeResolution {
   }
 
   /**
-   * Helper to count successes in a set of dice indices.
+   * Triggers the damage pipeline for a hit.
    * @private
    */
-  static _calculateSuccesses(participant, selectedIndices) {
-    if (!selectedIndices || selectedIndices.length === 0) return 0;
-    
-    // Simple check: how many values are <= effective target
-    // We should account for skillSpent if we want more accuracy, 
-    // but in Melee 1.5 skill is spent dynamically.
-    let successes = 0;
-    const target = participant.effectiveTargetSnapshot || participant.targetValue || 10;
-    
-    for (const idx of selectedIndices) {
-      if (participant.pool[idx] <= target) successes++;
-    }
-    return successes;
+  static async applyDamage(encounter, attackerId, defenderId, diceCount, locationDieIndex) {
+    const attacker = encounter.participants[attackerId];
+    const defender = encounter.participants[defenderId];
+    if (!attacker || !defender) return;
+
+    const attackerDoc = fromUuidSync(attacker.actorUuid);
+    const defenderDoc = fromUuidSync(defender.actorUuid);
+    const attackerActor = attackerDoc?.actor || attackerDoc;
+    const defenderActor = defenderDoc?.actor || defenderDoc;
+    if (!attackerActor || !defenderActor) return;
+
+    const weapon = attackerActor.items.get(attacker.weaponId);
+    const { CombatHelper } = await import("../helpers/combat-helper.js");
+
+    // Get location from raw dice value
+    const rawValue = attacker.pool[locationDieIndex];
+    const location = this._getLocationFromRoll(rawValue);
+
+    const attackData = {
+      isMelee: true,
+      actorId: attackerActor.id,
+      weaponId: attacker.weaponId,
+      label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+      successPoints: diceCount, // Used for selecting damage tier (1s, 2s, 3s)
+      finalLocation: location,
+      damageMelee1: weapon?.system.damageMelee1,
+      damageMelee2: weapon?.system.damageMelee2,
+      damageMelee3: weapon?.system.damageMelee3
+    };
+
+    await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+        isOpposed: true,
+        spDifference: diceCount,
+        location: location
+    });
+  }
+
+  /**
+   * Helper to map raw roll to body location.
+   * @private
+   */
+  static _getLocationFromRoll(roll) {
+    if (roll <= 2) return "head";
+    if (roll <= 4) return "rightArm";
+    if (roll <= 6) return "leftArm";
+    if (roll <= 15) return "torso";
+    if (roll <= 17) return "rightLeg";
+    return "leftLeg";
   }
 }
