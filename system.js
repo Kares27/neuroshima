@@ -40,6 +40,21 @@ Hooks.once('init', async function() {
         });
     });
 
+    // Cleanup melee flags on combat delete
+    Hooks.on("deleteCombat", async (combat) => {
+        game.neuroshima?.log("Combat deleted, cleaning up melee flags");
+        const encounters = combat.getFlag("neuroshima", "meleeEncounters") || {};
+        for (const encounter of Object.values(encounters)) {
+            for (const p of Object.values(encounter.participants)) {
+                const doc = fromUuidSync(p.actorUuid);
+                const actor = doc?.actor || doc;
+                if (actor) {
+                    await actor.unsetFlag("neuroshima", "activeMeleeEncounter");
+                }
+            }
+        }
+    });
+
     // Przypisanie niestandardowych klas i stałych (bezpieczne merge, aby nie usunąć socketu)
     game.neuroshima = Object.assign(game.neuroshima || {}, {
         NeuroshimaActor,
@@ -1050,6 +1065,18 @@ function initializeSocketlib() {
         const combat = game.combat;
         if (!combat) return;
         return combat.unsetFlag("neuroshima", key);
+    });
+
+    // Specialized handler to end melee encounters (handles cross-actor flag cleanup)
+    game.neuroshima.socket.register("removeMeleeEncounter", async (id) => {
+        const { MeleeStore } = await import("./module/combat/melee-store.js");
+        return MeleeStore.removeEncounter(id);
+    });
+
+    // Specialized handler to remove a melee pending
+    game.neuroshima.socket.register("removeMeleePending", async (pendingUuid) => {
+        const { MeleeStore } = await import("./module/combat/melee-store.js");
+        return MeleeStore.removePending(pendingUuid);
     });
 }
 

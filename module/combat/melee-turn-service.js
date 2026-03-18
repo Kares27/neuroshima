@@ -33,6 +33,7 @@ export class MeleeTurnService {
       text: game.i18n.format("NEUROSHIMA.MeleeDuel.LogNewTurn", { turn: updated.turnState.turn })
     });
 
+    game.neuroshima?.log("Starting new turn for melee encounter", { id, turn: updated.turnState.turn });
     await MeleeStore.updateEncounter(id, updated);
   }
 
@@ -81,6 +82,7 @@ export class MeleeTurnService {
       updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
     }
 
+    game.neuroshima?.log("Setting pool for participant", { id, participantId, results, maneuver });
     await MeleeStore.updateEncounter(id, updated);
   }
 

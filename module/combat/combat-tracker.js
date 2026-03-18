@@ -160,7 +160,15 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         const encounters = combat?.getFlag("neuroshima", "meleeEncounters") || {};
         const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
         
-        context.activeMeleeEncounters = Object.values(encounters);
+        context.activeMeleeEncounters = Object.values(encounters).map(e => {
+            const enriched = foundry.utils.deepClone(e);
+            // Enrich participants and teams for template
+            enriched.teamsData = {
+                A: e.teams.A.map(id => e.participants[id]).filter(Boolean),
+                B: e.teams.B.map(id => e.participants[id]).filter(Boolean)
+            };
+            return enriched;
+        });
         context.pendingMeleeDuels = Object.values(pendings).filter(p => p.active);
         
         // Dla widoku mini bierzemy pierwszy aktywny encounter

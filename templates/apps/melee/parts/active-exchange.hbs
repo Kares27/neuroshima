@@ -2,11 +2,11 @@
   <h3>{{localize "NEUROSHIMA.MeleeDuel.ActiveExchange"}}</h3>
   
   <div class="exchange-grid">
-    {{#if currentExchange.attackerId}}
+    {{#if attacker}}
       <div class="attacker-side active">
         <div class="role">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}</div>
-        <img src="{{lookup participants currentExchange.attackerId 'img'}}" width="48" height="48" />
-        <div class="name">{{lookup participants currentExchange.attackerId 'name'}}</div>
+        <img src="{{attacker.img}}" width="48" height="48" />
+        <div class="name">{{attacker.name}}</div>
         <div class="action">{{localize (concat "NEUROSHIMA.MeleeDuel.Actions." currentExchange.declaredAction)}} ({{currentExchange.declaredDiceCount}}s)</div>
       </div>
     {{else}}
@@ -17,11 +17,11 @@
 
     <div class="vs-label">VS</div>
 
-    {{#if currentExchange.defenderId}}
+    {{#if defender}}
       <div class="defender-side active">
         <div class="role">{{localize "NEUROSHIMA.MeleeDuel.Defender"}}</div>
-        <img src="{{lookup participants currentExchange.defenderId 'img'}}" width="48" height="48" />
-        <div class="name">{{lookup participants currentExchange.defenderId 'name'}}</div>
+        <img src="{{defender.img}}" width="48" height="48" />
+        <div class="name">{{defender.name}}</div>
         <div class="response">{{localize "NEUROSHIMA.MeleeDuel.DefendingWith"}} {{currentExchange.defenderSelectedDice.length}} / {{currentExchange.declaredDiceCount}}</div>
       </div>
     {{else}}

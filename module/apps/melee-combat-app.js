@@ -95,6 +95,16 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     }
 
+    // Map teams to full participant objects for easier template access
+    context.teamsData = {
+      A: context.teams.A.map(id => context.participants[id]).filter(Boolean),
+      B: context.teams.B.map(id => context.participants[id]).filter(Boolean)
+    };
+
+    // Current exchange participants
+    context.attacker = context.currentExchange.attackerId ? context.participants[context.currentExchange.attackerId] : null;
+    context.defender = context.currentExchange.defenderId ? context.participants[context.currentExchange.defenderId] : null;
+
     return context;
   }
 
@@ -177,6 +187,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       return;
     }
 
+    game.neuroshima?.log("Declaring melee attack", { participantId, targetId, diceCount });
     updated.currentExchange.attackerId = participantId;
     updated.currentExchange.defenderId = targetId;
     updated.currentExchange.declaredAction = "attack";
@@ -194,6 +205,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const encounter = MeleeStore.getEncounter(this.encounterId);
     if (!encounter) return;
 
+    game.neuroshima?.log("Confirming selection in melee exchange", { participantId, isGM: game.user.isGM });
     if (game.user.isGM) {
         await MeleeResolution.resolveExchange(this.encounterId);
     } else {

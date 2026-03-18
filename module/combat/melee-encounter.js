@@ -42,6 +42,7 @@ export class MeleeEncounter {
       log: []
     };
 
+    game.neuroshima?.log("Creating melee encounter", { id, attacker: attackerData.name, defender: defenderData.name });
     await MeleeStore.updateEncounter(id, encounter);
     await this._setParticipantFlags(encounter);
     return id;

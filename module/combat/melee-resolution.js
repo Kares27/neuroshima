@@ -22,6 +22,7 @@ export class MeleeResolution {
 
     // 1. Calculate Tempo Shift (PT podsunięcie)
     const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
+    game.neuroshima?.log("Resolving melee exchange", { id, attacker: attacker.name, defender: defender.name, diceCount });
     const { NeuroshimaDice } = game.neuroshima;
     
     const applyTempo = (participant) => {

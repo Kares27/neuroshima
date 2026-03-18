@@ -24,10 +24,13 @@ export class MeleeStore {
     const combat = game.combat;
     if (!combat) return;
 
-    if (game.neuroshima.socket) {
-      await game.neuroshima.socket.executeAsGM("updateCombatFlag", `meleeEncounters.${id}`, data);
+    const encounters = foundry.utils.deepClone(this.getEncounters());
+    encounters[id] = data;
+
+    if (game.user.isGM || !game.neuroshima.socket) {
+      await combat.setFlag("neuroshima", "meleeEncounters", encounters);
     } else {
-      await combat.setFlag("neuroshima", `meleeEncounters.${id}`, data);
+      await game.neuroshima.socket.executeAsGM("updateCombatFlag", "meleeEncounters", encounters);
     }
   }
 
@@ -38,21 +41,29 @@ export class MeleeStore {
     const combat = game.combat;
     if (!combat) return;
 
+    // If not GM and socket available, delegate to GM to handle cross-actor flag cleanup
+    if (!game.user.isGM && game.neuroshima.socket) {
+      return game.neuroshima.socket.executeAsGM("removeMeleeEncounter", id);
+    }
+
     const encounter = this.getEncounter(id);
     if (!encounter) return;
 
-    // Clear flags on all participants
+    // Clear flags on all participants (GM can do this for any actor)
     for (const p of Object.values(encounter.participants)) {
-      const doc = fromUuidSync(p.actorUuid);
-      const actor = doc?.actor || doc;
-      if (actor) await actor.unsetFlag("neuroshima", "activeMeleeEncounter");
+      try {
+        const doc = fromUuidSync(p.actorUuid);
+        const actor = doc?.actor || doc;
+        if (actor) await actor.unsetFlag("neuroshima", "activeMeleeEncounter");
+      } catch (e) {
+        console.warn(`Neuroshima | Failed to unset flag for participant ${p.name}`, e);
+      }
     }
 
-    if (game.neuroshima.socket) {
-      await game.neuroshima.socket.executeAsGM("unsetCombatFlag", `meleeEncounters.${id}`);
-    } else {
-      await combat.unsetFlag("neuroshima", `meleeEncounters.${id}`);
-    }
+    const encounters = foundry.utils.deepClone(this.getEncounters());
+    delete encounters[id];
+
+    await combat.setFlag("neuroshima", "meleeEncounters", encounters);
   }
 
   /**
@@ -67,5 +78,23 @@ export class MeleeStore {
     } else {
         await combat.unsetFlag("neuroshima", "meleePendings");
     }
+  }
+
+  /**
+   * Removes a specific melee pending.
+   */
+  static async removePending(pendingUuid) {
+    const combat = game.combat;
+    if (!combat || !pendingUuid) return;
+
+    if (!game.user.isGM && game.neuroshima.socket) {
+        return game.neuroshima.socket.executeAsGM("removeMeleePending", pendingUuid);
+    }
+
+    const pendingKey = pendingUuid.replace(/\./g, "-");
+    const pendings = foundry.utils.deepClone(combat.getFlag("neuroshima", "meleePendings") || {});
+    delete pendings[pendingKey];
+
+    await combat.setFlag("neuroshima", "meleePendings", pendings);
   }
 }

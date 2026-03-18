@@ -13,14 +13,14 @@
         </div>
         <div class="melee-participants">
             <div class="team team-a">
-                {{#each encounter.teams.A}}
-                    <img src="{{lookup ../encounter.participants this 'img'}}" class="participant-img-tiny" title="{{lookup ../encounter.participants this 'name'}}">
+                {{#each encounter.teamsData.A}}
+                    <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
                 {{/each}}
             </div>
             <div class="vs">VS</div>
             <div class="team team-b">
-                {{#each encounter.teams.B}}
-                    <img src="{{lookup ../encounter.participants this 'img'}}" class="participant-img-tiny" title="{{lookup ../encounter.participants this 'name'}}">
+                {{#each encounter.teamsData.B}}
+                    <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
                 {{/each}}
             </div>
         </div>

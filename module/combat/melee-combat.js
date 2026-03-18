@@ -36,16 +36,9 @@ export class NeuroshimaMeleeCombat {
    * Legacy pending dismissal kept for combat tracker / older UI hooks.
    */
   static async dismissMeleePending(pendingUuid) {
-    const combat = game.combat;
-    if (!combat || !pendingUuid) return;
-
-    const pendingKey = pendingUuid.replace(/\./g, "-");
-
-    if (game.neuroshima.socket) {
-      await game.neuroshima.socket.executeAsGM("unsetCombatFlag", `meleePendings.${pendingKey}`);
-    } else {
-      await combat.unsetFlag("neuroshima", `meleePendings.${pendingKey}`);
-    }
+    game.neuroshima?.log("dismissMeleePending", { pendingUuid });
+    await MeleeStore.removePending(pendingUuid);
+    ui.combat?.render(true);
   }
 
   /**
@@ -114,12 +107,15 @@ export class NeuroshimaMeleeCombat {
         timestamp: Date.now()
     };
 
+    const pendings = foundry.utils.deepClone(combat.getFlag("neuroshima", "meleePendings") || {});
+    pendings[pendingKey] = pendingData;
+
     game.neuroshima?.log("initiateMeleePending | saving pending", { pendingKey, pendingData });
 
-    if (game.neuroshima.socket) {
-        await game.neuroshima.socket.executeAsGM("updateCombatFlag", `meleePendings.${pendingKey}`, pendingData);
+    if (game.user.isGM || !game.neuroshima.socket) {
+        await combat.setFlag("neuroshima", "meleePendings", pendings);
     } else {
-        await combat.setFlag("neuroshima", `meleePendings.${pendingKey}`, pendingData);
+        await game.neuroshima.socket.executeAsGM("updateCombatFlag", "meleePendings", pendings);
     }
     
     game.neuroshima?.log("initiateMeleePending | saved", {
@@ -142,11 +138,7 @@ export class NeuroshimaMeleeCombat {
     if (!pending || !pending.active) return;
 
     // Clean up pending
-    if (game.neuroshima.socket) {
-        await game.neuroshima.socket.executeAsGM("unsetCombatFlag", `meleePendings.${pendingKey}`);
-    } else {
-        await combat.unsetFlag("neuroshima", `meleePendings.${pendingKey}`);
-    }
+    await MeleeStore.removePending(pendingUuid);
 
     const attackerDoc = fromUuidSync(pending.attackerId);
     const defenderDoc = fromUuidSync(pending.defenderId);
@@ -176,6 +168,7 @@ export class NeuroshimaMeleeCombat {
     };
 
     const encounterId = await MeleeEncounter.create(attackerData, defenderData);
+    game.neuroshima?.log("Encounter created from pending response", { encounterId, attacker: attackerData.name, defender: defenderData.name });
     this.openMeleeApp(encounterId);
   }
 

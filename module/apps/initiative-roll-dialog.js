@@ -82,6 +82,12 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     // Perform roll (this will await for Dice So Nice if configured)
     const result = await this._performRoll(rollData);
     
+    game.neuroshima?.log("Initiative roll completed", {
+        actor: this.actor.name,
+        successPoints: result?.successPoints,
+        rollData
+    });
+    
     // Update combatant if needed
     if (this.combatant && !this.isMelee) {
         await this.combatant.update({ initiative: result.successPoints });
@@ -109,9 +115,12 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
             
             // If we are initiating a NEW melee from a weapon click
             const { MeleeEncounter } = await import("../combat/melee-encounter.js");
+            const { MeleeStore } = await import("../combat/melee-store.js");
             const activeEncounterId = targetActor.getFlag("neuroshima", "activeMeleeEncounter");
+            const activeEncounter = activeEncounterId ? MeleeStore.getEncounter(activeEncounterId) : null;
             
-            if (activeEncounterId) {
+            if (activeEncounter) {
+                game.neuroshima?.log("Target already in encounter, joining", { activeEncounterId, target: targetActor.name });
                 // Join existing
                 await MeleeEncounter.join(activeEncounterId, {
                     id: this.actor.uuid,
@@ -125,6 +134,13 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
                     chargeLevel: rollData.chargeLevel
                 }, "A"); // Team A for now, logic can be more complex
             } else {
+                // If it has a stale flag, unset it
+                if (activeEncounterId) {
+                    game.neuroshima?.log("Target has stale activeMeleeEncounter flag, clearing", { activeEncounterId });
+                    await targetActor.unsetFlag("neuroshima", "activeMeleeEncounter");
+                }
+                
+                game.neuroshima?.log("Initiating new pending melee", { attacker: this.actor.name, target: targetActor.name });
                 // Initiate pending
                 const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
                 await NeuroshimaMeleeCombat.initiateMeleePending(
