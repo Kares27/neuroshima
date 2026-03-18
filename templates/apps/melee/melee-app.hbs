@@ -1,23 +1,71 @@
-<div class="melee-app-shell {{turnState.phase}}">
-  {{> "systems/neuroshima/templates/apps/melee/parts/header.hbs"}}
-  
-  <div class="melee-status-bar">
-    <div class="current-prompt">{{currentPrompt}}</div>
-  </div>
+<div class="melee-app-shell">
+    {{!-- 1. Dynamic Header with Current Prompt --}}
+    <header class="melee-header">
+        <div class="turn-info">
+            <span class="label">Tura {{turnState.currentTurn}}</span>
+            <span class="divider">|</span>
+            <span class="label">Segment {{turnState.currentSegment}}/3</span>
+        </div>
+        <div class="phase-prompt">
+            {{currentPrompt}}
+        </div>
+        <div class="app-controls">
+            {{#if isGM}}
+                <a class="control-btn" data-action="resetTurn" title="Resetuj Turę">
+                    <i class="fas fa-undo"></i>
+                </a>
+                <a class="control-btn danger" data-action="endEncounter" title="Zakończ Starcie">
+                    <i class="fas fa-stop"></i>
+                </a>
+            {{/if}}
+            <a class="control-btn" data-action="closeApp" title="Zamknij">
+                <i class="fas fa-times"></i>
+            </a>
+        </div>
+    </header>
 
-  <div class="melee-main-grid">
-    <div class="exchange-and-log">
-      {{> "systems/neuroshima/templates/apps/melee/parts/active-exchange.hbs"}}
-      {{> "systems/neuroshima/templates/apps/melee/parts/combat-log.hbs"}}
-    </div>
-    
-    <div class="combatants-area">
-      <div class="participants-sidebar-header">{{localize "NEUROSHIMA.MeleeDuel.Participants"}}</div>
-      {{#each participants}}
-        {{> "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs" participant=this}}
-      {{/each}}
-    </div>
-  </div>
+    {{!-- 2. Teams Grid (Main Content) --}}
+    <div class="melee-main-grid">
+        {{!-- Team A Column --}}
+        <section class="team-column team-a">
+            <h3 class="team-title">Drużyna A</h3>
+            <div class="participants-list">
+                {{#each teamsData.A}}
+                    {{> "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs" participant=this}}
+                {{/each}}
+            </div>
+        </section>
 
-  {{> "systems/neuroshima/templates/apps/melee/parts/footer-controls.hbs"}}
+        {{!-- Team B Column --}}
+        <section class="team-column team-b">
+            <h3 class="team-title">Drużyna B</h3>
+            <div class="participants-list">
+                {{#each teamsData.B}}
+                    {{> "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs" participant=this}}
+                {{/each}}
+            </div>
+        </section>
+    </div>
+
+    {{!-- 3. Bottom Log Section --}}
+    <footer class="melee-footer">
+        <div class="combat-log">
+            {{#each log}}
+                <div class="log-entry {{this.type}}">
+                    <span class="timestamp">[{{this.time}}]</span>
+                    <span class="message">{{this.message}}</span>
+                </div>
+            {{else}}
+                <div class="log-empty">Brak wpisów w dzienniku walki.</div>
+            {{/each}}
+        </div>
+        
+        {{#if (and isGM (eq turnState.phase "exchange-ready"))}}
+            <div class="gm-resolution-area">
+                <button type="button" class="resolve-btn" data-action="resolveExchange">
+                    <i class="fas fa-gavel"></i> Rozstrzygnij wymianę
+                </button>
+            </div>
+        {{/if}}
+    </footer>
 </div>

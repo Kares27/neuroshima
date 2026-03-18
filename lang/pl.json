@@ -41,7 +41,20 @@
             "Spent": "Wydane",
             "Total": "Razem"
         },
-        "Roll": {
+        "MeleeDuel": {
+      "Title": "Starcie w zwarciu",
+      "NoTargetFound": "Nie znaleziono celu dla ataku.",
+      "ExchangeNotReady": "Wymiana nie jest jeszcze gotowa.",
+      "WaitingForGM": "Oczekiwanie na rozstrzygnięcie przez MG.",
+      "Prompt": {
+        "RollPool": "Wszyscy uczestnicy: rzućcie pulę 3k20",
+        "Declare": "Kolej {name}: wybierz typ ataku (1s / 2s / 3s)",
+        "SelectAttackerDice": "{name}: wybierz {count} kości ataku",
+        "SelectDefenderDice": "{name}: wybierz {count} kości obrony",
+        "Ready": "Wymiana gotowa do rozstrzygnięcia!"
+      }
+    },
+    "Roll": {
             "PenaltyLabel": "Kara do testu",
             "Target": "Próg",
             "Successes": "Sukcesy",
@@ -419,7 +432,8 @@
                 "Declare": "{name}: Wybierz typ ataku (1s, 2s, 3s) lub wyjdź ze zwarcia.",
                 "SelectAttackerDice": "{name}: Wybierz {count} kości do ataku.",
                 "SelectDefenderDice": "{name}: Wybierz {count} kości do obrony.",
-                "Ready": "Wymiana gotowa. MG: Kliknij 'Rozstrzygnij Segment'."
+                "Ready": "Wymiana gotowa. MG: Kliknij 'Rozstrzygnij Segment'.",
+                "WaitingForGM": "Zatwierdzono wybór. Oczekiwanie na rozstrzygnięcie przez MG."
             },
             "ExchangeNotReady": "Wymiana nie jest jeszcze gotowa (brak wymaganej liczby kości).",
             "WaitingForGM": "Zatwierdzono wybór. Oczekiwanie na rozstrzygnięcie przez MG.",

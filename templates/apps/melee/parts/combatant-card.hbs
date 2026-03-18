@@ -1,78 +1,55 @@
-<article class="combatant-card {{#if (eq ../turnState.selectionTurn participant.id)}}current-turn{{/if}} {{#if (eq ../turnState.initiativeOwnerId participant.id)}}has-initiative{{/if}} phase-{{../turnState.phase}}">
-  <header class="participant-header">
-    <div class="header-top">
-      <img src="{{participant.img}}" class="mini-avatar" />
-      <div class="name-area">
-        <div class="name">{{participant.name}}</div>
-        <div class="init">Init: <strong>{{participant.initiative}}</strong></div>
-      </div>
-      {{#if (eq ../turnState.initiativeOwnerId participant.id)}}
-        <div class="initiative-marker" title="{{localize 'NEUROSHIMA.MeleeDuel.InitiativeOwner'}}">
-          <i class="fas fa-bolt"></i>
+<div class="combatant-row {{#if participant.isDead}}dead{{/if}} {{#if (eq @root.turnState.selectionTurn participant.id)}}active-turn{{/if}}" data-participant-id="{{participant.id}}">
+    <div class="participant-header">
+        <img src="{{participant.img}}" class="avatar" title="{{participant.name}}">
+        <div class="participant-info">
+            <span class="name">{{participant.name}}</span>
+            <div class="stats-row">
+                <span class="init-tag">Init: {{participant.initiative}}</span>
+                {{#if participant.pool}}
+                    <span class="maneuver-tag">{{participant.maneuver}}</span>
+                    <span class="target-tag">Target: {{participant.effectiveTarget}}</span>
+                {{/if}}
+            </div>
         </div>
-      {{/if}}
-    </div>
-    
-    <div class="header-bottom">
-      <div class="maneuver-tag {{participant.maneuver}}">
-        {{#if (eq participant.maneuver 'none')}}
-          {{localize "NEUROSHIMA.Roll.Maneuvers.None"}}
-        {{else}}
-          {{localize (concat "NEUROSHIMA.Roll.Maneuvers." (capitalize participant.maneuver))}}
-          {{#if (eq participant.maneuver 'increasedTempo')}}(PT +{{participant.tempoLevel}}){{/if}}
+        
+        {{#if (and participant.isOwner (not participant.pool) (eq @root.turnState.phase "awaiting-pool-rolls"))}}
+            <button type="button" class="roll-pool-btn" data-action="openPoolDialog" data-id="{{participant.id}}">
+                <i class="fas fa-dice-d20"></i> Rzuć 3k20
+            </button>
         {{/if}}
-      </div>
-      
-      {{#if participant.currentTargetId}}
-        <div class="target-tag">
-          <i class="fas fa-crosshairs"></i> {{lookup ../participants participant.currentTargetId 'name'}}
-        </div>
-      {{/if}}
     </div>
-  </header>
-  
-  <div class="pool-area">
-    {{#if participant.pool.length}}
-      <div class="dice-pool">
-        {{#each participant.pool}}
-          <div class="die {{#if (meleeDieUsed ../participant.usedDice @index)}}used{{/if}} {{#if (meleeDieSelected ../participant.selectedDiceIndices @index)}}selected{{/if}} {{#if (lte this ../participant.effectiveTarget)}}success{{else}}failure{{/if}}" 
-               data-id="{{../participant.id}}" data-index="{{@index}}" data-action="selectDie"
-               title="PT: {{../participant.effectiveTarget}}">
-            {{this}}
-          </div>
-        {{/each}}
-      </div>
-    {{else}}
-      {{#if (eq ../turnState.phase 'awaiting-pool-rolls')}}
-        {{#if participant.isOwner}}
-          <button type="button" class="roll-pool-btn pulse" data-action="openPoolDialog" data-id="{{participant.id}}">
-            <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
-          </button>
-        {{else}}
-          <div class="waiting-pool-status"><i class="fas fa-hourglass-half"></i> {{localize "NEUROSHIMA.MeleeDuel.WaitingForPool"}}</div>
-        {{/if}}
-      {{else}}
-        <div class="pool-status">{{localize "NEUROSHIMA.MeleeDuel.NoPool"}}</div>
-      {{/if}}
-    {{/if}}
-  </div>
 
-  <div class="action-controls">
-    {{#if (and (eq ../turnState.selectionTurn participant.id) (eq ../turnState.phase 'exchange-declaration'))}}
-      <div class="declare-actions">
-        <div class="declare-label">{{localize "NEUROSHIMA.MeleeDuel.Actions.attack"}}:</div>
-        <div class="btn-group">
-          <button type="button" data-action="declareAttack" data-id="{{participant.id}}" data-dice="1">1s</button>
-          <button type="button" data-action="declareAttack" data-id="{{participant.id}}" data-dice="2">2s</button>
-          <button type="button" data-action="declareAttack" data-id="{{participant.id}}" data-dice="3">3s</button>
+    {{#if participant.pool}}
+        <div class="dice-pool">
+            {{#each participant.pool}}
+                <div class="die {{#if (in @index ../participant.selectedDiceIndices)}}selected{{/if}} 
+                            {{#if (in @index ../participant.usedDice)}}used{{/if}}
+                            {{#if (lte this ../participant.effectiveTarget)}}success{{else}}failure{{/if}}"
+                     data-action="selectDie" 
+                     data-id="{{../participant.id}}" 
+                     data-index="{{@index}}">
+                    {{this}}
+                </div>
+            {{/each}}
         </div>
-      </div>
     {{/if}}
-    
-    {{#if (and (eq ../turnState.selectionTurn participant.id) (or (eq ../turnState.phase 'exchange-attacker-selection') (eq ../turnState.phase 'exchange-defender-selection')))}}
-      <div class="selection-status">
-        <i class="fas fa-mouse-pointer"></i> {{localize "NEUROSHIMA.MeleeDuel.SelectionTurn"}}
-      </div>
+
+    {{!-- Attack Declaration Controls --}}
+    {{#if (and participant.isOwner (eq @root.turnState.phase "exchange-declaration") (eq @root.turnState.selectionTurn participant.id))}}
+        <div class="declaration-controls">
+            <button type="button" class="attack-btn s1" data-action="declareAttack" data-id="{{participant.id}}" data-dice="1">1s</button>
+            <button type="button" class="attack-btn s2" data-action="declareAttack" data-id="{{participant.id}}" data-dice="2">2s</button>
+            <button type="button" class="attack-btn s3" data-action="declareAttack" data-id="{{participant.id}}" data-dice="3">3s</button>
+        </div>
     {{/if}}
-  </div>
-</article>
+
+    {{!-- Selection Overlays/Status --}}
+    <div class="selection-status">
+        {{#if (eq @root.currentExchange.attackerId participant.id)}}
+            <span class="role-tag attacker">ATAKUJĄCY</span>
+        {{/if}}
+        {{#if (eq @root.currentExchange.defenderId participant.id)}}
+            <span class="role-tag defender">OBROŃCA</span>
+        {{/if}}
+    </div>
+</div>

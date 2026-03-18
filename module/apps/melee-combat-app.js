@@ -82,6 +82,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       const actor = doc?.actor || doc;
       p.isOwner = actor?.isOwner;
       p.isUserCharacter = game.user.character?.uuid === p.actorUuid;
+      p.isDead = actor?.system?.hp?.value <= 0;
       
       // Calculate effective target (snapshot or dynamic)
       p.effectiveTarget = p.effectiveTargetSnapshot || p.targetValue || 10;
@@ -95,10 +96,11 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     }
 
-    // Map teams to full participant objects for easier template access
+    // Map teams to full participant objects and sort by initiative
+    const sortByInitiative = (a, b) => b.initiative - a.initiative;
     context.teamsData = {
-      A: context.teams.A.map(id => context.participants[id]).filter(Boolean),
-      B: context.teams.B.map(id => context.participants[id]).filter(Boolean)
+      A: context.teams.A.map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative),
+      B: context.teams.B.map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative)
     };
 
     // Current exchange participants
@@ -118,27 +120,31 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const phase = context.turnState.phase;
     const selectionTurnId = context.turnState.selectionTurn;
     const participant = context.participants[selectionTurnId];
-    const name = participant?.name || "";
+    const name = participant?.name || "Ktoś";
 
     switch (phase) {
       case "awaiting-pool-rolls":
-        return game.i18n.localize("NEUROSHIMA.MeleeDuel.Prompt.RollPool");
+        const waitingCount = Object.values(context.participants).filter(p => !p.pool).length;
+        return `Oczekiwanie na rzut puli 3k20 (${waitingCount} uczestników)`;
+      
       case "exchange-declaration":
-        return game.i18n.format("NEUROSHIMA.MeleeDuel.Prompt.Declare", { name });
+        return `Kolej ${name}: Wybierz typ ataku (1s / 2s / 3s)`;
+      
       case "exchange-attacker-selection":
-        return game.i18n.format("NEUROSHIMA.MeleeDuel.Prompt.SelectAttackerDice", { 
-          name, 
-          count: context.currentExchange.declaredDiceCount 
-        });
+        const reqAttacker = context.currentExchange.declaredDiceCount || 0;
+        const currentAttacker = context.currentExchange.attackerSelectedDice?.length || 0;
+        return `${name}: Wybierz ${reqAttacker} kości ataku (${currentAttacker}/${reqAttacker})`;
+      
       case "exchange-defender-selection":
-        return game.i18n.format("NEUROSHIMA.MeleeDuel.Prompt.SelectDefenderDice", { 
-          name, 
-          count: context.currentExchange.declaredDiceCount 
-        });
+        const reqDefender = context.currentExchange.declaredDiceCount || 0;
+        const currentDefender = context.currentExchange.defenderSelectedDice?.length || 0;
+        return `${name}: Wybierz ${reqDefender} kości obrony (${currentDefender}/${reqDefender})`;
+      
       case "exchange-ready":
-        return game.i18n.localize("NEUROSHIMA.MeleeDuel.Prompt.Ready");
+        return "Wymiana gotowa! MG może ją rozstrzygnąć.";
+      
       default:
-        return "";
+        return "Inicjalizacja...";
     }
   }
 

@@ -1,47 +1,25 @@
-<section class="active-exchange-panel phase-{{turnState.phase}}">
-  <h3>{{localize "NEUROSHIMA.MeleeDuel.ActiveExchange"}}</h3>
-  
-  <div class="exchange-grid">
-    <div class="side attacker {{#if (eq turnState.selectionTurn currentExchange.attackerId)}}is-selecting{{/if}}">
-      {{#if attacker}}
-        <div class="role">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}</div>
-        <img src="{{attacker.img}}" class="exchange-img" />
-        <div class="name">{{attacker.name}}</div>
-        <div class="action-status">
-          {{localize (concat "NEUROSHIMA.MeleeDuel.Actions." currentExchange.declaredAction)}} ({{currentExchange.declaredDiceCount}}s)
-        </div>
-        <div class="selection-progress">
-          {{localize "NEUROSHIMA.Roll.Dice"}}: {{currentExchange.attackerSelectedDice.length}} / {{currentExchange.declaredDiceCount}}
-        </div>
-      {{else}}
-        <div class="waiting-msg">{{localize "NEUROSHIMA.MeleeDuel.WaitingForAttacker"}}</div>
-      {{/if}}
+<section class="compact-exchange-status phase-{{turnState.phase}}">
+  {{#if currentExchange.attackerId}}
+    <div class="exchange-summary">
+      <span class="attacker-name">{{attacker.name}}</span>
+      <i class="fas fa-swords"></i>
+      <span class="defender-name">{{defender.name}}</span>
+      <span class="action-tag">({{localize (concat "NEUROSHIMA.MeleeDuel.Actions." currentExchange.declaredAction)}} {{currentExchange.declaredDiceCount}}s)</span>
     </div>
-
-    <div class="exchange-divider">
-      <div class="vs-label">VS</div>
-      <div class="segment-info">{{localize "NEUROSHIMA.Roll.Segment"}} {{turnState.segment}}</div>
+    
+    <div class="selection-progress-bar">
+      <div class="progress-step {{#if (ge currentExchange.attackerSelectedDice.length currentExchange.declaredDiceCount)}}done{{/if}}">
+        {{localize "NEUROSHIMA.MeleeDuel.Attacker"}} ({{currentExchange.attackerSelectedDice.length}}/{{currentExchange.declaredDiceCount}})
+      </div>
+      <div class="progress-step {{#if (ge currentExchange.defenderSelectedDice.length currentExchange.declaredDiceCount)}}done{{/if}}">
+        {{localize "NEUROSHIMA.MeleeDuel.Defender"}} ({{currentExchange.defenderSelectedDice.length}}/{{currentExchange.declaredDiceCount}})
+      </div>
     </div>
+  {{/if}}
 
-    <div class="side defender {{#if (eq turnState.selectionTurn currentExchange.defenderId)}}is-selecting{{/if}}">
-      {{#if defender}}
-        <div class="role">{{localize "NEUROSHIMA.MeleeDuel.Defender"}}</div>
-        <img src="{{defender.img}}" class="exchange-img" />
-        <div class="name">{{defender.name}}</div>
-        <div class="selection-progress">
-          {{localize "NEUROSHIMA.MeleeDuel.DefendingWith" weapon=""}}: {{currentExchange.defenderSelectedDice.length}} / {{currentExchange.declaredDiceCount}}
-        </div>
-      {{else}}
-        <div class="waiting-msg">{{localize "NEUROSHIMA.MeleeDuel.WaitingForDefender"}}</div>
-      {{/if}}
-    </div>
-  </div>
-
-  <div class="exchange-actions">
-    {{#if (and isGM (eq turnState.phase "exchange-ready"))}}
-      <button type="button" class="resolve-btn pulse" data-action="resolveExchange">
-        <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.ResolveSegment"}}
-      </button>
-    {{/if}}
-  </div>
+  {{#if (and isGM (eq turnState.phase "exchange-ready"))}}
+    <button type="button" class="resolve-btn-mini pulse" data-action="resolveExchange">
+      <i class="fas fa-check-double"></i> {{localize "NEUROSHIMA.MeleeDuel.ResolveSegment"}}
+    </button>
+  {{/if}}
 </section>

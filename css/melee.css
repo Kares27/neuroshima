@@ -1,840 +1,458 @@
-.melee-duel-container {
-    background: #1a1a1a url('../ui/denim.png');
-    color: #f0f0f0;
-    font-family: 'SpecialElite', 'Special Elite', cursive;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-    min-height: 520px;
-}
-
-.duel-status-global {
-    background: rgba(0, 0, 0, 0.6);
-    color: #ee6c4d;
-    text-align: center;
-    padding: 8px 15px;
-    font-family: 'SpecialElite', serif;
-    font-size: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    border-bottom: 2px solid #ee6c4d;
-    margin-bottom: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-radius: 4px;
-}
-
-.status-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.status-center {
-    display: flex;
-    align-items: baseline;
-    gap: 15px;
-}
-
-.melee-duel-grid {
-    display: grid;
-    grid-template-columns: 1fr 180px 1fr;
-    gap: 15px;
-    flex-grow: 1;
-}
-
-.combatant-section {
-    background: var(--ns-bg-panel, rgba(37, 37, 37, 0.9));
-    border: 2px solid var(--ns-border-main, #444);
-    border-radius: 8px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    transition: all 0.3s ease;
-    min-height: 450px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-}
-
-.combatant-section.attacker { border-color: #3d5a80; }
-.combatant-section.defender { border-color: #9b2226; }
-
-.combatant-section.current-turn { 
-    border-width: 3px;
-    border-color: #ee6c4d; 
-    box-shadow: 0 0 15px rgba(238, 108, 77, 0.3);
-}
-
-.turn-indicator-wrapper {
-    height: 30px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.turn-indicator {
-    color: #ee6c4d;
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(238, 108, 77, 0.1);
-    padding: 3px 12px;
-    border-radius: 15px;
-    border: 1px solid rgba(238, 108, 77, 0.2);
-}
-
-.combatant-header {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 15px;
-}
-
-.actor-name {
-    font-size: 1.1rem;
-    margin: 0;
-    color: #fff;
-    font-family: 'SpecialElite', serif;
-    text-align: center;
-}
-
-.actor-img {
-    width: 80px;
-    height: 80px;
-    border-radius: 5px;
-    border: 2px solid var(--ns-border-main, #666);
-    object-fit: cover;
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
-}
-
-.role-tag {
-    font-size: 0.85rem;
-    color: #aaa;
-    text-transform: uppercase;
-    margin-bottom: 15px;
-    letter-spacing: 2px;
-}
-
-.weapon-selection {
-    width: 100%;
-    margin-bottom: 20px;
-}
-
-.weapon-select {
-    width: 100%;
-    background: #333;
-    color: #fff;
-    border: 1px solid #555;
-    padding: 6px;
-    border-radius: 6px;
-    font-family: 'SpecialElite', serif;
-}
-
-.weapon-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    background: rgba(0,0,0,0.3);
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #444;
-}
-
-.target-info, .initiative-info {
-    font-size: 1rem;
-    margin-bottom: 8px;
-    color: #ddd;
-}
-
-.skill-info {
-    margin-top: 15px;
-    padding: 8px 15px;
-    background: #111;
-    border-radius: 6px;
-    border: 1px dashed #ee6c4d;
-    font-weight: bold;
-    color: #ee6c4d;
-}
-
-.dice-pool {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-    margin: 25px 0;
-    min-height: 70px;
-}
-
-.die-control {
-    width: 50px;
-    height: 50px;
-    background: #2a2a2a;
-    border: 2px solid #555;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.2s ease;
-    font-family: 'SpecialElite', serif;
-}
-
-.die-control.selected {
-    background: #ee6c4d;
-    border-color: #fff;
-    color: #000;
-    transform: scale(1.15);
-    box-shadow: 0 0 15px rgba(238, 108, 77, 0.6);
-    z-index: 2;
-}
-
-.die-control.used {
-    opacity: 0.3;
-    cursor: default;
-    filter: grayscale(1);
-    transform: scale(0.9);
-}
-
-.die-control.success { border-color: #4caf50; color: #81c784; }
-.die-control.failure { border-color: #f44336; color: #e57373; }
-.die-control.selected.success, .die-control.selected.failure { color: #000; }
-
-.selection-controls {
-    margin-top: auto;
-    width: 100%;
-    height: 50px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.confirm-selection-btn {
-    width: 100%;
-    padding: 10px;
-    background: #2a9d8f;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: 'SpecialElite', serif;
-    font-size: 1rem;
-    text-transform: uppercase;
-    transition: background 0.3s;
-}
-
-.confirm-selection-btn:hover {
-    background: #21867a;
-}
-
-.action-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    text-align: center;
-    padding: 5px;
-    background: rgba(0,0,0,0.2);
-    border-radius: 8px;
-    border: 1px solid #333;
-    gap: 5px;
-}
-
-.turn-indicator-center {
-    font-size: 0.65rem;
-    color: #888;
-    text-transform: uppercase;
-}
-
-.segment-indicator {
-    font-size: 0.85rem;
-    font-weight: bold;
-    color: #ee6c4d;
-}
-
-.penalty-tag {
-    background: #9b2226;
-    color: white;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    margin-left: 5px;
-    vertical-align: middle;
-    font-weight: bold;
-    box-shadow: 0 0 5px rgba(155, 34, 38, 0.5);
-}
-
-.combat-log-container {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    background: rgba(0,0,0,0.3);
-    border-radius: 6px;
-    overflow: hidden;
-    flex-grow: 1;
-    min-height: 200px;
-}
-
-.log-header {
-    background: rgba(255,255,255,0.05);
-    padding: 4px;
-    font-family: 'SpecialElite', serif;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    color: #888;
-}
-
-.combat-log {
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    overflow-y: auto;
-    max-height: 400px;
-    text-align: left;
-}
-
-.log-entry {
-    font-size: 0.8rem;
-    line-height: 1.2;
-    padding-bottom: 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-}
-
-.log-segment {
-    color: #666;
-    font-weight: bold;
-    margin-right: 5px;
-}
-
-.log-entry.hit { border-left: 2px solid #e74c3c; padding-left: 5px; }
-.log-entry.takeover { border-left: 2px solid #f1c40f; padding-left: 5px; }
-.log-entry.remis { color: #95a5a6; }
-.log-entry.miss { color: #7f8c8d; }
-.log-entry.system { color: #3498db; font-style: italic; font-weight: bold; text-align: center; border: none; }
-
-.pulse {
-    animation: pulse-animation 2s infinite;
-}
-
-@keyframes pulse-animation {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-
-.animate-fist {
-    animation: fist-bump 1.5s infinite;
-}
-
-@keyframes fist-bump {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.2) rotate(10deg); }
-}
-
-/* --- Melee View in Combat Tracker --- */
-.melee-view-container {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 8px;
-}
-
-.active-melee-panel, .pending-melee-panel {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--ns-border-main);
-    border-radius: 5px;
-    padding: 8px;
-    transition: all 0.2s ease;
-}
-
-.active-melee-panel.full-view {
-    cursor: pointer;
-    border-left: 3px solid var(--ns-text-accent);
-}
-
-.active-melee-panel.full-view:hover {
-    background: rgba(160, 46, 46, 0.1);
-    box-shadow: 0 0 8px rgba(160, 46, 46, 0.2);
-}
-
-.melee-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'SpecialElite', serif;
-    font-size: 0.85rem;
-    color: var(--ns-text-light);
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--ns-border-light);
-    padding-bottom: 4px;
-}
-
-.melee-participants {
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    gap: 8px;
-    padding: 10px 5px;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 4px;
-    margin: 5px 0;
-}
-
-.participant {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-    transition: transform 0.2s ease;
-}
-
-.participant:hover {
-    transform: translateY(-2px);
-}
-
-.participant-img {
-    width: 48px;
-    height: 48px;
-    border-radius: 4px; /* Neuroshima feel - slightly squared */
-    border: 1px solid #ee6c4d;
-    object-fit: cover;
-    margin-bottom: 4px;
-    box-shadow: 0 0 5px rgba(238, 108, 77, 0.3);
-}
-
-.participant-name {
-    font-family: 'SpecialElite', serif;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    text-align: center;
-    color: #ccc;
-}
-
-.vs {
-    font-family: 'SpecialElite', serif;
-    font-weight: bold;
-    color: #ee6c4d;
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-.pending-melee-panel {
-    border-left: 3px solid #f39c12;
-}
-
-.melee-instruction {
-    font-size: 0.75rem;
-    font-style: italic;
-    text-align: center;
-    margin: 8px 0;
-    color: var(--ns-text-light);
-}
-
-.join-melee-btn {
-    width: 100%;
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 5px;
-    border-radius: 3px;
-    font-family: 'SpecialElite', serif;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.join-melee-btn:hover {
-    background: #2ecc71;
-}
-
-.no-melee-active {
-    text-align: center;
-    padding: 30px 10px;
-    color: var(--ns-text-light);
-    font-family: 'SpecialElite', serif;
-}
-
-.no-melee-active i {
-    font-size: 2rem;
-    margin-bottom: 10px;
-    opacity: 0.3;
-}
-
-/* --- Pending Cards in Actor Sheet --- */
-.melee-pending-attacker-card, .melee-pending-defender-card {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--ns-border-main);
-    border-radius: 6px;
-    margin-bottom: 8px;
-    overflow: hidden;
-    font-size: 0.9rem;
-}
-
-.melee-pending-attacker-card {
-    border-left: 4px solid #c0392b;
-    animation: pulse-border-red 2s infinite;
-}
-
-.melee-pending-defender-card {
-    border-left: 4px solid #f39c12;
-}
-
-.melee-pending-attacker-card .card-header, 
-.melee-pending-defender-card .card-header {
-    background: rgba(0, 0, 0, 0.2);
-    padding: 2px 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'SpecialElite', serif;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.header-main {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: bold;
-    font-size: 0.8rem;
-}
-
-.melee-pending-attacker-card .card-content,
-.melee-pending-defender-card .card-content {
-    padding: 6px 10px;
-}
-
-.attacker-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-}
-
-.attacker-identity {
-    font-family: 'SpecialElite', serif;
-}
-
-.attacker-label {
-    color: var(--ns-text-light);
-    font-size: 0.75rem;
-    margin-right: 5px;
-}
-
-.attacker-name {
-    font-weight: bold;
-    font-size: 1rem;
-}
-
-.initiative-badge {
-    background: #c0392b;
-    color: white;
-    padding: 1px 6px;
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 40px;
-}
-
-.initiative-badge .label {
-    font-size: 0.55rem;
-    text-transform: uppercase;
-}
-
-.initiative-badge .value {
-    font-size: 1rem;
-    font-weight: bold;
-}
-
-.instruction {
-    font-size: 0.8rem;
-    margin-bottom: 8px;
-    color: var(--ns-text-main);
-    font-style: italic;
-}
-
-.card-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.pulse-button {
-    animation: pulse-green 2s infinite;
-    flex: 1;
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 6px;
-    border-radius: 4px;
-    font-family: 'SpecialElite', serif;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 0.85rem;
-}
-
-.duel-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    font-family: 'SpecialElite', serif;
-    font-size: 1rem;
-    margin-bottom: 6px;
-}
-
-.status-msg {
-    text-align: center;
-    font-style: italic;
-    color: var(--ns-text-light);
-    font-size: 0.75rem;
-}
-
-@keyframes pulse-border-red {
-    0% { border-left-color: #c0392b; }
-    50% { border-left-color: #ff0000; box-shadow: inset 4px 0 8px rgba(255, 0, 0, 0.2); }
-    100% { border-left-color: #c0392b; }
-}
-
-@keyframes pulse-green {
-    0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(39, 174, 96, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
-}
-
-/* Multi-opponents section in Melee Duel */
-.multi-opponents {
-    background: rgba(0, 0, 0, 0.3);
-    border-top: 1px solid var(--ns-border-main);
-    padding: 12px;
-    margin-top: 15px;
-    border-radius: 0 0 8px 8px;
-}
-
-.multi-opponents h4 {
-    margin: 0 0 8px 0;
-    font-size: 0.85rem;
-    color: var(--ns-text-light);
-    text-transform: uppercase;
-    font-family: 'SpecialElite', serif;
-}
-
-.opponents-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.opponent-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px 10px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.opponent-item img {
-    border: 1px solid #444;
-    border-radius: 2px;
-}
-
-.opponent-item span {
-    font-size: 0.9rem;
-    font-weight: bold;
-}
-
-.opponent-item button {
-    background: #3d5a80;
-    color: white;
-    border: none;
-    padding: 2px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.opponent-item button:hover {
-    background: #4a6fa5;
-}
-
-/* --- ApplicationV2 Melee Encounter Styles --- */
 .melee-app-shell {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #1a1a1a url('../ui/denim.png');
-    color: #f0f0f0;
-    font-family: 'SpecialElite', serif;
-    padding: 10px;
-    overflow: hidden;
+    background: #1a1a1a;
+    color: #eee;
+    font-family: 'Roboto', sans-serif;
 }
 
+/* Header */
 .melee-header {
+    background: #2a2a2a;
+    padding: 10px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.5);
-    border-bottom: 2px solid #ee6c4d;
-    margin-bottom: 10px;
-    border-radius: 4px;
+    border-bottom: 2px solid #444;
 }
 
-.participants-strip {
-    display: flex;
-    justify-content: space-around;
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.3);
+.melee-header .turn-info {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #ff9800;
+}
+
+.melee-header .phase-prompt {
+    font-style: italic;
+    color: #ccc;
+    font-weight: 500;
+}
+
+/* Main Content Grid */
+.melee-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 15px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.team-column {
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    margin-bottom: 10px;
-    gap: 20px;
-}
-
-.team-container {
-    flex: 1;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
 }
 
-.team-header {
-    font-size: 0.9rem;
-    color: #ee6c4d;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(238, 108, 77, 0.3);
-    padding-bottom: 4px;
-    margin-bottom: 4px;
+.team-title {
+    text-align: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #555;
+    padding-bottom: 5px;
+    color: #ff9800;
 }
 
-.combatant-card {
+/* Participant Rows */
+.combatant-row {
+    background: #333;
+    border: 1px solid #444;
+    border-radius: 5px;
+    margin-bottom: 8px;
+    padding: 8px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.combatant-row.active-turn {
+    border-color: #ff9800;
+    box-shadow: 0 0 5px rgba(255, 152, 0, 0.5);
+}
+
+.combatant-row.dead {
+    opacity: 0.6;
+    filter: grayscale(1);
+}
+
+.participant-header {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    border: 1px solid #444;
 }
 
-.combatant-card.is-active {
-    border-color: #ee6c4d;
-    background: rgba(238, 108, 77, 0.1);
-}
-
-.combatant-card .avatar {
+.avatar {
     width: 40px;
     height: 40px;
-    border-radius: 4px;
+    border-radius: 50%;
     border: 1px solid #666;
 }
 
-.combatant-card .info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+.participant-info .name {
+    display: block;
+    font-weight: bold;
+    font-size: 1.1em;
 }
 
-.combatant-card .name {
-    font-size: 0.9rem;
+.stats-row {
+    font-size: 0.85em;
+    display: flex;
+    gap: 10px;
+    color: #aaa;
+}
+
+/* Dice Pool */
+.dice-pool {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-start;
+}
+
+.die {
+    width: 30px;
+    height: 30px;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+
+.die.success { border-color: #4caf50; color: #4caf50; }
+.die.failure { border-color: #f44336; color: #f44336; }
+.die.selected { background: #ff9800; color: #000; border-color: #fff; }
+.die.used { opacity: 0.3; cursor: not-allowed; }
+
+/* Controls & Overlays */
+.roll-pool-btn {
+    margin-left: auto;
+    background: #ff9800;
+    color: #000;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.declaration-controls {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.attack-btn {
+    flex: 1;
+    background: #607d8b;
+    color: #fff;
+    border: none;
+    padding: 5px;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.selection-status {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.role-tag {
+    font-size: 0.7em;
+    padding: 2px 5px;
+    border-radius: 3px;
     font-weight: bold;
 }
 
-.melee-main-grid {
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 15px;
-    flex: 1;
-    min-height: 0;
-}
+.role-tag.attacker { background: #d32f2f; color: #fff; }
+.role-tag.defender { background: #1976d2; color: #fff; }
 
-.active-exchange-panel {
-    background: rgba(0, 0, 0, 0.4);
-    border: 2px solid #555;
-    border-radius: 10px;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-}
-
-.exchange-header {
-    font-size: 1.2rem;
-    color: #ee6c4d;
-    margin-bottom: 15px;
-    text-align: center;
-    text-transform: uppercase;
-}
-
-.exchange-content {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    flex: 1;
-}
-
-.combat-log-panel {
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.combat-log-panel .log-header {
-    padding: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-}
-
-.combat-log-panel .log-entries {
-    flex: 1;
-    overflow-y: auto;
+/* Footer & Log */
+.melee-footer {
+    background: #222;
     padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    border-top: 2px solid #444;
 }
 
-.action-panel {
-    margin-top: 15px;
-    padding: 15px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
+.combat-log {
+    height: 100px;
+    overflow-y: auto;
+    font-size: 0.9em;
+    background: #000;
+    padding: 5px;
+    border: 1px solid #333;
+    border-radius: 4px;
+}
+
+.log-entry .timestamp { color: #777; margin-right: 5px; }
+.log-entry.info { color: #fff; }
+.log-entry.success { color: #4caf50; }
+.log-entry.error { color: #f44336; }
+
+.gm-resolution-area {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.resolve-btn {
+    background: #e91e63;
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 1.1em;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* ========================================= */
+/* SIDEBAR MELEE VIEW                        */
+/* ========================================= */
+
+.melee-view-container {
+    padding: 8px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     gap: 10px;
 }
 
-/* --- Melee View Sidebar Enhancements --- */
-.participant-mini {
+.active-melee-panel.full-view,
+.pending-melee-panel.full-view {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.active-melee-panel.full-view:hover {
+    border-color: #ff9800;
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.pending-melee-panel.full-view {
+    border-left: 4px solid #607d8b;
+}
+
+.melee-view-container .melee-header {
+    background: transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #ff9800;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 4px;
+}
+
+.melee-view-container .melee-participants {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 5px 0;
+}
+
+.melee-view-container .team {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.melee-view-container .participant-mini {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+}
+
+.participant-img-tiny {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #666;
+    object-fit: cover;
 }
 
 .participant-name-tiny {
-    font-size: 0.6rem;
-    color: #888;
+    font-size: 0.7em;
     max-width: 60px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: #aaa;
 }
+
+.melee-view-container .vs {
+    font-weight: bold;
+    font-style: italic;
+    color: #888;
+}
+
+.pending-melee-panel .melee-participants {
+    font-size: 0.9em;
+    color: #eee;
+    gap: 15px;
+}
+
+.melee-instruction {
+    font-size: 0.8em;
+    font-style: italic;
+    color: #aaa;
+    text-align: center;
+    margin-top: 5px;
+}
+
+.join-melee-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* ========================================= */
+/* COMBAT TRACKER INDICATORS                 */
+/* ========================================= */
+
+#combat-tracker li.combatant.melee-active {
+    border-left: 4px solid #ff9800 !important;
+    background: rgba(255, 152, 0, 0.05);
+}
+
+#combat-tracker li.combatant.melee-pending {
+    border-left: 4px solid #607d8b !important;
+    background: rgba(96, 125, 139, 0.05);
+}
+
+/* ========================================= */
+/* ACTOR SHEET PENDING MELEE CARDS           */
+/* ========================================= */
+
+.melee-pending-attacker-card,
+.melee-pending-defender-card {
+    background: #3a1a1a;
+    color: #eee;
+    border: 1px solid #7a2a2a;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    animation: pulse-red-soft 3s infinite ease-in-out;
+}
+
+.melee-pending-attacker-card .card-header,
+.melee-pending-defender-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+}
+
+.melee-pending-attacker-card .header-main,
+.melee-pending-defender-card .header-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    color: #ff9800;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.melee-pending-attacker-card .dismiss-btn,
+.melee-pending-defender-card .dismiss-btn {
+    color: #aaa;
+    cursor: pointer;
+}
+
+.melee-pending-attacker-card .dismiss-btn:hover,
+.melee-pending-defender-card .dismiss-btn:hover {
+    color: #f44336;
+}
+
+.melee-pending-attacker-card .attacker-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.melee-pending-attacker-card .attacker-identity .attacker-name {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #ff9800;
+}
+
+.melee-pending-attacker-card .initiative-badge {
+    background: #8B0000;
+    padding: 2px 8px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.melee-pending-attacker-card .instruction,
+.melee-pending-defender-card .status-msg {
+    font-style: italic;
+    opacity: 0.8;
+    font-size: 0.9em;
+    margin: 8px 0;
+}
+
+.melee-pending-defender-card .duel-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin: 10px 0;
+    font-size: 1.1em;
+}
+
+.melee-pending-defender-card .duel-info .participant {
+    font-weight: bold;
+    color: #ff9800;
+}
+
+.melee-pending-attacker-card .join-melee-btn {
+    width: 100%;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
+}
+
+@keyframes pulse-red-soft {
+    0% { border-color: #7a2a2a; box-shadow: 0 0 5px rgba(122, 42, 42, 0.2); }
+    50% { border-color: #b71c1c; box-shadow: 0 0 15px rgba(183, 28, 28, 0.4); }
+    100% { border-color: #7a2a2a; box-shadow: 0 0 5px rgba(122, 42, 42, 0.2); }
+}
+
+@keyframes animate-fist {
+    0% { transform: scale(1); }
+    20% { transform: scale(1.2) rotate(-10deg); }
+    40% { transform: scale(1.1) rotate(10deg); }
+    60% { transform: scale(1.2) rotate(0); }
+    100% { transform: scale(1); }
+}
+
+.animate-fist {
+    animation: animate-fist 2s infinite ease-in-out;
+}
+
