@@ -1,0 +1,47 @@
+<article class="combatant-card {{#if (eq ../turnState.selectionTurn participant.id)}}current-turn{{/if}} {{#if (eq ../turnState.initiativeOwnerId participant.id)}}has-initiative{{/if}}">
+  <header class="participant-header">
+    <div class="name">{{participant.name}}</div>
+    <div class="init">Init: <strong>{{participant.initiative}}</strong></div>
+    <div class="maneuver-tag {{participant.maneuver}}">
+      {{localize (concat "NEUROSHIMA.Roll.Maneuvers." (capitalize participant.maneuver))}}
+      {{#if (eq participant.maneuver 'increasedTempo')}}(PT +{{participant.tempoLevel}}){{/if}}
+    </div>
+  </header>
+  
+  <div class="pool-area">
+    {{#if participant.pool.length}}
+      <div class="dice-pool">
+        {{#each participant.pool}}
+          <div class="die {{#if (meleeDieUsed ../participant.usedDice @index)}}used{{/if}} {{#if (meleeDieSelected (lookup ../../currentExchange (concat ../participant.team "-SelectedDice")) @index)}}selected{{/if}} {{#if (lte this ../participant.effectiveTargetSnapshot)}}success{{else}}failure{{/if}}" 
+               data-id="{{../participant.id}}" data-index="{{@index}}" data-action="selectDie">
+            {{this}}
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      {{#if (eq ../turnState.phase 'awaiting-pool-rolls')}}
+        <button type="button" class="roll-pool-btn" data-action="openPoolDialog" data-id="{{participant.id}}">
+          <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+        </button>
+      {{else}}
+        <div class="pool-status">{{localize "NEUROSHIMA.MeleeDuel.NoPool"}}</div>
+      {{/if}}
+    {{/if}}
+  </div>
+
+  <div class="action-controls">
+    {{#if (and (eq ../turnState.selectionTurn participant.id) (eq ../turnState.phase 'exchange-declaration'))}}
+      <div class="declare-actions">
+        <button type="button" data-action="declareAttack" data-id="{{participant.id}}" data-dice="1">1s</button>
+        <button type="button" data-action="declareAttack" data-id="{{participant.id}}" data-dice="2">2s</button>
+        <button type="button" data-action="declareAttack" data-id="{{participant.id}}" data-dice="3">3s</button>
+      </div>
+    {{/if}}
+    
+    {{#if (and (eq ../turnState.selectionTurn participant.id) (eq ../turnState.phase 'exchange-response'))}}
+      <button type="button" data-action="confirmSelection" data-id="{{participant.id}}" class="bright">
+        <i class="fas fa-check"></i> {{localize "NEUROSHIMA.MeleeDuel.ConfirmSelection"}}
+      </button>
+    {{/if}}
+  </div>
+</article>

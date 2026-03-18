@@ -81,8 +81,49 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     const result = await this._performRoll(rollData);
     
     // Update combatant if needed
-    if (this.combatant && !this.options.isMeleeInitiative) {
+    if (this.combatant && !this.isMelee) {
         await this.combatant.update({ initiative: result.successPoints });
+    }
+    
+    // Handle Melee Initiation if this was a melee initiative roll
+    if (this.isMelee && result) {
+        if (this.duelId || this.encounterId) {
+            // Joining or responding to an existing encounter
+            // This will be handled by the caller or a specific service
+        } else if (this.targets && this.targets.length === 1) {
+            const target = this.targets[0];
+            const targetActor = target.actor || target;
+            
+            // If we are initiating a NEW melee from a weapon click
+            const { MeleeEncounter } = await import("../combat/melee-encounter.js");
+            const activeEncounterId = targetActor.getFlag("neuroshima", "activeMeleeEncounter");
+            
+            if (activeEncounterId) {
+                // Join existing
+                await MeleeEncounter.join(activeEncounterId, {
+                    id: this.actor.uuid,
+                    actorUuid: this.actor.uuid,
+                    tokenUuid: this.actor.token?.uuid,
+                    actorId: this.actor.id,
+                    name: this.actor.name,
+                    img: this.actor.img,
+                    weaponId: this.weaponId,
+                    initiative: result.successPoints,
+                    chargeLevel: rollData.chargeLevel
+                }, "A"); // Team A for now, logic can be more complex
+            } else {
+                // Initiate pending
+                const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+                await NeuroshimaMeleeCombat.initiateMeleePending(
+                    this.actor.uuid,
+                    targetActor.uuid,
+                    result.successPoints,
+                    this.weaponId,
+                    rollData.maneuver,
+                    rollData.chargeLevel
+                );
+            }
+        }
     }
     
     return result;

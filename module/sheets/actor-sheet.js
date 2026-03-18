@@ -250,6 +250,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       selectedWoundLocation: this._selectedWoundLocation,
       selectedLocationLabel: selectedLocationLabel,
       woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false,
+      activeMeleeEncounter: actor.getFlag("neuroshima", "activeMeleeEncounter"),
       meleePendings: Object.values(game.combat?.getFlag("neuroshima", "meleePendings") || {})
         .filter(p => p.active)
         .map(p => {
@@ -1329,10 +1330,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         }
 
         // 3. Jeśli nie ma pendingu, ale jesteśmy w aktywnym starciu - otwórz panel
-        const activeDuelId = this.document.getFlag("neuroshima", "activeMeleeDuel");
-        if (activeDuelId && !targetUuid) {
+        const activeEncounterId = this.document.getFlag("neuroshima", "activeMeleeEncounter");
+        if (activeEncounterId && !targetUuid) {
             const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-            NeuroshimaMeleeCombat.openMeleeApp(activeDuelId);
+            NeuroshimaMeleeCombat.openMeleeApp(activeEncounterId);
             this._isRolling = false;
             return;
         }
@@ -1344,27 +1345,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                 actor: this.document,
                 isMelee: true,
                 weaponId: weapon.id,
-                targets: [targetUuid],
+                targets: targets,
                 onRoll: async (rollData) => {
-                    const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
-                        ...rollData,
-                        actor: this.document,
-                        isMeleeInitiative: true
-                    });
-                    
-                    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-                    const myFinalUuid = (this.document.token?.uuid) || this.document.uuid;
-
-                    game.neuroshima.log("Inicjalizacja nowego Pendingu.");
-                    await NeuroshimaMeleeCombat.initiateMeleePending(
-                        myFinalUuid, 
-                        targetUuid, 
-                        result.successPoints, 
-                        weapon.id
-                    );
-                    
                     this._isRolling = false;
-                    return result;
+                    return rollData;
                 },
                 onClose: () => { this._isRolling = false; }
             });

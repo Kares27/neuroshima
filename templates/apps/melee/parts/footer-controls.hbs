@@ -1,0 +1,15 @@
+<footer class="melee-footer">
+  <div class="footer-buttons">
+    {{#if isGM}}
+      <button type="button" data-action="endEncounter" class="danger">
+        <i class="fas fa-flag-checkered"></i> {{localize "NEUROSHIMA.MeleeDuel.EndEncounter"}}
+      </button>
+      <button type="button" data-action="resetTurn" class="">
+        <i class="fas fa-undo"></i> {{localize "NEUROSHIMA.MeleeDuel.ResetTurn"}}
+      </button>
+    {{/if}}
+    <button type="button" data-action="closeApp">
+      <i class="fas fa-times"></i> {{localize "NEUROSHIMA.Actions.Close"}}
+    </button>
+  </div>
+</footer>

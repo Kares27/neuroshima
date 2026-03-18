@@ -1,0 +1,19 @@
+<div class="melee-app-shell {{turnState.phase}}">
+  {{> "systems/neuroshima/templates/apps/melee/parts/header.hbs"}}
+  {{> "systems/neuroshima/templates/apps/melee/parts/participants-strip.hbs"}}
+  
+  <div class="melee-main-grid">
+    <div class="exchange-and-log">
+      {{> "systems/neuroshima/templates/apps/melee/parts/active-exchange.hbs"}}
+      {{> "systems/neuroshima/templates/apps/melee/parts/combat-log.hbs"}}
+    </div>
+    
+    <div class="combatants-area">
+      {{#each participants}}
+        {{> "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs" participant=this}}
+      {{/each}}
+    </div>
+  </div>
+
+  {{> "systems/neuroshima/templates/apps/melee/parts/footer-controls.hbs"}}
+</div>

@@ -1,0 +1,13 @@
+<header class="melee-header">
+  <div class="phase-indicator">
+    <i class="fas fa-swords"></i>
+    <span>{{localize (concat "NEUROSHIMA.MeleeDuel.Phase." turnState.phase)}}</span>
+  </div>
+  <div class="turn-segment-info">
+    <span class="turn-label">{{localize "NEUROSHIMA.Combat.Turn"}} {{turnState.turn}}</span>
+    <span class="segment-label">{{localize "NEUROSHIMA.Roll.Segment"}} {{turnState.segment}} / 3</span>
+  </div>
+  <div class="initiative-owner">
+     {{localize "NEUROSHIMA.MeleeDuel.InitiativeOwner"}}: <strong>{{participants.[turnState.initiativeOwnerId].name}}</strong>
+  </div>
+</header>

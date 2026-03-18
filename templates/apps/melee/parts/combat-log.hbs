@@ -1,0 +1,13 @@
+<div class="combat-log-container">
+  <div class="log-header">{{localize "NEUROSHIMA.MeleeDuel.CombatLog"}}</div>
+  <div class="combat-log">
+    {{#each log}}
+      <div class="log-entry {{this.type}}">
+        <span class="log-segment">[{{localize "NEUROSHIMA.Roll.Segment"}} {{this.segment}}]</span>
+        <span class="log-text">{{this.text}}</span>
+      </div>
+    {{else}}
+      <div class="log-empty">{{localize "NEUROSHIMA.MeleeDuel.LogEmpty"}}</div>
+    {{/each}}
+  </div>
+</div>

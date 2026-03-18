@@ -1,314 +1,191 @@
 import { NEUROSHIMA } from "../config.js";
+import { MeleeStore } from "../combat/melee-store.js";
+import { MeleeEncounter } from "../combat/melee-encounter.js";
+import { MeleeTurnService } from "../combat/melee-turn-service.js";
+import { MeleeResolution } from "../combat/melee-resolution.js";
+
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
- * Aplikacja V2 obsługująca interfejs walki wręcz (Melee Duel).
+ * Modern Melee Encounter Application (ApplicationV2)
+ * Manages the UI for group and duel melee combat.
  */
 export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
-  constructor(duelId, options = {}) {
+  constructor(encounterId, options = {}) {
     super(options);
-    this.duelId = duelId;
+    this.encounterId = encounterId;
   }
 
   static DEFAULT_OPTIONS = {
-    tag: "form",
+    tag: "div",
     window: {
       title: "NEUROSHIMA.MeleeDuel.Title",
       resizable: true,
       icon: "fas fa-swords"
     },
     position: {
-      width: 820,
-      height: 850
+      width: 900,
+      height: 700
     },
     actions: {
-      rollPool: function(event, target) {
-          const actorId = target.dataset.actorId;
-          return this.constructor._onRollPool(event, target, this.duelId);
+      openPoolDialog: function(event, target) {
+        return this._onOpenPoolDialog(target.dataset.id);
       },
-      selectDice: function(event, target) {
-          return this.constructor._onSelectDice(event, target, this.duelId);
+      selectDie: function(event, target) {
+        return this._onSelectDie(target.dataset.id, parseInt(target.dataset.index));
       },
-      modifyDie: function(event, target) {
-          return this.constructor._onModifyDie(event, target, this.duelId);
+      declareAttack: function(event, target) {
+        return this._onDeclareAttack(target.dataset.id, parseInt(target.dataset.dice));
       },
       confirmSelection: function(event, target) {
-          return this.constructor._onConfirmSelection(event, target, this.duelId);
+        return this._onConfirmSelection(target.dataset.id);
       },
-      changeWeapon: function(event, target) {
-          return this.constructor._onChangeWeapon(event, target, this.duelId);
+      resolveExchange: function(event, target) {
+        return MeleeResolution.resolveExchange(this.encounterId);
       },
-      freeDefense: function(event, target) {
-          return this.constructor._onFreeDefense(event, target, this.duelId);
+      endEncounter: function() {
+        return MeleeEncounter.end(this.encounterId);
+      },
+      resetTurn: function() {
+        return MeleeTurnService.startNewTurn(this.encounterId);
+      },
+      closeApp: function() {
+        this.close();
       }
     }
   };
 
   static PARTS = {
     main: {
-        template: "systems/neuroshima/templates/apps/melee-combat-app.hbs"
+      template: "systems/neuroshima/templates/apps/melee/melee-app.hbs"
     }
   };
 
-  /**
-   * Rejestruje hooki dla aplikacji.
-   */
-  static registerHooks() {
-      Hooks.on("updateCombat", (combat, updates, options, userId) => {
-          // Re-renderuj wszystkie aktywne aplikacje walki wręcz korzystając z rejestru instancji ApplicationV2
-          for (const app of foundry.applications.instances.values()) {
-              if (app.id.startsWith("melee-combat-app-")) {
-                  game.neuroshima.log("Odświeżanie MeleeCombatApp (V2) po aktualizacji Combat");
-                  app.render();
-              }
-          }
-      });
-  }
-
   /** @override */
   get id() {
-    return `melee-combat-app-${this.duelId}`;
+    return `melee-encounter-${this.encounterId}`;
   }
 
   /** @override */
   async _prepareContext(options) {
-    const combat = game.combat;
-    const duels = combat?.getFlag("neuroshima", "meleeDuels") || {};
-    // Deep clone to avoid polluting the flag reference in cache
-    const meleeData = foundry.utils.deepClone(duels[this.duelId] || { active: false });
-    const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
+    const encounter = MeleeStore.getEncounter(this.encounterId);
+    if (!encounter) return { active: false };
 
-    if (meleeData.active) {
-        // Przeliczenie pozostałych punktów umiejętności
-        meleeData.attacker.skillPointsRemaining = (meleeData.attacker.skillValue || 0) - (meleeData.attacker.skillSpent || 0);
-        meleeData.defender.skillPointsRemaining = (meleeData.defender.skillValue || 0) - (meleeData.defender.skillSpent || 0);
-
-        // Kara do Zręczności za liczbę przeciwników (0 przy 1 przeciwniku, -X przy wielu)
-        const multiOpponentPenalty = meleeData.multiOpponents?.length > 0 ? (1 + meleeData.multiOpponents.length) : 0;
-        meleeData.attacker.currentPenalty = meleeData.attacker.id === meleeData.centralId ? multiOpponentPenalty : 0;
-        meleeData.defender.currentPenalty = meleeData.defender.id === meleeData.centralId ? multiOpponentPenalty : 0;
-        
-        // Calculate effective targets including maneuvers and multi-opponent penalty
-        const { NeuroshimaDice } = game.neuroshima;
-        
-        const calculateEffectiveTarget = (role) => {
-            const data = meleeData[role];
-            const otherRole = role === "attacker" ? "defender" : "attacker";
-            const otherData = meleeData[otherRole];
-            
-            // Pobierz bazowe parametry zapisane przy rzucie puli
-            const diffKey = data.difficulty || "average";
-            const basePenalty = NEUROSHIMA.difficulties[diffKey]?.min || 0;
-            const totalPenalty = basePenalty + (data.modifier || 0);
-            
-            const baseDiffObj = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
-            
-            let bonus = (data.attributeBonus || 0);
-            let shift = 0;
-            
-            // Apply maneuver bonuses (+2 to attribute)
-            if (data.maneuver === "fury" || data.maneuver === "fullDefense") {
-                bonus += 2;
-            }
-            
-            // Apply increased tempo shift (affects both sides)
-            const myTempo = (data.maneuver === "increasedTempo") ? (Number(data.tempoLevel) || 0) : 0;
-            const otherTempo = (otherData.maneuver === "increasedTempo") ? (Number(otherData.tempoLevel) || 0) : 0;
-            shift += Math.max(myTempo, otherTempo);
-            
-            const shiftedDiff = NeuroshimaDice._getShiftedDifficulty(baseDiffObj, shift);
-            
-            let target = (data.targetValue || 10) + bonus + shiftedDiff.mod;
-
-            // Uwzględnienie bonusów z broni (jeśli w trybie atrybutu)
-            const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
-            if (bonusMode === "attribute" || bonusMode === "both") {
-                const actorDoc = fromUuidSync(data.id);
-                const actor = actorDoc?.actor || actorDoc;
-                const weapon = actor?.items.get(data.weaponId);
-                if (weapon) {
-                    const weaponBonus = (role === "attacker") ? (weapon.system.attackBonus || 0) : (weapon.system.defenseBonus || 0);
-                    target += weaponBonus;
-                }
-            }
-            
-            // Multi-opponent penalty only for the central participant
-            if (data.id === meleeData.centralId) {
-                target -= multiOpponentPenalty;
-            }
-            
-            return target;
-        };
-
-        meleeData.attacker.effectiveTarget = calculateEffectiveTarget("attacker");
-        meleeData.defender.effectiveTarget = calculateEffectiveTarget("defender");
-
-        // Pobranie danych o broniach i przygotowanie kości do wyświetlenia
-        for (const role of ["attacker", "defender"]) {
-            const data = meleeData[role];
-            const actorDoc = fromUuidSync(data.id);
-            const actor = actorDoc?.actor || actorDoc;
-            
-            // Pobierz wszystkie wyekwipowane bronie białe aktora
-            if (actor) {
-                data.meleeWeapons = actor.items.filter(i => i.type === "weaponMelee" && i.system.equipped);
-            }
-
-            if (data.weaponId) {
-                const weapon = actor?.items.get(data.weaponId);
-                if (weapon) {
-                    data.weaponName = weapon.name;
-                    data.weaponImg = weapon.img;
-                }
-            }
-
-            // Przekształcamy surowe rzuty (liczby) na obiekty z informacją o sukcesie
-            if (data.dice && data.dice.length > 0) {
-                data.dice = data.dice.map(val => {
-                    const rawValue = typeof val === 'object' ? val.value : val;
-                    return {
-                        value: rawValue,
-                        success: rawValue <= data.effectiveTarget && rawValue !== 20
-                    };
-                });
-            }
-        }
-    }
-
-    // Pobranie danych dodatkowych napastników (multi-opponent)
-    const multiOpponentsData = [];
-    if (meleeData.multiOpponents?.length) {
-        for (const id of meleeData.multiOpponents) {
-            const actorDoc = fromUuidSync(id);
-            const actor = actorDoc?.actor || actorDoc;
-            if (actor) {
-                multiOpponentsData.push({
-                    id: actor.uuid,
-                    name: actor.name,
-                    img: actor.img
-                });
-            }
-        }
-    }
-
-    const attackerDoc = fromUuidSync(meleeData.attacker?.id);
-    const attackerActor = attackerDoc?.actor || attackerDoc;
-    const defenderDoc = fromUuidSync(meleeData.defender?.id);
-    const defenderActor = defenderDoc?.actor || defenderDoc;
-
-    const attackerInit = meleeData.attacker?.initiative || 0;
-    const defenderInit = meleeData.defender?.initiative || 0;
-
-    return {
-        duelId: this.duelId,
-        meleeData,
-        multiOpponentsData,
-        doubleSkill,
-        isGM: game.user.isGM,
-        isAttacker: game.user.character?.uuid === meleeData.attacker?.id || attackerActor?.isOwner,
-        isDefender: game.user.character?.uuid === meleeData.defender?.id || defenderActor?.isOwner,
-        attackerOwned: attackerActor?.isOwner,
-        defenderOwned: defenderActor?.isOwner,
-        attackerHasInit: attackerInit > defenderInit,
-        defenderHasInit: defenderInit > attackerInit,
-        canResolve: game.user.isGM && meleeData.phase === "segments",
-        config: CONFIG.NEUROSHIMA
-    };
-  }
-
-  /**
-   * Wykonuje rzut darmową obroną przeciwko dodatkowemu napastnikowi.
-   */
-  static async _onFreeDefense(event, target, duelId) {
-    const attackerId = target.dataset.actorId;
-    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-    await NeuroshimaMeleeCombat.rollFreeDefense(null, attackerId, 1, duelId);
-  }
-
-  /**
-   * Zmienia aktywną broń w starciu.
-   */
-  static async _onChangeWeapon(event, target, duelId) {
-    const actorUuid = target.dataset.actorId;
-    const newWeaponId = target.value;
-    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-    await NeuroshimaMeleeCombat.changeWeapon(actorUuid, duelId, newWeaponId);
-  }
-
-  /**
-   * Wykonuje rzut puli 3k20 dla aktora.
-   */
-  static async _onRollPool(event, target, duelId) {
-    const actorUuid = target.dataset.actorId;
-    const combat = game.combat;
-    const duels = combat?.getFlag("neuroshima", "meleeDuels") || {};
-    const meleeData = duels[duelId];
-    if (!meleeData) return;
-
-    game.neuroshima.log("MeleeCombatApp | _onRollPool", { actorUuid, duelId });
-
-    const isAttacker = meleeData.attacker.id === actorUuid;
-    const role = isAttacker ? "attacker" : "defender";
+    // Enrichment for templates
+    const context = foundry.utils.deepClone(encounter);
+    context.isGM = game.user.isGM;
     
-    const actorDoc = fromUuidSync(actorUuid);
-    const actor = actorDoc?.actor || actorDoc;
-    const weaponId = meleeData[role].weaponId;
-    const weapon = actor?.items.get(weaponId);
-
-    game.neuroshima.log(`Rola: ${role}, Broń ID: ${weaponId}`, { weapon });
-
-    // Jeśli brak broni lub użytkownik chce gołego rzutu, używamy standardowej metody
-    if (!actor || !weapon) {
-        game.neuroshima.warn("Brak wybranej broni dla starcia. Wykonuję rzut podstawowy.");
-        const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-        await NeuroshimaMeleeCombat.rollPool(actorUuid, duelId);
-        return;
+    // Add participant ownership and extra data
+    for (const pId in context.participants) {
+      const p = context.participants[pId];
+      const doc = fromUuidSync(p.actorUuid);
+      const actor = doc?.actor || doc;
+      p.isOwner = actor?.isOwner;
+      p.isUserCharacter = game.user.character?.uuid === p.actorUuid;
+      
+      // Calculate effective target (snapshot or dynamic)
+      p.effectiveTarget = p.effectiveTargetSnapshot || p.targetValue || 10;
     }
+
+    return context;
+  }
+
+  /**
+   * Opens the 3k20 pool roll dialog with maneuver selection.
+   */
+  async _onOpenPoolDialog(participantId) {
+    const encounter = MeleeStore.getEncounter(this.encounterId);
+    const p = encounter?.participants[participantId];
+    if (!p) return;
+
+    const doc = fromUuidSync(p.actorUuid);
+    const actor = doc?.actor || doc;
+    const weapon = actor?.items.get(p.weaponId);
 
     const { NeuroshimaWeaponRollDialog } = await import("./weapon-roll-dialog.js");
     const dialog = new NeuroshimaWeaponRollDialog({
-        actor: actor,
-        weapon: weapon,
-        rollType: "melee",
-        isPoolRoll: true,
-        onRoll: async (rollResult) => {
-            game.neuroshima.log("Otrzymano wynik rzutu puli z dialogu:", rollResult);
-            const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-            // Przekazujemy wyniki kości z dialogu do logiki walki wręcz
-            await NeuroshimaMeleeCombat.setPoolRollResults(duelId, actorUuid, rollResult);
-        }
+      actor,
+      weapon,
+      rollType: "melee",
+      isPoolRoll: true,
+      onRoll: async (rollResult) => {
+        const results = rollResult.rolls.map(r => r.result);
+        const maneuver = rollResult.maneuver || "none";
+        const tempoLevel = rollResult.tempoLevel || 0;
+        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel);
+      }
     });
     dialog.render(true);
   }
 
   /**
-   * Wybiera kości na dany segment.
+   * Handles die selection for attack or defense.
    */
-  static async _onSelectDice(event, target, duelId) {
-    const role = target.dataset.role;
-    const index = parseInt(target.dataset.index);
-    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-    await NeuroshimaMeleeCombat.selectDie(role, index, duelId);
+  async _onSelectDie(participantId, index) {
+    const encounter = MeleeStore.getEncounter(this.encounterId);
+    if (!encounter) return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    const p = updated.participants[participantId];
+    if (!p || p.usedDice.includes(index)) return;
+
+    const exchange = updated.currentExchange;
+    const teamKey = p.team === "A" ? "attackerSelectedDice" : "defenderSelectedDice";
+    
+    if (exchange[teamKey].includes(index)) {
+      exchange[teamKey] = exchange[teamKey].filter(i => i !== index);
+    } else {
+      exchange[teamKey].push(index);
+    }
+
+    await MeleeStore.updateEncounter(this.encounterId, updated);
   }
 
   /**
-   * Modyfikuje wynik na kości (Umiejętność / Psucie).
+   * Declares an attack (1s, 2s, 3s).
    */
-  static async _onModifyDie(event, target, duelId) {
-    const amount = parseInt(target.dataset.amount);
-    const dieIndex = parseInt(target.dataset.index);
-    const role = target.dataset.role;
-    event.stopPropagation();
-    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-    await NeuroshimaMeleeCombat.modifyDie(role, dieIndex, amount, duelId);
+  async _onDeclareAttack(participantId, diceCount) {
+    const encounter = MeleeStore.getEncounter(this.encounterId);
+    if (!encounter) return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    updated.currentExchange.attackerId = participantId;
+    updated.currentExchange.declaredAction = "attack";
+    updated.currentExchange.declaredDiceCount = diceCount;
+    updated.turnState.phase = "exchange-response";
+    
+    // Find target (simple 1v1 logic for now)
+    const targetId = Object.keys(updated.participants).find(id => id !== participantId);
+    updated.currentExchange.defenderId = targetId;
+    updated.turnState.selectionTurn = targetId;
+
+    await MeleeStore.updateEncounter(this.encounterId, updated);
   }
 
   /**
-   * Zatwierdza wybór kości.
+   * Confirms selection and potentially triggers resolution if both sides are ready.
    */
-  static async _onConfirmSelection(event, target, duelId) {
-    const role = target.dataset.role;
-    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-    await NeuroshimaMeleeCombat.confirmSelection(role, duelId);
+  async _onConfirmSelection(participantId) {
+    const encounter = MeleeStore.getEncounter(this.encounterId);
+    if (!encounter) return;
+
+    if (game.user.isGM) {
+        await MeleeResolution.resolveExchange(this.encounterId);
+    } else {
+        ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeDuel.WaitingForGM"));
+    }
+  }
+
+  /**
+   * Hook for real-time updates.
+   */
+  static registerHooks() {
+    Hooks.on("updateCombat", (combat, updates, options, userId) => {
+      for (const app of foundry.applications.instances.values()) {
+        if (app instanceof MeleeCombatApp) {
+          app.render();
+        }
+      }
+    });
   }
 }
