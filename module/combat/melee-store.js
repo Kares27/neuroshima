@@ -41,7 +41,7 @@ export class MeleeStore {
     const combat = game.combat;
     if (!combat) return;
 
-    game.neuroshima?.log("removeEncounter", { id, isGM: game.user.isGM });
+    game.neuroshima?.log("removeEncounter | start", { id, isGM: game.user.isGM });
 
     // If not GM and socket available, delegate to GM to handle cross-actor flag cleanup
     if (!game.user.isGM && game.neuroshima.socket) {
@@ -50,7 +50,7 @@ export class MeleeStore {
 
     const encounter = this.getEncounter(id);
     if (!encounter) {
-        game.neuroshima?.warn("removeEncounter | encounter not found", { id });
+        game.neuroshima?.warn("removeEncounter | encounter not found in flags", { id });
         return;
     }
 
@@ -68,12 +68,9 @@ export class MeleeStore {
       }
     }
 
-    const encounters = foundry.utils.deepClone(this.getEncounters());
-    if (encounters[id]) {
-        delete encounters[id];
-        await combat.setFlag("neuroshima", "meleeEncounters", encounters);
-        game.neuroshima?.log("removeEncounter | encounter deleted and flag set");
-    }
+    // Use -= syntax to ensure key is DELETED from the flag object during merge
+    await combat.setFlag("neuroshima", `meleeEncounters.-=${id}`, null);
+    game.neuroshima?.log("removeEncounter | encounter deleted via -= syntax");
 
     ui.combat?.render(true);
   }
@@ -100,28 +97,17 @@ export class MeleeStore {
     const combat = game.combat;
     if (!combat || !pendingUuid) return;
 
-    game.neuroshima?.log("removePending", { pendingUuid, isGM: game.user.isGM });
+    game.neuroshima?.log("removePending | start", { pendingUuid, isGM: game.user.isGM });
 
     if (!game.user.isGM && game.neuroshima.socket) {
         return game.neuroshima.socket.executeAsGM("removeMeleePending", pendingUuid);
     }
 
     const pendingKey = pendingUuid.replace(/\./g, "-");
-    const pendings = foundry.utils.deepClone(combat.getFlag("neuroshima", "meleePendings") || {});
     
-    game.neuroshima?.log("removePending | current pendings", { 
-        count: Object.keys(pendings).length,
-        hasKey: !!pendings[pendingKey],
-        pendingKey
-    });
-
-    if (pendings[pendingKey]) {
-        delete pendings[pendingKey];
-        await combat.setFlag("neuroshima", "meleePendings", pendings);
-        game.neuroshima?.log("removePending | pending deleted and flag set");
-    } else {
-        game.neuroshima?.warn("removePending | pending key not found", { pendingKey });
-    }
+    // Use -= syntax to ensure key is DELETED from the flag object during merge
+    await combat.setFlag("neuroshima", `meleePendings.-=${pendingKey}`, null);
+    game.neuroshima?.log("removePending | pending deleted via -= syntax");
     
     ui.combat?.render(true);
   }
