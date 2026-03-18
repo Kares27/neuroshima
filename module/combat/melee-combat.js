@@ -69,14 +69,35 @@ export class NeuroshimaMeleeCombat {
    */
   static async initiateMeleePending(attackerUuid, defenderUuid, attackerInitiative, weaponId, maneuver = "none", chargeLevel = 0) {
     const combat = game.combat;
-    if (!combat) return;
+
+    game.neuroshima?.log("initiateMeleePending | start", {
+        hasCombat: !!combat,
+        attackerUuid,
+        defenderUuid,
+        attackerInitiative,
+        weaponId,
+        maneuver,
+        chargeLevel
+    });
+
+    if (!combat) {
+        ui.notifications.warn("Najpierw utwórz lub uruchom Encounter w Combat Trackerze.");
+        game.neuroshima?.warn("initiateMeleePending aborted: no active game.combat");
+        return;
+    }
 
     const attackerDoc = fromUuidSync(attackerUuid);
     const defenderDoc = fromUuidSync(defenderUuid);
     const attackerActor = attackerDoc?.actor || attackerDoc;
     const defenderActor = defenderDoc?.actor || defenderDoc;
 
-    if (!attackerActor || !defenderActor) return;
+    if (!attackerActor || !defenderActor) {
+        game.neuroshima?.warn("initiateMeleePending aborted: missing attacker or defender actor", {
+            attackerActor,
+            defenderActor
+        });
+        return;
+    }
 
     const pendingKey = defenderUuid.replace(/\./g, "-");
     const pendingData = {
@@ -93,13 +114,20 @@ export class NeuroshimaMeleeCombat {
         timestamp: Date.now()
     };
 
+    game.neuroshima?.log("initiateMeleePending | saving pending", { pendingKey, pendingData });
+
     if (game.neuroshima.socket) {
         await game.neuroshima.socket.executeAsGM("updateCombatFlag", `meleePendings.${pendingKey}`, pendingData);
     } else {
         await combat.setFlag("neuroshima", `meleePendings.${pendingKey}`, pendingData);
     }
     
+    game.neuroshima?.log("initiateMeleePending | saved", {
+        storedPendings: combat.getFlag("neuroshima", "meleePendings")
+    });
+
     ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeDuel.PendingNotification"));
+    ui.combat?.render(true);
   }
 
   /**

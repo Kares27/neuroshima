@@ -45,7 +45,7 @@
         <div class="melee-instruction">
             {{localize "NEUROSHIMA.MeleeDuel.WaitingForDefender"}}
         </div>
-        {{#if (or @root.user.isGM (eq @root.user.character.id pending.defenderId))}}
+        {{#if (or @root.user.isGM (eq @root.user.character.uuid pending.defenderId))}}
         <button type="button" class="join-melee-btn" data-action="join-melee" data-pending-id="{{pending.id}}">
             <i class="fas fa-check"></i> {{localize "NEUROSHIMA.MeleeOpposed.Join"}}
         </button>

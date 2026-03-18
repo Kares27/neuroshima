@@ -1342,6 +1342,11 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
         // 4. Jeśli mamy cel i nie ma na nas pendingu - inicjujemy nowy atak
         if (targetUuid) {
+            if (!game.combat) {
+                ui.notifications.warn("Najpierw utwórz Encounter w Combat Trackerze.");
+                this._isRolling = false;
+                return;
+            }
             const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
             const initiativeDialog = new NeuroshimaInitiativeRollDialog({
                 actor: this.document,

@@ -58,13 +58,14 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             this.element.querySelectorAll(".combatant").forEach(li => {
                 const combatantId = li.dataset.combatantId;
                 const combatant = combat.combatants.get(combatantId);
-                if (!combatant) return;
+                const actorUuid = combatant?.actor?.uuid;
+                if (!actorUuid) return;
 
                 const isMelee = activeEncounters.some(e => 
-                    Object.values(e.participants).some(p => p.actorUuid === combatant.actorId)
+                    Object.values(e.participants).some(p => p.actorUuid === actorUuid)
                 );
                 const isPending = activePendings.some(p => 
-                    p.attackerId === combatant.actorId || p.defenderId === combatant.actorId
+                    p.attackerId === actorUuid || p.defenderId === actorUuid
                 );
 
                 if (isMelee) li.classList.add("melee-active");
