@@ -50,9 +50,9 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             const combat = this.viewed;
             if (!combat) return;
             
-            const duels = combat.getFlag("neuroshima", "meleeDuels") || {};
+            const encounters = combat.getFlag("neuroshima", "meleeEncounters") || {};
             const pendings = combat.getFlag("neuroshima", "meleePendings") || {};
-            const activeDuels = Object.values(duels).filter(d => d.active);
+            const activeEncounters = Object.values(encounters);
             const activePendings = Object.values(pendings).filter(p => p.active);
 
             this.element.querySelectorAll(".combatant").forEach(li => {
@@ -60,8 +60,8 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
                 const combatant = combat.combatants.get(combatantId);
                 if (!combatant) return;
 
-                const isMelee = activeDuels.some(d => 
-                    d.attacker.id === combatant.actorId || d.defender.id === combatant.actorId
+                const isMelee = activeEncounters.some(e => 
+                    Object.values(e.participants).some(p => p.actorUuid === combatant.actorId)
                 );
                 const isPending = activePendings.some(p => 
                     p.attackerId === combatant.actorId || p.defenderId === combatant.actorId
@@ -156,16 +156,16 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
 
         // Pobierz wszystkie starcia i oczekujące starcia
         const combat = this.viewed;
-        const duels = combat?.getFlag("neuroshima", "meleeDuels") || {};
+        const encounters = combat?.getFlag("neuroshima", "meleeEncounters") || {};
         const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
         
-        context.activeMeleeDuels = Object.values(duels).filter(d => d.active);
+        context.activeMeleeEncounters = Object.values(encounters);
         context.pendingMeleeDuels = Object.values(pendings).filter(p => p.active);
         
-        // Dla widoku mini bierzemy pierwszy aktywny pojedynek w którym uczestniczy aktualny aktor użytkownika lub dowolny jeśli MG
+        // Dla widoku mini bierzemy pierwszy aktywny encounter
         const userActorUuid = game.user.character?.uuid;
-        context.activeMeleeDuel = context.activeMeleeDuels.find(d => 
-            game.user.isGM || d.attacker.id === userActorUuid || d.defender.id === userActorUuid
+        context.activeMeleeEncounter = context.activeMeleeEncounters.find(e => 
+            game.user.isGM || Object.values(e.participants).some(p => p.actorUuid === userActorUuid)
         );
 
         // Oznacz uczestników starć w widoku listy
@@ -177,9 +177,9 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
                 const actorUuid = combatant.actor?.uuid;
                 if (!actorUuid) return;
 
-                // Sprawdź czy aktor jest w którymkolwiek aktywnym pojedynku
-                turn.isMeleeDuelParticipant = context.activeMeleeDuels.some(d => 
-                    d.attacker.id === actorUuid || d.defender.id === actorUuid
+                // Sprawdź czy aktor jest w którymkolwiek aktywnym encounterze
+                turn.isMeleeDuelParticipant = context.activeMeleeEncounters.some(e => 
+                    Object.values(e.participants).some(p => p.actorUuid === actorUuid)
                 );
 
                 // Sprawdź czy aktor jest w którymkolwiek oczekującym starciu

@@ -35,13 +35,13 @@ export class NeuroshimaDice {
     if (maneuver === "charge") {
         chargeBonus = chargeLevel || 2;
     } else if (isMeleeInitiative) {
-        // Fallback to active duel if not provided in params
+        // Fallback to active encounter if not provided in params
         const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-        const duel = NeuroshimaMeleeCombat.findActiveDuelForActor(actor);
-        if (duel) {
-            const role = duel.attacker.id === actor.id ? "attacker" : "defender";
-            if (duel[role].maneuver === "charge") {
-                chargeBonus = duel[role].chargeLevel || 2; 
+        const encounter = NeuroshimaMeleeCombat.findActiveEncounterForActor(actor);
+        if (encounter) {
+            const p = encounter.participants[actor.uuid] || encounter.participants[actor.id];
+            if (p && p.maneuver === "charge") {
+                chargeBonus = p.chargeLevel || 2; 
             }
         }
     }

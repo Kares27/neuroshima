@@ -10,20 +10,22 @@
 
     {{#if (eq currentView "melee")}}
         <div class="melee-view-container">
-            {{#each activeMeleeDuels as |duel|}}
-            <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{duel.id}}">
+            {{#each activeMeleeEncounters as |encounter|}}
+            <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{encounter.id}}">
                 <div class="melee-header">
                     <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.Active"}}
                 </div>
                 <div class="melee-participants">
-                    <div class="participant attacker">
-                        <img src="{{duel.attacker.img}}" title="{{duel.attacker.name}}">
-                        <span>{{duel.attacker.name}}</span>
+                    <div class="team team-a">
+                        {{#each encounter.teams.A}}
+                            <img src="{{lookup ../encounter.participants this 'img'}}" title="{{lookup ../encounter.participants this 'name'}}">
+                        {{/each}}
                     </div>
                     <div class="vs">VS</div>
-                    <div class="participant defender">
-                        <img src="{{duel.defender.img}}" title="{{duel.defender.name}}">
-                        <span>{{duel.defender.name}}</span>
+                    <div class="team team-b">
+                        {{#each encounter.teams.B}}
+                            <img src="{{lookup ../encounter.participants this 'img'}}" title="{{lookup ../encounter.participants this 'name'}}">
+                        {{/each}}
                     </div>
                 </div>
                 <div class="melee-status">
@@ -58,7 +60,7 @@
             </div>
             {{/each}}
 
-            {{#if (and (not activeMeleeDuels.length) (not pendingMeleeDuels.length))}}
+            {{#if (and (not activeMeleeEncounters.length) (not pendingMeleeDuels.length))}}
             <div class="no-melee-active">
                 <i class="fas fa-info-circle"></i>
                 <p>{{localize "NEUROSHIMA.MeleeDuel.NoActiveFights"}}</p>
@@ -120,9 +122,9 @@
             </div>
         </header>
 
-        {{#if activeMeleeDuel}}
-        <div class="active-melee-panel mini" data-action="open-melee" title="{{localize 'NEUROSHIMA.MeleeDuel.OpenActive'}}">
-             <i class="fas fa-swords"></i> {{activeMeleeDuel.attacker.name}} vs {{activeMeleeDuel.defender.name}}
+        {{#if activeMeleeEncounter}}
+        <div class="active-melee-panel mini" data-action="open-melee" data-duel-id="{{activeMeleeEncounter.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.OpenActive'}}">
+             <i class="fas fa-swords"></i> Melee Encounter ({{activeMeleeEncounter.id}})
         </div>
         {{/if}}
 

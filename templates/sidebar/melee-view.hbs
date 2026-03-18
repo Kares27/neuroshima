@@ -1,25 +1,27 @@
 <div class="melee-view-container">
-    {{#each activeMeleeDuels as |duel|}}
-    <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{duel.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.ClickToOpen'}}">
+    {{#each activeMeleeEncounters as |encounter|}}
+    <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{encounter.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.ClickToOpen'}}">
         <div class="melee-header">
             <i class="fas fa-swords"></i>
             {{#if @root.user.isGM}}
             <div class="duel-controls">
-                <a class="action-btn delete" data-action="delete-duel" data-duel-id="{{duel.id}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
+                <a class="action-btn delete" data-action="delete-duel" data-duel-id="{{encounter.id}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
                     <i class="fas fa-trash"></i>
                 </a>
             </div>
             {{/if}}
         </div>
         <div class="melee-participants">
-            <div class="participant attacker">
-                <img src="{{duel.attacker.img}}" class="participant-img" title="{{duel.attacker.name}}">
-                <span class="participant-name">{{duel.attacker.name}}</span>
+            <div class="team team-a">
+                {{#each encounter.teams.A}}
+                    <img src="{{lookup ../encounter.participants this 'img'}}" class="participant-img-tiny" title="{{lookup ../encounter.participants this 'name'}}">
+                {{/each}}
             </div>
             <div class="vs">VS</div>
-            <div class="participant defender">
-                <img src="{{duel.defender.img}}" class="participant-img" title="{{duel.defender.name}}">
-                <span class="participant-name">{{duel.defender.name}}</span>
+            <div class="team team-b">
+                {{#each encounter.teams.B}}
+                    <img src="{{lookup ../encounter.participants this 'img'}}" class="participant-img-tiny" title="{{lookup ../encounter.participants this 'name'}}">
+                {{/each}}
             </div>
         </div>
     </div>
@@ -51,7 +53,7 @@
     </div>
     {{/each}}
 
-    {{#if (and (not activeMeleeDuels.length) (not pendingMeleeDuels.length))}}
+    {{#if (and (not activeMeleeEncounters.length) (not pendingMeleeDuels.length))}}
     <div class="no-melee-active">
         <i class="fas fa-info-circle"></i>
         <p>{{localize "NEUROSHIMA.MeleeDuel.NoActiveFights"}}</p>

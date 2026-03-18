@@ -25,6 +25,37 @@ export class NeuroshimaMeleeCombat {
   }
 
   /**
+   * Legacy alias for pre-V12 code.
+   * Old code still asks for an active "duel", now it should receive the active encounter.
+   */
+  static findActiveDuelForActor(actor) {
+    return this.findActiveEncounterForActor(actor);
+  }
+
+  /**
+   * Legacy pending dismissal kept for combat tracker / older UI hooks.
+   */
+  static async dismissMeleePending(pendingUuid) {
+    const combat = game.combat;
+    if (!combat || !pendingUuid) return;
+
+    const pendingKey = pendingUuid.replace(/\./g, "-");
+
+    if (game.neuroshima.socket) {
+      await game.neuroshima.socket.executeAsGM("unsetCombatFlag", `meleePendings.${pendingKey}`);
+    } else {
+      await combat.unsetFlag("neuroshima", `meleePendings.${pendingKey}`);
+    }
+  }
+
+  /**
+   * Legacy alias for duel dismissal.
+   */
+  static async dismissMeleeDuel(id) {
+    return this.clearMeleeFlags(id);
+  }
+
+  /**
    * Finds an active encounter for a given actor.
    */
   static findActiveEncounterForActor(actor) {

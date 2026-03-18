@@ -1746,10 +1746,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   async _onRespondToOpposed(event, target) {
       if (this._isRolling) return;
       
-      const activeDuelId = this.document.getFlag("neuroshima", "activeMeleeDuel");
-      if (activeDuelId) {
+      const activeEncounterId = this.document.getFlag("neuroshima", "activeMeleeEncounter");
+      if (activeEncounterId) {
           const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-          return NeuroshimaMeleeCombat.openMeleeApp(activeDuelId);
+          return NeuroshimaMeleeCombat.openMeleeApp(activeEncounterId);
       }
 
       this._isRolling = true;
