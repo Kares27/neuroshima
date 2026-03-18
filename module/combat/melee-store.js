@@ -60,8 +60,7 @@ export class MeleeStore {
         const doc = fromUuidSync(p.actorUuid);
         const actor = doc?.actor || doc;
         if (actor) {
-            // Using -= syntax in update to force real deletion of the flag
-            await actor.update({ "flags.neuroshima.-=activeMeleeEncounter": null });
+            await actor.unsetFlag("neuroshima", "activeMeleeEncounter");
             game.neuroshima?.log(`removeEncounter | cleared flag for actor ${actor.name}`);
         }
       } catch (e) {
@@ -69,9 +68,9 @@ export class MeleeStore {
       }
     }
 
-    // Use -= syntax to ensure key is DELETED from the flag object during merge
-    await combat.setFlag("neuroshima", `meleeEncounters.-=${id}`, null);
-    game.neuroshima?.log("removeEncounter | encounter deleted via -= syntax");
+    // Use unsetFlag for specific key deletion
+    await combat.unsetFlag("neuroshima", `meleeEncounters.${id}`);
+    game.neuroshima?.log("removeEncounter | encounter deleted via unsetFlag");
 
     ui.combat?.render(true);
   }
@@ -106,9 +105,9 @@ export class MeleeStore {
 
     const pendingKey = pendingUuid.replace(/\./g, "-");
     
-    // Use -= syntax to ensure key is DELETED from the flag object during merge
-    await combat.setFlag("neuroshima", `meleePendings.-=${pendingKey}`, null);
-    game.neuroshima?.log("removePending | pending deleted via -= syntax");
+    // Use unsetFlag for specific key deletion
+    await combat.unsetFlag("neuroshima", `meleePendings.${pendingKey}`);
+    game.neuroshima?.log("removePending | pending deleted via unsetFlag");
     
     ui.combat?.render(true);
   }

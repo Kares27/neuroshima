@@ -1,30 +1,32 @@
-<div class="combatant-row {{#if participant.isDead}}dead{{/if}} {{#if (eq @root.turnState.selectionTurn participant.id)}}active-turn{{/if}}" data-participant-id="{{participant.id}}">
+<div class="combatant-row {{#if (eq @root.turnState.selectionTurn participant.id)}}active-turn{{/if}}" data-participant-id="{{participant.id}}">
     <div class="participant-header">
         <img src="{{participant.img}}" class="avatar" title="{{participant.name}}">
         <div class="participant-info">
             <span class="name">{{participant.name}}</span>
             <div class="stats-row">
                 <span class="init-tag">Init: {{participant.initiative}}</span>
-                {{#if participant.pool}}
+                {{#if (gt participant.pool.length 0)}}
                     <span class="maneuver-tag">{{participant.maneuver}}</span>
                     <span class="target-tag">Target: {{participant.effectiveTarget}}</span>
                 {{/if}}
             </div>
         </div>
         
-        {{#if (and participant.isOwner (not participant.pool) (eq @root.turnState.phase "awaiting-pool-rolls"))}}
+        {{#if (and participant.isOwner (eq participant.pool.length 0) (eq @root.turnState.phase "awaiting-pool-rolls"))}}
             <button type="button" class="roll-pool-btn" data-action="openPoolDialog" data-id="{{participant.id}}">
                 <i class="fas fa-dice-d20"></i> Rzuć 3k20
             </button>
         {{/if}}
     </div>
 
-    {{#if participant.pool}}
+    {{#if (gt participant.pool.length 0)}}
         <div class="dice-pool">
             {{#each participant.pool}}
-                <div class="die {{#if (in @index ../participant.selectedDiceIndices)}}selected{{/if}} 
-                            {{#if (in @index ../participant.usedDice)}}used{{/if}}
-                            {{#if (lte this ../participant.effectiveTarget)}}success{{else}}failure{{/if}}"
+                <div class="die {{#if (meleeDieSelected ../participant.selectedDiceIndices @index)}}selected{{/if}} 
+                            {{#if (meleeDieUsed ../participant.usedDice @index)}}used{{/if}}
+                            {{#if (eq this 1)}}nat-1{{/if}}
+                            {{#if (eq this 20)}}nat-20{{/if}}
+                            {{#if (le this ../participant.effectiveTarget)}}success{{else}}failure{{/if}}"
                      data-action="selectDie" 
                      data-id="{{../participant.id}}" 
                      data-index="{{@index}}">

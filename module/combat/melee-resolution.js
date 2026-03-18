@@ -17,6 +17,7 @@ export class MeleeResolution {
     const exchange = updated.currentExchange;
     const attacker = updated.participants[exchange.attackerId];
     const defender = updated.participants[exchange.defenderId];
+    const diceCount = exchange.declaredDiceCount || 0;
 
     if (!attacker || !defender) return;
 
@@ -39,7 +40,6 @@ export class MeleeResolution {
     const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => attacker.pool[idx] <= attackerTarget).length;
     const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => defender.pool[idx] <= defenderTarget).length;
 
-    const diceCount = exchange.declaredDiceCount;
     let resultType = "miss"; // miss, hit, block, takeover
     let logText = "";
 

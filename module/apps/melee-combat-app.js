@@ -82,11 +82,10 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       const actor = doc?.actor || doc;
       p.isOwner = actor?.isOwner;
       p.isUserCharacter = game.user.character?.uuid === p.actorUuid;
-      p.isDead = actor?.system?.hp?.value <= 0;
       
       // Calculate effective target (snapshot or dynamic)
       p.effectiveTarget = p.effectiveTargetSnapshot || p.targetValue || 10;
-
+      
       // Prepare selected dice information for templates
       p.selectedDiceIndices = [];
       if (pId === context.currentExchange.attackerId) {
@@ -97,10 +96,19 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     // Map teams to full participant objects and sort by initiative
-    const sortByInitiative = (a, b) => b.initiative - a.initiative;
+    const sortByInitiative = (a, b) => (b.initiative || 0) - (a.initiative || 0);
+    
+    game.neuroshima?.log("Melee _prepareContext | debug", {
+        teams: context.teams,
+        participantIds: Object.keys(context.participants || {}),
+        teamA: context.teams.A,
+        teamB: context.teams.B,
+        allParticipants: context.participants
+    });
+
     context.teamsData = {
-      A: context.teams.A.map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative),
-      B: context.teams.B.map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative)
+      A: (context.teams.A || []).map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative),
+      B: (context.teams.B || []).map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative)
     };
 
     // Current exchange participants
@@ -124,7 +132,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     switch (phase) {
       case "awaiting-pool-rolls":
-        const waitingCount = Object.values(context.participants).filter(p => !p.pool).length;
+        const waitingCount = Object.values(context.participants).filter(p => !p.pool?.length).length;
         return `Oczekiwanie na rzut puli 3k20 (${waitingCount} uczestników)`;
       
       case "exchange-declaration":
@@ -167,7 +175,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       rollType: "melee",
       isPoolRoll: true,
       onRoll: async (rollResult) => {
-        const results = rollResult.rolls.map(r => r.result);
+        if (!rollResult) return;
+        const results = (rollResult.modifiedResults || rollResult.results || rollResult.rawResults || []).map(r => typeof r === "object" ? r.original : r);
         const maneuver = rollResult.maneuver || "none";
         const tempoLevel = rollResult.tempoLevel || 0;
         await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel);

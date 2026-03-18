@@ -11,17 +11,20 @@ export class MeleeEncounter {
    * @returns {Promise<string>} New encounter ID
    */
   static async create(attackerData, defenderData) {
-    const id = `${attackerData.actorUuid}-${defenderData.actorUuid}`.replace(/\./g, "-");
+    const attackerId = attackerData.id.replace(/\./g, "-");
+    const defenderId = defenderData.id.replace(/\./g, "-");
+    const id = `${attackerId}-${defenderId}`;
+
     const encounter = {
       id,
       mode: "duel",
       teams: {
-        A: [attackerData.id],
-        B: [defenderData.id]
+        A: [attackerId],
+        B: [defenderId]
       },
       participants: {
-        [attackerData.id]: this._mapParticipant(attackerData, "A"),
-        [defenderData.id]: this._mapParticipant(defenderData, "B")
+        [attackerId]: this._mapParticipant({ ...attackerData, id: attackerId }, "A"),
+        [defenderId]: this._mapParticipant({ ...defenderData, id: defenderId }, "B")
       },
       currentExchange: {
         attackerId: null,
@@ -37,7 +40,7 @@ export class MeleeEncounter {
         segment: 1,
         phase: "awaiting-pool-rolls",
         selectionTurn: null,
-        initiativeOwnerId: attackerData.initiative >= defenderData.initiative ? attackerData.id : defenderData.id
+        initiativeOwnerId: attackerData.initiative >= defenderData.initiative ? attackerId : defenderId
       },
       log: []
     };
@@ -58,9 +61,10 @@ export class MeleeEncounter {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
+    const participantId = participantData.id.replace(/\./g, "-");
     const updated = foundry.utils.deepClone(encounter);
-    updated.participants[participantData.id] = this._mapParticipant(participantData, team);
-    updated.teams[team].push(participantData.id);
+    updated.participants[participantId] = this._mapParticipant({ ...participantData, id: participantId }, team);
+    updated.teams[team].push(participantId);
     updated.mode = (updated.teams.A.length > 1 || updated.teams.B.length > 1) ? "group" : "duel";
 
     await MeleeStore.updateEncounter(id, updated);
