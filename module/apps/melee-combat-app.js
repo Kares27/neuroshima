@@ -220,7 +220,13 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     Hooks.on("updateCombat", (combat, updates, options, userId) => {
       for (const app of foundry.applications.instances.values()) {
         if (app instanceof MeleeCombatApp) {
-          app.render();
+          const encounter = MeleeStore.getEncounter(app.encounterId);
+          if (!encounter) {
+            game.neuroshima?.log(`Closing MeleeCombatApp ${app.encounterId} because encounter was deleted.`);
+            app.close();
+          } else {
+            app.render();
+          }
         }
       }
     });

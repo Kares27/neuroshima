@@ -14,13 +14,19 @@
         <div class="melee-participants">
             <div class="team team-a">
                 {{#each encounter.teamsData.A}}
-                    <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
+                    <div class="participant-mini">
+                        <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
+                        <span class="participant-name-tiny">{{this.name}}</span>
+                    </div>
                 {{/each}}
             </div>
             <div class="vs">VS</div>
             <div class="team team-b">
                 {{#each encounter.teamsData.B}}
-                    <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
+                    <div class="participant-mini">
+                        <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
+                        <span class="participant-name-tiny">{{this.name}}</span>
+                    </div>
                 {{/each}}
             </div>
         </div>

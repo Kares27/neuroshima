@@ -673,3 +673,168 @@
 .opponent-item button:hover {
     background: #4a6fa5;
 }
+
+/* --- ApplicationV2 Melee Encounter Styles --- */
+.melee-app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #1a1a1a url('../ui/denim.png');
+    color: #f0f0f0;
+    font-family: 'SpecialElite', serif;
+    padding: 10px;
+    overflow: hidden;
+}
+
+.melee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom: 2px solid #ee6c4d;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.participants-strip {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    gap: 20px;
+}
+
+.team-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.team-header {
+    font-size: 0.9rem;
+    color: #ee6c4d;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(238, 108, 77, 0.3);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+}
+
+.combatant-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid #444;
+}
+
+.combatant-card.is-active {
+    border-color: #ee6c4d;
+    background: rgba(238, 108, 77, 0.1);
+}
+
+.combatant-card .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid #666;
+}
+
+.combatant-card .info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.combatant-card .name {
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.melee-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 15px;
+    flex: 1;
+    min-height: 0;
+}
+
+.active-exchange-panel {
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid #555;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.exchange-header {
+    font-size: 1.2rem;
+    color: #ee6c4d;
+    margin-bottom: 15px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.exchange-content {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex: 1;
+}
+
+.combat-log-panel {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.combat-log-panel .log-header {
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.combat-log-panel .log-entries {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.action-panel {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* --- Melee View Sidebar Enhancements --- */
+.participant-mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.participant-name-tiny {
+    font-size: 0.6rem;
+    color: #888;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

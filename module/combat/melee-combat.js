@@ -45,6 +45,15 @@ export class NeuroshimaMeleeCombat {
    * Legacy alias for duel dismissal.
    */
   static async dismissMeleeDuel(id) {
+    game.neuroshima?.log("dismissMeleeDuel", { id });
+    
+    // Close the app if open
+    for (const app of foundry.applications.instances.values()) {
+      if (app instanceof MeleeCombatApp && app.encounterId === id) {
+        app.close();
+      }
+    }
+    
     return this.clearMeleeFlags(id);
   }
 
@@ -135,7 +144,12 @@ export class NeuroshimaMeleeCombat {
     const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
     const pending = pendings[pendingKey];
 
-    if (!pending || !pending.active) return;
+    game.neuroshima?.log("respondToMeleePending | start", { pendingUuid, defenderInitiative, pending });
+
+    if (!pending || !pending.active) {
+        game.neuroshima?.warn("respondToMeleePending | pending not found or inactive", { pendingUuid });
+        return;
+    }
 
     // Clean up pending
     await MeleeStore.removePending(pendingUuid);

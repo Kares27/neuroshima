@@ -395,7 +395,26 @@
             "LogMiss": "{attacker} pudłuje.",
             "LogTurnEnd": "Koniec Tury {turn}.",
             "LogFullDefenseBlock": "{defender} paruje cios (Pełna Obrona), ale nie przejmuje inicjatywy.",
-            "LogFuryHit": "Atakujący w Furii otrzymuje kontratak!"
+            "LogFuryHit": "Atakujący w Furii otrzymuje kontratak!",
+            "TeamA": "Drużyna A",
+            "TeamB": "Drużyna B",
+            "ActiveExchange": "Aktywna Wymiana",
+            "WaitingForAttacker": "Oczekiwanie na akcję atakującego...",
+            "WaitingForDefender": "Oczekiwanie na reakcję obrońcy...",
+            "DefendingWith": "Broni się przy użyciu: {weapon}",
+            "InitiativeOwner": "Posiada Inicjatywę",
+            "Phase": {
+                "awaiting-pool-rolls": "Oczekiwanie na rzuty puli",
+                "exchange-declaration": "Deklaracja akcji",
+                "exchange-response": "Reakcja obrońcy",
+                "exchange-resolution": "Rozstrzygnięcie wymiany"
+            },
+            "Actions": {
+                "attack": "Atak",
+                "defend": "Obrona",
+                "counter": "Kontratak",
+                "disengage": "Wyjście ze zwarcia"
+            }
         },
         "Tabs": {
             "Attributes": "Współczynniki",

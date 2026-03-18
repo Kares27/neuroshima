@@ -41,29 +41,41 @@ export class MeleeStore {
     const combat = game.combat;
     if (!combat) return;
 
+    game.neuroshima?.log("removeEncounter", { id, isGM: game.user.isGM });
+
     // If not GM and socket available, delegate to GM to handle cross-actor flag cleanup
     if (!game.user.isGM && game.neuroshima.socket) {
       return game.neuroshima.socket.executeAsGM("removeMeleeEncounter", id);
     }
 
     const encounter = this.getEncounter(id);
-    if (!encounter) return;
+    if (!encounter) {
+        game.neuroshima?.warn("removeEncounter | encounter not found", { id });
+        return;
+    }
 
     // Clear flags on all participants (GM can do this for any actor)
     for (const p of Object.values(encounter.participants)) {
       try {
         const doc = fromUuidSync(p.actorUuid);
         const actor = doc?.actor || doc;
-        if (actor) await actor.unsetFlag("neuroshima", "activeMeleeEncounter");
+        if (actor) {
+            await actor.unsetFlag("neuroshima", "activeMeleeEncounter");
+            game.neuroshima?.log(`removeEncounter | cleared flag for actor ${actor.name}`);
+        }
       } catch (e) {
         console.warn(`Neuroshima | Failed to unset flag for participant ${p.name}`, e);
       }
     }
 
     const encounters = foundry.utils.deepClone(this.getEncounters());
-    delete encounters[id];
+    if (encounters[id]) {
+        delete encounters[id];
+        await combat.setFlag("neuroshima", "meleeEncounters", encounters);
+        game.neuroshima?.log("removeEncounter | encounter deleted and flag set");
+    }
 
-    await combat.setFlag("neuroshima", "meleeEncounters", encounters);
+    ui.combat?.render(true);
   }
 
   /**
@@ -78,6 +90,7 @@ export class MeleeStore {
     } else {
         await combat.unsetFlag("neuroshima", "meleePendings");
     }
+    ui.combat?.render(true);
   }
 
   /**
@@ -87,14 +100,29 @@ export class MeleeStore {
     const combat = game.combat;
     if (!combat || !pendingUuid) return;
 
+    game.neuroshima?.log("removePending", { pendingUuid, isGM: game.user.isGM });
+
     if (!game.user.isGM && game.neuroshima.socket) {
         return game.neuroshima.socket.executeAsGM("removeMeleePending", pendingUuid);
     }
 
     const pendingKey = pendingUuid.replace(/\./g, "-");
     const pendings = foundry.utils.deepClone(combat.getFlag("neuroshima", "meleePendings") || {});
-    delete pendings[pendingKey];
+    
+    game.neuroshima?.log("removePending | current pendings", { 
+        count: Object.keys(pendings).length,
+        hasKey: !!pendings[pendingKey],
+        pendingKey
+    });
 
-    await combat.setFlag("neuroshima", "meleePendings", pendings);
+    if (pendings[pendingKey]) {
+        delete pendings[pendingKey];
+        await combat.setFlag("neuroshima", "meleePendings", pendings);
+        game.neuroshima?.log("removePending | pending deleted and flag set");
+    } else {
+        game.neuroshima?.warn("removePending | pending key not found", { pendingKey });
+    }
+    
+    ui.combat?.render(true);
   }
 }
