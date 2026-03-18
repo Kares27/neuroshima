@@ -55,9 +55,7 @@ export class EncumbranceConfig extends HandlebarsApplicationMixin(ApplicationV2)
      */
     async _onSubmit(event, form, formData) {
         const data = formData.object;
-        if (game.settings.get("neuroshima", "debugMode")) {
-            console.log("Neuroshima | Próba zapisu danych udźwigu:", data);
-        }
+        game.neuroshima.log("Próba zapisu danych udźwigu:", data);
 
         try {
             const updates = [
@@ -76,7 +74,7 @@ export class EncumbranceConfig extends HandlebarsApplicationMixin(ApplicationV2)
             // Prompt for reload since these settings require it
             SettingsConfig.reloadConfirm({ world: true });
         } catch (err) {
-            console.error("Neuroshima | Błąd zapisu udźwigu:", err);
+            game.neuroshima.error("Błąd zapisu udźwigu:", err);
             ui.notifications.error("Wystąpił błąd podczas zapisu ustawień.");
         }
     }

@@ -11,21 +11,37 @@ export class NeuroshimaDice {
    * @returns {Promise<Object>} Dane rzutu i wynik SP
    */
   static async rollInitiative(params) {
-    const { actor, attribute = "dexterity", skill = "", useSkill = true, difficulty = "average", modifier = 0, useArmorPenalty = false, useWoundPenalty = true, attributeBonus = 0, skillBonus = 0, isMeleeInitiative = false, rollMode = game.settings.get("core", "rollMode") } = params;
+    const { 
+        actor, 
+        attribute = "dexterity", 
+        skill = "", 
+        useSkill = true, 
+        difficulty = "average", 
+        modifier = 0, 
+        useArmorPenalty = false, 
+        useWoundPenalty = true, 
+        attributeBonus = 0, 
+        skillBonus = 0, 
+        isMeleeInitiative = false, 
+        maneuver = "none",
+        chargeLevel = 0,
+        rollMode = game.settings.get("core", "rollMode") 
+    } = params;
     
     game.neuroshima.group(`Rzut na Inicjatywę: ${actor.name}`);
     
     // Check for Charge maneuver bonus
     let chargeBonus = 0;
-    if (isMeleeInitiative) {
+    if (maneuver === "charge") {
+        chargeBonus = chargeLevel || 2;
+    } else if (isMeleeInitiative) {
+        // Fallback to active duel if not provided in params
         const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
         const duel = NeuroshimaMeleeCombat.findActiveDuelForActor(actor);
         if (duel) {
             const role = duel.attacker.id === actor.id ? "attacker" : "defender";
             if (duel[role].maneuver === "charge") {
-                // Rule: +1 to +3 bonus. For automation we can use a fixed +2 or ask, 
-                // but let's assume +2 as standard charge or check actor skills.
-                chargeBonus = 2; 
+                chargeBonus = duel[role].chargeLevel || 2; 
             }
         }
     }
@@ -98,7 +114,27 @@ export class NeuroshimaDice {
    * Perform a weapon-specific roll (shooting or striking).
    */
   static async rollWeaponTest(params) {
-    const { weapon, actor, aimingLevel, burstLevel, difficulty, hitLocation, modifier, applyArmor, applyWounds, isOpen, skillBonus = 0, attributeBonus = 0, distance = 0, meleeAction = "attack", isReroll = false, chatMessage = true, rollMode = game.settings.get("core", "rollMode") } = params;
+    const { 
+        weapon, 
+        actor, 
+        aimingLevel, 
+        burstLevel, 
+        difficulty, 
+        hitLocation, 
+        modifier, 
+        applyArmor, 
+        applyWounds, 
+        isOpen, 
+        skillBonus = 0, 
+        attributeBonus = 0, 
+        distance = 0, 
+        meleeAction = "attack", 
+        maneuver = "none",
+        tempoLevel = 0,
+        isReroll = false, 
+        chatMessage = true, 
+        rollMode = game.settings.get("core", "rollMode") 
+    } = params;
     
     // Rozpoczęcie grupy logów dla rzutu bronią
     game.neuroshima.group("Inicjalizacja rzutu bronią");
@@ -106,15 +142,31 @@ export class NeuroshimaDice {
 
     let bulletSequence = [];
     
-    // 1. Kalkulacja kar procentowych (trudność bazowa, rany, pancerz, lokacja)
-    const basePenalty = NEUROSHIMA.difficulties[difficulty]?.min || 0;
-    const armorPenalty = applyArmor ? (actor.system.combat?.totalArmorPenalty || 0) : 0;
-    const woundPenalty = applyWounds ? (actor.system.combat?.totalWoundPenalty || 0) : 0;
+    // Apply maneuver modifiers
+    let effectiveAttributeBonus = attributeBonus;
+    let effectiveDifficulty = difficulty;
     
     const isMelee = weapon.system.weaponType === "melee";
     
+    if (isMelee) {
+        if (maneuver === "fury" || maneuver === "fullDefense") {
+            effectiveAttributeBonus += 2;
+        } else if (maneuver === "increasedTempo") {
+            const baseDiffObj = NEUROSHIMA.difficulties[difficulty] || NEUROSHIMA.difficulties.average;
+            const shifted = this._getShiftedDifficulty(baseDiffObj, tempoLevel);
+            // Find key for shifted difficulty
+            effectiveDifficulty = Object.keys(NEUROSHIMA.difficulties).find(k => NEUROSHIMA.difficulties[k].label === shifted.label) || difficulty;
+        }
+    }
+
+    // 1. Kalkulacja kar procentowych (trudność bazowa, rany, pancerz, lokacja)
+    const basePenalty = NEUROSHIMA.difficulties[effectiveDifficulty]?.min || 0;
+    const armorPenalty = applyArmor ? (actor.system.combat?.totalArmorPenalty || 0) : 0;
+    const woundPenalty = applyWounds ? (actor.system.combat?.totalWoundPenalty || 0) : 0;
+    
     // Weapon bonus for melee
     let weaponBonus = 0;
+    const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
     if (isMelee) {
         weaponBonus = meleeAction === "attack" ? (weapon.system.attackBonus || 0) : (weapon.system.defenseBonus || 0);
     }
@@ -124,12 +176,14 @@ export class NeuroshimaDice {
 
     game.neuroshima.log("Kalkulacja kar (%)", {
         basePenalty,
+        effectiveDifficulty,
         modifier,
         armorPenalty,
         woundPenalty,
         locationPenalty,
         totalPenalty,
-        weaponBonus
+        weaponBonus,
+        effectiveAttributeBonus
     });
 
     // 2. Obsługa celowania i liczby kości
@@ -326,7 +380,6 @@ export class NeuroshimaDice {
 
     // Wyznaczenie ostatecznej trudności po uwzględnieniu Suwaka
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
-    const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
     
     let skillValue = 0;
     const skillKey = weapon.system.skill;
@@ -361,7 +414,7 @@ export class NeuroshimaDice {
     
     // Próg sukcesu (Współczynnik + modyfikator PT + bonus do atrybutu)
     const baseAttr = Number(actor.system.attributeTotals[weapon.system.attribute]) || 10;
-    let finalStat = baseAttr + attributeBonus;
+    let finalStat = baseAttr + effectiveAttributeBonus;
     
     // Bonus broni do atrybutu (progu) - tylko w Melee jeśli ustawienie na to pozwala
     if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) {
@@ -570,6 +623,8 @@ export class NeuroshimaDice {
         baseStat: finalStat - attributeBonus,
         attributeBonus: attributeBonus,
         stat: finalStat,
+        maneuver,
+        tempoLevel,
         isReroll,
         isSuccess,
         successPoints,
@@ -719,7 +774,7 @@ export class NeuroshimaDice {
     
     // Fallback for values outside defined ranges
     if (percent < 0) return NEUROSHIMA.difficulties.easy;
-    return NEUROSHIMA.difficulties.grandmasterfull;
+    return NEUROSHIMA.difficulties.grandmasterful;
   }
 
   /**
@@ -742,9 +797,9 @@ export class NeuroshimaDice {
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
   static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null } = {}) {
-    console.log("Neuroshima | rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
+    game.neuroshima.log("rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
     if (isNaN(stat)) {
-        console.warn("Neuroshima | rollTest received NaN stat!", { stat, label });
+        game.neuroshima.warn("rollTest received NaN stat!", { stat, label });
     }
     // Rozpoczęcie grupy logów dla testu standardowego
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
@@ -768,11 +823,11 @@ export class NeuroshimaDice {
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     
     // 2. Wykonanie rzutu 3k20
-    console.log("Neuroshima | rollTest internal values", { stat, attributeBonus, finalStat, finalSkill });
-    console.log("Neuroshima | Evaluating roll 3d20...");
+    game.neuroshima.log("rollTest internal values", { stat, attributeBonus, finalStat, finalSkill });
+    game.neuroshima.log("Evaluating roll 3d20...");
     const roll = new Roll("3d20");
     await roll.evaluate();
-    console.log("Neuroshima | Roll evaluated:", roll.total);
+    game.neuroshima.log("Roll evaluated:", roll.total);
 
     // Obsługa rzutów wymuszonych (do celów debugowania)
     if (fixedDice && fixedDice.length === 3) {
@@ -884,7 +939,7 @@ export class NeuroshimaDice {
    * @private
    */
   static _getShiftedDifficulty(base, shift) {
-    const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterfull", "grandmasterfull"];
+    const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];
     
     // Zabezpieczenie przed brakiem obiektu trudności
     if (!base || !base.label) {

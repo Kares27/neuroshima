@@ -1,22 +1,26 @@
 <div class="melee-view-container">
     {{#each activeMeleeDuels as |duel|}}
-    <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{duel.id}}">
+    <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{duel.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.ClickToOpen'}}">
         <div class="melee-header">
-            <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.Active"}}
+            <i class="fas fa-swords"></i>
+            {{#if @root.user.isGM}}
+            <div class="duel-controls">
+                <a class="action-btn delete" data-action="delete-duel" data-duel-id="{{duel.id}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+            {{/if}}
         </div>
         <div class="melee-participants">
             <div class="participant attacker">
-                <img src="{{duel.attacker.img}}" title="{{duel.attacker.name}}">
-                <span>{{duel.attacker.name}}</span>
+                <img src="{{duel.attacker.img}}" class="participant-img" title="{{duel.attacker.name}}">
+                <span class="participant-name">{{duel.attacker.name}}</span>
             </div>
             <div class="vs">VS</div>
             <div class="participant defender">
-                <img src="{{duel.defender.img}}" title="{{duel.defender.name}}">
-                <span>{{duel.defender.name}}</span>
+                <img src="{{duel.defender.img}}" class="participant-img" title="{{duel.defender.name}}">
+                <span class="participant-name">{{duel.defender.name}}</span>
             </div>
-        </div>
-        <div class="melee-status">
-            {{localize "NEUROSHIMA.MeleeDuel.ClickToOpen"}}
         </div>
     </div>
     {{/each}}

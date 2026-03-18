@@ -251,7 +251,13 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       selectedLocationLabel: selectedLocationLabel,
       woundsFirst: actor.getFlag("neuroshima", "woundsFirst") || false,
       meleePendings: Object.values(game.combat?.getFlag("neuroshima", "meleePendings") || {})
-        .filter(p => p.active && (p.defenderId === actor.uuid || (actor.token && p.defenderId === actor.token.uuid)))
+        .filter(p => p.active)
+        .map(p => {
+            const matchesDefender = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, actor.uuid);
+            const matchesAttacker = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.attackerId, actor.uuid);
+            return { ...p, matchesDefender, matchesAttacker };
+        })
+        .filter(p => p.matchesDefender || p.matchesAttacker)
     };
     
     game.neuroshima?.log("_prepareContext meleePendings sync", {
@@ -1269,23 +1275,28 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const combat = game.combat;
         const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
         
-        // Ignoruj cele, które są nami samymy
-        const actualTargets = targetUuids.filter(uuid => uuid !== this.document.uuid && (!this.document.token || uuid !== this.document.token.uuid));
-        let targetUuid = actualTargets[0];
-        let existingPending = null;
-
         const myUuids = [this.document.uuid];
         if (this.document.token) myUuids.push(this.document.token.uuid);
+
+        // Ignoruj cele, które są nami samymy
+        const actualTargets = targetUuids.filter(uuid => !myUuids.includes(uuid));
+        let targetUuid = actualTargets[0];
+        let existingPending = null;
 
         // 1. Sprawdź czy ktoś nas atakuje (Pending)
         // Jeśli mamy cel, który nas atakuje - to on jest priorytetem
         if (targetUuid) {
-            existingPending = Object.values(pendings).find(p => myUuids.includes(p.defenderId) && p.attackerId === targetUuid);
+            existingPending = Object.values(pendings).find(p => {
+                if (!p.active) return false;
+                const amIDefender = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, this.document.uuid);
+                const isHeAttacker = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.attackerId, targetUuid);
+                return amIDefender && isHeAttacker;
+            });
         } 
         
         // Jeśli nie mamy wybranego atakującego jako celu, ale KTOŚ nas atakuje, odpowiedzmy na pierwszy dostępny atak
         if (!existingPending) {
-            existingPending = Object.values(pendings).find(p => myUuids.includes(p.defenderId) && p.active);
+            existingPending = Object.values(pendings).find(p => p.active && game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, this.document.uuid));
             if (existingPending) targetUuid = existingPending.attackerId;
         }
 
@@ -1351,11 +1362,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                         result.successPoints, 
                         weapon.id
                     );
-                    
-                    // Czyścimy targetowanie na canvasie po inicjacji starcia (WFRP-style)
-                    if (game.user.targets.size > 0) {
-                        game.user.targets.clear();
-                    }
                     
                     this._isRolling = false;
                     return result;
@@ -1428,6 +1434,16 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     ui.notifications.info(game.i18n.localize("NEUROSHIMA.Notifications.SelectTargetOrPoint"));
 
     return new Promise((resolve) => {
+        let cleanupCalled = false;
+        
+        const cleanup = () => {
+            if (cleanupCalled) return;
+            cleanupCalled = true;
+            window.removeEventListener('mousedown', onMouseDown, { capture: true });
+            window.removeEventListener('contextmenu', onContextMenu, { capture: true });
+            body.style.cursor = originalCursor;
+        };
+
         const onMouseDown = async (event) => {
             // Obsługujemy tylko LPM (0) i PPM (2)
             if (event.button !== 0 && event.button !== 2) return;
@@ -1437,13 +1453,11 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            // Sprzątanie
-            window.removeEventListener('mousedown', onMouseDown, true);
-            window.removeEventListener('contextmenu', onContextMenu, true);
-            body.style.cursor = originalCursor;
+            cleanup();
 
             if (event.button === 2) { // PPM = Anulowanie
                 game.neuroshima.log("_waitForTarget: Wybór anulowany przez użytkownika");
+                this._isRolling = false;
                 resolve(null);
                 return;
             }
@@ -1494,8 +1508,17 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         };
 
         // Nasłuchujemy na window z capture: true, aby być przed jakimkolwiek innym listenerem
-        window.addEventListener('mousedown', onMouseDown, true);
-        window.addEventListener('contextmenu', onContextMenu, true);
+        window.addEventListener('mousedown', onMouseDown, { capture: true });
+        window.addEventListener('contextmenu', onContextMenu, { capture: true });
+
+        // Safety timeout - po 30 sekundach automatycznie anuluj, gdyby coś poszło nie tak
+        setTimeout(() => {
+            if (!cleanupCalled) {
+                game.neuroshima.log("_waitForTarget: Timeout safety triggered");
+                cleanup();
+                resolve(null);
+            }
+        }, 30000);
     });
   }
 

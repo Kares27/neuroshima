@@ -1,3 +1,4 @@
+import { NEUROSHIMA } from "../config.js";
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
@@ -17,8 +18,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       icon: "fas fa-swords"
     },
     position: {
-      width: 800,
-      height: 600
+      width: 820,
+      height: 850
     },
     actions: {
       rollPool: function(event, target) {
@@ -28,11 +29,14 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       selectDice: function(event, target) {
           return this.constructor._onSelectDice(event, target, this.duelId);
       },
-      resolveSegment: function(event, target) {
-          return this.constructor._onResolveSegment(event, target, this.duelId);
-      },
       modifyDie: function(event, target) {
           return this.constructor._onModifyDie(event, target, this.duelId);
+      },
+      confirmSelection: function(event, target) {
+          return this.constructor._onConfirmSelection(event, target, this.duelId);
+      },
+      changeWeapon: function(event, target) {
+          return this.constructor._onChangeWeapon(event, target, this.duelId);
       },
       freeDefense: function(event, target) {
           return this.constructor._onFreeDefense(event, target, this.duelId);
@@ -51,12 +55,13 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   static registerHooks() {
       Hooks.on("updateCombat", (combat, updates, options, userId) => {
-          // Re-renderuj wszystkie aktywne aplikacje walki wręcz
-          Object.values(ui.windows).forEach(app => {
-              if (app instanceof MeleeCombatApp) {
+          // Re-renderuj wszystkie aktywne aplikacje walki wręcz korzystając z rejestru instancji ApplicationV2
+          for (const app of foundry.applications.instances.values()) {
+              if (app.id.startsWith("melee-combat-app-")) {
+                  game.neuroshima.log("Odświeżanie MeleeCombatApp (V2) po aktualizacji Combat");
                   app.render();
               }
-          });
+          }
       });
   }
 
@@ -69,7 +74,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   async _prepareContext(options) {
     const combat = game.combat;
     const duels = combat?.getFlag("neuroshima", "meleeDuels") || {};
-    const meleeData = duels[this.duelId] || { active: false };
+    // Deep clone to avoid polluting the flag reference in cache
+    const meleeData = foundry.utils.deepClone(duels[this.duelId] || { active: false });
     const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
 
     if (meleeData.active) {
@@ -77,23 +83,94 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         meleeData.attacker.skillPointsRemaining = (meleeData.attacker.skillValue || 0) - (meleeData.attacker.skillSpent || 0);
         meleeData.defender.skillPointsRemaining = (meleeData.defender.skillValue || 0) - (meleeData.defender.skillSpent || 0);
 
-        // Kara do Zręczności obrońcy za liczbę przeciwników (Główny + Dodatkowi)
-        const opponentCount = 1 + (meleeData.multiOpponents?.length || 0);
-        meleeData.defender.currentPenalty = opponentCount;
-        meleeData.defender.effectiveTarget = meleeData.defender.targetValue - opponentCount;
-        meleeData.attacker.effectiveTarget = meleeData.attacker.targetValue;
-
-        // Pobranie danych o broniach
-        for (const role of ["attacker", "defender"]) {
+        // Kara do Zręczności za liczbę przeciwników (0 przy 1 przeciwniku, -X przy wielu)
+        const multiOpponentPenalty = meleeData.multiOpponents?.length > 0 ? (1 + meleeData.multiOpponents.length) : 0;
+        meleeData.attacker.currentPenalty = meleeData.attacker.id === meleeData.centralId ? multiOpponentPenalty : 0;
+        meleeData.defender.currentPenalty = meleeData.defender.id === meleeData.centralId ? multiOpponentPenalty : 0;
+        
+        // Calculate effective targets including maneuvers and multi-opponent penalty
+        const { NeuroshimaDice } = game.neuroshima;
+        
+        const calculateEffectiveTarget = (role) => {
             const data = meleeData[role];
-            if (data.weaponId) {
+            const otherRole = role === "attacker" ? "defender" : "attacker";
+            const otherData = meleeData[otherRole];
+            
+            // Pobierz bazowe parametry zapisane przy rzucie puli
+            const diffKey = data.difficulty || "average";
+            const basePenalty = NEUROSHIMA.difficulties[diffKey]?.min || 0;
+            const totalPenalty = basePenalty + (data.modifier || 0);
+            
+            const baseDiffObj = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
+            
+            let bonus = (data.attributeBonus || 0);
+            let shift = 0;
+            
+            // Apply maneuver bonuses (+2 to attribute)
+            if (data.maneuver === "fury" || data.maneuver === "fullDefense") {
+                bonus += 2;
+            }
+            
+            // Apply increased tempo shift (affects both sides)
+            const myTempo = (data.maneuver === "increasedTempo") ? (Number(data.tempoLevel) || 0) : 0;
+            const otherTempo = (otherData.maneuver === "increasedTempo") ? (Number(otherData.tempoLevel) || 0) : 0;
+            shift += Math.max(myTempo, otherTempo);
+            
+            const shiftedDiff = NeuroshimaDice._getShiftedDifficulty(baseDiffObj, shift);
+            
+            let target = (data.targetValue || 10) + bonus + shiftedDiff.mod;
+
+            // Uwzględnienie bonusów z broni (jeśli w trybie atrybutu)
+            const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
+            if (bonusMode === "attribute" || bonusMode === "both") {
                 const actorDoc = fromUuidSync(data.id);
                 const actor = actorDoc?.actor || actorDoc;
+                const weapon = actor?.items.get(data.weaponId);
+                if (weapon) {
+                    const weaponBonus = (role === "attacker") ? (weapon.system.attackBonus || 0) : (weapon.system.defenseBonus || 0);
+                    target += weaponBonus;
+                }
+            }
+            
+            // Multi-opponent penalty only for the central participant
+            if (data.id === meleeData.centralId) {
+                target -= multiOpponentPenalty;
+            }
+            
+            return target;
+        };
+
+        meleeData.attacker.effectiveTarget = calculateEffectiveTarget("attacker");
+        meleeData.defender.effectiveTarget = calculateEffectiveTarget("defender");
+
+        // Pobranie danych o broniach i przygotowanie kości do wyświetlenia
+        for (const role of ["attacker", "defender"]) {
+            const data = meleeData[role];
+            const actorDoc = fromUuidSync(data.id);
+            const actor = actorDoc?.actor || actorDoc;
+            
+            // Pobierz wszystkie wyekwipowane bronie białe aktora
+            if (actor) {
+                data.meleeWeapons = actor.items.filter(i => i.type === "weaponMelee" && i.system.equipped);
+            }
+
+            if (data.weaponId) {
                 const weapon = actor?.items.get(data.weaponId);
                 if (weapon) {
                     data.weaponName = weapon.name;
                     data.weaponImg = weapon.img;
                 }
+            }
+
+            // Przekształcamy surowe rzuty (liczby) na obiekty z informacją o sukcesie
+            if (data.dice && data.dice.length > 0) {
+                data.dice = data.dice.map(val => {
+                    const rawValue = typeof val === 'object' ? val.value : val;
+                    return {
+                        value: rawValue,
+                        success: rawValue <= data.effectiveTarget && rawValue !== 20
+                    };
+                });
             }
         }
     }
@@ -119,6 +196,9 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const defenderDoc = fromUuidSync(meleeData.defender?.id);
     const defenderActor = defenderDoc?.actor || defenderDoc;
 
+    const attackerInit = meleeData.attacker?.initiative || 0;
+    const defenderInit = meleeData.defender?.initiative || 0;
+
     return {
         duelId: this.duelId,
         meleeData,
@@ -129,6 +209,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         isDefender: game.user.character?.uuid === meleeData.defender?.id || defenderActor?.isOwner,
         attackerOwned: attackerActor?.isOwner,
         defenderOwned: defenderActor?.isOwner,
+        attackerHasInit: attackerInit > defenderInit,
+        defenderHasInit: defenderInit > attackerInit,
         canResolve: game.user.isGM && meleeData.phase === "segments",
         config: CONFIG.NEUROSHIMA
     };
@@ -141,6 +223,16 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const attackerId = target.dataset.actorId;
     const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
     await NeuroshimaMeleeCombat.rollFreeDefense(null, attackerId, 1, duelId);
+  }
+
+  /**
+   * Zmienia aktywną broń w starciu.
+   */
+  static async _onChangeWeapon(event, target, duelId) {
+    const actorUuid = target.dataset.actorId;
+    const newWeaponId = target.value;
+    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+    await NeuroshimaMeleeCombat.changeWeapon(actorUuid, duelId, newWeaponId);
   }
 
   /**
@@ -212,11 +304,11 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Rozstrzyga segment tury.
+   * Zatwierdza wybór kości.
    */
-  static async _onResolveSegment(event, target, duelId) {
-    game.neuroshima.log("Rozstrzyganie segmentu dla starcia:", duelId);
+  static async _onConfirmSelection(event, target, duelId) {
+    const role = target.dataset.role;
     const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-    await NeuroshimaMeleeCombat.resolveSegment(duelId);
+    await NeuroshimaMeleeCombat.confirmSelection(role, duelId);
   }
 }

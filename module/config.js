@@ -6,8 +6,8 @@ const difficulties = {
     veryHard: { label: "NEUROSHIMA.Difficulty.VeryHard", mod: -8, min: 61, max: 90 },
     damnHard: { label: "NEUROSHIMA.Difficulty.DamnHard", mod: -11, min: 91, max: 120 },
     luck: { label: "NEUROSHIMA.Difficulty.Luck", mod: -15, min: 121, max: 160 },
-    masterfull: { label: "NEUROSHIMA.Difficulty.Masterfull", mod: -20, min: 161, max: 200 },
-    grandmasterfull: { label: "NEUROSHIMA.Difficulty.Grandmasterfull", mod: -24, min: 201, max: 240 }
+    masterful: { label: "NEUROSHIMA.Difficulty.Masterful", mod: -20, min: 161, max: 200 },
+    grandmasterful: { label: "NEUROSHIMA.Difficulty.Grandmasterful", mod: -24, min: 201, max: 240 }
 };
 
 const bodyLocations = {
@@ -191,5 +191,12 @@ export const NEUROSHIMA = {
         "NEUROSHIMA.Roll.BurstShort",
         "NEUROSHIMA.Roll.BurstLong",
         "NEUROSHIMA.Roll.BurstFull"
-    ]
+    ],
+    maneuvers: {
+        none: "NEUROSHIMA.Roll.Maneuvers.None",
+        charge: "NEUROSHIMA.Roll.Maneuvers.Charge",
+        fury: "NEUROSHIMA.Roll.Maneuvers.Fury",
+        fullDefense: "NEUROSHIMA.Roll.Maneuvers.FullDefense",
+        increasedTempo: "NEUROSHIMA.Roll.Maneuvers.IncreasedTempo"
+    }
 };

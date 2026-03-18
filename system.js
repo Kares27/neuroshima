@@ -1030,6 +1030,20 @@ function initializeSocketlib() {
             await message.setFlag("neuroshima", "healingApplied", true);
         }
     });
+
+    // Combat Flag Proxy - Allows players to update flags on the Combat document
+    game.neuroshima.socket.register("updateCombatFlag", async (key, value) => {
+        const combat = game.combat;
+        if (!combat) return;
+        return combat.setFlag("neuroshima", key, value);
+    });
+
+    // Combat Flag Proxy - Allows players to unset flags on the Combat document
+    game.neuroshima.socket.register("unsetCombatFlag", async (key) => {
+        const combat = game.combat;
+        if (!combat) return;
+        return combat.unsetFlag("neuroshima", key);
+    });
 }
 
 // Rejestracja socketlib po załadowaniu modułu

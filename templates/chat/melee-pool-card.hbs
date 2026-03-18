@@ -7,8 +7,8 @@
         <p>{{actor.name}} {{localize "NEUROSHIMA.MeleeDuel.RolledPool"}}:</p>
         <div class="dice-results">
             {{#each dice}}
-                <span class="die-result {{#if (le this ../actor.system.attributeTotals.dexterity)}}success{{else}}failure{{/if}}">
-                    {{this}}
+                <span class="die-result {{#if this.success}}success{{else}}failure{{/if}}">
+                    {{this.value}}
                 </span>
             {{/each}}
         </div>

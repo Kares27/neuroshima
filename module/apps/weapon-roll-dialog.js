@@ -27,6 +27,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       difficulty: lastRoll.difficulty || "average",
       hitLocation: "random",
       meleeAction: options.meleeAction || lastRoll.meleeAction || "attack",
+      maneuver: lastRoll.maneuver || "none",
+      tempoLevel: lastRoll.tempoLevel || 1,
       aimingLevel: this.rollType === "melee" ? 2 : (lastRoll.aimingLevel || 0), // 2 means 3 dice for display
       burstLevel: 0,
       percentageModifier: lastRoll.percentageModifier || 0,
@@ -106,6 +108,15 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     context.baseDifficulty = this.rollOptions.difficulty;
     context.hitLocation = this.rollOptions.hitLocation;
     context.meleeAction = this.rollOptions.meleeAction;
+    context.maneuver = this.rollOptions.maneuver;
+    context.tempoLevel = this.rollOptions.tempoLevel;
+    context.maneuvers = NEUROSHIMA.maneuvers || {
+        none: "NEUROSHIMA.Roll.Maneuvers.None",
+        charge: "NEUROSHIMA.Roll.Maneuvers.Charge",
+        fury: "NEUROSHIMA.Roll.Maneuvers.Fury",
+        fullDefense: "NEUROSHIMA.Roll.Maneuvers.FullDefense",
+        increasedTempo: "NEUROSHIMA.Roll.Maneuvers.IncreasedTempo"
+    };
     context.isMelee = this.rollType === "melee";
     context.aimingLevel = this.rollOptions.aimingLevel;
     context.burstLevel = this.rollOptions.burstLevel;
@@ -186,6 +197,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     // Handle disabled fields which are not in formData
     const aimingLevel = formData.aimingLevel !== undefined ? parseInt(formData.aimingLevel) : (this.rollOptions.aimingLevel || 0);
     const burstLevel = formData.burstLevel !== undefined ? parseInt(formData.burstLevel) : 0;
+    const tempoLevel = formData.tempoLevel !== undefined ? parseInt(formData.tempoLevel) : (this.rollOptions.tempoLevel || 1);
+    const maneuver = formData.maneuver || this.rollOptions.maneuver || "none";
 
     // Update displays for sliders
     const aimingDisplay = html.querySelector('.aiming-display');
@@ -198,6 +211,17 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     if (burstDisplay) burstDisplay.innerText = burstLevel;
     if (bulletsCountDisplay) {
         bulletsCountDisplay.innerText = game.neuroshima.NeuroshimaDice.getBulletsFired(this.weapon, burstLevel);
+    }
+
+    const tempoDisplay = html.querySelector('.tempo-display');
+    const tempoShiftDisplay = html.querySelector('.tempo-shift');
+    if (tempoDisplay) tempoDisplay.innerText = tempoLevel;
+    if (tempoShiftDisplay) tempoShiftDisplay.innerText = tempoLevel;
+
+    // Show/hide tempo row
+    const tempoRow = html.querySelector('.tempo-row');
+    if (tempoRow) {
+        tempoRow.hidden = maneuver !== 'increasedTempo';
     }
 
     // Calculate total percentage
@@ -214,6 +238,11 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     if (isMelee) {
         const action = formData.meleeAction || "attack";
         weaponBonus = action === "attack" ? (this.weapon.system.attackBonus || 0) : (this.weapon.system.defenseBonus || 0);
+        
+        // Maneuver bonuses to attribute
+        if (maneuver === 'fury' || maneuver === 'fullDefense') {
+            weaponBonus += 2;
+        }
     }
 
     const locationPenalty = game.neuroshima.NeuroshimaDice.getLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
@@ -228,7 +257,14 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
     // Determine actual level
     const actualDiff = game.neuroshima.NeuroshimaDice.getDifficultyFromPercent(totalPct);
-    const levelLabel = game.i18n.localize(actualDiff.label);
+    
+    // Apply tempo shift for preview if applicable
+    let displayDiff = actualDiff;
+    if (isMelee && maneuver === 'increasedTempo') {
+        displayDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, tempoLevel);
+    }
+
+    const levelLabel = game.i18n.localize(displayDiff.label);
     
     // Apply skill-based Suwak shift for preview if setting is enabled
     // Only for non-melee weapons (Melee uses skill points manually in duel)
@@ -264,6 +300,12 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     
     // Use shifted difficulty if Suwak is active, otherwise actualDiff
     let activeDiff = actualDiff;
+    
+    // Apply tempo shift if applicable
+    if (isMelee && maneuver === 'increasedTempo') {
+        activeDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, tempoLevel);
+    }
+
     if (allowCombatShift && !isMelee) {
         const skillKey = this.weapon.system.skill;
         let skillValue = (this.actor.system.skills[skillKey]?.value || 0) + (parseInt(formData.skillBonus) || 0);
@@ -301,6 +343,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
             isOpen: this.rollType === "melee" ? false : (formData.isOpen === "true"),
             difficulty: formData.baseDifficulty,
             meleeAction: formData.meleeAction,
+            maneuver: formData.maneuver,
+            tempoLevel: parseInt(formData.tempoLevel) || 1,
             percentageModifier: parseInt(formData.modifier) || 0,
             useArmorPenalty: !!formData.useArmorPenalty,
             useWoundPenalty: !!formData.useWoundPenalty,
@@ -318,6 +362,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         targets: this.targets,
         isOpen: this.rollType === "melee" ? false : (formData.isOpen === "true"),
         meleeAction: formData.meleeAction,
+        maneuver: formData.maneuver,
+        tempoLevel: parseInt(formData.tempoLevel) || 1,
         aimingLevel: aimingLevel,
         burstLevel: burstLevel,
         difficulty: formData.baseDifficulty, // This is selected base difficulty

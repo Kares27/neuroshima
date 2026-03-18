@@ -1,41 +1,92 @@
 <div class="melee-duel-container {{meleeData.phase}}">
+    <div class="duel-status-global">
+        <div class="status-left">
+            <i class="fas fa-swords"></i>
+            {{#if (eq meleeData.phase "pool-roll")}}
+                <span>{{localize "NEUROSHIMA.MeleeDuel.PhaseRollPool"}}</span>
+            {{else}}
+                <span>{{localize "NEUROSHIMA.MeleeDuel.PhaseSegments"}}</span>
+            {{/if}}
+        </div>
+        <div class="status-center">
+            <div class="turn-indicator-center">
+                {{localize "NEUROSHIMA.Combat.Turn"}} {{meleeData.currentTurn}}
+            </div>
+            <div class="segment-indicator">
+                {{localize "NEUROSHIMA.Roll.Segment"}} {{meleeData.currentSegment}} / 3
+            </div>
+        </div>
+    </div>
     <div class="melee-duel-grid">
         <!-- SEKCJA ATAKUJĄCEGO -->
-        <section class="combatant-section attacker {{#if attackerOwned}}is-user{{/if}}">
-            <header class="combatant-header">
-                <img src="{{meleeData.attacker.img}}" class="actor-img" />
-                <h3>{{meleeData.attacker.name}}</h3>
-                <div class="role-tag">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}</div>
-                {{#if meleeData.attacker.weaponName}}
-                <div class="weapon-info">
-                    <img src="{{meleeData.attacker.weaponImg}}" width="24" height="24" />
-                    <span>{{meleeData.attacker.weaponName}}</span>
+        <section class="combatant-section attacker {{#if attackerOwned}}is-user{{/if}} {{#if attackerHasInit}}has-initiative{{/if}} {{#if (eq meleeData.selectionTurn 'attacker')}}current-turn{{/if}}">
+            <div class="turn-indicator-wrapper">
+                {{#if (eq meleeData.selectionTurn 'attacker')}}
+                <div class="turn-indicator pulse top">
+                    <i class="fas fa-hand-fist animate-fist"></i> {{localize "NEUROSHIMA.MeleeDuel.YourTurn"}}
                 </div>
                 {{/if}}
+            </div>
+
+            <header class="combatant-header">
+                <div class="actor-name">{{meleeData.attacker.name}}</div>
+                <img src="{{meleeData.attacker.img}}" class="actor-img" />
+                <div class="role-tag">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}</div>
+                
+                <div class="weapon-selection">
+                    {{#if (and attackerOwned (gt meleeData.attacker.meleeWeapons.length 1))}}
+                        <select class="weapon-select" data-action="changeWeapon" data-actor-id="{{meleeData.attacker.id}}">
+                            {{#each meleeData.attacker.meleeWeapons}}
+                                <option value="{{this.id}}" {{#if (eq this.id ../meleeData.attacker.weaponId)}}selected{{/if}}>{{this.name}}</option>
+                            {{/each}}
+                        </select>
+                    {{else}}
+                        {{#if meleeData.attacker.weaponName}}
+                        <div class="weapon-info">
+                            <img src="{{meleeData.attacker.weaponImg}}" width="24" height="24" />
+                            <span>{{meleeData.attacker.weaponName}}</span>
+                        </div>
+                        {{/if}}
+                    {{/if}}
+                </div>
+
                 <div class="target-info">
                     {{localize "NEUROSHIMA.MeleeDuel.TargetValue"}}: <strong>{{meleeData.attacker.effectiveTarget}}</strong>
+                    {{#if meleeData.attacker.currentPenalty}}
+                        <span class="penalty-tag" title="{{localize "NEUROSHIMA.Roll.Penalties"}}">-{{meleeData.attacker.currentPenalty}}</span>
+                    {{/if}}
                 </div>
+                <div class="initiative-info">
+                    {{localize "NEUROSHIMA.MeleeDuel.Initiative"}}: <strong>{{meleeData.attacker.initiative}}</strong>
+                </div>
+                {{#if (and meleeData.attacker.maneuver (ne meleeData.attacker.maneuver 'none'))}}
+                <div class="maneuver-info">
+                    {{localize "NEUROSHIMA.Roll.Maneuvers.Label"}}: <strong>{{localize (concat "NEUROSHIMA.Roll.Maneuvers." (capitalize meleeData.attacker.maneuver))}}</strong>
+                    {{#if (eq meleeData.attacker.maneuver 'increasedTempo')}}
+                        (PT +{{meleeData.attacker.tempoLevel}})
+                    {{/if}}
+                </div>
+                {{/if}}
             </header>
+
+            {{#if (or attackerOwned isGM)}}
+            <div class="skill-info">
+                {{localize "NEUROSHIMA.MeleeDuel.SkillPoints"}}: <strong>{{meleeData.attacker.skillPointsRemaining}}</strong>
+            </div>
+            {{/if}}
 
             <div class="dice-pool">
                 {{#if meleeData.attacker.dice.length}}
                     {{#each meleeData.attacker.dice}}
-                        <div class="die-control {{#if (meleeDieUsed ../meleeData.attacker.usedDiceIndices @index)}}used{{/if}} {{#if (meleeDieSelected ../meleeData.attacker.selectedIndices @index)}}selected{{/if}} {{#if (lte this ../meleeData.attacker.effectiveTarget)}}success{{else}}failure{{/if}}" 
+                        <div class="die-control {{#if (meleeDieUsed ../meleeData.attacker.usedDiceIndices @index)}}used{{/if}} {{#if (meleeDieSelected ../meleeData.attacker.selectedIndices @index)}}selected{{/if}} {{#if this.success}}success{{else}}failure{{/if}}" 
                              data-action="selectDice" data-role="attacker" data-index="{{@index}}">
-                            <span class="die-value">{{this}}</span>
-                            {{#if (and ../doubleSkill ../attackerOwned)}}
-                            <div class="die-modifiers">
-                                <button type="button" data-action="modifyDie" data-role="attacker" data-index="{{@index}}" data-amount="-1">-</button>
-                                <button type="button" data-action="modifyDie" data-role="attacker" data-index="{{@index}}" data-amount="1">+</button>
-                            </div>
-                            {{/if}}
+                            <span class="die-value">{{this.value}}</span>
                         </div>
                     {{/each}}
                 {{else}}
                     {{#if attackerOwned}}
                         <button type="button" class="roll-pool-btn" data-action="rollPool" data-actor-id="{{meleeData.attacker.id}}">
                             <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
-                            <small>({{meleeData.attacker.skillName}}: {{meleeData.attacker.skillValue}}, PT: {{meleeData.attacker.effectiveTarget}})</small>
                         </button>
                     {{else}}
                         <div class="waiting">{{localize "NEUROSHIMA.MeleeDuel.WaitingForPool"}}</div>
@@ -43,71 +94,101 @@
                 {{/if}}
             </div>
             
-            {{#if (or attackerOwned isGM)}}
-            <div class="skill-info">
-                {{localize "NEUROSHIMA.MeleeDuel.SkillPoints"}}: <strong>{{meleeData.attacker.skillPointsRemaining}}</strong>
+            <div class="selection-controls">
+                {{#if (and attackerOwned (eq meleeData.selectionTurn 'attacker'))}}
+                <button type="button" class="confirm-selection-btn pulse-button" data-action="confirmSelection" data-role="attacker">
+                    <i class="fas fa-check"></i> {{localize "NEUROSHIMA.MeleeDuel.ConfirmSelection"}}
+                </button>
+                {{/if}}
             </div>
-            {{/if}}
         </section>
 
         <!-- SEKCJA CENTRUM (SEGMENTY) -->
         <section class="action-center">
-            <div class="segment-indicator">
-                {{localize "NEUROSHIMA.Roll.Segment"}} {{meleeData.currentSegment}} / 3
-            </div>
-
-            <div class="duel-status">
-                {{#if (eq meleeData.phase "pool-roll")}}
-                    <p>{{localize "NEUROSHIMA.MeleeDuel.PhaseRollPool"}}</p>
-                {{else}}
-                    <p>{{localize "NEUROSHIMA.MeleeDuel.PhaseSegments"}}</p>
-                    <button type="button" data-action="resolveSegment" {{#unless canResolve}}disabled{{/unless}}>
-                        {{localize "NEUROSHIMA.MeleeDuel.ResolveSegment"}}
-                    </button>
-                {{/if}}
-            </div>
-
-            <div class="combat-log">
-                <!-- Logi walki będą tu lądować dynamicznie -->
+            <div class="combat-log-container">
+                <div class="log-header">{{localize "NEUROSHIMA.MeleeDuel.CombatLog"}}</div>
+                <div class="combat-log">
+                    {{#each meleeData.log}}
+                        <div class="log-entry {{this.type}}">
+                            <span class="log-segment">[{{localize "NEUROSHIMA.Roll.Segment"}} {{this.segment}}]</span>
+                            <span class="log-text">{{this.text}}</span>
+                        </div>
+                    {{else}}
+                        <div class="log-empty">{{localize "NEUROSHIMA.MeleeDuel.LogEmpty"}}</div>
+                    {{/each}}
+                </div>
             </div>
         </section>
 
         <!-- SEKCJA OBROŃCY -->
-        <section class="combatant-section defender {{#if defenderOwned}}is-user{{/if}}">
-            <header class="combatant-header">
-                <img src="{{meleeData.defender.img}}" class="actor-img" />
-                <h3>{{meleeData.defender.name}}</h3>
-                <div class="role-tag">{{localize "NEUROSHIMA.MeleeDuel.Defender"}}</div>
-                {{#if meleeData.defender.weaponName}}
-                <div class="weapon-info">
-                    <img src="{{meleeData.defender.weaponImg}}" width="24" height="24" />
-                    <span>{{meleeData.defender.weaponName}}</span>
+        <section class="combatant-section defender {{#if defenderOwned}}is-user{{/if}} {{#if defenderHasInit}}has-initiative{{/if}} {{#if (eq meleeData.selectionTurn 'defender')}}current-turn{{/if}}">
+            <div class="turn-indicator-wrapper">
+                {{#if (eq meleeData.selectionTurn 'defender')}}
+                <div class="turn-indicator pulse top">
+                    <i class="fas fa-hand-fist animate-fist"></i> {{localize "NEUROSHIMA.MeleeDuel.YourTurn"}}
                 </div>
                 {{/if}}
+            </div>
+
+            <header class="combatant-header">
+                <div class="actor-name">{{meleeData.defender.name}}</div>
+                <img src="{{meleeData.defender.img}}" class="actor-img" />
+                <div class="role-tag">{{localize "NEUROSHIMA.MeleeDuel.Defender"}}</div>
+                
+                <div class="weapon-selection">
+                    {{#if (and defenderOwned (gt meleeData.defender.meleeWeapons.length 1))}}
+                        <select class="weapon-select" data-action="changeWeapon" data-actor-id="{{meleeData.defender.id}}">
+                            {{#each meleeData.defender.meleeWeapons}}
+                                <option value="{{this.id}}" {{#if (eq this.id ../meleeData.defender.weaponId)}}selected{{/if}}>{{this.name}}</option>
+                            {{/each}}
+                        </select>
+                    {{else}}
+                        {{#if meleeData.defender.weaponName}}
+                        <div class="weapon-info">
+                            <img src="{{meleeData.defender.weaponImg}}" width="24" height="24" />
+                            <span>{{meleeData.defender.weaponName}}</span>
+                        </div>
+                        {{/if}}
+                    {{/if}}
+                </div>
+
                 <div class="target-info">
                     {{localize "NEUROSHIMA.MeleeDuel.TargetValue"}}: <strong>{{meleeData.defender.effectiveTarget}}</strong>
+                    {{#if meleeData.defender.currentPenalty}}
+                        <span class="penalty-tag" title="{{localize "NEUROSHIMA.Roll.Penalties"}}">-{{meleeData.defender.currentPenalty}}</span>
+                    {{/if}}
                 </div>
+                <div class="initiative-info">
+                    {{localize "NEUROSHIMA.MeleeDuel.Initiative"}}: <strong>{{meleeData.defender.initiative}}</strong>
+                </div>
+                {{#if (and meleeData.defender.maneuver (ne meleeData.defender.maneuver 'none'))}}
+                <div class="maneuver-info">
+                    {{localize "NEUROSHIMA.Roll.Maneuvers.Label"}}: <strong>{{localize (concat "NEUROSHIMA.Roll.Maneuvers." (capitalize meleeData.defender.maneuver))}}</strong>
+                    {{#if (eq meleeData.defender.maneuver 'increasedTempo')}}
+                        (PT +{{meleeData.defender.tempoLevel}})
+                    {{/if}}
+                </div>
+                {{/if}}
             </header>
+
+            {{#if (or defenderOwned isGM)}}
+            <div class="skill-info">
+                {{localize "NEUROSHIMA.MeleeDuel.SkillPoints"}}: <strong>{{meleeData.defender.skillPointsRemaining}}</strong>
+            </div>
+            {{/if}}
 
             <div class="dice-pool">
                 {{#if meleeData.defender.dice.length}}
                     {{#each meleeData.defender.dice}}
-                        <div class="die-control {{#if (meleeDieUsed ../meleeData.defender.usedDiceIndices @index)}}used{{/if}} {{#if (meleeDieSelected ../meleeData.defender.selectedIndices @index)}}selected{{/if}} {{#if (lte this ../meleeData.defender.effectiveTarget)}}success{{else}}failure{{/if}}" 
+                        <div class="die-control {{#if (meleeDieUsed ../meleeData.defender.usedDiceIndices @index)}}used{{/if}} {{#if (meleeDieSelected ../meleeData.defender.selectedIndices @index)}}selected{{/if}} {{#if this.success}}success{{else}}failure{{/if}}" 
                              data-action="selectDice" data-role="defender" data-index="{{@index}}">
-                            <span class="die-value">{{this}}</span>
-                            {{#if (and ../doubleSkill ../defenderOwned)}}
-                            <div class="die-modifiers">
-                                <button type="button" data-action="modifyDie" data-role="defender" data-index="{{@index}}" data-amount="-1">-</button>
-                                <button type="button" data-action="modifyDie" data-role="defender" data-index="{{@index}}" data-amount="1">+</button>
-                            </div>
-                            {{/if}}
+                            <span class="die-value">{{this.value}}</span>
                         </div>
                     {{/each}}
                 {{else}}
                     {{#if defenderOwned}}
                         <button type="button" class="roll-pool-btn" data-action="rollPool" data-actor-id="{{meleeData.defender.id}}">
                             <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
-                            <small>({{meleeData.defender.skillName}}: {{meleeData.defender.skillValue}}, PT: {{meleeData.defender.effectiveTarget}})</small>
                         </button>
                     {{else}}
                         <div class="waiting">{{localize "NEUROSHIMA.MeleeDuel.WaitingForPool"}}</div>
@@ -115,11 +196,13 @@
                 {{/if}}
             </div>
 
-            {{#if (or defenderOwned isGM)}}
-            <div class="skill-info">
-                {{localize "NEUROSHIMA.MeleeDuel.SkillPoints"}}: <strong>{{meleeData.defender.skillPointsRemaining}}</strong>
+            <div class="selection-controls">
+                {{#if (and defenderOwned (eq meleeData.selectionTurn 'defender'))}}
+                <button type="button" class="confirm-selection-btn pulse-button" data-action="confirmSelection" data-role="defender">
+                    <i class="fas fa-check"></i> {{localize "NEUROSHIMA.MeleeDuel.ConfirmSelection"}}
+                </button>
+                {{/if}}
             </div>
-            {{/if}}
         </section>
     </div>
 

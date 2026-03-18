@@ -109,6 +109,8 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
         useWoundPenalty: !!data.useWoundPenalty,
         skillBonus: parseInt(data.skillBonus) || 0,
         attributeBonus: parseInt(data.attributeBonus) || 0,
+        maneuver: data.maneuver || "none",
+        chargeLevel: parseInt(data.chargeLevel) || 0,
         rollMode: data.rollMode
     };
   }
@@ -146,6 +148,7 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     context.actor = this.actor;
     context.attributes = NEUROSHIMA.attributes;
     context.difficulties = NEUROSHIMA.difficulties;
+    context.isMelee = this.isMelee;
     
     // Prepare skills list
     const equippedWeapon = this.actor.items.find(i => i.type === "weapon" && i.system.equipped);
@@ -232,6 +235,12 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
 
     const formData = new foundry.applications.ux.FormDataExtended(form).object;
     
+    // Show/hide charge level
+    const chargeWrapper = html.querySelector('.charge-level-wrapper');
+    if (chargeWrapper) {
+        chargeWrapper.hidden = formData.maneuver !== 'charge';
+    }
+
     // Calculate total percentage
     const basePenalty = NEUROSHIMA.difficulties[formData.difficulty]?.min || 0;
     const modifier = parseInt(formData.modifier) || 0;
@@ -250,6 +259,12 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     const attrKey = formData.attribute;
     const attrTotal = Number(this.actor.system.attributeTotals[attrKey]) || 0;
     const attrBonus = parseInt(formData.attributeBonus) || 0;
+    
+    // Charge bonus
+    let maneuverBonus = 0;
+    if (formData.maneuver === 'charge') {
+        maneuverBonus = parseInt(formData.chargeLevel) || 0;
+    }
 
     // Calculate Shifted Difficulty (Suwak)
     const skillKey = formData.skill;
@@ -265,7 +280,7 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     
     // Find shifted difficulty
     const difficulties = Object.values(NEUROSHIMA.difficulties);
-    const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterfull", "grandmasterfull"];
+    const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];
     const baseDiffKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key].label === baseDifficulty.label);
     const baseDiffIndex = order.indexOf(baseDiffKey);
     const shiftedIndex = Math.max(0, Math.min(order.length - 1, baseDiffIndex - skillShift));
@@ -276,10 +291,10 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
         shiftedElement.innerText = game.i18n.localize(shiftedDifficulty.label);
     }
     
-    // Update target with the shifted difficulty modifier
+    // Update target with the shifted difficulty modifier and maneuver bonus
     const targetElement = html.querySelector('.final-target');
     if (targetElement) {
-        targetElement.innerText = attrTotal + attrBonus + shiftedDifficulty.mod;
+        targetElement.innerText = attrTotal + attrBonus + maneuverBonus + shiftedDifficulty.mod;
     }
 
     // Toggle skill select disability

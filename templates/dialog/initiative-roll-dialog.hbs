@@ -78,6 +78,28 @@
         </div>
     </div>
 
+    {{#if isMelee}}
+    <div class="maneuver-section">
+        <div class="form-group vertical">
+            <label>{{localize "NEUROSHIMA.Roll.Maneuvers.Label"}}</label>
+            <div class="maneuver-inputs" style="display: flex; gap: 10px; align-items: center;">
+                <select name="maneuver" style="flex: 2;">
+                    <option value="none">{{localize "NEUROSHIMA.Roll.Maneuvers.None"}}</option>
+                    <option value="charge">{{localize "NEUROSHIMA.Roll.Maneuvers.Charge"}}</option>
+                </select>
+                <div class="charge-level-wrapper" style="flex: 1; display: flex; align-items: center; gap: 5px;" hidden>
+                    <label>Bon.</label>
+                    <select name="chargeLevel">
+                        <option value="1">+1</option>
+                        <option value="2" selected>+2</option>
+                        <option value="3">+3</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
     <div class="summary-section">
         <h3>{{localize "NEUROSHIMA.Roll.Summary"}}</h3>
         <table class="summary-table">

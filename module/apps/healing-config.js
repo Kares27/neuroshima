@@ -89,8 +89,8 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     async _onSubmit(event, form, formData) {
         const data = formData.object;
         
-        console.log("Neuroshima | Próba zapisu ustawień leczenia:", data);
-        console.log("Neuroshima | Is GM:", game.user.isGM);
+        game.neuroshima.log("Próba zapisu ustawień leczenia:", data);
+        game.neuroshima.log("Is GM:", game.user.isGM);
         
         try {
             const healingDifficulties = {
@@ -102,7 +102,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             
             const patientCardVersion = String(data.patientCardVersion || "simple");
             
-            console.log("Neuroshima | Ustawienia do zapisania:", {
+            game.neuroshima.log("Ustawienia do zapisania:", {
                 healingDifficulties,
                 patientCardVersion
             });
@@ -115,12 +115,12 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             await Promise.all(updates);
             
             const readback = game.settings.get("neuroshima", "healingDifficulties");
-            console.log("Neuroshima | Readback healingDifficulties:", readback);
-            console.log("Neuroshima | Ustawienia leczenia zostały zapisane");
+            game.neuroshima.log("Readback healingDifficulties:", readback);
+            game.neuroshima.log("Ustawienia leczenia zostały zapisane");
             
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.HealingConfig.Saved"));
         } catch (err) {
-            console.error("Neuroshima | Błąd zapisu ustawień leczenia:", err);
+            game.neuroshima.error("Błąd zapisu ustawień leczenia:", err);
             ui.notifications.error("Wystąpił błąd podczas zapisu ustawień: " + err.message);
         }
     }

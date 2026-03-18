@@ -16,19 +16,29 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             "open-melee": NeuroshimaCombatTracker.prototype._onOpenMelee,
             "set-view": NeuroshimaCombatTracker.prototype._onSetView,
             "join-melee": NeuroshimaCombatTracker.prototype._onJoinMelee,
-            "dismiss-melee": NeuroshimaCombatTracker.prototype._onDismissMelee
+            "dismiss-melee": NeuroshimaCombatTracker.prototype._onDismissMelee,
+            "delete-duel": NeuroshimaCombatTracker.prototype._onDeleteDuel
         }
     });
 
     /** @override */
-    static PARTS = foundry.utils.mergeObject(super.PARTS, {
+    static PARTS = {
         tabs: {
             template: "systems/neuroshima/templates/sidebar/combat-tracker-tabs.hbs"
         },
+        header: {
+            template: "templates/sidebar/tabs/combat/header.hbs"
+        },
+        tracker: {
+            template: "templates/sidebar/tabs/combat/tracker.hbs"
+        },
         melee: {
             template: "systems/neuroshima/templates/sidebar/melee-view.hbs"
+        },
+        footer: {
+            template: "templates/sidebar/tabs/combat/footer.hbs"
         }
-    });
+    };
 
     /** @override */
     async _onRender(context, options) {
@@ -116,6 +126,19 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         const pendingUuid = target.dataset.pendingId;
         const { NeuroshimaMeleeCombat } = await import("./melee-combat.js");
         await NeuroshimaMeleeCombat.dismissMeleePending(pendingUuid);
+    }
+
+    /**
+     * Akcja usunięcia aktywnego pojedynku (tylko GM).
+     */
+    async _onDeleteDuel(event, target) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!game.user.isGM) return;
+        
+        const duelId = target.dataset.duelId;
+        const { NeuroshimaMeleeCombat } = await import("./melee-combat.js");
+        await NeuroshimaMeleeCombat.dismissMeleeDuel(duelId);
     }
 
     /** @override */

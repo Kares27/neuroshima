@@ -95,10 +95,11 @@
             "NoSkill": "Bez Umiejętności",
             "CurrentWeaponSkill": "Umiejętność używanej broni",
             "Slider": "Suwak (Umiejętność + Kości)",
+            "DifficultyShift": "Przesunięcie Trudności",
             "Distance": "Dystans (m)",
             "Aiming": "Celowanie",
             "Burst": "Seria",
-            "BurstSingle": "Pojedyńcza",
+            "BurstSingle": "Pojedyncza",
             "BurstShort": "Krótka seria",
             "BurstLong": "Długa seria",
             "BurstFull": "Ogień ciągły",
@@ -118,11 +119,14 @@
             "DetailsHidden": "Szczegóły ukryte (wymagana wyższa ranga)",
             "Segment": "Segment",
             "Maneuvers": {
+                "Label": "Manewry",
                 "None": "Brak",
                 "Charge": "Szarża",
                 "Fury": "Furia",
-                "FullDefense": "Pełna obrona"
+                "FullDefense": "Pełna obrona",
+                "IncreasedTempo": "Zwiększone tempo"
             },
+            "TempoLevel": "Poziom tempa",
             "MeleeResults": "Wyniki walki wręcz",
             "Preview": {
                 "Base": "Bazowy",
@@ -141,8 +145,9 @@
             "VeryHard": "Bardzo Trudny",
             "DamnHard": "Cholernie Trudny",
             "Luck": "Fart",
-            "Masterfull": "Mistrowski",
-            "Grandmasterfull": "Arcymistrzowki",
+            "Masterful": "Mistrzowski",
+            "Grandmasterful": "Arcymistrzowski",
+            "Impossible": "Niemożliwy",
             "ShowMore": "Pokaż progi trudności",
             "ShowLess": "Ukryj progi trudności"
         },
@@ -178,6 +183,12 @@
             "WhisperDetail": "Rana {name} ({location}): {old}% -> {new}%",
             "WhisperRemoved": "Rana {name} ({location}) została całkowicie wyleczona.",
             "Button": "Odpocznij"
+        },
+        "PainResistance": {
+            "ReportTitle": "Testy Odporności na Ból",
+            "Passed": "Zdane",
+            "Failed": "Niezdane",
+            "Reduced": "Zredukowane"
         },
         "Wound": {
             "TotalPenalty": "Suma Kar",
@@ -317,13 +328,16 @@
             "NoSkillPoints": "Nie masz więcej punktów umiejętności do wydania.",
             "DamageAlreadyApplied": "Obrażenia z tego wyniku zostały już nałożone.",
             "HealingAlreadyApplied": "Leczenie zostało już zaaplikowane.",
-            "Natural20CannotBeModified": "Naturalna 20 nie może być modyfikowana!"
+            "Natural20CannotBeModified": "Naturalna 20 nie może być modyfikowana!",
+            "MeleeMatchDiceCount": "Liczba kości obrońcy musi zgadzać się z liczbą kości atakującego!",
+            "MeleeNeedsDice": "Musisz wybrać przynajmniej jedną kość, aby kontynuować."
         },
         "Combat": {
             "Combatants": "Uczestnicy",
             "Turn": "Tura"
         },
         "MeleeOpposed": {
+            "Title": "Starcie Wręcz",
             "InitiativeTest": "Inicjatywa Zwarcia",
             "InitiativeDraw": "Remis w inicjatywie! Rzućcie jeszcze raz.",
             "RollInitiative": "Rzuć na Inicjatywę",
@@ -360,13 +374,28 @@
             "ResultHit": "Trafienie!",
             "ResultTakeover": "Przejęcie Inicjatywy!",
             "ResultMiss": "Pudło.",
+            "TargetValue": "Próg (Zr)",
+            "Initiative": "Inicjatywa",
+            "RolledPool": "Rzucił Pulę",
+            "NotYourSelectionTurn": "To nie jest twoja tura wyboru kości!",
+            "SelectionTurn": "Tura wyboru kości",
+            "ConfirmSelection": "Zatwierdź wybór",
             "NoActiveFights": "Brak aktywnych pojedynków.",
             "StartInstruction": "Kliknij broń białą na celu, aby rozpocząć zwarcie.",
             "OpenActive": "Otwórz panel aktywnego pojedynku",
             "Active": "Aktywny Pojedynek",
             "Pending": "Oczekiwanie na Obrońcę",
             "ClickToOpen": "Kliknij, aby otworzyć panel walki",
-            "WaitingForDefender": "Oczekiwanie na dołączenie obrońcy..."
+            "WaitingForDefender": "Oczekiwanie na dołączenie obrońcy...",
+            "CombatLog": "Dziennik Walki",
+            "LogEmpty": "Brak wpisów w dzienniku.",
+            "LogRemis": "{attacker} atakuje (x{count}), ale {defender} paruje cios.",
+            "LogHit": "{attacker} trafia {defender} w {location} zadając ranę {damage}.",
+            "LogTakeover": "{newAttacker} przejmuje inicjatywę od {oldAttacker}!",
+            "LogMiss": "{attacker} pudłuje.",
+            "LogTurnEnd": "Koniec Tury {turn}.",
+            "LogFullDefenseBlock": "{defender} paruje cios (Pełna Obrona), ale nie przejmuje inicjatywy.",
+            "LogFuryHit": "Atakujący w Furii otrzymuje kontratak!"
         },
         "Tabs": {
             "Attributes": "Współczynniki",
@@ -432,12 +461,6 @@
             "RestReversed": "Cofnięto odpoczynek u {name}.",
             "NoWoundsFoundToReverse": "Nie znaleziono nałożonych ran do wycofania.",
             "StatusReversed": "Obrażenia zostały wycofane przez MG."
-        },
-        "PainResistance": {
-            "ReportTitle": "Testy Odporności na Ból",
-            "Passed": "Zdane",
-            "Failed": "Niezdane",
-            "Reduced": "Zredukowane"
         },
         "Tricks": {
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"

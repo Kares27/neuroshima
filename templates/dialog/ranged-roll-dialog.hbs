@@ -9,6 +9,14 @@
                     <option value="defense" {{#if (eq meleeAction "defense")}}selected{{/if}}>{{localize "NEUROSHIMA.Actions.Defense"}}</option>
                 </select>
                 <input type="hidden" name="isOpen" value="false">
+            </div>
+            <div class="form-group vertical">
+                <label>{{localize "NEUROSHIMA.Roll.Maneuvers.Label"}}</label>
+                <select name="maneuver">
+                    {{#each maneuvers}}
+                    <option value="{{@key}}" {{#if (eq @key ../maneuver)}}selected{{/if}}>{{localize this}}</option>
+                    {{/each}}
+                </select>
                 {{else}}
                 <label>{{localize "NEUROSHIMA.Roll.Test"}}</label>
                 <select name="isOpen">
@@ -73,6 +81,20 @@
             </div>
         </div>
     </div>
+
+    {{#if isMelee}}
+    <div class="dialog-columns tempo-row {{#if (ne maneuver 'increasedTempo')}}hidden{{/if}}">
+        <div class="column left">
+            <div class="form-group vertical slider-group">
+                <label>{{localize 'NEUROSHIMA.Roll.Maneuvers.IncreasedTempo'}}: <span class="tempo-display">{{tempoLevel}}</span></label>
+                <input type="range" name="tempoLevel" min="1" max="3" value="{{tempoLevel}}" step="1">
+                <div class="slider-hint">
+                    {{localize 'NEUROSHIMA.Roll.DifficultyShift'}}: +<span class="tempo-shift">{{tempoLevel}}</span> PT
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/if}}
 
     {{#if (eq rollType "ranged")}}
     <div class="dialog-columns distance-row">

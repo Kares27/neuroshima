@@ -32,7 +32,7 @@ body.theme-dark {
 
     /* Interaktywne */
     --ns-bg-input: rgba(255, 255, 255, 0.05);
-    --ns-bg-header: #rgba(0,0,0,0.4);      /* Czarne nagłówki sekcji jak na screenie */
+    --ns-bg-header: rgba(0, 0, 0, 0.4);      /* Czarne nagłówki sekcji jak na screenie */
     --ns-bg-hover: rgba(255, 255, 255, 0.1);
     --ns-bg-armor: #3f3f3f;
 
@@ -3531,8 +3531,19 @@ body.theme-dark {
     color: white;
 }
 
+/* Combat Tracker View Logic */
+.neuroshima.combat-tracker[data-view="encounter"] [data-application-part="melee"] {
+    display: none !important;
+}
+
+.neuroshima.combat-tracker[data-view="melee"] [data-application-part="header"],
+.neuroshima.combat-tracker[data-view="melee"] [data-application-part="tracker"],
+.neuroshima.combat-tracker[data-view="melee"] [data-application-part="footer"] {
+    display: none !important;
+}
+
 /* Combat Tracker Tabs */
-.neuroshima.combat-tracker .neuroshima-tracker-tabs {
+.neuroshima.combat-tracker .combat-tabs {
     flex: 0 0 32px;
     border-top: 1px solid var(--ns-border-main);
     border-bottom: 1px solid var(--ns-border-main);
@@ -3541,26 +3552,26 @@ body.theme-dark {
     justify-content: space-around;
 }
 
-.neuroshima.combat-tracker .neuroshima-tracker-tabs .item {
+.neuroshima.combat-tracker .combat-tabs .item {
     line-height: 32px;
-    font-size: 1.2rem;
+    font-size: 0.9rem;
+    font-family: 'SpecialElite', serif;
     width: 100%;
     text-align: center;
     cursor: pointer;
+    text-transform: uppercase;
+    color: var(--ns-text-light);
+    transition: all 0.2s;
 }
 
-.neuroshima.combat-tracker .neuroshima-tracker-tabs .item.active {
+.neuroshima.combat-tracker .combat-tabs .item.active {
     text-shadow: 0 0 10px var(--ns-border-focus);
     border-bottom: 3px solid var(--ns-border-focus);
 }
 
-.neuroshima.combat-tracker .melee-tab {
+.neuroshima.combat-tracker .melee-view-container {
     padding: 5px;
     overflow-y: auto;
-}
-
-.neuroshima.combat-tracker .tab:not(.active) {
-    display: none !important;
 }
 
 .neuroshima.combat-tracker .melee-duels-list {
@@ -3581,7 +3592,8 @@ body.theme-dark {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 5px;
+    gap: 10px;
+    padding: 5px;
 }
 
 .neuroshima.combat-tracker .participant {
@@ -3589,15 +3601,26 @@ body.theme-dark {
     flex-direction: column;
     align-items: center;
     flex: 1;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     text-align: center;
+    min-width: 0;
 }
 
-.neuroshima.combat-tracker .participant img {
-    width: 32px;
-    height: 32px;
+.neuroshima.combat-tracker .participant-img {
+    width: 40px;
+    height: 40px;
     object-fit: cover;
-    border: 1px solid var(--ns-border-main);
+    border: 2px solid var(--ns-border-main);
+    border-radius: 50%;
+    margin-bottom: 4px;
+}
+
+.neuroshima.combat-tracker .participant-name {
+    font-family: 'SpecialElite', serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
 }
 
 .neuroshima.combat-tracker .vs {

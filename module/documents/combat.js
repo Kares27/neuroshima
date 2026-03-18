@@ -36,7 +36,7 @@ export class NeuroshimaCombat extends Combat {
         initiativeValue = await combatant.actor.rollInitiative({ combatant, formula });
       }
 
-      console.log(`Neuroshima | Initiative roll for ${combatant.name}:`, initiativeValue);
+      game.neuroshima.log(`Initiative roll for ${combatant.name}:`, initiativeValue);
 
       if (initiativeValue === null || initiativeValue === undefined) continue;
 
