@@ -105,7 +105,41 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     context.attacker = context.currentExchange.attackerId ? context.participants[context.currentExchange.attackerId] : null;
     context.defender = context.currentExchange.defenderId ? context.participants[context.currentExchange.defenderId] : null;
 
+    context.currentPrompt = this._getPhasePrompt(context);
+
     return context;
+  }
+
+  /**
+   * Generates a user-friendly instruction based on the current phase.
+   * @private
+   */
+  _getPhasePrompt(context) {
+    const phase = context.turnState.phase;
+    const selectionTurnId = context.turnState.selectionTurn;
+    const participant = context.participants[selectionTurnId];
+    const name = participant?.name || "";
+
+    switch (phase) {
+      case "awaiting-pool-rolls":
+        return game.i18n.localize("NEUROSHIMA.MeleeDuel.Prompt.RollPool");
+      case "exchange-declaration":
+        return game.i18n.format("NEUROSHIMA.MeleeDuel.Prompt.Declare", { name });
+      case "exchange-attacker-selection":
+        return game.i18n.format("NEUROSHIMA.MeleeDuel.Prompt.SelectAttackerDice", { 
+          name, 
+          count: context.currentExchange.declaredDiceCount 
+        });
+      case "exchange-defender-selection":
+        return game.i18n.format("NEUROSHIMA.MeleeDuel.Prompt.SelectDefenderDice", { 
+          name, 
+          count: context.currentExchange.declaredDiceCount 
+        });
+      case "exchange-ready":
+        return game.i18n.localize("NEUROSHIMA.MeleeDuel.Prompt.Ready");
+      default:
+        return "";
+    }
   }
 
   /**
@@ -148,17 +182,37 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!p || p.usedDice.includes(index)) return;
 
     const exchange = updated.currentExchange;
+    const phase = updated.turnState.phase;
     let roleKey = null;
     
-    if (participantId === exchange.attackerId) roleKey = "attackerSelectedDice";
-    else if (participantId === exchange.defenderId) roleKey = "defenderSelectedDice";
+    // Strict phase checks for die selection
+    if (phase === "exchange-attacker-selection" && participantId === exchange.attackerId) {
+        roleKey = "attackerSelectedDice";
+    } else if (phase === "exchange-defender-selection" && participantId === exchange.defenderId) {
+        roleKey = "defenderSelectedDice";
+    }
     
-    if (!roleKey) return; // Participant not in current exchange
+    if (!roleKey) {
+        game.neuroshima?.warn("SelectDie | Selection not allowed at this phase/participant.", { phase, participantId });
+        return; 
+    }
 
     if (exchange[roleKey].includes(index)) {
       exchange[roleKey] = exchange[roleKey].filter(i => i !== index);
     } else {
-      exchange[roleKey].push(index);
+      // Don't allow selecting more than declared dice count
+      if (exchange[roleKey].length < exchange.declaredDiceCount) {
+          exchange[roleKey].push(index);
+      }
+    }
+
+    // Auto-advance phases if side is done
+    if (phase === "exchange-attacker-selection" && exchange.attackerSelectedDice.length === exchange.declaredDiceCount) {
+        updated.turnState.phase = "exchange-defender-selection";
+        updated.turnState.selectionTurn = exchange.defenderId;
+    } else if (phase === "exchange-defender-selection" && exchange.defenderSelectedDice.length === exchange.declaredDiceCount) {
+        updated.turnState.phase = "exchange-ready";
+        updated.turnState.selectionTurn = null;
     }
 
     await MeleeStore.updateEncounter(this.encounterId, updated);
@@ -169,7 +223,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
    */
   async _onDeclareAttack(participantId, diceCount) {
     const encounter = MeleeStore.getEncounter(this.encounterId);
-    if (!encounter) return;
+    if (!encounter || encounter.turnState.phase !== "exchange-declaration") return;
 
     const updated = foundry.utils.deepClone(encounter);
     const attacker = updated.participants[participantId];
@@ -192,8 +246,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     updated.currentExchange.defenderId = targetId;
     updated.currentExchange.declaredAction = "attack";
     updated.currentExchange.declaredDiceCount = diceCount;
-    updated.turnState.phase = "exchange-response";
-    updated.turnState.selectionTurn = targetId;
+    updated.turnState.phase = "exchange-attacker-selection";
+    updated.turnState.selectionTurn = participantId;
 
     await MeleeStore.updateEncounter(this.encounterId, updated);
   }
@@ -204,6 +258,11 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   async _onConfirmSelection(participantId) {
     const encounter = MeleeStore.getEncounter(this.encounterId);
     if (!encounter) return;
+
+    if (encounter.turnState.phase !== "exchange-ready") {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.ExchangeNotReady"));
+        return;
+    }
 
     game.neuroshima?.log("Confirming selection in melee exchange", { participantId, isGM: game.user.isGM });
     if (game.user.isGM) {

@@ -60,7 +60,8 @@ export class MeleeStore {
         const doc = fromUuidSync(p.actorUuid);
         const actor = doc?.actor || doc;
         if (actor) {
-            await actor.unsetFlag("neuroshima", "activeMeleeEncounter");
+            // Using -= syntax in update to force real deletion of the flag
+            await actor.update({ "flags.neuroshima.-=activeMeleeEncounter": null });
             game.neuroshima?.log(`removeEncounter | cleared flag for actor ${actor.name}`);
         }
       } catch (e) {

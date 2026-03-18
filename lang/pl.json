@@ -406,9 +406,24 @@
             "Phase": {
                 "awaiting-pool-rolls": "Oczekiwanie na rzuty puli",
                 "exchange-declaration": "Deklaracja akcji",
+                "exchange-attacker-selection": "Atakujący wybiera kości",
+                "exchange-defender-selection": "Obrońca wybiera kości",
                 "exchange-response": "Reakcja obrońcy",
-                "exchange-resolution": "Rozstrzygnięcie wymiany"
+                "exchange-resolution": "Rozstrzygnięcie wymiany",
+                "exchange-ready": "Gotowe do rozstrzygnięcia"
             },
+            "NoPool": "Brak rzuconej puli",
+            "WaitingForPool": "Oczekiwanie na rzut...",
+            "Prompt": {
+                "RollPool": "Wszyscy uczestnicy: Rzućcie pulę 3k20 na tę turę.",
+                "Declare": "{name}: Wybierz typ ataku (1s, 2s, 3s) lub wyjdź ze zwarcia.",
+                "SelectAttackerDice": "{name}: Wybierz {count} kości do ataku.",
+                "SelectDefenderDice": "{name}: Wybierz {count} kości do obrony.",
+                "Ready": "Wymiana gotowa. MG: Kliknij 'Rozstrzygnij Segment'."
+            },
+            "ExchangeNotReady": "Wymiana nie jest jeszcze gotowa (brak wymaganej liczby kości).",
+            "WaitingForGM": "Zatwierdzono wybór. Oczekiwanie na rozstrzygnięcie przez MG.",
+            "NoTargetFound": "Nie znaleziono celu ataku.",
             "Actions": {
                 "attack": "Atak",
                 "defend": "Obrona",

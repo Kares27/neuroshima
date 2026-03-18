@@ -1,7 +1,10 @@
 <div class="melee-app-shell {{turnState.phase}}">
   {{> "systems/neuroshima/templates/apps/melee/parts/header.hbs"}}
-  {{> "systems/neuroshima/templates/apps/melee/parts/participants-strip.hbs"}}
   
+  <div class="melee-status-bar">
+    <div class="current-prompt">{{currentPrompt}}</div>
+  </div>
+
   <div class="melee-main-grid">
     <div class="exchange-and-log">
       {{> "systems/neuroshima/templates/apps/melee/parts/active-exchange.hbs"}}
@@ -9,6 +12,7 @@
     </div>
     
     <div class="combatants-area">
+      <div class="participants-sidebar-header">{{localize "NEUROSHIMA.MeleeDuel.Participants"}}</div>
       {{#each participants}}
         {{> "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs" participant=this}}
       {{/each}}
