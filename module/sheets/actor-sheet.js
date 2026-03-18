@@ -1349,10 +1349,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                 meleeMode: "initiate",
                 weaponId: weapon.id,
                 targets: targets,
-                onRoll: async (rollData) => {
-                    this._isRolling = false;
-                    return rollData;
-                },
                 onClose: () => { this._isRolling = false; }
             });
             await initiativeDialog.render(true);
@@ -1761,6 +1757,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       const dialog = new NeuroshimaInitiativeRollDialog({
           actor: this.document,
           isMelee: true,
+          meleeMode: "respond",
+          pendingId,
           onRoll: async (rollData) => {
               const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
                   ...rollData,
