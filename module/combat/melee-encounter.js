@@ -1,4 +1,5 @@
 import { MeleeStore } from "./melee-store.js";
+import { MeleeTurnService } from "./melee-turn-service.js";
 
 /**
  * Manages Melee Encounter lifecycle: create, join, leave, end.
@@ -26,6 +27,25 @@ export class MeleeEncounter {
         [attackerId]: this._mapParticipant({ ...attackerData, id: attackerId }, "A"),
         [defenderId]: this._mapParticipant({ ...defenderData, id: defenderId }, "B")
       },
+      primaryTargets: {
+        [attackerId]: defenderId,
+        [defenderId]: attackerId
+      },
+      crowding: {
+        [attackerId]: {
+          primaryOpponentId: defenderId,
+          opponentCount: 1,
+          dexPenalty: 0,
+          extraAttackers: []
+        },
+        [defenderId]: {
+          primaryOpponentId: attackerId,
+          opponentCount: 1,
+          dexPenalty: 0,
+          extraAttackers: []
+        }
+      },
+      extraAttackQueue: [],
       currentExchange: {
         attackerId: null,
         defenderId: null,
@@ -44,6 +64,8 @@ export class MeleeEncounter {
       },
       log: []
     };
+
+    MeleeTurnService.updateCrowding(encounter);
 
     game.neuroshima?.log("Creating melee encounter", { id, attacker: attackerData.name, defender: defenderData.name });
     await MeleeStore.updateEncounter(id, encounter);
@@ -67,6 +89,15 @@ export class MeleeEncounter {
     updated.teams[team].push(participantId);
     updated.mode = (updated.teams.A.length > 1 || updated.teams.B.length > 1) ? "group" : "duel";
 
+    // Initialize new fields for joining participant
+    updated.primaryTargets[participantId] = null;
+    updated.crowding[participantId] = {
+      primaryOpponentId: null,
+      opponentCount: 0,
+      dexPenalty: 0,
+      extraAttackers: []
+    };
+
     await MeleeStore.updateEncounter(id, updated);
     const doc = fromUuidSync(participantData.actorUuid);
     const actor = doc?.actor || doc;
@@ -88,8 +119,6 @@ export class MeleeEncounter {
       team,
       weaponId: data.weaponId,
       initiative: data.initiative,
-      currentTargetId: null,
-      engagedBy: [],
       pool: [],
       usedDice: [],
       skillSpent: 0,

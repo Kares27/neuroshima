@@ -31,17 +31,23 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       openPoolDialog: function(event, target) {
         return this._onOpenPoolDialog(target.dataset.id);
       },
+      selectTarget: function(event, target) {
+        return MeleeTurnService.setTarget(this.encounterId, target.dataset.id, target.dataset.targetId);
+      },
       selectDie: function(event, target) {
-        return this._onSelectDie(target.dataset.id, parseInt(target.dataset.index));
+        return MeleeTurnService.selectDie(this.encounterId, target.dataset.id, parseInt(target.dataset.index));
       },
-      declareAttack: function(event, target) {
-        return this._onDeclareAttack(target.dataset.id, parseInt(target.dataset.dice));
+      confirmAttack: function(event, target) {
+        return MeleeTurnService.confirmAttack(this.encounterId, target.dataset.id);
       },
-      confirmSelection: function(event, target) {
-        return this._onConfirmSelection(target.dataset.id);
+      confirmDefense: function(event, target) {
+        return MeleeTurnService.confirmDefense(this.encounterId, target.dataset.id);
       },
       resolveExchange: function(event, target) {
-        return MeleeResolution.resolveExchange(this.encounterId);
+        return MeleeResolution.resolvePrimaryExchange(this.encounterId);
+      },
+      resolveExtraAttacks: function() {
+        return MeleeResolution.resolveExtraAttacks(this.encounterId);
       },
       endEncounter: function() {
         return MeleeEncounter.end(this.encounterId);
@@ -83,16 +89,45 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       p.isOwner = actor?.isOwner;
       p.isUserCharacter = game.user.character?.uuid === p.actorUuid;
       
+      // Target information
+      const targetId = context.primaryTargets[pId];
+      p.targetName = context.participants[targetId]?.name || "";
+
+      // Crowding information
+      const crowd = context.crowding[pId];
+      p.isCrowded = crowd?.opponentCount > 1;
+      p.dexPenalty = crowd?.dexPenalty || 0;
+      p.primaryOpponentName = context.participants[crowd?.primaryOpponentId]?.name || "";
+
+      // Status Badge
+      p.statusBadge = this._getParticipantStatusBadge(p, context);
+      
       // Calculate effective target (snapshot or dynamic)
       p.effectiveTarget = p.effectiveTargetSnapshot || p.targetValue || 10;
+      if (p.dexPenalty) p.effectiveTarget -= p.dexPenalty;
       
       // Prepare selected dice information for templates
       p.selectedDiceIndices = [];
-      if (pId === context.currentExchange.attackerId) {
-        p.selectedDiceIndices = context.currentExchange.attackerSelectedDice || [];
-      } else if (pId === context.currentExchange.defenderId) {
-        p.selectedDiceIndices = context.currentExchange.defenderSelectedDice || [];
+      const phase = context.turnState.phase;
+      const selectionTurn = context.turnState.selectionTurn;
+      const exchange = context.currentExchange;
+      
+      if (phase === "primary-attack-selection" && pId === context.turnState.initiativeOwnerId) {
+        p.selectedDiceIndices = exchange.attackerSelectedDice || [];
+      } else if (phase === "primary-defense-selection" && pId === selectionTurn) {
+        p.selectedDiceIndices = exchange.defenderSelectedDice || [];
+      } else if (pId === exchange.attackerId) {
+        p.selectedDiceIndices = exchange.attackerSelectedDice || [];
+      } else if (pId === exchange.defenderId) {
+        p.selectedDiceIndices = exchange.defenderSelectedDice || [];
       }
+      
+      game.neuroshima?.log(`Participant ${p.name} context:`, {
+          pId,
+          selected: p.selectedDiceIndices,
+          attackerSelectedDice: exchange.attackerSelectedDice,
+          phase
+      });
     }
 
     // Map teams to full participant objects and sort by initiative
@@ -121,6 +156,36 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
+   * Returns a status badge for a participant based on current phase and context.
+   * @private
+   */
+  _getParticipantStatusBadge(p, context) {
+    const phase = context.turnState.phase;
+    const selectionTurn = context.turnState.selectionTurn;
+    const exchange = context.currentExchange;
+    const crowd = context.crowding[p.id];
+
+    if (!p.isActive) return { label: "Nieaktywny", class: "inactive" };
+    if (!p.pool?.length) return { label: "Czeka na rzut", class: "waiting" };
+
+    if (phase === "target-selection") {
+      return context.primaryTargets[p.id] ? { label: "Cel wybrany", class: "ready" } : { label: "Wybierz cel", class: "active" };
+    }
+
+    if (p.id === exchange.attackerId) return { label: "Atakujący", class: "attacker" };
+    if (p.id === exchange.defenderId) return { label: "Obrońca", class: "defender" };
+
+    if (crowd?.opponentCount > 1) {
+      if (p.id === crowd.primaryOpponentId) return { label: "Główny przeciwnik", class: "primary" };
+      return { label: "Osaczony", class: "crowded" };
+    }
+
+    if (crowd?.extraAttackers?.includes(selectionTurn)) return { label: "Dodatkowy napastnik", class: "extra" };
+
+    return { label: "Czeka", class: "waiting" };
+  }
+
+  /**
    * Generates a user-friendly instruction based on the current phase.
    * @private
    */
@@ -132,25 +197,24 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     switch (phase) {
       case "awaiting-pool-rolls":
-        const waitingCount = Object.values(context.participants).filter(p => !p.pool?.length).length;
-        return `Oczekiwanie na rzut puli 3k20 (${waitingCount} uczestników)`;
+        const waitingCount = Object.values(context.participants).filter(p => !p.isActive || !p.pool?.length).length;
+        return `Wszyscy rzucają 3k20 (Czeka: ${waitingCount})`;
       
-      case "exchange-declaration":
-        return `Kolej ${name}: Wybierz typ ataku (1s / 2s / 3s)`;
+      case "target-selection":
+        return `Wybierzcie głównych przeciwników`;
+
+      case "primary-attack-selection":
+        return `${name} wybiera kości ataku`;
       
-      case "exchange-attacker-selection":
-        const reqAttacker = context.currentExchange.declaredDiceCount || 0;
-        const currentAttacker = context.currentExchange.attackerSelectedDice?.length || 0;
-        return `${name}: Wybierz ${reqAttacker} kości ataku (${currentAttacker}/${reqAttacker})`;
+      case "primary-defense-selection":
+        return `${name} wybiera kości obrony`;
       
-      case "exchange-defender-selection":
-        const reqDefender = context.currentExchange.declaredDiceCount || 0;
-        const currentDefender = context.currentExchange.defenderSelectedDice?.length || 0;
-        return `${name}: Wybierz ${reqDefender} kości obrony (${currentDefender}/${reqDefender})`;
+      case "primary-ready":
+        return "Główna wymiana gotowa! MG może ją rozstrzygnąć.";
       
-      case "exchange-ready":
-        return "Wymiana gotowa! MG może ją rozstrzygnąć.";
-      
+      case "extra-attacks":
+        return "Czas na dodatkowe ataki i darmowe obrony.";
+
       default:
         return "Inicjalizacja...";
     }
@@ -183,108 +247,6 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     });
     dialog.render(true);
-  }
-
-  /**
-   * Handles die selection for attack or defense.
-   */
-  async _onSelectDie(participantId, index) {
-    const encounter = MeleeStore.getEncounter(this.encounterId);
-    if (!encounter) return;
-
-    const updated = foundry.utils.deepClone(encounter);
-    const p = updated.participants[participantId];
-    if (!p || p.usedDice.includes(index)) return;
-
-    const exchange = updated.currentExchange;
-    const phase = updated.turnState.phase;
-    let roleKey = null;
-    
-    // Strict phase checks for die selection
-    if (phase === "exchange-attacker-selection" && participantId === exchange.attackerId) {
-        roleKey = "attackerSelectedDice";
-    } else if (phase === "exchange-defender-selection" && participantId === exchange.defenderId) {
-        roleKey = "defenderSelectedDice";
-    }
-    
-    if (!roleKey) {
-        game.neuroshima?.warn("SelectDie | Selection not allowed at this phase/participant.", { phase, participantId });
-        return; 
-    }
-
-    if (exchange[roleKey].includes(index)) {
-      exchange[roleKey] = exchange[roleKey].filter(i => i !== index);
-    } else {
-      // Don't allow selecting more than declared dice count
-      if (exchange[roleKey].length < exchange.declaredDiceCount) {
-          exchange[roleKey].push(index);
-      }
-    }
-
-    // Auto-advance phases if side is done
-    if (phase === "exchange-attacker-selection" && exchange.attackerSelectedDice.length === exchange.declaredDiceCount) {
-        updated.turnState.phase = "exchange-defender-selection";
-        updated.turnState.selectionTurn = exchange.defenderId;
-    } else if (phase === "exchange-defender-selection" && exchange.defenderSelectedDice.length === exchange.declaredDiceCount) {
-        updated.turnState.phase = "exchange-ready";
-        updated.turnState.selectionTurn = null;
-    }
-
-    await MeleeStore.updateEncounter(this.encounterId, updated);
-  }
-
-  /**
-   * Declares an attack (1s, 2s, 3s).
-   */
-  async _onDeclareAttack(participantId, diceCount) {
-    const encounter = MeleeStore.getEncounter(this.encounterId);
-    if (!encounter || encounter.turnState.phase !== "exchange-declaration") return;
-
-    const updated = foundry.utils.deepClone(encounter);
-    const attacker = updated.participants[participantId];
-    if (!attacker) return;
-
-    // Use currentTargetId if set, otherwise find a target from the opposing team
-    let targetId = attacker.currentTargetId;
-    if (!targetId || !updated.participants[targetId]) {
-      const opposingTeam = attacker.team === "A" ? "B" : "A";
-      targetId = updated.teams[opposingTeam].find(id => updated.participants[id]?.isActive);
-    }
-
-    if (!targetId) {
-      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NoTargetFound"));
-      return;
-    }
-
-    game.neuroshima?.log("Declaring melee attack", { participantId, targetId, diceCount });
-    updated.currentExchange.attackerId = participantId;
-    updated.currentExchange.defenderId = targetId;
-    updated.currentExchange.declaredAction = "attack";
-    updated.currentExchange.declaredDiceCount = diceCount;
-    updated.turnState.phase = "exchange-attacker-selection";
-    updated.turnState.selectionTurn = participantId;
-
-    await MeleeStore.updateEncounter(this.encounterId, updated);
-  }
-
-  /**
-   * Confirms selection and potentially triggers resolution if both sides are ready.
-   */
-  async _onConfirmSelection(participantId) {
-    const encounter = MeleeStore.getEncounter(this.encounterId);
-    if (!encounter) return;
-
-    if (encounter.turnState.phase !== "exchange-ready") {
-        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.ExchangeNotReady"));
-        return;
-    }
-
-    game.neuroshima?.log("Confirming selection in melee exchange", { participantId, isGM: game.user.isGM });
-    if (game.user.isGM) {
-        await MeleeResolution.resolveExchange(this.encounterId);
-    } else {
-        ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeDuel.WaitingForGM"));
-    }
   }
 
   /**

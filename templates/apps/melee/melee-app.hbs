@@ -52,19 +52,25 @@
         <div class="combat-log">
             {{#each log}}
                 <div class="log-entry {{this.type}}">
-                    <span class="timestamp">[{{this.time}}]</span>
-                    <span class="message">{{this.message}}</span>
+                    <span class="message">{{{this.text}}}</span>
                 </div>
             {{else}}
                 <div class="log-empty">Brak wpisów w dzienniku walki.</div>
             {{/each}}
         </div>
         
-        {{#if (and isGM (eq turnState.phase "exchange-ready"))}}
+        {{#if isGM}}
             <div class="gm-resolution-area">
-                <button type="button" class="resolve-btn" data-action="resolveExchange">
-                    <i class="fas fa-gavel"></i> Rozstrzygnij wymianę
-                </button>
+                {{#if (eq turnState.phase "primary-ready")}}
+                    <button type="button" class="resolve-btn primary" data-action="resolveExchange">
+                        <i class="fas fa-swords"></i> Rozstrzygnij główną wymianę
+                    </button>
+                {{/if}}
+                {{#if (eq turnState.phase "extra-attacks")}}
+                    <button type="button" class="resolve-btn extra" data-action="resolveExtraAttacks">
+                        <i class="fas fa-shield-alt"></i> Rozstrzygnij dodatkowe ataki
+                    </button>
+                {{/if}}
             </div>
         {{/if}}
     </footer>

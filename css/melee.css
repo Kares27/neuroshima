@@ -140,6 +140,101 @@
 }
 
 /* Light Mode Colors */
+.status-badge {
+    display: inline-block;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-top: 4px;
+}
+
+.status-badge.active { background-color: #f39c12; color: #000; }
+.status-badge.ready { background-color: #27ae60; color: #fff; }
+.status-badge.attacker { background-color: #e74c3c; color: #fff; }
+.status-badge.defender { background-color: #3498db; color: #fff; }
+.status-badge.crowded { background-color: #9b59b6; color: #fff; }
+.status-badge.primary { background-color: #c0392b; color: #fff; }
+.status-badge.extra { background-color: #8e44ad; color: #fff; }
+.status-badge.waiting { background-color: #7f8c8d; color: #fff; }
+
+.target-selection-controls {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.target-btn {
+    background-color: var(--ns-bg-input);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.target-btn:hover {
+    background-color: var(--ns-bg-hover);
+}
+
+.target-btn.selected {
+    background-color: var(--ns-text-accent);
+    color: #fff;
+    border-color: #fff;
+}
+
+.confirmation-controls {
+    margin-top: 10px;
+}
+
+.confirm-btn {
+    width: 100%;
+    padding: 8px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'SpecialElite', serif;
+    transition: all 0.2s;
+}
+
+.confirm-btn.attack { background-color: #e74c3c; color: #fff; border: 1px solid #c0392b; }
+.confirm-btn.defense { background-color: #3498db; color: #fff; border: 1px solid #2980b9; }
+
+.confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #95a5a6 !important;
+}
+
+.penalty-tag {
+    background-color: #c0392b;
+    color: #fff;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: bold;
+}
+
+.participant-footer {
+    margin-top: 8px;
+    font-size: 0.8em;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--ns-text-light);
+}
+
+.resolve-btn.extra {
+    background-color: #8e44ad;
+}
+
+.resolve-btn.extra:hover {
+    background-color: #7d3c98;
+}
+
 .die.success { 
     background: #e8f5e9; 
     border-color: #4caf50; 

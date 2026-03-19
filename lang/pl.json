@@ -52,7 +52,17 @@
         "SelectAttackerDice": "{name}: wybierz {count} kości ataku",
         "SelectDefenderDice": "{name}: wybierz {count} kości obrony",
         "Ready": "Wymiana gotowa do rozstrzygnięcia!"
-      }
+      },
+      "LogHit": "{attacker} trafia {defender} ({s}s)!",
+      "LogBlock": "{attacker} atakuje {defender}, ale zostaje zablokowany!",
+      "LogTakeover": "{attacker} przejmuje inicjatywę od {oldAttacker}!",
+      "LogFuryHit": "{name} otrzymuje dodatkowe trafienie z Furii!",
+      "LogDefensiveMiss": "{attacker} nie zdołał trafić {defender}.",
+      "LogDoubleMiss": "Obaj uczestnicy pudłują.",
+      "LogNewTurn": "--- Początek tury {turn} ---",
+      "LogExtraAttackHit": "{attacker} trafia {defender} dodatkowym atakiem ({s}s)! Darmowa obrona: {dice}",
+      "LogExtraAttackBlocked": "{attacker} atakuje {defender}, ale darmowa obrona blokuje cios! Kości: {dice}",
+      "LogExtraAttackMiss": "{attacker} pudłuje dodatkowym atakiem przeciwko {defender}."
     },
     "Roll": {
             "PenaltyLabel": "Kara do testu",
