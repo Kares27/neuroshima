@@ -85,6 +85,10 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     context.isGM = game.user.isGM;
     
     // Add participant ownership and extra data
+    const phase = context.turnState.phase;
+    const selectionTurn = context.turnState.selectionTurn;
+    const exchange = context.currentExchange;
+
     for (const pId in context.participants) {
       const p = context.participants[pId];
       const doc = fromUuidSync(p.actorUuid);
@@ -120,9 +124,6 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       
       // Prepare selected dice information for templates
       p.selectedDiceIndices = [];
-      const phase = context.turnState.phase;
-      const selectionTurn = context.turnState.selectionTurn;
-      const exchange = context.currentExchange;
       
       if (phase === "primary-attack-selection" && pId === context.turnState.initiativeOwnerId) {
         p.selectedDiceIndices = exchange.attackerSelectedDice || [];
