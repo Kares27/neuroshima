@@ -60,6 +60,9 @@ export class MeleeEncounter {
         segment: 1,
         phase: "awaiting-pool-rolls",
         selectionTurn: null,
+        initiativeOrder: [],
+        segmentQueue: [],
+        queueIndex: 0,
         initiativeOwnerId: attackerData.initiative >= defenderData.initiative ? attackerId : defenderId
       },
       log: []
@@ -127,7 +130,8 @@ export class MeleeEncounter {
       tempoLevel: 0,
       attackBonusSnapshot: 0,
       defenseBonusSnapshot: 0,
-      effectiveTargetSnapshot: null,
+      attackTargetSnapshot: null,
+      defenseTargetSnapshot: null,
       isActive: true
     };
   }

@@ -24,6 +24,9 @@
         </div>
     </header>
 
+    {{!-- Active Exchange Dashboard --}}
+    {{> "systems/neuroshima/templates/apps/melee/parts/active-exchange.hbs"}}
+
     {{!-- 2. Teams Grid (Main Content) --}}
     <div class="melee-main-grid">
         {{!-- Team A Column --}}
@@ -69,6 +72,11 @@
                 {{#if (eq turnState.phase "extra-attacks")}}
                     <button type="button" class="resolve-btn extra" data-action="resolveExtraAttacks">
                         <i class="fas fa-shield-alt"></i> Rozstrzygnij dodatkowe ataki
+                    </button>
+                {{/if}}
+                {{#if (eq turnState.phase "segment-end")}}
+                    <button type="button" class="resolve-btn next" data-action="advanceSegment">
+                        <i class="fas fa-step-forward"></i> {{#if (eq turnState.segment 3)}}Zakończ Turę{{else}}Następny Segment{{/if}}
                     </button>
                 {{/if}}
             </div>

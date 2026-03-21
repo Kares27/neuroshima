@@ -27,8 +27,8 @@ export class MeleeResolution {
     const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
     game.neuroshima?.log("Resolving primary melee exchange", { id, attacker: attacker.name, defender: defender.name, diceCount });
     
-    const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0);
-    const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0);
+    const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
+    const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
 
     // 2. Calculate successes
     const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => attacker.pool[idx] <= attackerTarget).length;
@@ -44,7 +44,8 @@ export class MeleeResolution {
     } else if (attackerSuccesses >= diceCount && defenderSuccesses < diceCount) {
       resultType = "hit";
       logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogHit", { attacker: attacker.name, defender: defender.name, s: diceCount });
-      await this.applyDamage(updated, attackerId, defenderId, diceCount, exchange.attackerSelectedDice[0]);
+      const locationDieIndex = exchange.locationDieIndex ?? exchange.attackerSelectedDice[0];
+      await this.applyDamage(updated, attackerId, defenderId, diceCount, locationDieIndex);
     } else if (attackerSuccesses < diceCount && defenderSuccesses >= diceCount) {
       const takeoverSuccessesRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
       const actualAdvantage = defenderSuccesses - attackerSuccesses;
@@ -72,13 +73,34 @@ export class MeleeResolution {
     attacker.usedDice.push(...exchange.attackerSelectedDice);
     defender.usedDice.push(...exchange.defenderSelectedDice);
 
-    // Prepare extra attacks phase
-    this.prepareExtraAttacks(updated);
+    // Clear current exchange
+    updated.currentExchange = {
+      attackerId: null,
+      defenderId: null,
+      declaredAction: null,
+      declaredDiceCount: 0,
+      attackerSelectedDice: [],
+      defenderSelectedDice: [],
+      resolutionType: "normal"
+    };
+
+    // Move to next in queue or finalize segment
+    updated.turnState.queueIndex += 1;
+    const queue = updated.turnState.segmentQueue || [];
     
-    if (updated.extraAttackQueue.length > 0) {
-      updated.turnState.phase = "extra-attacks";
+    if (updated.turnState.queueIndex < queue.length) {
+      const next = queue[updated.turnState.queueIndex];
+      updated.turnState.phase = "primary-attack-selection";
+      updated.turnState.selectionTurn = next.attackerId;
     } else {
-      updated.turnState.phase = "segment-end";
+      // Finalize segment primary phase
+      this.prepareExtraAttacks(updated);
+      
+      if (updated.extraAttackQueue.length > 0) {
+        updated.turnState.phase = "extra-attacks";
+      } else {
+        updated.turnState.phase = "segment-end";
+      }
     }
 
     await MeleeStore.updateEncounter(id, updated);
@@ -87,9 +109,9 @@ export class MeleeResolution {
   /**
    * Calculates effective target considering tempo and crowding penalty.
    */
-  static getEffectiveTarget(participant, tempoLevel, dexPenalty) {
+  static getEffectiveTarget(participant, tempoLevel, dexPenalty, mode = "attack") {
     const { NeuroshimaDice } = game.neuroshima;
-    let target = participant.effectiveTargetSnapshot || 10;
+    let target = mode === "attack" ? (participant.attackTargetSnapshot || 10) : (participant.defenseTargetSnapshot || 10);
     
     // Apply Dex penalty from crowding
     target -= dexPenalty;
@@ -125,7 +147,6 @@ export class MeleeResolution {
         encounter.extraAttackQueue.push({
           attackerId,
           defenderId: targetId,
-          attackDiceCount: segment, // Extra attacks usually depend on segment or remaining dice
           sourceSegment: segment,
           isBackAttack: false,
           resolved: false
@@ -175,55 +196,62 @@ export class MeleeResolution {
     const attacker = encounter.participants[attack.attackerId];
     const defender = encounter.participants[attack.defenderId];
     
-    // Automation: for now, extra attacker uses 'segment' number of best available dice
-    // or we could let them select. To minimize clicks, let's auto-pick the best dice.
+    // Automation: extra attacker uses their best available dice to form the strongest possible success (1s, 2s or 3s)
     const availableDiceIndices = attacker.pool.map((v, i) => ({v, i}))
       .filter(d => !attacker.usedDice.includes(d.i))
       .sort((a, b) => a.v - b.v); // Best (lowest) first
 
-    const diceCount = Math.min(attack.attackDiceCount, availableDiceIndices.length);
-    if (diceCount === 0) return;
+    if (availableDiceIndices.length === 0) return;
 
-    const selectedIndices = availableDiceIndices.slice(0, diceCount).map(d => d.i);
     const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
-    const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, encounter.crowding[attack.attackerId]?.dexPenalty || 0);
+    const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, encounter.crowding[attack.attackerId]?.dexPenalty || 0, "attack");
     
-    const attackerSuccesses = selectedIndices.filter(idx => attacker.pool[idx] <= attackerTarget).length;
+    // Find how many of the best available dice are successes
+    const successesIndices = availableDiceIndices.filter(d => d.v <= attackerTarget).map(d => d.i);
     
+    // Attempt the strongest possible cios (max 3s)
+    const diceCount = Math.min(3, successesIndices.length);
+    if (diceCount === 0) {
+        // No successes, just use one failing die and miss
+        attacker.usedDice.push(availableDiceIndices[0].i);
+        encounter.log.push({ 
+            type: "miss", 
+            segment: encounter.turnState.segment, 
+            text: game.i18n.format("NEUROSHIMA.MeleeDuel.LogExtraAttackMiss", { attacker: attacker.name, defender: defender.name }) 
+        });
+        return;
+    }
+
+    const selectedIndices = successesIndices.slice(0, diceCount);
     attacker.usedDice.push(...selectedIndices);
 
     let logText = "";
-    if (attackerSuccesses >= diceCount) {
-      // Defender gets free defense roll
-      const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, encounter.crowding[attack.defenderId]?.dexPenalty || 0);
-      const freeRoll = new Roll(`${diceCount}d20`);
-      await freeRoll.evaluate();
-      
-      const freeSuccesses = freeRoll.terms[0].results.filter(r => r.result <= defenderTarget).length;
-      
-      // Show free roll in log/chat
-      const diceHtml = freeRoll.terms[0].results.map(r => `<span class="die ${r.result <= defenderTarget ? 'success' : 'failure'}">${r.result}</span>`).join(" ");
-      
-      if (freeSuccesses >= diceCount) {
-        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogExtraAttackBlocked", { 
-          attacker: attacker.name, 
-          defender: defender.name,
-          dice: diceHtml
-        });
-        encounter.log.push({ type: "block", segment: encounter.turnState.segment, text: logText });
-      } else {
-        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogExtraAttackHit", { 
-          attacker: attacker.name, 
-          defender: defender.name, 
-          s: diceCount,
-          dice: diceHtml
-        });
-        encounter.log.push({ type: "hit", segment: encounter.turnState.segment, text: logText });
-        await this.applyDamage(encounter, attack.attackerId, attack.defenderId, diceCount, selectedIndices[0]);
-      }
+    // Defender gets free defense roll
+    const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, encounter.crowding[attack.defenderId]?.dexPenalty || 0, "defense");
+    const freeRoll = new Roll(`${diceCount}d20`);
+    await freeRoll.evaluate();
+    
+    const freeSuccesses = freeRoll.terms[0].results.filter(r => r.result <= defenderTarget).length;
+    
+    // Show free roll in log/chat
+    const diceHtml = freeRoll.terms[0].results.map(r => `<span class="die ${r.result <= defenderTarget ? 'success' : 'failure'}">${r.result}</span>`).join(" ");
+    
+    if (freeSuccesses >= diceCount) {
+      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogExtraAttackBlocked", { 
+        attacker: attacker.name, 
+        defender: defender.name,
+        dice: diceHtml
+      });
+      encounter.log.push({ type: "block", segment: encounter.turnState.segment, text: logText });
     } else {
-      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogExtraAttackMiss", { attacker: attacker.name, defender: defender.name });
-      encounter.log.push({ type: "miss", segment: encounter.turnState.segment, text: logText });
+      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogExtraAttackHit", { 
+        attacker: attacker.name, 
+        defender: defender.name, 
+        s: diceCount,
+        dice: diceHtml
+      });
+      encounter.log.push({ type: "hit", segment: encounter.turnState.segment, text: logText });
+      await this.applyDamage(encounter, attack.attackerId, attack.defenderId, diceCount, selectedIndices[0]);
     }
   }
 

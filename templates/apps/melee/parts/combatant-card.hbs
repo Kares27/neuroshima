@@ -28,7 +28,7 @@
                             {{#if (meleeDieUsed ../participant.usedDice @index)}}used{{/if}}
                             {{#if (eq this 1)}}nat-1{{/if}}
                             {{#if (eq this 20)}}nat-20{{/if}}
-                            {{#if (le this ../participant.effectiveTarget)}}success{{else}}failure{{/if}}"
+                            {{#if (le this ../participant.currentEffectiveTarget)}}success{{else}}failure{{/if}}"
                      data-action="selectDie" 
                      data-id="{{../participant.id}}" 
                      data-index="{{@index}}">
@@ -39,19 +39,19 @@
     {{/if}}
 
     {{!-- Target Selection --}}
-    {{#if (and participant.isOwner (eq @root.turnState.phase "target-selection"))}}
+    {{#if (and participant.isOwner (eq @root.turnState.phase "target-selection") (eq @root.turnState.selectionTurn participant.id))}}
         <div class="target-selection-controls">
             <span class="label">Wybierz cel:</span>
             {{#if (eq participant.team 'A')}}
                 {{#each @root.teamsData.B}}
-                    <button type="button" class="target-btn {{#if (eq @root.primaryTargets ../participant.id this.id)}}selected{{/if}}" 
+                    <button type="button" class="target-btn {{#if (eq (resolveRef @root.primaryTargets ../participant.id) this.id)}}selected{{/if}}" 
                             data-action="selectTarget" data-id="{{../participant.id}}" data-target-id="{{this.id}}">
                         {{this.name}}
                     </button>
                 {{/each}}
             {{else}}
                 {{#each @root.teamsData.A}}
-                    <button type="button" class="target-btn {{#if (eq @root.primaryTargets ../participant.id this.id)}}selected{{/if}}" 
+                    <button type="button" class="target-btn {{#if (eq (resolveRef @root.primaryTargets ../participant.id) this.id)}}selected{{/if}}" 
                             data-action="selectTarget" data-id="{{../participant.id}}" data-target-id="{{this.id}}">
                         {{this.name}}
                     </button>

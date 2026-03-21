@@ -57,16 +57,20 @@ export class MeleeTurnService {
       const attribute = weapon?.system.attribute || "dexterity";
       const baseTarget = actor.system.attributeTotals?.[attribute] || 10;
       
-      // Calculate effective target with current wounds/armor and maneuver bonuses
-      let maneuverBonus = 0;
-      if (maneuver === "fury" || maneuver === "fullDefense") maneuverBonus = 2;
-      
       p.targetValue = baseTarget;
       p.attackBonusSnapshot = weapon?.system.attackBonus || 0;
       p.defenseBonusSnapshot = weapon?.system.defenseBonus || 0;
       
-      // Initial effective target (will be shifted by Increased Tempo during resolution)
-      p.effectiveTargetSnapshot = baseTarget + maneuverBonus;
+      // Calculate effective targets for attack and defense
+      let attackManeuverBonus = 0;
+      let defenseManeuverBonus = 0;
+      if (maneuver === "furia" || maneuver === "fury") attackManeuverBonus = 2;
+      if (maneuver === "fullDefense" || maneuver === "pelnaObrona") defenseManeuverBonus = 2;
+      
+      // We store the base targets plus weapon/maneuver bonuses. 
+      // Dexterity penalties (crowding) and Increased Tempo will be applied during resolution.
+      p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attackManeuverBonus;
+      p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus;
     }
 
     p.pool = results;
@@ -79,30 +83,117 @@ export class MeleeTurnService {
     const allRolled = Object.values(updated.participants).every(p => !p.isActive || p.pool.length > 0);
     if (allRolled) {
       updated.turnState.phase = "target-selection";
-      updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
+      
+      // Build initiative order (descending)
+      const sortedIds = Object.values(updated.participants)
+        .filter(p => p.isActive)
+        .sort((a, b) => b.initiative - a.initiative)
+        .map(p => p.id);
+      
+      updated.turnState.initiativeOrder = sortedIds;
+      updated.turnState.selectionTurn = sortedIds[0];
 
-      // Automation: if only one possible target for a team, auto-set it
+      // Automation: if only one possible target for a team, auto-set it for obvious 1v1 cases
       for (const pId in updated.participants) {
         const p = updated.participants[pId];
+        if (!p.isActive) continue;
         const opposingTeam = p.team === "A" ? "B" : "A";
         const opponents = updated.teams[opposingTeam].filter(id => updated.participants[id]?.isActive);
-        if (opponents.length === 1) {
+        if (opponents.length === 1 && !updated.primaryTargets[pId]) {
           updated.primaryTargets[pId] = opponents[0];
         }
       }
 
       this.updateCrowding(updated);
-
-      // Re-check if everyone chose their target
-      const allTargetsSet = Object.values(updated.participants).every(p => !p.isActive || updated.primaryTargets[p.id]);
-      if (allTargetsSet) {
-        updated.turnState.phase = "primary-attack-selection";
-        updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
-      }
+      this._advanceTargetSelection(updated);
     }
 
     game.neuroshima?.log("Setting pool for participant", { id, participantId, results, maneuver });
     await MeleeStore.updateEncounter(id, updated);
+  }
+
+  /**
+   * Moves target selection to the next eligible participant in initiative order.
+   * @private
+   */
+  static _advanceTargetSelection(encounter) {
+    const order = encounter.turnState.initiativeOrder || [];
+    const participants = encounter.participants;
+    const primaryTargets = encounter.primaryTargets;
+
+    // A participant is skipped if they are already being targeted by someone else 
+    // AND they haven't set their target yet (the "attacked don't choose" rule).
+    // Actually, the rule is: those who were attacked do not choose their opponent, 
+    // unless they choose someone who is NOT attacking them? No, NS 1.5 is:
+    // "zaatakowani nie wybierają przeciwnika".
+    
+    let nextId = null;
+    for (const id of order) {
+        if (!participants[id]?.isActive) continue;
+        if (primaryTargets[id]) continue; // Already chosen
+
+        const isAttacked = Object.values(primaryTargets).includes(id);
+        if (isAttacked) {
+            // "Zaatakowani nie wybierają" - we automatically set their target 
+            // to whoever attacked them (if only one) or mark as 'handled'
+            const attackers = Object.entries(primaryTargets)
+                .filter(([aid, tid]) => tid === id)
+                .map(([aid, tid]) => aid);
+            
+            if (attackers.length > 0) {
+                primaryTargets[id] = attackers[0]; // Primary attacker
+                this.updateCrowding(encounter);
+                continue;
+            }
+        }
+
+        nextId = id;
+        break;
+    }
+
+    if (nextId) {
+        encounter.turnState.selectionTurn = nextId;
+    } else {
+        // Everyone has a target or is attacked
+        encounter.turnState.phase = "primary-attack-selection";
+        encounter.turnState.selectionTurn = encounter.turnState.initiativeOwnerId;
+        
+        // Build the segmentQueue for the first segment
+        this._buildSegmentQueue(encounter);
+    }
+  }
+
+  /**
+   * Builds the queue of primary exchanges for the current segment.
+   * @private
+   */
+  static _buildSegmentQueue(encounter) {
+      const queue = [];
+      const handled = new Set();
+
+      // Participants with initiative are attackers
+      const attackerId = encounter.turnState.initiativeOwnerId;
+      // This is slightly more complex in multi: NS 1.5 doesn't have a clear "all vs all" initiative order 
+      // for WHO ATTACKS FIRST in a segment, it's usually the side with overall initiative.
+      // We'll follow the initiativeOwnerId's team as primary attackers.
+      
+      const primaryTeam = encounter.participants[attackerId]?.team || "A";
+      
+      for (const pId of (encounter.turnState.initiativeOrder || [])) {
+          if (handled.has(pId)) continue;
+          const p = encounter.participants[pId];
+          if (!p?.isActive || p.team !== primaryTeam) continue;
+
+          const targetId = encounter.primaryTargets[pId];
+          if (!targetId || handled.has(targetId)) continue;
+
+          queue.push({ attackerId: pId, defenderId: targetId });
+          handled.add(pId);
+          handled.add(targetId);
+      }
+
+      encounter.turnState.segmentQueue = queue;
+      encounter.turnState.queueIndex = 0;
   }
 
   /**
@@ -116,13 +207,7 @@ export class MeleeTurnService {
     updated.primaryTargets[participantId] = targetId;
 
     this.updateCrowding(updated);
-
-    // Automation: if everyone chose their target, move to primary-attack-selection
-    const allTargetsSet = Object.values(updated.participants).every(p => !p.isActive || updated.primaryTargets[p.id]);
-    if (allTargetsSet) {
-      updated.turnState.phase = "primary-attack-selection";
-      updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
-    }
+    this._advanceTargetSelection(updated);
 
     await MeleeStore.updateEncounter(id, updated);
   }
@@ -143,10 +228,16 @@ export class MeleeTurnService {
       const primaryOpponentId = targetingMe.includes(myTarget) ? myTarget : (targetingMe[0] || null);
       const extraAttackers = targetingMe.filter(id => id !== primaryOpponentId);
 
+      // Rule: 1 enemy = 0 penalty, N>1 enemies = N penalty.
+      let dexPenalty = 0;
+      if (targetingMe.length > 1) {
+          dexPenalty = targetingMe.length;
+      }
+
       encounter.crowding[pId] = {
         primaryOpponentId,
         opponentCount: targetingMe.length,
-        dexPenalty: Math.max(0, targetingMe.length - 1),
+        dexPenalty: dexPenalty,
         extraAttackers
       };
     }
@@ -240,12 +331,23 @@ export class MeleeTurnService {
   /**
    * Moves to the next segment or ends the turn if no dice are left.
    */
-  static async advanceSegment(id, cost = 1) {
+  static async advanceSegment(id) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
     const updated = foundry.utils.deepClone(encounter);
-    updated.turnState.segment += cost;
+    updated.turnState.segment += 1;
+
+    // Reset exchange
+    updated.currentExchange = {
+      attackerId: null,
+      defenderId: null,
+      declaredAction: null,
+      declaredDiceCount: 0,
+      attackerSelectedDice: [],
+      defenderSelectedDice: [],
+      resolutionType: "normal"
+    };
 
     if (updated.turnState.segment > 3) {
       // End of turn, start new turn

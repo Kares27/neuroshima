@@ -49,6 +49,9 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       resolveExtraAttacks: function() {
         return MeleeResolution.resolveExtraAttacks(this.encounterId);
       },
+      advanceSegment: function() {
+        return MeleeTurnService.advanceSegment(this.encounterId);
+      },
       endEncounter: function() {
         return MeleeEncounter.end(this.encounterId);
       },
@@ -103,8 +106,17 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       p.statusBadge = this._getParticipantStatusBadge(p, context);
       
       // Calculate effective target (snapshot or dynamic)
-      p.effectiveTarget = p.effectiveTargetSnapshot || p.targetValue || 10;
-      if (p.dexPenalty) p.effectiveTarget -= p.dexPenalty;
+      p.attackTarget = p.attackTargetSnapshot || p.targetValue || 10;
+      p.defenseTarget = p.defenseTargetSnapshot || p.targetValue || 10;
+      
+      if (p.dexPenalty) {
+          p.attackTarget -= p.dexPenalty;
+          p.defenseTarget -= p.dexPenalty;
+      }
+      
+      // Determine which target to show/use for dice coloring
+      const isAttacker = pId === exchange.attackerId || (phase === "primary-attack-selection" && pId === selectionTurn);
+      p.currentEffectiveTarget = isAttacker ? p.attackTarget : p.defenseTarget;
       
       // Prepare selected dice information for templates
       p.selectedDiceIndices = [];
