@@ -464,10 +464,12 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/debug-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/combat-config.hbs",
         "systems/neuroshima/templates/apps/melee/melee-app.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/header.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/participants-strip.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/active-exchange.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/melee-header.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/melee-prompt-bar.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/melee-exchange-banner.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/team-column.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/combatant-row.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/extra-attacks-panel.hbs",
         "systems/neuroshima/templates/apps/melee/parts/combat-log.hbs",
         "systems/neuroshima/templates/apps/melee/parts/footer-controls.hbs",
         "systems/neuroshima/templates/chat/weapon-roll-card.hbs",
@@ -482,11 +484,15 @@ Hooks.once('init', async function() {
     
     await foundry.applications.handlebars.loadTemplates(templates);
     
-    // Ręczna rejestracja partiali (na wypadek gdyby loadTemplates w AppV2 tego nie robiło globalnie)
+    // Ręczna rejestracja partiali
     for (const path of templates) {
         if (path.includes("/parts/")) {
             const template = await getTemplate(path);
             Handlebars.registerPartial(path, template);
+            
+            // Rejestruj też pod skróconą nazwą (np. MeleeHeader) dla łatwiejszego użycia w HBS
+            const shortName = path.split("/").pop().replace(".hbs", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join("");
+            Handlebars.registerPartial(shortName, template);
         }
     }
 

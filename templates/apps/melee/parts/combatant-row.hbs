@@ -1,0 +1,94 @@
+<article class="combatant-row {{participant.statusBadge.class}} {{#if (eq @root.turnState.selectionTurn participant.id)}}is-active-turn{{/if}}">
+  <div class="combatant-row__main">
+    <div class="combatant-row__avatar-wrap">
+      <img src="{{participant.img}}" class="combatant-row__avatar" alt="{{participant.name}}">
+    </div>
+
+    <div class="combatant-row__identity">
+      <div class="combatant-row__name">{{participant.name}}</div>
+      <div class="combatant-row__meta">
+        <span class="meta-pill">Init: {{participant.initiative}}</span>
+        <span class="meta-pill">Broń: {{participant.weaponName}}</span>
+        <span class="meta-pill">Manewr: {{participant.maneuverLabel}}</span>
+      </div>
+      <div class="combatant-row__relations">
+        {{#if participant.targetName}}
+          <span class="relation-line">Cel: {{participant.targetName}}</span>
+        {{/if}}
+        {{#if participant.primaryOpponentName}}
+          <span class="relation-line">Główny przeciwnik: {{participant.primaryOpponentName}}</span>
+        {{/if}}
+        {{#if participant.isCrowded}}
+          <span class="relation-line relation-line--crowded">
+            Osaczony | Kara do Zr: -{{participant.dexPenalty}}
+          </span>
+        {{/if}}
+      </div>
+    </div>
+
+    <div class="combatant-row__status">
+      <span class="status-badge status-badge--{{participant.statusBadge.class}}">
+        {{participant.statusBadge.label}}
+      </span>
+    </div>
+  </div>
+
+  <div class="combatant-row__dice-actions">
+    <div class="combatant-row__dice">
+      {{#if (gt participant.pool.length 0)}}
+        {{#each participant.pool}}
+          <button
+            type="button"
+            class="die-chip
+                   {{#if (meleeDieSelected ../participant.selectedDiceIndices @index)}}is-selected{{/if}}
+                   {{#if (meleeDieUsed ../participant.usedDice @index)}}is-used{{/if}}
+                   {{#if (le this ../participant.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
+            data-action="selectDie"
+            data-id="{{../participant.id}}"
+            data-index="{{@index}}">
+            {{this}}
+          </button>
+        {{/each}}
+      {{else}}
+        <div class="combatant-row__no-pool">Brak rzuconej puli</div>
+      {{/if}}
+    </div>
+
+    <div class="combatant-row__actions">
+      {{#if participant.canRollPool}}
+        <button type="button" class="melee-btn melee-btn--primary"
+                data-action="openPoolDialog" data-id="{{participant.id}}">
+          <i class="fas fa-dice-d20"></i> Rzuć 3k20
+        </button>
+      {{/if}}
+
+      {{#if participant.canChooseTarget}}
+        <div class="target-choice-wrap">
+            <span class="label">Wybierz cel:</span>
+            {{#each participant.availableTargets}}
+              <button type="button" class="melee-btn melee-btn--secondary"
+                      data-action="selectTarget"
+                      data-id="{{../participant.id}}"
+                      data-target-id="{{this.id}}">
+                {{this.name}}
+              </button>
+            {{/each}}
+        </div>
+      {{/if}}
+
+      {{#if participant.canConfirmAttack}}
+        <button type="button" class="melee-btn melee-btn--attack pulse"
+                data-action="confirmAttack" data-id="{{participant.id}}">
+          Potwierdź atak ({{participant.pendingAttackStrength}}s)
+        </button>
+      {{/if}}
+
+      {{#if participant.canConfirmDefense}}
+        <button type="button" class="melee-btn melee-btn--defense pulse"
+                data-action="confirmDefense" data-id="{{participant.id}}">
+          Potwierdź obronę
+        </button>
+      {{/if}}
+    </div>
+  </div>
+</article>

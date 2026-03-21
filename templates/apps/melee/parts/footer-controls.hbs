@@ -1,15 +1,32 @@
-<footer class="melee-footer">
-  <div class="footer-buttons">
+<footer class="melee-footer-v2">
+  <div class="gm-controls">
     {{#if isGM}}
-      <button type="button" data-action="endEncounter" class="danger">
-        <i class="fas fa-flag-checkered"></i> {{localize "NEUROSHIMA.MeleeDuel.EndEncounter"}}
-      </button>
-      <button type="button" data-action="resetTurn" class="">
-        <i class="fas fa-undo"></i> {{localize "NEUROSHIMA.MeleeDuel.ResetTurn"}}
-      </button>
+      {{#if (eq turnState.phase "primary-ready")}}
+        <button type="button" class="melee-btn melee-btn--resolve pulse" data-action="resolveExchange">
+          <i class="fas fa-check-double"></i> Rozstrzygnij wymianę
+        </button>
+      {{/if}}
+
+      {{#if (eq turnState.phase "extra-attacks")}}
+        <button type="button" class="melee-btn melee-btn--extra" data-action="resolveExtraAttacks">
+          <i class="fas fa-bolt"></i> Rozstrzygnij dodatkowe ataki
+        </button>
+      {{/if}}
+
+      {{#if (eq turnState.phase "segment-end")}}
+        <button type="button" class="melee-btn melee-btn--next" data-action="advanceSegment">
+          <i class="fas fa-step-forward"></i> {{#if (eq turnState.segment 3)}}Zakończ Turę{{else}}Następny Segment{{/if}}
+        </button>
+      {{/if}}
+
+      <div class="danger-zone">
+        <button type="button" class="melee-btn melee-btn--danger" data-action="resetTurn" title="Resetuj Turę">
+          <i class="fas fa-undo"></i>
+        </button>
+        <button type="button" class="melee-btn melee-btn--danger" data-action="endEncounter" title="Zakończ Starcie">
+          <i class="fas fa-stop"></i>
+        </button>
+      </div>
     {{/if}}
-    <button type="button" data-action="closeApp">
-      <i class="fas fa-times"></i> {{localize "NEUROSHIMA.Actions.Close"}}
-    </button>
   </div>
 </footer>

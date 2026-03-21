@@ -1,0 +1,13 @@
+<div class="team-column">
+  <header class="team-column__header">
+    <h2 class="team-column__title">{{title}}</h2>
+  </header>
+
+  <div class="participants-list">
+    {{#each team}}
+      {{> CombatantRow participant=this}}
+    {{else}}
+      <div class="participants-list__empty">Brak uczestników</div>
+    {{/each}}
+  </div>
+</div>

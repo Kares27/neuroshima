@@ -1,36 +1,112 @@
-.melee-app-shell {
+.melee-shell {
     display: flex;
     flex-direction: column;
     height: 100%;
-    background-color: var(--ns-bg-sheet);
+    background: var(--ns-bg-sheet);
     color: var(--ns-text-main);
-    font-family: 'SpecialElite', "Signika", sans-serif;
+    font-family: 'SpecialElite', sans-serif;
+    overflow: hidden;
 }
 
-/* Header */
+/* Header V2 */
 .melee-header {
-    background-color: var(--ns-bg-header);
-    padding: 10px 15px;
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+    padding: 8px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 2px solid var(--ns-border-main);
+    font-size: 1.1em;
 }
 
-.melee-header .turn-info {
-    font-size: 1.2em;
+.melee-header__phase {
     font-weight: bold;
     color: var(--ns-text-accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
-.melee-header .phase-prompt {
-    font-style: italic;
-    color: var(--ns-text-light);
-    font-weight: 500;
+/* Prompt Bar */
+.melee-prompt-bar {
+    background: #2c3e50;
+    color: #ecf0f1;
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
-/* Main Content Grid */
-.melee-main-grid {
+.melee-prompt-bar--info { background: #2980b9; }
+.melee-prompt-bar--action { background: #f39c12; color: #000; }
+.melee-prompt-bar--attacker { background: #c0392b; }
+.melee-prompt-bar--defender { background: #2980b9; }
+.melee-prompt-bar--ready { background: #27ae60; }
+.melee-prompt-bar--danger { background: #8e44ad; }
+
+.melee-prompt-bar__title {
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.melee-prompt-bar__text {
+    font-size: 1.2em;
+    margin-top: 2px;
+}
+
+/* Exchange Banner */
+.melee-exchange-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    background: rgba(0,0,0,0.2);
+    padding: 15px;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.exchange-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--ns-bg-panel);
+    padding: 8px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--ns-border-light);
+    min-width: 250px;
+}
+
+.exchange-card__img {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid var(--ns-border-main);
+}
+
+.exchange-card__label {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.exchange-card__name {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.melee-exchange-banner__middle {
+    font-family: 'SpecialElite', serif;
+    font-size: 1.4em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Teams Grid */
+.melee-teams-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
@@ -39,107 +115,206 @@
     overflow-y: auto;
 }
 
-.team-column {
-    background-color: var(--ns-bg-panel);
-    border: 1px solid var(--ns-border-light);
-    border-radius: 8px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-}
-
-.team-title {
-    text-align: center;
-    margin-bottom: 10px;
-    border-bottom: 2px solid var(--ns-border-main);
-    padding-bottom: 5px;
-    color: var(--ns-text-accent);
-    font-weight: bold;
-    text-transform: uppercase;
-}
-
-/* Participant Rows */
+/* Combatant Row V2 */
 .combatant-row {
-    background-color: var(--ns-bg-input);
+    background: var(--ns-bg-input);
     border: 1px solid var(--ns-border-main);
-    border-radius: 5px;
-    margin-bottom: 8px;
-    padding: 8px;
-    position: relative;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    padding: 10px;
     transition: all 0.2s;
 }
 
-.combatant-row.active-turn {
-    border-color: var(--ns-border-focus);
-    box-shadow: 0 0 10px rgba(160, 46, 46, 0.4);
+.combatant-row.is-active-turn {
+    border-color: var(--ns-text-accent);
+    box-shadow: 0 0 8px var(--ns-text-accent);
+    transform: translateX(2px);
 }
 
-/* .combatant-row.dead {
-    opacity: 0.6;
-    filter: grayscale(1);
-} */
-
-.participant-header {
+.combatant-row__main {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    gap: 12px;
+    align-items: flex-start;
 }
 
-.avatar {
-    width: 48px;
-    height: 48px;
+.combatant-row__avatar {
+    width: 54px;
+    height: 54px;
     border-radius: 4px;
     border: 2px solid var(--ns-border-main);
-    object-fit: cover;
 }
 
-.participant-info .name {
-    display: block;
+.combatant-row__identity {
+    flex-grow: 1;
+}
+
+.combatant-row__name {
     font-weight: bold;
-    font-size: 1.1em;
+    font-size: 1.2em;
+    color: var(--ns-text-accent);
 }
 
-.stats-row {
-    font-size: 0.85em;
+.combatant-row__meta {
     display: flex;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.meta-pill {
+    font-size: 0.75em;
+    background: rgba(0,0,0,0.1);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.combatant-row__relations {
+    margin-top: 6px;
+    font-size: 0.85em;
+    font-style: italic;
     color: var(--ns-text-light);
 }
 
-/* Dice Pool - Synchronized 1:1 with roll-card.hbs styles in base.css */
-.dice-pool {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-    justify-content: flex-start;
+.relation-line--crowded {
+    color: #e74c3c;
+    font-weight: bold;
 }
 
-.die {
+/* Dice & Actions */
+.combatant-row__dice-actions {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.die-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: #ffffff;
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    color: #1a1a14;
     border: 1px solid #7a7971;
-    font-size: 18px;
-    font-weight: bold;
     border-radius: 4px;
-    box-shadow: inset 0 0 4px #00000022;
+    font-size: 1.1em;
+    font-weight: bold;
     cursor: pointer;
-    user-select: none;
-    transition: all 0.2s ease;
-    color: #191813;
+    margin-right: 5px;
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
 }
 
-.theme-dark .die {
-    background: #1a1a14;
-    border-color: #5a5a54;
-    color: #d0d0c0;
-    box-shadow: inset 0 0 4px #ffffff11;
+.die-chip.is-used { opacity: 0.3; cursor: default; filter: grayscale(1); }
+.die-chip.is-success { background: #e8f5e9; border-color: #4caf50; color: #1b5e20; }
+.die-chip.is-failure { background: #ffebee; border-color: #ef5350; color: #c62828; }
+
+.die-chip.is-selected {
+    border: 3px solid #f39c12 !important;
+    transform: scale(1.1);
+    box-shadow: 0 0 10px #f39c12;
 }
 
-/* Light Mode Colors */
+/* Buttons */
+.melee-btn {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9em;
+}
+
+.melee-btn--primary { background: var(--ns-text-accent); color: #fff; }
+.melee-btn--secondary { background: #34495e; color: #fff; }
+.melee-btn--attack { background: #c0392b; color: #fff; }
+.melee-btn--defense { background: #2980b9; color: #fff; }
+.melee-btn--resolve { background: #27ae60; color: #fff; padding: 10px 20px; font-size: 1.1em; }
+.melee-btn--danger { background: #7f8c8d; color: #fff; }
+
+.melee-btn:hover:not(:disabled) {
+    filter: brightness(1.2);
+    transform: translateY(-1px);
+}
+
+/* Extra Attacks V2 */
+.extra-attacks-panel {
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    margin: 0 15px 15px;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.extra-attacks-panel__header h3 {
+    margin: 0 0 10px;
+    font-size: 1.1em;
+    color: #8e44ad;
+    text-transform: uppercase;
+}
+
+.extra-attacks-panel__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.extra-attack-card {
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.extra-attack-card.is-hit { border-left: 5px solid #e74c3c; }
+.extra-attack-card.is-blocked { border-left: 5px solid #27ae60; }
+.extra-attack-card.is-pending { border-left: 5px solid #95a5a6; opacity: 0.7; }
+
+/* Bottom Section */
+.melee-bottom-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 15px;
+}
+
+/* Footer V2 */
+.melee-footer-v2 {
+    background: var(--ns-bg-header);
+    padding: 15px;
+    border-top: 2px solid var(--ns-border-main);
+    display: flex;
+    justify-content: center;
+}
+
+.gm-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.danger-zone {
+    margin-left: 30px;
+    padding-left: 15px;
+    border-left: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    gap: 5px;
+}
+
+.pulse { animation: resolve-pulse 2s infinite; }
+@keyframes resolve-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(39, 174, 96, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
+}
+
+/* Status Badge Styles */
 .status-badge {
     display: inline-block;
     font-size: 0.75em;
@@ -147,540 +322,33 @@
     border-radius: 10px;
     font-weight: bold;
     text-transform: uppercase;
-    margin-top: 4px;
 }
 
-.status-badge.active { background-color: #f39c12; color: #000; }
-.status-badge.ready { background-color: #27ae60; color: #fff; }
-.status-badge.attacker { background-color: #e74c3c; color: #fff; }
-.status-badge.defender { background-color: #3498db; color: #fff; }
-.status-badge.crowded { background-color: #9b59b6; color: #fff; }
-.status-badge.primary { background-color: #c0392b; color: #fff; }
-.status-badge.extra { background-color: #8e44ad; color: #fff; }
-.status-badge.waiting { background-color: #7f8c8d; color: #fff; }
+.status-badge--active { background: #f39c12; color: #000; }
+.status-badge--ready { background: #27ae60; color: #fff; }
+.status-badge--attacker { background: #e74c3c; color: #fff; }
+.status-badge--defender { background: #3498db; color: #fff; }
+.status-badge--crowded { background: #9b59b6; color: #fff; }
+.status-badge--primary { background: #c0392b; color: #fff; }
+.status-badge--extra { background: #8e44ad; color: #fff; }
+.status-badge--waiting { background: #7f8c8d; color: #fff; }
+.status-badge--inactive { background: #34495e; color: #fff; opacity: 0.5; }
 
-.target-selection-controls {
-    margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.target-btn {
-    background-color: var(--ns-bg-input);
-    color: var(--ns-text-main);
+/* Log Styles V2 */
+.melee-log-v2 {
+    background: var(--ns-bg-panel);
     border: 1px solid var(--ns-border-main);
-    padding: 4px 8px;
     border-radius: 4px;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.2s;
-}
-
-.target-btn:hover {
-    background-color: var(--ns-bg-hover);
-}
-
-.target-btn.selected {
-    background-color: var(--ns-text-accent);
-    color: #fff;
-    border-color: #fff;
-}
-
-.confirmation-controls {
-    margin-top: 10px;
-}
-
-.confirm-btn {
-    width: 100%;
-    padding: 8px;
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'SpecialElite', serif;
-    transition: all 0.2s;
-}
-
-.confirm-btn.attack { background-color: #e74c3c; color: #fff; border: 1px solid #c0392b; }
-.confirm-btn.defense { background-color: #3498db; color: #fff; border: 1px solid #2980b9; }
-
-.confirm-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background-color: #95a5a6 !important;
-}
-
-.penalty-tag {
-    background-color: #c0392b;
-    color: #fff;
-    padding: 1px 5px;
-    border-radius: 3px;
-    font-weight: bold;
-}
-
-.participant-footer {
-    margin-top: 8px;
-    font-size: 0.8em;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    color: var(--ns-text-light);
-}
-
-.resolve-btn.extra {
-    background-color: #8e44ad;
-}
-
-.resolve-btn.extra:hover {
-    background-color: #7d3c98;
-}
-
-.die.success { 
-    background: #e8f5e9; 
-    border-color: #4caf50; 
-    color: #1b5e20; 
-}
-.die.failure { 
-    background: #ffebee; 
-    border-color: #ef5350; 
-    color: #c62828; 
-}
-.die.nat-1 { 
-    background: #fff9c4 !important;
-    border-color: #fbc02d !important;
-    color: #f57f17 !important;
-    box-shadow: 0 0 5px #fbc02d !important;
-}
-.die.nat-20 { 
-    background: #ffcdd2 !important;
-    border-color: #d32f2f !important;
-    color: #b71c1c !important;
-}
-
-/* Dark Mode Colors */
-.theme-dark .die.success { 
-    background: #1b301b;
-    border-color: #4caf50;
-    color: #a5d6a7;
-}
-.theme-dark .die.failure { 
-    background: #3d1c1c;
-    border-color: #ef5350;
-    color: #ef9a9a;
-}
-.theme-dark .die.nat-1 { 
-    background: #332b00 !important;
-    border-color: #fbc02d !important;
-    color: #ffeb3b !important;
-    box-shadow: 0 0 8px #fbc02d44 !important;
-}
-.theme-dark .die.nat-20 { 
-    background: #3d0c0c !important;
-    border-color: #d32f2f !important;
-    color: #ff8a80 !important;
-    box-shadow: 0 0 8px #d32f2f44 !important;
-}
-
-/* Selection State - Matching base.css die-pulse */
-@keyframes die-pulse {
-    0% { transform: scale(1.15); box-shadow: 0 0 10px #f57c00; }
-    50% { transform: scale(1.22); box-shadow: 0 0 20px #f57c00, 0 0 8px rgba(255, 255, 255, 0.4); }
-    100% { transform: scale(1.15); box-shadow: 0 0 10px #f57c00; }
-}
-
-.die.selected { 
-    animation: die-pulse 1.5s infinite ease-in-out;
-    border: 3px solid #f57c00 !important;
-    z-index: 10;
-    position: relative;
-    transform: scale(1.15);
-}
-
-.die.used { 
-    opacity: 0.3; 
-    cursor: not-allowed; 
-    filter: grayscale(0.5);
-}
-
-/* Controls & Overlays */
-.roll-pool-btn {
-    margin-left: auto;
-    background-color: var(--ns-text-accent);
-    color: #fff;
-    border: 1px solid var(--ns-border-main);
-    padding: 5px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'SpecialElite', serif;
-    font-weight: bold;
-    transition: all 0.2s;
-}
-
-.roll-pool-btn:hover {
-    background-color: #c0392b;
-    box-shadow: 0 0 8px rgba(160, 46, 46, 0.4);
-}
-
-.declaration-controls {
-    display: flex;
-    gap: 5px;
-    margin-top: 10px;
-}
-
-.attack-btn {
-    flex: 1;
-    background-color: var(--ns-bg-input);
-    color: var(--ns-text-main);
-    border: 1px solid var(--ns-border-main);
-    padding: 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'SpecialElite', serif;
-    font-weight: bold;
-}
-
-.attack-btn:hover {
-    background-color: var(--ns-bg-hover);
-    border-color: var(--ns-text-accent);
-}
-
-.selection-status {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-}
-
-.role-tag {
-    font-size: 0.7em;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-weight: bold;
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-.role-tag.attacker { background-color: var(--ns-text-accent); color: #fff; }
-.role-tag.defender { background-color: #1976d2; color: #fff; }
-
-/* Footer & Log */
-.melee-footer {
-    background-color: var(--ns-bg-header);
-    padding: 15px;
-    border-top: 2px solid var(--ns-border-main);
-}
-
-.combat-log {
-    height: 120px;
+    height: 100px;
     overflow-y: auto;
-    font-size: 0.9em;
-    background-color: var(--ns-bg-panel);
     padding: 8px;
-    border: 1px solid var(--ns-border-main);
-    border-radius: 4px;
+    font-size: 0.85em;
     font-family: 'SpecialElite', serif;
 }
 
-.log-entry .timestamp { color: var(--ns-text-light); margin-right: 5px; }
-.log-entry.info { color: var(--ns-text-main); }
-.log-entry.success { color: #4caf50; }
-.log-entry.error { color: #f44336; }
-
-.gm-resolution-area {
-    margin-top: 10px;
-    text-align: center;
+.log-line {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding: 2px 0;
 }
 
-.resolve-btn {
-    background-color: var(--ns-text-accent);
-    color: #fff;
-    padding: 12px 24px;
-    font-size: 1.2em;
-    border: 2px solid var(--ns-border-main);
-    border-radius: 5px;
-    cursor: pointer;
-    font-family: 'SpecialElite', serif;
-    font-weight: bold;
-    transition: all 0.2s;
-}
-
-.resolve-btn:hover {
-    background-color: #c0392b;
-    transform: scale(1.05);
-    box-shadow: 0 0 15px rgba(160, 46, 46, 0.4);
-}
-
-/* ========================================= */
-/* SIDEBAR MELEE VIEW                        */
-/* ========================================= */
-
-.melee-view-container {
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.active-melee-panel.full-view,
-.pending-melee-panel.full-view {
-    background-color: var(--ns-bg-panel);
-    border: 1px solid var(--ns-border-main);
-    border-radius: 6px;
-    padding: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    position: relative;
-    overflow: hidden;
-}
-
-.active-melee-panel.full-view:hover,
-.pending-melee-panel.full-view:hover {
-    background: rgba(255, 255, 255, 0.07);
-    border-color: #666;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-}
-
-.active-melee-panel.full-view {
-    border-left: 4px solid var(--ns-text-accent);
-}
-
-.pending-melee-panel.full-view {
-    border-left: 4px solid var(--ns-border-main);
-}
-
-.active-melee-panel.full-view::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(90deg, rgba(255, 152, 0, 0.05) 0%, transparent 50%);
-    pointer-events: none;
-}
-
-.pending-melee-panel.full-view::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: linear-gradient(90deg, rgba(96, 125, 139, 0.05) 0%, transparent 50%);
-    pointer-events: none;
-}
-
-.melee-view-container .melee-header {
-    background: transparent;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9em;
-    font-weight: bold;
-    color: var(--ns-text-accent);
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--ns-border-main);
-    padding-bottom: 4px;
-}
-
-.melee-view-container .melee-participants {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin: 5px 0;
-}
-
-.melee-view-container .team {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.melee-view-container .participant-mini {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.participant-img-tiny {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid #666;
-    object-fit: cover;
-}
-
-.participant-name-tiny {
-    font-size: 0.7em;
-    max-width: 60px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #aaa;
-}
-
-.melee-view-container .vs {
-    font-weight: bold;
-    font-style: italic;
-    color: var(--ns-text-light);
-}
-
-.pending-melee-panel .melee-participants {
-    font-size: 0.9em;
-    color: var(--ns-text-main);
-    gap: 15px;
-}
-
-.melee-instruction {
-    font-size: 0.8em;
-    font-style: italic;
-    color: var(--ns-text-light);
-    text-align: center;
-    margin-top: 5px;
-}
-
-.join-melee-btn {
-    width: 100%;
-    margin-top: 10px;
-    background: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    font-family: 'SpecialElite', serif;
-}
-
-/* ========================================= */
-/* COMBAT TRACKER INDICATORS                 */
-/* ========================================= */
-
-#combat-tracker li.combatant.melee-active {
-    border-left: 4px solid var(--ns-text-accent) !important;
-    background: rgba(160, 46, 46, 0.05);
-}
-
-#combat-tracker li.combatant.melee-pending {
-    border-left: 4px solid var(--ns-border-main) !important;
-    background: var(--ns-bg-panel);
-}
-
-/* ========================================= */
-/* ACTOR SHEET PENDING MELEE CARDS           */
-/* ========================================= */
-
-.melee-pending-attacker-card,
-.melee-pending-defender-card {
-    background: var(--ns-bg-panel);
-    color: var(--ns-text-main);
-    border: 1px solid var(--ns-border-main);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 15px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    animation: pulse-border-soft 3s infinite ease-in-out;
-}
-
-.melee-pending-attacker-card .card-header,
-.melee-pending-defender-card .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--ns-border-light);
-    padding-bottom: 6px;
-    margin-bottom: 10px;
-}
-
-.melee-pending-attacker-card .header-main,
-.melee-pending-defender-card .header-main {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: bold;
-    color: var(--ns-text-accent);
-    text-transform: uppercase;
-    font-size: 0.9em;
-}
-
-.melee-pending-attacker-card .dismiss-btn,
-.melee-pending-defender-card .dismiss-btn {
-    color: var(--ns-text-light);
-    cursor: pointer;
-}
-
-.melee-pending-attacker-card .dismiss-btn:hover,
-.melee-pending-defender-card .dismiss-btn:hover {
-    color: var(--ns-text-accent);
-}
-
-.melee-pending-attacker-card .attacker-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.melee-pending-attacker-card .attacker-identity .attacker-name {
-    font-weight: bold;
-    font-size: 1.1em;
-    color: var(--ns-text-accent);
-}
-
-.melee-pending-attacker-card .initiative-badge {
-    background: var(--ns-text-accent);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 15px;
-    font-size: 0.8em;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.melee-pending-attacker-card .instruction,
-.melee-pending-defender-card .status-msg {
-    font-style: italic;
-    color: var(--ns-text-light);
-    font-size: 0.9em;
-    margin: 8px 0;
-}
-
-.melee-pending-defender-card .duel-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    margin: 10px 0;
-    font-size: 1.1em;
-}
-
-.melee-pending-defender-card .duel-info .participant {
-    font-weight: bold;
-    color: var(--ns-text-accent);
-}
-
-.melee-pending-attacker-card .join-melee-btn {
-    width: 100%;
-    background: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
-}
-
-@keyframes pulse-border-soft {
-    0% { border-color: var(--ns-border-main); box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-    50% { border-color: var(--ns-text-accent); box-shadow: 0 0 12px rgba(160, 46, 46, 0.2); }
-    100% { border-color: var(--ns-border-main); box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-}
-
-@keyframes animate-fist {
-    0% { transform: scale(1); }
-    20% { transform: scale(1.2) rotate(-10deg); }
-    40% { transform: scale(1.1) rotate(10deg); }
-    60% { transform: scale(1.2) rotate(0); }
-    100% { transform: scale(1); }
-}
-
-.animate-fist {
-    animation: animate-fist 2s infinite ease-in-out;
-}
-
+.log-line .ts { color: var(--ns-text-light); opacity: 0.6; margin-right: 5px; }

@@ -1,85 +1,30 @@
-<div class="melee-app-shell">
-    {{!-- 1. Dynamic Header with Current Prompt --}}
-    <header class="melee-header">
-        <div class="turn-info">
-            <span class="label">Tura {{turnState.turn}}</span>
-            <span class="divider">|</span>
-            <span class="label">Segment {{turnState.segment}}/3</span>
-        </div>
-        <div class="phase-prompt">
-            {{currentPrompt}}
-        </div>
-        <div class="app-controls">
-            {{#if isGM}}
-                <a class="control-btn" data-action="resetTurn" title="Resetuj Turę">
-                    <i class="fas fa-undo"></i>
-                </a>
-                <a class="control-btn danger" data-action="endEncounter" title="Zakończ Starcie">
-                    <i class="fas fa-stop"></i>
-                </a>
-            {{/if}}
-            <a class="control-btn" data-action="closeApp" title="Zamknij">
-                <i class="fas fa-times"></i>
-            </a>
-        </div>
-    </header>
+<div class="melee-shell">
+  {{> MeleeHeader}}
 
-    {{!-- Active Exchange Dashboard --}}
-    {{> "systems/neuroshima/templates/apps/melee/parts/active-exchange.hbs"}}
+  {{> MeleePromptBar}}
 
-    {{!-- 2. Teams Grid (Main Content) --}}
-    <div class="melee-main-grid">
-        {{!-- Team A Column --}}
-        <section class="team-column team-a">
-            <h3 class="team-title">Drużyna A</h3>
-            <div class="participants-list">
-                {{#each teamsData.A}}
-                    {{> "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs" participant=this}}
-                {{/each}}
-            </div>
-        </section>
+  {{> MeleeExchangeBanner}}
 
-        {{!-- Team B Column --}}
-        <section class="team-column team-b">
-            <h3 class="team-title">Drużyna B</h3>
-            <div class="participants-list">
-                {{#each teamsData.B}}
-                    {{> "systems/neuroshima/templates/apps/melee/parts/combatant-card.hbs" participant=this}}
-                {{/each}}
-            </div>
-        </section>
-    </div>
+  <div class="melee-teams-grid">
+    <section class="team-column-wrap team-column-wrap-a">
+      {{> TeamColumn
+          title="Drużyna A"
+          team=teamsData.A
+          teamKey="A"}}
+    </section>
 
-    {{!-- 3. Bottom Log Section --}}
-    <footer class="melee-footer">
-        <div class="combat-log">
-            {{#each log}}
-                <div class="log-entry {{this.type}}">
-                    <span class="message">{{{this.text}}}</span>
-                </div>
-            {{else}}
-                <div class="log-empty">Brak wpisów w dzienniku walki.</div>
-            {{/each}}
-        </div>
-        
-        {{#if isGM}}
-            <div class="gm-resolution-area">
-                {{#if (eq turnState.phase "primary-ready")}}
-                    <button type="button" class="resolve-btn primary" data-action="resolveExchange">
-                        <i class="fas fa-swords"></i> Rozstrzygnij główną wymianę
-                    </button>
-                {{/if}}
-                {{#if (eq turnState.phase "extra-attacks")}}
-                    <button type="button" class="resolve-btn extra" data-action="resolveExtraAttacks">
-                        <i class="fas fa-shield-alt"></i> Rozstrzygnij dodatkowe ataki
-                    </button>
-                {{/if}}
-                {{#if (eq turnState.phase "segment-end")}}
-                    <button type="button" class="resolve-btn next" data-action="advanceSegment">
-                        <i class="fas fa-step-forward"></i> {{#if (eq turnState.segment 3)}}Zakończ Turę{{else}}Następny Segment{{/if}}
-                    </button>
-                {{/if}}
-            </div>
-        {{/if}}
-    </footer>
+    <section class="team-column-wrap team-column-wrap-b">
+      {{> TeamColumn
+          title="Drużyna B"
+          team=teamsData.B
+          teamKey="B"}}
+    </section>
+  </div>
+
+  <div class="melee-bottom-section">
+      {{> ExtraAttacksPanel}}
+      {{> CombatLog}}
+  </div>
+
+  {{> FooterControls}}
 </div>

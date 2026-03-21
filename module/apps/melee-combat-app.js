@@ -91,11 +91,18 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     for (const pId in context.participants) {
       const p = context.participants[pId];
+      p.id = pId;
       const doc = fromUuidSync(p.actorUuid);
       const actor = doc?.actor || doc;
       p.isOwner = actor?.isOwner;
       p.isUserCharacter = game.user.character?.uuid === p.actorUuid;
       
+      const weapon = actor?.items.get(p.weaponId);
+      p.weaponName = weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed");
+      p.maneuverLabel = p.maneuver && p.maneuver !== "none" 
+        ? game.i18n.localize(`NEUROSHIMA.Roll.Maneuvers.${p.maneuver.charAt(0).toUpperCase() + p.maneuver.slice(1)}`) 
+        : game.i18n.localize("NEUROSHIMA.Roll.Maneuvers.None");
+
       // Target information
       const targetId = context.primaryTargets[pId];
       p.targetName = context.participants[targetId]?.name || "";
@@ -122,6 +129,22 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       const isAttacker = pId === exchange.attackerId || (phase === "primary-attack-selection" && pId === selectionTurn);
       p.currentEffectiveTarget = isAttacker ? p.attackTarget : p.defenseTarget;
       
+      // Permissions and Actions
+      p.canRollPool = p.isOwner && p.pool.length === 0 && phase === "awaiting-pool-rolls";
+      p.canChooseTarget = p.isOwner && phase === "target-selection" && selectionTurn === pId;
+      
+      if (p.canChooseTarget) {
+          const opposingTeam = p.team === "A" ? "B" : "A";
+          p.availableTargets = (context.teams[opposingTeam] || [])
+            .map(id => context.participants[id])
+            .filter(opp => opp && opp.isActive);
+      }
+
+      p.canConfirmAttack = p.isOwner && phase === "primary-attack-selection" && selectionTurn === pId && exchange.attackerSelectedDice.length > 0;
+      p.pendingAttackStrength = exchange.attackerSelectedDice.length;
+      
+      p.canConfirmDefense = p.isOwner && phase === "primary-defense-selection" && selectionTurn === pId && exchange.defenderSelectedDice.length === exchange.declaredDiceCount;
+
       // Prepare selected dice information for templates
       p.selectedDiceIndices = [];
       
@@ -159,13 +182,99 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       B: (context.teams.B || []).map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative)
     };
 
-    // Current exchange participants
-    context.attacker = context.currentExchange.attackerId ? context.participants[context.currentExchange.attackerId] : null;
-    context.defender = context.currentExchange.defenderId ? context.participants[context.currentExchange.defenderId] : null;
+    // Global Labels
+    context.phaseLabel = game.i18n.localize(`NEUROSHIMA.MeleeDuel.Phase.${phase}`) || phase;
+    context.initiativeOwnerName = context.participants[context.turnState.initiativeOwnerId]?.name || "---";
 
-    context.currentPrompt = this._getPhasePrompt(context);
+    // Prompt Header
+    const promptData = this._getDetailedPrompt(context);
+    context.promptTitle = promptData.title;
+    context.promptTone = promptData.tone;
+    context.currentPrompt = promptData.text;
+
+    // Extra Attacks Enrichment
+    context.extraAttackCards = (context.extraAttackQueue || []).map(entry => {
+      const attacker = context.participants[entry.attackerId];
+      const defender = context.participants[entry.defenderId];
+      return {
+        ...entry,
+        attackerName: attacker?.name || "Nieznany",
+        defenderName: defender?.name || "Nieznany",
+        resultClass: entry.resolved ? (entry.result?.hit ? "is-hit" : "is-blocked") : "is-pending"
+      };
+    });
+
+    // Current exchange participants
+    context.attacker = exchange.attackerId ? context.participants[exchange.attackerId] : (phase === "primary-attack-selection" ? context.participants[selectionTurn] : null);
+    context.defender = exchange.defenderId ? context.participants[exchange.defenderId] : (phase === "primary-defense-selection" ? context.participants[selectionTurn] : null);
 
     return context;
+  }
+
+  /**
+   * Generates detailed prompt info.
+   * @private
+   */
+  _getDetailedPrompt(context) {
+    const phase = context.turnState.phase;
+    const selectionTurnId = context.turnState.selectionTurn;
+    const participant = context.participants[selectionTurnId];
+    const name = participant?.name || "Ktoś";
+
+    const data = {
+        title: game.i18n.localize("NEUROSHIMA.MeleeDuel.Title"),
+        tone: "neutral",
+        text: ""
+    };
+
+    switch (phase) {
+      case "awaiting-pool-rolls":
+        data.title = "Początek tury";
+        data.tone = "info";
+        const waitingCount = Object.values(context.participants).filter(p => !p.isActive || !p.pool?.length).length;
+        data.text = `Wszyscy wybierają manewr i rzucają 3k20 (Czeka: ${waitingCount})`;
+        break;
+      
+      case "target-selection":
+        data.title = "Wybór przeciwników";
+        data.tone = "action";
+        data.text = `${name}: Wybierz swojego głównego przeciwnika`;
+        break;
+
+      case "primary-attack-selection":
+        data.title = "Atak";
+        data.tone = "attacker";
+        data.text = `${name} wybiera kości ataku`;
+        break;
+      
+      case "primary-defense-selection":
+        data.title = "Obrona";
+        data.tone = "defender";
+        data.text = `${name} wybiera kości obrony`;
+        break;
+      
+      case "primary-ready":
+        data.title = "Gotowość";
+        data.tone = "ready";
+        data.text = "Wymiana gotowa do rozstrzygnięcia przez MG.";
+        break;
+      
+      case "extra-attacks":
+        data.title = "Grad ciosów";
+        data.tone = "danger";
+        data.text = "Dodatkowi napastnicy wykonują ataki. Osaczony broni się darmową obroną.";
+        break;
+      
+      case "segment-end":
+        data.title = "Koniec segmentu";
+        data.tone = "success";
+        data.text = context.turnState.segment < 3 ? "Segment zakończony. Przejdź do kolejnego." : "Tura zakończona. Przygotuj nową pulę.";
+        break;
+
+      default:
+        data.text = "Inicjalizacja...";
+    }
+    return data;
   }
 
   /**

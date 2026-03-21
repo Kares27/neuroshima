@@ -1,0 +1,39 @@
+<section class="melee-exchange-banner">
+  {{#if attacker}}
+    <div class="exchange-card exchange-card--attacker">
+      <img src="{{attacker.img}}" class="exchange-card__img" alt="{{attacker.name}}">
+      <div class="exchange-card__body">
+        <div class="exchange-card__label">Atakujący</div>
+        <div class="exchange-card__name">{{attacker.name}}</div>
+      </div>
+    </div>
+  {{else}}
+    <div class="exchange-card exchange-card--empty">
+      Brak aktywnego atakującego
+    </div>
+  {{/if}}
+
+  <div class="melee-exchange-banner__middle">
+    <div class="exchange-state">
+      {{#if currentExchange.declaredDiceCount}}
+        Atak: {{currentExchange.declaredDiceCount}}s
+      {{else}}
+        Oczekiwanie na deklarację
+      {{/if}}
+    </div>
+  </div>
+
+  {{#if defender}}
+    <div class="exchange-card exchange-card--defender">
+      <img src="{{defender.img}}" class="exchange-card__img" alt="{{defender.name}}">
+      <div class="exchange-card__body">
+        <div class="exchange-card__label">Obrońca</div>
+        <div class="exchange-card__name">{{defender.name}}</div>
+      </div>
+    </div>
+  {{else}}
+    <div class="exchange-card exchange-card--empty">
+      Brak aktywnego obrońcy
+    </div>
+  {{/if}}
+</section>
