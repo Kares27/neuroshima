@@ -1,15 +1,15 @@
 <section class="melee-log-v2">
   <header class="log-header">
-    <i class="fas fa-scroll"></i> Dziennik Walki
+    <i class="fas fa-scroll"></i> {{localize "NEUROSHIMA.MeleeDuel.CombatLog"}}
   </header>
   <div class="log-content">
     {{#each log}}
-      <div class="log-line">
-        <span class="ts">[{{turn}}.{{segment}}]</span>
-        <span class="msg">{{{message}}}</span>
+      <div class="log-line log-line--{{this.type}}">
+        <span class="ts">[{{this.turn}}.{{this.segment}}]</span>
+        <span class="msg">{{{this.text}}}</span>
       </div>
     {{else}}
-      <div class="log-empty">Brak wpisów.</div>
+      <div class="log-empty">{{localize "NEUROSHIMA.MeleeDuel.LogEmpty"}}</div>
     {{/each}}
   </div>
 </section>

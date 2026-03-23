@@ -2,26 +2,33 @@
   <div class="combatant-row__main">
     <div class="combatant-row__avatar-wrap">
       <img src="{{participant.img}}" class="combatant-row__avatar" alt="{{participant.name}}">
+      {{#if participant.isCrowded}}
+        <span class="crowded-badge" title="{{localize "NEUROSHIMA.MeleeDuel.Crowded"}}">
+          <i class="fas fa-users"></i>-{{participant.dexPenalty}}
+        </span>
+      {{/if}}
     </div>
 
     <div class="combatant-row__identity">
       <div class="combatant-row__name">{{participant.name}}</div>
       <div class="combatant-row__meta">
-        <span class="meta-pill">Init: {{participant.initiative}}</span>
-        <span class="meta-pill">Broń: {{participant.weaponName}}</span>
-        <span class="meta-pill">Manewr: {{participant.maneuverLabel}}</span>
+        <span class="meta-pill meta-pill--init">
+          <i class="fas fa-bolt"></i> {{participant.initiative}}
+        </span>
+        <span class="meta-pill">{{participant.weaponName}}</span>
+        {{#if (ne participant.maneuver "none")}}
+          <span class="meta-pill meta-pill--maneuver">{{participant.maneuverLabel}}</span>
+        {{/if}}
+        <span class="meta-pill meta-pill--target">
+          {{localize "NEUROSHIMA.MeleeDuel.TargetValue"}}: {{participant.currentEffectiveTarget}}
+        </span>
       </div>
       <div class="combatant-row__relations">
         {{#if participant.targetName}}
-          <span class="relation-line">Cel: {{participant.targetName}}</span>
+          <span class="relation-line">{{localize "NEUROSHIMA.MeleeDuel.Target"}}: <strong>{{participant.targetName}}</strong></span>
         {{/if}}
         {{#if participant.primaryOpponentName}}
-          <span class="relation-line">Główny przeciwnik: {{participant.primaryOpponentName}}</span>
-        {{/if}}
-        {{#if participant.isCrowded}}
-          <span class="relation-line relation-line--crowded">
-            Osaczony | Kara do Zr: -{{participant.dexPenalty}}
-          </span>
+          <span class="relation-line">{{localize "NEUROSHIMA.MeleeDuel.PrimaryOpponent"}}: <strong>{{participant.primaryOpponentName}}</strong></span>
         {{/if}}
       </div>
     </div>
@@ -45,48 +52,67 @@
                    {{#if (le this ../participant.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
             data-action="selectDie"
             data-id="{{../participant.id}}"
-            data-index="{{@index}}">
+            data-index="{{@index}}"
+            title="{{#if (le this ../participant.currentEffectiveTarget)}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
             {{this}}
           </button>
         {{/each}}
+        <div class="dice-legend">
+          <span class="dice-legend__success">{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}: ≤{{participant.currentEffectiveTarget}}</span>
+        </div>
       {{else}}
-        <div class="combatant-row__no-pool">Brak rzuconej puli</div>
+        {{#if participant.canRollPool}}
+          <div class="combatant-row__no-pool">{{localize "NEUROSHIMA.MeleeDuel.NoPool"}}</div>
+        {{else}}
+          <div class="combatant-row__waiting"><i class="fas fa-hourglass-half"></i> {{localize "NEUROSHIMA.MeleeDuel.WaitingForPool"}}</div>
+        {{/if}}
       {{/if}}
     </div>
 
     <div class="combatant-row__actions">
       {{#if participant.canRollPool}}
-        <button type="button" class="melee-btn melee-btn--primary"
+        <button type="button" class="melee-btn melee-btn--primary pulse"
                 data-action="openPoolDialog" data-id="{{participant.id}}">
-          <i class="fas fa-dice-d20"></i> Rzuć 3k20
+          <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
         </button>
       {{/if}}
 
       {{#if participant.canChooseTarget}}
         <div class="target-choice-wrap">
-            <span class="label">Wybierz cel:</span>
-            {{#each participant.availableTargets}}
-              <button type="button" class="melee-btn melee-btn--secondary"
-                      data-action="selectTarget"
-                      data-id="{{../participant.id}}"
-                      data-target-id="{{this.id}}">
-                {{this.name}}
-              </button>
-            {{/each}}
+          <span class="label">{{localize "NEUROSHIMA.MeleeDuel.ChooseTarget"}}:</span>
+          {{#each participant.availableTargets}}
+            <button type="button" class="melee-btn melee-btn--secondary"
+                    data-action="selectTarget"
+                    data-id="{{../participant.id}}"
+                    data-target-id="{{this.id}}">
+              {{this.name}}
+            </button>
+          {{/each}}
         </div>
       {{/if}}
 
       {{#if participant.canConfirmAttack}}
-        <button type="button" class="melee-btn melee-btn--attack pulse"
-                data-action="confirmAttack" data-id="{{participant.id}}">
-          Potwierdź atak ({{participant.pendingAttackStrength}}s)
-        </button>
+        <div class="confirm-attack-wrap">
+          {{#if participant.damageMeleePreview}}
+            <div class="damage-preview">
+              <span class="damage-preview__item" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 1s">1s → {{participant.damageMeleePreview.1}}</span>
+              <span class="damage-preview__item {{#if (eq participant.pendingAttackStrength 2)}}is-selected-tier{{/if}}" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 2s">2s → {{participant.damageMeleePreview.2}}</span>
+              <span class="damage-preview__item {{#if (eq participant.pendingAttackStrength 3)}}is-selected-tier{{/if}}" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 3s">3s → {{participant.damageMeleePreview.3}}</span>
+            </div>
+          {{/if}}
+          <button type="button" class="melee-btn melee-btn--attack pulse"
+                  data-action="confirmAttack" data-id="{{participant.id}}">
+            <i class="fas fa-fist-raised"></i>
+            {{localize "NEUROSHIMA.MeleeDuel.ConfirmAttack"}} ({{participant.pendingAttackStrength}}s)
+          </button>
+        </div>
       {{/if}}
 
       {{#if participant.canConfirmDefense}}
         <button type="button" class="melee-btn melee-btn--defense pulse"
                 data-action="confirmDefense" data-id="{{participant.id}}">
-          Potwierdź obronę
+          <i class="fas fa-shield-alt"></i>
+          {{localize "NEUROSHIMA.MeleeDuel.ConfirmDefense"}}
         </button>
       {{/if}}
     </div>

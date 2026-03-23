@@ -208,7 +208,107 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     context.attacker = exchange.attackerId ? context.participants[exchange.attackerId] : (phase === "primary-attack-selection" ? context.participants[selectionTurn] : null);
     context.defender = exchange.defenderId ? context.participants[exchange.defenderId] : (phase === "primary-defense-selection" ? context.participants[selectionTurn] : null);
 
+    // Segment progress dots for header visualization
+    const currentSeg = context.turnState.segment || 1;
+    context.segmentDots = [1, 2, 3].map(i => ({
+      number: i,
+      state: i < currentSeg ? "done" : i === currentSeg ? "active" : "pending"
+    }));
+
+    // User role & turn detection (client-side: game.user is local)
+    let myRole = "observer";
+    let isMyTurn = false;
+    for (const pId in context.participants) {
+      const p = context.participants[pId];
+      if (!p.isOwner) continue;
+      if (pId === exchange.attackerId) myRole = "attacker";
+      else if (pId === exchange.defenderId) myRole = "defender";
+      if (pId === selectionTurn) isMyTurn = true;
+    }
+    context.isMyTurn = isMyTurn;
+    context.myRole = myRole;
+
+    // Damage preview from active attacker's weapon (for exchange banner and confirm button)
+    if (exchange.attackerId) {
+      const attackerP = context.participants[exchange.attackerId];
+      if (attackerP) {
+        const aDoc = fromUuidSync(attackerP.actorUuid);
+        const aActor = aDoc?.actor || aDoc;
+        const aWeapon = aActor?.items.get(attackerP.weaponId);
+        if (aWeapon?.system) {
+          context.attackDamagePreview = {
+            1: aWeapon.system.damageMelee1 || "D",
+            2: aWeapon.system.damageMelee2 || "L",
+            3: aWeapon.system.damageMelee3 || "C"
+          };
+        }
+      }
+    }
+
+    // Per-participant damage preview (for confirm attack button)
+    for (const pId in context.participants) {
+      const p = context.participants[pId];
+      const pDoc = fromUuidSync(p.actorUuid);
+      const pActor = pDoc?.actor || pDoc;
+      const pWeapon = pActor?.items.get(p.weaponId);
+      p.damageMeleePreview = {
+        1: pWeapon?.system?.damageMelee1 || "D",
+        2: pWeapon?.system?.damageMelee2 || "L",
+        3: pWeapon?.system?.damageMelee3 || "C"
+      };
+    }
+
+    // Personalized action hint for the local user
+    context.userActionHint = this._getUserActionHint(context);
+
     return context;
+  }
+
+  /**
+   * Returns a personalized action hint for the local user based on the current phase.
+   * @private
+   */
+  _getUserActionHint(context) {
+    const phase = context.turnState.phase;
+    const exchange = context.currentExchange;
+    const needed = exchange.declaredDiceCount || 0;
+
+    if (phase === "awaiting-pool-rolls") {
+      const needsRoll = Object.values(context.participants).some(p => p.isOwner && p.pool.length === 0);
+      if (needsRoll) return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.RollPool"), urgent: true };
+      return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingPool"), urgent: false };
+    }
+
+    if (phase === "target-selection") {
+      const myTurnParticipant = Object.values(context.participants).find(p => p.isOwner && p.canChooseTarget);
+      if (myTurnParticipant) return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.ChooseTarget"), urgent: true };
+      return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingTarget"), urgent: false };
+    }
+
+    if (phase === "primary-attack-selection") {
+      if (context.isMyTurn) return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.SelectAttack"), urgent: true };
+      return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingAttack"), urgent: false };
+    }
+
+    if (phase === "primary-defense-selection") {
+      if (context.isMyTurn) return { text: game.i18n.format("NEUROSHIMA.MeleeDuel.Hint.SelectDefense", { count: needed }), urgent: true };
+      return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingDefense"), urgent: false };
+    }
+
+    if (phase === "primary-ready") {
+      if (context.isGM) return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.ResolveReady"), urgent: true };
+      return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingResolve"), urgent: false };
+    }
+
+    if (phase === "segment-end") {
+      if (context.isGM) {
+        const key = context.turnState.segment < 3 ? "NEUROSHIMA.MeleeDuel.Hint.NextSegment" : "NEUROSHIMA.MeleeDuel.Hint.EndTurn";
+        return { text: game.i18n.localize(key), urgent: true };
+      }
+      return { text: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingGM"), urgent: false };
+    }
+
+    return { text: "", urgent: false };
   }
 
   /**
