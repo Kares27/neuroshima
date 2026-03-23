@@ -1,3 +1,8 @@
+/* ============================================================
+   Melee Combat App — Arena Layout
+   ============================================================ */
+
+/* ── Shell ─────────────────────────────────────────────────── */
 .melee-shell {
     display: flex;
     flex-direction: column;
@@ -8,571 +13,210 @@
     overflow: hidden;
 }
 
-/* Header V2 - styles moved to bottom of file */
-
-/* Prompt Bar */
-.melee-prompt-bar {
-    background: #2c3e50;
-    color: #ecf0f1;
-    padding: 10px 15px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
-
-.melee-prompt-bar--info { background: #2980b9; }
-.melee-prompt-bar--action { background: #f39c12; color: #000; }
-.melee-prompt-bar--attacker { background: #c0392b; }
-.melee-prompt-bar--defender { background: #2980b9; }
-.melee-prompt-bar--ready { background: #27ae60; }
-.melee-prompt-bar--danger { background: #8e44ad; }
-
-.melee-prompt-bar__title {
-    font-weight: bold;
-    text-transform: uppercase;
-    font-size: 0.9em;
-    opacity: 0.8;
-}
-
-.melee-prompt-bar__text {
-    font-size: 1.2em;
-    margin-top: 2px;
-}
-
-/* Exchange Banner */
-.melee-exchange-banner {
+/* ── Top Bar ────────────────────────────────────────────────── */
+.melee-top-bar {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 30px;
-    background: rgba(0,0,0,0.2);
-    padding: 15px;
-    border-bottom: 1px solid var(--ns-border-main);
-}
-
-.exchange-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--ns-bg-panel);
-    padding: 8px 15px;
-    border-radius: 6px;
-    border: 1px solid var(--ns-border-light);
-    min-width: 250px;
-}
-
-.exchange-card__img {
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    border: 1px solid var(--ns-border-main);
-}
-
-.exchange-card__label {
-    font-size: 0.7em;
-    text-transform: uppercase;
-    opacity: 0.7;
-}
-
-.exchange-card__name {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.melee-exchange-banner__middle {
-    font-family: 'SpecialElite', serif;
-    font-size: 1.4em;
-    font-weight: bold;
-    color: var(--ns-text-accent);
-    text-shadow: 0 0 5px rgba(0,0,0,0.5);
-}
-
-/* Teams Grid */
-.melee-teams-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    padding: 15px;
-    flex-grow: 1;
-    overflow-y: auto;
-}
-
-/* Combatant Row V2 */
-.combatant-row {
-    background: var(--ns-bg-input);
-    border: 1px solid var(--ns-border-main);
-    border-radius: 6px;
-    margin-bottom: 10px;
-    padding: 10px;
-    transition: all 0.2s;
-}
-
-.combatant-row.is-active-turn {
-    border-color: var(--ns-text-accent);
-    box-shadow: 0 0 8px var(--ns-text-accent);
-    transform: translateX(2px);
-}
-
-.combatant-row__main {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.combatant-row__avatar {
-    width: 54px;
-    height: 54px;
-    border-radius: 4px;
-    border: 2px solid var(--ns-border-main);
-}
-
-.combatant-row__identity {
-    flex-grow: 1;
-}
-
-.combatant-row__name {
-    font-weight: bold;
-    font-size: 1.2em;
-    color: var(--ns-text-accent);
-}
-
-.combatant-row__meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 4px;
-}
-
-.meta-pill {
-    font-size: 0.75em;
-    background: rgba(0,0,0,0.1);
-    padding: 1px 6px;
-    border-radius: 4px;
-    border: 1px solid rgba(255,255,255,0.05);
-}
-
-.combatant-row__relations {
-    margin-top: 6px;
-    font-size: 0.85em;
-    font-style: italic;
-    color: var(--ns-text-light);
-}
-
-.relation-line--crowded {
-    color: #e74c3c;
-    font-weight: bold;
-}
-
-/* Dice & Actions */
-.combatant-row__dice-actions {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-/* die-chip styles moved to bottom of file (improved) */
-
-/* Buttons */
-.melee-btn {
-    font-family: 'SpecialElite', serif;
-    font-weight: bold;
-    border: 1px solid var(--ns-border-main);
-    border-radius: 4px;
-    padding: 4px 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.9em;
-}
-
-.melee-btn--primary { background: var(--ns-text-accent); color: #fff; }
-.melee-btn--secondary { background: #34495e; color: #fff; }
-.melee-btn--attack { background: #c0392b; color: #fff; }
-.melee-btn--defense { background: #2980b9; color: #fff; }
-.melee-btn--resolve { background: #27ae60; color: #fff; padding: 10px 20px; font-size: 1.1em; }
-.melee-btn--danger { background: #7f8c8d; color: #fff; }
-
-.melee-btn:hover:not(:disabled) {
-    filter: brightness(1.2);
-    transform: translateY(-1px);
-}
-
-/* Extra Attacks V2 */
-.extra-attacks-panel {
-    background: var(--ns-bg-panel);
-    border: 1px solid var(--ns-border-main);
-    margin: 0 15px 15px;
-    padding: 10px;
-    border-radius: 8px;
-}
-
-.extra-attacks-panel__header h3 {
-    margin: 0 0 10px;
-    font-size: 1.1em;
-    color: #8e44ad;
-    text-transform: uppercase;
-}
-
-.extra-attacks-panel__list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.extra-attack-card {
-    background: var(--ns-bg-input);
-    border: 1px solid var(--ns-border-main);
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.9em;
-}
-
-.extra-attack-card.is-hit { border-left: 5px solid #e74c3c; }
-.extra-attack-card.is-blocked { border-left: 5px solid #27ae60; }
-.extra-attack-card.is-pending { border-left: 5px solid #95a5a6; opacity: 0.7; }
-
-/* Bottom Section */
-.melee-bottom-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 0 15px;
-}
-
-/* Footer V2 */
-.melee-footer-v2 {
+    padding: 6px 14px;
     background: var(--ns-bg-header);
-    padding: 15px;
-    border-top: 2px solid var(--ns-border-main);
-    display: flex;
-    justify-content: center;
+    border-bottom: 2px solid var(--ns-border-main);
+    flex-shrink: 0;
+    gap: 12px;
 }
 
-.gm-controls {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-}
-
-.danger-zone {
-    margin-left: 30px;
-    padding-left: 15px;
-    border-left: 1px solid rgba(255,255,255,0.1);
-    display: flex;
-    gap: 5px;
-}
-
-.pulse { animation: resolve-pulse 2s infinite; }
-@keyframes resolve-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.7); }
-    70% { box-shadow: 0 0 0 15px rgba(39, 174, 96, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(39, 174, 96, 0); }
-}
-
-/* Status Badge Styles */
-.status-badge {
-    display: inline-block;
-    font-size: 0.75em;
-    padding: 2px 8px;
-    border-radius: 10px;
+.top-bar__turn {
     font-weight: bold;
-    text-transform: uppercase;
+    color: var(--ns-text-accent);
+    font-size: 0.9em;
+    min-width: 60px;
 }
 
-.status-badge--active { background: #f39c12; color: #000; }
-.status-badge--ready { background: #27ae60; color: #fff; }
-.status-badge--attacker { background: #e74c3c; color: #fff; }
-.status-badge--defender { background: #3498db; color: #fff; }
-.status-badge--crowded { background: #9b59b6; color: #fff; }
-.status-badge--primary { background: #c0392b; color: #fff; }
-.status-badge--extra { background: #8e44ad; color: #fff; }
-.status-badge--waiting { background: #7f8c8d; color: #fff; }
-.status-badge--inactive { background: #34495e; color: #fff; opacity: 0.5; }
-
-/* Log Styles V2 */
-.melee-log-v2 {
-    background: var(--ns-bg-panel);
-    border: 1px solid var(--ns-border-main);
-    border-radius: 4px;
-    height: 100px;
-    overflow-y: auto;
-    padding: 8px;
-    font-size: 0.85em;
-    font-family: 'SpecialElite', serif;
-}
-
-.log-line {
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    padding: 2px 0;
-}
-
-.log-line .ts { color: var(--ns-text-light); opacity: 0.6; margin-right: 5px; }
-.log-line--hit { color: #e74c3c; }
-.log-line--blocked { color: #27ae60; }
-.log-line--initiative { color: #f39c12; }
-.log-line--system { color: var(--ns-text-light); font-style: italic; }
-
-/* ============================================================
-   Segment Track (header dots)
-   ============================================================ */
-.segment-track {
+.top-bar__segments {
     display: flex;
-    gap: 10px;
+    gap: 6px;
     align-items: center;
-    justify-content: center;
-    margin-bottom: 4px;
 }
 
-.segment-dot {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    width: 38px;
-    height: 38px;
+.seg-dot {
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
     justify-content: center;
-    font-family: 'SpecialElite', serif;
-    transition: all 0.3s;
-    position: relative;
-}
-
-.segment-dot__number {
-    font-size: 1em;
+    font-size: 0.8em;
     font-weight: bold;
-    line-height: 1;
+    transition: all 0.3s;
 }
 
-.segment-dot__icon {
-    font-size: 0.6em;
-    position: absolute;
-    bottom: 2px;
-}
-
-.segment-dot--done {
-    background: rgba(39, 174, 96, 0.3);
+.seg-dot--done {
+    background: rgba(39,174,96,0.25);
     border-color: #27ae60;
     color: #27ae60;
 }
 
-.segment-dot--active {
-    background: rgba(243, 156, 18, 0.25);
+.seg-dot--active {
+    background: rgba(243,156,18,0.2);
     border-color: #f39c12;
     color: #f39c12;
-    box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
-    animation: segment-active-pulse 2s infinite;
+    box-shadow: 0 0 8px rgba(243,156,18,0.5);
+    animation: seg-pulse 2s infinite;
 }
 
-.segment-dot--pending {
-    background: rgba(255,255,255,0.05);
-    border-color: rgba(255,255,255,0.15);
-    color: rgba(255,255,255,0.3);
+.seg-dot--pending {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.25);
 }
 
-@keyframes segment-active-pulse {
-    0% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.4); }
-    50% { box-shadow: 0 0 14px rgba(243, 156, 18, 0.8); }
-    100% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.4); }
+@keyframes seg-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(243,156,18,0.3); }
+    50% { box-shadow: 0 0 12px rgba(243,156,18,0.7); }
 }
 
-/* ============================================================
-   Melee Header improvements
-   ============================================================ */
-.melee-header {
-    background: var(--ns-bg-header);
-    border-bottom: 2px solid var(--ns-border-main);
-    padding: 8px 15px;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-}
-
-.melee-header__left {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.melee-header__turn {
-    font-weight: bold;
-    color: var(--ns-text-accent);
-    font-size: 1em;
-}
-
-.melee-header__initiative-owner {
-    font-size: 0.8em;
-    color: #f39c12;
-    opacity: 0.9;
-}
-
-.melee-header__center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.melee-header__phase {
-    font-size: 0.75em;
+.top-bar__phase {
+    font-size: 0.78em;
     text-transform: uppercase;
     letter-spacing: 1px;
-    opacity: 0.7;
-    color: var(--ns-text-accent);
+    color: rgba(255,255,255,0.55);
+    min-width: 60px;
+    text-align: right;
 }
 
-/* ============================================================
-   Action Hint Bar
-   ============================================================ */
-.melee-action-hint {
+/* ── Arena ──────────────────────────────────────────────────── */
+.melee-arena {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 15px;
-    background: rgba(255,255,255,0.05);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
-    font-size: 0.9em;
-    color: var(--ns-text-light);
+    align-items: stretch;
+    gap: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 12px 10px;
+    background: rgba(0,0,0,0.1);
 }
 
-.melee-action-hint--urgent {
-    background: rgba(243, 156, 18, 0.12);
-    border-bottom-color: rgba(243, 156, 18, 0.3);
-    color: #f1c40f;
-    animation: hint-pulse 3s infinite;
+/* ── Fighter Card ───────────────────────────────────────────── */
+.fighter-card {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 8px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-width: 0;
 }
 
-.melee-action-hint--urgent i {
-    color: #f39c12;
+.fighter-card.is-active {
+    border-color: var(--ns-text-accent);
+    box-shadow: 0 0 10px rgba(200,160,80,0.25);
 }
 
-@keyframes hint-pulse {
-    0%, 100% { background: rgba(243, 156, 18, 0.12); }
-    50% { background: rgba(243, 156, 18, 0.22); }
+.fighter-card--b {
+    text-align: right;
 }
 
-/* ============================================================
-   Exchange Banner improvements
-   ============================================================ */
-.exchange-card__target {
+.fighter-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.fighter-card--b .fighter-card__header {
+    flex-direction: row-reverse;
+}
+
+.fighter-card__avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.fighter-card__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 5px;
+    border: 2px solid var(--ns-border-main);
+    object-fit: cover;
+}
+
+.fc-crowded-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #9b59b6;
+    color: #fff;
+    font-size: 0.65em;
+    font-weight: bold;
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.fighter-card__name {
+    font-weight: bold;
+    font-size: 1.05em;
+    color: var(--ns-text-accent);
+    line-height: 1.2;
+}
+
+.fighter-card__sub {
     font-size: 0.8em;
-    color: var(--ns-text-light);
+    color: rgba(255,255,255,0.55);
     margin-top: 2px;
 }
 
-.exchange-card__target strong {
+.fighter-card__sub strong {
     color: #f39c12;
 }
 
-.attack-strength-display {
+.fighter-card__maneuver {
+    font-size: 0.72em;
+    margin-top: 3px;
+    color: #be90d4;
+    font-style: italic;
+}
+
+/* ── Dice ───────────────────────────────────────────────────── */
+.fighter-card__dice {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 5px;
     align-items: center;
-    gap: 4px;
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 2px solid;
-    min-width: 100px;
 }
 
-.attack-strength-display__label {
-    font-size: 0.7em;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    opacity: 0.75;
+.fighter-card--b .fighter-card__dice {
+    justify-content: flex-end;
 }
 
-.attack-strength-display__count {
-    font-size: 2em;
-    font-weight: bold;
-    line-height: 1;
-    font-family: 'SpecialElite', serif;
-}
-
-.attack-strength-display__damage {
-    font-size: 1em;
-    font-weight: bold;
-}
-
-.attack-strength-display--1s {
-    background: rgba(231, 76, 60, 0.15);
-    border-color: #e74c3c;
-    color: #e74c3c;
-}
-
-.attack-strength-display--2s {
-    background: rgba(192, 57, 43, 0.2);
-    border-color: #c0392b;
-    color: #e74c3c;
-}
-
-.attack-strength-display--3s {
-    background: rgba(127, 0, 0, 0.3);
-    border-color: #8b0000;
-    color: #ff6b6b;
-    box-shadow: 0 0 12px rgba(200, 0, 0, 0.4);
-}
-
-.defense-requirement {
-    font-size: 0.85em;
-    margin-top: 6px;
-    color: #3498db;
-}
-
-.defense-requirement strong {
-    font-size: 1.1em;
-}
-
-.exchange-state {
-    color: rgba(255,255,255,0.5);
-    font-size: 0.9em;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.exchange-state i {
-    font-size: 1.5em;
-    opacity: 0.4;
-}
-
-/* ============================================================
-   Die Chip improvements
-   ============================================================ */
 .die-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 6px;
-    font-size: 1.15em;
+    width: 44px;
+    height: 44px;
+    border-radius: 7px;
+    font-size: 1.1em;
     font-weight: bold;
+    font-family: 'SpecialElite', serif;
     cursor: pointer;
-    margin-right: 4px;
-    margin-bottom: 4px;
-    transition: all 0.15s ease;
     border: 2px solid;
-    box-shadow: 1px 2px 4px rgba(0,0,0,0.3);
+    transition: all 0.15s ease;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.35);
     position: relative;
 }
 
 .die-chip:hover:not(.is-used) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 10px rgba(0,0,0,0.4);
 }
 
 .die-chip.is-used {
-    opacity: 0.25;
+    opacity: 0.2;
     cursor: not-allowed;
     filter: grayscale(1);
-    transform: none;
+    transform: none !important;
 }
 
 .die-chip.is-success {
@@ -589,100 +233,346 @@
 
 .die-chip.is-selected {
     border: 3px solid #f39c12 !important;
-    transform: scale(1.15) translateY(-2px);
-    box-shadow: 0 0 14px rgba(243, 156, 18, 0.7);
+    transform: scale(1.18) translateY(-2px);
+    box-shadow: 0 0 14px rgba(243,156,18,0.7);
     z-index: 1;
 }
 
-.dice-legend {
-    display: block;
+.dice-threshold {
     font-size: 0.7em;
-    color: rgba(255,255,255,0.4);
-    margin-top: 4px;
+    color: rgba(255,255,255,0.35);
     width: 100%;
+    margin-top: 2px;
 }
 
-.dice-legend__success {
-    color: #4caf50;
+.fighter-card--b .dice-threshold {
+    text-align: right;
 }
 
-/* ============================================================
-   Damage Preview (below dice - attack confirm)
-   ============================================================ */
-.confirm-attack-wrap {
+.dice-empty-state {
+    color: rgba(255,255,255,0.2);
+    font-size: 1.5em;
+    padding: 10px;
+}
+
+/* ── Arena Center ───────────────────────────────────────────── */
+.arena-center {
+    width: 90px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 6px;
 }
 
-.damage-preview {
+.arena-vs {
+    font-size: 1.4em;
+    font-weight: bold;
+    color: rgba(255,255,255,0.2);
+    font-family: 'SpecialElite', serif;
+}
+
+/* Attack strength display */
+.arena-strength {
     display: flex;
-    gap: 6px;
-    font-size: 0.78em;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 2px solid;
 }
 
-.damage-preview__item {
-    padding: 2px 8px;
-    border-radius: 4px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.5);
+.arena-strength__value {
+    font-size: 2em;
+    font-weight: bold;
+    font-family: 'SpecialElite', serif;
+    line-height: 1;
+}
+
+.arena-strength__damage {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.arena-strength--1s {
+    background: rgba(231,76,60,0.15);
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.arena-strength--2s {
+    background: rgba(192,57,43,0.2);
+    border-color: #c0392b;
+    color: #e74c3c;
+}
+
+.arena-strength--3s {
+    background: rgba(127,0,0,0.3);
+    border-color: #8b0000;
+    color: #ff6b6b;
+    box-shadow: 0 0 12px rgba(200,0,0,0.35);
+}
+
+/* Last result display */
+.arena-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    text-align: center;
+}
+
+.arena-result i {
+    font-size: 1.6em;
+}
+
+.arena-result--hit   { color: #e74c3c; }
+.arena-result--block { color: #27ae60; }
+.arena-result--takeover { color: #f39c12; }
+.arena-result--miss  { color: rgba(255,255,255,0.35); }
+
+/* Initiative label below */
+.arena-initiative-label {
+    font-size: 0.7em;
+    color: #f39c12;
+    text-align: center;
+    opacity: 0.8;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.damage-preview__item.is-selected-tier {
-    background: rgba(231, 76, 60, 0.2);
+/* ── Action Bar ─────────────────────────────────────────────── */
+.melee-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--ns-bg-header);
+    border-top: 1px solid var(--ns-border-main);
+    border-bottom: 1px solid var(--ns-border-main);
+    flex-shrink: 0;
+    min-height: 52px;
+    flex-wrap: wrap;
+}
+
+.melee-action-bar.is-urgent {
+    background: rgba(243,156,18,0.08);
+    border-color: rgba(243,156,18,0.25);
+}
+
+.action-btn {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.95em;
+    padding: 6px 16px;
+    border-radius: 5px;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.action-btn:hover:not(:disabled):not(.is-disabled) {
+    filter: brightness(1.2);
+    transform: translateY(-1px);
+}
+
+.action-btn--roll {
+    background: var(--ns-text-accent);
+    border-color: var(--ns-text-accent);
+    color: #1a1a1a;
+}
+
+.action-btn--attack {
+    background: rgba(192,57,43,0.85);
+    border-color: #c0392b;
+    color: #fff;
+}
+
+.action-btn--defense {
+    background: rgba(41,128,185,0.85);
+    border-color: #2980b9;
+    color: #fff;
+}
+
+.action-btn--target {
+    background: rgba(52,73,94,0.8);
+    border-color: #7f8c8d;
+    color: #ecf0f1;
+    font-size: 0.85em;
+    padding: 4px 12px;
+}
+
+.action-btn.is-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.action-label {
+    font-size: 0.85em;
+    color: rgba(255,255,255,0.55);
+}
+
+.action-label--defense {
+    color: #7fb3d3;
+}
+
+.action-label--defense strong {
+    color: #3498db;
+}
+
+.action-waiting {
+    font-size: 0.88em;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Damage tier preview inside attack action */
+.action-attack-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.action-damage-preview {
+    display: flex;
+    gap: 4px;
+    font-size: 0.78em;
+}
+
+.adp-item {
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.4);
+    white-space: nowrap;
+}
+
+.adp-item--active {
+    background: rgba(231,76,60,0.2);
     border-color: #e74c3c;
     color: #e74c3c;
     font-weight: bold;
 }
 
-/* ============================================================
-   Combatant Row improvements
-   ============================================================ */
-.combatant-row__avatar-wrap {
-    position: relative;
+/* ── Log ────────────────────────────────────────────────────── */
+.melee-log {
+    flex: 0 0 auto;
+    max-height: 90px;
+    overflow-y: auto;
+    padding: 5px 12px;
+    font-size: 0.8em;
+    background: var(--ns-bg-sheet);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column-reverse;
 }
 
-.crowded-badge {
-    position: absolute;
-    bottom: -4px;
-    right: -4px;
-    background: #9b59b6;
-    color: #fff;
-    font-size: 0.65em;
-    padding: 1px 4px;
-    border-radius: 3px;
-    white-space: nowrap;
+.log-line {
+    padding: 1px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
 }
 
-.meta-pill--init {
-    background: rgba(243, 156, 18, 0.15);
-    border-color: rgba(243, 156, 18, 0.3);
-    color: #f39c12;
+.log-ts {
+    color: rgba(255,255,255,0.3);
+    flex-shrink: 0;
+    font-size: 0.9em;
 }
 
-.meta-pill--maneuver {
-    background: rgba(155, 89, 182, 0.15);
-    border-color: rgba(155, 89, 182, 0.3);
-    color: #be90d4;
+.log-msg {
+    color: rgba(255,255,255,0.7);
 }
 
-.meta-pill--target {
-    background: rgba(52, 152, 219, 0.1);
-    border-color: rgba(52, 152, 219, 0.2);
-    color: #7fb3d3;
+.log-line--hit .log-msg      { color: #e74c3c; }
+.log-line--block .log-msg    { color: #27ae60; }
+.log-line--takeover .log-msg { color: #f39c12; }
+.log-line--system .log-msg   { color: rgba(255,255,255,0.35); font-style: italic; }
+.log-line--miss .log-msg     { color: rgba(255,255,255,0.45); }
+
+.log-empty {
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+    padding: 8px;
 }
 
-.combatant-row__waiting {
-    color: rgba(255,255,255,0.35);
+/* ── Footer Danger ──────────────────────────────────────────── */
+.melee-footer-danger {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 5px 10px;
+    background: var(--ns-bg-header);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+
+.danger-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    background: rgba(127,140,141,0.3);
+    border: 1px solid rgba(127,140,141,0.4);
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.85em;
-    font-style: italic;
+    transition: all 0.15s;
 }
 
-.combatant-row__waiting i {
-    margin-right: 4px;
+.danger-btn:hover {
+    background: rgba(127,140,141,0.5);
+    color: #fff;
 }
+
+.danger-btn--end:hover {
+    background: rgba(192,57,43,0.6);
+    border-color: #c0392b;
+    color: #fff;
+}
+
+/* ── Pulse animation ────────────────────────────────────────── */
+.pulse {
+    animation: action-pulse 2s infinite;
+}
+
+@keyframes action-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(243,156,18,0.6); }
+    70%  { box-shadow: 0 0 0 10px rgba(243,156,18,0); }
+    100% { box-shadow: 0 0 0 0 rgba(243,156,18,0); }
+}
+
+/* ── Status badges (kept for any internal use) ─────────────── */
+.status-badge {
+    display: inline-block;
+    font-size: 0.72em;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge--active   { background: #f39c12; color: #000; }
+.status-badge--ready    { background: #27ae60; color: #fff; }
+.status-badge--attacker { background: #e74c3c; color: #fff; }
+.status-badge--defender { background: #3498db; color: #fff; }
+.status-badge--crowded  { background: #9b59b6; color: #fff; }
+.status-badge--waiting  { background: #7f8c8d; color: #fff; }
+.status-badge--inactive { background: #34495e; color: #fff; opacity: 0.5; }
