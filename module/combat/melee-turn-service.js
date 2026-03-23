@@ -40,7 +40,7 @@ export class MeleeTurnService {
   /**
    * Sets the 3k20 pool for a participant and snapshots their combat values for the turn.
    */
-  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0) {
+  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
@@ -76,8 +76,9 @@ export class MeleeTurnService {
       if (maneuver === "furia" || maneuver === "fury") attackManeuverBonus = 2;
       if (maneuver === "fullDefense" || maneuver === "pelnaObrona") defenseManeuverBonus = 2;
 
-      p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attackManeuverBonus - totalPenalty;
-      p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus - totalPenalty;
+      // attributeBonus: situational bonus entered by the player in the roll dialog
+      p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attackManeuverBonus + attributeBonus - totalPenalty;
+      p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus + attributeBonus - totalPenalty;
 
       game.neuroshima?.log("setPool snapshot", {
         name: p.name, baseTarget, armorPenalty, woundPenalty,

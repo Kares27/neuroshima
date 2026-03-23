@@ -327,7 +327,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
           .map(r => typeof r === "object" ? r.original : r);
         const maneuver = rollResult.maneuver || "none";
         const tempoLevel = rollResult.tempoLevel || 0;
-        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel);
+        const attributeBonus = rollResult.attributeBonus || 0;
+        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus);
       }
     });
     dialog.render(true);

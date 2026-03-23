@@ -39,16 +39,18 @@ export class MeleeResolution {
     let resultType = "miss";
     let logText = "";
 
-    // 3. Resolution Logic
-    if (attackerSuccesses >= diceCount && defenderSuccesses >= diceCount) {
-      resultType = "block";
-      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogBlock", { attacker: attacker.name, defender: defender.name });
-    } else if (attackerSuccesses >= diceCount && defenderSuccesses < diceCount) {
+    game.neuroshima?.log("Exchange successes", { attackerSuccesses, defenderSuccesses, diceCount, attackerTarget, defenderTarget });
+
+    // 3. Resolution Logic (NS 1.5)
+    // Attacker wins if they have strictly MORE successes than the defender.
+    // Damage is based on diceCount (strength of the declared attack), not on success count.
+    // On a tie or defender advantage → block or takeover.
+    if (attackerSuccesses > defenderSuccesses) {
       resultType = "hit";
       logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogHit", { attacker: attacker.name, defender: defender.name, s: diceCount });
       const locationDieIndex = exchange.locationDieIndex ?? exchange.attackerSelectedDice[0];
       await this.applyDamage(updated, attackerId, defenderId, diceCount, locationDieIndex);
-    } else if (attackerSuccesses < diceCount && defenderSuccesses >= diceCount) {
+    } else if (defenderSuccesses > attackerSuccesses) {
       const takeoverSuccessesRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
       const actualAdvantage = defenderSuccesses - attackerSuccesses;
 
@@ -62,12 +64,13 @@ export class MeleeResolution {
           await this.applyDamage(updated, defenderId, attackerId, 1, exchange.defenderSelectedDice[0]);
         }
       } else {
-        resultType = "miss";
-        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogDefensiveMiss", { attacker: attacker.name, defender: defender.name });
+        resultType = "block";
+        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogBlock", { attacker: attacker.name, defender: defender.name });
       }
     } else {
-      resultType = "miss";
-      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogDoubleMiss", { attacker: attacker.name, defender: defender.name });
+      // Equal successes (including both zero) — defender wins the tie
+      resultType = "block";
+      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogBlock", { attacker: attacker.name, defender: defender.name });
     }
 
     // 4. Update log and mark dice as used
