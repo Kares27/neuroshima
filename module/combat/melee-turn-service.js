@@ -56,21 +56,33 @@ export class MeleeTurnService {
       const weapon = actor.items.get(p.weaponId);
       const attribute = weapon?.system.attribute || "dexterity";
       const baseTarget = actor.system.attributeTotals?.[attribute] || 10;
-      
+
+      // Penalties from actor state (armor encumbrance + wounds)
+      const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
+      const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
+      const totalPenalty = armorPenalty + woundPenalty;
+
       p.targetValue = baseTarget;
       p.attackBonusSnapshot = weapon?.system.attackBonus || 0;
       p.defenseBonusSnapshot = weapon?.system.defenseBonus || 0;
-      
-      // Calculate effective targets for attack and defense
+      p.armorPenaltySnapshot = armorPenalty;
+      p.woundPenaltySnapshot = woundPenalty;
+
+      // Calculate effective targets for attack and defense.
+      // Maneuver bonuses applied here; armor/wound penalties reduce target.
+      // Dexterity crowding penalty and Increased Tempo applied later in resolution.
       let attackManeuverBonus = 0;
       let defenseManeuverBonus = 0;
       if (maneuver === "furia" || maneuver === "fury") attackManeuverBonus = 2;
       if (maneuver === "fullDefense" || maneuver === "pelnaObrona") defenseManeuverBonus = 2;
-      
-      // We store the base targets plus weapon/maneuver bonuses. 
-      // Dexterity penalties (crowding) and Increased Tempo will be applied during resolution.
-      p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attackManeuverBonus;
-      p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus;
+
+      p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attackManeuverBonus - totalPenalty;
+      p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus - totalPenalty;
+
+      game.neuroshima?.log("setPool snapshot", {
+        name: p.name, baseTarget, armorPenalty, woundPenalty,
+        attackTarget: p.attackTargetSnapshot, defenseTarget: p.defenseTargetSnapshot
+      });
     }
 
     p.pool = results;

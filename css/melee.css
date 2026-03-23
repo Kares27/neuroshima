@@ -267,13 +267,6 @@
     z-index: 1;
 }
 
-.dice-threshold {
-    font-size: 0.68em;
-    color: rgba(255,255,255,0.35);
-    width: 100%;
-    margin-top: 2px;
-    text-align: right;
-}
 
 .dice-empty-state {
     color: rgba(255,255,255,0.2);

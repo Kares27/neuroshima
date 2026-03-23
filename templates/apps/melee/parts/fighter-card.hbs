@@ -14,8 +14,6 @@
     <div class="fighter-card__name">{{fighter.name}}</div>
     <div class="fighter-card__sub">
       <i class="fas fa-bolt"></i> {{fighter.initiative}}
-      &nbsp;·&nbsp;
-      Zr <strong>{{fighter.currentEffectiveTarget}}</strong>
     </div>
     {{#if (ne fighter.maneuver "none")}}
       <div class="fighter-card__maneuver">{{fighter.maneuverLabel}}</div>
@@ -41,7 +39,7 @@
           {{this}}
         </button>
       {{/each}}
-      <div class="dice-threshold">≤ {{fighter.currentEffectiveTarget}}</div>
+
     {{else if fighter.canRollPool}}
       <button type="button" class="action-btn action-btn--roll pulse"
               data-action="openPoolDialog" data-id="{{fighter.id}}">
