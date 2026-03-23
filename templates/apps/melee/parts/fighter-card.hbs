@@ -1,0 +1,51 @@
+{{#if fighter}}
+<div class="fighter-card fighter-card--{{side}} {{#if fighter.isActiveSide}}is-active{{/if}}">
+
+  <div class="fighter-card__header">
+    <div class="fighter-card__avatar-wrap">
+      <img src="{{fighter.img}}" class="fighter-card__avatar" alt="{{fighter.name}}">
+      {{#if fighter.isCrowded}}
+        <span class="fc-crowded-badge" title="{{localize "NEUROSHIMA.MeleeDuel.Crowded"}}">
+          -{{fighter.dexPenalty}}
+        </span>
+      {{/if}}
+    </div>
+    <div class="fighter-card__info">
+      <div class="fighter-card__name">{{fighter.name}}</div>
+      <div class="fighter-card__sub">
+        <i class="fas fa-bolt"></i> {{fighter.initiative}}
+        &nbsp;·&nbsp;
+        Zr <strong>{{fighter.currentEffectiveTarget}}</strong>
+      </div>
+      {{#if (ne fighter.maneuver "none")}}
+        <div class="fighter-card__maneuver">{{fighter.maneuverLabel}}</div>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="fighter-card__dice">
+    {{#if (gt fighter.pool.length 0)}}
+      {{#each fighter.pool}}
+        <button
+          type="button"
+          class="die-chip
+            {{#if (meleeDieSelected ../fighter.selectedDiceIndices @index)}}is-selected{{/if}}
+            {{#if (meleeDieUsed ../fighter.usedDice @index)}}is-used{{/if}}
+            {{#if (le this ../fighter.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
+          data-action="selectDie"
+          data-id="{{../fighter.id}}"
+          data-index="{{@index}}"
+          title="{{#if (le this ../fighter.currentEffectiveTarget)}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
+          {{this}}
+        </button>
+      {{/each}}
+      <div class="dice-threshold">≤ {{fighter.currentEffectiveTarget}}</div>
+    {{else}}
+      <div class="dice-empty-state">
+        <i class="fas fa-dice"></i>
+      </div>
+    {{/if}}
+  </div>
+
+</div>
+{{/if}}

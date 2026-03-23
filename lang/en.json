@@ -380,8 +380,11 @@
             "LogExtraAttackMiss": "{attacker} misses an extra attack against {defender}."
         },
             "ResultHit": "Hit!",
+            "ResultBlock": "Blocked",
             "ResultTakeover": "Initiative Takeover!",
             "ResultMiss": "Miss.",
+            "ResetTurn": "Reset Turn",
+            "EndEncounter": "End Encounter",
             "TargetValue": "Threshold (Dex)",
             "Initiative": "Initiative",
             "RolledPool": "Rolled Pool",

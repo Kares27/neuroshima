@@ -1,0 +1,12 @@
+{{#if isGM}}
+<footer class="melee-footer-danger">
+  <button type="button" class="danger-btn" data-action="resetTurn"
+          title="{{localize "NEUROSHIMA.MeleeDuel.ResetTurn"}}">
+    <i class="fas fa-undo"></i>
+  </button>
+  <button type="button" class="danger-btn danger-btn--end" data-action="endEncounter"
+          title="{{localize "NEUROSHIMA.MeleeDuel.EndEncounter"}}">
+    <i class="fas fa-stop"></i>
+  </button>
+</footer>
+{{/if}}

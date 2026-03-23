@@ -448,6 +448,12 @@
                 "EndTurn": "Tura zakończona. Kliknij \"Zakończ Turę\" aby rzucić nową pulę.",
                 "WaitingGM": "Segment zakończony. Czekaj na MG..."
             },
+            "ResultHit": "Trafienie!",
+            "ResultBlock": "Obrona",
+            "ResultTakeover": "Przejęcie!",
+            "ResultMiss": "Pudło",
+            "ResetTurn": "Resetuj turę",
+            "EndEncounter": "Zakończ starcie",
             "Actions": {
                 "attack": "Atak",
                 "defend": "Obrona",

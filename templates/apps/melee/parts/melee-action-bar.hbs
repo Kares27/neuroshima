@@ -1,0 +1,62 @@
+<div class="melee-action-bar {{#if actionBar.urgent}}is-urgent{{/if}}">
+
+  {{#if (eq actionBar.type "roll")}}
+    <button type="button" class="action-btn action-btn--roll pulse"
+            data-action="openPoolDialog" data-id="{{actionBar.actorId}}">
+      <i class="fas fa-dice-d20"></i>
+      {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+    </button>
+
+  {{else if (eq actionBar.type "target")}}
+    <span class="action-label">{{localize "NEUROSHIMA.MeleeDuel.ChooseTarget"}}:</span>
+    {{#each actionBar.availableTargets}}
+      <button type="button" class="action-btn action-btn--target"
+              data-action="selectTarget"
+              data-id="{{../actionBar.actorId}}"
+              data-target-id="{{this.id}}">
+        {{this.name}}
+      </button>
+    {{/each}}
+
+  {{else if (eq actionBar.type "attack")}}
+    <div class="action-attack-wrap">
+      {{#if actionBar.damageTiers}}
+        <div class="action-damage-preview">
+          <span class="adp-item {{#if (eq actionBar.selectedCount 1)}}adp-item--active{{/if}}">1s→{{actionBar.damageTiers.s1}}</span>
+          <span class="adp-item {{#if (eq actionBar.selectedCount 2)}}adp-item--active{{/if}}">2s→{{actionBar.damageTiers.s2}}</span>
+          <span class="adp-item {{#if (eq actionBar.selectedCount 3)}}adp-item--active{{/if}}">3s→{{actionBar.damageTiers.s3}}</span>
+        </div>
+      {{/if}}
+      <button type="button"
+              class="action-btn action-btn--attack {{#unless actionBar.canConfirm}}is-disabled{{/unless}} {{#if actionBar.canConfirm}}pulse{{/if}}"
+              data-action="confirmAttack"
+              data-id="{{actionBar.actorId}}"
+              {{#unless actionBar.canConfirm}}disabled{{/unless}}>
+        <i class="fas fa-fist-raised"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.ConfirmAttack"}}
+        {{#if actionBar.selectedCount}}({{actionBar.selectedCount}}s){{/if}}
+      </button>
+    </div>
+
+  {{else if (eq actionBar.type "defense")}}
+    <span class="action-label action-label--defense">
+      {{localize "NEUROSHIMA.MeleeDuel.ConfirmDefense"}}:
+      <strong>{{actionBar.selectedCount}}/{{actionBar.requiredCount}}</strong>
+    </span>
+    <button type="button"
+            class="action-btn action-btn--defense {{#unless actionBar.canConfirm}}is-disabled{{/unless}} {{#if actionBar.canConfirm}}pulse{{/if}}"
+            data-action="confirmDefense"
+            data-id="{{actionBar.actorId}}"
+            {{#unless actionBar.canConfirm}}disabled{{/unless}}>
+      <i class="fas fa-shield-alt"></i>
+      {{localize "NEUROSHIMA.MeleeDuel.ConfirmDefense"}}
+    </button>
+
+  {{else}}
+    <span class="action-waiting">
+      <i class="fas fa-hourglass-half"></i>
+      {{actionBar.message}}
+    </span>
+  {{/if}}
+
+</div>

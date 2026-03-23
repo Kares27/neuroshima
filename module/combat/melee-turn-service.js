@@ -310,7 +310,8 @@ export class MeleeTurnService {
   }
 
   /**
-   * Confirms defense selection and moves to primary-ready.
+   * Confirms defense selection and immediately triggers auto-resolution.
+   * No "primary-ready" phase — resolution is fully automatic.
    */
   static async confirmDefense(id, participantId) {
     const encounter = MeleeStore.getEncounter(id);
@@ -322,10 +323,12 @@ export class MeleeTurnService {
     if (participantId !== exchange.defenderId) return;
     if (exchange.defenderSelectedDice.length !== exchange.declaredDiceCount) return;
 
-    updated.turnState.phase = "primary-ready";
-    updated.turnState.selectionTurn = null;
-
+    // Save the defender's dice selection first
     await MeleeStore.updateEncounter(id, updated);
+
+    // Auto-resolve immediately (dynamic import avoids circular dependency)
+    const { MeleeResolution } = await import("./melee-resolution.js");
+    await MeleeResolution.resolvePrimaryExchange(id);
   }
 
   /**
