@@ -96,13 +96,22 @@
     background: rgba(0,0,0,0.1);
 }
 
-/* ── Fighter Card ───────────────────────────────────────────── */
-.fighter-card {
+/* ── Team Columns ───────────────────────────────────────────── */
+.team-column {
     flex: 1 1 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 12px;
+    gap: 6px;
+    min-width: 0;
+}
+
+/* ── Fighter Card ───────────────────────────────────────────── */
+.fighter-card {
+    display: grid;
+    grid-template-columns: 52px 1fr auto;
+    gap: 0 10px;
+    align-items: center;
+    padding: 8px 10px;
     background: var(--ns-bg-panel);
     border: 1px solid var(--ns-border-main);
     border-radius: 8px;
@@ -115,31 +124,18 @@
     box-shadow: 0 0 10px rgba(200,160,80,0.25);
 }
 
-.fighter-card--b {
-    text-align: right;
-}
-
-.fighter-card__header {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-.fighter-card--b .fighter-card__header {
-    flex-direction: row-reverse;
-}
-
 .fighter-card__avatar-wrap {
     position: relative;
-    flex-shrink: 0;
+    align-self: center;
 }
 
 .fighter-card__avatar {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     border-radius: 5px;
     border: 2px solid var(--ns-border-main);
     object-fit: cover;
+    display: block;
 }
 
 .fc-crowded-badge {
@@ -154,15 +150,22 @@
     border-radius: 3px;
 }
 
+.fighter-card__info {
+    min-width: 0;
+}
+
 .fighter-card__name {
     font-weight: bold;
-    font-size: 1.05em;
+    font-size: 1em;
     color: var(--ns-text-accent);
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .fighter-card__sub {
-    font-size: 0.8em;
+    font-size: 0.78em;
     color: rgba(255,255,255,0.55);
     margin-top: 2px;
 }
@@ -172,32 +175,36 @@
 }
 
 .fighter-card__maneuver {
-    font-size: 0.72em;
-    margin-top: 3px;
+    font-size: 0.7em;
+    margin-top: 2px;
     color: #be90d4;
     font-style: italic;
+}
+
+.fighter-card__target {
+    font-size: 0.7em;
+    margin-top: 2px;
+    color: rgba(255,255,255,0.35);
 }
 
 /* ── Dice ───────────────────────────────────────────────────── */
 .fighter-card__dice {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 4px;
     align-items: center;
-}
-
-.fighter-card--b .fighter-card__dice {
     justify-content: flex-end;
+    max-width: 160px;
 }
 
 .die-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 7px;
-    font-size: 1.1em;
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    font-size: 1em;
     font-weight: bold;
     font-family: 'SpecialElite', serif;
     cursor: pointer;

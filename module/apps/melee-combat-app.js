@@ -98,9 +98,12 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         (phase === "primary-attack-selection" && pId === selectionTurn);
       p.currentEffectiveTarget = isAttacker ? p.attackTarget : p.defenseTarget;
 
+      // Per-participant active state
+      p.isActiveSide = pId === selectionTurn;
+
       // Die selection indices
       p.selectedDiceIndices = [];
-      if (phase === "primary-attack-selection" && pId === context.turnState.initiativeOwnerId) {
+      if (phase === "primary-attack-selection" && pId === selectionTurn) {
         p.selectedDiceIndices = exchange.attackerSelectedDice || [];
       } else if (phase === "primary-defense-selection" && pId === selectionTurn) {
         p.selectedDiceIndices = exchange.defenderSelectedDice || [];
@@ -143,12 +146,6 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       A: (context.teams.A || []).map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative),
       B: (context.teams.B || []).map(id => context.participants[id]).filter(Boolean).sort(sortByInitiative)
     };
-
-    // ── Primary fighters (for arena view) ────────────────────────────────
-    context.fA = context.teamsData.A[0] || null;
-    context.fB = context.teamsData.B[0] || null;
-    if (context.fA) context.fA.isActiveSide = context.fA.id === selectionTurn;
-    if (context.fB) context.fB.isActiveSide = context.fB.id === selectionTurn;
 
     // ── Segment progress dots ────────────────────────────────────────────
     const currentSeg = context.turnState.segment || 1;
@@ -234,8 +231,10 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const myParticipants = Object.values(context.participants).filter(p => p.isOwner && p.isActive);
 
     if (phase === "awaiting-pool-rolls") {
-      const myUnrolled = myParticipants.find(p => p.pool.length === 0);
-      if (myUnrolled) return { type: "roll", actorId: myUnrolled.id, urgent: true };
+      const myUnrolled = myParticipants.filter(p => p.pool.length === 0);
+      if (myUnrolled.length > 0) {
+        return { type: "waiting", message: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.RollYourDice"), urgent: true };
+      }
       return { type: "waiting", message: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingPool"), urgent: false };
     }
 

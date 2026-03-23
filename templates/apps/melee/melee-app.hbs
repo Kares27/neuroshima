@@ -2,9 +2,19 @@
   {{> MeleeTopBar}}
 
   <div class="melee-arena">
-    {{> FighterCard fighter=fA side="a"}}
+    <div class="team-column team-column--a">
+      {{#each teamsData.A}}
+        {{> FighterCard fighter=this side="a"}}
+      {{/each}}
+    </div>
+
     {{> ArenaCenter}}
-    {{> FighterCard fighter=fB side="b"}}
+
+    <div class="team-column team-column--b">
+      {{#each teamsData.B}}
+        {{> FighterCard fighter=this side="b"}}
+      {{/each}}
+    </div>
   </div>
 
   {{> MeleeActionBar}}

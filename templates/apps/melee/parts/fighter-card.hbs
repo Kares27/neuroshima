@@ -1,26 +1,28 @@
 {{#if fighter}}
 <div class="fighter-card fighter-card--{{side}} {{#if fighter.isActiveSide}}is-active{{/if}}">
 
-  <div class="fighter-card__header">
-    <div class="fighter-card__avatar-wrap">
-      <img src="{{fighter.img}}" class="fighter-card__avatar" alt="{{fighter.name}}">
-      {{#if fighter.isCrowded}}
-        <span class="fc-crowded-badge" title="{{localize "NEUROSHIMA.MeleeDuel.Crowded"}}">
-          -{{fighter.dexPenalty}}
-        </span>
-      {{/if}}
+  <div class="fighter-card__avatar-wrap">
+    <img src="{{fighter.img}}" class="fighter-card__avatar" alt="{{fighter.name}}">
+    {{#if fighter.isCrowded}}
+      <span class="fc-crowded-badge" title="{{localize "NEUROSHIMA.MeleeDuel.Crowded"}}">
+        -{{fighter.dexPenalty}}
+      </span>
+    {{/if}}
+  </div>
+
+  <div class="fighter-card__info">
+    <div class="fighter-card__name">{{fighter.name}}</div>
+    <div class="fighter-card__sub">
+      <i class="fas fa-bolt"></i> {{fighter.initiative}}
+      &nbsp;·&nbsp;
+      Zr <strong>{{fighter.currentEffectiveTarget}}</strong>
     </div>
-    <div class="fighter-card__info">
-      <div class="fighter-card__name">{{fighter.name}}</div>
-      <div class="fighter-card__sub">
-        <i class="fas fa-bolt"></i> {{fighter.initiative}}
-        &nbsp;·&nbsp;
-        Zr <strong>{{fighter.currentEffectiveTarget}}</strong>
-      </div>
-      {{#if (ne fighter.maneuver "none")}}
-        <div class="fighter-card__maneuver">{{fighter.maneuverLabel}}</div>
-      {{/if}}
-    </div>
+    {{#if (ne fighter.maneuver "none")}}
+      <div class="fighter-card__maneuver">{{fighter.maneuverLabel}}</div>
+    {{/if}}
+    {{#if fighter.targetName}}
+      <div class="fighter-card__target">→ {{fighter.targetName}}</div>
+    {{/if}}
   </div>
 
   <div class="fighter-card__dice">
@@ -40,9 +42,15 @@
         </button>
       {{/each}}
       <div class="dice-threshold">≤ {{fighter.currentEffectiveTarget}}</div>
+    {{else if fighter.canRollPool}}
+      <button type="button" class="action-btn action-btn--roll pulse"
+              data-action="openPoolDialog" data-id="{{fighter.id}}">
+        <i class="fas fa-dice-d20"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+      </button>
     {{else}}
       <div class="dice-empty-state">
-        <i class="fas fa-dice"></i>
+        <i class="fas fa-hourglass-half"></i>
       </div>
     {{/if}}
   </div>

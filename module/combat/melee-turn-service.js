@@ -258,7 +258,7 @@ export class MeleeTurnService {
     const phase = updated.turnState.phase;
     
     let roleKey = null;
-    if (phase === "primary-attack-selection" && participantId === updated.turnState.initiativeOwnerId) {
+    if (phase === "primary-attack-selection" && participantId === updated.turnState.selectionTurn) {
       roleKey = "attackerSelectedDice";
     } else if (phase === "primary-defense-selection" && participantId === exchange.defenderId) {
       roleKey = "defenderSelectedDice";
@@ -296,7 +296,7 @@ export class MeleeTurnService {
     const updated = foundry.utils.deepClone(encounter);
     const exchange = updated.currentExchange;
     
-    if (participantId !== updated.turnState.initiativeOwnerId) return;
+    if (participantId !== updated.turnState.selectionTurn) return;
     if (exchange.attackerSelectedDice.length === 0) return;
 
     exchange.attackerId = participantId;

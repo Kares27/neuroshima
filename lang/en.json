@@ -422,6 +422,7 @@
             "ChooseTarget": "Choose Target",
             "Hint": {
                 "RollPool": "Click \"Roll Pool\" — choose your maneuver and roll 3d20 for this turn.",
+                "RollYourDice": "Roll your dice! Click the roll button on your fighter card.",
                 "WaitingPool": "Pool rolled. Waiting for other participants...",
                 "ChooseTarget": "Click one of the buttons below to select your primary target.",
                 "WaitingTarget": "Waiting for others to choose their targets...",

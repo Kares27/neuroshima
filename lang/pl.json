@@ -435,6 +435,7 @@
             "ChooseTarget": "Wybierz cel",
             "Hint": {
                 "RollPool": "Kliknij \"Rzuć Pulę\" — wybierz manewr i rzuć 3k20 na tę turę.",
+                "RollYourDice": "Rzuć swoje kości! Kliknij przycisk rzutu na swojej karcie wojownika.",
                 "WaitingPool": "Pula rzucona. Czekaj na pozostałych uczestników...",
                 "ChooseTarget": "Wybierz swojego głównego przeciwnika klikając jego przycisk poniżej.",
                 "WaitingTarget": "Czekaj na wybór celów przez pozostałych...",

@@ -1,13 +1,6 @@
 <div class="melee-action-bar {{#if actionBar.urgent}}is-urgent{{/if}}">
 
-  {{#if (eq actionBar.type "roll")}}
-    <button type="button" class="action-btn action-btn--roll pulse"
-            data-action="openPoolDialog" data-id="{{actionBar.actorId}}">
-      <i class="fas fa-dice-d20"></i>
-      {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
-    </button>
-
-  {{else if (eq actionBar.type "target")}}
+  {{#if (eq actionBar.type "target")}}
     <span class="action-label">{{localize "NEUROSHIMA.MeleeDuel.ChooseTarget"}}:</span>
     {{#each actionBar.availableTargets}}
       <button type="button" class="action-btn action-btn--target"
