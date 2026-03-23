@@ -336,7 +336,10 @@ export class MeleeTurnService {
     if (!encounter) return;
 
     const updated = foundry.utils.deepClone(encounter);
-    updated.turnState.segment += 1;
+    // X declared dice = X segments consumed; default to 1 for safety
+    const cost = updated.turnState.segmentCost || 1;
+    updated.turnState.segment += cost;
+    updated.turnState.segmentCost = 0;
 
     // Reset exchange
     updated.currentExchange = {

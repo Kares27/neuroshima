@@ -63,6 +63,7 @@ export class MeleeEncounter {
         initiativeOrder: [],
         segmentQueue: [],
         queueIndex: 0,
+        segmentCost: 0,
         initiativeOwnerId: attackerData.initiative >= defenderData.initiative ? attackerId : defenderId
       },
       log: []

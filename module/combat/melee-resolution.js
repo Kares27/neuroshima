@@ -73,6 +73,9 @@ export class MeleeResolution {
     attacker.usedDice.push(...exchange.attackerSelectedDice);
     defender.usedDice.push(...exchange.defenderSelectedDice);
 
+    // Store segment cost before clearing exchange (X dice = X segments consumed)
+    updated.turnState.segmentCost = diceCount;
+
     // Clear current exchange
     updated.currentExchange = {
       attackerId: null,
@@ -188,8 +191,8 @@ export class MeleeResolution {
     updated.turnState.phase = "segment-end";
     await MeleeStore.updateEncounter(id, updated);
     
-    // Finalize segment
-    await MeleeTurnService.advanceSegment(id, encounter.currentExchange.declaredDiceCount);
+    // Finalize segment (segmentCost was set during resolvePrimaryExchange)
+    await MeleeTurnService.advanceSegment(id);
   }
 
   static async resolveSingleExtraAttack(encounter, attack) {
