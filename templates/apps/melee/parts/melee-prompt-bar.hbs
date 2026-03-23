@@ -1,8 +1,11 @@
 <section class="melee-prompt-bar melee-prompt-bar--{{promptTone}}">
-  <div class="melee-prompt-bar__title">
-    {{promptTitle}}
-  </div>
-  <div class="melee-prompt-bar__text">
-    {{currentPrompt}}
-  </div>
+  <div class="melee-prompt-bar__title">{{promptTitle}}</div>
+  <div class="melee-prompt-bar__text">{{currentPrompt}}</div>
 </section>
+
+{{#if userActionHint.text}}
+<div class="melee-action-hint {{#if userActionHint.urgent}}melee-action-hint--urgent{{/if}}">
+  <i class="fas {{#if userActionHint.urgent}}fa-exclamation-circle{{else}}fa-hourglass-half{{/if}}"></i>
+  <span>{{userActionHint.text}}</span>
+</div>
+{{/if}}

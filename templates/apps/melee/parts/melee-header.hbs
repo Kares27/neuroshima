@@ -1,19 +1,24 @@
 <header class="melee-header">
   <div class="melee-header__left">
-    <span class="melee-header__turn">
-      Tura {{turnState.turn}} | Segment {{turnState.segment}}/3
+    <span class="melee-header__turn">{{localize "NEUROSHIMA.Combat.Turn"}} {{turnState.turn}}</span>
+    <span class="melee-header__initiative-owner">
+      <i class="fas fa-bolt"></i> {{initiativeOwnerName}}
     </span>
   </div>
 
   <div class="melee-header__center">
-    <span class="melee-header__phase">
-      {{phaseLabel}}
-    </span>
+    <div class="segment-track">
+      {{#each segmentDots}}
+        <div class="segment-dot segment-dot--{{this.state}}" title="{{localize "NEUROSHIMA.Roll.Segment"}} {{this.number}}">
+          <span class="segment-dot__number">{{this.number}}</span>
+          {{#if (eq this.state "done")}}<i class="fas fa-check segment-dot__icon"></i>{{/if}}
+          {{#if (eq this.state "active")}}<i class="fas fa-circle-dot segment-dot__icon"></i>{{/if}}
+        </div>
+      {{/each}}
+    </div>
+    <span class="melee-header__phase">{{phaseLabel}}</span>
   </div>
 
   <div class="melee-header__right">
-    <span class="melee-header__initiative">
-      Inicjatywa: {{initiativeOwnerName}}
-    </span>
   </div>
 </header>

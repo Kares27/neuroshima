@@ -8,23 +8,7 @@
     overflow: hidden;
 }
 
-/* Header V2 */
-.melee-header {
-    background: var(--ns-bg-header);
-    border-bottom: 2px solid var(--ns-border-main);
-    padding: 8px 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 1.1em;
-}
-
-.melee-header__phase {
-    font-weight: bold;
-    color: var(--ns-text-accent);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+/* Header V2 - styles moved to bottom of file */
 
 /* Prompt Bar */
 .melee-prompt-bar {
@@ -188,35 +172,11 @@
     border-top: 1px solid rgba(255,255,255,0.05);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 10px;
 }
 
-.die-chip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: #fff;
-    color: #1a1a14;
-    border: 1px solid #7a7971;
-    border-radius: 4px;
-    font-size: 1.1em;
-    font-weight: bold;
-    cursor: pointer;
-    margin-right: 5px;
-    box-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-}
-
-.die-chip.is-used { opacity: 0.3; cursor: default; filter: grayscale(1); }
-.die-chip.is-success { background: #e8f5e9; border-color: #4caf50; color: #1b5e20; }
-.die-chip.is-failure { background: #ffebee; border-color: #ef5350; color: #c62828; }
-
-.die-chip.is-selected {
-    border: 3px solid #f39c12 !important;
-    transform: scale(1.1);
-    box-shadow: 0 0 10px #f39c12;
-}
+/* die-chip styles moved to bottom of file (improved) */
 
 /* Buttons */
 .melee-btn {
@@ -352,3 +312,377 @@
 }
 
 .log-line .ts { color: var(--ns-text-light); opacity: 0.6; margin-right: 5px; }
+.log-line--hit { color: #e74c3c; }
+.log-line--blocked { color: #27ae60; }
+.log-line--initiative { color: #f39c12; }
+.log-line--system { color: var(--ns-text-light); font-style: italic; }
+
+/* ============================================================
+   Segment Track (header dots)
+   ============================================================ */
+.segment-track {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.segment-dot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    justify-content: center;
+    font-family: 'SpecialElite', serif;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.segment-dot__number {
+    font-size: 1em;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.segment-dot__icon {
+    font-size: 0.6em;
+    position: absolute;
+    bottom: 2px;
+}
+
+.segment-dot--done {
+    background: rgba(39, 174, 96, 0.3);
+    border-color: #27ae60;
+    color: #27ae60;
+}
+
+.segment-dot--active {
+    background: rgba(243, 156, 18, 0.25);
+    border-color: #f39c12;
+    color: #f39c12;
+    box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
+    animation: segment-active-pulse 2s infinite;
+}
+
+.segment-dot--pending {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.3);
+}
+
+@keyframes segment-active-pulse {
+    0% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.4); }
+    50% { box-shadow: 0 0 14px rgba(243, 156, 18, 0.8); }
+    100% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.4); }
+}
+
+/* ============================================================
+   Melee Header improvements
+   ============================================================ */
+.melee-header {
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+    padding: 8px 15px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+}
+
+.melee-header__left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.melee-header__turn {
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    font-size: 1em;
+}
+
+.melee-header__initiative-owner {
+    font-size: 0.8em;
+    color: #f39c12;
+    opacity: 0.9;
+}
+
+.melee-header__center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.melee-header__phase {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+    color: var(--ns-text-accent);
+}
+
+/* ============================================================
+   Action Hint Bar
+   ============================================================ */
+.melee-action-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 15px;
+    background: rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.9em;
+    color: var(--ns-text-light);
+}
+
+.melee-action-hint--urgent {
+    background: rgba(243, 156, 18, 0.12);
+    border-bottom-color: rgba(243, 156, 18, 0.3);
+    color: #f1c40f;
+    animation: hint-pulse 3s infinite;
+}
+
+.melee-action-hint--urgent i {
+    color: #f39c12;
+}
+
+@keyframes hint-pulse {
+    0%, 100% { background: rgba(243, 156, 18, 0.12); }
+    50% { background: rgba(243, 156, 18, 0.22); }
+}
+
+/* ============================================================
+   Exchange Banner improvements
+   ============================================================ */
+.exchange-card__target {
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+    margin-top: 2px;
+}
+
+.exchange-card__target strong {
+    color: #f39c12;
+}
+
+.attack-strength-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 2px solid;
+    min-width: 100px;
+}
+
+.attack-strength-display__label {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.75;
+}
+
+.attack-strength-display__count {
+    font-size: 2em;
+    font-weight: bold;
+    line-height: 1;
+    font-family: 'SpecialElite', serif;
+}
+
+.attack-strength-display__damage {
+    font-size: 1em;
+    font-weight: bold;
+}
+
+.attack-strength-display--1s {
+    background: rgba(231, 76, 60, 0.15);
+    border-color: #e74c3c;
+    color: #e74c3c;
+}
+
+.attack-strength-display--2s {
+    background: rgba(192, 57, 43, 0.2);
+    border-color: #c0392b;
+    color: #e74c3c;
+}
+
+.attack-strength-display--3s {
+    background: rgba(127, 0, 0, 0.3);
+    border-color: #8b0000;
+    color: #ff6b6b;
+    box-shadow: 0 0 12px rgba(200, 0, 0, 0.4);
+}
+
+.defense-requirement {
+    font-size: 0.85em;
+    margin-top: 6px;
+    color: #3498db;
+}
+
+.defense-requirement strong {
+    font-size: 1.1em;
+}
+
+.exchange-state {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.exchange-state i {
+    font-size: 1.5em;
+    opacity: 0.4;
+}
+
+/* ============================================================
+   Die Chip improvements
+   ============================================================ */
+.die-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 6px;
+    font-size: 1.15em;
+    font-weight: bold;
+    cursor: pointer;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    transition: all 0.15s ease;
+    border: 2px solid;
+    box-shadow: 1px 2px 4px rgba(0,0,0,0.3);
+    position: relative;
+}
+
+.die-chip:hover:not(.is-used) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+.die-chip.is-used {
+    opacity: 0.25;
+    cursor: not-allowed;
+    filter: grayscale(1);
+    transform: none;
+}
+
+.die-chip.is-success {
+    background: #1a3a1c;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+.die-chip.is-failure {
+    background: #3a1a1a;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.die-chip.is-selected {
+    border: 3px solid #f39c12 !important;
+    transform: scale(1.15) translateY(-2px);
+    box-shadow: 0 0 14px rgba(243, 156, 18, 0.7);
+    z-index: 1;
+}
+
+.dice-legend {
+    display: block;
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.4);
+    margin-top: 4px;
+    width: 100%;
+}
+
+.dice-legend__success {
+    color: #4caf50;
+}
+
+/* ============================================================
+   Damage Preview (below dice - attack confirm)
+   ============================================================ */
+.confirm-attack-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.damage-preview {
+    display: flex;
+    gap: 6px;
+    font-size: 0.78em;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.damage-preview__item {
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+}
+
+.damage-preview__item.is-selected-tier {
+    background: rgba(231, 76, 60, 0.2);
+    border-color: #e74c3c;
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+/* ============================================================
+   Combatant Row improvements
+   ============================================================ */
+.combatant-row__avatar-wrap {
+    position: relative;
+}
+
+.crowded-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #9b59b6;
+    color: #fff;
+    font-size: 0.65em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.meta-pill--init {
+    background: rgba(243, 156, 18, 0.15);
+    border-color: rgba(243, 156, 18, 0.3);
+    color: #f39c12;
+}
+
+.meta-pill--maneuver {
+    background: rgba(155, 89, 182, 0.15);
+    border-color: rgba(155, 89, 182, 0.3);
+    color: #be90d4;
+}
+
+.meta-pill--target {
+    background: rgba(52, 152, 219, 0.1);
+    border-color: rgba(52, 152, 219, 0.2);
+    color: #7fb3d3;
+}
+
+.combatant-row__waiting {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.combatant-row__waiting i {
+    margin-right: 4px;
+}
