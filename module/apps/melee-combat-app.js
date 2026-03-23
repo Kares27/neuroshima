@@ -237,10 +237,12 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const aWeapon = aActor?.items.get(attackerP.weaponId);
         if (aWeapon?.system) {
           context.attackDamagePreview = {
-            1: aWeapon.system.damageMelee1 || "D",
-            2: aWeapon.system.damageMelee2 || "L",
-            3: aWeapon.system.damageMelee3 || "C"
+            s1: aWeapon.system.damageMelee1 || "D",
+            s2: aWeapon.system.damageMelee2 || "L",
+            s3: aWeapon.system.damageMelee3 || "C"
           };
+          const key = `s${exchange.declaredDiceCount}`;
+          context.currentDamageLabel = context.attackDamagePreview[key] || "";
         }
       }
     }
@@ -252,9 +254,9 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       const pActor = pDoc?.actor || pDoc;
       const pWeapon = pActor?.items.get(p.weaponId);
       p.damageMeleePreview = {
-        1: pWeapon?.system?.damageMelee1 || "D",
-        2: pWeapon?.system?.damageMelee2 || "L",
-        3: pWeapon?.system?.damageMelee3 || "C"
+        s1: pWeapon?.system?.damageMelee1 || "D",
+        s2: pWeapon?.system?.damageMelee2 || "L",
+        s3: pWeapon?.system?.damageMelee3 || "C"
       };
     }
 
