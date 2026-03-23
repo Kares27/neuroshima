@@ -22,8 +22,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       icon: "fas fa-swords"
     },
     position: {
-      width: 640,
-      height: 520
+      width: 780,
+      height: 540
     },
     actions: {
       openPoolDialog: function(event, target) {
