@@ -229,6 +229,14 @@
                 "Name": "Allow Suwak in pain resistance",
                 "Hint": "Enables the Suwak rule during automatic pain resistance tests."
             },
+            "MeleeCombatType": {
+                "Name": "Melee Combat System",
+                "Hint": "Select which melee combat system is active. Changing this setting requires a reload.",
+                "Default": "Default System (Initiative + Duel App)",
+                "OpposedPips": "Opposed on Pips",
+                "OpposedSuccesses": "Opposed on Successes",
+                "ActiveNotice": "Active melee combat system: {system}. This mode does not use the duel application."
+            },
             "MeleeBonusMode": {
                 "Name": "Melee Weapon Bonus Application",
                 "Hint": "Select where the melee weapon attack/defense bonus is applied.",

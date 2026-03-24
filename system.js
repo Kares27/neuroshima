@@ -279,6 +279,21 @@ Hooks.once('init', async function() {
         requiresReload: false
     });
 
+    game.settings.register("neuroshima", "meleeCombatType", {
+        name: "NEUROSHIMA.Settings.MeleeCombatType.Name",
+        hint: "NEUROSHIMA.Settings.MeleeCombatType.Hint",
+        scope: "world",
+        config: false,
+        type: String,
+        choices: {
+            "default": "NEUROSHIMA.Settings.MeleeCombatType.Default",
+            "opposedPips": "NEUROSHIMA.Settings.MeleeCombatType.OpposedPips",
+            "opposedSuccesses": "NEUROSHIMA.Settings.MeleeCombatType.OpposedSuccesses"
+        },
+        default: "default",
+        requiresReload: true
+    });
+
     game.settings.register("neuroshima", "doubleSkillAction", {
         name: "NEUROSHIMA.Settings.DoubleSkillAction.Name",
         hint: "NEUROSHIMA.Settings.DoubleSkillAction.Hint",

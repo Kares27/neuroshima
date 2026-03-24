@@ -1273,6 +1273,18 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
     // Jeśli to broń biała i (mamy cel LUB mamy oczekującego atakującego LUB jesteśmy w aktywnym pojedynku), inicjujemy/kontynuujemy
     if (weapon.system.weaponType === "melee") {
+        const meleeCombatType = game.settings.get("neuroshima", "meleeCombatType") || "default";
+        if (meleeCombatType !== "default") {
+            const labelKey = meleeCombatType === "opposedPips"
+                ? "NEUROSHIMA.Settings.MeleeCombatType.OpposedPips"
+                : "NEUROSHIMA.Settings.MeleeCombatType.OpposedSuccesses";
+            const systemLabel = game.i18n.localize(labelKey);
+            ui.notifications.info(
+                game.i18n.format("NEUROSHIMA.Settings.MeleeCombatType.ActiveNotice", { system: systemLabel })
+            );
+            this._isRolling = false;
+            return;
+        }
         const combat = game.combat;
         const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
         

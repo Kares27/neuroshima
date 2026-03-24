@@ -2,7 +2,9 @@
     <a class="item {{#if (eq currentView 'encounter')}}active{{/if}}" data-action="set-view" data-tab="encounter" title="{{localize 'COMBAT.Encounter'}}">
         <i class="fas fa-list-ol"></i> {{localize "COMBAT.Encounter"}}
     </a>
+    {{#if showMeleeTab}}
     <a class="item {{#if (eq currentView 'melee')}}active{{/if}}" data-action="set-view" data-tab="melee" title="{{localize 'NEUROSHIMA.MeleeDuel.Title'}}">
         <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.Title"}}
     </a>
+    {{/if}}
 </nav>

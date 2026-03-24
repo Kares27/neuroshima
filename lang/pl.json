@@ -232,6 +232,14 @@
                 "Name": "Pozwól na Suwak w odporności na ból",
                 "Hint": "Włącza zasadę Suwaka podczas automatycznych testów odporności na ból."
             },
+            "MeleeCombatType": {
+                "Name": "System Walki Wręcz",
+                "Hint": "Wybierz który system walki wręcz jest aktywny. Zmiana tego ustawienia wymaga przeładowania.",
+                "Default": "Domyślny System (Inicjatywa + Aplikacja Pojedynku)",
+                "OpposedPips": "Przeciwstawny na Oczkach",
+                "OpposedSuccesses": "Przeciwstawny na Sukcesach",
+                "ActiveNotice": "Aktywny system walki wręcz: {system}. Ten tryb nie używa aplikacji pojedynku."
+            },
             "MeleeBonusMode": {
                 "Name": "Aplikacja bonusów broni w Melee",
                 "Hint": "Wybierz gdzie dodawany jest bonus do ataku/obrony z broni białej.",

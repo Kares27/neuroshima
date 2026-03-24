@@ -31,6 +31,18 @@
         <h3>{{localize "NEUROSHIMA.MeleeOpposed.Title"}}</h3>
 
         <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.MeleeCombatType.Name"}}</label>
+            <div class="form-fields">
+                <select name="meleeCombatType">
+                    <option value="default" {{#if (eq config.meleeCombatType "default")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeCombatType.Default"}}</option>
+                    <option value="opposedPips" {{#if (eq config.meleeCombatType "opposedPips")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeCombatType.OpposedPips"}}</option>
+                    <option value="opposedSuccesses" {{#if (eq config.meleeCombatType "opposedSuccesses")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeCombatType.OpposedSuccesses"}}</option>
+                </select>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.MeleeCombatType.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
             <label>{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Name"}}</label>
             <div class="form-fields">
                 <select name="meleeBonusMode">
