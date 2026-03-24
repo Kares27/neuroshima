@@ -291,59 +291,52 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   _prepareSubmitData(event, form, formData) {
     game.neuroshima.log("_prepareSubmitData triggered", {event, formData});
 
-    // Zapisz pozycję scrollu wounds-list-container przed edycją
     this._saveWoundsScroll();
 
     const data = formData.object;
-    // Handle embedded items updates (e.g. from wounds table)
-    const itemUpdates = {};
-    
-    // ActorSheetV2 can provide flattened or expanded data depending on how it was processed.
-    // We check for both flattened "items.ID.system.prop" keys and expanded "items" object.
-    for (const [key, value] of Object.entries(data)) {
-        if (key.startsWith("items.")) {
-            const parts = key.split(".");
-            const itemId = parts[1];
-            const propertyPath = parts.slice(2).join("."); // e.g. "system.location"
-            
-            if (!itemUpdates[itemId]) itemUpdates[itemId] = { _id: itemId };
-            foundry.utils.setProperty(itemUpdates[itemId], propertyPath, value);
-            
-            // Delete from main data to avoid updating actor with item data
-            delete data[key];
-        }
-    }
 
-    // Also check for expanded objects if they exist
+    // Strip item fields from actor form data so they don't pollute the actor update.
+    // Item changes are handled individually by _onChangeForm.
+    for (const key of Object.keys(data)) {
+      if (key.startsWith("items.")) delete data[key];
+    }
     if (data.items && typeof data.items === "object") {
-        for (const [itemId, itemData] of Object.entries(data.items)) {
-            if (typeof itemData === "object") {
-                if (!itemUpdates[itemId]) itemUpdates[itemId] = { _id: itemId };
-                foundry.utils.mergeObject(itemUpdates[itemId], itemData);
-            }
-        }
-        delete data.items;
-    }
-
-    // Sanitize integer fields in item updates to avoid validation errors
-    for (const update of Object.values(itemUpdates)) {
-      const sys = foundry.utils.getProperty(update, "system");
-      if (sys && "penalty" in sys) {
-        sys.penalty = Math.round(Number(sys.penalty) || 0);
-      }
-    }
-
-    // Perform updates for embedded items
-    if (Object.keys(itemUpdates).length > 0) {
-      const updates = Object.values(itemUpdates);
-      game.neuroshima.log("Executing updateEmbeddedDocuments:", updates);
-      this.document.updateEmbeddedDocuments("Item", updates);
+      delete data.items;
     }
 
     if (!data.name) {
       data.name = this.document.name;
     }
     return super._prepareSubmitData(event, form, formData);
+  }
+
+  /** @override */
+  async _onChangeForm(formConfig, event) {
+    const input = event.target;
+    const name = input?.getAttribute?.("name") ?? input?.name;
+
+    if (name?.startsWith("items.")) {
+      const parts = name.split(".");
+      const itemId = parts[1];
+      const propertyPath = parts.slice(2).join(".");
+      const item = this.document.items.get(itemId);
+      if (!item) return;
+
+      let value;
+      if (input.type === "checkbox") {
+        value = input.checked;
+      } else if (input.type === "number") {
+        value = Math.round(Number(input.value) || 0);
+      } else {
+        value = input.value;
+      }
+
+      game.neuroshima.log("_onChangeForm item update", { itemId, propertyPath, value });
+      await item.update({ [propertyPath]: value });
+      return;
+    }
+
+    return super._onChangeForm(formConfig, event);
   }
 
   /** @override */
