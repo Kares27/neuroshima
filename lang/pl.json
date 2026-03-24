@@ -463,6 +463,10 @@
             "ResultMiss": "Pudło",
             "ResetTurn": "Resetuj turę",
             "EndEncounter": "Zakończ starcie",
+            "PrevSegment": "Poprzedni segment",
+            "NextSegment": "Następny segment",
+            "NextTurn": "Następna tura",
+            "PoolRoll": "Rzut puli (3k20)",
             "Actions": {
                 "attack": "Atak",
                 "defend": "Obrona",

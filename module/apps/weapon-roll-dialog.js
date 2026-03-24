@@ -383,7 +383,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     if (this.isPoolRoll && this.onPoolRoll) {
         const rollResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({
             ...rollData,
-            chatMessage: false
+            chatMessage: true
         });
         return this.onPoolRoll(rollResult);
     }

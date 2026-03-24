@@ -93,7 +93,6 @@ export class MeleeEncounter {
     updated.teams[team].push(participantId);
     updated.mode = (updated.teams.A.length > 1 || updated.teams.B.length > 1) ? "group" : "duel";
 
-    // Initialize new fields for joining participant
     updated.primaryTargets[participantId] = null;
     updated.crowding[participantId] = {
       primaryOpponentId: null,
@@ -101,6 +100,24 @@ export class MeleeEncounter {
       dexPenalty: 0,
       extraAttackers: []
     };
+
+    // If now multi-fight and no pools have been rolled yet, switch to target-selection
+    const isMultiFight = updated.mode === "group";
+    const anyPoolRolled = Object.values(updated.participants).some(p => p.isActive && p.pool.length > 0);
+    if (isMultiFight && !anyPoolRolled && updated.turnState.phase === "awaiting-pool-rolls") {
+      for (const pId in updated.participants) {
+        if (updated.participants[pId].isActive) updated.primaryTargets[pId] = null;
+      }
+      const sortedIds = Object.values(updated.participants)
+        .filter(p => p.isActive)
+        .sort((a, b) => b.initiative - a.initiative)
+        .map(p => p.id);
+      updated.turnState.initiativeOrder = sortedIds;
+      updated.turnState.phase = "target-selection";
+      updated.turnState.selectionTurn = sortedIds[0];
+      MeleeTurnService.updateCrowding(updated);
+      MeleeTurnService._advanceTargetSelection(updated);
+    }
 
     await MeleeStore.updateEncounter(id, updated);
     const doc = fromUuidSync(participantData.actorUuid);

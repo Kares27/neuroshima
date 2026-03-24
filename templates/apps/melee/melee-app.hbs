@@ -1,4 +1,8 @@
 <div class="melee-shell">
+  {{#if isGM}}
+    {{> MeleeGmControls}}
+  {{/if}}
+
   {{> MeleeTopBar}}
 
   <div class="melee-arena">
@@ -20,6 +24,4 @@
   {{> MeleeActionBar}}
 
   {{> CombatLog}}
-
-  {{> FooterDanger}}
 </div>

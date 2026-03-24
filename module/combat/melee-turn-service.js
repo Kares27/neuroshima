@@ -1,9 +1,18 @@
-import { MeleeStore } from "./melee-store.js";
 
 /**
  * Handles turn transitions, segment resets, and maneuver application for Melee Encounters.
  */
 export class MeleeTurnService {
+  /**
+   * Returns whether the encounter needs manual target selection (multi-fight).
+   * @private
+   */
+  static _isMultiFight(encounter) {
+    const activeA = (encounter.teams.A || []).filter(id => encounter.participants[id]?.isActive).length;
+    const activeB = (encounter.teams.B || []).filter(id => encounter.participants[id]?.isActive).length;
+    return (activeA + activeB) > 2;
+  }
+
   /**
    * Resets the encounter state for a new turn.
    */
@@ -14,7 +23,7 @@ export class MeleeTurnService {
     const updated = foundry.utils.deepClone(encounter);
     updated.turnState.turn += 1;
     updated.turnState.segment = 1;
-    updated.turnState.phase = "awaiting-pool-rolls";
+    updated.turnState.segmentCost = 0;
     updated.turnState.selectionTurn = null;
 
     // Reset pool data for all participants
@@ -23,15 +32,45 @@ export class MeleeTurnService {
       p.pool = [];
       p.usedDice = [];
       p.skillSpent = 0;
-      p.maneuver = "none"; // Maneuvers are chosen at the start of each turn
+      p.maneuver = "none";
       p.tempoLevel = 0;
+      p.attackTargetSnapshot = null;
+      p.defenseTargetSnapshot = null;
     }
+
+    // Reset primary targets
+    for (const pId in updated.participants) {
+      updated.primaryTargets[pId] = null;
+    }
+
+    // Build initiative order for the new turn
+    const sortedIds = Object.values(updated.participants)
+      .filter(p => p.isActive)
+      .sort((a, b) => b.initiative - a.initiative)
+      .map(p => p.id);
+    updated.turnState.initiativeOrder = sortedIds;
 
     updated.log.push({
       type: "system",
       segment: 1,
       text: game.i18n.format("NEUROSHIMA.MeleeDuel.LogNewTurn", { turn: updated.turnState.turn })
     });
+
+    if (this._isMultiFight(updated)) {
+      updated.turnState.phase = "target-selection";
+      updated.turnState.selectionTurn = sortedIds[0];
+      this.updateCrowding(updated);
+      this._advanceTargetSelection(updated);
+    } else {
+      // 1v1: auto-set targets
+      const [aId, bId] = sortedIds;
+      if (aId && bId) {
+        updated.primaryTargets[aId] = bId;
+        updated.primaryTargets[bId] = aId;
+      }
+      this.updateCrowding(updated);
+      updated.turnState.phase = "awaiting-pool-rolls";
+    }
 
     game.neuroshima?.log("Starting new turn for melee encounter", { id, turn: updated.turnState.turn });
     await MeleeStore.updateEncounter(id, updated);
@@ -68,9 +107,6 @@ export class MeleeTurnService {
       p.armorPenaltySnapshot = armorPenalty;
       p.woundPenaltySnapshot = woundPenalty;
 
-      // Calculate effective targets for attack and defense.
-      // Maneuver bonuses applied here; armor/wound penalties reduce target.
-      // Dexterity crowding penalty and Increased Tempo applied later in resolution.
       let attackManeuverBonus = 0;
       let defenseManeuverBonus = 0;
       if (maneuver === "furia" || maneuver === "fury") attackManeuverBonus = 2;
@@ -81,7 +117,7 @@ export class MeleeTurnService {
       p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus + attributeBonus - totalPenalty;
 
       game.neuroshima?.log("setPool snapshot", {
-        name: p.name, baseTarget, armorPenalty, woundPenalty,
+        name: p.name, baseTarget, armorPenalty, woundPenalty, attributeBonus,
         attackTarget: p.attackTargetSnapshot, defenseTarget: p.defenseTargetSnapshot
       });
     }
@@ -95,22 +131,20 @@ export class MeleeTurnService {
     // Check if all active participants have rolled their pools
     const allRolled = Object.values(updated.participants).every(p => !p.isActive || p.pool.length > 0);
     if (allRolled) {
-      updated.turnState.phase = "target-selection";
-      
-      // Build initiative order (descending)
-      const sortedIds = Object.values(updated.participants)
-        .filter(p => p.isActive)
-        .sort((a, b) => b.initiative - a.initiative)
-        .map(p => p.id);
-      
-      updated.turnState.initiativeOrder = sortedIds;
-      updated.turnState.selectionTurn = sortedIds[0];
+      // Ensure initiative order is set (may not be for 1v1 created before multi-fight)
+      if (!updated.turnState.initiativeOrder?.length) {
+        const sortedIds = Object.values(updated.participants)
+          .filter(p => p.isActive)
+          .sort((a, b) => b.initiative - a.initiative)
+          .map(p => p.id);
+        updated.turnState.initiativeOrder = sortedIds;
+      }
 
-      // Automation: if only one possible target for a team, auto-set it for obvious 1v1 cases
+      // For 1v1 (duel mode): ensure targets are set if somehow missing
       for (const pId in updated.participants) {
-        const p = updated.participants[pId];
-        if (!p.isActive) continue;
-        const opposingTeam = p.team === "A" ? "B" : "A";
+        const participant = updated.participants[pId];
+        if (!participant.isActive) continue;
+        const opposingTeam = participant.team === "A" ? "B" : "A";
         const opponents = updated.teams[opposingTeam].filter(id => updated.participants[id]?.isActive);
         if (opponents.length === 1 && !updated.primaryTargets[pId]) {
           updated.primaryTargets[pId] = opponents[0];
@@ -118,15 +152,20 @@ export class MeleeTurnService {
       }
 
       this.updateCrowding(updated);
-      this._advanceTargetSelection(updated);
+
+      // Go directly to attack selection — targets were already chosen before pool roll
+      updated.turnState.phase = "primary-attack-selection";
+      updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
+      this._buildSegmentQueue(updated);
     }
 
-    game.neuroshima?.log("Setting pool for participant", { id, participantId, results, maneuver });
+    game.neuroshima?.log("Setting pool for participant", { id, participantId, results, maneuver, attributeBonus });
     await MeleeStore.updateEncounter(id, updated);
   }
 
   /**
    * Moves target selection to the next eligible participant in initiative order.
+   * When all targets are assigned, advances to awaiting-pool-rolls.
    * @private
    */
   static _advanceTargetSelection(encounter) {
@@ -134,45 +173,35 @@ export class MeleeTurnService {
     const participants = encounter.participants;
     const primaryTargets = encounter.primaryTargets;
 
-    // A participant is skipped if they are already being targeted by someone else 
-    // AND they haven't set their target yet (the "attacked don't choose" rule).
-    // Actually, the rule is: those who were attacked do not choose their opponent, 
-    // unless they choose someone who is NOT attacking them? No, NS 1.5 is:
-    // "zaatakowani nie wybierają przeciwnika".
-    
     let nextId = null;
     for (const id of order) {
-        if (!participants[id]?.isActive) continue;
-        if (primaryTargets[id]) continue; // Already chosen
+      if (!participants[id]?.isActive) continue;
+      if (primaryTargets[id]) continue; // Already chosen
 
-        const isAttacked = Object.values(primaryTargets).includes(id);
-        if (isAttacked) {
-            // "Zaatakowani nie wybierają" - we automatically set their target 
-            // to whoever attacked them (if only one) or mark as 'handled'
-            const attackers = Object.entries(primaryTargets)
-                .filter(([aid, tid]) => tid === id)
-                .map(([aid, tid]) => aid);
-            
-            if (attackers.length > 0) {
-                primaryTargets[id] = attackers[0]; // Primary attacker
-                this.updateCrowding(encounter);
-                continue;
-            }
+      const isAttacked = Object.values(primaryTargets).includes(id);
+      if (isAttacked) {
+        // "Zaatakowani nie wybierają" — auto-assign them to their primary attacker
+        const attackers = Object.entries(primaryTargets)
+          .filter(([, tid]) => tid === id)
+          .map(([aid]) => aid);
+
+        if (attackers.length > 0) {
+          primaryTargets[id] = attackers[0];
+          this.updateCrowding(encounter);
+          continue;
         }
+      }
 
-        nextId = id;
-        break;
+      nextId = id;
+      break;
     }
 
     if (nextId) {
-        encounter.turnState.selectionTurn = nextId;
+      encounter.turnState.selectionTurn = nextId;
     } else {
-        // Everyone has a target or is attacked
-        encounter.turnState.phase = "primary-attack-selection";
-        encounter.turnState.selectionTurn = encounter.turnState.initiativeOwnerId;
-        
-        // Build the segmentQueue for the first segment
-        this._buildSegmentQueue(encounter);
+      // All targets assigned — proceed to pool rolls
+      encounter.turnState.phase = "awaiting-pool-rolls";
+      encounter.turnState.selectionTurn = null;
     }
   }
 
@@ -181,32 +210,26 @@ export class MeleeTurnService {
    * @private
    */
   static _buildSegmentQueue(encounter) {
-      const queue = [];
-      const handled = new Set();
+    const queue = [];
+    const handled = new Set();
+    const attackerId = encounter.turnState.initiativeOwnerId;
+    const primaryTeam = encounter.participants[attackerId]?.team || "A";
 
-      // Participants with initiative are attackers
-      const attackerId = encounter.turnState.initiativeOwnerId;
-      // This is slightly more complex in multi: NS 1.5 doesn't have a clear "all vs all" initiative order 
-      // for WHO ATTACKS FIRST in a segment, it's usually the side with overall initiative.
-      // We'll follow the initiativeOwnerId's team as primary attackers.
-      
-      const primaryTeam = encounter.participants[attackerId]?.team || "A";
-      
-      for (const pId of (encounter.turnState.initiativeOrder || [])) {
-          if (handled.has(pId)) continue;
-          const p = encounter.participants[pId];
-          if (!p?.isActive || p.team !== primaryTeam) continue;
+    for (const pId of (encounter.turnState.initiativeOrder || [])) {
+      if (handled.has(pId)) continue;
+      const p = encounter.participants[pId];
+      if (!p?.isActive || p.team !== primaryTeam) continue;
 
-          const targetId = encounter.primaryTargets[pId];
-          if (!targetId || handled.has(targetId)) continue;
+      const targetId = encounter.primaryTargets[pId];
+      if (!targetId || handled.has(targetId)) continue;
 
-          queue.push({ attackerId: pId, defenderId: targetId });
-          handled.add(pId);
-          handled.add(targetId);
-      }
+      queue.push({ attackerId: pId, defenderId: targetId });
+      handled.add(pId);
+      handled.add(targetId);
+    }
 
-      encounter.turnState.segmentQueue = queue;
-      encounter.turnState.queueIndex = 0;
+    encounter.turnState.segmentQueue = queue;
+    encounter.turnState.queueIndex = 0;
   }
 
   /**
@@ -235,22 +258,21 @@ export class MeleeTurnService {
 
       const targetingMe = Object.entries(encounter.primaryTargets)
         .filter(([attackerId, targetId]) => targetId === pId && encounter.participants[attackerId]?.isActive)
-        .map(([attackerId, targetId]) => attackerId);
+        .map(([attackerId]) => attackerId);
 
       const myTarget = encounter.primaryTargets[pId];
       const primaryOpponentId = targetingMe.includes(myTarget) ? myTarget : (targetingMe[0] || null);
       const extraAttackers = targetingMe.filter(id => id !== primaryOpponentId);
 
-      // Rule: 1 enemy = 0 penalty, N>1 enemies = N penalty.
       let dexPenalty = 0;
       if (targetingMe.length > 1) {
-          dexPenalty = targetingMe.length;
+        dexPenalty = targetingMe.length;
       }
 
       encounter.crowding[pId] = {
         primaryOpponentId,
         opponentCount: targetingMe.length,
-        dexPenalty: dexPenalty,
+        dexPenalty,
         extraAttackers
       };
     }
@@ -269,7 +291,7 @@ export class MeleeTurnService {
 
     const exchange = updated.currentExchange;
     const phase = updated.turnState.phase;
-    
+
     let roleKey = null;
     if (phase === "primary-attack-selection" && participantId === updated.turnState.selectionTurn) {
       roleKey = "attackerSelectedDice";
@@ -278,11 +300,11 @@ export class MeleeTurnService {
     }
 
     game.neuroshima?.log("selectDie debug:", {
-        phase,
-        participantId,
-        initiativeOwnerId: updated.turnState.initiativeOwnerId,
-        defenderId: exchange.defenderId,
-        roleKey
+      phase,
+      participantId,
+      initiativeOwnerId: updated.turnState.initiativeOwnerId,
+      defenderId: exchange.defenderId,
+      roleKey
     });
 
     if (!roleKey) return;
@@ -290,7 +312,6 @@ export class MeleeTurnService {
     if (exchange[roleKey].includes(index)) {
       exchange[roleKey] = exchange[roleKey].filter(i => i !== index);
     } else {
-      // Limit to 3 dice
       if (exchange[roleKey].length < 3) {
         exchange[roleKey].push(index);
       }
@@ -308,14 +329,14 @@ export class MeleeTurnService {
 
     const updated = foundry.utils.deepClone(encounter);
     const exchange = updated.currentExchange;
-    
+
     if (participantId !== updated.turnState.selectionTurn) return;
     if (exchange.attackerSelectedDice.length === 0) return;
 
     exchange.attackerId = participantId;
     exchange.declaredDiceCount = exchange.attackerSelectedDice.length;
     exchange.defenderId = updated.primaryTargets[participantId];
-    
+
     updated.turnState.phase = "primary-defense-selection";
     updated.turnState.selectionTurn = exchange.defenderId;
 
@@ -324,7 +345,6 @@ export class MeleeTurnService {
 
   /**
    * Confirms defense selection and immediately triggers auto-resolution.
-   * No "primary-ready" phase — resolution is fully automatic.
    */
   static async confirmDefense(id, participantId) {
     const encounter = MeleeStore.getEncounter(id);
@@ -336,28 +356,54 @@ export class MeleeTurnService {
     if (participantId !== exchange.defenderId) return;
     if (exchange.defenderSelectedDice.length !== exchange.declaredDiceCount) return;
 
-    // Save the defender's dice selection first
     await MeleeStore.updateEncounter(id, updated);
 
-    // Auto-resolve immediately (dynamic import avoids circular dependency)
     const { MeleeResolution } = await import("./melee-resolution.js");
     await MeleeResolution.resolvePrimaryExchange(id);
   }
 
   /**
+   * Manually sets the segment (GM control). Clamped to 1–3.
+   */
+  static async setSegment(id, segment) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter) return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    updated.turnState.segment = Math.max(1, Math.min(3, segment));
+    updated.turnState.segmentCost = 0;
+
+    // Reset current exchange
+    updated.currentExchange = {
+      attackerId: null,
+      defenderId: null,
+      declaredAction: null,
+      declaredDiceCount: 0,
+      attackerSelectedDice: [],
+      defenderSelectedDice: [],
+      resolutionType: "normal"
+    };
+
+    updated.turnState.phase = "primary-attack-selection";
+    updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
+
+    game.neuroshima?.log("GM: setSegment", { id, segment: updated.turnState.segment });
+    await MeleeStore.updateEncounter(id, updated);
+  }
+
+  /**
    * Moves to the next segment or ends the turn if no dice are left.
+   * (Kept for backward compatibility — auto-resolution still uses this internally.)
    */
   static async advanceSegment(id) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
     const updated = foundry.utils.deepClone(encounter);
-    // X declared dice = X segments consumed; default to 1 for safety
     const cost = updated.turnState.segmentCost || 1;
     updated.turnState.segment += cost;
     updated.turnState.segmentCost = 0;
 
-    // Reset exchange
     updated.currentExchange = {
       attackerId: null,
       defenderId: null,
@@ -369,7 +415,6 @@ export class MeleeTurnService {
     };
 
     if (updated.turnState.segment > 3) {
-      // End of turn, start new turn
       await this.startNewTurn(id);
     } else {
       updated.turnState.phase = "primary-attack-selection";

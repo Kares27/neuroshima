@@ -615,3 +615,61 @@
 .status-badge--crowded  { background: #9b59b6; color: #fff; }
 .status-badge--waiting  { background: #7f8c8d; color: #fff; }
 .status-badge--inactive { background: #34495e; color: #fff; opacity: 0.5; }
+
+/* ── GM Controls Bar ────────────────────────────────────────── */
+.melee-gm-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.25);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+
+.gm-ctrl {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.7);
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    padding: 0;
+}
+
+.gm-ctrl:hover {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+}
+
+.gm-ctrl--warn {
+    border-color: rgba(243,156,18,0.4);
+    color: #f39c12;
+}
+.gm-ctrl--warn:hover {
+    background: rgba(243,156,18,0.15);
+    color: #f39c12;
+}
+
+.gm-ctrl--danger {
+    border-color: rgba(231,76,60,0.4);
+    color: #e74c3c;
+}
+.gm-ctrl--danger:hover {
+    background: rgba(231,76,60,0.15);
+    color: #e74c3c;
+}
+
+.gm-ctrl-sep {
+    width: 1px;
+    height: 18px;
+    background: rgba(255,255,255,0.12);
+    margin: 0 2px;
+}

@@ -485,6 +485,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/melee/parts/melee-action-bar.hbs",
         "systems/neuroshima/templates/apps/melee/parts/combat-log.hbs",
         "systems/neuroshima/templates/apps/melee/parts/footer-danger.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/melee-gm-controls.hbs",
         "systems/neuroshima/templates/chat/weapon-roll-card.hbs",
         "systems/neuroshima/templates/chat/roll-card.hbs",
         "systems/neuroshima/templates/chat/patient-card.hbs",

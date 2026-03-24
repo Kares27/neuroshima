@@ -47,6 +47,11 @@
         "magazine",
         "wound"
     ],
+    "flags": {
+        "hotReload": {
+        "paths": ["templates", "styles", "lang", "scripts"]
+        }
+    },
     "url": "",
     "manifest": "",
     "download": "",

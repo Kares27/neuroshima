@@ -393,6 +393,10 @@
             "ResultMiss": "Miss.",
             "ResetTurn": "Reset Turn",
             "EndEncounter": "End Encounter",
+            "PrevSegment": "Previous Segment",
+            "NextSegment": "Next Segment",
+            "NextTurn": "Next Turn",
+            "PoolRoll": "Pool Roll (3k20)",
             "TargetValue": "Threshold (Dex)",
             "Initiative": "Initiative",
             "RolledPool": "Rolled Pool",
@@ -787,9 +791,11 @@
                 "progress": "Progress Healing",
                 "complete": "Complete Healing"
             }
-        }
-    },
-    "TOKEN": {
+        },
+        "TOKEN": {
         "Title": "Prototype Token"
     }
-}
+    }
+
+
+    

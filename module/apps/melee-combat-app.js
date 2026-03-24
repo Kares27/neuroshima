@@ -46,6 +46,19 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       },
       resetTurn: function() {
         return MeleeTurnService.startNewTurn(this.encounterId);
+      },
+      nextTurn: function() {
+        return MeleeTurnService.startNewTurn(this.encounterId);
+      },
+      prevSegment: function() {
+        const encounter = MeleeStore.getEncounter(this.encounterId);
+        if (!encounter) return;
+        return MeleeTurnService.setSegment(this.encounterId, (encounter.turnState.segment || 1) - 1);
+      },
+      nextSegment: function() {
+        const encounter = MeleeStore.getEncounter(this.encounterId);
+        if (!encounter) return;
+        return MeleeTurnService.setSegment(this.encounterId, (encounter.turnState.segment || 1) + 1);
       }
     }
   };
@@ -94,8 +107,12 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       // Effective target value
       p.attackTarget = (p.attackTargetSnapshot || p.targetValue || 10) - p.dexPenalty;
       p.defenseTarget = (p.defenseTargetSnapshot || p.targetValue || 10) - p.dexPenalty;
+      // During pool-roll and target-selection phases, colour chips against attackTarget
+      // (matches what the dialog preview shows to the player)
       const isAttacker = pId === exchange.attackerId ||
-        (phase === "primary-attack-selection" && pId === selectionTurn);
+        (phase === "primary-attack-selection" && pId === selectionTurn) ||
+        phase === "awaiting-pool-rolls" ||
+        phase === "target-selection";
       p.currentEffectiveTarget = isAttacker ? p.attackTarget : p.defenseTarget;
 
       // Per-participant active state

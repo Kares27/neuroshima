@@ -325,6 +325,14 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         delete data.items;
     }
 
+    // Sanitize integer fields in item updates to avoid validation errors
+    for (const update of Object.values(itemUpdates)) {
+      const sys = foundry.utils.getProperty(update, "system");
+      if (sys && "penalty" in sys) {
+        sys.penalty = Math.round(Number(sys.penalty) || 0);
+      }
+    }
+
     // Perform updates for embedded items
     if (Object.keys(itemUpdates).length > 0) {
       const updates = Object.values(itemUpdates);
