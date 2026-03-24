@@ -395,6 +395,7 @@
             "EndEncounter": "End Encounter",
             "PrevSegment": "Previous Segment",
             "NextSegment": "Next Segment",
+            "PrevTurn": "Previous Turn",
             "NextTurn": "Next Turn",
             "PoolRoll": "Pool Roll (3k20)",
             "TargetValue": "Threshold (Dex)",

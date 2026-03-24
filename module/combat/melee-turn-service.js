@@ -1,4 +1,6 @@
 
+import { MeleeStore } from "./melee-store.js";
+
 /**
  * Handles turn transitions, segment resets, and maneuver application for Melee Encounters.
  */
@@ -360,6 +362,66 @@ export class MeleeTurnService {
 
     const { MeleeResolution } = await import("./melee-resolution.js");
     await MeleeResolution.resolvePrimaryExchange(id);
+  }
+
+  /**
+   * Goes back one turn (GM control). Never goes below turn 1.
+   * Resets pools and targets the same way startNewTurn does.
+   */
+  static async prevTurn(id) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter) return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    updated.turnState.turn = Math.max(1, (updated.turnState.turn || 1) - 1);
+    updated.turnState.segment = 1;
+    updated.turnState.segmentCost = 0;
+    updated.turnState.selectionTurn = null;
+
+    for (const pId in updated.participants) {
+      const p = updated.participants[pId];
+      p.pool = [];
+      p.usedDice = [];
+      p.skillSpent = 0;
+      p.maneuver = "none";
+      p.tempoLevel = 0;
+      p.attackTargetSnapshot = null;
+      p.defenseTargetSnapshot = null;
+    }
+
+    for (const pId in updated.participants) {
+      updated.primaryTargets[pId] = null;
+    }
+
+    const sortedIds = Object.values(updated.participants)
+      .filter(p => p.isActive)
+      .sort((a, b) => b.initiative - a.initiative)
+      .map(p => p.id);
+    updated.turnState.initiativeOrder = sortedIds;
+
+    updated.log.push({
+      type: "system",
+      segment: 1,
+      text: game.i18n.format("NEUROSHIMA.MeleeDuel.LogNewTurn", { turn: updated.turnState.turn })
+    });
+
+    if (this._isMultiFight(updated)) {
+      updated.turnState.phase = "target-selection";
+      updated.turnState.selectionTurn = sortedIds[0];
+      this.updateCrowding(updated);
+      this._advanceTargetSelection(updated);
+    } else {
+      const [aId, bId] = sortedIds;
+      if (aId && bId) {
+        updated.primaryTargets[aId] = bId;
+        updated.primaryTargets[bId] = aId;
+      }
+      this.updateCrowding(updated);
+      updated.turnState.phase = "awaiting-pool-rolls";
+    }
+
+    game.neuroshima?.log("GM: prevTurn", { id, turn: updated.turnState.turn });
+    await MeleeStore.updateEncounter(id, updated);
   }
 
   /**

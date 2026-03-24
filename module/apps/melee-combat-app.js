@@ -50,6 +50,9 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       nextTurn: function() {
         return MeleeTurnService.startNewTurn(this.encounterId);
       },
+      prevTurn: function() {
+        return MeleeTurnService.prevTurn(this.encounterId);
+      },
       prevSegment: function() {
         const encounter = MeleeStore.getEncounter(this.encounterId);
         if (!encounter) return;

@@ -465,6 +465,7 @@
             "EndEncounter": "Zakończ starcie",
             "PrevSegment": "Poprzedni segment",
             "NextSegment": "Następny segment",
+            "PrevTurn": "Poprzednia tura",
             "NextTurn": "Następna tura",
             "PoolRoll": "Rzut puli (3k20)",
             "Actions": {
