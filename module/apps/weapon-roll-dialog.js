@@ -379,13 +379,16 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
     this.close();
     
-    // Jeśli to rzut puli dla Melee Duel, rzucamy 3k20 i nie wysyłamy na czat (MeleeDuel zajmie się logiką)
     if (this.isPoolRoll && this.onPoolRoll) {
-        const rollResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({
+        const rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({
             ...rollData,
-            chatMessage: true
+            chatMessage: false
         });
-        return this.onPoolRoll(rollResult);
+        if (rawResult) {
+            const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+            await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
+        }
+        return this.onPoolRoll(rawResult);
     }
 
     return game.neuroshima.NeuroshimaDice.rollWeaponTest(rollData);
