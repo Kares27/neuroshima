@@ -1,4 +1,18 @@
 import { MeleeStore } from "./melee-store.js";
+/**
+ * @file melee-resolution.js
+ * @description Exchange resolution for Neuroshima 1.5 Melee Encounters.
+ *
+ * ### Resolution rules (NS 1.5 default mode)
+ * - Attacker wins iff `attackerSuccesses > defenderSuccesses`.
+ * - Damage tier is determined by `declaredDiceCount` (not success count):
+ *   1 die → damageMelee1, 2 dice → damageMelee2, 3 dice → damageMelee3.
+ * - Defender wins with higher successes: block (tie if fullDefense maneuver) or takeover
+ *   (initiative passes to defender, who immediately becomes the next attacker).
+ * - Extra attacks from crowding are queued in `extraAttackQueue` and resolved after the primary.
+ * - After all exchanges, the segment pointer advances by `declaredDiceCount` (NS 1.5 cost rule).
+ *   If the new segment > 3, the turn ends automatically.
+ */
 import { MeleeTurnService } from "./melee-turn-service.js";
 
 /**

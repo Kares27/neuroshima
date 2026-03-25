@@ -1,5 +1,13 @@
 /**
- * Handles persistence and synchronization for Melee Encounters via Combat flags.
+ * @file melee-store.js
+ * @description Persistence layer for Neuroshima 1.5 Melee Encounters.
+ *
+ * All melee encounter state is stored in `game.combat` flags under the key
+ * `neuroshima.meleeEncounters` as a map of `{ [encounterId]: EncounterData }`.
+ *
+ * State mutations from non-GM clients are routed through socketlib:
+ * `game.neuroshima.socket.executeAsGM("updateCombatFlag", ...)` so that
+ * only the GM actually writes to the Combat document.
  */
 export class MeleeStore {
   /**

@@ -1,4 +1,26 @@
 
+/**
+ * @file melee-turn-service.js
+ * @description All state-transition logic for Neuroshima 1.5 Melee Encounters.
+ *
+ * ### Phase state machine
+ * ```
+ * awaiting-pool-rolls
+ *   → target-selection        (multi-fight only; skipped in 1v1)
+ *   → primary-attack-selection
+ *   → primary-defense-selection
+ *   → primary-ready           (triggers MeleeResolution.resolvePrimaryExchange)
+ *   → segment-end             (segment advances or turn ends)
+ *   → awaiting-pool-rolls     (next turn — pools reset)
+ * ```
+ *
+ * ### Key rules
+ * - Attacking with N dice costs N segments (segment pointer advances by N after resolution).
+ * - Segments run 1–3; when all 3 are exhausted the turn ends and pools reset.
+ * - In multi-fight, crowding applies a dexterity penalty per extra attacker.
+ * - `doubleSkillAction` ON: skill budget is allocated manually via `allocateSkill()`.
+ *   `doubleSkillAction` OFF: `_evaluateClosedTest` auto-applies skill during pool roll.
+ */
 import { MeleeStore } from "./melee-store.js";
 
 /**

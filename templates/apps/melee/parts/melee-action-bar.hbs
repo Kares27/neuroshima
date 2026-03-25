@@ -1,17 +1,6 @@
 <div class="melee-action-bar {{#if actionBar.urgent}}is-urgent{{/if}}">
 
-  {{#if (eq actionBar.type "target")}}
-    <span class="action-label">{{localize "NEUROSHIMA.MeleeDuel.ChooseTarget"}}:</span>
-    {{#each actionBar.availableTargets}}
-      <button type="button" class="action-btn action-btn--target"
-              data-action="selectTarget"
-              data-id="{{../actionBar.actorId}}"
-              data-target-id="{{this.id}}">
-        {{this.name}}
-      </button>
-    {{/each}}
-
-  {{else if (eq actionBar.type "attack")}}
+  {{#if (eq actionBar.type "attack")}}
     <div class="action-attack-wrap">
       {{#if actionBar.damageTiers}}
         <div class="action-damage-preview">

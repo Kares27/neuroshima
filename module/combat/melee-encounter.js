@@ -1,4 +1,30 @@
 import { MeleeStore } from "./melee-store.js";
+/**
+ * @file melee-encounter.js
+ * @description Lifecycle management for Neuroshima 1.5 Melee Encounters.
+ *
+ * Encounters are identified by a composite ID: `${attackerParticipantId}-${defenderParticipantId}`.
+ * Each encounter tracks two teams (A and B) and the full participant roster.
+ *
+ * ### Encounter data shape (relevant fields)
+ * ```js
+ * {
+ *   id, mode, teams: { A: [...], B: [...] },
+ *   participants: { [id]: { actorUuid, name, img, team, initiative, isActive,
+ *     weaponId, pool, modifiedPool, skillBudget, selfReductions, opponentGains,
+ *     spentOnOpponent, usedDice, maneuver, tempoLevel,
+ *     attackTargetSnapshot, defenseTargetSnapshot } },
+ *   primaryTargets: { [attackerId]: defenderId },
+ *   crowding: { [id]: { primaryOpponentId, opponentCount, dexPenalty, extraAttackers } },
+ *   extraAttackQueue: [],
+ *   currentExchange: { attackerId, defenderId, declaredDiceCount,
+ *     attackerSelectedDice, defenderSelectedDice },
+ *   turnState: { turn, segment, phase, initiativeOwnerId, initiativeOrder,
+ *     selectionTurn, segmentCost },
+ *   log: [{ type, segment, text }]
+ * }
+ * ```
+ */
 import { MeleeTurnService } from "./melee-turn-service.js";
 
 /**

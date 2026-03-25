@@ -1,17 +1,65 @@
 import { MeleeStore } from "../combat/melee-store.js";
+/**
+ * @file melee-combat-app.js
+ * @description ApplicationV2 UI for the Neuroshima 1.5 Melee Combat system.
+ *
+ * ## Architecture Overview
+ *
+ * The melee system uses a shared-state model stored in Combat flags via MeleeStore.
+ * All state mutations go through MeleeTurnService (async, socketlib-backed for GM authority).
+ *
+ * ### Key files
+ * - `melee-encounter.js`    — Encounter lifecycle (create/join/leave/end)
+ * - `melee-store.js`        — Persistence layer (Combat flags + socketlib)
+ * - `melee-turn-service.js` — All state transitions (turns, segments, pool, targets, skill allocation)
+ * - `melee-resolution.js`   — Exchange resolution logic (successes, damage, takeover)
+ * - `melee-combat-app.js`   — ApplicationV2 UI (this file)
+ *
+ * ### Combat flow per turn
+ * 1. **awaiting-pool-rolls** — Each participant rolls their 3k20 pool via `_onOpenPoolDialog`.
+ *    The pool roll dialog (`NeuroshimaWeaponRollDialog`) respects `doubleSkillAction` setting:
+ *    - OFF: skill auto-applied (`_evaluateClosedTest`), `modifiedPool` stored
+ *    - ON:  raw dice stored, skill budget tracked for manual allocation in the fighter card
+ * 2. **target-selection** (multi-fight only) — Participants pick opponents via fighter card dropdowns.
+ *    In 1v1, targets are auto-assigned and this phase is skipped.
+ * 3. **primary-attack-selection** — Initiative holder selects dice to attack with (1–3 dice = 1–3 segments).
+ * 4. **primary-defense-selection** — Defender selects the same number of dice to defend.
+ * 5. **MeleeResolution.resolvePrimaryExchange** — Auto-resolves: compares successes, applies damage,
+ *    handles takeover, runs extra attacks (crowding), then advances or ends the segment.
+ *
+ * ### DoubleSkillAction (combat setting)
+ * When enabled, players can spend their skill points to:
+ * - Reduce their own dice values (▼ button per die)
+ * - Increase an opponent's dice values (↑ button per die — spoils their roll)
+ * Allocations are tracked per participant in `selfReductions`, `opponentGains`, `spentOnOpponent`.
+ * A reset button per fighter card lets the player undo all their allocations.
+ *
+ * ### Weapon selection
+ * Before rolling the pool, players can switch weapon via dropdown.
+ * Changing weapon mid-dialog automatically closes the open pool roll dialog.
+ * Once the pool is rolled, the weapon is locked (shown as plain text).
+ *
+ * ### Segment/Turn controls (GM only)
+ * Prev/Next segment buttons (arrow icons) move between segments 1–3.
+ * Prev/Next turn buttons (step icons) skip or rewind full turns.
+ * Advancing a turn resets all pools and starts a fresh target-selection/pool phase.
+ */
+
 import { MeleeEncounter } from "../combat/melee-encounter.js";
 import { MeleeTurnService } from "../combat/melee-turn-service.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
- * Melee Encounter Application (ApplicationV2) — simplified arena view.
- * Players drive the combat; GM only needs Reset and End controls.
+ * Melee Encounter Application (ApplicationV2) — arena view for Neuroshima 1.5 melee combat.
+ * Players drive the combat through fighter cards; GM has segment/turn controls and full visibility.
  */
 export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(encounterId, options = {}) {
     super(options);
     this.encounterId = encounterId;
+    /** @type {Map<string, import("./weapon-roll-dialog.js").NeuroshimaWeaponRollDialog>} */
+    this._openPoolDialogs = new Map();
   }
 
   static DEFAULT_OPTIONS = {
@@ -417,12 +465,16 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Opens the 3k20 pool roll dialog with maneuver selection.
+   * Opens the 3k20 pool roll dialog with maneuver/bonus selection.
+   * Tracks the open dialog so it can be closed if the weapon is changed mid-dialog.
    */
   async _onOpenPoolDialog(participantId) {
     const encounter = MeleeStore.getEncounter(this.encounterId);
     const p = encounter?.participants[participantId];
     if (!p) return;
+
+    // Close any previously open dialog for this participant
+    this._openPoolDialogs.get(participantId)?.close();
 
     const doc = fromUuidSync(p.actorUuid);
     const actor = doc?.actor || doc;
@@ -434,7 +486,13 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       weapon,
       rollType: "melee",
       isPoolRoll: true,
+      onClose: () => {
+        if (this._openPoolDialogs.get(participantId) === dialog) {
+          this._openPoolDialogs.delete(participantId);
+        }
+      },
       onRoll: async (rollResult) => {
+        this._openPoolDialogs.delete(participantId);
         if (!rollResult) return;
         const toNum = r => typeof r === "object" ? (r.value ?? r.result ?? r.original ?? Number(r)) : Number(r);
         const results = (rollResult.results || []).map(toNum);
@@ -448,6 +506,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget);
       }
     });
+    this._openPoolDialogs.set(participantId, dialog);
     dialog.render(true);
   }
 
@@ -470,6 +529,12 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const participantId = ev.currentTarget.dataset.participantId;
         const weaponId = ev.currentTarget.value;
         if (participantId && weaponId) {
+          // Close any open pool dialog for this participant when weapon changes
+          const openDialog = this._openPoolDialogs.get(participantId);
+          if (openDialog) {
+            openDialog.close();
+            this._openPoolDialogs.delete(participantId);
+          }
           MeleeTurnService.setWeapon(this.encounterId, participantId, weaponId);
         }
       });

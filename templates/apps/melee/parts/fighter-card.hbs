@@ -16,7 +16,9 @@
       <i class="fas fa-bolt"></i> {{fighter.initiative}}
     </div>
 
-    {{#if (gt fighter.meleeWeapons.length 0)}}
+    {{#if (gt fighter.pool.length 0)}}
+      <div class="fighter-card__weapon-label">{{fighter.weaponName}}</div>
+    {{else if (gt fighter.meleeWeapons.length 0)}}
       <select class="fc-weapon-select" data-participant-id="{{fighter.id}}">
         {{#each fighter.meleeWeapons}}
           <option value="{{this.id}}" {{#if this.isCurrent}}selected{{/if}}>{{this.name}}</option>
