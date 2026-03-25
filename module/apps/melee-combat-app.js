@@ -118,6 +118,21 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
       const weapon = actor?.items.get(p.weaponId);
       p.weaponName = weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed");
+      p.isOwnerOrGM = p.isOwner || game.user.isGM;
+
+      // Melee weapon list for weapon dropdown (owner/GM only)
+      if (p.isOwnerOrGM && actor) {
+        const meleeItems = (actor.items || []).filter(i =>
+          i.type === "weapon" && i.system.weaponType === "melee" && i.system.equipped
+        );
+        const weaponMap = new Map(meleeItems.map(w => [w.id, { id: w.id, name: w.name, isCurrent: w.id === p.weaponId }]));
+        if (!weaponMap.has(p.weaponId) && weapon) {
+          weaponMap.set(p.weaponId, { id: p.weaponId, name: weapon.name, isCurrent: true });
+        }
+        p.meleeWeapons = [...weaponMap.values()].sort((a, b) => b.isCurrent - a.isCurrent);
+      } else {
+        p.meleeWeapons = [];
+      }
 
       // Target & crowding
       const targetId = context.primaryTargets[pId];
@@ -215,6 +230,19 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
           .map(id => context.participants[id])
           .filter(opp => opp?.isActive);
       }
+      // Concurrent target dropdown (multi-fight, target-selection phase)
+      const isMultiFight = (Object.values(context.participants).filter(pp => pp.isActive).length) > 2;
+      if (phase === "target-selection" && p.isOwner && p.isActive && isMultiFight) {
+        const opposingTeam = p.team === "A" ? "B" : "A";
+        p.canChooseTargetDropdown = true;
+        p.availableTargets = (context.teams[opposingTeam] || [])
+          .map(id => context.participants[id])
+          .filter(opp => opp?.isActive);
+        p.currentTargetId = context.primaryTargets[pId] || "";
+      } else {
+        p.canChooseTargetDropdown = false;
+      }
+
       p.canConfirmAttack = p.isOwner && phase === "primary-attack-selection" &&
         selectionTurn === pId && exchange.attackerSelectedDice.length > 0;
       p.pendingAttackStrength = exchange.attackerSelectedDice.length;
@@ -408,12 +436,10 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       isPoolRoll: true,
       onRoll: async (rollResult) => {
         if (!rollResult) return;
-        const rawDice = (rollResult.rawResults || []);
-        const results = rawDice.length > 0
-          ? rawDice
-          : (rollResult.modifiedResults || []).map(r => typeof r === "object" ? r.original : r);
+        const toNum = r => typeof r === "object" ? (r.value ?? r.result ?? r.original ?? Number(r)) : Number(r);
+        const results = (rollResult.results || []).map(toNum);
         const modifiedPool = (rollResult.modifiedResults || []).map(r =>
-          typeof r === "object" ? (r.modified ?? r.original) : r
+          typeof r === "object" ? toNum({ value: r.modified ?? r.original }) : toNum(r)
         );
         const skillBudget = rollResult.skill ?? 0;
         const maneuver = rollResult.maneuver || "none";
@@ -423,6 +449,31 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       }
     });
     dialog.render(true);
+  }
+
+  /**
+   * Attach change listeners for target and weapon selects after render.
+   * @override
+   */
+  _onRender(context, options) {
+    this.element.querySelectorAll(".fc-target-select").forEach(sel => {
+      sel.addEventListener("change", ev => {
+        const participantId = ev.currentTarget.dataset.participantId;
+        const targetId = ev.currentTarget.value;
+        if (participantId && targetId) {
+          MeleeTurnService.setTarget(this.encounterId, participantId, targetId);
+        }
+      });
+    });
+    this.element.querySelectorAll(".fc-weapon-select").forEach(sel => {
+      sel.addEventListener("change", ev => {
+        const participantId = ev.currentTarget.dataset.participantId;
+        const weaponId = ev.currentTarget.value;
+        if (participantId && weaponId) {
+          MeleeTurnService.setWeapon(this.encounterId, participantId, weaponId);
+        }
+      });
+    });
   }
 
   /**

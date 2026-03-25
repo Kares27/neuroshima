@@ -117,8 +117,9 @@
     grid-template-columns: 32px minmax(0, 1fr) 110px;
     grid-template-rows: auto;
     column-gap: 6px;
-    align-items: center;
-    padding: 4px 7px;
+    align-items: start;
+    padding: 6px 7px;
+    min-height: 68px;
     background: var(--ns-bg-panel);
     border: 1px solid var(--ns-border-main);
     border-radius: 6px;
@@ -206,6 +207,37 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.fighter-card__weapon-label {
+    font-size: 0.65em;
+    margin-top: 2px;
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fc-weapon-select,
+.fc-target-select {
+    width: 100%;
+    margin-top: 2px;
+    font-size: 0.63em;
+    padding: 1px 2px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 3px;
+    color: rgba(255,255,255,0.75);
+    cursor: pointer;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fc-weapon-select:focus,
+.fc-target-select:focus {
+    border-color: #f39c12;
+    outline: none;
 }
 
 /* ── Dice column ────────────────────────────────────────────── */

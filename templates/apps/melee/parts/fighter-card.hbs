@@ -15,11 +15,30 @@
     <div class="fighter-card__sub">
       <i class="fas fa-bolt"></i> {{fighter.initiative}}
     </div>
+
+    {{#if (gt fighter.meleeWeapons.length 0)}}
+      <select class="fc-weapon-select" data-participant-id="{{fighter.id}}">
+        {{#each fighter.meleeWeapons}}
+          <option value="{{this.id}}" {{#if this.isCurrent}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
+    {{else}}
+      <div class="fighter-card__weapon-label">{{fighter.weaponName}}</div>
+    {{/if}}
+
+    {{#if fighter.canChooseTargetDropdown}}
+      <select class="fc-target-select fc-target-select--inline" data-participant-id="{{fighter.id}}">
+        <option value="">— {{localize "NEUROSHIMA.MeleeDuel.ChooseTarget"}} —</option>
+        {{#each fighter.availableTargets}}
+          <option value="{{this.id}}" {{#if (eq this.id ../fighter.currentTargetId)}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
+    {{else if fighter.targetName}}
+      <div class="fighter-card__target">→ {{fighter.targetName}}</div>
+    {{/if}}
+
     {{#if (ne fighter.maneuver "none")}}
       <div class="fighter-card__maneuver">{{fighter.maneuverLabel}}</div>
-    {{/if}}
-    {{#if fighter.targetName}}
-      <div class="fighter-card__target">→ {{fighter.targetName}}</div>
     {{/if}}
   </div>
 

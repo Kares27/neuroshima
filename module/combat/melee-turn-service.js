@@ -479,6 +479,45 @@ export class MeleeTurnService {
   }
 
   /**
+   * Changes the active weapon for a participant (before or after pool roll).
+   */
+  static async setWeapon(id, participantId, weaponId) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter) return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    const p = updated.participants[participantId];
+    if (!p) return;
+
+    p.weaponId = weaponId;
+
+    // Re-snapshot targets if pool already rolled (recalculate from new weapon)
+    if (p.pool?.length > 0) {
+      const doc = fromUuidSync(p.actorUuid);
+      const actor = doc?.actor || doc;
+      if (actor) {
+        const weapon = actor.items.get(weaponId);
+        const attribute = weapon?.system.attribute || "dexterity";
+        const baseTarget = actor.system.attributeTotals?.[attribute] || 10;
+        const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
+        const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
+        const totalPenalty = armorPenalty + woundPenalty;
+        const attributeBonus = p.attackTargetSnapshot
+          ? (p.attackTargetSnapshot - (p.targetValue || baseTarget) - (p.attackBonusSnapshot || 0))
+          : 0;
+        p.targetValue = baseTarget;
+        p.attackBonusSnapshot = weapon?.system.attackBonus || 0;
+        p.defenseBonusSnapshot = weapon?.system.defenseBonus || 0;
+        p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attributeBonus - totalPenalty;
+        p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + attributeBonus - totalPenalty;
+      }
+    }
+
+    game.neuroshima?.log("setWeapon", { participantId, weaponId });
+    await MeleeStore.updateEncounter(id, updated);
+  }
+
+  /**
    * Allocates a skill point from spender to a target die.
    * delta +1 = spend 1 point; -1 = unspend 1 point.
    * Same participant = reduce own die; different participant = increase opponent's die.
