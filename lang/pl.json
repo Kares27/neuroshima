@@ -468,6 +468,11 @@
             "PrevTurn": "Poprzednia tura",
             "NextTurn": "Następna tura",
             "PoolRoll": "Rzut puli (3k20)",
+            "SkillRemaining": "Pkt. pozostałe",
+            "ResetAllocation": "Cofnij wydanie punktów umiejętności",
+            "SpendSelf": "Wydaj punkt — zmniejsz tę kość",
+            "UnspendSelf": "Cofnij wydanie — zwiększ tę kość",
+            "SpoilOpponent": "Wydaj punkt — zwiększ kość przeciwnika",
             "Actions": {
                 "attack": "Atak",
                 "defend": "Obrona",

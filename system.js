@@ -298,7 +298,7 @@ Hooks.once('init', async function() {
         name: "NEUROSHIMA.Settings.DoubleSkillAction.Name",
         hint: "NEUROSHIMA.Settings.DoubleSkillAction.Hint",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         requiresReload: false

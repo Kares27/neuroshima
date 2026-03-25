@@ -32,6 +32,11 @@ export class MeleeTurnService {
     for (const pId in updated.participants) {
       const p = updated.participants[pId];
       p.pool = [];
+      p.modifiedPool = null;
+      p.skillBudget = 0;
+      p.selfReductions = [];
+      p.opponentGains = [];
+      p.spentOnOpponent = {};
       p.usedDice = [];
       p.skillSpent = 0;
       p.maneuver = "none";
@@ -81,7 +86,7 @@ export class MeleeTurnService {
   /**
    * Sets the 3k20 pool for a participant and snapshots their combat values for the turn.
    */
-  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0) {
+  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
@@ -129,6 +134,21 @@ export class MeleeTurnService {
     p.tempoLevel = tempoLevel;
     p.usedDice = [];
     p.skillSpent = 0;
+
+    const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
+    if (doubleSkill) {
+      p.modifiedPool = null;
+      p.skillBudget = skillBudget;
+      p.selfReductions = new Array(results.length).fill(0);
+      p.opponentGains = new Array(results.length).fill(0);
+      p.spentOnOpponent = {};
+    } else {
+      p.modifiedPool = modifiedPool?.length === results.length ? modifiedPool : null;
+      p.skillBudget = 0;
+      p.selfReductions = [];
+      p.opponentGains = [];
+      p.spentOnOpponent = {};
+    }
 
     // Check if all active participants have rolled their pools
     const allRolled = Object.values(updated.participants).every(p => !p.isActive || p.pool.length > 0);
@@ -381,6 +401,11 @@ export class MeleeTurnService {
     for (const pId in updated.participants) {
       const p = updated.participants[pId];
       p.pool = [];
+      p.modifiedPool = null;
+      p.skillBudget = 0;
+      p.selfReductions = [];
+      p.opponentGains = [];
+      p.spentOnOpponent = {};
       p.usedDice = [];
       p.skillSpent = 0;
       p.maneuver = "none";
@@ -450,6 +475,87 @@ export class MeleeTurnService {
     updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
 
     game.neuroshima?.log("GM: setSegment", { id, segment: updated.turnState.segment });
+    await MeleeStore.updateEncounter(id, updated);
+  }
+
+  /**
+   * Allocates a skill point from spender to a target die.
+   * delta +1 = spend 1 point; -1 = unspend 1 point.
+   * Same participant = reduce own die; different participant = increase opponent's die.
+   */
+  static async allocateSkill(id, spenderId, targetId, dieIndex, delta) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter) return;
+    if (encounter.turnState.phase !== "awaiting-pool-rolls") return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    const spender = updated.participants[spenderId];
+    const target = updated.participants[targetId];
+    if (!spender || !target) return;
+
+    const selfSpent = (spender.selfReductions || []).reduce((a, b) => a + b, 0);
+    const oppSpent = Object.values(spender.spentOnOpponent || {})
+      .reduce((sum, arr) => sum + arr.reduce((a, b) => a + b, 0), 0);
+    const remaining = (spender.skillBudget || 0) - selfSpent - oppSpent;
+
+    if (spenderId === targetId) {
+      if (!spender.selfReductions) spender.selfReductions = new Array(spender.pool.length).fill(0);
+      const current = (spender.selfReductions[dieIndex] || 0);
+      if (delta > 0) {
+        if (remaining <= 0) return;
+        if ((spender.pool[dieIndex] || 1) - current <= 1) return;
+        spender.selfReductions[dieIndex] = current + 1;
+      } else {
+        if (current <= 0) return;
+        spender.selfReductions[dieIndex] = current - 1;
+      }
+    } else {
+      if (!spender.spentOnOpponent[targetId]) {
+        spender.spentOnOpponent[targetId] = new Array(target.pool.length).fill(0);
+      }
+      if (!target.opponentGains) target.opponentGains = new Array(target.pool.length).fill(0);
+      const currentGain = target.opponentGains[dieIndex] || 0;
+      if (delta > 0) {
+        if (remaining <= 0) return;
+        if ((target.pool[dieIndex] || 0) + currentGain >= 20) return;
+        spender.spentOnOpponent[targetId][dieIndex] = (spender.spentOnOpponent[targetId][dieIndex] || 0) + 1;
+        target.opponentGains[dieIndex] = currentGain + 1;
+      } else {
+        const spent = spender.spentOnOpponent[targetId]?.[dieIndex] || 0;
+        if (spent <= 0) return;
+        spender.spentOnOpponent[targetId][dieIndex] = spent - 1;
+        target.opponentGains[dieIndex] = Math.max(0, currentGain - 1);
+      }
+    }
+
+    game.neuroshima?.log("allocateSkill", { spenderId, targetId, dieIndex, delta, remaining });
+    await MeleeStore.updateEncounter(id, updated);
+  }
+
+  /**
+   * Resets all skill allocations made by a participant, restoring opponent dice to their original state.
+   */
+  static async resetSkillAllocation(id, participantId) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter) return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    const spender = updated.participants[participantId];
+    if (!spender) return;
+
+    for (const [targetId, allocations] of Object.entries(spender.spentOnOpponent || {})) {
+      const target = updated.participants[targetId];
+      if (!target) continue;
+      for (let i = 0; i < allocations.length; i++) {
+        if (!target.opponentGains) target.opponentGains = [];
+        target.opponentGains[i] = Math.max(0, (target.opponentGains[i] || 0) - (allocations[i] || 0));
+      }
+    }
+
+    spender.selfReductions = new Array(spender.pool.length).fill(0);
+    spender.spentOnOpponent = {};
+
+    game.neuroshima?.log("resetSkillAllocation", { participantId });
     await MeleeStore.updateEncounter(id, updated);
   }
 

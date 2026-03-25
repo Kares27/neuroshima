@@ -51,6 +51,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 allowPainResistanceShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
                 meleeBonusMode: game.settings.get("neuroshima", "meleeBonusMode"),
                 meleeCombatType: game.settings.get("neuroshima", "meleeCombatType"),
+                doubleSkillAction: game.settings.get("neuroshima", "doubleSkillAction"),
                 damageApplicationMinRole: game.settings.get("neuroshima", "damageApplicationMinRole"),
                 painResistanceMinRole: game.settings.get("neuroshima", "painResistanceMinRole"),
                 combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole")
@@ -78,6 +79,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 game.settings.set("neuroshima", "allowPainResistanceShift", !!data.allowPainResistanceShift),
                 game.settings.set("neuroshima", "meleeBonusMode", data.meleeBonusMode),
                 game.settings.set("neuroshima", "meleeCombatType", data.meleeCombatType),
+                game.settings.set("neuroshima", "doubleSkillAction", !!data.doubleSkillAction),
                 game.settings.set("neuroshima", "damageApplicationMinRole", Number(data.damageApplicationMinRole)),
                 game.settings.set("neuroshima", "painResistanceMinRole", Number(data.painResistanceMinRole)),
                 game.settings.set("neuroshima", "combatActionsMinRole", Number(data.combatActionsMinRole))

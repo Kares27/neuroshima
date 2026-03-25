@@ -62,6 +62,25 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const encounter = MeleeStore.getEncounter(this.encounterId);
         if (!encounter) return;
         return MeleeTurnService.setSegment(this.encounterId, (encounter.turnState.segment || 1) + 1);
+      },
+      spendSkillSelf: function(event, target) {
+        const { id, index } = target.dataset;
+        return MeleeTurnService.allocateSkill(this.encounterId, id, id, parseInt(index), 1);
+      },
+      unspendSkillSelf: function(event, target) {
+        const { id, index } = target.dataset;
+        return MeleeTurnService.allocateSkill(this.encounterId, id, id, parseInt(index), -1);
+      },
+      spendSkillOnOpponent: function(event, target) {
+        const { spenderId, targetId, index } = target.dataset;
+        return MeleeTurnService.allocateSkill(this.encounterId, spenderId, targetId, parseInt(index), 1);
+      },
+      unspendSkillOnOpponent: function(event, target) {
+        const { spenderId, targetId, index } = target.dataset;
+        return MeleeTurnService.allocateSkill(this.encounterId, spenderId, targetId, parseInt(index), -1);
+      },
+      resetSkillAllocation: function(event, target) {
+        return MeleeTurnService.resetSkillAllocation(this.encounterId, target.dataset.id);
       }
     }
   };
@@ -140,6 +159,52 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         s2: pWeapon?.system?.damageMelee2 || "L",
         s3: pWeapon?.system?.damageMelee3 || "C"
       };
+
+      // Effective pool display (uses modifiedPool when doubleSkill OFF, raw pool when ON)
+      const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
+      if (doubleSkill && phase === "awaiting-pool-rolls" && p.pool.length > 0) {
+        p.effectivePool = p.pool.map((v, i) => {
+          const reduction = (p.selfReductions || [])[i] || 0;
+          const gain = (p.opponentGains || [])[i] || 0;
+          return { raw: v, effective: v - reduction + gain, reduction, gain };
+        });
+        const selfSpent = (p.selfReductions || []).reduce((a, b) => a + b, 0);
+        const oppSpent = Object.values(p.spentOnOpponent || {})
+          .reduce((sum, arr) => sum + arr.reduce((a, b) => a + b, 0), 0);
+        p.skillRemaining = (p.skillBudget || 0) - selfSpent - oppSpent;
+        p.isAllocationPhase = p.isOwner && p.pool.length > 0;
+        const opponents = Object.values(context.participants).filter(
+          opp => opp.team !== p.team && opp.isActive
+        );
+        const myOwnerOpponents = opponents.filter(opp => opp.isOwner);
+        p.hasSpenderAvailable = myOwnerOpponents.some(opp => {
+          const selfS = (opp.selfReductions || []).reduce((a, b) => a + b, 0);
+          const oppS = Object.values(opp.spentOnOpponent || {})
+            .reduce((s, arr) => s + arr.reduce((a, b) => a + b, 0), 0);
+          return (opp.skillBudget || 0) - selfS - oppS > 0;
+        });
+        p.mySpenderIds = opponents.filter(opp => opp.isOwner).map(opp => ({
+          spenderId: opp.id,
+          remaining: (() => {
+            const ss = (opp.selfReductions || []).reduce((a, b) => a + b, 0);
+            const os = Object.values(opp.spentOnOpponent || {}).reduce((s, arr) => s + arr.reduce((a, b) => a + b, 0), 0);
+            return (opp.skillBudget || 0) - ss - os;
+          })()
+        })).filter(s => s.remaining > 0);
+      } else {
+        const mp = p.modifiedPool;
+        p.effectivePool = (p.pool || []).map((v, i) => ({
+          raw: v,
+          effective: mp && mp[i] !== undefined ? mp[i] : v,
+          reduction: 0,
+          gain: 0
+        }));
+        p.skillRemaining = 0;
+        p.isAllocationPhase = false;
+        p.hasSpenderAvailable = false;
+        p.mySpenderIds = [];
+      }
+      context.doubleSkillEnabled = doubleSkill;
 
       // Flags for actions
       p.canRollPool = p.isOwner && p.pool.length === 0 && phase === "awaiting-pool-rolls";
@@ -343,12 +408,18 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       isPoolRoll: true,
       onRoll: async (rollResult) => {
         if (!rollResult) return;
-        const results = (rollResult.modifiedResults || rollResult.results || rollResult.rawResults || [])
-          .map(r => typeof r === "object" ? r.original : r);
+        const rawDice = (rollResult.rawResults || []);
+        const results = rawDice.length > 0
+          ? rawDice
+          : (rollResult.modifiedResults || []).map(r => typeof r === "object" ? r.original : r);
+        const modifiedPool = (rollResult.modifiedResults || []).map(r =>
+          typeof r === "object" ? (r.modified ?? r.original) : r
+        );
+        const skillBudget = rollResult.skill ?? 0;
         const maneuver = rollResult.maneuver || "none";
         const tempoLevel = rollResult.tempoLevel || 0;
         const attributeBonus = rollResult.attributeBonus || 0;
-        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus);
+        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget);
       }
     });
     dialog.render(true);

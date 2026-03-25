@@ -457,13 +457,29 @@ export class NeuroshimaDice {
             this._evaluateOpenTest(evalData, diceObjects);
             successPoints = evalData.successPoints;
             isSuccess = evalData.success;
+            modifiedResults = evalData.modifiedResults;
         } else {
-            this._evaluateClosedTest(evalData, diceObjects);
-            successPoints = evalData.successCount;
-            isSuccess = evalData.successCount > 0;
-            successCount = evalData.successCount;
+            const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
+            if (doubleSkill) {
+                evalData.modifiedResults = diceObjects.map(d => ({
+                    ...d,
+                    modified: d.original,
+                    isSuccess: d.original <= target && d.original !== 20,
+                    isNat1: d.original === 1,
+                    isNat20: d.original === 20
+                }));
+                const succCount = evalData.modifiedResults.filter(r => r.isSuccess).length;
+                successPoints = succCount;
+                isSuccess = succCount > 0;
+                successCount = succCount;
+            } else {
+                this._evaluateClosedTest(evalData, diceObjects);
+                successPoints = evalData.successCount;
+                isSuccess = evalData.successCount > 0;
+                successCount = evalData.successCount;
+            }
+            modifiedResults = evalData.modifiedResults;
         }
-        modifiedResults = evalData.modifiedResults;
         
         if (isSuccess) {
             hitBullets = 1;

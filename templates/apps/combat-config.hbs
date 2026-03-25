@@ -43,6 +43,14 @@
         </div>
 
         <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.DoubleSkillAction.Name"}}</label>
+            <div class="form-fields">
+                <input type="checkbox" name="doubleSkillAction" {{checked config.doubleSkillAction}}>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.DoubleSkillAction.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
             <label>{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Name"}}</label>
             <div class="form-fields">
                 <select name="meleeBonusMode">

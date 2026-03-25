@@ -24,7 +24,73 @@
   </div>
 
   <div class="fighter-card__dice">
-    {{#if (gt fighter.pool.length 0)}}
+    {{#if (gt fighter.effectivePool.length 0)}}
+
+      {{#if fighter.isAllocationPhase}}
+        <div class="skill-budget-row">
+          <i class="fas fa-star-of-david"></i>
+          <span class="skill-budget-label">{{localize "NEUROSHIMA.MeleeDuel.SkillRemaining"}}:</span>
+          <span class="skill-budget-value {{#if (le fighter.skillRemaining 0)}}is-zero{{/if}}">{{fighter.skillRemaining}}</span>
+          <button type="button" class="skill-reset-btn" data-action="resetSkillAllocation" data-id="{{fighter.id}}"
+                  title="{{localize "NEUROSHIMA.MeleeDuel.ResetAllocation"}}">
+            <i class="fas fa-undo"></i>
+          </button>
+        </div>
+      {{/if}}
+
+      {{#each fighter.effectivePool}}
+        <div class="die-wrap">
+          <button
+            type="button"
+            class="die-chip
+              {{#if (meleeDieSelected ../fighter.selectedDiceIndices @index)}}is-selected{{/if}}
+              {{#if (meleeDieUsed ../fighter.usedDice @index)}}is-used{{/if}}
+              {{#if (le this.effective ../fighter.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
+            data-action="selectDie"
+            data-id="{{../fighter.id}}"
+            data-index="{{@index}}"
+            title="{{#if (le this.effective ../fighter.currentEffectiveTarget)}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
+            {{this.effective}}
+          </button>
+          {{#if ../fighter.isAllocationPhase}}
+            <div class="die-alloc-btns">
+              <button type="button" class="die-alloc-btn die-alloc-btn--up"
+                      data-action="unspendSkillSelf"
+                      data-id="{{../fighter.id}}"
+                      data-index="{{@index}}"
+                      title="{{localize "NEUROSHIMA.MeleeDuel.UnspendSelf"}}"
+                      {{#unless this.reduction}}disabled{{/unless}}>▲</button>
+              <button type="button" class="die-alloc-btn die-alloc-btn--down"
+                      data-action="spendSkillSelf"
+                      data-id="{{../fighter.id}}"
+                      data-index="{{@index}}"
+                      title="{{localize "NEUROSHIMA.MeleeDuel.SpendSelf"}}"
+                      {{#if (le ../fighter.skillRemaining 0)}}disabled{{/if}}>▼</button>
+            </div>
+          {{/if}}
+          {{#if (gt ../fighter.mySpenderIds.length 0)}}
+            {{#each ../fighter.mySpenderIds}}
+              <div class="die-alloc-btns die-alloc-btns--opponent">
+                <button type="button" class="die-alloc-btn die-alloc-btn--spoil"
+                        data-action="spendSkillOnOpponent"
+                        data-spender-id="{{this.spenderId}}"
+                        data-target-id="{{../../fighter.id}}"
+                        data-index="{{@../index}}"
+                        title="{{localize "NEUROSHIMA.MeleeDuel.SpoilOpponent"}}"
+                        {{#if (le this.remaining 0)}}disabled{{/if}}>↑</button>
+              </div>
+            {{/each}}
+          {{/if}}
+        </div>
+      {{/each}}
+
+    {{else if fighter.canRollPool}}
+      <button type="button" class="action-btn action-btn--roll pulse"
+              data-action="openPoolDialog" data-id="{{fighter.id}}">
+        <i class="fas fa-dice-d20"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+      </button>
+    {{else if (gt fighter.pool.length 0)}}
       {{#each fighter.pool}}
         <button
           type="button"
@@ -39,13 +105,6 @@
           {{this}}
         </button>
       {{/each}}
-
-    {{else if fighter.canRollPool}}
-      <button type="button" class="action-btn action-btn--roll pulse"
-              data-action="openPoolDialog" data-id="{{fighter.id}}">
-        <i class="fas fa-dice-d20"></i>
-        {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
-      </button>
     {{else}}
       <div class="dice-empty-state">
         <i class="fas fa-hourglass-half"></i>
