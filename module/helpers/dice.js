@@ -457,23 +457,8 @@ export class NeuroshimaDice {
             this._evaluateOpenTest(evalData, diceObjects);
             successPoints = evalData.successPoints;
             isSuccess = evalData.success;
-        } else if (isMelee) {
-            // W nowym systemie walki wręcz nie wydawaj punktów automatycznie na karcie rzutu,
-            // bo gracz zrobi to ręcznie w handlerze testu przeciwstawnego.
-            evalData.modifiedResults = diceObjects.map(d => ({
-                ...d,
-                modified: d.original,
-                isSuccess: d.original <= target && d.original !== 20,
-                isNat1: d.original === 1,
-                isNat20: d.original === 20
-            }));
-            const succCount = evalData.modifiedResults.filter(r => r.isSuccess).length;
-            successPoints = succCount;
-            isSuccess = succCount > 0;
-            successCount = succCount;
         } else {
             this._evaluateClosedTest(evalData, diceObjects);
-            // W trybie DICE dla melee, successPoints to liczba sukcesów (0-3)
             successPoints = evalData.successCount;
             isSuccess = evalData.successCount > 0;
             successCount = evalData.successCount;
@@ -1200,7 +1185,7 @@ export class NeuroshimaDice {
         } else {
             this._evaluateClosedTest(evalData, diceObjects);
             successCount = evalData.successCount;
-            successPoints = evalData.success ? 1 : 0;
+            successPoints = evalData.successCount;
             isSuccess = evalData.success;
         }
         modifiedResults = evalData.modifiedResults;
@@ -1295,9 +1280,11 @@ export class NeuroshimaDice {
         debugMode: game.settings.get("neuroshima", "debugMode")
     });
 
-    const template = isWeapon 
-        ? "systems/neuroshima/templates/chat/weapon-roll-card.hbs"
-        : "systems/neuroshima/templates/chat/roll-card.hbs";
+    const template = isMelee
+        ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
+        : (isWeapon
+            ? "systems/neuroshima/templates/chat/weapon-roll-card.hbs"
+            : "systems/neuroshima/templates/chat/roll-card.hbs");
 
     const showTooltip = NeuroshimaChatMessage._canShowTooltip(actor);
     const content = await foundry.applications.handlebars.renderTemplate(template, {
