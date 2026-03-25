@@ -66,11 +66,12 @@
             class="die-chip
               {{#if (meleeDieSelected ../fighter.selectedDiceIndices @index)}}is-selected{{/if}}
               {{#if (meleeDieUsed ../fighter.usedDice @index)}}is-used{{/if}}
-              {{#if (le this.effective ../fighter.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
+              {{#if this.isSuccess}}is-success{{else}}is-failure{{/if}}
+              {{#if this.isNat20}}is-nat20{{/if}}"
             data-action="selectDie"
             data-id="{{../fighter.id}}"
             data-index="{{@index}}"
-            title="{{#if (le this.effective ../fighter.currentEffectiveTarget)}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
+            title="{{#if this.isNat20}}{{localize "NEUROSHIMA.MeleeDuel.DieNat20"}}{{else if this.isSuccess}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
             {{this.effective}}
           </button>
           {{#if ../fighter.isAllocationPhase}}
@@ -118,11 +119,11 @@
           class="die-chip
             {{#if (meleeDieSelected ../fighter.selectedDiceIndices @index)}}is-selected{{/if}}
             {{#if (meleeDieUsed ../fighter.usedDice @index)}}is-used{{/if}}
-            {{#if (le this ../fighter.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
+            {{#if (eq this 20)}}is-failure is-nat20{{else if (le this ../fighter.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
           data-action="selectDie"
           data-id="{{../fighter.id}}"
           data-index="{{@index}}"
-          title="{{#if (le this ../fighter.currentEffectiveTarget)}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
+          title="{{#if (eq this 20)}}{{localize "NEUROSHIMA.MeleeDuel.DieNat20"}}{{else if (le this ../fighter.currentEffectiveTarget)}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
           {{this}}
         </button>
       {{/each}}

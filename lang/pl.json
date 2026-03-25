@@ -435,6 +435,7 @@
             "NoActiveDefender": "Brak aktywnego obrońcy",
             "DieSuccess": "Sukces",
             "DieFailure": "Porażka",
+            "DieNat20": "Krytyczna porażka (naturalna 20)",
             "ConfirmAttack": "Potwierdź atak",
             "ConfirmDefense": "Potwierdź obronę",
             "Target": "Cel",

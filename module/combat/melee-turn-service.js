@@ -118,8 +118,9 @@ export class MeleeTurnService {
    * @param {number}   skillBudget    Skill points for manual allocation (doubleSkill ON only)
    * @param {number|null} rollTarget  Exact roll target from rollWeaponTest (preferred source of truth)
    * @param {string}   meleeAction    "attack" or "defense" — determines which weapon bonus was used in the roll
+   * @param {{isSuccess:boolean,isNat20:boolean}[]|null} dieResults  Per-die success flags pre-computed by rollWeaponTest
    */
-  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0, rollTarget = null, meleeAction = "attack") {
+  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0, rollTarget = null, meleeAction = "attack", dieResults = null) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
@@ -185,6 +186,8 @@ export class MeleeTurnService {
     p.tempoLevel = tempoLevel;
     p.usedDice = [];
     p.skillSpent = 0;
+    // Store per-die success flags from the roll (canonical source of truth matching chat card).
+    p.dieResults = dieResults?.length === results.length ? dieResults : null;
 
     const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
     if (doubleSkill) {

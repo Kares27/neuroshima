@@ -189,9 +189,11 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       p.isCrowded = crowd?.opponentCount > 1;
       p.dexPenalty = crowd?.dexPenalty || 0;
 
-      // Effective target value
-      p.attackTarget = (p.attackTargetSnapshot || p.targetValue || 10) - p.dexPenalty;
-      p.defenseTarget = (p.defenseTargetSnapshot || p.targetValue || 10) - p.dexPenalty;
+      // Effective target value — use != null to avoid falsy-zero issues
+      const atkSnap = p.attackTargetSnapshot != null ? p.attackTargetSnapshot : (p.targetValue ?? 10);
+      const defSnap = p.defenseTargetSnapshot != null ? p.defenseTargetSnapshot : (p.targetValue ?? 10);
+      p.attackTarget = atkSnap - p.dexPenalty;
+      p.defenseTarget = defSnap - p.dexPenalty;
       // During pool-roll and target-selection phases, colour chips against attackTarget
       // (matches what the dialog preview shows to the player)
       const isAttacker = pId === exchange.attackerId ||
@@ -229,7 +231,11 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         p.effectivePool = p.pool.map((v, i) => {
           const reduction = (p.selfReductions || [])[i] || 0;
           const gain = (p.opponentGains || [])[i] || 0;
-          return { raw: v, effective: v - reduction + gain, reduction, gain };
+          const effective = v - reduction + gain;
+          // For doubleSkill allocation phase: success is determined live against current target
+          const isNat20 = v === 20;
+          const isSuccess = !isNat20 && effective <= p.currentEffectiveTarget;
+          return { raw: v, effective, reduction, gain, isSuccess, isNat20 };
         });
         const selfSpent = (p.selfReductions || []).reduce((a, b) => a + b, 0);
         const oppSpent = Object.values(p.spentOnOpponent || {})
@@ -256,12 +262,17 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         })).filter(s => s.remaining > 0);
       } else {
         const mp = p.modifiedPool;
-        p.effectivePool = (p.pool || []).map((v, i) => ({
-          raw: v,
-          effective: mp && mp[i] !== undefined ? mp[i] : v,
-          reduction: 0,
-          gain: 0
-        }));
+        const dr = p.dieResults;
+        p.effectivePool = (p.pool || []).map((v, i) => {
+          const effective = mp && mp[i] !== undefined ? mp[i] : v;
+          // Prefer stored per-die flags from the roll (exact match to chat card).
+          // Fall back to live comparison if dieResults not available.
+          const isNat20  = v === 20;
+          const isSuccess = dr
+            ? (dr[i]?.isSuccess ?? false)
+            : (!isNat20 && effective <= p.currentEffectiveTarget);
+          return { raw: v, effective, reduction: 0, gain: 0, isSuccess, isNat20 };
+        });
         p.skillRemaining = 0;
         p.isAllocationPhase = false;
         p.hasSpenderAvailable = false;
@@ -499,16 +510,20 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const modifiedPool = (rollResult.modifiedResults || []).map(r =>
           typeof r === "object" ? toNum({ value: r.modified ?? r.original }) : toNum(r)
         );
+        // Per-die success flags from the roll — matches what the chat card shows.
+        // isNat20 is stored separately so nat-20 dice always show as failure even
+        // if skill reduced their value below the target.
+        const dieResults = (rollResult.modifiedResults || []).map(r => ({
+          isSuccess: typeof r === "object" ? (r.isSuccess ?? false) : false,
+          isNat20:  typeof r === "object" ? (r.original === 20) : false
+        }));
         const skillBudget = rollResult.skill ?? 0;
         const maneuver = rollResult.maneuver || "none";
         const tempoLevel = rollResult.tempoLevel || 0;
         const attributeBonus = rollResult.attributeBonus || 0;
-        // Pass the exact roll target so setPool stores the correct attackTargetSnapshot.
-        // rollWeaponTest converts % penalties → difficulty mod; setPool must not
-        // subtract raw % values directly from the attribute stat.
         const rollTarget = typeof rollResult.target === "number" ? rollResult.target : null;
         const meleeAction = rollResult.meleeAction || "attack";
-        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget, rollTarget, meleeAction);
+        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget, rollTarget, meleeAction, dieResults);
       }
     });
     this._openPoolDialogs.set(participantId, dialog);

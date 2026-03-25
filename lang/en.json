@@ -432,6 +432,7 @@
             "NoActiveDefender": "No active defender",
             "DieSuccess": "Success",
             "DieFailure": "Failure",
+            "DieNat20": "Critical Failure (natural 20)",
             "ConfirmAttack": "Confirm Attack",
             "ConfirmDefense": "Confirm Defense",
             "Target": "Target",

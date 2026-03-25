@@ -292,6 +292,12 @@
     color: #ef9a9a;
 }
 
+.die-chip.is-nat20 {
+    background: #2a0a2a;
+    border-color: #ab47bc;
+    color: #ce93d8;
+}
+
 .die-chip.is-selected {
     border: 3px solid #f39c12 !important;
     transform: scale(1.18) translateY(-2px);
