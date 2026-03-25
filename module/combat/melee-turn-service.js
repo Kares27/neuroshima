@@ -106,9 +106,20 @@ export class MeleeTurnService {
   }
 
   /**
-   * Sets the 3k20 pool for a participant and snapshots their combat values for the turn.
+   * Sets the 3k20 pool for a participant and snapshots their combat target values for the turn.
+   *
+   * @param {string}   id             Encounter ID
+   * @param {string}   participantId  Participant ID
+   * @param {number[]} results        Raw dice results [d1, d2, d3]
+   * @param {string}   maneuver       Chosen maneuver ("none"|"fury"|"fullDefense"|...)
+   * @param {number}   tempoLevel     Tempo shift level
+   * @param {number}   attributeBonus Situational bonus from roll dialog
+   * @param {number[]|null} modifiedPool  Skill-adjusted dice (doubleSkill OFF only)
+   * @param {number}   skillBudget    Skill points for manual allocation (doubleSkill ON only)
+   * @param {number|null} rollTarget  Exact roll target from rollWeaponTest (preferred source of truth)
+   * @param {string}   meleeAction    "attack" or "defense" — determines which weapon bonus was used in the roll
    */
-  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0) {
+  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0, rollTarget = null, meleeAction = "attack") {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
@@ -116,7 +127,7 @@ export class MeleeTurnService {
     const p = updated.participants[participantId];
     if (!p) return;
 
-    // Fetch actor to calculate current snapshots
+    // Fetch actor to read weapon bonuses for snapshot
     const doc = fromUuidSync(p.actorUuid);
     const actor = doc?.actor || doc;
     
@@ -125,28 +136,46 @@ export class MeleeTurnService {
       const attribute = weapon?.system.attribute || "dexterity";
       const baseTarget = actor.system.attributeTotals?.[attribute] || 10;
 
-      // Penalties from actor state (armor encumbrance + wounds)
-      const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
-      const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
-      const totalPenalty = armorPenalty + woundPenalty;
-
       p.targetValue = baseTarget;
       p.attackBonusSnapshot = weapon?.system.attackBonus || 0;
       p.defenseBonusSnapshot = weapon?.system.defenseBonus || 0;
-      p.armorPenaltySnapshot = armorPenalty;
-      p.woundPenaltySnapshot = woundPenalty;
 
-      let attackManeuverBonus = 0;
-      let defenseManeuverBonus = 0;
-      if (maneuver === "furia" || maneuver === "fury") attackManeuverBonus = 2;
-      if (maneuver === "fullDefense" || maneuver === "pelnaObrona") defenseManeuverBonus = 2;
+      if (rollTarget !== null && rollTarget !== undefined) {
+        // ── Preferred path ─────────────────────────────────────────────────
+        // Use the exact target that rollWeaponTest computed (correctly converts
+        // % armor/wound penalties → difficulty mod, adds weapon bonus, etc.)
+        // The roll was made for one action (attack or defense); derive the other
+        // by swapping the weapon bonus component.
+        if (meleeAction === "defense") {
+          p.defenseTargetSnapshot = rollTarget;
+          p.attackTargetSnapshot = rollTarget - p.defenseBonusSnapshot + p.attackBonusSnapshot;
+        } else {
+          p.attackTargetSnapshot = rollTarget;
+          p.defenseTargetSnapshot = rollTarget - p.attackBonusSnapshot + p.defenseBonusSnapshot;
+        }
+      } else {
+        // ── Fallback (no target passed) ─────────────────────────────────────
+        // Approximate from actor state. NOTE: this can be inaccurate when armor/
+        // wound penalties are present because totalArmorPenalty is a percentage
+        // that must be converted via getDifficultyFromPercent, not subtracted directly.
+        const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
+        const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
+        const totalPct = armorPenalty + woundPenalty;
+        const diffMod = game.neuroshima?.NeuroshimaDice
+          ? (game.neuroshima.NeuroshimaDice.getDifficultyFromPercent?.(totalPct)?.mod ?? 0)
+          : 0;
 
-      // attributeBonus: situational bonus entered by the player in the roll dialog
-      p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attackManeuverBonus + attributeBonus - totalPenalty;
-      p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus + attributeBonus - totalPenalty;
+        let attackManeuverBonus = 0;
+        let defenseManeuverBonus = 0;
+        if (maneuver === "furia" || maneuver === "fury") attackManeuverBonus = 2;
+        if (maneuver === "fullDefense" || maneuver === "pelnaObrona") defenseManeuverBonus = 2;
+
+        p.attackTargetSnapshot = baseTarget + p.attackBonusSnapshot + attackManeuverBonus + attributeBonus + diffMod;
+        p.defenseTargetSnapshot = baseTarget + p.defenseBonusSnapshot + defenseManeuverBonus + attributeBonus + diffMod;
+      }
 
       game.neuroshima?.log("setPool snapshot", {
-        name: p.name, baseTarget, armorPenalty, woundPenalty, attributeBonus,
+        name: p.name, rollTarget, meleeAction,
         attackTarget: p.attackTargetSnapshot, defenseTarget: p.defenseTargetSnapshot
       });
     }

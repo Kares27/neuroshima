@@ -503,7 +503,12 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const maneuver = rollResult.maneuver || "none";
         const tempoLevel = rollResult.tempoLevel || 0;
         const attributeBonus = rollResult.attributeBonus || 0;
-        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget);
+        // Pass the exact roll target so setPool stores the correct attackTargetSnapshot.
+        // rollWeaponTest converts % penalties → difficulty mod; setPool must not
+        // subtract raw % values directly from the attribute stat.
+        const rollTarget = typeof rollResult.target === "number" ? rollResult.target : null;
+        const meleeAction = rollResult.meleeAction || "attack";
+        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget, rollTarget, meleeAction);
       }
     });
     this._openPoolDialogs.set(participantId, dialog);
