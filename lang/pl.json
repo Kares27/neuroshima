@@ -5,6 +5,9 @@
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Arkusz Postaci",
+            "ActorNPC": "Arkusz BN",
+            "ActorCreature": "Arkusz Stworzenia",
+            "ActorVehicle": "Arkusz Pojazdu",
             "Item": "Arkusz Przedmiotu",
             "Edit": "Edytuj",
             "Finish": "Zakończ",
@@ -91,6 +94,7 @@
             "SkillBonusAbbr": "Bon. do Umiejętności",
             "AttributeBonus": "Bonus do Atrybutu",
             "AttributeBonusAbbr": "Bon. do Atrybutu",
+            "CrowdingPenalty": "Kara za osaczenie (Zr)",
             "IncludeSkill": "Uwzględnij Umiejętność",
             "NoSkill": "Bez Umiejętności",
             "CurrentWeaponSkill": "Umiejętność używanej broni",
@@ -831,6 +835,24 @@
                 "progress": "Postęp Leczenia",
                 "complete": "Ukończ Leczenie"
             }
+        },
+        "NPC": {
+            "Threat": "Zagrożenie"
+        },
+        "Creature": {
+            "Type": "Typ Stworzenia",
+            "Instinct": "Instynkt",
+            "NaturalAttack": "Naturalny Atak"
+        },
+        "Vehicle": {
+            "Type": "Typ Pojazdu",
+            "Condition": "Stan",
+            "Hull": "Kadłub",
+            "Fuel": "Paliwo",
+            "Armor": "Pancerz",
+            "Speed": "Prędkość",
+            "Crew": "Załoga",
+            "Passengers": "Pasażerowie"
         }
     }
 }

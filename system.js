@@ -4,9 +4,12 @@ import { NeuroshimaCombat } from "./module/documents/combat.js";
 import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
-import { NeuroshimaActorData } from "./module/data/actor-data.js";
+import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
 import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
+import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
+import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
+import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
@@ -130,6 +133,9 @@ Hooks.once('init', async function() {
 
     // Rejestracja modeli danych
     CONFIG.Actor.dataModels.character = NeuroshimaActorData;
+    CONFIG.Actor.dataModels.npc      = NeuroshimaNPCData;
+    CONFIG.Actor.dataModels.creature = NeuroshimaCreatureData;
+    CONFIG.Actor.dataModels.vehicle  = NeuroshimaVehicleData;
     CONFIG.Item.dataModels.weapon = WeaponData;
     CONFIG.Item.dataModels.armor = ArmorData;
     CONFIG.Item.dataModels.gear = GearData;
@@ -166,6 +172,21 @@ Hooks.once('init', async function() {
         types: ["character"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.ActorCharacter"
+    });
+    foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaNPCSheet, {
+        types: ["npc"],
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.ActorNPC"
+    });
+    foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaCreatureSheet, {
+        types: ["creature"],
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.ActorCreature"
+    });
+    foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaVehicleSheet, {
+        types: ["vehicle"],
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.ActorVehicle"
     });
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);

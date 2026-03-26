@@ -67,6 +67,17 @@
         </div>
     </div>
 
+    {{#if crowdingDexPenalty}}
+    <div class="dialog-columns">
+        <div class="column left">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.CrowdingPenalty"}}</label>
+                <input type="number" value="-{{crowdingDexPenalty}}" disabled style="color:#ef9a9a"/>
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
     <div class="dialog-columns bonuses-row">
         <div class="column left">
             <div class="form-group">

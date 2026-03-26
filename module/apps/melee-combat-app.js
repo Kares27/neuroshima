@@ -511,12 +511,16 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const actor = doc?.actor || doc;
     const weapon = actor?.items.get(p.weaponId);
 
+    const crowd = encounter?.crowding?.[participantId];
+    const crowdingDexPenalty = crowd?.dexPenalty || 0;
+
     const { NeuroshimaWeaponRollDialog } = await import("./weapon-roll-dialog.js");
     const dialog = new NeuroshimaWeaponRollDialog({
       actor,
       weapon,
       rollType: "melee",
       isPoolRoll: true,
+      crowdingDexPenalty,
       onClose: () => {
         if (this._openPoolDialogs.get(participantId) === dialog) {
           this._openPoolDialogs.delete(participantId);

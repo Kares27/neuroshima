@@ -1,0 +1,34 @@
+<header class="sheet-header" data-application-part="header">
+    <img class="profile-img" src="{{actor.img}}" data-action="editImage" title="{{actor.name}}" height="128" width="128"/>
+    <div class="header-fields">
+        <h1 class="charname">
+            <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
+        </h1>
+
+        <div class="header-details flexrow">
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Info.Specialization"}}</label>
+                <input type="text" name="system.specialization" value="{{system.specialization}}"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Info.Profession"}}</label>
+                <input type="text" name="system.profession" value="{{system.profession}}"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.NPC.Threat"}}</label>
+                <input type="text" name="system.threat" value="{{system.threat}}"/>
+            </div>
+        </div>
+
+        <div class="header-stats-row">
+            <div class="stat-box penalty-summary" title="{{combat.penaltyTooltip}}">
+                <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
+                <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
+            </div>
+            <div class="stat-box hp-summary" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
+                <label>HP</label>
+                <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
+            </div>
+        </div>
+    </div>
+</header>

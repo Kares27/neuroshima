@@ -2,6 +2,9 @@
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Actor Sheet",
+            "ActorNPC": "NPC Sheet",
+            "ActorCreature": "Creature Sheet",
+            "ActorVehicle": "Vehicle Sheet",
             "Item": "Item Sheet",
             "Edit": "Edit",
             "Finish": "Finish",
@@ -88,6 +91,7 @@
             "SkillBonusAbbr": "Skill Bon.",
             "AttributeBonus": "Attribute Bonus",
             "AttributeBonusAbbr": "Attr. Bon.",
+            "CrowdingPenalty": "Crowding Penalty (Dex)",
             "IncludeSkill": "Include Skill",
             "NoSkill": "No Skill",
             "CurrentWeaponSkill": "Current weapon skill",
@@ -803,6 +807,24 @@
                 "progress": "Progress Healing",
                 "complete": "Complete Healing"
             }
+        },
+        "NPC": {
+            "Threat": "Threat"
+        },
+        "Creature": {
+            "Type": "Creature Type",
+            "Instinct": "Instinct",
+            "NaturalAttack": "Natural Attack"
+        },
+        "Vehicle": {
+            "Type": "Vehicle Type",
+            "Condition": "Condition",
+            "Hull": "Hull",
+            "Fuel": "Fuel",
+            "Armor": "Armor",
+            "Speed": "Speed",
+            "Crew": "Crew",
+            "Passengers": "Passengers"
         },
         "TOKEN": {
         "Title": "Prototype Token"

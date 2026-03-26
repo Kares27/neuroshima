@@ -377,6 +377,12 @@ export class MeleeResolution {
     const rawValue = attacker.pool[locationDieIndex];
     const location = this._getLocationFromRoll(rawValue);
 
+    // Collect all wounds from all hits, then create ONE chat message.
+    const allResults = [];
+    const allWoundIds = [];
+    let totalReducedProjectiles = 0;
+    const allReducedDetails = [];
+
     for (const hit of hits) {
       const attackData = {
         isMelee: true,
@@ -389,9 +395,26 @@ export class MeleeResolution {
         damageMelee2: weapon?.system.damageMelee2,
         damageMelee3: weapon?.system.damageMelee3
       };
-      await CombatHelper.applyDamageToActor(defenderActor, attackData, {
-        isOpposed: true, spDifference: hit.cost, location
+      const batchResult = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+        isOpposed: true, spDifference: hit.cost, location, suppressChat: true
       });
+      if (batchResult) {
+        allResults.push(...batchResult.results);
+        allWoundIds.push(...batchResult.woundIds);
+        totalReducedProjectiles += batchResult.reducedProjectiles;
+        allReducedDetails.push(...batchResult.reducedDetails);
+      }
+    }
+
+    // Single consolidated notification + chat message for all hits.
+    if (allWoundIds.length > 0) {
+      ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", {
+        count: allWoundIds.length,
+        name: defenderActor.name
+      }));
+    }
+    if (allResults.length > 0 || totalReducedProjectiles > 0 || allWoundIds.length > 0) {
+      await CombatHelper.renderPainResistanceReport(defenderActor, allResults, allWoundIds, totalReducedProjectiles, allReducedDetails);
     }
   }
 

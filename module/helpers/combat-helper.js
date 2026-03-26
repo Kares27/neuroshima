@@ -196,6 +196,7 @@ export class CombatHelper {
    */
   static async applyDamageToActor(actor, attackData, options = {}) {
     game.neuroshima.group(`CombatHelper | applyDamageToActor: ${actor.name}`);
+    const suppressChat = options.suppressChat === true;
     
     // We can reuse the applyDamage logic by creating a mock message if needed,
     // but it's better to refactor applyDamage to call this, or just implement it here.
@@ -303,16 +304,24 @@ export class CombatHelper {
             const createdWounds = await actor.createEmbeddedDocuments("Item", painResistanceData.processedWounds);
             woundIds = createdWounds.map(w => w.id);
 
-            ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
-                count: painResistanceData.processedWounds.length, 
-                name: actor.name 
-            }));
+            if (!suppressChat) {
+                ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
+                    count: painResistanceData.processedWounds.length, 
+                    name: actor.name 
+                }));
+            }
+        }
+
+        if (suppressChat) {
+            game.neuroshima.groupEnd();
+            return { results, woundIds, reducedProjectiles, reducedDetails };
         }
 
         await this.renderPainResistanceReport(actor, results, woundIds, reducedProjectiles, reducedDetails);
     }
     
     game.neuroshima.groupEnd();
+    return null;
   }
 
   /**

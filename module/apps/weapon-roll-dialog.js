@@ -40,6 +40,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     this.isPoolRoll = options.isPoolRoll || false;
     this.onPoolRoll = options.onRoll;
     this._onCloseCallback = options.onClose;
+    this.crowdingDexPenalty = options.crowdingDexPenalty || 0;
   }
 
   /** @override */
@@ -102,6 +103,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     }));
     context.armorPenalty = armorPenalty;
     context.woundPenalty = woundPenalty;
+    context.crowdingDexPenalty = this.crowdingDexPenalty;
     
     // State values
     context.isOpen = this.rollOptions.isOpen;
@@ -326,7 +328,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
     const targetElement = html.querySelector('.final-target');
     if (targetElement) {
-        targetElement.innerText = attrTotal + attrBonus + activeDiff.mod + effectiveWeaponBonus;
+        targetElement.innerText = attrTotal + attrBonus + activeDiff.mod + effectiveWeaponBonus - (this.crowdingDexPenalty || 0);
     }
   }
 
@@ -372,7 +374,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         applyArmor: !!formData.useArmorPenalty,
         applyWounds: !!formData.useWoundPenalty,
         skillBonus: parseInt(formData.skillBonus) || 0,
-        attributeBonus: parseInt(formData.attributeBonus) || 0,
+        attributeBonus: (parseInt(formData.attributeBonus) || 0) - (this.crowdingDexPenalty || 0),
         distance: parseFloat(formData.distance) || 0,
         rollMode: formData.rollMode
     };

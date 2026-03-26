@@ -36,7 +36,10 @@
         }
     ],
     "actorTypes": [
-        "character"
+        "character",
+        "npc",
+        "creature",
+        "vehicle"
     ],
     "itemTypes": [
         "weapon",
