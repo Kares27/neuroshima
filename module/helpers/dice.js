@@ -975,6 +975,14 @@ export class NeuroshimaDice {
     
     let tempSkill = skill;
     sorted.forEach(d => {
+        // Naturalna 20 jest zawsze porażką — nie wydajemy na nią żadnych punktów umiejętności.
+        if (d.original === 20) {
+            d.modified = 20;
+            d.isSuccess = false;
+            d.isNat1 = false;
+            d.isNat20 = true;
+            return;
+        }
         // Możemy wydać punkty, aby osiągnąć target, ale nie możemy zejść poniżej 1.
         const maxSpendTo1 = Math.max(0, d.original - 1);
         const spent = tempSkill > 0 ? Math.min(tempSkill, d.cost, maxSpendTo1) : 0;

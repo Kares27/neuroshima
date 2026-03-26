@@ -397,6 +397,75 @@ export class MeleeTurnService {
   }
 
   /**
+   * Declares a non-combat action (costs X segments, sends a chat message).
+   * The attacker spends the selected dice as segments without entering a duel.
+   */
+  static async performAction(id, participantId) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter || encounter.turnState.phase !== "primary-attack-selection") return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    if (participantId !== updated.turnState.selectionTurn) return;
+
+    const exchange = updated.currentExchange;
+    const selectedDice = exchange.attackerSelectedDice || [];
+    if (selectedDice.length === 0) return;
+
+    const diceCount = selectedDice.length;
+    const p = updated.participants[participantId];
+    if (!p) return;
+
+    // Count successes so the GM can see them in chat
+    const dr = p.dieResults;
+    const mp = p.modifiedPool;
+    const target = p.attackTargetSnapshot != null ? p.attackTargetSnapshot : (p.targetValue ?? 10);
+    const successCount = selectedDice.filter(i => {
+      if (dr) return dr[i]?.isSuccess ?? false;
+      const val = mp ? mp[i] : p.pool[i];
+      return p.pool[i] !== 20 && val <= target;
+    }).length;
+
+    p.usedDice.push(...selectedDice);
+
+    // Send chat message
+    const doc = fromUuidSync(p.actorUuid);
+    const actor = doc?.actor || doc;
+    const content = game.i18n.format("NEUROSHIMA.MeleeDuel.PerformActionMsg", {
+      name: p.name, segments: diceCount, successes: successCount
+    });
+    ChatMessage.create({
+      content: `<div class="neuroshima-roll-card"><p>${content}</p></div>`,
+      speaker: ChatMessage.getSpeaker({ actor })
+    });
+
+    // Clear exchange
+    updated.currentExchange = {
+      attackerId: null, defenderId: null, declaredAction: null,
+      declaredDiceCount: 0, attackerSelectedDice: [], defenderSelectedDice: [],
+      resolutionType: "normal"
+    };
+
+    // Advance segment by dice count used
+    const newSeg = (updated.turnState.segment || 1) + diceCount;
+    updated.log.push({
+      type: "action",
+      turn: updated.turnState.turn,
+      segment: updated.turnState.segment,
+      text: content
+    });
+
+    if (newSeg > 3) {
+      await MeleeStore.updateEncounter(id, updated);
+      await MeleeTurnService.startNewTurn(id);
+    } else {
+      updated.turnState.segment = newSeg;
+      updated.turnState.phase = "primary-attack-selection";
+      updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
+      await MeleeStore.updateEncounter(id, updated);
+    }
+  }
+
+  /**
    * Confirms attack selection and moves to defense selection.
    */
   static async confirmAttack(id, participantId) {

@@ -46,9 +46,15 @@ export class MeleeResolution {
     const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
     const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
 
-    // 2. Calculate successes
-    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => attacker.pool[idx] <= attackerTarget).length;
-    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => defender.pool[idx] <= defenderTarget).length;
+    // 2. Calculate successes — prefer stored per-die flags (exact match to chat card).
+    // Nat20 is always a failure regardless of target or skill spent.
+    const _dieSuccess = (participant, idx, target) => {
+      if (participant.dieResults) return participant.dieResults[idx]?.isSuccess ?? false;
+      const val = participant.modifiedPool?.[idx] ?? participant.pool[idx];
+      return participant.pool[idx] !== 20 && val <= target;
+    };
+    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => _dieSuccess(attacker, idx, attackerTarget)).length;
+    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => _dieSuccess(defender, idx, defenderTarget)).length;
 
     let resultType = "miss";
     let logText = "";
@@ -63,7 +69,16 @@ export class MeleeResolution {
       resultType = "hit";
       logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogHit", { attacker: attacker.name, defender: defender.name, s: diceCount });
       const locationDieIndex = exchange.locationDieIndex ?? exchange.attackerSelectedDice[0];
-      await this.applyDamage(updated, attackerId, defenderId, diceCount, locationDieIndex);
+      const damageOptions = this._computeDamageOptions(diceCount, attacker);
+      if (damageOptions.length === 1) {
+        // Only one way to distribute: apply immediately
+        await this.applyDamageDistributed(updated, attackerId, defenderId, damageOptions[0].hits, locationDieIndex);
+      } else {
+        // Multiple options: pause for attacker to choose
+        updated.pendingDamage = {
+          attackerId, defenderId, diceCount, locationDieIndex, options: damageOptions
+        };
+      }
     } else if (defenderSuccesses > attackerSuccesses) {
       const takeoverSuccessesRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
       const actualAdvantage = defenderSuccesses - attackerSuccesses;
@@ -102,21 +117,55 @@ export class MeleeResolution {
 
     // 6. Clear current exchange
     updated.currentExchange = {
-      attackerId: null,
-      defenderId: null,
-      declaredAction: null,
-      declaredDiceCount: 0,
-      attackerSelectedDice: [],
-      defenderSelectedDice: [],
+      attackerId: null, defenderId: null, declaredAction: null,
+      declaredDiceCount: 0, attackerSelectedDice: [], defenderSelectedDice: [],
       resolutionType: "normal"
     };
 
-    // 7. Handle multi-player segment queue
+    // 6b. If a hit requires attacker to choose damage distribution, pause here.
+    if (updated.pendingDamage) {
+      updated.turnState.phase = "damage-selection";
+      updated.turnState.selectionTurn = updated.pendingDamage.attackerId;
+      await MeleeStore.updateEncounter(id, updated);
+      return;
+    }
+
+    await this._advanceAfterExchange(id, updated);
+  }
+
+  /**
+   * Called by the attacker to confirm their chosen damage distribution.
+   * Applies damage and resumes the normal exchange flow.
+   * @param {string} id           Encounter ID
+   * @param {number} optionIndex  Index into pendingDamage.options
+   */
+  static async confirmDamageDistribution(id, optionIndex) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter || encounter.turnState.phase !== "damage-selection") return;
+
+    const updated = foundry.utils.deepClone(encounter);
+    const pending = updated.pendingDamage;
+    if (!pending) return;
+
+    const option = pending.options[optionIndex];
+    if (!option) return;
+
+    await this.applyDamageDistributed(updated, pending.attackerId, pending.defenderId, option.hits, pending.locationDieIndex);
+    updated.pendingDamage = null;
+
+    await this._advanceAfterExchange(id, updated);
+  }
+
+  /**
+   * Handles queue advancement and segment progression after an exchange is resolved.
+   * @private
+   */
+  static async _advanceAfterExchange(id, updated) {
+    // Handle multi-player segment queue
     updated.turnState.queueIndex += 1;
     const queue = updated.turnState.segmentQueue || [];
 
     if (updated.turnState.queueIndex < queue.length) {
-      // More primary exchanges in this segment — move to next pair
       const next = queue[updated.turnState.queueIndex];
       updated.turnState.phase = "primary-attack-selection";
       updated.turnState.selectionTurn = next.attackerId;
@@ -124,7 +173,7 @@ export class MeleeResolution {
       return;
     }
 
-    // 8. All primary exchanges done — auto-resolve extra attacks
+    // All primary exchanges done — auto-resolve extra attacks
     this.prepareExtraAttacks(updated);
     for (const attack of (updated.extraAttackQueue || [])) {
       if (!attack.resolved) {
@@ -133,13 +182,12 @@ export class MeleeResolution {
       }
     }
 
-    // 9. Auto-advance segment
+    // Auto-advance segment
     const cost = updated.turnState.segmentCost || 1;
     const newSeg = (updated.turnState.segment || 1) + cost;
     updated.turnState.segmentCost = 0;
 
     if (newSeg > 3) {
-      // End of turn — save then start new turn (resets pools)
       await MeleeStore.updateEncounter(id, updated);
       await MeleeTurnService.startNewTurn(id);
     } else {
@@ -253,18 +301,74 @@ export class MeleeResolution {
   }
 
   /**
-   * Triggers the damage pipeline for a hit.
-   * @private
+   * Computes all valid damage distributions for a given dice count.
+   * D = 1 die, L = 2 dice, C = 3 dice.
+   * Returns an array of options, each with { label, hits[] }.
+   * @param {number} diceCount   Number of dice spent (1–3)
+   * @param {object} attacker    Participant data (for weapon damage tier labels)
    */
-  static async applyDamage(encounter, attackerId, defenderId, diceCount, locationDieIndex) {
+  static _computeDamageOptions(diceCount, attacker) {
+    // Read damage tier labels directly from weapon (damageMeleePreview is a UI-only enrichment)
+    const doc = fromUuidSync(attacker.actorUuid);
+    const actor = doc?.actor || doc;
+    const weapon = actor?.items.get(attacker.weaponId);
+    const d1 = weapon?.system.damageMelee1 || "D";
+    const d2 = weapon?.system.damageMelee2 || "L";
+    const d3 = weapon?.system.damageMelee3 || "C";
+
+    const tiers = [
+      { cost: 1, tier: 1, label: d1 },
+      { cost: 2, tier: 2, label: d2 },
+      { cost: 3, tier: 3, label: d3 }
+    ].filter(t => t.cost <= diceCount);
+
+    // Generate all unique combinations via recursive partition
+    const results = [];
+    const seen = new Set();
+
+    const recurse = (remaining, combo) => {
+      if (remaining === 0) {
+        const key = [...combo].sort((a, b) => b - a).join(",");
+        if (!seen.has(key)) {
+          seen.add(key);
+          // Build hits list from combo (combo = array of tier costs)
+          const sorted = [...combo].sort((a, b) => b - a);
+          const hits = sorted.map(cost => tiers.find(t => t.cost === cost));
+          // Build label: "1×C", "1×L + 1×D" etc.
+          const counts = {};
+          for (const t of hits) counts[t.label] = (counts[t.label] || 0) + 1;
+          const label = Object.entries(counts)
+            .map(([lbl, cnt]) => cnt > 1 ? `${cnt}×${lbl}` : lbl)
+            .join(" + ");
+          results.push({ label, hits });
+        }
+        return;
+      }
+      for (const t of tiers) {
+        if (t.cost <= remaining) {
+          combo.push(t.cost);
+          recurse(remaining - t.cost, combo);
+          combo.pop();
+        }
+      }
+    };
+    recurse(diceCount, []);
+    return results;
+  }
+
+  /**
+   * Applies a distributed damage sequence (multiple hits of varying tiers).
+   * Each hit in `hits` is applied separately to allow different locations in the future.
+   */
+  static async applyDamageDistributed(encounter, attackerId, defenderId, hits, locationDieIndex) {
     const attacker = encounter.participants[attackerId];
     const defender = encounter.participants[defenderId];
-    if (!attacker || !defender) return;
+    if (!attacker || !defender || !hits?.length) return;
 
     const attackerDoc = fromUuidSync(attacker.actorUuid);
-    const defenderDoc = fromUuidSync(defender.actorUuid);
+    const defenderDoc  = fromUuidSync(defender.actorUuid);
     const attackerActor = attackerDoc?.actor || attackerDoc;
-    const defenderActor = defenderDoc?.actor || defenderDoc;
+    const defenderActor  = defenderDoc?.actor  || defenderDoc;
     if (!attackerActor || !defenderActor) return;
 
     const weapon = attackerActor.items.get(attacker.weaponId);
@@ -273,23 +377,31 @@ export class MeleeResolution {
     const rawValue = attacker.pool[locationDieIndex];
     const location = this._getLocationFromRoll(rawValue);
 
-    const attackData = {
-      isMelee: true,
-      actorId: attackerActor.id,
-      weaponId: attacker.weaponId,
-      label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
-      successPoints: diceCount,
-      finalLocation: location,
-      damageMelee1: weapon?.system.damageMelee1,
-      damageMelee2: weapon?.system.damageMelee2,
-      damageMelee3: weapon?.system.damageMelee3
-    };
+    for (const hit of hits) {
+      const attackData = {
+        isMelee: true,
+        actorId: attackerActor.id,
+        weaponId: attacker.weaponId,
+        label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+        successPoints: hit.cost,
+        finalLocation: location,
+        damageMelee1: weapon?.system.damageMelee1,
+        damageMelee2: weapon?.system.damageMelee2,
+        damageMelee3: weapon?.system.damageMelee3
+      };
+      await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+        isOpposed: true, spDifference: hit.cost, location
+      });
+    }
+  }
 
-    await CombatHelper.applyDamageToActor(defenderActor, attackData, {
-      isOpposed: true,
-      spDifference: diceCount,
-      location
-    });
+  /**
+   * Legacy single-tier damage helper kept for extra-attack resolution.
+   * @private
+   */
+  static async applyDamage(encounter, attackerId, defenderId, diceCount, locationDieIndex) {
+    const tier = { cost: diceCount, label: "" };
+    await this.applyDamageDistributed(encounter, attackerId, defenderId, [tier], locationDieIndex);
   }
 
   /**

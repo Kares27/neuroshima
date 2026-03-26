@@ -86,6 +86,13 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       confirmAttack: function(event, target) {
         return MeleeTurnService.confirmAttack(this.encounterId, target.dataset.id);
       },
+      performAction: function(event, target) {
+        return MeleeTurnService.performAction(this.encounterId, target.dataset.id);
+      },
+      confirmDamageDistribution: async function(event, target) {
+        const { MeleeResolution } = await import("../combat/melee-resolution.js");
+        return MeleeResolution.confirmDamageDistribution(this.encounterId, parseInt(target.dataset.optionIndex));
+      },
       confirmDefense: function(event, target) {
         return MeleeTurnService.confirmDefense(this.encounterId, target.dataset.id);
       },
@@ -436,6 +443,19 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       }
       const selName = context.participants[context.turnState.selectionTurn]?.name || "...";
       return { type: "waiting", message: `${selName} ${game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingAttack")}`, urgent: false };
+    }
+
+    if (phase === "damage-selection") {
+      const pending = context.pendingDamage;
+      if (pending && myParticipants.find(p => p.id === pending.attackerId)) {
+        return {
+          type: "damage-selection",
+          actorId: pending.attackerId,
+          options: pending.options || [],
+          urgent: true
+        };
+      }
+      return { type: "waiting", message: game.i18n.localize("NEUROSHIMA.MeleeDuel.Hint.WaitingDamage"), urgent: false };
     }
 
     if (phase === "primary-defense-selection") {

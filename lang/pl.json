@@ -436,7 +436,9 @@
             "DieSuccess": "Sukces",
             "DieFailure": "Porażka",
             "DieNat20": "Krytyczna porażka (naturalna 20)",
-            "ConfirmAttack": "Potwierdź atak",
+            "ConfirmAttack": "Atakuj",
+            "PerformAction": "Wykonaj akcję",
+            "ChooseDamageDistribution": "Wybierz obrażenia",
             "ConfirmDefense": "Potwierdź obronę",
             "Target": "Cel",
             "PrimaryOpponent": "Główny przeciwnik",
@@ -456,8 +458,11 @@
                 "WaitingResolve": "Czekaj na rozstrzygnięcie przez MG...",
                 "NextSegment": "Kliknij \"Następny Segment\" aby przejść dalej.",
                 "EndTurn": "Tura zakończona. Kliknij \"Zakończ Turę\" aby rzucić nową pulę.",
-                "WaitingGM": "Segment zakończony. Czekaj na MG..."
+                "WaitingGM": "Segment zakończony. Czekaj na MG...",
+                "SelectDice": "Wybierz 1–3 kości, aby zadeklarować akcję.",
+                "WaitingDamage": "Atakujący wybiera rozdrobnienie obrażeń..."
             },
+            "PerformActionMsg": "{name} wykonuje akcję ({segments} segment(y), {successes} sukces(y)).",
             "ResultHit": "Trafienie!",
             "ResultBlock": "Obrona",
             "ResultTakeover": "Przejęcie!",

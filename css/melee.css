@@ -292,11 +292,6 @@
     color: #ef9a9a;
 }
 
-.die-chip.is-nat20 {
-    background: #2a0a2a;
-    border-color: #ab47bc;
-    color: #ce93d8;
-}
 
 .die-chip.is-selected {
     border: 3px solid #f39c12 !important;
@@ -548,6 +543,39 @@
     color: #fff;
 }
 
+.action-btn--action {
+    background: rgba(39,174,96,0.85);
+    border-color: #27ae60;
+    color: #fff;
+}
+
+.action-btn--damage-opt {
+    background: rgba(142,68,173,0.85);
+    border-color: #8e44ad;
+    color: #fff;
+    font-size: 0.9em;
+}
+
+.action-attack-wrap {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.action-damage-split-wrap {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.action-hint {
+    font-size: 0.85em;
+    color: var(--ns-text-secondary, #aaa);
+    font-style: italic;
+}
+
 .action-btn--target {
     background: rgba(52,73,94,0.8);
     border-color: #7f8c8d;
@@ -594,13 +622,6 @@
 }
 
 /* Damage tier preview inside attack action */
-.action-attack-wrap {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
 
 .action-damage-preview {
     display: flex;
