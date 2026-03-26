@@ -472,6 +472,9 @@ Hooks.once('init', async function() {
     // Wczytanie szablonów (v13 namespaced)
     const templates = [
         "systems/neuroshima/templates/actor/parts/actor-header.hbs",
+        "systems/neuroshima/templates/actor/parts/creature-header.hbs",
+        "systems/neuroshima/templates/actor/parts/vehicle-header.hbs",
+        "systems/neuroshima/templates/actor/npc-header.hbs",
         "systems/neuroshima/templates/actor/parts/actor-info.hbs",
         "systems/neuroshima/templates/actor/parts/actor-attributes.hbs",
         "systems/neuroshima/templates/actor/parts/actor-skills.hbs",

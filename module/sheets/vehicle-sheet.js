@@ -1,3 +1,4 @@
+import { NEUROSHIMA } from "../config.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 

@@ -2,6 +2,23 @@
     "TOKEN": {
         "Title": "Prototyp Tokena"
     },
+    "TYPES": {
+        "Actor": {
+            "character": "Postać",
+            "npc": "BN",
+            "creature": "Stworzenie",
+            "vehicle": "Pojazd"
+        },
+        "Item": {
+            "weapon": "Broń",
+            "armor": "Pancerz",
+            "gear": "Ekwipunek",
+            "trick": "Sztuczka",
+            "ammo": "Amunicja",
+            "magazine": "Magazynek",
+            "wound": "Rana"
+        }
+    },
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Arkusz Postaci",

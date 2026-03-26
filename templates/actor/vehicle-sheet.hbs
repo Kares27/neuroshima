@@ -1,25 +1,18 @@
-<form class="neuroshima sheet actor actor-vehicle" data-application-part="main">
-    <header class="sheet-header">
-        <img class="profile-img" src="{{actor.img}}" data-action="editImage" title="{{actor.name}}" height="100" width="100"/>
-        <div class="header-fields">
-            <h1 class="charname">
-                <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
-            </h1>
-            <div class="header-details flexrow">
-                <div class="header-field">
-                    <label>{{localize "NEUROSHIMA.Vehicle.Type"}}</label>
-                    <input type="text" name="system.vehicleType" value="{{system.vehicleType}}"/>
-                </div>
-                <div class="header-field">
-                    <label>{{localize "NEUROSHIMA.Vehicle.Condition"}}</label>
-                    <input type="text" name="system.condition" value="{{system.condition}}"/>
-                </div>
-            </div>
-        </div>
-    </header>
+<div class="sheet-main-wrapper actor-sheet-content" data-application-part="main">
+    {{> VehicleHeader}}
 
     <section class="sheet-body vehicle-body">
-        {{!-- Core Stats --}}
+        <div class="header-details flexrow">
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Vehicle.Type"}}</label>
+                <input type="text" name="system.vehicleType" value="{{system.vehicleType}}"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Vehicle.Condition"}}</label>
+                <input type="text" name="system.condition" value="{{system.condition}}"/>
+            </div>
+        </div>
+
         <div class="vehicle-stats-grid">
             <div class="vehicle-stat-block">
                 <label>{{localize "NEUROSHIMA.Vehicle.Hull"}}</label>
@@ -27,9 +20,6 @@
                     <input type="number" name="system.hull.value" value="{{system.hull.value}}" min="0"/>
                     <span>/</span>
                     <input type="number" name="system.hull.max" value="{{system.hull.max}}" min="1"/>
-                </div>
-                <div class="mini-progress {{hullCondition}}" title="{{hullPct}}%">
-                    <div class="mini-progress-fill" style="width:{{hullPct}}%"></div>
                 </div>
             </div>
 
@@ -39,9 +29,6 @@
                     <input type="number" name="system.fuel.value" value="{{system.fuel.value}}" min="0"/>
                     <span>/</span>
                     <input type="number" name="system.fuel.max" value="{{system.fuel.max}}" min="1"/>
-                </div>
-                <div class="mini-progress" title="{{fuelPct}}%">
-                    <div class="mini-progress-fill fuel" style="width:{{fuelPct}}%"></div>
                 </div>
             </div>
 
@@ -135,4 +122,4 @@
             <div class="editor-content" data-edit="system.notes">{{{system.notes}}}</div>
         </div>
     </section>
-</form>
+</div>

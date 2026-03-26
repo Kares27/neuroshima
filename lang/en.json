@@ -1,4 +1,21 @@
 {
+    "TYPES": {
+        "Actor": {
+            "character": "Character",
+            "npc": "NPC",
+            "creature": "Creature",
+            "vehicle": "Vehicle"
+        },
+        "Item": {
+            "weapon": "Weapon",
+            "armor": "Armor",
+            "gear": "Gear",
+            "trick": "Trick",
+            "ammo": "Ammo",
+            "magazine": "Magazine",
+            "wound": "Wound"
+        }
+    },
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Actor Sheet",

@@ -1,7 +1,10 @@
 {
   "Actor": {
-    "types": ["character"],
-    "character": {}
+    "types": ["character", "npc", "creature", "vehicle"],
+    "character": {},
+    "npc": {},
+    "creature": {},
+    "vehicle": {}
   },
   "Item": {
     "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound"],

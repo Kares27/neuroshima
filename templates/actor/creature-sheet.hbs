@@ -1,48 +1,48 @@
-<form class="neuroshima sheet actor actor-creature" data-application-part="main">
-    <header class="sheet-header">
-        <img class="profile-img" src="{{actor.img}}" data-action="editImage" title="{{actor.name}}" height="100" width="100"/>
-        <div class="header-fields">
-            <h1 class="charname">
-                <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
-            </h1>
-            <div class="header-details flexrow">
-                <div class="header-field">
-                    <label>{{localize "NEUROSHIMA.Creature.Type"}}</label>
-                    <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
-                </div>
-                <div class="header-field">
-                    <label>{{localize "NEUROSHIMA.Creature.Instinct"}}</label>
-                    <input type="text" name="system.instinct" value="{{system.instinct}}"/>
+<div class="sheet-main-wrapper actor-sheet-content" data-application-part="main">
+    {{> CreatureHeader}}
+
+    <section class="sheet-body">
+        {{!-- Header Stats --}}
+        <div class="header-details flexrow">
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Creature.Type"}}</label>
+                <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Creature.Instinct"}}</label>
+                <input type="text" name="system.instinct" value="{{system.instinct}}"/>
+            </div>
+        </div>
+
+        <div class="header-stats-row creature-stats">
+            <div class="stat-box hp-summary">
+                <label>HP</label>
+                <div class="stat-pair">
+                    <input type="number" name="system.hp.value" value="{{system.hp.value}}" min="0"/>
+                    <span>/</span>
+                    <input type="number" name="system.hp.max" value="{{system.hp.max}}" min="1"/>
                 </div>
             </div>
-            <div class="header-stats-row">
-                <div class="stat-box hp-summary">
-                    <label>HP</label>
-                    <input type="number" name="system.hp.value" value="{{system.hp.value}}" min="0" style="width:40px;text-align:center"/>
-                    <span>/</span>
-                    <input type="number" name="system.hp.max" value="{{system.hp.max}}" min="1" style="width:40px;text-align:center"/>
-                </div>
-                <div class="stat-box">
-                    <label>{{localize "NEUROSHIMA.Combat.MeleeInitiative"}}</label>
-                    <input type="number" name="system.combat.meleeInitiative" value="{{system.combat.meleeInitiative}}" style="width:40px;text-align:center"/>
+            <div class="stat-box">
+                <label>{{localize "NEUROSHIMA.Combat.MeleeInitiative"}}</label>
+                <div class="stat-pair">
+                    <input type="number" name="system.combat.meleeInitiative" value="{{system.combat.meleeInitiative}}"/>
                     <button type="button" class="icon-btn" data-action="rollMeleeInitiative" title="{{localize 'NEUROSHIMA.Combat.RollInitiative'}}">
                         <i class="fas fa-dice-d20"></i>
                     </button>
                 </div>
-                <div class="stat-box penalty-summary">
-                    <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
-                    <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
-                </div>
+            </div>
+            <div class="stat-box penalty-summary">
+                <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
+                <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
             </div>
         </div>
-    </header>
 
-    <section class="sheet-body">
         {{!-- Attributes --}}
         <div class="creature-attributes-row">
             {{#each creatureAttributes}}
-            <div class="creature-attr-block">
-                <div class="attr-label">{{localize this.abbr}}</div>
+            <div class="creature-attr-block" data-attribute="{{this.key}}">
+                <div class="attr-label clickable" data-action="rollAttribute" data-attribute="{{this.key}}">{{localize this.abbr}}</div>
                 <input type="number" name="system.attributes.{{this.key}}" value="{{lookup ../system.attributes this.key}}" min="0" max="40"/>
                 <div class="attr-mod-label">{{localize "NEUROSHIMA.Attributes.Modifier"}}</div>
                 <input type="number" name="system.modifiers.{{this.key}}" value="{{lookup ../system.modifiers this.key}}"/>
@@ -82,4 +82,4 @@
             <div class="editor-content" data-edit="system.notes">{{{system.notes}}}</div>
         </div>
     </section>
-</form>
+</div>

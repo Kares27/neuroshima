@@ -1,3 +1,4 @@
+import { NEUROSHIMA } from "../config.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 
@@ -36,6 +37,12 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         const result = await this.document.rollInitiativeDialog();
         if (!result) return;
         await this.document.update({ "system.combat.meleeInitiative": Number(result.successPoints) });
+      },
+      rollAttribute: async function(event, target) {
+        const attrKey = target.dataset.attribute;
+        const { NeuroshimaRollDialog } = await import("../apps/roll-dialog.js");
+        const dialog = new NeuroshimaRollDialog({ actor: this.document, attribute: attrKey });
+        dialog.render(true);
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]

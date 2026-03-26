@@ -2984,14 +2984,23 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     margin: 0;
 }
 
+/* ===== Shared Sheet Wrapper ===== */
+.neuroshima.sheet.actor .sheet-main-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
 /* ===== Creature Sheet ===== */
 .neuroshima.sheet.actor-creature {
     min-width: 560px;
 }
 
 .neuroshima.sheet.actor-creature .sheet-body {
-    padding: 8px 12px;
+    padding: 10px 15px;
     overflow-y: auto;
+    flex: 1;
 }
 
 .neuroshima.sheet.actor-creature .creature-attributes-row {
@@ -3052,8 +3061,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima.sheet.actor-vehicle .vehicle-body {
-    padding: 8px 12px;
+    padding: 10px 15px;
     overflow-y: auto;
+    flex: 1;
 }
 
 .neuroshima.sheet.actor-vehicle .vehicle-stats-grid {
