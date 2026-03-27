@@ -484,10 +484,7 @@
                 "WaitingDamage": "Atakujący wybiera rozdrobnienie obrażeń..."
             },
             "PerformActionMsg": "{name} wykonuje akcję ({segments} segment(y), {successes} sukces(y)).",
-            "ResultHit": "Trafienie!",
             "ResultBlock": "Obrona",
-            "ResultTakeover": "Przejęcie!",
-            "ResultMiss": "Pudło",
             "ResetTurn": "Resetuj turę",
             "EndEncounter": "Zakończ starcie",
             "PrevSegment": "Poprzedni segment",
@@ -862,15 +859,18 @@
         "Creature": {
             "Type": "Typ Stworzenia",
             "Aggression": "Agresja",
-            "Movement": "Ruch (m)",
-            "NaturalArmor": "Naturalne Opancerzenie",
-            "NaturalArmor.Location": "Część ciała",
-            "NaturalArmor.Reduction": "Redukcja",
-            "NaturalArmor.ReductionAbbr": "Red.",
-            "NaturalArmor.HitPenalty": "Utrudnienie do trafienia (%)",
-            "NaturalArmor.HitPenaltyAbbr": "Utr.%",
-            "NaturalArmor.WeakPoint": "Słaby punkt",
-            "NaturalArmor.WeakPointAbbr": "Słaby"
+            "Movement": "Ruch",
+            "NaturalArmor":
+            {
+            "Title": "Naturalne Opancerzenie",
+            "Location": "Część ciała",
+            "Reduction": "Redukcja",
+            "ReductionAbbr": "Red.",
+            "HitPenalty": "Utrudnienie do trafienia (%)",
+            "HitPenaltyAbbr": "Utr.%",
+            "WeakPoint": "Słaby punkt",
+            "WeakPointAbbr": "Słaby"
+            }
         },
         "BeastAction": {
             "Label": "Akcje Bestii",

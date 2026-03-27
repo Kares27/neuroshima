@@ -833,15 +833,17 @@
         "Creature": {
             "Type": "Creature Type",
             "Aggression": "Aggression",
-            "Movement": "Movement (m)",
-            "NaturalArmor": "Natural Armor",
-            "NaturalArmor.Location": "Location",
-            "NaturalArmor.Reduction": "Damage Reduction",
-            "NaturalArmor.ReductionAbbr": "Red.",
-            "NaturalArmor.HitPenalty": "Hit Penalty (%)",
-            "NaturalArmor.HitPenaltyAbbr": "Pen.%",
-            "NaturalArmor.WeakPoint": "Weak Point",
-            "NaturalArmor.WeakPointAbbr": "Weak"
+            "Movement": "Movement",
+            "NaturalArmor": {
+            "Title": "Natural Armor",
+            "Location": "Location",
+            "Reduction": "Damage Reduction",
+            "ReductionAbbr": "Red.",
+            "HitPenalty": "Hit Penalty (%)",
+            "HitPenaltyAbbr": "Pen.%",
+            "WeakPoint": "Weak Point",
+            "WeakPointAbbr": "Weak"
+            }
         },
         "BeastAction": {
             "Label": "Beast Actions",
