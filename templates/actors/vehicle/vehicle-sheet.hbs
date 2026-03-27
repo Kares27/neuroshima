@@ -14,7 +14,12 @@
         </div>
 
         <div class="vehicle-stats-grid">
-            <div class="vehicle-stat-block">
+            <div class="vehicle-stat-block hp-summary">
+                {{#if isGM}}
+                <a class="hp-config-btn" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+                {{/if}}
                 <label>{{localize "NEUROSHIMA.Vehicle.Hull"}}</label>
                 <div class="stat-pair">
                     <input type="number" name="system.hull.value" value="{{system.hull.value}}" min="0"/>

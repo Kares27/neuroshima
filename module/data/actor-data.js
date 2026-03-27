@@ -226,45 +226,46 @@ export class NeuroshimaNPCData extends NeuroshimaActorData {
 
 /**
  * Data model for Creature actors (animals, mutants, monsters).
+ * Creatures use the full attribute set but have natural armor instead of item armor,
+ * and their HP capacity is fixed at 27 points (= 1 Critical wound).
  */
 export class NeuroshimaCreatureData extends NeuroshimaActorData {
   /** @override */
   static defineSchema() {
     const fields = foundry.data.fields;
-    const attrField = () => new fields.NumberField({ required: true, integer: true, initial: 6, min: 0, max: 40 });
-    const modField  = () => new fields.NumberField({ required: true, integer: true, initial: 0 });
+
+    /** Per-body-part natural armor entry. */
+    const naturalArmorPart = () => new fields.SchemaField({
+      reduction:  new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      weakPoint:  new fields.BooleanField({ initial: false })
+    });
 
     return {
-      creatureType:  new fields.StringField({ initial: "" }),
-      instinct:      new fields.StringField({ initial: "" }),
-      naturalAttack: new fields.StringField({ initial: "" }),
-      attributes: new fields.SchemaField({
-        dexterity:    attrField(),
-        perception:   attrField(),
-        constitution: attrField()
-      }),
-      modifiers: new fields.SchemaField({
-        dexterity:    modField(),
-        perception:   modField(),
-        constitution: modField()
+      creatureType: new fields.StringField({ initial: "" }),
+      aggression:   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      movement:     new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      naturalArmor: new fields.SchemaField({
+        head:     naturalArmorPart(),
+        torso:    naturalArmorPart(),
+        rightArm: naturalArmorPart(),
+        leftArm:  naturalArmorPart(),
+        rightLeg: naturalArmorPart(),
+        leftLeg:  naturalArmorPart()
       }),
       lastRoll: new fields.SchemaField({
-        modifier: new fields.NumberField({ integer: true, initial: 0 }),
-        baseDifficulty: new fields.StringField({ initial: "average" }),
-        useArmorPenalty: new fields.BooleanField({ initial: true }),
+        modifier:        new fields.NumberField({ integer: true, initial: 0 }),
+        baseDifficulty:  new fields.StringField({ initial: "average" }),
+        useArmorPenalty: new fields.BooleanField({ initial: false }),
         useWoundPenalty: new fields.BooleanField({ initial: true }),
-        isOpen: new fields.BooleanField({ initial: true })
+        isOpen:          new fields.BooleanField({ initial: true })
       }),
       lastWeaponRoll: new fields.SchemaField({
         percentageModifier: new fields.NumberField({ integer: true, initial: 0 }),
         difficulty:         new fields.StringField({ initial: "average" }),
-        useArmorPenalty:    new fields.BooleanField({ initial: true }),
+        useArmorPenalty:    new fields.BooleanField({ initial: false }),
         useWoundPenalty:    new fields.BooleanField({ initial: true }),
         isOpen:             new fields.BooleanField({ initial: false })
-      }),
-      hp: new fields.SchemaField({
-        value: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-        max:   new fields.NumberField({ integer: true, initial: 10, min: 1 })
       }),
       combat: new fields.SchemaField({
         meleeInitiative: new fields.NumberField({ integer: true, initial: 0 })
@@ -275,11 +276,13 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
 
   /** @override */
   prepareDerivedData() {
-      try {
-          this._prepareSharedData();
-      } catch (err) {
-          if (game.settings.get("neuroshima", "debugMode")) console.error("Creature prepareDerivedData error:", err);
-      }
+    try {
+      this._prepareSharedData();
+      // Creatures have a fixed HP capacity of 27 (equivalent to 1 Critical wound).
+      this.combat.maxHP = 27;
+    } catch (err) {
+      if (game.settings.get("neuroshima", "debugMode")) console.error("Creature prepareDerivedData error:", err);
+    }
   }
 }
 

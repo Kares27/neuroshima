@@ -32,6 +32,10 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       toggleEquipped: async function(event, target) {
         const item = this.document.items.get(target.dataset.itemId);
         if (item) await item.update({ "system.equipped": !item.system.equipped });
+      },
+      configureHP: async function(event, target) {
+          const { NeuroshimaActorSheet } = await import("./actor-sheet.js");
+          return NeuroshimaActorSheet.prototype._onConfigureHP.call(this, event, target);
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -39,7 +43,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
 
   /** @override */
   static PARTS = {
-    main: { template: "systems/neuroshima/templates/actor/vehicle-sheet.hbs" }
+    main: { template: "systems/neuroshima/templates/actors/vehicle/vehicle-sheet.hbs" }
   };
 
   /** @override */
@@ -53,6 +57,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     context.config   = NEUROSHIMA;
     context.owner    = actor.isOwner;
     context.editable = this.isEditable;
+    context.isGM     = game.user.isGM;
 
     const items = actor.items.contents;
     context.weapons = items.filter(i => i.type === "weapon");

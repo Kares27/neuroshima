@@ -3145,3 +3145,167 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     margin-bottom: 4px;
 }
 
+  
+/* HP Configuration Dialog */  
+.hp-config-dialog .hp-config-grid {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+}
+
+.hp-config-dialog .hp-config-grid input {
+    text-align: center;
+}
+
+.hp-config-dialog .hp-config-grid label {
+    font-weight: bold;
+    white-space: nowrap;
+}  
+.stat-box.hp-summary,
+.vehicle-stat-block.hp-summary {
+    position: relative;
+}
+
+.hp-config-btn {
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    color: var(--ns-text-muted);
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: color 0.2s;
+    z-index: 5;
+}
+
+.hp-config-btn:hover {
+    color: var(--ns-text-main);
+}  
+/* ===== Creature Combat Tab Layout ===== */
+.neuroshima.sheet.actor-creature .creature-combat-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 8px 0;
+}
+
+.neuroshima.sheet.actor-creature .creature-combat-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-creature .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    color: var(--ns-accent, #c9aa71);
+}
+
+.neuroshima.sheet.actor-creature .section-header .header-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-creature .section-header .header-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor-creature .natural-armor-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8em;
+}
+
+.neuroshima.sheet.actor-creature .natural-armor-table th {
+    text-align: center;
+    color: rgba(255,255,255,0.55);
+    font-weight: normal;
+    padding: 2px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.neuroshima.sheet.actor-creature .natural-armor-table td {
+    text-align: center;
+    padding: 2px 3px;
+}
+
+.neuroshima.sheet.actor-creature .natural-armor-table .location-label {
+    text-align: left;
+    color: rgba(255,255,255,0.8);
+    padding-left: 2px;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-input {
+    width: 44px;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-creature .creature-actions-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.neuroshima.sheet.actor-creature .creature-actions-list .item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 5px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+    font-size: 0.82em;
+}
+
+.neuroshima.sheet.actor-creature .creature-actions-list .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.actor-creature .beast-action-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor-creature .action-type-badge {
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.neuroshima.sheet.actor-creature .action-type-attack   { background: rgba(200, 40, 40, 0.5); color: #f99; }
+.neuroshima.sheet.actor-creature .action-type-special  { background: rgba(50, 120, 200, 0.5); color: #9cf; }
+.neuroshima.sheet.actor-creature .action-type-reaction { background: rgba(30, 160, 100, 0.5); color: #9fc; }
+
+.neuroshima.sheet.actor-creature .action-cost {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-creature .creature-wounds-section {
+    margin-top: 12px;
+}
+
+.neuroshima.sheet.actor-creature .item-list-empty {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.4);
+    padding: 4px 6px;
+    font-style: italic;
+}
+
+.neuroshima.sheet.actor-creature .text-center { text-align: center; }

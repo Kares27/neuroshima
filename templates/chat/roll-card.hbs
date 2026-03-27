@@ -2,17 +2,7 @@
     <header class="roll-header">
         <div class="actor-image-container" 
             {{#if showTooltip}}
-            data-tooltip="<strong>{{localize 'NEUROSHIMA.Attributes.Attributes'}}:</strong> {{baseStat}}<br>
-                          {{#if (ne attributeBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.AttributeBonusAbbr'}}:</strong> {{attributeBonus}}<br>{{/if}}
-                          <strong>{{localize 'NEUROSHIMA.Items.Fields.Skill'}}:</strong> {{baseSkill}}<br>
-                          {{#if (ne skillBonus 0)}}<strong>{{localize 'NEUROSHIMA.Roll.SkillBonusAbbr'}}:</strong> {{skillBonus}}<br>{{/if}}
-                          <strong>{{localize 'NEUROSHIMA.Roll.Penalties'}}:</strong><br>
-                          &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyMod'}}: {{penalties.mod}}%<br>
-                          &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyWounds'}}: {{penalties.wounds}}%<br>
-                          &nbsp;&nbsp;&bull; {{localize 'NEUROSHIMA.Roll.PenaltyArmor'}}: {{penalties.armor}}%<br>
-                          <strong>{{localize 'NEUROSHIMA.Roll.TotalModifier'}}:</strong> {{totalPenalty}}%<br>
-                          <strong>{{localize 'NEUROSHIMA.Roll.BaseDifficulty'}}:</strong> {{localize baseDifficultyLabel}}<br>
-                          <strong>{{localize 'NEUROSHIMA.Roll.Target'}}:</strong> {{target}}"
+            data-tooltip="{{neuroshimaRollTooltip this}}"
             data-tooltip-direction="LEFT"
             {{/if}}>
             <img src="{{actorImg}}" width="32" height="32" />

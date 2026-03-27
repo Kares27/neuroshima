@@ -853,13 +853,32 @@
                 "complete": "Ukończ Leczenie"
             }
         },
+        "Wounds": {
+            "None": "Brak ran"
+        },
         "NPC": {
             "Threat": "Zagrożenie"
         },
         "Creature": {
             "Type": "Typ Stworzenia",
-            "Instinct": "Instynkt",
-            "NaturalAttack": "Naturalny Atak"
+            "Aggression": "Agresja",
+            "Movement": "Ruch (m)",
+            "NaturalArmor": "Naturalne Opancerzenie",
+            "NaturalArmor.Location": "Część ciała",
+            "NaturalArmor.Reduction": "Redukcja",
+            "NaturalArmor.ReductionAbbr": "Red.",
+            "NaturalArmor.HitPenalty": "Utrudnienie do trafienia (%)",
+            "NaturalArmor.HitPenaltyAbbr": "Utr.%",
+            "NaturalArmor.WeakPoint": "Słaby punkt",
+            "NaturalArmor.WeakPointAbbr": "Słaby"
+        },
+        "BeastAction": {
+            "Label": "Akcje Bestii",
+            "SegmentCost": "Segmenty",
+            "SuccessCost": "Sukcesy",
+            "Type.Attack": "Atak",
+            "Type.Special": "Specjalna",
+            "Type.Reaction": "Reakcja"
         },
         "Vehicle": {
             "Type": "Typ Pojazdu",

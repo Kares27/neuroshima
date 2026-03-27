@@ -7,27 +7,31 @@
 
         <div class="header-details flexrow">
             <div class="header-field">
-                <label>{{localize "NEUROSHIMA.Info.Specialization"}}</label>
-                <input type="text" name="system.specialization" value="{{system.specialization}}"/>
+                <label>{{localize "NEUROSHIMA.Creature.Type"}}</label>
+                <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
             </div>
             <div class="header-field">
-                <label>{{localize "NEUROSHIMA.Info.Profession"}}</label>
-                <input type="text" name="system.profession" value="{{system.profession}}"/>
+                <label>{{localize "NEUROSHIMA.Creature.Aggression"}}</label>
+                <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
             </div>
             <div class="header-field">
-                <label>{{localize "NEUROSHIMA.NPC.Threat"}}</label>
-                <input type="text" name="system.threat" value="{{system.threat}}"/>
+                <label>{{localize "NEUROSHIMA.Creature.Movement"}}</label>
+                <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>
             </div>
         </div>
 
         <div class="header-stats-row">
-            <div class="stat-box penalty-summary" title="{{combat.penaltyTooltip}}">
+            <div class="stat-box penalty-summary">
                 <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
                 <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
             </div>
-            <div class="stat-box hp-summary" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
+            <div class="stat-box hp-summary" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
                 <label>HP</label>
                 <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
+            </div>
+            <div class="stat-box">
+                <label>{{localize "NEUROSHIMA.Combat.MeleeInitiative"}}</label>
+                <div class="stat-value">{{combat.meleeInitiative}}</div>
             </div>
         </div>
     </div>

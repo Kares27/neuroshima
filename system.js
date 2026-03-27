@@ -5,7 +5,7 @@ import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -143,6 +143,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.magazine = MagazineData;
     CONFIG.Item.dataModels.trick = TrickData;
     CONFIG.Item.dataModels.wound = WoundData;
+    CONFIG.Item.dataModels["beast-action"] = BeastActionData;
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -161,6 +162,9 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('ifThen', (c, a, b) => c ? a : b);
     Handlebars.registerHelper('meleeDieUsed', (list, index) => list?.includes(index));
     Handlebars.registerHelper('meleeDieSelected', (list, index) => list?.includes(index));
+    Handlebars.registerHelper('neuroshimaRollTooltip', (rollData) => {
+        return NeuroshimaDice.buildRollTooltip(rollData);
+    });
     Handlebars.registerHelper('capitalize', (str) => {
         if (!str || typeof str !== 'string') return '';
         return str.charAt(0).toUpperCase() + str.slice(1);
@@ -191,7 +195,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound"],
+        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -471,19 +475,19 @@ Hooks.once('init', async function() {
 
     // Wczytanie szablonów (v13 namespaced)
     const templates = [
-        "systems/neuroshima/templates/actor/parts/actor-header.hbs",
-        "systems/neuroshima/templates/actor/parts/creature-header.hbs",
-        "systems/neuroshima/templates/actor/parts/vehicle-header.hbs",
-        "systems/neuroshima/templates/actor/npc-header.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-info.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-attributes.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-skills.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-tricks.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-combat.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-inventory.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-notes.hbs",
-        "systems/neuroshima/templates/actor/parts/wounds-paper-doll.hbs",
-        "systems/neuroshima/templates/actor/parts/wounds-list.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-header.hbs",
+        "systems/neuroshima/templates/actors/creature/parts/creature-header.hbs",
+        "systems/neuroshima/templates/actors/vehicle/parts/vehicle-header.hbs",
+        "systems/neuroshima/templates/actors/npc/parts/npc-header.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-info.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/wounds-list.hbs",
         "systems/neuroshima/templates/item/item-sheet.hbs",
         "systems/neuroshima/templates/item/item-header.hbs",
         "systems/neuroshima/templates/item/item-details.hbs",
@@ -517,7 +521,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/rest-report.hbs",
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
-        "systems/neuroshima/templates/dialog/rest-dialog.hbs"
+        "systems/neuroshima/templates/dialog/rest-dialog.hbs",
+        "systems/neuroshima/templates/dialog/hp-config.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);

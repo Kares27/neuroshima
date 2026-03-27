@@ -63,7 +63,8 @@ export class NeuroshimaDice {
         stat: attrValue + chargeBonus,
         skill: skillValue,
         penalties: {
-            mod: modifier + basePenalty,
+            mod: modifier,
+            base: basePenalty,
             armor: armorPenalty,
             wounds: woundPenalty
         },
@@ -644,6 +645,7 @@ export class NeuroshimaDice {
         locationRoll: locationRoll?.total,
         bulletsFired,
         totalPenalty,
+        baseDifficultyLabel: NEUROSHIMA.difficulties[effectiveDifficulty]?.label || finalDiff.label,
         difficultyLabel: finalDiff.label,
         isCritSuccess: bestResult === 1,
         isCritFailure: (bestResult === 20 || isJamming),
@@ -820,7 +822,7 @@ export class NeuroshimaDice {
     const finalStat = (Number(stat) || 0) + Number(attributeBonus || 0);
 
     // 1. Obliczanie całkowitej kary i trudności bazowej
-    const totalPenalty = (Number(penalties.mod) || 0) + (Number(penalties.wounds) || 0) + (Number(penalties.armor) || 0);
+    const totalPenalty = (Number(penalties.mod) || 0) + (Number(penalties.wounds) || 0) + (Number(penalties.armor) || 0) + (Number(penalties.base) || 0);
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     
     // 2. Wykonanie rzutu 3k20
@@ -2004,6 +2006,14 @@ export class NeuroshimaDice {
       damageType: woundConfig.damageType,
       difficulty: woundConfig.difficulty,
       difficultyLabel: finalDiff.label,
+      baseDifficultyLabel: baseDifficultyData.label,
+      penalties: {
+        mod: woundConfig.modifier,
+        armor: 0,
+        wounds: 0,
+        base: baseDifficultyData.min || 0
+      },
+      totalPenalty: totalPenalty,
       baseSkill: skillValue,
       skillBonus: skillBonus,
       baseStat: baseStat,
@@ -2056,140 +2066,61 @@ export class NeuroshimaDice {
    * Pomocnicza metoda do budowania tooltipa dla testu otwartego (inicjatywa itp.).
    * @private
    */
-  static _buildOpenTestTooltip(testRollData, headerLabel) {
-    let diceHtml = '<div class="dice-results-grid tiny">';
-    // Upewniamy się, że mamy modifiedResults
-    const results = testRollData.modifiedResults || [];
+  /**
+   * Universal method to build a calculation detail tooltip for any Neuroshima roll.
+   * Can be used as a static JS method or a Handlebars helper.
+   * @param {Object} rollData 
+   * @returns {string} HTML string for the tooltip
+   */
+  static buildRollTooltip(rollData) {
+    if (!rollData) return "";
     
-    results.forEach((d, i) => {
-      diceHtml += `
-        <div class="die-result ${d.ignored ? 'ignored' : ''}">
-          <span class="die-label tiny">D${i + 1}=</span>
-          <div class="die-square-container tiny">
-            <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
-            ${!d.ignored && (d.original !== d.modified) ? `
-              <i class="fas fa-long-arrow-alt-right"></i> 
-              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
-            ` : d.ignored ? '' : `
-              <i class="fas fa-long-arrow-alt-right"></i> 
-              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.original}</span>
-            `}
-          </div>
-        </div>`;
-    });
-    diceHtml += '</div>';
+    const penalties = rollData.penalties || {};
+    const baseStat = rollData.baseStat || rollData.stat || 0;
+    const attributeBonus = rollData.attributeBonus || 0;
+    const baseSkill = rollData.baseSkill || rollData.skill || 0;
+    const skillBonus = rollData.skillBonus || 0;
+    const totalPenalty = rollData.totalPenalty || rollData.penalty || 0;
+    const baseDifficultyLabel = rollData.baseDifficultyLabel || rollData.difficultyLabel || "";
+    const target = rollData.testTarget || rollData.target || 0;
 
-    return `
-      <div class="neuroshima roll-card tooltip-mode">
-        <header class="roll-header tiny">
-          ${game.i18n.localize(headerLabel || "")}
-          <div class="difficulty-tag">${game.i18n.localize(testRollData.difficultyLabel || "")}</div>
-        </header>
-        <hr class="dotted-hr tiny">
-        ${diceHtml}
-        <hr class="dotted-hr tiny">
-        <footer class="roll-outcome tiny">
-          <div class="outcome-item">
-            <span class="label">${testRollData.attributeKey ? game.i18n.localize(`NEUROSHIMA.Attributes.${testRollData.attributeKey}`) : game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
-            <span class="value">${testRollData.baseStat || testRollData.stat || 0}</span>
-          </div>
-          ${testRollData.attributeBonus ? `
-          <div class="outcome-item">
-            <span class="label">Bonus:</span>
-            <span class="value">${testRollData.attributeBonus > 0 ? '+' : ''}${testRollData.attributeBonus}</span>
-          </div>
-          ` : ''}
-          ${(testRollData.baseSkill > 0 || testRollData.skill > 0) ? `
-          <div class="outcome-item">
-            <span class="label">${testRollData.skillKey ? game.i18n.localize(`NEUROSHIMA.Skills.${testRollData.skillKey}`) : game.i18n.localize('NEUROSHIMA.Skills.Skill')}:</span>
-            <span class="value">${testRollData.baseSkill || testRollData.skill || 0}</span>
-          </div>
-          ` : ''}
-          ${testRollData.skillBonus ? `
-          <div class="outcome-item">
-            <span class="label">Bonus:</span>
-            <span class="value">${testRollData.skillBonus > 0 ? '+' : ''}${testRollData.skillBonus}</span>
-          </div>
-          ` : ''}
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
-            <span class="value">${testRollData.testTarget || testRollData.target}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')}:</span>
-            <span class="value"><strong>${testRollData.successPoints}</strong></span>
-          </div>
-        </footer>
-      </div>
-    `.trim();
+    let tooltip = `<strong>${game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</strong> ${baseStat}<br>`;
+    if (attributeBonus !== 0) {
+        tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.AttributeBonusAbbr')}:</strong> ${attributeBonus}<br>`;
+    }
+    tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Items.Fields.Skill')}:</strong> ${baseSkill}<br>`;
+    if (skillBonus !== 0) {
+        tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.SkillBonusAbbr')}:</strong> ${skillBonus}<br>`;
+    }
+    
+    tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.Penalties')}:</strong><br>`;
+    tooltip += `&nbsp;&nbsp;&bull; ${game.i18n.localize('NEUROSHIMA.Roll.PenaltyMod')}: ${penalties.mod || 0}%<br>`;
+    tooltip += `&nbsp;&nbsp;&bull; ${game.i18n.localize('NEUROSHIMA.Roll.PenaltyWounds')}: ${penalties.wounds || 0}%<br>`;
+    tooltip += `&nbsp;&nbsp;&bull; ${game.i18n.localize('NEUROSHIMA.Roll.PenaltyArmor')}: ${penalties.armor || 0}%<br>`;
+    
+    tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.TotalModifier')}:</strong> ${totalPenalty}%<br>`;
+    tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.BaseDifficulty')}:</strong> ${game.i18n.localize(baseDifficultyLabel)}<br>`;
+    tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</strong> ${target}`;
+
+    return tooltip.trim();
+  }
+
+  /**
+   * Pomocnicza metoda do budowania tooltipa dla testu otwartego (inicjatywa itp.).
+   * @deprecated Używaj buildRollTooltip
+   * @private
+   */
+  static _buildOpenTestTooltip(testRollData, headerLabel) {
+    return this.buildRollTooltip(testRollData);
   }
 
   /**
    * Pomocnicza metoda do budowania tooltipa dla testu zamkniętego (leczenie, odporność na ból itp.).
+   * @deprecated Używaj buildRollTooltip
    * @private
    */
   static _buildClosedTestTooltip(testRollData, headerLabel) {
-    let diceHtml = '<div class="dice-results-grid tiny">';
-    const results = testRollData.modifiedResults || [];
-    
-    results.forEach((d, i) => {
-      diceHtml += `
-        <div class="die-result ${d.ignored ? 'ignored' : ''}">
-          <span class="die-label tiny">D${i + 1}=</span>
-          <div class="die-square-container tiny">
-            <span class="die-square original tiny ${d.isNat1 ? 'nat-1' : ''} ${d.isNat20 ? 'nat-20' : ''}">${d.original}</span>
-            ${(testRollData.skill > 0 || testRollData.isWeapon) && !d.ignored ? `
-              <i class="fas fa-long-arrow-alt-right"></i> 
-              <span class="die-square modified tiny ${d.isSuccess ? 'success' : 'failure'}">${d.modified}</span>
-            ` : ''}
-          </div>
-        </div>`;
-    });
-    diceHtml += '</div>';
-
-    return `
-      <div class="neuroshima roll-card tooltip-mode">
-        <header class="roll-header tiny">
-          ${game.i18n.localize(headerLabel || testRollData.difficultyLabel || "")}
-          ${headerLabel ? `<div class="difficulty-tag">${game.i18n.localize(testRollData.difficultyLabel || "")}</div>` : ""}
-        </header>
-        <hr class="dotted-hr tiny">
-        ${diceHtml}
-        <hr class="dotted-hr tiny">
-        <footer class="roll-outcome tiny">
-          <div class="outcome-item">
-            <span class="label">${testRollData.attributeKey ? game.i18n.localize(`NEUROSHIMA.Attributes.${testRollData.attributeKey}`) : game.i18n.localize('NEUROSHIMA.Attributes.Attributes')}:</span>
-            <span class="value">${testRollData.baseStat || testRollData.stat || 0}</span>
-          </div>
-          ${testRollData.attributeBonus ? `
-          <div class="outcome-item">
-            <span class="label">Bonus:</span>
-            <span class="value">${testRollData.attributeBonus > 0 ? '+' : ''}${testRollData.attributeBonus}</span>
-          </div>
-          ` : ''}
-          ${(testRollData.baseSkill > 0 || testRollData.skill > 0) ? `
-          <div class="outcome-item">
-            <span class="label">${testRollData.skillKey ? game.i18n.localize(`NEUROSHIMA.Skills.${testRollData.skillKey}`) : game.i18n.localize('NEUROSHIMA.Skills.Skill')}:</span>
-            <span class="value">${testRollData.baseSkill || testRollData.skill || 0}</span>
-          </div>
-          ` : ''}
-          ${testRollData.skillBonus ? `
-          <div class="outcome-item">
-            <span class="label">Bonus:</span>
-            <span class="value">${testRollData.skillBonus > 0 ? '+' : ''}${testRollData.skillBonus}</span>
-          </div>
-          ` : ''}
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</span>
-            <span class="value">${testRollData.testTarget || testRollData.target}</span>
-          </div>
-          <div class="outcome-item">
-            <span class="label">${game.i18n.localize('NEUROSHIMA.Roll.SuccessPointsAbbr')}:</span>
-            <span class="value"><strong>${testRollData.successCount ?? testRollData.successPoints}</strong></span>
-          </div>
-        </footer>
-      </div>
-    `.trim();
+    return this.buildRollTooltip(testRollData);
   }
 
   /**

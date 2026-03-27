@@ -30,15 +30,15 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
 
   /** @override */
   static PARTS = {
-    header:           { template: "systems/neuroshima/templates/actor/npc-header.hbs" },
+    header:           { template: "systems/neuroshima/templates/actors/npc/parts/npc-header.hbs" },
     tabs:             { template: "templates/generic/tab-navigation.hbs" },
-    attributes:       { template: "systems/neuroshima/templates/actor/parts/actor-attributes.hbs" },
-    skills:           { template: "systems/neuroshima/templates/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
-    tricks:           { template: "systems/neuroshima/templates/actor/parts/actor-tricks.hbs" },
-    combat:           { template: "systems/neuroshima/templates/actor/parts/actor-combat.hbs" },
-    combatPaperDoll:  { template: "systems/neuroshima/templates/actor/parts/wounds-paper-doll-partial.hbs" },
-    combatWoundsList: { template: "systems/neuroshima/templates/actor/parts/wounds-list-partial.hbs" },
-    inventory:        { template: "systems/neuroshima/templates/actor/parts/actor-inventory.hbs", scrollable: [""] },
-    notes:            { template: "systems/neuroshima/templates/actor/parts/actor-notes.hbs" }
+    attributes:       { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs" },
+    skills:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
+    tricks:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs" },
+    combat:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs" },
+    combatPaperDoll:  { template: "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll-partial.hbs" },
+    combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" },
+    inventory:        { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""] },
+    notes:            { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 }

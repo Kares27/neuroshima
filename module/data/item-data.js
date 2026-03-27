@@ -230,3 +230,22 @@ export class WoundData extends foundry.abstract.TypeDataModel {
     };
   }
 }
+
+/**
+ * Data model for Beast Action items (special actions available to Creature actors).
+ * Beast actions represent innate abilities, attacks or reactions tied to the creature.
+ */
+export class BeastActionData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      actionType: new fields.StringField({
+        initial: "attack",
+        choices: ["attack", "special", "reaction"]
+      }),
+      segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
+      successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 })
+    };
+  }
+}

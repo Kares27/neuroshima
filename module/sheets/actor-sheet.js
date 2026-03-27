@@ -90,16 +90,16 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
   /** @override */
   static PARTS = {
-    header: { template: "systems/neuroshima/templates/actor/parts/actor-header.hbs" },
+    header: { template: "systems/neuroshima/templates/actors/actor/parts/actor-header.hbs" },
     tabs: { template: "templates/generic/tab-navigation.hbs" },
-    attributes: { template: "systems/neuroshima/templates/actor/parts/actor-attributes.hbs" },
-    skills: { template: "systems/neuroshima/templates/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
-    tricks: { template: "systems/neuroshima/templates/actor/parts/actor-tricks.hbs" },
-    combat: { template: "systems/neuroshima/templates/actor/parts/actor-combat.hbs",  scrollable: [""] },
-    combatPaperDoll: { template: "systems/neuroshima/templates/actor/parts/wounds-paper-doll-partial.hbs" ,  scrollable: [".paper-doll-scrollable"]},
-    combatWoundsList: { template: "systems/neuroshima/templates/actor/parts/wounds-list-partial.hbs" ,  scrollable: [".wounds-list-container"]},
-    inventory: { template: "systems/neuroshima/templates/actor/parts/actor-inventory.hbs", scrollable: [""]},
-    notes: { template: "systems/neuroshima/templates/actor/parts/actor-notes.hbs" }
+    attributes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs" },
+    skills: { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
+    tricks: { template: "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs" },
+    combat: { template: "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs",  scrollable: [""] },
+    combatPaperDoll: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll-partial.hbs" ,  scrollable: [".paper-doll-scrollable"]},
+    combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" ,  scrollable: [".wounds-list-container"]},
+    inventory: { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""]},
+    notes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 
   /** @inheritdoc */
@@ -133,6 +133,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     // Map owner and editable for templates
     context.owner = this.document.isOwner;
     context.editable = this.isEditable;
+    context.isGM = game.user.isGM;
 
     // Organize Items - Sort by 'sort' property to allow manual reordering
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
@@ -913,7 +914,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
               stat: finalStat,
               skill,
               penalties: {
-                mod: (NEUROSHIMA.difficulties[baseDiffKey]?.min || 0) + modifier,
+                mod: modifier,
+                base: (NEUROSHIMA.difficulties[baseDiffKey]?.min || 0),
                 armor: armorPenalty,
                 wounds: woundPenalty
               },
@@ -1582,21 +1584,21 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    */
   async _onConfigureHP(event, target) {
     const actor = this.document;
-    const currentMax = actor.system.hp?.max || 27;
     
-    const content = `
-      <div class="form-group standard-form" style="padding: 10px;">
-        <label>${game.i18n.localize("NEUROSHIMA.Dialog.MaxHP.Label")}</label>
-        <div class="form-fields">
-          <input type="number" name="maxHP" value="${currentMax}" min="1" style="width: 60px;">
-        </div>
-      </div>
-    `;
+    // Retrieve base multipliers or default to 1 crit (27 pts)
+    const hpConfig = actor.getFlag("neuroshima", "hpConfig") || {
+        critical: Math.floor((actor.system.hp?.max || 27) / 27) || 1,
+        heavy: 0,
+        light: 0,
+        scratch: 0
+    };
+
+    const content = await renderTemplate("systems/neuroshima/templates/dialog/hp-config.hbs", hpConfig);
 
     const result = await foundry.applications.api.DialogV2.wait({
       window: { 
         title: game.i18n.localize("NEUROSHIMA.Dialog.MaxHP.Title"),
-        position: { width: 300, height: "auto" }
+        position: { width: 320, height: "auto" }
       },
       content: content,
       buttons: [
@@ -1604,18 +1606,28 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
           action: "save",
           label: game.i18n.localize("NEUROSHIMA.Actions.Save"),
           default: true,
-          callback: (event, button, dialog) => new foundry.applications.ux.FormDataExtended(button.form).object.maxHP
+          callback: (event, button, dialog) => {
+              const formData = new foundry.applications.ux.FormDataExtended(button.form).object;
+              return {
+                  critical: parseInt(formData.critical) || 0,
+                  heavy: parseInt(formData.heavy) || 0,
+                  light: parseInt(formData.light) || 0,
+                  scratch: parseInt(formData.scratch) || 0
+              };
+          }
         },
         {
             action: "cancel",
             label: game.i18n.localize("NEUROSHIMA.Actions.Cancel")
         }
       ],
-      classes: ["neuroshima", "dialog"]
+      classes: ["neuroshima", "dialog", "hp-config"]
     });
 
-    if (result) {
-      await actor.update({ "system.hp.max": parseInt(result) });
+    if (result && typeof result === "object") {
+      const maxHP = (result.critical * 27) + (result.heavy * 9) + (result.light * 3) + (result.scratch * 1);
+      await actor.setFlag("neuroshima", "hpConfig", result);
+      await actor.update({ "system.hp.max": Math.max(1, maxHP) });
     }
   }
 

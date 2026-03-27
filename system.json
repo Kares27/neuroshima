@@ -48,7 +48,8 @@
         "trick",
         "ammo",
         "magazine",
-        "wound"
+        "wound",
+        "beast-action"
     ],
     "flags": {
         "hotReload": {

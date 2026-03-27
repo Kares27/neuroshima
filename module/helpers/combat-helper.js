@@ -824,24 +824,45 @@ export class CombatHelper {
       reducedDamageType: null
     };
 
-    // Get effective armor value at hit location (ratings - damage, must be equipped)
-    const equipedArmor = actor.items.filter(item => 
-      item.type === "armor" && item.system.equipped === true
-    );
-    
+    // Get effective armor value at hit location.
+    // For creatures (actor.type === "creature") use natural armor from the data model
+    // instead of equipped armor items.
     let totalArmorRating = 0;
-    for (const armor of equipedArmor) {
-      const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
-      const ratings = armor.system.armor?.ratings?.[location] || 0;
-      const damage = armor.system.armor?.damage?.[location] || 0;
-      
-      totalArmorRating += effectiveValue;
-      reductionData.armorDetails.push({
-        name: armor.name,
-        ratings,
-        damage,
-        effective: effectiveValue
-      });
+
+    if (actor.type === "creature" && actor.system.naturalArmor) {
+      const naturalPart = actor.system.naturalArmor[location];
+      if (naturalPart) {
+        const reduction = Number(naturalPart.reduction) || 0;
+        totalArmorRating = reduction;
+        if (reduction > 0) {
+          reductionData.armorDetails.push({
+            name: game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor"),
+            ratings: reduction,
+            damage: 0,
+            effective: reduction
+          });
+        }
+        // Weak point: damage is upgraded 1 tier when this location is targeted
+        if (naturalPart.weakPoint) {
+          const tiers = ["D", "L", "C", "K"];
+          const currentIdx = tiers.indexOf(damageType);
+          if (currentIdx !== -1 && currentIdx < tiers.length - 1) {
+            damageType = tiers[currentIdx + 1];
+            reductionData.originalDamage = damageType;
+          }
+        }
+      }
+    } else {
+      const equipedArmor = actor.items.filter(item =>
+        item.type === "armor" && item.system.equipped === true
+      );
+      for (const armor of equipedArmor) {
+        const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
+        const ratings = armor.system.armor?.ratings?.[location] || 0;
+        const damage  = armor.system.armor?.damage?.[location]  || 0;
+        totalArmorRating += effectiveValue;
+        reductionData.armorDetails.push({ name: armor.name, ratings, damage, effective: effectiveValue });
+      }
     }
 
     reductionData.totalArmor = totalArmorRating;

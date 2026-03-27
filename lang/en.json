@@ -825,13 +825,32 @@
                 "complete": "Complete Healing"
             }
         },
+        "Wounds": {
+            "None": "No wounds"
+        },
         "NPC": {
             "Threat": "Threat"
         },
         "Creature": {
             "Type": "Creature Type",
-            "Instinct": "Instinct",
-            "NaturalAttack": "Natural Attack"
+            "Aggression": "Aggression",
+            "Movement": "Movement (m)",
+            "NaturalArmor": "Natural Armor",
+            "NaturalArmor.Location": "Location",
+            "NaturalArmor.Reduction": "Damage Reduction",
+            "NaturalArmor.ReductionAbbr": "Red.",
+            "NaturalArmor.HitPenalty": "Hit Penalty (%)",
+            "NaturalArmor.HitPenaltyAbbr": "Pen.%",
+            "NaturalArmor.WeakPoint": "Weak Point",
+            "NaturalArmor.WeakPointAbbr": "Weak"
+        },
+        "BeastAction": {
+            "Label": "Beast Actions",
+            "SegmentCost": "Segments",
+            "SuccessCost": "Successes",
+            "Type.Attack": "Attack",
+            "Type.Special": "Special",
+            "Type.Reaction": "Reaction"
         },
         "Vehicle": {
             "Type": "Vehicle Type",
