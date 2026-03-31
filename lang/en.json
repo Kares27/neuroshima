@@ -848,6 +848,7 @@
         },
         "BeastAction": {
             "Label": "Beast Actions",
+            "None": "No beast actions.",
             "SegmentCost": "Segments",
             "SuccessCost": "Successes",
             "Type.Attack": "Attack",

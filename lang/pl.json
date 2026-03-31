@@ -875,6 +875,7 @@
         },
         "BeastAction": {
             "Label": "Akcje Bestii",
+            "None": "Brak akcji bestii.",
             "SegmentCost": "Segmenty",
             "SuccessCost": "Sukcesy",
             "Type.Attack": "Atak",

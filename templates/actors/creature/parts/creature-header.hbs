@@ -26,12 +26,13 @@
                 <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
             </div>
             <div class="stat-box hp-summary" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
+                {{#if isGM}}
+                <a class="hp-config-btn" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+                {{/if}}
                 <label>HP</label>
                 <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
-            </div>
-            <div class="stat-box">
-                <label>{{localize "NEUROSHIMA.Combat.MeleeInitiative"}}</label>
-                <div class="stat-value">{{combat.meleeInitiative}}</div>
             </div>
         </div>
     </div>

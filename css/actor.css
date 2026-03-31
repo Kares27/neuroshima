@@ -3217,34 +3217,90 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 4px;
 }
 
-.neuroshima.sheet.actor-creature .natural-armor-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8em;
+.neuroshima.sheet.actor-creature .nat-armor-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
 }
 
-.neuroshima.sheet.actor-creature .natural-armor-table th {
+.neuroshima.sheet.actor-creature .nat-armor-location-header {
+    gap: 4px;
+    padding: 3px 6px;
+    min-height: 26px;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-header-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-penalty-input {
+    width: 36px;
     text-align: center;
-    color: rgba(255,255,255,0.55);
-    font-weight: normal;
+    font-size: 0.85em;
+    padding: 1px 2px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 3px;
+    color: inherit;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-penalty-pct {
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin-left: 4px;
+    color: rgba(255,255,255,0.6);
+    transition: color 0.15s;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-label input[type="checkbox"] {
+    display: none;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-label input[type="checkbox"]:checked + i {
+    color: #f66;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-field-label {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.04em;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-reduction-input {
+    width: 48px;
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: bold;
     padding: 2px 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.neuroshima.sheet.actor-creature .natural-armor-table td {
-    text-align: center;
-    padding: 2px 3px;
-}
-
-.neuroshima.sheet.actor-creature .natural-armor-table .location-label {
-    text-align: left;
-    color: rgba(255,255,255,0.8);
-    padding-left: 2px;
-}
-
-.neuroshima.sheet.actor-creature .nat-armor-input {
-    width: 44px;
-    text-align: center;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 3px;
+    color: inherit;
 }
 
 .neuroshima.sheet.actor-creature .creature-actions-list {

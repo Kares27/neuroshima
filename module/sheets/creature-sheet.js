@@ -96,6 +96,48 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         const li   = target.closest("[data-item-id]");
         const item = this.document.items.get(li.dataset.itemId);
         if (item) await item.update({ "system.equipped": !item.system.equipped });
+      },
+
+      configureHP: async function() {
+        const actor  = this.document;
+        const current = actor.getFlag("neuroshima", "creatureMaxHP") || 27;
+
+        const content = await foundry.applications.handlebars.renderTemplate(
+          "systems/neuroshima/templates/dialog/hp-config.hbs",
+          { critical: Math.max(1, Math.round(current / 27)), heavy: 0, light: 0, scratch: 0 }
+        );
+
+        const result = await foundry.applications.api.DialogV2.wait({
+          window: {
+            title:    game.i18n.localize("NEUROSHIMA.Dialog.MaxHP.Title"),
+            position: { width: 320, height: "auto" }
+          },
+          content,
+          classes: ["neuroshima", "dialog", "hp-config"],
+          buttons: [
+            {
+              action: "save",
+              label:  game.i18n.localize("NEUROSHIMA.Actions.Save"),
+              default: true,
+              callback: (event, button) => {
+                const fd = new foundry.applications.ux.FormDataExtended(button.form).object;
+                return {
+                  critical: parseInt(fd.critical) || 0,
+                  heavy:    parseInt(fd.heavy)    || 0,
+                  light:    parseInt(fd.light)    || 0,
+                  scratch:  parseInt(fd.scratch)  || 0
+                };
+              }
+            },
+            { action: "cancel", label: game.i18n.localize("NEUROSHIMA.Actions.Cancel") }
+          ]
+        });
+
+        if (result && typeof result === "object") {
+          const maxHP = (result.critical * 27) + (result.heavy * 9) + (result.light * 3) + (result.scratch * 1);
+          await actor.setFlag("neuroshima", "creatureMaxHP", Math.max(1, maxHP));
+          this.render();
+        }
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -163,12 +205,13 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
 
     const totalArmorPenalty = system.combat?.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat?.totalWoundPenalty || 0;
+    const maxHP = actor.getFlag("neuroshima", "creatureMaxHP") || system.combat?.maxHP || 27;
     context.combat = {
       totalArmorPenalty,
       totalWoundPenalty,
       totalCombatPenalty: totalArmorPenalty + totalWoundPenalty,
       totalDamagePoints:  system.combat?.totalDamagePoints || 0,
-      maxHP:              system.combat?.maxHP || 27,
+      maxHP,
       meleeInitiative:    system.combat?.meleeInitiative || 0,
       wounds:             items.filter(i => i.type === "wound")
     };
