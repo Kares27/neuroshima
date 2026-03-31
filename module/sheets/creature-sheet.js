@@ -138,6 +138,39 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
           await actor.setFlag("neuroshima", "creatureMaxHP", Math.max(1, maxHP));
           this.render();
         }
+      },
+
+      modifyDurability: async function(event, target) {
+        const itemId = target.dataset.itemId;
+        const item   = this.document.items.get(itemId);
+        if (!item || item.type !== "armor") return;
+        const isRight    = event.type === "contextmenu";
+        const current    = item.system.armor?.durabilityDamage || 0;
+        const max        = item.system.armor?.durability || 0;
+        const newDamage  = Math.clamp(isRight ? current + 1 : current - 1, 0, max);
+        if (newDamage !== current) await item.update({ "system.armor.durabilityDamage": newDamage });
+      },
+
+      modifyAP: async function(event, target) {
+        const itemId   = target.dataset.itemId;
+        const location = target.dataset.location;
+        const item     = this.document.items.get(itemId);
+        if (!item || item.type !== "armor" || !location) return;
+        const isRight   = event.type === "contextmenu";
+        const current   = item.system.armor?.damage?.[location] || 0;
+        const max       = item.system.armor?.ratings?.[location] || 0;
+        const newDamage = Math.clamp(isRight ? current + 1 : current - 1, 0, max);
+        if (newDamage !== current) await item.update({ [`system.armor.damage.${location}`]: newDamage });
+      },
+
+      adjustQuantity: async function(event, target) {
+        const li   = target.closest("[data-item-id]");
+        const item = this.document.items.get(li?.dataset.itemId);
+        if (!item) return;
+        const isRight = event.type === "contextmenu";
+        const current = item.system.quantity ?? 1;
+        const next    = Math.max(0, isRight ? current - 1 : current + 1);
+        await item.update({ "system.quantity": next });
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -149,6 +182,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       tabs: [
         { id: "attributes", group: "primary", label: "NEUROSHIMA.Tabs.Attributes" },
         { id: "combat",     group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
+        { id: "inventory",  group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
         { id: "notes",      group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "attributes"
@@ -166,6 +200,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     attributes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs" },
     skills:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
     combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs" },
+    inventory:  { template: "systems/neuroshima/templates/actors/creature/parts/creature-inventory.hbs", scrollable: [""] },
     notes:      { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 
@@ -196,13 +231,17 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     context.skillGroups = this._prepareSkillGroups();
 
     const items = actor.items.contents;
+    const armorItems = items.filter(i => i.type === "armor");
     context.inventory = {
       weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      armor:          armorItems,
       beastActions:   items.filter(i => i.type === "beast-action"),
       beastManeuvers: items.filter(i => i.type === "beast-maneuver"),
       wounds:         items.filter(i => i.type === "wound")
     };
+
+    context.anatomicalArmor = this._prepareAnatomicalArmor(armorItems.filter(i => i.system.equipped));
 
     const totalArmorPenalty = system.combat?.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat?.totalWoundPenalty || 0;
@@ -301,9 +340,49 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "wound", "beast-action", "beast-maneuver"].includes(item.type)) {
+    if (["weapon", "armor", "wound", "beast-action", "beast-maneuver"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
+  }
+
+  /**
+   * Builds anatomical armor data (equipped armor items aggregated per body location).
+   * Mirrors the same method in NeuroshimaActorSheet.
+   * @param {Item[]} equippedArmor
+   * @returns {object}
+   */
+  _prepareAnatomicalArmor(equippedArmor) {
+    const locations = {};
+    for (const [key, data] of Object.entries(NEUROSHIMA.bodyLocations)) {
+      locations[key] = { label: data.label, items: [], totalAP: 0 };
+    }
+    for (const item of equippedArmor) {
+      const armor    = item.system.armor || {};
+      const ratings  = armor.ratings     || {};
+      const damages  = armor.damage      || {};
+      const durDamage   = armor.durabilityDamage || 0;
+      const durability  = armor.durability       || 0;
+      for (const [loc, rating] of Object.entries(ratings)) {
+        if (rating > 0 && locations[loc]) {
+          const locDamage   = damages[loc] || 0;
+          const currentAP   = Math.max(0, rating - locDamage);
+          const currentDur  = Math.max(0, durability - durDamage);
+          locations[loc].totalAP += currentAP;
+          locations[loc].items.push({
+            id:               item.id,
+            name:             item.name,
+            img:              item.img,
+            durability,
+            durabilityDamage: durDamage,
+            currentDurability: currentDur,
+            rating,
+            damage:           locDamage,
+            currentRating:    currentAP
+          });
+        }
+      }
+    }
+    return locations;
   }
 
   /**

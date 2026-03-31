@@ -3223,76 +3223,87 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 4px;
 }
 
-/* Body area for each natural armor box: horizontal row (reduction | penalty | weakpoint) */
+/* Body area for each natural armor box: single horizontal row, all cells same height */
 .neuroshima.sheet.actor-creature .nat-armor-body {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
-    gap: 8px;
-    padding: 6px 4px;
+    gap: 0;
+    padding: 0;
     flex: 1;
+    min-height: 38px;
 }
 
-/* Each field: label on top, input below */
+/* Each field: label | input stacked, separated by border */
 .neuroshima.sheet.actor-creature .nat-armor-field {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    justify-content: center;
+    gap: 1px;
+    flex: 1;
+    padding: 3px 4px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-field:last-child,
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle {
+    border-right: none;
 }
 
 .neuroshima.sheet.actor-creature .nat-armor-field-label {
-    font-size: 0.72em;
+    font-size: 0.68em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 0.03em;
     white-space: nowrap;
+    line-height: 1;
 }
 
-.neuroshima.sheet.actor-creature .nat-armor-reduction-input {
-    width: 44px;
-    text-align: center;
-    font-size: 1.05em;
-    font-weight: bold;
-    padding: 2px 4px;
-    background: rgba(0,0,0,0.35);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 3px;
-    color: inherit;
-}
-
+.neuroshima.sheet.actor-creature .nat-armor-reduction-input,
 .neuroshima.sheet.actor-creature .nat-armor-penalty-input {
-    width: 36px;
+    width: 38px;
     text-align: center;
-    font-size: 0.9em;
-    padding: 2px 4px;
+    font-size: 0.95em;
+    font-weight: bold;
+    padding: 1px 2px;
     background: rgba(0,0,0,0.35);
-    border: 1px solid rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.18);
     border-radius: 3px;
     color: inherit;
+    line-height: 1.4;
 }
 
-/* Weak point toggle — skull icon, red when enabled */
+/* Weak point toggle — hazard icon, orange/red when enabled */
 .neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    justify-content: center;
+    gap: 1px;
+    padding: 3px 4px;
     cursor: pointer;
-    color: rgba(255,255,255,0.35);
-    transition: color 0.15s;
-    font-size: 0.9em;
     user-select: none;
+    flex: 0 0 auto;
 }
 
 .neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"] {
     display: none;
 }
 
-.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"]:checked ~ i,
-.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"]:checked + i {
-    color: #e05050;
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-icon {
+    width: 18px;
+    height: 18px;
+    opacity: 0.3;
+    transition: opacity 0.15s, filter 0.15s;
+    filter: grayscale(1);
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"]:checked ~ .nat-armor-weakpoint-icon,
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"]:checked + .nat-armor-weakpoint-icon {
+    opacity: 1;
+    filter: none;
 }
 
 /* Shared item list style for both actions and maneuvers */
