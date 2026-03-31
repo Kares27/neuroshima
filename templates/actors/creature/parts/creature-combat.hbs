@@ -25,31 +25,28 @@
                         {{/if}}
                     </div>
 
-                    {{!-- Natural armor inputs: reduction | penalty | weakpoint --}}
-                    <div class="nat-armor-body">
-                        <div class="nat-armor-field">
-                            <span class="nat-armor-field-label"
-                                title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.Reduction'}}">
-                                {{localize "NEUROSHIMA.Creature.NaturalArmor.ReductionAbbr"}}
-                            </span>
-                            <input type="number"
-                                name="system.naturalArmor.{{this.key}}.reduction"
-                                value="{{this.reduction}}"
-                                min="0" step="0.5"
-                                class="nat-armor-reduction-input"/>
-                        </div>
+                    {{!-- Column labels as sub-header --}}
+                    <div class="nat-armor-col-headers">
+                        <span title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.Reduction'}}">{{localize "NEUROSHIMA.Creature.NaturalArmor.ReductionAbbr"}}</span>
+                        <span title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.HitPenalty'}}">{{localize "NEUROSHIMA.Creature.NaturalArmor.HitPenaltyAbbr"}}</span>
+                        <span title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.WeakPoint'}}"><img src="systems/neuroshima/assets/img/hazard-sign.svg" class="nat-armor-weakpoint-icon-hdr" alt="!"/></span>
+                    </div>
 
-                        <div class="nat-armor-field nat-armor-penalty-field">
-                            <span class="nat-armor-field-label"
-                                title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.HitPenalty'}}">
-                                {{localize "NEUROSHIMA.Creature.NaturalArmor.HitPenaltyAbbr"}}
-                            </span>
-                            <input type="number"
-                                name="system.naturalArmor.{{this.key}}.hitPenalty"
-                                value="{{this.hitPenalty}}"
-                                min="0" max="100"
-                                class="nat-armor-penalty-input"/>
-                        </div>
+                    {{!-- Inputs row --}}
+                    <div class="nat-armor-body">
+                        <input type="number"
+                            name="system.naturalArmor.{{this.key}}.reduction"
+                            value="{{this.reduction}}"
+                            min="0" step="0.5"
+                            class="nat-armor-reduction-input"
+                            title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.Reduction'}}"/>
+
+                        <input type="number"
+                            name="system.naturalArmor.{{this.key}}.hitPenalty"
+                            value="{{this.hitPenalty}}"
+                            min="0" max="100"
+                            class="nat-armor-penalty-input"
+                            title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.HitPenalty'}}"/>
 
                         <label class="nat-armor-weakpoint-toggle"
                             title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.WeakPoint'}}">
@@ -183,21 +180,42 @@
                 title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
         </div>
 
-        <ul class="item-list creature-wounds-list">
+        <div class="wounds-list-container creature-wounds-list">
             {{#each combat.wounds}}
-            <li class="item" data-item-id="{{this.id}}">
-                <span class="wound-type-badge">{{this.system.damageType}}</span>
-                <span class="item-name">{{this.name}}</span>
-                <span class="wound-penalty">-{{this.system.penalty}}%</span>
-                <span class="item-controls">
-                    <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
-                    <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
-                </span>
-            </li>
+            <div class="wound-item wound-item-inline item" data-item-id="{{this.id}}" draggable="true">
+                <div class="wound-item-content">
+                    {{#if ../owner}}
+                    <select name="items.{{this.id}}.system.damageType" class="wound-type-select"
+                        title="{{localize 'NEUROSHIMA.Items.Fields.DamageType'}}">
+                        {{selectOptions ../config.damageTypes selected=this.system.damageType localize=true}}
+                    </select>
+                    {{else}}
+                    <span class="wound-type">{{this.system.damageType}}</span>
+                    {{/if}}
+                    <span class="wound-item-name">{{this.name}}</span>
+                    {{#if ../owner}}
+                    <input type="number" name="items.{{this.id}}.system.penalty"
+                        value="{{this.system.penalty}}"
+                        class="wound-penalty-input" data-dtype="Number"
+                        min="0" max="100"
+                        title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}"/>
+                    {{else}}
+                    <span class="wound-penalty">{{this.system.penalty}}%</span>
+                    {{/if}}
+                    {{#if ../owner}}
+                    <div class="wound-inline-controls">
+                        <a class="item-control" data-action="editItem" data-item-id="{{this.id}}"
+                            title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
+                        <a class="item-control" data-action="deleteItem" data-item-id="{{this.id}}"
+                            title="{{localize 'DOCUMENT.Delete'}}"><i class="fas fa-trash"></i></a>
+                    </div>
+                    {{/if}}
+                </div>
+            </div>
             {{else}}
-            <li class="item-list-empty">{{localize "NEUROSHIMA.Wounds.None"}}</li>
+            <div class="item-list-empty">{{localize "NEUROSHIMA.Wounds.None"}}</div>
             {{/each}}
-        </ul>
+        </div>
     </div>
 
 </section>
