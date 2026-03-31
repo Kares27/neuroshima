@@ -879,7 +879,7 @@
             "Label": "Akcje Bestii",
             "None": "Brak akcji bestii.",
             "TypeLabel": "Typ akcji",
-            "CostType": "Typ kosztu",
+            "CostTypeLabel": "Typ kosztu",
             "CostType.Segment": "Segmenty",
             "CostType.Success": "Sukcesy",
             "SegmentCost": "Koszt segmentów",

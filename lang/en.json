@@ -852,7 +852,7 @@
             "Label": "Beast Actions",
             "None": "No beast actions.",
             "TypeLabel": "Action Type",
-            "CostType": "Cost Type",
+            "CostTypeLabel": "Cost Type",
             "CostType.Segment": "Segments",
             "CostType.Success": "Successes",
             "SegmentCost": "Segment Cost",
