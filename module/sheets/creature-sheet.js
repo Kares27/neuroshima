@@ -248,7 +248,17 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       wounds:         items.filter(i => i.type === "wound")
     };
 
-    context.anatomicalArmor = this._prepareAnatomicalArmor(armorItems.filter(i => i.system.equipped));
+    const anatomicalArmor = this._prepareAnatomicalArmor(armorItems.filter(i => i.system.equipped));
+
+    context.armorLocations = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => ({
+      key,
+      label:      game.i18n.localize(data.label),
+      reduction:  system.naturalArmor?.[key]?.reduction  ?? 0,
+      hitPenalty: system.naturalArmor?.[key]?.hitPenalty ?? 0,
+      weakPoint:  system.naturalArmor?.[key]?.weakPoint  ?? false,
+      items:      anatomicalArmor[key]?.items    ?? [],
+      totalAP:    anatomicalArmor[key]?.totalAP  ?? 0
+    }));
 
     const totalArmorPenalty = system.combat?.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat?.totalWoundPenalty || 0;
@@ -262,14 +272,6 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       meleeInitiative:    system.combat?.meleeInitiative || 0,
       wounds:             items.filter(i => i.type === "wound")
     };
-
-    context.naturalArmorParts = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => ({
-      key,
-      label:      game.i18n.localize(data.label),
-      reduction:  system.naturalArmor?.[key]?.reduction  ?? 0,
-      hitPenalty: system.naturalArmor?.[key]?.hitPenalty ?? 0,
-      weakPoint:  system.naturalArmor?.[key]?.weakPoint  ?? false
-    }));
 
     context.beastActionTypes = {
       attack:   game.i18n.localize("NEUROSHIMA.BeastAction.Type.Attack"),
