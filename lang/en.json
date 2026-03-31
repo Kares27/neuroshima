@@ -13,7 +13,9 @@
             "trick": "Trick",
             "ammo": "Ammo",
             "magazine": "Magazine",
-            "wound": "Wound"
+            "wound": "Wound",
+            "beast-action": "Beast Action",
+            "beast-maneuver": "Beast Maneuver"
         }
     },
     "NEUROSHIMA": {
@@ -849,11 +851,24 @@
         "BeastAction": {
             "Label": "Beast Actions",
             "None": "No beast actions.",
-            "SegmentCost": "Segments",
-            "SuccessCost": "Successes",
+            "TypeLabel": "Action Type",
+            "CostType": "Cost Type",
+            "CostType.Segment": "Segments",
+            "CostType.Success": "Successes",
+            "SegmentCost": "Segment Cost",
+            "SuccessCost": "Success Cost",
             "Type.Attack": "Attack",
             "Type.Special": "Special",
             "Type.Reaction": "Reaction"
+        },
+        "BeastManeuver": {
+            "Label": "Beast Maneuvers",
+            "None": "No beast maneuvers.",
+            "TypeLabel": "Maneuver Type",
+            "Difficulty": "Difficulty",
+            "Type.Offensive": "Offensive",
+            "Type.Defensive": "Defensive",
+            "Type.Special": "Special"
         },
         "Vehicle": {
             "Type": "Vehicle Type",

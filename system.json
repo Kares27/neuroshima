@@ -49,7 +49,8 @@
         "ammo",
         "magazine",
         "wound",
-        "beast-action"
+        "beast-action",
+        "beast-maneuver"
     ],
     "flags": {
         "hotReload": {

@@ -16,7 +16,9 @@
             "trick": "Sztuczka",
             "ammo": "Amunicja",
             "magazine": "Magazynek",
-            "wound": "Rana"
+            "wound": "Rana",
+            "beast-action": "Akcja Bestii",
+            "beast-maneuver": "Manewr Bestii"
         }
     },
     "NEUROSHIMA": {
@@ -876,11 +878,24 @@
         "BeastAction": {
             "Label": "Akcje Bestii",
             "None": "Brak akcji bestii.",
-            "SegmentCost": "Segmenty",
-            "SuccessCost": "Sukcesy",
+            "TypeLabel": "Typ akcji",
+            "CostType": "Typ kosztu",
+            "CostType.Segment": "Segmenty",
+            "CostType.Success": "Sukcesy",
+            "SegmentCost": "Koszt segmentów",
+            "SuccessCost": "Koszt sukcesów",
             "Type.Attack": "Atak",
             "Type.Special": "Specjalna",
             "Type.Reaction": "Reakcja"
+        },
+        "BeastManeuver": {
+            "Label": "Manewry Bestii",
+            "None": "Brak manewrów bestii.",
+            "TypeLabel": "Typ manewru",
+            "Difficulty": "Trudność",
+            "Type.Offensive": "Ofensywny",
+            "Type.Defensive": "Defensywny",
+            "Type.Special": "Specjalny"
         },
         "Vehicle": {
             "Type": "Typ Pojazdu",

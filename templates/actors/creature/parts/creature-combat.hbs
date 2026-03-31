@@ -1,41 +1,25 @@
 <section class="tab combat {{tabs.combat.cssClass}}" data-group="primary" data-tab="combat" data-application-part="combat">
 
-    {{!-- ===== Two-column: Natural Armor | Beast Actions ===== --}}
+    {{!-- ===== Two-column: Natural Armor | Beast Actions + Maneuvers ===== --}}
     <div class="creature-combat-columns">
 
-        {{!-- LEFT: Natural Armor — anatomical grid, one box per body part --}}
+        {{!-- LEFT: Natural Armor — same armor-location-box structure as actor-sheet --}}
         <div class="creature-combat-col">
             <div class="section-header">
                 <i class="fas fa-shield-alt"></i>
                 <span class="header-label">{{localize "NEUROSHIMA.Creature.NaturalArmor.Title"}}</span>
             </div>
 
-            <div class="armor-anatomical-grid nat-armor-grid">
+            <div class="armor-anatomical-grid creature-armor-grid">
                 {{#each naturalArmorParts}}
-                <div class="armor-location-box armor-{{this.key}}">
+                <div class="armor-location-box armor-{{this.key}} has-items">
 
-                    {{!-- Box header: location name | hit-penalty input | weak-point toggle --}}
-                    <div class="location-header nat-armor-location-header">
+                    {{!-- Box header: just the location name (matches actor-sheet .location-header) --}}
+                    <div class="location-header">
                         <span class="location-name">{{this.label}}</span>
-                        <div class="nat-armor-header-right">
-                            <input type="number"
-                                name="system.naturalArmor.{{this.key}}.hitPenalty"
-                                value="{{this.hitPenalty}}"
-                                min="0" max="100"
-                                class="nat-armor-penalty-input"
-                                title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.HitPenalty'}}"/>
-                            <span class="nat-armor-penalty-pct">%</span>
-                            <label class="nat-armor-weakpoint-label"
-                                title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.WeakPoint'}}">
-                                <input type="checkbox"
-                                    name="system.naturalArmor.{{this.key}}.weakPoint"
-                                    {{#if this.weakPoint}}checked{{/if}}/>
-                                <i class="fas fa-crosshairs"></i>
-                            </label>
-                        </div>
                     </div>
 
-                    {{!-- Box body: reduction value --}}
+                    {{!-- Box body: reduction | hit-penalty | weak-point toggle --}}
                     <div class="nat-armor-body">
                         <div class="nat-armor-field">
                             <span class="nat-armor-field-label"
@@ -48,6 +32,26 @@
                                 min="0" step="0.5"
                                 class="nat-armor-reduction-input"/>
                         </div>
+
+                        <div class="nat-armor-field nat-armor-penalty-field">
+                            <span class="nat-armor-field-label"
+                                title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.HitPenalty'}}">
+                                {{localize "NEUROSHIMA.Creature.NaturalArmor.HitPenaltyAbbr"}}
+                            </span>
+                            <input type="number"
+                                name="system.naturalArmor.{{this.key}}.hitPenalty"
+                                value="{{this.hitPenalty}}"
+                                min="0" max="100"
+                                class="nat-armor-penalty-input"/>
+                        </div>
+
+                        <label class="nat-armor-weakpoint-toggle"
+                            title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.WeakPoint'}}">
+                            <input type="checkbox"
+                                name="system.naturalArmor.{{this.key}}.weakPoint"
+                                {{#if this.weakPoint}}checked{{/if}}/>
+                            <i class="fas fa-skull"></i>
+                        </label>
                     </div>
 
                 </div>
@@ -55,8 +59,10 @@
             </div>
         </div>
 
-        {{!-- RIGHT: Beast Actions --}}
+        {{!-- RIGHT: Beast Actions + Beast Maneuvers stacked --}}
         <div class="creature-combat-col">
+
+            {{!-- Beast Actions --}}
             <div class="section-header">
                 <i class="fas fa-paw"></i>
                 <span class="header-label">{{localize "NEUROSHIMA.BeastAction.Label"}}</span>
@@ -74,8 +80,8 @@
                         <span class="action-type-badge action-type-{{this.system.actionType}}">
                             {{lookup ../beastActionTypes this.system.actionType}}
                         </span>
-                        <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastAction.SegmentCost'}}">
-                            {{this.system.segmentCost}}s
+                        <span class="action-cost" title="{{#if (eq this.system.costType 'success')}}{{localize 'NEUROSHIMA.BeastAction.SuccessCost'}}{{else}}{{localize 'NEUROSHIMA.BeastAction.SegmentCost'}}{{/if}}">
+                            {{#if (eq this.system.costType "success")}}{{this.system.successCost}}s+{{else}}{{this.system.segmentCost}}s{{/if}}
                         </span>
                     </span>
                     <span class="item-controls">
@@ -87,6 +93,39 @@
                 <li class="item-list-empty">{{localize "NEUROSHIMA.BeastAction.None"}}</li>
                 {{/each}}
             </ul>
+
+            {{!-- Beast Maneuvers --}}
+            <div class="section-header" style="margin-top: 10px;">
+                <i class="fas fa-route"></i>
+                <span class="header-label">{{localize "NEUROSHIMA.BeastManeuver.Label"}}</span>
+                <div class="header-controls">
+                    <a class="item-control" data-action="createItem" data-type="beast-maneuver"
+                        title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+                </div>
+            </div>
+
+            <ul class="item-list creature-maneuvers-list">
+                {{#each inventory.beastManeuvers}}
+                <li class="item" data-item-id="{{this.id}}">
+                    <span class="item-name">{{this.name}}</span>
+                    <span class="beast-action-meta">
+                        <span class="action-type-badge maneuver-type-{{this.system.maneuverType}}">
+                            {{lookup ../beastManeuverTypes this.system.maneuverType}}
+                        </span>
+                        <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastManeuver.Difficulty'}}">
+                            {{this.system.difficulty}}★
+                        </span>
+                    </span>
+                    <span class="item-controls">
+                        <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
+                        <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
+                    </span>
+                </li>
+                {{else}}
+                <li class="item-list-empty">{{localize "NEUROSHIMA.BeastManeuver.None"}}</li>
+                {{/each}}
+            </ul>
+
         </div>
     </div>
 

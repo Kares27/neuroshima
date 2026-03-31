@@ -233,7 +233,8 @@ export class WoundData extends foundry.abstract.TypeDataModel {
 
 /**
  * Data model for Beast Action items (special actions available to Creature actors).
- * Beast actions represent innate abilities, attacks or reactions tied to the creature.
+ * Beast actions are innate, non-countable abilities — no quantity or weight tracking.
+ * costType determines whether the action costs segments or successes.
  */
 export class BeastActionData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
@@ -244,8 +245,30 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
         initial: "attack",
         choices: ["attack", "special", "reaction"]
       }),
+      costType: new fields.StringField({
+        initial: "segment",
+        choices: ["segment", "success"]
+      }),
       segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
       successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 })
+    };
+  }
+}
+
+/**
+ * Data model for Beast Maneuver items (special combat maneuvers for Creature actors).
+ * Maneuvers are non-countable tactical options a creature can use in combat.
+ */
+export class BeastManeuverData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      maneuverType: new fields.StringField({
+        initial: "offensive",
+        choices: ["offensive", "defensive", "special"]
+      }),
+      difficulty: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 })
     };
   }
 }

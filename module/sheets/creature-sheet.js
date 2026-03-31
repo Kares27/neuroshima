@@ -197,10 +197,11 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
 
     const items = actor.items.contents;
     context.inventory = {
-      weaponsMelee:  items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
-      weaponsRanged: items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
-      beastActions:  items.filter(i => i.type === "beast-action"),
-      wounds:        items.filter(i => i.type === "wound")
+      weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
+      weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      beastActions:   items.filter(i => i.type === "beast-action"),
+      beastManeuvers: items.filter(i => i.type === "beast-maneuver"),
+      wounds:         items.filter(i => i.type === "wound")
     };
 
     const totalArmorPenalty = system.combat?.totalArmorPenalty || 0;
@@ -228,6 +229,12 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       attack:   game.i18n.localize("NEUROSHIMA.BeastAction.Type.Attack"),
       special:  game.i18n.localize("NEUROSHIMA.BeastAction.Type.Special"),
       reaction: game.i18n.localize("NEUROSHIMA.BeastAction.Type.Reaction")
+    };
+
+    context.beastManeuverTypes = {
+      offensive: game.i18n.localize("NEUROSHIMA.BeastManeuver.Type.Offensive"),
+      defensive: game.i18n.localize("NEUROSHIMA.BeastManeuver.Type.Defensive"),
+      special:   game.i18n.localize("NEUROSHIMA.BeastManeuver.Type.Special")
     };
 
     context.notes = {
@@ -294,7 +301,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "wound", "beast-action"].includes(item.type)) {
+    if (["weapon", "wound", "beast-action", "beast-maneuver"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }
