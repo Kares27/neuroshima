@@ -14,7 +14,7 @@
                 {{#each naturalArmorParts}}
                 <div class="armor-location-box armor-{{this.key}} has-items">
 
-                    {{!-- Box header: just the location name (matches actor-sheet .location-header) --}}
+                    {{!-- Box header: location name --}}
                     <div class="location-header">
                         <span class="location-name">{{this.label}}</span>
                     </div>
@@ -54,6 +54,59 @@
                         </label>
                     </div>
 
+                </div>
+                {{/each}}
+            </div>
+
+            {{!-- Equipped armor items anatomical grid (same structure as actor-sheet) --}}
+            <div class="section-header" style="margin-top: 10px;">
+                <i class="fas fa-shield-alt"></i>
+                <span class="header-label">{{localize "NEUROSHIMA.Items.Type.Armor"}}</span>
+                <div class="armor-penalty-total">
+                    <span>{{localize "NEUROSHIMA.Armor.TotalPenalty"}}: <strong>{{combat.totalArmorPenalty}}%</strong></span>
+                </div>
+            </div>
+
+            <div class="armor-anatomical-grid">
+                {{#each anatomicalArmor as |location key|}}
+                <div class="armor-location-box armor-{{key}} {{#if location.items.length}}has-items{{else}}empty{{/if}}">
+                    <div class="location-header">
+                        <span class="location-name">{{localize location.label}}</span>
+                        {{#if location.items.length}}
+                        <span class="location-ap-sum" title="{{localize "NEUROSHIMA.Armor.SumAP"}}">{{location.totalAP}}</span>
+                        {{/if}}
+                    </div>
+                    {{#if location.items.length}}
+                    <div class="armor-column-headers">
+                        <span class="armor-header-icon"></span>
+                        <span class="armor-header-name">{{localize "Name"}}</span>
+                        <span class="armor-header-dur">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span>
+                        <span class="armor-header-ap">AP</span>
+                    </div>
+                    <div class="location-armor-list">
+                        {{#each location.items as |armor|}}
+                        <div class="armor-item-row item" data-item-id="{{armor.id}}" draggable="true">
+                            <img src="{{armor.img}}" class="armor-icon-tiny" alt="{{armor.name}}">
+                            <span class="armor-name-tiny clickable" data-action="editItem">{{armor.name}}</span>
+                            <span class="armor-durability clickable {{#if (lt armor.currentDurability armor.durability)}}is-damaged{{/if}}"
+                                  data-action="modifyDurability"
+                                  data-item-id="{{armor.id}}"
+                                  title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
+                                {{armor.currentDurability}}
+                            </span>
+                            <span class="armor-ap-value clickable {{#if (lt armor.currentRating armor.rating)}}is-damaged{{/if}}"
+                                  data-action="modifyAP"
+                                  data-item-id="{{armor.id}}"
+                                  data-location="{{key}}"
+                                  title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
+                                {{armor.currentRating}}
+                            </span>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{else}}
+                    <div class="location-empty">{{localize "NEUROSHIMA.Armor.None"}}</div>
+                    {{/if}}
                 </div>
                 {{/each}}
             </div>

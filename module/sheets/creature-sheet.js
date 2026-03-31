@@ -235,7 +235,14 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     context.inventory = {
       weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      weaponsThrown:  items.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       armor:          armorItems,
+      gear:           items.filter(i => i.type === "gear"),
+      ammo:           items.filter(i => i.type === "ammo"),
+      magazines:      items.filter(i => i.type === "magazine").map(m => {
+        m.contentsReversed = [...(m.system.contents || [])].reverse();
+        return m;
+      }),
       beastActions:   items.filter(i => i.type === "beast-action"),
       beastManeuvers: items.filter(i => i.type === "beast-maneuver"),
       wounds:         items.filter(i => i.type === "wound")
@@ -340,7 +347,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "armor", "wound", "beast-action", "beast-maneuver"].includes(item.type)) {
+    if (["weapon", "armor", "gear", "ammo", "magazine", "wound", "beast-action", "beast-maneuver"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }
