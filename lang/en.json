@@ -360,7 +360,8 @@
         },
         "Combat": {
             "Combatants": "Combatants",
-            "Turn": "Turn"
+            "Turn": "Turn",
+            "MeleeInitiative": "Melee Initiative"
         },
         "MeleeOpposed": {
             "Title": "Melee Opposed",

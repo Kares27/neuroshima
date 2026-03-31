@@ -363,7 +363,8 @@
         },
         "Combat": {
             "Combatants": "Uczestnicy",
-            "Turn": "Tura"
+            "Turn": "Tura",
+            "MeleeInitiative": "Inicjatywa Wręcz"
         },
         "MeleeOpposed": {
             "Title": "Starcie Wręcz",

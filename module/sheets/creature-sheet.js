@@ -5,15 +5,18 @@ const { ActorSheetV2 } = foundry.applications.sheets;
 
 /**
  * Actor sheet for Creature actors (animals, mutants, monsters).
- * Uses the full attribute set with the same roll dialog as the character sheet.
- * Natural armor is configured per body part (reduction, hit penalty, weak point).
+ *
+ * Reuses the shared actor partials (attributes, skills, notes) so the layout
+ * is identical to the character / NPC sheets. The combat tab uses a dedicated
+ * creature-combat partial that shows natural armor, beast actions, and a
+ * simplified wounds list instead of the full healing-panel system.
  */
 export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   /** @override */
   static DEFAULT_OPTIONS = {
     tag: "form",
     classes: ["neuroshima", "sheet", "actor", "actor-creature"],
-    position: { width: 680, height: 600 },
+    position: { width: 720, height: 680 },
     window: { title: "NEUROSHIMA.Sheet.ActorCreature", resizable: true },
     form: { submitOnChange: true, submitOnClose: true, submitOnUnfocus: true },
     actions: {
@@ -24,11 +27,31 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
 
       rollAttribute: async function(event, target) {
         const attrKey = target.dataset.attribute;
-        const actor = this.document;
-        const system = actor.system;
+        const actor   = this.document;
+        const system  = actor.system;
         const attrValue = system.attributeTotals?.[attrKey] ?? (system.attributes[attrKey] || 0);
-        const label = game.i18n.localize(NEUROSHIMA.attributes[attrKey]?.label || attrKey);
+        const label     = game.i18n.localize(NEUROSHIMA.attributes[attrKey]?.label || attrKey);
         return NeuroshimaCreatureSheet._showRollDialog({ stat: attrValue, skill: 0, label, actor, isSkill: false });
+      },
+
+      rollSkill: async function(event, target) {
+        const skillKey = target.dataset.skill;
+        const actor    = this.document;
+        const system   = actor.system;
+
+        let attrKey = "";
+        for (const [aKey, specs] of Object.entries(NEUROSHIMA.skillConfiguration)) {
+          for (const skills of Object.values(specs)) {
+            if (skills.includes(skillKey)) { attrKey = aKey; break; }
+          }
+          if (attrKey) break;
+        }
+
+        const statValue  = system.attributeTotals?.[attrKey] ?? 0;
+        const skillValue = system.skills?.[skillKey]?.value ?? 0;
+        const label      = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: statValue, skill: skillValue, label, actor, isSkill: true, currentAttribute: attrKey });
       },
 
       toggleDifficulties: async function() {
@@ -45,7 +68,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       },
 
       rollWeapon: async function(event, target) {
-        const li = target.closest("[data-item-id]");
+        const li   = target.closest("[data-item-id]");
         const item = this.document.items.get(li?.dataset.itemId ?? target.dataset.itemId);
         if (!item) return;
         const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
@@ -70,7 +93,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       },
 
       toggleEquipped: async function(event, target) {
-        const li = target.closest("[data-item-id]");
+        const li   = target.closest("[data-item-id]");
         const item = this.document.items.get(li.dataset.itemId);
         if (item) await item.update({ "system.equipped": !item.system.equipped });
       }
@@ -90,11 +113,18 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     }
   };
 
-  /** @override */
+  /**
+   * PARTS reuse shared actor partials wherever possible so that visual style
+   * is identical to the character / NPC sheets.
+   * @override
+   */
   static PARTS = {
-    header: { template: "systems/neuroshima/templates/actors/creature/parts/creature-header.hbs" },
-    tabs:   { template: "templates/generic/tab-navigation.hbs" },
-    main:   { template: "systems/neuroshima/templates/actors/creature/creature-sheet.hbs" }
+    header:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-header.hbs" },
+    tabs:       { template: "templates/generic/tab-navigation.hbs" },
+    attributes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs" },
+    skills:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
+    combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs" },
+    notes:      { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 
   /** @inheritdoc */
@@ -116,10 +146,12 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     context.owner    = actor.isOwner;
     context.editable = this.isEditable;
     context.isGM     = game.user.isGM;
-    context.difficultiesCollapsed = this._difficultiesCollapsed;
-    context.difficulties          = NEUROSHIMA.difficulties;
 
-    context.attributeList = NEUROSHIMA.attributes;
+    context.attributeList         = NEUROSHIMA.attributes;
+    context.difficulties          = NEUROSHIMA.difficulties;
+    context.difficultiesCollapsed = this._difficultiesCollapsed;
+
+    context.skillGroups = this._prepareSkillGroups();
 
     const items = actor.items.contents;
     context.inventory = {
@@ -137,27 +169,24 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       totalCombatPenalty: totalArmorPenalty + totalWoundPenalty,
       totalDamagePoints:  system.combat?.totalDamagePoints || 0,
       maxHP:              system.combat?.maxHP || 27,
-      meleeInitiative:    system.combat?.meleeInitiative || 0
+      meleeInitiative:    system.combat?.meleeInitiative || 0,
+      wounds:             items.filter(i => i.type === "wound")
     };
 
-    // Build natural armor parts list for the combat tab table
-    const bodyParts = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => ({
+    context.naturalArmorParts = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => ({
       key,
       label:      game.i18n.localize(data.label),
       reduction:  system.naturalArmor?.[key]?.reduction  ?? 0,
       hitPenalty: system.naturalArmor?.[key]?.hitPenalty ?? 0,
       weakPoint:  system.naturalArmor?.[key]?.weakPoint  ?? false
     }));
-    context.naturalArmorParts = bodyParts;
 
-    // Beast action type labels
     context.beastActionTypes = {
       attack:   game.i18n.localize("NEUROSHIMA.BeastAction.Type.Attack"),
       special:  game.i18n.localize("NEUROSHIMA.BeastAction.Type.Special"),
       reaction: game.i18n.localize("NEUROSHIMA.BeastAction.Type.Reaction")
     };
 
-    // Enrich notes
     context.notes = {
       enriched: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes || "", {
         secrets: actor.isOwner,
@@ -167,6 +196,41 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     };
 
     return context;
+  }
+
+  /**
+   * Builds the skill-group data structure used by the shared actor-skills partial.
+   * Mirrors the same method in NeuroshimaActorSheet.
+   * @returns {object}
+   */
+  _prepareSkillGroups() {
+    const groups  = {};
+    const system  = this.document.system;
+    const skillCfg = NEUROSHIMA.skillConfiguration;
+
+    for (const [attrKey, specializations] of Object.entries(skillCfg)) {
+      const attrConfig = NEUROSHIMA.attributes[attrKey];
+      groups[attrKey] = {
+        label: attrConfig.label,
+        abbr:  attrConfig.abbr,
+        specializations: {}
+      };
+
+      for (const [specKey, skills] of Object.entries(specializations)) {
+        groups[attrKey].specializations[specKey] = {
+          label: `NEUROSHIMA.Specializations.${specKey}`,
+          owned: system.specializations?.[specKey] ?? false,
+          skills: skills.map(skillKey => ({
+            key:         skillKey,
+            label:       `NEUROSHIMA.Skills.${skillKey}`,
+            value:       system.skills?.[skillKey]?.value ?? 0,
+            customLabel: system.skills?.[skillKey]?.label ?? "",
+            isKnowledge: skillKey.startsWith("knowledge")
+          }))
+        };
+      }
+    }
+    return groups;
   }
 
   /** @private */
@@ -195,16 +259,16 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   /**
    * Universal roll dialog shared with the character sheet.
    * @param {object} opts
-   * @param {number} opts.stat
-   * @param {number} opts.skill
-   * @param {string} opts.label
-   * @param {Actor}  opts.actor
-   * @param {boolean} opts.isSkill
-   * @param {string} opts.currentAttribute
+   * @param {number}  opts.stat
+   * @param {number}  opts.skill
+   * @param {string}  opts.label
+   * @param {Actor}   opts.actor
+   * @param {boolean} [opts.isSkill=false]
+   * @param {string}  [opts.currentAttribute=""]
    */
   static async _showRollDialog({ stat, skill, label, actor, isSkill = false, currentAttribute = "" }) {
-    const template  = "systems/neuroshima/templates/dialog/roll-dialog.hbs";
-    const lastRoll  = actor.system.lastRoll || {};
+    const template     = "systems/neuroshima/templates/dialog/roll-dialog.hbs";
+    const lastRoll     = actor.system.lastRoll || {};
     const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
     const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
 
@@ -228,7 +292,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
 
     const dialog = new foundry.applications.api.DialogV2({
       window: {
-        title: `${game.i18n.localize("NEUROSHIMA.Actions.Roll")}: ${label}`,
+        title:    `${game.i18n.localize("NEUROSHIMA.Actions.Roll")}: ${label}`,
         position: { width: 450, height: isSkill ? 420 : 350 }
       },
       content,
@@ -236,20 +300,20 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       buttons: [
         {
           action: "roll",
-          label: game.i18n.localize("NEUROSHIMA.Actions.Roll"),
+          label:  game.i18n.localize("NEUROSHIMA.Actions.Roll"),
           default: true,
           callback: async (event, button) => {
-            const form = button.form;
+            const form        = button.form;
             const isOpen      = form.elements.isOpen.value === "true";
             const baseDiffKey = form.elements.baseDifficulty.value;
-            const modifier    = parseInt(form.elements.modifier.value) || 0;
+            const modifier    = parseInt(form.elements.modifier.value)    || 0;
             const rollMode    = form.elements.rollMode.value;
             const useArmor    = form.elements.useArmorPenalty.checked;
             const armorVal    = useArmor ? (parseInt(form.elements.armorPenalty.value) || 0) : 0;
             const useWound    = form.elements.useWoundPenalty.checked;
             const woundVal    = useWound ? (parseInt(form.elements.woundPenalty.value) || 0) : 0;
-            const skillBonus      = parseInt(form.elements.skillBonus.value) || 0;
-            const attributeBonus  = parseInt(form.elements.attributeBonus.value) || 0;
+            const skillBonus     = parseInt(form.elements.skillBonus.value)     || 0;
+            const attributeBonus = parseInt(form.elements.attributeBonus.value) || 0;
 
             let finalStat = stat;
             if (isSkill && form.elements.attribute) {
