@@ -18,7 +18,10 @@
             "magazine": "Magazynek",
             "wound": "Rana",
             "beast-action": "Akcja Bestii",
-            "beast-maneuver": "Manewr Bestii"
+            "beast-maneuver": "Manewr Bestii",
+            "specialization": "Specjalizacja",
+            "origin": "Pochodzenie",
+            "profession": "Profesja"
         }
     },
     "NEUROSHIMA": {
@@ -71,7 +74,9 @@
             "CritSuccess": "KRYTYCZNY SUKCES!",
             "CritFailure": "KRYTYCZNA PORAŻKA!",
             "OpenTest": "Test Otwarty",
+            "OpenTestShort": "Otwarty",
             "ClosedTest": "Test Zamknięty",
+            "ClosedTestShort": "Zamknięty",
             "Success": "Sukces",
             "Failure": "Porażka",
             "Jamming": "ZACIĘCIE",
@@ -110,9 +115,9 @@
             "TotalModifier": "Suma modyfikatorów",
             "FinalDifficulty": "Ostateczna Trudność",
             "SkillBonus": "Bonus do Umiejętności",
-            "SkillBonusAbbr": "Bon. do Umiejętności",
+            "SkillBonusAbbr": "Bon Umiej.",
             "AttributeBonus": "Bonus do Atrybutu",
-            "AttributeBonusAbbr": "Bon. do Atrybutu",
+            "AttributeBonusAbbr": "Bon Atr.",
             "CrowdingPenalty": "Kara za osaczenie (Zr)",
             "IncludeSkill": "Uwzględnij Umiejętność",
             "NoSkill": "Bez Umiejętności",
@@ -702,7 +707,10 @@
                 "Magazines": "Magazynki",
                 "Wound": "Rana",
                 "Beast-action": "Akcja Bestii",
-                "Beast-maneuver": "Manewr Bestii"
+                "Beast-maneuver": "Manewr Bestii",
+                "Specialization": "Specjalizacja",
+                "Origin": "Pochodzenie",
+                "Profession": "Profesja"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {

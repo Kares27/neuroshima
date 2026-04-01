@@ -272,3 +272,42 @@ export class BeastManeuverData extends foundry.abstract.TypeDataModel {
     };
   }
 }
+
+/**
+ * Data model for Specialization items.
+ * Represents a character specialization unlocked by training or background.
+ */
+export class SpecializationData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
+ * Data model for Origin items.
+ * Represents a character's place of origin or background story.
+ */
+export class OriginData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
+ * Data model for Profession items.
+ * Represents a character's profession or occupational background.
+ */
+export class ProfessionData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" })
+    };
+  }
+}

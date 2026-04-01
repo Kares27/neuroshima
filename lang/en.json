@@ -15,7 +15,10 @@
             "magazine": "Magazine",
             "wound": "Wound",
             "beast-action": "Beast Action",
-            "beast-maneuver": "Beast Maneuver"
+            "beast-maneuver": "Beast Maneuver",
+            "specialization": "Specialization",
+            "origin": "Origin",
+            "profession": "Profession"
         }
     },
     "NEUROSHIMA": {
@@ -68,7 +71,9 @@
             "CritSuccess": "CRITICAL SUCCESS!",
             "CritFailure": "CRITICAL FAILURE!",
             "OpenTest": "Open Test",
+            "OpenTestShort": "Open",
             "ClosedTest": "Closed Test",
+            "ClosedTestShort": "Closed",
             "Success": "Success",
             "Failure": "Failure",
             "Jamming": "JAMMING",
@@ -676,7 +681,10 @@
                 "Magazines": "Magazines",
                 "Wound": "Wound",
                 "Beast-action": "Beast Action",
-                "Beast-maneuver": "Beast Maneuver"
+                "Beast-maneuver": "Beast Maneuver",
+                "Specialization": "Specialization",
+                "Origin": "Origin",
+                "Profession": "Profession"
             },
             "Empty": "No items.",
             "Fields": {
