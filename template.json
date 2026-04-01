@@ -7,7 +7,7 @@
     "vehicle": {}
   },
   "Item": {
-    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver"],
+    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession"],
     "weapon": {},
     "armor": {},
     "gear": {},
