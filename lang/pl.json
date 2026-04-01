@@ -700,8 +700,11 @@
                 "Ammo": "Amunicja",
                 "Magazine": "Magazynek",
                 "Magazines": "Magazynki",
-                "Wound": "Rana"
+                "Wound": "Rana",
+                "Beast-action": "Akcja Bestii",
+                "Beast-maneuver": "Manewr Bestii"
             },
+            "Empty": "Brak przedmiotów.",
             "Fields": {
                 "Weight": "Waga",
                 "Cost": "Koszt",
@@ -880,22 +883,28 @@
             "None": "Brak akcji bestii.",
             "TypeLabel": "Typ akcji",
             "CostTypeLabel": "Typ kosztu",
-            "CostType.Segment": "Segmenty",
-            "CostType.Success": "Sukcesy",
+            "CostType": {
+                "Segment": "Segmenty",
+                "Success": "Sukcesy"
+            },
             "SegmentCost": "Koszt segmentów",
             "SuccessCost": "Koszt sukcesów",
-            "Type.Attack": "Atak",
-            "Type.Special": "Specjalna",
-            "Type.Reaction": "Reakcja"
+            "Type": {
+                "Attack": "Atak",
+                "Special": "Specjalna",
+                "Reaction": "Reakcja"
+            }
         },
         "BeastManeuver": {
             "Label": "Manewry Bestii",
             "None": "Brak manewrów bestii.",
             "TypeLabel": "Typ manewru",
             "Difficulty": "Trudność",
-            "Type.Offensive": "Ofensywny",
-            "Type.Defensive": "Defensywny",
-            "Type.Special": "Specjalny"
+            "Type": {
+                "Offensive": "Ofensywny",
+                "Defensive": "Defensywny",
+                "Special": "Specjalny"
+            }
         },
         "Vehicle": {
             "Type": "Typ Pojazdu",

@@ -108,6 +108,21 @@
 
             <ul class="item-list creature-actions-list">
                 {{#each inventory.beastActions}}
+                {{#if this.system.weaponType}}
+                <li class="item item-weapon-action" data-item-id="{{this.id}}">
+                    <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
+                    <span class="item-name">{{this.name}}</span>
+                    <span class="beast-action-meta">
+                        <span class="action-type-badge action-type-attack">
+                            {{localize "NEUROSHIMA.Items.Fields.WeaponSubtype"}}
+                        </span>
+                    </span>
+                    <span class="item-controls">
+                        <a data-action="rollWeapon" data-item-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Actions.Roll'}}"><i class="fas fa-dice"></i></a>
+                        <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
+                    </span>
+                </li>
+                {{else}}
                 <li class="item" data-item-id="{{this.id}}">
                     <span class="item-name">{{this.name}}</span>
                     <span class="beast-action-meta">
@@ -123,6 +138,7 @@
                         <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
                     </span>
                 </li>
+                {{/if}}
                 {{else}}
                 <li class="item-list-empty">{{localize "NEUROSHIMA.BeastAction.None"}}</li>
                 {{/each}}

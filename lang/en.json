@@ -674,8 +674,11 @@
                 "Ammo": "Ammo",
                 "Magazine": "Magazine",
                 "Magazines": "Magazines",
-                "Wound": "Wound"
+                "Wound": "Wound",
+                "Beast-action": "Beast Action",
+                "Beast-maneuver": "Beast Maneuver"
             },
+            "Empty": "No items.",
             "Fields": {
                 "Weight": "Weight",
                 "Cost": "Cost",
@@ -853,22 +856,28 @@
             "None": "No beast actions.",
             "TypeLabel": "Action Type",
             "CostTypeLabel": "Cost Type",
-            "CostType.Segment": "Segments",
-            "CostType.Success": "Successes",
+            "CostType": {
+                "Segment": "Segments",
+                "Success": "Successes"
+            },
             "SegmentCost": "Segment Cost",
             "SuccessCost": "Success Cost",
-            "Type.Attack": "Attack",
-            "Type.Special": "Special",
-            "Type.Reaction": "Reaction"
+            "Type": {
+                "Attack": "Attack",
+                "Special": "Special",
+                "Reaction": "Reaction"
+            }
         },
         "BeastManeuver": {
             "Label": "Beast Maneuvers",
             "None": "No beast maneuvers.",
             "TypeLabel": "Maneuver Type",
             "Difficulty": "Difficulty",
-            "Type.Offensive": "Offensive",
-            "Type.Defensive": "Defensive",
-            "Type.Special": "Special"
+            "Type": {
+                "Offensive": "Offensive",
+                "Defensive": "Defensive",
+                "Special": "Special"
+            }
         },
         "Vehicle": {
             "Type": "Vehicle Type",

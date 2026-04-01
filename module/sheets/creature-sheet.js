@@ -248,6 +248,9 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
 
     const items = actor.items.contents;
     const armorItems = items.filter(i => i.type === "armor");
+    const equippedWeapons = items.filter(i => i.type === "weapon" && i.system.equipped &&
+      (i.system.weaponType === "melee" || i.system.weaponType === "ranged" || i.system.weaponType === "thrown"));
+
     context.inventory = {
       weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
@@ -259,7 +262,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         m.contentsReversed = [...(m.system.contents || [])].reverse();
         return m;
       }),
-      beastActions:   items.filter(i => i.type === "beast-action"),
+      beastActions:   [...items.filter(i => i.type === "beast-action"), ...equippedWeapons],
       beastManeuvers: items.filter(i => i.type === "beast-maneuver"),
       wounds:         items.filter(i => i.type === "wound")
     };
@@ -502,5 +505,77 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     });
 
     dialog.render(true);
+
+    setTimeout(() => {
+      const html = $(dialog.element);
+
+      const updateSummary = () => {
+        const isOpen      = html.find('[name="isOpen"]').val() === "true";
+        const baseDiffKey = html.find('[name="baseDifficulty"]').val();
+        const modifier    = parseInt(html.find('[name="modifier"]').val()) || 0;
+        const useArmor    = html.find('[name="useArmorPenalty"]').is(':checked');
+        const armorPenalty = useArmor ? (parseInt(html.find('[name="armorPenalty"]').val()) || 0) : 0;
+        const useWound    = html.find('[name="useWoundPenalty"]').is(':checked');
+        const woundPenalty = useWound ? (parseInt(html.find('[name="woundPenalty"]').val()) || 0) : 0;
+        const skillBonus     = parseInt(html.find('[name="skillBonus"]').val())     || 0;
+        const attributeBonus = parseInt(html.find('[name="attributeBonus"]').val()) || 0;
+
+        const totalSkill  = (skill || 0) + skillBonus;
+        const skillShift  = NeuroshimaDice.getSkillShift(totalSkill);
+
+        let currentStatValue = stat;
+        if (isSkill && html.find('[name="attribute"]').length) {
+          const selectedAttr = html.find('[name="attribute"]').val();
+          currentStatValue = actor.system.attributeTotals?.[selectedAttr] ?? stat;
+        }
+        const finalStat = currentStatValue + attributeBonus;
+
+        const baseDiff    = NEUROSHIMA.difficulties[baseDiffKey];
+        const totalPenalty = (baseDiff?.min || 0) + modifier + armorPenalty + woundPenalty;
+        const penaltyDiff = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
+        const finalDiff   = NeuroshimaDice._getShiftedDifficulty(penaltyDiff, -skillShift);
+        const finalTarget = finalStat + (finalDiff.mod || 0);
+
+        html.find('.total-modifier').text(`${totalPenalty}%`);
+        html.find('.final-difficulty').text(game.i18n.localize(finalDiff.label));
+        html.find('.final-target').text(finalTarget);
+      };
+
+      html.on('change input', 'input, select', updateSummary);
+      updateSummary();
+    }, 100);
+  }
+
+  /** @override */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    const html = this.element;
+
+    html.querySelectorAll('[data-action="modifyDurability"]').forEach(el => {
+      el.addEventListener('contextmenu', async (event) => {
+        event.preventDefault();
+        const itemId  = event.currentTarget.dataset.itemId;
+        const item    = this.document.items.get(itemId);
+        if (!item || item.type !== "armor") return;
+        const current   = item.system.armor?.durabilityDamage || 0;
+        const max       = item.system.armor?.durability       || 0;
+        const newDamage = Math.clamp(current + 1, 0, max);
+        if (newDamage !== current) await item.update({ "system.armor.durabilityDamage": newDamage });
+      });
+    });
+
+    html.querySelectorAll('[data-action="modifyAP"]').forEach(el => {
+      el.addEventListener('contextmenu', async (event) => {
+        event.preventDefault();
+        const itemId   = event.currentTarget.dataset.itemId;
+        const location = event.currentTarget.dataset.location;
+        const item     = this.document.items.get(itemId);
+        if (!item || item.type !== "armor" || !location) return;
+        const current   = item.system.armor?.damage?.[location]   || 0;
+        const max       = item.system.armor?.ratings?.[location]  || 0;
+        const newDamage = Math.clamp(current + 1, 0, max);
+        if (newDamage !== current) await item.update({ [`system.armor.damage.${location}`]: newDamage });
+      });
+    });
   }
 }
