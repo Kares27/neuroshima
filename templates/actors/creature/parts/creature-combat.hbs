@@ -163,24 +163,41 @@
         </div>
     </div>
 
-    {{!-- ===== Wounds — simplified list below both columns ===== --}}
-    <div class="creature-wounds-section">
+    {{!-- ===== Wounds — full table matching actor-sheet style ===== --}}
+    <section class="combat-section wounds-section creature-wounds-section">
         <div class="section-header">
-            <i class="fas fa-crutch"></i>
-            <span class="header-label">{{localize "NEUROSHIMA.Items.Type.Wound"}}</span>
-            <div class="wound-summary">
-                <span class="penalty-sum" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}">
-                    <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
-                </span>
+            <div class="header-title">
+                <i class="fas fa-crutch"></i>
+                <span>{{localize "NEUROSHIMA.Items.Type.Wound"}}</span>
+            </div>
+
+            <div class="wound-stats-total">
                 <span class="hp-sum" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
                     <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
                 </span>
+                <span class="penalty-sum" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}">
+                    <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                </span>
             </div>
-            <a class="item-control" data-action="createItem" data-type="wound"
-                title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+
+            <div class="header-actions">
+                {{#if owner}}
+                <a class="item-control" data-action="rest" title="{{localize 'NEUROSHIMA.Actions.Rest'}}">
+                    <i class="fas fa-bed"></i>
+                </a>
+                {{#if @root.game.user.isGM}}
+                <a class="item-control" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+                {{/if}}
+                <a class="item-control" data-action="createItem" data-type="wound" title="{{localize 'DOCUMENT.Create'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
+                {{/if}}
+            </div>
         </div>
 
-        <div class="combat-table wounds-table creature-wounds-list">
+        <div class="combat-table wounds-table">
             <div class="table-header">
                 <div class="col-name">{{localize "Name"}}</div>
                 <div class="col-location">{{localize "NEUROSHIMA.Items.Fields.Location"}}</div>
@@ -191,7 +208,7 @@
             {{#each combat.wounds}}
             <div class="table-row item" data-item-id="{{this.id}}" data-uuid="{{this.uuid}}" draggable="true">
                 <div class="col-name item-name clickable" data-action="editItem">
-                    <img src="{{this.img}}" title="{{this.name}}" width="20" height="20"/>
+                    <img src="{{this.img}}" title="{{this.name}}" width="24" height="24"/>
                     <span>{{this.name}}</span>
                 </div>
                 <div class="col-location">
@@ -221,6 +238,6 @@
             <div class="item-list-empty">{{localize "NEUROSHIMA.Wounds.None"}}</div>
             {{/each}}
         </div>
-    </div>
+    </section>
 
 </section>

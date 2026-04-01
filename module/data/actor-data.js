@@ -232,6 +232,7 @@ export class NeuroshimaNPCData extends NeuroshimaActorData {
 export class NeuroshimaCreatureData extends NeuroshimaActorData {
   /** @override */
   static defineSchema() {
+    const parentSchema = super.defineSchema();
     const fields = foundry.data.fields;
 
     /** Per-body-part natural armor entry. */
@@ -242,6 +243,7 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
     });
 
     return {
+      ...parentSchema,
       creatureType: new fields.StringField({ initial: "" }),
       aggression:   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       movement:     new fields.NumberField({ integer: true, initial: 0, min: 0 }),

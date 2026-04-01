@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
+import { RestDialog } from "../apps/rest-dialog.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 
@@ -177,6 +178,15 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         const li   = target.closest("[data-item-id]");
         const item = this.document.items.get(li?.dataset.itemId);
         if (item?.type === "wound") await item.update({ "system.isHealing": !item.system.isHealing });
+      },
+
+      rest: async function() {
+        const { CombatHelper } = await import("../helpers/combat-helper.js");
+        const restData = await RestDialog.wait();
+        if (restData && typeof restData === "object" && restData.days !== undefined) {
+          await CombatHelper.rest(this.document, restData);
+          this.render();
+        }
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -205,7 +215,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     tabs:       { template: "templates/generic/tab-navigation.hbs" },
     attributes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs" },
     skills:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
-    combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs" },
+    combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs", scrollable: [".creature-actions-list", ".creature-maneuvers-list"] },
     inventory:  { template: "systems/neuroshima/templates/actors/creature/parts/creature-inventory.hbs", scrollable: [""] },
     notes:      { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };

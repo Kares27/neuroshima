@@ -3318,6 +3318,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     display: flex;
     flex-direction: column;
     gap: 3px;
+    height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .neuroshima.sheet.actor-creature .creature-actions-list .item,
@@ -3371,6 +3374,12 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima.sheet.actor-creature .creature-wounds-section {
     margin-top: 12px;
+}
+
+.neuroshima.sheet.actor-creature .wounds-section .section-header {
+    border-bottom: 1px solid var(--ns-border-main);
+    padding: 4px 0;
+    margin-bottom: 0;
 }
 
 /* Creature wounds table — extend actor-sheet combat-table/wounds-table styles */
