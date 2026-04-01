@@ -171,6 +171,12 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         const current = item.system.quantity ?? 1;
         const next    = Math.max(0, isRight ? current - 1 : current + 1);
         await item.update({ "system.quantity": next });
+      },
+
+      toggleHealing: async function(event, target) {
+        const li   = target.closest("[data-item-id]");
+        const item = this.document.items.get(li?.dataset.itemId);
+        if (item?.type === "wound") await item.update({ "system.isHealing": !item.system.isHealing });
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
