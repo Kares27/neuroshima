@@ -5,7 +5,7 @@
     <div class="header-details flexcol">
         <div class="item-subtitle flexrow">
             <h4 class="item-type">{{localize typeLabel}}</h4>
-            {{#unless (or (eq item.type "wound") (eq item.type "beast-action") (eq item.type "beast-maneuver") (eq item.type "specialization") (eq item.type "origin") (eq item.type "profession"))}}
+            {{#unless isNonCountable}}
             <div class="item-qty flexrow">
                 <input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" title="{{localize 'NEUROSHIMA.Items.Fields.Quantity'}}"/>
                 <div class="qty-x">×</div>
@@ -18,7 +18,7 @@
             </h1>
         </div>
         <div class="item-header-stats flexrow">
-            {{#unless (or (eq item.type "wound") (eq item.type "beast-action") (eq item.type "beast-maneuver") (eq item.type "specialization") (eq item.type "origin") (eq item.type "profession"))}}
+            {{#unless isNonCountable}}
             {{#if enableEncumbrance}}
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Weight"}}</label>

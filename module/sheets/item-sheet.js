@@ -101,6 +101,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.owner = item.isOwner;
     context.editable = this.isEditable;
 
+    // Non-countable item types have no quantity, cost, or weight
+    const NON_COUNTABLE = ["wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession"];
+    context.isNonCountable = NON_COUNTABLE.includes(item.type);
+
     // Prepare type label
     let typeLabelKey = item.type.charAt(0).toUpperCase() + item.type.slice(1);
     if (item.type === "weapon" && item.system.weaponType) {
