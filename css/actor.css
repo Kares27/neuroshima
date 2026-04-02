@@ -377,7 +377,7 @@
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
-    margin-top: 10px;
+    margin-top: 2px;
 }
 
 .neuroshima.sheet.actor [data-application-part="tricks"].active {
@@ -498,7 +498,8 @@
 }
 
 .neuroshima.sheet.actor .label-column {
-    width: 180px;
+    width: auto;
+    white-space: nowrap;
     text-align: left !important;
     padding-left: 8px !important;
     font-weight: bold;
@@ -509,6 +510,10 @@
     padding: 0 !important;
 }
 
+.neuroshima.sheet.actor .difficulties-toggle-wrapper {
+    margin-top: 0;
+}
+
 .neuroshima.sheet.actor .toggle-difficulties-btn {
     width: 100%;
     background: var(--ns-bg-input);
@@ -517,7 +522,7 @@
     font-weight: bold;
     text-transform: uppercase;
     cursor: pointer;
-    padding: 6px;
+    padding: 3px 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -527,6 +532,28 @@
 .neuroshima.sheet.actor .toggle-difficulties-btn:hover {
     background: var(--ns-bg-header);
     color: red;
+}
+
+.neuroshima.sheet.actor .difficulties-table {
+    margin-top: 0;
+}
+
+.neuroshima.sheet.actor .attributes-table {
+    margin-bottom: 0;
+}
+
+.neuroshima.sheet.actor .skill-table {
+    margin-top: 0;
+}
+
+.neuroshima.sheet.actor .attr-section-label-row td {
+    background: var(--ns-bg-header);
+    padding: 3px 8px;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    border-bottom: 1px solid var(--ns-border-main);
 }
 
 .neuroshima.sheet.actor .difficulty-row td {
@@ -3486,3 +3513,44 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima.sheet.actor-creature .text-center { text-align: center; }
+
+.neuroshima.sheet.actor-creature .creature-attributes-table table {
+    width: 100%;
+}
+
+.neuroshima.sheet.actor-creature .creature-attributes-table .attribute-header-cell {
+    text-align: center;
+}
+
+
+.neuroshima.sheet.actor-creature .creature-skill-section {
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.actor-creature .creature-skill-row {
+    display: flex;
+    gap: 16px;
+    padding: 6px 10px;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-top: none;
+}
+
+.neuroshima.sheet.actor-creature .creature-skill-col {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor-creature .creature-skill-col label {
+    font-size: 0.85em;
+    font-weight: bold;
+    white-space: nowrap;
+    color: var(--ns-text-muted, rgba(255,255,255,0.75));
+}
+
+.neuroshima.sheet.actor-creature .creature-stat-input {
+    width: 60px;
+    text-align: center;
+}

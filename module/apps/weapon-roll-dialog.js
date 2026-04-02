@@ -275,7 +275,10 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     
     if (allowCombatShift && !isMelee) {
         const skillKey = this.weapon.system.skill;
-        const baseSkillValue = skillKey ? (this.actor.system.skills[skillKey]?.value || 0) : 0;
+        const isCreature = this.actor?.type === "creature";
+        const baseSkillValue = (skillKey && skillKey !== "none")
+            ? ((skillKey === "experience" && isCreature) ? (this.actor.system.experience ?? 0) : (this.actor.system.skills[skillKey]?.value || 0))
+            : 0;
         const skillBonus = parseInt(formData.skillBonus) || 0;
         let skillValue = baseSkillValue + skillBonus;
         
@@ -310,7 +313,11 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
     if (allowCombatShift && !isMelee) {
         const skillKey = this.weapon.system.skill;
-        let skillValue = (this.actor.system.skills[skillKey]?.value || 0) + (parseInt(formData.skillBonus) || 0);
+        const isCreature2 = this.actor?.type === "creature";
+        const baseSkill2 = (skillKey && skillKey !== "none")
+            ? ((skillKey === "experience" && isCreature2) ? (this.actor.system.experience ?? 0) : (this.actor.system.skills[skillKey]?.value || 0))
+            : 0;
+        let skillValue = baseSkill2 + (parseInt(formData.skillBonus) || 0);
         
         if (bonusMode === "skill" || bonusMode === "both") {
             skillValue += weaponBonus;

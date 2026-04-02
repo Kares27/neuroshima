@@ -48,7 +48,12 @@ export class NeuroshimaDice {
 
     // 1. Pobranie wartości atrybutu i umiejętności
     const attrValue = Number(actor.system.attributeTotals[attribute]) || 10;
-    const skillValue = useSkill ? (Number(actor.system.skills[skill]?.value) || 0) : 0;
+    const isCreatureActor = actor?.type === "creature";
+    const skillValue = useSkill
+        ? (skill === "experience" && isCreatureActor
+            ? (actor.system.experience ?? 0)
+            : (Number(actor.system.skills[skill]?.value) || 0))
+        : 0;
     
     // 2. Kalkulacja kar (%)
     const basePenalty = NEUROSHIMA.difficulties[difficulty]?.min || 0;
@@ -384,8 +389,12 @@ export class NeuroshimaDice {
     
     let skillValue = 0;
     const skillKey = weapon.system.skill;
-    if (skillKey) {
-        skillValue = (actor.system.skills[skillKey]?.value || 0) + skillBonus;
+    if (skillKey && skillKey !== "none") {
+        const isCreature = actor?.type === "creature";
+        const baseSkill = (skillKey === "experience" && isCreature)
+            ? (actor.system.experience ?? 0)
+            : (actor.system.skills[skillKey]?.value || 0);
+        skillValue = baseSkill + skillBonus;
         
         // Bonus broni do umiejętności (tylko w melee i jeśli ustawienie na to pozwala)
         if (isMelee) {

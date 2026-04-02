@@ -14,6 +14,10 @@
                 <label>{{localize "NEUROSHIMA.Creature.Aggression"}}</label>
                 <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
             </div>
+            <div class="header-field header-field-checkbox">
+                <label>{{localize "NEUROSHIMA.Creature.BerserkerMode"}}</label>
+                <input type="checkbox" name="system.isBerserker" {{checked system.isBerserker}}/>
+            </div>
             <div class="header-field">
                 <label>{{localize "NEUROSHIMA.Creature.Movement"}}</label>
                 <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>

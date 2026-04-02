@@ -129,12 +129,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     // Skill and Magazine filtering
     if (item.type === "weapon") {
+      const isCreature = item.actor?.type === "creature";
       const selectedAttr = item.system.attribute || "dexterity";
       const skillGroups = NEUROSHIMA.skillConfiguration[selectedAttr] || {};
       const skills = {};
-      for (const [spec, skillList] of Object.entries(skillGroups)) {
-        for (const skill of skillList) {
-          skills[skill] = `NEUROSHIMA.Skills.${skill}`;
+      if (isCreature) {
+        skills["experience"] = "NEUROSHIMA.Creature.Experience";
+        skills["none"] = "NEUROSHIMA.Items.Fields.None";
+      } else {
+        for (const [spec, skillList] of Object.entries(skillGroups)) {
+          for (const skill of skillList) {
+            skills[skill] = `NEUROSHIMA.Skills.${skill}`;
+          }
         }
       }
       context.availableSkills = skills;

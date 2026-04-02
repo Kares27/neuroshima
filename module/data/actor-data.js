@@ -247,6 +247,9 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
       creatureType: new fields.StringField({ initial: "" }),
       aggression:   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       movement:     new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      isBerserker: new fields.BooleanField({ initial: false }),
+      experience: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      kondycja:   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       naturalArmor: new fields.SchemaField({
         head:     naturalArmorPart(),
         torso:    naturalArmorPart(),

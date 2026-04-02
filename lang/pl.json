@@ -873,7 +873,14 @@
         "Creature": {
             "Type": "Typ Stworzenia",
             "Aggression": "Agresja",
+            "BerserkerMode": "Tryb Berserkera",
             "Movement": "Ruch",
+            "Stats": "Statystyki",
+            "Experience": "Doświadczenie",
+            "ExperiencePoints": "Pkt. Doświadczenia",
+            "ExperienceHint": "Używane zamiast skilli jako ogólna premia do testów",
+            "Kondycja": "Kondycja",
+            "KondycjaHint": "Ogólna wytrzymałość fizyczna stworzenia",
             "NaturalArmor":
             {
             "Title": "Naturalne Opancerzenie",

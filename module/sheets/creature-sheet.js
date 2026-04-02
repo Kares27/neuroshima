@@ -72,6 +72,86 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         const li   = target.closest("[data-item-id]");
         const item = this.document.items.get(li?.dataset.itemId ?? target.dataset.itemId);
         if (!item) return;
+
+        if (item.system.weaponType === "melee") {
+          const meleeCombatType = game.settings.get("neuroshima", "meleeCombatType") || "default";
+          if (meleeCombatType !== "default") {
+            const labelKey = meleeCombatType === "opposedPips"
+              ? "NEUROSHIMA.Settings.MeleeCombatType.OpposedPips"
+              : "NEUROSHIMA.Settings.MeleeCombatType.OpposedSuccesses";
+            ui.notifications.info(
+              game.i18n.format("NEUROSHIMA.Settings.MeleeCombatType.ActiveNotice", { system: game.i18n.localize(labelKey) })
+            );
+            return;
+          }
+
+          const combat = game.combat;
+          const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
+          const targets = Array.from(game.user.targets ?? []);
+          const myUuids = [this.document.uuid];
+          if (this.document.token) myUuids.push(this.document.token.uuid);
+          const actualTargets = targets.filter(t => !myUuids.includes(t.document.uuid));
+          let targetUuid = actualTargets[0]?.document.uuid;
+
+          let existingPending = null;
+          if (targetUuid) {
+            existingPending = Object.values(pendings).find(p => {
+              if (!p.active) return false;
+              const amIDefender = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, this.document.uuid);
+              const isHeAttacker = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.attackerId, targetUuid);
+              return amIDefender && isHeAttacker;
+            });
+          }
+          if (!existingPending) {
+            existingPending = Object.values(pendings).find(p => p.active && game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, this.document.uuid));
+            if (existingPending) targetUuid = existingPending.attackerId;
+          }
+
+          if (existingPending) {
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const initiativeDialog = new NeuroshimaInitiativeRollDialog({
+              actor: this.document,
+              isMelee: true,
+              meleeMode: "respond",
+              pendingId: existingPending.id,
+              weaponId: item.id,
+              targets: [targetUuid],
+              onRoll: async (rollData) => {
+                const result = await game.neuroshima.NeuroshimaDice.rollInitiative({ ...rollData, actor: this.document, isMeleeInitiative: true });
+                const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+                await NeuroshimaMeleeCombat.respondToMeleePending(existingPending.id, result.successPoints, item.id);
+                return result;
+              }
+            });
+            await initiativeDialog.render(true);
+            return;
+          }
+
+          const activeEncounterId = this.document.getFlag("neuroshima", "activeMeleeEncounter");
+          if (activeEncounterId && !targetUuid) {
+            const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+            NeuroshimaMeleeCombat.openMeleeApp(activeEncounterId);
+            return;
+          }
+
+          if (targetUuid) {
+            if (!game.combat) {
+              ui.notifications.warn("Najpierw utwórz Encounter w Combat Trackerze.");
+              return;
+            }
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const initiativeDialog = new NeuroshimaInitiativeRollDialog({
+              actor: this.document,
+              isMelee: true,
+              meleeMode: "initiate",
+              weaponId: item.id,
+              targets: actualTargets
+            });
+            await initiativeDialog.render(true);
+            return;
+          }
+        }
+
         const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
         const dialog = new NeuroshimaWeaponRollDialog({ actor: this.document, weapon: item, rollType: item.system.weaponType });
         dialog.render(true);
@@ -213,9 +293,8 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   static PARTS = {
     header:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-header.hbs" },
     tabs:       { template: "templates/generic/tab-navigation.hbs" },
-    attributes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs" },
-    skills:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
-    combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs", scrollable: [".creature-actions-list", ".creature-maneuvers-list"] },
+    attributes: { template: "systems/neuroshima/templates/actors/creature/parts/creature-attributes.hbs" },
+    combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs", scrollable: [".creature-actions-list", ".creature-maneuvers-list", ".creature-combat-col", ""] },
     inventory:  { template: "systems/neuroshima/templates/actors/creature/parts/creature-inventory.hbs", scrollable: [""] },
     notes:      { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
@@ -243,8 +322,8 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     context.attributeList         = NEUROSHIMA.attributes;
     context.difficulties          = NEUROSHIMA.difficulties;
     context.difficultiesCollapsed = this._difficultiesCollapsed;
-
-    context.skillGroups = this._prepareSkillGroups();
+    context.experience            = system.experience ?? 0;
+    context.kondycja              = system.kondycja   ?? 0;
 
     const items = actor.items.contents;
     const armorItems = items.filter(i => i.type === "armor");

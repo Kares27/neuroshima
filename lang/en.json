@@ -847,7 +847,14 @@
         "Creature": {
             "Type": "Creature Type",
             "Aggression": "Aggression",
+            "BerserkerMode": "Berserker Mode",
             "Movement": "Movement",
+            "Stats": "Stats",
+            "Experience": "Experience",
+            "ExperiencePoints": "Experience Points",
+            "ExperienceHint": "Used instead of skills as a general bonus to tests",
+            "Kondycja": "Stamina",
+            "KondycjaHint": "General physical endurance of the creature",
             "NaturalArmor": {
             "Title": "Natural Armor",
             "Location": "Location",
