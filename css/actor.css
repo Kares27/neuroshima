@@ -367,8 +367,10 @@
 }
 
 .neuroshima.sheet.actor [data-application-part="attributes"].active {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     display: block !important;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 .neuroshima.sheet.actor [data-application-part="skills"].active {
@@ -3513,6 +3515,11 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima.sheet.actor-creature .text-center { text-align: center; }
+
+.neuroshima.sheet.actor-creature [data-application-part="attributes"].active {
+    flex: 1;
+    overflow-y: auto;
+}
 
 .neuroshima.sheet.actor-creature .creature-attributes-table table {
     width: 100%;

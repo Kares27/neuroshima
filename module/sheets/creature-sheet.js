@@ -309,7 +309,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   static PARTS = {
     header:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-header.hbs" },
     tabs:       { template: "templates/generic/tab-navigation.hbs" },
-    attributes: { template: "systems/neuroshima/templates/actors/creature/parts/creature-attributes.hbs" },
+    attributes: { template: "systems/neuroshima/templates/actors/creature/parts/creature-attributes.hbs", scrollable: [""] },
     combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs", scrollable: [".creature-actions-list", ".creature-maneuvers-list", ".creature-combat-col", ""] },
     inventory:  { template: "systems/neuroshima/templates/actors/creature/parts/creature-inventory.hbs", scrollable: [""] },
     notes:      { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }

@@ -32,7 +32,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
   static PARTS = {
     header:           { template: "systems/neuroshima/templates/actors/npc/parts/npc-header.hbs" },
     tabs:             { template: "templates/generic/tab-navigation.hbs" },
-    attributes:       { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs" },
+    attributes:       { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs", scrollable: [""] },
     skills:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
     tricks:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs" },
     combat:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs" },
