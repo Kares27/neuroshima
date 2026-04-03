@@ -3246,15 +3246,19 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex: 1;
 }
 
-.neuroshima.sheet.actor .creature-movement-row {
-    justify-content: flex-start;
+.neuroshima.sheet.actor-creature .header-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 5px;
 }
 
-.stat-box.creature-movement-stat,
-.stat-box.creature-aggression-stat {
-    flex: 0 0 auto;
-    min-width: 80px;
-    max-width: 120px;
+.neuroshima.sheet.actor-creature .creature-info-row {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.neuroshima.sheet.actor-creature .stat-box {
+    flex: unset;
 }
 
 /* ===== Creature Berserker Stat Box ===== */
