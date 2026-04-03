@@ -3524,45 +3524,6 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 
 .neuroshima.sheet.actor-creature .creature-skill-section {
-    margin-bottom: 10px;
-}
-
-.neuroshima.sheet.actor-creature .creature-skill-row {
-    display: flex;
-    gap: 16px;
-    padding: 6px 10px;
-    background: var(--ns-bg-input);
+    margin-bottom: 4px;
     border: 1px solid var(--ns-border-main);
-    border-top: none;
-}
-
-.neuroshima.sheet.actor-creature .creature-skill-col {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.neuroshima.sheet.actor-creature .creature-skill-col label {
-    font-size: 0.85em;
-    font-weight: bold;
-    white-space: nowrap;
-    color: var(--ns-text-muted, rgba(255,255,255,0.75));
-}
-
-.neuroshima.sheet.actor-creature .creature-stat-input {
-    width: 60px;
-    text-align: center;
-}
-
-.neuroshima.sheet.actor-creature .creature-stat-roll {
-    margin-left: 4px;
-    color: var(--ns-text-muted, rgba(255,255,255,0.5));
-    font-size: 0.9em;
-    cursor: pointer;
-    transition: color 0.15s;
-}
-
-.neuroshima.sheet.actor-creature .creature-stat-roll:hover {
-    color: var(--ns-text-attribute, #e8c070);
 }

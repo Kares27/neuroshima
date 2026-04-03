@@ -1,25 +1,30 @@
 <section class="tab attributes {{tabs.attributes.cssClass}}" data-group="primary" data-tab="attributes" data-application-part="attributes">
 
-    {{!-- Creature stats: Experience + Kondycja -- above the attributes table --}}
+    {{!-- Creature stats: Experience + Kondycja --}}
     <div class="creature-skill-section">
-        <div class="section-header">
-            <i class="fas fa-chart-bar"></i>
-            <span class="header-label">{{localize "NEUROSHIMA.Creature.Stats"}}</span>
-        </div>
-        <div class="creature-skill-row">
-            <div class="creature-skill-col">
-                <label title="{{localize 'NEUROSHIMA.Creature.ExperienceHint'}}">{{localize "NEUROSHIMA.Creature.Experience"}}</label>
-                <input type="number" name="system.experience" value="{{experience}}" min="0" class="creature-stat-input"/>
-                <a class="creature-stat-roll clickable" data-action="rollExperience" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Experience'}}">
-                    <i class="fas fa-dice-d20"></i>
-                </a>
+        <div class="specialization-row">
+            <div class="spec-name-cell">
+                <span class="spec-toggle">{{localize "NEUROSHIMA.Creature.Stats"}}</span>
             </div>
-            <div class="creature-skill-col">
-                <label title="{{localize 'NEUROSHIMA.Creature.KondycjaHint'}}">{{localize "NEUROSHIMA.Creature.Kondycja"}}</label>
-                <input type="number" name="system.kondycja" value="{{kondycja}}" min="0" class="creature-stat-input"/>
-                <a class="creature-stat-roll clickable" data-action="rollKondycja" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Kondycja'}}">
-                    <i class="fas fa-dice-d20"></i>
-                </a>
+            <div class="skills-horizontal-grid">
+                <div class="skill-item">
+                    <a class="roll-skill-btn" data-action="rollExperience" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Experience'}}">
+                        <i class="fas fa-dice-d20"></i>
+                    </a>
+                    <div class="skill-input-wrapper">
+                        <input type="number" name="system.experience" value="{{experience}}" min="0" class="skill-input">
+                    </div>
+                    <span class="skill-name" title="{{localize 'NEUROSHIMA.Creature.ExperienceHint'}}">{{localize "NEUROSHIMA.Creature.Experience"}}</span>
+                </div>
+                <div class="skill-item">
+                    <a class="roll-skill-btn" data-action="rollKondycja" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Kondycja'}}">
+                        <i class="fas fa-dice-d20"></i>
+                    </a>
+                    <div class="skill-input-wrapper">
+                        <input type="number" name="system.kondycja" value="{{kondycja}}" min="0" class="skill-input">
+                    </div>
+                    <span class="skill-name" title="{{localize 'NEUROSHIMA.Creature.KondycjaHint'}}">{{localize "NEUROSHIMA.Creature.Kondycja"}}</span>
+                </div>
             </div>
         </div>
     </div>
