@@ -875,6 +875,8 @@
             "Aggression": "Agresja",
             "BerserkerMode": "Tryb Berserkera",
             "BerserkerAbbr": "Berserk",
+            "MovementAbbr": "Ruch",
+            "AggressionAbbr": "Agr.",
             "Movement": "Ruch",
             "Stats": "Statystyki",
             "Experience": "Doświadczenie",

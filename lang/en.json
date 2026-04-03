@@ -849,6 +849,8 @@
             "Aggression": "Aggression",
             "BerserkerMode": "Berserker Mode",
             "BerserkerAbbr": "Berserk",
+            "MovementAbbr": "Move",
+            "AggressionAbbr": "Aggr.",
             "Movement": "Movement",
             "Stats": "Stats",
             "Experience": "Experience",

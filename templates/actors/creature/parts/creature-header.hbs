@@ -5,18 +5,24 @@
             <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
         </h1>
 
-        <div class="header-details flexrow">
-            <div class="header-field">
+        <div class="header-stats-row">
+            <div class="stat-box creature-type-stat">
                 <label>{{localize "NEUROSHIMA.Creature.Type"}}</label>
-                <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
+                <div class="stat-value stat-value-input">
+                    <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
+                </div>
             </div>
-            <div class="header-field">
-                <label>{{localize "NEUROSHIMA.Creature.Movement"}}</label>
-                <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>
+            <div class="stat-box creature-movement-stat">
+                <label>{{localize "NEUROSHIMA.Creature.MovementAbbr"}}</label>
+                <div class="stat-value stat-value-input">
+                    <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>
+                </div>
             </div>
-            <div class="header-field">
-                <label>{{localize "NEUROSHIMA.Creature.Aggression"}}</label>
-                <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
+            <div class="stat-box creature-aggression-stat">
+                <label>{{localize "NEUROSHIMA.Creature.AggressionAbbr"}}</label>
+                <div class="stat-value stat-value-input">
+                    <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
+                </div>
             </div>
         </div>
 
