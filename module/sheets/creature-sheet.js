@@ -17,7 +17,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   static DEFAULT_OPTIONS = {
     tag: "form",
     classes: ["neuroshima", "sheet", "actor", "actor-creature"],
-    position: { width: 720, height: 680 },
+    position: { width: 720, height: 800 },
     window: { title: "NEUROSHIMA.Sheet.ActorCreature", resizable: true },
     form: { submitOnChange: true, submitOnClose: true, submitOnUnfocus: true },
     actions: {
@@ -53,6 +53,22 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         const label      = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
 
         return NeuroshimaCreatureSheet._showRollDialog({ stat: statValue, skill: skillValue, label, actor, isSkill: true, currentAttribute: attrKey });
+      },
+
+      rollExperience: async function() {
+        const actor  = this.document;
+        const system = actor.system;
+        const exp    = system.experience ?? 0;
+        const label  = game.i18n.localize("NEUROSHIMA.Creature.Experience");
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: 0, skill: exp, label, actor, isSkill: true, currentAttribute: "zr" });
+      },
+
+      rollKondycja: async function() {
+        const actor  = this.document;
+        const system = actor.system;
+        const bd     = system.attributeTotals?.["bd"] ?? (system.attributes?.["bd"] || 0);
+        const label  = game.i18n.localize("NEUROSHIMA.Creature.Kondycja");
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: bd, skill: 0, label, actor, isSkill: false });
       },
 
       toggleDifficulties: async function() {

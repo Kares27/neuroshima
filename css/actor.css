@@ -3554,3 +3554,15 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     width: 60px;
     text-align: center;
 }
+
+.neuroshima.sheet.actor-creature .creature-stat-roll {
+    margin-left: 4px;
+    color: var(--ns-text-muted, rgba(255,255,255,0.5));
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.neuroshima.sheet.actor-creature .creature-stat-roll:hover {
+    color: var(--ns-text-attribute, #e8c070);
+}

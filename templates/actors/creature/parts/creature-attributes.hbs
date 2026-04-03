@@ -10,10 +10,16 @@
             <div class="creature-skill-col">
                 <label title="{{localize 'NEUROSHIMA.Creature.ExperienceHint'}}">{{localize "NEUROSHIMA.Creature.Experience"}}</label>
                 <input type="number" name="system.experience" value="{{experience}}" min="0" class="creature-stat-input"/>
+                <a class="creature-stat-roll clickable" data-action="rollExperience" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Experience'}}">
+                    <i class="fas fa-dice-d20"></i>
+                </a>
             </div>
             <div class="creature-skill-col">
                 <label title="{{localize 'NEUROSHIMA.Creature.KondycjaHint'}}">{{localize "NEUROSHIMA.Creature.Kondycja"}}</label>
                 <input type="number" name="system.kondycja" value="{{kondycja}}" min="0" class="creature-stat-input"/>
+                <a class="creature-stat-roll clickable" data-action="rollKondycja" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Kondycja'}}">
+                    <i class="fas fa-dice-d20"></i>
+                </a>
             </div>
         </div>
     </div>
