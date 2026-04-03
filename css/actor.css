@@ -3527,3 +3527,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     margin-bottom: 4px;
     border: 1px solid var(--ns-border-main);
 }
+
+.neuroshima.sheet.actor-creature .creature-skill-section .skills-horizontal-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
