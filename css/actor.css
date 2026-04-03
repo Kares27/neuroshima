@@ -101,6 +101,8 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
     gap: 5px;
 }
 
@@ -245,7 +247,7 @@
 }
 
 .neuroshima.sheet.actor .stat-box label {
-    flex: 0 0 120px;
+    flex: 0 0 70px;
     background: var(--ns-border-main);
     color: #fff;
     height: 100%;
