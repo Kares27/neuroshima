@@ -3211,6 +3211,25 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .hp-config-btn:hover {
     color: var(--ns-text-main);
 }  
+/* ===== Creature Berserker Stat Box ===== */
+.stat-box.berserker-summary {
+    flex: 0 0 auto;
+    min-width: 90px;
+}
+
+.stat-box.berserker-summary .stat-value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-box.berserker-summary .berserker-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    margin: 0;
+}
+
 /* ===== Creature Combat Tab Layout ===== */
 .neuroshima.sheet.actor-creature .creature-combat-columns {
     display: grid;

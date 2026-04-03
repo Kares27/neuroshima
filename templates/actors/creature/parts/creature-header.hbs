@@ -11,16 +11,12 @@
                 <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
             </div>
             <div class="header-field">
-                <label>{{localize "NEUROSHIMA.Creature.Aggression"}}</label>
-                <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
-            </div>
-            <div class="header-field header-field-checkbox">
-                <label>{{localize "NEUROSHIMA.Creature.BerserkerMode"}}</label>
-                <input type="checkbox" name="system.isBerserker" {{checked system.isBerserker}}/>
-            </div>
-            <div class="header-field">
                 <label>{{localize "NEUROSHIMA.Creature.Movement"}}</label>
                 <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Creature.Aggression"}}</label>
+                <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
             </div>
         </div>
 
@@ -37,6 +33,12 @@
                 {{/if}}
                 <label>HP</label>
                 <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
+            </div>
+            <div class="stat-box berserker-summary" title="{{localize 'NEUROSHIMA.Creature.BerserkerMode'}}">
+                <label>{{localize "NEUROSHIMA.Creature.BerserkerAbbr"}}</label>
+                <div class="stat-value">
+                    <input type="checkbox" name="system.isBerserker" {{checked system.isBerserker}} class="berserker-checkbox"/>
+                </div>
             </div>
         </div>
     </div>

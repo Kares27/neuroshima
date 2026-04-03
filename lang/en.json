@@ -848,6 +848,7 @@
             "Type": "Creature Type",
             "Aggression": "Aggression",
             "BerserkerMode": "Berserker Mode",
+            "BerserkerAbbr": "Berserk",
             "Movement": "Movement",
             "Stats": "Stats",
             "Experience": "Experience",
