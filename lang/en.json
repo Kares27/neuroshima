@@ -847,6 +847,8 @@
         "Creature": {
             "Type": "Creature Type",
             "TypeAbbr": "Type",
+            "Terrain": "Terrain",
+            "TerrainAbbr": "Terrain",
             "Aggression": "Aggression",
             "BerserkerMode": "Berserker Mode",
             "BerserkerAbbr": "Berserk",

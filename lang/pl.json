@@ -873,6 +873,8 @@
         "Creature": {
             "Type": "Typ Stworzenia",
             "TypeAbbr": "Typ",
+            "Terrain": "Teren",
+            "TerrainAbbr": "Teren",
             "Aggression": "Agresja",
             "BerserkerMode": "Tryb Berserkera",
             "BerserkerAbbr": "Berserk",

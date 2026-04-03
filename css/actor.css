@@ -3241,13 +3241,20 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     background: var(--ns-bg-input, rgba(0,0,0,0.1));
 }
 
-.stat-box.creature-type-stat {
-    flex: 2;
+.stat-box.creature-type-stat,
+.stat-box.creature-terrain-stat {
+    flex: 1;
+}
+
+.neuroshima.sheet.actor .creature-movement-row {
+    justify-content: flex-start;
 }
 
 .stat-box.creature-movement-stat,
 .stat-box.creature-aggression-stat {
-    flex: 1;
+    flex: 0 0 auto;
+    min-width: 80px;
+    max-width: 120px;
 }
 
 /* ===== Creature Berserker Stat Box ===== */

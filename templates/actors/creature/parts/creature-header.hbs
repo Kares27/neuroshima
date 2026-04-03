@@ -12,16 +12,10 @@
                     <input type="text" name="system.creatureType" value="{{system.creatureType}}"/>
                 </div>
             </div>
-            <div class="stat-box creature-movement-stat">
-                <label>{{localize "NEUROSHIMA.Creature.MovementAbbr"}}</label>
+            <div class="stat-box creature-terrain-stat" title="{{localize 'NEUROSHIMA.Creature.Terrain'}}">
+                <label>{{localize "NEUROSHIMA.Creature.TerrainAbbr"}}</label>
                 <div class="stat-value stat-value-input">
-                    <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>
-                </div>
-            </div>
-            <div class="stat-box creature-aggression-stat">
-                <label>{{localize "NEUROSHIMA.Creature.AggressionAbbr"}}</label>
-                <div class="stat-value stat-value-input">
-                    <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
+                    <input type="text" name="system.terrain" value="{{system.terrain}}"/>
                 </div>
             </div>
         </div>
@@ -44,6 +38,21 @@
                 <label>{{localize "NEUROSHIMA.Creature.BerserkerAbbr"}}</label>
                 <div class="stat-value">
                     <input type="checkbox" name="system.isBerserker" {{checked system.isBerserker}} class="berserker-checkbox"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-stats-row creature-movement-row">
+            <div class="stat-box creature-movement-stat">
+                <label>{{localize "NEUROSHIMA.Creature.MovementAbbr"}}</label>
+                <div class="stat-value stat-value-input">
+                    <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>
+                </div>
+            </div>
+            <div class="stat-box creature-aggression-stat">
+                <label>{{localize "NEUROSHIMA.Creature.AggressionAbbr"}}</label>
+                <div class="stat-value stat-value-input">
+                    <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
                 </div>
             </div>
         </div>
