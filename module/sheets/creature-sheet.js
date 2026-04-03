@@ -60,15 +60,15 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         const system = actor.system;
         const exp    = system.experience ?? 0;
         const label  = game.i18n.localize("NEUROSHIMA.Creature.Experience");
-        return NeuroshimaCreatureSheet._showRollDialog({ stat: 0, skill: exp, label, actor, isSkill: true, currentAttribute: "zr" });
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: 0, skill: exp, label, actor, isSkill: true, currentAttribute: "dexterity" });
       },
 
       rollKondycja: async function() {
         const actor  = this.document;
         const system = actor.system;
-        const bd     = system.attributeTotals?.["bd"] ?? (system.attributes?.["bd"] || 0);
+        const con    = system.attributeTotals?.["constitution"] ?? (system.attributes?.["constitution"] || 0);
         const label  = game.i18n.localize("NEUROSHIMA.Creature.Kondycja");
-        return NeuroshimaCreatureSheet._showRollDialog({ stat: bd, skill: 0, label, actor, isSkill: false });
+        return NeuroshimaCreatureSheet._showRollDialog({ stat: con, skill: 0, label, actor, isSkill: false });
       },
 
       toggleDifficulties: async function() {
