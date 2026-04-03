@@ -3218,19 +3218,21 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 4px;
+    padding: 0 2px;
+    overflow: hidden;
 }
 
 .neuroshima.sheet.actor .stat-value.stat-value-input input {
     width: 100%;
+    min-width: 0;
     background: transparent;
     border: none;
     text-align: center;
     font-weight: bold;
-    font-size: 1em;
+    font-size: 0.95em;
     color: inherit;
-    padding: 0;
-    height: 100%;
+    padding: 0 2px;
+    box-sizing: border-box;
 }
 
 .neuroshima.sheet.actor .stat-value.stat-value-input input:focus {

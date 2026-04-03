@@ -846,6 +846,7 @@
         },
         "Creature": {
             "Type": "Creature Type",
+            "TypeAbbr": "Type",
             "Aggression": "Aggression",
             "BerserkerMode": "Berserker Mode",
             "BerserkerAbbr": "Berserk",

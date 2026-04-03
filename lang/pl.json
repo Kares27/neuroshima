@@ -872,6 +872,7 @@
         },
         "Creature": {
             "Type": "Typ Stworzenia",
+            "TypeAbbr": "Typ",
             "Aggression": "Agresja",
             "BerserkerMode": "Tryb Berserkera",
             "BerserkerAbbr": "Berserk",
