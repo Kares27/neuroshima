@@ -35,7 +35,9 @@
         "Attributes": {
             "Attributes": "Attributes",
             "Base": "Base",
+            "BaseAbbr": "Base",
             "Modifier": "Modifier",
+            "ModifierAbbr": "Mod.",
             "Dexterity": "Dexterity",
             "Perception": "Perception",
             "Charisma": "Charisma",

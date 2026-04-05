@@ -3176,61 +3176,66 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     margin-bottom: 4px;
 }
 
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table-wrapper {
+.neuroshima.sheet.actor-vehicle .vehicle-attr-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
     margin: 6px 0;
 }
 
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 0;
+.neuroshima.sheet.actor-vehicle .vehicle-attr-card {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 3px;
+    padding: 3px 5px;
+    min-height: 0;
 }
 
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table th {
+.neuroshima.sheet.actor-vehicle .vehicle-attr-name {
+    flex: 1;
+    font-weight: bold;
+    font-size: 0.78em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-inputs {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box label {
+    font-size: 0.65em;
+    color: rgba(255,255,255,0.5);
+    line-height: 1;
+    margin-bottom: 1px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box input {
+    width: 36px;
+    height: 22px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.85em;
     background: var(--ns-bg-input);
-    text-align: center;
-    padding: 2px 4px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 2px;
+    padding: 0;
 }
 
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table .attribute-header-cell {
-    text-align: center;
-    padding: 2px 0;
-}
-
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table .attribute-abbr {
-    display: block;
-    font-size: 1.1em;
-    font-weight: bold;
-    text-align: center;
-}
-
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table .attr-section-label-row td {
-    background: var(--ns-bg-header);
-    padding: 3px 8px;
-    font-size: 0.8em;
-    font-weight: bold;
-    text-transform: uppercase;
-    text-align: center;
-    border-bottom: 1px solid var(--ns-border-main);
-}
-
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table .attribute-row td {
-    text-align: center;
-    padding: 2px;
-}
-
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table input {
-    width: 100%;
-    height: 26px;
-    border: none;
-    background: transparent;
-    text-align: center;
-    font-weight: bold;
-}
-
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table input:hover,
-.neuroshima.sheet.actor-vehicle .vehicle-attributes-table input:focus {
-    background: var(--ns-bg-input);
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box input:focus {
+    background: rgba(255,255,255,0.15);
+    outline: none;
 }
 
 .neuroshima.sheet.actor-vehicle .vehicle-header-stats-row {

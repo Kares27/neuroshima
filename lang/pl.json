@@ -38,7 +38,9 @@
         "Attributes": {
             "Attributes": "Współczynniki",
             "Base": "Baza",
+            "BaseAbbr": "Podst.",
             "Modifier": "Modyfikator",
+            "ModifierAbbr": "Zmodyf.",
             "Dexterity": "Zręczność",
             "Perception": "Percepcja",
             "Charisma": "Charyzma",
