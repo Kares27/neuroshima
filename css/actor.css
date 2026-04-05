@@ -3203,7 +3203,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     background: var(--ns-border-main);
     color: #fff;
     font-size: 0.82em;
-    font-family: "Special Elite", serif;
+    font-family: 'SpecialElite', serif;
     font-weight: bold;
     display: flex;
     align-items: center;
@@ -3246,7 +3246,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     text-align: center;
     font-weight: bold;
     font-size: 1.0em;
-    font-family: "Special Elite", serif;
+    font-family: 'SpecialElite', serif;
     background: var(--ns-bg-input);
     border: none;
     padding: 0;
