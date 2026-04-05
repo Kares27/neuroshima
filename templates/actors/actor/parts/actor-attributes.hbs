@@ -12,16 +12,6 @@
             </thead>
             <tbody>
                 <tr class="attr-section-label-row">
-                    <td colspan="5"><strong>{{localize "NEUROSHIMA.Attributes.Base"}}</strong></td>
-                </tr>
-                <tr class="attribute-row">
-                    {{#each attributeList as |attr key|}}
-                    <td>
-                        <input type="number" name="system.attributes.{{key}}" value="{{lookup ../system.attributes key}}" min="0" max="40"/>
-                    </td>
-                    {{/each}}
-                </tr>
-                <tr class="attr-section-label-row">
                     <td colspan="5"><strong>{{localize "NEUROSHIMA.Attributes.Modifier"}}</strong></td>
                 </tr>
                 <tr class="attribute-row">
