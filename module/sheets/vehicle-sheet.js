@@ -62,6 +62,19 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     equipment: { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-equipment.hbs", scrollable: [""] }
   };
 
+  _getTabs() {
+    const activeTab = this.tabGroups.primary;
+    const tabs = foundry.utils.deepClone(this.constructor.TABS.primary.tabs).reduce((obj, t) => {
+      obj[t.id] = t;
+      return obj;
+    }, {});
+    for (const v of Object.values(tabs)) {
+      v.active   = activeTab === v.id;
+      v.cssClass = v.active ? "active" : "";
+    }
+    return tabs;
+  }
+
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
