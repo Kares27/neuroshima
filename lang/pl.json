@@ -518,6 +518,7 @@
             "Tricks": "Sztuczki",
             "Combat": "Walka",
             "Inventory": "Ekwipunek",
+            "Crew": "Załoga",
             "Notes": "Notatki",
             "Stats": "Statystyki",
             "Description": "Opis",
@@ -935,7 +936,25 @@
             "Armor": "Pancerz",
             "Speed": "Prędkość",
             "Crew": "Załoga",
-            "Passengers": "Pasażerowie"
+            "Passengers": "Pasażerowie",
+            "NoWeapons": "Brak uzbrojenia",
+            "NoGear": "Brak wyposażenia",
+            "Attributes": {
+                "Agility":      "Zwrotność",
+                "TopSpeed":     "Prędkość maks.",
+                "Acceleration": "Przyspieszenie",
+                "Brakes":       "Hamulce",
+                "Durability":   "Wytrzymałość",
+                "Efficiency":   "Sprawność",
+                "Abbr": {
+                    "Agility":      "Zw",
+                    "TopSpeed":     "Pm",
+                    "Acceleration": "Pz",
+                    "Brakes":       "Ha",
+                    "Durability":   "Wt",
+                    "Efficiency":   "Sp"
+                }
+            }
         }
     }
 }

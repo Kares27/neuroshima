@@ -495,6 +495,7 @@
             "Tricks": "Tricks",
             "Combat": "Combat",
             "Inventory": "Inventory",
+            "Crew": "Crew",
             "Notes": "Notes",
             "Stats": "Stats",
             "Description": "Description",
@@ -908,7 +909,25 @@
             "Armor": "Armor",
             "Speed": "Speed",
             "Crew": "Crew",
-            "Passengers": "Passengers"
+            "Passengers": "Passengers",
+            "NoWeapons": "No weapons",
+            "NoGear": "No gear",
+            "Attributes": {
+                "Agility":      "Agility",
+                "TopSpeed":     "Max Speed",
+                "Acceleration": "Acceleration",
+                "Brakes":       "Brakes",
+                "Durability":   "Durability",
+                "Efficiency":   "Efficiency",
+                "Abbr": {
+                    "Agility":      "Agi",
+                    "TopSpeed":     "Spd",
+                    "Acceleration": "Acc",
+                    "Brakes":       "Brk",
+                    "Durability":   "Dur",
+                    "Efficiency":   "Eff"
+                }
+            }
         }
     },
     "TOKEN": {

@@ -10,7 +10,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   static DEFAULT_OPTIONS = {
     tag: "form",
     classes: ["neuroshima", "sheet", "actor", "actor-vehicle"],
-    position: { width: 620, height: 520 },
+    position: { width: 650, height: 680 },
     window: { title: "NEUROSHIMA.Sheet.ActorVehicle", resizable: true },
     form: { submitOnChange: true, submitOnClose: true, submitOnUnfocus: true },
     actions: {
@@ -42,8 +42,24 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   };
 
   /** @override */
+  static TABS = {
+    primary: {
+      tabs: [
+        { id: "crew",      group: "primary", label: "NEUROSHIMA.Tabs.Crew" },
+        { id: "combat",    group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
+        { id: "equipment", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" }
+      ],
+      initial: "crew"
+    }
+  };
+
+  /** @override */
   static PARTS = {
-    main: { template: "systems/neuroshima/templates/actors/vehicle/vehicle-sheet.hbs" }
+    header:    { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-header.hbs" },
+    tabs:      { template: "templates/generic/tab-navigation.hbs" },
+    crew:      { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-crew.hbs", scrollable: [""] },
+    combat:    { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-combat.hbs", scrollable: [""] },
+    equipment: { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-equipment.hbs", scrollable: [""] }
   };
 
   /** @override */
@@ -55,21 +71,16 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     context.actor    = actor;
     context.system   = system;
     context.config   = NEUROSHIMA;
+    context.tabs     = this._getTabs();
     context.owner    = actor.isOwner;
     context.editable = this.isEditable;
     context.isGM     = game.user.isGM;
 
+    context.vehicleAttributeList = NEUROSHIMA.vehicleAttributes;
+
     const items = actor.items.contents;
     context.weapons = items.filter(i => i.type === "weapon");
     context.gear    = items.filter(i => i.type === "gear");
-    context.wounds  = items.filter(i => i.type === "wound");
-
-    const hullPct = system.hull?.max > 0 ? Math.round((system.hull.value / system.hull.max) * 100) : 100;
-    context.hullPct       = hullPct;
-    context.hullCondition = hullPct >= 75 ? "good" : hullPct >= 40 ? "damaged" : "critical";
-
-    const fuelPct = system.fuel?.max > 0 ? Math.round((system.fuel.value / system.fuel.max) * 100) : 100;
-    context.fuelPct = fuelPct;
 
     return context;
   }
@@ -78,7 +89,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "gear", "wound"].includes(item.type)) {
+    if (["weapon", "gear"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }

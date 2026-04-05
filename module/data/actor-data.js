@@ -300,11 +300,26 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
 
+    const attrField = () => new fields.NumberField({ required: true, integer: true, initial: 0, min: 0, max: 40 });
+    const modField  = () => new fields.NumberField({ required: true, integer: true, initial: 0 });
+
     return {
-      vehicleType:  new fields.StringField({ initial: "" }),
-      speed: new fields.SchemaField({
-        max:     new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-        current: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+      vehicleType: new fields.StringField({ initial: "" }),
+      attributes: new fields.SchemaField({
+        agility:      attrField(),
+        topSpeed:     attrField(),
+        acceleration: attrField(),
+        brakes:       attrField(),
+        durability:   attrField(),
+        efficiency:   attrField()
+      }),
+      modifiers: new fields.SchemaField({
+        agility:      modField(),
+        topSpeed:     modField(),
+        acceleration: modField(),
+        brakes:       modField(),
+        durability:   modField(),
+        efficiency:   modField()
       }),
       hull: new fields.SchemaField({
         value: new fields.NumberField({ integer: true, initial: 10, min: 0 }),

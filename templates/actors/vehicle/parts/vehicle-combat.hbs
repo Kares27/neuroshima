@@ -1,0 +1,26 @@
+<section class="tab vehicle-combat {{tabs.combat.cssClass}}" data-group="primary" data-tab="combat" data-application-part="combat">
+    <div class="vehicle-section">
+        <div class="section-header">
+            <h3>{{localize "NEUROSHIMA.Inventory.Weapons"}}</h3>
+            <a data-action="createItem" data-type="weapon" title="{{localize 'NEUROSHIMA.Actions.CreateItem'}}">
+                <i class="fas fa-plus"></i>
+            </a>
+        </div>
+        {{#if weapons.length}}
+        <ul class="item-list">
+            {{#each weapons}}
+            <li class="item" data-item-id="{{this.id}}">
+                <span class="item-name">{{this.name}}</span>
+                <span class="item-controls">
+                    <a data-action="rollWeapon"  data-item-id="{{this.id}}"><i class="fas fa-dice-d20"></i></a>
+                    <a data-action="editItem"    data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
+                    <a data-action="deleteItem"  data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
+                </span>
+            </li>
+            {{/each}}
+        </ul>
+        {{else}}
+        <p class="empty-list">{{localize "NEUROSHIMA.Vehicle.NoWeapons"}}</p>
+        {{/if}}
+    </div>
+</section>

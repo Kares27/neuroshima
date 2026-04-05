@@ -53,6 +53,14 @@ export const NEUROSHIMA = {
         cleverness: { label: "NEUROSHIMA.Attributes.Cleverness", abbr: "NEUROSHIMA.Attributes.Abbr.Cleverness" },
         constitution: { label: "NEUROSHIMA.Attributes.Constitution", abbr: "NEUROSHIMA.Attributes.Abbr.Constitution" }
     },
+    vehicleAttributes: {
+        agility:      { label: "NEUROSHIMA.Vehicle.Attributes.Agility",      abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Agility" },
+        topSpeed:     { label: "NEUROSHIMA.Vehicle.Attributes.TopSpeed",      abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.TopSpeed" },
+        acceleration: { label: "NEUROSHIMA.Vehicle.Attributes.Acceleration",  abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Acceleration" },
+        brakes:       { label: "NEUROSHIMA.Vehicle.Attributes.Brakes",        abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Brakes" },
+        durability:   { label: "NEUROSHIMA.Vehicle.Attributes.Durability",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Durability" },
+        efficiency:   { label: "NEUROSHIMA.Vehicle.Attributes.Efficiency",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Efficiency" }
+    },
     bodyLocations: bodyLocations,
     // Helper accessors for backward compatibility or ease of use
     get locations() {

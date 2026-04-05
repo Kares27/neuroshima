@@ -1,0 +1,25 @@
+<section class="tab vehicle-crew {{tabs.crew.cssClass}}" data-group="primary" data-tab="crew" data-application-part="crew">
+    <div class="vehicle-stats-grid">
+        <div class="vehicle-stat-block">
+            <label>{{localize "NEUROSHIMA.Vehicle.Crew"}}</label>
+            <div class="stat-pair">
+                <input type="number" name="system.crew.current" value="{{system.crew.current}}" min="0"/>
+                <span>/</span>
+                <input type="number" name="system.crew.max" value="{{system.crew.max}}" min="0"/>
+            </div>
+        </div>
+        <div class="vehicle-stat-block">
+            <label>{{localize "NEUROSHIMA.Vehicle.Passengers"}}</label>
+            <div class="stat-pair">
+                <input type="number" name="system.passengers.current" value="{{system.passengers.current}}" min="0"/>
+                <span>/</span>
+                <input type="number" name="system.passengers.max" value="{{system.passengers.max}}" min="0"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="vehicle-section">
+        <h3>{{localize "NEUROSHIMA.Tabs.Notes"}}</h3>
+        <div class="editor-content" data-edit="system.notes">{{{system.notes}}}</div>
+    </div>
+</section>
