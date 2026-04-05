@@ -903,7 +903,7 @@
         },
         "Vehicle": {
             "Type": "Vehicle Type",
-            "Condition": "Condition",
+            "Cost": "Cost",
             "Hull": "Hull",
             "Fuel": "Fuel",
             "Armor": "Armor",

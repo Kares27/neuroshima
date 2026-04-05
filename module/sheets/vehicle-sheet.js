@@ -47,7 +47,8 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       tabs: [
         { id: "crew",      group: "primary", label: "NEUROSHIMA.Tabs.Crew" },
         { id: "combat",    group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
-        { id: "equipment", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" }
+        { id: "equipment", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
+        { id: "notes",     group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "crew"
     }
@@ -59,7 +60,8 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     tabs:      { template: "templates/generic/tab-navigation.hbs" },
     crew:      { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-crew.hbs", scrollable: [""] },
     combat:    { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-combat.hbs", scrollable: [""] },
-    equipment: { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-equipment.hbs", scrollable: [""] }
+    equipment: { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-equipment.hbs", scrollable: [""] },
+    notes:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 
   _getTabs() {
@@ -94,6 +96,14 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     const items = actor.items.contents;
     context.weapons = items.filter(i => i.type === "weapon");
     context.gear    = items.filter(i => i.type === "gear");
+
+    context.notes = {
+      enriched: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes || "", {
+        secrets: actor.isOwner,
+        async: true,
+        relativeTo: actor
+      })
+    };
 
     return context;
   }

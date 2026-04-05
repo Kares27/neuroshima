@@ -11,8 +11,8 @@
                 <input type="text" name="system.vehicleType" value="{{system.vehicleType}}"/>
             </div>
             <div class="header-field">
-                <label>{{localize "NEUROSHIMA.Vehicle.Condition"}}</label>
-                <input type="text" name="system.condition" value="{{system.condition}}"/>
+                <label>{{localize "NEUROSHIMA.Vehicle.Cost"}}</label>
+                <input type="number" name="system.cost" value="{{system.cost}}" min="0"/>
             </div>
         </div>
 
@@ -47,34 +47,6 @@
                     </tr>
                 </tbody>
             </table>
-        </div>
-
-        <div class="vehicle-header-stats-row">
-            <div class="vehicle-header-stat">
-                {{#if isGM}}
-                <a class="hp-config-btn" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
-                    <i class="fas fa-cog"></i>
-                </a>
-                {{/if}}
-                <label>{{localize "NEUROSHIMA.Vehicle.Hull"}}</label>
-                <div class="stat-pair">
-                    <input type="number" name="system.hull.value" value="{{system.hull.value}}" min="0"/>
-                    <span>/</span>
-                    <input type="number" name="system.hull.max" value="{{system.hull.max}}" min="1"/>
-                </div>
-            </div>
-            <div class="vehicle-header-stat">
-                <label>{{localize "NEUROSHIMA.Vehicle.Fuel"}}</label>
-                <div class="stat-pair">
-                    <input type="number" name="system.fuel.value" value="{{system.fuel.value}}" min="0"/>
-                    <span>/</span>
-                    <input type="number" name="system.fuel.max" value="{{system.fuel.max}}" min="1"/>
-                </div>
-            </div>
-            <div class="vehicle-header-stat">
-                <label>{{localize "NEUROSHIMA.Vehicle.Armor"}}</label>
-                <input type="number" name="system.armor" value="{{system.armor}}" min="0"/>
-            </div>
         </div>
     </div>
 </header>

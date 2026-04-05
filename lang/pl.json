@@ -930,7 +930,7 @@
         },
         "Vehicle": {
             "Type": "Typ Pojazdu",
-            "Condition": "Stan",
+            "Cost": "Koszt",
             "Hull": "Kadłub",
             "Fuel": "Paliwo",
             "Armor": "Pancerz",

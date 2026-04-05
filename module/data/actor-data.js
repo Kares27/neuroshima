@@ -321,11 +321,6 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         durability:   modField(),
         efficiency:   modField()
       }),
-      hull: new fields.SchemaField({
-        value: new fields.NumberField({ integer: true, initial: 10, min: 0 }),
-        max:   new fields.NumberField({ integer: true, initial: 10, min: 1 })
-      }),
-      armor:      new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       crew: new fields.SchemaField({
         current: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         max:     new fields.NumberField({ integer: true, initial: 2, min: 0 })
@@ -334,12 +329,8 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         current: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         max:     new fields.NumberField({ integer: true, initial: 4, min: 0 })
       }),
-      fuel: new fields.SchemaField({
-        value: new fields.NumberField({ integer: true, initial: 50, min: 0 }),
-        max:   new fields.NumberField({ integer: true, initial: 50, min: 1 })
-      }),
-      condition: new fields.StringField({ initial: "good" }),
-      notes:     new fields.HTMLField({ initial: "" })
+      cost:  new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      notes: new fields.HTMLField({ initial: "" })
     };
   }
 }
