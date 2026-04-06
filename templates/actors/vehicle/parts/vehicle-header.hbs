@@ -12,16 +12,16 @@
                     <input type="text" name="system.vehicleType" value="{{system.vehicleType}}"/>
                 </div>
                 <div class="header-field">
+                    <label>{{localize "NEUROSHIMA.Vehicle.Cost"}}</label>
+                    <input type="number" name="system.cost" value="{{system.cost}}" min="0"/>
+                </div>
+                <div class="header-field">
                     <label>{{localize "NEUROSHIMA.Vehicle.Movement.Label"}}</label>
                     <select name="system.movement">
                         {{#each vehicleMovementTypes as |label key|}}
                         <option value="{{key}}" {{#if (eq ../system.movement key)}}selected{{/if}}>{{localize label}}</option>
                         {{/each}}
                     </select>
-                </div>
-                <div class="header-field">
-                    <label>{{localize "NEUROSHIMA.Vehicle.Cost"}}</label>
-                    <input type="number" name="system.cost" value="{{system.cost}}" min="0"/>
                 </div>
                 <div class="header-field">
                     <label>{{localize "NEUROSHIMA.Vehicle.FuelType"}}</label>
