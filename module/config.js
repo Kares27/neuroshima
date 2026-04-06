@@ -61,6 +61,12 @@ export const NEUROSHIMA = {
         durability:   { label: "NEUROSHIMA.Vehicle.Attributes.Durability",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Durability" },
         efficiency:   { label: "NEUROSHIMA.Vehicle.Attributes.Efficiency",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Efficiency" }
     },
+    vehicleCrewPositions: {
+        driver:    "NEUROSHIMA.Vehicle.Position.Driver",
+        gunner:    "NEUROSHIMA.Vehicle.Position.Gunner",
+        commander: "NEUROSHIMA.Vehicle.Position.Commander",
+        passenger: "NEUROSHIMA.Vehicle.Position.Passenger"
+    },
     bodyLocations: bodyLocations,
     // Helper accessors for backward compatibility or ease of use
     get locations() {

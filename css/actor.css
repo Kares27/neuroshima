@@ -3297,7 +3297,177 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex: 1;
 }
 
-  
+/* --- Crew Tab --- */
+.neuroshima.sheet.actor-vehicle .crew-qty {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding: 6px 8px;
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-qty-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-qty-field label {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.85em;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-qty-inputs {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-qty-inputs input {
+    width: 42px;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-occupants {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-empty {
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    text-align: center;
+    width: 100%;
+    margin: 20px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 110px;
+    background: var(--ns-bg-panel);
+    border: 2px solid var(--ns-border-main);
+    border-radius: 5px;
+    overflow: hidden;
+    gap: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant.is-exposed {
+    border-color: #e8a020;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-position {
+    width: 100%;
+    background: var(--ns-border-main);
+    padding: 2px 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-position select {
+    width: 100%;
+    background: transparent;
+    color: #fff;
+    border: none;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.70em;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    padding: 1px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-position select option {
+    background: #222;
+    color: #fff;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-image {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    margin: 6px auto 2px;
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main);
+    display: block;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-name {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-exposed {
+    width: 100%;
+    padding: 2px 4px;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-exposed .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    font-size: 0.68em;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main);
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-exposed .button.active {
+    background: rgba(232, 160, 32, 0.3);
+    border-color: #e8a020;
+    color: #e8a020;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons {
+    display: flex;
+    width: 100%;
+    border-top: 1px solid var(--ns-border-main);
+    margin-top: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .button {
+    flex: 1;
+    text-align: center;
+    padding: 3px 0;
+    font-size: 0.80em;
+    cursor: pointer;
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    transition: color 0.15s, background 0.15s;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .button:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.08);
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .crew-remove:hover {
+    color: #e05050;
+    background: rgba(224,80,80,0.15);
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .button + .button {
+    border-left: 1px solid var(--ns-border-main);
+}
+
 /* HP Configuration Dialog */  
 .hp-config-dialog .hp-config-grid {
     display: grid;

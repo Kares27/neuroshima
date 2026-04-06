@@ -29,6 +29,34 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       createItem:  async function(event, target) { await this.document.createEmbeddedDocuments("Item", [{ name: game.i18n.localize("NEUROSHIMA.NewItem"), type: target.dataset.type || "weapon" }]); },
       editItem:    async function(event, target) { this.document.items.get(target.dataset.itemId)?.sheet.render(true); },
       deleteItem:  async function(event, target) { await this.document.items.get(target.dataset.itemId)?.delete(); },
+      editCrewMember: async function(event, target) {
+        const actor = game.actors.get(target.dataset.actorId);
+        if (actor) actor.sheet.render(true);
+      },
+      removeCrew: async function(event, target) {
+        const actorId = target.dataset.actorId;
+        const crewMembers = this.document.system.crewMembers.filter(m => m.actorId !== actorId);
+        await this.document.update({ "system.crewMembers": crewMembers });
+      },
+      toggleCrewExposed: async function(event, target) {
+        const actorId = target.dataset.actorId;
+        const crewMembers = foundry.utils.deepClone(this.document.system.crewMembers.map(m => m.toObject?.() ?? m));
+        const member = crewMembers.find(m => m.actorId === actorId);
+        if (member) {
+          member.exposed = !member.exposed;
+          await this.document.update({ "system.crewMembers": crewMembers });
+        }
+      },
+      setCrewRole: async function(event, target) {
+        const actorId = target.dataset.actorId;
+        const role = target.value;
+        const crewMembers = foundry.utils.deepClone(this.document.system.crewMembers.map(m => m.toObject?.() ?? m));
+        const member = crewMembers.find(m => m.actorId === actorId);
+        if (member) {
+          member.role = role;
+          await this.document.update({ "system.crewMembers": crewMembers });
+        }
+      },
       toggleEquipped: async function(event, target) {
         const item = this.document.items.get(target.dataset.itemId);
         if (item) await item.update({ "system.equipped": !item.system.equipped });
@@ -91,7 +119,25 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     context.editable = this.isEditable;
     context.isGM     = game.user.isGM;
 
-    context.vehicleAttributeList = NEUROSHIMA.vehicleAttributes;
+    context.vehicleAttributeList  = NEUROSHIMA.vehicleAttributes;
+    context.vehicleCrewPositions  = NEUROSHIMA.vehicleCrewPositions;
+
+    context.crewMembers = (system.crewMembers ?? []).map((m) => {
+      const raw     = m.toObject?.() ?? m;
+      const crewActor = game.actors.get(raw.actorId);
+      return {
+        actorId: raw.actorId,
+        role:    raw.role,
+        exposed: raw.exposed,
+        name:    crewActor?.name ?? game.i18n.localize("NEUROSHIMA.Unknown"),
+        img:     crewActor?.img  ?? "icons/svg/mystery-man.svg",
+        roleOptions: Object.entries(NEUROSHIMA.vehicleCrewPositions).map(([key, label]) => ({
+          value:    key,
+          label:    game.i18n.localize(label),
+          selected: raw.role === key
+        }))
+      };
+    });
 
     const items = actor.items.contents;
     context.weapons = items.filter(i => i.type === "weapon");
@@ -109,11 +155,39 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   }
 
   /** @override */
+  async _onChangeForm(formConfig, event) {
+    if (event.target.dataset.action === "setCrewRole") {
+      const sel     = event.target;
+      const actorId = sel.dataset.actorId;
+      const role    = sel.value;
+      const crewMembers = foundry.utils.deepClone(this.document.system.crewMembers.map(m => m.toObject?.() ?? m));
+      const member = crewMembers.find(m => m.actorId === actorId);
+      if (member) {
+        member.role = role;
+        await this.document.update({ "system.crewMembers": crewMembers });
+      }
+      return;
+    }
+    return super._onChangeForm(formConfig, event);
+  }
+
+  /** @override */
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
     if (["weapon", "gear"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
+  }
+
+  /** @override */
+  async _onDropActor(event, data) {
+    const dropped = await fromUuid(data.uuid);
+    if (!dropped) return;
+    const existing = this.document.system.crewMembers ?? [];
+    if (existing.some(m => (m.toObject?.() ?? m).actorId === dropped.id)) return;
+    const crewMembers = existing.map(m => m.toObject?.() ?? m);
+    crewMembers.push({ actorId: dropped.id, role: "passenger", exposed: false });
+    await this.document.update({ "system.crewMembers": crewMembers });
   }
 }

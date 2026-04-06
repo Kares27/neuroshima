@@ -939,8 +939,16 @@
             "Speed": "Prędkość",
             "Crew": "Załoga",
             "Passengers": "Pasażerowie",
+            "NoCrew": "Upuść aktora, aby dodać załoganta",
+            "Exposed": "Odsłonięty",
             "NoWeapons": "Brak uzbrojenia",
             "NoGear": "Brak wyposażenia",
+            "Position": {
+                "Driver":    "Kierowca",
+                "Gunner":    "Strzelec",
+                "Commander": "Dowódca",
+                "Passenger": "Pasażer"
+            },
             "Attributes": {
                 "Agility":      "Zwrotność",
                 "TopSpeed":     "Prędkość maks.",

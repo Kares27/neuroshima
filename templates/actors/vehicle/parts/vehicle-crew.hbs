@@ -1,21 +1,60 @@
-<section class="tab vehicle-crew {{tabs.crew.cssClass}}" data-group="primary" data-tab="crew" data-application-part="crew">
-    <div class="vehicle-stats-grid">
-        <div class="vehicle-stat-block">
+<section class="tab" data-group="primary" data-tab="crew">
+
+    <div class="crew-qty">
+        <div class="crew-qty-field">
             <label>{{localize "NEUROSHIMA.Vehicle.Crew"}}</label>
-            <div class="stat-pair">
+            <div class="crew-qty-inputs">
                 <input type="number" name="system.crew.current" value="{{system.crew.current}}" min="0"/>
                 <span>/</span>
                 <input type="number" name="system.crew.max" value="{{system.crew.max}}" min="0"/>
             </div>
         </div>
-        <div class="vehicle-stat-block">
+        <div class="crew-qty-field">
             <label>{{localize "NEUROSHIMA.Vehicle.Passengers"}}</label>
-            <div class="stat-pair">
+            <div class="crew-qty-inputs">
                 <input type="number" name="system.passengers.current" value="{{system.passengers.current}}" min="0"/>
                 <span>/</span>
                 <input type="number" name="system.passengers.max" value="{{system.passengers.max}}" min="0"/>
             </div>
         </div>
+    </div>
+
+    <div class="crew-occupants">
+        {{#each crewMembers as |member|}}
+        <div class="occupant {{#if member.exposed}}is-exposed{{/if}}" data-actor-id="{{member.actorId}}">
+
+            <div class="occupant-position">
+                <select data-action="setCrewRole" data-actor-id="{{member.actorId}}">
+                    {{#each member.roleOptions as |opt|}}
+                    <option value="{{opt.value}}" {{#if opt.selected}}selected{{/if}}>{{opt.label}}</option>
+                    {{/each}}
+                </select>
+            </div>
+
+            <img class="occupant-image" src="{{member.img}}" title="{{member.name}}"/>
+
+            <div class="occupant-name">{{member.name}}</div>
+
+            <div class="occupant-exposed">
+                <a class="button {{#if member.exposed}}active{{/if}}" data-action="toggleCrewExposed" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Vehicle.Exposed'}}">
+                    <i class="fas fa-eye"></i>
+                    {{localize "NEUROSHIMA.Vehicle.Exposed"}}
+                </a>
+            </div>
+
+            <div class="occupant-buttons">
+                <a class="button" data-action="editCrewMember" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Actions.Edit'}}">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a class="button crew-remove" data-action="removeCrew" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+
+        </div>
+        {{else}}
+        <p class="crew-empty">{{localize "NEUROSHIMA.Vehicle.NoCrew"}}</p>
+        {{/each}}
     </div>
 
 </section>

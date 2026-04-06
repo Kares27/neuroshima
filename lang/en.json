@@ -912,8 +912,16 @@
             "Speed": "Speed",
             "Crew": "Crew",
             "Passengers": "Passengers",
+            "NoCrew": "Drop an actor to add a crew member",
+            "Exposed": "Exposed",
             "NoWeapons": "No weapons",
             "NoGear": "No gear",
+            "Position": {
+                "Driver":    "Driver",
+                "Gunner":    "Gunner",
+                "Commander": "Commander",
+                "Passenger": "Passenger"
+            },
             "Attributes": {
                 "Agility":      "Agility",
                 "TopSpeed":     "Max Speed",
