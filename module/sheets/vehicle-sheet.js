@@ -144,9 +144,15 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       };
     });
 
-    const items = actor.items.contents;
-    context.weapons = items.filter(i => i.type === "weapon");
-    context.gear    = items.filter(i => i.type === "gear");
+    const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+    context.inventory = {
+      weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
+      weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      weaponsThrown:  items.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
+      armor:          items.filter(i => i.type === "armor"),
+      gear:           items.filter(i => i.type === "gear"),
+      magazines:      items.filter(i => i.type === "magazine")
+    };
 
     context.notes = {
       enriched: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes || "", {
@@ -180,7 +186,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "gear"].includes(item.type)) {
+    if (["weapon", "gear", "armor", "magazine", "ammo"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }
