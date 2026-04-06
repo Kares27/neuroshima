@@ -912,6 +912,16 @@
             "Speed": "Speed",
             "Crew": "Crew",
             "Passengers": "Passengers",
+            "FuelType": "Fuel Type",
+            "FuelCapacity": "Fuel Capacity",
+            "Movement": {
+                "Label":      "Propulsion",
+                "Wheeled":    "Wheeled",
+                "Tracked":    "Tracked",
+                "Flying":     "Flying",
+                "Floating":   "Floating",
+                "Hovercraft": "Hovercraft"
+            },
             "NoCrew": "Drop an actor to add a crew member",
             "Exposed": "Exposed",
             "NoWeapons": "No weapons",

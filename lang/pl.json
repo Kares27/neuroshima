@@ -939,6 +939,16 @@
             "Speed": "Prędkość",
             "Crew": "Załoga",
             "Passengers": "Pasażerowie",
+            "FuelType": "Typ paliwa",
+            "FuelCapacity": "Zapas paliwa",
+            "Movement": {
+                "Label":      "Napęd",
+                "Wheeled":    "Kołowy",
+                "Tracked":    "Gąsienicowy",
+                "Flying":     "Latający",
+                "Floating":   "Pływający",
+                "Hovercraft": "Poduszkowiec"
+            },
             "NoCrew": "Upuść aktora, aby dodać załoganta",
             "Exposed": "Odsłonięty",
             "NoWeapons": "Brak uzbrojenia",

@@ -61,6 +61,13 @@ export const NEUROSHIMA = {
         durability:   { label: "NEUROSHIMA.Vehicle.Attributes.Durability",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Durability" },
         efficiency:   { label: "NEUROSHIMA.Vehicle.Attributes.Efficiency",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Efficiency" }
     },
+    vehicleMovementTypes: {
+        wheeled:    "NEUROSHIMA.Vehicle.Movement.Wheeled",
+        tracked:    "NEUROSHIMA.Vehicle.Movement.Tracked",
+        flying:     "NEUROSHIMA.Vehicle.Movement.Flying",
+        floating:   "NEUROSHIMA.Vehicle.Movement.Floating",
+        hovercraft: "NEUROSHIMA.Vehicle.Movement.Hovercraft"
+    },
     vehicleCrewPositions: {
         driver:    "NEUROSHIMA.Vehicle.Position.Driver",
         gunner:    "NEUROSHIMA.Vehicle.Position.Gunner",

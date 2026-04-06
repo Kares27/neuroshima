@@ -334,6 +334,12 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         role:     new fields.StringField({ initial: "passenger" }),
         exposed:  new fields.BooleanField({ initial: false })
       }), { initial: [] }),
+      movement: new fields.StringField({ initial: "wheeled" }),
+      fuelType: new fields.StringField({ initial: "" }),
+      fuel: new fields.SchemaField({
+        value: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+        max:   new fields.NumberField({ integer: true, initial: 0, min: 0 })
+      }),
       cost:  new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       notes: new fields.HTMLField({ initial: "" })
     };

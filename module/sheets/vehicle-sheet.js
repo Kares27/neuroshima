@@ -124,6 +124,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     context.isGM     = game.user.isGM;
 
     context.vehicleAttributeList  = NEUROSHIMA.vehicleAttributes;
+    context.vehicleMovementTypes  = NEUROSHIMA.vehicleMovementTypes;
     context.vehicleCrewPositions  = NEUROSHIMA.vehicleCrewPositions;
 
     context.crewMembers = (system.crewMembers ?? []).map((m) => {
