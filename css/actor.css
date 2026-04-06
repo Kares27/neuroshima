@@ -3182,6 +3182,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     height: 256px;
 }
 
+.neuroshima.sheet.actor-vehicle .sheet-header {
+    flex-direction: column;
+}
+
 .neuroshima.sheet.actor-vehicle .vehicle-header-top {
     display: flex;
     flex-direction: row;
