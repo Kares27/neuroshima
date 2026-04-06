@@ -3192,6 +3192,11 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 12px;
 }
 
+.neuroshima.sheet.actor-vehicle .vehicle-header-top .header-fields {
+    flex: 1;
+    min-width: 0;
+}
+
 .neuroshima.sheet.actor-vehicle .vehicle-attr-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
