@@ -3320,9 +3320,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima.sheet.actor-vehicle .crew-qty-field {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
 }
 
 .neuroshima.sheet.actor-vehicle .crew-qty-field label {
