@@ -3182,11 +3182,17 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     height: 256px;
 }
 
+.neuroshima.sheet.actor-vehicle .vehicle-header-top {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+}
+
 .neuroshima.sheet.actor-vehicle .vehicle-attr-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 5px;
-    margin: 6px 0;
+    margin: 8px 0 0 0;
 }
 
 .neuroshima.sheet.actor-vehicle .vehicle-attr-card {
