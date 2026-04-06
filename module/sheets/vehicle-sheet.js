@@ -107,6 +107,10 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
 
   /** @override */
   async _prepareContext(options) {
+    if (!this.tabGroups.primary) {
+      this.tabGroups.primary = this.constructor.TABS.primary.initial;
+    }
+
     const context = await super._prepareContext(options);
     const actor   = this.document;
     const system  = actor.system;
