@@ -3309,9 +3309,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 /* --- Crew Tab --- */
 .neuroshima.sheet.actor-vehicle .crew-qty {
     display: flex;
-    gap: 16px;
+    justify-content: center;
+    gap: 32px;
     margin-bottom: 12px;
-    padding: 6px 8px;
+    padding: 8px 12px;
     background: var(--ns-bg-panel);
     border: 1px solid var(--ns-border-main);
     border-radius: 4px;
@@ -3319,8 +3320,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima.sheet.actor-vehicle .crew-qty-field {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .neuroshima.sheet.actor-vehicle .crew-qty-field label {
@@ -3330,14 +3332,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     white-space: nowrap;
 }
 
-.neuroshima.sheet.actor-vehicle .crew-qty-inputs {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-}
-
-.neuroshima.sheet.actor-vehicle .crew-qty-inputs input {
-    width: 42px;
+.neuroshima.sheet.actor-vehicle .crew-qty-field input {
+    width: 56px;
     text-align: center;
 }
 
