@@ -3297,6 +3297,15 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex: 1;
 }
 
+.neuroshima.sheet.actor-vehicle [data-application-part="crew"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="combat"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="equipment"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="notes"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
 /* --- Crew Tab --- */
 .neuroshima.sheet.actor-vehicle .crew-qty {
     display: flex;
