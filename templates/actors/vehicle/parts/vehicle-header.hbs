@@ -31,7 +31,7 @@
                     <div class="fuel-cap-header">
                         <label>{{localize "NEUROSHIMA.Vehicle.FuelCapacity"}}</label>
                         <div class="fuel-inputs">
-                            <input type="number" name="system.fuel.value" value="{{system.fuel.value}}" min="0"/>
+                            <input type="number" name="system.fuel.value" value="{{system.fuel.value}}" min="0" max="{{system.fuel.max}}"/>
                             <span>/</span>
                             <input type="number" name="system.fuel.max" value="{{system.fuel.max}}" min="0"/>
                         </div>
