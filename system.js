@@ -200,7 +200,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession"],
+        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
