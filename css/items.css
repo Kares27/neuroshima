@@ -565,10 +565,17 @@
     gap: 10px;
     align-items: center;
 }
-.neuroshima.sheet.item .vehicle-mod-rules prose-mirror {
+.neuroshima.sheet.item .vehicle-mod-rules {
     border: 1px solid var(--ns-border-main, rgba(255,255,255,0.2));
     border-radius: 3px;
     padding: 4px 6px;
     min-height: 80px;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.item .vehicle-mod-rules prose-mirror {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
