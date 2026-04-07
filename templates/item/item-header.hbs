@@ -46,6 +46,12 @@
                 <input type="checkbox" name="system.isHealing" {{checked system.isHealing}}/>
             </div>
             {{/if}}
+            {{#if (eq item.type "vehicle-damage")}}
+            <div class="form-group checkbox row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.IsActive"}}</label>
+                <input type="checkbox" name="system.isActive" {{checked system.isActive}}/>
+            </div>
+            {{/if}}
         </div>
     </div>
 </header>
