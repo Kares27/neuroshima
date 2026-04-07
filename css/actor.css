@@ -3388,6 +3388,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima.sheet.actor-vehicle [data-application-part="crew"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="mods"].active,
 .neuroshima.sheet.actor-vehicle [data-application-part="combat"].active,
 .neuroshima.sheet.actor-vehicle [data-application-part="equipment"].active,
 .neuroshima.sheet.actor-vehicle [data-application-part="notes"].active {
