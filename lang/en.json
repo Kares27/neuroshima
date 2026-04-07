@@ -18,7 +18,8 @@
             "beast-maneuver": "Beast Maneuver",
             "specialization": "Specialization",
             "origin": "Origin",
-            "profession": "Profession"
+            "profession": "Profession",
+            "vehicle-damage": "Damage"
         }
     },
     "NEUROSHIMA": {

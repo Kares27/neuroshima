@@ -311,3 +311,28 @@ export class ProfessionData extends foundry.abstract.TypeDataModel {
     };
   }
 }
+
+/**
+ * Data model for Vehicle Damage items.
+ * Vehicle-specific equivalent of wounds — represents structural damage
+ * to specific sections of a vehicle.
+ */
+export class VehicleDamageData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      location: new fields.StringField({
+        required: true,
+        initial: "front",
+        choices: ["front", "rightSide", "leftSide", "rear", "bottom"]
+      }),
+      damageType: new fields.StringField({
+        required: true,
+        initial: "D"
+      }),
+      penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      isActive: new fields.BooleanField({ initial: true })
+    };
+  }
+}

@@ -191,12 +191,12 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       items:      context.inventory.armor.filter(a => a.system.location === key && a.system.equipped)
     }));
 
-    const woundItems = items.filter(i => i.type === "wound");
-    const totalDamagePoints = woundItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
-    const totalWoundPenalty = woundItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
+    const damageItems = items.filter(i => i.type === "vehicle-damage");
+    const totalDamagePoints = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
+    const totalWoundPenalty = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
     const maxHP = actor.getFlag("neuroshima", "vehicleMaxHP") || 27;
     context.combat = {
-      wounds:            woundItems,
+      wounds:            damageItems,
       totalDamagePoints,
       totalWoundPenalty,
       maxHP
@@ -234,7 +234,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "gear", "armor", "magazine", "ammo", "wound"].includes(item.type)) {
+    if (["weapon", "gear", "armor", "magazine", "ammo", "vehicle-damage"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }

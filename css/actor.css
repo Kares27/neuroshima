@@ -4042,6 +4042,11 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 4px;
 }
 
+/* "Spód" (bottom) is the 5th item — span full width */
+.neuroshima.sheet.actor-vehicle .vehicle-armor-grid .armor-vehicle-bottom {
+    grid-column: 1 / -1;
+}
+
 .neuroshima.sheet.actor-vehicle .armor-location-box {
     background: var(--ns-bg-panel);
     border: 1px solid var(--ns-border-main);

@@ -5,7 +5,7 @@ import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, BeastManeuverData, SpecializationData, OriginData, ProfessionData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, BeastManeuverData, SpecializationData, OriginData, ProfessionData, VehicleDamageData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -148,6 +148,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["specialization"]    = SpecializationData;
     CONFIG.Item.dataModels["origin"]            = OriginData;
     CONFIG.Item.dataModels["profession"]        = ProfessionData;
+    CONFIG.Item.dataModels["vehicle-damage"]    = VehicleDamageData;
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);

@@ -102,7 +102,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.editable = this.isEditable;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession"];
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "beast-action", "beast-maneuver", "specialization", "origin", "profession"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
 
     // Prepare type label
@@ -117,6 +117,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.damageTypes = NEUROSHIMA.damageTypes;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
     context.locations = NEUROSHIMA.locations;
+    context.vehicleLocations = NEUROSHIMA.vehicleLocations;
     
     // Collect all unique calibers from world items (Weapons) for suggestions
     const worldCalibers = new Set();

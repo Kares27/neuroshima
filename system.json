@@ -53,7 +53,8 @@
         "beast-maneuver",
         "specialization",
         "origin",
-        "profession"
+        "profession",
+        "vehicle-damage"
     ],
     "flags": {
         "hotReload": {

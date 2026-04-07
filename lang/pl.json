@@ -21,7 +21,8 @@
             "beast-maneuver": "Manewr Bestii",
             "specialization": "Specjalizacja",
             "origin": "Pochodzenie",
-            "profession": "Profesja"
+            "profession": "Profesja",
+            "vehicle-damage": "Uszkodzenie"
         }
     },
     "NEUROSHIMA": {

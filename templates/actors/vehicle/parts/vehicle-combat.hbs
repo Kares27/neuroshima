@@ -139,7 +139,7 @@
                     <i class="fas fa-cog"></i>
                 </a>
                 {{/if}}
-                <a class="item-control" data-action="createItem" data-type="wound" title="{{localize 'DOCUMENT.Create'}}">
+                <a class="item-control" data-action="createItem" data-type="vehicle-damage" title="{{localize 'DOCUMENT.Create'}}">
                     <i class="fas fa-plus"></i>
                 </a>
                 {{/if}}
@@ -165,6 +165,7 @@
                         {{selectOptions @root.config.vehicleLocations selected=this.system.location localize=true}}
                     </select>
                 </div>
+
                 <div class="col-type">
                     <select name="items.{{this.id}}.system.damageType">
                         {{selectOptions @root.config.damageTypes selected=this.system.damageType localize=true}}
