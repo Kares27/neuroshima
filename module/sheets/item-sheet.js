@@ -196,6 +196,15 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       relativeTo: item
     });
 
+    if (item.type === "vehicle-mod") {
+      context.enrichedRules = await foundry.applications.ux.TextEditor.enrichHTML(item.system.rules || "", {
+        async: true,
+        secrets: item.isOwner,
+        rollData: item.getRollData(),
+        relativeTo: item
+      });
+    }
+
     game.neuroshima.log(`Item Sheet Context prepared for ${item.name}`, context);
 
     return context;

@@ -321,7 +321,7 @@ export class VehicleModData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
-      rules: new fields.StringField({ initial: "" }),
+      rules: new fields.HTMLField({ initial: "" }),
       category: new fields.StringField({
         required: true,
         initial: "engine",
