@@ -688,7 +688,8 @@
                 "Beast-maneuver": "Beast Maneuver",
                 "Specialization": "Specialization",
                 "Origin": "Origin",
-                "Profession": "Profession"
+                "Profession": "Profession",
+                "Vehicle-damage": "Vehicle Damage"
             },
             "Empty": "No items.",
             "Fields": {

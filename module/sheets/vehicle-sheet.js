@@ -26,9 +26,14 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         const dialog = new NeuroshimaWeaponRollDialog({ actor: this.document, weapon: item, rollType: item.system.weaponType });
         dialog.render(true);
       },
-      createItem:  async function(event, target) { await this.document.createEmbeddedDocuments("Item", [{ name: game.i18n.localize("NEUROSHIMA.NewItem"), type: target.dataset.type || "weapon" }]); },
-      editItem:    async function(event, target) { this.document.items.get(target.dataset.itemId)?.sheet.render(true); },
-      deleteItem:  async function(event, target) { await this.document.items.get(target.dataset.itemId)?.delete(); },
+      createItem:  async function(event, target) {
+        const type = target.dataset.type || "weapon";
+        const typeKey = type.charAt(0).toUpperCase() + type.slice(1);
+        const name = game.i18n.localize(`NEUROSHIMA.Items.Type.${typeKey}`) || game.i18n.localize("NEUROSHIMA.NewItem");
+        await this.document.createEmbeddedDocuments("Item", [{ name, type }]);
+      },
+      editItem:    async function(event, target) { const id = target.dataset.itemId || target.closest("[data-item-id]")?.dataset.itemId; this.document.items.get(id)?.sheet.render(true); },
+      deleteItem:  async function(event, target) { const id = target.dataset.itemId || target.closest("[data-item-id]")?.dataset.itemId; await this.document.items.get(id)?.delete(); },
       editCrewMember: async function(event, target) {
         const actor = game.actors.get(target.dataset.actorId);
         if (actor) actor.sheet.render(true);

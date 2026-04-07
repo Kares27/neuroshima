@@ -714,7 +714,8 @@
                 "Beast-maneuver": "Manewr Bestii",
                 "Specialization": "Specjalizacja",
                 "Origin": "Pochodzenie",
-                "Profession": "Profesja"
+                "Profession": "Profesja",
+                "Vehicle-damage": "Uszkodzenie Pojazdu"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {

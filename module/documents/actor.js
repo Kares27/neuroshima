@@ -2,8 +2,18 @@ export class NeuroshimaActor extends Actor {
   /** @override */
   async _preCreate(data, options, user) {
     await super._preCreate(data, options, user);
+    const updates = {};
     if (data.type === "character") {
-      this.updateSource({ "prototypeToken.actorLink": true });
+      updates["prototypeToken.actorLink"] = true;
+    }
+    const actorIcons = {
+      vehicle: "systems/neuroshima/assets/img/carkey.svg"
+    };
+    if (actorIcons[data.type] && (!data.img || data.img === "icons/svg/mystery-man.svg")) {
+      updates.img = actorIcons[data.type];
+    }
+    if (Object.keys(updates).length > 0) {
+      this.updateSource(updates);
     }
   }
 
