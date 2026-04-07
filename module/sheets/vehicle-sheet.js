@@ -225,15 +225,9 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       masterful:      game.i18n.localize("NEUROSHIMA.Difficulty.Masterful"),
       grandmasterful: game.i18n.localize("NEUROSHIMA.Difficulty.Grandmasterful")
     };
-    context.mods = items.filter(i => i.type === "vehicle-mod").map(mod => ({
-      id:             mod.id,
-      uuid:           mod.uuid,
-      img:            mod.img,
-      name:           mod.name,
-      categoryLabel:  modCategoryLabels[mod.system.category] ?? mod.system.category,
-      difficultyLabel: modDifficultyLabels[mod.system.installDifficulty] ?? mod.system.installDifficulty,
-      system:         mod.system
-    }));
+    context.mods               = items.filter(i => i.type === "vehicle-mod");
+    context.modCategoryLabels  = modCategoryLabels;
+    context.modDifficultyLabels = modDifficultyLabels;
 
     const damageItems = items.filter(i => i.type === "vehicle-damage");
     const totalDamagePoints = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
