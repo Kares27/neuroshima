@@ -579,3 +579,7 @@
     height: 100%;
 }
 
+.neuroshima.sheet.item .vehicle-mod-rules prose-mirror .editor-container {
+    padding-top: 32px;
+}
+
