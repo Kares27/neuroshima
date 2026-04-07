@@ -54,7 +54,8 @@
         "specialization",
         "origin",
         "profession",
-        "vehicle-damage"
+        "vehicle-damage",
+        "vehicle-mod"
     ],
     "flags": {
         "hotReload": {

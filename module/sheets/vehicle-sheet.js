@@ -10,7 +10,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   static DEFAULT_OPTIONS = {
     tag: "form",
     classes: ["neuroshima", "sheet", "actor", "actor-vehicle"],
-    position: { width: 650, height: 680 },
+    position: { width: 680, height: 750 },
     window: { title: "NEUROSHIMA.Sheet.ActorVehicle", resizable: true },
     form: { submitOnChange: true, submitOnClose: true, submitOnUnfocus: true },
     actions: {
@@ -104,6 +104,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     primary: {
       tabs: [
         { id: "crew",      group: "primary", label: "NEUROSHIMA.Tabs.Crew" },
+        { id: "mods",      group: "primary", label: "NEUROSHIMA.Tabs.Modifications" },
         { id: "combat",    group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "equipment", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
         { id: "notes",     group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
@@ -117,6 +118,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     header:    { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-header.hbs" },
     tabs:      { template: "templates/generic/tab-navigation.hbs" },
     crew:      { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-crew.hbs", scrollable: [""] },
+    mods:      { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-mods.hbs", scrollable: [""] },
     combat:    { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-combat.hbs", scrollable: [""] },
     equipment: { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-equipment.hbs", scrollable: [""] },
     notes:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
@@ -196,6 +198,40 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       items:      context.inventory.armor.filter(a => a.system.location === key && a.system.equipped)
     }));
 
+    const modCategoryLabels = {
+      engine:      game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Engine"),
+      gearbox:     game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Gearbox"),
+      brakes:      game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Brakes"),
+      turbo:       game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Turbo"),
+      boring:      game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Boring"),
+      electronics: game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Electronics"),
+      exhaust:     game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Exhaust"),
+      suspension:  game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Suspension"),
+      wheels:      game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Wheels"),
+      frame:       game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Frame"),
+      armor:       game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Armor"),
+      surprises:   game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Surprises"),
+      extras:      game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Extras"),
+      other:       game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Other")
+    };
+    const modDifficultyLabels = {
+      trivial:  game.i18n.localize("NEUROSHIMA.Difficulty.Trivial"),
+      easy:     game.i18n.localize("NEUROSHIMA.Difficulty.Easy"),
+      average:  game.i18n.localize("NEUROSHIMA.Difficulty.Average"),
+      hard:     game.i18n.localize("NEUROSHIMA.Difficulty.Hard"),
+      veryHard: game.i18n.localize("NEUROSHIMA.Difficulty.VeryHard"),
+      extreme:  game.i18n.localize("NEUROSHIMA.Difficulty.Extreme")
+    };
+    context.mods = items.filter(i => i.type === "vehicle-mod").map(mod => ({
+      id:             mod.id,
+      uuid:           mod.uuid,
+      img:            mod.img,
+      name:           mod.name,
+      categoryLabel:  modCategoryLabels[mod.system.category] ?? mod.system.category,
+      difficultyLabel: modDifficultyLabels[mod.system.installDifficulty] ?? mod.system.installDifficulty,
+      system:         mod.system
+    }));
+
     const damageItems = items.filter(i => i.type === "vehicle-damage");
     const totalDamagePoints = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
     const totalWoundPenalty = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
@@ -239,7 +275,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "gear", "armor", "magazine", "ammo", "vehicle-damage"].includes(item.type)) {
+    if (["weapon", "gear", "armor", "magazine", "ammo", "vehicle-damage", "vehicle-mod"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }

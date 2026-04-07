@@ -169,18 +169,41 @@
             }
         },
         "Difficulty": {
+            "Trivial": "Trywialny",
             "Easy": "Łatwy",
             "Average": "Przeciętny",
             "Problematic": "Problematyczny",
             "Hard": "Trudny",
             "VeryHard": "Bardzo Trudny",
             "DamnHard": "Cholernie Trudny",
+            "Extreme": "Ekstremalny",
             "Luck": "Fart",
             "Masterful": "Mistrzowski",
             "Grandmasterful": "Arcymistrzowski",
             "Impossible": "Niemożliwy",
             "ShowMore": "Pokaż progi trudności",
             "ShowLess": "Ukryj progi trudności"
+        },
+        "VehicleMod": {
+            "Category": "Kategoria",
+            "InstallDifficulty": "Trudność montażu",
+            "Rules": "Zasady / Opis",
+            "Categories": {
+                "Engine": "Silnik",
+                "Gearbox": "Skrzynia biegów",
+                "Brakes": "Układ hamulcowy",
+                "Turbo": "Turbodoładowanie",
+                "Boring": "Rozwiercanie cylindrów i zaworów",
+                "Electronics": "Elektronika",
+                "Exhaust": "Wydechy",
+                "Suspension": "Podwozie i zawieszenie",
+                "Wheels": "Koła",
+                "Frame": "Rama pojazdu",
+                "Armor": "Opancerzenie",
+                "Surprises": "Niespodzianki",
+                "Extras": "Dodatki",
+                "Other": "Inne"
+            }
         },
         "Actions": {
             "Attack": "Atak",
@@ -526,7 +549,8 @@
             "Stats": "Statystyki",
             "Description": "Opis",
             "Effects": "Efekty",
-            "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)"
+            "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)",
+            "Modifications": "Modyfikacje"
         },
         "Dialogs": {
             "ConfirmReroll": "Potwierdź przerzut",
@@ -715,7 +739,8 @@
                 "Specialization": "Specjalizacja",
                 "Origin": "Pochodzenie",
                 "Profession": "Profesja",
-                "Vehicle-damage": "Uszkodzenie Pojazdu"
+                "Vehicle-damage": "Uszkodzenie Pojazdu",
+                "Vehicle-mod": "Modyfikacja Pojazdu"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {
@@ -967,6 +992,8 @@
                 "Bottom":    "Spód"
             },
             "NoGear": "Brak wyposażenia",
+            "Modifications": "Modyfikacje",
+            "NoModifications": "Brak modyfikacji pojazdu.",
             "Position": {
                 "Driver":    "Kierowca",
                 "Gunner":    "Strzelec",

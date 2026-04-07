@@ -5,7 +5,7 @@ import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, BeastManeuverData, SpecializationData, OriginData, ProfessionData, VehicleDamageData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, BeastManeuverData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -149,6 +149,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["origin"]            = OriginData;
     CONFIG.Item.dataModels["profession"]        = ProfessionData;
     CONFIG.Item.dataModels["vehicle-damage"]    = VehicleDamageData;
+    CONFIG.Item.dataModels["vehicle-mod"]       = VehicleModData;
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -200,7 +201,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage"],
+        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -503,6 +504,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/ammo-details.hbs",
         "systems/neuroshima/templates/item/parts/wound-details.hbs",
         "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",
+        "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs",
         "systems/neuroshima/templates/item/parts/magazine-details.hbs",
         "systems/neuroshima/templates/item/parts/ammunition-details.hbs",
         "systems/neuroshima/templates/apps/healing-config.hbs",

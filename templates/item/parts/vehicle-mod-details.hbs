@@ -1,0 +1,41 @@
+<div class="grid grid-2col">
+    {{!-- Kategoria --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.VehicleMod.Category"}}</label>
+        <select name="system.category">
+            <option value="engine" {{#if (eq system.category "engine")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Engine"}}</option>
+            <option value="gearbox" {{#if (eq system.category "gearbox")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Gearbox"}}</option>
+            <option value="brakes" {{#if (eq system.category "brakes")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Brakes"}}</option>
+            <option value="turbo" {{#if (eq system.category "turbo")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Turbo"}}</option>
+            <option value="boring" {{#if (eq system.category "boring")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Boring"}}</option>
+            <option value="electronics" {{#if (eq system.category "electronics")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Electronics"}}</option>
+            <option value="exhaust" {{#if (eq system.category "exhaust")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Exhaust"}}</option>
+            <option value="suspension" {{#if (eq system.category "suspension")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Suspension"}}</option>
+            <option value="wheels" {{#if (eq system.category "wheels")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Wheels"}}</option>
+            <option value="frame" {{#if (eq system.category "frame")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Frame"}}</option>
+            <option value="armor" {{#if (eq system.category "armor")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Armor"}}</option>
+            <option value="surprises" {{#if (eq system.category "surprises")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Surprises"}}</option>
+            <option value="extras" {{#if (eq system.category "extras")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Extras"}}</option>
+            <option value="other" {{#if (eq system.category "other")}}selected{{/if}}>{{localize "NEUROSHIMA.VehicleMod.Categories.Other"}}</option>
+        </select>
+    </div>
+
+    {{!-- Trudność montażu --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.VehicleMod.InstallDifficulty"}}</label>
+        <select name="system.installDifficulty">
+            <option value="trivial" {{#if (eq system.installDifficulty "trivial")}}selected{{/if}}>{{localize "NEUROSHIMA.Difficulty.Trivial"}}</option>
+            <option value="easy" {{#if (eq system.installDifficulty "easy")}}selected{{/if}}>{{localize "NEUROSHIMA.Difficulty.Easy"}}</option>
+            <option value="average" {{#if (eq system.installDifficulty "average")}}selected{{/if}}>{{localize "NEUROSHIMA.Difficulty.Average"}}</option>
+            <option value="hard" {{#if (eq system.installDifficulty "hard")}}selected{{/if}}>{{localize "NEUROSHIMA.Difficulty.Hard"}}</option>
+            <option value="veryHard" {{#if (eq system.installDifficulty "veryHard")}}selected{{/if}}>{{localize "NEUROSHIMA.Difficulty.VeryHard"}}</option>
+            <option value="extreme" {{#if (eq system.installDifficulty "extreme")}}selected{{/if}}>{{localize "NEUROSHIMA.Difficulty.Extreme"}}</option>
+        </select>
+    </div>
+</div>
+
+{{!-- Zasady / Opis mechaniczny --}}
+<div class="form-group stacked">
+    <label>{{localize "NEUROSHIMA.VehicleMod.Rules"}}</label>
+    <textarea name="system.rules" rows="4" style="resize: vertical; font-size: 0.85em;">{{system.rules}}</textarea>
+</div>

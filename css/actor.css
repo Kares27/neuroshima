@@ -4365,3 +4365,67 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: var(--ns-accent, #c9aa71);
     cursor: pointer;
 }
+
+/* === Vehicle Modifications Tab === */
+.neuroshima.sheet.actor-vehicle .vehicle-mods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: var(--ns-bg-secondary, rgba(0,0,0,0.1));
+    border: 1px solid var(--ns-border-light, rgba(255,255,255,0.1));
+    border-radius: 3px;
+    min-height: 36px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-icon img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-name {
+    font-size: 0.9em;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-name:hover {
+    color: var(--ns-accent, #c9aa71);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-category {
+    font-size: 0.75em;
+    color: var(--ns-text-light, #888);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-difficulty {
+    flex: 0 0 auto;
+    font-size: 0.8em;
+    color: var(--ns-text-muted, #999);
+    padding: 0 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .item-controls {
+    display: flex;
+    gap: 4px;
+    flex: 0 0 auto;
+}

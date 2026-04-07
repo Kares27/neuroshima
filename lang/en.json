@@ -166,18 +166,41 @@
             }
         },
         "Difficulty": {
+            "Trivial": "Trivial",
             "Easy": "Easy",
             "Average": "Average",
             "Problematic": "Problematic",
             "Hard": "Hard",
             "VeryHard": "Very Hard",
             "DamnHard": "Damn Hard",
+            "Extreme": "Extreme",
             "Luck": "Luck",
             "Masterful": "Masterful",
             "Grandmasterful": "Grandmasterful",
             "Impossible": "Impossible",
             "ShowMore": "Show difficulty thresholds",
             "ShowLess": "Hide difficulty thresholds"
+        },
+        "VehicleMod": {
+            "Category": "Category",
+            "InstallDifficulty": "Installation Difficulty",
+            "Rules": "Rules / Description",
+            "Categories": {
+                "Engine": "Engine",
+                "Gearbox": "Gearbox",
+                "Brakes": "Brake System",
+                "Turbo": "Turbocharger",
+                "Boring": "Cylinder & Valve Boring",
+                "Electronics": "Electronics",
+                "Exhaust": "Exhaust",
+                "Suspension": "Suspension & Undercarriage",
+                "Wheels": "Wheels",
+                "Frame": "Vehicle Frame",
+                "Armor": "Armor Plating",
+                "Surprises": "Surprises",
+                "Extras": "Extras",
+                "Other": "Other"
+            }
         },
         "Actions": {
             "Attack": "Attack",
@@ -503,7 +526,8 @@
             "Stats": "Stats",
             "Description": "Description",
             "Effects": "Effects",
-            "EffectsPlaceholder": "Item effects (TBD)"
+            "EffectsPlaceholder": "Item effects (TBD)",
+            "Modifications": "Modifications"
         },
         "Dialogs": {
             "ConfirmReroll": "Confirm Reroll",
@@ -689,7 +713,8 @@
                 "Specialization": "Specialization",
                 "Origin": "Origin",
                 "Profession": "Profession",
-                "Vehicle-damage": "Vehicle Damage"
+                "Vehicle-damage": "Vehicle Damage",
+                "Vehicle-mod": "Vehicle Modification"
             },
             "Empty": "No items.",
             "Fields": {
@@ -940,6 +965,8 @@
                 "Bottom":    "Bottom"
             },
             "NoGear": "No gear",
+            "Modifications": "Modifications",
+            "NoModifications": "No vehicle modifications.",
             "Position": {
                 "Driver":    "Driver",
                 "Gunner":    "Gunner",

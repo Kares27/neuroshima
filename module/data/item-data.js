@@ -313,6 +313,29 @@ export class ProfessionData extends foundry.abstract.TypeDataModel {
 }
 
 /**
+ * Data model for Vehicle Modification items.
+ * Represents mechanical or structural upgrades installed on a vehicle.
+ */
+export class VehicleModData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      rules: new fields.StringField({ initial: "" }),
+      category: new fields.StringField({
+        required: true,
+        initial: "engine",
+        choices: ["engine", "gearbox", "brakes", "turbo", "boring", "electronics", "exhaust", "suspension", "wheels", "frame", "armor", "surprises", "extras", "other"]
+      }),
+      installDifficulty: new fields.StringField({
+        initial: "average",
+        choices: ["trivial", "easy", "average", "hard", "veryHard", "extreme"]
+      })
+    };
+  }
+}
+
+/**
  * Data model for Vehicle Damage items.
  * Vehicle-specific equivalent of wounds — represents structural damage
  * to specific sections of a vehicle.
