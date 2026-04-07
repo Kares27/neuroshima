@@ -3183,6 +3183,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima.sheet.actor-vehicle .sheet-header {
+    gap: 2px;
     flex-direction: column;
 }
 
