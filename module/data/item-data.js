@@ -329,7 +329,7 @@ export class VehicleModData extends foundry.abstract.TypeDataModel {
       }),
       installDifficulty: new fields.StringField({
         initial: "average",
-        choices: ["trivial", "easy", "average", "hard", "veryHard", "extreme"]
+        choices: ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"]
       })
     };
   }

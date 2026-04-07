@@ -215,12 +215,15 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       other:       game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Other")
     };
     const modDifficultyLabels = {
-      trivial:  game.i18n.localize("NEUROSHIMA.Difficulty.Trivial"),
-      easy:     game.i18n.localize("NEUROSHIMA.Difficulty.Easy"),
-      average:  game.i18n.localize("NEUROSHIMA.Difficulty.Average"),
-      hard:     game.i18n.localize("NEUROSHIMA.Difficulty.Hard"),
-      veryHard: game.i18n.localize("NEUROSHIMA.Difficulty.VeryHard"),
-      extreme:  game.i18n.localize("NEUROSHIMA.Difficulty.Extreme")
+      easy:           game.i18n.localize("NEUROSHIMA.Difficulty.Easy"),
+      average:        game.i18n.localize("NEUROSHIMA.Difficulty.Average"),
+      problematic:    game.i18n.localize("NEUROSHIMA.Difficulty.Problematic"),
+      hard:           game.i18n.localize("NEUROSHIMA.Difficulty.Hard"),
+      veryHard:       game.i18n.localize("NEUROSHIMA.Difficulty.VeryHard"),
+      damnHard:       game.i18n.localize("NEUROSHIMA.Difficulty.DamnHard"),
+      luck:           game.i18n.localize("NEUROSHIMA.Difficulty.Luck"),
+      masterful:      game.i18n.localize("NEUROSHIMA.Difficulty.Masterful"),
+      grandmasterful: game.i18n.localize("NEUROSHIMA.Difficulty.Grandmasterful")
     };
     context.mods = items.filter(i => i.type === "vehicle-mod").map(mod => ({
       id:             mod.id,

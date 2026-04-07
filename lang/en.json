@@ -166,14 +166,12 @@
             }
         },
         "Difficulty": {
-            "Trivial": "Trivial",
             "Easy": "Easy",
             "Average": "Average",
             "Problematic": "Problematic",
             "Hard": "Hard",
             "VeryHard": "Very Hard",
             "DamnHard": "Damn Hard",
-            "Extreme": "Extreme",
             "Luck": "Luck",
             "Masterful": "Masterful",
             "Grandmasterful": "Grandmasterful",

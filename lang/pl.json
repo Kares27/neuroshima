@@ -169,14 +169,12 @@
             }
         },
         "Difficulty": {
-            "Trivial": "Trywialny",
             "Easy": "Łatwy",
             "Average": "Przeciętny",
             "Problematic": "Problematyczny",
             "Hard": "Trudny",
             "VeryHard": "Bardzo Trudny",
             "DamnHard": "Cholernie Trudny",
-            "Extreme": "Ekstremalny",
             "Luck": "Fart",
             "Masterful": "Mistrzowski",
             "Grandmasterful": "Arcymistrzowski",
