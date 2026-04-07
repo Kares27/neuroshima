@@ -3177,9 +3177,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima.sheet.actor-vehicle .profile-img {
-    flex: 0 0 256px;
-    width: 256px;
-    height: 256px;
+    flex: 0 0 200px;
+    width: 200px;
+    height: 200px;
 }
 
 .neuroshima.sheet.actor-vehicle .sheet-header {
