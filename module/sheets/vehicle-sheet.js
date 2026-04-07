@@ -64,6 +64,31 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       configureHP: async function(event, target) {
           const { NeuroshimaActorSheet } = await import("./actor-sheet.js");
           return NeuroshimaActorSheet.prototype._onConfigureHP.call(this, event, target);
+      },
+      modifyDurability: async function(event, target) {
+        const itemId  = target.dataset.itemId;
+        const item    = this.document.items.get(itemId);
+        if (!item || item.type !== "armor") return;
+        const isRight   = event.type === "contextmenu";
+        const current   = item.system.armor?.durabilityDamage || 0;
+        const max       = item.system.armor?.durability || 0;
+        const newDamage = Math.clamp(isRight ? current + 1 : current - 1, 0, max);
+        if (newDamage !== current) await item.update({ "system.armor.durabilityDamage": newDamage });
+      },
+      modifyAP: async function(event, target) {
+        const itemId   = target.dataset.itemId;
+        const location = target.dataset.location;
+        const item     = this.document.items.get(itemId);
+        if (!item || item.type !== "armor" || !location) return;
+        const isRight   = event.type === "contextmenu";
+        const current   = item.system.armor?.damage?.[location] || 0;
+        const max       = item.system.armor?.ratings?.[location] || 0;
+        const newDamage = Math.clamp(isRight ? current + 1 : current - 1, 0, max);
+        if (newDamage !== current) await item.update({ [`system.armor.damage.${location}`]: newDamage });
+      },
+      toggleHealing: async function(event, target) {
+        const item = this.document.items.get(target.closest("[data-item-id]")?.dataset.itemId);
+        if (item) await item.update({ "system.isHealing": !item.system.isHealing });
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -154,6 +179,29 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       magazines:      items.filter(i => i.type === "magazine")
     };
 
+    const vehicleArmorKeys = NEUROSHIMA.vehicleArmorKeys;
+    const vehicleLocationsConfig = NEUROSHIMA.vehicleLocations;
+
+    context.vehicleArmorLocations = vehicleArmorKeys.map(key => ({
+      key,
+      label:      game.i18n.localize(vehicleLocationsConfig[key]),
+      reduction:  system.armor?.[key]?.reduction  ?? 0,
+      hitPenalty: system.armor?.[key]?.hitPenalty ?? 0,
+      weakPoint:  system.armor?.[key]?.weakPoint  ?? false,
+      items:      context.inventory.armor.filter(a => a.system.location === key && a.system.equipped)
+    }));
+
+    const woundItems = items.filter(i => i.type === "wound");
+    const totalDamagePoints = woundItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
+    const totalWoundPenalty = woundItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
+    const maxHP = actor.getFlag("neuroshima", "vehicleMaxHP") || 27;
+    context.combat = {
+      wounds:            woundItems,
+      totalDamagePoints,
+      totalWoundPenalty,
+      maxHP
+    };
+
     context.notes = {
       enriched: await foundry.applications.ux.TextEditor.implementation.enrichHTML(system.notes || "", {
         secrets: actor.isOwner,
@@ -186,7 +234,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "gear", "armor", "magazine", "ammo"].includes(item.type)) {
+    if (["weapon", "gear", "armor", "magazine", "ammo", "wound"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }

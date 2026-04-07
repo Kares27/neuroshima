@@ -3992,3 +3992,370 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima.sheet.actor-creature .creature-skill-section .skills-horizontal-grid {
     grid-template-columns: repeat(2, 1fr);
 }
+
+/* ===== Vehicle Combat Tab ===== */
+.neuroshima.sheet.actor-vehicle [data-application-part="combat"].active {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    color: var(--ns-accent, #c9aa71);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col .section-header .header-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col .section-header .header-controls {
+    display: flex;
+    gap: 4px;
+}
+
+/* Vehicle armor grid — same as creature nat-armor but 5 slots */
+.neuroshima.sheet.actor-vehicle .vehicle-armor-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-location-box {
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 0 0 4px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor-vehicle .location-header {
+    background: var(--ns-bg-header);
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--ns-border-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.neuroshima.sheet.actor-vehicle .location-name {
+    font-weight: bold;
+    font-size: 0.78em;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-col-headers {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: 1px 4px 0;
+    gap: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-col-headers span {
+    flex: 1;
+    text-align: center;
+    font-size: 0.64em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-col-weakpoint-spacer {
+    flex: 0 0 28px;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-body {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 2px 4px 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-reduction-input,
+.neuroshima.sheet.actor-vehicle .nat-armor-penalty-input {
+    flex: 1;
+    min-width: 0;
+    width: 34px;
+    height: 20px;
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: bold;
+    padding: 0 2px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 3px;
+    color: inherit;
+    line-height: 20px;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    cursor: pointer;
+    user-select: none;
+    padding: 1px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.3;
+    transition: opacity 0.15s, filter 0.15s;
+    filter: grayscale(1);
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-toggle input[type="checkbox"]:checked + .nat-armor-weakpoint-icon {
+    opacity: 1;
+    filter: none;
+}
+
+/* Armor items listed inside location box */
+.neuroshima.sheet.actor-vehicle .armor-column-headers {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.45);
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.neuroshima.sheet.actor-vehicle .armor-header-icon { flex: 0 0 20px; }
+.neuroshima.sheet.actor-vehicle .armor-header-name { flex: 1; }
+.neuroshima.sheet.actor-vehicle .armor-header-dur,
+.neuroshima.sheet.actor-vehicle .armor-header-ap  { flex: 0 0 28px; text-align: center; }
+
+.neuroshima.sheet.actor-vehicle .armor-item-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 4px;
+    font-size: 0.80em;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-icon-tiny {
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-name-tiny {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-durability,
+.neuroshima.sheet.actor-vehicle .armor-ap-value {
+    flex: 0 0 28px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-durability.is-damaged,
+.neuroshima.sheet.actor-vehicle .armor-ap-value.is-damaged { color: #e87070; }
+
+/* Vehicle weapons list */
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 5px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-image {
+    width: 32px;
+    height: 32px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main);
+    flex: 0 0 32px;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-controls {
+    display: flex;
+    gap: 6px;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-controls a:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .empty-list {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.4);
+    padding: 4px 6px;
+    font-style: italic;
+}
+
+/* Vehicle damage section */
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section {
+    margin-top: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    color: var(--ns-accent, #c9aa71);
+    justify-content: space-between;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .header-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .wound-stats-total {
+    display: flex;
+    gap: 10px;
+    font-size: 0.85em;
+    color: rgba(255,255,255,0.6);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .header-actions {
+    display: flex;
+    gap: 6px;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .header-actions a:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .table-header {
+    display: flex;
+    flex-direction: row;
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid var(--ns-border-main);
+    font-weight: bold;
+    font-size: 0.8em;
+    padding: 3px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .table-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.85em;
+    padding: 2px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .table-row:last-child { border-bottom: none; }
+.neuroshima.sheet.actor-vehicle .combat-table .table-row:hover { background: rgba(255,255,255,0.04); }
+
+.neuroshima.sheet.actor-vehicle .combat-table .col-name {
+    flex: 2;
+    padding-left: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .col-location,
+.neuroshima.sheet.actor-vehicle .combat-table .col-type,
+.neuroshima.sheet.actor-vehicle .combat-table .col-penalty {
+    flex: 1.2;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .col-controls {
+    flex: 0 0 60px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-vehicle .wounds-table select,
+.neuroshima.sheet.actor-vehicle .wounds-table input {
+    width: 100%;
+    height: 22px;
+    background: rgba(0,0,0,0.2);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    font-family: inherit;
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-vehicle .wounds-table .item-control {
+    color: var(--ns-text-light);
+    transition: color 0.2s;
+}
+
+.neuroshima.sheet.actor-vehicle .wounds-table .item-control:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .item-name.clickable:hover {
+    color: var(--ns-accent, #c9aa71);
+    cursor: pointer;
+}

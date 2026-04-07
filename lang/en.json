@@ -925,6 +925,18 @@
             "NoCrew": "Drop an actor to add a crew member",
             "Exposed": "Exposed",
             "NoWeapons": "No weapons",
+            "NoMountedWeapons": "No mounted weapons",
+            "Mounted": "Mounted",
+            "MountedWeapons": "Vehicle Weapons",
+            "Damage": "Damage",
+            "DamageLocation": "Location",
+            "ArmorLocations": {
+                "Front":     "Front",
+                "RightSide": "Right Side",
+                "LeftSide":  "Left Side",
+                "Rear":      "Rear",
+                "Bottom":    "Bottom"
+            },
             "NoGear": "No gear",
             "Position": {
                 "Driver":    "Driver",

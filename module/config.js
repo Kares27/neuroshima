@@ -74,6 +74,14 @@ export const NEUROSHIMA = {
         commander: "NEUROSHIMA.Vehicle.Position.Commander",
         passenger: "NEUROSHIMA.Vehicle.Position.Passenger"
     },
+    vehicleLocations: {
+        front:     "NEUROSHIMA.Vehicle.ArmorLocations.Front",
+        rightSide: "NEUROSHIMA.Vehicle.ArmorLocations.RightSide",
+        leftSide:  "NEUROSHIMA.Vehicle.ArmorLocations.LeftSide",
+        rear:      "NEUROSHIMA.Vehicle.ArmorLocations.Rear",
+        bottom:    "NEUROSHIMA.Vehicle.ArmorLocations.Bottom"
+    },
+    vehicleArmorKeys: ["front", "rightSide", "leftSide", "rear", "bottom"],
     bodyLocations: bodyLocations,
     // Helper accessors for backward compatibility or ease of use
     get locations() {

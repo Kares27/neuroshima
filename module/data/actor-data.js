@@ -341,7 +341,16 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         max:   new fields.NumberField({ integer: true, initial: 0, min: 0 })
       }),
       cost:  new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      notes: new fields.HTMLField({ initial: "" })
+      notes: new fields.HTMLField({ initial: "" }),
+
+      /** Per-section vehicle armor plate */
+      armor: new fields.SchemaField({
+        front:     new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),
+        rightSide: new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),
+        leftSide:  new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),
+        rear:      new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),
+        bottom:    new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) })
+      })
     };
   }
 }

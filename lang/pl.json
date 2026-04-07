@@ -952,6 +952,18 @@
             "NoCrew": "Upuść aktora, aby dodać załoganta",
             "Exposed": "Odsłonięty",
             "NoWeapons": "Brak uzbrojenia",
+            "NoMountedWeapons": "Brak zamontowanego uzbrojenia",
+            "Mounted": "Zamontowany",
+            "MountedWeapons": "Uzbrojenie pojazdu",
+            "Damage": "Uszkodzenia",
+            "DamageLocation": "Lokalizacja",
+            "ArmorLocations": {
+                "Front":     "Przód",
+                "RightSide": "Prawy Bok",
+                "LeftSide":  "Lewy Bok",
+                "Rear":      "Tył",
+                "Bottom":    "Spód"
+            },
             "NoGear": "Brak wyposażenia",
             "Position": {
                 "Driver":    "Kierowca",
