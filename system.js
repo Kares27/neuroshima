@@ -502,6 +502,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/weapon-thrown.hbs",
         "systems/neuroshima/templates/item/parts/ammo-details.hbs",
         "systems/neuroshima/templates/item/parts/wound-details.hbs",
+        "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",
         "systems/neuroshima/templates/item/parts/magazine-details.hbs",
         "systems/neuroshima/templates/item/parts/ammunition-details.hbs",
         "systems/neuroshima/templates/apps/healing-config.hbs",
