@@ -176,12 +176,12 @@ Hooks.once('init', async function() {
         const dice = modifiedResults.map((d, i) => {
             const cls = d.ignored ? "ignored" : (d.isSuccess ? "success" : "failure");
             const nat = d.isNat1 ? " nat-1" : (d.isNat20 ? " nat-20" : "");
-            let html = `<div class='die-result ${cls}'>`;
-            html += `<span class='die-label'>D${i + 1}=</span>`;
-            html += `<span class='die-square original${nat}'>${d.original}</span>`;
+            let html = `<div class="die-result ${cls}">`;
+            html += `<span class="die-label">D${i + 1}=</span>`;
+            html += `<span class="die-square original${nat}">${d.original}</span>`;
             if (skill > 0) {
-                html += `<i class='fas fa-long-arrow-alt-right' style='font-size:0.7em;margin:0 2px;'></i>`;
-                html += `<span class='die-square modified ${cls}'>${d.modified}</span>`;
+                html += `<i class="fas fa-long-arrow-alt-right" style="font-size:0.7em;margin:0 2px;"></i>`;
+                html += `<span class="die-square modified ${cls}">${d.modified}</span>`;
             }
             html += `</div>`;
             return html;
@@ -189,11 +189,10 @@ Hooks.once('init', async function() {
         const successCount = modifiedResults.filter(d => d.isSuccess).length;
         const targetLabel = game.i18n.localize("NEUROSHIMA.Roll.Target");
         const spLabel = game.i18n.localize("NEUROSHIMA.Roll.SuccessPointsAbbr");
-        const inner = `<div class='neuroshima-dice-tooltip'>`
-            + `<div class='dice-results-grid' style='gap:2px;'>${dice}</div>`
-            + `<div style='margin-top:4px;font-size:0.85em;'><strong>${targetLabel}:</strong> ${target} &nbsp;`
+        return `<div class="neuroshima-dice-tooltip">`
+            + `<div class="dice-results-grid" style="gap:2px;">${dice}</div>`
+            + `<div style="margin-top:4px;font-size:0.85em;"><strong>${targetLabel}:</strong> ${target} &nbsp;`
             + `<strong>${spLabel}:</strong> ${successCount}</div></div>`;
-        return new Handlebars.SafeString(inner);
     });
     Handlebars.registerHelper('capitalize', (str) => {
         if (!str || typeof str !== 'string') return '';
