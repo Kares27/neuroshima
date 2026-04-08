@@ -197,10 +197,13 @@ export class CombatHelper {
   static async applyDamageToActor(actor, attackData, options = {}) {
     game.neuroshima.group(`CombatHelper | applyDamageToActor: ${actor.name}`);
     const suppressChat = options.suppressChat === true;
-    
-    // We can reuse the applyDamage logic by creating a mock message if needed,
-    // but it's better to refactor applyDamage to call this, or just implement it here.
-    
+
+    if (actor.type === "vehicle") {
+        const result = await this.applyDamageToVehicle(actor, attackData, options);
+        game.neuroshima.groupEnd();
+        return result;
+    }
+
     const location = options.location || attackData.finalLocation || "torso";
     const isMelee = attackData.isMelee;
     const initialDamageType = attackData.damage || "L";
@@ -322,6 +325,162 @@ export class CombatHelper {
     
     game.neuroshima.groupEnd();
     return null;
+  }
+
+  /**
+   * Apply damage to a vehicle actor according to Neuroshima 1.5 vehicle damage rules.
+   * Character damage types are shifted down one step for vehicles:
+   *   D/sD/L/sL → negated (vehicle ignores these)
+   *   C/sC      → VL (Lekkie uszkodzenie)
+   *   K/sK      → VC (Ciężkie uszkodzenie)
+   *   beyond K  → VK (Krytyczne uszkodzenie)
+   * Then a durability test (3d20, no skill, ≥2 successes) halves the penalties if passed.
+   */
+  static async applyDamageToVehicle(actor, attackData, options = {}) {
+    game.neuroshima.group(`CombatHelper | applyDamageToVehicle: ${actor.name}`);
+
+    const rawDamageType = attackData.damage || "L";
+    const isMelee = attackData.isMelee;
+
+    // Resolve damage type for melee (same tier logic as ranged)
+    let charDamageType = rawDamageType;
+    if (isMelee) {
+      const spDiff = options.spDifference ?? attackData.successPoints ?? 1;
+      const profiles = [
+        attackData.damageMelee1 || "D",
+        attackData.damageMelee2 || "L",
+        attackData.damageMelee3 || "C"
+      ];
+      const tier = Math.clamp(spDiff, 1, 3);
+      charDamageType = profiles[tier - 1] || profiles[0];
+    }
+
+    // Map character damage type → vehicle damage type
+    const vehicleDmgMap = {
+      "D": null, "sD": null,
+      "L": null, "sL": null,
+      "C": "VL", "sC": "VL",
+      "K": "VC", "sK": "VC"
+    };
+    const vehicleDamageType = vehicleDmgMap.hasOwnProperty(charDamageType)
+      ? vehicleDmgMap[charDamageType]
+      : "VK";
+
+    if (!vehicleDamageType) {
+      game.neuroshima.log(`Pojazd neguje obrażenia: typ ${charDamageType} jest zbyt słaby.`);
+      game.neuroshima.groupEnd();
+      const sourceLabel = attackData.label || "Broń";
+      await ChatMessage.create({
+        content: `<div class="neuroshima-chat"><p><strong>${actor.name}</strong> neguje obrażenia — broń <em>${sourceLabel}</em> jest zbyt słaba, aby uszkodzić pojazd.</p></div>`,
+        speaker: ChatMessage.getSpeaker({ actor })
+      });
+      return null;
+    }
+
+    // Determine vehicle location; default to front
+    const vehicleLocations = ["front", "rightSide", "leftSide", "rear", "bottom"];
+    const rawLocation = options.location || attackData.finalLocation || "front";
+    const location = vehicleLocations.includes(rawLocation) ? rawLocation : "front";
+
+    // Armor reduction for vehicles: check vehicle's built-in armor reduction
+    const armorData = actor.system.armor?.[location];
+    let effectiveVehicleDamageType = vehicleDamageType;
+    if (armorData?.reduction > 0) {
+      const order = ["VL", "VC", "VK"];
+      const idx = order.indexOf(vehicleDamageType);
+      const reduced = idx - Math.floor(armorData.reduction);
+      if (reduced < 0) {
+        game.neuroshima.log(`Pancerz pojazdu w lokacji ${location} całkowicie neguje obrażenia.`);
+        game.neuroshima.groupEnd();
+        await ChatMessage.create({
+          content: `<div class="neuroshima-chat"><p><strong>${actor.name}</strong> — pancerz w lokacji <em>${location}</em> neguje obrażenia.</p></div>`,
+          speaker: ChatMessage.getSpeaker({ actor })
+        });
+        return null;
+      }
+      effectiveVehicleDamageType = order[Math.max(0, reduced)];
+    }
+
+    const cfg = NEUROSHIMA.vehicleDamageConfiguration[effectiveVehicleDamageType];
+
+    // Durability test — pure attribute test, no skill, ≥2 successes to pass
+    const durBase = (actor.system.attributes?.durability ?? 0) + (actor.system.modifiers?.durability ?? 0);
+    const durRoll = new Roll("3d20");
+    await durRoll.evaluate();
+    const diceResults = durRoll.terms[0].results.map(r => r.result);
+
+    const diceObjects = diceResults.map((v, i) => ({
+      original: v, index: i, modified: v,
+      isSuccess: false, ignored: false,
+      isNat1: v === 1, isNat20: v === 20
+    }));
+
+    const evalData = { target: durBase, stat: durBase, skill: 0 };
+    game.neuroshima.NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
+    const testPassed = evalData.success; // ≥2 successes
+
+    // Penalties based on test result
+    const sprawnoscLoss  = testPassed ? cfg.sprawnoscPassed  : cfg.sprawnoscFailed;
+    const agilityPenalty = testPassed ? cfg.agilityPenaltyPassed : cfg.agilityPenaltyFailed;
+
+    // Create vehicle-damage item
+    const dmgTypeLabel = game.i18n.localize(cfg.label);
+    const itemData = {
+      name: game.i18n.localize("NEUROSHIMA.Items.Type.Vehicle-damage"),
+      type: "vehicle-damage",
+      img:  "systems/neuroshima/assets/img/tire-iron.svg",
+      system: {
+        location:      location,
+        damageType:    effectiveVehicleDamageType,
+        penalty:       sprawnoscLoss,
+        agilityPenalty: agilityPenalty
+      }
+    };
+    const [created] = await actor.createEmbeddedDocuments("Item", [itemData]);
+
+    // Chat report
+    const testLabel = testPassed
+      ? game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTestPassed")
+      : game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTestFailed");
+    const sourceLabel = attackData.label || "Broń";
+    const locKey = location.charAt(0).toUpperCase() + location.slice(1);
+    const locI18nMap = { front: "Front", rightSide: "RightSide", leftSide: "LeftSide", rear: "Rear", bottom: "Bottom" };
+    const locLabel = game.i18n.localize(`NEUROSHIMA.Vehicle.ArmorLocations.${locI18nMap[location] || locKey}`) || location;
+
+    const diceHtml = diceObjects.map(d =>
+      `<span class="die-result ${d.isSuccess ? "success" : "failure"}" title="${d.original}">${d.modified}</span>`
+    ).join(" ");
+
+    const content = `
+<div class="neuroshima-chat vehicle-damage-report">
+  <h3>${actor.name} — ${game.i18n.localize("NEUROSHIMA.Vehicle.Damage")}</h3>
+  <p><strong>${game.i18n.localize("NEUROSHIMA.Items.Fields.DamageType")}:</strong> ${dmgTypeLabel} (z: ${charDamageType})</p>
+  <p><strong>${game.i18n.localize("NEUROSHIMA.Vehicle.DamageLocation")}:</strong> ${locLabel}</p>
+  <hr>
+  <p><strong>${game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTest")}:</strong> ${diceHtml} (próg: ${durBase})</p>
+  <p><em>${testLabel}</em></p>
+  <hr>
+  <p><strong>-${sprawnoscLoss}</strong> ${game.i18n.localize("NEUROSHIMA.Vehicle.Attributes.Efficiency")}</p>
+  ${agilityPenalty > 0 ? `<p><strong>+${agilityPenalty}%</strong> utrudnienia do ${game.i18n.localize("NEUROSHIMA.Vehicle.Attributes.Agility")}</p>` : ""}
+  <p><em>Źródło: ${sourceLabel}</em></p>
+</div>`;
+
+    await ChatMessage.create({
+      content,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      type: CONST.CHAT_MESSAGE_TYPES?.OTHER ?? 0,
+      flags: {
+        neuroshima: {
+          actorId:   actor.id,
+          actorUuid: actor.uuid,
+          woundIds:  [created.id],
+          isVehicleDamage: true
+        }
+      }
+    });
+
+    game.neuroshima.groupEnd();
+    return { woundIds: [created.id] };
   }
 
   /**
@@ -454,9 +613,9 @@ export class CombatHelper {
     game.neuroshima.group(`Przetwarzanie odporności na ból: ${actor.name}`);
     
     const skillKey = "painResistance";
-    const skillValue = actor.system.skills[skillKey]?.value || 0;
+    const skillValue = actor.system.skills?.[skillKey]?.value || 0;
     const statKey = "charisma";
-    const statValue = actor.system.attributes[statKey] || 10;
+    const statValue = actor.system.attributeTotals?.[statKey] ?? actor.system.attributes?.[statKey] ?? 10;
     
     const results = [];
     const processedWounds = [];
