@@ -1,0 +1,28 @@
+<form class="standard-form" autocomplete="off">
+    <div class="form-group stacked" style="margin-bottom: 12px;">
+        <label style="font-weight: bold; margin-bottom: 6px;">
+            {{localize "NEUROSHIMA.Vehicle.SelectCrewFor"}} <em>{{weaponName}}</em>
+        </label>
+
+        {{#if hasNoCrew}}
+        <p class="notification warning">{{localize "NEUROSHIMA.Vehicle.NoCrewInVehicle"}}</p>
+        {{else}}
+        <select name="crewActorId" style="font-size: 0.9em;">
+            {{#each crewOptions}}
+            <option value="{{this.actorId}}">{{this.label}}</option>
+            {{/each}}
+        </select>
+        {{/if}}
+    </div>
+
+    <div class="form-footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button type="button" data-action="cancel">
+            <i class="fas fa-times"></i> {{localize "NEUROSHIMA.Dialog.Cancel"}}
+        </button>
+        {{#unless hasNoCrew}}
+        <button type="button" data-action="confirm" class="default">
+            <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.Actions.Roll"}}
+        </button>
+        {{/unless}}
+    </div>
+</form>

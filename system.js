@@ -514,6 +514,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/edit-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/debug-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/combat-config.hbs",
+        "systems/neuroshima/templates/apps/vehicle-crew-select-dialog.hbs",
         "systems/neuroshima/templates/apps/melee/melee-app.hbs",
         "systems/neuroshima/templates/apps/melee/parts/melee-top-bar.hbs",
         "systems/neuroshima/templates/apps/melee/parts/fighter-card.hbs",

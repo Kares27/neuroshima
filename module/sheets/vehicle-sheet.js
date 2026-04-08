@@ -22,9 +22,23 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         const itemId = target.dataset.itemId;
         const item   = this.document.items.get(itemId);
         if (!item) return;
-        const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
-        const dialog = new NeuroshimaWeaponRollDialog({ actor: this.document, weapon: item, rollType: item.system.weaponType });
-        dialog.render(true);
+        const vehicle = this.document;
+
+        const { VehicleCrewSelectDialog } = await import("../apps/vehicle-crew-select-dialog.js");
+        const crewDialog = new VehicleCrewSelectDialog({
+          vehicle,
+          weapon: item,
+          onSelect: async (crewActor) => {
+            const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+            const rollDialog = new NeuroshimaWeaponRollDialog({
+              actor:    crewActor,
+              weapon:   item,
+              rollType: item.system.weaponType
+            });
+            rollDialog.render(true);
+          }
+        });
+        crewDialog.render(true);
       },
       createItem:  async function(event, target) {
         const type = target.dataset.type || "weapon";
