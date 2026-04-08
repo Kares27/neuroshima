@@ -339,148 +339,124 @@ export class CombatHelper {
   static async applyDamageToVehicle(actor, attackData, options = {}) {
     game.neuroshima.group(`CombatHelper | applyDamageToVehicle: ${actor.name}`);
 
-    const rawDamageType = attackData.damage || "L";
-    const isMelee = attackData.isMelee;
+    const VEHICLE_LOCS    = ["front", "rightSide", "leftSide", "rear", "bottom"];
+    const LOC_I18N        = { front: "Front", rightSide: "RightSide", leftSide: "LeftSide", rear: "Rear", bottom: "Bottom" };
+    const VEHICLE_DMG_MAP = { D: null, sD: null, L: null, sL: null, C: "VL", sC: "VL", K: "VC", sK: "VC" };
 
-    // Resolve damage type for melee (same tier logic as ranged)
-    let charDamageType = rawDamageType;
-    if (isMelee) {
+    const rawLocation = options.location || attackData.finalLocation || "front";
+    const location    = VEHICLE_LOCS.includes(rawLocation) ? rawLocation : "front";
+    const durBase     = (actor.system.attributes?.durability ?? 0) + (actor.system.modifiers?.durability ?? 0);
+    const sourceLabel = attackData.label || game.i18n.localize("NEUROSHIMA.Items.Fields.None");
+
+    // Build list of bullets to process (handles burst fire)
+    let bullets;
+    if (attackData.isMelee) {
       const spDiff = options.spDifference ?? attackData.successPoints ?? 1;
       const profiles = [
         attackData.damageMelee1 || "D",
         attackData.damageMelee2 || "L",
         attackData.damageMelee3 || "C"
       ];
-      const tier = Math.clamp(spDiff, 1, 3);
-      charDamageType = profiles[tier - 1] || profiles[0];
-    }
-
-    // Map character damage type → vehicle damage type
-    const vehicleDmgMap = {
-      "D": null, "sD": null,
-      "L": null, "sL": null,
-      "C": "VL", "sC": "VL",
-      "K": "VC", "sK": "VC"
-    };
-    const vehicleDamageType = vehicleDmgMap.hasOwnProperty(charDamageType)
-      ? vehicleDmgMap[charDamageType]
-      : "VK";
-
-    if (!vehicleDamageType) {
-      game.neuroshima.log(`Pojazd neguje obrażenia: typ ${charDamageType} jest zbyt słaby.`);
-      game.neuroshima.groupEnd();
-      const sourceLabel = attackData.label || "Broń";
-      await ChatMessage.create({
-        content: `<div class="neuroshima-chat"><p><strong>${actor.name}</strong> neguje obrażenia — broń <em>${sourceLabel}</em> jest zbyt słaba, aby uszkodzić pojazd.</p></div>`,
-        speaker: ChatMessage.getSpeaker({ actor })
-      });
-      return null;
-    }
-
-    // Determine vehicle location; default to front
-    const vehicleLocations = ["front", "rightSide", "leftSide", "rear", "bottom"];
-    const rawLocation = options.location || attackData.finalLocation || "front";
-    const location = vehicleLocations.includes(rawLocation) ? rawLocation : "front";
-
-    // Armor reduction for vehicles: check vehicle's built-in armor reduction
-    const armorData = actor.system.armor?.[location];
-    let effectiveVehicleDamageType = vehicleDamageType;
-    if (armorData?.reduction > 0) {
-      const order = ["VL", "VC", "VK"];
-      const idx = order.indexOf(vehicleDamageType);
-      const reduced = idx - Math.floor(armorData.reduction);
-      if (reduced < 0) {
-        game.neuroshima.log(`Pancerz pojazdu w lokacji ${location} całkowicie neguje obrażenia.`);
-        game.neuroshima.groupEnd();
-        await ChatMessage.create({
-          content: `<div class="neuroshima-chat"><p><strong>${actor.name}</strong> — pancerz w lokacji <em>${location}</em> neguje obrażenia.</p></div>`,
-          speaker: ChatMessage.getSpeaker({ actor })
-        });
-        return null;
+      bullets = [{ damage: profiles[Math.clamp(spDiff, 1, 3) - 1] || profiles[0] }];
+    } else {
+      const hitBullets = attackData.hitBulletsData;
+      if (hitBullets?.length > 0) {
+        bullets = hitBullets.flatMap(b =>
+          b.isPellet
+            ? Array(b.successPoints || 1).fill({ damage: b.damage })
+            : [{ damage: b.damage }]
+        );
+      } else {
+        bullets = [{ damage: attackData.damage || "L" }];
       }
-      effectiveVehicleDamageType = order[Math.max(0, reduced)];
     }
 
-    const cfg = NEUROSHIMA.vehicleDamageConfiguration[effectiveVehicleDamageType];
+    const results      = [];
+    const negatedItems = [];
+    const itemsToCreate = [];
 
-    // Durability test — pure attribute test, no skill, ≥2 successes to pass
-    const durBase = (actor.system.attributes?.durability ?? 0) + (actor.system.modifiers?.durability ?? 0);
-    const durRoll = new Roll("3d20");
-    await durRoll.evaluate();
-    const diceResults = durRoll.terms[0].results.map(r => r.result);
+    for (const bullet of bullets) {
+      const charDamageType = bullet.damage || "L";
 
-    const diceObjects = diceResults.map((v, i) => ({
-      original: v, index: i, modified: v,
-      isSuccess: false, ignored: false,
-      isNat1: v === 1, isNat20: v === 20
-    }));
+      // Map → vehicle damage type
+      const vehicleDmgType = VEHICLE_DMG_MAP.hasOwnProperty(charDamageType)
+        ? VEHICLE_DMG_MAP[charDamageType]
+        : "VK";
 
-    const evalData = { target: durBase, stat: durBase, skill: 0 };
-    game.neuroshima.NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
-    const testPassed = evalData.success; // ≥2 successes
-
-    // Penalties based on test result
-    const sprawnoscLoss  = testPassed ? cfg.sprawnoscPassed  : cfg.sprawnoscFailed;
-    const agilityPenalty = testPassed ? cfg.agilityPenaltyPassed : cfg.agilityPenaltyFailed;
-
-    // Create vehicle-damage item
-    const dmgTypeLabel = game.i18n.localize(cfg.label);
-    const itemData = {
-      name: game.i18n.localize("NEUROSHIMA.Items.Type.Vehicle-damage"),
-      type: "vehicle-damage",
-      img:  "systems/neuroshima/assets/img/tire-iron.svg",
-      system: {
-        location:      location,
-        damageType:    effectiveVehicleDamageType,
-        penalty:       sprawnoscLoss,
-        agilityPenalty: agilityPenalty
+      if (!vehicleDmgType) {
+        negatedItems.push({ charDamageType });
+        continue;
       }
-    };
-    const [created] = await actor.createEmbeddedDocuments("Item", [itemData]);
 
-    // Chat report
-    const testLabel = testPassed
-      ? game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTestPassed")
-      : game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTestFailed");
-    const sourceLabel = attackData.label || "Broń";
-    const locKey = location.charAt(0).toUpperCase() + location.slice(1);
-    const locI18nMap = { front: "Front", rightSide: "RightSide", leftSide: "LeftSide", rear: "Rear", bottom: "Bottom" };
-    const locLabel = game.i18n.localize(`NEUROSHIMA.Vehicle.ArmorLocations.${locI18nMap[location] || locKey}`) || location;
-
-    const diceHtml = diceObjects.map(d =>
-      `<span class="die-result ${d.isSuccess ? "success" : "failure"}" title="${d.original}">${d.modified}</span>`
-    ).join(" ");
-
-    const content = `
-<div class="neuroshima-chat vehicle-damage-report">
-  <h3>${actor.name} — ${game.i18n.localize("NEUROSHIMA.Vehicle.Damage")}</h3>
-  <p><strong>${game.i18n.localize("NEUROSHIMA.Items.Fields.DamageType")}:</strong> ${dmgTypeLabel} (z: ${charDamageType})</p>
-  <p><strong>${game.i18n.localize("NEUROSHIMA.Vehicle.DamageLocation")}:</strong> ${locLabel}</p>
-  <hr>
-  <p><strong>${game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTest")}:</strong> ${diceHtml} (próg: ${durBase})</p>
-  <p><em>${testLabel}</em></p>
-  <hr>
-  <p><strong>-${sprawnoscLoss}</strong> ${game.i18n.localize("NEUROSHIMA.Vehicle.Attributes.Efficiency")}</p>
-  ${agilityPenalty > 0 ? `<p><strong>+${agilityPenalty}%</strong> utrudnienia do ${game.i18n.localize("NEUROSHIMA.Vehicle.Attributes.Agility")}</p>` : ""}
-  <p><em>Źródło: ${sourceLabel}</em></p>
-</div>`;
-
-    await ChatMessage.create({
-      content,
-      speaker: ChatMessage.getSpeaker({ actor }),
-      type: CONST.CHAT_MESSAGE_TYPES?.OTHER ?? 0,
-      flags: {
-        neuroshima: {
-          actorId:   actor.id,
-          actorUuid: actor.uuid,
-          woundIds:  [created.id],
-          isVehicleDamage: true
+      // Vehicle armor reduction
+      const armorData = actor.system.armor?.[location];
+      let effectiveDmgType = vehicleDmgType;
+      if (armorData?.reduction > 0) {
+        const order   = ["VL", "VC", "VK"];
+        const reduced = order.indexOf(vehicleDmgType) - Math.floor(armorData.reduction);
+        if (reduced < 0) {
+          negatedItems.push({ charDamageType });
+          continue;
         }
+        effectiveDmgType = order[Math.max(0, reduced)];
       }
-    });
+
+      const cfg = NEUROSHIMA.vehicleDamageConfiguration[effectiveDmgType];
+
+      // Durability test — 3d20, no skill, ≥2 successes
+      const durRoll = new Roll("3d20");
+      await durRoll.evaluate();
+      const diceResults = durRoll.terms[0].results.map(r => r.result);
+      const diceObjects = diceResults.map((v, i) => ({
+        original: v, index: i, modified: v,
+        isSuccess: false, ignored: false,
+        isNat1: v === 1, isNat20: v === 20
+      }));
+      const evalData = { target: durBase, stat: durBase, skill: 0 };
+      game.neuroshima.NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
+      const isPassed = evalData.success;
+
+      const sprawnoscLoss  = isPassed ? cfg.sprawnoscPassed  : cfg.sprawnoscFailed;
+      const agilityPenalty = isPassed ? cfg.agilityPenaltyPassed : cfg.agilityPenaltyFailed;
+      const locLabel = game.i18n.localize(`NEUROSHIMA.Vehicle.ArmorLocations.${LOC_I18N[location]}`) || location;
+
+      results.push({
+        charDamageType,
+        effectiveDmgType,
+        damageLabel:   game.i18n.localize(cfg.label),
+        locationLabel: locLabel,
+        isPassed,
+        sprawnoscLoss,
+        agilityPenalty,
+        dice:          diceResults.join(", "),
+        modifiedResults: evalData.modifiedResults,
+        target:        durBase,
+        tooltip:       game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(
+          evalData,
+          game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTest")
+        )
+      });
+
+      itemsToCreate.push({
+        name:   game.i18n.localize("NEUROSHIMA.Items.Type.Vehicle-damage"),
+        type:   "vehicle-damage",
+        img:    "systems/neuroshima/assets/img/tire-iron.svg",
+        system: { location, damageType: effectiveDmgType, penalty: sprawnoscLoss, agilityPenalty }
+      });
+    }
+
+    // Create all damage items at once
+    let woundIds = [];
+    if (itemsToCreate.length > 0) {
+      const created = await actor.createEmbeddedDocuments("Item", itemsToCreate);
+      woundIds = created.map(i => i.id);
+    }
+
+    // Delegate chat rendering to NeuroshimaChatMessage
+    await NeuroshimaChatMessage.renderVehicleDamage(actor, results, negatedItems, woundIds, sourceLabel);
 
     game.neuroshima.groupEnd();
-    return { woundIds: [created.id] };
+    return { woundIds };
   }
 
   /**

@@ -1001,6 +1001,8 @@
             "DurabilityTest": "Test Wytrzymałości Pojazdu",
             "DurabilityTestPassed": "Test ZDANY — połowa kar",
             "DurabilityTestFailed": "Test NIEZDANY — pełne kary",
+            "Negated": "Znegowane",
+            "DamageNegated": "Znegowane przez pancerz/broń",
             "ArmorLocations": {
                 "Front":     "Przód",
                 "RightSide": "Prawy Bok",

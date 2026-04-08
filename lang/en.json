@@ -974,6 +974,8 @@
             "DurabilityTest": "Vehicle Durability Test",
             "DurabilityTestPassed": "Test PASSED — half penalties",
             "DurabilityTestFailed": "Test FAILED — full penalties",
+            "Negated": "Negated",
+            "DamageNegated": "Negated by armor/weapon",
             "ArmorLocations": {
                 "Front":     "Front",
                 "RightSide": "Right Side",
