@@ -43,7 +43,7 @@
         <div class="wound-list collapsible-content" style="display: none;">
             {{#each results}}
             <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}"
-                 data-tooltip="{{this.tooltip}}"
+                 data-tooltip="{{neuroshimaDiceTooltip this.modifiedResults this.target 0}}"
                  data-tooltip-direction="LEFT">
                 <div class="wound-icon">
                     <i class="fas {{#if this.isPassed}}fa-check{{else}}fa-times{{/if}}"></i>
