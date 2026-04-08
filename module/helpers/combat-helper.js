@@ -434,7 +434,13 @@ export class CombatHelper {
         tooltip:       game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(
           evalData,
           game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTest")
-        )
+        ),
+        tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
+          modifiedResults: evalData.modifiedResults,
+          target: durBase,
+          skill: 0,
+          successCount: evalData.successCount
+        })
       });
 
       itemsToCreate.push({
@@ -651,12 +657,20 @@ export class CombatHelper {
             penalty: appliedPenalty,
             dice: diceResults.join(", "),
             modifiedResults: evalData.modifiedResults,
-            successPoints: evalData.successCount, // W teście zamkniętym punkty przewagi to liczba sukcesów
+            successPoints: evalData.successCount,
             target: target,
             skill: skillValue,
             isCritSuccess: evalData.isCritSuccess,
             isCritFailure: evalData.isCritFailure,
-            tooltip: game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance")
+            tooltip: game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance"),
+            tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
+                modifiedResults: evalData.modifiedResults,
+                target: target,
+                skill: skillValue,
+                successCount: evalData.successCount,
+                difficultyLabel: shiftedDiff.label,
+                isOpen: false
+            })
         });
 
         processedWounds.push({

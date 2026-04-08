@@ -3840,3 +3840,91 @@ body.theme-dark {
     opacity: 0.6;
 }
 
+/* =============================================
+   DICE TOOLTIP — .tooltip-inline inside Foundry's #tooltip
+   Uses .neuroshima.roll-card classes so existing styles apply,
+   with dark-theme overrides since #tooltip always has dark bg.
+   ============================================= */
+
+.neuroshima.roll-card.tooltip-inline {
+    gap: 4px;
+    min-width: 160px;
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card.tooltip-inline .roll-header {
+    font-size: 0.9em;
+    border-bottom-color: #5a5a54;
+    color: #e0e0d0;
+    padding-bottom: 2px;
+    margin-bottom: 0;
+}
+
+.neuroshima.roll-card.tooltip-inline .dotted-hr {
+    border-color: #5a5a5455;
+    margin: 2px 0;
+}
+
+.neuroshima.roll-card.tooltip-inline .dice-results-grid {
+    gap: 2px;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-label {
+    color: #e0e0d0;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+    box-shadow: inset 0 0 4px #ffffff11;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.nat-1 {
+    background: #332b00;
+    border-color: #fbc02d;
+    color: #ffeb3b;
+    box-shadow: 0 0 8px #fbc02d44;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.nat-20 {
+    background: #3d0c0c;
+    border-color: #d32f2f;
+    color: #ff8a80;
+    box-shadow: 0 0 8px #d32f2f44;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.modified.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.modified.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square-container i {
+    color: #a0a090;
+}
+
+.neuroshima.roll-card.tooltip-inline .roll-outcome {
+    border-color: #5a5a54;
+    color: #e0e0d0;
+    gap: 1px;
+}
+
+.neuroshima.roll-card.tooltip-inline .outcome-item .label {
+    color: #a0a090;
+    font-size: 0.85em;
+}
+
+.neuroshima.roll-card.tooltip-inline .outcome-item .value {
+    color: #e0e0d0;
+}
+

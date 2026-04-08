@@ -1914,7 +1914,13 @@ export class NeuroshimaDice {
         skillShift: -skillShift,
         diceShift: diceShift,
         healingEffect: healingEffectResults[0],
-        tooltip: this._buildClosedTestTooltip(testRollData, healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment")
+        tooltip: this._buildClosedTestTooltip(testRollData, healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment"),
+        tooltipHtml: NeuroshimaDice.buildDiceTooltipHtml({
+          modifiedResults: testRollData.modifiedResults,
+          target: testTarget,
+          skill: totalSkill,
+          successCount: testRollData.successCount
+        })
       });
 
       healingResults.push({
@@ -2115,28 +2121,77 @@ export class NeuroshimaDice {
   }
 
   /**
-   * Pomocnicza metoda do budowania tooltipa dla testu otwartego (inicjatywa itp.).
-   * @deprecated Używaj buildRollTooltip
-   * @private
+   * Builds a compact dice-roll tooltip HTML — a mini version of roll-card.hbs.
+   * Includes: test type, dice grid (D1/D2/D3 with colors), threshold, skill, penalties, success count.
+   * Returns a plain string (not SafeString) so Handlebars escapes it correctly for data-tooltip attributes.
+   * @param {Object} data
+   * @param {Array}  data.modifiedResults  - dice objects { original, modified, isSuccess, ignored, isNat1, isNat20 }
+   * @param {number} data.target           - roll threshold
+   * @param {number} [data.skill]          - skill points used (0 = pure attribute)
+   * @param {number} [data.successCount]   - number of successes
+   * @param {string} [data.difficultyLabel]- i18n key for difficulty label
+   * @param {boolean}[data.isOpen]         - open vs closed test
+   * @param {Object} [data.penalties]      - { mod, wounds, armor }
+   * @returns {string}
    */
+  static buildDiceTooltipHtml(data) {
+    if (!data?.modifiedResults?.length) return "";
+    const { modifiedResults, target = 0, skill = 0, successCount, difficultyLabel, isOpen, penalties } = data;
+
+    const successes = successCount ?? modifiedResults.filter(d => d.isSuccess).length;
+    const loc = (k) => game.i18n.localize(k);
+
+    // Dice grid — mirror roll-card.hbs structure with die-square-container
+    const diceHtml = modifiedResults.map((d, i) => {
+      const ignored = d.ignored ? " ignored" : "";
+      const nat1 = d.isNat1 ? " nat-1" : "";
+      const nat20 = d.isNat20 ? " nat-20" : "";
+      const modCls = d.isSuccess ? "success" : "failure";
+      let h = `<div class="die-result${ignored}">`;
+      h += `<span class="die-label">D${i + 1} = </span>`;
+      h += `<div class="die-square-container">`;
+      h += `<span class="die-square original${nat1}${nat20}">${d.original}</span>`;
+      if (skill > 0) {
+        h += `<i class="fas fa-long-arrow-alt-right"></i>`;
+        h += `<span class="die-square modified ${modCls}">${d.modified}</span>`;
+      }
+      h += `</div></div>`;
+      return h;
+    }).join("");
+
+    // Header
+    const testTypeLabel = isOpen ? loc("NEUROSHIMA.Roll.OpenTest") : loc("NEUROSHIMA.Roll.ClosedTest");
+    const diffLabel = difficultyLabel ? loc(difficultyLabel) : "";
+    const headerText = diffLabel ? `${diffLabel} ${testTypeLabel}` : testTypeLabel;
+
+    // Footer — match roll-card.hbs .roll-outcome style
+    let footerItems = `<div class="outcome-item"><span class="label">${loc("NEUROSHIMA.Roll.Target")}:</span><span class="value"><strong>${target}</strong></span></div>`;
+    if (skill > 0) footerItems += `<div class="outcome-item"><span class="label">${loc("NEUROSHIMA.Items.Fields.Skill")}:</span><span class="value"><strong>${skill}</strong></span></div>`;
+    if (penalties) {
+      const totalPenalty = (penalties.mod || 0) + (penalties.wounds || 0) + (penalties.armor || 0);
+      if (totalPenalty !== 0) footerItems += `<div class="outcome-item"><span class="label">${loc("NEUROSHIMA.Roll.TotalModifier")}:</span><span class="value"><strong>${totalPenalty}%</strong></span></div>`;
+    }
+    footerItems += `<div class="outcome-item"><span class="label">${loc("NEUROSHIMA.Roll.SuccessPointsAbbr")}:</span><span class="value"><strong>${successes}</strong></span></div>`;
+
+    return [
+      `<div class="neuroshima roll-card tooltip-inline">`,
+      `<header class="roll-header"><div class="header-details"><div class="test-info">${headerText}</div></div></header>`,
+      `<hr class="dotted-hr">`,
+      `<div class="dice-results-grid">${diceHtml}</div>`,
+      `<hr class="dotted-hr">`,
+      `<footer class="roll-outcome">${footerItems}</footer>`,
+      `</div>`
+    ].join("");
+  }
+
   static _buildOpenTestTooltip(testRollData, headerLabel) {
     return this.buildRollTooltip(testRollData);
   }
 
-  /**
-   * Pomocnicza metoda do budowania tooltipa dla testu zamkniętego (leczenie, odporność na ból itp.).
-   * @deprecated Używaj buildRollTooltip
-   * @private
-   */
   static _buildClosedTestTooltip(testRollData, headerLabel) {
     return this.buildRollTooltip(testRollData);
   }
 
-  /**
-   * Pomocnicza metoda do budowania tooltipa dla rzutu leczenia.
-   * @deprecated Używaj _buildClosedTestTooltip
-   * @private
-   */
   static _buildHealingTooltip(testRollData, healingMethod) {
     const label = healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment";
     return this._buildClosedTestTooltip(testRollData, label);
