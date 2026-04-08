@@ -343,6 +343,12 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
       cost:  new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       notes: new fields.HTMLField({ initial: "" }),
 
+      lastRoll: new fields.SchemaField({
+        modifier:        modField(),
+        baseDifficulty:  new fields.StringField({ initial: "average" }),
+        isOpen:          new fields.BooleanField({ initial: false }),
+        rollMode:        new fields.StringField({ initial: "roll" })
+      }, { required: false }),
       /** Per-section vehicle armor plate */
       armor: new fields.SchemaField({
         front:     new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),

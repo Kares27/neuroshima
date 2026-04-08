@@ -134,11 +134,6 @@
 
             <div class="header-actions">
                 {{#if owner}}
-                {{#if isGM}}
-                <a class="item-control" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
-                    <i class="fas fa-cog"></i>
-                </a>
-                {{/if}}
                 <a class="item-control" data-action="createItem" data-type="vehicle-damage" title="{{localize 'DOCUMENT.Create'}}">
                     <i class="fas fa-plus"></i>
                 </a>
@@ -178,11 +173,6 @@
                     <input type="number" name="items.{{this.id}}.system.agilityPenalty" value="{{this.system.agilityPenalty}}" data-dtype="Number" min="0"/>
                 </div>
                 <div class="col-controls">
-                    {{#if @root.owner}}
-                    <a class="item-control" data-action="rollDurabilityTest" title="{{localize 'NEUROSHIMA.Vehicle.RollDurabilityTest'}}">
-                        <i class="fas fa-dice-d20"></i>
-                    </a>
-                    {{/if}}
                     <a class="item-control" data-action="editItem" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
                         <i class="fas fa-edit"></i>
                     </a>
