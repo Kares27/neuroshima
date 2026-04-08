@@ -212,24 +212,34 @@ export const NEUROSHIMA = {
         "VC": "NEUROSHIMA.Vehicle.DamageType.Heavy",
         "VK": "NEUROSHIMA.Vehicle.DamageType.Critical"
     },
+    /**
+     * Vehicle damage configuration.
+     * Values determined by durability test result:
+     *  - passed:  test Wytrzymałości zdany → połowa wartości
+     *  - failed:  test Wytrzymałości niezdany → pełne wartości
+     * VK (Critical) is always full, no agility penalty.
+     */
     vehicleDamageConfiguration: {
         "VL": {
-            label:          "NEUROSHIMA.Vehicle.DamageType.Light",
-            sprawnoscMin:   1,
-            sprawnoscMax:   2,
-            agilityPenalty: 5
+            label:                "NEUROSHIMA.Vehicle.DamageType.Light",
+            sprawnoscFailed:      2,
+            sprawnoscPassed:      1,
+            agilityPenaltyFailed: 20,
+            agilityPenaltyPassed: 10
         },
         "VC": {
-            label:          "NEUROSHIMA.Vehicle.DamageType.Heavy",
-            sprawnoscMin:   2,
-            sprawnoscMax:   4,
-            agilityPenalty: 10
+            label:                "NEUROSHIMA.Vehicle.DamageType.Heavy",
+            sprawnoscFailed:      4,
+            sprawnoscPassed:      2,
+            agilityPenaltyFailed: 40,
+            agilityPenaltyPassed: 20
         },
         "VK": {
-            label:          "NEUROSHIMA.Vehicle.DamageType.Critical",
-            sprawnoscMin:   6,
-            sprawnoscMax:   6,
-            agilityPenalty: 20
+            label:                "NEUROSHIMA.Vehicle.DamageType.Critical",
+            sprawnoscFailed:      6,
+            sprawnoscPassed:      6,
+            agilityPenaltyFailed: 0,
+            agilityPenaltyPassed: 0
         }
     },
     weaponSubtypes: {

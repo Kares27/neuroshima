@@ -1,4 +1,3 @@
-import { NEUROSHIMA } from "../config.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 
@@ -108,6 +107,66 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       toggleHealing: async function(event, target) {
         const item = this.document.items.get(target.closest("[data-item-id]")?.dataset.itemId);
         if (item) await item.update({ "system.isHealing": !item.system.isHealing });
+      },
+      /**
+       * Roll vehicle durability test for an existing damage item.
+       * Result determines actual Sprawność and Agility penalties applied.
+       */
+      rollDurabilityTest: async function(event, target) {
+        const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+        const item   = this.document.items.get(itemId);
+        if (!item || item.type !== "vehicle-damage") return;
+
+        const vehicle  = this.document;
+        const system   = vehicle.system;
+        const durStat  = (system.attributes?.durability ?? 0) + (system.modifiers?.durability ?? 0);
+        const dmgType  = item.system.damageType || "VL";
+        const cfg      = NEUROSHIMA.vehicleDamageConfiguration[dmgType];
+        if (!cfg) return;
+
+        const { NeuroshimaDice } = game.neuroshima;
+        const label = `${game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTest")} (${vehicle.name})`;
+
+        const rollData = await NeuroshimaDice.rollTest({
+          stat:        durStat,
+          skill:       0,
+          label,
+          actor:       null,
+          isOpen:      false,
+          penalties:   { mod: 0, wounds: 0, armor: 0, base: 0 },
+          chatMessage: false
+        });
+
+        const passed = rollData?.success ?? false;
+        const sprawnosc     = passed ? cfg.sprawnoscPassed      : cfg.sprawnoscFailed;
+        const agilityPenalty = passed ? cfg.agilityPenaltyPassed : cfg.agilityPenaltyFailed;
+
+        await item.update({
+          "system.penalty":       sprawnosc,
+          "system.agilityPenalty": agilityPenalty
+        });
+
+        const dmgLabel = game.i18n.localize(cfg.label);
+        const passedStr = passed
+          ? game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTestPassed")
+          : game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTestFailed");
+
+        const dice = (rollData?.modifiedResults ?? []).map(d => d.original).join(", ");
+
+        await ChatMessage.create({
+          content: `
+            <div class="neuroshima chat-card">
+              <div class="card-header"><strong>${label}</strong></div>
+              <div class="card-body">
+                <p><strong>${game.i18n.localize("NEUROSHIMA.Vehicle.DamageType.Label")}:</strong> ${dmgLabel}</p>
+                <p><strong>${game.i18n.localize("NEUROSHIMA.Roll.Target")}:</strong> ${durStat}</p>
+                <p><strong>${game.i18n.localize("NEUROSHIMA.Roll.Dice")}:</strong> ${dice}</p>
+                <p class="${passed ? "success" : "failure"}"><strong>${passedStr}</strong></p>
+                <p><strong>${game.i18n.localize("NEUROSHIMA.Vehicle.DamageSprawnoscAbbr")}:</strong> -${sprawnosc} &nbsp; <strong>${game.i18n.localize("NEUROSHIMA.Vehicle.DamageAgilityPenaltyAbbr")}:</strong> -${agilityPenalty}%</p>
+              </div>
+            </div>`,
+          speaker: ChatMessage.getSpeaker({ actor: vehicle })
+        });
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]

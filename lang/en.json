@@ -965,10 +965,15 @@
             "DamageAgilityPenalty": "Agility Penalty (%)",
             "DamageAgilityPenaltyAbbr": "Agi.%",
             "DamageType": {
+                "Label":    "Damage Type",
                 "Light":    "Light",
                 "Heavy":    "Heavy",
                 "Critical": "Critical"
             },
+            "RollDurabilityTest": "Roll Durability Test",
+            "DurabilityTest": "Vehicle Durability Test",
+            "DurabilityTestPassed": "Test PASSED — half penalties",
+            "DurabilityTestFailed": "Test FAILED — full penalties",
             "ArmorLocations": {
                 "Front":     "Front",
                 "RightSide": "Right Side",

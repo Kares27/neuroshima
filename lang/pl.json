@@ -992,10 +992,15 @@
             "DamageAgilityPenalty": "Kara do Zwrotności (%)",
             "DamageAgilityPenaltyAbbr": "Zwr.%",
             "DamageType": {
+                "Label":    "Typ uszkodzenia",
                 "Light":    "Lekkie",
                 "Heavy":    "Ciężkie",
                 "Critical": "Krytyczne"
             },
+            "RollDurabilityTest": "Rzuć Test Wytrzymałości",
+            "DurabilityTest": "Test Wytrzymałości Pojazdu",
+            "DurabilityTestPassed": "Test ZDANY — połowa kar",
+            "DurabilityTestFailed": "Test NIEZDANY — pełne kary",
             "ArmorLocations": {
                 "Front":     "Przód",
                 "RightSide": "Prawy Bok",

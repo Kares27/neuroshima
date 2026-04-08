@@ -178,6 +178,11 @@
                     <input type="number" name="items.{{this.id}}.system.agilityPenalty" value="{{this.system.agilityPenalty}}" data-dtype="Number" min="0"/>
                 </div>
                 <div class="col-controls">
+                    {{#if @root.owner}}
+                    <a class="item-control" data-action="rollDurabilityTest" title="{{localize 'NEUROSHIMA.Vehicle.RollDurabilityTest'}}">
+                        <i class="fas fa-dice-d20"></i>
+                    </a>
+                    {{/if}}
                     <a class="item-control" data-action="editItem" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
                         <i class="fas fa-edit"></i>
                     </a>
