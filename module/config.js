@@ -206,6 +206,32 @@ export const NEUROSHIMA = {
             isBruise: true
         }
     },
+    /** Vehicle-specific damage types (Sprawność reduction) */
+    vehicleDamageTypes: {
+        "VL": "NEUROSHIMA.Vehicle.DamageType.Light",
+        "VC": "NEUROSHIMA.Vehicle.DamageType.Heavy",
+        "VK": "NEUROSHIMA.Vehicle.DamageType.Critical"
+    },
+    vehicleDamageConfiguration: {
+        "VL": {
+            label:          "NEUROSHIMA.Vehicle.DamageType.Light",
+            sprawnoscMin:   1,
+            sprawnoscMax:   2,
+            agilityPenalty: 5
+        },
+        "VC": {
+            label:          "NEUROSHIMA.Vehicle.DamageType.Heavy",
+            sprawnoscMin:   2,
+            sprawnoscMax:   4,
+            agilityPenalty: 10
+        },
+        "VK": {
+            label:          "NEUROSHIMA.Vehicle.DamageType.Critical",
+            sprawnoscMin:   6,
+            sprawnoscMax:   6,
+            agilityPenalty: 20
+        }
+    },
     weaponSubtypes: {
         ranged: {
             pistols: "NEUROSHIMA.WeaponSubtype.pistols",

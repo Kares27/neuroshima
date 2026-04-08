@@ -985,7 +985,17 @@
             "Mounted": "Zamontowany",
             "MountedWeapons": "Uzbrojenie pojazdu",
             "Damage": "Uszkodzenia",
+            "NoDamage": "Brak uszkodzeń",
             "DamageLocation": "Lokalizacja",
+            "DamageSprawnosc": "Redukcja Sprawności",
+            "DamageSprawnoscAbbr": "Spr.",
+            "DamageAgilityPenalty": "Kara do Zwrotności (%)",
+            "DamageAgilityPenaltyAbbr": "Zwr.%",
+            "DamageType": {
+                "Light":    "Lekkie",
+                "Heavy":    "Ciężkie",
+                "Critical": "Krytyczne"
+            },
             "ArmorLocations": {
                 "Front":     "Przód",
                 "RightSide": "Prawy Bok",

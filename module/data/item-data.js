@@ -352,9 +352,13 @@ export class VehicleDamageData extends foundry.abstract.TypeDataModel {
       }),
       damageType: new fields.StringField({
         required: true,
-        initial: "D"
+        initial: "VL",
+        choices: ["VL", "VC", "VK"]
       }),
-      penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      /** Sprawność (efficiency) point reduction */
+      penalty: new fields.NumberField({ integer: true, initial: 1, min: 0 }),
+      /** Zwrotność (agility) % penalty */
+      agilityPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       isActive: new fields.BooleanField({ initial: true })
     };
   }

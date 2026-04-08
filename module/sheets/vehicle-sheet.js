@@ -172,6 +172,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     context.vehicleAttributeList  = NEUROSHIMA.vehicleAttributes;
     context.vehicleMovementTypes  = NEUROSHIMA.vehicleMovementTypes;
     context.vehicleCrewPositions  = NEUROSHIMA.vehicleCrewPositions;
+    context.vehicleDamageTypes    = NEUROSHIMA.vehicleDamageTypes;
 
     context.crewMembers = (system.crewMembers ?? []).map((m) => {
       const raw     = m.toObject?.() ?? m;
@@ -244,13 +245,16 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     context.modDifficultyLabels = modDifficultyLabels;
 
     const damageItems = items.filter(i => i.type === "vehicle-damage");
+    /** maxHP = efficiency (Sprawność) attribute + modifier */
+    const maxHP = (system.attributes?.efficiency ?? 0) + (system.modifiers?.efficiency ?? 0);
+    /** totalDamagePoints = sum of Sprawność reductions across all damage items */
     const totalDamagePoints = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
-    const totalWoundPenalty = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
-    const maxHP = actor.getFlag("neuroshima", "vehicleMaxHP") || 27;
+    /** totalAgilityPenalty = sum of Zwrotność penalties across all damage items */
+    const totalAgilityPenalty = damageItems.reduce((sum, w) => sum + (w.system.agilityPenalty || 0), 0);
     context.combat = {
-      wounds:            damageItems,
+      wounds:             damageItems,
       totalDamagePoints,
-      totalWoundPenalty,
+      totalAgilityPenalty,
       maxHP
     };
 
@@ -267,10 +271,33 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
 
   /** @override */
   async _onChangeForm(formConfig, event) {
-    if (event.target.dataset.action === "setCrewRole") {
-      const sel     = event.target;
-      const actorId = sel.dataset.actorId;
-      const role    = sel.value;
+    const input = event.target;
+    const name  = input?.getAttribute?.("name") ?? input?.name;
+
+    if (name?.startsWith("items.")) {
+      const parts        = name.split(".");
+      const itemId       = parts[1];
+      const propertyPath = parts.slice(2).join(".");
+      const item         = this.document.items.get(itemId);
+      if (!item) return;
+
+      let value;
+      if (input.type === "checkbox") {
+        value = input.checked;
+      } else if (input.type === "number") {
+        value = Math.round(Number(input.value) || 0);
+      } else {
+        value = input.value;
+      }
+
+      game.neuroshima.log("vehicle _onChangeForm item update", { itemId, propertyPath, value });
+      await item.update({ [propertyPath]: value });
+      return;
+    }
+
+    if (input?.dataset?.action === "setCrewRole") {
+      const actorId = input.dataset.actorId;
+      const role    = input.value;
       const crewMembers = foundry.utils.deepClone(this.document.system.crewMembers.map(m => m.toObject?.() ?? m));
       const member = crewMembers.find(m => m.actorId === actorId);
       if (member) {
@@ -279,6 +306,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       }
       return;
     }
+
     return super._onChangeForm(formConfig, event);
   }
 

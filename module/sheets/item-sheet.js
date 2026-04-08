@@ -117,7 +117,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.damageTypes = NEUROSHIMA.damageTypes;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
     context.locations = NEUROSHIMA.locations;
-    context.vehicleLocations = NEUROSHIMA.vehicleLocations;
+    context.vehicleLocations    = NEUROSHIMA.vehicleLocations;
+    context.vehicleDamageTypes  = NEUROSHIMA.vehicleDamageTypes;
     
     // Collect all unique calibers from world items (Weapons) for suggestions
     const worldCalibers = new Set();

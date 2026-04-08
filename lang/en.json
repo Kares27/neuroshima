@@ -959,6 +959,16 @@
             "MountedWeapons": "Vehicle Weapons",
             "Damage": "Damage",
             "DamageLocation": "Location",
+            "NoDamage": "No damage",
+            "DamageSprawnosc": "Efficiency Reduction",
+            "DamageSprawnoscAbbr": "Eff.",
+            "DamageAgilityPenalty": "Agility Penalty (%)",
+            "DamageAgilityPenaltyAbbr": "Agi.%",
+            "DamageType": {
+                "Light":    "Light",
+                "Heavy":    "Heavy",
+                "Critical": "Critical"
+            },
             "ArmorLocations": {
                 "Front":     "Front",
                 "RightSide": "Right Side",

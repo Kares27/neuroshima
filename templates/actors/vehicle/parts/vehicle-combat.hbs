@@ -124,11 +124,11 @@
             </div>
 
             <div class="wound-stats-total">
-                <span class="hp-sum" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
+                <span class="hp-sum" title="{{localize 'NEUROSHIMA.Vehicle.DamageSprawnosc'}}">
                     <i class="fas fa-heart-broken"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
                 </span>
-                <span class="penalty-sum" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}">
-                    <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                <span class="penalty-sum" title="{{localize 'NEUROSHIMA.Vehicle.DamageAgilityPenalty'}}">
+                    <i class="fas fa-tachometer-alt"></i> {{combat.totalAgilityPenalty}}%
                 </span>
             </div>
 
@@ -146,12 +146,13 @@
             </div>
         </div>
 
-        <div class="combat-table wounds-table">
+        <div class="combat-table wounds-table vehicle-damage-table">
             <div class="table-header">
                 <div class="col-name">{{localize "Name"}}</div>
                 <div class="col-location">{{localize "NEUROSHIMA.Vehicle.DamageLocation"}}</div>
                 <div class="col-type">{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</div>
-                <div class="col-penalty">{{localize "NEUROSHIMA.Items.Fields.Penalty"}}</div>
+                <div class="col-penalty" title="{{localize 'NEUROSHIMA.Vehicle.DamageSprawnosc'}}">Spr.</div>
+                <div class="col-penalty" title="{{localize 'NEUROSHIMA.Vehicle.DamageAgilityPenalty'}}">Zwr.%</div>
                 <div class="col-controls"></div>
             </div>
             {{#each combat.wounds}}
@@ -165,14 +166,16 @@
                         {{selectOptions @root.config.vehicleLocations selected=this.system.location localize=true}}
                     </select>
                 </div>
-
                 <div class="col-type">
                     <select name="items.{{this.id}}.system.damageType">
-                        {{selectOptions @root.config.damageTypes selected=this.system.damageType localize=true}}
+                        {{selectOptions @root.config.vehicleDamageTypes selected=this.system.damageType localize=true}}
                     </select>
                 </div>
                 <div class="col-penalty">
                     <input type="number" name="items.{{this.id}}.system.penalty" value="{{this.system.penalty}}" data-dtype="Number" min="0"/>
+                </div>
+                <div class="col-penalty">
+                    <input type="number" name="items.{{this.id}}.system.agilityPenalty" value="{{this.system.agilityPenalty}}" data-dtype="Number" min="0"/>
                 </div>
                 <div class="col-controls">
                     <a class="item-control" data-action="editItem" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
@@ -183,6 +186,8 @@
                     </a>
                 </div>
             </div>
+            {{else}}
+            <p class="empty-list">{{localize "NEUROSHIMA.Vehicle.NoDamage"}}</p>
             {{/each}}
         </div>
     </section>
