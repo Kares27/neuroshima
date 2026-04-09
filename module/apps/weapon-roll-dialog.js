@@ -96,11 +96,25 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     context.rollType = this.rollType;
     context.difficulties = NEUROSHIMA.difficulties;
     const weaponTypeKey = this.rollType === "melee" ? "melee" : "ranged";
-    context.hitLocations = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => ({
-        key: key,
-        label: data.label,
-        modifier: data.modifiers[weaponTypeKey]
-    }));
+
+    // Detect if any targeted token is a vehicle actor
+    const targetTokens = Array.from(game.user.targets);
+    const isVehicleTarget = targetTokens.some(t => t.actor?.type === "vehicle");
+    context.isVehicleTarget = isVehicleTarget;
+
+    if (isVehicleTarget) {
+        context.hitLocations = Object.entries(NEUROSHIMA.vehicleLocations).map(([key, label]) => ({
+            key,
+            label,
+            modifier: 0
+        }));
+    } else {
+        context.hitLocations = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => ({
+            key: key,
+            label: data.label,
+            modifier: data.modifiers[weaponTypeKey]
+        }));
+    }
     context.armorPenalty = armorPenalty;
     context.woundPenalty = woundPenalty;
     context.crowdingDexPenalty = this.crowdingDexPenalty;

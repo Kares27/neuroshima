@@ -339,12 +339,18 @@ export class CombatHelper {
   static async applyDamageToVehicle(actor, attackData, options = {}) {
     game.neuroshima.group(`CombatHelper | applyDamageToVehicle: ${actor.name}`);
 
-    const VEHICLE_LOCS    = ["front", "rightSide", "leftSide", "rear", "bottom"];
-    const LOC_I18N        = { front: "Front", rightSide: "RightSide", leftSide: "LeftSide", rear: "Rear", bottom: "Bottom" };
-    const VEHICLE_DMG_MAP = { D: null, sD: null, L: null, sL: null, C: "VL", sC: "VL", K: "VC", sK: "VC" };
+    const VEHICLE_LOCS = ["front", "rightSide", "leftSide", "rear", "bottom"];
+    const LOC_I18N     = { front: "Front", rightSide: "RightSide", leftSide: "LeftSide", rear: "Rear", bottom: "Bottom" };
+
+    // Base damage mapping: D always negated. L negated unless weakPoint location.
+    // When location is a weakPoint, L/sL go through as VL (D/sD still negated).
+    const VEHICLE_DMG_MAP_BASE      = { D: null, sD: null, L: null,  sL: null,  C: "VL", sC: "VL", K: "VC", sK: "VC" };
+    const VEHICLE_DMG_MAP_WEAKPOINT = { D: null, sD: null, L: "VL",  sL: "VL",  C: "VL", sC: "VL", K: "VC", sK: "VC" };
 
     const rawLocation = options.location || attackData.finalLocation || "front";
     const location    = VEHICLE_LOCS.includes(rawLocation) ? rawLocation : "front";
+    const isWeakPoint = actor.system.armor?.[location]?.weakPoint ?? false;
+    const VEHICLE_DMG_MAP = isWeakPoint ? VEHICLE_DMG_MAP_WEAKPOINT : VEHICLE_DMG_MAP_BASE;
     const durBase     = (actor.system.attributes?.durability ?? 0) + (actor.system.modifiers?.durability ?? 0);
     const sourceLabel = attackData.label || game.i18n.localize("NEUROSHIMA.Items.Fields.None");
 
@@ -388,12 +394,15 @@ export class CombatHelper {
         continue;
       }
 
-      // Vehicle armor reduction
-      const armorData = actor.system.armor?.[location];
+      // Vehicle armor reduction from equipped armor items at this location
+      const equippedArmors = actor.items.filter(i =>
+        i.type === "armor" && i.system.equipped && i.system.location === location
+      );
+      const armorReduction = equippedArmors.reduce((sum, a) => sum + (a.system.currentRating ?? a.system.rating ?? 0), 0);
       let effectiveDmgType = vehicleDmgType;
-      if (armorData?.reduction > 0) {
+      if (armorReduction > 0) {
         const order   = ["VL", "VC", "VK"];
-        const reduced = order.indexOf(vehicleDmgType) - Math.floor(armorData.reduction);
+        const reduced = order.indexOf(vehicleDmgType) - Math.floor(armorReduction);
         if (reduced < 0) {
           negatedItems.push({ charDamageType });
           continue;

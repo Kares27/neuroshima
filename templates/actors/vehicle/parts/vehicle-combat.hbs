@@ -15,29 +15,6 @@
 
                     <div class="location-header">
                         <span class="location-name">{{this.label}}</span>
-                    </div>
-
-                    <div class="nat-armor-col-headers">
-                        <span title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.Reduction'}}">{{localize "NEUROSHIMA.Creature.NaturalArmor.ReductionAbbr"}}</span>
-                        <span title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.HitPenalty'}}">{{localize "NEUROSHIMA.Creature.NaturalArmor.HitPenaltyAbbr"}}</span>
-                        <span class="nat-armor-col-weakpoint-spacer"></span>
-                    </div>
-
-                    <div class="nat-armor-body">
-                        <input type="number"
-                            name="system.armor.{{this.key}}.reduction"
-                            value="{{this.reduction}}"
-                            min="0" step="0.5"
-                            class="nat-armor-reduction-input"
-                            title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.Reduction'}}"/>
-
-                        <input type="number"
-                            name="system.armor.{{this.key}}.hitPenalty"
-                            value="{{this.hitPenalty}}"
-                            min="0" max="100"
-                            class="nat-armor-penalty-input"
-                            title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.HitPenalty'}}"/>
-
                         <label class="nat-armor-weakpoint-toggle"
                             title="{{localize 'NEUROSHIMA.Creature.NaturalArmor.WeakPoint'}}">
                             <input type="checkbox"

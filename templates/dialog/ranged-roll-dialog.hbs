@@ -38,9 +38,15 @@
             <div class="form-group vertical">
                 <label>{{localize "NEUROSHIMA.Roll.HitLocation"}}</label>
                 <select name="hitLocation">
+                    {{#unless isVehicleTarget}}
                     <option value="random" {{#if (eq hitLocation "random")}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.RandomLocation"}}</option>
+                    {{/unless}}
                     {{#each hitLocations}}
+                    {{#if ../isVehicleTarget}}
+                    <option value="{{key}}" {{#if (eq key ../hitLocation)}}selected{{/if}}>{{localize label}}</option>
+                    {{else}}
                     <option value="{{key}}" {{#if (eq key ../hitLocation)}}selected{{/if}}>{{localize label}} (+{{modifier}}%)</option>
+                    {{/if}}
                     {{/each}}
                 </select>
             </div>
