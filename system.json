@@ -36,7 +36,10 @@
         }
     ],
     "actorTypes": [
-        "character"
+        "character",
+        "npc",
+        "creature",
+        "vehicle"
     ],
     "itemTypes": [
         "weapon",
@@ -45,8 +48,20 @@
         "trick",
         "ammo",
         "magazine",
-        "wound"
+        "wound",
+        "beast-action",
+        "beast-maneuver",
+        "specialization",
+        "origin",
+        "profession",
+        "vehicle-damage",
+        "vehicle-mod"
     ],
+    "flags": {
+        "hotReload": {
+        "paths": ["templates", "styles", "lang", "scripts"]
+        }
+    },
     "url": "",
     "manifest": "",
     "download": "",

@@ -1,5 +1,5 @@
-<div class="vehicle-damage-details grid grid-2col">
-    {{!-- Lokalizacja --}}
+<div class="grid grid-2col">
+    {{!-- Lokalizacja pojazdu --}}
     <div class="form-group row-group">
         <label>{{localize "NEUROSHIMA.Items.Fields.Location"}}</label>
         <select name="system.location">
@@ -7,7 +7,7 @@
         </select>
     </div>
 
-    {{!-- Typ Uszkodzenia --}}
+    {{!-- Typ uszkodzenia pojazdu --}}
     <div class="form-group row-group">
         <label>{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</label>
         <select name="system.damageType">
@@ -15,21 +15,15 @@
         </select>
     </div>
 
-    {{!-- Utrata Sprawności --}}
+    {{!-- Redukcja Sprawności --}}
     <div class="form-group row-group">
-        <label>{{localize "NEUROSHIMA.Vehicle.Damage.EffLoss"}}</label>
-        <input type="number" name="system.efficiencyLoss" value="{{system.efficiencyLoss}}" min="0">
+        <label title="{{localize 'NEUROSHIMA.Vehicle.DamageSprawnosc'}}">{{localize "NEUROSHIMA.Vehicle.DamageSprawnoscAbbr"}}</label>
+        <input type="number" name="system.penalty" value="{{system.penalty}}" data-dtype="Number" min="0"/>
     </div>
 
     {{!-- Kara Zwrotności --}}
     <div class="form-group row-group">
-        <label>{{localize "NEUROSHIMA.Vehicle.AgilityPenalty"}} (%)</label>
-        <input type="number" name="system.agilityPenalty" value="{{system.agilityPenalty}}" min="0">
-    </div>
-
-    {{!-- Aktywne --}}
-    <div class="form-group row-group">
-        <label>{{localize "NEUROSHIMA.Items.Fields.IsActive"}}</label>
-        <input type="checkbox" name="system.isActive" {{#if system.isActive}}checked{{/if}}>
+        <label title="{{localize 'NEUROSHIMA.Vehicle.DamageAgilityPenalty'}}">{{localize "NEUROSHIMA.Vehicle.DamageAgilityPenaltyAbbr"}}</label>
+        <input type="number" name="system.agilityPenalty" value="{{system.agilityPenalty}}" data-dtype="Number" min="0"/>
     </div>
 </div>

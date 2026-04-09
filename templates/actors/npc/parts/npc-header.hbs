@@ -18,25 +18,9 @@
                 <label>{{localize "NEUROSHIMA.Info.Profession"}}</label>
                 <input type="text" name="system.profession" value="{{system.profession}}"/>
             </div>
-        </div>
-
-        <div class="xp-row-container">
-            <div class="xp-row-label">
-                <span>{{localize "NEUROSHIMA.XP.Label"}}</span>
-            </div>
-            <div class="xp-fields-row">
-                <div class="xp-field-item">
-                    <label>{{localize "NEUROSHIMA.XP.Current"}}</label>
-                    <input type="number" name="system.xp.current" value="{{system.xp.current}}" min="0"/>
-                </div>
-                <div class="xp-field-item">
-                    <label>{{localize "NEUROSHIMA.XP.Spent"}}</label>
-                    <input type="number" name="system.xp.spent" value="{{system.xp.spent}}" min="0"/>
-                </div>
-                <div class="xp-field-item">
-                    <label>{{localize "NEUROSHIMA.XP.Total"}}</label>
-                    <input type="number" name="system.xp.total" value="{{system.xp.total}}" min="0"/>
-                </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.NPC.Threat"}}</label>
+                <input type="text" name="system.threat" value="{{system.threat}}"/>
             </div>
         </div>
 
@@ -46,8 +30,15 @@
                 <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
             </div>
             <div class="stat-box hp-summary" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
+                {{#if isGM}}
+                <a class="hp-config-btn" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+                {{/if}}
                 <label>HP</label>
-                <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
+                <div class="stat-value">
+                    {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                </div>
             </div>
         </div>
     </div>

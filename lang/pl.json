@@ -2,10 +2,35 @@
     "TOKEN": {
         "Title": "Prototyp Tokena"
     },
+    "TYPES": {
+        "Actor": {
+            "character": "Postać",
+            "npc": "BN",
+            "creature": "Stworzenie",
+            "vehicle": "Pojazd"
+        },
+        "Item": {
+            "weapon": "Broń",
+            "armor": "Pancerz",
+            "gear": "Ekwipunek",
+            "trick": "Sztuczka",
+            "ammo": "Amunicja",
+            "magazine": "Magazynek",
+            "wound": "Rana",
+            "beast-action": "Akcja Bestii",
+            "beast-maneuver": "Manewr Bestii",
+            "specialization": "Specjalizacja",
+            "origin": "Pochodzenie",
+            "profession": "Profesja",
+            "vehicle-damage": "Uszkodzenie"
+        }
+    },
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Arkusz Postaci",
-            "Vehicle": "Karta Pojazdu",
+            "ActorNPC": "Arkusz BN",
+            "ActorCreature": "Arkusz Stworzenia",
+            "ActorVehicle": "Arkusz Pojazdu",
             "Item": "Arkusz Przedmiotu",
             "Edit": "Edytuj",
             "Finish": "Zakończ",
@@ -14,7 +39,9 @@
         "Attributes": {
             "Attributes": "Współczynniki",
             "Base": "Baza",
+            "BaseAbbr": "Podst.",
             "Modifier": "Modyfikator",
+            "ModifierAbbr": "Zmodyf.",
             "Dexterity": "Zręczność",
             "Perception": "Percepcja",
             "Charisma": "Charyzma",
@@ -50,7 +77,9 @@
             "CritSuccess": "KRYTYCZNY SUKCES!",
             "CritFailure": "KRYTYCZNA PORAŻKA!",
             "OpenTest": "Test Otwarty",
+            "OpenTestShort": "Otwarty",
             "ClosedTest": "Test Zamknięty",
+            "ClosedTestShort": "Zamknięty",
             "Success": "Sukces",
             "Failure": "Porażka",
             "Jamming": "ZACIĘCIE",
@@ -89,9 +118,10 @@
             "TotalModifier": "Suma modyfikatorów",
             "FinalDifficulty": "Ostateczna Trudność",
             "SkillBonus": "Bonus do Umiejętności",
-            "SkillBonusAbbr": "Bon. do Umiejętności",
+            "SkillBonusAbbr": "Bon Umiej.",
             "AttributeBonus": "Bonus do Atrybutu",
-            "AttributeBonusAbbr": "Bon. do Atrybutu",
+            "AttributeBonusAbbr": "Bon Atr.",
+            "CrowdingPenalty": "Kara za osaczenie (Zr)",
             "IncludeSkill": "Uwzględnij Umiejętność",
             "NoSkill": "Bez Umiejętności",
             "CurrentWeaponSkill": "Umiejętność używanej broni",
@@ -151,6 +181,27 @@
             "Impossible": "Niemożliwy",
             "ShowMore": "Pokaż progi trudności",
             "ShowLess": "Ukryj progi trudności"
+        },
+        "VehicleMod": {
+            "Category": "Kategoria",
+            "InstallDifficulty": "Trudność montażu",
+            "Rules": "Zasady / Opis",
+            "Categories": {
+                "Engine": "Silnik",
+                "Gearbox": "Skrzynia biegów",
+                "Brakes": "Układ hamulcowy",
+                "Turbo": "Turbodoładowanie",
+                "Boring": "Rozwiercanie cylindrów i zaworów",
+                "Electronics": "Elektronika",
+                "Exhaust": "Wydechy",
+                "Suspension": "Podwozie i zawieszenie",
+                "Wheels": "Koła",
+                "Frame": "Rama pojazdu",
+                "Armor": "Opancerzenie",
+                "Surprises": "Niespodzianki",
+                "Extras": "Dodatki",
+                "Other": "Inne"
+            }
         },
         "Actions": {
             "Attack": "Atak",
@@ -232,6 +283,14 @@
             "AllowPainResistanceShift": {
                 "Name": "Pozwól na Suwak w odporności na ból",
                 "Hint": "Włącza zasadę Suwaka podczas automatycznych testów odporności na ból."
+            },
+            "MeleeCombatType": {
+                "Name": "System Walki Wręcz",
+                "Hint": "Wybierz który system walki wręcz jest aktywny. Zmiana tego ustawienia wymaga przeładowania.",
+                "Default": "Domyślny System (Inicjatywa + Aplikacja Pojedynku)",
+                "OpposedPips": "Przeciwstawny na Oczkach",
+                "OpposedSuccesses": "Przeciwstawny na Sukcesach",
+                "ActiveNotice": "Aktywny system walki wręcz: {system}. Ten tryb nie używa aplikacji pojedynku."
             },
             "MeleeBonusMode": {
                 "Name": "Aplikacja bonusów broni w Melee",
@@ -335,7 +394,8 @@
         },
         "Combat": {
             "Combatants": "Uczestnicy",
-            "Turn": "Tura"
+            "Turn": "Tura",
+            "MeleeInitiative": "Inicjatywa Wręcz"
         },
         "MeleeOpposed": {
             "Title": "Starcie Wręcz",
@@ -428,7 +488,10 @@
             "NoActiveDefender": "Brak aktywnego obrońcy",
             "DieSuccess": "Sukces",
             "DieFailure": "Porażka",
-            "ConfirmAttack": "Potwierdź atak",
+            "DieNat20": "Krytyczna porażka (naturalna 20)",
+            "ConfirmAttack": "Atakuj",
+            "PerformAction": "Wykonaj akcję",
+            "ChooseDamageDistribution": "Wybierz obrażenia",
             "ConfirmDefense": "Potwierdź obronę",
             "Target": "Cel",
             "PrimaryOpponent": "Główny przeciwnik",
@@ -436,6 +499,7 @@
             "ChooseTarget": "Wybierz cel",
             "Hint": {
                 "RollPool": "Kliknij \"Rzuć Pulę\" — wybierz manewr i rzuć 3k20 na tę turę.",
+                "RollYourDice": "Rzuć swoje kości! Kliknij przycisk rzutu na swojej karcie wojownika.",
                 "WaitingPool": "Pula rzucona. Czekaj na pozostałych uczestników...",
                 "ChooseTarget": "Wybierz swojego głównego przeciwnika klikając jego przycisk poniżej.",
                 "WaitingTarget": "Czekaj na wybór celów przez pozostałych...",
@@ -447,8 +511,24 @@
                 "WaitingResolve": "Czekaj na rozstrzygnięcie przez MG...",
                 "NextSegment": "Kliknij \"Następny Segment\" aby przejść dalej.",
                 "EndTurn": "Tura zakończona. Kliknij \"Zakończ Turę\" aby rzucić nową pulę.",
-                "WaitingGM": "Segment zakończony. Czekaj na MG..."
+                "WaitingGM": "Segment zakończony. Czekaj na MG...",
+                "SelectDice": "Wybierz 1–3 kości, aby zadeklarować akcję.",
+                "WaitingDamage": "Atakujący wybiera rozdrobnienie obrażeń..."
             },
+            "PerformActionMsg": "{name} wykonuje akcję ({segments} segment(y), {successes} sukces(y)).",
+            "ResultBlock": "Obrona",
+            "ResetTurn": "Resetuj turę",
+            "EndEncounter": "Zakończ starcie",
+            "PrevSegment": "Poprzedni segment",
+            "NextSegment": "Następny segment",
+            "PrevTurn": "Poprzednia tura",
+            "NextTurn": "Następna tura",
+            "PoolRoll": "Rzut puli (3k20)",
+            "SkillRemaining": "Pkt. pozostałe",
+            "ResetAllocation": "Cofnij wydanie punktów umiejętności",
+            "SpendSelf": "Wydaj punkt — zmniejsz tę kość",
+            "UnspendSelf": "Cofnij wydanie — zwiększ tę kość",
+            "SpoilOpponent": "Wydaj punkt — zwiększ kość przeciwnika",
             "Actions": {
                 "attack": "Atak",
                 "defend": "Obrona",
@@ -462,16 +542,13 @@
             "Tricks": "Sztuczki",
             "Combat": "Walka",
             "Inventory": "Ekwipunek",
+            "Crew": "Załoga",
             "Notes": "Notatki",
             "Stats": "Statystyki",
             "Description": "Opis",
             "Effects": "Efekty",
             "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)",
-            "Mods": "Modyfikacje",
-            "Crew": "Załoga",
-            "Details": "Szczegóły",
-            "Changes": "Zmiany",
-            "Scripts": "Skrypty"
+            "Modifications": "Modyfikacje"
         },
         "Dialogs": {
             "ConfirmReroll": "Potwierdź przerzut",
@@ -655,9 +732,15 @@
                 "Magazine": "Magazynek",
                 "Magazines": "Magazynki",
                 "Wound": "Rana",
-                "VehicleMod": "Modyfikacja Pojazdu",
-                "VehicleDamage": "Uszkodzenie Pojazdu"
+                "Beast-action": "Akcja Bestii",
+                "Beast-maneuver": "Manewr Bestii",
+                "Specialization": "Specjalizacja",
+                "Origin": "Pochodzenie",
+                "Profession": "Profesja",
+                "Vehicle-damage": "Uszkodzenie Pojazdu",
+                "Vehicle-mod": "Modyfikacja Pojazdu"
             },
+            "Empty": "Brak przedmiotów.",
             "Fields": {
                 "Weight": "Waga",
                 "Cost": "Koszt",
@@ -749,132 +832,6 @@
             "Medic": "Medyk",
             "Patient": "Pacjent"
         },
-        "Vehicle": {
-            "Location": {
-                "Front": "Przód",
-                "Back": "Tył",
-                "LeftSide": "Lewy Bok",
-                "RightSide": "Prawy Bok",
-                "Bottom": "Spód",
-                "Unknown": "Nieznane",
-                "FrontAbbr": "Prz",
-                "BackAbbr": "Ty",
-                "LeftAbbr": "LB",
-                "RightAbbr": "PB",
-                "BottomAbbr": "Sp"
-            },
-            "Damage": {
-                "Title": "Uszkodzenia",
-                "Light": "Lekkie",
-                "Heavy": "Ciężkie",
-                "Critical": "Krytyczne",
-                "EffLoss": "Utrata Sprawności",
-                "Empty": "Brak uszkodzeń"
-            },
-            "Armor": {
-                "Title": "Pancerz",
-                "Ratings": "Wartości Pancerza",
-                "None": "Brak pancerza"
-            },
-            "Weapons": {
-                "Title": "Uzbrojenie",
-                "Mounted": "Zamontowane",
-                "Empty": "Brak zamontowanej broni"
-            },
-            "Mod": {
-                "Category": {
-                    "Label": "Kategoria",
-                    "Modification": "Modyfikacja",
-                    "Armor": "Pancerz"
-                }
-            },
-            "Mods": {
-                "Title": "Modyfikacje",
-                "InstallDifficulty": "Trudność Montażu",
-                "Equipped": "Zamontowane",
-                "Empty": "Brak modyfikacji"
-            },
-            "Performance": "Osiągi",
-            "MaxSpeed": "Prędkość Maksymalna",
-            "MaxSpeedAbbr": "Prędkość Maks.",
-            "Acceleration": "Przyspieszenie",
-            "AccelerationAbbr": "Przyspieszenie",
-            "Brakes": "Hamulce",
-            "BrakesAbbr": "Hamulce",
-            "Durability": "Wytrzymałość",
-            "Agility": "Zwrotność",
-            "AgilityPenalty": "Kara do Zwrotności",
-            "AgilityPenaltyTotal": "Łączna Kara Zwrotności",
-            "Efficiency": "Sprawność",
-            "EfficiencyAbbr": "SRAW",
-            "AgilityAbbr": "ZWR",
-            "DurabilityAbbr": "WYTR",
-            "EffectiveAgility": "Efektywna Zwrotność",
-            "RollDurability": "Rzut na Wytrzymałość",
-            "Disabled": "Pojazd Wyłączony",
-            "InvalidItemType": "Ten typ przedmiotu nie może być dodany do pojazdu",
-            "OnlyRangedWeapons": "Pojazdy mogą posiadać tylko broń dystansową",
-            "Sheet": "Karta Pojazdu",
-            "Crew": "Załoga",
-            "Mods": "Modyfikacje",
-            "Combat": "Walka",
-            "Notes": "Notatki"
-        },
-        "Effects": {
-            "Icon": "Ikona",
-            "Label": "Etykieta",
-            "Origin": "Źródło",
-            "Disabled": "Wyłączony",
-            "Transfer": "Przenieś",
-            "Source": "Źródło",
-            "AddChange": "Dodaj Zmianę",
-            "NoChanges": "Brak zmian",
-            "Description": "Opis",
-            "Change": {
-                "Key": "Klucz",
-                "Mode": "Tryb",
-                "Priority": "Priorytet",
-                "Value": "Wartość"
-            },
-            "Duration": {
-                "Rounds": "Rundy",
-                "Turns": "Tury",
-                "Seconds": "Sekundy"
-            }
-        },
-        "Scripts": {
-            "Add": "Dodaj Skrypt",
-            "Empty": "Brak skryptów",
-            "Label": "Etykieta",
-            "LabelPlaceholder": "Nazwa Skryptu",
-            "Code": "Kod",
-            "CodePlaceholder": "Tutaj wpisz kod JavaScript",
-            "Hint": "Skrypty są wykonywane automatycznie lub ręcznie. Używają JavaScript z dostępem do aktora, itemu i efektu.",
-            "HelpText": "Dostępne zmienne:",
-            "Run": "Uruchom",
-            "NewScript": "Nowy Skrypt",
-            "NoActor": "Skrypt wymaga przypisanego aktora",
-            "Trigger": {
-                "Label": "Wyzwalacz",
-                "Manual": "Ręczny",
-                "PrepareData": "Przygotowanie Danych",
-                "RollTest": "Rzut na Test",
-                "ArmorCalculation": "Obliczenie Pancerza",
-                "ApplyDamage": "Aplikowanie Obrażeń",
-                "EquipToggle": "Przełącz Ekwipunek"
-            },
-            "Help": {
-                "Actor": "Aktor właściciel efektu",
-                "Item": "Item właściciel efektu (jeśli efekt jest na itemu)",
-                "Effect": "Ten aktywny efekt",
-                "Notification": "Pokaż powiadomienie UI",
-                "Args": "Argumenty kontekstowe przekazane przez wyzwalacz"
-            }
-        },
-        "WeakPoint": "Słaby Punkt",
-        "Armor": {
-            "None": "Brak pancerza"
-        },
         "HealingRequest": {
             "Title": "Prośba o Leczenie",
             "RequestedBy": "Prośbę wysłał",
@@ -934,6 +891,201 @@
                 "progress": "Postęp Leczenia",
                 "complete": "Ukończ Leczenie"
             }
+        },
+        "Wounds": {
+            "None": "Brak ran"
+        },
+        "NPC": {
+            "Threat": "Zagrożenie"
+        },
+        "Creature": {
+            "Type": "Typ Stworzenia",
+            "TypeAbbr": "Typ",
+            "Terrain": "Teren",
+            "TerrainAbbr": "Teren",
+            "Aggression": "Agresja",
+            "BerserkerMode": "Tryb Berserkera",
+            "BerserkerAbbr": "Berserk",
+            "MovementAbbr": "Ruch",
+            "AggressionAbbr": "Agr.",
+            "Movement": "Ruch",
+            "Stats": "Statystyki",
+            "Experience": "Doświadczenie",
+            "ExperiencePoints": "Pkt. Doświadczenia",
+            "ExperienceHint": "Używane zamiast skilli jako ogólna premia do testów",
+            "Kondycja": "Kondycja",
+            "KondycjaHint": "Ogólna wytrzymałość fizyczna stworzenia",
+            "NaturalArmor":
+            {
+            "Title": "Naturalne Opancerzenie",
+            "Location": "Część ciała",
+            "Reduction": "Redukcja",
+            "ReductionAbbr": "Red.",
+            "HitPenalty": "Utrudnienie do trafienia (%)",
+            "HitPenaltyAbbr": "Utr.%",
+            "WeakPoint": "Słaby punkt",
+            "WeakPointAbbr": "Słaby"
+            }
+        },
+        "BeastAction": {
+            "Label": "Akcje Bestii",
+            "None": "Brak akcji bestii.",
+            "TypeLabel": "Typ akcji",
+            "CostTypeLabel": "Typ kosztu",
+            "CostType": {
+                "Segment": "Segmenty",
+                "Success": "Sukcesy"
+            },
+            "SegmentCost": "Koszt segmentów",
+            "SuccessCost": "Koszt sukcesów",
+            "Type": {
+                "Attack": "Atak",
+                "Special": "Specjalna",
+                "Reaction": "Reakcja"
+            }
+        },
+        "BeastManeuver": {
+            "Label": "Manewry Bestii",
+            "None": "Brak manewrów bestii.",
+            "TypeLabel": "Typ manewru",
+            "Difficulty": "Trudność",
+            "Type": {
+                "Offensive": "Ofensywny",
+                "Defensive": "Defensywny",
+                "Special": "Specjalny"
+            }
+        },
+        "Vehicle": {
+            "Type": "Typ Pojazdu",
+            "Cost": "Koszt",
+            "Hull": "Kadłub",
+            "Fuel": "Paliwo",
+            "Armor": "Pancerz",
+            "Speed": "Prędkość",
+            "Crew": "Załoga",
+            "Passengers": "Pasażerowie",
+            "FuelType": "Typ paliwa",
+            "FuelCapacity": "Zapas paliwa",
+            "Movement": {
+                "Label":      "Napęd",
+                "Wheeled":    "Kołowy",
+                "Tracked":    "Gąsienicowy",
+                "Flying":     "Latający",
+                "Floating":   "Pływający",
+                "Hovercraft": "Poduszkowiec"
+            },
+            "NoCrew": "Upuść aktora, aby dodać załoganta",
+            "Exposed": "Odsłonięty",
+            "NoWeapons": "Brak uzbrojenia",
+            "NoMountedWeapons": "Brak zamontowanego uzbrojenia",
+            "SelectCrew": "Wybierz Załoganta",
+            "SelectCrewFor": "Wybierz załoganta do rzutu bronią:",
+            "NoCrewSelected": "Nie wybrano załoganta.",
+            "NoCrewInVehicle": "Brak załogantów w pojeździe. Najpierw dodaj aktora do załogi.",
+            "Mounted": "Zamontowany",
+            "MountedWeapons": "Uzbrojenie pojazdu",
+            "Damage": "Uszkodzenia",
+            "NoDamage": "Brak uszkodzeń",
+            "DamageLocation": "Lokalizacja",
+            "DamageSprawnosc": "Redukcja Sprawności",
+            "DamageSprawnoscAbbr": "Spr.",
+            "DamageAgilityPenalty": "Kara do Zwrotności (%)",
+            "DamageAgilityPenaltyAbbr": "Zwr.%",
+            "DamageType": {
+                "Label":    "Typ uszkodzenia",
+                "Light":    "Lekkie",
+                "Heavy":    "Ciężkie",
+                "Critical": "Krytyczne"
+            },
+            "RollDurabilityTest": "Rzuć Test Wytrzymałości",
+            "DurabilityTest": "Test Wytrzymałości Pojazdu",
+            "DurabilityTestPassed": "Test ZDANY — połowa kar",
+            "DurabilityTestFailed": "Test NIEZDANY — pełne kary",
+            "Negated": "Znegowane",
+            "DamageNegated": "Znegowane przez pancerz/broń",
+            "ArmorLocations": {
+                "Front":     "Przód",
+                "RightSide": "Prawy Bok",
+                "LeftSide":  "Lewy Bok",
+                "Rear":      "Tył",
+                "Bottom":    "Spód"
+            },
+            "NoGear": "Brak wyposażenia",
+            "Modifications": "Modyfikacje",
+            "NoModifications": "Brak modyfikacji pojazdu.",
+            "Position": {
+                "Driver":    "Kierowca",
+                "Gunner":    "Strzelec",
+                "Commander": "Dowódca",
+                "Passenger": "Pasażer"
+            },
+            "Attributes": {
+                "Agility":      "Zwrotność",
+                "TopSpeed":     "Prędkość maks.",
+                "Acceleration": "Przyspieszenie",
+                "Brakes":       "Hamulce",
+                "Durability":   "Wytrzymałość",
+                "Efficiency":   "Sprawność",
+                "Abbr": {
+                    "Agility":      "Zw",
+                    "TopSpeed":     "Pm",
+                    "Acceleration": "Pz",
+                    "Brakes":       "Ha",
+                    "Durability":   "Wt",
+                    "Efficiency":   "Sp"
+                }
+            }
+        }
+    },
+    "Effects": {
+        "Icon": "Ikona",
+        "Label": "Etykieta",
+        "Origin": "Źródło",
+        "Disabled": "Wyłączony",
+        "Transfer": "Przenieś",
+        "Source": "Źródło",
+        "AddChange": "Dodaj Zmianę",
+        "NoChanges": "Brak zmian",
+        "Description": "Opis",
+        "Change": {
+            "Key": "Klucz",
+            "Mode": "Tryb",
+            "Priority": "Priorytet",
+            "Value": "Wartość"
+        },
+        "Duration": {
+            "Rounds": "Rundy",
+            "Turns": "Tury",
+            "Seconds": "Sekundy"
+        }
+    },
+    "Scripts": {
+        "Add": "Dodaj Skrypt",
+        "Empty": "Brak skryptów",
+        "Label": "Etykieta",
+        "LabelPlaceholder": "Nazwa Skryptu",
+        "Code": "Kod",
+        "CodePlaceholder": "Tutaj wpisz kod JavaScript",
+        "Hint": "Skrypty są wykonywane automatycznie lub ręcznie. Używają JavaScript z dostępem do aktora, itemu i efektu.",
+        "HelpText": "Dostępne zmienne:",
+        "Run": "Uruchom",
+        "NewScript": "Nowy Skrypt",
+        "NoActor": "Skrypt wymaga przypisanego aktora",
+        "Trigger": {
+            "Label": "Wyzwalacz",
+            "Manual": "Ręczny",
+            "PrepareData": "Przygotowanie Danych",
+            "RollTest": "Rzut na Test",
+            "ArmorCalculation": "Obliczenie Pancerza",
+            "ApplyDamage": "Aplikowanie Obrażeń",
+            "EquipToggle": "Przełącz Ekwipunek"
+        },
+        "Help": {
+            "Actor": "Aktor właściciel efektu",
+            "Item": "Item właściciel efektu (jeśli efekt jest na itemu)",
+            "Effect": "Ten aktywny efekt",
+            "Notification": "Pokaż powiadomienie UI",
+            "Args": "Argumenty kontekstowe przekazane przez wyzwalacz"
         }
     }
 }

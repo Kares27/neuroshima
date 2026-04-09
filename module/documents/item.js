@@ -13,8 +13,8 @@ export class NeuroshimaItem extends Item {
       trick: "systems/neuroshima/assets/img/trick.svg",
       weapon: "systems/neuroshima/assets/img/weapon-melee.svg",
       wound: "systems/neuroshima/assets/img/wound.svg",
-      "vehicle-mod": "systems/neuroshima/assets/img/tire-iron.svg",
-      "vehicle-damage": "systems/neuroshima/assets/img/tire-iron.svg"
+      "vehicle-damage": "systems/neuroshima/assets/img/tire-iron.svg",
+      "vehicle-mod":    "systems/neuroshima/assets/img/tire-iron.svg"
     };
 
     const updates = {};
@@ -34,8 +34,7 @@ export class NeuroshimaItem extends Item {
     // Ustaw domyślną nazwę, jeśli nazwa jest generyczna (np. "New Item" lub pusta)
     const isGenericName = !data.name || data.name.includes("New") || data.name.includes("Item");
     if (isGenericName) {
-      const typeKey = data.type.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("");
-      updates.name = game.i18n.localize(`NEUROSHIMA.Items.Type.${typeKey}`);
+      updates.name = game.i18n.localize(`NEUROSHIMA.Items.Type.${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`);
     }
 
     if (Object.keys(updates).length > 0) {

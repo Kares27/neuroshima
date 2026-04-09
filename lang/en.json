@@ -1,8 +1,33 @@
 {
+    "TYPES": {
+        "Actor": {
+            "character": "Character",
+            "npc": "NPC",
+            "creature": "Creature",
+            "vehicle": "Vehicle"
+        },
+        "Item": {
+            "weapon": "Weapon",
+            "armor": "Armor",
+            "gear": "Gear",
+            "trick": "Trick",
+            "ammo": "Ammo",
+            "magazine": "Magazine",
+            "wound": "Wound",
+            "beast-action": "Beast Action",
+            "beast-maneuver": "Beast Maneuver",
+            "specialization": "Specialization",
+            "origin": "Origin",
+            "profession": "Profession",
+            "vehicle-damage": "Damage"
+        }
+    },
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Actor Sheet",
-            "Vehicle": "Vehicle Sheet",
+            "ActorNPC": "NPC Sheet",
+            "ActorCreature": "Creature Sheet",
+            "ActorVehicle": "Vehicle Sheet",
             "Item": "Item Sheet",
             "Edit": "Edit",
             "Finish": "Finish",
@@ -11,7 +36,9 @@
         "Attributes": {
             "Attributes": "Attributes",
             "Base": "Base",
+            "BaseAbbr": "Base",
             "Modifier": "Modifier",
+            "ModifierAbbr": "Mod.",
             "Dexterity": "Dexterity",
             "Perception": "Perception",
             "Charisma": "Charisma",
@@ -47,7 +74,9 @@
             "CritSuccess": "CRITICAL SUCCESS!",
             "CritFailure": "CRITICAL FAILURE!",
             "OpenTest": "Open Test",
+            "OpenTestShort": "Open",
             "ClosedTest": "Closed Test",
+            "ClosedTestShort": "Closed",
             "Success": "Success",
             "Failure": "Failure",
             "Jamming": "JAMMING",
@@ -89,6 +118,7 @@
             "SkillBonusAbbr": "Skill Bon.",
             "AttributeBonus": "Attribute Bonus",
             "AttributeBonusAbbr": "Attr. Bon.",
+            "CrowdingPenalty": "Crowding Penalty (Dex)",
             "IncludeSkill": "Include Skill",
             "NoSkill": "No Skill",
             "CurrentWeaponSkill": "Current weapon skill",
@@ -148,6 +178,27 @@
             "Impossible": "Impossible",
             "ShowMore": "Show difficulty thresholds",
             "ShowLess": "Hide difficulty thresholds"
+        },
+        "VehicleMod": {
+            "Category": "Category",
+            "InstallDifficulty": "Installation Difficulty",
+            "Rules": "Rules / Description",
+            "Categories": {
+                "Engine": "Engine",
+                "Gearbox": "Gearbox",
+                "Brakes": "Brake System",
+                "Turbo": "Turbocharger",
+                "Boring": "Cylinder & Valve Boring",
+                "Electronics": "Electronics",
+                "Exhaust": "Exhaust",
+                "Suspension": "Suspension & Undercarriage",
+                "Wheels": "Wheels",
+                "Frame": "Vehicle Frame",
+                "Armor": "Armor Plating",
+                "Surprises": "Surprises",
+                "Extras": "Extras",
+                "Other": "Other"
+            }
         },
         "Actions": {
             "Attack": "Attack",
@@ -229,6 +280,14 @@
             "AllowPainResistanceShift": {
                 "Name": "Allow Suwak in pain resistance",
                 "Hint": "Enables the Suwak rule during automatic pain resistance tests."
+            },
+            "MeleeCombatType": {
+                "Name": "Melee Combat System",
+                "Hint": "Select which melee combat system is active. Changing this setting requires a reload.",
+                "Default": "Default System (Initiative + Duel App)",
+                "OpposedPips": "Opposed on Pips",
+                "OpposedSuccesses": "Opposed on Successes",
+                "ActiveNotice": "Active melee combat system: {system}. This mode does not use the duel application."
             },
             "MeleeBonusMode": {
                 "Name": "Melee Weapon Bonus Application",
@@ -332,7 +391,8 @@
         },
         "Combat": {
             "Combatants": "Combatants",
-            "Turn": "Turn"
+            "Turn": "Turn",
+            "MeleeInitiative": "Melee Initiative"
         },
         "MeleeOpposed": {
             "Title": "Melee Opposed",
@@ -380,76 +440,92 @@
             "LogExtraAttackBlocked": "{attacker} attacks {defender}, but free defense blocks the hit! Dice: {dice}",
             "LogExtraAttackMiss": "{attacker} misses an extra attack against {defender}."
         },
-            "ResultHit": "Hit!",
-            "ResultTakeover": "Initiative Takeover!",
-            "ResultMiss": "Miss.",
-            "TargetValue": "Threshold (Dex)",
-            "Initiative": "Initiative",
-            "RolledPool": "Rolled Pool",
-            "NotYourSelectionTurn": "It's not your turn to select dice!",
-            "SelectionTurn": "Dice Selection Turn",
-            "ConfirmSelection": "Confirm Selection",
-            "NoActiveFights": "No active duels.",
-            "StartInstruction": "Click a melee weapon on a target to start a duel.",
-            "OpenActive": "Open active duel panel",
-            "Active": "Active Duel",
-            "Pending": "Waiting for Defender",
-            "ClickToOpen": "Click to open combat panel",
-            "WaitingForDefender": "Waiting for defender to join...",
-            "CombatLog": "Combat Log",
-            "LogEmpty": "No entries in log.",
-            "LogRemis": "{attacker} attacks (x{count}), but {defender} parries.",
-            "LogHit": "{attacker} hits {defender} in {location} for {damage} wound.",
-            "LogTakeover": "{newAttacker} takes over initiative from {oldAttacker}!",
-            "LogMiss": "{attacker} misses.",
-            "LogTurnEnd": "End of Turn {turn}.",
-            "LogFullDefenseBlock": "{defender} parries (Full Defense), but does not take initiative.",
-            "LogFuryHit": "Attacker in Fury receives a counter-attack!",
-            "AttackStrength": "Attack Strength",
-            "DefenseRequired": "Defense Required",
-            "WaitingDeclaration": "Waiting for declaration...",
-            "NoActiveAttacker": "No active attacker",
-            "NoActiveDefender": "No active defender",
-            "DieSuccess": "Success",
-            "DieFailure": "Failure",
-            "ConfirmAttack": "Confirm Attack",
-            "ConfirmDefense": "Confirm Defense",
-            "Target": "Target",
-            "PrimaryOpponent": "Primary Opponent",
-            "Crowded": "Outnumbered",
-            "ChooseTarget": "Choose Target",
-            "Hint": {
-                "RollPool": "Click \"Roll Pool\" — choose your maneuver and roll 3d20 for this turn.",
-                "WaitingPool": "Pool rolled. Waiting for other participants...",
-                "ChooseTarget": "Click one of the buttons below to select your primary target.",
-                "WaitingTarget": "Waiting for others to choose their targets...",
-                "SelectAttack": "Select 1, 2 or 3 dice as your attack strength. More successes = more damage.",
-                "WaitingAttack": "Opponent is choosing attack strength. Wait for the declaration...",
-                "SelectDefense": "You must select exactly {count} dice to defend. Fewer dice = the hit lands!",
-                "WaitingDefense": "Defender is choosing defense dice. Wait...",
-                "ResolveReady": "Exchange ready! Click \"Resolve\" to see the outcome.",
-                "WaitingResolve": "Waiting for GM to resolve the exchange...",
-                "NextSegment": "Click \"Next Segment\" to continue.",
-                "EndTurn": "Turn over. Click \"End Turn\" to roll a new pool.",
-                "WaitingGM": "Segment ended. Waiting for GM..."
-            }
+        "ResultHit": "Hit!",
+        "ResultBlock": "Blocked",
+        "ResultTakeover": "Initiative Takeover!",
+        "ResultMiss": "Miss.",
+        "ResetTurn": "Reset Turn",
+        "EndEncounter": "End Encounter",
+        "PrevSegment": "Previous Segment",
+        "NextSegment": "Next Segment",
+        "PrevTurn": "Previous Turn",
+        "NextTurn": "Next Turn",
+        "PoolRoll": "Pool Roll (3k20)",
+        "SkillRemaining": "Pts. remaining",
+        "ResetAllocation": "Undo skill point allocation",
+        "SpendSelf": "Spend point — reduce this die",
+        "UnspendSelf": "Undo spend — increase this die",
+        "SpoilOpponent": "Spend point — increase opponent's die",
+        "TargetValue": "Threshold (Dex)",
+        "Initiative": "Initiative",
+        "RolledPool": "Rolled Pool",
+        "NotYourSelectionTurn": "It's not your turn to select dice!",
+        "SelectionTurn": "Dice Selection Turn",
+        "ConfirmSelection": "Confirm Selection",
+        "NoActiveFights": "No active duels.",
+        "StartInstruction": "Click a melee weapon on a target to start a duel.",
+        "OpenActive": "Open active duel panel",
+        "Active": "Active Duel",
+        "Pending": "Waiting for Defender",
+        "ClickToOpen": "Click to open combat panel",
+        "WaitingForDefender": "Waiting for defender to join...",
+        "CombatLog": "Combat Log",
+        "LogEmpty": "No entries in log.",
+        "LogRemis": "{attacker} attacks (x{count}), but {defender} parries.",
+        "LogHit": "{attacker} hits {defender} in {location} for {damage} wound.",
+        "LogTakeover": "{newAttacker} takes over initiative from {oldAttacker}!",
+        "LogMiss": "{attacker} misses.",
+        "LogTurnEnd": "End of Turn {turn}.",
+        "LogFullDefenseBlock": "{defender} parries (Full Defense), but does not take initiative.",
+        "LogFuryHit": "Attacker in Fury receives a counter-attack!",
+        "AttackStrength": "Attack Strength",
+        "DefenseRequired": "Defense Required",
+        "WaitingDeclaration": "Waiting for declaration...",
+        "NoActiveAttacker": "No active attacker",
+        "NoActiveDefender": "No active defender",
+        "DieSuccess": "Success",
+        "DieFailure": "Failure",
+        "DieNat20": "Critical Failure (natural 20)",
+        "ConfirmAttack": "Attack",
+        "PerformAction": "Perform Action",
+        "ChooseDamageDistribution": "Choose damage",
+        "ConfirmDefense": "Confirm Defense",
+        "Target": "Target",
+        "PrimaryOpponent": "Primary Opponent",
+        "Crowded": "Outnumbered",
+        "ChooseTarget": "Choose Target",
+        "Hint": {
+            "RollPool": "Click \"Roll Pool\" — choose your maneuver and roll 3d20 for this turn.",
+            "RollYourDice": "Roll your dice! Click the roll button on your fighter card.",
+            "WaitingPool": "Pool rolled. Waiting for other participants...",
+            "ChooseTarget": "Click one of the buttons below to select your primary target.",
+            "WaitingTarget": "Waiting for others to choose their targets...",
+            "SelectAttack": "Select 1, 2 or 3 dice as your attack strength. More successes = more damage.",
+            "WaitingAttack": "Opponent is choosing attack strength. Wait for the declaration...",
+            "SelectDefense": "You must select exactly {count} dice to defend. Fewer dice = the hit lands!",
+            "WaitingDefense": "Defender is choosing defense dice. Wait...",
+            "ResolveReady": "Exchange ready! Click \"Resolve\" to see the outcome.",
+            "WaitingResolve": "Waiting for GM to resolve the exchange...",
+            "NextSegment": "Click \"Next Segment\" to continue.",
+            "EndTurn": "Turn over. Click \"End Turn\" to roll a new pool.",
+            "WaitingGM": "Segment ended. Waiting for GM...",
+            "SelectDice": "Select 1–3 dice to declare your action.",
+            "WaitingDamage": "Attacker is choosing damage distribution..."
         },
+        "PerformActionMsg": "{name} performs an action ({segments} segment(s), {successes} success(es)).",
         "Tabs": {
             "Attributes": "Attributes",
             "Skills": "Skills",
             "Tricks": "Tricks",
             "Combat": "Combat",
             "Inventory": "Inventory",
+            "Crew": "Crew",
             "Notes": "Notes",
             "Stats": "Stats",
             "Description": "Description",
             "Effects": "Effects",
             "EffectsPlaceholder": "Item effects (TBD)",
-            "Mods": "Modifications",
-            "Crew": "Crew",
-            "Details": "Details",
-            "Changes": "Changes",
-            "Scripts": "Scripts"
+            "Modifications": "Modifications"
         },
         "Dialogs": {
             "ConfirmReroll": "Confirm Reroll",
@@ -630,9 +706,15 @@
                 "Magazine": "Magazine",
                 "Magazines": "Magazines",
                 "Wound": "Wound",
-                "VehicleMod": "Vehicle Modification",
-                "VehicleDamage": "Vehicle Damage"
+                "Beast-action": "Beast Action",
+                "Beast-maneuver": "Beast Maneuver",
+                "Specialization": "Specialization",
+                "Origin": "Origin",
+                "Profession": "Profession",
+                "Vehicle-damage": "Vehicle Damage",
+                "Vehicle-mod": "Vehicle Modification"
             },
+            "Empty": "No items.",
             "Fields": {
                 "Weight": "Weight",
                 "Cost": "Cost",
@@ -714,131 +796,6 @@
             "LeftLeg": "Left Leg",
             "RightLeg": "Right Leg"
         },
-        "Vehicle": {
-            "Location": {
-                "Front": "Front",
-                "Back": "Back",
-                "LeftSide": "Left Side",
-                "RightSide": "Right Side",
-                "Bottom": "Bottom",
-                "Unknown": "Unknown",
-                "FrontAbbr": "Fr",
-                "BackAbbr": "Bk",
-                "LeftAbbr": "LS",
-                "RightAbbr": "RS",
-                "BottomAbbr": "Bo"
-            },
-            "Damage": {
-                "Title": "Damage",
-                "Light": "Light",
-                "Heavy": "Heavy",
-                "Critical": "Critical",
-                "EffLoss": "Efficiency Loss",
-                "Empty": "No damage"
-            },
-            "Armor": {
-                "Title": "Armor",
-                "Ratings": "Armor Ratings",
-                "None": "No armor"
-            },
-            "Weapons": {
-                "Title": "Weapons",
-                "Mounted": "Mounted",
-                "Empty": "No weapons mounted"
-            },
-            "Mod": {
-                "Category": {
-                    "Label": "Category",
-                    "Modification": "Modification",
-                    "Armor": "Armor"
-                }
-            },
-            "Mods": {
-                "Title": "Modifications",
-                "InstallDifficulty": "Install Difficulty",
-                "Equipped": "Installed",
-                "Empty": "No modifications"
-            },
-            "Performance": "Performance",
-            "MaxSpeed": "Maximum Speed",
-            "MaxSpeedAbbr": "Max Speed",
-            "Acceleration": "Acceleration",
-            "AccelerationAbbr": "Acceleration",
-            "Brakes": "Brakes",
-            "BrakesAbbr": "Brakes",
-            "Durability": "Durability",
-            "Agility": "Agility",
-            "AgilityPenalty": "Agility Penalty",
-            "AgilityPenaltyTotal": "Total Agility Penalty",
-            "Efficiency": "Efficiency",
-            "EfficiencyAbbr": "EFF",
-            "AgilityAbbr": "AGI",
-            "DurabilityAbbr": "DUR",
-            "EffectiveAgility": "Effective Agility",
-            "RollDurability": "Roll Durability",
-            "Disabled": "Vehicle Disabled",
-            "InvalidItemType": "This item type cannot be added to a vehicle",
-            "OnlyRangedWeapons": "Vehicles can only have ranged weapons",
-            "Sheet": "Vehicle Sheet",
-            "Crew": "Crew",
-            "Combat": "Combat",
-            "Notes": "Notes"
-        },
-        "Effects": {
-            "Icon": "Icon",
-            "Label": "Label",
-            "Origin": "Origin",
-            "Disabled": "Disabled",
-            "Transfer": "Transfer",
-            "Source": "Source",
-            "AddChange": "Add Change",
-            "NoChanges": "No changes",
-            "Description": "Description",
-            "Change": {
-                "Key": "Key",
-                "Mode": "Mode",
-                "Priority": "Priority",
-                "Value": "Value"
-            },
-            "Duration": {
-                "Rounds": "Rounds",
-                "Turns": "Turns",
-                "Seconds": "Seconds"
-            }
-        },
-        "Scripts": {
-            "Add": "Add Script",
-            "Empty": "No scripts",
-            "Label": "Label",
-            "LabelPlaceholder": "Script Name",
-            "Code": "Code",
-            "CodePlaceholder": "Enter JavaScript code here",
-            "Hint": "Scripts are executed automatically or manually. They use JavaScript with access to actor, item, and effect.",
-            "HelpText": "Available variables:",
-            "Run": "Run",
-            "NewScript": "New Script",
-            "NoActor": "Script requires an assigned actor",
-            "Trigger": {
-                "Label": "Trigger",
-                "Manual": "Manual",
-                "PrepareData": "Prepare Data",
-                "RollTest": "Roll Test",
-                "ArmorCalculation": "Armor Calculation",
-                "ApplyDamage": "Apply Damage",
-                "EquipToggle": "Equip Toggle"
-            },
-            "Help": {
-                "Actor": "The actor owning the effect",
-                "Item": "The item owning the effect (if effect is on an item)",
-                "Effect": "This active effect",
-                "Notification": "Show a UI notification",
-                "Args": "Contextual arguments passed by the trigger"
-            }
-        },
-        "WeakPoint": "Weak Point",
-        "Armor": {
-            "None": "No armor"
-        },
         "PatientCard": {
             "Title": "Patient Card",
             "Wounds": "Body Wounds",
@@ -908,9 +865,203 @@
                 "progress": "Progress Healing",
                 "complete": "Complete Healing"
             }
+        },
+        "Wounds": {
+            "None": "No wounds"
+        },
+        "NPC": {
+            "Threat": "Threat"
+        },
+        "Creature": {
+            "Type": "Creature Type",
+            "TypeAbbr": "Type",
+            "Terrain": "Terrain",
+            "TerrainAbbr": "Terrain",
+            "Aggression": "Aggression",
+            "BerserkerMode": "Berserker Mode",
+            "BerserkerAbbr": "Berserk",
+            "MovementAbbr": "Move",
+            "AggressionAbbr": "Aggr.",
+            "Movement": "Movement",
+            "Stats": "Stats",
+            "Experience": "Experience",
+            "ExperiencePoints": "Experience Points",
+            "ExperienceHint": "Used instead of skills as a general bonus to tests",
+            "Kondycja": "Stamina",
+            "KondycjaHint": "General physical endurance of the creature",
+            "NaturalArmor": {
+            "Title": "Natural Armor",
+            "Location": "Location",
+            "Reduction": "Damage Reduction",
+            "ReductionAbbr": "Red.",
+            "HitPenalty": "Hit Penalty (%)",
+            "HitPenaltyAbbr": "Pen.%",
+            "WeakPoint": "Weak Point",
+            "WeakPointAbbr": "Weak"
+            }
+        },
+        "BeastAction": {
+            "Label": "Beast Actions",
+            "None": "No beast actions.",
+            "TypeLabel": "Action Type",
+            "CostTypeLabel": "Cost Type",
+            "CostType": {
+                "Segment": "Segments",
+                "Success": "Successes"
+            },
+            "SegmentCost": "Segment Cost",
+            "SuccessCost": "Success Cost",
+            "Type": {
+                "Attack": "Attack",
+                "Special": "Special",
+                "Reaction": "Reaction"
+            }
+        },
+        "BeastManeuver": {
+            "Label": "Beast Maneuvers",
+            "None": "No beast maneuvers.",
+            "TypeLabel": "Maneuver Type",
+            "Difficulty": "Difficulty",
+            "Type": {
+                "Offensive": "Offensive",
+                "Defensive": "Defensive",
+                "Special": "Special"
+            }
+        },
+        "Vehicle": {
+            "Type": "Vehicle Type",
+            "Cost": "Cost",
+            "Hull": "Hull",
+            "Fuel": "Fuel",
+            "Armor": "Armor",
+            "Speed": "Speed",
+            "Crew": "Crew",
+            "Passengers": "Passengers",
+            "FuelType": "Fuel Type",
+            "FuelCapacity": "Fuel Capacity",
+            "Movement": {
+                "Label":      "Propulsion",
+                "Wheeled":    "Wheeled",
+                "Tracked":    "Tracked",
+                "Flying":     "Flying",
+                "Floating":   "Floating",
+                "Hovercraft": "Hovercraft"
+            },
+            "NoCrew": "Drop an actor to add a crew member",
+            "Exposed": "Exposed",
+            "NoWeapons": "No weapons",
+            "NoMountedWeapons": "No mounted weapons",
+            "SelectCrew": "Select Crew Member",
+            "SelectCrewFor": "Select crew member for weapon roll:",
+            "NoCrewSelected": "No crew member selected.",
+            "NoCrewInVehicle": "No crew members in vehicle. Add an actor to the crew first.",
+            "Mounted": "Mounted",
+            "MountedWeapons": "Vehicle Weapons",
+            "Damage": "Damage",
+            "DamageLocation": "Location",
+            "NoDamage": "No damage",
+            "DamageSprawnosc": "Efficiency Reduction",
+            "DamageSprawnoscAbbr": "Eff.",
+            "DamageAgilityPenalty": "Agility Penalty (%)",
+            "DamageAgilityPenaltyAbbr": "Agi.%",
+            "DamageType": {
+                "Label":    "Damage Type",
+                "Light":    "Light",
+                "Heavy":    "Heavy",
+                "Critical": "Critical"
+            },
+            "RollDurabilityTest": "Roll Durability Test",
+            "DurabilityTest": "Vehicle Durability Test",
+            "DurabilityTestPassed": "Test PASSED — half penalties",
+            "DurabilityTestFailed": "Test FAILED — full penalties",
+            "Negated": "Negated",
+            "DamageNegated": "Negated by armor/weapon",
+            "ArmorLocations": {
+                "Front":     "Front",
+                "RightSide": "Right Side",
+                "LeftSide":  "Left Side",
+                "Rear":      "Rear",
+                "Bottom":    "Bottom"
+            },
+            "NoGear": "No gear",
+            "Modifications": "Modifications",
+            "NoModifications": "No vehicle modifications.",
+            "Position": {
+                "Driver":    "Driver",
+                "Gunner":    "Gunner",
+                "Commander": "Commander",
+                "Passenger": "Passenger"
+            },
+            "Attributes": {
+                "Agility":      "Agility",
+                "TopSpeed":     "Max Speed",
+                "Acceleration": "Acceleration",
+                "Brakes":       "Brakes",
+                "Durability":   "Durability",
+                "Efficiency":   "Efficiency",
+                "Abbr": {
+                    "Agility":      "Agi",
+                    "TopSpeed":     "Spd",
+                    "Acceleration": "Acc",
+                    "Brakes":       "Brk",
+                    "Durability":   "Dur",
+                    "Efficiency":   "Eff"
+                }
+            }
         }
     },
     "TOKEN": {
         "Title": "Prototype Token"
+    },
+    "Effects": {
+        "Icon": "Icon",
+        "Label": "Label",
+        "Origin": "Origin",
+        "Disabled": "Disabled",
+        "Transfer": "Transfer",
+        "Source": "Source",
+        "AddChange": "Add Change",
+        "NoChanges": "No changes",
+        "Description": "Description",
+        "Change": {
+            "Key": "Key",
+            "Mode": "Mode",
+            "Priority": "Priority",
+            "Value": "Value"
+        },
+        "Duration": {
+            "Rounds": "Rounds",
+            "Turns": "Turns",
+            "Seconds": "Seconds"
+        }
+    },
+    "Scripts": {
+        "Add": "Add Script",
+        "Empty": "No scripts",
+        "Label": "Label",
+        "LabelPlaceholder": "Script Name",
+        "Code": "Code",
+        "CodePlaceholder": "Enter JavaScript code here",
+        "Hint": "Scripts are executed automatically or manually. They use JavaScript with access to the actor, item and effect.",
+        "HelpText": "Available variables:",
+        "Run": "Run",
+        "NewScript": "New Script",
+        "NoActor": "Script requires an assigned actor",
+        "Trigger": {
+            "Label": "Trigger",
+            "Manual": "Manual",
+            "PrepareData": "Prepare Data",
+            "RollTest": "Roll Test",
+            "ArmorCalculation": "Armor Calculation",
+            "ApplyDamage": "Apply Damage",
+            "EquipToggle": "Equip Toggle"
+        },
+        "Help": {
+            "Actor": "The actor owning this effect",
+            "Item": "The item owning this effect (if effect is on an item)",
+            "Effect": "This active effect",
+            "Notification": "Show a UI notification",
+            "Args": "Contextual arguments passed by the trigger"
+        }
     }
 }

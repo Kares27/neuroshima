@@ -4,7 +4,11 @@
     data-damage="{{damage}}">
     
     <header class="roll-header">
-        <div class="actor-image-container" {{#if showTooltip}}data-tooltip="{{tooltip}}" data-tooltip-direction="LEFT"{{/if}}>
+        <div class="actor-image-container" 
+            {{#if showTooltip}}
+            data-tooltip="{{neuroshimaRollTooltip this}}"
+            data-tooltip-direction="LEFT"
+            {{/if}}>
             <img src="{{actorImg}}" width="32" height="32" />
         </div>
         <div class="header-details">

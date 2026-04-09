@@ -4,12 +4,13 @@ import { NeuroshimaCombat } from "./module/documents/combat.js";
 import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
-import { NeuroshimaActorData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData } from "./module/data/item-data.js";
-import { VehicleActorData, VehicleModData, VehicleDamageData } from "./module/data/vehicle-data.js";
+import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, BeastManeuverData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
-import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
+import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
+import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
 import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
+import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
@@ -135,7 +136,9 @@ Hooks.once('init', async function() {
 
     // Rejestracja modeli danych
     CONFIG.Actor.dataModels.character = NeuroshimaActorData;
-    CONFIG.Actor.dataModels.vehicle = VehicleActorData;
+    CONFIG.Actor.dataModels.npc      = NeuroshimaNPCData;
+    CONFIG.Actor.dataModels.creature = NeuroshimaCreatureData;
+    CONFIG.Actor.dataModels.vehicle  = NeuroshimaVehicleData;
     CONFIG.Item.dataModels.weapon = WeaponData;
     CONFIG.Item.dataModels.armor = ArmorData;
     CONFIG.Item.dataModels.gear = GearData;
@@ -143,8 +146,13 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.magazine = MagazineData;
     CONFIG.Item.dataModels.trick = TrickData;
     CONFIG.Item.dataModels.wound = WoundData;
-    CONFIG.Item.dataModels["vehicle-mod"] = VehicleModData;
-    CONFIG.Item.dataModels["vehicle-damage"] = VehicleDamageData;
+    CONFIG.Item.dataModels["beast-action"]      = BeastActionData;
+    CONFIG.Item.dataModels["beast-maneuver"]    = BeastManeuverData;
+    CONFIG.Item.dataModels["specialization"]    = SpecializationData;
+    CONFIG.Item.dataModels["origin"]            = OriginData;
+    CONFIG.Item.dataModels["profession"]        = ProfessionData;
+    CONFIG.Item.dataModels["vehicle-damage"]    = VehicleDamageData;
+    CONFIG.Item.dataModels["vehicle-mod"]       = VehicleModData;
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -163,6 +171,32 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('ifThen', (c, a, b) => c ? a : b);
     Handlebars.registerHelper('meleeDieUsed', (list, index) => list?.includes(index));
     Handlebars.registerHelper('meleeDieSelected', (list, index) => list?.includes(index));
+    Handlebars.registerHelper('neuroshimaRollTooltip', (rollData) => {
+        return NeuroshimaDice.buildRollTooltip(rollData);
+    });
+    Handlebars.registerHelper('neuroshimaDiceTooltip', (modifiedResults, target, skill) => {
+        if (!modifiedResults?.length) return "";
+        const dice = modifiedResults.map((d, i) => {
+            const cls = d.ignored ? "ignored" : (d.isSuccess ? "success" : "failure");
+            const nat = d.isNat1 ? " nat-1" : (d.isNat20 ? " nat-20" : "");
+            let html = `<div class="die-result ${cls}">`;
+            html += `<span class="die-label">D${i + 1}=</span>`;
+            html += `<span class="die-square original${nat}">${d.original}</span>`;
+            if (skill > 0) {
+                html += `<i class="fas fa-long-arrow-alt-right" style="font-size:0.7em;margin:0 2px;"></i>`;
+                html += `<span class="die-square modified ${cls}">${d.modified}</span>`;
+            }
+            html += `</div>`;
+            return html;
+        }).join("");
+        const successCount = modifiedResults.filter(d => d.isSuccess).length;
+        const targetLabel = game.i18n.localize("NEUROSHIMA.Roll.Target");
+        const spLabel = game.i18n.localize("NEUROSHIMA.Roll.SuccessPointsAbbr");
+        return `<div class="neuroshima-dice-tooltip">`
+            + `<div class="dice-results-grid" style="gap:2px;">${dice}</div>`
+            + `<div style="margin-top:4px;font-size:0.85em;"><strong>${targetLabel}:</strong> ${target} &nbsp;`
+            + `<strong>${spLabel}:</strong> ${successCount}</div></div>`;
+    });
     Handlebars.registerHelper('capitalize', (str) => {
         if (!str || typeof str !== 'string') return '';
         return str.charAt(0).toUpperCase() + str.slice(1);
@@ -175,22 +209,29 @@ Hooks.once('init', async function() {
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.ActorCharacter"
     });
+    foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaNPCSheet, {
+        types: ["npc"],
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.ActorNPC"
+    });
+    foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaCreatureSheet, {
+        types: ["creature"],
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.ActorCreature"
+    });
     foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaVehicleSheet, {
         types: ["vehicle"],
         makeDefault: true,
-        label: "NEUROSHIMA.Sheet.Vehicle"
+        label: "NEUROSHIMA.Sheet.ActorVehicle"
     });
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "vehicle-mod", "vehicle-damage"],
+        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
 
-    foundry.documents.ActiveEffect.prototype.sheet = new Proxy({}, {
-        get: (_, prop) => NeuroshimaEffectSheet[prop]
-    });
     CONFIG.ActiveEffect.sheetClass = NeuroshimaEffectSheet;
 
     // Rejestracja ustawień systemowych
@@ -297,11 +338,26 @@ Hooks.once('init', async function() {
         requiresReload: false
     });
 
+    game.settings.register("neuroshima", "meleeCombatType", {
+        name: "NEUROSHIMA.Settings.MeleeCombatType.Name",
+        hint: "NEUROSHIMA.Settings.MeleeCombatType.Hint",
+        scope: "world",
+        config: false,
+        type: String,
+        choices: {
+            "default": "NEUROSHIMA.Settings.MeleeCombatType.Default",
+            "opposedPips": "NEUROSHIMA.Settings.MeleeCombatType.OpposedPips",
+            "opposedSuccesses": "NEUROSHIMA.Settings.MeleeCombatType.OpposedSuccesses"
+        },
+        default: "default",
+        requiresReload: true
+    });
+
     game.settings.register("neuroshima", "doubleSkillAction", {
         name: "NEUROSHIMA.Settings.DoubleSkillAction.Name",
         hint: "NEUROSHIMA.Settings.DoubleSkillAction.Hint",
         scope: "world",
-        config: true,
+        config: false,
         type: Boolean,
         default: false,
         requiresReload: false
@@ -453,16 +509,19 @@ Hooks.once('init', async function() {
 
     // Wczytanie szablonów (v13 namespaced)
     const templates = [
-        "systems/neuroshima/templates/actor/parts/actor-header.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-info.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-attributes.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-skills.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-tricks.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-combat.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-inventory.hbs",
-        "systems/neuroshima/templates/actor/parts/actor-notes.hbs",
-        "systems/neuroshima/templates/actor/parts/wounds-paper-doll.hbs",
-        "systems/neuroshima/templates/actor/parts/wounds-list.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-header.hbs",
+        "systems/neuroshima/templates/actors/creature/parts/creature-header.hbs",
+        "systems/neuroshima/templates/actors/vehicle/parts/vehicle-header.hbs",
+        "systems/neuroshima/templates/actors/npc/parts/npc-header.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-info.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll.hbs",
+        "systems/neuroshima/templates/actors/actor/parts/wounds-list.hbs",
         "systems/neuroshima/templates/item/item-sheet.hbs",
         "systems/neuroshima/templates/item/item-header.hbs",
         "systems/neuroshima/templates/item/item-details.hbs",
@@ -472,6 +531,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/weapon-thrown.hbs",
         "systems/neuroshima/templates/item/parts/ammo-details.hbs",
         "systems/neuroshima/templates/item/parts/wound-details.hbs",
+        "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",
+        "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs",
         "systems/neuroshima/templates/item/parts/magazine-details.hbs",
         "systems/neuroshima/templates/item/parts/ammunition-details.hbs",
         "systems/neuroshima/templates/apps/healing-config.hbs",
@@ -481,15 +542,15 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/edit-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/debug-roll-dialog.hbs",
         "systems/neuroshima/templates/apps/combat-config.hbs",
+        "systems/neuroshima/templates/apps/vehicle-crew-select-dialog.hbs",
         "systems/neuroshima/templates/apps/melee/melee-app.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/melee-header.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/melee-prompt-bar.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/melee-exchange-banner.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/team-column.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/combatant-row.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/extra-attacks-panel.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/melee-top-bar.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/fighter-card.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/arena-center.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/melee-action-bar.hbs",
         "systems/neuroshima/templates/apps/melee/parts/combat-log.hbs",
-        "systems/neuroshima/templates/apps/melee/parts/footer-controls.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/footer-danger.hbs",
+        "systems/neuroshima/templates/apps/melee/parts/melee-gm-controls.hbs",
         "systems/neuroshima/templates/chat/weapon-roll-card.hbs",
         "systems/neuroshima/templates/chat/roll-card.hbs",
         "systems/neuroshima/templates/chat/patient-card.hbs",
@@ -498,14 +559,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
         "systems/neuroshima/templates/dialog/rest-dialog.hbs",
-        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-header.hbs",
-        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-stats.hbs",
-        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-crew.hbs",
-        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-mods.hbs",
-        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-combat.hbs",
-        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-notes.hbs",
-        "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs",
-        "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",
+        "systems/neuroshima/templates/dialog/hp-config.hbs",
         "systems/neuroshima/templates/apps/effect-sheet-header.hbs",
         "systems/neuroshima/templates/apps/effect-sheet-details.hbs",
         "systems/neuroshima/templates/apps/effect-sheet-changes.hbs",

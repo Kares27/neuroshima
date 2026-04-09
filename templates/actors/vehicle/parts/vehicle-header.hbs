@@ -1,0 +1,64 @@
+<header class="sheet-header vehicle-sheet-header" data-application-part="header">
+    <div class="vehicle-header-top">
+        <img class="profile-img" src="{{actor.img}}" data-action="editImage" title="{{actor.name}}" height="256" width="256"/>
+        <div class="header-fields">
+            <h1 class="charname">
+                <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
+            </h1>
+
+            <div class="vehicle-header-details">
+                <div class="header-field">
+                    <label>{{localize "NEUROSHIMA.Vehicle.Type"}}</label>
+                    <input type="text" name="system.vehicleType" value="{{system.vehicleType}}"/>
+                </div>
+                <div class="header-field">
+                    <label>{{localize "NEUROSHIMA.Vehicle.Cost"}}</label>
+                    <input type="number" name="system.cost" value="{{system.cost}}" min="0"/>
+                </div>
+                <div class="header-field">
+                    <label>{{localize "NEUROSHIMA.Vehicle.Movement.Label"}}</label>
+                    <select name="system.movement">
+                        {{#each vehicleMovementTypes as |label key|}}
+                        <option value="{{key}}" {{#if (eq ../system.movement key)}}selected{{/if}}>{{localize label}}</option>
+                        {{/each}}
+                    </select>
+                </div>
+                <div class="header-field">
+                    <label>{{localize "NEUROSHIMA.Vehicle.FuelType"}}</label>
+                    <input type="text" name="system.fuelType" value="{{system.fuelType}}"/>
+                </div>
+                <div class="header-field vehicle-fuel-cap">
+                    <div class="fuel-cap-header">
+                        <label>{{localize "NEUROSHIMA.Vehicle.FuelCapacity"}}</label>
+                        <div class="fuel-inputs">
+                            <input type="number" name="system.fuel.value" value="{{system.fuel.value}}" min="0" max="{{system.fuel.max}}"/>
+                            <span>/</span>
+                            <input type="number" name="system.fuel.max" value="{{system.fuel.max}}" min="0"/>
+                        </div>
+                    </div>
+                    <progress class="fuel-gauge" value="{{system.fuel.value}}" max="{{system.fuel.max}}"></progress>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="vehicle-attr-grid">
+        {{#each vehicleAttributeList as |attr key|}}
+        <div class="vehicle-attr-card">
+            <div class="vehicle-attr-name {{#if (eq key 'durability')}}clickable{{/if}}"
+                {{#if (eq key 'durability')}}data-action="rollDurability" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize attr.label}}"{{/if}}>
+                {{localize attr.label}}</div>
+            <div class="vehicle-attr-inputs">
+                <div class="vehicle-attr-input-box">
+                    <label>{{localize "NEUROSHIMA.Attributes.BaseAbbr"}}</label>
+                    <input type="number" name="system.attributes.{{key}}" value="{{lookup ../system.attributes key}}" min="0" max="40"/>
+                </div>
+                <div class="vehicle-attr-input-box">
+                    <label>{{localize "NEUROSHIMA.Attributes.ModifierAbbr"}}</label>
+                    <input type="number" name="system.modifiers.{{key}}" value="{{lookup ../system.modifiers key}}"/>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</header>

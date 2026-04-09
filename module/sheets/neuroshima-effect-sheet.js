@@ -1,4 +1,5 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 

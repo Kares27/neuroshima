@@ -3647,3 +3647,284 @@ body.theme-dark {
     text-shadow: 0 0 5px var(--ns-text-clickable);
 }
 
+/* ── Active / Pending Melee Panels ──────────────────────────── */
+.neuroshima.combat-tracker .active-melee-panel.full-view {
+    background: var(--ns-bg-panel, #1e1e1e);
+    border: 1px solid rgba(192, 57, 43, 0.4);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+}
+
+.neuroshima.combat-tracker .active-melee-panel.full-view:hover {
+    border-color: #c0392b;
+    box-shadow: 0 0 8px rgba(192, 57, 43, 0.3);
+}
+
+.neuroshima.combat-tracker .pending-melee-panel.full-view {
+    background: var(--ns-bg-panel, #1e1e1e);
+    border: 1px solid rgba(243, 156, 18, 0.3);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    overflow: hidden;
+}
+
+.neuroshima.combat-tracker .melee-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 6px;
+}
+
+.neuroshima.combat-tracker .active-melee-panel.full-view .melee-header {
+    background: rgba(192, 57, 43, 0.15);
+    color: #ffffff;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel.full-view .melee-header {
+    background: rgba(243, 156, 18, 0.1);
+    color: rgba(243, 156, 18, 0.8);
+}
+
+.neuroshima.combat-tracker .pending-controls,
+.neuroshima.combat-tracker .duel-controls {
+    margin-left: auto;
+}
+
+.neuroshima.combat-tracker .action-btn.dismiss,
+.neuroshima.combat-tracker .action-btn.delete {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 2px 4px;
+}
+
+.neuroshima.combat-tracker .action-btn.dismiss:hover,
+.neuroshima.combat-tracker .action-btn.delete:hover {
+    color: #e74c3c;
+}
+
+.neuroshima.combat-tracker .melee-participants {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+}
+
+.neuroshima.combat-tracker .melee-participants .team {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.combat-tracker .melee-participants .team-a { align-items: flex-end; }
+.neuroshima.combat-tracker .melee-participants .team-b { align-items: flex-start; }
+
+.neuroshima.combat-tracker .participant-mini {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 90px;
+}
+
+.neuroshima.combat-tracker .participant-img-tiny {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.neuroshima.combat-tracker .participant-name-tiny {
+    font-size: 0.72em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.neuroshima.combat-tracker .melee-participants .vs {
+    font-size: 0.72em;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.22);
+    flex-shrink: 0;
+}
+
+.neuroshima.combat-tracker .melee-instruction,
+.neuroshima.combat-tracker .melee-status {
+    padding: 0 8px 6px;
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.32);
+    text-align: center;
+    font-style: italic;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel .melee-participants {
+    font-size: 0.82em;
+    color: rgba(255, 255, 255, 0.6);
+    gap: 8px;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel .melee-participants span {
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel .melee-participants i {
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.neuroshima.combat-tracker .join-melee-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: calc(100% - 16px);
+    margin: 0 8px 8px;
+    padding: 5px 8px;
+    background: rgba(192, 57, 43, 0.7);
+    border: 1px solid #c0392b;
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.neuroshima.combat-tracker .join-melee-btn:hover {
+    background: rgba(231, 76, 60, 0.85);
+}
+
+.neuroshima.combat-tracker .no-melee-active {
+    text-align: center;
+    padding: 20px 10px;
+    color: rgba(255, 255, 255, 0.25);
+    font-style: italic;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.combat-tracker .no-melee-active i {
+    font-size: 1.4em;
+    display: block;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.neuroshima.combat-tracker .no-melee-active p {
+    font-size: 0.85em;
+    margin: 0 0 4px;
+}
+
+.neuroshima.combat-tracker .no-melee-active small {
+    font-size: 0.72em;
+    opacity: 0.6;
+}
+
+/* =============================================
+   DICE TOOLTIP — .tooltip-inline inside Foundry's #tooltip
+   Uses .neuroshima.roll-card classes so existing styles apply,
+   with dark-theme overrides since #tooltip always has dark bg.
+   ============================================= */
+
+.neuroshima.roll-card.tooltip-inline {
+    gap: 4px;
+    min-width: 160px;
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card.tooltip-inline .roll-header {
+    font-size: 0.9em;
+    border-bottom-color: #5a5a54;
+    color: #e0e0d0;
+    padding-bottom: 2px;
+    margin-bottom: 0;
+}
+
+.neuroshima.roll-card.tooltip-inline .dotted-hr {
+    border-color: #5a5a5455;
+    margin: 2px 0;
+}
+
+.neuroshima.roll-card.tooltip-inline .dice-results-grid {
+    gap: 2px;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-label {
+    color: #e0e0d0;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+    box-shadow: inset 0 0 4px #ffffff11;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.nat-1 {
+    background: #332b00;
+    border-color: #fbc02d;
+    color: #ffeb3b;
+    box-shadow: 0 0 8px #fbc02d44;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.nat-20 {
+    background: #3d0c0c;
+    border-color: #d32f2f;
+    color: #ff8a80;
+    box-shadow: 0 0 8px #d32f2f44;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.modified.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.modified.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square-container i {
+    color: #a0a090;
+}
+
+.neuroshima.roll-card.tooltip-inline .roll-outcome {
+    border-color: #5a5a54;
+    color: #e0e0d0;
+    gap: 1px;
+}
+
+.neuroshima.roll-card.tooltip-inline .outcome-item .label {
+    color: #a0a090;
+    font-size: 0.85em;
+}
+
+.neuroshima.roll-card.tooltip-inline .outcome-item .value {
+    color: #e0e0d0;
+}
+

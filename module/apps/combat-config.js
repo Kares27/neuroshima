@@ -50,6 +50,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 allowCombatShift: game.settings.get("neuroshima", "allowCombatShift"),
                 allowPainResistanceShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
                 meleeBonusMode: game.settings.get("neuroshima", "meleeBonusMode"),
+                meleeCombatType: game.settings.get("neuroshima", "meleeCombatType"),
+                doubleSkillAction: game.settings.get("neuroshima", "doubleSkillAction"),
                 damageApplicationMinRole: game.settings.get("neuroshima", "damageApplicationMinRole"),
                 painResistanceMinRole: game.settings.get("neuroshima", "painResistanceMinRole"),
                 combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole")
@@ -68,11 +70,16 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         const data = formData.object;
         
         try {
+            const prevPellet = game.settings.get("neuroshima", "usePelletCountLimit");
+            const prevMeleeType = game.settings.get("neuroshima", "meleeCombatType");
+
             const updates = [
                 game.settings.set("neuroshima", "usePelletCountLimit", !!data.usePelletCountLimit),
                 game.settings.set("neuroshima", "allowCombatShift", !!data.allowCombatShift),
                 game.settings.set("neuroshima", "allowPainResistanceShift", !!data.allowPainResistanceShift),
                 game.settings.set("neuroshima", "meleeBonusMode", data.meleeBonusMode),
+                game.settings.set("neuroshima", "meleeCombatType", data.meleeCombatType),
+                game.settings.set("neuroshima", "doubleSkillAction", !!data.doubleSkillAction),
                 game.settings.set("neuroshima", "damageApplicationMinRole", Number(data.damageApplicationMinRole)),
                 game.settings.set("neuroshima", "painResistanceMinRole", Number(data.painResistanceMinRole)),
                 game.settings.set("neuroshima", "combatActionsMinRole", Number(data.combatActionsMinRole))
@@ -82,8 +89,10 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.CombatConfig.Saved"));
             
-            // Reload if pellet count limit changed as it requires reload
-            if (game.settings.get("neuroshima", "usePelletCountLimit") !== !!data.usePelletCountLimit) {
+            const needsReload = prevPellet !== !!data.usePelletCountLimit
+                || prevMeleeType !== data.meleeCombatType;
+
+            if (needsReload) {
                 SettingsConfig.reloadConfirm({ world: true });
             }
         } catch (err) {

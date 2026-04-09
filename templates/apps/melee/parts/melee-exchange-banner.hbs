@@ -19,9 +19,9 @@
       <div class="attack-strength-display attack-strength-display--{{currentExchange.declaredDiceCount}}s">
         <div class="attack-strength-display__label">{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}}</div>
         <div class="attack-strength-display__count">{{currentExchange.declaredDiceCount}}s</div>
-        {{#if attackDamagePreview}}
+        {{#if currentDamageLabel}}
           <div class="attack-strength-display__damage">
-            → {{lookup attackDamagePreview currentExchange.declaredDiceCount}}
+            → {{currentDamageLabel}}
           </div>
         {{/if}}
       </div>

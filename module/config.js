@@ -53,6 +53,35 @@ export const NEUROSHIMA = {
         cleverness: { label: "NEUROSHIMA.Attributes.Cleverness", abbr: "NEUROSHIMA.Attributes.Abbr.Cleverness" },
         constitution: { label: "NEUROSHIMA.Attributes.Constitution", abbr: "NEUROSHIMA.Attributes.Abbr.Constitution" }
     },
+    vehicleAttributes: {
+        agility:      { label: "NEUROSHIMA.Vehicle.Attributes.Agility",      abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Agility" },
+        topSpeed:     { label: "NEUROSHIMA.Vehicle.Attributes.TopSpeed",      abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.TopSpeed" },
+        acceleration: { label: "NEUROSHIMA.Vehicle.Attributes.Acceleration",  abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Acceleration" },
+        brakes:       { label: "NEUROSHIMA.Vehicle.Attributes.Brakes",        abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Brakes" },
+        durability:   { label: "NEUROSHIMA.Vehicle.Attributes.Durability",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Durability" },
+        efficiency:   { label: "NEUROSHIMA.Vehicle.Attributes.Efficiency",    abbr: "NEUROSHIMA.Vehicle.Attributes.Abbr.Efficiency" }
+    },
+    vehicleMovementTypes: {
+        wheeled:    "NEUROSHIMA.Vehicle.Movement.Wheeled",
+        tracked:    "NEUROSHIMA.Vehicle.Movement.Tracked",
+        flying:     "NEUROSHIMA.Vehicle.Movement.Flying",
+        floating:   "NEUROSHIMA.Vehicle.Movement.Floating",
+        hovercraft: "NEUROSHIMA.Vehicle.Movement.Hovercraft"
+    },
+    vehicleCrewPositions: {
+        driver:    "NEUROSHIMA.Vehicle.Position.Driver",
+        gunner:    "NEUROSHIMA.Vehicle.Position.Gunner",
+        commander: "NEUROSHIMA.Vehicle.Position.Commander",
+        passenger: "NEUROSHIMA.Vehicle.Position.Passenger"
+    },
+    vehicleLocations: {
+        front:     "NEUROSHIMA.Vehicle.ArmorLocations.Front",
+        rightSide: "NEUROSHIMA.Vehicle.ArmorLocations.RightSide",
+        leftSide:  "NEUROSHIMA.Vehicle.ArmorLocations.LeftSide",
+        rear:      "NEUROSHIMA.Vehicle.ArmorLocations.Rear",
+        bottom:    "NEUROSHIMA.Vehicle.ArmorLocations.Bottom"
+    },
+    vehicleArmorKeys: ["front", "rightSide", "leftSide", "rear", "bottom"],
     bodyLocations: bodyLocations,
     // Helper accessors for backward compatibility or ease of use
     get locations() {
@@ -175,6 +204,42 @@ export const NEUROSHIMA = {
             damageHealth: 27,  // Punkty HP
             damagePoints: 4,   // Punkty redukcji pancerza [4]
             isBruise: true
+        }
+    },
+    /** Vehicle-specific damage types (Sprawność reduction) */
+    vehicleDamageTypes: {
+        "VL": "NEUROSHIMA.Vehicle.DamageType.Light",
+        "VC": "NEUROSHIMA.Vehicle.DamageType.Heavy",
+        "VK": "NEUROSHIMA.Vehicle.DamageType.Critical"
+    },
+    /**
+     * Vehicle damage configuration.
+     * Values determined by durability test result:
+     *  - passed:  test Wytrzymałości zdany → połowa wartości
+     *  - failed:  test Wytrzymałości niezdany → pełne wartości
+     * VK (Critical) is always full, no agility penalty.
+     */
+    vehicleDamageConfiguration: {
+        "VL": {
+            label:                "NEUROSHIMA.Vehicle.DamageType.Light",
+            sprawnoscFailed:      2,
+            sprawnoscPassed:      1,
+            agilityPenaltyFailed: 20,
+            agilityPenaltyPassed: 10
+        },
+        "VC": {
+            label:                "NEUROSHIMA.Vehicle.DamageType.Heavy",
+            sprawnoscFailed:      4,
+            sprawnoscPassed:      2,
+            agilityPenaltyFailed: 40,
+            agilityPenaltyPassed: 20
+        },
+        "VK": {
+            label:                "NEUROSHIMA.Vehicle.DamageType.Critical",
+            sprawnoscFailed:      6,
+            sprawnoscPassed:      6,
+            agilityPenaltyFailed: 0,
+            agilityPenaltyPassed: 0
         }
     },
     weaponSubtypes: {

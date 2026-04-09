@@ -1,11 +1,13 @@
 {
   "Actor": {
-    "types": ["character", "vehicle"],
+    "types": ["character", "npc", "creature", "vehicle"],
     "character": {},
+    "npc": {},
+    "creature": {},
     "vehicle": {}
   },
   "Item": {
-    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "vehicle-mod", "vehicle-damage"],
+    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
     "weapon": {},
     "armor": {},
     "gear": {},
@@ -13,7 +15,12 @@
     "ammo": {},
     "magazine": {},
     "wound": {},
-    "vehicle-mod": {},
-    "vehicle-damage": {}
+    "beast-action": {},
+    "beast-maneuver": {},
+    "specialization": {},
+    "origin": {},
+    "profession": {},
+    "vehicle-damage": {},
+    "vehicle-mod": {}
   }
 }

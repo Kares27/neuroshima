@@ -484,6 +484,51 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
+   * Renderuje raport testu Wytrzymałości pojazdu (jeden lub seria trafień).
+   */
+  static async renderVehicleDamage(actor, results, negatedItems, woundIds, sourceLabel = "") {
+    const template = "systems/neuroshima/templates/chat/vehicle-damage-report.hbs";
+
+    const passedCount  = results.filter(r => r.isPassed).length;
+    const failedCount  = results.filter(r => !r.isPassed).length;
+    const negatedCount = negatedItems.length;
+
+    const context = {
+      actorName:    actor.name,
+      actorId:      actor.id,
+      actorUuid:    actor.uuid,
+      results,
+      negatedItems,
+      woundIds,
+      passedCount,
+      failedCount,
+      negatedCount,
+      sourceInfo: sourceLabel ? `<em>${sourceLabel}</em>` : "",
+      config: NEUROSHIMA
+    };
+
+    const content = await this._renderTemplate(template, context);
+
+    return this.create({
+      user:    game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content,
+      style:   CONST.CHAT_MESSAGE_STYLES.OTHER,
+      flags: {
+        neuroshima: {
+          messageType:     "vehicleDamageReport",
+          actorId:         actor.id,
+          actorUuid:       actor.uuid,
+          woundIds,
+          results,
+          isReversed:      false,
+          isVehicleDamage: true
+        }
+      }
+    });
+  }
+
+  /**
    * Renderuje kartę rzutu leczenia.
    */
   static async renderHealingRoll(medicActor, rollData) {

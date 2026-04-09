@@ -230,3 +230,136 @@ export class WoundData extends foundry.abstract.TypeDataModel {
     };
   }
 }
+
+/**
+ * Data model for Beast Action items (special actions available to Creature actors).
+ * Beast actions are innate, non-countable abilities — no quantity or weight tracking.
+ * costType determines whether the action costs segments or successes.
+ */
+export class BeastActionData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      actionType: new fields.StringField({
+        initial: "attack",
+        choices: ["attack", "special", "reaction"]
+      }),
+      costType: new fields.StringField({
+        initial: "segment",
+        choices: ["segment", "success"]
+      }),
+      segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
+      successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 })
+    };
+  }
+}
+
+/**
+ * Data model for Beast Maneuver items (special combat maneuvers for Creature actors).
+ * Maneuvers are non-countable tactical options a creature can use in combat.
+ */
+export class BeastManeuverData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      maneuverType: new fields.StringField({
+        initial: "offensive",
+        choices: ["offensive", "defensive", "special"]
+      }),
+      difficulty: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 })
+    };
+  }
+}
+
+/**
+ * Data model for Specialization items.
+ * Represents a character specialization unlocked by training or background.
+ */
+export class SpecializationData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
+ * Data model for Origin items.
+ * Represents a character's place of origin or background story.
+ */
+export class OriginData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
+ * Data model for Profession items.
+ * Represents a character's profession or occupational background.
+ */
+export class ProfessionData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
+ * Data model for Vehicle Modification items.
+ * Represents mechanical or structural upgrades installed on a vehicle.
+ */
+export class VehicleModData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      rules: new fields.HTMLField({ initial: "" }),
+      category: new fields.StringField({
+        required: true,
+        initial: "engine",
+        choices: ["engine", "gearbox", "brakes", "turbo", "boring", "electronics", "exhaust", "suspension", "wheels", "frame", "armor", "surprises", "extras", "other"]
+      }),
+      installDifficulty: new fields.StringField({
+        initial: "average",
+        choices: ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"]
+      })
+    };
+  }
+}
+
+/**
+ * Data model for Vehicle Damage items.
+ * Vehicle-specific equivalent of wounds — represents structural damage
+ * to specific sections of a vehicle.
+ */
+export class VehicleDamageData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      location: new fields.StringField({
+        required: true,
+        initial: "front",
+        choices: ["front", "rightSide", "leftSide", "rear", "bottom"]
+      }),
+      damageType: new fields.StringField({
+        required: true,
+        initial: "VL",
+        choices: ["VL", "VC", "VK"]
+      }),
+      /** Sprawność (efficiency) point reduction */
+      penalty: new fields.NumberField({ integer: true, initial: 1, min: 0 }),
+      /** Zwrotność (agility) % penalty */
+      agilityPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      isActive: new fields.BooleanField({ initial: true })
+    };
+  }
+}

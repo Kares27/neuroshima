@@ -1,0 +1,107 @@
+<section class="tab attributes {{tabs.attributes.cssClass}}" data-group="primary" data-tab="attributes" data-application-part="attributes">
+
+    {{!-- Creature stats: Experience + Kondycja --}}
+    <div class="creature-skill-section">
+        <div class="specialization-row">
+            <div class="spec-name-cell">
+                <span class="spec-toggle">{{localize "NEUROSHIMA.Creature.Stats"}}</span>
+            </div>
+            <div class="skills-horizontal-grid">
+                <div class="skill-item">
+                    <a class="roll-skill-btn" data-action="rollExperience" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Experience'}}">
+                        <i class="fas fa-dice-d20"></i>
+                    </a>
+                    <div class="skill-input-wrapper">
+                        <input type="number" name="system.experience" value="{{experience}}" min="0" class="skill-input">
+                    </div>
+                    <span class="skill-name" title="{{localize 'NEUROSHIMA.Creature.ExperienceHint'}}">{{localize "NEUROSHIMA.Creature.Experience"}}</span>
+                </div>
+                <div class="skill-item">
+                    <a class="roll-skill-btn" data-action="rollKondycja" title="{{localize 'NEUROSHIMA.Actions.Roll'}}: {{localize 'NEUROSHIMA.Creature.Kondycja'}}">
+                        <i class="fas fa-dice-d20"></i>
+                    </a>
+                    <div class="skill-input-wrapper">
+                        <input type="number" name="system.kondycja" value="{{kondycja}}" min="0" class="skill-input">
+                    </div>
+                    <span class="skill-name" title="{{localize 'NEUROSHIMA.Creature.KondycjaHint'}}">{{localize "NEUROSHIMA.Creature.Kondycja"}}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="attributes-table creature-attributes-table">
+        <table>
+            <thead>
+                <tr>
+                    {{#each attributeList as |attr key|}}
+                    <th title="{{localize attr.label}}" class="attribute-header-cell clickable" data-action="rollAttribute" data-attribute="{{key}}">
+                        <div class="attribute-abbr">{{localize attr.abbr}}</div>
+                    </th>
+                    {{/each}}
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="attribute-row">
+                    {{#each attributeList as |attr key|}}
+                    <td>
+                        <input type="number" name="system.attributes.{{key}}" value="{{lookup ../system.attributes key}}" min="0" max="40"/>
+                    </td>
+                    {{/each}}
+                </tr>
+                <tr class="attr-section-label-row">
+                    <td colspan="5"><strong>{{localize "NEUROSHIMA.Attributes.Modifier"}}</strong></td>
+                </tr>
+                <tr class="attribute-row">
+                    {{#each attributeList as |attr key|}}
+                    <td>
+                        <input type="number" name="system.modifiers.{{key}}" value="{{lookup ../system.modifiers key}}"/>
+                    </td>
+                    {{/each}}
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    {{!-- Difficulty Thresholds (separate table) --}}
+    <div class="difficulties-toggle-wrapper">
+        <button type="button" class="toggle-difficulties-btn" data-action="toggleDifficulties">
+            <i class="fas {{#if difficultiesCollapsed}}fa-chevron-down{{else}}fa-chevron-up{{/if}}"></i>
+            <span>
+                {{#if difficultiesCollapsed}}
+                    {{localize "NEUROSHIMA.Difficulty.ShowMore"}}
+                {{else}}
+                    {{localize "NEUROSHIMA.Difficulty.ShowLess"}}
+                {{/if}}
+            </span>
+        </button>
+    </div>
+    {{#unless difficultiesCollapsed}}
+    <div class="attributes-table difficulties-table">
+        <table>
+            <thead>
+                <tr>
+                    <th class="label-column"></th>
+                    {{#each attributeList as |attr key|}}
+                    <th title="{{localize attr.label}}" class="attribute-header-cell">
+                        <div class="attribute-abbr">{{localize attr.abbr}}</div>
+                    </th>
+                    {{/each}}
+                </tr>
+            </thead>
+            <tbody>
+                {{#each difficulties as |diff diffKey|}}
+                <tr class="difficulty-row">
+                    <td class="label-column">{{localize diff.label}} ({{#if (gt diff.mod 0)}}+{{/if}}{{diff.mod}})</td>
+                    {{#each ../attributeList as |attr attrKey|}}
+                    <td class="text-center">
+                        {{lookup (lookup ../../system.thresholds attrKey) diffKey}}
+                    </td>
+                    {{/each}}
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+    {{/unless}}
+
+</section>

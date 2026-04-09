@@ -225,19 +225,29 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     const weaponSkillKey = equippedWeapon?.system.skill;
 
     const skills = {};
-    for (const [key, skill] of Object.entries(this.actor.system.skills)) {
-        let label = game.i18n.localize(`NEUROSHIMA.Skills.${key}`);
-        if (key === weaponSkillKey) {
-            label = `+ ${label}`;
-        }
-        skills[key] = {
-            key: key,
-            label: label,
-            value: skill.value || 0
+    const isCreature = this.actor?.type === "creature";
+    if (isCreature) {
+        const expVal = this.actor.system.experience ?? 0;
+        skills["experience"] = {
+            key: "experience",
+            label: game.i18n.localize("NEUROSHIMA.Creature.Experience"),
+            value: expVal
         };
+    } else {
+        for (const [key, skill] of Object.entries(this.actor.system.skills)) {
+            let label = game.i18n.localize(`NEUROSHIMA.Skills.${key}`);
+            if (key === weaponSkillKey) {
+                label = `+ ${label}`;
+            }
+            skills[key] = {
+                key: key,
+                label: label,
+                value: skill.value || 0
+            };
+        }
     }
     context.skills = skills;
-    context.weaponSkillKey = weaponSkillKey;
+    context.weaponSkillKey = isCreature ? "experience" : weaponSkillKey;
 
     context.armorPenalty = armorPenalty;
     context.woundPenalty = woundPenalty;
@@ -338,7 +348,12 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
 
     // Calculate Shifted Difficulty (Suwak)
     const skillKey = formData.skill;
-    const skillValue = formData.useSkill ? (Number(this.actor.system.skills[skillKey]?.value) || 0) : 0;
+    const isCreatureRoll = this.actor?.type === "creature";
+    const skillValue = formData.useSkill
+        ? (skillKey === "experience" && isCreatureRoll
+            ? (this.actor.system.experience ?? 0)
+            : (Number(this.actor.system.skills[skillKey]?.value) || 0))
+        : 0;
     const skillBonus = formData.useSkill ? (parseInt(formData.skillBonus) || 0) : 0;
     const finalSkill = skillValue + skillBonus;
     

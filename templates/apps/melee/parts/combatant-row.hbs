@@ -95,9 +95,9 @@
         <div class="confirm-attack-wrap">
           {{#if participant.damageMeleePreview}}
             <div class="damage-preview">
-              <span class="damage-preview__item" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 1s">1s → {{participant.damageMeleePreview.1}}</span>
-              <span class="damage-preview__item {{#if (eq participant.pendingAttackStrength 2)}}is-selected-tier{{/if}}" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 2s">2s → {{participant.damageMeleePreview.2}}</span>
-              <span class="damage-preview__item {{#if (eq participant.pendingAttackStrength 3)}}is-selected-tier{{/if}}" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 3s">3s → {{participant.damageMeleePreview.3}}</span>
+              <span class="damage-preview__item {{#if (eq participant.pendingAttackStrength 1)}}is-selected-tier{{/if}}" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 1s">1s → {{participant.damageMeleePreview.s1}}</span>
+              <span class="damage-preview__item {{#if (eq participant.pendingAttackStrength 2)}}is-selected-tier{{/if}}" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 2s">2s → {{participant.damageMeleePreview.s2}}</span>
+              <span class="damage-preview__item {{#if (eq participant.pendingAttackStrength 3)}}is-selected-tier{{/if}}" title="{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}} 3s">3s → {{participant.damageMeleePreview.s3}}</span>
             </div>
           {{/if}}
           <button type="button" class="melee-btn melee-btn--attack pulse"

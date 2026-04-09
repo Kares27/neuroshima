@@ -9,6 +9,10 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         this._view = "encounter"; // "encounter" lub "melee"
     }
 
+    get _meleeCombatType() {
+        return game.settings.get("neuroshima", "meleeCombatType") || "default";
+    }
+
     /** @override */
     static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
         classes: ["neuroshima", "combat-tracker"],
@@ -151,9 +155,15 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             game.neuroshima.error("Błąd super._prepareContext w Combat Trackerze:", e);
             context = { turns: [] };
         }
-        
+
+        const showMeleeTab = this._meleeCombatType === "default";
+        if (!showMeleeTab && this._view === "melee") {
+            this._view = "encounter";
+        }
+
         context.user = game.user;
         context.currentView = this._view;
+        context.showMeleeTab = showMeleeTab;
 
         // Pobierz wszystkie starcia i oczekujące starcia
         const combat = this.viewed;

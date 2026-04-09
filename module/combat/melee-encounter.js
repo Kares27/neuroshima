@@ -1,4 +1,30 @@
 import { MeleeStore } from "./melee-store.js";
+/**
+ * @file melee-encounter.js
+ * @description Lifecycle management for Neuroshima 1.5 Melee Encounters.
+ *
+ * Encounters are identified by a composite ID: `${attackerParticipantId}-${defenderParticipantId}`.
+ * Each encounter tracks two teams (A and B) and the full participant roster.
+ *
+ * ### Encounter data shape (relevant fields)
+ * ```js
+ * {
+ *   id, mode, teams: { A: [...], B: [...] },
+ *   participants: { [id]: { actorUuid, name, img, team, initiative, isActive,
+ *     weaponId, pool, modifiedPool, skillBudget, selfReductions, opponentGains,
+ *     spentOnOpponent, usedDice, maneuver, tempoLevel,
+ *     attackTargetSnapshot, defenseTargetSnapshot } },
+ *   primaryTargets: { [attackerId]: defenderId },
+ *   crowding: { [id]: { primaryOpponentId, opponentCount, dexPenalty, extraAttackers } },
+ *   extraAttackQueue: [],
+ *   currentExchange: { attackerId, defenderId, declaredDiceCount,
+ *     attackerSelectedDice, defenderSelectedDice },
+ *   turnState: { turn, segment, phase, initiativeOwnerId, initiativeOrder,
+ *     selectionTurn, segmentCost },
+ *   log: [{ type, segment, text }]
+ * }
+ * ```
+ */
 import { MeleeTurnService } from "./melee-turn-service.js";
 
 /**
@@ -63,6 +89,7 @@ export class MeleeEncounter {
         initiativeOrder: [],
         segmentQueue: [],
         queueIndex: 0,
+        segmentCost: 0,
         initiativeOwnerId: attackerData.initiative >= defenderData.initiative ? attackerId : defenderId
       },
       log: []
@@ -92,7 +119,6 @@ export class MeleeEncounter {
     updated.teams[team].push(participantId);
     updated.mode = (updated.teams.A.length > 1 || updated.teams.B.length > 1) ? "group" : "duel";
 
-    // Initialize new fields for joining participant
     updated.primaryTargets[participantId] = null;
     updated.crowding[participantId] = {
       primaryOpponentId: null,
@@ -100,6 +126,24 @@ export class MeleeEncounter {
       dexPenalty: 0,
       extraAttackers: []
     };
+
+    // If now multi-fight and no pools have been rolled yet, switch to target-selection
+    const isMultiFight = updated.mode === "group";
+    const anyPoolRolled = Object.values(updated.participants).some(p => p.isActive && p.pool.length > 0);
+    if (isMultiFight && !anyPoolRolled && updated.turnState.phase === "awaiting-pool-rolls") {
+      for (const pId in updated.participants) {
+        if (updated.participants[pId].isActive) updated.primaryTargets[pId] = null;
+      }
+      const sortedIds = Object.values(updated.participants)
+        .filter(p => p.isActive)
+        .sort((a, b) => b.initiative - a.initiative)
+        .map(p => p.id);
+      updated.turnState.initiativeOrder = sortedIds;
+      updated.turnState.phase = "target-selection";
+      updated.turnState.selectionTurn = sortedIds[0];
+      MeleeTurnService.updateCrowding(updated);
+      MeleeTurnService._advanceTargetSelection(updated);
+    }
 
     await MeleeStore.updateEncounter(id, updated);
     const doc = fromUuidSync(participantData.actorUuid);

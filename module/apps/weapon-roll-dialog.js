@@ -40,6 +40,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     this.isPoolRoll = options.isPoolRoll || false;
     this.onPoolRoll = options.onRoll;
     this._onCloseCallback = options.onClose;
+    this.crowdingDexPenalty = options.crowdingDexPenalty || 0;
   }
 
   /** @override */
@@ -102,6 +103,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     }));
     context.armorPenalty = armorPenalty;
     context.woundPenalty = woundPenalty;
+    context.crowdingDexPenalty = this.crowdingDexPenalty;
     
     // State values
     context.isOpen = this.rollOptions.isOpen;
@@ -273,7 +275,10 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     
     if (allowCombatShift && !isMelee) {
         const skillKey = this.weapon.system.skill;
-        const baseSkillValue = skillKey ? (this.actor.system.skills[skillKey]?.value || 0) : 0;
+        const isCreature = this.actor?.type === "creature";
+        const baseSkillValue = (skillKey && skillKey !== "none")
+            ? ((skillKey === "experience" && isCreature) ? (this.actor.system.experience ?? 0) : (this.actor.system.skills[skillKey]?.value || 0))
+            : 0;
         const skillBonus = parseInt(formData.skillBonus) || 0;
         let skillValue = baseSkillValue + skillBonus;
         
@@ -308,7 +313,11 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
     if (allowCombatShift && !isMelee) {
         const skillKey = this.weapon.system.skill;
-        let skillValue = (this.actor.system.skills[skillKey]?.value || 0) + (parseInt(formData.skillBonus) || 0);
+        const isCreature2 = this.actor?.type === "creature";
+        const baseSkill2 = (skillKey && skillKey !== "none")
+            ? ((skillKey === "experience" && isCreature2) ? (this.actor.system.experience ?? 0) : (this.actor.system.skills[skillKey]?.value || 0))
+            : 0;
+        let skillValue = baseSkill2 + (parseInt(formData.skillBonus) || 0);
         
         if (bonusMode === "skill" || bonusMode === "both") {
             skillValue += weaponBonus;
@@ -326,7 +335,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
     const targetElement = html.querySelector('.final-target');
     if (targetElement) {
-        targetElement.innerText = attrTotal + attrBonus + activeDiff.mod + effectiveWeaponBonus;
+        targetElement.innerText = attrTotal + attrBonus + activeDiff.mod + effectiveWeaponBonus - (this.crowdingDexPenalty || 0);
     }
   }
 
@@ -372,20 +381,23 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         applyArmor: !!formData.useArmorPenalty,
         applyWounds: !!formData.useWoundPenalty,
         skillBonus: parseInt(formData.skillBonus) || 0,
-        attributeBonus: parseInt(formData.attributeBonus) || 0,
+        attributeBonus: (parseInt(formData.attributeBonus) || 0) - (this.crowdingDexPenalty || 0),
         distance: parseFloat(formData.distance) || 0,
         rollMode: formData.rollMode
     };
 
     this.close();
     
-    // Jeśli to rzut puli dla Melee Duel, rzucamy 3k20 i nie wysyłamy na czat (MeleeDuel zajmie się logiką)
     if (this.isPoolRoll && this.onPoolRoll) {
-        const rollResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({
+        const rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({
             ...rollData,
             chatMessage: false
         });
-        return this.onPoolRoll(rollResult);
+        if (rawResult) {
+            const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+            await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
+        }
+        return this.onPoolRoll(rawResult);
     }
 
     return game.neuroshima.NeuroshimaDice.rollWeaponTest(rollData);

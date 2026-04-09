@@ -1,30 +1,27 @@
 <div class="melee-shell">
-  {{> MeleeHeader}}
+  {{#if isGM}}
+    {{> MeleeGmControls}}
+  {{/if}}
 
-  {{> MeleePromptBar}}
+  {{> MeleeTopBar}}
 
-  {{> MeleeExchangeBanner}}
+  <div class="melee-arena">
+    <div class="team-column team-column--a">
+      {{#each teamsData.A}}
+        {{> FighterCard fighter=this side="a"}}
+      {{/each}}
+    </div>
 
-  <div class="melee-teams-grid">
-    <section class="team-column-wrap team-column-wrap-a">
-      {{> TeamColumn
-          title="Drużyna A"
-          team=teamsData.A
-          teamKey="A"}}
-    </section>
+    {{> ArenaCenter}}
 
-    <section class="team-column-wrap team-column-wrap-b">
-      {{> TeamColumn
-          title="Drużyna B"
-          team=teamsData.B
-          teamKey="B"}}
-    </section>
+    <div class="team-column team-column--b">
+      {{#each teamsData.B}}
+        {{> FighterCard fighter=this side="b"}}
+      {{/each}}
+    </div>
   </div>
 
-  <div class="melee-bottom-section">
-      {{> ExtraAttacksPanel}}
-      {{> CombatLog}}
-  </div>
+  {{> MeleeActionBar}}
 
-  {{> FooterControls}}
+  {{> CombatLog}}
 </div>

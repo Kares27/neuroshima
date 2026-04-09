@@ -101,6 +101,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.owner = item.isOwner;
     context.editable = this.isEditable;
 
+    // Non-countable item types have no quantity, cost, or weight
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "beast-maneuver", "specialization", "origin", "profession"];
+    context.isNonCountable = NON_COUNTABLE.includes(item.type);
+
     // Prepare type label
     let typeLabelKey = item.type.charAt(0).toUpperCase() + item.type.slice(1);
     if (item.type === "weapon" && item.system.weaponType) {
@@ -113,11 +117,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.damageTypes = NEUROSHIMA.damageTypes;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
     context.locations = NEUROSHIMA.locations;
+    context.vehicleLocations    = NEUROSHIMA.vehicleLocations;
+    context.vehicleDamageTypes  = NEUROSHIMA.vehicleDamageTypes;
 
-    // Vehicle-specific context
     if (item.type === "vehicle-mod" || item.type === "vehicle-damage") {
-      context.vehicleLocations = NEUROSHIMA.vehicleLocations;
-      context.vehicleDamageTypes = NEUROSHIMA.vehicleDamageTypes;
       context.vehicleModCategories = NEUROSHIMA.vehicleModCategories;
       const difficulties = {};
       for (const [key, val] of Object.entries(NEUROSHIMA.difficulties)) {
@@ -137,12 +140,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     // Skill and Magazine filtering
     if (item.type === "weapon") {
+      const isCreature = item.actor?.type === "creature";
       const selectedAttr = item.system.attribute || "dexterity";
       const skillGroups = NEUROSHIMA.skillConfiguration[selectedAttr] || {};
       const skills = {};
-      for (const [spec, skillList] of Object.entries(skillGroups)) {
-        for (const skill of skillList) {
-          skills[skill] = `NEUROSHIMA.Skills.${skill}`;
+      if (isCreature) {
+        skills["experience"] = "NEUROSHIMA.Creature.Experience";
+        skills["none"] = "NEUROSHIMA.Items.Fields.None";
+      } else {
+        for (const [spec, skillList] of Object.entries(skillGroups)) {
+          for (const skill of skillList) {
+            skills[skill] = `NEUROSHIMA.Skills.${skill}`;
+          }
         }
       }
       context.availableSkills = skills;
@@ -196,6 +205,15 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       rollData: item.getRollData(),
       relativeTo: item
     });
+
+    if (item.type === "vehicle-mod") {
+      context.enrichedRules = await foundry.applications.ux.TextEditor.enrichHTML(item.system.rules || "", {
+        async: true,
+        secrets: item.isOwner,
+        rollData: item.getRollData(),
+        relativeTo: item
+      });
+    }
 
     game.neuroshima.log(`Item Sheet Context prepared for ${item.name}`, context);
 
