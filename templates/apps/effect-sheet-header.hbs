@@ -1,0 +1,13 @@
+<header class="sheet-header flexrow" data-application-part="header">
+    <div class="effect-header-icon flex0">
+        <img src="{{effect.icon}}" alt="{{effect.name}}" width="36" height="36">
+    </div>
+    <div class="effect-header-info flexcol">
+        <h1><input name="name" type="text" value="{{effect.name}}" placeholder="{{localize 'Name'}}"></h1>
+        <div class="effect-subtitle">
+            {{#if isEmbedded}}
+            <span class="effect-source">{{localize "NEUROSHIMA.Effects.Source"}}: {{actor.name}}</span>
+            {{/if}}
+        </div>
+    </div>
+</header>

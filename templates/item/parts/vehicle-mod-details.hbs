@@ -1,0 +1,54 @@
+<div class="vehicle-mod-details">
+    <div class="grid grid-2col">
+        {{!-- Kategoria --}}
+        <div class="form-group row-group">
+            <label>{{localize "NEUROSHIMA.Vehicle.Mod.Category.Label"}}</label>
+            <select name="system.category">
+                {{selectOptions vehicleModCategories selected=system.category localize=true}}
+            </select>
+        </div>
+
+        {{!-- Trudność Montażu --}}
+        <div class="form-group row-group">
+            <label>{{localize "NEUROSHIMA.Vehicle.Mods.InstallDifficulty"}}</label>
+            <select name="system.installDifficulty">
+                {{selectOptions difficulties selected=system.installDifficulty localize=true}}
+            </select>
+        </div>
+    </div>
+
+    {{!-- Założone --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Vehicle.Mods.Equipped"}}</label>
+        <input type="checkbox" name="system.equipped" {{#if system.equipped}}checked{{/if}}>
+    </div>
+
+    {{!-- Wartości Pancerza (tylko dla kategorii pancerz) --}}
+    {{#if (eq system.category "armor")}}
+    <div class="vehicle-armor-ratings">
+        <h4>{{localize "NEUROSHIMA.Vehicle.Armor.Ratings"}}</h4>
+        <div class="grid grid-3col">
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Vehicle.Location.Front'}}">{{localize "NEUROSHIMA.Vehicle.Location.FrontAbbr"}}</label>
+                <input type="number" name="system.armorRatings.front" value="{{system.armorRatings.front}}" min="0">
+            </div>
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Vehicle.Location.Back'}}">{{localize "NEUROSHIMA.Vehicle.Location.BackAbbr"}}</label>
+                <input type="number" name="system.armorRatings.back" value="{{system.armorRatings.back}}" min="0">
+            </div>
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Vehicle.Location.LeftSide'}}">{{localize "NEUROSHIMA.Vehicle.Location.LeftAbbr"}}</label>
+                <input type="number" name="system.armorRatings.leftSide" value="{{system.armorRatings.leftSide}}" min="0">
+            </div>
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Vehicle.Location.RightSide'}}">{{localize "NEUROSHIMA.Vehicle.Location.RightAbbr"}}</label>
+                <input type="number" name="system.armorRatings.rightSide" value="{{system.armorRatings.rightSide}}" min="0">
+            </div>
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Vehicle.Location.Bottom'}}">{{localize "NEUROSHIMA.Vehicle.Location.BottomAbbr"}}</label>
+                <input type="number" name="system.armorRatings.bottom" value="{{system.armorRatings.bottom}}" min="0">
+            </div>
+        </div>
+    </div>
+    {{/if}}
+</div>

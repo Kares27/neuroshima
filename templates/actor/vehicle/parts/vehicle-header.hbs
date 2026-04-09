@@ -1,0 +1,45 @@
+<header class="sheet-header flexrow" data-application-part="header">
+    <div class="profile-container flex0">
+        <img class="profile-img" src="{{actor.img}}" data-action="editImage" title="{{actor.name}}" height="100" width="100">
+    </div>
+    <div class="header-details flexcol">
+        <div class="item-name-row flexrow">
+            <h1>
+                <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}">
+            </h1>
+        </div>
+        <div class="vehicle-header-stats flexrow">
+            <div class="vehicle-stat-box">
+                <div class="stat-label" title="{{localize 'NEUROSHIMA.Vehicle.Efficiency'}}">{{localize "NEUROSHIMA.Vehicle.EfficiencyAbbr"}}</div>
+                <div class="stat-value-row">
+                    <input type="number" name="system.efficiency.value" value="{{system.efficiency.value}}" min="0" class="stat-value-input">
+                    <span class="stat-sep">/</span>
+                    <input type="number" name="system.efficiency.max" value="{{system.efficiency.max}}" min="1" class="stat-value-input">
+                </div>
+            </div>
+            <div class="vehicle-stat-box">
+                <div class="stat-label" title="{{localize 'NEUROSHIMA.Vehicle.Agility'}}">{{localize "NEUROSHIMA.Vehicle.AgilityAbbr"}}</div>
+                <div class="stat-value-row">
+                    <span class="stat-computed {{#if (gt totalAgilityPenalty 0)}}penalized{{/if}}" title="{{localize 'NEUROSHIMA.Vehicle.EffectiveAgility'}}">{{effectiveAgility}}%</span>
+                    <span class="stat-sep">/</span>
+                    <input type="number" name="system.agility" value="{{system.agility}}" min="0" class="stat-value-input">
+                    <span class="stat-suffix">%</span>
+                </div>
+            </div>
+            <div class="vehicle-stat-box">
+                <div class="stat-label" title="{{localize 'NEUROSHIMA.Vehicle.Durability'}}">{{localize "NEUROSHIMA.Vehicle.DurabilityAbbr"}}</div>
+                <div class="stat-value-row">
+                    <input type="number" name="system.durability" value="{{system.durability}}" min="0" max="20" class="stat-value-input">
+                    <a class="roll-btn" data-action="rollDurability" title="{{localize 'NEUROSHIMA.Vehicle.RollDurability'}}">
+                        <i class="fas fa-dice"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {{#if isDisabled}}
+        <div class="vehicle-disabled-badge">
+            <i class="fas fa-exclamation-triangle"></i> {{localize "NEUROSHIMA.Vehicle.Disabled"}}
+        </div>
+        {{/if}}
+    </div>
+</header>

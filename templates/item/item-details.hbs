@@ -90,4 +90,16 @@
             {{> "systems/neuroshima/templates/item/parts/magazine-details.hbs"}}
         </div>
     {{/if}}
+
+    {{#if (eq item.type "vehicle-mod")}}
+        <div class="item-features vehicle-mod-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "vehicle-damage")}}
+        <div class="item-features vehicle-damage-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs"}}
+        </div>
+    {{/if}}
 </section>

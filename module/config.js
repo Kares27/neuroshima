@@ -198,5 +198,30 @@ export const NEUROSHIMA = {
         fury: "NEUROSHIMA.Roll.Maneuvers.Fury",
         fullDefense: "NEUROSHIMA.Roll.Maneuvers.FullDefense",
         increasedTempo: "NEUROSHIMA.Roll.Maneuvers.IncreasedTempo"
+    },
+    vehicleLocations: {
+        front: "NEUROSHIMA.Vehicle.Location.Front",
+        back: "NEUROSHIMA.Vehicle.Location.Back",
+        leftSide: "NEUROSHIMA.Vehicle.Location.LeftSide",
+        rightSide: "NEUROSHIMA.Vehicle.Location.RightSide",
+        bottom: "NEUROSHIMA.Vehicle.Location.Bottom",
+        unknown: "NEUROSHIMA.Vehicle.Location.Unknown"
+    },
+    vehicleDamageTypes: {
+        L: "NEUROSHIMA.Vehicle.Damage.Light",
+        C: "NEUROSHIMA.Vehicle.Damage.Heavy",
+        K: "NEUROSHIMA.Vehicle.Damage.Critical"
+    },
+    vehicleModCategories: {
+        modification: "NEUROSHIMA.Vehicle.Mod.Category.Modification",
+        armor: "NEUROSHIMA.Vehicle.Mod.Category.Armor"
+    },
+    scriptTriggers: {
+        manual: "NEUROSHIMA.Scripts.Trigger.Manual",
+        prepareData: "NEUROSHIMA.Scripts.Trigger.PrepareData",
+        rollTest: "NEUROSHIMA.Scripts.Trigger.RollTest",
+        armorCalculation: "NEUROSHIMA.Scripts.Trigger.ArmorCalculation",
+        applyDamage: "NEUROSHIMA.Scripts.Trigger.ApplyDamage",
+        equipToggle: "NEUROSHIMA.Scripts.Trigger.EquipToggle"
     }
 };

@@ -2,6 +2,7 @@
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Actor Sheet",
+            "Vehicle": "Vehicle Sheet",
             "Item": "Item Sheet",
             "Edit": "Edit",
             "Finish": "Finish",
@@ -443,7 +444,12 @@
             "Stats": "Stats",
             "Description": "Description",
             "Effects": "Effects",
-            "EffectsPlaceholder": "Item effects (TBD)"
+            "EffectsPlaceholder": "Item effects (TBD)",
+            "Mods": "Modifications",
+            "Crew": "Crew",
+            "Details": "Details",
+            "Changes": "Changes",
+            "Scripts": "Scripts"
         },
         "Dialogs": {
             "ConfirmReroll": "Confirm Reroll",
@@ -623,7 +629,9 @@
                 "Ammo": "Ammo",
                 "Magazine": "Magazine",
                 "Magazines": "Magazines",
-                "Wound": "Wound"
+                "Wound": "Wound",
+                "VehicleMod": "Vehicle Modification",
+                "VehicleDamage": "Vehicle Damage"
             },
             "Fields": {
                 "Weight": "Weight",
@@ -705,6 +713,131 @@
             "RightArm": "Right Arm",
             "LeftLeg": "Left Leg",
             "RightLeg": "Right Leg"
+        },
+        "Vehicle": {
+            "Location": {
+                "Front": "Front",
+                "Back": "Back",
+                "LeftSide": "Left Side",
+                "RightSide": "Right Side",
+                "Bottom": "Bottom",
+                "Unknown": "Unknown",
+                "FrontAbbr": "Fr",
+                "BackAbbr": "Bk",
+                "LeftAbbr": "LS",
+                "RightAbbr": "RS",
+                "BottomAbbr": "Bo"
+            },
+            "Damage": {
+                "Title": "Damage",
+                "Light": "Light",
+                "Heavy": "Heavy",
+                "Critical": "Critical",
+                "EffLoss": "Efficiency Loss",
+                "Empty": "No damage"
+            },
+            "Armor": {
+                "Title": "Armor",
+                "Ratings": "Armor Ratings",
+                "None": "No armor"
+            },
+            "Weapons": {
+                "Title": "Weapons",
+                "Mounted": "Mounted",
+                "Empty": "No weapons mounted"
+            },
+            "Mod": {
+                "Category": {
+                    "Label": "Category",
+                    "Modification": "Modification",
+                    "Armor": "Armor"
+                }
+            },
+            "Mods": {
+                "Title": "Modifications",
+                "InstallDifficulty": "Install Difficulty",
+                "Equipped": "Installed",
+                "Empty": "No modifications"
+            },
+            "Performance": "Performance",
+            "MaxSpeed": "Maximum Speed",
+            "MaxSpeedAbbr": "Max Speed",
+            "Acceleration": "Acceleration",
+            "AccelerationAbbr": "Acceleration",
+            "Brakes": "Brakes",
+            "BrakesAbbr": "Brakes",
+            "Durability": "Durability",
+            "Agility": "Agility",
+            "AgilityPenalty": "Agility Penalty",
+            "AgilityPenaltyTotal": "Total Agility Penalty",
+            "Efficiency": "Efficiency",
+            "EfficiencyAbbr": "EFF",
+            "AgilityAbbr": "AGI",
+            "DurabilityAbbr": "DUR",
+            "EffectiveAgility": "Effective Agility",
+            "RollDurability": "Roll Durability",
+            "Disabled": "Vehicle Disabled",
+            "InvalidItemType": "This item type cannot be added to a vehicle",
+            "OnlyRangedWeapons": "Vehicles can only have ranged weapons",
+            "Sheet": "Vehicle Sheet",
+            "Crew": "Crew",
+            "Combat": "Combat",
+            "Notes": "Notes"
+        },
+        "Effects": {
+            "Icon": "Icon",
+            "Label": "Label",
+            "Origin": "Origin",
+            "Disabled": "Disabled",
+            "Transfer": "Transfer",
+            "Source": "Source",
+            "AddChange": "Add Change",
+            "NoChanges": "No changes",
+            "Description": "Description",
+            "Change": {
+                "Key": "Key",
+                "Mode": "Mode",
+                "Priority": "Priority",
+                "Value": "Value"
+            },
+            "Duration": {
+                "Rounds": "Rounds",
+                "Turns": "Turns",
+                "Seconds": "Seconds"
+            }
+        },
+        "Scripts": {
+            "Add": "Add Script",
+            "Empty": "No scripts",
+            "Label": "Label",
+            "LabelPlaceholder": "Script Name",
+            "Code": "Code",
+            "CodePlaceholder": "Enter JavaScript code here",
+            "Hint": "Scripts are executed automatically or manually. They use JavaScript with access to actor, item, and effect.",
+            "HelpText": "Available variables:",
+            "Run": "Run",
+            "NewScript": "New Script",
+            "NoActor": "Script requires an assigned actor",
+            "Trigger": {
+                "Label": "Trigger",
+                "Manual": "Manual",
+                "PrepareData": "Prepare Data",
+                "RollTest": "Roll Test",
+                "ArmorCalculation": "Armor Calculation",
+                "ApplyDamage": "Apply Damage",
+                "EquipToggle": "Equip Toggle"
+            },
+            "Help": {
+                "Actor": "The actor owning the effect",
+                "Item": "The item owning the effect (if effect is on an item)",
+                "Effect": "This active effect",
+                "Notification": "Show a UI notification",
+                "Args": "Contextual arguments passed by the trigger"
+            }
+        },
+        "WeakPoint": "Weak Point",
+        "Armor": {
+            "None": "No armor"
         },
         "PatientCard": {
             "Title": "Patient Card",

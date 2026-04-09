@@ -2793,6 +2793,355 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     100% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 68, 68, 0); }
 }
 
+/* ===== VEHICLE SHEET ===== */
 
+.neuroshima.sheet.vehicle .vehicle-combat-scroll {
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+    padding-right: 4px;
+}
 
+.neuroshima.sheet.vehicle .vehicle-combat-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
 
+/* Vehicle Armor Grid */
+.neuroshima.sheet.vehicle .vehicle-armor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 4px;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location.span-full {
+    grid-column: 1 / -1;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location.empty {
+    border-color: rgba(255, 255, 255, 0.08);
+    opacity: 0.7;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location .location-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location .location-name {
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location .location-armor-value {
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location .armor-rating {
+    color: #7bc8f0;
+}
+
+.neuroshima.sheet.vehicle .vehicle-armor-location .armor-empty {
+    font-size: 0.75em;
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.neuroshima.sheet.vehicle .weakpoint-icon {
+    font-size: 0.75em;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.neuroshima.sheet.vehicle .nat-armor-weakpoint-toggle input:checked ~ .weakpoint-icon {
+    opacity: 1;
+    color: #ff9900;
+}
+
+/* Vehicle Weapons List */
+.neuroshima.sheet.vehicle .vehicle-weapons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neuroshima.sheet.vehicle .vehicle-weapon-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.sheet.vehicle .vehicle-weapon-row.mounted {
+    border-color: rgba(123, 200, 240, 0.4);
+}
+
+.neuroshima.sheet.vehicle .vehicle-weapon-row .weapon-mount {
+    flex: 0 0 20px;
+    text-align: center;
+}
+
+.neuroshima.sheet.vehicle .vehicle-weapon-row .weapon-name {
+    flex: 1;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.vehicle .vehicle-weapon-row .weapon-stats {
+    flex: 0 0 30px;
+    text-align: center;
+    font-size: 0.85em;
+}
+
+/* Vehicle Damage Table */
+.neuroshima.sheet.vehicle .vehicle-damage-table .col-location {
+    flex: 1.2;
+}
+
+.neuroshima.sheet.vehicle .vehicle-damage-table .col-type {
+    flex: 0.8;
+}
+
+.neuroshima.sheet.vehicle .vehicle-efficiency-summary {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+.neuroshima.sheet.vehicle .vehicle-efficiency-summary .agility-penalty-badge {
+    color: #ff9900;
+}
+
+/* Vehicle Mods List */
+.neuroshima.sheet.vehicle .vehicle-mods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.vehicle .vehicle-mod-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.sheet.vehicle .vehicle-mod-row.equipped {
+    border-color: rgba(123, 200, 240, 0.4);
+}
+
+.neuroshima.sheet.vehicle .mod-equip {
+    flex: 0 0 22px;
+    text-align: center;
+}
+
+.neuroshima.sheet.vehicle .mod-icon img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.neuroshima.sheet.vehicle .mod-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima.sheet.vehicle .mod-name {
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.neuroshima.sheet.vehicle .mod-category {
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.neuroshima.sheet.vehicle .mod-armor-values {
+    display: flex;
+    gap: 4px;
+    font-size: 0.75em;
+}
+
+.neuroshima.sheet.vehicle .armor-abbr {
+    background: rgba(123, 200, 240, 0.15);
+    border-radius: 3px;
+    padding: 1px 4px;
+}
+
+.neuroshima.sheet.vehicle .mod-difficulty {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+/* Vehicle Armor Ratings (item sheet) */
+.vehicle-armor-ratings h4 {
+    margin: 8px 0 4px;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+/* ===== EFFECT SHEET ===== */
+
+.neuroshima.sheet.effect .effect-header-icon img {
+    border-radius: 4px;
+}
+
+.neuroshima.sheet.effect .effect-header-info {
+    padding-left: 8px;
+}
+
+.neuroshima.sheet.effect .effect-subtitle {
+    font-size: 0.8em;
+    opacity: 0.7;
+}
+
+.neuroshima.sheet.effect .effect-changes-header,
+.neuroshima.sheet.effect .effect-scripts-header {
+    margin-bottom: 8px;
+}
+
+.neuroshima.sheet.effect .effect-changes-list .changes-header {
+    font-size: 0.8em;
+    opacity: 0.7;
+    padding: 2px 4px;
+}
+
+.neuroshima.sheet.effect .change-row {
+    gap: 6px;
+    margin-bottom: 4px;
+    align-items: center;
+}
+
+.neuroshima.sheet.effect .change-value-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.neuroshima.sheet.effect .script-entry {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 8px;
+}
+
+.neuroshima.sheet.effect .script-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.neuroshima.sheet.effect .script-header .form-group.row-group {
+    flex: 1;
+    min-width: 140px;
+}
+
+.neuroshima.sheet.effect .script-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.neuroshima.sheet.effect .script-code textarea.code-editor {
+    font-family: "Courier New", monospace;
+    font-size: 0.85em;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    color: #d4d4aa;
+    padding: 8px;
+    width: 100%;
+    resize: vertical;
+}
+
+.neuroshima.sheet.effect .effect-scripts-info .hint {
+    font-size: 0.85em;
+    opacity: 0.7;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.neuroshima.sheet.effect .scripts-empty .empty-list {
+    text-align: center;
+    opacity: 0.6;
+    padding: 16px;
+}
+
+.neuroshima.sheet.effect .scripts-help {
+    font-size: 0.85em;
+    opacity: 0.8;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.neuroshima.sheet.effect .scripts-help ul {
+    margin: 6px 0;
+    padding-left: 16px;
+}
+
+.neuroshima.sheet.effect .scripts-help code {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.neuroshima-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background 0.2s;
+}
+
+.neuroshima-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.neuroshima-btn.small {
+    padding: 2px 8px;
+    font-size: 0.8em;
+}
+
+.neuroshima-btn.danger:hover {
+    background: rgba(255, 68, 68, 0.3);
+    border-color: rgba(255, 68, 68, 0.5);
+    color: #ff8888;
+}

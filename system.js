@@ -6,8 +6,12 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActorData } from "./module/data/actor-data.js";
 import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData } from "./module/data/item-data.js";
+import { VehicleActorData, VehicleModData, VehicleDamageData } from "./module/data/vehicle-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
+import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
+import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
+import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { NeuroshimaMeleeCombat } from "./module/combat/melee-combat.js";
@@ -68,6 +72,7 @@ Hooks.once('init', async function() {
         showHealingRollDialog,
         buildRef,
         resolveRef,
+        NeuroshimaScriptRunner,
         config: NEUROSHIMA,
         log: (...args) => {
             if (game.settings.get("neuroshima", "debugMode")) {
@@ -130,6 +135,7 @@ Hooks.once('init', async function() {
 
     // Rejestracja modeli danych
     CONFIG.Actor.dataModels.character = NeuroshimaActorData;
+    CONFIG.Actor.dataModels.vehicle = VehicleActorData;
     CONFIG.Item.dataModels.weapon = WeaponData;
     CONFIG.Item.dataModels.armor = ArmorData;
     CONFIG.Item.dataModels.gear = GearData;
@@ -137,6 +143,8 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.magazine = MagazineData;
     CONFIG.Item.dataModels.trick = TrickData;
     CONFIG.Item.dataModels.wound = WoundData;
+    CONFIG.Item.dataModels["vehicle-mod"] = VehicleModData;
+    CONFIG.Item.dataModels["vehicle-damage"] = VehicleDamageData;
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -167,13 +175,23 @@ Hooks.once('init', async function() {
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.ActorCharacter"
     });
+    foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaVehicleSheet, {
+        types: ["vehicle"],
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.Vehicle"
+    });
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound"],
+        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "vehicle-mod", "vehicle-damage"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
+
+    foundry.documents.ActiveEffect.prototype.sheet = new Proxy({}, {
+        get: (_, prop) => NeuroshimaEffectSheet[prop]
+    });
+    CONFIG.ActiveEffect.sheetClass = NeuroshimaEffectSheet;
 
     // Rejestracja ustawień systemowych
     game.settings.register("neuroshima", "debugMode", {
@@ -479,7 +497,19 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/rest-report.hbs",
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
-        "systems/neuroshima/templates/dialog/rest-dialog.hbs"
+        "systems/neuroshima/templates/dialog/rest-dialog.hbs",
+        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-header.hbs",
+        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-stats.hbs",
+        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-crew.hbs",
+        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-mods.hbs",
+        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-combat.hbs",
+        "systems/neuroshima/templates/actor/vehicle/parts/vehicle-notes.hbs",
+        "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs",
+        "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",
+        "systems/neuroshima/templates/apps/effect-sheet-header.hbs",
+        "systems/neuroshima/templates/apps/effect-sheet-details.hbs",
+        "systems/neuroshima/templates/apps/effect-sheet-changes.hbs",
+        "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);

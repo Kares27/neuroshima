@@ -1,0 +1,39 @@
+<section class="tab effect-changes {{tabs.changes.cssClass}}" data-group="primary" data-tab="changes" data-application-part="changes">
+    <div class="effect-changes-header">
+        <button type="button" data-action="addChange" class="neuroshima-btn small">
+            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Effects.AddChange"}}
+        </button>
+    </div>
+    {{#if effect.changes.length}}
+    <div class="effect-changes-list">
+        <div class="changes-header grid grid-4col">
+            <span>{{localize "NEUROSHIMA.Effects.Change.Key"}}</span>
+            <span>{{localize "NEUROSHIMA.Effects.Change.Mode"}}</span>
+            <span>{{localize "NEUROSHIMA.Effects.Change.Priority"}}</span>
+            <span>{{localize "NEUROSHIMA.Effects.Change.Value"}}</span>
+        </div>
+        {{#each effect.changes}}
+        <div class="change-row grid grid-4col" data-index="{{@index}}">
+            <input type="text" name="changes.{{@index}}.key" value="{{this.key}}" placeholder="system.attribute">
+            <select name="changes.{{@index}}.mode">
+                <option value="0" {{#if (eq this.mode 0)}}selected{{/if}}>Custom</option>
+                <option value="1" {{#if (eq this.mode 1)}}selected{{/if}}>Multiply</option>
+                <option value="2" {{#if (eq this.mode 2)}}selected{{/if}}>Add</option>
+                <option value="3" {{#if (eq this.mode 3)}}selected{{/if}}>Downgrade</option>
+                <option value="4" {{#if (eq this.mode 4)}}selected{{/if}}>Upgrade</option>
+                <option value="5" {{#if (eq this.mode 5)}}selected{{/if}}>Override</option>
+            </select>
+            <input type="number" name="changes.{{@index}}.priority" value="{{this.priority}}">
+            <div class="change-value-row">
+                <input type="text" name="changes.{{@index}}.value" value="{{this.value}}">
+                <a data-action="deleteChange" data-index="{{@index}}" title="{{localize 'DOCUMENT.Delete'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <p class="empty-list">{{localize "NEUROSHIMA.Effects.NoChanges"}}</p>
+    {{/if}}
+</section>

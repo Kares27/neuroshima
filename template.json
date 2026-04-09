@@ -1,16 +1,19 @@
 {
   "Actor": {
-    "types": ["character"],
-    "character": {}
+    "types": ["character", "vehicle"],
+    "character": {},
+    "vehicle": {}
   },
   "Item": {
-    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound"],
+    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "vehicle-mod", "vehicle-damage"],
     "weapon": {},
     "armor": {},
     "gear": {},
     "trick": {},
     "ammo": {},
     "magazine": {},
-    "wound": {}
+    "wound": {},
+    "vehicle-mod": {},
+    "vehicle-damage": {}
   }
 }

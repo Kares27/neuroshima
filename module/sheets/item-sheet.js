@@ -113,6 +113,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.damageTypes = NEUROSHIMA.damageTypes;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
     context.locations = NEUROSHIMA.locations;
+
+    // Vehicle-specific context
+    if (item.type === "vehicle-mod" || item.type === "vehicle-damage") {
+      context.vehicleLocations = NEUROSHIMA.vehicleLocations;
+      context.vehicleDamageTypes = NEUROSHIMA.vehicleDamageTypes;
+      context.vehicleModCategories = NEUROSHIMA.vehicleModCategories;
+      const difficulties = {};
+      for (const [key, val] of Object.entries(NEUROSHIMA.difficulties)) {
+        difficulties[key] = val.label;
+      }
+      context.difficulties = difficulties;
+    }
     
     // Collect all unique calibers from world items (Weapons) for suggestions
     const worldCalibers = new Set();
@@ -233,6 +245,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     // 1. Definicja widocznych tabów dla poszczególnych typów
     const tabsByType = {
       trick: ["description", "effects"],
+      "vehicle-mod": ["stats", "description", "effects"],
+      "vehicle-damage": ["stats", "description", "effects"],
       // Pozostałe typy domyślnie dostaną wszystko (stats, description, effects)
     };
 

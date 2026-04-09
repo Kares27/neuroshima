@@ -1,0 +1,70 @@
+<section class="tab vehicle-mods-tab {{tabs.mods.cssClass}}" data-group="primary" data-tab="mods" data-application-part="mods">
+    <div class="section-header">
+        <div class="header-title">
+            <i class="fas fa-tools"></i>
+            <span>{{localize "NEUROSHIMA.Vehicle.Mods.Title"}}</span>
+        </div>
+        <div class="header-actions">
+            {{#if owner}}
+            <a class="item-control" data-action="createItem" data-type="vehicle-mod" title="{{localize 'DOCUMENT.Create'}}">
+                <i class="fas fa-plus"></i>
+            </a>
+            {{/if}}
+        </div>
+    </div>
+
+    {{#if vehicleMods.length}}
+    <div class="vehicle-mods-list">
+        {{#each vehicleMods}}
+        <div class="item draggable vehicle-mod-row {{#if system.equipped}}equipped{{/if}}" data-item-id="{{id}}" data-uuid="{{uuid}}" draggable="true">
+            <div class="mod-equip">
+                {{#if ../owner}}
+                <a data-action="toggleEquipped" data-item-id="{{id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                    <i class="fas {{#if system.equipped}}fa-check-circle{{else}}fa-circle{{/if}}"></i>
+                </a>
+                {{/if}}
+            </div>
+            <div class="mod-icon">
+                <img src="{{img}}" alt="{{name}}" width="28" height="28">
+            </div>
+            <div class="mod-info">
+                <span class="mod-name clickable" data-action="editItem" data-item-id="{{id}}">{{name}}</span>
+                <span class="mod-category">
+                    {{#if (eq system.category "armor")}}
+                    <i class="fas fa-shield-alt"></i>
+                    {{else}}
+                    <i class="fas fa-wrench"></i>
+                    {{/if}}
+                    {{localize (lookup ../modCategories system.category)}}
+                </span>
+            </div>
+            {{#if (eq system.category "armor")}}
+            <div class="mod-armor-values">
+                {{#each (lookup ../armorGrid @index)}}{{/each}}
+                <span class="armor-abbr" title="{{localize 'NEUROSHIMA.Vehicle.Location.Front'}}">P:{{system.armorRatings.front}}</span>
+                <span class="armor-abbr" title="{{localize 'NEUROSHIMA.Vehicle.Location.Back'}}">T:{{system.armorRatings.back}}</span>
+                <span class="armor-abbr" title="{{localize 'NEUROSHIMA.Vehicle.Location.LeftSide'}}">L:{{system.armorRatings.leftSide}}</span>
+                <span class="armor-abbr" title="{{localize 'NEUROSHIMA.Vehicle.Location.RightSide'}}">R:{{system.armorRatings.rightSide}}</span>
+                <span class="armor-abbr" title="{{localize 'NEUROSHIMA.Vehicle.Location.Bottom'}}">S:{{system.armorRatings.bottom}}</span>
+            </div>
+            {{/if}}
+            <div class="mod-difficulty" title="{{localize 'NEUROSHIMA.Vehicle.Mods.InstallDifficulty'}}">
+                <span>{{localize (lookup ../difficulties system.installDifficulty)}}</span>
+            </div>
+            {{#if ../owner}}
+            <div class="item-controls">
+                <a class="item-control" data-action="editItem" data-item-id="{{id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a class="item-control" data-action="deleteItem" data-item-id="{{id}}" title="{{localize 'DOCUMENT.Delete'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+            {{/if}}
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <p class="empty-list">{{localize "NEUROSHIMA.Vehicle.Mods.Empty"}}</p>
+    {{/if}}
+</section>

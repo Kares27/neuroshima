@@ -5,6 +5,7 @@
     "NEUROSHIMA": {
         "Sheet": {
             "ActorCharacter": "Arkusz Postaci",
+            "Vehicle": "Karta Pojazdu",
             "Item": "Arkusz Przedmiotu",
             "Edit": "Edytuj",
             "Finish": "Zakończ",
@@ -465,7 +466,12 @@
             "Stats": "Statystyki",
             "Description": "Opis",
             "Effects": "Efekty",
-            "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)"
+            "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)",
+            "Mods": "Modyfikacje",
+            "Crew": "Załoga",
+            "Details": "Szczegóły",
+            "Changes": "Zmiany",
+            "Scripts": "Skrypty"
         },
         "Dialogs": {
             "ConfirmReroll": "Potwierdź przerzut",
@@ -648,7 +654,9 @@
                 "Ammo": "Amunicja",
                 "Magazine": "Magazynek",
                 "Magazines": "Magazynki",
-                "Wound": "Rana"
+                "Wound": "Rana",
+                "VehicleMod": "Modyfikacja Pojazdu",
+                "VehicleDamage": "Uszkodzenie Pojazdu"
             },
             "Fields": {
                 "Weight": "Waga",
@@ -740,6 +748,132 @@
             "Penalty": "Kara",
             "Medic": "Medyk",
             "Patient": "Pacjent"
+        },
+        "Vehicle": {
+            "Location": {
+                "Front": "Przód",
+                "Back": "Tył",
+                "LeftSide": "Lewy Bok",
+                "RightSide": "Prawy Bok",
+                "Bottom": "Spód",
+                "Unknown": "Nieznane",
+                "FrontAbbr": "Prz",
+                "BackAbbr": "Ty",
+                "LeftAbbr": "LB",
+                "RightAbbr": "PB",
+                "BottomAbbr": "Sp"
+            },
+            "Damage": {
+                "Title": "Uszkodzenia",
+                "Light": "Lekkie",
+                "Heavy": "Ciężkie",
+                "Critical": "Krytyczne",
+                "EffLoss": "Utrata Sprawności",
+                "Empty": "Brak uszkodzeń"
+            },
+            "Armor": {
+                "Title": "Pancerz",
+                "Ratings": "Wartości Pancerza",
+                "None": "Brak pancerza"
+            },
+            "Weapons": {
+                "Title": "Uzbrojenie",
+                "Mounted": "Zamontowane",
+                "Empty": "Brak zamontowanej broni"
+            },
+            "Mod": {
+                "Category": {
+                    "Label": "Kategoria",
+                    "Modification": "Modyfikacja",
+                    "Armor": "Pancerz"
+                }
+            },
+            "Mods": {
+                "Title": "Modyfikacje",
+                "InstallDifficulty": "Trudność Montażu",
+                "Equipped": "Zamontowane",
+                "Empty": "Brak modyfikacji"
+            },
+            "Performance": "Osiągi",
+            "MaxSpeed": "Prędkość Maksymalna",
+            "MaxSpeedAbbr": "Prędkość Maks.",
+            "Acceleration": "Przyspieszenie",
+            "AccelerationAbbr": "Przyspieszenie",
+            "Brakes": "Hamulce",
+            "BrakesAbbr": "Hamulce",
+            "Durability": "Wytrzymałość",
+            "Agility": "Zwrotność",
+            "AgilityPenalty": "Kara do Zwrotności",
+            "AgilityPenaltyTotal": "Łączna Kara Zwrotności",
+            "Efficiency": "Sprawność",
+            "EfficiencyAbbr": "SRAW",
+            "AgilityAbbr": "ZWR",
+            "DurabilityAbbr": "WYTR",
+            "EffectiveAgility": "Efektywna Zwrotność",
+            "RollDurability": "Rzut na Wytrzymałość",
+            "Disabled": "Pojazd Wyłączony",
+            "InvalidItemType": "Ten typ przedmiotu nie może być dodany do pojazdu",
+            "OnlyRangedWeapons": "Pojazdy mogą posiadać tylko broń dystansową",
+            "Sheet": "Karta Pojazdu",
+            "Crew": "Załoga",
+            "Mods": "Modyfikacje",
+            "Combat": "Walka",
+            "Notes": "Notatki"
+        },
+        "Effects": {
+            "Icon": "Ikona",
+            "Label": "Etykieta",
+            "Origin": "Źródło",
+            "Disabled": "Wyłączony",
+            "Transfer": "Przenieś",
+            "Source": "Źródło",
+            "AddChange": "Dodaj Zmianę",
+            "NoChanges": "Brak zmian",
+            "Description": "Opis",
+            "Change": {
+                "Key": "Klucz",
+                "Mode": "Tryb",
+                "Priority": "Priorytet",
+                "Value": "Wartość"
+            },
+            "Duration": {
+                "Rounds": "Rundy",
+                "Turns": "Tury",
+                "Seconds": "Sekundy"
+            }
+        },
+        "Scripts": {
+            "Add": "Dodaj Skrypt",
+            "Empty": "Brak skryptów",
+            "Label": "Etykieta",
+            "LabelPlaceholder": "Nazwa Skryptu",
+            "Code": "Kod",
+            "CodePlaceholder": "Tutaj wpisz kod JavaScript",
+            "Hint": "Skrypty są wykonywane automatycznie lub ręcznie. Używają JavaScript z dostępem do aktora, itemu i efektu.",
+            "HelpText": "Dostępne zmienne:",
+            "Run": "Uruchom",
+            "NewScript": "Nowy Skrypt",
+            "NoActor": "Skrypt wymaga przypisanego aktora",
+            "Trigger": {
+                "Label": "Wyzwalacz",
+                "Manual": "Ręczny",
+                "PrepareData": "Przygotowanie Danych",
+                "RollTest": "Rzut na Test",
+                "ArmorCalculation": "Obliczenie Pancerza",
+                "ApplyDamage": "Aplikowanie Obrażeń",
+                "EquipToggle": "Przełącz Ekwipunek"
+            },
+            "Help": {
+                "Actor": "Aktor właściciel efektu",
+                "Item": "Item właściciel efektu (jeśli efekt jest na itemu)",
+                "Effect": "Ten aktywny efekt",
+                "Notification": "Pokaż powiadomienie UI",
+                "Args": "Argumenty kontekstowe przekazane przez wyzwalacz"
+            }
+        },
+        "WeakPoint": "Słaby Punkt",
+        "Armor": {
+            "None": "Brak pancerza"
         },
         "HealingRequest": {
             "Title": "Prośba o Leczenie",
