@@ -4474,6 +4474,12 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima .effect-row.disabled .effect-controls {
     opacity: 1;
+    pointer-events: all;
+}
+
+.neuroshima .effect-row.disabled .effect-controls .item-control {
+    pointer-events: all;
+    cursor: pointer;
 }
 
 .neuroshima .effect-row .col-icon img {
