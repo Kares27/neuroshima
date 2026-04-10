@@ -1,4 +1,4 @@
-<section class="tab tab-effects {{tabs.effects.cssClass}}" data-group="primary" data-tab="effects" data-application-part="effects">
+<section class="tab-section effects-section" data-application-part="effects">
     <div class="section-header">
         <div class="header-title">
             <i class="fas fa-bolt"></i>
@@ -14,16 +14,16 @@
     </div>
 
     {{#if effects.length}}
-    <div class="effects-list">
-        <div class="effects-list-header">
+    <div class="inventory-items effects-list">
+        <div class="item effects-list-header flexrow">
             <div class="col-icon"></div>
             <div class="col-name">{{localize "Name"}}</div>
             <div class="col-source">{{localize "NEUROSHIMA.Effects.Source"}}</div>
-            <div class="col-duration">{{localize "Duration"}}</div>
+            <div class="col-duration">{{localize "NEUROSHIMA.Tabs.Duration"}}</div>
             <div class="col-controls"></div>
         </div>
         {{#each effects}}
-        <div class="effect-row {{#if this.disabled}}disabled{{/if}}" data-effect-id="{{this.id}}">
+        <div class="item effect-row flexrow {{#if this.disabled}}disabled{{/if}}" data-effect-id="{{this.id}}">
             <div class="col-icon">
                 <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
             </div>
@@ -31,13 +31,13 @@
                 <span>{{this.name}}</span>
             </div>
             <div class="col-source">
-                <span>{{this.sourceName}}</span>
+                <span title="{{this.sourceName}}">{{this.sourceName}}</span>
             </div>
             <div class="col-duration">
                 <span>{{this.durationLabel}}</span>
             </div>
-            <div class="col-controls">
-                <a class="item-control {{#unless this.disabled}}active{{/unless}}" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{#if this.disabled}}{{localize 'NEUROSHIMA.Effects.Enable'}}{{else}}{{localize 'NEUROSHIMA.Effects.Disable'}}{{/if}}">
+            <div class="col-controls effect-controls">
+                <a class="item-control toggle-control {{#unless this.disabled}}active{{/unless}}" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{#if this.disabled}}{{localize 'NEUROSHIMA.Effects.Enable'}}{{else}}{{localize 'NEUROSHIMA.Effects.Disable'}}{{/if}}">
                     <i class="fas {{#if this.disabled}}fa-toggle-off{{else}}fa-toggle-on{{/if}}"></i>
                 </a>
                 {{#if @root.owner}}

@@ -4438,42 +4438,42 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima .effects-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    margin-top: 4px;
-}
-
-.neuroshima .effects-list-header,
-.neuroshima .effect-row {
-    display: grid;
-    grid-template-columns: 28px 1fr 120px 60px 80px;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 4px;
 }
 
 .neuroshima .effects-list-header {
+    display: grid;
+    grid-template-columns: 28px 1fr 110px 60px 80px;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
     font-size: 0.75em;
     font-weight: bold;
     text-transform: uppercase;
-    color: var(--color-text-dark-secondary, #555);
-    border-bottom: 1px solid var(--color-border-dark, #999);
+    color: var(--color-text-dark-secondary, #777);
+    border-bottom: 1px solid rgba(0,0,0,0.25);
     margin-bottom: 2px;
 }
 
 .neuroshima .effect-row {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 3px;
-    border: 1px solid transparent;
-    transition: background 0.15s;
+    display: grid;
+    grid-template-columns: 28px 1fr 110px 60px 80px;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    transition: background 0.12s;
 }
 
 .neuroshima .effect-row:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255,255,255,0.06);
 }
 
 .neuroshima .effect-row.disabled {
-    opacity: 0.45;
+    opacity: 0.5;
+}
+
+.neuroshima .effect-row.disabled .effect-controls {
+    opacity: 1;
 }
 
 .neuroshima .effect-row .col-icon img {
@@ -4499,30 +4499,34 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima .effect-row .col-source,
 .neuroshima .effect-row .col-duration {
     font-size: 0.8em;
-    color: var(--color-text-dark-secondary, #666);
+    color: var(--color-text-dark-secondary, #888);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.neuroshima .effect-row .col-controls {
+.neuroshima .effect-controls {
     display: flex;
     gap: 4px;
     justify-content: flex-end;
     align-items: center;
 }
 
-.neuroshima .effect-row .col-controls .item-control {
+.neuroshima .effect-controls .item-control {
     font-size: 0.85em;
-    opacity: 0.6;
-    transition: opacity 0.15s, color 0.15s;
+    opacity: 0.55;
+    transition: opacity 0.12s, color 0.12s;
 }
 
-.neuroshima .effect-row .col-controls .item-control:hover {
+.neuroshima .effect-controls .item-control:hover {
     opacity: 1;
 }
 
-.neuroshima .effect-row .col-controls .item-control.active {
+.neuroshima .effect-controls .toggle-control {
+    opacity: 0.8;
+}
+
+.neuroshima .effect-controls .toggle-control.active {
     color: var(--color-level-success, #4caf50);
     opacity: 1;
 }

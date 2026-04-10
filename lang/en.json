@@ -525,7 +525,11 @@
             "Description": "Description",
             "Effects": "Effects",
             "EffectsPlaceholder": "Item effects (TBD)",
-            "Modifications": "Modifications"
+            "Modifications": "Modifications",
+            "Details": "Details",
+            "Changes": "Changes",
+            "Scripts": "Scripts",
+            "Duration": "Duration"
         },
         "Dialogs": {
             "ConfirmReroll": "Confirm Reroll",
@@ -1008,65 +1012,65 @@
                     "Efficiency":   "Eff"
                 }
             }
+        },
+        "Effects": {
+            "Icon": "Icon",
+            "Label": "Label",
+            "Origin": "Origin",
+            "Disabled": "Disabled",
+            "Transfer": "Transfer",
+            "Source": "Source",
+            "AddChange": "Add Change",
+            "NoChanges": "No changes",
+            "Create": "Create Effect",
+            "Empty": "No active effects",
+            "Enable": "Enable",
+            "Disable": "Disable",
+            "NewEffect": "New Effect",
+            "Description": "Description",
+            "Change": {
+                "Key": "Key",
+                "Mode": "Mode",
+                "Priority": "Priority",
+                "Value": "Value"
+            },
+            "Duration": {
+                "Rounds": "Rounds",
+                "Turns": "Turns",
+                "Seconds": "Seconds"
+            }
+        },
+        "Scripts": {
+            "Add": "Add Script",
+            "Empty": "No scripts",
+            "Label": "Label",
+            "LabelPlaceholder": "Script Name",
+            "Code": "Code",
+            "CodePlaceholder": "Enter JavaScript code here",
+            "Hint": "Scripts are executed automatically or manually. They use JavaScript with access to the actor, item and effect.",
+            "HelpText": "Available variables:",
+            "Run": "Run",
+            "NewScript": "New Script",
+            "NoActor": "Script requires an assigned actor",
+            "Trigger": {
+                "Label": "Trigger",
+                "Manual": "Manual",
+                "PrepareData": "Prepare Data",
+                "RollTest": "Roll Test",
+                "ArmorCalculation": "Armor Calculation",
+                "ApplyDamage": "Apply Damage",
+                "EquipToggle": "Equip Toggle"
+            },
+            "Help": {
+                "Actor": "The actor owning this effect",
+                "Item": "The item owning this effect (if effect is on an item)",
+                "Effect": "This active effect",
+                "Notification": "Show a UI notification",
+                "Args": "Contextual arguments passed by the trigger"
+            }
         }
     },
     "TOKEN": {
         "Title": "Prototype Token"
-    },
-    "Effects": {
-        "Icon": "Icon",
-        "Label": "Label",
-        "Origin": "Origin",
-        "Disabled": "Disabled",
-        "Transfer": "Transfer",
-        "Source": "Source",
-        "AddChange": "Add Change",
-        "NoChanges": "No changes",
-        "Create": "Create Effect",
-        "Empty": "No active effects",
-        "Enable": "Enable",
-        "Disable": "Disable",
-        "NewEffect": "New Effect",
-        "Description": "Description",
-        "Change": {
-            "Key": "Key",
-            "Mode": "Mode",
-            "Priority": "Priority",
-            "Value": "Value"
-        },
-        "Duration": {
-            "Rounds": "Rounds",
-            "Turns": "Turns",
-            "Seconds": "Seconds"
-        }
-    },
-    "Scripts": {
-        "Add": "Add Script",
-        "Empty": "No scripts",
-        "Label": "Label",
-        "LabelPlaceholder": "Script Name",
-        "Code": "Code",
-        "CodePlaceholder": "Enter JavaScript code here",
-        "Hint": "Scripts are executed automatically or manually. They use JavaScript with access to the actor, item and effect.",
-        "HelpText": "Available variables:",
-        "Run": "Run",
-        "NewScript": "New Script",
-        "NoActor": "Script requires an assigned actor",
-        "Trigger": {
-            "Label": "Trigger",
-            "Manual": "Manual",
-            "PrepareData": "Prepare Data",
-            "RollTest": "Roll Test",
-            "ArmorCalculation": "Armor Calculation",
-            "ApplyDamage": "Apply Damage",
-            "EquipToggle": "Equip Toggle"
-        },
-        "Help": {
-            "Actor": "The actor owning this effect",
-            "Item": "The item owning this effect (if effect is on an item)",
-            "Effect": "This active effect",
-            "Notification": "Show a UI notification",
-            "Args": "Contextual arguments passed by the trigger"
-        }
     }
 }

@@ -548,7 +548,11 @@
             "Description": "Opis",
             "Effects": "Efekty",
             "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)",
-            "Modifications": "Modyfikacje"
+            "Modifications": "Modyfikacje",
+            "Details": "Szczegóły",
+            "Changes": "Zmiany",
+            "Scripts": "Skrypty",
+            "Duration": "Czas Trwania"
         },
         "Dialogs": {
             "ConfirmReroll": "Potwierdź przerzut",
@@ -1035,62 +1039,62 @@
                     "Efficiency":   "Sp"
                 }
             }
-        }
-    },
-    "Effects": {
-        "Icon": "Ikona",
-        "Label": "Etykieta",
-        "Origin": "Źródło",
-        "Disabled": "Wyłączony",
-        "Transfer": "Przenieś",
-        "Source": "Źródło",
-        "AddChange": "Dodaj Zmianę",
-        "NoChanges": "Brak zmian",
-        "Create": "Utwórz Efekt",
-        "Empty": "Brak aktywnych efektów",
-        "Enable": "Włącz",
-        "Disable": "Wyłącz",
-        "NewEffect": "Nowy Efekt",
-        "Description": "Opis",
-        "Change": {
-            "Key": "Klucz",
-            "Mode": "Tryb",
-            "Priority": "Priorytet",
-            "Value": "Wartość"
         },
-        "Duration": {
-            "Rounds": "Rundy",
-            "Turns": "Tury",
-            "Seconds": "Sekundy"
-        }
-    },
-    "Scripts": {
-        "Add": "Dodaj Skrypt",
-        "Empty": "Brak skryptów",
-        "Label": "Etykieta",
-        "LabelPlaceholder": "Nazwa Skryptu",
-        "Code": "Kod",
-        "CodePlaceholder": "Tutaj wpisz kod JavaScript",
-        "Hint": "Skrypty są wykonywane automatycznie lub ręcznie. Używają JavaScript z dostępem do aktora, itemu i efektu.",
-        "HelpText": "Dostępne zmienne:",
-        "Run": "Uruchom",
-        "NewScript": "Nowy Skrypt",
-        "NoActor": "Skrypt wymaga przypisanego aktora",
-        "Trigger": {
-            "Label": "Wyzwalacz",
-            "Manual": "Ręczny",
-            "PrepareData": "Przygotowanie Danych",
-            "RollTest": "Rzut na Test",
-            "ArmorCalculation": "Obliczenie Pancerza",
-            "ApplyDamage": "Aplikowanie Obrażeń",
-            "EquipToggle": "Przełącz Ekwipunek"
+        "Effects": {
+            "Icon": "Ikona",
+            "Label": "Etykieta",
+            "Origin": "Źródło",
+            "Disabled": "Wyłączony",
+            "Transfer": "Przenieś",
+            "Source": "Źródło",
+            "AddChange": "Dodaj Zmianę",
+            "NoChanges": "Brak zmian",
+            "Create": "Utwórz Efekt",
+            "Empty": "Brak aktywnych efektów",
+            "Enable": "Włącz",
+            "Disable": "Wyłącz",
+            "NewEffect": "Nowy Efekt",
+            "Description": "Opis",
+            "Change": {
+                "Key": "Klucz",
+                "Mode": "Tryb",
+                "Priority": "Priorytet",
+                "Value": "Wartość"
+            },
+            "Duration": {
+                "Rounds": "Rundy",
+                "Turns": "Tury",
+                "Seconds": "Sekundy"
+            }
         },
-        "Help": {
-            "Actor": "Aktor właściciel efektu",
-            "Item": "Item właściciel efektu (jeśli efekt jest na itemu)",
-            "Effect": "Ten aktywny efekt",
-            "Notification": "Pokaż powiadomienie UI",
-            "Args": "Argumenty kontekstowe przekazane przez wyzwalacz"
+        "Scripts": {
+            "Add": "Dodaj Skrypt",
+            "Empty": "Brak skryptów",
+            "Label": "Etykieta",
+            "LabelPlaceholder": "Nazwa Skryptu",
+            "Code": "Kod",
+            "CodePlaceholder": "Tutaj wpisz kod JavaScript",
+            "Hint": "Skrypty są wykonywane automatycznie lub ręcznie. Używają JavaScript z dostępem do aktora, itemu i efektu.",
+            "HelpText": "Dostępne zmienne:",
+            "Run": "Uruchom",
+            "NewScript": "Nowy Skrypt",
+            "NoActor": "Skrypt wymaga przypisanego aktora",
+            "Trigger": {
+                "Label": "Wyzwalacz",
+                "Manual": "Ręczny",
+                "PrepareData": "Przygotowanie Danych",
+                "RollTest": "Rzut na Test",
+                "ArmorCalculation": "Obliczenie Pancerza",
+                "ApplyDamage": "Aplikowanie Obrażeń",
+                "EquipToggle": "Przełącz Ekwipunek"
+            },
+            "Help": {
+                "Actor": "Aktor właściciel efektu",
+                "Item": "Item właściciel efektu (jeśli efekt jest na itemu)",
+                "Effect": "Ten aktywny efekt",
+                "Notification": "Pokaż powiadomienie UI",
+                "Args": "Argumenty kontekstowe przekazane przez wyzwalacz"
+            }
         }
     }
 }

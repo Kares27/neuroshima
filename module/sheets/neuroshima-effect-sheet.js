@@ -1,15 +1,14 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-
 /**
  * Custom Active Effect configuration sheet for Neuroshima 1.5.
- * Extends the default ActiveEffectConfig with a "Scripts" tab.
+ * Extends ActiveEffectConfig directly (which already uses HandlebarsApplicationMixin).
+ * Adds a "Scripts" tab alongside the standard Details and Changes tabs.
  *
  * Scripts are stored in flags.neuroshima.scripts as:
  * [{ trigger: string, label: string, code: string }]
  */
-export class NeuroshimaEffectSheet extends HandlebarsApplicationMixin(foundry.applications.sheets.ActiveEffectConfig) {
+export class NeuroshimaEffectSheet extends foundry.applications.sheets.ActiveEffectConfig {
   static DEFAULT_OPTIONS = {
     ...foundry.applications.sheets.ActiveEffectConfig.DEFAULT_OPTIONS,
     classes: ["neuroshima", "sheet", "effect"],
@@ -29,59 +28,50 @@ export class NeuroshimaEffectSheet extends HandlebarsApplicationMixin(foundry.ap
   };
 
   static TABS = {
-    primary: {
+    sheet: {
+      initial: "details",
       tabs: [
-        { id: "details", group: "primary", label: "NEUROSHIMA.Tabs.Details" },
-        { id: "changes", group: "primary", label: "NEUROSHIMA.Tabs.Changes" },
-        { id: "scripts", group: "primary", label: "NEUROSHIMA.Tabs.Scripts" }
-      ],
-      initial: "details"
+        { id: "details",  group: "sheet", label: "NEUROSHIMA.Tabs.Details" },
+        { id: "duration", group: "sheet", label: "NEUROSHIMA.Tabs.Duration" },
+        { id: "changes",  group: "sheet", label: "NEUROSHIMA.Tabs.Changes" },
+        { id: "scripts",  group: "sheet", label: "NEUROSHIMA.Tabs.Scripts" }
+      ]
     }
   };
 
   static PARTS = {
-    header: {
-      template: "systems/neuroshima/templates/apps/effect-sheet-header.hbs"
-    },
-    tabs: {
-      template: "templates/generic/tab-navigation.hbs"
-    },
-    details: {
-      template: "systems/neuroshima/templates/apps/effect-sheet-details.hbs"
-    },
-    changes: {
-      template: "systems/neuroshima/templates/apps/effect-sheet-changes.hbs"
-    },
-    scripts: {
-      template: "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs"
-    }
+    header:  { template: "systems/neuroshima/templates/apps/effect-sheet-header.hbs" },
+    tabs:    { template: "templates/generic/tab-navigation.hbs" },
+    details:  { template: "systems/neuroshima/templates/apps/effect-sheet-details.hbs" },
+    duration: { template: "systems/neuroshima/templates/apps/effect-sheet-duration.hbs" },
+    changes:  { template: "systems/neuroshima/templates/apps/effect-sheet-changes.hbs" },
+    scripts:  { template: "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs" }
   };
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     const effect = this.document;
 
-    context.effect = effect;
-    context.tabs = this._getTabs();
+    context.effect  = effect;
+    context.tabs    = this._getTabs();
     context.scripts = foundry.utils.deepClone(effect.getFlag("neuroshima", "scripts") || []);
     context.triggers = NeuroshimaScriptRunner.TRIGGERS;
     context.isEmbedded = effect.isEmbedded;
-    context.actor = effect.actor;
+    context.actor   = effect.actor;
 
     return context;
   }
 
   _getTabs() {
-    const activeTab = this.tabGroups?.primary || "details";
-    const tabs = {};
-    for (const tabData of this.constructor.TABS.primary.tabs) {
-      tabs[tabData.id] = {
-        ...tabData,
-        active: activeTab === tabData.id,
-        cssClass: activeTab === tabData.id ? "active" : ""
+    const activeTab = this.tabGroups?.sheet || "details";
+    return foundry.utils.deepClone(this.constructor.TABS.sheet.tabs).reduce((obj, t) => {
+      obj[t.id] = {
+        ...t,
+        active:   activeTab === t.id,
+        cssClass: activeTab === t.id ? "active" : ""
       };
-    }
-    return tabs;
+      return obj;
+    }, {});
   }
 
   async _onAddScript(event, target) {
@@ -109,22 +99,22 @@ export class NeuroshimaEffectSheet extends HandlebarsApplicationMixin(foundry.ap
     await NeuroshimaScriptRunner.executeManual(actor, this.document, index);
   }
 
-  async _processFormData(event, form, formData) {
-    const data = foundry.utils.expandObject(formData.object);
+  _processFormData(event, form, formData) {
+    const data = super._processFormData(event, form, formData);
 
     const scripts = foundry.utils.deepClone(this.document.getFlag("neuroshima", "scripts") || []);
     if (data.scripts) {
       for (const [idx, scriptUpdate] of Object.entries(data.scripts)) {
         const i = parseInt(idx);
-        if (scripts[i]) {
-          foundry.utils.mergeObject(scripts[i], scriptUpdate);
-        }
+        if (scripts[i]) foundry.utils.mergeObject(scripts[i], scriptUpdate);
       }
       delete data.scripts;
     }
 
-    const updateData = foundry.utils.flattenObject(data);
-    if (scripts) updateData["flags.neuroshima.scripts"] = scripts;
-    await this.document.update(updateData);
+    if (scripts.length > 0 || this.document.getFlag("neuroshima", "scripts")) {
+      foundry.utils.setProperty(data, "flags.neuroshima.scripts", scripts);
+    }
+
+    return data;
   }
 }
