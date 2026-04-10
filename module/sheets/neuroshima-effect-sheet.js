@@ -1,34 +1,41 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
-/**
- * Extends vanilla ActiveEffectConfig (Foundry v13 ApplicationV2).
- * Keeps all default Foundry parts/tabs/styles as-is.
- * Only adds a "Scripts" tab with WFRP-style list view.
- */
-export class NeuroshimaEffectSheet extends foundry.applications.sheets.ActiveEffectConfig {
-  static DEFAULT_OPTIONS = {
-    classes: ["neuroshima", "sheet", "effect"],
-    actions: {
-      addScript: NeuroshimaEffectSheet.prototype._onAddScript,
-      removeScript: NeuroshimaEffectSheet.prototype._onRemoveScript,
-      runManualScript: NeuroshimaEffectSheet.prototype._onRunManualScript,
-      editScript: NeuroshimaEffectSheet.prototype._onEditScript
+const BaseEffectSheet = foundry.applications.sheets.ActiveEffectConfig;
+
+export class NeuroshimaEffectSheet extends BaseEffectSheet {
+  static DEFAULT_OPTIONS = foundry.utils.mergeObject(
+    foundry.utils.deepClone(BaseEffectSheet.DEFAULT_OPTIONS),
+    {
+      classes: [
+        ...(BaseEffectSheet.DEFAULT_OPTIONS.classes ?? []),
+        "neuroshima",
+        "effect"
+      ],
+      actions: {
+        ...(BaseEffectSheet.DEFAULT_OPTIONS.actions ?? {}),
+        addScript: NeuroshimaEffectSheet.prototype._onAddScript,
+        removeScript: NeuroshimaEffectSheet.prototype._onRemoveScript,
+        runManualScript: NeuroshimaEffectSheet.prototype._onRunManualScript,
+        editScript: NeuroshimaEffectSheet.prototype._onEditScript
+      }
+    },
+    { inplace: false }
+  );
+
+  static PARTS = {
+    ...BaseEffectSheet.PARTS,
+    scripts: {
+      template: "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs"
     }
   };
 
-  static PARTS = {
-    scripts: { template: "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs" }
-  };
-
   static TABS = {
+    ...BaseEffectSheet.TABS,
     sheet: {
-      initial: "details",
-      labelPrefix: "EFFECT.TABS.",
+      ...(BaseEffectSheet.TABS?.sheet ?? {}),
       tabs: [
-        { id: "details",  icon: "fa-solid fa-book"  },
-        { id: "duration", icon: "fa-solid fa-clock" },
-        { id: "changes",  icon: "fa-solid fa-gears" },
-        { id: "scripts",  icon: "fa-solid fa-code",  label: "NEUROSHIMA.Tabs.Scripts" }
+        ...(BaseEffectSheet.TABS?.sheet?.tabs ?? []),
+        { id: "scripts", icon: "fa-solid fa-code", label: "NEUROSHIMA.Tabs.Scripts" }
       ]
     }
   };

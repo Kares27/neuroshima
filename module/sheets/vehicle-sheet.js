@@ -300,7 +300,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     context.effects = actor.effects.map(e => ({
       id: e.id,
       name: e.name,
-      icon: e.icon || "icons/svg/aura.svg",
+      icon: e.img || "icons/svg/aura.svg",
       disabled: e.disabled,
       sourceName: e.origin ? (fromUuidSync(e.origin)?.name ?? e.origin) : actor.name,
       durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")

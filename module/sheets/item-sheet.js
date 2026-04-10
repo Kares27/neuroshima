@@ -223,7 +223,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.itemEffects = item.effects.map(e => ({
       id: e.id,
       name: e.name,
-      icon: e.icon || "icons/svg/aura.svg",
+      icon: e.img || "icons/svg/aura.svg",
       disabled: e.disabled,
       durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
     }));
