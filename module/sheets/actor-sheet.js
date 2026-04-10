@@ -4,6 +4,7 @@ import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/weapon-roll-dialog.js";
 import { AmmunitionLoadingDialog } from "../apps/ammo-loading-dialog.js";
 import { RestDialog } from "../apps/rest-dialog.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { CombatHelper } from "../helpers/combat-helper.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -1680,7 +1681,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const li = target.closest(".item");
     const item = this.document.items.get(li.dataset.itemId);
     if (!item || !("equipped" in item.system)) return;
-    return item.update({ "system.equipped": !item.system.equipped });
+    const newEquipped = !item.system.equipped;
+    await item.update({ "system.equipped": newEquipped });
+    await NeuroshimaScriptRunner.execute("equipToggle", { actor: this.document, item, equipped: newEquipped });
   }
 
   /**

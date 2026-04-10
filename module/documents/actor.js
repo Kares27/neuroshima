@@ -1,3 +1,5 @@
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+
 export class NeuroshimaActor extends Actor {
   /** @override */
   async _preCreate(data, options, user) {
@@ -20,6 +22,7 @@ export class NeuroshimaActor extends Actor {
   /** @override */
   prepareDerivedData() {
     super.prepareDerivedData();
+    NeuroshimaScriptRunner.executeSync("prepareData", { actor: this });
   }
 
   /**

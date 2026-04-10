@@ -4,6 +4,7 @@ import { NeuroshimaCombat } from "./module/documents/combat.js";
 import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
+import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
 import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, BeastManeuverData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
@@ -130,6 +131,7 @@ Hooks.once('init', async function() {
     CONFIG.Combatant.documentClass = NeuroshimaCombatant;
     CONFIG.Item.documentClass = NeuroshimaItem;
     CONFIG.ChatMessage.documentClass = NeuroshimaChatMessage;
+    CONFIG.ActiveEffect.documentClass = NeuroshimaActiveEffect;
 
     // Inicjatywa
     CONFIG.Combat.initiative.formula = "0";

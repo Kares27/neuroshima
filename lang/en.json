@@ -1052,6 +1052,7 @@
             "Run": "Run",
             "NewScript": "New Script",
             "NoActor": "Script requires an assigned actor",
+            "ForcePassed": "Auto-passed (by effect script)",
             "Trigger": {
                 "Label": "Trigger",
                 "Manual": "Manual",
@@ -1059,7 +1060,9 @@
                 "RollTest": "Roll Test",
                 "ArmorCalculation": "Armor Calculation",
                 "ApplyDamage": "Apply Damage",
-                "EquipToggle": "Equip Toggle"
+                "EquipToggle": "Equip Toggle",
+                "CreateEffect": "Effect Created",
+                "DeleteEffect": "Effect Deleted"
             },
             "Help": {
                 "Actor": "The actor owning this effect",

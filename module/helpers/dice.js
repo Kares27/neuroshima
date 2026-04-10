@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
  * Helper class for Neuroshima 1.5 dice rolling logic.
@@ -815,6 +816,17 @@ export class NeuroshimaDice {
     }
     // Rozpoczęcie grupy logów dla testu standardowego
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
+
+    // Uruchomienie skryptów rollTest — mogą zmodyfikować stat, skill, penalties przed rzutem
+    if (actor && !isReroll && !isDebug) {
+        const scriptArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey };
+        await NeuroshimaScriptRunner.execute("rollTest", scriptArgs);
+        stat = scriptArgs.stat ?? stat;
+        skill = scriptArgs.skill ?? skill;
+        skillBonus = scriptArgs.skillBonus ?? skillBonus;
+        attributeBonus = scriptArgs.attributeBonus ?? attributeBonus;
+        penalties = scriptArgs.penalties ?? penalties;
+    }
     
     // Sprawdzenie czy aktor ma oczekujący test przeciwstawny (Obrona)
     const pendingOpposed = actor?.getFlag("neuroshima", "opposedPending") || {};

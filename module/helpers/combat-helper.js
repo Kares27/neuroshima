@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -302,7 +303,10 @@ export class CombatHelper {
         let woundIds = [];
         
         if (rawWounds.length > 0) {
-            const painResistanceData = await this.processPainResistance(actor, rawWounds, location, sourceInfo);
+            const scriptArgs = { actor, wounds: rawWounds, location };
+            await NeuroshimaScriptRunner.execute("applyDamage", scriptArgs);
+            const filteredWounds = rawWounds.filter(w => !w.forceSkip);
+            const painResistanceData = await this.processPainResistance(actor, filteredWounds, location, sourceInfo);
             results = painResistanceData.results;
             const createdWounds = await actor.createEmbeddedDocuments("Item", painResistanceData.processedWounds);
             woundIds = createdWounds.map(w => w.id);
@@ -621,38 +625,53 @@ export class CombatHelper {
         // Jeśli konfiguracja rany ma null (np. rany typu K), użyj domyślnego lub skip
         if (!baseDifficulty) baseDifficulty = NEUROSHIMA.difficulties.average;
         
-        // Rzut odporności na ból (test ZAMKNIĘTY zgodnie z zasadami 1.5, ignoruje kary z ran/pancerza)
-        const roll = new Roll("3d20");
-        await roll.evaluate();
-        const diceResults = roll.terms[0].results.map(r => r.result);
-        
-        // Obliczanie Suwaka (tylko umiejętność i kości naturalne)
-        const allowShift = game.settings.get("neuroshima", "allowPainResistanceShift");
+        let isPassed;
+        let diceResults;
         let totalShift = 0;
-        if (allowShift) {
-            const skillShift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
-            const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
-            totalShift = -skillShift + diceShift;
+        let shiftedDiff;
+        let target;
+        let evalData;
+
+        if (wound.forcePassed === true) {
+            diceResults = [20, 20, 20];
+            shiftedDiff = baseDifficulty;
+            target = statValue + (baseDifficulty.mod || 0);
+            evalData = { success: true, successCount: 3, modifiedResults: diceResults.map(v => ({ original: v, modified: v, isSuccess: true, ignored: false, isNat1: false, isNat20: true })), isCritSuccess: false, isCritFailure: false, difficultyLabel: baseDifficulty.label };
+            isPassed = true;
+            game.neuroshima.log(`processPainResistance: forcePassed dla ${wound.damageType}`);
+        } else {
+            // Rzut odporności na ból (test ZAMKNIĘTY zgodnie z zasadami 1.5, ignoruje kary z ran/pancerza)
+            const roll = new Roll("3d20");
+            await roll.evaluate();
+            diceResults = roll.terms[0].results.map(r => r.result);
+            
+            // Obliczanie Suwaka (tylko umiejętność i kości naturalne)
+            const allowShift = game.settings.get("neuroshima", "allowPainResistanceShift");
+            if (allowShift) {
+                const skillShift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
+                const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
+                totalShift = -skillShift + diceShift;
+            }
+            
+            shiftedDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);
+            target = statValue + shiftedDiff.mod;
+            
+            // Ewaluacja testu zamkniętego (min. 2 sukcesy dla udanego testu)
+            const diceObjects = diceResults.map((v, i) => ({ 
+                original: v, 
+                index: i, 
+                modified: v, 
+                isSuccess: false, 
+                ignored: false,
+                isNat1: v === 1,
+                isNat20: v === 20
+            }));
+            
+            evalData = { target, stat: statValue, skill: skillValue, difficultyLabel: shiftedDiff.label };
+            game.neuroshima.NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
+            isPassed = evalData.success;
         }
-        
-        const shiftedDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);
-        const target = statValue + shiftedDiff.mod;
-        
-        // Ewaluacja testu zamkniętego (min. 2 sukcesy dla udanego testu)
-        const diceObjects = diceResults.map((v, i) => ({ 
-            original: v, 
-            index: i, 
-            modified: v, 
-            isSuccess: false, 
-            ignored: false,
-            isNat1: v === 1,
-            isNat20: v === 20
-        }));
-        
-        const evalData = { target, stat: statValue, skill: skillValue, difficultyLabel: shiftedDiff.label };
-        game.neuroshima.NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
-        
-        const isPassed = evalData.success; // true if successCount >= 2
+
         // Penalties: [zdany, niezdany]
         const appliedPenalty = isPassed ? (config?.penalties[0] || 0) : (config?.penalties[1] || 0);
         
@@ -661,23 +680,24 @@ export class CombatHelper {
             damageType,
             baseDifficulty: baseDifficulty.label,
             totalShift: totalShift,
-            difficulty: shiftedDiff.label,
+            difficulty: shiftedDiff?.label ?? baseDifficulty.label,
             isPassed,
+            forcePassed: wound.forcePassed === true,
             penalty: appliedPenalty,
             dice: diceResults.join(", "),
-            modifiedResults: evalData.modifiedResults,
-            successPoints: evalData.successCount,
+            modifiedResults: evalData?.modifiedResults ?? [],
+            successPoints: evalData?.successCount ?? 3,
             target: target,
             skill: skillValue,
-            isCritSuccess: evalData.isCritSuccess,
-            isCritFailure: evalData.isCritFailure,
-            tooltip: game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance"),
-            tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
-                modifiedResults: evalData.modifiedResults,
+            isCritSuccess: evalData?.isCritSuccess ?? false,
+            isCritFailure: evalData?.isCritFailure ?? false,
+            tooltip: wound.forcePassed ? game.i18n.localize("NEUROSHIMA.Scripts.ForcePassed") : game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance"),
+            tooltipHtml: wound.forcePassed ? "" : game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
+                modifiedResults: evalData?.modifiedResults ?? [],
                 target: target,
                 skill: skillValue,
-                successCount: evalData.successCount,
-                difficultyLabel: shiftedDiff.label,
+                successCount: evalData?.successCount ?? 0,
+                difficultyLabel: shiftedDiff?.label ?? baseDifficulty.label,
                 isOpen: false
             })
         });

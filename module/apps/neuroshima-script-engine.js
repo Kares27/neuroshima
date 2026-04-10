@@ -33,6 +33,16 @@ export class NeuroshimaScript {
       ui.notifications.error(`Script Error [${this.label}]: ${e.message}`);
     }
   }
+
+  executeSync(args = {}) {
+    try {
+      const fn = new Function("args", this.code);
+      fn.call(this, args);
+    } catch (e) {
+      console.error(`Neuroshima | Script Error [${this.label}]:`, e);
+      ui.notifications.error(`Script Error [${this.label}]: ${e.message}`);
+    }
+  }
 }
 
 /**
@@ -43,11 +53,19 @@ export class NeuroshimaScript {
  *
  * Triggers available:
  * - manual       : Executed by clicking a button on the actor sheet
- * - prepareData  : Runs during actor prepareDerivedData
- * - rollTest     : Runs before a skill/attribute roll
- * - armorCalculation : Runs during armor value computation
- * - applyDamage  : Runs when damage is applied to the actor
- * - equipToggle  : Runs when an item is equipped/unequipped
+ * - prepareData  : Runs during actor prepareDerivedData (SYNC, no await)
+ *                  args = { actor }
+ *                  Use: modify actor.system.* values directly
+ * - rollTest     : Runs before any skill/attribute roll
+ *                  args = { actor, stat, skill, skillBonus, attributeBonus, penalties, label, attributeKey, skillKey }
+ *                  Use: modify args.stat, args.skill, args.penalties.mod to affect the roll
+ * - applyDamage  : Runs before pain resistance is processed for wounds
+ *                  args = { actor, wounds: [{name, damageType, forcePassed?}], location }
+ *                  Use: set wound.forcePassed = true to auto-pass pain resistance for that wound
+ *                       set wound.forceSkip = true to remove the wound entirely
+ * - equipToggle  : Runs after an item is equipped or unequipped
+ *                  args = { actor, item, equipped }
+ *                  Use: apply or remove custom bonuses based on equipped state
  *
  * Context available inside scripts (via `this`):
  * - this.effect  - The ActiveEffect owning this script
@@ -62,7 +80,9 @@ export class NeuroshimaScriptRunner {
     rollTest: "NEUROSHIMA.Scripts.Trigger.RollTest",
     armorCalculation: "NEUROSHIMA.Scripts.Trigger.ArmorCalculation",
     applyDamage: "NEUROSHIMA.Scripts.Trigger.ApplyDamage",
-    equipToggle: "NEUROSHIMA.Scripts.Trigger.EquipToggle"
+    equipToggle: "NEUROSHIMA.Scripts.Trigger.EquipToggle",
+    createEffect: "NEUROSHIMA.Scripts.Trigger.CreateEffect",
+    deleteEffect: "NEUROSHIMA.Scripts.Trigger.DeleteEffect"
   };
 
   /**
@@ -77,10 +97,10 @@ export class NeuroshimaScriptRunner {
 
     const collectFromEffect = (effect) => {
       if (effect.disabled || effect.isSuppressed) return;
-      const effectScripts = effect.getFlag("neuroshima", "scripts") || [];
-      for (const scriptData of effectScripts) {
-        if (scriptData.trigger === trigger) {
-          scripts.push(new NeuroshimaScript(scriptData, effect));
+      const effectScripts = effect.scripts ?? [];
+      for (const script of effectScripts) {
+        if (script.trigger === trigger) {
+          scripts.push(script);
         }
       }
     };
@@ -100,7 +120,7 @@ export class NeuroshimaScriptRunner {
   }
 
   /**
-   * Execute all scripts for a given trigger on the actor.
+   * Execute all scripts for a given trigger on the actor (async).
    * @param {string} trigger
    * @param {Object} args - Arguments passed to each script
    * @returns {Promise<void>}
@@ -111,6 +131,22 @@ export class NeuroshimaScriptRunner {
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
       await script.execute(args);
+    }
+  }
+
+  /**
+   * Execute all scripts for a given trigger synchronously.
+   * Use for triggers called from synchronous methods (e.g. prepareDerivedData).
+   * Scripts must not use async/await - they run synchronously.
+   * @param {string} trigger
+   * @param {Object} args - Arguments passed to each script
+   */
+  static executeSync(trigger, args = {}) {
+    const actor = args.actor;
+    if (!actor) return;
+    const scripts = this.getScripts(actor, trigger);
+    for (const script of scripts) {
+      script.executeSync(args);
     }
   }
 

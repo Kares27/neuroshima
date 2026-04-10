@@ -1079,6 +1079,7 @@
             "Run": "Uruchom",
             "NewScript": "Nowy Skrypt",
             "NoActor": "Skrypt wymaga przypisanego aktora",
+            "ForcePassed": "Auto-zdany (przez skrypt efektu)",
             "Trigger": {
                 "Label": "Wyzwalacz",
                 "Manual": "Ręczny",
@@ -1086,7 +1087,9 @@
                 "RollTest": "Rzut na Test",
                 "ArmorCalculation": "Obliczenie Pancerza",
                 "ApplyDamage": "Aplikowanie Obrażeń",
-                "EquipToggle": "Przełącz Ekwipunek"
+                "EquipToggle": "Przełącz Ekwipunek",
+                "CreateEffect": "Utworzenie Efektu",
+                "DeleteEffect": "Usunięcie Efektu"
             },
             "Help": {
                 "Actor": "Aktor właściciel efektu",
