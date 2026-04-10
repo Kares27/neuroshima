@@ -29,6 +29,7 @@
             "ActorCreature": "Creature Sheet",
             "ActorVehicle": "Vehicle Sheet",
             "Item": "Item Sheet",
+            "Effect": "Effect Sheet",
             "Edit": "Edit",
             "Finish": "Finish",
             "SaveAndFinish": "Save and Finish"

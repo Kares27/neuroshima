@@ -234,7 +234,11 @@ Hooks.once('init', async function() {
         label: "NEUROSHIMA.Sheet.Item"
     });
 
-    CONFIG.ActiveEffect.sheetClass = NeuroshimaEffectSheet;
+    foundry.applications.apps.DocumentSheetConfig.unregisterSheet(ActiveEffect, "core", foundry.applications.sheets.ActiveEffectConfig);
+    foundry.applications.apps.DocumentSheetConfig.registerSheet(ActiveEffect, "neuroshima", NeuroshimaEffectSheet, {
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.Effect"
+    });
 
     // Rejestracja ustawień systemowych
     game.settings.register("neuroshima", "debugMode", {
@@ -562,10 +566,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/healing-request.hbs",
         "systems/neuroshima/templates/dialog/rest-dialog.hbs",
         "systems/neuroshima/templates/dialog/hp-config.hbs",
-        "systems/neuroshima/templates/apps/effect-sheet-header.hbs",
-        "systems/neuroshima/templates/apps/effect-sheet-details.hbs",
-        "systems/neuroshima/templates/apps/effect-sheet-changes.hbs",
-        "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs"
+        "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs",
+        "systems/neuroshima/templates/apps/script-editor.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);

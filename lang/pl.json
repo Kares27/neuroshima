@@ -32,6 +32,7 @@
             "ActorCreature": "Arkusz Stworzenia",
             "ActorVehicle": "Arkusz Pojazdu",
             "Item": "Arkusz Przedmiotu",
+            "Effect": "Arkusz Efektu",
             "Edit": "Edytuj",
             "Finish": "Zakończ",
             "SaveAndFinish": "Zapisz i zakończ"

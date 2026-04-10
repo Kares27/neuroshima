@@ -3928,3 +3928,105 @@ body.theme-dark {
     color: #e0e0d0;
 }
 
+/* ===== Script List (Effect Sheet Scripts Tab) ===== */
+
+.neuroshima.effect .neuroshima-script-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+}
+
+.neuroshima.effect .ns-script-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 2rem;
+    line-height: 2rem;
+    padding: 0 0.5rem;
+    background: var(--ns-bg-header);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    gap: 0.25rem;
+}
+
+.neuroshima.effect .ns-script-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+.neuroshima.effect .ns-script-label a {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--ns-text-main);
+    text-decoration: none;
+}
+
+.neuroshima.effect .ns-script-label a:hover {
+    color: var(--ns-border-focus);
+}
+
+.neuroshima.effect .ns-script-trigger {
+    flex: 0 0 auto;
+    font-size: 0.8em;
+    opacity: 0.65;
+    padding: 0 0.4rem;
+}
+
+.neuroshima.effect .ns-script-action {
+    flex: 0 0 1.5rem;
+    text-align: center;
+    line-height: 2rem;
+    color: var(--ns-text-light);
+    cursor: pointer;
+}
+
+.neuroshima.effect .ns-script-action:hover {
+    color: var(--ns-border-focus);
+}
+
+.neuroshima.effect .ns-scripts-empty {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.neuroshima.effect .ns-script-add {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.neuroshima.effect .ns-script-add button {
+    width: auto;
+    padding: 0 1.5rem;
+    height: 1.8rem;
+    line-height: 1.8rem;
+}
+
+/* ===== Script Editor Popup ===== */
+
+.neuroshima.script-editor .ns-script-code-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.script-editor .ns-code-editor {
+    flex: 1;
+    width: 100%;
+    min-height: 280px;
+    font-family: monospace;
+    font-size: 0.85em;
+    resize: vertical;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    padding: 0.5rem;
+    line-height: 1.5;
+    tab-size: 2;
+}
+
