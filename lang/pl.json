@@ -1046,6 +1046,11 @@
         "Source": "Źródło",
         "AddChange": "Dodaj Zmianę",
         "NoChanges": "Brak zmian",
+        "Create": "Utwórz Efekt",
+        "Empty": "Brak aktywnych efektów",
+        "Enable": "Włącz",
+        "Disable": "Wyłącz",
+        "NewEffect": "Nowy Efekt",
         "Description": "Opis",
         "Change": {
             "Key": "Klucz",

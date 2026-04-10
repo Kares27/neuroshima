@@ -112,6 +112,31 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       toggleHealing: async function(event, target) {
         const item = this.document.items.get(target.closest("[data-item-id]")?.dataset.itemId);
         if (item) await item.update({ "system.isHealing": !item.system.isHealing });
+      },
+
+      createEffect: async function(event, target) {
+        const [effect] = await this.document.createEmbeddedDocuments("ActiveEffect", [{
+          name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
+          icon: "icons/svg/aura.svg",
+          origin: this.document.uuid
+        }]);
+        effect?.sheet.render(true);
+      },
+
+      editEffect: async function(event, target) {
+        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+        this.document.effects.get(id)?.sheet.render(true);
+      },
+
+      deleteEffect: async function(event, target) {
+        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+        await this.document.effects.get(id)?.delete();
+      },
+
+      toggleEffect: async function(event, target) {
+        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+        const effect = this.document.effects.get(id);
+        if (effect) await effect.update({ disabled: !effect.disabled });
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -125,6 +150,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         { id: "mods",      group: "primary", label: "NEUROSHIMA.Tabs.Modifications" },
         { id: "combat",    group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "equipment", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
+        { id: "effects",   group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
         { id: "notes",     group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "crew"
@@ -139,6 +165,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     mods:      { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-mods.hbs", scrollable: [""] },
     combat:    { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-combat.hbs", scrollable: [""] },
     equipment: { template: "systems/neuroshima/templates/actors/vehicle/parts/vehicle-equipment.hbs", scrollable: [""] },
+    effects:   { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
     notes:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 
@@ -269,6 +296,15 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         relativeTo: actor
       })
     };
+
+    context.effects = actor.effects.map(e => ({
+      id: e.id,
+      name: e.name,
+      icon: e.icon || "icons/svg/aura.svg",
+      disabled: e.disabled,
+      sourceName: e.origin ? (fromUuidSync(e.origin)?.name ?? e.origin) : actor.name,
+      durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+    }));
 
     return context;
   }

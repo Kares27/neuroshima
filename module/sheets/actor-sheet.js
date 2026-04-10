@@ -69,7 +69,11 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       showPatientCard: this.prototype._onShowPatientCard,
       requestHealing: this.prototype._onRequestHealing,
       toggleCombatLayout: this.prototype._onToggleCombatLayout,
-      rest: this.prototype._onRest
+      rest: this.prototype._onRest,
+      createEffect: this.prototype._onCreateEffect,
+      editEffect: this.prototype._onEditEffect,
+      deleteEffect: this.prototype._onDeleteEffect,
+      toggleEffect: this.prototype._onToggleEffect
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -82,6 +86,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         { id: "tricks", group: "primary", label: "NEUROSHIMA.Tabs.Tricks" },
         { id: "combat", group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "inventory", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
+        { id: "effects", group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
         { id: "notes", group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "attributes"
@@ -99,6 +104,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     combatPaperDoll: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll-partial.hbs" ,  scrollable: [".paper-doll-scrollable"]},
     combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" ,  scrollable: [".wounds-list-container"]},
     inventory: { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""]},
+    effects: { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
     notes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 
@@ -284,6 +290,16 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         relativeTo: this.document
       })
     };
+
+    // Prepare effects
+    context.effects = actor.effects.map(e => ({
+      id: e.id,
+      name: e.name,
+      icon: e.icon || "icons/svg/aura.svg",
+      disabled: e.disabled,
+      sourceName: e.origin ? (fromUuidSync(e.origin)?.name ?? e.origin) : actor.name,
+      durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+    }));
 
     return context;
   }
@@ -1998,5 +2014,32 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     if (restData && typeof restData === 'object' && restData.days !== undefined) {
       await CombatHelper.rest(actor, restData);
     }
+  }
+
+  async _onCreateEffect(event, target) {
+    const effectData = {
+      name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
+      icon: "icons/svg/aura.svg",
+      origin: this.document.uuid
+    };
+    const [effect] = await this.document.createEmbeddedDocuments("ActiveEffect", [effectData]);
+    effect?.sheet.render(true);
+  }
+
+  async _onEditEffect(event, target) {
+    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+    const effect = this.document.effects.get(id);
+    effect?.sheet.render(true);
+  }
+
+  async _onDeleteEffect(event, target) {
+    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+    await this.document.effects.get(id)?.delete();
+  }
+
+  async _onToggleEffect(event, target) {
+    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+    const effect = this.document.effects.get(id);
+    if (effect) await effect.update({ disabled: !effect.disabled });
   }
 }

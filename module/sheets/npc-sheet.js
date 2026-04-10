@@ -22,6 +22,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
         { id: "tricks",     group: "primary", label: "NEUROSHIMA.Tabs.Tricks" },
         { id: "combat",     group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "inventory",  group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
+        { id: "effects",    group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
         { id: "notes",      group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "attributes"
@@ -39,6 +40,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
     combatPaperDoll:  { template: "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll-partial.hbs" },
     combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" },
     inventory:        { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""] },
+    effects:          { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
     notes:            { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 }

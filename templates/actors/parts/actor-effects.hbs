@@ -13,21 +13,25 @@
         {{/if}}
     </div>
 
-    {{#if itemEffects.length}}
+    {{#if effects.length}}
     <div class="effects-list">
         <div class="effects-list-header">
             <div class="col-icon"></div>
             <div class="col-name">{{localize "Name"}}</div>
+            <div class="col-source">{{localize "NEUROSHIMA.Effects.Source"}}</div>
             <div class="col-duration">{{localize "Duration"}}</div>
             <div class="col-controls"></div>
         </div>
-        {{#each itemEffects}}
+        {{#each effects}}
         <div class="effect-row {{#if this.disabled}}disabled{{/if}}" data-effect-id="{{this.id}}">
             <div class="col-icon">
                 <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
             </div>
             <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}">
                 <span>{{this.name}}</span>
+            </div>
+            <div class="col-source">
+                <span>{{this.sourceName}}</span>
             </div>
             <div class="col-duration">
                 <span>{{this.durationLabel}}</span>

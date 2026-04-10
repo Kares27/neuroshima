@@ -27,7 +27,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       scrollable: [".sheet-body", ".contents-list-items", ".magazine-contents-section"]
     },
     actions: {
-      editImage: this.prototype._onEditImage
+      editImage: this.prototype._onEditImage,
+      createEffect: this.prototype._onCreateEffect,
+      editEffect: this.prototype._onEditEffect,
+      deleteEffect: this.prototype._onDeleteEffect,
+      toggleEffect: this.prototype._onToggleEffect
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -215,9 +219,42 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       });
     }
 
+    // Prepare item effects
+    context.itemEffects = item.effects.map(e => ({
+      id: e.id,
+      name: e.name,
+      icon: e.icon || "icons/svg/aura.svg",
+      disabled: e.disabled,
+      durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+    }));
+
     game.neuroshima.log(`Item Sheet Context prepared for ${item.name}`, context);
 
     return context;
+  }
+
+  async _onCreateEffect(event, target) {
+    const [effect] = await this.document.createEmbeddedDocuments("ActiveEffect", [{
+      name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
+      icon: "icons/svg/aura.svg"
+    }]);
+    effect?.sheet.render(true);
+  }
+
+  async _onEditEffect(event, target) {
+    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+    this.document.effects.get(id)?.sheet.render(true);
+  }
+
+  async _onDeleteEffect(event, target) {
+    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+    await this.document.effects.get(id)?.delete();
+  }
+
+  async _onToggleEffect(event, target) {
+    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+    const effect = this.document.effects.get(id);
+    if (effect) await effect.update({ disabled: !effect.disabled });
   }
 
   /** @override */

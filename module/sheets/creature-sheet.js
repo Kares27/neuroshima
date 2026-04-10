@@ -283,6 +283,31 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
           await CombatHelper.rest(this.document, restData);
           this.render();
         }
+      },
+
+      createEffect: async function(event, target) {
+        const [effect] = await this.document.createEmbeddedDocuments("ActiveEffect", [{
+          name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
+          icon: "icons/svg/aura.svg",
+          origin: this.document.uuid
+        }]);
+        effect?.sheet.render(true);
+      },
+
+      editEffect: async function(event, target) {
+        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+        this.document.effects.get(id)?.sheet.render(true);
+      },
+
+      deleteEffect: async function(event, target) {
+        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+        await this.document.effects.get(id)?.delete();
+      },
+
+      toggleEffect: async function(event, target) {
+        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+        const effect = this.document.effects.get(id);
+        if (effect) await effect.update({ disabled: !effect.disabled });
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -295,6 +320,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         { id: "attributes", group: "primary", label: "NEUROSHIMA.Tabs.Attributes" },
         { id: "combat",     group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "inventory",  group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
+        { id: "effects",    group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
         { id: "notes",      group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "attributes"
@@ -312,6 +338,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     attributes: { template: "systems/neuroshima/templates/actors/creature/parts/creature-attributes.hbs", scrollable: [""] },
     combat:     { template: "systems/neuroshima/templates/actors/creature/parts/creature-combat.hbs", scrollable: [".creature-actions-list", ".creature-maneuvers-list", ".creature-combat-col", ""] },
     inventory:  { template: "systems/neuroshima/templates/actors/creature/parts/creature-inventory.hbs", scrollable: [""] },
+    effects:    { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
     notes:      { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
 
@@ -406,6 +433,15 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         relativeTo: actor
       })
     };
+
+    context.effects = actor.effects.map(e => ({
+      id: e.id,
+      name: e.name,
+      icon: e.icon || "icons/svg/aura.svg",
+      disabled: e.disabled,
+      sourceName: e.origin ? (fromUuidSync(e.origin)?.name ?? e.origin) : actor.name,
+      durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+    }));
 
     return context;
   }

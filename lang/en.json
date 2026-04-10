@@ -1022,6 +1022,11 @@
         "Source": "Source",
         "AddChange": "Add Change",
         "NoChanges": "No changes",
+        "Create": "Create Effect",
+        "Empty": "No active effects",
+        "Enable": "Enable",
+        "Disable": "Disable",
+        "NewEffect": "New Effect",
         "Description": "Description",
         "Change": {
             "Key": "Key",
