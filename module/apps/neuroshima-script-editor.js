@@ -10,12 +10,14 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
   }
 
   static DEFAULT_OPTIONS = {
+    tag: "form",
     classes: ["neuroshima", "script-editor"],
     window: { resizable: true },
     position: { width: 600, height: 520 },
     form: {
       handler: NeuroshimaScriptEditor.prototype._onSave,
-      closeOnSubmit: true
+      closeOnSubmit: true,
+      submitOnChange: false
     }
   };
 
@@ -47,7 +49,6 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
       scripts[this.scriptIndex].trigger = data.trigger ?? scripts[this.scriptIndex].trigger;
       scripts[this.scriptIndex].code = data.code ?? scripts[this.scriptIndex].code;
       await this.effect.setFlag("neuroshima", "scripts", scripts);
-      this.effect.sheet?.render();
     }
   }
 }

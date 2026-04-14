@@ -441,6 +441,12 @@
     overflow-y: auto;
 }
 
+.neuroshima.sheet.actor [data-application-part="effects"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
 /* Base tab active state for any other tabs */
 .neuroshima.sheet.actor .tab.active:not([data-application-part]) {
     display: block;
@@ -4502,7 +4508,32 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     text-decoration: underline;
 }
 
-.neuroshima .effect-row .col-source,
+.neuroshima .effect-row .col-source {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8em;
+    color: var(--color-text-dark-secondary, #888);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .effect-row .col-source .source-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    object-fit: cover;
+    border: none;
+    opacity: 0.8;
+}
+
+.neuroshima .effect-row .col-source span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .neuroshima .effect-row .col-duration {
     font-size: 0.8em;
     color: var(--color-text-dark-secondary, #888);

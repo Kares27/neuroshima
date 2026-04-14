@@ -583,3 +583,36 @@
     padding-top: 32px;
 }
 
+.neuroshima.sheet.item .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--ns-bg-header);
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--ns-border-main);
+    text-transform: uppercase;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.item .section-header .header-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.item .section-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima.sheet.item .section-header .header-actions .item-control {
+    opacity: 0.6;
+    transition: opacity 0.12s;
+}
+
+.neuroshima.sheet.item .section-header .header-actions .item-control:hover {
+    opacity: 1;
+}
+

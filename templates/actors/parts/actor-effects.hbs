@@ -23,15 +23,16 @@
             <div class="col-controls"></div>
         </div>
         {{#each effects}}
-        <div class="item effect-row flexrow {{#if this.disabled}}disabled{{/if}}" data-effect-id="{{this.id}}">
+        <div class="item effect-row flexrow {{#if this.disabled}}disabled{{/if}}" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
             <div class="col-icon">
                 <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
             </div>
             <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}">
                 <span>{{this.name}}</span>
             </div>
-            <div class="col-source">
-                <span title="{{this.sourceName}}">{{this.sourceName}}</span>
+            <div class="col-source {{#if this.itemId}}clickable{{/if}}" {{#if this.itemId}}data-action="openSource" data-item-id="{{this.itemId}}"{{/if}} title="{{this.sourceName}}">
+                <img src="{{this.sourceIcon}}" alt="{{this.sourceName}}" width="16" height="16" class="source-icon">
+                <span>{{this.sourceName}}</span>
             </div>
             <div class="col-duration">
                 <span>{{this.durationLabel}}</span>
@@ -44,9 +45,11 @@
                 <a class="item-control" data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
                     <i class="fas fa-edit"></i>
                 </a>
+                {{#unless this.isItemEffect}}
                 <a class="item-control" data-action="deleteEffect" data-effect-id="{{this.id}}" title="{{localize 'DOCUMENT.Delete'}}">
                     <i class="fas fa-trash"></i>
                 </a>
+                {{/unless}}
                 {{/if}}
             </div>
         </div>

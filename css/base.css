@@ -4009,24 +4009,66 @@ body.theme-dark {
 
 /* ===== Script Editor Popup ===== */
 
-.neuroshima.script-editor .ns-script-code-group {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+.neuroshima.script-editor .window-content {
+    overflow: hidden;
+    padding: 0;
 }
 
-.neuroshima.script-editor .ns-code-editor {
-    flex: 1;
+.neuroshima.script-editor .window-content > [data-application-part] {
     width: 100%;
-    min-height: 280px;
-    font-family: monospace;
-    font-size: 0.85em;
-    resize: vertical;
-    background: var(--ns-bg-input);
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.neuroshima.script-editor .ns-script-editor-body {
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    height: 100%;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.neuroshima.script-editor .ns-script-code-group {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.neuroshima.script-editor .ns-script-code-group label {
+    flex-shrink: 0;
+    margin-bottom: 0.25rem;
+}
+
+.neuroshima.script-editor .ns-script-code-group code-mirror {
+    flex: 1;
+    display: block;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
     border: 1px solid var(--ns-border-main);
     border-radius: 3px;
-    padding: 0.5rem;
-    line-height: 1.5;
-    tab-size: 2;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.neuroshima.script-editor .ns-script-code-group code-mirror .cm-editor {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.neuroshima.script-editor .ns-script-code-group code-mirror .cm-scroller {
+    overflow: auto;
+}
+
+.neuroshima.script-editor .form-footer {
+    padding-top: 0.25rem;
 }
 

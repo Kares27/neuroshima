@@ -23,10 +23,15 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
   );
 
   static PARTS = {
-    ...BaseEffectSheet.PARTS,
+    header: BaseEffectSheet.PARTS.header,
+    tabs: BaseEffectSheet.PARTS.tabs,
+    details: BaseEffectSheet.PARTS.details,
+    duration: BaseEffectSheet.PARTS.duration,
+    changes: BaseEffectSheet.PARTS.changes,
     scripts: {
       template: "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs"
-    }
+    },
+    footer: BaseEffectSheet.PARTS.footer
   };
 
   static TABS = {
@@ -39,6 +44,15 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       ]
     }
   };
+
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    for (const [group, tabId] of Object.entries(this.tabGroups)) {
+      this.element.querySelectorAll(`[data-group="${group}"][data-tab]`).forEach(el => {
+        el.classList.toggle("active", el.dataset.tab === tabId);
+      });
+    }
+  }
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
@@ -54,7 +68,6 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     await this.document.setFlag("neuroshima", "scripts", scripts);
     const { NeuroshimaScriptEditor } = await import("../apps/neuroshima-script-editor.js");
     new NeuroshimaScriptEditor(this.document, newIndex).render(true);
-    this.render();
   }
 
   async _onRemoveScript(event, target) {
@@ -62,7 +75,6 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     const scripts = foundry.utils.deepClone(this.document.getFlag("neuroshima", "scripts") || []);
     scripts.splice(index, 1);
     await this.document.setFlag("neuroshima", "scripts", scripts);
-    this.render();
   }
 
   async _onEditScript(event, target) {

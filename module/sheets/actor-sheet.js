@@ -74,7 +74,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       createEffect: this.prototype._onCreateEffect,
       editEffect: this.prototype._onEditEffect,
       deleteEffect: this.prototype._onDeleteEffect,
-      toggleEffect: this.prototype._onToggleEffect
+      toggleEffect: this.prototype._onToggleEffect,
+      openSource: this.prototype._onOpenSource
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -292,15 +293,39 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       })
     };
 
-    // Prepare effects
-    context.effects = actor.effects.map(e => ({
-      id: e.id,
-      name: e.name,
-      icon: e.img || "icons/svg/aura.svg",
-      disabled: e.disabled,
-      sourceName: e.origin ? (fromUuidSync(e.origin)?.name ?? e.origin) : actor.name,
-      durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
-    }));
+    // Prepare effects — collect from actor directly + all owned items
+    const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
+    context.effects = [];
+
+    for (const e of actor.effects) {
+      context.effects.push({
+        id: e.id,
+        itemId: null,
+        name: e.name,
+        icon: e.img || "icons/svg/aura.svg",
+        disabled: e.disabled,
+        sourceName: actor.name,
+        sourceIcon: actor.img || "icons/svg/mystery-man.svg",
+        durationLabel: effectDurationLabel(e),
+        isItemEffect: false
+      });
+    }
+
+    for (const item of actor.items) {
+      for (const e of item.effects) {
+        context.effects.push({
+          id: e.id,
+          itemId: item.id,
+          name: e.name,
+          icon: e.img || "icons/svg/aura.svg",
+          disabled: e.disabled,
+          sourceName: item.name,
+          sourceIcon: item.img || "icons/svg/item-bag.svg",
+          durationLabel: effectDurationLabel(e),
+          isItemEffect: true
+        });
+      }
+    }
 
     return context;
   }
@@ -2029,20 +2054,32 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     effect?.sheet.render(true);
   }
 
+  _resolveEffect(target) {
+    const row = target.closest(".effect-row");
+    const id = row?.dataset.effectId;
+    const itemId = row?.dataset.itemId;
+    if (itemId) return this.document.items.get(itemId)?.effects.get(id) ?? null;
+    return this.document.effects.get(id) ?? null;
+  }
+
   async _onEditEffect(event, target) {
-    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
-    const effect = this.document.effects.get(id);
-    effect?.sheet.render(true);
+    this._resolveEffect(target)?.sheet.render(true);
   }
 
   async _onDeleteEffect(event, target) {
-    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
-    await this.document.effects.get(id)?.delete();
+    const row = target.closest("[data-effect-id]");
+    if (row?.dataset.itemId) return;
+    await this._resolveEffect(target)?.delete();
   }
 
   async _onToggleEffect(event, target) {
-    const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
-    const effect = this.document.effects.get(id);
+    const effect = this._resolveEffect(target);
     if (effect) await effect.update({ disabled: !effect.disabled });
+  }
+
+  async _onOpenSource(event, target) {
+    const itemId = target.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    item?.sheet.render(true);
   }
 }
