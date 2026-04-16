@@ -1673,6 +1673,9 @@ body.theme-dark {
 .pain-resistance-report .wound-item.success .wound-icon { color: #28a745; }
 .pain-resistance-report .wound-item.failure .wound-icon { color: #dc3545; }
 .pain-resistance-report .wound-item.reduced .wound-icon { color: #6c757d; }
+.pain-resistance-report .wound-item.force-passed .wound-icon { color: #28a745; }
+
+
 
 .pain-resistance-report .wound-info-main {
     flex: 1;
@@ -3926,6 +3929,23 @@ body.theme-dark {
 
 .neuroshima.roll-card.tooltip-inline .outcome-item .value {
     color: #e0e0d0;
+}
+
+/* ===== Changes Tab ===== */
+
+.neuroshima.effect .ns-change-key-toggle {
+    border-bottom: 1px solid var(--ns-border-main);
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85em;
+    margin-bottom: 0.25rem;
+}
+
+.neuroshima.effect section[data-tab="changes"] .key select {
+    width: 100%;
+    height: 24px;
+    font-size: 0.82em;
+    padding: 0 4px;
+    box-sizing: border-box;
 }
 
 /* ===== Script List (Effect Sheet Scripts Tab) ===== */

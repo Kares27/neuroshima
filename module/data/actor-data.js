@@ -89,6 +89,15 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         meleeInitiative: new fields.NumberField({ integer: true, initial: 0 })
       }),
       healingRate: new fields.NumberField({ integer: true, initial: 5, min: 1, max: 100 }),
+      armorBonus: new fields.SchemaField({
+        all:      new fields.NumberField({ initial: 0 }),
+        head:     new fields.NumberField({ initial: 0 }),
+        torso:    new fields.NumberField({ initial: 0 }),
+        rightArm: new fields.NumberField({ initial: 0 }),
+        leftArm:  new fields.NumberField({ initial: 0 }),
+        rightLeg: new fields.NumberField({ initial: 0 }),
+        leftLeg:  new fields.NumberField({ initial: 0 })
+      }),
       encumbrance: new fields.SchemaField({
         value: new fields.NumberField({ initial: 0, min: 0 }),
         max: new fields.NumberField({ initial: 0, min: 0 }),
@@ -349,6 +358,14 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         isOpen:          new fields.BooleanField({ initial: false }),
         rollMode:        new fields.StringField({ initial: "roll" })
       }, { required: false }),
+      armorBonus: new fields.SchemaField({
+        all:       new fields.NumberField({ initial: 0 }),
+        front:     new fields.NumberField({ initial: 0 }),
+        rightSide: new fields.NumberField({ initial: 0 }),
+        leftSide:  new fields.NumberField({ initial: 0 }),
+        rear:      new fields.NumberField({ initial: 0 }),
+        bottom:    new fields.NumberField({ initial: 0 })
+      }),
       /** Per-section vehicle armor plate */
       armor: new fields.SchemaField({
         front:     new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),

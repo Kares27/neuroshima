@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neuroshima 1.5 — System Skryptów Efektów</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --bg2: #242424;
+    --bg3: #2e2e2e;
+    --border: #3a3a3a;
+    --accent: #c8a45a;
+    --accent2: #7ab0d4;
+    --accent3: #7ec891;
+    --accent-err: #e06060;
+    --text: #d4d4d4;
+    --text-dim: #888;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+    --kw: #cba6f7;
+    --str: #a6e3a1;
+    --num: #fab387;
+    --fn: #89b4fa;
+    --cmt: #6c7086;
+    --var: #89dceb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  /* Header */
+  .doc-header { border-bottom: 2px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .doc-header h1 { font-size: 2rem; color: var(--accent); font-weight: 700; letter-spacing: 0.03em; }
+  .doc-header .subtitle { color: var(--text-dim); margin-top: 0.25rem; font-size: 0.95rem; }
+  .badge { display: inline-block; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; color: var(--text-dim); margin-left: 0.5rem; vertical-align: middle; }
+
+  /* TOC */
+  .toc { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2.5rem; }
+  .toc h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 0.75rem; }
+  .toc ol { padding-left: 1.25rem; }
+  .toc li { margin: 0.2rem 0; }
+  .toc a { color: var(--accent2); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Sections */
+  section { margin-bottom: 3rem; }
+  h2.section-title { font-size: 1.4rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.25rem; }
+  h3 { font-size: 1.05rem; color: var(--accent2); margin: 1.5rem 0 0.6rem; }
+  h4 { font-size: 0.9rem; color: var(--accent3); margin: 1rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  p { margin-bottom: 0.75rem; color: var(--text); }
+
+  /* Code */
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.25rem; overflow-x: auto; margin: 0.75rem 0; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.85rem; line-height: 1.55; }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.88em; background: var(--bg3); padding: 1px 5px; border-radius: 3px; color: var(--accent2); }
+  pre code { background: none; padding: 0; color: var(--code-text); }
+  .kw { color: var(--kw); }
+  .str { color: var(--str); }
+  .num { color: var(--num); }
+  .fn { color: var(--fn); }
+  .cmt { color: var(--cmt); font-style: italic; }
+  .var { color: var(--var); }
+
+  /* Trigger cards */
+  .trigger-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .trigger-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .trigger-card .trigger-name { font-family: monospace; font-size: 0.9rem; color: var(--accent); font-weight: bold; margin-bottom: 0.4rem; }
+  .trigger-card .trigger-desc { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+  .trigger-card .trigger-sync { font-size: 0.75rem; color: var(--accent-err); font-weight: bold; }
+  .trigger-card .args-list { margin-top: 0.5rem; }
+  .trigger-card .arg { display: flex; gap: 0.4rem; font-size: 0.82rem; margin: 2px 0; }
+  .trigger-card .arg .arg-name { color: var(--fn); min-width: 110px; font-family: monospace; }
+  .trigger-card .arg .arg-type { color: var(--num); min-width: 70px; }
+  .trigger-card .arg .arg-desc { color: var(--text-dim); }
+
+  /* Args table */
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+  th { background: var(--bg3); color: var(--text-dim); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.4rem 0.75rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: top; }
+  td:first-child { font-family: monospace; color: var(--fn); white-space: nowrap; }
+  td:nth-child(2) { color: var(--num); font-family: monospace; font-size: 0.8rem; }
+  td:nth-child(3) { color: var(--text-dim); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Callouts */
+  .callout { border-left: 3px solid; padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 0.75rem 0; font-size: 0.88rem; }
+  .callout.info { border-color: var(--accent2); background: rgba(122,176,212,0.07); }
+  .callout.warning { border-color: var(--accent); background: rgba(200,164,90,0.07); }
+  .callout.danger { border-color: var(--accent-err); background: rgba(224,96,96,0.07); }
+  .callout strong { color: var(--text); }
+
+  /* Context box */
+  .context-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; }
+  .context-box .ctx-row { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .context-box .ctx-row:last-child { border-bottom: none; }
+  .context-box .ctx-name { font-family: monospace; color: var(--fn); min-width: 200px; }
+  .context-box .ctx-type { color: var(--num); min-width: 80px; font-family: monospace; font-size: 0.8rem; }
+  .context-box .ctx-desc { color: var(--text-dim); }
+
+  /* Example block */
+  .example-block { border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
+  .example-block .example-header { background: var(--bg3); padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--text-dim); font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 0.5rem; }
+  .example-block .example-header .trigger-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: monospace; color: var(--accent); font-size: 0.85em; text-transform: none; }
+  .example-block pre { border: none; border-radius: 0; margin: 0; }
+
+  /* Damage table */
+  .dmg-table { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.75rem 0; }
+  .dmg-chip { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.75rem; font-family: monospace; font-size: 0.9rem; text-align: center; }
+  .dmg-chip .dmg-code { font-weight: bold; color: var(--accent); display: block; }
+  .dmg-chip .dmg-label { color: var(--text-dim); font-size: 0.75rem; display: block; margin-top: 2px; }
+  .dmg-chip.light .dmg-code { color: var(--accent3); }
+  .dmg-chip.heavy .dmg-code { color: var(--accent); }
+  .dmg-chip.crit .dmg-code { color: var(--accent-err); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 3rem; color: var(--text-dim); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="doc-header">
+  <h1>System Skryptów Efektów <span class="badge">Neuroshima 1.5</span></h1>
+  <div class="subtitle">Dokumentacja dla twórców modułów i administratorów gry — Foundry VTT v13, Application V2</div>
+</header>
+
+<nav class="toc">
+  <h2>Spis treści</h2>
+  <ol>
+    <li><a href="#overview">Czym są skrypty efektów?</a></li>
+    <li><a href="#context">Kontekst wykonania — <code>this</code> i <code>args</code></a></li>
+    <li><a href="#triggers">Lista wyzwalaczy (triggerów)</a></li>
+    <li><a href="#examples">Przykłady gotowych skryptów</a></li>
+    <li><a href="#manual-invoke">Manualne wywoływanie — przyciski w itemach</a></li>
+    <li><a href="#changes">Zakładka Changes — modyfikacje atrybutów</a></li>
+    <li><a href="#helpers">Helpery i narzędzia</a></li>
+    <li><a href="#tips">Dobre praktyki</a></li>
+  </ol>
+</nav>
+
+<!-- SECTION 1 -->
+<section id="overview">
+  <h2 class="section-title">1. Czym są skrypty efektów?</h2>
+  <p>
+    Skrypty efektów to fragmenty kodu JavaScript przypisane do <strong>Active Effect</strong>. Działają automatycznie
+    w określonych momentach gry (wyzwalacze) lub manualnie po kliknięciu przycisku ▶ na arkuszu efektu.
+  </p>
+  <p>
+    Każdy skrypt jest przechowywany jako flaga na dokumencie ActiveEffect (<code>flags.neuroshima.scripts</code>) i
+    wykonywany przez klasę <code>NeuroshimaScriptRunner</code>. Skrypty mogą być dołączone zarówno do efektów
+    bezpośrednio na aktorze, jak i do efektów na itemach (sztuczki, pancerze, ekwipunek).
+  </p>
+  <div class="callout info">
+    <strong>Ważne:</strong> Skrypty z efektów na itemach są aktywne tylko gdy item jest <strong>założony/aktywny</strong>
+    (pole <code>system.equipped !== false</code>). Efekty na itemach niezałożonych są pomijane.
+  </div>
+
+  <h3>Gdzie dodawać skrypty?</h3>
+  <p>Otwórz dowolny ActiveEffect (na aktorze lub itemie) → zakładka <strong>Skrypty</strong> → Dodaj Skrypt.</p>
+  <p>Edytor skryptów oferuje:</p>
+  <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
+    <li><strong>Etykieta</strong> — nazwa widoczna na liście skryptów</li>
+    <li><strong>Wyzwalacz</strong> — kiedy skrypt ma być uruchomiony</li>
+    <li><strong>Kod</strong> — edytor JavaScript z podświetlaniem składni (CodeMirror)</li>
+  </ul>
+</section>
+
+<!-- SECTION 2 -->
+<section id="context">
+  <h2 class="section-title">2. Kontekst wykonania</h2>
+  <p>
+    Wewnątrz każdego skryptu masz dostęp do następujących zmiennych poprzez <code>this</code> (kontekst skryptu)
+    oraz <code>args</code> (argumenty przekazane przez wyzwalacz):
+  </p>
+
+  <h3>Kontekst <code>this</code></h3>
+  <div class="context-box">
+    <div class="ctx-row"><span class="ctx-name">this.actor</span><span class="ctx-type">Actor | null</span><span class="ctx-desc">Aktor posiadający ten efekt (lub właściciel itemu z efektem)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.item</span><span class="ctx-type">Item | null</span><span class="ctx-desc">Item będący właścicielem efektu (null jeśli efekt bezpośrednio na aktorze)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.effect</span><span class="ctx-type">ActiveEffect</span><span class="ctx-desc">Ten aktywny efekt</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.label</span><span class="ctx-type">string</span><span class="ctx-desc">Etykieta skryptu</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.trigger</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyzwalacza który uruchomił ten skrypt</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
+  </div>
+
+  <h3>Argumenty <code>args</code></h3>
+  <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Jego zawartość zależy od wyzwalacza — szczegóły opisane są w sekcji 3.</p>
+  <div class="callout warning">
+    <strong>Modyfikowanie args:</strong> Większość wyzwalaczy przekazuje <code>args</code> przez referencję.
+    Modyfikując właściwości (np. <code>args.stat = 15</code>), zmieniasz wartości używane przez system.
+    Nie zapomnij, że <code>args.penalties</code> to osobny obiekt — przypisz go bezpośrednio (<code>args.penalties.mod -= 10</code>).
+  </div>
+
+  <h3>Async vs Sync</h3>
+  <p>Większość wyzwalaczy jest <strong>asynchronicznych</strong> — możesz używać <code>await</code>. Wyjątek:</p>
+  <div class="callout danger">
+    <strong>prepareData</strong> i <strong>armorCalculation</strong> są <em>synchroniczne</em>.
+    Nie używaj <code>await</code>, <code>fetch</code>, ani żadnych operacji asynchronicznych w tych triggerach —
+    spowoduje to błędy lub zignorowanie zmian.
+  </div>
+</section>
+
+<!-- SECTION 3 -->
+<section id="triggers">
+  <h2 class="section-title">3. Lista wyzwalaczy</h2>
+
+  <!-- prepareData -->
+  <h3>prepareData <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <p>Uruchamiany podczas <code>actor.prepareDerivedData()</code> — czyli za każdym razem gdy Foundry przelicza dane aktora (po każdej aktualizacji). Idealny do modyfikacji wartości pochodnych.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor — modyfikuj <code>args.actor.system.*</code> bezpośrednio</td></tr>
+  </table>
+  <div class="callout warning">Nie używaj <code>await</code>. Nie wywołuj <code>actor.update()</code> — to spowoduje pętlę. Modyfikuj dane tymczasowe bezpośrednio na obiekcie.</div>
+
+  <!-- preRollTest -->
+  <h3>preRollTest</h3>
+  <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Może anulować rzut lub wymusić automatyczny sukces.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
+    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code></td></tr>
+    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code></td></tr>
+    <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (wyświetlana w chacie)</td></tr>
+    <tr><td>args.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
+    <tr><td>args.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
+  </table>
+
+  <!-- rollTest -->
+  <h3>rollTest</h3>
+  <p>Uruchamiany po <code>preRollTest</code> (tylko gdy nie anulowano/auto-sukces) — modyfikuje parametry rzutu przed rzuceniem kośćmi.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności</td></tr>
+    <tr><td>args.attributeBonus</td><td>number</td><td>Bonus do atrybutu</td></tr>
+    <tr><td>args.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base }</code> — modyfikuj <code>args.penalties.mod</code></td></tr>
+    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu</td></tr>
+    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności</td></tr>
+  </table>
+
+  <!-- applyDamage -->
+  <h3>applyDamage</h3>
+  <p>Uruchamiany przed sprawdzeniem odporności na ból dla przychodzących ran. Pozwala modyfikować lub pomijać rany.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor otrzymujący obrażenia</td></tr>
+    <tr><td>args.location</td><td>string</td><td>Lokalizacja trafienia: <code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, itp.</td></tr>
+    <tr><td>args.wounds</td><td>Array</td><td>Tablica ran — każda rana ma właściwości poniżej</td></tr>
+    <tr><td>wound.damageType</td><td>string</td><td>Typ obrażeń: <code>D</code>, <code>sD</code>, <code>L</code>, <code>sL</code>, <code>C</code>, <code>sC</code>, <code>K</code>, <code>sK</code></td></tr>
+    <tr><td>wound.forcePassed</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana automatycznie zdaje test odporności na ból</td></tr>
+    <tr><td>wound.forceSkip</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana jest całkowicie ignorowana (nie tworzy itemu rany)</td></tr>
+  </table>
+
+  <!-- armorCalculation -->
+  <h3>armorCalculation <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <p>Uruchamiany podczas obliczania redukcji pancerza dla trafienia. Pozwala modyfikować efektywne SP zbroi.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor posiadający pancerz</td></tr>
+    <tr><td>args.location</td><td>string</td><td>Lokalizacja trafienia</td></tr>
+    <tr><td>args.damageType</td><td>string</td><td>Typ obrażeń</td></tr>
+    <tr><td>args.sp</td><td>number</td><td>Aktualne SP pancerza — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.piercing</td><td>number</td><td>Wartość przebicia pancerza ataku</td></tr>
+    <tr><td>args.bonusSP</td><td>number</td><td>Dodatkowe SP do doliczenia — dodaj tutaj bonus</td></tr>
+  </table>
+
+  <!-- equipToggle -->
+  <h3>equipToggle</h3>
+  <p>Uruchamiany po założeniu lub zdjęciu ekwipunku przez aktora.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor zakładający/zdejmujący item</td></tr>
+    <tr><td>args.item</td><td>Item</td><td>Item który został założony lub zdjęty</td></tr>
+    <tr><td>args.equipped</td><td>boolean</td><td><code>true</code> = właśnie założony, <code>false</code> = właśnie zdjęty</td></tr>
+  </table>
+
+  <!-- combat triggers -->
+  <h3>startCombat / endCombat</h3>
+  <p>Uruchamiane gdy walka zaczyna się lub kończy. Wykonywane raz na aktora (nie na combatanta).</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor biorący udział w walce</td></tr>
+    <tr><td>args.combat</td><td>Combat</td><td>Dokument walki</td></tr>
+  </table>
+
+  <h3>startTurn / endTurn</h3>
+  <p>Uruchamiane na początku i końcu tury aktora w walce.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor którego tura się zaczyna/kończy</td></tr>
+    <tr><td>args.combat</td><td>Combat</td><td>Dokument walki</td></tr>
+    <tr><td>args.combatant</td><td>Combatant</td><td>Combatant (może być kilka na tego samego aktora)</td></tr>
+  </table>
+
+  <!-- lifecycle -->
+  <h3>createEffect / deleteEffect</h3>
+  <p>Uruchamiane raz gdy efekt jest tworzony na aktorze lub usuwany z aktora.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor docelowy</td></tr>
+    <tr><td>args.data / args.options</td><td>object</td><td>Dane Foundry przekazane do operacji</td></tr>
+  </table>
+
+  <!-- manual -->
+  <h3>manual</h3>
+  <p>Wyzwalany ręcznie przez kliknięcie przycisku ▶ na liście skryptów efektu na arkuszu aktora.</p>
+  <table>
+    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor właściciel efektu</td></tr>
+  </table>
+</section>
+
+<!-- SECTION 4 -->
+<section id="examples">
+  <h2 class="section-title">4. Przykłady gotowych skryptów</h2>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">applyDamage</span>
+      Niewrażliwość na lekkie rany — auto-sukces odporności na ból dla D, sD, L, sL
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Wariant <strong>bez annotation</strong> — w raporcie czatu pojawi się domyślny tekst systemowy
+      <em>"Auto-zdany (przez skrypt efektu)"</em>.
+    </p>
+    <pre><code><span class="cmt">// Dla każdej lekkiej rany ustaw forcePassed = true
+// Efekt np. na tricku "Hartowanie" lub "Żelazny Brzuch"</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="kw">const</span> <span class="var">lightTypes</span> = [<span class="str">"D"</span>, <span class="str">"sD"</span>, <span class="str">"L"</span>, <span class="str">"sL"</span>];
+  <span class="kw">if</span> (<span class="var">lightTypes</span>.includes(<span class="var">wound</span>.damageType)) {
+    <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
+  }
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">applyDamage</span>
+      Niewrażliwość na lekkie rany — z <code>annotation</code> (własny tekst w raporcie czatu)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Wariant <strong>z annotation</strong> — zamiast domyślnego tekstu pojawi się niestandardowy opis
+      bezpośrednio przy nazwie rany w raporcie. Tooltip zawiera ten sam tekst.
+    </p>
+    <pre><code><span class="cmt">// forcePassed + annotation → własna adnotacja widoczna w czacie obok nazwy rany</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="kw">const</span> <span class="var">lightTypes</span> = [<span class="str">"D"</span>, <span class="str">"sD"</span>, <span class="str">"L"</span>, <span class="str">"sL"</span>];
+  <span class="kw">if</span> (<span class="var">lightTypes</span>.includes(<span class="var">wound</span>.damageType)) {
+    <span class="var">wound</span>.forcePassed  = <span class="kw">true</span>;
+    <span class="var">wound</span>.annotation  = <span class="str">"Niewrażliwość na lekkie rany"</span>;
+  }
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preRollTest</span>
+      Brak rzutu na odporność na ból przy draśnięciach (D)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Wariant <strong>bez annotation</strong> — wiadomość czatu wyświetla domyślny tekst
+      <em>"Automatyczny sukces (efekt aktywny)"</em>.
+    </p>
+    <pre><code><span class="cmt">// Jeśli rzut dotyczy odporności na ból i rana to D — auto-sukces
+// args.skillKey === "painResistance" lub sprawdź label</span>
+<span class="kw">if</span> (args.skillKey === <span class="str">"painResistance"</span> || args.label?.includes(<span class="str">"Ból"</span>)) {
+  args.autoSuccess = <span class="kw">true</span>;
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preRollTest</span>
+      Brak rzutu na odporność na ból — z <code>annotation</code> (własny tekst w wiadomości czatu)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Wariant <strong>z annotation</strong> — zamiast generycznej wiadomości w chacie pojawia się
+      podany przez skrypt tekst, np. nazwa tricku lub efektu.
+    </p>
+    <pre><code><span class="cmt">// autoSuccess + annotation → własna wiadomość w chacie</span>
+<span class="kw">if</span> (args.skillKey === <span class="str">"painResistance"</span>) {
+  args.autoSuccess = <span class="kw">true</span>;
+  args.annotation  = <span class="str">"Niewrażliwość na lekkie rany — test zbędny"</span>;
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">rollTest</span>
+      Bonus +2 do Zręczności przy wszystkich testach
+    </div>
+    <pre><code><span class="cmt">// Modyfikuj atrybut tylko gdy rzut jest na Zręczność</span>
+<span class="kw">if</span> (args.attributeKey === <span class="str">"dexterity"</span>) {
+  args.stat += <span class="num">2</span>;
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">rollTest</span>
+      Kara -20% do wszystkich testów (kontuzja)
+    </div>
+    <pre><code>args.penalties.mod = (args.penalties.mod || <span class="num">0</span>) + <span class="num">20</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Pancerz adaptacyjny — +2 SP przeciwko typom C i K
+    </div>
+    <pre><code><span class="kw">const</span> <span class="var">heavyTypes</span> = [<span class="str">"C"</span>, <span class="str">"sC"</span>, <span class="str">"K"</span>, <span class="str">"sK"</span>];
+<span class="kw">if</span> (<span class="var">heavyTypes</span>.includes(args.damageType)) {
+  args.bonusSP += <span class="num">2</span>;
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">prepareData</span>
+      Modyfikator atrybutu na podstawie innego pola <span style="color:var(--accent-err)">(SYNC — bez await)</span>
+    </div>
+    <pre><code><span class="cmt">// Przykład: każdy punkt Budowy dodaje +1 do Zręczności
+// (dla testu prepareDerivedData)</span>
+<span class="kw">const</span> <span class="var">con</span> = args.actor.system.attributes.constitution || <span class="num">0</span>;
+args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span> / <span class="num">3</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">applyDamage</span>
+      Ochrona losowa — jeden rzut Xd100, każdy wynik ≤ 25 niweluje jedną ranę
+    </div>
+    <pre><code><span class="cmt">// Jeden rzut Xd100 (X = liczba ran), bez osobnych komunikatów
+// Każdy die result ≤ 25 → forceSkip (rana całkowicie zniwelowana)</span>
+<span class="kw">const</span> <span class="var">wounds</span> = args.wounds;
+<span class="kw">if</span> (!<span class="var">wounds</span>.length) <span class="kw">return</span>;
+
+<span class="kw">const</span> <span class="var">threshold</span> = <span class="num">25</span>;
+<span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">new</span> Roll(<span class="str">`<span class="var">${wounds.length}</span>d100`</span>).evaluate();
+<span class="kw">const</span> <span class="var">results</span> = <span class="var">roll</span>.dice[<span class="num">0</span>].results.map(<span class="var">r</span> => <span class="var">r</span>.result);
+
+<span class="kw">let</span> <span class="var">negated</span> = <span class="num">0</span>;
+<span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">wounds</span>.length; <span class="var">i</span>++) {
+  <span class="kw">if</span> (<span class="var">results</span>[<span class="var">i</span>] &lt;= <span class="var">threshold</span>) {
+    <span class="var">wounds</span>[<span class="var">i</span>].forceSkip = <span class="kw">true</span>;
+    <span class="var">negated</span>++;
+  }
+}
+
+<span class="kw">await</span> <span class="var">roll</span>.toMessage({
+  speaker: ChatMessage.getSpeaker({ actor: <span class="kw">this</span>.actor }),
+  flavor: <span class="str">`${this.effect.name} — Ochrona: <span class="var">${negated}</span>/<span class="var">${wounds.length}</span> ran zniwelowanych (próg: <span class="var">${threshold}</span>)`</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">applyDamage</span>
+      Deflection — Xd100, wynik ≤ 25 → rana "odchylona" (odporność na ból auto-zdana)
+    </div>
+    <pre><code><span class="cmt">// Zamiast całkowitej negacji, rany są "odchylone":
+// forcePassed = true → rana trafia, ale odporność na ból jest automatycznie zdana
+// (brak rzutu, rana rejestrowana jako sukces w teście)</span>
+<span class="kw">const</span> <span class="var">wounds</span> = args.wounds;
+<span class="kw">if</span> (!<span class="var">wounds</span>.length) <span class="kw">return</span>;
+
+<span class="kw">const</span> <span class="var">threshold</span> = <span class="num">25</span>;
+<span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">new</span> Roll(<span class="str">`<span class="var">${wounds.length}</span>d100`</span>).evaluate();
+<span class="kw">const</span> <span class="var">results</span> = <span class="var">roll</span>.dice[<span class="num">0</span>].results.map(<span class="var">r</span> => <span class="var">r</span>.result);
+
+<span class="kw">let</span> <span class="var">deflected</span> = <span class="num">0</span>;
+<span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">wounds</span>.length; <span class="var">i</span>++) {
+  <span class="kw">if</span> (<span class="var">results</span>[<span class="var">i</span>] &lt;= <span class="var">threshold</span>) {
+    <span class="var">wounds</span>[<span class="var">i</span>].forcePassed = <span class="kw">true</span>; <span class="cmt">// auto-sukces odporności</span>
+    <span class="var">deflected</span>++;
+  }
+}
+
+<span class="kw">await</span> <span class="var">roll</span>.toMessage({
+  speaker: ChatMessage.getSpeaker({ actor: <span class="kw">this</span>.actor }),
+  flavor: <span class="str">`${this.effect.name} — Deflection: <span class="var">${deflected}</span>/<span class="var">${wounds.length}</span> ran odchylonych`</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">startTurn</span>
+      Leczenie regeneracyjne — +1 HP na początku tury
+    </div>
+    <pre><code><span class="kw">const</span> <span class="var">actor</span> = args.actor;
+<span class="kw">const</span> <span class="var">hp</span> = <span class="var">actor</span>.system.hp;
+<span class="kw">if</span> (<span class="var">hp</span>.value &lt; <span class="var">hp</span>.max) {
+  <span class="kw">await</span> <span class="var">actor</span>.<span class="fn">update</span>({ <span class="str">"system.hp.value"</span>: <span class="var">hp</span>.value + <span class="num">1</span> });
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Regeneracja: +1 HP"</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">equipToggle</span>
+      Logowanie założenia ekwipunku do konsoli
+    </div>
+    <pre><code><span class="kw">const</span> <span class="var">action</span> = args.equipped ? <span class="str">"założył"</span> : <span class="str">"zdjął"</span>;
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`</span><span class="var">${</span>args.actor.name<span class="var">}</span><span class="str"> </span><span class="var">${</span>action<span class="var">}</span><span class="str"> </span><span class="var">${</span>args.item.name<span class="var">}</span><span class="str">`</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`</span><span class="var">${</span>action<span class="var">}</span><span class="str"> </span><span class="var">${</span>args.item.name<span class="var">}</span><span class="str">`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Usunięcie efektu przez samego aktora (przycisk ▶)
+    </div>
+    <pre><code><span class="cmt">// Może być użyte np. do "użycia" przedmiotu jednorazowego</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Efekt wykorzystany i usunięty."</span>);</code></pre>
+  </div>
+</section>
+
+<!-- SECTION 5 — Manual Invocation -->
+<section id="manual-invoke">
+  <h2 class="section-title">5. Manualne wywoływanie — przyciski w itemach</h2>
+  <p>
+    Skrypty z triggerem <strong>manual</strong> można wywoływać bezpośrednio z listy itemów aktora.
+    Każdy item (sztuczka, ekwipunek, modyfikacja pojazdu), który posiada efekt z co najmniej jednym
+    skryptem <code>manual</code>, automatycznie wyświetla <strong>przycisk ▶</strong> poniżej swojego wiersza na arkuszu aktora.
+  </p>
+
+  <div class="callout info">
+    <strong>Jak to działa:</strong> Kliknięcie przycisku ▶ uruchamia skrypt bezpośrednio na aktorze.
+    W skrypcie dostępne są <code>this.actor</code> (aktor będący właścicielem), <code>this.item</code>
+    (item, na którym jest efekt) oraz <code>this.effect</code>.
+  </div>
+
+  <h3>Jak dodać przycisk do itemu</h3>
+  <ol style="padding-left:1.5rem; margin-bottom:1rem;">
+    <li>Otwórz item (np. sztuczka, przedmiot ekwipunku)</li>
+    <li>Przejdź do zakładki <strong>Effects</strong> na arkuszu itemu</li>
+    <li>Utwórz lub edytuj efekt → zakładka <strong>Skrypty</strong></li>
+    <li>Dodaj skrypt z triggerem <strong>Manual</strong></li>
+    <li>Nadaj etykietę — ta etykieta pojawi się jako tekst przycisku</li>
+  </ol>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Wypij Wyciąg Uzdrawiający — leczy aktora, zużywa 1 szt. przedmiotu
+    </div>
+<pre><code><span class="cmt">// Trigger: manual
+// Etykieta: "Wypij"
+// Na przedmiocie "Wyciąg Uzdrawiający" (gear, quantity > 0)</span>
+(<span class="kw">async</span> () => {
+  <span class="kw">if</span> (!<span class="kw">this</span>.item.system.quantity) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak wyciągu!"</span>, <span class="str">"error"</span>);
+  }
+
+  <span class="cmt">// Zmniejsz ilość o 1</span>
+  <span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">update</span>({ <span class="str">"system.quantity"</span>: <span class="kw">this</span>.item.system.quantity - <span class="num">1</span> });
+
+  <span class="cmt">// Rzut leczenia (2d4 + bonus Budowy)</span>
+  <span class="kw">const</span> <span class="var">actor</span> = [...game.user.targets][<span class="num">0</span>]?.actor ?? <span class="kw">this</span>.actor;
+  <span class="kw">const</span> <span class="var">tb</span> = <span class="var">actor</span>.system.attributes.constitution;
+  <span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Roll</span>(<span class="str">`2d4 + <span class="var">${tb}</span>`</span>).<span class="fn">evaluate</span>();
+
+  <span class="kw">const</span> <span class="var">msg</span> = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>({
+    flavor: <span class="str">`&lt;strong&gt;<span class="var">${<span class="kw">this</span>.item.name}</span>&lt;/strong&gt;: Używa mikstury...`</span>,
+    speaker: ChatMessage.<span class="fn">getSpeaker</span>({ actor: <span class="var">actor</span> })
+  });
+
+  <span class="cmt">// Czekaj na animację kości (Dice So Nice)</span>
+  <span class="kw">if</span> (game.dice3d) <span class="kw">await</span> game.dice3d.<span class="fn">waitFor3DAnimationByMessageID</span>(<span class="var">msg</span>.id);
+
+  <span class="cmt">// Ulecz aktora</span>
+  <span class="kw">await</span> <span class="var">actor</span>.<span class="fn">update</span>({ <span class="str">"system.hp.value"</span>: Math.<span class="fn">min</span>(<span class="var">actor</span>.system.hp.value + <span class="var">roll</span>.total, <span class="var">actor</span>.system.hp.max) });
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span> + <span class="trigger-badge">deleteEffect</span>
+      Zapalony papieros — aplikuje efekt toksyny, usuwa go po wygaśnięciu
+    </div>
+<pre><code><span class="cmt">// Skrypt 1 — trigger: manual, etykieta: "Zapal"
+// Aplikuje drugi efekt z tego itemu na aktora</span>
+<span class="kw">const</span> <span class="var">sourceItem</span> = <span class="kw">this</span>.effect.parent; <span class="cmt">// item = papieros</span>
+<span class="kw">if</span> (<span class="var">sourceItem</span>?.effects?.size > <span class="num">1</span>) {
+  <span class="kw">const</span> <span class="var">toxinEffect</span> = <span class="var">sourceItem</span>.effects.contents[<span class="num">1</span>];
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectUuids: [<span class="var">toxinEffect</span>.uuid] });
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Toksyny wchłonięte."</span>);
+}
+
+<span class="cmt">// Skrypt 2 — trigger: deleteEffect
+// Usuwa item papierosa gdy efekt toksyny wygaśnie/zostanie usunięty</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.parent?.delete?.();
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Papieros wypalony."</span>);</code></pre>
+  </div>
+
+  <h3>Szczegóły techniczne</h3>
+  <table>
+    <thead><tr><th>Właściwość</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td>this.actor</td><td>Actor</td><td>Aktor na którym wykonywany jest skrypt</td></tr>
+      <tr><td>this.item</td><td>Item|null</td><td>Item będący rodzicem efektu (jeśli efekt jest na itemie)</td></tr>
+      <tr><td>this.effect</td><td>ActiveEffect</td><td>Efekt zawierający ten skrypt</td></tr>
+      <tr><td>args.actor</td><td>Actor</td><td>To samo co this.actor (przekazane explicite)</td></tr>
+      <tr><td>args.item</td><td>Item|null</td><td>To samo co this.item (przekazane explicite)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warning">
+    <strong>Uwaga:</strong> Przycisk pojawia się tylko gdy efekt <em>nie jest wyłączony</em>
+    (<code>disabled = false</code>). Skrypty z efektów wyłączonych nie są wyświetlane ani uruchamiane.
+  </div>
+</section>
+
+<!-- SECTION 6 -->
+<section id="changes">
+  <h2 class="section-title">6. Zakładka Changes — modyfikacje atrybutów</h2>
+  <p>
+    Zakładka <strong>Changes</strong> pozwala modyfikować dane aktora przez standardowy mechanizm Foundry
+    (bez pisania kodu). Każda zmiana to:
+  </p>
+  <table>
+    <tr><th>Pole</th><th>Opis</th></tr>
+    <tr><td>Klucz (Key)</td><td>Ścieżka do pola danych, np. <code>system.attributes.dexterity</code></td></tr>
+    <tr><td>Tryb (Mode)</td><td>Jak zmiana jest aplikowana — patrz niżej</td></tr>
+    <tr><td>Wartość (Value)</td><td>Liczba lub wartość do zastosowania</td></tr>
+    <tr><td>Priorytet</td><td>Kolejność aplikowania (niższy = najpierw; domyślnie 20)</td></tr>
+  </table>
+
+  <h3>Tryby (CHANGE_MODES)</h3>
+  <table>
+    <tr><th>Tryb</th><th>Wartość</th><th>Działanie</th></tr>
+    <tr><td>Custom</td><td>0</td><td>Brak automatycznego przetwarzania — dla skryptów niestandardowych</td></tr>
+    <tr><td>Multiply</td><td>1</td><td>Mnożenie: <code>aktualna × wartość</code></td></tr>
+    <tr><td>Add</td><td>2</td><td>Dodawanie: <code>aktualna + wartość</code> (najczęściej używany)</td></tr>
+    <tr><td>Downgrade</td><td>3</td><td>Zastąp jeśli wartość jest niższa</td></tr>
+    <tr><td>Upgrade</td><td>4</td><td>Zastąp jeśli wartość jest wyższa</td></tr>
+    <tr><td>Override</td><td>5</td><td>Bezwzględne zastąpienie wartością</td></tr>
+  </table>
+
+  <h3>Przełącznik Ręczny/Dropdown</h3>
+  <p>
+    Checkbox <strong>"Ręczny klucz"</strong> w nagłówku zakładki Changes przełącza między:
+  </p>
+  <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
+    <li><strong>Dropdown</strong> (domyślnie) — lista predefiniowanych kluczy systemowych pogrupowana wg kategorii</li>
+    <li><strong>Pole tekstowe</strong> — wpisanie dowolnej ścieżki do pola danych (<code>system.attributes.dexterity</code>)</li>
+  </ul>
+
+  <h3>Predefiniowane klucze (dostępne w dropdown)</h3>
+  <p>Klucze pogrupowane są wg kategorii aktora. Wybierz odpowiednie dla danego typu.</p>
+
+  <h4>Atrybuty (Postać / NPC)</h4>
+  <table>
+    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.attributes.dexterity</td><td>Zręczność (bazowa)</td></tr>
+    <tr><td>system.attributes.perception</td><td>Percepcja (bazowa)</td></tr>
+    <tr><td>system.attributes.charisma</td><td>Charyzma (bazowa)</td></tr>
+    <tr><td>system.attributes.cleverness</td><td>Spryt (bazowy)</td></tr>
+    <tr><td>system.attributes.constitution</td><td>Budowa (bazowa)</td></tr>
+  </table>
+
+  <h4>Modyfikatory (Postać / NPC)</h4>
+  <table>
+    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.modifiers.dexterity</td><td>Modyfikator Zręczności</td></tr>
+    <tr><td>system.modifiers.perception</td><td>Modyfikator Percepcji</td></tr>
+    <tr><td>system.modifiers.charisma</td><td>Modyfikator Charyzmy</td></tr>
+    <tr><td>system.modifiers.cleverness</td><td>Modyfikator Sprytu</td></tr>
+    <tr><td>system.modifiers.constitution</td><td>Modyfikator Budowy</td></tr>
+  </table>
+
+  <h4>Punkty Życia</h4>
+  <table>
+    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.hp.max</td><td>Maksymalne PŻ</td></tr>
+    <tr><td>system.hp.value</td><td>Aktualne PŻ</td></tr>
+  </table>
+
+  <h4>Walka (Postać / NPC)</h4>
+  <table>
+    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.combat.totalArmorPenalty</td><td>Kara od pancerza</td></tr>
+    <tr><td>system.combat.meleeInitiative</td><td>Inicjatywa w walce wręcz</td></tr>
+    <tr><td>system.healingRate</td><td>Tempo Leczenia</td></tr>
+  </table>
+
+  <h4>Naturalna Zbroja (Bestia)</h4>
+  <table>
+    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.naturalArmor.head.reduction</td><td>Redukcja — Głowa</td></tr>
+    <tr><td>system.naturalArmor.torso.reduction</td><td>Redukcja — Tułów</td></tr>
+    <tr><td>system.naturalArmor.rightArm.reduction</td><td>Redukcja — Prawa Ręka</td></tr>
+    <tr><td>system.naturalArmor.leftArm.reduction</td><td>Redukcja — Lewa Ręka</td></tr>
+    <tr><td>system.naturalArmor.rightLeg.reduction</td><td>Redukcja — Prawa Noga</td></tr>
+    <tr><td>system.naturalArmor.leftLeg.reduction</td><td>Redukcja — Lewa Noga</td></tr>
+    <tr><td>system.aggression</td><td>Agresja bestii</td></tr>
+    <tr><td>system.movement</td><td>Ruch bestii</td></tr>
+    <tr><td>system.kondycja</td><td>Kondycja bestii</td></tr>
+  </table>
+
+  <h4>Atrybuty Pojazdu</h4>
+  <table>
+    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.attributes.agility</td><td>Zwrotność</td></tr>
+    <tr><td>system.attributes.topSpeed</td><td>Prędkość Maksymalna</td></tr>
+    <tr><td>system.attributes.acceleration</td><td>Przyspieszenie</td></tr>
+    <tr><td>system.attributes.brakes</td><td>Hamulce</td></tr>
+    <tr><td>system.attributes.durability</td><td>Sprawność (max HP)</td></tr>
+    <tr><td>system.attributes.efficiency</td><td>Wydajność</td></tr>
+  </table>
+
+  <h4>Pancerz Pojazdu</h4>
+  <table>
+    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tr><td>system.armor.front.reduction</td><td>Redukcja — Przód</td></tr>
+    <tr><td>system.armor.rightSide.reduction</td><td>Redukcja — Prawy Bok</td></tr>
+    <tr><td>system.armor.leftSide.reduction</td><td>Redukcja — Lewy Bok</td></tr>
+    <tr><td>system.armor.rear.reduction</td><td>Redukcja — Tył</td></tr>
+    <tr><td>system.armor.bottom.reduction</td><td>Redukcja — Spód</td></tr>
+  </table>
+
+  <div class="callout info">
+    <strong>Kiedy używać Changes, a kiedy prepareData?</strong><br>
+    Changes działa przez standardowy mechanizm Foundry i jest przeliczane automatycznie przy każdej zmianie efektu.
+    <code>prepareData</code> daje pełną kontrolę programistyczną i pozwala na warunkowe modyfikacje.
+    Dla prostych bonusów liczbowych — Changes jest wygodniejszy.
+  </div>
+</section>
+
+<!-- SECTION 7 -->
+<section id="helpers">
+  <h2 class="section-title">7. Helpery i narzędzia</h2>
+
+  <h3>NeuroshimaScriptRunner — metody statyczne</h3>
+  <p>Dostępne globalnie przez <code>game.neuroshima.NeuroshimaScriptRunner</code>:</p>
+  <table>
+    <tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td>isLightDamage(type)</td><td>Zwraca true dla D, sD, L, sL</td></tr>
+    <tr><td>isHeavyDamage(type)</td><td>Zwraca true dla C, sC, K, sK</td></tr>
+    <tr><td>compareDamage(a, b)</td><td>Porównuje dwa typy obrażeń. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
+  </table>
+
+  <h3>Typy obrażeń — hierarchia</h3>
+  <div class="dmg-table">
+    <div class="dmg-chip light"><span class="dmg-code">D</span><span class="dmg-label">Draśnięcie</span></div>
+    <div class="dmg-chip light"><span class="dmg-code">sD</span><span class="dmg-label">Siniak D</span></div>
+    <div class="dmg-chip light"><span class="dmg-code">L</span><span class="dmg-label">Lekkie</span></div>
+    <div class="dmg-chip light"><span class="dmg-code">sL</span><span class="dmg-label">Siniak L</span></div>
+    <div class="dmg-chip heavy"><span class="dmg-code">C</span><span class="dmg-label">Ciężkie</span></div>
+    <div class="dmg-chip heavy"><span class="dmg-code">sC</span><span class="dmg-label">Siniak C</span></div>
+    <div class="dmg-chip crit"><span class="dmg-code">K</span><span class="dmg-label">Krytyczne</span></div>
+    <div class="dmg-chip crit"><span class="dmg-code">sK</span><span class="dmg-label">Siniak K</span></div>
+  </div>
+
+  <h3>Dostęp do danych aktora</h3>
+  <pre><code><span class="cmt">// Atrybuty bazowe</span>
+<span class="kw">const</span> <span class="var">zr</span>  = <span class="kw">this</span>.actor.system.attributes.dexterity;
+<span class="kw">const</span> <span class="var">bd</span>  = <span class="kw">this</span>.actor.system.attributes.constitution;
+
+<span class="cmt">// PŻ</span>
+<span class="kw">const</span> <span class="var">hp</span>  = <span class="kw">this</span>.actor.system.hp.value;
+<span class="kw">const</span> <span class="var">maxHp</span> = <span class="kw">this</span>.actor.system.hp.max;
+
+<span class="cmt">// Flagi na aktorze</span>
+<span class="kw">const</span> <span class="var">myFlag</span> = <span class="kw">this</span>.actor.getFlag(<span class="str">"neuroshima"</span>, <span class="str">"myFlag"</span>);
+
+<span class="cmt">// Update aktora (async)</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">update</span>({ <span class="str">"system.hp.value"</span>: hp - <span class="num">1</span> });
+
+<span class="cmt">// Sztuczki (tricks) aktora</span>
+<span class="kw">const</span> <span class="var">tricks</span> = <span class="kw">this</span>.actor.items.<span class="fn">filter</span>(i => i.type === <span class="str">"trick"</span>);
+
+<span class="cmt">// Czy aktor ma daną sztuczkę?</span>
+<span class="kw">const</span> <span class="var">hasTrick</span> = <span class="kw">this</span>.actor.items.<span class="fn">some</span>(i => i.type === <span class="str">"trick"</span> &amp;&amp; i.name === <span class="str">"Hartowanie"</span>);</code></pre>
+</section>
+
+<!-- SECTION 8 -->
+<section id="tips">
+  <h2 class="section-title">8. Dobre praktyki</h2>
+
+  <h3>Sprawdzaj warunki przed modyfikacją</h3>
+  <pre><code><span class="cmt">// Dobry przykład — sprawdzamy czy rzut dotyczy właściwej umiejętności</span>
+<span class="kw">if</span> (args.skillKey !== <span class="str">"stealth"</span>) <span class="kw">return</span>;
+args.penalties.mod -= <span class="num">20</span>; <span class="cmt">// Zmniejsz karę o 20% dla skradania</span></code></pre>
+
+  <h3>Nie mutuj args niepotrzebnie</h3>
+  <pre><code><span class="cmt">// ŹLE — modyfikujesz penalties.mod zawsze, nie sprawdzając kontekstu</span>
+args.penalties.mod += <span class="num">10</span>;
+
+<span class="cmt">// DOBRZE — modyfikujesz tylko gdy warunek spełniony</span>
+<span class="kw">if</span> (args.label?.includes(<span class="str">"Strzelanie"</span>)) {
+  args.penalties.mod += <span class="num">10</span>;
+}</code></pre>
+
+  <h3>Używaj notification zamiast console.log do komunikacji z graczem</h3>
+  <pre><code><span class="cmt">// Pokaż wiadomość w UI (info/warn/error)</span>
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Efekt zastosowany!"</span>, <span class="str">"info"</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Uwaga: brak HP"</span>, <span class="str">"warn"</span>);</code></pre>
+
+  <h3>Async tylko tam gdzie to dozwolone</h3>
+  <div class="callout danger">
+    <strong>prepareData</strong> i <strong>armorCalculation</strong> są synchroniczne.<br>
+    Nie używaj <code>await</code>, <code>actor.update()</code>, ani <code>setFlag()</code> w tych triggerach.
+  </div>
+
+  <h3>Filtrowanie skryptów po typie obrażeń</h3>
+  <pre><code><span class="cmt">// Trigger: applyDamage
+// Ignoruj ciężkie rany (C, sC, K, sK) — tylko lekkie</span>
+<span class="kw">const</span> <span class="var">runner</span> = game.neuroshima.NeuroshimaScriptRunner;
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="kw">if</span> (<span class="var">runner</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
+    <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
+  }
+}</code></pre>
+</section>
+
+<footer>
+  <p>Neuroshima 1.5 dla Foundry VTT — dokumentacja skryptów efektów · wygenerowano dla wersji systemu v18.6+</p>
+</footer>
+
+</div>
+</body>
+</html>

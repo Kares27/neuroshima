@@ -21,6 +21,20 @@
                         <a class="item-control" data-action="deleteItem" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
                     </div>
                 </div>
+                {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                {{#if scripts}}
+                <div class="item-script-row" data-item-id="{{item.id}}">
+                    {{#each scripts as |ms|}}
+                    <a class="manual-script-btn" data-action="invokeItemScript"
+                       data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                       data-script-index="{{ms.scriptIndex}}"
+                       title="{{ms.effectName}}">
+                        <i class="fas fa-play"></i> {{ms.label}}
+                    </a>
+                    {{/each}}
+                </div>
+                {{/if}}
+                {{/with}}
                 {{/each}}
             </div>
         </div>

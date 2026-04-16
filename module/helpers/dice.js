@@ -817,6 +817,29 @@ export class NeuroshimaDice {
     // Rozpoczęcie grupy logów dla testu standardowego
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
 
+    // Uruchomienie skryptów preRollTest — mogą anulować rzut lub wymusić automatyczny sukces
+    if (actor && !isReroll && !isDebug) {
+        const preArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, autoSuccess: false, cancelled: false };
+        await NeuroshimaScriptRunner.execute("preRollTest", preArgs);
+        if (preArgs.cancelled) {
+            game.neuroshima.log("rollTest cancelled by preRollTest script");
+            game.neuroshima.groupEnd();
+            return null;
+        }
+        if (preArgs.autoSuccess) {
+            game.neuroshima.log("rollTest auto-success by preRollTest script");
+            game.neuroshima.groupEnd();
+            if (chatMessage) {
+                const autoMsg = preArgs.annotation || game.i18n.localize("NEUROSHIMA.Scripts.AutoSuccess");
+                await ChatMessage.create({
+                    content: `<div class="neuroshima roll-result"><strong>${label}</strong>: ${autoMsg}</div>`,
+                    speaker: actor ? ChatMessage.getSpeaker({ actor }) : ChatMessage.getSpeaker()
+                });
+            }
+            return { autoSuccess: true, successes: 1, cancelled: false };
+        }
+    }
+
     // Uruchomienie skryptów rollTest — mogą zmodyfikować stat, skill, penalties przed rzutem
     if (actor && !isReroll && !isDebug) {
         const scriptArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey };

@@ -82,8 +82,8 @@
                     <div class="armor-location-box armor-{{key}} {{#if location.items.length}}has-items{{else}}empty{{/if}}">
                         <div class="location-header">
                             <span class="location-name">{{localize location.label}}</span>
-                            {{#if location.items.length}}
-                            <span class="location-ap-sum" title="{{localize "NEUROSHIMA.Armor.SumAP"}}">{{location.totalAP}}</span>
+                            {{#if (gt location.totalAP 0)}}
+                            <span class="location-ap-sum" data-tooltip="{{location.tooltip}}">{{location.totalAP}}</span>
                             {{/if}}
                         </div>
                         {{#if location.items.length}}

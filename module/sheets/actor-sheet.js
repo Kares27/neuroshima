@@ -10,6 +10,25 @@ import { CombatHelper } from "../helpers/combat-helper.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 
+function _collectArmorBonusByEffect(actor) {
+  const byLoc = {};
+  if (!actor) return byLoc;
+  const seen = new Set();
+  for (const effect of actor.appliedEffects ?? []) {
+    const key = effect.origin ?? effect.uuid;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    for (const change of effect.changes ?? []) {
+      const m = change.key.match(/^system\.armorBonus\.(\w+)$/);
+      if (!m) continue;
+      const loc = m[1];
+      if (!byLoc[loc]) byLoc[loc] = [];
+      byLoc[loc].push({ name: effect.name, value: Number(change.value) || 0 });
+    }
+  }
+  return byLoc;
+}
+
 /**
  * Actor sheet for Neuroshima 1.5 using ApplicationV2.
  */
@@ -75,7 +94,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       editEffect: this.prototype._onEditEffect,
       deleteEffect: this.prototype._onDeleteEffect,
       toggleEffect: this.prototype._onToggleEffect,
-      openSource: this.prototype._onOpenSource
+      openSource: this.prototype._onOpenSource,
+      invokeItemScript: this.prototype._onInvokeItemScript
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -159,6 +179,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     };
     context.tricks = items.filter(i => i.type === "trick");
     context.wounds = items.filter(i => i.type === "wound");
+    context.itemManualScripts = this._prepareItemManualScripts(actor);
 
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
@@ -251,7 +272,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       maxHP: system.hp.max || 27,
       healingRate: healingRate,
       healingDaysRequired: Math.ceil(totalWoundPenalty / healingRate),
-      anatomicalArmor: this._prepareAnatomicalArmor(items.filter(i => i.type === "armor" && i.system.equipped)),
+      anatomicalArmor: this._prepareAnatomicalArmor(items.filter(i => i.type === "armor" && i.system.equipped), actor),
       patientCardVersion: patientCardVersion,
       patientData: { ...patientData, locations: patientData.locations }, 
       locationsMap: locationsMap,
@@ -1130,10 +1151,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   /**
    * Group equipped armor by anatomical location and calculate totals.
    */
-  _prepareAnatomicalArmor(equippedArmor) {
+  _prepareAnatomicalArmor(equippedArmor, actor = null) {
     const locations = {};
     for (const [key, data] of Object.entries(NEUROSHIMA.bodyLocations)) {
-      locations[key] = { label: data.label, items: [], totalAP: 0 };
+      locations[key] = { label: data.label, items: [], totalAP: 0, bonusAP: 0 };
     }
 
     for (const item of equippedArmor) {
@@ -1164,6 +1185,32 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         }
       }
     }
+
+    if (actor?.system?.armorBonus) {
+      const bonusAll = Number(actor.system.armorBonus.all) || 0;
+      for (const key of Object.keys(locations)) {
+        const bonusLoc = Number(actor.system.armorBonus[key]) || 0;
+        const total = bonusAll + bonusLoc;
+        if (total !== 0) {
+          locations[key].totalAP += total;
+          locations[key].bonusAP = total;
+        }
+      }
+    }
+
+    const effectBonus = _collectArmorBonusByEffect(actor);
+    for (const [key, loc] of Object.entries(locations)) {
+      const parts = [];
+      for (const itm of loc.items) {
+        parts.push(`${foundry.utils.escapeHTML(itm.name)}: <strong>${itm.currentRating}</strong>`);
+      }
+      for (const e of [...(effectBonus.all ?? []), ...(effectBonus[key] ?? [])]) {
+        const sign = e.value >= 0 ? "+" : "";
+        parts.push(`${foundry.utils.escapeHTML(e.name)}: <strong>${sign}${e.value}</strong>`);
+      }
+      loc.tooltip = parts.join("<br>");
+    }
+
     return locations;
   }
 
@@ -2081,5 +2128,43 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const itemId = target.dataset.itemId;
     const item = this.document.items.get(itemId);
     item?.sheet.render(true);
+  }
+
+  _prepareItemManualScripts(actor) {
+    const map = {};
+    for (const item of (actor.items ?? [])) {
+      const scripts = [];
+      for (const eff of (item.effects ?? [])) {
+        if (eff.disabled) continue;
+        const flags = eff.getFlag?.("neuroshima", "scripts") ?? [];
+        flags.forEach((s, idx) => {
+          if (s.trigger === "manual") {
+            const rawLabel = s.label || eff.name;
+            const label = rawLabel
+              .replace(/@effect\.name/g, eff.name)
+              .replace(/@item\.name/g, item.name);
+            scripts.push({
+              itemId: item.id,
+              effectId: eff.id,
+              effectName: eff.name,
+              scriptIndex: idx,
+              label
+            });
+          }
+        });
+      }
+      if (scripts.length) map[item.id] = scripts;
+    }
+    return map;
+  }
+
+  async _onInvokeItemScript(event, target) {
+    const { itemId, effectId, scriptIndex } = target.dataset;
+    const item = this.document.items.get(itemId);
+    if (!item) return ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Scripts.NoActor"));
+    const effect = item.effects.get(effectId);
+    if (!effect) return;
+    const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+    await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
   }
 }

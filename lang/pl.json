@@ -393,10 +393,22 @@
             "MeleeMatchDiceCount": "Liczba kości obrońcy musi zgadzać się z liczbą kości atakującego!",
             "MeleeNeedsDice": "Musisz wybrać przynajmniej jedną kość, aby kontynuować."
         },
+        "Modifier": {
+            "Dexterity": "Mod. Zręczności",
+            "Perception": "Mod. Percepcji",
+            "Charisma": "Mod. Charyzmy",
+            "Cleverness": "Mod. Sprytu",
+            "Constitution": "Mod. Budowy"
+        },
+        "HP": {
+            "Max": "PŻ Maksymalne",
+            "Value": "PŻ Aktualne"
+        },
         "Combat": {
             "Combatants": "Uczestnicy",
             "Turn": "Tura",
-            "MeleeInitiative": "Inicjatywa Wręcz"
+            "MeleeInitiative": "Inicjatywa Wręcz",
+            "ArmorPenalty": "Kara od Pancerza"
         },
         "MeleeOpposed": {
             "Title": "Starcie Wręcz",
@@ -1056,11 +1068,58 @@
             "Disable": "Wyłącz",
             "NewEffect": "Nowy Efekt",
             "Description": "Opis",
+            "ArmorBonus": "Bonus do Pancerza (Efekt)",
+            "ManualKeys": "Ręczny klucz",
+            "ToggleManualKeys": "Przełącz między listą predefiniowanych kluczy a ręcznym wpisywaniem",
             "Change": {
                 "Key": "Klucz",
                 "Mode": "Tryb",
-                "Priority": "Priorytet",
-                "Value": "Wartość"
+                "Priority": "Prior.",
+                "Value": "Wartość",
+                "SelectKey": "Wybierz atrybut..."
+            },
+            "Keys": {
+                "Group": {
+                    "Attributes": "Atrybuty",
+                    "Modifiers": "Modyfikatory",
+                    "HP": "Punkty Życia",
+                    "Combat": "Walka",
+                    "NaturalArmor": "Naturalna Zbroja (Bestia)",
+                    "ArmorBonus": "Bonus do Pancerza (Efekt)",
+                    "VehicleArmorBonus": "Bonus do Pancerza Pojazdu (Efekt)",
+                    "VehicleAttributes": "Atrybuty Pojazdu",
+                    "VehicleArmor": "Pancerz Pojazdu"
+                },
+                "HealingRate": "Tempo Leczenia",
+                "ArmorBonus": {
+                    "All": "Bonus do Wszystkich Lokacji",
+                    "Head": "Bonus do Głowy",
+                    "Torso": "Bonus do Tułowia",
+                    "RightArm": "Bonus do Prawej Ręki",
+                    "LeftArm": "Bonus do Lewej Ręki",
+                    "RightLeg": "Bonus do Prawej Nogi",
+                    "LeftLeg": "Bonus do Lewej Nogi"
+                },
+                "NaturalArmor": {
+                    "Head": "Redukcja Głowy",
+                    "Torso": "Redukcja Tułowia",
+                    "RightArm": "Redukcja Prawej Ręki",
+                    "LeftArm": "Redukcja Lewej Ręki",
+                    "RightLeg": "Redukcja Prawej Nogi",
+                    "LeftLeg": "Redukcja Lewej Nogi"
+                },
+                "Creature": {
+                    "Aggression": "Agresja",
+                    "Movement": "Ruch",
+                    "Kondycja": "Kondycja"
+                },
+                "VehicleArmor": {
+                    "Front": "Redukcja Przód",
+                    "RightSide": "Redukcja Prawy Bok",
+                    "LeftSide": "Redukcja Lewy Bok",
+                    "Rear": "Redukcja Tył",
+                    "Bottom": "Redukcja Spód"
+                }
             },
             "Duration": {
                 "Rounds": "Rundy",
@@ -1081,14 +1140,20 @@
             "NewScript": "Nowy Skrypt",
             "NoActor": "Skrypt wymaga przypisanego aktora",
             "ForcePassed": "Auto-zdany (przez skrypt efektu)",
+            "AutoSuccess": "Automatyczny sukces (efekt aktywny)",
             "Trigger": {
                 "Label": "Wyzwalacz",
                 "Manual": "Ręczny",
                 "PrepareData": "Przygotowanie Danych",
+                "PreRollTest": "Przed Rzutem na Test",
                 "RollTest": "Rzut na Test",
                 "ArmorCalculation": "Obliczenie Pancerza",
                 "ApplyDamage": "Aplikowanie Obrażeń",
                 "EquipToggle": "Przełącz Ekwipunek",
+                "StartCombat": "Rozpoczęcie Walki",
+                "StartTurn": "Początek Tury",
+                "EndTurn": "Koniec Tury",
+                "EndCombat": "Zakończenie Walki",
                 "CreateEffect": "Utworzenie Efektu",
                 "DeleteEffect": "Usunięcie Efektu"
             },

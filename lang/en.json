@@ -390,10 +390,22 @@
             "MeleeMatchDiceCount": "Defender's dice count must match attacker's dice count!",
             "MeleeNeedsDice": "You must select at least one die to continue."
         },
+        "Modifier": {
+            "Dexterity": "Dexterity Mod.",
+            "Perception": "Perception Mod.",
+            "Charisma": "Charisma Mod.",
+            "Cleverness": "Cleverness Mod.",
+            "Constitution": "Constitution Mod."
+        },
+        "HP": {
+            "Max": "Max HP",
+            "Value": "Current HP"
+        },
         "Combat": {
             "Combatants": "Combatants",
             "Turn": "Turn",
-            "MeleeInitiative": "Melee Initiative"
+            "MeleeInitiative": "Melee Initiative",
+            "ArmorPenalty": "Armor Penalty"
         },
         "MeleeOpposed": {
             "Title": "Melee Opposed",
@@ -1029,11 +1041,58 @@
             "Disable": "Disable",
             "NewEffect": "New Effect",
             "Description": "Description",
+            "ArmorBonus": "Armor Bonus (Effect)",
+            "ManualKeys": "Manual key",
+            "ToggleManualKeys": "Toggle between predefined key list and manual input",
             "Change": {
                 "Key": "Key",
                 "Mode": "Mode",
-                "Priority": "Priority",
-                "Value": "Value"
+                "Priority": "Prio.",
+                "Value": "Value",
+                "SelectKey": "Select attribute..."
+            },
+            "Keys": {
+                "Group": {
+                    "Attributes": "Attributes",
+                    "Modifiers": "Modifiers",
+                    "HP": "Hit Points",
+                    "Combat": "Combat",
+                    "NaturalArmor": "Natural Armor (Beast)",
+                    "ArmorBonus": "Armor Bonus (Effect)",
+                    "VehicleArmorBonus": "Vehicle Armor Bonus (Effect)",
+                    "VehicleAttributes": "Vehicle Attributes",
+                    "VehicleArmor": "Vehicle Armor"
+                },
+                "HealingRate": "Healing Rate",
+                "ArmorBonus": {
+                    "All": "All Locations Bonus",
+                    "Head": "Head Bonus",
+                    "Torso": "Torso Bonus",
+                    "RightArm": "Right Arm Bonus",
+                    "LeftArm": "Left Arm Bonus",
+                    "RightLeg": "Right Leg Bonus",
+                    "LeftLeg": "Left Leg Bonus"
+                },
+                "NaturalArmor": {
+                    "Head": "Head Reduction",
+                    "Torso": "Torso Reduction",
+                    "RightArm": "Right Arm Reduction",
+                    "LeftArm": "Left Arm Reduction",
+                    "RightLeg": "Right Leg Reduction",
+                    "LeftLeg": "Left Leg Reduction"
+                },
+                "Creature": {
+                    "Aggression": "Aggression",
+                    "Movement": "Movement",
+                    "Kondycja": "Condition"
+                },
+                "VehicleArmor": {
+                    "Front": "Front Reduction",
+                    "RightSide": "Right Side Reduction",
+                    "LeftSide": "Left Side Reduction",
+                    "Rear": "Rear Reduction",
+                    "Bottom": "Bottom Reduction"
+                }
             },
             "Duration": {
                 "Rounds": "Rounds",
@@ -1054,14 +1113,20 @@
             "NewScript": "New Script",
             "NoActor": "Script requires an assigned actor",
             "ForcePassed": "Auto-passed (by effect script)",
+            "AutoSuccess": "Automatic success (effect active)",
             "Trigger": {
                 "Label": "Trigger",
                 "Manual": "Manual",
                 "PrepareData": "Prepare Data",
+                "PreRollTest": "Before Roll Test",
                 "RollTest": "Roll Test",
                 "ArmorCalculation": "Armor Calculation",
                 "ApplyDamage": "Apply Damage",
                 "EquipToggle": "Equip Toggle",
+                "StartCombat": "Combat Start",
+                "StartTurn": "Turn Start",
+                "EndTurn": "Turn End",
+                "EndCombat": "Combat End",
                 "CreateEffect": "Effect Created",
                 "DeleteEffect": "Effect Deleted"
             },

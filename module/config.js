@@ -222,6 +222,7 @@ export const NEUROSHIMA = {
     vehicleDamageConfiguration: {
         "VL": {
             label:                "NEUROSHIMA.Vehicle.DamageType.Light",
+            damagePoints:         1,
             sprawnoscFailed:      2,
             sprawnoscPassed:      1,
             agilityPenaltyFailed: 20,
@@ -229,6 +230,7 @@ export const NEUROSHIMA = {
         },
         "VC": {
             label:                "NEUROSHIMA.Vehicle.DamageType.Heavy",
+            damagePoints:         2,
             sprawnoscFailed:      4,
             sprawnoscPassed:      2,
             agilityPenaltyFailed: 40,
@@ -236,6 +238,7 @@ export const NEUROSHIMA = {
         },
         "VK": {
             label:                "NEUROSHIMA.Vehicle.DamageType.Critical",
+            damagePoints:         3,
             sprawnoscFailed:      6,
             sprawnoscPassed:      6,
             agilityPenaltyFailed: 0,
@@ -263,19 +266,6 @@ export const NEUROSHIMA = {
         fury: "NEUROSHIMA.Roll.Maneuvers.Fury",
         fullDefense: "NEUROSHIMA.Roll.Maneuvers.FullDefense",
         increasedTempo: "NEUROSHIMA.Roll.Maneuvers.IncreasedTempo"
-    },
-    vehicleLocations: {
-        front: "NEUROSHIMA.Vehicle.Location.Front",
-        back: "NEUROSHIMA.Vehicle.Location.Back",
-        leftSide: "NEUROSHIMA.Vehicle.Location.LeftSide",
-        rightSide: "NEUROSHIMA.Vehicle.Location.RightSide",
-        bottom: "NEUROSHIMA.Vehicle.Location.Bottom",
-        unknown: "NEUROSHIMA.Vehicle.Location.Unknown"
-    },
-    vehicleDamageTypes: {
-        L: "NEUROSHIMA.Vehicle.Damage.Light",
-        C: "NEUROSHIMA.Vehicle.Damage.Heavy",
-        K: "NEUROSHIMA.Vehicle.Damage.Critical"
     },
     vehicleModCategories: {
         modification: "NEUROSHIMA.Vehicle.Mod.Category.Modification",

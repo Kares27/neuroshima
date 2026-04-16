@@ -1178,6 +1178,16 @@
     
 }
 
+.neuroshima.sheet.actor .ap-sum-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: bold;
+    font-size: 0.95em;
+    color: var(--ns-border-focus, #c8a45a);
+    margin-right: 0.5rem;
+}
+
 .neuroshima.sheet.actor .armor-anatomical-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -4572,4 +4582,40 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima.sheet.item .effects-list-header,
 .neuroshima.sheet.item .effect-row {
     grid-template-columns: 28px 1fr 60px 80px;
+}
+
+/* ── Manual Script Invocation Buttons ── */
+.neuroshima .item-script-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 3px 8px 4px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.15));
+    border-top: 1px dashed rgba(255,255,255,0.08);
+}
+
+.neuroshima .manual-script-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--ns-bg-header, rgba(0,0,0,0.3));
+    border: 1px solid var(--ns-border-main, rgba(255,255,255,0.2));
+    border-radius: 3px;
+    color: var(--ns-color-gold, #c8a45a);
+    font-size: 0.78em;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.neuroshima .manual-script-btn:hover {
+    background: rgba(200,164,90,0.2);
+    border-color: var(--ns-color-gold, #c8a45a);
+    color: var(--ns-color-gold, #c8a45a);
+}
+
+.neuroshima .manual-script-btn i {
+    font-size: 0.75em;
+    opacity: 0.8;
 }

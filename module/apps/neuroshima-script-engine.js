@@ -15,7 +15,8 @@ export class NeuroshimaScript {
   }
 
   get item() {
-    return this.effect?.item ?? null;
+    const parent = this.effect?.parent;
+    return parent?.documentName === "Item" ? parent : null;
   }
 
   notification(content, type = "info") {
@@ -51,42 +52,118 @@ export class NeuroshimaScript {
  * Scripts are stored in flags.neuroshima.scripts as:
  * [{ trigger: string, label: string, code: string }]
  *
- * Triggers available:
- * - manual       : Executed by clicking a button on the actor sheet
- * - prepareData  : Runs during actor prepareDerivedData (SYNC, no await)
- *                  args = { actor }
- *                  Use: modify actor.system.* values directly
- * - rollTest     : Runs before any skill/attribute roll
- *                  args = { actor, stat, skill, skillBonus, attributeBonus, penalties, label, attributeKey, skillKey }
- *                  Use: modify args.stat, args.skill, args.penalties.mod to affect the roll
- * - applyDamage  : Runs before pain resistance is processed for wounds
- *                  args = { actor, wounds: [{name, damageType, forcePassed?}], location }
- *                  Use: set wound.forcePassed = true to auto-pass pain resistance for that wound
- *                       set wound.forceSkip = true to remove the wound entirely
- * - equipToggle  : Runs after an item is equipped or unequipped
- *                  args = { actor, item, equipped }
- *                  Use: apply or remove custom bonuses based on equipped state
+ * Available triggers:
  *
- * Context available inside scripts (via `this`):
- * - this.effect  - The ActiveEffect owning this script
- * - this.actor   - The actor (parent of the effect or item)
- * - this.item    - The item (if the effect lives on an item)
- * - this.notification(msg, type) - Shows a UI notification
+ * manual          — Executed by clicking ▶ on the actor sheet
+ * prepareData     — Runs during actor.prepareDerivedData() [SYNC, no await]
+ *                   args: { actor }
+ *                   Use: directly modify actor.system.* values
+ *
+ * preRollTest     — Runs BEFORE any skill/attribute roll, can cancel or auto-succeed it
+ *                   args: { actor, stat, skill, skillBonus, attributeBonus, penalties, label,
+ *                           attributeKey, skillKey, autoSuccess, cancelled, annotation }
+ *                   Use: set args.autoSuccess = true  → skip roll, count as success
+ *                        set args.cancelled = true    → abort the roll entirely
+ *                        set args.annotation = "text" → custom message shown in chat (replaces generic AutoSuccess text)
+ *
+ * rollTest        — Runs after preRollTest (only if not cancelled/autoSuccess), can modify roll params
+ *                   args: { actor, stat, skill, skillBonus, attributeBonus, penalties, label,
+ *                           attributeKey, skillKey }
+ *                   Use: modify args.stat, args.skill, args.penalties.mod to affect the roll
+ *
+ * applyDamage     — Runs before pain resistance is processed for incoming wounds
+ *                   args: { actor, wounds: [{name, damageType, forcePassed?, forceSkip?, annotation?}], location }
+ *                   Use: set wound.forcePassed = true       → auto-pass pain resistance for that wound
+ *                        set wound.forceSkip   = true       → remove the wound entirely
+ *                        set wound.annotation  = "text"     → custom text shown in chat for this wound (replaces generic ForcePassed text)
+ *
+ * armorCalculation — Runs before armor SP reduction is applied to an incoming hit
+ *                    args: { actor, location, damageType, sp, piercing, bonusSP }
+ *                    Use: modify args.sp, args.bonusSP to change effective armor value
+ *
+ * equipToggle     — Runs after an item is equipped or unequipped
+ *                   args: { actor, item, equipped }
+ *                   Use: apply/remove custom bonuses based on equipped state
+ *
+ * startCombat     — Runs when combat starts (once per combatant)
+ *                   args: { actor, combat }
+ *
+ * startTurn       — Runs at the beginning of each of the actor's turns
+ *                   args: { actor, combat, combatant }
+ *
+ * endTurn         — Runs at the end of each of the actor's turns
+ *                   args: { actor, combat, combatant }
+ *
+ * endCombat       — Runs when combat ends
+ *                   args: { actor, combat }
+ *
+ * createEffect    — Runs once when this effect is created on an actor
+ *                   args: { actor, data, options }
+ *
+ * deleteEffect    — Runs once when this effect is deleted from an actor
+ *                   args: { actor, options }
+ *
+ * Context available inside every script (via `this`):
+ *   this.effect                    — The ActiveEffect owning this script
+ *   this.actor                     — The actor (parent of effect or item)
+ *   this.item                      — The item (if the effect lives on an item)
+ *   this.notification(msg, type)   — Shows a UI notification
+ *
+ * Damage type constants (for use in scripts):
+ *   D  sD  L  sL  C  sC  K  sK    (rany postaci, od najlżejszej; s = siniak)
+ *   VL  VC  VK                     (vehicle damage)
  */
 export class NeuroshimaScriptRunner {
   static TRIGGERS = {
-    manual: "NEUROSHIMA.Scripts.Trigger.Manual",
-    prepareData: "NEUROSHIMA.Scripts.Trigger.PrepareData",
-    rollTest: "NEUROSHIMA.Scripts.Trigger.RollTest",
+    manual:           "NEUROSHIMA.Scripts.Trigger.Manual",
+    prepareData:      "NEUROSHIMA.Scripts.Trigger.PrepareData",
+    preRollTest:      "NEUROSHIMA.Scripts.Trigger.PreRollTest",
+    rollTest:         "NEUROSHIMA.Scripts.Trigger.RollTest",
+    applyDamage:      "NEUROSHIMA.Scripts.Trigger.ApplyDamage",
     armorCalculation: "NEUROSHIMA.Scripts.Trigger.ArmorCalculation",
-    applyDamage: "NEUROSHIMA.Scripts.Trigger.ApplyDamage",
-    equipToggle: "NEUROSHIMA.Scripts.Trigger.EquipToggle",
-    createEffect: "NEUROSHIMA.Scripts.Trigger.CreateEffect",
-    deleteEffect: "NEUROSHIMA.Scripts.Trigger.DeleteEffect"
+    equipToggle:      "NEUROSHIMA.Scripts.Trigger.EquipToggle",
+    startCombat:      "NEUROSHIMA.Scripts.Trigger.StartCombat",
+    startTurn:        "NEUROSHIMA.Scripts.Trigger.StartTurn",
+    endTurn:          "NEUROSHIMA.Scripts.Trigger.EndTurn",
+    endCombat:        "NEUROSHIMA.Scripts.Trigger.EndCombat",
+    createEffect:     "NEUROSHIMA.Scripts.Trigger.CreateEffect",
+    deleteEffect:     "NEUROSHIMA.Scripts.Trigger.DeleteEffect"
   };
 
   /**
+   * Damage type severity order for helpers.
+   */
+  static DAMAGE_ORDER = ["D", "sD", "L", "sL", "C", "sC", "K", "sK"];
+
+  /**
+   * Check if a damage type is "light" (D, sD, L, sL).
+   * @param {string} damageType
+   */
+  static isLightDamage(damageType) {
+    return ["D", "sD", "L", "sL"].includes(damageType);
+  }
+
+  /**
+   * Check if a damage type is "heavy or worse" (C, sC, K, sK).
+   * @param {string} damageType
+   */
+  static isHeavyDamage(damageType) {
+    return ["C", "sC", "K", "sK"].includes(damageType);
+  }
+
+  /**
+   * Compare two damage types. Returns negative if a < b, 0 if equal, positive if a > b.
+   * @param {string} a
+   * @param {string} b
+   */
+  static compareDamage(a, b) {
+    return this.DAMAGE_ORDER.indexOf(a) - this.DAMAGE_ORDER.indexOf(b);
+  }
+
+  /**
    * Collect all scripts from actor effects and embedded item effects for a given trigger.
+   * Supports character, NPC, creature, and vehicle actor types.
+   * For items: only collects from equipped items (if item has equipped property).
    * @param {Actor} actor
    * @param {string} trigger
    * @returns {NeuroshimaScript[]}
@@ -105,13 +182,14 @@ export class NeuroshimaScriptRunner {
       }
     };
 
-    for (const effect of (actor.effects || [])) {
+    for (const effect of (actor.effects ?? [])) {
       collectFromEffect(effect);
     }
 
-    for (const item of (actor.items || [])) {
-      for (const effect of (item.effects || [])) {
-        if (item.system?.equipped === false) continue;
+    for (const item of (actor.items ?? [])) {
+      const hasEquipped = "equipped" in (item.system ?? {});
+      if (hasEquipped && item.system.equipped === false) continue;
+      for (const effect of (item.effects ?? [])) {
         collectFromEffect(effect);
       }
     }
@@ -130,14 +208,29 @@ export class NeuroshimaScriptRunner {
     if (!actor) return;
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
-      await script.execute(args);
+      if (trigger === "applyDamage" && Array.isArray(args.wounds)) {
+        const before = args.wounds.map(w => ({ forcePassed: w.forcePassed, annotation: w.annotation }));
+        await script.execute(args);
+        args.wounds.forEach((w, i) => {
+          if (w.forcePassed && !before[i].forcePassed && !w.effectName) {
+            w.effectName = script.effect?.name ?? "";
+          }
+          const newAnnotation = w.annotation;
+          const oldAnnotation = before[i].annotation;
+          if (newAnnotation && oldAnnotation && newAnnotation !== oldAnnotation) {
+            w.annotation = `${oldAnnotation}\n${newAnnotation}`;
+          }
+        });
+      } else {
+        await script.execute(args);
+      }
     }
   }
 
   /**
    * Execute all scripts for a given trigger synchronously.
    * Use for triggers called from synchronous methods (e.g. prepareDerivedData).
-   * Scripts must not use async/await - they run synchronously.
+   * Scripts must not use async/await — they run synchronously.
    * @param {string} trigger
    * @param {Object} args - Arguments passed to each script
    */
@@ -153,8 +246,8 @@ export class NeuroshimaScriptRunner {
   /**
    * Execute manual scripts on an actor (called from the actor sheet).
    * @param {Actor} actor
-   * @param {string} scriptIndex
    * @param {ActiveEffect} effect
+   * @param {number} scriptIndex
    * @returns {Promise<void>}
    */
   static async executeManual(actor, effect, scriptIndex) {
@@ -162,6 +255,69 @@ export class NeuroshimaScriptRunner {
     const scriptData = effectScripts[scriptIndex];
     if (!scriptData || scriptData.trigger !== "manual") return;
     const script = new NeuroshimaScript(scriptData, effect);
-    await script.execute({ actor });
+    await script.execute({ actor, item: effect.parent?.documentName === "Item" ? effect.parent : null });
+  }
+
+  /**
+   * Run preRollTest scripts and return result flags.
+   * @param {Actor} actor
+   * @param {Object} rollArgs - Current roll parameters
+   * @returns {Promise<{autoSuccess: boolean, cancelled: boolean}>}
+   */
+  static async runPreRollTest(actor, rollArgs) {
+    if (!actor) return { autoSuccess: false, cancelled: false };
+    const args = { ...rollArgs, autoSuccess: false, cancelled: false };
+    await this.execute("preRollTest", args);
+    return { autoSuccess: !!args.autoSuccess, cancelled: !!args.cancelled };
+  }
+
+  /**
+   * Run startCombat scripts for all combatants that have a linked actor.
+   * @param {Combat} combat
+   */
+  static async runStartCombat(combat) {
+    const actors = new Set();
+    for (const combatant of combat.combatants) {
+      const actor = combatant.actor;
+      if (!actor || actors.has(actor.id)) continue;
+      actors.add(actor.id);
+      await this.execute("startCombat", { actor, combat });
+    }
+  }
+
+  /**
+   * Run startTurn scripts for the current combatant's actor.
+   * @param {Combat} combat
+   * @param {Combatant} combatant
+   */
+  static async runStartTurn(combat, combatant) {
+    const actor = combatant?.actor;
+    if (!actor) return;
+    await this.execute("startTurn", { actor, combat, combatant });
+  }
+
+  /**
+   * Run endTurn scripts for the current combatant's actor.
+   * @param {Combat} combat
+   * @param {Combatant} combatant
+   */
+  static async runEndTurn(combat, combatant) {
+    const actor = combatant?.actor;
+    if (!actor) return;
+    await this.execute("endTurn", { actor, combat, combatant });
+  }
+
+  /**
+   * Run endCombat scripts for all combatants that have a linked actor.
+   * @param {Combat} combat
+   */
+  static async runEndCombat(combat) {
+    const actors = new Set();
+    for (const combatant of combat.combatants) {
+      const actor = combatant.actor;
+      if (!actor || actors.has(actor.id)) continue;
+      actors.add(actor.id);
+      await this.execute("endCombat", { actor, combat });
+    }
   }
 }

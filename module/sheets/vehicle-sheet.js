@@ -3,6 +3,25 @@ import { NEUROSHIMA } from "../config.js";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 
+function _collectVehicleArmorBonusByEffect(actor) {
+  const byLoc = {};
+  if (!actor) return byLoc;
+  const seen = new Set();
+  for (const effect of actor.appliedEffects ?? []) {
+    const key = effect.origin ?? effect.uuid;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    for (const change of effect.changes ?? []) {
+      const m = change.key.match(/^system\.armorBonus\.(\w+)$/);
+      if (!m) continue;
+      const loc = m[1];
+      if (!byLoc[loc]) byLoc[loc] = [];
+      byLoc[loc].push({ name: effect.name, value: Number(change.value) || 0 });
+    }
+  }
+  return byLoc;
+}
+
 /**
  * Actor sheet for Vehicle actors (cars, bikes, trucks, etc.).
  */
@@ -124,19 +143,45 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       },
 
       editEffect: async function(event, target) {
-        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
-        this.document.effects.get(id)?.sheet.render(true);
+        const row = target.closest(".effect-row");
+        const id = row?.dataset.effectId;
+        const itemId = row?.dataset.itemId;
+        const effect = itemId
+          ? this.document.items.get(itemId)?.effects.get(id)
+          : this.document.effects.get(id);
+        effect?.sheet.render(true);
       },
 
       deleteEffect: async function(event, target) {
-        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
+        const row = target.closest(".effect-row");
+        if (row?.dataset.itemId) return;
+        const id = row?.dataset.effectId;
         await this.document.effects.get(id)?.delete();
       },
 
       toggleEffect: async function(event, target) {
-        const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
-        const effect = this.document.effects.get(id);
+        const row = target.closest(".effect-row");
+        const id = row?.dataset.effectId;
+        const itemId = row?.dataset.itemId;
+        const effect = itemId
+          ? this.document.items.get(itemId)?.effects.get(id)
+          : this.document.effects.get(id);
         if (effect) await effect.update({ disabled: !effect.disabled });
+      },
+
+      openSource: async function(event, target) {
+        const itemId = target.dataset.itemId;
+        this.document.items.get(itemId)?.sheet.render(true);
+      },
+
+      invokeItemScript: async function(event, target) {
+        const { itemId, effectId, scriptIndex } = target.dataset;
+        const item = this.document.items.get(itemId);
+        if (!item) return;
+        const effect = item.effects.get(effectId);
+        if (!effect) return;
+        const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+        await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -235,14 +280,38 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     const vehicleArmorKeys = NEUROSHIMA.vehicleArmorKeys;
     const vehicleLocationsConfig = NEUROSHIMA.vehicleLocations;
 
-    context.vehicleArmorLocations = vehicleArmorKeys.map(key => ({
-      key,
-      label:      game.i18n.localize(vehicleLocationsConfig[key]),
-      reduction:  system.armor?.[key]?.reduction  ?? 0,
-      hitPenalty: system.armor?.[key]?.hitPenalty ?? 0,
-      weakPoint:  system.armor?.[key]?.weakPoint  ?? false,
-      items:      context.inventory.armor.filter(a => a.system.location === key && a.system.equipped)
-    }));
+    const vBonusAll    = Number(system.armorBonus?.all) || 0;
+    const vPlateLabel  = game.i18n.localize("NEUROSHIMA.Vehicle.Armor");
+    const vEffBonus    = _collectVehicleArmorBonusByEffect(actor);
+    context.vehicleArmorLocations = vehicleArmorKeys.map(key => {
+      const plate    = Number(system.armor?.[key]?.reduction) || 0;
+      const bonusLoc = Number(system.armorBonus?.[key]) || 0;
+      const bonus    = vBonusAll + bonusLoc;
+      const locItems = context.inventory.armor.filter(a => a.system.location === key && a.system.equipped);
+      const itemsAP  = locItems.reduce((s, a) => s + (Number(a.system.currentRating ?? a.system.rating) || 0), 0);
+
+      const tooltipParts = [];
+      if (plate > 0) tooltipParts.push(`${foundry.utils.escapeHTML(vPlateLabel)}: <strong>${plate}</strong>`);
+      for (const itm of locItems) {
+        const ap = Number(itm.system.currentRating ?? itm.system.rating) || 0;
+        tooltipParts.push(`${foundry.utils.escapeHTML(itm.name)}: <strong>${ap}</strong>`);
+      }
+      for (const e of [...(vEffBonus.all ?? []), ...(vEffBonus[key] ?? [])]) {
+        const sign = e.value >= 0 ? "+" : "";
+        tooltipParts.push(`${foundry.utils.escapeHTML(e.name)}: <strong>${sign}${e.value}</strong>`);
+      }
+
+      return {
+        key,
+        label:            game.i18n.localize(vehicleLocationsConfig[key]),
+        reduction:        plate,
+        hitPenalty:       system.armor?.[key]?.hitPenalty ?? 0,
+        weakPoint:        system.armor?.[key]?.weakPoint  ?? false,
+        items:            locItems,
+        totalEffectiveAP: plate + itemsAP + bonus,
+        tooltip:          tooltipParts.join("<br>")
+      };
+    });
 
     const modCategoryLabels = {
       engine:      game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Engine"),
@@ -282,10 +351,14 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     const totalDamagePoints = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
     /** totalAgilityPenalty = sum of Zwrotność penalties across all damage items */
     const totalAgilityPenalty = damageItems.reduce((sum, w) => sum + (w.system.agilityPenalty || 0), 0);
+    const totalArmorAP = (NEUROSHIMA.vehicleArmorKeys ?? []).reduce(
+      (sum, key) => sum + (system.armor?.[key]?.reduction ?? 0), 0
+    );
     context.combat = {
       wounds:             damageItems,
       totalDamagePoints,
       totalAgilityPenalty,
+      totalArmorAP,
       maxHP
     };
 
@@ -297,16 +370,70 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       })
     };
 
-    context.effects = actor.effects.map(e => ({
-      id: e.id,
-      name: e.name,
-      icon: e.img || "icons/svg/aura.svg",
-      disabled: e.disabled,
-      sourceName: e.origin ? (fromUuidSync(e.origin)?.name ?? e.origin) : actor.name,
-      durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
-    }));
+    const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
+    context.effects = [];
+
+    for (const e of actor.effects) {
+      context.effects.push({
+        id: e.id,
+        itemId: null,
+        name: e.name,
+        icon: e.img || "icons/svg/aura.svg",
+        disabled: e.disabled,
+        sourceName: actor.name,
+        sourceIcon: actor.img || "icons/svg/mystery-man.svg",
+        durationLabel: effectDurationLabel(e),
+        isItemEffect: false
+      });
+    }
+
+    for (const item of actor.items) {
+      for (const e of item.effects) {
+        context.effects.push({
+          id: e.id,
+          itemId: item.id,
+          name: e.name,
+          icon: e.img || "icons/svg/aura.svg",
+          disabled: e.disabled,
+          sourceName: item.name,
+          sourceIcon: item.img || "icons/svg/item-bag.svg",
+          durationLabel: effectDurationLabel(e),
+          isItemEffect: true
+        });
+      }
+    }
+
+    context.itemManualScripts = this._prepareItemManualScripts(actor);
 
     return context;
+  }
+
+  _prepareItemManualScripts(actor) {
+    const map = {};
+    for (const item of (actor.items ?? [])) {
+      const scripts = [];
+      for (const eff of (item.effects ?? [])) {
+        if (eff.disabled) continue;
+        const flags = eff.getFlag?.("neuroshima", "scripts") ?? [];
+        flags.forEach((s, idx) => {
+          if (s.trigger === "manual") {
+            const rawLabel = s.label || eff.name;
+            const label = rawLabel
+              .replace(/@effect\.name/g, eff.name)
+              .replace(/@item\.name/g, item.name);
+            scripts.push({
+              itemId: item.id,
+              effectId: eff.id,
+              effectName: eff.name,
+              scriptIndex: idx,
+              label
+            });
+          }
+        });
+      }
+      if (scripts.length) map[item.id] = scripts;
+    }
+    return map;
   }
 
   /** @override */

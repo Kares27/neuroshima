@@ -46,8 +46,23 @@ Hooks.once('init', async function() {
         });
     });
 
+    // Script triggers: combat lifecycle
+    Hooks.on("combatStart", async (combat) => {
+        if (!game.user.isGM) return;
+        await NeuroshimaScriptRunner.runStartCombat(combat);
+    });
+
+    Hooks.on("combatTurnChange", async (combat, prior, current) => {
+        if (!game.user.isGM) return;
+        const priorCombatant = prior ? combat.combatants.get(prior.combatantId) : null;
+        const currentCombatant = current ? combat.combatants.get(current.combatantId) : null;
+        if (priorCombatant) await NeuroshimaScriptRunner.runEndTurn(combat, priorCombatant);
+        if (currentCombatant) await NeuroshimaScriptRunner.runStartTurn(combat, currentCombatant);
+    });
+
     // Cleanup melee flags on combat delete
     Hooks.on("deleteCombat", async (combat) => {
+        if (game.user.isGM) await NeuroshimaScriptRunner.runEndCombat(combat);
         game.neuroshima?.log("Combat deleted, cleaning up melee flags");
         const encounters = combat.getFlag("neuroshima", "meleeEncounters") || {};
         for (const encounter of Object.values(encounters)) {

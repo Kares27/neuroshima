@@ -385,8 +385,11 @@ export class CombatHelper {
     const negatedItems = [];
     const itemsToCreate = [];
 
+    const basePiercing = attackData.piercing || 0;
+
     for (const bullet of bullets) {
       const charDamageType = bullet.damage || "L";
+      const piercing = bullet.piercing ?? basePiercing;
 
       // Map → vehicle damage type
       const vehicleDmgType = VEHICLE_DMG_MAP.hasOwnProperty(charDamageType)
@@ -398,20 +401,34 @@ export class CombatHelper {
         continue;
       }
 
-      // Vehicle armor reduction from equipped armor items at this location
-      const equippedArmors = actor.items.filter(i =>
-        i.type === "armor" && i.system.equipped && i.system.location === location
-      );
-      const armorReduction = equippedArmors.reduce((sum, a) => sum + (a.system.currentRating ?? a.system.rating ?? 0), 0);
-      let effectiveDmgType = vehicleDmgType;
-      if (armorReduction > 0) {
-        const order   = ["VL", "VC", "VK"];
-        const reduced = order.indexOf(vehicleDmgType) - Math.floor(armorReduction);
-        if (reduced < 0) {
-          negatedItems.push({ charDamageType });
-          continue;
-        }
-        effectiveDmgType = order[Math.max(0, reduced)];
+      // Vehicle armor: unified via getArmorRating (built-in plate + equipped items)
+      const { totalSP: rawSP, weakPoint: vWeakPoint } = this.getArmorRating(actor, location);
+
+      let vehicleDmgTypeFinal = vehicleDmgType;
+      if (vWeakPoint) {
+        const vTiers = ["VL", "VC", "VK"];
+        const vIdx = vTiers.indexOf(vehicleDmgTypeFinal);
+        if (vIdx !== -1 && vIdx < vTiers.length - 1) vehicleDmgTypeFinal = vTiers[vIdx + 1];
+      }
+
+      const vArmorArgs = { actor, location, damageType: vehicleDmgTypeFinal, sp: rawSP, piercing, bonusSP: 0 };
+      NeuroshimaScriptRunner.executeSync("armorCalculation", vArmorArgs);
+      const armorSP = (vArmorArgs.sp ?? rawSP) + (vArmorArgs.bonusSP ?? 0);
+
+      const vConfig = NEUROSHIMA.vehicleDamageConfiguration;
+      const origPoints = vConfig[vehicleDmgTypeFinal]?.damagePoints ?? 1;
+      const actualReduction = this.computeActualReduction(armorSP, piercing);
+      const reducedPoints = Math.max(0, origPoints - actualReduction);
+      const vOrder = ["VL", "VC", "VK"];
+      const reducedEntry = Object.entries(vConfig).find(([, cfg]) => cfg.damagePoints === reducedPoints);
+      let effectiveDmgType = reducedPoints === 0 ? null : (reducedEntry?.[0] ?? null);
+      if (!effectiveDmgType && reducedPoints > 0) {
+        effectiveDmgType = vOrder[Math.max(0, vOrder.indexOf(vehicleDmgTypeFinal) - actualReduction)] ?? null;
+      }
+
+      if (!effectiveDmgType) {
+        negatedItems.push({ charDamageType });
+        continue;
       }
 
       const cfg = NEUROSHIMA.vehicleDamageConfiguration[effectiveDmgType];
@@ -691,7 +708,8 @@ export class CombatHelper {
             skill: skillValue,
             isCritSuccess: evalData?.isCritSuccess ?? false,
             isCritFailure: evalData?.isCritFailure ?? false,
-            tooltip: wound.forcePassed ? game.i18n.localize("NEUROSHIMA.Scripts.ForcePassed") : game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance"),
+            annotation: wound.annotation || null,
+            tooltip: wound.forcePassed ? (wound.annotation || wound.effectName || game.i18n.localize("NEUROSHIMA.Scripts.ForcePassed")) : game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance"),
             tooltipHtml: wound.forcePassed ? "" : game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
                 modifiedResults: evalData?.modifiedResults ?? [],
                 target: target,
@@ -988,6 +1006,96 @@ export class CombatHelper {
   }
 
   /**
+   * Compute the actual armor reduction from effective SP (after piercing).
+   * Rule: any positive SP remaining = at least 1 reduction;
+   *       for SP >= 1: floor + round-up at 0.5 remainder.
+   * @param {number} totalArmor - Effective armor SP after all bonuses
+   * @param {number} piercing   - Weapon piercing value
+   * @returns {number}
+   */
+  static computeActualReduction(totalArmor, piercing) {
+    const r = totalArmor - piercing;
+    if (r <= 0) return 0;
+    if (r < 1)  return 1;
+    return Math.floor(r) + (r % 1 >= 0.5 ? 1 : 0);
+  }
+
+  /**
+   * Returns total armor SP at a given location for any actor type, plus structured detail entries.
+   * Handles: character/npc (items only), creature (naturalArmor + items), vehicle (built-in plate + items).
+   * Also applies system.armorBonus.all and system.armorBonus.[location] from Active Effects.
+   *
+   * @param {Actor} actor
+   * @param {string} location - Body/vehicle location key
+   * @returns {{ totalSP: number, details: Array<{name,ratings,damage,effective}>, weakPoint: boolean }}
+   */
+  static getArmorRating(actor, location) {
+    let totalSP = 0;
+    const details = [];
+    let weakPoint = false;
+
+    if (actor.type === "creature" && actor.system.naturalArmor) {
+      const naturalPart = actor.system.naturalArmor[location];
+      if (naturalPart) {
+        const reduction = Number(naturalPart.reduction) || 0;
+        totalSP += reduction;
+        weakPoint = !!naturalPart.weakPoint;
+        if (reduction > 0) {
+          details.push({
+            name: game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor"),
+            ratings: reduction,
+            damage: 0,
+            effective: reduction
+          });
+        }
+      }
+    } else if (actor.type === "vehicle" && actor.system.armor) {
+      const plate = actor.system.armor[location];
+      if (plate) {
+        const reduction = Number(plate.reduction) || 0;
+        weakPoint = !!plate.weakPoint;
+        totalSP += reduction;
+        if (reduction > 0) {
+          details.push({
+            name: game.i18n.localize("NEUROSHIMA.Vehicle.Armor"),
+            ratings: reduction,
+            damage: 0,
+            effective: reduction
+          });
+        }
+      }
+    }
+
+    const equippedArmor = actor.items.filter(item =>
+      item.type === "armor" && item.system.equipped === true
+    );
+    for (const armor of equippedArmor) {
+      const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
+      const ratings = armor.system.armor?.ratings?.[location] ?? armor.system.currentRating ?? armor.system.rating ?? 0;
+      const damage  = armor.system.armor?.damage?.[location]  || 0;
+      if (effectiveValue > 0 || ratings > 0) {
+        totalSP += effectiveValue;
+        details.push({ name: armor.name, ratings, damage, effective: effectiveValue });
+      }
+    }
+
+    const bonusAll = Number(actor.system.armorBonus?.all)      || 0;
+    const bonusLoc = Number(actor.system.armorBonus?.[location]) || 0;
+    const totalBonus = bonusAll + bonusLoc;
+    if (totalBonus !== 0) {
+      totalSP += totalBonus;
+      details.push({
+        name: game.i18n.localize("NEUROSHIMA.Effects.ArmorBonus"),
+        ratings: totalBonus,
+        damage: 0,
+        effective: totalBonus
+      });
+    }
+
+    return { totalSP, details, weakPoint };
+  }
+
+  /**
    * Zmniejsza obrażenia i zwraca szczegółowe dane redukcji dla tooltipa.
    * @private
    */
@@ -1002,62 +1110,29 @@ export class CombatHelper {
       reducedDamageType: null
     };
 
-    // Get effective armor value at hit location.
-    // For creatures (actor.type === "creature") use natural armor from the data model
-    // instead of equipped armor items.
-    let totalArmorRating = 0;
+    const { totalSP, details, weakPoint } = this.getArmorRating(actor, location);
+    let totalArmorRating = totalSP;
+    reductionData.armorDetails = details;
 
-    if (actor.type === "creature" && actor.system.naturalArmor) {
-      const naturalPart = actor.system.naturalArmor[location];
-      if (naturalPart) {
-        const reduction = Number(naturalPart.reduction) || 0;
-        totalArmorRating = reduction;
-        if (reduction > 0) {
-          reductionData.armorDetails.push({
-            name: game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor"),
-            ratings: reduction,
-            damage: 0,
-            effective: reduction
-          });
-        }
-        // Weak point: damage is upgraded 1 tier when this location is targeted
-        if (naturalPart.weakPoint) {
-          const tiers = ["D", "L", "C", "K"];
-          const currentIdx = tiers.indexOf(damageType);
-          if (currentIdx !== -1 && currentIdx < tiers.length - 1) {
-            damageType = tiers[currentIdx + 1];
-            reductionData.originalDamage = damageType;
-          }
-        }
-      }
-    } else {
-      const equipedArmor = actor.items.filter(item =>
-        item.type === "armor" && item.system.equipped === true
-      );
-      for (const armor of equipedArmor) {
-        const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
-        const ratings = armor.system.armor?.ratings?.[location] || 0;
-        const damage  = armor.system.armor?.damage?.[location]  || 0;
-        totalArmorRating += effectiveValue;
-        reductionData.armorDetails.push({ name: armor.name, ratings, damage, effective: effectiveValue });
+    if (weakPoint) {
+      const tiers = ["D", "L", "C", "K"];
+      const currentIdx = tiers.indexOf(damageType);
+      if (currentIdx !== -1 && currentIdx < tiers.length - 1) {
+        damageType = tiers[currentIdx + 1];
+        reductionData.originalDamage = damageType;
       }
     }
 
     reductionData.totalArmor = totalArmorRating;
-    
-    // Calculate reduction: Armor - Piercing
-    const reduction = totalArmorRating - piercing;
-    let actualReduction = 0;
-    
-    if (reduction >= 1) {
-      actualReduction = Math.floor(reduction);
-      if (reduction % 1 >= 0.5) {
-        actualReduction += 1;
-      }
-    } else if (reduction > 0) {
-      actualReduction = 1;
-    }
 
+    // Uruchomienie skryptów armorCalculation — mogą modyfikować SP lub dodawać bonusSP
+    const armorArgs = { actor, location, damageType, sp: totalArmorRating, piercing, bonusSP: 0 };
+    NeuroshimaScriptRunner.executeSync("armorCalculation", armorArgs);
+    totalArmorRating = (armorArgs.sp ?? totalArmorRating) + (armorArgs.bonusSP ?? 0);
+    reductionData.totalArmor = totalArmorRating;
+
+    // Calculate reduction: Armor - Piercing (unified formula)
+    const actualReduction = this.computeActualReduction(totalArmorRating, piercing);
     reductionData.reduction = actualReduction;
     
     // Get wound reduction points from config (not HP points!)

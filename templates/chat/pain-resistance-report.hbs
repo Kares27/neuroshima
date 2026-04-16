@@ -45,8 +45,8 @@
         
         <div class="wound-list collapsible-content" style="display: none;">
             {{#each results}}
-                <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}"
-                     data-tooltip-html="{{this.tooltipHtml}}"
+                <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}{{#if this.forcePassed}} force-passed{{/if}}"
+                     {{#if this.forcePassed}}data-tooltip="{{this.tooltip}}"{{else}}data-tooltip-html="{{this.tooltipHtml}}"{{/if}}
                      data-tooltip-direction="LEFT">
                     <div class="wound-icon">
                         <i class="fas {{#if this.isPassed}}fa-check{{else}}fa-times{{/if}}"></i>
