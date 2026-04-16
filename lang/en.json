@@ -1124,8 +1124,10 @@
                 "ApplyDamage": "Apply Damage",
                 "EquipToggle": "Equip Toggle",
                 "StartCombat": "Combat Start",
+                "StartRound": "Round Start",
                 "StartTurn": "Turn Start",
                 "EndTurn": "Turn End",
+                "EndRound": "Round End",
                 "EndCombat": "Combat End",
                 "CreateEffect": "Effect Created",
                 "DeleteEffect": "Effect Deleted"

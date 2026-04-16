@@ -1151,8 +1151,10 @@
                 "ApplyDamage": "Aplikowanie Obrażeń",
                 "EquipToggle": "Przełącz Ekwipunek",
                 "StartCombat": "Rozpoczęcie Walki",
+                "StartRound": "Początek Rundy",
                 "StartTurn": "Początek Tury",
                 "EndTurn": "Koniec Tury",
+                "EndRound": "Koniec Rundy",
                 "EndCombat": "Zakończenie Walki",
                 "CreateEffect": "Utworzenie Efektu",
                 "DeleteEffect": "Usunięcie Efektu"

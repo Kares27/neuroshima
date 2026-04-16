@@ -60,6 +60,15 @@ Hooks.once('init', async function() {
         if (currentCombatant) await NeuroshimaScriptRunner.runStartTurn(combat, currentCombatant);
     });
 
+    Hooks.on("combatRound", async (combat, updates, options) => {
+        if (!game.user.isGM) return;
+        if (options?.direction === 1 || updates?.round > (options?.previousRound ?? 0)) {
+            await NeuroshimaScriptRunner.runStartRound(combat);
+        } else {
+            await NeuroshimaScriptRunner.runEndRound(combat);
+        }
+    });
+
     // Cleanup melee flags on combat delete
     Hooks.on("deleteCombat", async (combat) => {
         if (game.user.isGM) await NeuroshimaScriptRunner.runEndCombat(combat);

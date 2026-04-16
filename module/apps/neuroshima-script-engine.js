@@ -10,6 +10,8 @@ export class NeuroshimaScript {
     this.effect = effect;
   }
 
+  // ── Context getters ──────────────────────────────────────────────────────
+
   get actor() {
     return this.effect?.actor ?? null;
   }
@@ -19,10 +21,47 @@ export class NeuroshimaScript {
     return parent?.documentName === "Item" ? parent : null;
   }
 
+  /**
+   * The first token on the active scene that represents this actor.
+   * Returns null if the actor has no token or there is no active scene.
+   */
+  get token() {
+    return canvas.scene?.tokens.find(t => t.actor?.id === this.actor?.id) ?? null;
+  }
+
+  // ── Notifications ────────────────────────────────────────────────────────
+
   notification(content, type = "info") {
     const name = this.effect?.name || "Effect";
     ui.notifications[type]?.(`${name}: ${content}`);
   }
+
+  // ── Chat helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Build default ChatMessage creation data for this script context.
+   * The speaker defaults to the actor; flavor defaults to the effect name.
+   * @param {Object} [merge={}] Additional data to merge in.
+   * @returns {Object}
+   */
+  getChatData(merge = {}) {
+    return foundry.utils.mergeObject({
+      speaker: ChatMessage.getSpeaker({ actor: this.actor }),
+      flavor: this.effect?.name ?? this.item?.name ?? ""
+    }, merge);
+  }
+
+  /**
+   * Create a chat message attributed to this script's actor.
+   * @param {string} content - HTML content of the message.
+   * @param {Object} [chatData={}] - Additional ChatMessage data (merged with defaults).
+   * @returns {Promise<ChatMessage>}
+   */
+  async sendMessage(content, chatData = {}) {
+    return ChatMessage.create(this.getChatData(foundry.utils.mergeObject({ content }, chatData)));
+  }
+
+  // ── Execution ─────────────────────────────────────────────────────────────
 
   async execute(args = {}) {
     try {
@@ -123,8 +162,10 @@ export class NeuroshimaScriptRunner {
     armorCalculation: "NEUROSHIMA.Scripts.Trigger.ArmorCalculation",
     equipToggle:      "NEUROSHIMA.Scripts.Trigger.EquipToggle",
     startCombat:      "NEUROSHIMA.Scripts.Trigger.StartCombat",
+    startRound:       "NEUROSHIMA.Scripts.Trigger.StartRound",
     startTurn:        "NEUROSHIMA.Scripts.Trigger.StartTurn",
     endTurn:          "NEUROSHIMA.Scripts.Trigger.EndTurn",
+    endRound:         "NEUROSHIMA.Scripts.Trigger.EndRound",
     endCombat:        "NEUROSHIMA.Scripts.Trigger.EndCombat",
     createEffect:     "NEUROSHIMA.Scripts.Trigger.CreateEffect",
     deleteEffect:     "NEUROSHIMA.Scripts.Trigger.DeleteEffect"
@@ -319,5 +360,87 @@ export class NeuroshimaScriptRunner {
       actors.add(actor.id);
       await this.execute("endCombat", { actor, combat });
     }
+  }
+
+  /**
+   * Run startRound scripts for all combatants at the beginning of a new round.
+   * Called once per actor (deduped).
+   * @param {Combat} combat
+   */
+  static async runStartRound(combat) {
+    const actors = new Set();
+    for (const combatant of combat.combatants) {
+      const actor = combatant.actor;
+      if (!actor || actors.has(actor.id)) continue;
+      actors.add(actor.id);
+      await this.execute("startRound", { actor, combat, round: combat.round });
+    }
+  }
+
+  /**
+   * Run endRound scripts for all combatants at the end of a round.
+   * @param {Combat} combat
+   */
+  static async runEndRound(combat) {
+    const actors = new Set();
+    for (const combatant of combat.combatants) {
+      const actor = combatant.actor;
+      if (!actor || actors.has(actor.id)) continue;
+      actors.add(actor.id);
+      await this.execute("endRound", { actor, combat, round: combat.round });
+    }
+  }
+
+  // ── Script utility helpers (available in scripts via game.neuroshima.NeuroshimaScriptRunner) ──
+
+  /**
+   * Return all actors targeted by the current user's token targeting.
+   * Returns an empty array if nothing is targeted.
+   * @returns {Actor[]}
+   */
+  static getTargets() {
+    return Array.from(game.user.targets).map(t => t.actor).filter(a => a);
+  }
+
+  /**
+   * Return actors of all currently selected tokens on the canvas.
+   * Falls back to the user's assigned character if no token is selected.
+   * @returns {Actor[]}
+   */
+  static getSelected() {
+    const selected = canvas.tokens?.controlled.map(t => t.actor).filter(a => a) ?? [];
+    if (selected.length) return selected;
+    if (game.user.character) return [game.user.character];
+    return [];
+  }
+
+  /**
+   * Return targeted actors if any targets exist, otherwise fall back to selected tokens.
+   * @returns {Actor[]}
+   */
+  static getTargetsOrSelected() {
+    const targets = this.getTargets();
+    return targets.length ? targets : this.getSelected();
+  }
+
+  /**
+   * Async sleep / delay.
+   * Useful for waiting between steps (e.g. after Dice So Nice animations).
+   * @param {number} ms - Milliseconds to wait.
+   * @returns {Promise<void>}
+   */
+  static sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Roll a dice formula and return the evaluated Roll object.
+   * Convenience wrapper around `new Roll(formula).evaluate()`.
+   * @param {string} formula - A valid Foundry dice formula (e.g. "1d100", "2d6+3").
+   * @param {Object} [data={}]  - Formula data for variable substitution.
+   * @returns {Promise<Roll>}
+   */
+  static async rollDice(formula, data = {}) {
+    return new Roll(formula, data).evaluate();
   }
 }

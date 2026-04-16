@@ -108,5 +108,88 @@ export class NeuroshimaItem extends Item {
     }
   }
 
+  // ── Wound helpers ──────────────────────────────────────────────────────────
+
+  static DAMAGE_ORDER = ["D", "sD", "L", "sL", "C", "sC", "K", "sK"];
+
+  /**
+   * Reduce the wound's damage type by `n` levels (clamped to minimum "D").
+   * Only works on items of type "wound".
+   * @param {number} n
+   */
+  async reduceLevel(n = 1) {
+    if (this.type !== "wound") return;
+    const order = NeuroshimaItem.DAMAGE_ORDER;
+    const current = order.indexOf(this.system.damageType);
+    if (current < 0) return;
+    const next = Math.max(0, current - n);
+    await this.update({ "system.damageType": order[next] });
+  }
+
+  /**
+   * Increase the wound's damage type by `n` levels (clamped to maximum "sK").
+   * Only works on items of type "wound".
+   * @param {number} n
+   */
+  async increaseLevel(n = 1) {
+    if (this.type !== "wound") return;
+    const order = NeuroshimaItem.DAMAGE_ORDER;
+    const current = order.indexOf(this.system.damageType);
+    if (current < 0) return;
+    const next = Math.min(order.length - 1, current + n);
+    await this.update({ "system.damageType": order[next] });
+  }
+
+  /**
+   * Reduce the wound's penalty by `n` (clamped to 0).
+   * Only works on items of type "wound".
+   * @param {number} n
+   */
+  async reducePenalty(n = 1) {
+    if (this.type !== "wound") return;
+    const next = Math.max(0, (this.system.penalty ?? 0) - n);
+    await this.update({ "system.penalty": next });
+  }
+
+  /**
+   * Increase the wound's penalty by `n`.
+   * Only works on items of type "wound".
+   * @param {number} n
+   */
+  async increasePenalty(n = 1) {
+    if (this.type !== "wound") return;
+    const next = (this.system.penalty ?? 0) + n;
+    await this.update({ "system.penalty": next });
+  }
+
+  // ── Quantity helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Returns true if this item tracks quantity (has system.quantity defined).
+   */
+  get hasQuantity() {
+    return typeof this.system?.quantity === "number";
+  }
+
+  /**
+   * Reduce item quantity by `n` (clamped to 0). No-op if item has no quantity.
+   * @param {number} n
+   */
+  async reduceQuantity(n = 1) {
+    if (!this.hasQuantity) return;
+    const next = Math.max(0, this.system.quantity - n);
+    await this.update({ "system.quantity": next });
+  }
+
+  /**
+   * Increase item quantity by `n`. No-op if item has no quantity.
+   * @param {number} n
+   */
+  async increaseQuantity(n = 1) {
+    if (!this.hasQuantity) return;
+    const next = this.system.quantity + n;
+    await this.update({ "system.quantity": next });
+  }
+
   /** @override */
 }

@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
+<html lang="pl"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Neuroshima 1.5 — System Skryptów Efektów</title>
@@ -179,7 +177,10 @@
     <div class="ctx-row"><span class="ctx-name">this.effect</span><span class="ctx-type">ActiveEffect</span><span class="ctx-desc">Ten aktywny efekt</span></div>
     <div class="ctx-row"><span class="ctx-name">this.label</span><span class="ctx-type">string</span><span class="ctx-desc">Etykieta skryptu</span></div>
     <div class="ctx-row"><span class="ctx-name">this.trigger</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyzwalacza który uruchomił ten skrypt</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getChatData(merge?)</span><span class="ctx-type">object</span><span class="ctx-desc">Domyślne dane do ChatMessage.create() z speaker aktora i flavorem efektu</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
   </div>
 
   <h3>Argumenty <code>args</code></h3>
@@ -207,29 +208,29 @@
   <h3>prepareData <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
   <p>Uruchamiany podczas <code>actor.prepareDerivedData()</code> — czyli za każdym razem gdy Foundry przelicza dane aktora (po każdej aktualizacji). Idealny do modyfikacji wartości pochodnych.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor — modyfikuj <code>args.actor.system.*</code> bezpośrednio</td></tr>
-  </table>
+  </tbody></table>
   <div class="callout warning">Nie używaj <code>await</code>. Nie wywołuj <code>actor.update()</code> — to spowoduje pętlę. Modyfikuj dane tymczasowe bezpośrednio na obiekcie.</div>
 
   <!-- preRollTest -->
   <h3>preRollTest</h3>
   <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Może anulować rzut lub wymusić automatyczny sukces.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
     <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code></td></tr>
     <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code></td></tr>
     <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (wyświetlana w chacie)</td></tr>
     <tr><td>args.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
     <tr><td>args.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
-  </table>
+  </tbody></table>
 
   <!-- rollTest -->
   <h3>rollTest</h3>
   <p>Uruchamiany po <code>preRollTest</code> (tylko gdy nie anulowano/auto-sukces) — modyfikuje parametry rzutu przed rzuceniem kośćmi.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu — modyfikuj bezpośrednio</td></tr>
     <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności — modyfikuj bezpośrednio</td></tr>
     <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności</td></tr>
@@ -237,78 +238,87 @@
     <tr><td>args.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base }</code> — modyfikuj <code>args.penalties.mod</code></td></tr>
     <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu</td></tr>
     <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności</td></tr>
-  </table>
+  </tbody></table>
 
   <!-- applyDamage -->
   <h3>applyDamage</h3>
   <p>Uruchamiany przed sprawdzeniem odporności na ból dla przychodzących ran. Pozwala modyfikować lub pomijać rany.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor otrzymujący obrażenia</td></tr>
     <tr><td>args.location</td><td>string</td><td>Lokalizacja trafienia: <code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, itp.</td></tr>
     <tr><td>args.wounds</td><td>Array</td><td>Tablica ran — każda rana ma właściwości poniżej</td></tr>
     <tr><td>wound.damageType</td><td>string</td><td>Typ obrażeń: <code>D</code>, <code>sD</code>, <code>L</code>, <code>sL</code>, <code>C</code>, <code>sC</code>, <code>K</code>, <code>sK</code></td></tr>
     <tr><td>wound.forcePassed</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana automatycznie zdaje test odporności na ból</td></tr>
     <tr><td>wound.forceSkip</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana jest całkowicie ignorowana (nie tworzy itemu rany)</td></tr>
-  </table>
+  </tbody></table>
 
   <!-- armorCalculation -->
   <h3>armorCalculation <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
   <p>Uruchamiany podczas obliczania redukcji pancerza dla trafienia. Pozwala modyfikować efektywne SP zbroi.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor posiadający pancerz</td></tr>
     <tr><td>args.location</td><td>string</td><td>Lokalizacja trafienia</td></tr>
     <tr><td>args.damageType</td><td>string</td><td>Typ obrażeń</td></tr>
     <tr><td>args.sp</td><td>number</td><td>Aktualne SP pancerza — modyfikuj bezpośrednio</td></tr>
     <tr><td>args.piercing</td><td>number</td><td>Wartość przebicia pancerza ataku</td></tr>
     <tr><td>args.bonusSP</td><td>number</td><td>Dodatkowe SP do doliczenia — dodaj tutaj bonus</td></tr>
-  </table>
+  </tbody></table>
 
   <!-- equipToggle -->
   <h3>equipToggle</h3>
   <p>Uruchamiany po założeniu lub zdjęciu ekwipunku przez aktora.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor zakładający/zdejmujący item</td></tr>
     <tr><td>args.item</td><td>Item</td><td>Item który został założony lub zdjęty</td></tr>
     <tr><td>args.equipped</td><td>boolean</td><td><code>true</code> = właśnie założony, <code>false</code> = właśnie zdjęty</td></tr>
-  </table>
+  </tbody></table>
 
   <!-- combat triggers -->
   <h3>startCombat / endCombat</h3>
   <p>Uruchamiane gdy walka zaczyna się lub kończy. Wykonywane raz na aktora (nie na combatanta).</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor biorący udział w walce</td></tr>
     <tr><td>args.combat</td><td>Combat</td><td>Dokument walki</td></tr>
-  </table>
+  </tbody></table>
+
+  <h3>startRound / endRound</h3>
+  <p>Uruchamiane na początku i końcu każdej rundy walki. Wykonywane raz na aktora (deduplikacja).</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor biorący udział w walce</td></tr>
+    <tr><td>args.combat</td><td>Combat</td><td>Dokument walki</td></tr>
+    <tr><td>args.round</td><td>number</td><td>Numer aktualnej rundy</td></tr>
+  </tbody></table>
 
   <h3>startTurn / endTurn</h3>
   <p>Uruchamiane na początku i końcu tury aktora w walce.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor którego tura się zaczyna/kończy</td></tr>
     <tr><td>args.combat</td><td>Combat</td><td>Dokument walki</td></tr>
     <tr><td>args.combatant</td><td>Combatant</td><td>Combatant (może być kilka na tego samego aktora)</td></tr>
-  </table>
+  </tbody></table>
 
   <!-- lifecycle -->
   <h3>createEffect / deleteEffect</h3>
   <p>Uruchamiane raz gdy efekt jest tworzony na aktorze lub usuwany z aktora.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor docelowy</td></tr>
     <tr><td>args.data / args.options</td><td>object</td><td>Dane Foundry przekazane do operacji</td></tr>
-  </table>
+  </tbody></table>
 
   <!-- manual -->
   <h3>manual</h3>
   <p>Wyzwalany ręcznie przez kliknięcie przycisku ▶ na liście skryptów efektu na arkuszu aktora.</p>
   <table>
-    <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor właściciel efektu</td></tr>
-  </table>
+  </tbody></table>
 </section>
 
 <!-- SECTION 4 -->
@@ -438,7 +448,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
 <span class="kw">const</span> <span class="var">threshold</span> = <span class="num">25</span>;
 <span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">new</span> Roll(<span class="str">`<span class="var">${wounds.length}</span>d100`</span>).evaluate();
-<span class="kw">const</span> <span class="var">results</span> = <span class="var">roll</span>.dice[<span class="num">0</span>].results.map(<span class="var">r</span> => <span class="var">r</span>.result);
+<span class="kw">const</span> <span class="var">results</span> = <span class="var">roll</span>.dice[<span class="num">0</span>].results.map(<span class="var">r</span> =&gt; <span class="var">r</span>.result);
 
 <span class="kw">let</span> <span class="var">negated</span> = <span class="num">0</span>;
 <span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">wounds</span>.length; <span class="var">i</span>++) {
@@ -467,7 +477,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
 <span class="kw">const</span> <span class="var">threshold</span> = <span class="num">25</span>;
 <span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">new</span> Roll(<span class="str">`<span class="var">${wounds.length}</span>d100`</span>).evaluate();
-<span class="kw">const</span> <span class="var">results</span> = <span class="var">roll</span>.dice[<span class="num">0</span>].results.map(<span class="var">r</span> => <span class="var">r</span>.result);
+<span class="kw">const</span> <span class="var">results</span> = <span class="var">roll</span>.dice[<span class="num">0</span>].results.map(<span class="var">r</span> =&gt; <span class="var">r</span>.result);
 
 <span class="kw">let</span> <span class="var">deflected</span> = <span class="num">0</span>;
 <span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">wounds</span>.length; <span class="var">i</span>++) {
@@ -515,6 +525,156 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
 <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Efekt wykorzystany i usunięty."</span>);</code></pre>
   </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">startRound</span>
+      Zatrucie — zadaje 1 PŻ na początku każdej rundy
+    </div>
+    <pre><code><span class="cmt">// args: { actor, combat, round }</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(-<span class="num">1</span>);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;☠ &lt;b&gt;${this.actor.name}&lt;/b&gt; traci 1 PŻ od trucizny (runda ${args.round}).&lt;/p&gt;`</span>);
+<span class="kw">if</span> (<span class="kw">this</span>.actor.system.hp.value &lt;= <span class="num">0</span>) <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">endRound</span>
+      Regeneracja — obniż najcięższe rany o 1 poziom na końcu rundy
+    </div>
+    <pre><code><span class="cmt">// args: { actor, combat, round }</span>
+<span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
+<span class="kw">if</span> (!<span class="var">worst</span>.length) <span class="kw">return</span>;
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">worst</span>) <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;💚 Regeneracja: ${worst.length} ran obniżonych o 1 poziom.&lt;/p&gt;`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preRollTest</span>
+      Bonus do testu gdy aktor ma aktywny inny efekt — <code>hasEffect</code>
+    </div>
+    <pre><code><span class="cmt">// +10 do Zręczności gdy efekt "Adrenalina" jest aktywny</span>
+<span class="kw">if</span> (args.attributeKey === <span class="str">"dexterity"</span> &amp;&amp; <span class="kw">this</span>.actor.<span class="fn">hasEffect</span>(<span class="str">"Adrenalina"</span>)) {
+  args.stat += <span class="num">10</span>;
+  args.annotation = <span class="str">"Adrenalina: +10 Zr"</span>;
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Włącz/wyłącz inny efekt — <code>toggleEffect</code>
+    </div>
+    <pre><code><span class="cmt">// Flipuje stan efektu "Tarcza" na aktorze</span>
+<span class="kw">const</span> <span class="var">e</span> = <span class="kw">this</span>.actor.<span class="fn">findEffect</span>(<span class="str">"Tarcza"</span>);
+<span class="kw">if</span> (!<span class="var">e</span>) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak efektu Tarcza"</span>, <span class="str">"warn"</span>);
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">toggleEffect</span>(<span class="str">"Tarcza"</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Tarcza: ${e.disabled ? "włączona" : "wyłączona"}`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">deleteEffect</span>
+      Usuń powiązany efekt gdy item jest wyrzucony — <code>removeEffectByName</code>
+    </div>
+    <pre><code><span class="cmt">// Gdy efekt główny jest usuwany — sprzątnij też efekt pochodny</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">removeEffectByName</span>(<span class="str">"Dym Papierosa"</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Papieros wypalony — efekt dymu usunięty."</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Aplikuj efekt z itemu po UUID — <code>applyEffectByUuid</code>
+    </div>
+    <pre><code><span class="cmt">// Weź drugi efekt z tego samego itemu i aplikuj go na aktora</span>
+<span class="kw">const</span> <span class="var">src</span> = <span class="kw">this</span>.effect.parent;
+<span class="kw">if</span> (!<span class="var">src</span>?.effects?.size) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">fx</span> = <span class="var">src</span>.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">fx</span>) <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffectByUuid</span>(<span class="var">fx</span>.uuid);
+<span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Efekt "${fx?.name}" zaaplikowany.`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Obniż WSZYSTKIE najcięższe rany o 1 poziom — <code>getWorstWounds + reduceLevel</code>
+    </div>
+    <pre><code><span class="cmt">// Np. przycisk "Ulecz" na tricku leczącym</span>
+<span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
+<span class="kw">if</span> (!<span class="var">worst</span>.length) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak aktywnych ran"</span>, <span class="str">"warn"</span>);
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">worst</span>) <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Obniżono ${worst.length} ran (${worst[0].system.damageType}) o 1 poziom.`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Zmniejsz kary od ran na głowie — <code>getWounds(filter) + reducePenalty</code>
+    </div>
+    <pre><code><span class="kw">const</span> <span class="var">hw</span> = <span class="kw">this</span>.actor.<span class="fn">getWounds</span>({ active: <span class="kw">true</span>, location: <span class="str">"head"</span> });
+<span class="kw">if</span> (!<span class="var">hw</span>.length) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak ran na głowie"</span>, <span class="str">"warn"</span>);
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">hw</span>) <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reducePenalty</span>(<span class="num">1</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Kara od ${hw.length} ran (głowa) zmniejszona o 1.`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Zużycie przedmiotu z ilością — <code>hasQuantity + reduceQuantity</code>
+    </div>
+    <pre><code><span class="kw">if</span> (!<span class="kw">this</span>.item?.<span class="fn">hasQuantity</span> || <span class="kw">this</span>.item.system.quantity &lt;= <span class="num">0</span>) {
+  <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak zapasów!"</span>, <span class="str">"error"</span>);
+}
+<span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Zużyto 1 szt. Pozostało: ${this.item.system.quantity - 1}.`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Rzut kością + czekanie na Dice So Nice — <code>rollDice + sleep + sendMessage</code>
+    </div>
+    <pre><code><span class="kw">const</span> <span class="var">Runner</span> = game.neuroshima.NeuroshimaScriptRunner;
+<span class="kw">const</span> <span class="var">roll</span>   = <span class="kw">await</span> <span class="var">Runner</span>.<span class="fn">rollDice</span>(<span class="str">`${this.actor.system.attributes.constitution}d6`</span>);
+<span class="kw">const</span> <span class="var">msg</span>    = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({ flavor: <span class="str">"Test Budowy"</span> }));
+<span class="kw">if</span> (game.dice3d) <span class="kw">await</span> game.dice3d.<span class="fn">waitFor3DAnimationByMessageID</span>(<span class="var">msg</span>.id);
+<span class="cmt">// po animacji — kontynuuj logikę</span>
+<span class="kw">if</span> (<span class="var">roll</span>.total >= <span class="num">10</span>) <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Sukces!"</span>);
+<span class="kw">else</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Porażka..."</span>, <span class="str">"warn"</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Leczenie zaznaczonego/wskazanego tokena — <code>getTargetsOrSelected</code>
+    </div>
+    <pre><code><span class="kw">const</span> <span class="var">Runner</span>  = game.neuroshima.NeuroshimaScriptRunner;
+<span class="kw">const</span> <span class="var">targets</span> = <span class="var">Runner</span>.<span class="fn">getTargetsOrSelected</span>();
+<span class="kw">const</span> <span class="var">actors</span>  = <span class="var">targets</span>.length ? <span class="var">targets</span> : [<span class="kw">this</span>.actor];
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="var">actors</span>) {
+  <span class="kw">await</span> <span class="var">a</span>.<span class="fn">modifyHp</span>(<span class="num">5</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;💊 ${a.name} uleczony o 5 PŻ.&lt;/p&gt;`</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">createEffect</span> + <span class="trigger-badge">deleteEffect</span>
+      Śledzenie czasu trwania efektu przez flagi aktora
+    </div>
+    <pre><code><span class="cmt">// Skrypt 1 — trigger: createEffect — zapisz czas startu</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">`effectStart_${this.effect.id}`</span>, game.time.worldTime);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Efekt "${this.effect.name}" aktywny.`</span>);
+
+<span class="cmt">// Skrypt 2 — trigger: deleteEffect — oblicz czas trwania</span>
+<span class="kw">const</span> <span class="var">t0</span>  = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">`effectStart_${this.effect.id}`</span>);
+<span class="kw">const</span> <span class="var">dur</span> = <span class="var">t0</span> ? game.time.worldTime - <span class="var">t0</span> : <span class="str">"?"</span>;
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Efekt "${this.effect.name}" zakończony. Trwał: ${dur}s.`</span>);
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">`effectStart_${this.effect.id}`</span>);</code></pre>
+  </div>
 </section>
 
 <!-- SECTION 5 — Manual Invocation -->
@@ -548,8 +708,8 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     </div>
 <pre><code><span class="cmt">// Trigger: manual
 // Etykieta: "Wypij"
-// Na przedmiocie "Wyciąg Uzdrawiający" (gear, quantity > 0)</span>
-(<span class="kw">async</span> () => {
+// Na przedmiocie "Wyciąg Uzdrawiający" (gear, quantity &gt; 0)</span>
+(<span class="kw">async</span> () =&gt; {
   <span class="kw">if</span> (!<span class="kw">this</span>.item.system.quantity) {
     <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak wyciągu!"</span>, <span class="str">"error"</span>);
   }
@@ -583,7 +743,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <pre><code><span class="cmt">// Skrypt 1 — trigger: manual, etykieta: "Zapal"
 // Aplikuje drugi efekt z tego itemu na aktora</span>
 <span class="kw">const</span> <span class="var">sourceItem</span> = <span class="kw">this</span>.effect.parent; <span class="cmt">// item = papieros</span>
-<span class="kw">if</span> (<span class="var">sourceItem</span>?.effects?.size > <span class="num">1</span>) {
+<span class="kw">if</span> (<span class="var">sourceItem</span>?.effects?.size &gt; <span class="num">1</span>) {
   <span class="kw">const</span> <span class="var">toxinEffect</span> = <span class="var">sourceItem</span>.effects.contents[<span class="num">1</span>];
   <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectUuids: [<span class="var">toxinEffect</span>.uuid] });
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Toksyny wchłonięte."</span>);
@@ -621,23 +781,23 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     (bez pisania kodu). Każda zmiana to:
   </p>
   <table>
-    <tr><th>Pole</th><th>Opis</th></tr>
+    <tbody><tr><th>Pole</th><th>Opis</th></tr>
     <tr><td>Klucz (Key)</td><td>Ścieżka do pola danych, np. <code>system.attributes.dexterity</code></td></tr>
     <tr><td>Tryb (Mode)</td><td>Jak zmiana jest aplikowana — patrz niżej</td></tr>
     <tr><td>Wartość (Value)</td><td>Liczba lub wartość do zastosowania</td></tr>
     <tr><td>Priorytet</td><td>Kolejność aplikowania (niższy = najpierw; domyślnie 20)</td></tr>
-  </table>
+  </tbody></table>
 
   <h3>Tryby (CHANGE_MODES)</h3>
   <table>
-    <tr><th>Tryb</th><th>Wartość</th><th>Działanie</th></tr>
+    <tbody><tr><th>Tryb</th><th>Wartość</th><th>Działanie</th></tr>
     <tr><td>Custom</td><td>0</td><td>Brak automatycznego przetwarzania — dla skryptów niestandardowych</td></tr>
     <tr><td>Multiply</td><td>1</td><td>Mnożenie: <code>aktualna × wartość</code></td></tr>
     <tr><td>Add</td><td>2</td><td>Dodawanie: <code>aktualna + wartość</code> (najczęściej używany)</td></tr>
     <tr><td>Downgrade</td><td>3</td><td>Zastąp jeśli wartość jest niższa</td></tr>
     <tr><td>Upgrade</td><td>4</td><td>Zastąp jeśli wartość jest wyższa</td></tr>
     <tr><td>Override</td><td>5</td><td>Bezwzględne zastąpienie wartością</td></tr>
-  </table>
+  </tbody></table>
 
   <h3>Przełącznik Ręczny/Dropdown</h3>
   <p>
@@ -653,42 +813,42 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
   <h4>Atrybuty (Postać / NPC)</h4>
   <table>
-    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.attributes.dexterity</td><td>Zręczność (bazowa)</td></tr>
     <tr><td>system.attributes.perception</td><td>Percepcja (bazowa)</td></tr>
     <tr><td>system.attributes.charisma</td><td>Charyzma (bazowa)</td></tr>
     <tr><td>system.attributes.cleverness</td><td>Spryt (bazowy)</td></tr>
     <tr><td>system.attributes.constitution</td><td>Budowa (bazowa)</td></tr>
-  </table>
+  </tbody></table>
 
   <h4>Modyfikatory (Postać / NPC)</h4>
   <table>
-    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.modifiers.dexterity</td><td>Modyfikator Zręczności</td></tr>
     <tr><td>system.modifiers.perception</td><td>Modyfikator Percepcji</td></tr>
     <tr><td>system.modifiers.charisma</td><td>Modyfikator Charyzmy</td></tr>
     <tr><td>system.modifiers.cleverness</td><td>Modyfikator Sprytu</td></tr>
     <tr><td>system.modifiers.constitution</td><td>Modyfikator Budowy</td></tr>
-  </table>
+  </tbody></table>
 
   <h4>Punkty Życia</h4>
   <table>
-    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.hp.max</td><td>Maksymalne PŻ</td></tr>
     <tr><td>system.hp.value</td><td>Aktualne PŻ</td></tr>
-  </table>
+  </tbody></table>
 
   <h4>Walka (Postać / NPC)</h4>
   <table>
-    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.combat.totalArmorPenalty</td><td>Kara od pancerza</td></tr>
     <tr><td>system.combat.meleeInitiative</td><td>Inicjatywa w walce wręcz</td></tr>
     <tr><td>system.healingRate</td><td>Tempo Leczenia</td></tr>
-  </table>
+  </tbody></table>
 
   <h4>Naturalna Zbroja (Bestia)</h4>
   <table>
-    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.naturalArmor.head.reduction</td><td>Redukcja — Głowa</td></tr>
     <tr><td>system.naturalArmor.torso.reduction</td><td>Redukcja — Tułów</td></tr>
     <tr><td>system.naturalArmor.rightArm.reduction</td><td>Redukcja — Prawa Ręka</td></tr>
@@ -698,28 +858,28 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <tr><td>system.aggression</td><td>Agresja bestii</td></tr>
     <tr><td>system.movement</td><td>Ruch bestii</td></tr>
     <tr><td>system.kondycja</td><td>Kondycja bestii</td></tr>
-  </table>
+  </tbody></table>
 
   <h4>Atrybuty Pojazdu</h4>
   <table>
-    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.attributes.agility</td><td>Zwrotność</td></tr>
     <tr><td>system.attributes.topSpeed</td><td>Prędkość Maksymalna</td></tr>
     <tr><td>system.attributes.acceleration</td><td>Przyspieszenie</td></tr>
     <tr><td>system.attributes.brakes</td><td>Hamulce</td></tr>
     <tr><td>system.attributes.durability</td><td>Sprawność (max HP)</td></tr>
     <tr><td>system.attributes.efficiency</td><td>Wydajność</td></tr>
-  </table>
+  </tbody></table>
 
   <h4>Pancerz Pojazdu</h4>
   <table>
-    <tr><th>Klucz</th><th>Opis</th></tr>
+    <tbody><tr><th>Klucz</th><th>Opis</th></tr>
     <tr><td>system.armor.front.reduction</td><td>Redukcja — Przód</td></tr>
     <tr><td>system.armor.rightSide.reduction</td><td>Redukcja — Prawy Bok</td></tr>
     <tr><td>system.armor.leftSide.reduction</td><td>Redukcja — Lewy Bok</td></tr>
     <tr><td>system.armor.rear.reduction</td><td>Redukcja — Tył</td></tr>
     <tr><td>system.armor.bottom.reduction</td><td>Redukcja — Spód</td></tr>
-  </table>
+  </tbody></table>
 
   <div class="callout info">
     <strong>Kiedy używać Changes, a kiedy prepareData?</strong><br>
@@ -734,13 +894,33 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <h2 class="section-title">7. Helpery i narzędzia</h2>
 
   <h3>NeuroshimaScriptRunner — metody statyczne</h3>
-  <p>Dostępne globalnie przez <code>game.neuroshima.NeuroshimaScriptRunner</code>:</p>
+  <p>Dostępne globalnie przez <code>game.neuroshima.NeuroshimaScriptRunner</code> lub bezpośrednio przez skrypt (klasa jest w scope):</p>
   <table>
-    <tr><th>Metoda</th><th>Opis</th></tr>
-    <tr><td>isLightDamage(type)</td><td>Zwraca true dla D, sD, L, sL</td></tr>
-    <tr><td>isHeavyDamage(type)</td><td>Zwraca true dla C, sC, K, sK</td></tr>
-    <tr><td>compareDamage(a, b)</td><td>Porównuje dwa typy obrażeń. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
-  </table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>isLightDamage(type)</code></td><td>Zwraca <code>true</code> dla D, sD, L, sL</td></tr>
+    <tr><td><code>isHeavyDamage(type)</code></td><td>Zwraca <code>true</code> dla C, sC, K, sK</td></tr>
+    <tr><td><code>compareDamage(a, b)</code></td><td>Porównuje dwa typy obrażeń. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
+    <tr><td><code>getTargets()</code></td><td>Zwraca tablicę aktorów wskazanych tokenami (game.user.targets)</td></tr>
+    <tr><td><code>getSelected()</code></td><td>Zwraca tablicę aktorów zaznaczonych tokenów; fallback: przypisana postać gracza</td></tr>
+    <tr><td><code>getTargetsOrSelected()</code></td><td>Targets jeśli są, inaczej selected</td></tr>
+    <tr><td><code>await sleep(ms)</code></td><td>Asynchroniczna pauza w milisekundach (np. czekanie na Dice So Nice)</td></tr>
+    <tr><td><code>await rollDice(formula, data?)</code></td><td>Rzut kością — zwraca obiekt <code>Roll</code> po evaluate()</td></tr>
+  </tbody></table>
+  <pre><code><span class="cmt">// Przykłady</span>
+<span class="kw">const</span> <span class="var">Runner</span> = game.neuroshima.NeuroshimaScriptRunner;
+
+<span class="cmt">// Rzut 2d6</span>
+<span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="var">Runner</span>.<span class="fn">rollDice</span>(<span class="str">"2d6"</span>);
+console.<span class="fn">log</span>(<span class="var">roll</span>.total);
+
+<span class="cmt">// Działaj na zaznaczonym tokenie</span>
+<span class="kw">const</span> <span class="var">targets</span> = <span class="var">Runner</span>.<span class="fn">getTargetsOrSelected</span>();
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="var">targets</span>) {
+  <span class="kw">await</span> <span class="var">a</span>.<span class="fn">modifyHp</span>(<span class="num">5</span>);
+}
+
+<span class="cmt">// Czekaj na animację kości</span>
+<span class="kw">await</span> <span class="var">Runner</span>.<span class="fn">sleep</span>(<span class="num">1500</span>);</code></pre>
 
   <h3>Typy obrażeń — hierarchia</h3>
   <div class="dmg-table">
@@ -754,8 +934,347 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <div class="dmg-chip crit"><span class="dmg-code">sK</span><span class="dmg-label">Siniak K</span></div>
   </div>
 
+  <h3>NeuroshimaActor — helpery na aktorach</h3>
+  <p>Metody dostępne bezpośrednio na <code>this.actor</code> (i każdym aktorze Neuroshimy):</p>
+
+  <h4>Helpery ran</h4>
+  <table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>actor.getWounds(filter?)</code></td><td>Zwraca tablicę ran z opcjonalnym filtrem (patrz niżej)</td></tr>
+    <tr><td><code>actor.getActiveWounds()</code></td><td>Wszystkie aktywne rany, posortowane od najcięższej</td></tr>
+    <tr><td><code>actor.getWorstWounds()</code></td><td>Wszystkie aktywne rany na najwyższym poziomie</td></tr>
+    <tr><td><code>actor.getTotalWoundPenalty()</code></td><td>Suma kar od wszystkich aktywnych ran</td></tr>
+  </tbody></table>
+  <p><strong>Opcje filtru <code>getWounds()</code>:</strong></p>
+  <table>
+    <tbody><tr><th>Klucz</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td><code>active</code></td><td>boolean</td><td><code>true</code> = tylko aktywne, <code>false</code> = tylko nieaktywne</td></tr>
+    <tr><td><code>healing</code></td><td>boolean</td><td><code>true</code> = tylko w trakcie leczenia</td></tr>
+    <tr><td><code>location</code></td><td>string</td><td>Filtruj wg lokalizacji: <code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, <code>"rightArm"</code>, <code>"leftLeg"</code>, <code>"rightLeg"</code></td></tr>
+    <tr><td><code>damageType</code></td><td>string</td><td>Filtruj wg konkretnego typu: <code>"C"</code>, <code>"L"</code>, itd.</td></tr>
+    <tr><td><code>bruise</code></td><td>boolean</td><td><code>true</code> = tylko siniaki (sD, sL, sC, sK)</td></tr>
+  </tbody></table>
+  <pre><code><span class="cmt">// Tylko aktywne rany na głowie</span>
+<span class="kw">const</span> <span class="var">headWounds</span> = <span class="kw">this</span>.actor.<span class="fn">getWounds</span>({ active: <span class="kw">true</span>, location: <span class="str">"head"</span> });
+
+<span class="cmt">// Wszystkie aktywne rany, najcięższa pierwsza</span>
+<span class="kw">const</span> <span class="var">sorted</span> = <span class="kw">this</span>.actor.<span class="fn">getActiveWounds</span>();
+
+<span class="cmt">// Obniż WSZYSTKIE najcięższe aktywne rany o 1 poziom</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>()) {
+  <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+}
+
+<span class="cmt">// Suma kar od ran</span>
+<span class="kw">const</span> <span class="var">penalty</span> = <span class="kw">this</span>.actor.<span class="fn">getTotalWoundPenalty</span>();</code></pre>
+
+  <h4>Helpery przedmiotów</h4>
+  <table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>actor.getItems(type)</code></td><td>Zwraca tablicę itemów danego typu (<code>"trick"</code>, <code>"armor"</code>, <code>"weapon"</code>, <code>"gear"</code>, …)</td></tr>
+    <tr><td><code>actor.hasItem(type, name)</code></td><td>Zwraca <code>true</code> jeśli aktor posiada item danego typu o tej nazwie (case-insensitive)</td></tr>
+    <tr><td><code>actor.hasTrick(name)</code></td><td>Skrót: czy aktor ma sztuczkę o tej nazwie</td></tr>
+  </tbody></table>
+  <pre><code><span class="cmt">// Czy aktor ma sztuczkę "Hartowanie"?</span>
+<span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">hasTrick</span>(<span class="str">"Hartowanie"</span>)) {
+  args.autoSuccess = <span class="kw">true</span>;
+}
+
+<span class="cmt">// Pobierz wszystkie wyposażone pancerze</span>
+<span class="kw">const</span> <span class="var">armors</span> = <span class="kw">this</span>.actor.<span class="fn">getItems</span>(<span class="str">"armor"</span>).<span class="fn">filter</span>(a =&gt; a.system.equipped);</code></pre>
+
+  <h4>Helpery atrybutów i umiejętności</h4>
+  <table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>actor.getAttribute(key)</code></td><td>Wartość bazowa atrybutu (bez modyfikatora)</td></tr>
+    <tr><td><code>actor.getAttributeTotal(key)</code></td><td>Wartość atrybutu + modyfikator (po prepareDerivedData)</td></tr>
+    <tr><td><code>actor.getSkill(key)</code></td><td>Wartość umiejętności; zwraca 0 jeśli nie istnieje (np. pojazd)</td></tr>
+  </tbody></table>
+  <pre><code><span class="cmt">// Bazowa Budowa i Budowa z modyfikatorami</span>
+<span class="kw">const</span> <span class="var">bd</span>    = <span class="kw">this</span>.actor.<span class="fn">getAttribute</span>(<span class="str">"constitution"</span>);
+<span class="kw">const</span> <span class="var">bdTot</span> = <span class="kw">this</span>.actor.<span class="fn">getAttributeTotal</span>(<span class="str">"constitution"</span>);
+
+<span class="cmt">// Wartość umiejętności Odporność na ból</span>
+<span class="kw">const</span> <span class="var">pain</span> = <span class="kw">this</span>.actor.<span class="fn">getSkill</span>(<span class="str">"painResistance"</span>);
+
+<span class="cmt">// Działa też dla pojazdów (agility) i bestii</span>
+<span class="kw">const</span> <span class="var">agility</span> = <span class="kw">this</span>.actor.<span class="fn">getAttribute</span>(<span class="str">"agility"</span>); <span class="cmt">// pojazd</span></code></pre>
+
+  <h4>Helpery PŻ i pancerza</h4>
+  <table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>await actor.modifyHp(delta)</code></td><td>Zmień PŻ o <code>delta</code> (+ leczenie, − obrażenia). Clamp do [0, max]. No-op dla pojazdu.</td></tr>
+    <tr><td><code>actor.getArmorAt(location)</code></td><td>Zwraca <code>{ totalSP, details, weakPoint }</code> dla danej lokalizacji (pancerz + efekty)</td></tr>
+  </tbody></table>
+  <pre><code><span class="cmt">// Wylecz 5 PŻ</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(<span class="num">5</span>);
+
+<span class="cmt">// Zadaj 3 PŻ obrażeń</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(-<span class="num">3</span>);
+
+<span class="cmt">// Pobierz wartość pancerza na torso (z efektami)</span>
+<span class="kw">const</span> { <span class="var">totalSP</span>, <span class="var">details</span>, <span class="var">weakPoint</span> } = <span class="kw">this</span>.actor.<span class="fn">getArmorAt</span>(<span class="str">"torso"</span>);
+<span class="cmt">// totalSP — łączna redukcja</span>
+<span class="cmt">// details — [{ name, ratings, damage, effective }, ...]</span>
+<span class="cmt">// weakPoint — czy jest to słaby punkt</span></code></pre>
+
+  <h4>Helpery efektów</h4>
+  <p>Zarządzanie efektami bezpośrednio z poziomu skryptu:</p>
+  <table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>actor.getActiveEffects()</code></td><td>Zwraca tablicę aktywnych (nie-wyłączonych) efektów na aktorze</td></tr>
+    <tr><td><code>actor.findEffect(nameOrId)</code></td><td>Znajdź efekt po nazwie (case-insensitive) lub ID — zwraca <code>ActiveEffect</code> lub <code>undefined</code></td></tr>
+    <tr><td><code>actor.hasEffect(nameOrId)</code></td><td>Zwraca <code>true</code> jeśli aktor ma aktywny efekt o podanej nazwie/ID</td></tr>
+    <tr><td><code>await actor.removeEffectByName(nameOrId)</code></td><td>Usuń efekt po nazwie lub ID</td></tr>
+    <tr><td><code>await actor.toggleEffect(nameOrId, active?)</code></td><td>Włącz/wyłącz efekt. Bez <code>active</code> flipuje stan. <code>true</code> = włącz, <code>false</code> = wyłącz</td></tr>
+    <tr><td><code>await actor.applyEffectByUuid(uuid)</code></td><td>Aplikuje efekt(y) po UUID (wraps Foundry's <code>Actor#applyEffect</code>)</td></tr>
+  </tbody></table>
+  <pre><code><span class="cmt">// Sprawdź czy aktor ma aktywny efekt "Pancerz Chaosu"</span>
+<span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">hasEffect</span>(<span class="str">"Pancerz Chaosu"</span>)) {
+  args.bonusSP += <span class="num">2</span>;
+}
+
+<span class="cmt">// Usuń efekt po nazwie (trigger: deleteEffect lub manual)</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">removeEffectByName</span>(<span class="str">"Tymczasowy Efekt"</span>);
+
+<span class="cmt">// Wyłącz efekt na czas trwania akcji</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">toggleEffect</span>(<span class="str">"Pancerz Chaosu"</span>, <span class="kw">false</span>);
+
+<span class="cmt">// Aplikuj efekt z itemu do aktora (np. przy użyciu zbroi)</span>
+<span class="kw">const</span> <span class="var">sourceItem</span> = <span class="kw">this</span>.effect.parent;
+<span class="kw">if</span> (sourceItem) {
+  <span class="kw">const</span> <span class="var">firstEffect</span> = sourceItem.effects.contents[<span class="num">0</span>];
+  <span class="kw">if</span> (<span class="var">firstEffect</span>) {
+    <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffectByUuid</span>(<span class="var">firstEffect</span>.uuid);
+  }
+}</code></pre>
+
+  <h3>NeuroshimaItem — helpery na przedmiotach</h3>
+  <p>Metody dostępne bezpośrednio na każdym obiekcie <code>Item</code> (np. <code>this.item</code>, lub iterując po <code>this.actor.items</code>):</p>
+
+  <h4>Helpery ran (tylko <code>type === "wound"</code>)</h4>
+  <table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>await item.reduceLevel(n=1)</code></td><td>Obniż poziom obrażeń o <code>n</code> stopni (min: D)</td></tr>
+    <tr><td><code>await item.increaseLevel(n=1)</code></td><td>Podnieś poziom obrażeń o <code>n</code> stopni (max: sK)</td></tr>
+    <tr><td><code>await item.reducePenalty(n=1)</code></td><td>Zmniejsz karę o <code>n</code> (min: 0)</td></tr>
+    <tr><td><code>await item.increasePenalty(n=1)</code></td><td>Zwiększ karę o <code>n</code></td></tr>
+  </tbody></table>
+  <p>Kolejność poziomów: <code>D → sD → L → sL → C → sC → K → sK</code></p>
+  <pre><code><span class="cmt">// Trigger: manual
+// Obniż WSZYSTKIE najcięższe rany o 1 poziom
+// (np. masz 2×C i 1×L — obie C staną się sL)</span>
+<span class="kw">const</span> <span class="var">order</span> = [<span class="str">"D"</span>, <span class="str">"sD"</span>, <span class="str">"L"</span>, <span class="str">"sL"</span>, <span class="str">"C"</span>, <span class="str">"sC"</span>, <span class="str">"K"</span>, <span class="str">"sK"</span>];
+
+<span class="cmt">// 1. Pobierz wszystkie aktywne rany</span>
+<span class="kw">const</span> <span class="var">wounds</span> = <span class="kw">this</span>.actor.items.<span class="fn">filter</span>(
+  i =&gt; i.type === <span class="str">"wound"</span> &amp;&amp; i.system.isActive
+);
+
+<span class="kw">if</span> (<span class="var">wounds</span>.length === <span class="num">0</span>) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak aktywnych ran"</span>, <span class="str">"warn"</span>);
+  <span class="kw">return</span>;
+}
+
+<span class="cmt">// 2. Znajdź najwyższy poziom obrażeń</span>
+<span class="kw">const</span> <span class="var">maxIdx</span> = Math.<span class="fn">max</span>(
+  ...<span class="var">wounds</span>.<span class="fn">map</span>(w =&gt; <span class="var">order</span>.<span class="fn">indexOf</span>(w.system.damageType))
+);
+
+<span class="cmt">// 3. Obniż WSZYSTKIE rany na tym poziomie</span>
+<span class="kw">const</span> <span class="var">worst</span> = <span class="var">wounds</span>.<span class="fn">filter</span>(
+  w =&gt; <span class="var">order</span>.<span class="fn">indexOf</span>(w.system.damageType) === <span class="var">maxIdx</span>
+);
+
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">worst</span>) {
+  <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+}
+
+<span class="kw">this</span>.<span class="fn">notification</span>(`Obniżono ${<span class="var">worst</span>.length} ran z ${<span class="var">order</span>[<span class="var">maxIdx</span>]}`, <span class="str">"info"</span>);</code></pre>
+
+  <h4>Helpery ilości (tylko itemy z <code>system.quantity</code>)</h4>
+  <table>
+    <tbody><tr><th>Metoda / getter</th><th>Opis</th></tr>
+    <tr><td><code>item.hasQuantity</code></td><td>Getter: <code>true</code> jeśli item śledzi ilość</td></tr>
+    <tr><td><code>await item.reduceQuantity(n=1)</code></td><td>Zmniejsz ilość o <code>n</code> (min: 0), no-op gdy brak quantity</td></tr>
+    <tr><td><code>await item.increaseQuantity(n=1)</code></td><td>Zwiększ ilość o <code>n</code>, no-op gdy brak quantity</td></tr>
+  </tbody></table>
+  <pre><code><span class="cmt">// Trigger: manual — użyj mikstury i zmniejsz jej ilość</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.item.<span class="fn">hasQuantity</span> || <span class="kw">this</span>.item.system.quantity &lt; <span class="num">1</span>) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak zapasów!"</span>, <span class="str">"warn"</span>);
+  <span class="kw">return</span>;
+}
+<span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>(); <span class="cmt">// zużyj 1 sztukę</span>
+<span class="cmt">// ... dalsza logika efektu</span></code></pre>
+
   <h3>Dostęp do danych aktora</h3>
-  <pre><code><span class="cmt">// Atrybuty bazowe</span>
+
+  <h4>Postać / NPC (<code>actor.type === "character"</code> lub <code>"npc"</code>)</h4>
+  <pre><code><span class="cmt">// ── Atrybuty bazowe ──────────────────────────────────</span>
+<span class="kw">const</span> <span class="var">sys</span> = <span class="kw">this</span>.actor.system;
+
+<span class="var">sys</span>.attributes.dexterity      <span class="cmt">// Zręczność</span>
+<span class="var">sys</span>.attributes.perception     <span class="cmt">// Percepcja</span>
+<span class="var">sys</span>.attributes.charisma       <span class="cmt">// Charyzma</span>
+<span class="var">sys</span>.attributes.cleverness     <span class="cmt">// Spryt</span>
+<span class="var">sys</span>.attributes.constitution   <span class="cmt">// Budowa</span>
+
+<span class="cmt">// Atrybuty + modyfikatory (przeliczone w prepareDerivedData)</span>
+<span class="var">sys</span>.attributeTotals.dexterity  <span class="cmt">// Suma Zr + modyfikator</span>
+
+<span class="cmt">// ── Umiejętności — sys.skills[klucz].value ────────────</span>
+<span class="cmt">// Zręczność (dexterity)</span>
+<span class="var">sys</span>.skills.brawl.value          <span class="cmt">// Bójka</span>
+<span class="var">sys</span>.skills.handWeapon.value     <span class="cmt">// Broń biała</span>
+<span class="var">sys</span>.skills.throwing.value       <span class="cmt">// Rzucanie</span>
+<span class="var">sys</span>.skills.pistols.value        <span class="cmt">// Pistolety</span>
+<span class="var">sys</span>.skills.rifles.value         <span class="cmt">// Karabiny</span>
+<span class="var">sys</span>.skills.machineGuns.value    <span class="cmt">// CKM/SMG</span>
+<span class="var">sys</span>.skills.bow.value            <span class="cmt">// Łuk</span>
+<span class="var">sys</span>.skills.crossbow.value       <span class="cmt">// Kusza</span>
+<span class="var">sys</span>.skills.sling.value          <span class="cmt">// Proca</span>
+<span class="var">sys</span>.skills.car.value            <span class="cmt">// Samochód</span>
+<span class="var">sys</span>.skills.truck.value          <span class="cmt">// Ciężarówka</span>
+<span class="var">sys</span>.skills.motorcycle.value     <span class="cmt">// Motocykl</span>
+<span class="var">sys</span>.skills.pickpocketing.value  <span class="cmt">// Kieszonkowanie</span>
+<span class="var">sys</span>.skills.sleightOfHand.value  <span class="cmt">// Szybkie dłonie</span>
+<span class="var">sys</span>.skills.lockpicking.value    <span class="cmt">// Otwieranie zamków</span>
+<span class="cmt">// Percepcja (perception)</span>
+<span class="var">sys</span>.skills.directionSense.value <span class="cmt">// Orientacja terenu</span>
+<span class="var">sys</span>.skills.tracking.value       <span class="cmt">// Tropienie</span>
+<span class="var">sys</span>.skills.traps.value          <span class="cmt">// Pułapki</span>
+<span class="var">sys</span>.skills.listening.value      <span class="cmt">// Słuch</span>
+<span class="var">sys</span>.skills.spotting.value       <span class="cmt">// Spostrzegawczość</span>
+<span class="var">sys</span>.skills.vigilance.value      <span class="cmt">// Czujność</span>
+<span class="var">sys</span>.skills.sneaking.value       <span class="cmt">// Skradanie</span>
+<span class="var">sys</span>.skills.hiding.value         <span class="cmt">// Ukrywanie się</span>
+<span class="var">sys</span>.skills.camouflage.value     <span class="cmt">// Maskowanie</span>
+<span class="var">sys</span>.skills.hunting.value        <span class="cmt">// Łowiectwo</span>
+<span class="var">sys</span>.skills.waterGathering.value <span class="cmt">// Pozyskiwanie wody</span>
+<span class="var">sys</span>.skills.terrainKnowledge.value <span class="cmt">// Znajomość terenu</span>
+<span class="cmt">// Charyzma (charisma)</span>
+<span class="var">sys</span>.skills.persuasion.value     <span class="cmt">// Perswazja</span>
+<span class="var">sys</span>.skills.intimidation.value   <span class="cmt">// Zastraszanie</span>
+<span class="var">sys</span>.skills.leadership.value     <span class="cmt">// Przywództwo</span>
+<span class="var">sys</span>.skills.emotionPerception.value <span class="cmt">// Wyczucie emocji</span>
+<span class="var">sys</span>.skills.bluff.value          <span class="cmt">// Blef</span>
+<span class="var">sys</span>.skills.animalCare.value     <span class="cmt">// Opieka nad zwierzętami</span>
+<span class="var">sys</span>.skills.painResistance.value <span class="cmt">// Odporność na ból</span>
+<span class="var">sys</span>.skills.steadfastness.value  <span class="cmt">// Wytrwałość</span>
+<span class="var">sys</span>.skills.morale.value         <span class="cmt">// Morale</span>
+<span class="cmt">// Spryt (cleverness)</span>
+<span class="var">sys</span>.skills.woundTreatment.value <span class="cmt">// Leczenie ran</span>
+<span class="var">sys</span>.skills.diseaseTreatment.value <span class="cmt">// Leczenie chorób</span>
+<span class="var">sys</span>.skills.firstAid.value       <span class="cmt">// Pierwsza pomoc</span>
+<span class="var">sys</span>.skills.mechanics.value      <span class="cmt">// Mechanika</span>
+<span class="var">sys</span>.skills.electronics.value    <span class="cmt">// Elektronika</span>
+<span class="var">sys</span>.skills.computers.value      <span class="cmt">// Komputery</span>
+<span class="var">sys</span>.skills.heavyMachinery.value <span class="cmt">// Maszyny ciężkie</span>
+<span class="var">sys</span>.skills.combatVehicles.value <span class="cmt">// Pojazdy bojowe</span>
+<span class="var">sys</span>.skills.boats.value          <span class="cmt">// Łodzie</span>
+<span class="var">sys</span>.skills.gunsmithing.value    <span class="cmt">// Rusznikarstwo</span>
+<span class="var">sys</span>.skills.launchers.value      <span class="cmt">// Wyrzutnie</span>
+<span class="var">sys</span>.skills.explosives.value     <span class="cmt">// Materiały wybuchowe</span>
+<span class="var">sys</span>.skills.knowledge1.value     <span class="cmt">// Wiedza ogólna 1</span>
+<span class="cmt">// Budowa (constitution)</span>
+<span class="var">sys</span>.skills.swimming.value       <span class="cmt">// Pływanie</span>
+<span class="var">sys</span>.skills.climbing.value       <span class="cmt">// Wspinaczka</span>
+<span class="var">sys</span>.skills.stamina.value        <span class="cmt">// Wytrzymałość</span>
+<span class="var">sys</span>.skills.horseRiding.value    <span class="cmt">// Jeździectwo</span>
+<span class="var">sys</span>.skills.drivingCarriage.value <span class="cmt">// Powożenie</span>
+<span class="var">sys</span>.skills.taming.value         <span class="cmt">// Tresura</span>
+
+<span class="cmt">// ── PŻ ────────────────────────────────────────────────</span>
+<span class="var">sys</span>.hp.value   <span class="cmt">// Aktualne PŻ</span>
+<span class="var">sys</span>.hp.max     <span class="cmt">// Maksymalne PŻ</span>
+
+<span class="cmt">// ── Kary ──────────────────────────────────────────────</span>
+<span class="var">sys</span>.combat.totalWoundPenalty  <span class="cmt">// Suma kar od ran</span>
+<span class="var">sys</span>.combat.totalArmorPenalty  <span class="cmt">// Suma kar od pancerza</span>
+
+<span class="cmt">// ── Specjalizacje ──────────────────────────────────────</span>
+<span class="var">sys</span>.specializations.melee     <span class="cmt">// boolean — czy spec. broni białej</span>
+<span class="var">sys</span>.specializations.firearms  <span class="cmt">// boolean — czy spec. broni palnej</span></code></pre>
+
+  <h4>Bestia (<code>actor.type === "creature"</code>)</h4>
+  <p>Bestia dziedziczy wszystkie atrybuty i umiejętności postaci (<code>sys.attributes.*</code>, <code>sys.skills.*</code>) oraz dodaje:</p>
+  <pre><code><span class="kw">const</span> <span class="var">sys</span> = <span class="kw">this</span>.actor.system;
+
+<span class="cmt">// ── Atrybuty bestii ────────────────────────────────────</span>
+<span class="var">sys</span>.attributes.dexterity    <span class="cmt">// Zr (jak u postaci)</span>
+<span class="var">sys</span>.attributes.constitution <span class="cmt">// Bd</span>
+<span class="cmt">// ... wszystkie inne atrybuty identyczne jak u postaci</span>
+<span class="cmt">// ... wszystkie sys.skills.* identyczne jak u postaci</span>
+
+<span class="cmt">// ── Pola wyjątkowe dla bestii ──────────────────────────</span>
+<span class="var">sys</span>.creatureType  <span class="cmt">// string — typ bestii (np. "mutant")</span>
+<span class="var">sys</span>.terrain       <span class="cmt">// string — środowisko</span>
+<span class="var">sys</span>.aggression    <span class="cmt">// number — agresja</span>
+<span class="var">sys</span>.movement      <span class="cmt">// number — ruch</span>
+<span class="var">sys</span>.isBerserker   <span class="cmt">// boolean</span>
+<span class="var">sys</span>.kondycja      <span class="cmt">// number — kondycja (0–10)</span>
+<span class="var">sys</span>.experience    <span class="cmt">// number — doświadczenie</span>
+
+<span class="cmt">// ── Naturalny pancerz bestii (zamiast ekwipunku) ───────</span>
+<span class="var">sys</span>.naturalArmor.head.reduction      <span class="cmt">// Redukcja: głowa</span>
+<span class="var">sys</span>.naturalArmor.torso.reduction     <span class="cmt">// Redukcja: tors</span>
+<span class="var">sys</span>.naturalArmor.rightArm.reduction  <span class="cmt">// Redukcja: prawa ręka</span>
+<span class="var">sys</span>.naturalArmor.leftArm.reduction   <span class="cmt">// Redukcja: lewa ręka</span>
+<span class="var">sys</span>.naturalArmor.rightLeg.reduction  <span class="cmt">// Redukcja: prawa noga</span>
+<span class="var">sys</span>.naturalArmor.leftLeg.reduction   <span class="cmt">// Redukcja: lewa noga</span>
+<span class="var">sys</span>.naturalArmor.head.weakPoint      <span class="cmt">// boolean — słaby punkt</span>
+<span class="var">sys</span>.naturalArmor.head.hitPenalty     <span class="cmt">// Kara przy trafieniu</span></code></pre>
+
+  <h4>Pojazd (<code>actor.type === "vehicle"</code>)</h4>
+  <p>Pojazdy <strong>nie mają</strong> standardowych atrybutów postaci ani umiejętności. Używają własnego zestawu:</p>
+  <pre><code><span class="kw">const</span> <span class="var">sys</span> = <span class="kw">this</span>.actor.system;
+
+<span class="cmt">// ── Atrybuty pojazdu ───────────────────────────────────</span>
+<span class="var">sys</span>.attributes.agility       <span class="cmt">// Zwinność</span>
+<span class="var">sys</span>.attributes.topSpeed      <span class="cmt">// Prędkość maks.</span>
+<span class="var">sys</span>.attributes.acceleration  <span class="cmt">// Przyspieszenie</span>
+<span class="var">sys</span>.attributes.brakes        <span class="cmt">// Hamulce</span>
+<span class="var">sys</span>.attributes.durability    <span class="cmt">// Wytrzymałość</span>
+<span class="var">sys</span>.attributes.efficiency    <span class="cmt">// Sprawność (PŻ pojazdu)</span>
+
+<span class="cmt">// Modyfikatory (analogicznie)</span>
+<span class="var">sys</span>.modifiers.agility        <span class="cmt">// Mod. Zwinności</span>
+<span class="cmt">// ... wszystkie inne modifiers.* analogicznie</span>
+
+<span class="cmt">// ── Pancerz pojazdu ────────────────────────────────────</span>
+<span class="var">sys</span>.armor.front.reduction    <span class="cmt">// Redukcja: przód</span>
+<span class="var">sys</span>.armor.rightSide.reduction <span class="cmt">// Redukcja: prawy bok</span>
+<span class="var">sys</span>.armor.leftSide.reduction <span class="cmt">// Redukcja: lewy bok</span>
+<span class="var">sys</span>.armor.rear.reduction     <span class="cmt">// Redukcja: tył</span>
+<span class="var">sys</span>.armor.bottom.reduction   <span class="cmt">// Redukcja: spód</span>
+<span class="var">sys</span>.armor.front.weakPoint    <span class="cmt">// boolean — słaby punkt</span>
+
+<span class="cmt">// ── Załoga i pasażerowie ────────────────────────────────</span>
+<span class="var">sys</span>.crew.current      <span class="cmt">// Aktualna liczba członków załogi</span>
+<span class="var">sys</span>.crew.max          <span class="cmt">// Maks. załoga</span>
+<span class="var">sys</span>.passengers.current
+<span class="var">sys</span>.passengers.max
+
+<span class="cmt">// ── Paliwo ─────────────────────────────────────────────</span>
+<span class="var">sys</span>.fuel.value    <span class="cmt">// Aktualne paliwo</span>
+<span class="var">sys</span>.fuel.max      <span class="cmt">// Maks. paliwo</span>
+
+<span class="cmt">// ── Bonus pancerza z efektów (armorBonus) ─────────────</span>
+<span class="var">sys</span>.armorBonus.all       <span class="cmt">// Bonus do wszystkich stref</span>
+<span class="var">sys</span>.armorBonus.front     <span class="cmt">// Bonus: przód</span>
+<span class="var">sys</span>.armorBonus.rightSide <span class="cmt">// Bonus: prawy bok</span>
+<span class="cmt">// itd.</span>
+
+<span class="cmt">// ── Pojazd nie ma sys.skills ani sys.hp — sprawdź typ ─</span>
+<span class="kw">if</span> (<span class="kw">this</span>.actor.type === <span class="str">"vehicle"</span>) {
+  <span class="cmt">// logika dla pojazdu</span>
+} <span class="kw">else if</span> (<span class="kw">this</span>.actor.type === <span class="str">"creature"</span>) {
+  <span class="cmt">// logika dla bestii</span>
+} <span class="kw">else</span> {
+  <span class="cmt">// postać / npc</span>
+}</code></pre>
+
+  <pre><code><span class="cmt">// Atrybuty bazowe (postać/NPC)</span>
 <span class="kw">const</span> <span class="var">zr</span>  = <span class="kw">this</span>.actor.system.attributes.dexterity;
 <span class="kw">const</span> <span class="var">bd</span>  = <span class="kw">this</span>.actor.system.attributes.constitution;
 
@@ -770,10 +1289,10 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">update</span>({ <span class="str">"system.hp.value"</span>: hp - <span class="num">1</span> });
 
 <span class="cmt">// Sztuczki (tricks) aktora</span>
-<span class="kw">const</span> <span class="var">tricks</span> = <span class="kw">this</span>.actor.items.<span class="fn">filter</span>(i => i.type === <span class="str">"trick"</span>);
+<span class="kw">const</span> <span class="var">tricks</span> = <span class="kw">this</span>.actor.items.<span class="fn">filter</span>(i =&gt; i.type === <span class="str">"trick"</span>);
 
 <span class="cmt">// Czy aktor ma daną sztuczkę?</span>
-<span class="kw">const</span> <span class="var">hasTrick</span> = <span class="kw">this</span>.actor.items.<span class="fn">some</span>(i => i.type === <span class="str">"trick"</span> &amp;&amp; i.name === <span class="str">"Hartowanie"</span>);</code></pre>
+<span class="kw">const</span> <span class="var">hasTrick</span> = <span class="kw">this</span>.actor.items.<span class="fn">some</span>(i =&gt; i.type === <span class="str">"trick"</span> &amp;&amp; i.name === <span class="str">"Hartowanie"</span>);</code></pre>
 </section>
 
 <!-- SECTION 8 -->
@@ -821,5 +1340,6 @@ args.penalties.mod += <span class="num">10</span>;
 </footer>
 
 </div>
-</body>
-</html>
+
+
+</body></html>
