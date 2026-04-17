@@ -4088,6 +4088,11 @@ body.theme-dark {
     overflow: auto;
 }
 
+.neuroshima .cm-editor *,
+.neuroshima .cm-editor {
+    font-family: "Fira Code", "Cascadia Code", "Consolas", "Menlo", "Monaco", monospace !important;
+}
+
 .neuroshima.script-editor .form-footer {
     padding-top: 0.25rem;
 }

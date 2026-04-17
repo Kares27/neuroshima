@@ -110,34 +110,52 @@ export class NeuroshimaItem extends Item {
 
   // ── Wound helpers ──────────────────────────────────────────────────────────
 
+  /** Full severity order (interleaved) — used for comparison only. */
   static DAMAGE_ORDER = ["D", "sD", "L", "sL", "C", "sC", "K", "sK"];
 
+  /** Regular wound track: D → L → C → K (no s-prefix). */
+  static REGULAR_TRACK = ["D", "L", "C", "K"];
+
+  /** Bruise wound track: sD → sL → sC → sK (s-prefix). */
+  static BRUISE_TRACK = ["sD", "sL", "sC", "sK"];
+
   /**
-   * Reduce the wound's damage type by `n` levels (clamped to minimum "D").
-   * Only works on items of type "wound".
+   * Return the track array for a given damageType.
+   * @param {string} damageType
+   * @returns {string[]}
+   */
+  static trackFor(damageType) {
+    return damageType?.startsWith("s") ? NeuroshimaItem.BRUISE_TRACK : NeuroshimaItem.REGULAR_TRACK;
+  }
+
+  /**
+   * Reduce the wound's damage type by `n` levels within its own track.
+   * Regular wounds stay on the regular track (K → C → L → D).
+   * Bruise wounds stay on the bruise track (sK → sC → sL → sD).
    * @param {number} n
    */
   async reduceLevel(n = 1) {
     if (this.type !== "wound") return;
-    const order = NeuroshimaItem.DAMAGE_ORDER;
-    const current = order.indexOf(this.system.damageType);
+    const track = NeuroshimaItem.trackFor(this.system.damageType);
+    const current = track.indexOf(this.system.damageType);
     if (current < 0) return;
     const next = Math.max(0, current - n);
-    await this.update({ "system.damageType": order[next] });
+    await this.update({ "system.damageType": track[next] });
   }
 
   /**
-   * Increase the wound's damage type by `n` levels (clamped to maximum "sK").
-   * Only works on items of type "wound".
+   * Increase the wound's damage type by `n` levels within its own track.
+   * Regular wounds stay on the regular track (D → L → C → K).
+   * Bruise wounds stay on the bruise track (sD → sL → sC → sK).
    * @param {number} n
    */
   async increaseLevel(n = 1) {
     if (this.type !== "wound") return;
-    const order = NeuroshimaItem.DAMAGE_ORDER;
-    const current = order.indexOf(this.system.damageType);
+    const track = NeuroshimaItem.trackFor(this.system.damageType);
+    const current = track.indexOf(this.system.damageType);
     if (current < 0) return;
-    const next = Math.min(order.length - 1, current + n);
-    await this.update({ "system.damageType": order[next] });
+    const next = Math.min(track.length - 1, current + n);
+    await this.update({ "system.damageType": track[next] });
   }
 
   /**
@@ -160,6 +178,27 @@ export class NeuroshimaItem extends Item {
     if (this.type !== "wound") return;
     const next = (this.system.penalty ?? 0) + n;
     await this.update({ "system.penalty": next });
+  }
+
+  /**
+   * Returns true if this wound is currently being healed (isHealing flag is set).
+   * Always false for non-wound items.
+   * @type {boolean}
+   */
+  get isHealing() {
+    if (this.type !== "wound") return false;
+    return this.system.isHealing === true;
+  }
+
+  /**
+   * Fully heal this wound by deleting the wound item from its parent actor.
+   * No-op if this item is not of type "wound" or has no parent.
+   * @returns {Promise<Item|null>}
+   */
+  async heal() {
+    if (this.type !== "wound") return null;
+    if (!this.parent) return null;
+    return this.delete();
   }
 
   // ── Quantity helpers ───────────────────────────────────────────────────────

@@ -124,6 +124,8 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       });
     }
 
+    this._injectDetailsFields();
+
     const changesSection = this.element.querySelector("section[data-tab='changes']");
     if (changesSection) {
       const isManual = this.document.getFlag("neuroshima", "manualChangeKeys") ?? false;
@@ -180,9 +182,69 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    context.scripts  = foundry.utils.deepClone(this.document.getFlag("neuroshima", "scripts") || []);
-    context.triggers = NeuroshimaScriptRunner.TRIGGERS;
+    context.scripts      = foundry.utils.deepClone(this.document.getFlag("neuroshima", "scripts") || []);
+    context.triggers     = NeuroshimaScriptRunner.TRIGGERS;
+    context.transferType = this.document.getFlag("neuroshima", "transferType") ?? "owningDocument";
+    context.documentType = this.document.getFlag("neuroshima", "documentType") ?? "actor";
+    context.equipTransfer = this.document.getFlag("neuroshima", "equipTransfer") ?? false;
     return context;
+  }
+
+  _injectDetailsFields() {
+    const section = this.element.querySelector("section[data-tab='details']");
+    if (!section || section.querySelector(".ns-transfer-type")) return;
+
+    // Hide the default Foundry "Apply Effect to Actor" (transfer) checkbox —
+    // transfer is fully controlled by our Effect Application + Document Type dropdowns.
+    const transferGroup = section.querySelector("[name='transfer']")?.closest(".form-group");
+    if (transferGroup) transferGroup.style.display = "none";
+
+    const transferType  = this.document.getFlag("neuroshima", "transferType")  ?? "owningDocument";
+    const documentType  = this.document.getFlag("neuroshima", "documentType")  ?? "actor";
+    const equipTransfer = this.document.getFlag("neuroshima", "equipTransfer") ?? false;
+
+    const wrap = document.createElement("div");
+    wrap.classList.add("ns-transfer-type");
+    wrap.innerHTML = `
+      <hr>
+      <div class="form-group">
+        <label>Effect Application</label>
+        <div class="form-fields">
+          <select name="flags.neuroshima.transferType">
+            <option value="owningDocument"${transferType === "owningDocument" ? " selected" : ""}>Owning Document</option>
+            <option value="target"        ${transferType === "target"         ? " selected" : ""}>Target</option>
+            <option value="damage"        ${transferType === "damage"         ? " selected" : ""}>Damage</option>
+            <option value="other"         ${transferType === "other"          ? " selected" : ""}>Other</option>
+          </select>
+        </div>
+        <p class="hint">How this effect is transferred to another document.</p>
+      </div>
+      <div class="form-group">
+        <label>Document Type</label>
+        <div class="form-fields">
+          <select name="flags.neuroshima.documentType">
+            <option value="actor"${documentType === "actor" ? " selected" : ""}>Actor</option>
+            <option value="item" ${documentType === "item"  ? " selected" : ""}>Item</option>
+          </select>
+        </div>
+        <p class="hint">Target document type when Effect Application is not Owning Document.</p>
+      </div>
+      <div class="form-group">
+        <label>Transfer on Equip</label>
+        <div class="form-fields">
+          <input type="checkbox" name="flags.neuroshima.equipTransfer"${equipTransfer ? " checked" : ""}>
+        </div>
+        <p class="hint">Only transfer this effect when the parent item is equipped.</p>
+      </div>`;
+
+    section.appendChild(wrap);
+  }
+
+  async _processSubmitData(event, form, submitData) {
+    const transferType = submitData["flags.neuroshima.transferType"] ?? "owningDocument";
+    const documentType = submitData["flags.neuroshima.documentType"] ?? "actor";
+    submitData.transfer = (transferType === "owningDocument" && documentType === "actor");
+    return super._processSubmitData(event, form, submitData);
   }
 
   async _onToggleChangeMode(event, target) {
@@ -214,7 +276,10 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
 
   async _onRunManualScript(event, target) {
     const index = parseInt(target.closest("[data-index]")?.dataset.index ?? target.dataset.index);
-    const actor = this.document.actor;
+    const actor = this.document.actor
+      ?? game.user.character
+      ?? canvas.tokens?.controlled?.[0]?.actor
+      ?? null;
     if (!actor) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Scripts.NoActor"));
       return;

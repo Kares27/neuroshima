@@ -11,9 +11,17 @@
         <div class="form-fields">
             <select name="trigger">
                 {{#each triggers}}
-                <option value="{{@key}}" {{#if (eq @key ../scriptData.trigger)}}selected{{/if}}>{{localize this}}</option>
+                <option value="{{@key}}" {{#if (eq @key ../scriptData.trigger)}}selected{{/if}}>{{this}}</option>
                 {{/each}}
             </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Scripts.RunIfDisabled"}}</label>
+        <div class="form-fields">
+            <p class="hint">{{localize "NEUROSHIMA.Scripts.RunIfDisabledHint"}}</p>
+            <input type="checkbox" name="runIfDisabled" {{#if scriptData.runIfDisabled}}checked{{/if}}>
         </div>
     </div>
 

@@ -316,37 +316,46 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
     // Prepare effects — collect from actor directly + all owned items
     const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    context.effects = [];
+    const isTemporary = (e) => !!(e.duration?.rounds || e.duration?.seconds || e.duration?.turns);
 
-    for (const e of actor.effects) {
-      context.effects.push({
+    const temporary = [];
+    const passive   = [];
+    const disabled  = [];
+
+    const pushEffect = (e, itemId, sourceName, sourceIcon, isItemEffect) => {
+      const entry = {
         id: e.id,
-        itemId: null,
+        itemId: itemId ?? null,
         name: e.name,
         icon: e.img || "icons/svg/aura.svg",
         disabled: e.disabled,
-        sourceName: actor.name,
-        sourceIcon: actor.img || "icons/svg/mystery-man.svg",
+        sourceName,
+        sourceIcon,
         durationLabel: effectDurationLabel(e),
-        isItemEffect: false
-      });
+        isItemEffect: !!isItemEffect
+      };
+      if (e.disabled)          disabled.push(entry);
+      else if (isTemporary(e)) temporary.push(entry);
+      else                     passive.push(entry);
+    };
+
+    for (const e of actor.effects) {
+      pushEffect(e, null, actor.name, actor.img || "icons/svg/mystery-man.svg", false);
     }
 
     for (const item of actor.items) {
       for (const e of item.effects) {
-        context.effects.push({
-          id: e.id,
-          itemId: item.id,
-          name: e.name,
-          icon: e.img || "icons/svg/aura.svg",
-          disabled: e.disabled,
-          sourceName: item.name,
-          sourceIcon: item.img || "icons/svg/item-bag.svg",
-          durationLabel: effectDurationLabel(e),
-          isItemEffect: true
-        });
+        const docType      = e.getFlag?.("neuroshima", "documentType")  ?? "actor";
+        const transferType = e.getFlag?.("neuroshima", "transferType")  ?? "owningDocument";
+        // Only "Owning Document + Actor" effects appear in the effects tab.
+        // Target / Damage / Other are applied situationally via scripts — not shown here.
+        if (docType !== "actor" || transferType !== "owningDocument") continue;
+        pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true);
       }
     }
+
+    context.effects = { temporary, passive, disabled };
+    context.effectsAny = temporary.length > 0 || passive.length > 0 || disabled.length > 0;
 
     return context;
   }
@@ -2136,6 +2145,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       const scripts = [];
       for (const eff of (item.effects ?? [])) {
         if (eff.disabled) continue;
+        const docType = eff.getFlag?.("neuroshima", "documentType") ?? "actor";
         const flags = eff.getFlag?.("neuroshima", "scripts") ?? [];
         flags.forEach((s, idx) => {
           if (s.trigger === "manual") {
@@ -2148,7 +2158,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
               effectId: eff.id,
               effectName: eff.name,
               scriptIndex: idx,
-              label
+              label,
+              isItemOnly: docType === "item"
             });
           }
         });

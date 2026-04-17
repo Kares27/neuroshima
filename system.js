@@ -57,12 +57,14 @@ Hooks.once('init', async function() {
         const priorCombatant = prior ? combat.combatants.get(prior.combatantId) : null;
         const currentCombatant = current ? combat.combatants.get(current.combatantId) : null;
         if (priorCombatant) await NeuroshimaScriptRunner.runEndTurn(combat, priorCombatant);
+        await NeuroshimaScriptRunner.expireEffects(combat);
         if (currentCombatant) await NeuroshimaScriptRunner.runStartTurn(combat, currentCombatant);
     });
 
     Hooks.on("combatRound", async (combat, updates, options) => {
         if (!game.user.isGM) return;
         if (options?.direction === 1 || updates?.round > (options?.previousRound ?? 0)) {
+            await NeuroshimaScriptRunner.expireEffects(combat);
             await NeuroshimaScriptRunner.runStartRound(combat);
         } else {
             await NeuroshimaScriptRunner.runEndRound(combat);

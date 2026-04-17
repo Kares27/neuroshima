@@ -311,6 +311,8 @@ export class CombatHelper {
             const createdWounds = await actor.createEmbeddedDocuments("Item", painResistanceData.processedWounds);
             woundIds = createdWounds.map(w => w.id);
 
+            await this._applyDamageTypeEffects(actor, attackData);
+
             if (!suppressChat) {
                 ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
                     count: painResistanceData.processedWounds.length, 
@@ -1549,6 +1551,70 @@ export class CombatHelper {
     }
 
     game.neuroshima.groupEnd();
+  }
+
+  // ── Effect Application helpers ────────────────────────────────────────────
+
+  /**
+   * Collect effects with transferType "damage" + documentType "actor" from the
+   * attacking actor and/or weapon, then apply them to the defending actor.
+   * Called automatically after wounds are created in applyDamageToActor.
+   *
+   * @param {Actor}  defender   - The actor receiving the damage.
+   * @param {Object} attackData - The attack data object (actorId, weaponId, …).
+   * @returns {Promise<void>}
+   */
+  static async _applyDamageTypeEffects(defender, attackData) {
+    const attacker = attackData.actorId ? game.actors.get(attackData.actorId) : null;
+    const weapon   = attacker && attackData.weaponId ? attacker.items.get(attackData.weaponId) : null;
+
+    const sources = [
+      ...(attacker ? attacker.effects.contents : []),
+      ...(weapon   ? weapon.effects.contents   : [])
+    ];
+
+    const toApply = sources
+      .filter(e => !e.disabled)
+      .filter(e => {
+        const tType = e.getFlag?.("neuroshima", "transferType") ?? "owningDocument";
+        const dType = e.getFlag?.("neuroshima", "documentType") ?? "actor";
+        return tType === "damage" && dType === "actor";
+      })
+      .map(e => e.convertToApplied());
+
+    if (toApply.length) {
+      game.neuroshima.log(`CombatHelper | Applying ${toApply.length} damage-type effect(s) to ${defender.name}`);
+      await defender.applyEffect({ effectData: toApply });
+    }
+  }
+
+  /**
+   * Apply all "Target" type effects (transferType "target", documentType "actor")
+   * from a source document (actor or item) to the given target actors/tokens.
+   *
+   * Intended to be called from manual scripts or item-use hooks.
+   *
+   * @param {Actor|Item}        source   - The actor or item whose Target effects are transferred.
+   * @param {Array<Actor|Token>} targets - Target actors or tokens.
+   * @returns {Promise<void>}
+   */
+  static async applyTargetEffects(source, targets) {
+    const effects = (source.effects?.contents ?? [])
+      .filter(e => !e.disabled)
+      .filter(e => {
+        const tType = e.getFlag?.("neuroshima", "transferType") ?? "owningDocument";
+        const dType = e.getFlag?.("neuroshima", "documentType") ?? "actor";
+        return tType === "target" && dType === "actor";
+      });
+
+    if (!effects.length) return;
+
+    for (const target of targets) {
+      const actor = target.actor ?? target;
+      const effectData = effects.map(e => e.convertToApplied());
+      game.neuroshima.log(`CombatHelper | Applying ${effectData.length} target-type effect(s) to ${actor.name}`);
+      await actor.applyEffect({ effectData });
+    }
   }
 
 }

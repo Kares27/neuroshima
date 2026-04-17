@@ -16,8 +16,8 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     position: { width: 600, height: 520 },
     form: {
       handler: NeuroshimaScriptEditor.prototype._onSave,
-      closeOnSubmit: true,
-      submitOnChange: false
+      closeOnSubmit: false,
+      submitOnChange: true
     }
   };
 
@@ -34,6 +34,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
   async _prepareContext(options) {
     const scripts = this.effect.getFlag("neuroshima", "scripts") || [];
     const scriptData = foundry.utils.deepClone(scripts[this.scriptIndex]) || { trigger: "manual", label: "", code: "" };
+    scriptData.code = (scriptData.code ?? "").trimEnd();
     return {
       scriptData,
       triggers: NeuroshimaScriptRunner.TRIGGERS,
@@ -45,10 +46,12 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     const data = formData.object;
     const scripts = foundry.utils.deepClone(this.effect.getFlag("neuroshima", "scripts") || []);
     if (scripts[this.scriptIndex]) {
-      scripts[this.scriptIndex].label = data.label ?? scripts[this.scriptIndex].label;
-      scripts[this.scriptIndex].trigger = data.trigger ?? scripts[this.scriptIndex].trigger;
-      scripts[this.scriptIndex].code = data.code ?? scripts[this.scriptIndex].code;
+      scripts[this.scriptIndex].label          = data.label          ?? scripts[this.scriptIndex].label;
+      scripts[this.scriptIndex].trigger        = data.trigger        ?? scripts[this.scriptIndex].trigger;
+      scripts[this.scriptIndex].code           = data.code           ?? scripts[this.scriptIndex].code;
+      scripts[this.scriptIndex].runIfDisabled  = data.runIfDisabled  ?? false;
       await this.effect.setFlag("neuroshima", "scripts", scripts);
     }
+    if (event?.type === "submit") await this.close();
   }
 }

@@ -130,6 +130,7 @@
     <li><a href="#examples">Przykłady gotowych skryptów</a></li>
     <li><a href="#manual-invoke">Manualne wywoływanie — przyciski w itemach</a></li>
     <li><a href="#changes">Zakładka Changes — modyfikacje atrybutów</a></li>
+    <li><a href="#details">Zakładka Details — konfiguracja transferu</a></li>
     <li><a href="#helpers">Helpery i narzędzia</a></li>
     <li><a href="#tips">Dobre praktyki</a></li>
   </ol>
@@ -158,8 +159,27 @@
   <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
     <li><strong>Etykieta</strong> — nazwa widoczna na liście skryptów</li>
     <li><strong>Wyzwalacz</strong> — kiedy skrypt ma być uruchomiony</li>
+    <li><strong>Uruchom gdy wyłączony</strong> (<code>runIfDisabled</code>) — checkbox; gdy zaznaczony, skrypt uruchamia się nawet jeśli efekt jest wyłączony (disabled). Przydatne np. do czyszczenia/sprzątania po wyłączeniu efektu.</li>
     <li><strong>Kod</strong> — edytor JavaScript z podświetlaniem składni (CodeMirror)</li>
   </ul>
+
+  <h3>Automatyczne usuwanie itemów stworzonych przez skrypt (<code>fromEffect</code>)</h3>
+  <p>
+    Jeśli skrypt tworzy itemy na aktorze, możesz oflagować je tak, aby zostały <strong>automatycznie usunięte</strong>
+    gdy efekt jest kasowany (np. po wygaśnięciu). Wystarczy ustawić flagę przy tworzeniu:
+  </p>
+  <pre><code><span class="cmt">// Trigger: immediate — stwórz item i powiąż z tym efektem</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">createEmbeddedDocuments</span>(<span class="str">"Item"</span>, [{
+  name: <span class="str">"Tymczasowy bufor"</span>,
+  type: <span class="str">"gear"</span>,
+  flags: { neuroshima: { fromEffect: <span class="kw">this</span>.effect.id } }
+}]);</code></pre>
+  <p>
+    Przy usunięciu efektu (<code>deleteEffect</code> lub wygaśnięcie) system automatycznie usuwa wszystkie itemy
+    z flagą <code>flags.neuroshima.fromEffect === effect.id</code>.<br>
+    Możesz też wywołać to ręcznie: <code>await this.effect.deleteCreatedItems()</code>.<br>
+    Aby <em>pominąć</em> auto-usuwanie przy konkretnym delete: <code>effect.delete({ skipDeletingItems: true })</code>.
+  </p>
 </section>
 
 <!-- SECTION 2 -->
@@ -181,6 +201,10 @@
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getChatData(merge?)</span><span class="ctx-type">object</span><span class="ctx-desc">Domyślne dane do ChatMessage.create() z speaker aktora i flavorem efektu</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.dialog(content, type?, config?)</span><span class="ctx-type">Promise&lt;any&gt;</span><span class="ctx-desc">Dialog Foundry: "confirm" → true/false, "prompt" → string|null, "input" → dane formularza. Tytuł = nazwa efektu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isBodyLocation(loc)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli lokacja należy do ciała (postać / NPC / bestia)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isVehicleLocation(loc)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli lokacja należy do pojazdu</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getLocationLabel(loc)</span><span class="ctx-type">string</span><span class="ctx-desc">Zlokalizowana nazwa lokacji trafienia ("Głowa", "Przód" itp.)</span></div>
   </div>
 
   <h3>Argumenty <code>args</code></h3>
@@ -204,8 +228,27 @@
 <section id="triggers">
   <h2 class="section-title">3. Lista wyzwalaczy</h2>
 
+  <!-- manual -->
+  <h3>manual — <em>Manually Invoked</em></h3>
+  <p>Wyzwalany ręcznie przez kliknięcie przycisku ▶ na liście skryptów efektu na arkuszu aktora.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor właściciel efektu</td></tr>
+  </tbody></table>
+
+  <!-- immediate -->
+  <h3>immediate — <em>Immediate</em></h3>
+  <p>Uruchamiany <strong>raz</strong>, zaraz po tym jak efekt zostanie utworzony na aktorze. Idealny do efektów jednorazowych (konsumabli), gdzie efekt powinien zadziałać natychmiast, a następnie można go usunąć skryptem <code>deleteEffect</code> lub ręcznie.</p>
+  <p>Różnica względem <code>createEffect</code>: <code>createEffect</code> uruchamia się chwilę wcześniej (hooks Foundry), <code>immediate</code> — tuż po nim, w tej samej ramce. W praktyce dla konsumabli użyj <code>immediate</code>.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor na którym utworzono efekt</td></tr>
+    <tr><td>args.data</td><td>object</td><td>Dane dokumentu efektu (Foundry)</td></tr>
+    <tr><td>args.options</td><td>object</td><td>Opcje Foundry przekazane do _onCreate</td></tr>
+  </tbody></table>
+
   <!-- prepareData -->
-  <h3>prepareData <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <h3>prepareData — <em>Prepare Data</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
   <p>Uruchamiany podczas <code>actor.prepareDerivedData()</code> — czyli za każdym razem gdy Foundry przelicza dane aktora (po każdej aktualizacji). Idealny do modyfikacji wartości pochodnych.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -214,7 +257,7 @@
   <div class="callout warning">Nie używaj <code>await</code>. Nie wywołuj <code>actor.update()</code> — to spowoduje pętlę. Modyfikuj dane tymczasowe bezpośrednio na obiekcie.</div>
 
   <!-- preRollTest -->
-  <h3>preRollTest</h3>
+  <h3>preRollTest — <em>Pre-Roll Test</em></h3>
   <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Może anulować rzut lub wymusić automatyczny sukces.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -224,10 +267,11 @@
     <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (wyświetlana w chacie)</td></tr>
     <tr><td>args.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
     <tr><td>args.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
+    <tr><td>args.annotation</td><td>string</td><td>Tekst pokazywany w chacie przy auto-sukcesie (zastępuje domyślny)</td></tr>
   </tbody></table>
 
   <!-- rollTest -->
-  <h3>rollTest</h3>
+  <h3>rollTest — <em>Roll Test</em></h3>
   <p>Uruchamiany po <code>preRollTest</code> (tylko gdy nie anulowano/auto-sukces) — modyfikuje parametry rzutu przed rzuceniem kośćmi.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -240,9 +284,21 @@
     <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności</td></tr>
   </tbody></table>
 
+  <!-- preApplyDamage -->
+  <h3>preApplyDamage — <em>Pre-Apply Damage</em></h3>
+  <p>Uruchamiany <strong>przed</strong> redukcją pancerza dla przychodzącego trafienia. Pozwala zmodyfikować surową listę ran zanim jeszcze SP pancerza zostanie odliczone lub przeliczone.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor otrzymujący obrażenia</td></tr>
+    <tr><td>args.location</td><td>string</td><td>Lokalizacja trafienia</td></tr>
+    <tr><td>args.damageType</td><td>string</td><td>Typ obrażeń — możesz zmienić</td></tr>
+    <tr><td>args.rawWounds</td><td>Array</td><td>Surowa lista ran przed pancerzem — możesz modyfikować (push/pop/splice)</td></tr>
+    <tr><td>args.piercing</td><td>number</td><td>Wartość przebicia pancerza</td></tr>
+  </tbody></table>
+
   <!-- applyDamage -->
-  <h3>applyDamage</h3>
-  <p>Uruchamiany przed sprawdzeniem odporności na ból dla przychodzących ran. Pozwala modyfikować lub pomijać rany.</p>
+  <h3>applyDamage — <em>Apply Damage</em></h3>
+  <p>Uruchamiany po pancerzu, przed sprawdzeniem odporności na ból. Pozwala modyfikować lub pomijać poszczególne rany.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor otrzymujący obrażenia</td></tr>
@@ -251,10 +307,11 @@
     <tr><td>wound.damageType</td><td>string</td><td>Typ obrażeń: <code>D</code>, <code>sD</code>, <code>L</code>, <code>sL</code>, <code>C</code>, <code>sC</code>, <code>K</code>, <code>sK</code></td></tr>
     <tr><td>wound.forcePassed</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana automatycznie zdaje test odporności na ból</td></tr>
     <tr><td>wound.forceSkip</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana jest całkowicie ignorowana (nie tworzy itemu rany)</td></tr>
+    <tr><td>wound.annotation</td><td>string</td><td>Tekst wyświetlany w chacie przy ranie (akumuluje się gdy wiele skryptów ustawia)</td></tr>
   </tbody></table>
 
   <!-- armorCalculation -->
-  <h3>armorCalculation <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <h3>armorCalculation — <em>Armour Calculation</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
   <p>Uruchamiany podczas obliczania redukcji pancerza dla trafienia. Pozwala modyfikować efektywne SP zbroi.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -267,7 +324,7 @@
   </tbody></table>
 
   <!-- equipToggle -->
-  <h3>equipToggle</h3>
+  <h3>equipToggle — <em>Equip Toggle</em></h3>
   <p>Uruchamiany po założeniu lub zdjęciu ekwipunku przez aktora.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -277,15 +334,15 @@
   </tbody></table>
 
   <!-- combat triggers -->
-  <h3>startCombat / endCombat</h3>
-  <p>Uruchamiane gdy walka zaczyna się lub kończy. Wykonywane raz na aktora (nie na combatanta).</p>
+  <h3>startCombat / endCombat — <em>Start Combat / End Combat</em></h3>
+  <p>Uruchamiane gdy walka zaczyna się lub kończy. Wykonywane raz na aktora (deduplikacja).</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor biorący udział w walce</td></tr>
     <tr><td>args.combat</td><td>Combat</td><td>Dokument walki</td></tr>
   </tbody></table>
 
-  <h3>startRound / endRound</h3>
+  <h3>startRound / endRound — <em>Start Round / End Round</em></h3>
   <p>Uruchamiane na początku i końcu każdej rundy walki. Wykonywane raz na aktora (deduplikacja).</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -294,7 +351,7 @@
     <tr><td>args.round</td><td>number</td><td>Numer aktualnej rundy</td></tr>
   </tbody></table>
 
-  <h3>startTurn / endTurn</h3>
+  <h3>startTurn / endTurn — <em>Start Turn / End Turn</em></h3>
   <p>Uruchamiane na początku i końcu tury aktora w walce.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -304,26 +361,219 @@
   </tbody></table>
 
   <!-- lifecycle -->
-  <h3>createEffect / deleteEffect</h3>
+  <h3>createEffect / deleteEffect — <em>Effect Created / Effect Deleted</em></h3>
   <p>Uruchamiane raz gdy efekt jest tworzony na aktorze lub usuwany z aktora.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor docelowy</td></tr>
     <tr><td>args.data / args.options</td><td>object</td><td>Dane Foundry przekazane do operacji</td></tr>
   </tbody></table>
-
-  <!-- manual -->
-  <h3>manual</h3>
-  <p>Wyzwalany ręcznie przez kliknięcie przycisku ▶ na liście skryptów efektu na arkuszu aktora.</p>
-  <table>
-    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
-    <tr><td>args.actor</td><td>Actor</td><td>Aktor właściciel efektu</td></tr>
-  </tbody></table>
 </section>
 
 <!-- SECTION 4 -->
 <section id="examples">
   <h2 class="section-title">4. Przykłady gotowych skryptów</h2>
+
+  <div class="callout info" style="margin-bottom:1rem;">
+    <strong>Leczenie w Neuroshimie 1.5</strong> — system nie używa tradycyjnych punktów HP.
+    Zamiast tego każda rana to odrębny Item (<code>type: "wound"</code>) z polem <code>damageType</code>
+    (D / sD / L / sL / C / sC / K / sK). Leczenie polega na:
+    <ul style="margin:4px 0 0 1.2em;">
+      <li>redukcji poziomu rany o N stopni (<code>wound.reduceLevel(n)</code>)</li>
+      <li>usunięciu rany całkowicie (<code>wound.heal()</code> lub <code>actor.healAllWounds()</code>)</li>
+      <li>zmniejszeniu kary rany (<code>wound.reducePenalty(n)</code>)</li>
+    </ul>
+    <code>modifyHp</code> istnieje w API, ale rzadko ma sens w kontekście systemu ran.
+  </div>
+
+  <!-- ── Propital Wariant 1: jednorazowe natychmiastowe leczenie ──────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Propital — Wariant 1: natychmiastowo redukuje najcięższe rany (jeden skrypt)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Najprostszy wzorzec konsumabla — <strong>jeden skrypt manual</strong> bezpośrednio na itemie.
+      Brak pośredniego efektu: zużywa sztukę i od razu redukuje każdą z najcięższych ran o 1 stopień
+      (np. C → L, L → D, D → usunięta).
+    </p>
+    <pre><code><span class="cmt">// Trigger: manual — bezpośrednio na itemie "Propital"</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">if</span> (!<span class="kw">this</span>.item.<span class="fn">hasQuantity</span> || <span class="kw">this</span>.item.system.quantity &lt;= <span class="num">0</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak Propitalu!"</span>, <span class="str">"error"</span>);
+  }
+  <span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
+  <span class="kw">if</span> (!<span class="var">worst</span>.length) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak aktywnych ran."</span>);
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
+  <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> <span class="var">worst</span>) {
+    <span class="kw">if</span> (<span class="kw">this</span>.DAMAGE_ORDER.<span class="fn">indexOf</span>(<span class="var">wound</span>.system.damageType) === <span class="num">0</span>) {
+      <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">heal</span>();           <span class="cmt">// D → rana usunięta</span>
+    } <span class="kw">else</span> {
+      <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);   <span class="cmt">// C→L, L→D itd.</span>
+    }
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="str">`&lt;strong&gt;Propital&lt;/strong&gt;: poziom najcięższych ran zredukowany.`</span>
+  );
+})();</code></pre>
+  </div>
+
+  <!-- ── Propital Wariant 2: natychmiastowe + podtrzymane leczenie przez N rund -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span> +
+      <span class="trigger-badge">startTurn</span>
+      Propital — Wariant 2: natychmiastowe leczenie + podtrzymane działanie przez 2 rundy
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Skrypt <strong>manual</strong> (na itemie) zużywa sztukę, redukuje najcięższą ranę natychmiast,
+      a następnie nakłada na aktora <em>drugi efekt</em> z czasem trwania 2 rund walki.
+      Ten efekt posiada skrypt <strong>startTurn</strong>, który na początku każdej tury aktora
+      redukuje o 1 stopień kolejną najcięższą ranę. Po wygaśnięciu efekt znika automatycznie.
+    </p>
+
+    <p style="margin:4px 0 2px; font-size:0.82em; color:var(--accent2);">
+      ▶ Skrypt na itemie — trigger: <strong>manual</strong>
+      <em style="color:#888;">(Efekt 0 na itemie = ten skrypt; Efekt 1 na itemie = efekt podtrzymany z trigger startTurn)</em>
+    </p>
+    <pre><code><span class="cmt">// Trigger: manual — na itemie "Propital"
+// Natychmiastowo redukuje 1 ranę, potem nakłada efekt podtrzymany (2 rundy)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">if</span> (!<span class="kw">this</span>.item.<span class="fn">hasQuantity</span> || <span class="kw">this</span>.item.system.quantity &lt;= <span class="num">0</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak Propitalu!"</span>, <span class="str">"error"</span>);
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
+
+  <span class="cmt">// ① Natychmiastowa redukcja</span>
+  <span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
+  <span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">worst</span>) {
+    (<span class="kw">this</span>.DAMAGE_ORDER.<span class="fn">indexOf</span>(<span class="var">w</span>.system.damageType) === <span class="num">0</span>)
+      ? <span class="kw">await</span> <span class="var">w</span>.<span class="fn">heal</span>()
+      : <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+  }
+
+  <span class="cmt">// ② Nakłada efekt podtrzymany z Efektu 1 (duration: 2 rundy)</span>
+  <span class="kw">const</span> <span class="var">sustained</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">1</span>].<span class="fn">convertToApplied</span>({
+    <span class="str">"duration.rounds"</span>:     <span class="num">2</span>,
+    <span class="str">"duration.startRound"</span>: game.combat?.round ?? <span class="num">0</span>
+  });
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">sustained</span>] });
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="str">`&lt;strong&gt;Propital&lt;/strong&gt;: zastosowany — działa przez 2 rundy.`</span>
+  );
+})();</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Skrypt na Efekcie 1 (podtrzymanym) — trigger: <strong>startTurn</strong></p>
+    <pre><code><span class="cmt">// Trigger: startTurn — uruchamia się na początku każdej tury aktora
+// Redukuje najcięższą aktywną ranę o 1 stopień</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
+  <span class="kw">if</span> (!<span class="var">worst</span>.length) <span class="kw">return</span>;
+  <span class="kw">const</span> <span class="var">w</span> = <span class="var">worst</span>[<span class="num">0</span>]; <span class="cmt">// redukujemy tylko jedną ranę na turę</span>
+  (<span class="kw">this</span>.DAMAGE_ORDER.<span class="fn">indexOf</span>(<span class="var">w</span>.system.damageType) === <span class="num">0</span>)
+    ? <span class="kw">await</span> <span class="var">w</span>.<span class="fn">heal</span>()
+    : <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+})();</code></pre>
+
+  </div>
+
+  <!-- ── Propital Wariant 3: manual → sustained 3-round healing ──────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span> +
+      <span class="trigger-badge">immediate</span> +
+      <span class="trigger-badge">startTurn</span>
+      Propital — Wariant 3: przycisk nakłada efekt, który redukuje ranę 3 razy (1× od razu + 2× na turę)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Skrypt <strong>manual</strong> (Efekt 0 na itemie) tylko zużywa sztukę i nakłada Efekt 1 z <code>duration.rounds: 3</code>.
+      Efekt 1 ma dwa skrypty: <strong>immediate</strong> odpala redukcję natychmiast po nałożeniu,
+      a <strong>startTurn</strong> odpala ją na początku każdej z 2 kolejnych tur — łącznie 3 redukcje.
+    </p>
+    <div class="callout warn" style="margin-bottom:0.6rem; font-size:0.86em;">
+      <strong>Uwaga na duration:</strong> <code>immediate</code> odpala się przy nałożeniu (runda startowa nie liczy się jako tura efektu).
+      Przy <code>duration.rounds: 2</code> efekt wygasa przed drugą turą, więc <code>startTurn</code> odpaliłby się tylko raz.
+      Ustaw <code>duration.rounds: 3</code> aby dostać <strong>1× immediate + 2× startTurn</strong>.
+    </div>
+    <div class="callout info" style="margin-bottom:0.6rem; font-size:0.86em;">
+      Używamy <code>this.reduceWorstWound()</code> — helper który automatycznie pobiera najgorszą ranę,
+      redukuje ją o 1 poziom lub usuwa jeśli to D. Nie trzeba definiować <code>DAMAGE_ORDER</code> ręcznie.
+    </div>
+
+    <p style="margin:4px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Efekt 0 — trigger: <strong>manual</strong> (na itemie)</p>
+    <pre><code><span class="cmt">// Zużywa sztukę i nakłada Efekt 1 na aktora przez 3 rundy
+// Efekt 1 odpali immediate natychmiast + startTurn 2× = 3 redukcje łącznie
+// (duration.rounds: 3 bo immediate odpala się w rundzie startowej,
+//  a startTurn potrzebuje 2 pełnych rund aby odpowiedzieć 2 razy)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">if</span> (!<span class="kw">this</span>.item.<span class="fn">hasQuantity</span> || <span class="kw">this</span>.item.system.quantity &lt;= <span class="num">0</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak Propitalu!"</span>, <span class="str">"error"</span>);
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
+  <span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">1</span>].<span class="fn">convertToApplied</span>({
+    <span class="str">"duration.rounds"</span>:     <span class="num">3</span>,
+    <span class="str">"duration.startRound"</span>: game.combat?.round ?? <span class="num">0</span>
+  });
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });
+})();</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Efekt 1, Skrypt A — trigger: <strong>immediate</strong></p>
+    <pre><code><span class="cmt">// Odpala się raz zaraz po nałożeniu efektu — pierwsza redukcja</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">healed</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>();
+  <span class="kw">if</span> (<span class="var">healed</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;strong&gt;Propital&lt;/strong&gt;: pierwsza redukcja rany.`</span>);
+})();</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Efekt 1, Skrypt B — trigger: <strong>startTurn</strong></p>
+    <pre><code><span class="cmt">// Odpala się na początku każdej tury aktora przez 2 rundy — kolejne redukcje</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>();
+})();</code></pre>
+  </div>
+
+  <!-- ── Bandaż: usuwa draśnięcia (D) ─────────────────────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">immediate</span>
+      Bandaż — usuwa wszystkie draśnięcia (typ D i sD)
+    </div>
+    <pre><code><span class="cmt">// Trigger: immediate
+// Usuwa wyłącznie draśnięcia — nie leczy ran lekkich ani cięższych</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">wounds</span> = <span class="kw">this</span>.actor.<span class="fn">getWounds</span>({ active: <span class="kw">true</span> })
+    .<span class="fn">filter</span>(<span class="var">w</span> =&gt; [<span class="str">"D"</span>, <span class="str">"sD"</span>].<span class="fn">includes</span>(<span class="var">w</span>.system.damageType));
+  <span class="kw">if</span> (!<span class="var">wounds</span>.length) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak draśnięć."</span>);
+  }
+  <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> <span class="var">wounds</span>) {
+    <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">heal</span>();
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="str">`&lt;strong&gt;Bandaż&lt;/strong&gt;: Usunięto ${<span class="var">wounds</span>.length} draśnięć.`</span>
+  );
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preApplyDamage</span>
+      Odporność — zmiana ciężkiej rany na lekką przed pancerzem
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Trigger <strong>preApplyDamage</strong> pozwala modyfikować typ obrażeń <em>zanim</em>
+      pancerz zostanie przeliczony. Przykład: mutacja redukująca każde C do L.
+    </p>
+    <pre><code><span class="cmt">// Mutacja: wrodzona redukcja — C staje się L przed obliczeniem pancerza</span>
+<span class="kw">if</span> (args.damageType === <span class="str">"C"</span>) {
+  args.damageType = <span class="str">"L"</span>;
+}
+<span class="kw">if</span> (args.damageType === <span class="str">"sC"</span>) {
+  args.damageType = <span class="str">"sL"</span>;
+}</code></pre>
+  </div>
 
   <div class="example-block">
     <div class="example-header">
@@ -498,10 +748,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <span class="trigger-badge">startTurn</span>
       Leczenie regeneracyjne — +1 HP na początku tury
     </div>
-    <pre><code><span class="kw">const</span> <span class="var">actor</span> = args.actor;
-<span class="kw">const</span> <span class="var">hp</span> = <span class="var">actor</span>.system.hp;
-<span class="kw">if</span> (<span class="var">hp</span>.value &lt; <span class="var">hp</span>.max) {
-  <span class="kw">await</span> <span class="var">actor</span>.<span class="fn">update</span>({ <span class="str">"system.hp.value"</span>: <span class="var">hp</span>.value + <span class="num">1</span> });
+    <pre><code><span class="cmt">// args: { actor, combat, turn }</span>
+<span class="kw">if</span> (<span class="kw">this</span>.actor.system.hp?.value &lt; <span class="kw">this</span>.actor.system.hp?.max) {
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(<span class="num">1</span>);
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Regeneracja: +1 HP"</span>);
 }</code></pre>
   </div>
@@ -635,11 +884,10 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">manual</span>
-      Rzut kością + czekanie na Dice So Nice — <code>rollDice + sleep + sendMessage</code>
+      Rzut kością + czekanie na Dice So Nice — <code>this.roll + sleep + sendMessage</code>
     </div>
-    <pre><code><span class="kw">const</span> <span class="var">Runner</span> = game.neuroshima.NeuroshimaScriptRunner;
-<span class="kw">const</span> <span class="var">roll</span>   = <span class="kw">await</span> <span class="var">Runner</span>.<span class="fn">rollDice</span>(<span class="str">`${this.actor.system.attributes.constitution}d6`</span>);
-<span class="kw">const</span> <span class="var">msg</span>    = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({ flavor: <span class="str">"Test Budowy"</span> }));
+    <pre><code><span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">`${this.actor.getAttribute("constitution")}d6`</span>);
+<span class="kw">const</span> <span class="var">msg</span>  = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({ flavor: <span class="str">"Test Budowy"</span> }));
 <span class="kw">if</span> (game.dice3d) <span class="kw">await</span> game.dice3d.<span class="fn">waitFor3DAnimationByMessageID</span>(<span class="var">msg</span>.id);
 <span class="cmt">// po animacji — kontynuuj logikę</span>
 <span class="kw">if</span> (<span class="var">roll</span>.total >= <span class="num">10</span>) <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Sukces!"</span>);
@@ -649,12 +897,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">manual</span>
-      Leczenie zaznaczonego/wskazanego tokena — <code>getTargetsOrSelected</code>
+      Leczenie zaznaczonego/wskazanego tokena — <code>this.getTargetsOrSelected</code>
     </div>
-    <pre><code><span class="kw">const</span> <span class="var">Runner</span>  = game.neuroshima.NeuroshimaScriptRunner;
-<span class="kw">const</span> <span class="var">targets</span> = <span class="var">Runner</span>.<span class="fn">getTargetsOrSelected</span>();
-<span class="kw">const</span> <span class="var">actors</span>  = <span class="var">targets</span>.length ? <span class="var">targets</span> : [<span class="kw">this</span>.actor];
-<span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="var">actors</span>) {
+    <pre><code><span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="kw">this</span>.<span class="fn">getTargetsOrSelected</span>()) {
   <span class="kw">await</span> <span class="var">a</span>.<span class="fn">modifyHp</span>(<span class="num">5</span>);
   <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;💊 ${a.name} uleczony o 5 PŻ.&lt;/p&gt;`</span>);
 }</code></pre>
@@ -674,6 +919,149 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <span class="kw">const</span> <span class="var">dur</span> = <span class="var">t0</span> ? game.time.worldTime - <span class="var">t0</span> : <span class="str">"?"</span>;
 <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Efekt "${this.effect.name}" zakończony. Trwał: ${dur}s.`</span>);
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">`effectStart_${this.effect.id}`</span>);</code></pre>
+  </div>
+
+  <!-- ── convertToApplied ───────────────────────────────────────────────── -->
+  <div class="example-block" style="border-color: var(--accent);">
+    <div class="example-header" style="background:linear-gradient(90deg,#2a2010,var(--bg2));">
+      <span class="trigger-badge" style="color:var(--accent);">manual</span>
+      <span class="trigger-badge">startRound</span>
+      <span class="trigger-badge">deleteEffect</span>
+      &nbsp;Zapal skręta — <code>convertToApplied()</code> (wzorzec WFRP)
+    </div>
+    <p style="margin:6px 0 4px; font-size:0.88em; color:#888;">
+      Item <strong>Skręt</strong> zawiera <strong>3 efekty</strong>:<br>
+      <strong>Efekt 1</strong> — trigger <code>manual</code>, etykieta "Zapal" — odpala akcję zapalenia.<br>
+      <strong>Efekt 2</strong> — efekt który zostanie <em>skopiowany</em> i zaaplikowany bezpośrednio na aktora z czasem trwania.<br>
+      <strong>Efekt 3</strong> — opcjonalny, trigger <code>deleteEffect</code> na <em>skopiowanym</em> efekcie — sprzątanie po wygaśnięciu.
+    </p>
+
+    <p style="margin:4px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Efekt 1 — skrypt manual (na itemie Skręt)</p>
+    <pre><code><span class="cmt">// Sprawdź czy jest jeszcze zapas</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.item.<span class="fn">hasQuantity</span> || <span class="kw">this</span>.item.system.quantity &lt;= <span class="num">0</span>) {
+  <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak skrętów!"</span>, <span class="str">"error"</span>);
+}
+
+<span class="cmt">// Zużyj 1 szt.</span>
+<span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
+
+<span class="cmt">// Określ cel (wskazany token lub właściciel itemu)</span>
+<span class="kw">const</span> <span class="var">actor</span> = Array.<span class="fn">from</span>(game.user.targets)[<span class="num">0</span>]?.actor ?? <span class="kw">this</span>.actor;
+
+<span class="cmt">// Konwertuj Efekt 2 (index 1) do danych gotowych do aplikacji na aktora
+// convertToApplied() kopiuje dane efektu i ustawia sourceItem UUID w flagach</span>
+<span class="kw">const</span> <span class="var">effectData</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">1</span>].<span class="fn">convertToApplied</span>({
+  <span class="str">"duration.seconds"</span>: <span class="num">3600</span>   <span class="cmt">// 1 godzina in-game</span>
+});
+
+<span class="cmt">// Aplikuj na aktora — Foundry tworzy nowy efekt bezpośrednio na aktorze</span>
+<span class="kw">await</span> <span class="var">actor</span>.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effectData</span>] });
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Skręt zapalony 🚬"</span>);</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Efekt 2 — efekt palenia (na itemie, kopiowany na aktora)</p>
+    <p style="margin:2px 0 6px; font-size:0.82em; color:#888;">
+      Nie potrzebuje skryptu — mogą tu być dowolne Changes (np. kara do Percepcji) lub skrypty
+      <code>startRound</code>/<code>startTurn</code> z efektami trwającymi przez czas palenia.
+    </p>
+    <pre><code><span class="cmt">// Przykład skryptu startRound na Efekcie 2:
+// Co rundę -1 do Percepcji (zadymienie)</span>
+<span class="kw">const</span> <span class="var">sys</span> = args.actor.system;
+<span class="kw">if</span> (sys.attributes?.perception !== <span class="kw">undefined</span>) {
+  <span class="kw">await</span> args.actor.<span class="fn">update</span>({ <span class="str">"system.attributes.perception"</span>: sys.attributes.perception - <span class="num">1</span> });
+}</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Efekt 3 — sprzątanie po wygaśnięciu (skrypt deleteEffect na Efekcie 2)</p>
+    <pre><code><span class="cmt">// Trigger: deleteEffect — odpala się gdy skopiowany efekt znika z aktora
+// this.effect.sourceItem → oryginalny item (Skręt)
+// Można tu np. usunąć item jeśli był jednorazowy</span>
+<span class="kw">const</span> <span class="var">src</span> = <span class="kw">this</span>.effect.sourceItem;
+<span class="kw">if</span> (<span class="var">src</span> &amp;&amp; <span class="var">src</span>.system.quantity &lt;= <span class="num">0</span>) {
+  <span class="kw">await</span> <span class="var">src</span>.<span class="fn">delete</span>(); <span class="cmt">// usuń item gdy skończyły się zapasy</span>
+}
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Skręt wypalony."</span>);</code></pre>
+
+    <div class="callout info" style="margin-top:0.75rem;">
+      <strong>this.effect.sourceItem</strong> — getter dostępny na każdym efekcie zaaplikowanym przez
+      <code>convertToApplied()</code>. Zwraca oryginalny item (np. Skręt) synchronicznie z UUID
+      zapisanego w <code>flags.neuroshima.sourceItem</code>.
+    </div>
+  </div>
+
+  <!-- ── Duration ─────────────────────────────────────────────────────────── -->
+  <div class="example-block" style="border-color: var(--accent2);">
+    <div class="example-header" style="background:linear-gradient(90deg,#102018,var(--bg2));">
+      <span class="trigger-badge" style="color:var(--accent2);">manual</span>
+      Tworzenie efektu z <code>duration</code> — czas w sekundach, rundach i turach
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Foundry obsługuje trzy jednostki czasu trwania efektu.
+      Można je ustawiać zarówno w <code>convertToApplied()</code> jak i bezpośrednio
+      przy tworzeniu efektu przez <code>actor.createEmbeddedDocuments()</code>.
+      Poniżej pełne zestawienie — wybierz jednostkę odpowiednią do kontekstu (czas rzeczywisty vs walka).
+    </p>
+    <table style="font-size:0.86em; margin-bottom:0.75rem;">
+      <thead><tr><th>Pole</th><th>Jednostka</th><th>Kiedy używać</th></tr></thead>
+      <tbody>
+        <tr><td><code>duration.seconds</code></td><td>sekundy (czas świata)</td><td>Efekty poza walką, mikstury, czas rzeczywisty</td></tr>
+        <tr><td><code>duration.rounds</code></td><td>rundy (walka)</td><td>Efekty trwające N rund podczas walki</td></tr>
+        <tr><td><code>duration.turns</code></td><td>tury (walka)</td><td>Efekty trwające N tur (inicjatywa jednego aktora)</td></tr>
+        <tr><td><code>duration.startRound</code></td><td>runda startu</td><td>Ustaw gdy chcesz by Foundry liczył od bieżącej rundy</td></tr>
+        <tr><td><code>duration.startTurn</code></td><td>tura startu</td><td>Ustaw gdy chcesz by Foundry liczył od bieżącej tury</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin:4px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Czas rzeczywisty — sekundy</p>
+    <pre><code><span class="cmt">// Efekt trucizny trwający 10 minut (600 sekund) czasu świata</span>
+<span class="kw">const</span> <span class="var">effectData</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
+  <span class="str">"duration.seconds"</span>: <span class="num">600</span>
+});
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effectData</span>] });</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Rundy walki</p>
+    <pre><code><span class="cmt">// Efekt ogłuszenia na 3 rundy walki — startRound ustawia bieżącą rundę jako punkt startowy</span>
+<span class="kw">const</span> <span class="var">currentRound</span> = game.combat?.round ?? <span class="num">0</span>;
+<span class="kw">const</span> <span class="var">effectData</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
+  <span class="str">"duration.rounds"</span>:     <span class="num">3</span>,
+  <span class="str">"duration.startRound"</span>: <span class="var">currentRound</span>
+});
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effectData</span>] });</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Tury inicjatywy</p>
+    <pre><code><span class="cmt">// Efekt "Błyskawiczny atak" trwający 2 tury (do końca następnego ruchu aktora)
+// startTurn = bieżąca pozycja w inicjatywie</span>
+<span class="kw">const</span> <span class="var">currentRound</span> = game.combat?.round ?? <span class="num">0</span>;
+<span class="kw">const</span> <span class="var">currentTurn</span>  = game.combat?.turn  ?? <span class="num">0</span>;
+<span class="kw">const</span> <span class="var">effectData</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
+  <span class="str">"duration.turns"</span>:      <span class="num">2</span>,
+  <span class="str">"duration.startRound"</span>: <span class="var">currentRound</span>,
+  <span class="str">"duration.startTurn"</span>:  <span class="var">currentTurn</span>
+});
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effectData</span>] });</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Bez limitu czasu (stały efekt)</p>
+    <pre><code><span class="cmt">// Efekt bezterminowy — nie podajesz żadnych pól duration
+// Trwa aż do ręcznego usunięcia lub skryptu deleteEffect</span>
+<span class="kw">const</span> <span class="var">effectData</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>();
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effectData</span>] });</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Tworzenie efektu bez itemu — czyste dane</p>
+    <pre><code><span class="cmt">// Możesz też stworzyć efekt bez convertToApplied(), przekazując dane ręcznie</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">createEmbeddedDocuments</span>(<span class="str">"ActiveEffect"</span>, [{
+  name: <span class="str">"Zatrucie"</span>,
+  icon: <span class="str">"icons/svg/poison.svg"</span>,
+  duration: {
+    rounds: <span class="num">5</span>,
+    startRound: game.combat?.round ?? <span class="num">0</span>
+  },
+  <span class="str">"flags.neuroshima.scripts"</span>: []   <span class="cmt">// opcjonalnie — puste lub ze skryptami</span>
+}]);</code></pre>
+
+    <div class="callout info" style="margin-top:0.75rem;">
+      <strong>Tip:</strong> Foundry automatycznie odlicza czas i usuwa efekt po upływie duration
+      <em>gdy aktywna jest walka</em>. Poza walką licznik sekund zależy od czasu świata (<code>game.time.worldTime</code>).
+      Dla efektów jednorazowych (jak Propital) lepiej usunąć efekt ręcznie w skrypcie <code>immediate</code>
+      przez <code>this.effect.delete()</code>.
+    </div>
   </div>
 </section>
 
@@ -704,34 +1092,39 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">manual</span>
-      Wypij Wyciąg Uzdrawiający — leczy aktora, zużywa 1 szt. przedmiotu
+      Wypij Wyciąg Uzdrawiający — redukuje rany, zużywa 1 szt. przedmiotu
     </div>
-<pre><code><span class="cmt">// Trigger: manual
-// Etykieta: "Wypij"
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Rzut 2d4 + Budowa wyznacza liczbę poziomów redukcji — każdy poziom redukuje jedną ranę
+      o 1 stopień (lub usuwa draśnięcie). Animacja Dice So Nice odgrywa się przed leczeniem.
+    </p>
+<pre><code><span class="cmt">// Trigger: manual, Etykieta: "Wypij"
 // Na przedmiocie "Wyciąg Uzdrawiający" (gear, quantity &gt; 0)</span>
 (<span class="kw">async</span> () =&gt; {
-  <span class="kw">if</span> (!<span class="kw">this</span>.item.system.quantity) {
+  <span class="kw">if</span> (!<span class="kw">this</span>.item.<span class="fn">hasQuantity</span> || <span class="kw">this</span>.item.system.quantity &lt;= <span class="num">0</span>) {
     <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak wyciągu!"</span>, <span class="str">"error"</span>);
   }
 
-  <span class="cmt">// Zmniejsz ilość o 1</span>
-  <span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">update</span>({ <span class="str">"system.quantity"</span>: <span class="kw">this</span>.item.system.quantity - <span class="num">1</span> });
+  <span class="kw">const</span> <span class="var">actor</span> = <span class="kw">this</span>.<span class="fn">getTargetsOrSelected</span>()[<span class="num">0</span>] ?? <span class="kw">this</span>.actor;
 
-  <span class="cmt">// Rzut leczenia (2d4 + bonus Budowy)</span>
-  <span class="kw">const</span> <span class="var">actor</span> = [...game.user.targets][<span class="num">0</span>]?.actor ?? <span class="kw">this</span>.actor;
-  <span class="kw">const</span> <span class="var">tb</span> = <span class="var">actor</span>.system.attributes.constitution;
-  <span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Roll</span>(<span class="str">`2d4 + <span class="var">${tb}</span>`</span>).<span class="fn">evaluate</span>();
+  <span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
 
-  <span class="kw">const</span> <span class="var">msg</span> = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>({
-    flavor: <span class="str">`&lt;strong&gt;<span class="var">${<span class="kw">this</span>.item.name}</span>&lt;/strong&gt;: Używa mikstury...`</span>,
-    speaker: ChatMessage.<span class="fn">getSpeaker</span>({ actor: <span class="var">actor</span> })
-  });
+  <span class="cmt">// Rzut leczenia — ile poziomów ran jest redukowanych</span>
+  <span class="kw">const</span> <span class="var">con</span> = <span class="var">actor</span>.<span class="fn">getAttribute</span>(<span class="str">"constitution"</span>);
+  <span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">`2d4 + ${<span class="var">con</span>}`</span>);
 
-  <span class="cmt">// Czekaj na animację kości (Dice So Nice)</span>
+  <span class="kw">const</span> <span class="var">msg</span> = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({
+    flavor: <span class="str">`&lt;strong&gt;${<span class="kw">this</span>.item.name}&lt;/strong&gt;: redukuje rany o ${<span class="var">roll</span>.total} poziomów`</span>
+  }));
+
   <span class="kw">if</span> (game.dice3d) <span class="kw">await</span> game.dice3d.<span class="fn">waitFor3DAnimationByMessageID</span>(<span class="var">msg</span>.id);
 
-  <span class="cmt">// Ulecz aktora</span>
-  <span class="kw">await</span> <span class="var">actor</span>.<span class="fn">update</span>({ <span class="str">"system.hp.value"</span>: Math.<span class="fn">min</span>(<span class="var">actor</span>.system.hp.value + <span class="var">roll</span>.total, <span class="var">actor</span>.system.hp.max) });
+  <span class="cmt">// Redukuj rany od najcięższych, łącznie roll.total razy
+  // this.reduceWorstWound(actor) obsługuje logikę D→heal, inne→reduceLevel(1)</span>
+  <span class="kw">let</span> <span class="var">remaining</span> = <span class="var">roll</span>.total;
+  <span class="kw">while</span> (<span class="var">remaining</span> &gt; <span class="num">0</span> &amp;&amp; <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>(<span class="var">actor</span>)) {
+    <span class="var">remaining</span>--;
+  }
 })();</code></pre>
   </div>
 
@@ -890,37 +1283,305 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 </section>
 
 <!-- SECTION 7 -->
+<section id="details">
+  <h2 class="section-title">7. Zakładka Details — konfiguracja transferu</h2>
+  <p>
+    Oprócz standardowych pól Foundry (ikona, opis, stan zawieszenia, Status Conditions),
+    zakładka <strong>Details</strong> zawiera dodatkowe pola Neuroshimy umieszczone na dole:
+  </p>
+
+  <h3>Effect Application</h3>
+  <p>Określa <em>w jaki sposób</em> efekt jest przekazywany do innego dokumentu.</p>
+  <table>
+    <tbody>
+      <tr><th>Opcja</th><th>Opis</th></tr>
+      <tr><td><code>Owning Document</code></td><td>Efekt zostaje przekazany do dokumentu właściciela (domyślne). Dla sztuczek / talentów — aktor dostaje efekt automatycznie.</td></tr>
+      <tr><td><code>Target</code></td><td>Efekt jest aplikowany do wskazanego celu (token). Wymaga obsługi skryptem.</td></tr>
+      <tr><td><code>Damage</code></td><td>Efekt jest przekazywany gdy aktor/item zadaje obrażenia. Wymaga obsługi skryptem.</td></tr>
+      <tr><td><code>Other</code></td><td>Efekt nie jest transferowany automatycznie — pełna kontrola przez skrypty.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    Foundry's natywne pole <code>transfer</code> jest automatycznie ustawiane na <strong>true</strong>
+    gdy wybrany jest <code>Owning Document</code>, a <strong>false</strong> dla pozostałych opcji.
+  </div>
+
+  <h3>Document Type</h3>
+  <p>Precyzuje <em>jakiego rodzaju dokument</em> jest celem transferu. Używane razem z <strong>Effect Application</strong>.</p>
+  <table>
+    <tbody>
+      <tr><th>Opcja</th><th>Opis</th></tr>
+      <tr><td><code>Actor</code></td><td>Efekt trafia na aktora (postać, NPC, bestię, pojazd)</td></tr>
+      <tr><td><code>Item</code></td><td>Efekt trafia na item (którym konkretnie — określa skrypt lub filtr)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Tabela kombinacji</h3>
+  <table>
+    <thead><tr><th>Effect Application</th><th>Document Type</th><th>Wynik</th></tr></thead>
+    <tbody>
+      <tr><td>Owning Document</td><td>Actor</td><td>Transfer do właściciela-aktora. Typowe dla sztuczek i pancerzy.</td></tr>
+      <tr><td>Owning Document</td><td>Item</td><td>Transfer do właściciela-itemu. Rzadko używane.</td></tr>
+      <tr><td>Target</td><td>Actor</td><td>Transfer do wskazanego aktora (token target). Obsługa skryptem.</td></tr>
+      <tr><td>Damage</td><td>Actor</td><td>Transfer do aktora który otrzymuje obrażenia.</td></tr>
+      <tr><td>Damage</td><td>Item</td><td>Transfer do itemu gdy item zadaje obrażenia.</td></tr>
+      <tr><td>Other</td><td>Actor / Item</td><td>Brak automatycznego transferu — pełna kontrola skryptami.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Transfer on Equip</h3>
+  <p>
+    Gdy zaznaczony — efekt jest transferowany do aktora <strong>tylko jeśli item jest założony/aktywny</strong>.
+    Gdy item zostanie zdjęty, efekt przestaje działać. Idealne dla pancerzy i ekwipunku pasywnego.
+  </p>
+  <div class="callout warning">
+    <strong>Uwaga:</strong> Pole <em>Transfer on Equip</em> jest przechowywane w flagach Neuroshimy
+    (<code>flags.neuroshima.equipTransfer</code>) i musi być obsługiwane przez logikę systemu —
+    samo zaznaczenie checkboxu nie modyfikuje natywnego mechanizmu Foundry bez odpowiedniego kodu w systemie.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Owning Document + Actor</span>
+      Typowa sztuczka — stały efekt na aktorze
+    </div>
+    <p style="margin:6px 1rem; font-size:0.88em; color:#888;">
+      Effect Application: <strong>Owning Document</strong> &nbsp;|&nbsp; Document Type: <strong>Actor</strong><br>
+      Transfer on Equip: <strong>nie zaznaczony</strong><br>
+      Efekt działa zawsze gdy item (sztuczka) jest u aktora.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Damage + Actor</span>
+      Efekt trucizny — aplikowany gdy broń zada obrażenia
+    </div>
+    <p style="margin:6px 1rem; font-size:0.88em; color:#888;">
+      Effect Application: <strong>Damage</strong> &nbsp;|&nbsp; Document Type: <strong>Actor</strong><br>
+      Skrypt w triggerze <code>applyDamage</code> aplikuje efekt trucizny na cel który otrzymał obrażenia.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Other + Actor</span>
+      Efekt konsumablu — ręczna kontrola przez skrypt
+    </div>
+    <p style="margin:6px 1rem; font-size:0.88em; color:#888;">
+      Effect Application: <strong>Other</strong> &nbsp;|&nbsp; Document Type: <strong>Actor</strong><br>
+      Skrypt w triggerze <code>manual</code> lub <code>immediate</code> sam aplikuje efekt do wybranego aktora
+      przez <code>actor.applyEffect()</code> lub <code>convertToApplied()</code>.
+    </p>
+  </div>
+</section>
+
+<!-- SECTION 8 -->
 <section id="helpers">
-  <h2 class="section-title">7. Helpery i narzędzia</h2>
+  <h2 class="section-title">8. Helpery i narzędzia</h2>
+
+  <!-- ── Duration ──────────────────────────────────────────────────────────── -->
+  <h3>Czas trwania efektu — <code>convertToApplied()</code> duration</h3>
+  <p>
+    Metoda <code>convertToApplied(overrides?)</code> tworzy kopię efektu gotową do nałożenia na aktora.
+    Argument <code>overrides</code> to płaski obiekt z polami nadpisującymi dane efektu — najczęściej używany do ustawienia czasu trwania.
+  </p>
+  <table>
+    <thead>
+      <tr><th>Pola duration</th><th>Kiedy używać</th><th>Przykład wartości</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>"duration.seconds"</code></td>
+        <td>Czas rzeczywisty — działa poza walką i w walce, opiera się o <code>game.time.worldTime</code></td>
+        <td><code>600</code> = 10 minut</td>
+      </tr>
+      <tr>
+        <td><code>"duration.rounds"</code><br><code>"duration.startRound"</code></td>
+        <td>Rundy walki — Foundry odlicza automatycznie i usuwa efekt po zakończeniu</td>
+        <td><code>rounds: 3, startRound: game.combat?.round ?? 0</code></td>
+      </tr>
+      <tr>
+        <td><code>"duration.turns"</code><br><code>"duration.startRound"</code><br><code>"duration.startTurn"</code></td>
+        <td>Tury inicjatywy — precyzyjny licznik wewnątrz rundy</td>
+        <td><code>turns: 2, startRound: game.combat?.round ?? 0, startTurn: game.combat?.turn ?? 0</code></td>
+      </tr>
+      <tr>
+        <td><em>(brak pól)</em></td>
+        <td>Efekt stały — nie wygasa automatycznie, wymaga ręcznego usunięcia lub skryptu <code>deleteEffect</code></td>
+        <td><code>convertToApplied()</code> bez argumentów</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <pre><code><span class="cmt">// Czas rzeczywisty — 10 minut</span>
+<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({ <span class="str">"duration.seconds"</span>: <span class="num">600</span> });
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });
+
+<span class="cmt">// Rundy walki — 3 rundy od bieżącej</span>
+<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
+  <span class="str">"duration.rounds"</span>:     <span class="num">3</span>,
+  <span class="str">"duration.startRound"</span>: game.combat?.round ?? <span class="num">0</span>
+});
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });
+
+<span class="cmt">// Tury inicjatywy — 2 tury od bieżącej pozycji</span>
+<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
+  <span class="str">"duration.turns"</span>:      <span class="num">2</span>,
+  <span class="str">"duration.startRound"</span>: game.combat?.round ?? <span class="num">0</span>,
+  <span class="str">"duration.startTurn"</span>:  game.combat?.turn  ?? <span class="num">0</span>
+});
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });
+
+<span class="cmt">// Efekt stały — bez duration</span>
+<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>();
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });</code></pre>
+
+  <hr>
 
   <h3>NeuroshimaScriptRunner — metody statyczne</h3>
-  <p>Dostępne globalnie przez <code>game.neuroshima.NeuroshimaScriptRunner</code> lub bezpośrednio przez skrypt (klasa jest w scope):</p>
+  <p>Dostępne globalnie przez <code>game.neuroshima.NeuroshimaScriptRunner</code> lub bezpośrednio przez skrypt (klasa jest w scope).</p>
+
+  <div class="callout info">
+    <strong>Wszystkie helpery są dostępne bezpośrednio przez <code>this</code> w skrypcie.</strong><br>
+    Nie musisz odwoływać się do <code>NeuroshimaScriptRunner</code> — każda metoda jest proxowana
+    na kontekst skryptu. <code>NeuroshimaScriptRunner</code> pozostaje dostępny globalnie
+    przez <code>game.neuroshima.NeuroshimaScriptRunner</code> dla zaawansowanych przypadków
+    (np. z zewnętrznych makr lub konsoli), ale w skryptach efektów używaj <strong>wyłącznie <code>this</code></strong>.
+  </div>
+
+  <h4>Helpery na <code>this</code> — pełna lista</h4>
   <table>
     <tbody><tr><th>Metoda</th><th>Opis</th></tr>
-    <tr><td><code>isLightDamage(type)</code></td><td>Zwraca <code>true</code> dla D, sD, L, sL</td></tr>
-    <tr><td><code>isHeavyDamage(type)</code></td><td>Zwraca <code>true</code> dla C, sC, K, sK</td></tr>
-    <tr><td><code>compareDamage(a, b)</code></td><td>Porównuje dwa typy obrażeń. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
-    <tr><td><code>getTargets()</code></td><td>Zwraca tablicę aktorów wskazanych tokenami (game.user.targets)</td></tr>
-    <tr><td><code>getSelected()</code></td><td>Zwraca tablicę aktorów zaznaczonych tokenów; fallback: przypisana postać gracza</td></tr>
-    <tr><td><code>getTargetsOrSelected()</code></td><td>Targets jeśli są, inaczej selected</td></tr>
-    <tr><td><code>await sleep(ms)</code></td><td>Asynchroniczna pauza w milisekundach (np. czekanie na Dice So Nice)</td></tr>
-    <tr><td><code>await rollDice(formula, data?)</code></td><td>Rzut kością — zwraca obiekt <code>Roll</code> po evaluate()</td></tr>
+    <tr><td><code>await this.roll(formula, data?)</code></td><td>Rzut kością → obiekt <code>Roll</code>. Skrót dla <code>new Roll(formula).evaluate()</code>.</td></tr>
+    <tr><td><code>await this.sleep(ms)</code></td><td>Pauza asynchroniczna w milisekundach (np. czekanie na Dice So Nice)</td></tr>
+    <tr><td><code>this.getTargets()</code></td><td>Aktorzy wskazanych tokenów (<code>game.user.targets</code>)</td></tr>
+    <tr><td><code>this.getSelected()</code></td><td>Aktorzy zaznaczonych tokenów; fallback: przypisana postać gracza</td></tr>
+    <tr><td><code>this.getTargetsOrSelected()</code></td><td>Targets jeśli są, inaczej selected — najczęściej używana metoda celowania</td></tr>
+    <tr>
+      <td><code>this.DAMAGE_ORDER</code></td>
+      <td>
+        Tablica interleaved od najlżejszej do najcięższej (do porównań):<br>
+        <code>["D", "sD", "L", "sL", "C", "sC", "K", "sK"]</code><br>
+        <span style="font-size:0.88em; color:#555;">
+          Wyższy indeks = cięższa rana. <strong>Uwaga:</strong> zawiera oba tory. Do operacji redukcji używaj <code>REGULAR_ORDER</code> / <code>BRUISE_ORDER</code>.
+        </span>
+      </td>
+    </tr>
+    <tr>
+      <td><code>this.REGULAR_ORDER</code></td>
+      <td>
+        Tor zwykłych ran od najlżejszej do najcięższej:<br>
+        <code>["D", "L", "C", "K"]</code><br>
+        <span style="font-size:0.88em; color:#555;">
+          Używaj gdy operujesz wyłącznie na ranach bez prefiksu <code>s</code>.
+          <code>reduceLevel()</code> / <code>increaseLevel()</code> używają tego toru automatycznie.
+        </span>
+      </td>
+    </tr>
+    <tr>
+      <td><code>this.BRUISE_ORDER</code></td>
+      <td>
+        Tor siniaków od najlżejszego do najcięższego:<br>
+        <code>["sD", "sL", "sC", "sK"]</code><br>
+        <span style="font-size:0.88em; color:#555;">
+          Używaj gdy operujesz wyłącznie na ranach z prefiksem <code>s</code>.
+        </span>
+      </td>
+    </tr>
+    <tr>
+      <td><code>await this.reduceWorstWound(actor?)</code></td>
+      <td>
+        Redukuje o 1 poziom <strong>jedną</strong> najgorszą aktywną ranę na aktorze (domyślnie <code>this.actor</code>),
+        trzymając się jej toru (zwykły lub siniak). Jeśli rana jest już na D/sD — zostaje wyleczona (usunięta).<br>
+        Zwraca <code>true</code> gdy coś zredukowano, <code>false</code> gdy brak aktywnych ran.
+      </td>
+    </tr>
+    <tr>
+      <td><code>await this.reduceWorstRegularWound(actor?)</code></td>
+      <td>
+        Jak <code>reduceWorstWound</code>, ale operuje wyłącznie na <strong>zwykłych</strong> ranach (D/L/C/K).
+        Ignoruje siniaki.
+      </td>
+    </tr>
+    <tr>
+      <td><code>await this.reduceWorstBruiseWound(actor?)</code></td>
+      <td>
+        Jak <code>reduceWorstWound</code>, ale operuje wyłącznie na <strong>siniakach</strong> (sD/sL/sC/sK).
+        Ignoruje zwykłe rany.
+      </td>
+    </tr>
+    <tr><td><code>this.isLightDamage(type)</code></td><td>Zwraca <code>true</code> dla D, sD, L, sL</td></tr>
+    <tr><td><code>this.isHeavyDamage(type)</code></td><td>Zwraca <code>true</code> dla C, sC, K, sK</td></tr>
+    <tr><td><code>this.compareDamage(a, b)</code></td><td>Porównuje wagę ran. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
+    <tr><td><code>this.isBodyLocation(loc)</code></td><td>Zwraca <code>true</code> dla lokacji postaci/NPC/bestii</td></tr>
+    <tr><td><code>this.isVehicleLocation(loc)</code></td><td>Zwraca <code>true</code> dla lokacji pojazdu</td></tr>
+    <tr><td><code>this.getLocationLabel(loc)</code></td><td>Zlokalizowana nazwa lokacji (np. <em>"Głowa"</em>, <em>"Przód"</em>)</td></tr>
+    <tr><td><code>this.getChatData(merge?)</code></td><td>Gotowy obiekt danych do <code>ChatMessage.create()</code> z domyślnym speakerem i flavor</td></tr>
+    <tr><td><code>await this.sendMessage(html, data?)</code></td><td>Tworzy wiadomość czatu przypisaną do aktora skryptu</td></tr>
+    <tr><td><code>this.notification(msg, type?)</code></td><td>Powiadomienie UI (info/warn/error)</td></tr>
+    <tr>
+      <td><code>await this.dialog(content, type?, config?)</code></td>
+      <td>
+        Wyświetla dialog Foundry V13.<br>
+        <code>type</code>: <code>"confirm"</code> (zwraca true/false), <code>"prompt"</code> (zwraca string|null), <code>"input"</code> (zwraca dane formularza).<br>
+        Tytuł okna = nazwa efektu.
+      </td>
+    </tr>
   </tbody></table>
-  <pre><code><span class="cmt">// Przykłady</span>
-<span class="kw">const</span> <span class="var">Runner</span> = game.neuroshima.NeuroshimaScriptRunner;
 
-<span class="cmt">// Rzut 2d6</span>
-<span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="var">Runner</span>.<span class="fn">rollDice</span>(<span class="str">"2d6"</span>);
+  <pre><code><span class="cmt">// Rzut kością — przez this.roll() (zalecane w skryptach efektów)</span>
+<span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">"2d6"</span>);
 console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 
-<span class="cmt">// Działaj na zaznaczonym tokenie</span>
-<span class="kw">const</span> <span class="var">targets</span> = <span class="var">Runner</span>.<span class="fn">getTargetsOrSelected</span>();
+<span class="cmt">// Czekaj na animację kości (Dice So Nice), potem kontynuuj</span>
+<span class="kw">const</span> <span class="var">msg</span> = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({ flavor: <span class="str">"Test"</span> }));
+<span class="kw">if</span> (game.dice3d) <span class="kw">await</span> game.dice3d.<span class="fn">waitFor3DAnimationByMessageID</span>(<span class="var">msg</span>.id);
+<span class="cmt">// lub zamiast czekać na ID wiadomości, po prostu poczekaj określony czas:</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sleep</span>(<span class="num">1500</span>);
+
+<span class="cmt">// Celuj w zaznaczony token lub wskazany target</span>
+<span class="kw">const</span> <span class="var">targets</span> = <span class="kw">this</span>.<span class="fn">getTargetsOrSelected</span>();
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="var">targets</span>) {
   <span class="kw">await</span> <span class="var">a</span>.<span class="fn">modifyHp</span>(<span class="num">5</span>);
 }
 
-<span class="cmt">// Czekaj na animację kości</span>
-<span class="kw">await</span> <span class="var">Runner</span>.<span class="fn">sleep</span>(<span class="num">1500</span>);</code></pre>
+<span class="cmt">// Lokacja trafienia — sprawdź typ i pobierz etykietę</span>
+<span class="kw">const</span> <span class="var">loc</span>       = args.location;
+<span class="kw">const</span> <span class="var">label</span>     = <span class="kw">this</span>.<span class="fn">getLocationLabel</span>(<span class="var">loc</span>);    <span class="cmt">// "Głowa" / "Przód"</span>
+<span class="kw">const</span> <span class="var">isBody</span>    = <span class="kw">this</span>.<span class="fn">isBodyLocation</span>(<span class="var">loc</span>);     <span class="cmt">// true dla postaci/NPC/bestii</span>
+<span class="kw">const</span> <span class="var">isVehicle</span> = <span class="kw">this</span>.<span class="fn">isVehicleLocation</span>(<span class="var">loc</span>);  <span class="cmt">// true dla pojazdu</span>
+<span class="kw">if</span> (<span class="var">isBody</span> &amp;&amp; <span class="var">loc</span> === <span class="str">"head"</span>) {
+  <span class="cmt">// specjalna logika dla trafień w głowę</span>
+}
+
+<span class="cmt">// Porównanie wagi obrażeń</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
+    <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
+  }
+}
+
+<span class="cmt">// Dialog — zapytaj gracza czy chce użyć zdolności (Trigger: manual)</span>
+<span class="kw">const</span> <span class="var">ok</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">dialog</span>(<span class="str">"&lt;p&gt;Aktywować zdolność?&lt;/p&gt;"</span>);
+<span class="kw">if</span> (!<span class="var">ok</span>) <span class="kw">return</span>;
+
+<span class="cmt">// Dialog prompt — pobierz wartość wpisaną przez gracza</span>
+<span class="kw">const</span> <span class="var">liczba</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">dialog</span>(
+  <span class="str">"&lt;p&gt;Ile punktów chcesz wydać?&lt;/p&gt;&lt;input name='pts' type='number' min='1' max='5'&gt;"</span>,
+  <span class="str">"prompt"</span>
+);
+<span class="kw">if</span> (<span class="var">liczba</span> === <span class="kw">null</span>) <span class="kw">return</span>; <span class="cmt">// gracz anulował</span>
+
+<span class="cmt">// Tory obrażeń — redukcja TYLKO zwykłych ran lub TYLKO siniaków</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstRegularWound</span>(); <span class="cmt">// redukuje D/L/C/K, ignoruje siniaki</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstBruiseWound</span>();  <span class="cmt">// redukuje sD/sL/sC/sK, ignoruje zwykłe</span>
+
+<span class="cmt">// Sprawdź tor konkretnej rany</span>
+<span class="kw">const</span> <span class="var">isBruise</span> = <span class="var">wound</span>.system.damageType.startsWith(<span class="str">"s"</span>);
+<span class="kw">const</span> <span class="var">track</span> = <span class="var">isBruise</span> ? <span class="kw">this</span>.BRUISE_ORDER : <span class="kw">this</span>.REGULAR_ORDER;
+<span class="kw">const</span> <span class="var">idx</span> = <span class="var">track</span>.<span class="fn">indexOf</span>(<span class="var">wound</span>.system.damageType);
+<span class="cmt">// idx === 0 → najlżejsza w torze (D lub sD), idx === 3 → najcięższa (K lub sK)</span></code></pre>
 
   <h3>Typy obrażeń — hierarchia</h3>
   <div class="dmg-table">
@@ -944,6 +1605,12 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
     <tr><td><code>actor.getActiveWounds()</code></td><td>Wszystkie aktywne rany, posortowane od najcięższej</td></tr>
     <tr><td><code>actor.getWorstWounds()</code></td><td>Wszystkie aktywne rany na najwyższym poziomie</td></tr>
     <tr><td><code>actor.getTotalWoundPenalty()</code></td><td>Suma kar od wszystkich aktywnych ran</td></tr>
+    <tr><td><code>await actor.healAllWounds(filter?)</code></td><td>Całkowicie wyleczy (usuwa) wszystkie rany. Opcjonalnie z filtrem identycznym jak <code>getWounds()</code>.</td></tr>
+    <tr><td><code>await actor.healWorstWounds()</code></td><td>Całkowicie wyleczy (usuwa) wszystkie rany na najwyższym poziomie (wynik <code>getWorstWounds()</code>).</td></tr>
+    <tr><td><code>actor.getWorstRegularWounds()</code></td><td>Najcięższe rany zwykłe (<strong>bez prefiksu s</strong>): D → L → C → K. Zwraca tablicę ran na tym poziomie.</td></tr>
+    <tr><td><code>actor.getWorstBruiseWounds()</code></td><td>Najcięższe siniaki (<strong>z prefiksem s</strong>): sD → sL → sC → sK. Zwraca tablicę siniaków na tym poziomie.</td></tr>
+    <tr><td><code>await this.reduceWorstRegularWound(actor?)</code></td><td>Obniża najcięższą zwykłą ranę o 1 poziom (lub leczy ją całkowicie gdy jest na D). Można wywołać bez argumentu (używa <code>this.actor</code>).</td></tr>
+    <tr><td><code>await this.reduceWorstBruiseWound(actor?)</code></td><td>Obniża najcięższy siniak o 1 poziom (lub leczy go całkowicie gdy jest na sD). Można wywołać bez argumentu.</td></tr>
   </tbody></table>
   <p><strong>Opcje filtru <code>getWounds()</code>:</strong></p>
   <table>
@@ -966,7 +1633,22 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 }
 
 <span class="cmt">// Suma kar od ran</span>
-<span class="kw">const</span> <span class="var">penalty</span> = <span class="kw">this</span>.actor.<span class="fn">getTotalWoundPenalty</span>();</code></pre>
+<span class="kw">const</span> <span class="var">penalty</span> = <span class="kw">this</span>.actor.<span class="fn">getTotalWoundPenalty</span>();
+
+<span class="cmt">// Wylecz WSZYSTKIE rany aktora (np. po zastosowaniu specjalnego leczenia)</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">healAllWounds</span>();
+
+<span class="cmt">// Wylecz wszystkie rany w trakcie leczenia (flaga isHealing)</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">healAllWounds</span>({ healing: <span class="kw">true</span> });
+
+<span class="cmt">// Wylecz TYLKO rany na najwyższym poziomie (np. cudowny lek na ciężkie rany)</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">healWorstWounds</span>();
+
+<span class="cmt">// Sprawdź czy konkretna rana się goi, i wylecz ją kompletnie</span>
+<span class="kw">const</span> <span class="var">w</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>()[<span class="num">0</span>];
+<span class="kw">if</span> (<span class="var">w</span>?.isHealing) {
+  <span class="kw">await</span> <span class="var">w</span>.<span class="fn">heal</span>(); <span class="cmt">// usuwa ten jeden wound item</span>
+}</code></pre>
 
   <h4>Helpery przedmiotów</h4>
   <table>
@@ -1054,43 +1736,35 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 
   <h4>Helpery ran (tylko <code>type === "wound"</code>)</h4>
   <table>
-    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tbody><tr><th>Metoda / getter</th><th>Opis</th></tr>
+    <tr><td><code>item.isHealing</code></td><td>Getter: <code>true</code> jeśli rana jest aktualnie w trakcie leczenia (<code>system.isHealing</code>). Zawsze <code>false</code> dla nie-ran.</td></tr>
+    <tr><td><code>await item.heal()</code></td><td>Całkowite wyleczenie rany — usuwa item rany z aktora (wywołuje <code>item.delete()</code>). No-op jeśli brak rodzica.</td></tr>
     <tr><td><code>await item.reduceLevel(n=1)</code></td><td>Obniż poziom obrażeń o <code>n</code> stopni (min: D)</td></tr>
     <tr><td><code>await item.increaseLevel(n=1)</code></td><td>Podnieś poziom obrażeń o <code>n</code> stopni (max: sK)</td></tr>
     <tr><td><code>await item.reducePenalty(n=1)</code></td><td>Zmniejsz karę o <code>n</code> (min: 0)</td></tr>
     <tr><td><code>await item.increasePenalty(n=1)</code></td><td>Zwiększ karę o <code>n</code></td></tr>
   </tbody></table>
-  <p>Kolejność poziomów: <code>D → sD → L → sL → C → sC → K → sK</code></p>
+  <p><strong>Dwa oddzielne tory obrażeń — nigdy się nie mieszają:</strong></p>
+  <ul>
+    <li><strong>Zwykłe rany:</strong> <code>D → L → C → K</code> (rosnąca ciężkość)</li>
+    <li><strong>Siniaki (prefix <code>s</code>):</strong> <code>sD → sL → sC → sK</code></li>
+  </ul>
+  <p><code>reduceLevel</code> / <code>increaseLevel</code> działają wyłącznie w obrębie toru, na którym leży dana rana — np. <code>C</code> → <code>L</code>, a <code>sC</code> → <code>sL</code>, nigdy <code>C</code> → <code>sL</code>.</p>
   <pre><code><span class="cmt">// Trigger: manual
 // Obniż WSZYSTKIE najcięższe rany o 1 poziom
 // (np. masz 2×C i 1×L — obie C staną się sL)</span>
-<span class="kw">const</span> <span class="var">order</span> = [<span class="str">"D"</span>, <span class="str">"sD"</span>, <span class="str">"L"</span>, <span class="str">"sL"</span>, <span class="str">"C"</span>, <span class="str">"sC"</span>, <span class="str">"K"</span>, <span class="str">"sK"</span>];
+<span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
 
-<span class="cmt">// 1. Pobierz wszystkie aktywne rany</span>
-<span class="kw">const</span> <span class="var">wounds</span> = <span class="kw">this</span>.actor.items.<span class="fn">filter</span>(
-  i =&gt; i.type === <span class="str">"wound"</span> &amp;&amp; i.system.isActive
-);
-
-<span class="kw">if</span> (<span class="var">wounds</span>.length === <span class="num">0</span>) {
-  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak aktywnych ran"</span>, <span class="str">"warn"</span>);
-  <span class="kw">return</span>;
+<span class="kw">if</span> (!<span class="var">worst</span>.length) {
+  <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak aktywnych ran"</span>, <span class="str">"warn"</span>);
 }
 
-<span class="cmt">// 2. Znajdź najwyższy poziom obrażeń</span>
-<span class="kw">const</span> <span class="var">maxIdx</span> = Math.<span class="fn">max</span>(
-  ...<span class="var">wounds</span>.<span class="fn">map</span>(w =&gt; <span class="var">order</span>.<span class="fn">indexOf</span>(w.system.damageType))
-);
-
-<span class="cmt">// 3. Obniż WSZYSTKIE rany na tym poziomie</span>
-<span class="kw">const</span> <span class="var">worst</span> = <span class="var">wounds</span>.<span class="fn">filter</span>(
-  w =&gt; <span class="var">order</span>.<span class="fn">indexOf</span>(w.system.damageType) === <span class="var">maxIdx</span>
-);
-
+<span class="kw">const</span> <span class="var">type</span> = <span class="var">worst</span>[<span class="num">0</span>].system.damageType;
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">worst</span>) {
   <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
 }
 
-<span class="kw">this</span>.<span class="fn">notification</span>(`Obniżono ${<span class="var">worst</span>.length} ran z ${<span class="var">order</span>[<span class="var">maxIdx</span>]}`, <span class="str">"info"</span>);</code></pre>
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Obniżono ${worst.length} ran (${type}) o 1 poziom.`</span>, <span class="str">"info"</span>);</code></pre>
 
   <h4>Helpery ilości (tylko itemy z <code>system.quantity</code>)</h4>
   <table>
@@ -1274,30 +1948,33 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
   <span class="cmt">// postać / npc</span>
 }</code></pre>
 
-  <pre><code><span class="cmt">// Atrybuty bazowe (postać/NPC)</span>
-<span class="kw">const</span> <span class="var">zr</span>  = <span class="kw">this</span>.actor.system.attributes.dexterity;
-<span class="kw">const</span> <span class="var">bd</span>  = <span class="kw">this</span>.actor.system.attributes.constitution;
+  <pre><code><span class="cmt">// Atrybuty bazowe (postać/NPC) — przez helper</span>
+<span class="kw">const</span> <span class="var">zr</span>    = <span class="kw">this</span>.actor.<span class="fn">getAttribute</span>(<span class="str">"dexterity"</span>);
+<span class="kw">const</span> <span class="var">bd</span>    = <span class="kw">this</span>.actor.<span class="fn">getAttribute</span>(<span class="str">"constitution"</span>);
+<span class="cmt">// lub bezpośrednio z systemu (oba działają):</span>
+<span class="kw">const</span> <span class="var">zrRaw</span> = <span class="kw">this</span>.actor.system.attributes.dexterity;
 
-<span class="cmt">// PŻ</span>
-<span class="kw">const</span> <span class="var">hp</span>  = <span class="kw">this</span>.actor.system.hp.value;
-<span class="kw">const</span> <span class="var">maxHp</span> = <span class="kw">this</span>.actor.system.hp.max;
+<span class="cmt">// PŻ — odczyt</span>
+<span class="kw">const</span> <span class="var">hp</span>    = <span class="kw">this</span>.actor.system.hp?.value;
+<span class="kw">const</span> <span class="var">maxHp</span> = <span class="kw">this</span>.actor.system.hp?.max;
+
+<span class="cmt">// PŻ — modyfikacja przez helper (clamped do [0, max])</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(-<span class="num">1</span>); <span class="cmt">// -1 PŻ</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(<span class="num">5</span>);  <span class="cmt">// +5 PŻ</span>
 
 <span class="cmt">// Flagi na aktorze</span>
 <span class="kw">const</span> <span class="var">myFlag</span> = <span class="kw">this</span>.actor.getFlag(<span class="str">"neuroshima"</span>, <span class="str">"myFlag"</span>);
 
-<span class="cmt">// Update aktora (async)</span>
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">update</span>({ <span class="str">"system.hp.value"</span>: hp - <span class="num">1</span> });
+<span class="cmt">// Sztuczki (tricks) aktora — przez helper</span>
+<span class="kw">const</span> <span class="var">tricks</span> = <span class="kw">this</span>.actor.<span class="fn">getItems</span>(<span class="str">"trick"</span>);
 
-<span class="cmt">// Sztuczki (tricks) aktora</span>
-<span class="kw">const</span> <span class="var">tricks</span> = <span class="kw">this</span>.actor.items.<span class="fn">filter</span>(i =&gt; i.type === <span class="str">"trick"</span>);
-
-<span class="cmt">// Czy aktor ma daną sztuczkę?</span>
-<span class="kw">const</span> <span class="var">hasTrick</span> = <span class="kw">this</span>.actor.items.<span class="fn">some</span>(i =&gt; i.type === <span class="str">"trick"</span> &amp;&amp; i.name === <span class="str">"Hartowanie"</span>);</code></pre>
+<span class="cmt">// Czy aktor ma daną sztuczkę? — przez helper</span>
+<span class="kw">const</span> <span class="var">hasTrick</span> = <span class="kw">this</span>.actor.<span class="fn">hasTrick</span>(<span class="str">"Hartowanie"</span>);</code></pre>
 </section>
 
-<!-- SECTION 8 -->
+<!-- SECTION 9 -->
 <section id="tips">
-  <h2 class="section-title">8. Dobre praktyki</h2>
+  <h2 class="section-title">9. Dobre praktyki</h2>
 
   <h3>Sprawdzaj warunki przed modyfikacją</h3>
   <pre><code><span class="cmt">// Dobry przykład — sprawdzamy czy rzut dotyczy właściwej umiejętności</span>
@@ -1327,9 +2004,8 @@ args.penalties.mod += <span class="num">10</span>;
   <h3>Filtrowanie skryptów po typie obrażeń</h3>
   <pre><code><span class="cmt">// Trigger: applyDamage
 // Ignoruj ciężkie rany (C, sC, K, sK) — tylko lekkie</span>
-<span class="kw">const</span> <span class="var">runner</span> = game.neuroshima.NeuroshimaScriptRunner;
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
-  <span class="kw">if</span> (<span class="var">runner</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
+  <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
     <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
   }
 }</code></pre>

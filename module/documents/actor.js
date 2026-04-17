@@ -109,25 +109,76 @@ export class NeuroshimaActor extends Actor {
 
   /**
    * Return all active wounds sorted from heaviest to lightest.
+   * Uses the interleaved DAMAGE_ORDER for cross-track comparison.
    * @returns {Item[]}
    */
   getActiveWounds() {
-    const ORDER = ["D", "sD", "L", "sL", "C", "sC", "K", "sK"];
+    const { NeuroshimaItem } = game.neuroshima ?? {};
+    const ORDER = NeuroshimaItem?.DAMAGE_ORDER ?? ["D", "sD", "L", "sL", "C", "sC", "K", "sK"];
     return this.getWounds({ active: true })
       .sort((a, b) => ORDER.indexOf(b.system.damageType) - ORDER.indexOf(a.system.damageType));
   }
 
   /**
-   * Return all active wounds at the highest damage level currently present.
-   * If the actor has no active wounds, returns an empty array.
+   * Return all active wounds at the highest damage level (across both tracks).
+   * Uses the interleaved DAMAGE_ORDER so sK > K > sC > C > sL > L > sD > D.
    * @returns {Item[]}
    */
   getWorstWounds() {
-    const ORDER = ["D", "sD", "L", "sL", "C", "sC", "K", "sK"];
+    const { NeuroshimaItem } = game.neuroshima ?? {};
+    const ORDER = NeuroshimaItem?.DAMAGE_ORDER ?? ["D", "sD", "L", "sL", "C", "sC", "K", "sK"];
     const active = this.getWounds({ active: true });
     if (!active.length) return [];
     const maxIdx = Math.max(...active.map(w => ORDER.indexOf(w.system.damageType)));
     return active.filter(w => ORDER.indexOf(w.system.damageType) === maxIdx);
+  }
+
+  /**
+   * Return all active regular (non-bruise) wounds at the highest level on their track.
+   * Track: D → L → C → K.
+   * @returns {Item[]}
+   */
+  getWorstRegularWounds() {
+    const TRACK = ["D", "L", "C", "K"];
+    const active = this.getWounds({ active: true }).filter(w => !w.system.damageType?.startsWith("s"));
+    if (!active.length) return [];
+    const maxIdx = Math.max(...active.map(w => TRACK.indexOf(w.system.damageType)));
+    return active.filter(w => TRACK.indexOf(w.system.damageType) === maxIdx);
+  }
+
+  /**
+   * Return all active bruise (s-prefix) wounds at the highest level on their track.
+   * Track: sD → sL → sC → sK.
+   * @returns {Item[]}
+   */
+  getWorstBruiseWounds() {
+    const TRACK = ["sD", "sL", "sC", "sK"];
+    const active = this.getWounds({ active: true }).filter(w => w.system.damageType?.startsWith("s"));
+    if (!active.length) return [];
+    const maxIdx = Math.max(...active.map(w => TRACK.indexOf(w.system.damageType)));
+    return active.filter(w => TRACK.indexOf(w.system.damageType) === maxIdx);
+  }
+
+  /**
+   * Fully heal (delete) all wound items on this actor.
+   * Optionally filtered — pass the same filter object as getWounds().
+   * @param {Object} [filter={}]
+   * @returns {Promise<void>}
+   */
+  async healAllWounds(filter = {}) {
+    const wounds = this.getWounds(filter);
+    const ids = wounds.map(w => w.id);
+    if (ids.length) await this.deleteEmbeddedDocuments("Item", ids);
+  }
+
+  /**
+   * Fully heal (delete) all wounds at the highest damage level currently present.
+   * @returns {Promise<void>}
+   */
+  async healWorstWounds() {
+    const worst = this.getWorstWounds();
+    const ids = worst.map(w => w.id);
+    if (ids.length) await this.deleteEmbeddedDocuments("Item", ids);
   }
 
   /**
@@ -286,8 +337,26 @@ export class NeuroshimaActor extends Actor {
   }
 
   /**
+   * Apply effects to this actor.
+   * Accepts both UUIDs (effectUuids) and raw effect creation data (effectData).
+   * Overrides the native Actor#applyEffect to ensure effectData is supported.
+   *
+   * @param {Object} options
+   * @param {string[]} [options.effectUuids] - UUIDs of effects to apply.
+   * @param {Object[]} [options.effectData]  - Raw effect creation data objects.
+   * @returns {Promise<void>}
+   */
+  async applyEffect({ effectUuids = [], effectData = [] } = {}) {
+    if (effectData.length) {
+      await this.createEmbeddedDocuments("ActiveEffect", effectData);
+    }
+    if (effectUuids.length) {
+      await super.applyEffect({ effectUuids });
+    }
+  }
+
+  /**
    * Apply an effect (or array of effects) to this actor by UUID.
-   * Wraps Foundry's native Actor#applyEffect API.
    * @param {string|string[]} uuids - One or more effect UUIDs.
    * @returns {Promise<void>}
    */

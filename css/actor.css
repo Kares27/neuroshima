@@ -4578,6 +4578,47 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     opacity: 1;
 }
 
+/* ── Effects groups (Temporary / Passive / Disabled) ── */
+.neuroshima .effects-group {
+    margin-bottom: 0.75rem;
+}
+
+.neuroshima .effects-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 6px;
+    margin-bottom: 3px;
+    background: rgba(0,0,0,0.18);
+    border-left: 3px solid var(--ns-color-gold, #c8a45a);
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ns-color-gold, #c8a45a);
+}
+
+.neuroshima .effects-group-disabled .effects-group-header {
+    border-left-color: rgba(150,150,150,0.5);
+    color: #999;
+}
+
+.neuroshima .effects-group-disabled .effect-row {
+    opacity: 0.55;
+}
+
+.neuroshima .effects-group-disabled .effect-row .effect-controls {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.neuroshima .effects-empty-hint {
+    padding: 2px 8px;
+    font-size: 0.8em;
+    color: #777;
+    margin: 0;
+}
+
 /* Item sheet effects (no source column) */
 .neuroshima.sheet.item .effects-list-header,
 .neuroshima.sheet.item .effect-row {
