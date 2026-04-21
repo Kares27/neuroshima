@@ -1,5 +1,35 @@
 <section class="tab combat {{tabs.combat.cssClass}}" data-group="primary" data-tab="combat" data-application-part="combat">
 
+    {{!-- ===== Melee Opposed Pending Cards ===== --}}
+    {{#each combat.meleePendings as |pending|}}
+        {{#if pending.matchesDefender}}
+        <div class="melee-pending-attacker-card clickable" data-action="respondToOpposed" data-pending-id="{{pending.id}}" title="{{localize 'NEUROSHIMA.MeleeOpposed.Join'}}">
+            <div class="pending-card-header">
+                <div class="pending-header-main">
+                    <i class="fas fa-hand-fist animate-fist"></i>
+                    <span>{{localize "NEUROSHIMA.MeleeOpposed.PendingAttacker"}}</span>
+                </div>
+                <a class="pending-dismiss-btn" data-action="dismissOpposed" data-pending-id="{{pending.id}}" title="{{localize 'NEUROSHIMA.Actions.Dismiss'}}">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+            <div class="pending-card-content">
+                <div class="attacker-row">
+                    <div class="attacker-identity">
+                        <span class="attacker-label">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}:</span>
+                        <span class="attacker-name">{{pending.attackerName}}</span>
+                    </div>
+                </div>
+                {{#if pending.mode}}
+                <p class="pending-instruction">{{localize "NEUROSHIMA.MeleeOpposedChat.InstructionDefender"}}</p>
+                {{else}}
+                <p class="pending-instruction">{{localize "NEUROSHIMA.MeleeOpposed.InstructionDefender"}}</p>
+                {{/if}}
+            </div>
+        </div>
+        {{/if}}
+    {{/each}}
+
     {{!-- ===== Two-column: Natural Armor | Beast Actions + Maneuvers ===== --}}
     <div class="creature-combat-columns">
 

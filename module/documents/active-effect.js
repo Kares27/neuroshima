@@ -1,6 +1,20 @@
 import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
 
 export class NeuroshimaActiveEffect extends ActiveEffect {
+  /**
+   * The Actor that owns this ActiveEffect.
+   * In FVTT v13, ActiveEffect no longer exposes an `actor` getter — only `target`.
+   * We add our own so that _onCreate / _onDelete lifecycle scripts can always
+   * resolve the owning actor regardless of whether the effect sits directly on
+   * an Actor or is transferred from an Item.
+   * @returns {Actor|null}
+   */
+  get actor() {
+    if (this.parent instanceof CONFIG.Actor.documentClass) return this.parent;
+    if (this.parent instanceof CONFIG.Item.documentClass) return this.parent.actor ?? null;
+    return null;
+  }
+
   get scripts() {
     if (!this._scripts) {
       const scriptData = this.getFlag("neuroshima", "scripts") || [];

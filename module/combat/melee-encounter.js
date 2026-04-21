@@ -42,9 +42,14 @@ export class MeleeEncounter {
     const defenderId = defenderData.id.replace(/\./g, "-");
     const id = `${attackerId}-${defenderId}`;
 
+    const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
+    const resolutionModeMap = { default: "normal", opposedPips: "opposedPips", opposedSuccesses: "opposedSuccesses" };
+    const resolutionMode = resolutionModeMap[combatTypeSetting] || "normal";
+
     const encounter = {
       id,
       mode: "duel",
+      resolutionMode,
       teams: {
         A: [attackerId],
         B: [defenderId]

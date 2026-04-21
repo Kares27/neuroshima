@@ -150,7 +150,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       const skills = {};
       if (isCreature) {
         skills["experience"] = "NEUROSHIMA.Creature.Experience";
-        skills["none"] = "NEUROSHIMA.Items.Fields.None";
       } else {
         for (const [spec, skillList] of Object.entries(skillGroups)) {
           for (const skill of skillList) {
@@ -159,6 +158,20 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         }
       }
       context.availableSkills = skills;
+      // If stored skill is not in the available list (attr changed / default ""), use the first available skill
+      const availableKeys = Object.keys(skills);
+      if (!availableKeys.includes(item.system.skill)) {
+        context.selectedSkill = availableKeys[0] ?? "";
+        // Auto-migrate stale / empty skill to DB so dice.js always reads a valid key
+        if (context.selectedSkill && item.isOwner && !item._autoMigratingSkill) {
+          item._autoMigratingSkill = true;
+          item.update({ "system.skill": context.selectedSkill }).finally(() => {
+            delete item._autoMigratingSkill;
+          });
+        }
+      } else {
+        context.selectedSkill = item.system.skill;
+      }
       context.availableMagazines = {};
       context.availableAmmo = {};
 

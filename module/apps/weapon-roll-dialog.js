@@ -72,11 +72,12 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
   /** @override */
   get title() {
+    const weaponName = this.weapon?.name ?? game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.Unarmed");
     if (this.rollType === "melee") {
-        return `${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Title")}: ${this.weapon.name}`;
+        return `${game.i18n.localize("NEUROSHIMA.MeleeOpposed.Title")}: ${weaponName}`;
     }
     const label = this.rollType === "ranged" ? "NEUROSHIMA.Actions.Shoot" : "NEUROSHIMA.Actions.Strike";
-    return `${game.i18n.localize(label)}: ${this.weapon.name}`;
+    return `${game.i18n.localize(label)}: ${weaponName}`;
   }
 
   /** @override */
@@ -288,7 +289,11 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     let previewLevelLabel = levelLabel;
     
     if (allowCombatShift && !isMelee) {
-        const skillKey = this.weapon.system.skill;
+        let skillKey = this.weapon.system.skill;
+        if (!skillKey || skillKey === "none") {
+            const attrGroups = NEUROSHIMA.skillConfiguration[this.weapon.system.attribute || "dexterity"] || {};
+            skillKey = (Object.values(attrGroups)[0] || [])[0] || "";
+        }
         const isCreature = this.actor?.type === "creature";
         const baseSkillValue = (skillKey && skillKey !== "none")
             ? ((skillKey === "experience" && isCreature) ? (this.actor.system.experience ?? 0) : (this.actor.system.skills[skillKey]?.value || 0))
@@ -326,10 +331,14 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     }
 
     if (allowCombatShift && !isMelee) {
-        const skillKey = this.weapon.system.skill;
+        let skillKey2 = this.weapon.system.skill;
+        if (!skillKey2 || skillKey2 === "none") {
+            const attrGroups = NEUROSHIMA.skillConfiguration[this.weapon.system.attribute || "dexterity"] || {};
+            skillKey2 = (Object.values(attrGroups)[0] || [])[0] || "";
+        }
         const isCreature2 = this.actor?.type === "creature";
-        const baseSkill2 = (skillKey && skillKey !== "none")
-            ? ((skillKey === "experience" && isCreature2) ? (this.actor.system.experience ?? 0) : (this.actor.system.skills[skillKey]?.value || 0))
+        const baseSkill2 = (skillKey2 && skillKey2 !== "none")
+            ? ((skillKey2 === "experience" && isCreature2) ? (this.actor.system.experience ?? 0) : (this.actor.system.skills[skillKey2]?.value || 0))
             : 0;
         let skillValue = baseSkill2 + (parseInt(formData.skillBonus) || 0);
         

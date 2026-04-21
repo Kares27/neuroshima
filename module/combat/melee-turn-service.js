@@ -478,6 +478,12 @@ export class MeleeTurnService {
     if (participantId !== updated.turnState.selectionTurn) return;
     if (exchange.attackerSelectedDice.length === 0) return;
 
+    // opposedPips mode requires exactly 3 dice committed by the attacker
+    if ((updated.resolutionMode || "normal") === "opposedPips" && exchange.attackerSelectedDice.length !== 3) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.OpposedPips.MustSelectAll"));
+      return;
+    }
+
     exchange.attackerId = participantId;
     exchange.declaredDiceCount = exchange.attackerSelectedDice.length;
     exchange.defenderId = updated.primaryTargets[participantId];

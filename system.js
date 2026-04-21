@@ -37,12 +37,30 @@ Hooks.once('init', async function() {
     CONFIG.ui.combat = NeuroshimaCombatTracker;
     MeleeCombatApp.registerHooks();
 
+    const _isActorSheet = (app) => app instanceof NeuroshimaActorSheet || app instanceof NeuroshimaCreatureSheet;
+
     // Hook to re-render actor sheets when combat updates (for melee pendings)
     Hooks.on("updateCombat", (combat, updates, options, userId) => {
         Object.values(ui.windows).forEach(app => {
-            if (app instanceof NeuroshimaActorSheet) {
-                app.render(false);
-            }
+            if (_isActorSheet(app)) app.render(false);
+        });
+    });
+
+    // Hide GM-only elements in chat messages for non-GM users
+    Hooks.on("renderChatMessage", (_message, html) => {
+        if (game.user.isGM) return;
+        html.querySelectorAll("[data-gm-only]").forEach(el => { el.style.display = "none"; });
+    });
+
+    // Re-render all open actor sheets when an opposed chat message is resolved/cancelled.
+    // This clears pending attacker/defender cards on BOTH clients (attacker and defender)
+    // without relying on the combat flag propagation which can be delayed on non-GM clients.
+    Hooks.on("updateChatMessage", (message) => {
+        const opposedData = message.getFlag("neuroshima", "opposedChat");
+        if (!opposedData) return;
+        if (opposedData.status !== "resolved" && opposedData.status !== "cancelled") return;
+        Object.values(ui.windows).forEach(app => {
+            if (_isActorSheet(app)) app.render(false);
         });
     });
 
@@ -1010,6 +1028,17 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
 // Hook do dynamicznego ukrywania elementów na kliencie na podstawie uprawnień (v13: renderChatMessageHTML)
 Hooks.on("renderChatMessageHTML", (message, html) => {
+    // Jeśli obrażenia z opposed result zostały już nałożone — zablokuj przycisk
+    const opposedResult = message.getFlag("neuroshima", "opposedResult");
+    if (opposedResult?.applied) {
+        const applyBtn = html.querySelector(".apply-opposed-damage-btn");
+        if (applyBtn) {
+            applyBtn.disabled = true;
+            applyBtn.classList.add("applied");
+            applyBtn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+        }
+    }
+
     // Sprawdzenie uprawnień dla sekcji nakładania obrażeń
     const damageApplicationMinRole = game.settings.get("neuroshima", "damageApplicationMinRole");
     if (game.user.role < damageApplicationMinRole && !game.user.isGM) {
@@ -1197,6 +1226,21 @@ function initializeSocketlib() {
     game.neuroshima.socket.register("removeMeleePending", async (pendingUuid) => {
         const { MeleeStore } = await import("./module/combat/melee-store.js");
         return MeleeStore.removePending(pendingUuid);
+    });
+
+    // Actor flag proxy — allows non-owner clients to set/unset flags on any actor (GM executes)
+    game.neuroshima.socket.register("setActorFlag", async (actorUuid, scope, key, value) => {
+        const doc = await fromUuid(actorUuid);
+        const actor = doc?.actor ?? doc;
+        if (!actor) return;
+        return actor.setFlag(scope, key, value);
+    });
+
+    game.neuroshima.socket.register("unsetActorFlag", async (actorUuid, scope, key) => {
+        const doc = await fromUuid(actorUuid);
+        const actor = doc?.actor ?? doc;
+        if (!actor) return;
+        return actor.unsetFlag(scope, key);
     });
 }
 

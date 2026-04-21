@@ -17,10 +17,11 @@
         </div>
     </div>
 
-    <div class="form-group">
-        <label>{{localize "NEUROSHIMA.Scripts.RunIfDisabled"}}</label>
+    <div class="form-group ns-run-if-disabled-group">
+        <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.RunIfDisabledHint'}}">
+            {{localize "NEUROSHIMA.Scripts.RunIfDisabled"}}
+        </label>
         <div class="form-fields">
-            <p class="hint">{{localize "NEUROSHIMA.Scripts.RunIfDisabledHint"}}</p>
             <input type="checkbox" name="runIfDisabled" {{#if scriptData.runIfDisabled}}checked{{/if}}>
         </div>
     </div>

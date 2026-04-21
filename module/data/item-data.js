@@ -37,7 +37,7 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       }),
       requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       attribute: new fields.StringField({ initial: "dexterity" }),
-      skill: new fields.StringField({ initial: "" }),
+      skill: new fields.StringField({ initial: "brawl" }),
       attackBonus: new fields.NumberField({ integer: true, initial: 0 }),
       defenseBonus: new fields.NumberField({ integer: true, initial: 0 }),
       

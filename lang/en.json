@@ -416,8 +416,36 @@
             "Participants": "Participants",
             "InitiativeAbbr": "Initiative",
             "PendingAttacker": "Pending Attacker",
+            "WaitingForDefender": "Waiting for Defender",
+            "WaitingStatus": "Waiting for defender's roll...",
             "InstructionDefender": "You are being attacked in melee! Roll initiative to respond.",
             "Join": "Join Fight"
+        },
+        "MeleeOpposedChat": {
+            "Mode": {
+                "opposedPips": "Opposed — Pips",
+                "opposedSuccesses": "Opposed — Successes"
+            },
+            "AttackerDice": "Attacker Dice",
+            "DefenderDice": "Defender Dice",
+            "Target": "Target",
+            "Successes": "Successes",
+            "SP": "SP",
+            "AwaitingDefense": "Awaiting defense…",
+            "Defend": "Defend",
+            "Resolved": "Resolved",
+            "DefenderNotFound": "Defender actor not found.",
+            "NotYourTurn": "Only the defender or GM can respond.",
+            "LogPipsHit": "{attacker} hits {defender}: {tiers}!",
+            "LogSuccessesHit": "{attacker} hits {defender} with {net} net success(es) — tier {tier} ({damage})!",
+            "LogBlock": "{attacker} attacks {defender}, but is blocked!",
+            "InstructionDefender": "You are being attacked! Click your melee weapon or the Join button to roll defense.",
+            "AlreadyResolved": "This attack has already been resolved.",
+            "Unarmed": "Unarmed",
+            "ApplyDamage": "Apply Damage",
+            "AlreadyApplied": "Damage has already been applied.",
+            "DamageApplied": "Applied",
+            "NoHits": "No hits to apply."
         },
         "MeleeDuel": {
             "Title": "Melee Duel",
@@ -451,7 +479,12 @@
             "LogNewTurn": "--- Turn {turn} Start ---",
             "LogExtraAttackHit": "{attacker} hits {defender} with an extra attack ({s}s)! Free defense: {dice}",
             "LogExtraAttackBlocked": "{attacker} attacks {defender}, but free defense blocks the hit! Dice: {dice}",
-            "LogExtraAttackMiss": "{attacker} misses an extra attack against {defender}."
+            "LogExtraAttackMiss": "{attacker} misses an extra attack against {defender}.",
+            "LogOpposedPipsHit": "{attacker} hits {defender} on dice slots: {tiers}!",
+            "LogOpposedSuccessesHit": "{attacker} hits {defender} with {net} net success(es) → tier {tier} damage!",
+            "OpposedPips": {
+                "MustSelectAll": "Opposed on Pips mode: you must select all 3 dice to attack."
+            }
         },
         "ResultHit": "Hit!",
         "ResultBlock": "Blocked",

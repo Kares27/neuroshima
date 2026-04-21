@@ -419,8 +419,36 @@
             "Participants": "Uczestnicy",
             "InitiativeAbbr": "Inicjatywa",
             "PendingAttacker": "Oczekujący Atakujący",
+            "WaitingForDefender": "Oczekiwanie na obrońcę",
+            "WaitingStatus": "Oczekiwanie na rzut obrońcy...",
             "InstructionDefender": "Zostałeś zaatakowany w zwarciu! Rzuć na inicjatywę, aby odpowiedzieć.",
             "Join": "Dołącz do walki"
+        },
+        "MeleeOpposedChat": {
+            "Mode": {
+                "opposedPips": "Przeciwstawny na Oczkach",
+                "opposedSuccesses": "Przeciwstawny na Sukcesach"
+            },
+            "AttackerDice": "Kości Atakującego",
+            "DefenderDice": "Kości Broniącego",
+            "Target": "Próg",
+            "Successes": "Sukcesy",
+            "SP": "PP",
+            "AwaitingDefense": "Oczekiwanie na obronę…",
+            "Defend": "Broń się",
+            "Resolved": "Rozstrzygnięte",
+            "DefenderNotFound": "Nie znaleziono aktora broniącego.",
+            "NotYourTurn": "Tylko obrońca lub GM może odpowiedzieć.",
+            "LogPipsHit": "{attacker} trafia {defender}: {tiers}!",
+            "LogSuccessesHit": "{attacker} trafia {defender} z {net} sukcesem netto — poziom {tier} ({damage})!",
+            "LogBlock": "{attacker} atakuje {defender}, ale atak jest zablokowany!",
+            "InstructionDefender": "Jesteś atakowany! Kliknij broń białą lub przycisk Dołącz, aby rzucić na obronę.",
+            "AlreadyResolved": "Ten atak został już rozstrzygnięty.",
+            "Unarmed": "Walka bez broni",
+            "ApplyDamage": "Zastosuj Obrażenia",
+            "AlreadyApplied": "Obrażenia zostały już zastosowane.",
+            "DamageApplied": "Nałożono",
+            "NoHits": "Brak trafień do zastosowania."
         },
         "MeleeDuel": {
             "Title": "Starcie w zwarciu",
@@ -483,6 +511,11 @@
             "LogExtraAttackHit": "{attacker} trafia {defender} dodatkowym atakiem ({s}s)! Darmowa obrona: {dice}",
             "LogExtraAttackBlocked": "{attacker} atakuje {defender}, ale darmowa obrona blokuje cios! Kości: {dice}",
             "LogExtraAttackMiss": "{attacker} pudłuje dodatkowym atakiem przeciwko {defender}.",
+            "LogOpposedPipsHit": "{attacker} trafia {defender} na pozycjach: {tiers}!",
+            "LogOpposedSuccessesHit": "{attacker} trafia {defender} z {net} sukcesami netto → poziom obrażeń {tier}!",
+            "OpposedPips": {
+                "MustSelectAll": "Tryb Przeciwstawny na Oczkach: musisz wybrać wszystkie 3 kości do ataku."
+            },
             "TeamA": "Drużyna A",
             "TeamB": "Drużyna B",
             "ActiveExchange": "Aktywna Wymiana",

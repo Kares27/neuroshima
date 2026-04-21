@@ -682,7 +682,8 @@ body.theme-dark {
     border-color: #a02e2e;
 }
 
-.neuroshima.roll-card .apply-damage-section {
+.neuroshima.roll-card .apply-damage-section,
+.neuroshima.melee-opposed-result .apply-damage-section {
     margin-top: 4px;
     background: rgba(160, 46, 46, 0.05);
     border: 1px solid var(--ns-border-light);
@@ -690,7 +691,8 @@ body.theme-dark {
     overflow: hidden;
 }
 
-.theme-dark .neuroshima.roll-card .apply-damage-section {
+.theme-dark .neuroshima.roll-card .apply-damage-section,
+.theme-dark .neuroshima.melee-opposed-result .apply-damage-section {
     background: rgba(160, 46, 46, 0.15);
 }
 
@@ -1231,7 +1233,8 @@ body.theme-dark {
     font-weight: bold;
 }
 
-.neuroshima.roll-card .damage-application-header {
+.neuroshima.roll-card .damage-application-header,
+.neuroshima.melee-opposed-result .damage-application-header {
     background: rgba(160, 46, 46, 0.1);
     padding: 4px 8px;
     display: flex;
@@ -1243,7 +1246,8 @@ body.theme-dark {
     color: var(--ns-text-accent);
 }
 
-.neuroshima.roll-card .damage-application-header:hover {
+.neuroshima.roll-card .damage-application-header:hover,
+.neuroshima.melee-opposed-result .damage-application-header:hover {
     background: rgba(160, 46, 46, 0.2);
 }
 
@@ -1279,14 +1283,16 @@ body.theme-dark {
     background: rgba(255, 255, 255, 0.05);
 }
 
-.neuroshima.roll-card .damage-application-content {
+.neuroshima.roll-card .damage-application-content,
+.neuroshima.melee-opposed-result .damage-application-content {
     padding: 8px;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.neuroshima.roll-card .damage-actions {
+.neuroshima.roll-card .damage-actions,
+.neuroshima.melee-opposed-result .damage-actions {
     display: flex;
     gap: 5px;
 }
@@ -1322,7 +1328,8 @@ body.theme-dark {
     border-radius: 2px;
 }
 
-.neuroshima.roll-card .apply-damage-button {
+.neuroshima.roll-card .apply-damage-button,
+.neuroshima.melee-opposed-result .apply-damage-button {
     flex: 1;
     display: flex;
     align-items: center;
@@ -1337,7 +1344,8 @@ body.theme-dark {
     color: var(--ns-text-main);
 }
 
-.neuroshima.roll-card .apply-damage-button:hover {
+.neuroshima.roll-card .apply-damage-button:hover,
+.neuroshima.melee-opposed-result .apply-damage-button:hover {
     background: var(--ns-bg-hover);
     border-color: var(--ns-text-accent);
 }
@@ -4043,12 +4051,18 @@ body.theme-dark {
 
 .neuroshima.script-editor .ns-script-editor-body {
     display: grid;
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr auto;
     height: 100%;
     gap: 0.5rem;
     padding: 0.75rem;
     box-sizing: border-box;
     overflow: hidden;
+}
+
+.neuroshima.script-editor .ns-run-if-disabled-group {
+    margin: 0;
+    padding: 0;
+    min-height: unset;
 }
 
 .neuroshima.script-editor .ns-script-code-group {
@@ -4095,5 +4109,531 @@ body.theme-dark {
 
 .neuroshima.script-editor .form-footer {
     padding-top: 0.25rem;
+}
+
+/* ── Melee Opposed Chat Cards ────────────────────────────────────────────── */
+
+.chat-message:has(.neuroshima.melee-opposed-card) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+.neuroshima.melee-opposed-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+}
+
+.neuroshima.melee-opposed-card .melee-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 1em;
+    border-bottom: 2px solid var(--ns-text-accent, #a02e2e);
+    padding-bottom: 4px;
+}
+.neuroshima.melee-opposed-card .melee-card-header .participant {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+.neuroshima.melee-opposed-card .melee-card-header .participant img {
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main, #7a7971);
+}
+.neuroshima.melee-opposed-card .melee-card-header .vs-badge {
+    font-size: 1.1em;
+    color: var(--ns-text-accent, #a02e2e);
+    flex-shrink: 0;
+}
+
+.neuroshima.melee-opposed-card .mode-label {
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.65;
+    text-align: center;
+}
+
+.neuroshima.melee-opposed-card .weapon-line {
+    font-size: 0.9em;
+}
+.neuroshima.melee-opposed-card .weapon-line .damage-tiers {
+    font-weight: bold;
+    color: var(--ns-text-accent, #a02e2e);
+    margin-left: 4px;
+}
+
+.neuroshima.melee-opposed-card .section-label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+.neuroshima.melee-opposed-card .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.neuroshima.melee-opposed-card .die-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.neuroshima.melee-opposed-card .die-label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    min-width: 36px;
+}
+.neuroshima.melee-opposed-card .die-square-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.neuroshima.melee-opposed-card .die-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid #7a7971;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 0.88em;
+    background: rgba(0,0,0,0.04);
+}
+.neuroshima.melee-opposed-card .die-square.success {
+    background: #d4edda;
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+.neuroshima.melee-opposed-card .die-square.failure {
+    background: #fdecea;
+    border-color: #ef5350;
+    color: #c62828;
+}
+.neuroshima.melee-opposed-card .die-square.nat-1 {
+    background: #fff8e1;
+    border-color: #fbc02d;
+    color: #f57f17;
+}
+.neuroshima.melee-opposed-card .die-square.nat-20 {
+    background: #fdecea;
+    border-color: #b71c1c;
+    color: #b71c1c;
+}
+.theme-dark .neuroshima.melee-opposed-card .die-square {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+}
+.theme-dark .neuroshima.melee-opposed-card .die-square.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-opposed-card .die-square.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.neuroshima.melee-opposed-card .successes-line {
+    font-size: 0.85em;
+    margin-top: 2px;
+    opacity: 0.85;
+}
+
+.neuroshima.melee-opposed-card .pending-defense {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 4px 0;
+}
+.neuroshima.melee-opposed-card .awaiting-label {
+    font-size: 0.82em;
+    opacity: 0.65;
+    font-style: italic;
+    text-align: center;
+}
+.neuroshima.melee-opposed-card .defender-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+.neuroshima.melee-opposed-card .melee-opposed-defend-btn {
+    background: #1a6aa0;
+    color: #fff;
+    border: 1px solid #145580;
+    border-radius: 6px;
+    padding: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    line-height: 1;
+    font-size: 1em;
+}
+.neuroshima.melee-opposed-card .melee-opposed-defend-btn img {
+    border-radius: 3px;
+    object-fit: cover;
+}
+.neuroshima.melee-opposed-card .melee-opposed-defend-btn:hover {
+    background: #1580bf;
+    border-color: #1068a0;
+}
+
+.neuroshima.melee-opposed-card .resolved-label {
+    font-size: 0.82em;
+    opacity: 0.6;
+    font-style: italic;
+    text-align: center;
+    color: #4caf50;
+}
+.neuroshima.melee-opposed-card.is-resolved .melee-opposed-defend-btn {
+    display: none;
+}
+
+/* Result card specific */
+.neuroshima.melee-opposed-result .dice-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.neuroshima.melee-opposed-result .dice-column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.neuroshima.melee-opposed-result .column-header {
+    font-size: 0.78em;
+    font-weight: bold;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.neuroshima.melee-opposed-result .column-header.attacker-header {
+    color: var(--ns-text-accent, #a02e2e);
+}
+.neuroshima.melee-opposed-result .column-header.defender-header {
+    color: #1565c0;
+}
+.theme-dark .neuroshima.melee-opposed-result .column-header.defender-header {
+    color: #64b5f6;
+}
+
+.neuroshima.melee-opposed-result .result-section {
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+.neuroshima.melee-opposed-result .result-section.hit {
+    background: #d4edda;
+    color: #1b5e20;
+    border-left: 3px solid #4caf50;
+}
+.neuroshima.melee-opposed-result .result-section.block {
+    background: #fdecea;
+    color: #c62828;
+    border-left: 3px solid #ef5350;
+}
+.theme-dark .neuroshima.melee-opposed-result .result-section.hit {
+    background: #1b301b;
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-opposed-result .result-section.block {
+    background: #3d1c1c;
+    color: #ef9a9a;
+}
+
+.neuroshima.melee-opposed-result .hits-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+.neuroshima.melee-opposed-result .hit-badge {
+    background: rgba(0,0,0,0.12);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 0.82em;
+    font-weight: bold;
+}
+
+.neuroshima.melee-opposed-result .apply-damage-row {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn {
+    background: #a02e2e;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 0.85em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn:hover {
+    background: #c0392b;
+}
+
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn.applied,
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+    pointer-events: none;
+    background: #5a6268;
+    color: #fff;
+}
+
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn {
+    background: #7b1a1a;
+}
+
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn:hover {
+    background: #a02e2e;
+}
+
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn.applied,
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn:disabled {
+    background: #3a3f44;
+}
+
+/* === Chat message wrapper for result card === */
+.chat-message:has(.neuroshima.melee-opposed-result) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) .message-header,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+/* === Result card base layout === */
+.neuroshima.melee-opposed-result {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+}
+
+/* === Result card shared inner elements === */
+.neuroshima.melee-opposed-result .melee-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 1em;
+    border-bottom: 2px solid var(--ns-text-accent, #a02e2e);
+    padding-bottom: 4px;
+}
+.neuroshima.melee-opposed-result .melee-card-header .participant {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+.neuroshima.melee-opposed-result .melee-card-header .participant img {
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main, #7a7971);
+}
+.neuroshima.melee-opposed-result .melee-card-header .vs-badge {
+    font-size: 1.1em;
+    color: var(--ns-text-accent, #a02e2e);
+    flex-shrink: 0;
+}
+.neuroshima.melee-opposed-result .mode-label {
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.65;
+    text-align: center;
+}
+.neuroshima.melee-opposed-result .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.neuroshima.melee-opposed-result .die-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.neuroshima.melee-opposed-result .die-label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    min-width: 36px;
+}
+.neuroshima.melee-opposed-result .die-square-container {
+    display: flex;
+    align-items: center;
+}
+.neuroshima.melee-opposed-result .die-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.95em;
+    border: 1px solid #ccc;
+    background: #f5f5ec;
+}
+.neuroshima.melee-opposed-result .die-square.success {
+    background: #e8f5e9;
+    border-color: #4caf50;
+    color: #1b5e20;
+}
+.neuroshima.melee-opposed-result .die-square.failure {
+    background: #fdecea;
+    border-color: #ef5350;
+    color: #c62828;
+}
+.neuroshima.melee-opposed-result .die-square.nat-1 {
+    background: #fff9c4;
+    border-color: #fbc02d;
+    color: #e65100;
+}
+.neuroshima.melee-opposed-result .die-square.nat-20 {
+    background: #fdecea;
+    border-color: #d32f2f;
+    color: #b71c1c;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+.neuroshima.melee-opposed-result .successes-line {
+    font-size: 0.82em;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+.neuroshima.melee-opposed-result .dotted-hr {
+    border: none;
+    border-top: 1px dashed rgba(0,0,0,0.15);
+    margin: 2px 0;
+}
+.theme-dark .neuroshima.melee-opposed-result .dotted-hr {
+    border-top-color: rgba(255,255,255,0.1);
+}
+
+/* === Dice duel grid (paired attacker vs defender per row) === */
+.neuroshima.melee-opposed-result .dice-duel-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.neuroshima.melee-opposed-result .dice-duel-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto 1fr;
+    align-items: center;
+    gap: 6px;
+}
+.neuroshima.melee-opposed-result .die-slot-label {
+    font-size: 0.78em;
+    opacity: 0.65;
+    font-weight: bold;
+    text-align: right;
+}
+.neuroshima.melee-opposed-result .die-slot {
+    display: flex;
+    justify-content: center;
+}
+.neuroshima.melee-opposed-result .die-slot:last-child {
+    justify-content: center;
+}
+.neuroshima.melee-opposed-result .duel-vs {
+    font-size: 0.72em;
+    opacity: 0.45;
+    text-align: center;
+    font-style: italic;
+}
+.neuroshima.melee-opposed-result .successes-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto 1fr;
+    gap: 6px;
+    margin-top: 2px;
+}
+.neuroshima.melee-opposed-result .successes-row .successes-line {
+    font-size: 0.8em;
+    opacity: 0.75;
+    text-align: center;
+}
+.neuroshima.melee-opposed-result .die-square.no-die {
+    background: transparent;
+    border-color: rgba(0,0,0,0.12);
+    color: rgba(0,0,0,0.25);
+    font-size: 1em;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.no-die {
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.2);
+}
+
+.neuroshima.melee-opposed-result .die-square.die-winner {
+    outline: 2px solid #ffd700;
+    box-shadow: 0 0 7px rgba(255, 215, 0, 0.7);
+    font-weight: bold;
+}
+.neuroshima.melee-opposed-result .die-square.die-loser {
+    opacity: 0.4;
+    filter: grayscale(70%);
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.die-winner {
+    outline: 2px solid #ffd700;
+    box-shadow: 0 0 9px rgba(255, 215, 0, 0.6);
+}
+
+.neuroshima.melee-opposed-result .opposed-apply-row {
+    display: flex;
+    padding: 4px 0 0;
+    border-top: none;
+    background: none;
+    border: none;
+    margin-top: 2px;
 }
 

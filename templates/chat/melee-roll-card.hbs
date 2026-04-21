@@ -82,11 +82,13 @@
             </div>
             {{/each}}
         </div>
+        {{#if isVanillaMelee}}
         <div class="melee-actions">
             <button type="button" class="start-melee-btn" data-action="start-melee">
                 <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.StartDuel"}}
             </button>
         </div>
+        {{/if}}
     </div>
     {{/if}}
 </div>

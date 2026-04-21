@@ -2847,6 +2847,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     border-radius: 6px;
     margin-bottom: 8px;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 100%;
 }
 
 .neuroshima.sheet.actor .melee-pending-attacker-card {
@@ -2860,24 +2864,24 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     border: 1px solid rgba(243, 156, 18, 0.35);
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .card-header,
-.neuroshima.sheet.actor .melee-pending-defender-card .card-header {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-header,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 5px 10px;
+    padding: 6px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .card-header {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-header {
     background: rgba(192, 57, 43, 0.2);
 }
 
-.neuroshima.sheet.actor .melee-pending-defender-card .card-header {
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-card-header {
     background: rgba(243, 156, 18, 0.08);
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .header-main {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-header-main {
     display: flex;
     align-items: center;
     gap: 7px;
@@ -2888,7 +2892,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: #e74c3c;
 }
 
-.neuroshima.sheet.actor .melee-pending-defender-card .header-main {
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-header-main {
     display: flex;
     align-items: center;
     gap: 7px;
@@ -2899,8 +2903,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: rgba(243, 156, 18, 0.7);
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .dismiss-btn,
-.neuroshima.sheet.actor .melee-pending-defender-card .dismiss-btn {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-dismiss-btn,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-dismiss-btn {
     width: 20px;
     height: 20px;
     display: flex;
@@ -2915,14 +2919,15 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex-shrink: 0;
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .dismiss-btn:hover,
-.neuroshima.sheet.actor .melee-pending-defender-card .dismiss-btn:hover {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-dismiss-btn:hover,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-dismiss-btn:hover {
     background: rgba(192, 57, 43, 0.6);
     color: #fff;
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .card-content,
-.neuroshima.sheet.actor .melee-pending-defender-card .card-content {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-content,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-card-content {
+    display: block;
     padding: 8px 10px;
 }
 
@@ -2974,14 +2979,14 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: #f39c12;
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .instruction {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-instruction {
     font-size: 0.73em;
     color: rgba(255, 255, 255, 0.45);
     font-style: italic;
     margin: 0 0 8px;
 }
 
-.neuroshima.sheet.actor .melee-pending-attacker-card .card-actions {
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-actions {
     margin-top: 4px;
 }
 
@@ -3024,7 +3029,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: rgba(255, 255, 255, 0.25);
 }
 
-.neuroshima.sheet.actor .melee-pending-defender-card .status-msg {
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-status-msg {
     font-size: 0.7em;
     color: rgba(255, 255, 255, 0.3);
     font-style: italic;

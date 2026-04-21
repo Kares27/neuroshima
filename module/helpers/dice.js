@@ -389,7 +389,13 @@ export class NeuroshimaDice {
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     
     let skillValue = 0;
-    const skillKey = weapon.system.skill;
+    let skillKey = weapon.system.skill;
+    // Fallback: if stored skill is empty/invalid, use first skill from the weapon's attribute group
+    if (!skillKey || skillKey === "none") {
+        const attrGroups = NEUROSHIMA.skillConfiguration[weapon.system.attribute || "dexterity"] || {};
+        const firstGroup = Object.values(attrGroups)[0] || [];
+        skillKey = firstGroup[0] || "";
+    }
     if (skillKey && skillKey !== "none") {
         const isCreature = actor?.type === "creature";
         const baseSkill = (skillKey === "experience" && isCreature)

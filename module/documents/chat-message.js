@@ -39,9 +39,17 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "start-melee":
             this.onStartMeleeDuel(event, message);
             break;
+          case "meleeOpposedDefend":
+            this.onMeleeOpposedDefend(event, btn, message);
+            break;
+          case "applyOpposedDamage":
+            this.onApplyOpposedDamage(event, message);
+            break;
         }
       });
     });
+
+    this._bindResultCardCollapsibles(root);
   }
 
   /**
@@ -65,6 +73,32 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
     await NeuroshimaMeleeCombat.startDuel(attackerId, defenderId);
+  }
+
+  /**
+   * Defender clicks a weapon (or Unarmed) button on the melee-opposed handler card.
+   * `btn.dataset.weaponId` is the defender's item ID (empty string = unarmed).
+   */
+  static async onMeleeOpposedDefend(event, btn, message) {
+    const weaponId = btn.dataset.weaponId || null;
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    await MeleeOpposedChat.defendFromChat(message.id, weaponId);
+  }
+
+  static async onApplyOpposedDamage(event, message) {
+    const btn = event.currentTarget;
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    await MeleeOpposedChat.applyOpposedDamage(message.id);
+    // Immediately disable the button in the DOM for the clicking user
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("applied");
+      btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+    }
+  }
+
+  static _bindResultCardCollapsibles(_root) {
+    // No collapsibles on result card currently — kept as hook point for future use.
   }
 
   /**
@@ -296,7 +330,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
       ...rollData,
       meleeTargets: targetsData,
       config: NEUROSHIMA,
-      showTooltip: this._canShowTooltip(actor)
+      showTooltip: this._canShowTooltip(actor),
+      isVanillaMelee: (game.settings.get("neuroshima", "meleeCombatType") || "default") === "default"
     });
 
     const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");
@@ -352,7 +387,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
       ...rollData,
       meleeTargets: targetsData,
       config: NEUROSHIMA,
-      showTooltip: this._canShowTooltip(actor)
+      showTooltip: this._canShowTooltip(actor),
+      isVanillaMelee: (game.settings.get("neuroshima", "meleeCombatType") || "default") === "default"
     });
 
     const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");

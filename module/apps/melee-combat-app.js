@@ -337,6 +337,16 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     context.phaseLabel = this._getPhaseLabel(phase);
     context.initiativeOwnerName = context.participants[context.turnState.initiativeOwnerId]?.name || "---";
 
+    // ── Resolution mode label ─────────────────────────────────────────────
+    const modeLabels = {
+      normal:           game.i18n.localize("NEUROSHIMA.Settings.MeleeCombatType.Default"),
+      opposedPips:      game.i18n.localize("NEUROSHIMA.Settings.MeleeCombatType.OpposedPips"),
+      opposedSuccesses: game.i18n.localize("NEUROSHIMA.Settings.MeleeCombatType.OpposedSuccesses")
+    };
+    context.resolutionMode = context.resolutionMode || "normal";
+    context.resolutionModeLabel = modeLabels[context.resolutionMode] || context.resolutionMode;
+    context.isOpposedPips = context.resolutionMode === "opposedPips";
+
     // ── Arena center: declared strength or last result ───────────────────
     context.arenaStrength = exchange.declaredDiceCount || 0;
     const lastResultEntry = [...(context.log || [])]
@@ -432,11 +442,14 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       const myAttacker = myParticipants.find(p => p.id === context.turnState.selectionTurn);
       if (myAttacker) {
         const sel = exchange.attackerSelectedDice.length;
+        const isOpposedPips = context.resolutionMode === "opposedPips";
+        const canConfirm = isOpposedPips ? sel === 3 : sel > 0;
         return {
           type: "attack",
           actorId: myAttacker.id,
           selectedCount: sel,
-          canConfirm: sel > 0,
+          canConfirm,
+          requireAll: isOpposedPips,
           damageTiers: myAttacker.damageMeleePreview,
           urgent: true
         };

@@ -12,4 +12,8 @@
   </div>
 
   <span class="top-bar__phase">{{phaseLabel}}</span>
+
+  {{#unless (eq resolutionMode "normal")}}
+    <span class="top-bar__mode-badge">{{resolutionModeLabel}}</span>
+  {{/unless}}
 </header>

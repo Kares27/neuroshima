@@ -30,6 +30,19 @@ export class MeleeResolution {
     if (!encounter) return;
 
     const updated = foundry.utils.deepClone(encounter);
+
+    // Branch to the appropriate resolution mode
+    const resolutionMode = updated.resolutionMode || "normal";
+    if (resolutionMode === "opposedPips") {
+      await this._resolveOpposedPips(id, updated);
+      return;
+    }
+    if (resolutionMode === "opposedSuccesses") {
+      await this._resolveOpposedSuccesses(id, updated);
+      return;
+    }
+
+    // ── Normal mode (default NS 1.5) ──────────────────────────────────────
     const exchange = updated.currentExchange;
     const attackerId = exchange.attackerId;
     const defenderId = exchange.defenderId;
@@ -298,6 +311,188 @@ export class MeleeResolution {
       });
       await this.applyDamage(encounter, attack.attackerId, attack.defenderId, diceCount, selectedIndices[0]);
     }
+  }
+
+  /**
+   * Opposed-by-Pips (Przeciwstawny na Oczkach) resolution.
+   * Both combatants must commit exactly 3 dice.
+   * Die slot 0 → tier-1 damage, slot 1 → tier-2 damage, slot 2 → tier-3 damage.
+   * Attacker wins a slot when their die is a success AND (defender's die is not a success
+   * OR attacker's effective value is strictly lower than defender's effective value).
+   * Each won slot applies the corresponding weapon damage tier independently.
+   * @private
+   */
+  static async _resolveOpposedPips(id, updated) {
+    const exchange = updated.currentExchange;
+    const attackerId = exchange.attackerId;
+    const defenderId = exchange.defenderId;
+    const attacker = updated.participants[attackerId];
+    const defender = updated.participants[defenderId];
+
+    if (!attacker || !defender) return;
+
+    const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
+    const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
+    const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
+
+    game.neuroshima?.log("Resolving opposedPips exchange", {
+      id, attacker: attacker.name, defender: defender.name, attackerTarget, defenderTarget
+    });
+
+    const aDice = exchange.attackerSelectedDice;
+    const dDice = exchange.defenderSelectedDice;
+    const slots = Math.min(aDice.length, dDice.length, 3);
+
+    const _dieVal = (participant, idx) => participant.modifiedPool?.[idx] ?? participant.pool[idx];
+    const _dieSuccess = (participant, idx, target) => {
+      if (participant.dieResults) return participant.dieResults[idx]?.isSuccess ?? false;
+      return participant.pool[idx] !== 20 && _dieVal(participant, idx) <= target;
+    };
+
+    const hits = [];
+    const slotResults = [];
+
+    for (let pos = 0; pos < slots; pos++) {
+      const aIdx = aDice[pos];
+      const dIdx = dDice[pos];
+      const aSuccess = _dieSuccess(attacker, aIdx, attackerTarget);
+      const dSuccess = _dieSuccess(defender, dIdx, defenderTarget);
+      const aVal = _dieVal(attacker, aIdx);
+      const dVal = _dieVal(defender, dIdx);
+      const attackerWins = aSuccess && (!dSuccess || aVal < dVal);
+      const tier = pos + 1;
+      slotResults.push({ pos, tier, aVal, dVal, aSuccess, dSuccess, attackerWins });
+      if (attackerWins) hits.push({ cost: tier, tier });
+    }
+
+    game.neuroshima?.log("OpposedPips slot results", { slotResults });
+
+    let resultType;
+    let logText;
+
+    if (hits.length > 0) {
+      resultType = "hit";
+      const tierLabels = hits.map(h => `T${h.tier}`).join(", ");
+      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogOpposedPipsHit", {
+        attacker: attacker.name,
+        defender: defender.name,
+        tiers: tierLabels
+      });
+      const locationDieIndex = aDice[0];
+      await this.applyDamageDistributed(updated, attackerId, defenderId, hits, locationDieIndex);
+    } else {
+      // Check if defender can take over (defender had more winning slots)
+      const defenderWonSlots = slotResults.filter(s => !s.attackerWins && s.dSuccess).length;
+      const takeoverRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
+
+      if (defenderWonSlots >= takeoverRequired) {
+        resultType = "takeover";
+        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogTakeover", { attacker: defender.name, oldAttacker: attacker.name });
+        updated.turnState.initiativeOwnerId = defenderId;
+
+        if (attacker.maneuver === "fury") {
+          logText += " " + game.i18n.format("NEUROSHIMA.MeleeDuel.LogFuryHit", { name: defender.name });
+          await this.applyDamage(updated, defenderId, attackerId, 1, dDice[0]);
+        }
+      } else {
+        resultType = "block";
+        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogBlock", { attacker: attacker.name, defender: defender.name });
+      }
+    }
+
+    updated.log.push({ type: resultType, turn: updated.turnState.turn, segment: updated.turnState.segment, text: logText });
+    attacker.usedDice.push(...aDice);
+    defender.usedDice.push(...dDice);
+    updated.turnState.segmentCost = 3;
+    updated.currentExchange = {
+      attackerId: null, defenderId: null, declaredAction: null,
+      declaredDiceCount: 0, attackerSelectedDice: [], defenderSelectedDice: [], resolutionType: "normal"
+    };
+
+    await this._advanceAfterExchange(id, updated);
+  }
+
+  /**
+   * Opposed-by-Successes (Przeciwstawny na Sukcesach) resolution.
+   * Attacker selects 1–3 dice, defender matches the count.
+   * Net successes = attackerSuccesses − defenderSuccesses.
+   * Damage tier = net successes (clamped 1–3). If net ≤ 0, defender can take over/block.
+   * @private
+   */
+  static async _resolveOpposedSuccesses(id, updated) {
+    const exchange = updated.currentExchange;
+    const attackerId = exchange.attackerId;
+    const defenderId = exchange.defenderId;
+    const attacker = updated.participants[attackerId];
+    const defender = updated.participants[defenderId];
+    const diceCount = exchange.declaredDiceCount || 0;
+
+    if (!attacker || !defender) return;
+
+    const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
+    const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
+    const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
+
+    const _dieSuccess = (participant, idx, target) => {
+      if (participant.dieResults) return participant.dieResults[idx]?.isSuccess ?? false;
+      const val = participant.modifiedPool?.[idx] ?? participant.pool[idx];
+      return participant.pool[idx] !== 20 && val <= target;
+    };
+
+    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => _dieSuccess(attacker, idx, attackerTarget)).length;
+    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => _dieSuccess(defender, idx, defenderTarget)).length;
+    const netSuccesses = attackerSuccesses - defenderSuccesses;
+
+    game.neuroshima?.log("Resolving opposedSuccesses exchange", {
+      id, attacker: attacker.name, defender: defender.name, attackerSuccesses, defenderSuccesses, netSuccesses
+    });
+
+    let resultType;
+    let logText;
+
+    if (netSuccesses > 0) {
+      const tier = Math.min(3, netSuccesses);
+      resultType = "hit";
+      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogOpposedSuccessesHit", {
+        attacker: attacker.name,
+        defender: defender.name,
+        net: netSuccesses,
+        tier
+      });
+      const locationDieIndex = exchange.locationDieIndex ?? exchange.attackerSelectedDice[0];
+      await this.applyDamageDistributed(updated, attackerId, defenderId, [{ cost: tier, tier }], locationDieIndex);
+    } else if (netSuccesses < 0) {
+      const defenderAdvantage = Math.abs(netSuccesses);
+      const takeoverRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
+
+      if (defenderAdvantage >= takeoverRequired) {
+        resultType = "takeover";
+        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogTakeover", { attacker: defender.name, oldAttacker: attacker.name });
+        updated.turnState.initiativeOwnerId = defenderId;
+
+        if (attacker.maneuver === "fury") {
+          logText += " " + game.i18n.format("NEUROSHIMA.MeleeDuel.LogFuryHit", { name: defender.name });
+          await this.applyDamage(updated, defenderId, attackerId, 1, exchange.defenderSelectedDice[0]);
+        }
+      } else {
+        resultType = "block";
+        logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogBlock", { attacker: attacker.name, defender: defender.name });
+      }
+    } else {
+      resultType = "block";
+      logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogBlock", { attacker: attacker.name, defender: defender.name });
+    }
+
+    updated.log.push({ type: resultType, turn: updated.turnState.turn, segment: updated.turnState.segment, text: logText });
+    attacker.usedDice.push(...exchange.attackerSelectedDice);
+    defender.usedDice.push(...exchange.defenderSelectedDice);
+    updated.turnState.segmentCost = diceCount;
+    updated.currentExchange = {
+      attackerId: null, defenderId: null, declaredAction: null,
+      declaredDiceCount: 0, attackerSelectedDice: [], defenderSelectedDice: [], resolutionType: "normal"
+    };
+
+    await this._advanceAfterExchange(id, updated);
   }
 
   /**
