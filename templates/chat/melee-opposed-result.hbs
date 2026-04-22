@@ -64,12 +64,49 @@
     {{/if}}
   </div>
 
+  {{#if hasBeastActions}}
+  <div class="beast-action-spending" data-gm-only="true" data-net-successes="{{netSuccesses}}">
+    <div class="beast-spending-header">
+      <i class="fas fa-paw"></i>
+      <span>{{localize "NEUROSHIMA.BeastAction.SpendingTitle"}} <strong>({{netSuccesses}}s)</strong></span>
+      <span class="beast-spent-counter">
+        {{localize "NEUROSHIMA.BeastAction.Spent"}}: <strong class="spent-value">0</strong>/{{netSuccesses}}
+      </span>
+    </div>
+    <div class="beast-action-list">
+      {{#each affordableBeastActions}}
+      <div class="beast-action-row" data-action-id="{{id}}" data-action-cost="{{cost}}">
+        <div class="beast-action-info">
+          <img src="{{img}}" width="20" height="20" alt="">
+          <span class="beast-action-name">{{name}}</span>
+          <span class="beast-action-cost-badge">{{cost}}s</span>
+          {{#if damage}}<span class="beast-action-damage-badge">→ {{damage}}</span>{{/if}}
+          {{#if hasEffects}}<i class="fas fa-magic beast-action-effect-icon" title="{{localize 'NEUROSHIMA.BeastAction.HasEffects'}}"></i>{{/if}}
+        </div>
+        <div class="beast-action-qty">
+          <button type="button" class="beast-qty-btn beast-qty-minus" data-action-id="{{id}}">−</button>
+          <span class="beast-qty-value" data-action-id="{{id}}">0</span>
+          <button type="button" class="beast-qty-btn beast-qty-plus" data-action-id="{{id}}" data-cost="{{cost}}">+</button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    <div class="beast-spending-footer">
+      <button type="button" class="apply-beast-actions-btn" data-action="applyBeastActions" disabled>
+        <i class="fas fa-paw"></i> {{localize "NEUROSHIMA.BeastAction.Apply"}}
+      </button>
+    </div>
+  </div>
+  {{/if}}
+
   {{#if isHit}}
-  <div class="apply-damage-section opposed-apply-row">
+  {{#unless hasBeastActions}}
+  <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
     <button type="button" class="apply-damage-button apply-opposed-damage-btn" data-action="applyOpposedDamage">
       <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.Actions.Damage"}}
     </button>
   </div>
+  {{/unless}}
   {{/if}}
 
 </div>

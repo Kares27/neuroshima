@@ -992,18 +992,12 @@
                 "Attack": "Atak",
                 "Special": "Specjalna",
                 "Reaction": "Reakcja"
-            }
-        },
-        "BeastManeuver": {
-            "Label": "Manewry Bestii",
-            "None": "Brak manewrów bestii.",
-            "TypeLabel": "Typ manewru",
-            "Difficulty": "Trudność",
-            "Type": {
-                "Offensive": "Ofensywny",
-                "Defensive": "Defensywny",
-                "Special": "Specjalny"
-            }
+            },
+            "SpendingTitle": "Wydaj Sukcesy Bestii",
+            "Spent": "Wydano",
+            "Apply": "Zastosuj Akcje Bestii",
+            "AlreadyApplied": "Akcje bestii zostały już zastosowane.",
+            "HasEffects": "Nakłada aktywne efekty"
         },
         "Vehicle": {
             "Type": "Typ Pojazdu",

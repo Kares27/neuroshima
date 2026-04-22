@@ -6,7 +6,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, BeastManeuverData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -47,9 +47,84 @@ Hooks.once('init', async function() {
     });
 
     // Hide GM-only elements in chat messages for non-GM users
-    Hooks.on("renderChatMessage", (_message, html) => {
-        if (game.user.isGM) return;
-        html.querySelectorAll("[data-gm-only]").forEach(el => { el.style.display = "none"; });
+    Hooks.on("renderChatMessage", (message, html) => {
+        // Normalize: html may be an HTMLElement (v13 AppV2) or a jQuery object (legacy paths)
+        const root = html instanceof HTMLElement ? html : html?.[0];
+        if (!root) return;
+
+        if (!game.user.isGM) {
+            root.querySelectorAll("[data-gm-only]").forEach(el => { el.style.display = "none"; });
+            return;
+        }
+
+        // Beast action spending — quantity +/− buttons and apply button (GM only)
+        const spending = root.querySelector(".beast-action-spending");
+        if (!spending) return;
+
+        const maxSuccesses = parseInt(spending.dataset.netSuccesses ?? "0", 10);
+        const quantities   = {}; // actionId → count
+
+        function recalc() {
+            let spent = 0;
+            for (const [id, qty] of Object.entries(quantities)) {
+                const row  = spending.querySelector(`.beast-action-row[data-action-id="${id}"]`);
+                const cost = parseInt(row?.dataset.actionCost ?? "1", 10);
+                spent += cost * qty;
+            }
+            spending.querySelector(".spent-value").textContent = spent;
+
+            // Disable + buttons that would exceed the budget
+            spending.querySelectorAll(".beast-qty-plus").forEach(btn => {
+                const id   = btn.dataset.actionId;
+                const cost = parseInt(btn.dataset.cost ?? "1", 10);
+                const cur  = quantities[id] ?? 0;
+                btn.disabled = (spent + cost) > maxSuccesses;
+            });
+
+            // Enable apply button only when something is selected
+            const applyBtn = spending.querySelector(".apply-beast-actions-btn");
+            if (applyBtn) applyBtn.disabled = spent === 0;
+        }
+
+        spending.querySelectorAll(".beast-qty-plus").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const id   = btn.dataset.actionId;
+                const cost = parseInt(btn.dataset.cost ?? "1", 10);
+                let spent  = 0;
+                for (const [bid, qty] of Object.entries(quantities)) {
+                    const brow = spending.querySelector(`.beast-action-row[data-action-id="${bid}"]`);
+                    spent += parseInt(brow?.dataset.actionCost ?? "1", 10) * qty;
+                }
+                if (spent + cost > maxSuccesses) return;
+                quantities[id] = (quantities[id] ?? 0) + 1;
+                spending.querySelector(`.beast-qty-value[data-action-id="${id}"]`).textContent = quantities[id];
+                recalc();
+            });
+        });
+
+        spending.querySelectorAll(".beast-qty-minus").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.actionId;
+                if ((quantities[id] ?? 0) <= 0) return;
+                quantities[id] -= 1;
+                spending.querySelector(`.beast-qty-value[data-action-id="${id}"]`).textContent = quantities[id];
+                recalc();
+            });
+        });
+
+        spending.querySelector(".apply-beast-actions-btn")?.addEventListener("click", async () => {
+            const selected = [];
+            for (const [id, qty] of Object.entries(quantities)) {
+                for (let i = 0; i < qty; i++) selected.push(id);
+            }
+            if (!selected.length) return;
+            const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
+            await MeleeOpposedChat.applyBeastActions(message.id, selected);
+            spending.querySelector(".apply-beast-actions-btn").disabled = true;
+            spending.querySelector(".apply-beast-actions-btn").textContent = "✓ Zastosowano";
+        });
+
+        recalc();
     });
 
     // Re-render all open actor sheets when an opposed chat message is resolved/cancelled.
@@ -193,7 +268,6 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.trick = TrickData;
     CONFIG.Item.dataModels.wound = WoundData;
     CONFIG.Item.dataModels["beast-action"]      = BeastActionData;
-    CONFIG.Item.dataModels["beast-maneuver"]    = BeastManeuverData;
     CONFIG.Item.dataModels["specialization"]    = SpecializationData;
     CONFIG.Item.dataModels["origin"]            = OriginData;
     CONFIG.Item.dataModels["profession"]        = ProfessionData;
@@ -273,7 +347,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
+        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });

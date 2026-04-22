@@ -965,18 +965,12 @@
                 "Attack": "Attack",
                 "Special": "Special",
                 "Reaction": "Reaction"
-            }
-        },
-        "BeastManeuver": {
-            "Label": "Beast Maneuvers",
-            "None": "No beast maneuvers.",
-            "TypeLabel": "Maneuver Type",
-            "Difficulty": "Difficulty",
-            "Type": {
-                "Offensive": "Offensive",
-                "Defensive": "Defensive",
-                "Special": "Special"
-            }
+            },
+            "SpendingTitle": "Beast Action Spending",
+            "Spent": "Spent",
+            "Apply": "Apply Beast Actions",
+            "AlreadyApplied": "Beast actions have already been applied.",
+            "HasEffects": "Applies active effects"
         },
         "Vehicle": {
             "Type": "Vehicle Type",

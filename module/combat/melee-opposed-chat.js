@@ -112,8 +112,9 @@ export class MeleeOpposedChat {
    * @param {Actor}  defenderActor
    * @param {Object} pending         Must have `mode`, `opposedChatMessageId`
    * @param {string} [weaponId]      Item ID of weapon chosen by defender (optional)
+   * @param {Object} [syntheticWeapon] Pre-built synthetic weapon object (e.g. from beast action)
    */
-  static async openDefenseDialog(defenderActor, pending, weaponId = null) {
+  static async openDefenseDialog(defenderActor, pending, weaponId = null, syntheticWeapon = null) {
     if (!defenderActor.isOwner && !game.user.isGM) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.NotYourTurn"));
       return;
@@ -132,8 +133,8 @@ export class MeleeOpposedChat {
       return;
     }
 
-    // Resolve the weapon: prefer the clicked one, then equipped, then any melee
-    let defWeapon = weaponId ? defenderActor.items.get(weaponId) : null;
+    // Resolve the weapon: prefer synthetic (beast action), then clicked, then equipped, then any melee
+    let defWeapon = syntheticWeapon ?? (weaponId ? defenderActor.items.get(weaponId) : null);
     if (!defWeapon) {
       defWeapon = defenderActor.items.find(
         i => i.type === "weapon" && i.system.weaponType === "melee" && i.system.equipped
@@ -302,6 +303,42 @@ export class MeleeOpposedChat {
       return { label: `D${i + 1}`, attack: aDie, defense: dDie, attackWon: pw.attackWon ?? false, defenseWon: pw.defenseWon ?? false };
     }).filter(Boolean);
 
+    // ── Beast action spending (creature attackers only) ───────────────────
+    // Sort hits ascending by tier so fallback always applies lowest-tier first,
+    // keeping the highest-tier (heaviest) hits for normal damage when partially spent.
+    hits.sort((a, b) => a.tier - b.tier);
+
+    const isCreatureAttacker = attackerActor?.type === "creature";
+    let netSuccesses = 0;
+    if (mode === "opposedSuccesses") {
+      netSuccesses = Math.max(0, attackSuccesses - defenseSuccesses);
+    } else {
+      netSuccesses = hits.length; // won pips = action point budget
+    }
+
+    const affordableBeastActions = [];
+    if (isCreatureAttacker && netSuccesses > 0) {
+      const beastActions = attackerActor.items.filter(
+        i => i.type === "beast-action" && i.system.costType === "success"
+      );
+      for (const action of beastActions) {
+        const cost = action.system.successCost ?? 1;
+        if (cost <= netSuccesses) {
+          const hasEffects = action.effects?.size > 0;
+          affordableBeastActions.push({
+            id: action.id,
+            name: action.name,
+            img: action.img,
+            cost,
+            damage: action.system.damage || null,
+            hasEffects,
+            actionType: action.system.actionType || ""
+          });
+        }
+      }
+      affordableBeastActions.sort((a, b) => b.cost - a.cost);
+    }
+
     const resolutionData = {
       mode,
       modeLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${mode}`),
@@ -323,7 +360,11 @@ export class MeleeOpposedChat {
       isHit: resultType === "hit",
       damage1: data.damage1,
       damage2: data.damage2,
-      damage3: data.damage3
+      damage3: data.damage3,
+      isCreatureAttacker,
+      netSuccesses,
+      affordableBeastActions,
+      hasBeastActions: affordableBeastActions.length > 0
     };
 
     const resContent = await renderTemplate(
@@ -348,7 +389,10 @@ export class MeleeOpposedChat {
             damage1: data.damage1,
             damage2: data.damage2,
             damage3: data.damage3,
-            applied: false
+            netSuccesses,
+            affordableBeastActions,
+            applied: false,
+            beastActionsApplied: false
           }
         }
       },
@@ -692,6 +736,165 @@ export class MeleeOpposedChat {
     }
 
     await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
+  }
+
+  /**
+   * Apply selected beast actions from the resolve card.
+   * Called when the GM clicks "Zastosuj akcje bestii" on the result card.
+   *
+   * @param {string}   messageId
+   * @param {string[]} selectedActionIds   Item IDs of chosen beast actions (may repeat)
+   */
+  static async applyBeastActions(messageId, selectedActionIds) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const rd = message.getFlag("neuroshima", "opposedResult");
+    if (!rd) return;
+    if (rd.beastActionsApplied) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.AlreadyApplied"));
+      return;
+    }
+
+    const defenderDoc = await fromUuid(rd.defenderUuid);
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+    const attackerDoc  = await fromUuid(rd.attackerUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    if (!defenderActor || !attackerActor) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DefenderNotFound"));
+      return;
+    }
+
+    const { CombatHelper } = await import("../helpers/combat-helper.js");
+    const location = rd.location ?? "torso";
+
+    const spentPerAction = {};
+    let totalSpent = 0;
+    for (const actionId of selectedActionIds) {
+      spentPerAction[actionId] = (spentPerAction[actionId] ?? 0) + 1;
+    }
+
+    const allWoundIds = [];
+    const allResults  = [];
+    let totalReduced  = 0;
+    const allReducedDetails = [];
+    const appliedNames = [];
+
+    for (const [actionId, count] of Object.entries(spentPerAction)) {
+      const actionItem = attackerActor.items.get(actionId);
+      if (!actionItem) continue;
+      const cost   = actionItem.system.successCost ?? 1;
+      const damage = actionItem.system.damage || null;
+
+      totalSpent += cost * count;
+      appliedNames.push(...Array(count).fill(actionItem.name));
+
+      for (let n = 0; n < count; n++) {
+        // Apply damage wound if action deals one
+        if (damage) {
+          const attackData = {
+            isMelee: true,
+            actorId: attackerActor.id,
+            label: actionItem.name,
+            damageMelee1: damage,
+            damageMelee2: damage,
+            damageMelee3: damage,
+            finalLocation: location,
+            successPoints: 1
+          };
+          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+            isOpposed: true, spDifference: 1, location, suppressChat: true
+          });
+          if (batch) {
+            allResults.push(...(batch.results ?? []));
+            allWoundIds.push(...(batch.woundIds ?? []));
+            totalReduced += batch.reducedProjectiles ?? 0;
+            allReducedDetails.push(...(batch.reducedDetails ?? []));
+          }
+        }
+
+        // Apply embedded active effects from the beast action
+        if (actionItem.effects?.size > 0) {
+          for (const effect of actionItem.effects) {
+            const effectData = effect.convertToApplied ? effect.convertToApplied() : effect.toObject();
+            await defenderActor.applyEffect({ effectData: [effectData] });
+          }
+        }
+      }
+    }
+
+    // Apply remaining pip-wins or success-points as normal weapon damage
+    const remaining = rd.netSuccesses - totalSpent;
+    if (remaining > 0) {
+      if (rd.mode === "opposedPips") {
+        // opposedPips: hits are sorted ascending by tier (done in resolveOpposed).
+        // Beast actions consumed the first `totalSpent` pips (lowest tiers).
+        // The remaining hits keep their own tier-specific damageType.
+        const sortedHits = [...(rd.hits ?? [])].sort((a, b) => a.tier - b.tier);
+        const remainingHits = sortedHits.slice(totalSpent);
+        for (const hit of remainingHits) {
+          if (!hit.damageType) continue;
+          const attackData = {
+            isMelee: true,
+            actorId: attackerActor.id,
+            label: attackerActor.items.get(rd.weaponId)?.name ?? "—",
+            damageMelee1: hit.damageType,
+            damageMelee2: hit.damageType,
+            damageMelee3: hit.damageType,
+            finalLocation: location,
+            successPoints: 1
+          };
+          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+            isOpposed: true, spDifference: 1, location, suppressChat: true
+          });
+          if (batch) {
+            allResults.push(...(batch.results ?? []));
+            allWoundIds.push(...(batch.woundIds ?? []));
+            totalReduced += batch.reducedProjectiles ?? 0;
+            allReducedDetails.push(...(batch.reducedDetails ?? []));
+          }
+        }
+      } else {
+        // opposedSuccesses: remaining net successes map to a single damage tier.
+        const remainingTier = Math.min(3, remaining);
+        const damageType = rd[`damage${remainingTier}`];
+        if (damageType) {
+          const attackData = {
+            isMelee: true,
+            actorId: attackerActor.id,
+            label: attackerActor.items.get(rd.weaponId)?.name ?? "—",
+            damageMelee1: rd.damage1,
+            damageMelee2: rd.damage2,
+            damageMelee3: rd.damage3,
+            finalLocation: location,
+            successPoints: remainingTier
+          };
+          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+            isOpposed: true, spDifference: remainingTier, location, suppressChat: true
+          });
+          if (batch) {
+            allResults.push(...(batch.results ?? []));
+            allWoundIds.push(...(batch.woundIds ?? []));
+            totalReduced += batch.reducedProjectiles ?? 0;
+            allReducedDetails.push(...(batch.reducedDetails ?? []));
+          }
+        }
+      }
+    }
+
+    if (allWoundIds.length > 0 || appliedNames.length > 0) {
+      ui.notifications.info(
+        `${defenderActor.name}: ${appliedNames.join(", ")}` +
+        (allWoundIds.length > 0 ? ` (+${allWoundIds.length} rana/y)` : "")
+      );
+    }
+    if (allResults.length > 0 || totalReduced > 0 || allWoundIds.length > 0) {
+      await CombatHelper.renderPainResistanceReport(
+        defenderActor, allResults, allWoundIds, totalReduced, allReducedDetails
+      );
+    }
+
+    await message.setFlag("neuroshima", "opposedResult", { ...rd, beastActionsApplied: true });
   }
 
   /** Map first attack die roll to a body location. @private */

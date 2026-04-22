@@ -13,8 +13,9 @@ export class NeuroshimaItem extends Item {
       trick: "systems/neuroshima/assets/img/trick.svg",
       weapon: "systems/neuroshima/assets/img/weapon-melee.svg",
       wound: "systems/neuroshima/assets/img/wound.svg",
-      "vehicle-damage": "systems/neuroshima/assets/img/tire-iron.svg",
-      "vehicle-mod":    "systems/neuroshima/assets/img/tire-iron.svg"
+      "vehicle-damage":  "systems/neuroshima/assets/img/tire-iron.svg",
+      "vehicle-mod":     "systems/neuroshima/assets/img/tire-iron.svg",
+      "beast-action":    "systems/neuroshima/assets/img/paw.svg"
     };
 
     const updates = {};

@@ -154,16 +154,16 @@
                 </li>
                 {{else}}
                 <li class="item" data-item-id="{{this.id}}">
+                    <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
                     <span class="item-name">{{this.name}}</span>
                     <span class="beast-action-meta">
-                        <span class="action-type-badge action-type-{{this.system.actionType}}">
-                            {{lookup ../beastActionTypes this.system.actionType}}
-                        </span>
+                        <span class="action-type-badge">{{this.system.actionType}}</span>
                         <span class="action-cost" title="{{#if (eq this.system.costType 'success')}}{{localize 'NEUROSHIMA.BeastAction.SuccessCost'}}{{else}}{{localize 'NEUROSHIMA.BeastAction.SegmentCost'}}{{/if}}">
                             {{#if (eq this.system.costType "success")}}{{this.system.successCost}}s+{{else}}{{this.system.segmentCost}}s{{/if}}
                         </span>
                     </span>
                     <span class="item-controls">
+                        <a data-action="rollBeastAction" data-item-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Actions.Roll'}}"><i class="fas fa-dice"></i></a>
                         <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
                         <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
                     </span>
@@ -171,38 +171,6 @@
                 {{/if}}
                 {{else}}
                 <li class="item-list-empty">{{localize "NEUROSHIMA.BeastAction.None"}}</li>
-                {{/each}}
-            </ul>
-
-            {{!-- Beast Maneuvers --}}
-            <div class="section-header" style="margin-top: 10px;">
-                <i class="fas fa-route"></i>
-                <span class="header-label">{{localize "NEUROSHIMA.BeastManeuver.Label"}}</span>
-                <div class="header-controls">
-                    <a class="item-control" data-action="createItem" data-type="beast-maneuver"
-                        title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
-                </div>
-            </div>
-
-            <ul class="item-list creature-maneuvers-list">
-                {{#each inventory.beastManeuvers}}
-                <li class="item" data-item-id="{{this.id}}">
-                    <span class="item-name">{{this.name}}</span>
-                    <span class="beast-action-meta">
-                        <span class="action-type-badge maneuver-type-{{this.system.maneuverType}}">
-                            {{lookup ../beastManeuverTypes this.system.maneuverType}}
-                        </span>
-                        <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastManeuver.Difficulty'}}">
-                            {{this.system.difficulty}}★
-                        </span>
-                    </span>
-                    <span class="item-controls">
-                        <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
-                        <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
-                    </span>
-                </li>
-                {{else}}
-                <li class="item-list-empty">{{localize "NEUROSHIMA.BeastManeuver.None"}}</li>
                 {{/each}}
             </ul>
 

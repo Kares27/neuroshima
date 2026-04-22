@@ -239,6 +239,87 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         dialog.render(true);
       },
 
+      rollBeastAction: async function(event, target) {
+        const li   = target.closest("[data-item-id]");
+        const item = this.document.items.get(li?.dataset.itemId ?? target.dataset.itemId);
+        if (!item || item.type !== "beast-action") return;
+
+        const actor = this.document;
+        const attrKey = item.system.attribute || "dexterity";
+        const attrValue = actor.system.attributeTotals?.[attrKey] ?? (actor.system.attributes?.[attrKey] || 0);
+        const exp = actor.system.experience ?? 0;
+
+        const syntheticWeapon = {
+          id: item.id,
+          name: item.name,
+          img: item.img,
+          type: "weapon",
+          system: {
+            weaponType: "melee",
+            attribute: attrKey,
+            skill: "experience",
+            attackBonus: 0,
+            defenseBonus: 0,
+            damageMelee1: item.system.damage || "D",
+            damageMelee2: item.system.damage || "D",
+            damageMelee3: item.system.damage || "D",
+            requiredBuild: 0,
+            piercing: item.system.piercing ?? 0,
+            magazine: null,
+            jamming: 20
+          }
+        };
+
+        const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
+        if (combatTypeSetting === "opposedPips" || combatTypeSetting === "opposedSuccesses") {
+          const myUuidsCheck = [actor.uuid];
+          if (actor.token) myUuidsCheck.push(actor.token.uuid);
+
+          const opposeFlag = actor.getFlag("neuroshima", "oppose");
+          if (opposeFlag?.messageId) {
+            const pendingMsg = game.messages.get(opposeFlag.messageId);
+            const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
+            if (opposeData?.status === "pending") {
+              const syntheticPending = {
+                id: opposeData.defenderUuid,
+                attackerId: opposeData.attackerUuid,
+                attackerTokenUuid: opposeData.attackerTokenUuid,
+                defenderId: opposeData.defenderUuid,
+                mode: opposeData.mode,
+                opposedChatMessageId: opposeFlag.messageId
+              };
+              const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+              await MeleeOpposedChat.openDefenseDialog(actor, syntheticPending, null, syntheticWeapon);
+              return;
+            }
+            await actor.unsetFlag("neuroshima", "oppose");
+          }
+
+          const combatPendings = game.combat?.getFlag("neuroshima", "meleePendings") || {};
+          const opposedPending = Object.values(combatPendings).find(p => {
+            if (!p.active || !p.mode) return false;
+            return myUuidsCheck.some(u => game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, u));
+          });
+          if (opposedPending) {
+            const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+            await MeleeOpposedChat.openDefenseDialog(actor, opposedPending, null, syntheticWeapon);
+            return;
+          }
+
+          const rawTargets = Array.from(game.user.targets ?? []);
+          const chatTargets = rawTargets.filter(t => !myUuidsCheck.includes(t.document.uuid));
+          if (chatTargets.length > 0) {
+            const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+            await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, chatTargets[0].document.uuid, combatTypeSetting);
+            return;
+          }
+        }
+
+        const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+        const dialog = new NeuroshimaWeaponRollDialog({ actor, weapon: syntheticWeapon, rollType: "melee" });
+        dialog.render(true);
+      },
+
       createItem: async function(event, target) {
         const type = target.dataset.type || "weapon";
         const name = `${game.i18n.localize("DOCUMENT.New")} ${game.i18n.localize(`TYPES.Item.${type}`) || type}`;
@@ -538,7 +619,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
         return m;
       }),
       beastActions:   [...items.filter(i => i.type === "beast-action"), ...equippedWeapons],
-      beastManeuvers: items.filter(i => i.type === "beast-maneuver"),
+
       wounds:         items.filter(i => i.type === "wound")
     };
 
@@ -636,12 +717,6 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       attack:   game.i18n.localize("NEUROSHIMA.BeastAction.Type.Attack"),
       special:  game.i18n.localize("NEUROSHIMA.BeastAction.Type.Special"),
       reaction: game.i18n.localize("NEUROSHIMA.BeastAction.Type.Reaction")
-    };
-
-    context.beastManeuverTypes = {
-      offensive: game.i18n.localize("NEUROSHIMA.BeastManeuver.Type.Offensive"),
-      defensive: game.i18n.localize("NEUROSHIMA.BeastManeuver.Type.Defensive"),
-      special:   game.i18n.localize("NEUROSHIMA.BeastManeuver.Type.Special")
     };
 
     context.notes = {
@@ -771,7 +846,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "armor", "gear", "ammo", "magazine", "wound", "beast-action", "beast-maneuver"].includes(item.type)) {
+    if (["weapon", "armor", "gear", "ammo", "magazine", "wound", "beast-action"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }

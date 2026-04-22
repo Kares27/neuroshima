@@ -9,7 +9,8 @@ export class NeuroshimaActor extends Actor {
       updates["prototypeToken.actorLink"] = true;
     }
     const actorIcons = {
-      vehicle: "systems/neuroshima/assets/img/carkey.svg"
+      vehicle:   "systems/neuroshima/assets/img/carkey.svg",
+      creature:  "systems/neuroshima/assets/img/animal-skull.svg"
     };
     if (actorIcons[data.type] && (!data.img || data.img === "icons/svg/mystery-man.svg")) {
       updates.img = actorIcons[data.type];
