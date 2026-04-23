@@ -335,6 +335,33 @@
                 "Assistant": "Asystent MG",
                 "Gamemaster": "Tylko MG"
             },
+            "ConditionConfig": {
+                "Title": "Ustawienia Stanów",
+                "Label": "Konfiguruj Stany",
+                "MenuHint": "Otwiera menu konfiguracji stanów aktora (Zatruty, Głodny itp.).",
+                "Hint": "Definiuj i zarządzaj stanami aktorów. Każdy stan może być nadany aktorowi i używany w aktywnych efektach.",
+                "Saved": "Stany zostały zapisane.",
+                "AddCondition": "Dodaj Stan",
+                "ResetDefaults": "Przywróć domyślne",
+                "NoConditions": "Brak zdefiniowanych stanów.",
+                "Delete": "Usuń",
+                "ClickToChange": "Kliknij aby zmienić ikonę",
+                "NamePlaceholder": "Nazwa stanu...",
+                "KeyPlaceholder": "unikalny_klucz",
+                "TypeBoolean": "Boolean (tak/nie)",
+                "TypeInt": "Liczba (wartość)",
+                "Col": {
+                    "Icon": "Ikona",
+                    "Name": "Nazwa",
+                    "Key": "Klucz / ID",
+                    "Type": "Typ",
+                    "AllowNegative": "Neg.",
+                    "AllowNegativeHint": "Zezwól na wartości ujemne (tylko dla typu Liczba)"
+                },
+                "EditTemplate": "Edytuj Szablon Efektu",
+                "NoKeyWarning": "Ustaw Klucz/ID dla tego stanu przed edycją jego szablonu.",
+                "OpeningTemplate": "Otwieranie edytora szablonu efektu stanu..."
+            },
             "BaseEncumbrance": {
                 "Name": "Bazowy udźwig",
                 "Hint": "Podstawowa wartość udźwigu dla każdego aktora (w kg)."
@@ -1093,6 +1120,7 @@
             "Empty": "Brak aktywnych efektów",
             "Enable": "Włącz",
             "Disable": "Wyłącz",
+            "Conditions": "Stany",
             "Temporary": "Efekty tymczasowe",
             "Passive": "Efekty pasywne",
             "DisabledGroup": "Efekty wyłączone",
@@ -1218,5 +1246,8 @@
                 "Args": "Argumenty kontekstowe przekazane przez wyzwalacz"
             }
         }
+    },
+    "Conditions": {
+        "StatusLocked": "Status efektu warunkowego jest zablokowany i nie może być zmieniony."
     }
 }

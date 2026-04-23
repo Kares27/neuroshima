@@ -126,6 +126,17 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
 
     this._injectDetailsFields();
 
+    if (this.document.getFlag("neuroshima", "conditionNumbered")) {
+      const statusesField = this.element.querySelector("multi-select[name='statuses']");
+      if (statusesField) {
+        statusesField.setAttribute("disabled", "");
+        const hint = document.createElement("p");
+        hint.className = "hint";
+        hint.textContent = game.i18n.localize("NEUROSHIMA.Conditions.StatusLocked");
+        statusesField.closest(".form-group")?.appendChild(hint);
+      }
+    }
+
     const changesSection = this.element.querySelector("section[data-tab='changes']");
     if (changesSection) {
       const isManual = this.document.getFlag("neuroshima", "manualChangeKeys") ?? false;
@@ -244,6 +255,14 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     const transferType = submitData["flags.neuroshima.transferType"] ?? "owningDocument";
     const documentType = submitData["flags.neuroshima.documentType"] ?? "actor";
     submitData.transfer = (transferType === "owningDocument" && documentType === "actor");
+
+    if (this.document.getFlag("neuroshima", "conditionNumbered")) {
+      delete submitData.statuses;
+    }
+
+    if (this.document._isSyntheticConditionTemplate) {
+      return this.document.update(submitData);
+    }
     return super._processSubmitData(event, form, submitData);
   }
 

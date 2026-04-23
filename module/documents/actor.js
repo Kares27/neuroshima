@@ -1,5 +1,36 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
+import { getConditions } from "../apps/condition-config.js";
+
+/**
+ * Build ActiveEffect create-data from a condition definition.
+ * Centralises all template fields so every code path copies the same data.
+ * @param {object} condDef
+ * @param {object} [extraFlags]  – additional flags.neuroshima fields (e.g. conditionNumbered)
+ * @returns {object}
+ */
+function _condDefToEffectData(condDef, extraFlags = {}) {
+  return {
+    name:        condDef.name,
+    img:         condDef.img          ?? "icons/svg/aura.svg",
+    tint:        condDef._tint        ?? null,
+    description: condDef._description ?? "",
+    disabled:    condDef._disabled    ?? false,
+    statuses:    [condDef.key],
+    changes:     foundry.utils.deepClone(condDef.changes   ?? []),
+    duration:    foundry.utils.deepClone(condDef._duration ?? {}),
+    flags: {
+      neuroshima: {
+        scripts:      foundry.utils.deepClone(condDef.scripts      ?? []),
+        transferType: condDef._transferType  ?? "owningDocument",
+        documentType: condDef._documentType  ?? "actor",
+        equipTransfer:condDef._equipTransfer ?? false,
+        ...extraFlags
+      }
+    }
+  };
+}
+
 export class NeuroshimaActor extends Actor {
   /** @override */
   async _preCreate(data, options, user) {
@@ -335,6 +366,138 @@ export class NeuroshimaActor extends Actor {
     if (!effect) return null;
     const newDisabled = active === undefined ? !effect.disabled : !active;
     return effect.update({ disabled: newDisabled });
+  }
+
+  /**
+   * Re-render the token HUD if it is currently open for any token linked to this actor.
+   * Called after flag-only updates that don't trigger Foundry's normal HUD refresh.
+   */
+  _refreshTokenHUD() {
+    const hud = canvas.hud?.token;
+    if (!hud?.rendered) return;
+    const linkedToken = this.getActiveTokens(true, true)[0];
+    if (!linkedToken) return;
+    if (hud.object?.document === linkedToken || hud.object?.id === linkedToken?.id) {
+      hud.render();
+    }
+  }
+
+  // ── Condition helpers (WFRP-style) ────────────────────────────────────────
+
+  /**
+   * Return the current numeric value of an int-type condition on this actor.
+   * Returns 0 if the condition is not active.
+   * @param {string} key
+   * @returns {number}
+   */
+  getConditionValue(key) {
+    const effect = this.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    return effect?.getFlag("neuroshima", "conditionValue") ?? 0;
+  }
+
+  /**
+   * Return true if the actor has the given condition active (boolean present OR int > 0).
+   * @param {string} key
+   * @returns {boolean}
+   */
+  hasCondition(key) {
+    if (this.statuses.has(key)) return true;
+    return this.getConditionValue(key) !== 0;
+  }
+
+  /**
+   * Add (or increment) a condition on this actor.
+   * - Boolean conditions: enable via toggleStatusEffect.
+   * - Int conditions: increment the stored value, creating the effect if needed.
+   * @param {string} key
+   * @returns {Promise<void>}
+   */
+  async addCondition(key) {
+    const condDef = getConditions().find(c => c.key === key);
+    game.neuroshima?.log(`[addCondition] key="${key}" condDef:`, condDef ? { type: condDef.type, scriptsCount: condDef.scripts?.length ?? 0, scripts: condDef.scripts } : "NOT FOUND");
+    if (!condDef) return;
+
+    if (condDef.type !== "int") {
+      return this.toggleStatusEffect(key, { active: true });
+    }
+
+    const existing = this.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    if (existing) {
+      const current = existing.getFlag("neuroshima", "conditionValue") ?? 0;
+      await existing.setFlag("neuroshima", "conditionValue", current + 1);
+      this._refreshTokenHUD();
+      return;
+    }
+
+    return this.createEmbeddedDocuments("ActiveEffect", [
+      _condDefToEffectData(condDef, { conditionNumbered: true, conditionValue: 1 })
+    ]);
+  }
+
+  /**
+   * Remove (or decrement) a condition on this actor.
+   * - Boolean conditions: disable via toggleStatusEffect.
+   * - Int conditions: decrement; deletes the effect when value reaches 0 (unless allowNegative).
+   * @param {string} key
+   * @returns {Promise<void>}
+   */
+  async removeCondition(key) {
+    const condDef = getConditions().find(c => c.key === key);
+    if (!condDef) return;
+
+    if (condDef.type !== "int") {
+      return this.toggleStatusEffect(key, { active: false });
+    }
+
+    const existing = this.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    if (!existing) return;
+
+    const current = existing.getFlag("neuroshima", "conditionValue") ?? 0;
+    const min = condDef.allowNegative ? -Infinity : 0;
+    const next = Math.max(min, current - 1);
+
+    if (next === 0 && !condDef.allowNegative) {
+      return existing.delete();
+    }
+    await existing.setFlag("neuroshima", "conditionValue", next);
+    this._refreshTokenHUD();
+  }
+
+  /**
+   * Override toggleStatusEffect so that int-type conditions route to addCondition/removeCondition.
+   * Foundry calls toggleStatusEffect(key, { overlay: true }) on RMB in the token HUD — we use
+   * that to distinguish increment (LMB) from decrement (RMB), matching WFRP4e's approach.
+   * @override
+   */
+  async toggleStatusEffect(effectId, { active, overlay = false } = {}) {
+    const condDef = getConditions().find(c => c.key === effectId);
+    if (condDef?.type === "int") {
+      if (overlay) return this.removeCondition(effectId);
+      return this.addCondition(effectId);
+    }
+
+    // For boolean conditions: handle manually so flags.neuroshima.scripts are copied
+    // (Foundry's super.toggleStatusEffect may not copy flags from CONFIG.statusEffects).
+    if (condDef) {
+      game.neuroshima?.log(`[toggleStatusEffect boolean] key="${effectId}" scriptsCount:`, condDef.scripts?.length ?? 0, condDef.scripts);
+      const existing = this.effects.find(e => e.statuses?.has(effectId));
+      if (existing) {
+        if (active === true) return;
+        return existing.delete();
+      }
+      if (active === false) return;
+      return this.createEmbeddedDocuments("ActiveEffect", [
+        _condDefToEffectData(condDef)
+      ]);
+    }
+
+    return super.toggleStatusEffect(effectId, { active, overlay });
   }
 
   /**

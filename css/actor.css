@@ -4665,3 +4665,131 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-size: 0.75em;
     opacity: 0.8;
 }
+
+/* ── Effects tab two-column layout ── */
+.neuroshima .effects-columns {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 12px;
+    align-items: start;
+    height: 100%;
+}
+
+.neuroshima .conditions-column {
+    border-right: 1px solid rgba(255,255,255,0.1);
+    padding-right: 10px;
+}
+
+.neuroshima .conditions-column-header {
+    display: flex;
+    align-items: center;
+    padding: 3px 4px;
+    margin-bottom: 4px;
+    background: rgba(0,0,0,0.18);
+    border-left: 3px solid var(--ns-accent, #8b0000);
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ns-accent, #8b0000);
+}
+
+.neuroshima .conditions-state-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima .condition-state-row {
+    display: grid;
+    grid-template-columns: 26px 1fr auto;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.1s;
+}
+
+.neuroshima .condition-state-row:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.neuroshima .condition-state-row.active {
+    background: rgba(139,0,0,0.12);
+}
+
+.neuroshima .condition-state-icon {
+    border-radius: 3px;
+    object-fit: contain;
+    opacity: 0.4;
+    transition: opacity 0.15s, filter 0.15s;
+    cursor: pointer;
+    user-select: none;
+}
+
+.neuroshima .condition-state-icon.condition-active,
+.neuroshima .condition-state-row.active .condition-state-icon {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(200,164,90,0.6));
+}
+
+.neuroshima .condition-state-icon:hover {
+    opacity: 0.85;
+}
+
+.neuroshima .condition-state-name {
+    font-size: 0.82em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .condition-state-row.active .condition-state-name {
+    color: var(--ns-color-gold, #c8a45a);
+    font-weight: 600;
+}
+
+.neuroshima .condition-toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.neuroshima .condition-bool-checkbox {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--ns-accent, #8b0000);
+    margin: 0;
+}
+
+.neuroshima .condition-int-input {
+    width: 44px;
+    text-align: center;
+    font-size: 0.82em;
+    padding: 1px 2px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    color: inherit;
+}
+
+.neuroshima .active-effects-column {
+    min-width: 0;
+}
+
+/* ── Token HUD int-condition badge ── */
+.condition-int-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: var(--ns-accent, #8b0000);
+    color: #fff;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: 1;
+    padding: 1px 3px;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 1;
+}

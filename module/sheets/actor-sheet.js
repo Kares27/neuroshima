@@ -6,6 +6,7 @@ import { AmmunitionLoadingDialog } from "../apps/ammo-loading-dialog.js";
 import { RestDialog } from "../apps/rest-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { CombatHelper } from "../helpers/combat-helper.js";
+import { getConditions } from "../apps/condition-config.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -95,7 +96,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       deleteEffect: this.prototype._onDeleteEffect,
       toggleEffect: this.prototype._onToggleEffect,
       openSource: this.prototype._onOpenSource,
-      invokeItemScript: this.prototype._onInvokeItemScript
+      invokeItemScript: this.prototype._onInvokeItemScript,
+      toggleCondition: this.prototype._onToggleCondition,
+      adjustConditionValue: this.prototype._onAdjustConditionValue
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
   };
@@ -396,6 +399,29 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     context.effects = { temporary, passive, disabled };
     context.effectsAny = temporary.length > 0 || passive.length > 0 || disabled.length > 0;
 
+    // Conditions panel — WFRP-style: int conditions stored as ActiveEffects
+    const condDefs = getConditions();
+    context.conditionStates = condDefs.map(c => {
+      const isInt = c.type === "int";
+      let active, value;
+      if (isInt) {
+        value  = actor.getConditionValue(c.key);
+        active = value !== 0;
+      } else {
+        active = actor.statuses.has(c.key);
+        value  = 0;
+      }
+      return {
+        key:           c.key,
+        name:          c.name,
+        img:           c.img,
+        type:          c.type,
+        allowNegative: !!c.allowNegative,
+        active,
+        value
+      };
+    });
+
     return context;
   }
 
@@ -476,6 +502,21 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       el.addEventListener('contextmenu', (event) => {
         event.preventDefault();
         this._onModifyAP(event, event.currentTarget);
+      });
+    });
+
+    // Right-click to decrement int-type condition icons
+    html.querySelectorAll('[data-action="toggleCondition"][data-condition-type="int"]').forEach(el => {
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        this._onToggleCondition(event, event.currentTarget);
+      });
+    });
+
+    // Condition value number inputs — save on change
+    html.querySelectorAll('[data-action="adjustConditionValue"]').forEach(el => {
+      el.addEventListener('change', (event) => {
+        this._onAdjustConditionValue(event, event.currentTarget);
       });
     });
 
@@ -2282,6 +2323,68 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const itemId = target.dataset.itemId;
     const item = this.document.items.get(itemId);
     item?.sheet.render(true);
+  }
+
+  async _onToggleCondition(event, target) {
+    const key = target.dataset.conditionKey;
+    const type = target.dataset.conditionType;
+    if (!key) return;
+    const actor = this.document;
+
+    if (type === "boolean") {
+      await actor.toggleStatusEffect(key);
+    } else {
+      if (event.button === 2 || event.type === "contextmenu") {
+        await actor.removeCondition(key);
+      } else {
+        await actor.addCondition(key);
+      }
+    }
+  }
+
+  async _onAdjustConditionValue(event, target) {
+    const key = target.dataset.conditionKey;
+    const allowNegative = target.dataset.allowNegative === "true";
+    if (!key) return;
+    const actor = this.document;
+    let val = parseInt(target.value, 10);
+    if (isNaN(val)) val = 0;
+    if (!allowNegative) val = Math.max(0, val);
+
+    const existing = actor.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    if (val === 0 && !allowNegative) {
+      if (existing) await existing.delete();
+      return;
+    }
+    if (existing) {
+      await existing.setFlag("neuroshima", "conditionValue", val);
+    } else if (val !== 0) {
+      const condDef = getConditions().find(c => c.key === key);
+      game.neuroshima?.log(`[_onAdjustConditionValue] creating AE for "${key}" scripts:`, condDef?.scripts);
+      if (!condDef) return;
+      await actor.createEmbeddedDocuments("ActiveEffect", [{
+        name:        condDef.name,
+        img:         condDef.img          ?? "icons/svg/aura.svg",
+        tint:        condDef._tint        ?? null,
+        description: condDef._description ?? "",
+        disabled:    condDef._disabled    ?? false,
+        statuses:    [key],
+        changes:     foundry.utils.deepClone(condDef.changes   ?? []),
+        duration:    foundry.utils.deepClone(condDef._duration ?? {}),
+        flags: {
+          neuroshima: {
+            conditionNumbered: true,
+            conditionValue:    val,
+            scripts:           foundry.utils.deepClone(condDef.scripts      ?? []),
+            transferType:      condDef._transferType  ?? "owningDocument",
+            documentType:      condDef._documentType  ?? "actor",
+            equipTransfer:     condDef._equipTransfer ?? false
+          }
+        }
+      }]);
+    }
   }
 
   _prepareItemManualScripts(actor) {

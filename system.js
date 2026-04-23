@@ -21,6 +21,7 @@ import { buildRef, resolveRef } from "./module/helpers/refs.js";
 import { EncumbranceConfig } from "./module/apps/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/combat-config.js";
 import { HealingConfig } from "./module/apps/healing-config.js";
+import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/condition-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-dialog.js";
@@ -541,6 +542,22 @@ Hooks.once('init', async function() {
         restricted: true
     });
 
+    game.settings.registerMenu("neuroshima", "conditionConfig", {
+        name: "NEUROSHIMA.Settings.ConditionConfig.Label",
+        label: "NEUROSHIMA.Settings.ConditionConfig.Title",
+        hint: "NEUROSHIMA.Settings.ConditionConfig.MenuHint",
+        icon: "fas fa-virus",
+        type: ConditionConfig,
+        restricted: true
+    });
+
+    game.settings.register("neuroshima", "conditions", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: []
+    });
+
     // Rejestracja ustawień udźwigu (ukryte z głównego menu)
     game.settings.register("neuroshima", "baseEncumbrance", {
         name: "NEUROSHIMA.Settings.BaseEncumbrance.Name",
@@ -631,6 +648,9 @@ Hooks.once('init', async function() {
         }
     });
 
+    // Nadpisz CONFIG.statusEffects naszymi stanami z ustawień
+    applyConditionsToStatusEffects();
+
     // Wczytanie szablonów (v13 namespaced)
     const templates = [
         "systems/neuroshima/templates/actors/actor/parts/actor-header.hbs",
@@ -708,6 +728,92 @@ Hooks.once('init', async function() {
 Hooks.once("ready", async function () {
     game.neuroshima.log("Tryb debugowania jest WŁĄCZONY");
     console.log("Neuroshima 1.5 | System gotowy");
+
+    // ── Token PIXI counter for numbered conditions ────────────────────────────
+    // Mirrors WFRP4e's FoundryOverrides: override _drawEffects and _drawEffect
+    // so that int-type conditions show their stack count on the token icon.
+
+    foundry.canvas.placeables.Token.prototype._drawEffects = async function () {
+        this.effects.renderable = false;
+        this.effects.removeChildren().forEach(c => c.destroy());
+        this.effects.bg = this.effects.addChild(new PIXI.Graphics());
+        this.effects.bg.zIndex = -1;
+        this.effects.overlay = null;
+
+        const activeEffects = this.actor?.temporaryEffects ?? [];
+        const overlayEffect = activeEffects.findLast(e => e.img && e.getFlag("core", "overlay"));
+
+        const promises = [];
+        for (const [i, effect] of activeEffects.entries()) {
+            if (!effect.img) continue;
+            const condValue = effect.getFlag("neuroshima", "conditionNumbered")
+                ? (effect.getFlag("neuroshima", "conditionValue") ?? null)
+                : null;
+            const promise = effect === overlayEffect
+                ? this._drawOverlay(effect.img, effect.tint)
+                : this._drawEffect(effect.img, effect.tint, condValue);
+            promises.push(promise.then(e => { if (e) e.zIndex = i; }));
+        }
+        await Promise.allSettled(promises);
+
+        this.effects.sortChildren();
+        this.effects.renderable = true;
+        this.renderFlags.set({ refreshEffects: true });
+    };
+
+    foundry.canvas.placeables.Token.prototype._drawEffect = async function (src, tint, value) {
+        if (!src) return;
+        const tex = await foundry.canvas.loadTexture(src, { fallback: "icons/svg/hazard.svg" });
+        const icon = new PIXI.Sprite(tex);
+        icon.tint = tint ?? 0xFFFFFF;
+        icon.scale.set(1.25);
+        if (value) {
+            const style = CONFIG.canvasTextStyle.clone();
+            style.fontSize = 16;
+            style.strokeThickness = 2;
+            const text = new foundry.canvas.containers.PreciseText(String(value), style);
+            text.scale.x = 12;
+            text.scale.y = 12;
+            text.x = icon.width * 0.58;
+            text.y = icon.height * 0.55;
+            icon.addChild(text);
+        }
+        return this.effects.addChild(icon);
+    };
+});
+
+// Add counter badge to int-type conditions on the token HUD.
+// Toggle logic is handled by NeuroshimaActor#toggleStatusEffect override.
+Hooks.on("renderTokenHUD", (hud, html) => {
+    const actor = hud.object?.actor;
+    if (!actor) return;
+
+    const condDefs = (() => {
+        try { return game.settings.get("neuroshima", "conditions"); } catch { return []; }
+    })();
+    const intConditions = new Map(
+        condDefs.filter(c => c.type === "int").map(c => [c.key, c])
+    );
+    if (intConditions.size === 0) return;
+
+    const root = html instanceof HTMLElement ? html : html?.[0];
+    if (!root) return;
+
+    root.querySelectorAll(".effect-control[data-status-id]").forEach(el => {
+        const statusId = el.dataset.statusId;
+        if (!intConditions.has(statusId)) return;
+
+        const val = actor.getConditionValue(statusId);
+        el.classList.toggle("active", val !== 0);
+
+        if (val !== 0) {
+            const badge = document.createElement("span");
+            badge.className = "condition-int-badge";
+            badge.textContent = val;
+            el.style.position = "relative";
+            el.appendChild(badge);
+        }
+    });
 });
 
 // Dodanie opcji menu kontekstowego do wiadomości czatu

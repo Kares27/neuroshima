@@ -332,6 +332,33 @@
                 "Assistant": "Assistant GM",
                 "Gamemaster": "Gamemaster Only"
             },
+            "ConditionConfig": {
+                "Title": "Conditions Settings",
+                "Label": "Configure Conditions",
+                "MenuHint": "Opens the configuration menu for actor condition states (Poisoned, Hungry, etc.).",
+                "Hint": "Define and manage actor conditions. Each condition can be applied to actors and used in active effects.",
+                "Saved": "Conditions saved.",
+                "AddCondition": "Add Condition",
+                "ResetDefaults": "Reset to Defaults",
+                "NoConditions": "No conditions defined.",
+                "Delete": "Delete",
+                "ClickToChange": "Click to change icon",
+                "NamePlaceholder": "Condition name...",
+                "KeyPlaceholder": "unique_key",
+                "TypeBoolean": "Boolean (on/off)",
+                "TypeInt": "Integer (value)",
+                "Col": {
+                    "Icon": "Icon",
+                    "Name": "Name",
+                    "Key": "Key / ID",
+                    "Type": "Type",
+                    "AllowNegative": "Neg.",
+                    "AllowNegativeHint": "Allow negative values (only for Integer type)"
+                },
+                "EditTemplate": "Edit Effect Template",
+                "NoKeyWarning": "Please set a Key/ID for this condition before editing its template.",
+                "OpeningTemplate": "Opening condition effect template editor..."
+            },
             "BaseEncumbrance": {
                 "Name": "Base Encumbrance",
                 "Hint": "Base weight capacity for every actor (in kg)."
@@ -1066,6 +1093,7 @@
             "Empty": "No active effects",
             "Enable": "Enable",
             "Disable": "Disable",
+            "Conditions": "Conditions",
             "Temporary": "Temporary Effects",
             "Passive": "Passive Effects",
             "DisabledGroup": "Disabled Effects",
@@ -1191,6 +1219,9 @@
                 "Args": "Contextual arguments passed by the trigger"
             }
         }
+    },
+    "Conditions": {
+        "StatusLocked": "The condition status is locked and cannot be changed."
     },
     "TOKEN": {
         "Title": "Prototype Token"
