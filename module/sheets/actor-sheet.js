@@ -382,16 +382,26 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     };
 
     for (const e of actor.effects) {
-      pushEffect(e, null, actor.name, actor.img || "icons/svg/mystery-man.svg", false);
+      if (e.getFlag("neuroshima", "fromEquipTransfer")) {
+        const originItem = e.origin ? actor.items.find(i => i.uuid === e.origin) : null;
+        const srcName = originItem?.name ?? actor.name;
+        const srcIcon = originItem?.img  ?? actor.img ?? "icons/svg/mystery-man.svg";
+        pushEffect(e, originItem?.id ?? null, srcName, srcIcon, !!originItem);
+      } else {
+        pushEffect(e, null, actor.name, actor.img || "icons/svg/mystery-man.svg", false);
+      }
     }
 
     for (const item of actor.items) {
       for (const e of item.effects) {
         const docType      = e.getFlag?.("neuroshima", "documentType")  ?? "actor";
         const transferType = e.getFlag?.("neuroshima", "transferType")  ?? "owningDocument";
+        const equipTransfer = e.getFlag?.("neuroshima", "equipTransfer") ?? false;
         // Only "Owning Document + Actor" effects appear in the effects tab.
         // Target / Damage / Other are applied situationally via scripts — not shown here.
         if (docType !== "actor" || transferType !== "owningDocument") continue;
+        // equipTransfer effects are managed as actor-level copies; skip from item list
+        if (equipTransfer) continue;
         pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true);
       }
     }
@@ -1893,7 +1903,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     if (!item || !("equipped" in item.system)) return;
     const newEquipped = !item.system.equipped;
     await item.update({ "system.equipped": newEquipped });
-    await NeuroshimaScriptRunner.execute("equipToggle", { actor: this.document, item, equipped: newEquipped });
   }
 
   /**

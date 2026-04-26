@@ -339,7 +339,9 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       toggleEquipped: async function(event, target) {
         const li   = target.closest("[data-item-id]");
         const item = this.document.items.get(li.dataset.itemId);
-        if (item) await item.update({ "system.equipped": !item.system.equipped });
+        if (!item) return;
+        const newEquipped = !item.system.equipped;
+        await item.update({ "system.equipped": newEquipped });
       },
 
       configureHP: async function() {
@@ -731,21 +733,37 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     context.effects = [];
 
     for (const e of actor.effects) {
-      context.effects.push({
-        id: e.id,
-        itemId: null,
-        name: e.name,
-        icon: e.img || "icons/svg/aura.svg",
-        disabled: e.disabled,
-        sourceName: actor.name,
-        sourceIcon: actor.img || "icons/svg/mystery-man.svg",
-        durationLabel: effectDurationLabel(e),
-        isItemEffect: false
-      });
+      if (e.getFlag("neuroshima", "fromEquipTransfer")) {
+        const originItem = e.origin ? actor.items.find(i => i.uuid === e.origin) : null;
+        context.effects.push({
+          id: e.id,
+          itemId: originItem?.id ?? null,
+          name: e.name,
+          icon: e.img || "icons/svg/aura.svg",
+          disabled: e.disabled,
+          sourceName: originItem?.name ?? actor.name,
+          sourceIcon: originItem?.img  ?? actor.img ?? "icons/svg/mystery-man.svg",
+          durationLabel: effectDurationLabel(e),
+          isItemEffect: !!originItem
+        });
+      } else {
+        context.effects.push({
+          id: e.id,
+          itemId: null,
+          name: e.name,
+          icon: e.img || "icons/svg/aura.svg",
+          disabled: e.disabled,
+          sourceName: actor.name,
+          sourceIcon: actor.img || "icons/svg/mystery-man.svg",
+          durationLabel: effectDurationLabel(e),
+          isItemEffect: false
+        });
+      }
     }
 
     for (const item of actor.items) {
       for (const e of item.effects) {
+        if (e.getFlag?.("neuroshima", "equipTransfer")) continue;
         context.effects.push({
           id: e.id,
           itemId: item.id,

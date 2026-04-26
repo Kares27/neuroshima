@@ -241,7 +241,9 @@
             "ReportTitle": "Testy Odporności na Ból",
             "Passed": "Zdane",
             "Failed": "Niezdane",
-            "Reduced": "Zredukowane"
+            "Reduced": "Zredukowane",
+            "Critical": "Krytyczne",
+            "CriticalAutomatic": "Rana krytyczna — automatycznie 160% kary (brak testu)"
         },
         "Wound": {
             "TotalPenalty": "Suma Kar",
@@ -1245,9 +1247,9 @@
                 "Notification": "Pokaż powiadomienie UI",
                 "Args": "Argumenty kontekstowe przekazane przez wyzwalacz"
             }
+        },
+        "Conditions": {
+            "StatusLocked": "Status efektu warunkowego jest zablokowany i nie może być zmieniony."
         }
-    },
-    "Conditions": {
-        "StatusLocked": "Status efektu warunkowego jest zablokowany i nie może być zmieniony."
     }
 }

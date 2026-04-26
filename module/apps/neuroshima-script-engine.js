@@ -39,6 +39,20 @@ export class NeuroshimaScript {
   // ── Location helpers ─────────────────────────────────────────────────────
 
   /**
+   * Return the hit location key from the current script args (applyDamage / preApplyDamage).
+   * Returns null if args has no location.
+   * @param {Object} args - The args object passed to the script.
+   * @returns {string|null}
+   *
+   * @example
+   * const loc = this.getHitLocation(args);           // e.g. "head", "torso", "leftArm"
+   * const label = this.getLocationLabel(loc);         // e.g. "Głowa"
+   */
+  getHitLocation(args) {
+    return args?.location ?? null;
+  }
+
+  /**
    * Return true if `location` is a body location (character / NPC / creature).
    * @param {string} location
    * @returns {boolean}
@@ -182,6 +196,179 @@ export class NeuroshimaScript {
     return NeuroshimaScriptRunner.compareDamage(a, b);
   }
 
+  /**
+   * Return true if the damage type belongs to the bruise track (s-prefix: sD, sL, sC, sK).
+   * Use this instead of `type?.startsWith("s")` for readability.
+   * @param {string} type
+   * @returns {boolean}
+   *
+   * @example
+   * this.isBruiseDamage("sC")  // → true
+   * this.isBruiseDamage("C")   // → false
+   *
+   * @example
+   * // Select the correct wound track
+   * const track = this.isBruiseDamage(type) ? this.BRUISE_ORDER : this.REGULAR_ORDER;
+   */
+  isBruiseDamage(type) {
+    return typeof type === "string" && type.startsWith("s");
+  }
+
+  /**
+   * Return true if the damage type is the minimum on its track (D or sD).
+   * When a wound is at minimum, it should be healed (deleted) rather than reduced further.
+   * @param {string} type
+   * @returns {boolean}
+   *
+   * @example
+   * // Heal at minimum, otherwise reduce
+   * if (this.isMinDamage(wound.system.damageType)) await wound.heal();
+   * else await wound.reduceLevel(1);
+   *
+   * @example
+   * this.isMinDamage("D")   // → true
+   * this.isMinDamage("sD")  // → true
+   * this.isMinDamage("L")   // → false
+   */
+  isMinDamage(type) {
+    return type === "D" || type === "sD";
+  }
+
+  /**
+   * Return true if the damage type is the maximum on its track (K or sK).
+   * @param {string} type
+   * @returns {boolean}
+   *
+   * @example
+   * this.isMaxDamage("K")   // → true
+   * this.isMaxDamage("sK")  // → true
+   * this.isMaxDamage("C")   // → false
+   *
+   * @example
+   * // Cap any escalation at K/sK
+   * if (!this.isMaxDamage(args.damageType)) {
+   *   args.damageType = this.increaseDamageType(args.damageType, 1);
+   * }
+   */
+  isMaxDamage(type) {
+    return type === "K" || type === "sK";
+  }
+
+  /**
+   * Return the severity index (0–3) of a damage type within its own track.
+   * Regular: D=0, L=1, C=2, K=3
+   * Bruise:  sD=0, sL=1, sC=2, sK=3
+   * Returns -1 if the type is not recognised.
+   * @param {string} type
+   * @returns {number}
+   *
+   * @example
+   * this.getSeverityIndex("D")   // → 0
+   * this.getSeverityIndex("sL")  // → 1
+   * this.getSeverityIndex("C")   // → 2
+   * this.getSeverityIndex("K")   // → 3
+   *
+   * @example
+   * // Scale bonus based on wound severity (D=+0, L=+10, C=+20, K=+30)
+   * const severity = this.getSeverityIndex(wound.system.damageType);
+   * args.penalties.mod += severity * 10;
+   */
+  getSeverityIndex(type) {
+    const track = this.isBruiseDamage(type) ? this.BRUISE_ORDER : this.REGULAR_ORDER;
+    return track.indexOf(type);
+  }
+
+  /**
+   * Extract raw die results (numbers) from a Foundry Roll object.
+   * Replaces the verbose pattern `roll.dice[0].results.map(r => r.result)`.
+   * @param {Roll}   roll       - An already-evaluated Roll object (use after `await this.roll(...)`).
+   * @param {number} [dieIndex=0] - Index into `roll.dice` (default 0 = first die pool).
+   * @returns {number[]}
+   *
+   * @example
+   * const roll    = await this.roll("3d20");
+   * const results = this.getDiceResults(roll);   // e.g. [13, 7, 18]
+   *
+   * @example
+   * // Two separate pools: 2d20 + 1d6
+   * const roll    = await this.roll("2d20 + 1d6");
+   * const d20s    = this.getDiceResults(roll, 0);  // [8, 15]
+   * const d6      = this.getDiceResults(roll, 1);  // [4]
+   */
+  getDiceResults(roll, dieIndex = 0) {
+    return roll?.dice?.[dieIndex]?.results?.map(r => r.result) ?? [];
+  }
+
+  /**
+   * Return wounds from `args.wounds` that are not skipped by a previous script.
+   * A wound is skipped when any earlier script set `wound.forceSkip = true`.
+   * Use this in `applyDamage` scripts to work only on wounds that will actually land.
+   * @param {{ wounds: Array }} args - The args object passed to the applyDamage trigger.
+   * @returns {Array}
+   *
+   * @example
+   * // Only apply poison if at least one wound actually lands
+   * const effective = this.getEffectiveWounds(args);
+   * if (!effective.length) return;
+   * await this.addCondition("bleeding", args.actor);
+   *
+   * @example
+   * // Count how many wounds land this hit
+   * const count = this.getEffectiveWounds(args).length;
+   * await this.sendMessage(`${count} rana/rany weszły.`);
+   */
+  getEffectiveWounds(args) {
+    return (args?.wounds ?? []).filter(w => !w.forceSkip);
+  }
+
+  /**
+   * Reduce a damage type string by `steps` severity levels, staying within its track.
+   * Regular track: D → L → C → K  (reduce goes right-to-left; minimum is D)
+   * Bruise  track: sD → sL → sC → sK (minimum is sD)
+   * If `type` is not recognised, it is returned unchanged.
+   * @param {string} type     - Current damage type string (e.g. "C", "sK").
+   * @param {number} [steps=1] - How many severity levels to reduce (default 1).
+   * @returns {string} New damage type string.
+   *
+   * @example
+   * // preApplyDamage — every hit is reduced by 1 level before armor
+   * args.damageType = this.reduceDamageType(args.damageType, 1);
+   * // C→L, K→C, L→D, D stays D  |  sC→sL, sK→sC, sL→sD, sD stays sD
+   *
+   * @example
+   * // Only heavy wounds are reduced (C,sC,K,sK → one level down)
+   * if (this.isHeavyDamage(args.damageType)) {
+   *   args.damageType = this.reduceDamageType(args.damageType, 1);
+   * }
+   */
+  reduceDamageType(type, steps = 1) {
+    const track = type?.startsWith("s") ? this.BRUISE_ORDER : this.REGULAR_ORDER;
+    const idx = track.indexOf(type);
+    if (idx < 0) return type;
+    return track[Math.max(0, idx - steps)];
+  }
+
+  /**
+   * Increase a damage type string by `steps` severity levels, staying within its track.
+   * Regular track: D → L → C → K  (increase goes left-to-right; maximum is K)
+   * Bruise  track: sD → sL → sC → sK (maximum is sK)
+   * If `type` is not recognised, it is returned unchanged.
+   * @param {string} type     - Current damage type string (e.g. "L", "sC").
+   * @param {number} [steps=1] - How many severity levels to increase (default 1).
+   * @returns {string} New damage type string.
+   *
+   * @example
+   * // preApplyDamage — cursed enemy: every incoming hit is worsened by 1 level
+   * args.damageType = this.increaseDamageType(args.damageType, 1);
+   * // D→L, L→C, C→K, K stays K
+   */
+  increaseDamageType(type, steps = 1) {
+    const track = type?.startsWith("s") ? this.BRUISE_ORDER : this.REGULAR_ORDER;
+    const idx = track.indexOf(type);
+    if (idx < 0) return type;
+    return track[Math.min(track.length - 1, idx + steps)];
+  }
+
   // ── Token / targeting helpers ────────────────────────────────────────────
 
   /**
@@ -240,13 +427,40 @@ export class NeuroshimaScript {
 
   /**
    * Evaluate a dice formula and return the Roll object.
-   * Shorthand for `new Roll(formula, data).evaluate()`.
-   * @param {string} formula - A valid Foundry dice formula, e.g. "2d6+3", "1d100".
+   * Optionally posts the roll to chat with a flavor and roll mode.
+   *
+   * @param {string} formula  - A valid Foundry dice formula, e.g. "2d6+3", "1d100", "3d20".
    * @param {Object} [data={}] - Formula data for variable substitution.
+   * @param {Object} [options={}]
+   * @param {string}  [options.flavor]    - Chat message flavor text. If provided, roll is auto-posted.
+   * @param {string}  [options.rollMode]  - Foundry roll mode (defaults to current game setting).
+   * @param {boolean} [options.toMessage] - Force posting to chat even without a flavor string.
+   * @param {Object}  [options.speaker]   - ChatMessage speaker data (defaults to this.actor).
    * @returns {Promise<Roll>}
+   *
+   * @example
+   * // Just evaluate — no chat message
+   * const r = await this.roll("3d20");
+   * const results = r.dice[0].results.map(d => d.result);
+   *
+   * @example
+   * // Evaluate AND post to chat with flavor
+   * const r = await this.roll("1d100", {}, { flavor: "Test Siły", toMessage: true });
+   *
+   * @example
+   * // Post with variable substitution
+   * const r = await this.roll("1d@sides", { sides: 20 }, { flavor: "Kość Testowa" });
    */
-  roll(formula, data = {}) {
-    return new Roll(formula, data).evaluate();
+  async roll(formula, data = {}, options = {}) {
+    const r = await new Roll(formula, data).evaluate();
+    if (options.toMessage || options.flavor !== undefined) {
+      await r.toMessage({
+        speaker: options.speaker ?? ChatMessage.getSpeaker({ actor: this.actor }),
+        flavor:   options.flavor   ?? this.effect?.name ?? "",
+        rollMode: options.rollMode ?? game.settings.get("core", "rollMode")
+      });
+    }
+    return r;
   }
 
   // ── Chat helpers ─────────────────────────────────────────────────────────
@@ -310,6 +524,335 @@ export class NeuroshimaScript {
    */
   dialog(content, type = "confirm", config = {}) {
     return foundry.applications.api.Dialog[type](this.dialogConfig(content, config));
+  }
+
+  // ── Wound helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Return wound items from actor. Accepts same filter object as actor.getWounds().
+   * @param {Object}  [filter={}]
+   * @param {Actor}   [actor]    - Defaults to this.actor.
+   * @returns {Item[]}
+   *
+   * @example
+   * const activeWounds = this.getWounds({ active: true });
+   * const headWounds   = this.getWounds({ location: "head" });
+   */
+  getWounds(filter = {}, actor) {
+    const target = actor ?? this.actor;
+    return target?.getWounds(filter) ?? [];
+  }
+
+  /**
+   * Return total number of active wounds on actor.
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {number}
+   *
+   * @example
+   * const n = this.getWoundCount();
+   */
+  getWoundCount(actor) {
+    return this.getWounds({ active: true }, actor).length;
+  }
+
+  /**
+   * Apply a wound directly to actor, bypassing pain resistance.
+   * @param {string}  damageType  - e.g. "L", "C", "K", "sL"
+   * @param {string}  [location]  - Hit location key. Defaults to "torso".
+   * @param {Actor}   [actor]     - Defaults to this.actor.
+   * @returns {Promise<Item>}
+   *
+   * @example
+   * await this.applyWound("L", "head");
+   * await this.applyWound("C", args.location ?? "torso");
+   */
+  applyWound(damageType, location = "torso", actor) {
+    const target = actor ?? this.actor;
+    const { NeuroshimaDice } = game.neuroshima ?? {};
+    return NeuroshimaDice.applyWound(target, { damageType, location, source: this.effect?.name ?? "" });
+  }
+
+  // ── Condition helpers ─────────────────────────────────────────────────────
+
+  /**
+   * Return current value of an int-type condition. Returns 0 if not active.
+   * @param {string} key   - Condition key (e.g. "bleeding").
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {number}
+   *
+   * @example
+   * const stacks = this.getConditionValue("bleeding");
+   */
+  getConditionValue(key, actor) {
+    const target = actor ?? this.actor;
+    return target?.getConditionValue(key) ?? 0;
+  }
+
+  /**
+   * Set the stored value of an int-type condition directly.
+   * Creates the condition effect if it doesn't exist, or removes it when value reaches 0.
+   * @param {string} key   - Condition key.
+   * @param {number} value - New value (≥ 0 unless condition allows negatives).
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {Promise<void>}
+   *
+   * @example
+   * await this.setConditionValue("bleeding", 3);
+   * await this.setConditionValue("bleeding", 0); // removes the condition
+   */
+  async setConditionValue(key, value, actor) {
+    const target = actor ?? this.actor;
+    if (!target) return;
+    const existing = target.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    if (value <= 0) {
+      if (existing) await existing.delete();
+      return;
+    }
+    if (existing) {
+      await existing.setFlag("neuroshima", "conditionValue", value);
+      target._refreshTokenHUD?.();
+    } else {
+      await target.addCondition(key);
+      const created = target.effects.find(
+        e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+      );
+      if (created && value !== 1) {
+        await created.setFlag("neuroshima", "conditionValue", value);
+        target._refreshTokenHUD?.();
+      }
+    }
+  }
+
+  /**
+   * Add (or increment) a condition on actor.
+   * Boolean conditions toggle on; int conditions increment by 1.
+   * @param {string} key   - Condition key.
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {Promise<void>}
+   *
+   * @example
+   * await this.addCondition("bleeding");
+   * await this.addCondition("stunned");
+   */
+  addCondition(key, actor) {
+    const target = actor ?? this.actor;
+    return target?.addCondition(key);
+  }
+
+  /**
+   * Remove (or decrement) a condition on actor.
+   * Boolean conditions toggle off; int conditions decrement by 1 (remove at 0).
+   * @param {string} key   - Condition key.
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {Promise<void>}
+   *
+   * @example
+   * await this.removeCondition("bleeding");
+   */
+  removeCondition(key, actor) {
+    const target = actor ?? this.actor;
+    return target?.removeCondition(key);
+  }
+
+  // ── Actor stat helpers ────────────────────────────────────────────────────
+
+  /**
+   * Return the actor's attribute base value.
+   * @param {string} key   - Attribute key (e.g. "dexterity", "constitution").
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {number}
+   *
+   * @example
+   * const dex = this.getAttribute("dexterity");
+   */
+  getAttribute(key, actor) {
+    const target = actor ?? this.actor;
+    return target?.getAttribute(key) ?? 0;
+  }
+
+  /**
+   * Return the actor's attribute total (base + modifier).
+   * @param {string} key   - Attribute key.
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {number}
+   *
+   * @example
+   * const str = this.getAttributeTotal("strength");
+   */
+  getAttributeTotal(key, actor) {
+    const target = actor ?? this.actor;
+    return target?.getAttributeTotal(key) ?? 0;
+  }
+
+  /**
+   * Return the actor's skill value.
+   * @param {string} key   - Skill key (e.g. "brawl", "firearms").
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {number}
+   *
+   * @example
+   * const brawl = this.getSkill("brawl");
+   */
+  getSkill(key, actor) {
+    const target = actor ?? this.actor;
+    return target?.getSkill(key) ?? 0;
+  }
+
+  /**
+   * Return true if actor has an active (non-disabled) effect with the given name or ID.
+   * @param {string} nameOrId
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   * @returns {boolean}
+   *
+   * @example
+   * if (this.hasEffect("Rykoszet")) { ... }
+   */
+  hasEffect(nameOrId, actor) {
+    const target = actor ?? this.actor;
+    return target?.hasEffect(nameOrId) ?? false;
+  }
+
+  // ── Armor helpers ─────────────────────────────────────────────────────────
+
+  static #ARMOR_LOCS = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
+
+  /**
+   * Return all equipped armor items on actor.
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {Item[]}
+   *
+   * @example
+   * const armors = this.getEquippedArmors();
+   * for (const a of armors) { ... }
+   */
+  getEquippedArmors(actor) {
+    const target = actor ?? this.actor;
+    return target?.items.filter(i => i.type === "armor" && i.system.equipped) ?? [];
+  }
+
+  /**
+   * Return the base SP rating at a location for an armor item.
+   * @param {Item}   item     - An armor item.
+   * @param {string} location - Location key: "head", "torso", "leftArm", etc.
+   * @returns {number}
+   *
+   * @example
+   * const sp = this.getArmorRating(armor, "torso");
+   */
+  getArmorRating(item, location) {
+    return item?.system?.armor?.ratings?.[location] ?? 0;
+  }
+
+  /**
+   * Return the effective SP at a location (base rating minus accumulated damage, min 0).
+   * @param {Item}   item
+   * @param {string} location
+   * @returns {number}
+   *
+   * @example
+   * const effective = this.getArmorEffective(armor, "torso");
+   */
+  getArmorEffective(item, location) {
+    return item?.system?.effectiveArmor?.[location] ?? 0;
+  }
+
+  /**
+   * Return durability info for an armor item.
+   * @param {Item} item
+   * @returns {{ max: number, damage: number, remaining: number }}
+   *
+   * @example
+   * const { max, damage, remaining } = this.getArmorDurability(armor);
+   */
+  getArmorDurability(item) {
+    const max    = item?.system?.armor?.durability       ?? 0;
+    const damage = item?.system?.armor?.durabilityDamage ?? 0;
+    return { max, damage, remaining: Math.max(0, max - damage) };
+  }
+
+  /**
+   * Deal damage to armor at a specific location.
+   * `amount` is added to the location's damage counter, clamped so the effective SP
+   * never drops below 0 (i.e. damage cannot exceed the base rating at that location).
+   * @param {Item}   item
+   * @param {string} location - Location key.
+   * @param {number} amount   - Damage to apply (positive integer).
+   * @returns {Promise<number>} New damage value at the location.
+   *
+   * @example
+   * // Damage torso SP by 2
+   * const newDmg = await this.damageArmorLocation(armor, "torso", 2);
+   */
+  async damageArmorLocation(item, location, amount) {
+    if (!item || !NeuroshimaScript.#ARMOR_LOCS.includes(location)) return 0;
+    const current = item.system.armor.damage?.[location] ?? 0;
+    const maxDmg  = item.system.armor.ratings?.[location] ?? 0;
+    const next    = Math.min(maxDmg, current + Math.max(0, amount));
+    if (next === current) return current;
+    await item.update({ [`system.armor.damage.${location}`]: next });
+    return next;
+  }
+
+  /**
+   * Repair armor at a specific location.
+   * `amount` is subtracted from the location's damage counter, clamped to [0, max].
+   * @param {Item}   item
+   * @param {string} location
+   * @param {number} amount   - Amount to repair (positive integer).
+   * @returns {Promise<number>} New damage value at the location (lower = better).
+   *
+   * @example
+   * // Repair left arm by 1 SP
+   * await this.repairArmorLocation(armor, "leftArm", 1);
+   */
+  async repairArmorLocation(item, location, amount) {
+    if (!item || !NeuroshimaScript.#ARMOR_LOCS.includes(location)) return 0;
+    const current = item.system.armor.damage?.[location] ?? 0;
+    const next    = Math.max(0, current - Math.max(0, amount));
+    if (next === current) return current;
+    await item.update({ [`system.armor.damage.${location}`]: next });
+    return next;
+  }
+
+  /**
+   * Deal damage to armor durability (Wytrzymałość).
+   * Clamped to [0, max durability]; the remaining durability never goes below 0.
+   * @param {Item}   item
+   * @param {number} amount - Durability damage to apply.
+   * @returns {Promise<number>} New durabilityDamage value.
+   *
+   * @example
+   * const newDmg = await this.damageArmorDurability(armor, 1);
+   */
+  async damageArmorDurability(item, amount) {
+    if (!item) return 0;
+    const current = item.system.armor.durabilityDamage ?? 0;
+    const maxDmg  = item.system.armor.durability       ?? 0;
+    const next    = Math.min(maxDmg, current + Math.max(0, amount));
+    if (next === current) return current;
+    await item.update({ "system.armor.durabilityDamage": next });
+    return next;
+  }
+
+  /**
+   * Repair armor durability.
+   * Clamped to [0, max]; durabilityDamage is decreased by `amount`.
+   * @param {Item}   item
+   * @param {number} amount
+   * @returns {Promise<number>} New durabilityDamage value.
+   *
+   * @example
+   * await this.repairArmorDurability(armor, 2);
+   */
+  async repairArmorDurability(item, amount) {
+    if (!item) return 0;
+    const current = item.system.armor.durabilityDamage ?? 0;
+    const next    = Math.max(0, current - Math.max(0, amount));
+    if (next === current) return current;
+    await item.update({ "system.armor.durabilityDamage": next });
+    return next;
   }
 
   // ── Execution ─────────────────────────────────────────────────────────────
@@ -465,19 +1008,57 @@ export class NeuroshimaScript {
  *   this.item                      — The item (if the effect lives on an item)
  *   this.token                     — The first scene token for this actor (or null)
  *   this.notification(msg, type)   — Shows a UI notification
- *   this.roll(formula, data?)      — Evaluate a dice formula → Roll (async)
+ *   this.roll(formula, data?, options?) — Evaluate a dice formula → Roll (async)
+ *                                    options: { flavor, rollMode, toMessage, speaker }
+ *                                    If flavor or toMessage is set, roll is posted to chat.
  *   this.sleep(ms)                 — Async pause in milliseconds
  *   this.getTargets()              — Actors targeted by the user
  *   this.getSelected()             — Actors of selected tokens (fallback: assigned character)
  *   this.getTargetsOrSelected()    — Targets if any, otherwise selected
- *   this.isLightDamage(type)       — true for D, sD, L, sL
- *   this.isHeavyDamage(type)       — true for C, sC, K, sK
- *   this.compareDamage(a, b)       — -1/0/1 severity comparison
- *   this.isBodyLocation(loc)       — true for character/NPC/creature locations
- *   this.isVehicleLocation(loc)    — true for vehicle locations
- *   this.getLocationLabel(loc)     — localized location name
- *   this.getChatData(merge?)       — ChatMessage data with default speaker/flavor
- *   this.sendMessage(html, data?)  — Create a chat message (async)
+ *   this.isLightDamage(type)         — true for D, sD, L, sL
+ *   this.isHeavyDamage(type)         — true for C, sC, K, sK
+ *   this.isBruiseDamage(type)        — true for sD, sL, sC, sK (s-prefix track)
+ *   this.isMinDamage(type)           — true for D or sD (minimum on track; heal instead of reduce)
+ *   this.isMaxDamage(type)           — true for K or sK (maximum on track)
+ *   this.compareDamage(a, b)         — -1/0/1 severity comparison
+ *   this.getSeverityIndex(type)      — position in track: D/sD=0, L/sL=1, C/sC=2, K/sK=3 (-1 unknown)
+ *   this.reduceDamageType(type, n)   — lower severity by n levels within track (D/sD floor)
+ *   this.increaseDamageType(type, n) — raise severity by n levels within track (K/sK ceiling)
+ *   this.getDiceResults(roll, idx?)  — extract number[] from Roll.dice[idx] (default 0)
+ *   this.getEffectiveWounds(args)    — wounds from args that are NOT forceSkip'd
+ *   this.getHitLocation(args)        — location key from args (applyDamage/preApplyDamage)
+ *   this.isBodyLocation(loc)         — true for character/NPC/creature locations
+ *   this.isVehicleLocation(loc)      — true for vehicle locations
+ *   this.getLocationLabel(loc)       — localized location name
+ *   this.getChatData(merge?)         — ChatMessage data with default speaker/flavor
+ *   this.sendMessage(html, data?)    — Create a chat message (async)
+ *
+ * Wound helpers:
+ *   this.getWounds(filter?, actor?)       — wound items matching filter (active, location, damageType, bruise)
+ *   this.getWoundCount(actor?)            — number of active wounds
+ *   this.applyWound(damageType, loc?, actor?) — create a wound directly (bypasses pain resistance)
+ *
+ * Condition helpers:
+ *   this.getConditionValue(key, actor?)   — current int-condition stack count (0 if inactive)
+ *   this.setConditionValue(key, n, actor?) — set int-condition value directly (0 = remove)
+ *   this.addCondition(key, actor?)        — add/increment condition
+ *   this.removeCondition(key, actor?)     — remove/decrement condition
+ *
+ * Actor stat helpers:
+ *   this.getAttribute(key, actor?)        — attribute base value
+ *   this.getAttributeTotal(key, actor?)   — attribute base + modifier
+ *   this.getSkill(key, actor?)            — skill value
+ *   this.hasEffect(nameOrId, actor?)      — true if actor has an active effect with that name/id
+ *
+ * Armor helpers (item = equipped armor Item):
+ *   this.getEquippedArmors(actor?)                — Item[] of equipped armors on actor
+ *   this.getArmorRating(item, location)            — base SP at location
+ *   this.getArmorEffective(item, location)         — effective SP (rating − damage, min 0)
+ *   this.getArmorDurability(item)                  — { max, damage, remaining }
+ *   await this.damageArmorLocation(item, loc, n)   — add n to location damage (clamped to rating)
+ *   await this.repairArmorLocation(item, loc, n)   — reduce location damage by n (min 0)
+ *   await this.damageArmorDurability(item, n)      — add n to durabilityDamage (clamped to max)
+ *   await this.repairArmorDurability(item, n)      — reduce durabilityDamage by n (min 0)
  *
  * Damage type constants (for use in scripts):
  *   D  sD  L  sL  C  sC  K  sK    (rany postaci, od najlżejszej; s = siniak)
@@ -602,12 +1183,13 @@ export class NeuroshimaScriptRunner {
     };
 
     for (const effect of (actor.effects ?? [])) {
+      if (effect.getFlag("neuroshima", "fromEquipTransfer")) continue;
       collectFromEffect(effect);
     }
 
     for (const item of (actor.items ?? [])) {
       const hasEquipped = "equipped" in (item.system ?? {});
-      if (hasEquipped && item.system.equipped === false) continue;
+      if (hasEquipped && item.system.equipped === false && trigger !== "equipToggle") continue;
       for (const effect of (item.effects ?? [])) {
         collectFromEffect(effect);
       }

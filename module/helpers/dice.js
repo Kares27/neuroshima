@@ -2237,4 +2237,36 @@ export class NeuroshimaDice {
     const label = healingMethod === "firstAid" ? "NEUROSHIMA.Skills.firstAid" : "NEUROSHIMA.Skills.woundTreatment";
     return this._buildClosedTestTooltip(testRollData, label);
   }
+
+  /**
+   * Apply a wound directly to an actor, bypassing pain resistance tests.
+   * Creates a wound item on the actor immediately.
+   * Useful for scripted effects like Bleeding that deal automatic damage.
+   *
+   * @param {Actor}  actor
+   * @param {Object} options
+   * @param {string} options.damageType  - Wound type: "D", "L", "C", "K", "sD", "sL", "sC", "sK"
+   * @param {string} [options.location]  - Hit location key (e.g. "torso", "head"). Defaults to "torso".
+   * @param {string} [options.source]    - Description displayed in the wound's description field.
+   * @returns {Promise<Item>}
+   */
+  static async applyWound(actor, { damageType = "L", location = "torso", source = "" } = {}) {
+    const NEUROSHIMA = game.neuroshima?.NEUROSHIMA ?? {};
+    const woundConfig = NEUROSHIMA.woundConfiguration?.[damageType] ?? {};
+    const penalty = woundConfig?.penalties?.[0] ?? 20;
+    const name = game.i18n.localize(`NEUROSHIMA.DamageType.${damageType}`) || damageType;
+    const [created] = await actor.createEmbeddedDocuments("Item", [{
+      name,
+      type: "wound",
+      system: {
+        location,
+        damageType,
+        penalty,
+        isActive: true,
+        isHealing: false,
+        description: source
+      }
+    }]);
+    return created;
+  }
 }

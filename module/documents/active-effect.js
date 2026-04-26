@@ -33,6 +33,8 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   determineTransfer() {
     const transferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";
     const documentType = this.getFlag("neuroshima", "documentType") ?? "actor";
+    const equipTransfer = this.getFlag("neuroshima", "equipTransfer") ?? false;
+    if (equipTransfer) return false;
     return transferType === "owningDocument" && documentType === "actor";
   }
 
@@ -65,7 +67,8 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   async _preUpdate(changes, options, user) {
     await super._preUpdate(changes, options, user);
     const flagsChanged = foundry.utils.hasProperty(changes, "flags.neuroshima.transferType")
-      || foundry.utils.hasProperty(changes, "flags.neuroshima.documentType");
+      || foundry.utils.hasProperty(changes, "flags.neuroshima.documentType")
+      || foundry.utils.hasProperty(changes, "flags.neuroshima.equipTransfer");
     if (flagsChanged && this.parent?.documentName === "Item") {
       const mergedFlags = foundry.utils.mergeObject(
         foundry.utils.deepClone(this.flags?.neuroshima ?? {}),
@@ -74,7 +77,8 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       );
       const transferType = mergedFlags.transferType ?? "owningDocument";
       const documentType = mergedFlags.documentType ?? "actor";
-      changes.transfer = (transferType === "owningDocument" && documentType === "actor");
+      const equipTransfer = mergedFlags.equipTransfer ?? false;
+      changes.transfer = !equipTransfer && (transferType === "owningDocument" && documentType === "actor");
     }
   }
 

@@ -481,8 +481,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async renderPainResistance(actor, results, woundIds, reducedCount = 0, reducedDetails = [], options = {}) {
     const template = "systems/neuroshima/templates/chat/pain-resistance-report.hbs";
     
-    const passedCount = results.filter(r => r.isPassed).length;
-    const failedCount = results.filter(r => !r.isPassed).length;
+    const normalResults = results.filter(r => !r.isCritical);
+    const passedCount = normalResults.filter(r => r.isPassed).length;
+    const failedCount = normalResults.filter(r => !r.isPassed).length;
+    const criticalCount = results.filter(r => r.isCritical).length;
 
     const context = {
       actorName: actor.name,
@@ -492,6 +494,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       woundIds: woundIds,
       passedCount,
       failedCount,
+      criticalCount,
       reducedCount,
       reducedDetails,
       sourceInfo: options.sourceInfo || "",

@@ -208,7 +208,7 @@ export class CombatHelper {
     const location = options.location || attackData.finalLocation || "torso";
     const isMelee = attackData.isMelee;
     const initialDamageType = attackData.damage || "L";
-    const piercing = attackData.piercing || 0;
+    let piercing = attackData.piercing || 0;
     const spDifference = options.spDifference ?? attackData.successPoints ?? 0;
     
     // Dla walki wręcz wybieramy odpowiednie pole obrażeń (damageMelee1/2/3) na podstawie spDifference
@@ -255,6 +255,12 @@ export class CombatHelper {
     const reducedDetails = [];
     let totalProjectiles = 0;
     let reducedProjectiles = 0;
+
+    // preApplyDamage: scripts can modify damageType, piercing, or push extra wounds
+    const preArgs = { actor, location, damageType, piercing, rawWounds };
+    await NeuroshimaScriptRunner.execute("preApplyDamage", preArgs);
+    damageType = preArgs.damageType;
+    piercing   = preArgs.piercing;
 
     if (isMelee) {
         totalProjectiles = 1;
@@ -637,13 +643,45 @@ export class CombatHelper {
     for (const wound of rawWounds) {
         const damageType = wound.damageType;
         const config = NEUROSHIMA.woundConfiguration[damageType];
-        
-        // Trudność bazowa z konfiguracji rany
-        let baseDifficulty = config?.difficulty || NEUROSHIMA.difficulties.average;
-        
-        // Jeśli konfiguracja rany ma null (np. rany typu K), użyj domyślnego lub skip
-        if (!baseDifficulty) baseDifficulty = NEUROSHIMA.difficulties.average;
-        
+
+        // Rany krytyczne (K, sK) mają difficulty: null — pomijamy test, automatycznie 160%
+        if (!config?.difficulty) {
+            const critPenalty = config?.penalties?.[0] ?? 160;
+            results.push({
+                name: wound.name,
+                damageType,
+                baseDifficulty: null,
+                totalShift: 0,
+                difficulty: null,
+                isPassed: false,
+                forcePassed: false,
+                penalty: critPenalty,
+                dice: null,
+                modifiedResults: [],
+                successPoints: 0,
+                target: null,
+                skill: skillValue,
+                isCritical: true,
+                isCritSuccess: false,
+                isCritFailure: false,
+                annotation: wound.annotation || null,
+                tooltip: game.i18n.localize("NEUROSHIMA.PainResistance.CriticalAutomatic"),
+                tooltipHtml: ""
+            });
+            processedWounds.push({
+                name: wound.name,
+                type: "wound",
+                system: {
+                    location: location,
+                    damageType: damageType,
+                    penalty: critPenalty,
+                    description: sourceInfo
+                }
+            });
+            continue;
+        }
+
+        const baseDifficulty = config.difficulty;
         let isPassed;
         let diceResults;
         let totalShift = 0;

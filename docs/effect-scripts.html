@@ -199,12 +199,48 @@
     <div class="ctx-row"><span class="ctx-name">this.trigger</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyzwalacza który uruchomił ten skrypt</span></div>
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getChatData(merge?)</span><span class="ctx-type">object</span><span class="ctx-desc">Domyślne dane do ChatMessage.create() z speaker aktora i flavorem efektu</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.dialog(content, type?, config?)</span><span class="ctx-type">Promise&lt;any&gt;</span><span class="ctx-desc">Dialog Foundry: "confirm" → true/false, "prompt" → string|null, "input" → dane formularza. Tytuł = nazwa efektu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isLightDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla D, sD, L, sL</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isHeavyDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla C, sC, K, sK</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isBruiseDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla toru siniaków: sD, sL, sC, sK (prefix "s"). Skrót dla <code>type.startsWith("s")</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isMinDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla D lub sD — minimum na torze. Gdy rana jest w minimum użyj <code>wound.heal()</code> zamiast <code>reduceLevel</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isMaxDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla K lub sK — maksimum na torze. Przydatne do sprawdzania czy dalsza eskalacja jest możliwa.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.compareDamage(a, b)</span><span class="ctx-type">number</span><span class="ctx-desc">Porównanie ciężkości: ujemny = a lżejszy, 0 = równe, dodatni = a cięższy (jak Array.sort)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getSeverityIndex(type)</span><span class="ctx-type">number</span><span class="ctx-desc">Pozycja w torze: D/sD=0, L/sL=1, C/sC=2, K/sK=3. Zwraca -1 jeśli typ nieznany. Skrót dla <code>track.indexOf(type)</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.reduceDamageType(type, steps?)</span><span class="ctx-type">string</span><span class="ctx-desc">Obniż typ obrażeń o <code>steps</code> poziomów (domyślnie 1) w obrębie toru. Min D/sD. Np. C→L, K→C. Używaj w <code>preApplyDamage</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.increaseDamageType(type, steps?)</span><span class="ctx-type">string</span><span class="ctx-desc">Podwyższ typ obrażeń o <code>steps</code> poziomów (domyślnie 1). Max K/sK. Np. L→C, D→L. Używaj w <code>preApplyDamage</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getDiceResults(roll, dieIndex?)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Wyciąga wyniki kości z obiektu Roll jako tablicę liczb. Skrót dla <code>roll.dice[idx].results.map(r =&gt; r.result)</code>. Domyślnie <code>dieIndex=0</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getEffectiveWounds(args)</span><span class="ctx-type">Array</span><span class="ctx-desc">Filtruje <code>args.wounds</code> — zwraca tylko te rany które <strong>nie</strong> mają <code>forceSkip=true</code>. Używaj w <code>applyDamage</code> zamiast ręcznego <code>filter(w =&gt; !w.forceSkip)</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getHitLocation(args)</span><span class="ctx-type">string | null</span><span class="ctx-desc">Klucz lokacji trafienia z <code>args</code> (np. <code>"head"</code>, <code>"torso"</code>). Skrót dla <code>args?.location ?? null</code>. Używaj w <code>applyDamage</code> i <code>preApplyDamage</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isBodyLocation(loc)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli lokacja należy do ciała (postać / NPC / bestia)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isVehicleLocation(loc)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli lokacja należy do pojazdu</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getLocationLabel(loc)</span><span class="ctx-type">string</span><span class="ctx-desc">Zlokalizowana nazwa lokacji trafienia ("Głowa", "Przód" itp.)</span></div>
+    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery ran —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">wszystkie przyjmują opcjonalny argument <code>actor</code>; domyślnie <code>this.actor</code></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getWounds(filter?, actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Rany z filtrem: <code>{ active, location, damageType, bruise }</code> — identyczny jak <code>actor.getWounds()</code></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getWoundCount(actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba aktywnych ran na aktorze</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?, actor?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę bezpośrednio na aktorze z pominięciem odporności na ból. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
+    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery kondycji —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">operacje na status efektach (krwawienie, trucizna, itp.)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getConditionValue(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Aktualny poziom kondycji int (0 = nieaktywna)</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustaw poziom kondycji int bezpośrednio. <code>0</code> usuwa efekt kondycji.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.addCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Dodaj/inkrementuj kondycję (bool: włącza; int: +1)</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.removeCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Usuń/dekrementuj kondycję (bool: wyłącza; int: −1, usuwa przy 0)</span></div>
+    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery statystyk aktora —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">skróty do odczytu danych aktora</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getAttribute(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Atrybut bazowy (<code>"dexterity"</code>, <code>"constitution"</code>, …)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getAttributeTotal(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Atrybut + modyfikator po <code>prepareDerivedData</code></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getSkill(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Wartość umiejętności (<code>"brawl"</code>, <code>"painResistance"</code>, …). Zwraca 0 jeśli brak.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasEffect(nameOrId, actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor ma aktywny (nie-wyłączony) efekt o tej nazwie lub ID</span></div>
+    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery pancerza —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);"><code>item</code> = Item typu armor; lokacje: head, torso, leftArm, rightArm, leftLeg, rightLeg</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getEquippedArmors(actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Założone pancerze aktora</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getArmorRating(item, location)</span><span class="ctx-type">number</span><span class="ctx-desc">Bazowe SP pancerza w danej lokacji</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getArmorEffective(item, location)</span><span class="ctx-type">number</span><span class="ctx-desc">Efektywne SP (bazowe − uszkodzenia, min 0)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getArmorDurability(item)</span><span class="ctx-type">{ max, damage, remaining }</span><span class="ctx-desc">Wytrzymałość pancerza: maksymalna, uszkodzona i pozostała</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.damageArmorLocation(item, loc, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Uszkódź SP w lokacji o <code>n</code>. Clamp: damage ≤ base rating. Zwraca nową wartość damage.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.repairArmorLocation(item, loc, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw SP w lokacji o <code>n</code>. Clamp: damage ≥ 0. Zwraca nową wartość damage.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.damageArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Uszkódź Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≤ max. Zwraca nową wartość.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.repairArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≥ 0. Zwraca nową wartość.</span></div>
   </div>
 
   <h3>Argumenty <code>args</code></h3>
@@ -383,7 +419,8 @@
       <li>usunięciu rany całkowicie (<code>wound.heal()</code> lub <code>actor.healAllWounds()</code>)</li>
       <li>zmniejszeniu kary rany (<code>wound.reducePenalty(n)</code>)</li>
     </ul>
-    <code>modifyHp</code> istnieje w API, ale rzadko ma sens w kontekście systemu ran.
+    W systemie Neuroshima 1.5 <strong>nie używa się bezpośredniej modyfikacji PŻ</strong>.
+    Zamiast tego stosuj rany (<code>applyWound</code>) lub ich leczenie (<code>reduceLevel</code>, <code>healAllWounds</code>).
   </div>
 
   <!-- ── Propital Wariant 1: jednorazowe natychmiastowe leczenie ──────────── -->
@@ -408,11 +445,9 @@
   }
   <span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">reduceQuantity</span>();
   <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> <span class="var">worst</span>) {
-    <span class="kw">if</span> (<span class="kw">this</span>.DAMAGE_ORDER.<span class="fn">indexOf</span>(<span class="var">wound</span>.system.damageType) === <span class="num">0</span>) {
-      <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">heal</span>();           <span class="cmt">// D → rana usunięta</span>
-    } <span class="kw">else</span> {
-      <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);   <span class="cmt">// C→L, L→D itd.</span>
-    }
+    <span class="cmt">// isMinDamage = D lub sD → leczymy (usuwamy ranę), inaczej obniżamy o 1</span>
+    <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isMinDamage</span>(<span class="var">wound</span>.system.damageType)) <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">heal</span>();
+    <span class="kw">else</span> <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);   <span class="cmt">// C→L, L→D itd.</span>
   }
   <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
     <span class="str">`&lt;strong&gt;Propital&lt;/strong&gt;: poziom najcięższych ran zredukowany.`</span>
@@ -449,9 +484,8 @@
   <span class="cmt">// ① Natychmiastowa redukcja</span>
   <span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
   <span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">worst</span>) {
-    (<span class="kw">this</span>.DAMAGE_ORDER.<span class="fn">indexOf</span>(<span class="var">w</span>.system.damageType) === <span class="num">0</span>)
-      ? <span class="kw">await</span> <span class="var">w</span>.<span class="fn">heal</span>()
-      : <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+    <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isMinDamage</span>(<span class="var">w</span>.system.damageType)) <span class="kw">await</span> <span class="var">w</span>.<span class="fn">heal</span>();
+    <span class="kw">else</span> <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
   }
 
   <span class="cmt">// ② Nakłada efekt podtrzymany z Efektu 1 (duration: 2 rundy)</span>
@@ -472,9 +506,8 @@
   <span class="kw">const</span> <span class="var">worst</span> = <span class="kw">this</span>.actor.<span class="fn">getWorstWounds</span>();
   <span class="kw">if</span> (!<span class="var">worst</span>.length) <span class="kw">return</span>;
   <span class="kw">const</span> <span class="var">w</span> = <span class="var">worst</span>[<span class="num">0</span>]; <span class="cmt">// redukujemy tylko jedną ranę na turę</span>
-  (<span class="kw">this</span>.DAMAGE_ORDER.<span class="fn">indexOf</span>(<span class="var">w</span>.system.damageType) === <span class="num">0</span>)
-    ? <span class="kw">await</span> <span class="var">w</span>.<span class="fn">heal</span>()
-    : <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+  <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isMinDamage</span>(<span class="var">w</span>.system.damageType)) <span class="kw">await</span> <span class="var">w</span>.<span class="fn">heal</span>();
+  <span class="kw">else</span> <span class="kw">await</span> <span class="var">w</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
 })();</code></pre>
 
   </div>
@@ -564,15 +597,25 @@
     </div>
     <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
       Trigger <strong>preApplyDamage</strong> pozwala modyfikować typ obrażeń <em>zanim</em>
-      pancerz zostanie przeliczony. Przykład: mutacja redukująca każde C do L.
+      pancerz zostanie przeliczony i zanim rana zostanie stworzona.
+      <code>reduceDamageType</code> przesuwa typ w dół o podaną liczbę poziomów w obrębie toru
+      (Regular: D→L→C→K; Siniak: sD→sL→sC→sK) — minimum to D lub sD.
     </p>
-    <pre><code><span class="cmt">// Mutacja: wrodzona redukcja — C staje się L przed obliczeniem pancerza</span>
-<span class="kw">if</span> (args.damageType === <span class="str">"C"</span>) {
-  args.damageType = <span class="str">"L"</span>;
-}
-<span class="kw">if</span> (args.damageType === <span class="str">"sC"</span>) {
-  args.damageType = <span class="str">"sL"</span>;
+    <div class="callout info" style="margin-bottom:0.75rem; font-size:0.86em;">
+      <strong>Uwaga:</strong> W <code>preApplyDamage</code> rany jeszcze nie istnieją.
+      Modyfikujesz tylko <code>args.damageType</code> (string) — nie wywołuj tu <code>applyWound</code> ani <code>wound.reduceLevel</code>.
+    </div>
+    <pre><code><span class="cmt">// Wariant 1: Mutacja "Twardziel" — każdy rodzaj obrażeń obniżony o 1 poziom
+// C→L, K→C, L→D, D→D (floor)  |  sC→sL, sK→sC, sL→sD, sD→sD</span>
+args.damageType = <span class="kw">this</span>.<span class="fn">reduceDamageType</span>(args.damageType, <span class="num">1</span>);</code></pre>
+    <pre><code><span class="cmt">// Wariant 2: Redukcja tylko ciężkich ran (C/sC/K/sK → jeden poziom niżej)
+// L i D nie są tknięte — zgodnie z zasadą "odporności na poważne rany"</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isHeavyDamage</span>(args.damageType)) {
+  args.damageType = <span class="kw">this</span>.<span class="fn">reduceDamageType</span>(args.damageType, <span class="num">1</span>);
 }</code></pre>
+    <pre><code><span class="cmt">// Wariant 3 (przeciwny): "Klątwa" — każde trafienie wychodzi ciężej niż zwykle
+// D→L, L→C, C→K, K→K (ceiling)  |  sD→sL, sL→sC, sC→sK, sK→sK</span>
+args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageType</span>(args.damageType, <span class="num">1</span>);</code></pre>
   </div>
 
   <div class="example-block">
@@ -584,12 +627,11 @@
       Wariant <strong>bez annotation</strong> — w raporcie czatu pojawi się domyślny tekst systemowy
       <em>"Auto-zdany (przez skrypt efektu)"</em>.
     </p>
-    <pre><code><span class="cmt">// Dla każdej lekkiej rany ustaw forcePassed = true
-// Efekt np. na tricku "Hartowanie" lub "Żelazny Brzuch"</span>
+    <pre><code><span class="cmt">// Trigger: applyDamage — efekt na tricku "Hartowanie" / "Żelazny Brzuch"
+// isLightDamage() zwraca true dla D, sD, L, sL — nie trzeba ręcznie wypisywać listy</span>
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
-  <span class="kw">const</span> <span class="var">lightTypes</span> = [<span class="str">"D"</span>, <span class="str">"sD"</span>, <span class="str">"L"</span>, <span class="str">"sL"</span>];
-  <span class="kw">if</span> (<span class="var">lightTypes</span>.includes(<span class="var">wound</span>.damageType)) {
-    <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
+  <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
+    <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;   <span class="cmt">// auto-sukces testu odporności na ból</span>
   }
 }</code></pre>
   </div>
@@ -603,11 +645,11 @@
       Wariant <strong>z annotation</strong> — zamiast domyślnego tekstu pojawi się niestandardowy opis
       bezpośrednio przy nazwie rany w raporcie. Tooltip zawiera ten sam tekst.
     </p>
-    <pre><code><span class="cmt">// forcePassed + annotation → własna adnotacja widoczna w czacie obok nazwy rany</span>
+    <pre><code><span class="cmt">// Trigger: applyDamage — forcePassed + annotation (własny tekst w raporcie)
+// annotation pojawia się obok nazwy rany w karcie czatu zamiast domyślnego tekstu</span>
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
-  <span class="kw">const</span> <span class="var">lightTypes</span> = [<span class="str">"D"</span>, <span class="str">"sD"</span>, <span class="str">"L"</span>, <span class="str">"sL"</span>];
-  <span class="kw">if</span> (<span class="var">lightTypes</span>.includes(<span class="var">wound</span>.damageType)) {
-    <span class="var">wound</span>.forcePassed  = <span class="kw">true</span>;
+  <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
+    <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
     <span class="var">wound</span>.annotation  = <span class="str">"Niewrażliwość na lekkie rany"</span>;
   }
 }</code></pre>
@@ -669,8 +711,8 @@
       <span class="trigger-badge">armorCalculation</span>
       Pancerz adaptacyjny — +2 SP przeciwko typom C i K
     </div>
-    <pre><code><span class="kw">const</span> <span class="var">heavyTypes</span> = [<span class="str">"C"</span>, <span class="str">"sC"</span>, <span class="str">"K"</span>, <span class="str">"sK"</span>];
-<span class="kw">if</span> (<span class="var">heavyTypes</span>.includes(args.damageType)) {
+    <pre><code><span class="cmt">// isHeavyDamage = C, sC, K, sK — nie trzeba ręcznie definiować listy typów</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isHeavyDamage</span>(args.damageType)) {
   args.bonusSP += <span class="num">2</span>;
 }</code></pre>
   </div>
@@ -746,12 +788,13 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">startTurn</span>
-      Leczenie regeneracyjne — +1 HP na początku tury
+      Regeneracja — obniż najcięższą ranę o 1 poziom na początku tury
     </div>
-    <pre><code><span class="cmt">// args: { actor, combat, turn }</span>
-<span class="kw">if</span> (<span class="kw">this</span>.actor.system.hp?.value &lt; <span class="kw">this</span>.actor.system.hp?.max) {
-  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(<span class="num">1</span>);
-  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Regeneracja: +1 HP"</span>);
+    <pre><code><span class="cmt">// args: { actor, combat, combatant }
+// Leczenie w Neuroshima = redukcja ran, nie punktów HP</span>
+<span class="kw">const</span> <span class="var">reduced</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>();
+<span class="kw">if</span> (<span class="var">reduced</span>) {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;p&gt;💚 Regeneracja: najcięższa rana obniżona o 1 poziom.&lt;/p&gt;"</span>);
 }</code></pre>
   </div>
 
@@ -778,12 +821,12 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">startRound</span>
-      Zatrucie — zadaje 1 PŻ na początku każdej rundy
+      Zatrucie — zadaje ranę Draśnięcie na początku każdej rundy
     </div>
-    <pre><code><span class="cmt">// args: { actor, combat, round }</span>
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(-<span class="num">1</span>);
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;☠ &lt;b&gt;${this.actor.name}&lt;/b&gt; traci 1 PŻ od trucizny (runda ${args.round}).&lt;/p&gt;`</span>);
-<span class="kw">if</span> (<span class="kw">this</span>.actor.system.hp.value &lt;= <span class="num">0</span>) <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
+    <pre><code><span class="cmt">// args: { actor, combat, round }
+// W Neuroshima trucizna = rana automatyczna, nie odjęcie PŻ</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"D"</span>, <span class="str">"torso"</span>);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;☠ &lt;b&gt;${this.actor.name}&lt;/b&gt; otrzymuje ranę Draśnięcie od trucizny (runda ${args.round}).&lt;/p&gt;`</span>);</code></pre>
   </div>
 
   <div class="example-block">
@@ -899,9 +942,10 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <span class="trigger-badge">manual</span>
       Leczenie zaznaczonego/wskazanego tokena — <code>this.getTargetsOrSelected</code>
     </div>
-    <pre><code><span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="kw">this</span>.<span class="fn">getTargetsOrSelected</span>()) {
-  <span class="kw">await</span> <span class="var">a</span>.<span class="fn">modifyHp</span>(<span class="num">5</span>);
-  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;💊 ${a.name} uleczony o 5 PŻ.&lt;/p&gt;`</span>);
+    <pre><code><span class="cmt">// Leczenie = obniżenie najcięższej rany o 1 poziom na każdym celu</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="kw">this</span>.<span class="fn">getTargetsOrSelected</span>()) {
+  <span class="kw">const</span> <span class="var">reduced</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>(<span class="var">a</span>);
+  <span class="kw">if</span> (<span class="var">reduced</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`&lt;p&gt;💊 ${a.name}: najcięższa rana obniżona.&lt;/p&gt;`</span>);
 }</code></pre>
   </div>
 
@@ -1063,6 +1107,229 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       przez <code>this.effect.delete()</code>.
     </div>
   </div>
+
+  <!-- ── Rykoszet lokacja-specyficzny ────────────────────────────────────── -->
+  <div class="example-block" style="border-color: var(--accent2);">
+    <div class="example-header" style="background:linear-gradient(90deg,#101828,var(--bg2));">
+      <span class="trigger-badge" style="color:var(--accent2);">applyDamage</span>
+      Rykoszet — ochrona per-lokacja (efekt na pancerzu, <em>Transfer on Equip</em>)
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Efekt na itemie <strong>pancerza</strong> z zaznaczonym <em>Transfer on Equip</em>.
+      Działa <strong>tylko gdy pancerz jest założony</strong> — gdy zdjęty, skrypt nie uruchamia się.
+      Rzucamy <code>1d100 per lokacja</code>: głowa i tors mają próg 10 (trudniej), ręce/nogi próg 25.
+      Gdy kość wchodzi pod próg — rana jest pomijana (<code>forceSkip</code>).
+    </p>
+    <div class="callout info" style="margin-bottom:0.75rem; font-size:0.86em;">
+      <strong>Jak ustawić efekt na pancerzu:</strong><br>
+      Item → Efekty → Nowy efekt → zakładka <strong>Details</strong> → <em>Transfer on Equip: ✓</em><br>
+      Zakładka Skrypty → Trigger: <strong>applyDamage</strong> → wklej poniższy kod.
+    </div>
+    <pre><code><span class="cmt">// Trigger: applyDamage — efekt na pancerzu (Transfer on Equip)
+// this.item = pancerz; this.actor = właściciel pancerza
+// args.wounds = lista ran dla tej rundy; args.location = lokacja trafienia</span>
+
+<span class="kw">const</span> <span class="var">loc</span> = <span class="kw">this</span>.<span class="fn">getHitLocation</span>(args);    <span class="cmt">// "head" | "torso" | "leftArm" | …</span>
+
+<span class="cmt">// Próg rykoszetu dla każdej lokacji (niższy = trudniej o rykoszet)
+// Głowa i tors: 10 (pancerz słabiej chroni narażone miejsca)
+// Kończyny: 25 (łatwiej o odchylenie pocisku)</span>
+<span class="kw">const</span> <span class="var">THRESHOLD</span> = {
+  head:     <span class="num">10</span>,
+  torso:    <span class="num">10</span>,
+  rightArm: <span class="num">25</span>,
+  leftArm:  <span class="num">25</span>,
+  rightLeg: <span class="num">25</span>,
+  leftLeg:  <span class="num">25</span>,
+};
+
+<span class="kw">const</span> <span class="var">threshold</span> = <span class="var">THRESHOLD</span>[<span class="var">loc</span>] ?? <span class="num">0</span>;
+<span class="kw">if</span> (!<span class="var">threshold</span> || !args.wounds.length) <span class="kw">return</span>; <span class="cmt">// brak ochrony lub brak ran</span>
+
+<span class="cmt">// Rzuć 1d100 per rana — getDiceResults wyciąga liczby z Roll bez boilerplate</span>
+<span class="kw">const</span> <span class="var">roll</span>    = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">`${args.wounds.length}d100`</span>);
+<span class="kw">const</span> <span class="var">results</span> = <span class="kw">this</span>.<span class="fn">getDiceResults</span>(<span class="var">roll</span>);   <span class="cmt">// [42, 88, 11, …]</span>
+
+<span class="kw">let</span> <span class="var">negated</span> = <span class="num">0</span>;
+<span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; args.wounds.length; <span class="var">i</span>++) {
+  <span class="kw">if</span> (<span class="var">results</span>[<span class="var">i</span>] &lt;= <span class="var">threshold</span>) {
+    args.wounds[<span class="var">i</span>].forceSkip  = <span class="kw">true</span>;
+    args.wounds[<span class="var">i</span>].annotation = <span class="str">`Rykoszet (${results[i]}/${threshold})`</span>;
+    <span class="var">negated</span>++;
+  }
+}
+
+<span class="kw">const</span> <span class="var">locLabel</span> = <span class="kw">this</span>.<span class="fn">getLocationLabel</span>(<span class="var">loc</span>);
+<span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({
+  flavor: <span class="str">`${this.effect.name} — ${locLabel} (próg: ${threshold}): ${negated}/${args.wounds.length} ran zniwelowanych`</span>
+}));</code></pre>
+  </div>
+
+  <!-- ── Krwawienie: applyWound + getConditionValue ───────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">startTurn</span>
+      Krwawienie — zadaje rany per stack na początku tury (<code>applyWound</code> + <code>getConditionValue</code>)
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Przykład skryptu dla kondycji <strong>bleeding</strong> (int). Na początku każdej tury aktora
+      zadaje X ran Lekkich (X = aktualny poziom krwawienia), bezpośrednio przez <code>applyWound</code>
+      — bez rzutu na odporność na ból. Informuje o tym w czacie.
+    </p>
+    <pre><code><span class="cmt">// Trigger: startTurn — na efekcie kondycji "bleeding"
+// Wymaga: kondycja "bleeding" ustawiona jako int w konfiguracji stanów</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">stacks</span> = <span class="kw">this</span>.<span class="fn">getConditionValue</span>(<span class="str">"bleeding"</span>);
+  <span class="kw">if</span> (<span class="var">stacks</span> &lt;= <span class="num">0</span>) <span class="kw">return</span>;
+
+  <span class="cmt">// Zadaj ranę Lekką tyle razy ile wynosi poziom krwawienia
+  // applyWound omija odporność na ból — rana jest pewna</span>
+  <span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">stacks</span>; <span class="var">i</span>++) {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"L"</span>, <span class="str">"torso"</span>);
+  }
+
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="str">`&lt;strong&gt;Krwawienie (${stacks}×)&lt;/strong&gt;: ${stacks} rana Lekka zadana automatycznie.`</span>
+  );
+})();</code></pre>
+  </div>
+
+  <!-- ── Trucizna: addCondition/setConditionValue + warunki ──────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">applyDamage</span>
+      Trucizna na broni — nakłada krwawienie gdy rana wejdzie (<code>addCondition</code>)
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Efekt na <strong>broni</strong> (<em>Transfer: Owning Document → Actor</em>). Gdy broń zadaje obrażenia
+      i co najmniej jedna rana wejdzie (nie <code>forceSkip</code>), dokłada 1 poziom krwawienia na cel.
+      Używamy <code>args.actor</code> (obrońca), nie <code>this.actor</code> (atakujący).
+    </p>
+    <pre><code><span class="cmt">// Trigger: applyDamage — na efekcie broni
+// args.actor = obrońca (ten który dostał rany)
+// Skrypt uruchamia się PO tym jak system obliczył rany</span>
+<span class="kw">const</span> <span class="var">actualWounds</span> = args.wounds.<span class="fn">filter</span>(<span class="var">w</span> =&gt; !<span class="var">w</span>.forceSkip);
+<span class="kw">if</span> (!<span class="var">actualWounds</span>.length) <span class="kw">return</span>; <span class="cmt">// brak ran → brak trucizny</span>
+
+<span class="cmt">// Dodaj 1 poziom krwawienia na obrońcę</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"bleeding"</span>, args.actor);
+<span class="kw">const</span> <span class="var">current</span> = <span class="kw">this</span>.<span class="fn">getConditionValue</span>(<span class="str">"bleeding"</span>, args.actor);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+  <span class="str">`&lt;strong&gt;Trucizna&lt;/strong&gt;: ${args.actor.name} — Krwawienie (${current})`</span>
+);</code></pre>
+  </div>
+
+  <!-- ── equipToggle: bonus gdy pancerz założony ─────────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">equipToggle</span>
+      Bonus pancerza — komunikat i efekt uboczny przy zakładaniu / zdejmowaniu
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Efekt na itemie <strong>pancerza</strong> (<em>Transfer: Owning Document → Actor</em>, bez <em>Transfer on Equip</em>).
+      Trigger <code>equipToggle</code> uruchamia się po każdej zmianie stanu założenia itemu.
+      <code>args.equipped</code> mówi jaki jest nowy stan.
+    </p>
+    <div class="callout info" style="margin-bottom:0.75rem; font-size:0.86em;">
+      <strong>args.equipped</strong> to boolean: <code>true</code> gdy item właśnie założony, <code>false</code> gdy zdjęty.<br>
+      <strong>this.item</strong> = pancerz który zmienił stan. <strong>this.actor</strong> = właściciel.
+    </div>
+    <pre><code><span class="cmt">// Trigger: equipToggle — na efekcie pancerza
+// Wyświetla komunikat i opcjonalnie dodaje/usuwa kondycję "restrained" (przykład)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">equipped</span> = args.equipped;
+  <span class="kw">const</span> <span class="var">armor</span>    = <span class="kw">this</span>.item.name;
+
+  <span class="kw">if</span> (<span class="var">equipped</span>) {
+    <span class="cmt">// Zakładanie — dodaj ewentualny efekt</span>
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`⚔️ <strong>${armor}</strong>: założony — +10 SP`</span>);
+    <span class="cmt">// Przykład: ciężki pancerz nakłada kondycję "restrained" (obłożenie)</span>
+    <span class="cmt">// await this.addCondition("restrained");</span>
+  } <span class="kw">else</span> {
+    <span class="cmt">// Zdejmowanie — sprzątnij efekty</span>
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`🛡️ <strong>${armor}</strong>: zdjęty`</span>);
+    <span class="cmt">// await this.removeCondition("restrained");</span>
+  }
+})();</code></pre>
+  </div>
+
+  <!-- ── hasEffect + prepareData: warunkowy bonus ───────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">prepareData</span>
+      Warunkowy bonus — <code>hasEffect</code> + <code>getSkill</code> w <em>prepareData</em>
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Skrypt <strong>synchroniczny</strong> — nie używaj <code>await</code>! Modyfikuje dane aktora
+      w locie w trakcie <code>prepareDerivedData</code>. Przykład: sztuczka "Adrenalina" daje bonus
+      do Zręczności gdy aktor jest ranny (≥ 1 aktywna rana).
+    </p>
+    <div class="callout danger" style="margin-bottom:0.75rem; font-size:0.86em;">
+      <strong>prepareData jest SYNCHRONICZNY</strong> — zakaz <code>await</code>, <code>fetch</code>, operacji DB.
+      Modyfikuj wyłącznie <code>this.actor.system.*</code> w locie.
+    </div>
+    <pre><code><span class="cmt">// Trigger: prepareData [SYNC — bez await!]
+// Sztuczka "Adrenalina": +10 Zręczności gdy aktor ma ≥1 aktywną ranę</span>
+<span class="kw">const</span> <span class="var">woundCount</span> = <span class="kw">this</span>.<span class="fn">getWoundCount</span>();   <span class="cmt">// liczba aktywnych ran</span>
+<span class="kw">if</span> (<span class="var">woundCount</span> &gt; <span class="num">0</span>) {
+  <span class="kw">this</span>.actor.system.attributes.dexterity = (<span class="kw">this</span>.<span class="fn">getAttributeTotal</span>(<span class="str">"dexterity"</span>) + <span class="num">10</span>);
+}
+
+<span class="cmt">// Wariant: bonus rośnie z liczbą ran (max +30)</span>
+<span class="kw">const</span> <span class="var">bonus</span> = Math.<span class="fn">min</span>(<span class="var">woundCount</span> * <span class="num">10</span>, <span class="num">30</span>);
+<span class="kw">this</span>.actor.system.attributes.dexterity = (<span class="kw">this</span>.<span class="fn">getAttribute</span>(<span class="str">"dexterity"</span>) + <span class="var">bonus</span>);</code></pre>
+  </div>
+
+  <!-- ── getSkill/getAttribute w preRollTest ───────────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preRollTest</span>
+      Bonus do rzutu skalowany umiejętnością — <code>getSkill</code> + <code>getAttributeTotal</code>
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Sztuczka "Refleks" — gdy rzucasz na Zręczność, bonus do rzutu równy
+      połowie wartości umiejętności <em>Spryt</em> (zaokrąglona w dół).
+    </p>
+    <pre><code><span class="cmt">// Trigger: preRollTest
+// Bonus = floor(spryt / 2), tylko gdy rzucamy na Zręczność</span>
+<span class="kw">if</span> (args.attributeKey !== <span class="str">"dexterity"</span>) <span class="kw">return</span>;
+
+<span class="kw">const</span> <span class="var">cleverness</span> = <span class="kw">this</span>.<span class="fn">getAttributeTotal</span>(<span class="str">"cleverness"</span>);
+<span class="kw">const</span> <span class="var">bonus</span>      = Math.<span class="fn">floor</span>(<span class="var">cleverness</span> / <span class="num">2</span>);
+
+<span class="kw">if</span> (<span class="var">bonus</span> &gt; <span class="num">0</span>) {
+  args.stat      += <span class="var">bonus</span>;
+  args.annotation = <span class="str">`Refleks: +${bonus} Zr (½ Sp)`</span>;
+}</code></pre>
+  </div>
+
+  <!-- ── setConditionValue: konkretny reset / reset do wartości ─────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Reset kondycji do zadanej wartości — <code>setConditionValue</code>
+    </div>
+    <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
+      Przycisk "Oczyść Krew" — usuwa lub redukuje krwawienie do zadanego poziomu,
+      bez klikania jeden po jednym przez token HUD.
+    </p>
+    <pre><code><span class="cmt">// Trigger: manual — "Oczyść Krew" (np. po zastosowaniu środka hemostatycznego)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">current</span> = <span class="kw">this</span>.<span class="fn">getConditionValue</span>(<span class="str">"bleeding"</span>);
+  <span class="kw">if</span> (<span class="var">current</span> &lt;= <span class="num">0</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak aktywnego krwawienia."</span>);
+  }
+
+  <span class="cmt">// Zredukuj o połowę (zaokrąglij w dół), min. do 0</span>
+  <span class="kw">const</span> <span class="var">newValue</span> = Math.<span class="fn">floor</span>(<span class="var">current</span> / <span class="num">2</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">setConditionValue</span>(<span class="str">"bleeding"</span>, <span class="var">newValue</span>);
+
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="str">`💊 <strong>Oczyść Krew</strong>: Krwawienie ${current} → ${newValue}${newValue === 0 ? " (usunięte)" : ""}`</span>
+  );
+})();</code></pre>
+  </div>
+
 </section>
 
 <!-- SECTION 5 — Manual Invocation -->
@@ -1514,6 +1781,16 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <tr><td><code>this.isLightDamage(type)</code></td><td>Zwraca <code>true</code> dla D, sD, L, sL</td></tr>
     <tr><td><code>this.isHeavyDamage(type)</code></td><td>Zwraca <code>true</code> dla C, sC, K, sK</td></tr>
     <tr><td><code>this.compareDamage(a, b)</code></td><td>Porównuje wagę ran. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
+    <tr><td><code>this.reduceDamageType(type, steps?)</code></td><td>Obniż typ obrażeń o <code>steps</code> poziomów w obrębie toru (min D/sD). <em>Regular: D→L→C→K; Siniak: sD→sL→sC→sK</em></td></tr>
+    <tr><td><code>this.increaseDamageType(type, steps?)</code></td><td>Podwyższ typ obrażeń o <code>steps</code> poziomów w obrębie toru (max K/sK)</td></tr>
+    <tr>
+      <td><code>this.getHitLocation(args)</code></td>
+      <td>
+        Zwraca klucz lokacji trafienia z obiektu <code>args</code> (<code>args?.location ?? null</code>).<br>
+        Używaj w triggerach <strong>applyDamage</strong> i <strong>preApplyDamage</strong>.<br>
+        <span style="font-size:0.88em; color:#888;">Możliwe wartości: <code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, <code>"rightArm"</code>, <code>"leftLeg"</code>, <code>"rightLeg"</code> (pojazdy: <code>"front"</code>, <code>"rear"</code>, <code>"leftSide"</code>, <code>"rightSide"</code>, <code>"bottom"</code>)</span>
+      </td>
+    </tr>
     <tr><td><code>this.isBodyLocation(loc)</code></td><td>Zwraca <code>true</code> dla lokacji postaci/NPC/bestii</td></tr>
     <tr><td><code>this.isVehicleLocation(loc)</code></td><td>Zwraca <code>true</code> dla lokacji pojazdu</td></tr>
     <tr><td><code>this.getLocationLabel(loc)</code></td><td>Zlokalizowana nazwa lokacji (np. <em>"Głowa"</em>, <em>"Przód"</em>)</td></tr>
@@ -1527,6 +1804,57 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
         <code>type</code>: <code>"confirm"</code> (zwraca true/false), <code>"prompt"</code> (zwraca string|null), <code>"input"</code> (zwraca dane formularza).<br>
         Tytuł okna = nazwa efektu.
       </td>
+    </tr>
+    <tr><td colspan="2" style="background:var(--bg3); color:var(--accent3); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; padding:0.4rem 0.75rem;">Helpery ran</td></tr>
+    <tr>
+      <td><code>this.getWounds(filter?, actor?)</code></td>
+      <td>Lista ran z opcjonalnym filtrem. Filter: <code>{ active, location, damageType, bruise }</code>. Domyślnie <code>this.actor</code>.</td>
+    </tr>
+    <tr>
+      <td><code>this.getWoundCount(actor?)</code></td>
+      <td>Liczba aktywnych ran na aktorze. Skrót dla <code>this.getWounds({active:true}, actor).length</code>.</td>
+    </tr>
+    <tr>
+      <td><code>await this.applyWound(damageType, location?, actor?)</code></td>
+      <td>
+        Tworzy ranę bezpośrednio na aktorze, <strong>z pominięciem odporności na ból</strong>.
+        Używaj do skryptowych obrażeń (krwawienie, trucizna, środowisko).<br>
+        <code>location</code> domyślnie <code>"torso"</code>. Zwraca stworzony item rany.
+      </td>
+    </tr>
+    <tr><td colspan="2" style="background:var(--bg3); color:var(--accent3); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; padding:0.4rem 0.75rem;">Helpery kondycji (statusów)</td></tr>
+    <tr>
+      <td><code>this.getConditionValue(key, actor?)</code></td>
+      <td>Aktualny poziom kondycji int. Zwraca <code>0</code> gdy kondycja nieaktywna. Dla boolean — sprawdź <code>actor.statuses.has(key)</code>.</td>
+    </tr>
+    <tr>
+      <td><code>await this.setConditionValue(key, value, actor?)</code></td>
+      <td>Ustaw poziom kondycji int do konkretnej wartości. <code>value = 0</code> usuwa efekt kondycji z aktora.</td>
+    </tr>
+    <tr>
+      <td><code>await this.addCondition(key, actor?)</code></td>
+      <td>Dodaj lub inkrementuj kondycję. Bool: włącza efekt; int: zwiększa licznik o 1.</td>
+    </tr>
+    <tr>
+      <td><code>await this.removeCondition(key, actor?)</code></td>
+      <td>Usuń lub dekrementuj kondycję. Bool: wyłącza efekt; int: zmniejsza o 1, usuwa przy 0.</td>
+    </tr>
+    <tr><td colspan="2" style="background:var(--bg3); color:var(--accent3); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; padding:0.4rem 0.75rem;">Helpery statystyk aktora</td></tr>
+    <tr>
+      <td><code>this.getAttribute(key, actor?)</code></td>
+      <td>Wartość bazowa atrybutu (bez modyfikatora). Klucze: <code>"dexterity"</code>, <code>"constitution"</code>, <code>"perception"</code>, <code>"charisma"</code>, <code>"cleverness"</code>.</td>
+    </tr>
+    <tr>
+      <td><code>this.getAttributeTotal(key, actor?)</code></td>
+      <td>Atrybut + modyfikator po <code>prepareDerivedData</code>. Zwraca to samo co <code>getAttribute</code> jeśli brak modyfikatora.</td>
+    </tr>
+    <tr>
+      <td><code>this.getSkill(key, actor?)</code></td>
+      <td>Wartość umiejętności. Zwraca <code>0</code> gdy umiejętność nie istnieje (np. pojazd). Klucze: <code>"brawl"</code>, <code>"painResistance"</code>, <code>"stealth"</code>, itd.</td>
+    </tr>
+    <tr>
+      <td><code>this.hasEffect(nameOrId, actor?)</code></td>
+      <td>Zwraca <code>true</code> jeśli aktor ma aktywny (nie-wyłączony) efekt o tej nazwie (case-insensitive) lub ID. Przydatne do warunkowych bonusów.</td>
     </tr>
   </tbody></table>
 
@@ -1543,11 +1871,11 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 <span class="cmt">// Celuj w zaznaczony token lub wskazany target</span>
 <span class="kw">const</span> <span class="var">targets</span> = <span class="kw">this</span>.<span class="fn">getTargetsOrSelected</span>();
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">a</span> <span class="kw">of</span> <span class="var">targets</span>) {
-  <span class="kw">await</span> <span class="var">a</span>.<span class="fn">modifyHp</span>(<span class="num">5</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>(<span class="var">a</span>); <span class="cmt">// obniż najcięższą ranę o 1 poziom</span>
 }
 
-<span class="cmt">// Lokacja trafienia — sprawdź typ i pobierz etykietę</span>
-<span class="kw">const</span> <span class="var">loc</span>       = args.location;
+<span class="cmt">// Lokacja trafienia — getHitLocation(args) jako skrót dla args?.location</span>
+<span class="kw">const</span> <span class="var">loc</span>       = <span class="kw">this</span>.<span class="fn">getHitLocation</span>(args);     <span class="cmt">// "head" / "torso" / "leftArm" …</span>
 <span class="kw">const</span> <span class="var">label</span>     = <span class="kw">this</span>.<span class="fn">getLocationLabel</span>(<span class="var">loc</span>);    <span class="cmt">// "Głowa" / "Przód"</span>
 <span class="kw">const</span> <span class="var">isBody</span>    = <span class="kw">this</span>.<span class="fn">isBodyLocation</span>(<span class="var">loc</span>);     <span class="cmt">// true dla postaci/NPC/bestii</span>
 <span class="kw">const</span> <span class="var">isVehicle</span> = <span class="kw">this</span>.<span class="fn">isVehicleLocation</span>(<span class="var">loc</span>);  <span class="cmt">// true dla pojazdu</span>
@@ -1577,11 +1905,24 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstRegularWound</span>(); <span class="cmt">// redukuje D/L/C/K, ignoruje siniaki</span>
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstBruiseWound</span>();  <span class="cmt">// redukuje sD/sL/sC/sK, ignoruje zwykłe</span>
 
-<span class="cmt">// Sprawdź tor konkretnej rany</span>
-<span class="kw">const</span> <span class="var">isBruise</span> = <span class="var">wound</span>.system.damageType.startsWith(<span class="str">"s"</span>);
-<span class="kw">const</span> <span class="var">track</span> = <span class="var">isBruise</span> ? <span class="kw">this</span>.BRUISE_ORDER : <span class="kw">this</span>.REGULAR_ORDER;
-<span class="kw">const</span> <span class="var">idx</span> = <span class="var">track</span>.<span class="fn">indexOf</span>(<span class="var">wound</span>.system.damageType);
-<span class="cmt">// idx === 0 → najlżejsza w torze (D lub sD), idx === 3 → najcięższa (K lub sK)</span></code></pre>
+<span class="cmt">// Klasyfikacja i pozycja rany w torze — nowe helpery</span>
+<span class="kw">const</span> <span class="var">type</span> = <span class="var">wound</span>.system.damageType;
+<span class="kw">this</span>.<span class="fn">isBruiseDamage</span>(<span class="var">type</span>);          <span class="cmt">// true dla sD/sL/sC/sK — nie trzeba startsWith("s")</span>
+<span class="kw">this</span>.<span class="fn">isMinDamage</span>(<span class="var">type</span>);             <span class="cmt">// true dla D lub sD → heal zamiast reduceLevel</span>
+<span class="kw">this</span>.<span class="fn">isMaxDamage</span>(<span class="var">type</span>);             <span class="cmt">// true dla K lub sK → nie można eskalować wyżej</span>
+<span class="kw">this</span>.<span class="fn">getSeverityIndex</span>(<span class="var">type</span>);        <span class="cmt">// 0=D/sD, 1=L/sL, 2=C/sC, 3=K/sK — zamiast track.indexOf</span>
+
+<span class="cmt">// Heal-or-reduce — wzorzec zastąpiony isMinDamage</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isMinDamage</span>(<span class="var">type</span>)) <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">heal</span>();
+<span class="kw">else</span> <span class="kw">await</span> <span class="var">wound</span>.<span class="fn">reduceLevel</span>(<span class="num">1</span>);
+
+<span class="cmt">// Wyciąganie wyników z rzutu — getDiceResults zamiast roll.dice[0].results.map(r => r.result)</span>
+<span class="kw">const</span> <span class="var">roll</span>    = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">"3d20"</span>);
+<span class="kw">const</span> <span class="var">results</span> = <span class="kw">this</span>.<span class="fn">getDiceResults</span>(<span class="var">roll</span>);        <span class="cmt">// [13, 7, 18]</span>
+
+<span class="cmt">// Rany które faktycznie wejdą — getEffectiveWounds zamiast filter(w => !w.forceSkip)</span>
+<span class="kw">const</span> <span class="var">effective</span> = <span class="kw">this</span>.<span class="fn">getEffectiveWounds</span>(args);  <span class="cmt">// Trigger: applyDamage</span>
+<span class="kw">if</span> (!<span class="var">effective</span>.length) <span class="kw">return</span>;</code></pre>
 
   <h3>Typy obrażeń — hierarchia</h3>
   <div class="dmg-table">
@@ -1682,23 +2023,46 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 <span class="cmt">// Działa też dla pojazdów (agility) i bestii</span>
 <span class="kw">const</span> <span class="var">agility</span> = <span class="kw">this</span>.actor.<span class="fn">getAttribute</span>(<span class="str">"agility"</span>); <span class="cmt">// pojazd</span></code></pre>
 
-  <h4>Helpery PŻ i pancerza</h4>
+  <h4>Helpery ran i pancerza</h4>
+  <div class="callout danger" style="margin-bottom:0.75rem; font-size:0.86em;">
+    W Neuroshima 1.5 <strong>nie modyfikuje się PŻ bezpośrednio</strong>. Obrażenia = nałożenie rany (<code>applyWound</code>), leczenie = redukcja lub usunięcie rany (<code>reduceLevel</code>, <code>healAllWounds</code>).
+  </div>
   <table>
     <tbody><tr><th>Metoda</th><th>Opis</th></tr>
-    <tr><td><code>await actor.modifyHp(delta)</code></td><td>Zmień PŻ o <code>delta</code> (+ leczenie, − obrażenia). Clamp do [0, max]. No-op dla pojazdu.</td></tr>
+    <tr><td><code>await this.applyWound(type, loc?, actor?)</code></td><td>Nałóż ranę bezpośrednio z pominięciem odporności na ból. Typy: D, L, C, K, sD, sL, sC, sK.</td></tr>
+    <tr><td><code>await this.reduceWorstWound(actor?)</code></td><td>Obniż najcięższą aktywną ranę o 1 poziom. Zwraca <code>true</code> jeśli coś zredukowano.</td></tr>
     <tr><td><code>actor.getArmorAt(location)</code></td><td>Zwraca <code>{ totalSP, details, weakPoint }</code> dla danej lokalizacji (pancerz + efekty)</td></tr>
+    <tr><td colspan="2" style="background:var(--bg2); color:var(--accent3); font-weight:bold; padding:4px 8px;">Helpery pancerza (item = Item armor)</td></tr>
+    <tr><td><code>this.getEquippedArmors(actor?)</code></td><td>Lista założonych pancerzy aktora</td></tr>
+    <tr><td><code>this.getArmorRating(item, loc)</code></td><td>Bazowe SP w lokacji</td></tr>
+    <tr><td><code>this.getArmorEffective(item, loc)</code></td><td>Efektywne SP (bazowe − uszkodzenia, min 0)</td></tr>
+    <tr><td><code>this.getArmorDurability(item)</code></td><td>Obiekt <code>{ max, damage, remaining }</code> — Wytrzymałość</td></tr>
+    <tr><td><code>await this.damageArmorLocation(item, loc, n)</code></td><td>Uszkódź SP w lokacji o n. Clamp: nie przekracza base rating. Zwraca nową wartość damage.</td></tr>
+    <tr><td><code>await this.repairArmorLocation(item, loc, n)</code></td><td>Napraw SP w lokacji o n. Clamp: min 0. Zwraca nową wartość damage.</td></tr>
+    <tr><td><code>await this.damageArmorDurability(item, n)</code></td><td>Uszkódź Wytrzymałość o n. Clamp: nie przekracza max. Zwraca nową wartość damage.</td></tr>
+    <tr><td><code>await this.repairArmorDurability(item, n)</code></td><td>Napraw Wytrzymałość o n. Clamp: min 0. Zwraca nową wartość damage.</td></tr>
   </tbody></table>
-  <pre><code><span class="cmt">// Wylecz 5 PŻ</span>
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(<span class="num">5</span>);
+  <pre><code><span class="cmt">// Nałóż ranę Lekką na tors (z pominięciem testu bólu)</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"L"</span>, <span class="str">"torso"</span>);
 
-<span class="cmt">// Zadaj 3 PŻ obrażeń</span>
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(-<span class="num">3</span>);
+<span class="cmt">// Obniż najcięższą ranę o 1 poziom (leczenie)</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>();
 
-<span class="cmt">// Pobierz wartość pancerza na torso (z efektami)</span>
+<span class="cmt">// Pobierz wartość pancerza na torso z aktora (łączna redukcja z wszystkich pancerzy)</span>
 <span class="kw">const</span> { <span class="var">totalSP</span>, <span class="var">details</span>, <span class="var">weakPoint</span> } = <span class="kw">this</span>.actor.<span class="fn">getArmorAt</span>(<span class="str">"torso"</span>);
-<span class="cmt">// totalSP — łączna redukcja</span>
-<span class="cmt">// details — [{ name, ratings, damage, effective }, ...]</span>
-<span class="cmt">// weakPoint — czy jest to słaby punkt</span></code></pre>
+
+<span class="cmt">// Uszkódź konkretny pancerz na torso o 1 SP (clamp do base rating)</span>
+<span class="kw">const</span> [<span class="var">armor</span>] = <span class="kw">this</span>.<span class="fn">getEquippedArmors</span>();
+<span class="kw">if</span> (<span class="var">armor</span>) {
+  <span class="kw">const</span> <span class="var">before</span>  = <span class="kw">this</span>.<span class="fn">getArmorEffective</span>(<span class="var">armor</span>, <span class="str">"torso"</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">damageArmorLocation</span>(<span class="var">armor</span>, <span class="str">"torso"</span>, <span class="num">1</span>);
+  <span class="kw">const</span> <span class="var">after</span>   = <span class="kw">this</span>.<span class="fn">getArmorEffective</span>(<span class="var">armor</span>, <span class="str">"torso"</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`🔧 ${armor.name} — Tors SP: ${before} → ${after}`</span>);
+}
+
+<span class="cmt">// Wytrzymałość pancerza</span>
+<span class="kw">const</span> { <span class="var">max</span>, <span class="var">damage</span>, <span class="var">remaining</span> } = <span class="kw">this</span>.<span class="fn">getArmorDurability</span>(<span class="var">armor</span>);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">damageArmorDurability</span>(<span class="var">armor</span>, <span class="num">1</span>); <span class="cmt">// zmniejsz Wytrzymałość o 1</span></code></pre>
 
   <h4>Helpery efektów</h4>
   <p>Zarządzanie efektami bezpośrednio z poziomu skryptu:</p>
@@ -1954,13 +2318,16 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 <span class="cmt">// lub bezpośrednio z systemu (oba działają):</span>
 <span class="kw">const</span> <span class="var">zrRaw</span> = <span class="kw">this</span>.actor.system.attributes.dexterity;
 
-<span class="cmt">// PŻ — odczyt</span>
+<span class="cmt">// PŻ — TYLKO ODCZYT (nie modyfikuj bezpośrednio w Neuroshima 1.5!)</span>
+<span class="cmt">// HP jest pochodną kar z ran — używaj applyWound / reduceWorstWound</span>
 <span class="kw">const</span> <span class="var">hp</span>    = <span class="kw">this</span>.actor.system.hp?.value;
 <span class="kw">const</span> <span class="var">maxHp</span> = <span class="kw">this</span>.actor.system.hp?.max;
 
-<span class="cmt">// PŻ — modyfikacja przez helper (clamped do [0, max])</span>
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(-<span class="num">1</span>); <span class="cmt">// -1 PŻ</span>
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">modifyHp</span>(<span class="num">5</span>);  <span class="cmt">// +5 PŻ</span>
+<span class="cmt">// Nałóż ranę automatycznie (obrażenia)</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"L"</span>, <span class="str">"torso"</span>); <span class="cmt">// rana Lekka na tors</span>
+
+<span class="cmt">// Obniż ranę (leczenie)</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>();
 
 <span class="cmt">// Flagi na aktorze</span>
 <span class="kw">const</span> <span class="var">myFlag</span> = <span class="kw">this</span>.actor.getFlag(<span class="str">"neuroshima"</span>, <span class="str">"myFlag"</span>);

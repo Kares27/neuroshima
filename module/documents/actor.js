@@ -385,6 +385,39 @@ export class NeuroshimaActor extends Actor {
   // ── Condition helpers (WFRP-style) ────────────────────────────────────────
 
   /**
+   * Synchronise equipTransfer effects for a single item after its equipped state changes.
+   * - equipped === true  → create actor copies of item effects with flags.neuroshima.equipTransfer = true
+   * - equipped === false → delete those copies (identified by origin + fromEquipTransfer flag)
+   * @param {Item}    item
+   * @param {boolean} equipped
+   * @returns {Promise<void>}
+   */
+  async syncEquipTransferEffects(item, equipped) {
+    const equipEffects = item.effects.filter(e => e.getFlag("neuroshima", "equipTransfer") === true);
+    if (!equipEffects.length) return;
+
+    if (equipped) {
+      const alreadyExists = this.effects.some(
+        e => e.origin === item.uuid && e.getFlag("neuroshima", "fromEquipTransfer") === true
+      );
+      if (alreadyExists) return;
+      const toCreate = equipEffects.map(e => {
+        const data = e.toObject();
+        data.transfer = false;
+        data.origin   = item.uuid;
+        foundry.utils.setProperty(data, "flags.neuroshima.fromEquipTransfer", true);
+        return data;
+      });
+      await this.createEmbeddedDocuments("ActiveEffect", toCreate);
+    } else {
+      const toDelete = this.effects
+        .filter(e => e.origin === item.uuid && e.getFlag("neuroshima", "fromEquipTransfer") === true)
+        .map(e => e.id);
+      if (toDelete.length) await this.deleteEmbeddedDocuments("ActiveEffect", toDelete);
+    }
+  }
+
+  /**
    * Return the current numeric value of an int-type condition on this actor.
    * Returns 0 if the condition is not active.
    * @param {string} key

@@ -238,7 +238,9 @@
             "ReportTitle": "Pain Resistance Tests",
             "Passed": "Passed",
             "Failed": "Failed",
-            "Reduced": "Reduced"
+            "Reduced": "Reduced",
+            "Critical": "Critical",
+            "CriticalAutomatic": "Critical wound — automatic 160% penalty (no test)"
         },
         "Wound": {
             "TotalPenalty": "Total Wound Penalty",
@@ -1218,10 +1220,10 @@
                 "Notification": "Show a UI notification",
                 "Args": "Contextual arguments passed by the trigger"
             }
+        },
+        "Conditions": {
+            "StatusLocked": "The condition status is locked and cannot be changed."
         }
-    },
-    "Conditions": {
-        "StatusLocked": "The condition status is locked and cannot be changed."
     },
     "TOKEN": {
         "Title": "Prototype Token"

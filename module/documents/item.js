@@ -232,4 +232,17 @@ export class NeuroshimaItem extends Item {
   }
 
   /** @override */
+  _onUpdate(data, options, userId) {
+    super._onUpdate(data, options, userId);
+    if (game.user.id !== userId) return;
+    const equippedChanged = foundry.utils.hasProperty(data, "system.equipped");
+    if (equippedChanged && this.parent?.documentName === "Actor") {
+      const actor    = this.parent;
+      const equipped = data.system.equipped;
+      actor.syncEquipTransferEffects(this, equipped);
+      import("../apps/neuroshima-script-engine.js").then(({ NeuroshimaScriptRunner }) => {
+        NeuroshimaScriptRunner.execute("equipToggle", { actor, item: this, equipped });
+      });
+    }
+  }
 }
