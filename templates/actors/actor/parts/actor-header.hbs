@@ -6,17 +6,35 @@
         </h1>
 
         <div class="header-details flexrow">
-            <div class="header-field">
+            <div class="header-field bg-holder-field" data-slot-type="specialization">
                 <label>{{localize "NEUROSHIMA.Info.Specialization"}}</label>
-                <input type="text" name="system.specialization" value="{{system.specialization}}"/>
+                {{#if background.specialization}}
+                <div class="bg-holder-item" data-item-id="{{background.specialization.id}}" data-action="editItem" title="{{background.specialization.name}}">
+                    <span class="bg-holder-name">{{background.specialization.name}}</span>
+                </div>
+                {{else}}
+                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                {{/if}}
             </div>
-            <div class="header-field">
+            <div class="header-field bg-holder-field" data-slot-type="origin">
                 <label>{{localize "NEUROSHIMA.Info.Origin"}}</label>
-                <input type="text" name="system.origin" value="{{system.origin}}"/>
+                {{#if background.origin}}
+                <div class="bg-holder-item" data-item-id="{{background.origin.id}}" data-action="editItem" title="{{background.origin.name}}">
+                    <span class="bg-holder-name">{{background.origin.name}}</span>
+                </div>
+                {{else}}
+                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                {{/if}}
             </div>
-            <div class="header-field">
+            <div class="header-field bg-holder-field" data-slot-type="profession">
                 <label>{{localize "NEUROSHIMA.Info.Profession"}}</label>
-                <input type="text" name="system.profession" value="{{system.profession}}"/>
+                {{#if background.profession}}
+                <div class="bg-holder-item" data-item-id="{{background.profession.id}}" data-action="editItem" title="{{background.profession.name}}">
+                    <span class="bg-holder-name">{{background.profession.name}}</span>
+                </div>
+                {{else}}
+                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                {{/if}}
             </div>
         </div>
 
@@ -27,7 +45,7 @@
             <div class="xp-fields-row">
                 <div class="xp-field-item">
                     <label>{{localize "NEUROSHIMA.XP.Current"}}</label>
-                    <input type="number" name="system.xp.current" value="{{system.xp.current}}" min="0"/>
+                    <input type="number" name="system.xp.current" value="{{system.xp.current}}" min="0" disabled/>
                 </div>
                 <div class="xp-field-item">
                     <label>{{localize "NEUROSHIMA.XP.Spent"}}</label>
@@ -41,6 +59,14 @@
         </div>
 
         <div class="header-stats-row">
+            <div class="stat-box movement-summary">
+                <label>{{localize "NEUROSHIMA.Movement.Label"}}</label>
+                <div class="movement-fields">
+                    <input type="number" name="system.movement" value="{{system.movement}}" min="0" class="movement-base" title="{{localize 'NEUROSHIMA.Movement.PerSegment'}}"/>
+                    <input type="number" value="{{combat.movement2}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg2'}}"/>
+                    <input type="number" value="{{combat.movement3}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg3'}}"/>
+                </div>
+            </div>
             <div class="stat-box penalty-summary" title="{{combat.penaltyTooltip}}">
                 <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
                 <div class="stat-value">{{combat.totalCombatPenalty}}%</div>

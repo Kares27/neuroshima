@@ -31,12 +31,14 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
     });
 
     const skillMap = {};
+    const skillBonusMap = {};
     const specializationMap = {};
     for (const attr of Object.values(NEUROSHIMA.skillConfiguration)) {
       for (const [specKey, specSkills] of Object.entries(attr)) {
         specializationMap[specKey] = new fields.BooleanField({ initial: false });
         for (const skill of specSkills) {
           skillMap[skill] = skillField();
+          skillBonusMap[skill] = new fields.NumberField({ required: true, integer: true, initial: 0 });
         }
       }
     }
@@ -64,7 +66,22 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         cleverness: modifierField(),
         constitution: modifierField()
       }),
+      bonuses: new fields.SchemaField({
+        dexterity: modifierField(),
+        perception: modifierField(),
+        charisma: modifierField(),
+        cleverness: modifierField(),
+        constitution: modifierField()
+      }),
+      attributeBonuses: new fields.SchemaField({
+        dexterity: modifierField(),
+        perception: modifierField(),
+        charisma: modifierField(),
+        cleverness: modifierField(),
+        constitution: modifierField()
+      }),
       skills: new fields.SchemaField(skillMap),
+      skillBonuses: new fields.SchemaField(skillBonusMap),
       specializations: new fields.SchemaField(specializationMap),
       lastRoll: new fields.SchemaField({
         modifier: new fields.NumberField({ integer: true, initial: 0 }),
@@ -86,8 +103,10 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         max: new fields.NumberField({ integer: true, initial: 27, min: 1 })
       }),
       combat: new fields.SchemaField({
-        meleeInitiative: new fields.NumberField({ integer: true, initial: 0 })
+        meleeInitiative:   new fields.NumberField({ integer: true, initial: 0 }),
+        armorPenaltyBonus: new fields.NumberField({ integer: true, initial: 0 })
       }),
+      movement: new fields.NumberField({ integer: true, initial: 2, min: 0 }),
       healingRate: new fields.NumberField({ integer: true, initial: 5, min: 1, max: 100 }),
       armorBonus: new fields.SchemaField({
         all:      new fields.NumberField({ initial: 0 }),
@@ -103,8 +122,41 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         max: new fields.NumberField({ initial: 0, min: 0 }),
         pct: new fields.NumberField({ initial: 0, min: 0, max: 100 }),
         enabled: new fields.BooleanField({ initial: true })
-      })
+      }),
+      xpLog: new fields.ArrayField(new fields.SchemaField({
+        id:            new fields.StringField({ required: true }),
+        date:          new fields.StringField({ initial: "" }),
+        description:   new fields.StringField({ initial: "" }),
+        cost:          new fields.NumberField({ integer: true, initial: 0 }),
+        xpBefore:      new fields.NumberField({ integer: true, initial: 0 }),
+        xpAfter:       new fields.NumberField({ integer: true, initial: 0 }),
+        previousValue: new fields.NumberField({ nullable: true, initial: null }),
+        fieldPath:     new fields.StringField({ initial: "" })
+      }), { initial: [] })
     };
+  }
+
+  /** @override */
+  prepareBaseData() {
+    for (const key of Object.keys(this.bonuses)) {
+      this.bonuses[key] = 0;
+    }
+    for (const key of Object.keys(this.attributeBonuses)) {
+      this.attributeBonuses[key] = 0;
+    }
+    if (this.armorBonus) {
+      for (const key of Object.keys(this.armorBonus)) {
+        this.armorBonus[key] = 0;
+      }
+    }
+    if (this.skillBonuses) {
+      for (const key of Object.keys(this.skillBonuses)) {
+        this.skillBonuses[key] = 0;
+      }
+    }
+    if (this.combat) {
+      this.combat.armorPenaltyBonus = 0;
+    }
   }
 
   /**
@@ -123,8 +175,9 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       
       for (let key of attributeKeys) {
           const attrValue = Number(system.attributes[key]) || 0;
+          const attrBonus = Number(system.attributeBonuses?.[key]) || 0;
           const modValue = Number(system.modifiers[key]) || 0;
-          const totalValue = attrValue + modValue;
+          const totalValue = attrValue + modValue + attrBonus;
           
           this.attributeTotals[key] = totalValue;
           this.thresholds[key] = {};
@@ -133,12 +186,20 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
           }
       }
 
-      // 2. Combat Stats (Kary i Obrażenia)
+      // 2. Skill Totals (base + effect bonus)
+      this.skillTotals = {};
+      for (const key of Object.keys(system.skills ?? {})) {
+          const base  = Number(system.skills[key]?.value) || 0;
+          const bonus = Number(system.skillBonuses?.[key]) || 0;
+          this.skillTotals[key] = base + bonus;
+      }
+
+      // 3. Combat Stats (Kary i Obrażenia)
       const combatUpdates = {
           totalArmorPenalty: items.reduce((total, i) => {
               if (i.type === "armor" && i.system.equipped) return total + (i.system.armor?.penalty || 0);
               return total;
-          }, 0),
+          }, 0) + (Number(system.combat?.armorPenaltyBonus) || 0),
           totalWoundPenalty: items.reduce((total, i) => {
               if (i.type === "wound" && i.system.isActive) return total + (i.system.penalty || 0);
               return total;
@@ -164,14 +225,26 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
   prepareDerivedData() {
     if (!game.settings || !game.settings.settings?.has("neuroshima.enableEncumbrance")) return;
 
+    try {
+      if (this.xp) {
+        const total = Number(this.xp.total) || 0;
+        const spent = Number(this.xp.spent) || 0;
+        this.xp.current = total - spent;
+      }
+    } catch (err) {
+      if (game.settings.get("neuroshima", "debugMode")) console.error("Neuroshima 1.5 | Error in prepareDerivedData (xp):", err);
+    }
+  }
+
+  _preparePostEffects() {
+    if (!game.settings || !game.settings.settings?.has("neuroshima.enableEncumbrance")) return;
+
     const system = this;
     const actor = this.parent;
 
     try {
-      // Shared logic for attributes and combat stats
       this._prepareSharedData();
 
-      // Encumbrance logic (Character specific)
       const enableEncumbrance = game.settings.get("neuroshima", "enableEncumbrance") ?? true;
       const baseEnc = game.settings.get("neuroshima", "baseEncumbrance") ?? 20;
       const useConBonus = game.settings.get("neuroshima", "useConstitutionBonus") ?? true;
@@ -181,7 +254,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
 
       system.encumbrance.enabled = enableEncumbrance;
       if (enableEncumbrance) {
-          const conValue = (Number(system.attributes.constitution) || 0) + (Number(system.modifiers.constitution) || 0);
+          const conValue = (Number(system.attributes.constitution) || 0) + (Number(system.attributeBonuses?.constitution) || 0) + (Number(system.modifiers.constitution) || 0) + (Number(system.bonuses?.constitution) || 0);
           let maxWeight = baseEnc;
           if (useConBonus && conValue > threshold && interval > 0) {
               const bonusSteps = Math.floor((conValue - threshold) / interval);
@@ -203,7 +276,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       system.encumbrance.color = color;
 
     } catch (err) {
-      if (game.settings.get("neuroshima", "debugMode")) console.error("Neuroshima 1.5 | Error in prepareDerivedData:", err);
+      if (game.settings.get("neuroshima", "debugMode")) console.error("Neuroshima 1.5 | Error in _preparePostEffects:", err);
     }
   }
 }
@@ -223,14 +296,6 @@ export class NeuroshimaNPCData extends NeuroshimaActorData {
     return schema;
   }
 
-  /** @override */
-  prepareDerivedData() {
-      try {
-          this._prepareSharedData();
-      } catch (err) {
-          if (game.settings.get("neuroshima", "debugMode")) console.error("NPC prepareDerivedData error:", err);
-      }
-  }
 }
 
 /**
@@ -292,8 +357,6 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
   /** @override */
   prepareDerivedData() {
     try {
-      this._prepareSharedData();
-      // Creatures have a fixed HP capacity of 27 (equivalent to 1 Critical wound).
       this.combat.maxHP = 27;
     } catch (err) {
       if (game.settings.get("neuroshima", "debugMode")) console.error("Creature prepareDerivedData error:", err);
@@ -323,6 +386,22 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         efficiency:   attrField()
       }),
       modifiers: new fields.SchemaField({
+        agility:      modField(),
+        topSpeed:     modField(),
+        acceleration: modField(),
+        brakes:       modField(),
+        durability:   modField(),
+        efficiency:   modField()
+      }),
+      bonuses: new fields.SchemaField({
+        agility:      modField(),
+        topSpeed:     modField(),
+        acceleration: modField(),
+        brakes:       modField(),
+        durability:   modField(),
+        efficiency:   modField()
+      }),
+      attributeBonuses: new fields.SchemaField({
         agility:      modField(),
         topSpeed:     modField(),
         acceleration: modField(),
@@ -367,7 +446,7 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         bottom:    new fields.NumberField({ initial: 0 })
       }),
       /** Per-section vehicle armor plate */
-      armor: new fields.SchemaField({
+      armor:  new fields.SchemaField({
         front:     new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),
         rightSide: new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),
         leftSide:  new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),
@@ -375,5 +454,18 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         bottom:    new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) })
       })
     };
+  }
+
+  /** @override */
+  prepareBaseData() {
+    for (const key of Object.keys(this.bonuses)) {
+      this.bonuses[key] = 0;
+    }
+    for (const key of Object.keys(this.attributeBonuses)) {
+      this.attributeBonuses[key] = 0;
+    }
+    for (const key of Object.keys(this.armorBonus)) {
+      this.armorBonus[key] = 0;
+    }
   }
 }

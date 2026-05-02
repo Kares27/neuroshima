@@ -17,7 +17,7 @@
                 <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'Name'}}"/>
             </h1>
         </div>
-        <div class="item-header-stats flexrow">
+        <div class="item-header-stats">
             {{#unless isNonCountable}}
             {{#if enableEncumbrance}}
             <div class="form-group row-group">
@@ -35,6 +35,11 @@
                 <input type="checkbox" name="system.equipped" {{checked system.equipped}}/>
             </div>
             {{/unless}}
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Items.Fields.Availability'}}">{{localize "NEUROSHIMA.Items.Fields.AvailabilityAbbr"}}</label>
+                <input type="number" name="system.availability" value="{{system.availability}}" min="0" max="100" data-dtype="Number"/>
+                <span class="availability-pct">%</span>
+            </div>
             {{/unless}}
             {{#if (eq item.type "wound")}}
             <div class="form-group checkbox row-group">

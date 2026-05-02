@@ -1,5 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 
+import { getDistancePenalty } from "./distance-config.js";
+
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ApplicationV2 } = foundry.applications.api;
 
@@ -35,6 +37,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       useArmorPenalty: lastRoll.useArmorPenalty ?? true,
       useWoundPenalty: lastRoll.useWoundPenalty ?? true,
       distance: lastRoll.distance || 0,
+      distancePenalty: lastRoll.distancePenalty || 0,
       rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode")
     };
     this.isPoolRoll = options.isPoolRoll || false;
@@ -158,6 +161,11 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         }
     }
     context.distance = distance;
+
+    const autoDistancePenalty = this.rollType === "ranged"
+      ? (getDistancePenalty(this.weapon.system.rangedSubtype, distance) ?? 0)
+      : 0;
+    context.distancePenalty = this.rollOptions.distancePenalty ?? autoDistancePenalty;
     
     // Buttons for footer
     context.buttons = [
@@ -188,6 +196,23 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     html.querySelectorAll('input, select').forEach(el => {
       el.addEventListener('input', (event) => this._updatePreview(event));
     });
+
+    // Auto-update distance penalty when distance changes
+    const distanceInput = html.querySelector('#distance-input');
+    const distancePenaltyInput = html.querySelector('#distance-penalty-input');
+    if (distanceInput && distancePenaltyInput && this.rollType === "ranged") {
+      // Apply auto penalty immediately on render
+      const initDist = parseFloat(distanceInput.value) || 0;
+      const initAuto = getDistancePenalty(this.weapon.system.rangedSubtype, initDist);
+      if (initAuto !== null) distancePenaltyInput.value = initAuto;
+
+      distanceInput.addEventListener('input', () => {
+        const dist = parseFloat(distanceInput.value) || 0;
+        const auto = getDistancePenalty(this.weapon.system.rangedSubtype, dist);
+        distancePenaltyInput.value = auto ?? 0;
+        this._updatePreview();
+      });
+    }
 
     // Cancel button listener
     const cancelBtn = html.querySelector('[data-action="cancel"]');
@@ -263,8 +288,9 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     }
 
     const locationPenalty = game.neuroshima.NeuroshimaDice.getLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
+    const distancePenalty = parseInt(formData.distancePenalty) || 0;
 
-    const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + locationPenalty;
+    const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + locationPenalty + distancePenalty;
 
     // Update preview box
     const totalElement = html.querySelector('.total-modifier') || html.querySelector('#preview-total');
@@ -406,6 +432,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
         skillBonus: parseInt(formData.skillBonus) || 0,
         attributeBonus: (parseInt(formData.attributeBonus) || 0) - (this.crowdingDexPenalty || 0),
         distance: parseFloat(formData.distance) || 0,
+        distancePenalty: parseInt(formData.distancePenalty) || 0,
         rollMode: formData.rollMode
     };
 

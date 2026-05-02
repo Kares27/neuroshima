@@ -126,6 +126,23 @@
         </div>
     {{/if}}
 
+    {{#if fireCorrectionData.canCorrect}}
+    <div class="fire-correction-row">
+        {{#if fireCorrectionData.isSuccessCorrection}}
+        <button class="fire-correction-button fire-correction-success" data-correction-cost="3" data-failure-margin="0" data-success-correction="true">
+            <i class="fas fa-plus-circle"></i>
+            {{localize "NEUROSHIMA.FireCorrection.ButtonLabelSuccess"}}
+        </button>
+        {{else}}
+        <button class="fire-correction-button" data-correction-cost="{{fireCorrectionData.totalCorrectionCost}}" data-failure-margin="{{fireCorrectionData.failureMargin}}">
+            <i class="fas fa-crosshairs"></i>
+            {{localize "NEUROSHIMA.FireCorrection.ButtonLabel"}}
+            <span class="correction-cost-badge">{{fireCorrectionData.totalCorrectionCost}} {{localize "NEUROSHIMA.FireCorrection.Bullets"}}</span>
+        </button>
+        {{/if}}
+    </div>
+    {{/if}}
+
     {{#unless isMelee}}
     <div class="apply-damage-section">
         <div class="damage-application-header collapsible-toggle">

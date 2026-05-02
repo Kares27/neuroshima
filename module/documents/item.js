@@ -15,7 +15,10 @@ export class NeuroshimaItem extends Item {
       wound: "systems/neuroshima/assets/img/wound.svg",
       "vehicle-damage":  "systems/neuroshima/assets/img/tire-iron.svg",
       "vehicle-mod":     "systems/neuroshima/assets/img/tire-iron.svg",
-      "beast-action":    "systems/neuroshima/assets/img/paw.svg"
+      "beast-action":    "systems/neuroshima/assets/img/paw.svg",
+      profession:        "systems/neuroshima/assets/img/profession.svg",
+      specialization:    "systems/neuroshima/assets/img/specialization.svg",
+      origin:            "systems/neuroshima/assets/img/passport.svg"
     };
 
     const updates = {};
@@ -92,6 +95,27 @@ export class NeuroshimaItem extends Item {
         this.updateSource(weaponUpdates);
       } else {
         return false; // Anuluj tworzenie przedmiotu, jeśli okno zostało zamknięte bez wyboru
+      }
+    }
+
+    if (data.type === "trick" && this.parent?.type && ["character", "npc"].includes(this.parent.type) && user === game.user.id) {
+      const { showXpDialog, applyXpEntry, TRICK_COST } = await import("../helpers/xp.js");
+      const actor = this.parent;
+      const i18n  = game.i18n;
+      const desc  = i18n.format("NEUROSHIMA.XP.Log.TrickLearned", { name: data.name ?? i18n.localize("NEUROSHIMA.Items.Type.Trick") });
+      const currentXp = actor.system?.xp?.current ?? 0;
+
+      const choice = await showXpDialog(TRICK_COST, desc, currentXp);
+      if (choice === null) return false;
+
+      if (!choice.free && TRICK_COST > 0) {
+        const fakeDelta = {};
+        applyXpEntry(actor, fakeDelta, TRICK_COST, desc, null, "");
+        await actor.update(fakeDelta);
+      } else {
+        const fakeDelta = {};
+        applyXpEntry(actor, fakeDelta, 0, desc, null, "");
+        await actor.update(fakeDelta);
       }
     }
   }
@@ -235,14 +259,52 @@ export class NeuroshimaItem extends Item {
   _onUpdate(data, options, userId) {
     super._onUpdate(data, options, userId);
     if (game.user.id !== userId) return;
+
+    const actor = this.parent;
+    if (!actor || actor.documentName !== "Actor") return;
+
     const equippedChanged = foundry.utils.hasProperty(data, "system.equipped");
-    if (equippedChanged && this.parent?.documentName === "Actor") {
-      const actor    = this.parent;
+    if (equippedChanged) {
       const equipped = data.system.equipped;
       actor.syncEquipTransferEffects(this, equipped);
       import("../apps/neuroshima-script-engine.js").then(({ NeuroshimaScriptRunner }) => {
         NeuroshimaScriptRunner.execute("equipToggle", { actor, item: this, equipped });
       });
+    }
+
+    const specChanged = this.type === "specialization" && foundry.utils.hasProperty(data, "system.skillSpecializations");
+    if (specChanged) {
+      const updateData = {};
+      const allSpecKeys = Object.keys(actor.system.specializations ?? {});
+      for (const key of allSpecKeys) updateData[`system.specializations.${key}`] = false;
+      for (const specItem of actor.items.filter(i => i.type === "specialization")) {
+        const specs = specItem.system.skillSpecializations ?? {};
+        for (const [key, enabled] of Object.entries(specs)) {
+          if (enabled) updateData[`system.specializations.${key}`] = true;
+        }
+      }
+      actor.update(updateData);
+    }
+  }
+
+  _onDelete(options, userId) {
+    super._onDelete(options, userId);
+    if (game.user.id !== userId) return;
+
+    const actor = this.parent;
+    if (!actor || actor.documentName !== "Actor") return;
+
+    if (this.type === "specialization") {
+      const updateData = {};
+      const allSpecKeys = Object.keys(actor.system.specializations ?? {});
+      for (const key of allSpecKeys) updateData[`system.specializations.${key}`] = false;
+      for (const specItem of actor.items.filter(i => i.type === "specialization" && i.id !== this.id)) {
+        const specs = specItem.system.skillSpecializations ?? {};
+        for (const [key, enabled] of Object.entries(specs)) {
+          if (enabled) updateData[`system.specializations.${key}`] = true;
+        }
+      }
+      actor.update(updateData);
     }
   }
 }

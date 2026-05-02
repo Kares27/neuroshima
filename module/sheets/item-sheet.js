@@ -23,15 +23,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       closeOnSubmit: false,
       submitOnUnfocus: true,
     },
-    renderConfig: {
-      scrollable: [".sheet-body", ".contents-list-items", ".magazine-contents-section"]
-    },
     actions: {
-      editImage: this.prototype._onEditImage,
-      createEffect: this.prototype._onCreateEffect,
-      editEffect: this.prototype._onEditEffect,
-      deleteEffect: this.prototype._onDeleteEffect,
-      toggleEffect: this.prototype._onToggleEffect
+      editImage: NeuroshimaItemSheet.prototype._onEditImage,
+      createEffect: NeuroshimaItemSheet.prototype._onCreateEffect,
+      editEffect: NeuroshimaItemSheet.prototype._onEditEffect,
+      deleteEffect: NeuroshimaItemSheet.prototype._onDeleteEffect,
+      toggleEffect: NeuroshimaItemSheet.prototype._onToggleEffect
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -45,6 +42,14 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
           }
         }
       }
+    }
+  };
+
+  /** @override */
+  static PARTS = {
+    form: {
+      template: "systems/neuroshima/templates/item/item-sheet.hbs",
+      scrollable: [".sheet-body", ".contents-list-items", ".magazine-contents-section", ".spec-master-body"]
     }
   };
 
@@ -106,7 +111,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.editable = this.isEditable;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession"];
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
 
     // Prepare type label
@@ -232,6 +237,32 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       });
     }
 
+    if (["specialization", "origin", "profession"].includes(item.type) && item.system.bonusText !== undefined) {
+      context.bonusEnriched = await foundry.applications.ux.TextEditor.enrichHTML(item.system.bonusText || "", {
+        async: true,
+        secrets: item.isOwner,
+        rollData: item.getRollData(),
+        relativeTo: item
+      });
+    }
+
+    if (item.type === "specialization") {
+      const specGroups = [];
+      for (const [attrKey, specs] of Object.entries(NEUROSHIMA.skillConfiguration)) {
+        const group = {
+          attrKey,
+          attrLabel: `NEUROSHIMA.Attributes.${attrKey.charAt(0).toUpperCase() + attrKey.slice(1)}`,
+          specs: Object.keys(specs).map(specKey => ({
+            key: specKey,
+            label: `NEUROSHIMA.Specializations.${specKey}`,
+            checked: item.system.skillSpecializations?.[specKey] ?? false
+          }))
+        };
+        specGroups.push(group);
+      }
+      context.config = { ...context.config, specGroups };
+    }
+
     // Prepare item effects
     context.itemEffects = item.effects.map(e => ({
       id: e.id,
@@ -315,7 +346,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       trick: ["description", "effects"],
       "vehicle-mod": ["stats", "description", "effects"],
       "vehicle-damage": ["stats", "description", "effects"],
-      // Pozostałe typy domyślnie dostaną wszystko (stats, description, effects)
+      specialization: ["description", "stats", "effects"],
+      origin: ["description", "stats", "effects"],
+      profession: ["description", "stats", "effects"],
     };
 
     const allowedTabs = tabsByType[item.type] || ["stats", "description", "effects"];

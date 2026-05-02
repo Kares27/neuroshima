@@ -20,6 +20,7 @@ import { NeuroshimaMeleeCombat } from "./module/combat/melee-combat.js";
 import { buildRef, resolveRef } from "./module/helpers/refs.js";
 import { EncumbranceConfig } from "./module/apps/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/combat-config.js";
+import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/distance-config.js";
 import { HealingConfig } from "./module/apps/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/condition-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
@@ -513,6 +514,23 @@ Hooks.once('init', async function() {
         default: 4
     });
 
+    game.settings.register("neuroshima", "fireCorrection", {
+        name: "NEUROSHIMA.Settings.FireCorrection.Name",
+        hint: "NEUROSHIMA.Settings.FireCorrection.Hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false,
+        requiresReload: false
+    });
+
+    game.settings.register("neuroshima", "distancePenalties", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: DEFAULT_DISTANCE_PENALTIES
+    });
+
     // Rejestracja menu ustawień
     game.settings.registerMenu("neuroshima", "combatConfig", {
         name: "NEUROSHIMA.Settings.CombatConfig.Label",
@@ -520,6 +538,15 @@ Hooks.once('init', async function() {
         hint: "NEUROSHIMA.Settings.CombatConfig.Hint",
         icon: "fas fa-swords",
         type: CombatConfig,
+        restricted: true
+    });
+
+    game.settings.registerMenu("neuroshima", "distanceConfig", {
+        name: "NEUROSHIMA.Settings.DistanceConfig.Label",
+        label: "NEUROSHIMA.Settings.DistanceConfig.Title",
+        hint: "NEUROSHIMA.Settings.DistanceConfig.MenuHint",
+        icon: "fas fa-ruler-horizontal",
+        type: DistanceConfig,
         restricted: true
     });
 
@@ -866,17 +893,17 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
     });
 
     options.push({
-        name: "NEUROSHIMA.Roll.ReverseDamage",
-        icon: '<i class="fas fa-history"></i>',
+        name: "NEUROSHIMA.Roll.ReverseWounds",
+        icon: '<i class="fas fa-heart-broken"></i>',
         condition: li => {
             const message = game.messages.get(li.dataset.messageId);
-            const isReport = message?.getFlag("neuroshima", "isPainResistanceReport");
+            const messageType = message?.getFlag("neuroshima", "messageType");
+            const woundIds = message?.getFlag("neuroshima", "woundIds") ?? [];
             const alreadyReversed = message?.getFlag("neuroshima", "isReversed");
-            
-            // Reverse Damage zależna od ustawionej rangi
+
             if (!CombatHelper.canPerformCombatAction()) return false;
 
-            return isReport && !alreadyReversed;
+            return messageType === "painResistanceReport" && woundIds.length > 0 && !alreadyReversed;
         },
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
@@ -1140,7 +1167,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 // Specyficzne odświeżanie dla taba obrażeń
                 if (isHidden && content.classList.contains("damage-application-content")) {
                     const activeTab = card.querySelector(".damage-tab-header.active")?.dataset.tab || "targets";
-                    updateCardTargets(card, activeTab);
+                    updateCardTargets(card, activeTab, message);
                 }
             }
         });
@@ -1160,7 +1187,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 l.style.display = l.dataset.tab === tab ? "block" : "none";
             });
 
-            updateCardTargets(card, tab);
+            updateCardTargets(card, tab, message);
         });
     });
 
@@ -1175,8 +1202,14 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             let actors = [];
             
             if (activeTab === "targets") {
-                actors = Array.from(game.user.targets).map(t => t.actor).filter(a => a);
-                game.neuroshima.log("Pobieranie aktorów z namierzonych celów:", actors.map(a => a.name));
+                const snapshotTargets = message.getFlag("neuroshima", "rollData")?.snapshotTargets ?? [];
+                if (snapshotTargets.length > 0) {
+                    actors = snapshotTargets.map(t => game.actors.get(t.id)).filter(a => a);
+                    game.neuroshima.log("Pobieranie aktorów z zachowanych celów (snapshot):", actors.map(a => a.name));
+                } else {
+                    actors = Array.from(game.user.targets).map(t => t.actor).filter(a => a);
+                    game.neuroshima.log("Pobieranie aktorów z aktualnie namierzonych celów:", actors.map(a => a.name));
+                }
             } else if (activeTab === "selected") {
                 actors = canvas.tokens.controlled.map(t => t.actor).filter(a => a);
                 game.neuroshima.log("Pobieranie aktorów z zaznaczonych tokenów:", actors.map(a => a.name));
@@ -1191,6 +1224,63 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             }
             
             game.neuroshima.groupEnd();
+        });
+    });
+
+    // Przycisk Korygowania Ognia
+    card.querySelectorAll(".fire-correction-button").forEach(btn => {
+        const isApplied = message.getFlag("neuroshima", "fireCorrectionApplied");
+        const isSuccessCorrection = btn.dataset.successCorrection === "true";
+
+        if (isApplied && !isSuccessCorrection) {
+            btn.disabled = true;
+            btn.classList.add("applied");
+        }
+
+        btn.addEventListener("click", async (event) => {
+            event.preventDefault();
+            if (btn.disabled) return;
+
+            const rollData = message.getFlag("neuroshima", "rollData") ?? {};
+            const actorId = rollData.actorId;
+
+            if (isSuccessCorrection) {
+                const fcData = rollData.fireCorrectionData ?? {};
+                const maxCorrectionHits = fcData.maxCorrectionHits ?? Math.floor((fcData.bulletsFired ?? rollData.bulletsFired ?? 0) / 4);
+                const prevHits = Number(message.getFlag("neuroshima", "correctedHits") ?? 0);
+
+                if (prevHits >= maxCorrectionHits) {
+                    ui.notifications.warn(game.i18n.localize("NEUROSHIMA.FireCorrection.NotEnoughAmmo"));
+                    btn.disabled = true;
+                    btn.classList.add("applied");
+                    return;
+                }
+
+                const newHits = prevHits + 1;
+                await message.setFlag("neuroshima", "correctedHits", newHits);
+                await message.setFlag("neuroshima", "fireCorrectionApplied", true);
+                await message.setFlag("neuroshima", "fireCorrectionIsSuccess", true);
+
+                if (newHits >= maxCorrectionHits) {
+                    btn.disabled = true;
+                    btn.classList.add("applied");
+                }
+
+                ui.notifications.info(game.i18n.format("NEUROSHIMA.FireCorrection.AppliedSuccess", { hits: newHits, max: maxCorrectionHits }));
+                game.neuroshima.log("Korygowanie Ognia (sukces) zastosowane", { totalHits: newHits, maxCorrectionHits, bulletsFired });
+                return;
+            }
+
+            const cost = Number(btn.dataset.correctionCost) || 0;
+            const bulletsFired = rollData.bulletsFired ?? 0;
+            const afterInitial = bulletsFired - cost;
+            const correctedHits = afterInitial >= 1 ? Math.ceil(afterInitial / 4) : 0;
+            await message.setFlag("neuroshima", "fireCorrectionApplied", true);
+            await message.setFlag("neuroshima", "correctedHits", correctedHits);
+            btn.disabled = true;
+            btn.classList.add("applied");
+            ui.notifications.info(game.i18n.format("NEUROSHIMA.FireCorrection.Applied", { cost, hits: correctedHits }));
+            game.neuroshima.log("Korygowanie Ognia zastosowane (porażka)", { cost, correctedHits, bulletsFired });
         });
     });
 
@@ -1216,6 +1306,161 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             applyBtn.disabled = true;
             applyBtn.classList.add("applied");
             applyBtn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+        }
+    }
+
+    // Obsługa stanu po Korygowaniu Ognia
+    const fireCorrectionApplied = message.getFlag("neuroshima", "fireCorrectionApplied");
+    if (fireCorrectionApplied) {
+        const correctedHits = message.getFlag("neuroshima", "correctedHits") ?? 0;
+        const fireCorrectionIsSuccess = message.getFlag("neuroshima", "fireCorrectionIsSuccess") ?? false;
+        const rollDataFC = message.getFlag("neuroshima", "rollData") ?? {};
+
+        if (fireCorrectionIsSuccess) {
+            const fcBtn = html.querySelector(".fire-correction-button");
+            if (fcBtn) {
+                const fcDataR = rollDataFC.fireCorrectionData ?? {};
+                const maxCorrectionHits = fcDataR.maxCorrectionHits ?? Math.floor((fcDataR.bulletsFired ?? rollDataFC.bulletsFired ?? 0) / 4);
+                if (correctedHits >= maxCorrectionHits) {
+                    fcBtn.disabled = true;
+                    fcBtn.classList.add("applied");
+                } else {
+                    fcBtn.disabled = false;
+                    fcBtn.classList.remove("applied");
+                }
+            }
+        } else {
+            const fcBtn = html.querySelector(".fire-correction-button");
+            if (fcBtn) { fcBtn.disabled = true; fcBtn.classList.add("applied"); }
+
+            const footer = html.querySelector(".roll-outcome");
+            if (footer) {
+                footer.classList.remove("failure");
+                footer.classList.add("corrected");
+            }
+
+            const rollStatusEl = html.querySelector(".roll-status .value");
+            if (rollStatusEl) {
+                rollStatusEl.classList.remove("failure");
+                rollStatusEl.classList.add("corrected-status");
+                rollStatusEl.innerHTML = `<strong>${game.i18n.localize("NEUROSHIMA.FireCorrection.CorrectedStatus")}</strong>`;
+            }
+
+            const ppItems = html.querySelectorAll(".success-points .label, .success-points .value");
+            ppItems.forEach(el => el.classList.add("corrected-pp"));
+        }
+
+        const debugMode = rollDataFC.debugMode ?? false;
+        if (debugMode) {
+            const existing = html.querySelector(".fire-correction-debug");
+            if (existing) existing.remove();
+
+            const bulletsFiredDbg = rollDataFC.bulletsFired ?? 0;
+            const fcDataDbg = rollDataFC.fireCorrectionData ?? {};
+            const debugEl = document.createElement("div");
+            debugEl.className = "fire-correction-debug";
+
+            if (fireCorrectionIsSuccess) {
+                const initialHitsDbg = fcDataDbg.hitBullets ?? 0;
+                const remainingDbg = fcDataDbg.remainingForCorrection ?? (bulletsFiredDbg - initialHitsDbg);
+                const maxHits = fcDataDbg.maxCorrectionHits ?? Math.floor(remainingDbg / 4);
+                debugEl.innerHTML = `
+                    <div class="fc-debug-header"><i class="fas fa-bug"></i> Korygowanie Ognia — krok po kroku (Sukces)</div>
+                    <div class="fc-debug-row"><span class="fc-debug-label">Pociski wystrzelone:</span><span class="fc-debug-value">${bulletsFiredDbg}</span></div>
+                    <div class="fc-debug-row"><span class="fc-debug-label">Trafień z rzutu:</span><span class="fc-debug-value">${initialHitsDbg}</span></div>
+                    <div class="fc-debug-row fc-debug-formula"><span class="fc-debug-label">Dostępne do korekty:</span><span class="fc-debug-value">${bulletsFiredDbg} − ${initialHitsDbg} = <strong>${remainingDbg}</strong></span></div>
+                    <div class="fc-debug-row fc-debug-formula"><span class="fc-debug-label">Maks. dodatkowych trafień:</span><span class="fc-debug-value">⌊${remainingDbg} ÷ 4⌋ = <strong>${maxHits}</strong></span></div>
+                    <div class="fc-debug-row"><span class="fc-debug-label">Cykl (na trafienie):</span><span class="fc-debug-value">3 kule korekty + 1 trafienie</span></div>
+                    <div class="fc-debug-row fc-debug-result"><span class="fc-debug-label">Dodatkowe trafienia:</span><span class="fc-debug-value"><strong>${correctedHits} / ${maxHits}</strong></span></div>`;
+            } else {
+                const failureMarginDbg = fcDataDbg.failureMargin ?? 0;
+                const corrCost = failureMarginDbg * 3;
+                const remaining = bulletsFiredDbg - corrCost;
+                const hitsCalc = remaining >= 1 ? Math.ceil(remaining / 4) : 0;
+                debugEl.innerHTML = `
+                    <div class="fc-debug-header"><i class="fas fa-bug"></i> Korygowanie Ognia — krok po kroku (Porażka)</div>
+                    <div class="fc-debug-row"><span class="fc-debug-label">Pociski wystrzelone:</span><span class="fc-debug-value">${bulletsFiredDbg}</span></div>
+                    <div class="fc-debug-row"><span class="fc-debug-label">Punkty Porażki:</span><span class="fc-debug-value">${failureMarginDbg}</span></div>
+                    <div class="fc-debug-row fc-debug-formula"><span class="fc-debug-label">Koszt korekcji:</span><span class="fc-debug-value">${failureMarginDbg} × 3 = <strong>${corrCost} kul</strong></span></div>
+                    <div class="fc-debug-row fc-debug-formula"><span class="fc-debug-label">Pozostałe pociski:</span><span class="fc-debug-value">${bulletsFiredDbg} − ${corrCost} = <strong>${remaining}</strong></span></div>
+                    <div class="fc-debug-row fc-debug-formula"><span class="fc-debug-label">Trafienia:</span><span class="fc-debug-value">⌈${remaining} ÷ 4⌉ = <strong>${hitsCalc}</strong></span></div>
+                    <div class="fc-debug-row fc-debug-result"><span class="fc-debug-label">Wynik:</span><span class="fc-debug-value"><strong>${correctedHits} trafień</strong></span></div>`;
+            }
+
+            const corrRow = html.querySelector(".fire-correction-row");
+            const pelletsSection = html.querySelector(".pellet-hits-section");
+            const applyDmgSection = html.querySelector(".apply-damage-section");
+
+            if (corrRow) {
+                const pelletAnchor = applyDmgSection ?? corrRow;
+                if (pelletsSection) pelletAnchor.after(pelletsSection);
+                const debugAnchor = pelletsSection ?? pelletAnchor;
+                debugAnchor.after(debugEl);
+            } else {
+                const rollOutcome = html.querySelector(".roll-outcome");
+                if (rollOutcome) rollOutcome.before(debugEl);
+            }
+
+            if (correctedHits > 0) {
+                html.querySelectorAll(".pellet-hit-item.fire-correction-cycle").forEach(el => el.remove());
+                html.querySelectorAll(".fire-correction-cycles").forEach(el => el.remove());
+
+                const failureMarginDbg = fcDataDbg.failureMargin ?? 0;
+                const perBulletDamage = rollDataFC.hitBulletsData?.[0]?.damage ?? rollDataFC.damage ?? "?";
+                const initialHitsCount = (rollDataFC.hitBulletsData ?? []).length || html.querySelectorAll(".pellet-hits-section .pellet-hit-item:not(.fire-correction-cycle)").length;
+
+                const pelletsSection = html.querySelector(".pellet-hits-section");
+                if (pelletsSection) {
+                    for (let i = 1; i <= correctedHits; i++) {
+                        const bulletNumber = initialHitsCount + i;
+                        const item = document.createElement("div");
+                        item.className = "pellet-hit-item fire-correction-cycle";
+                        item.innerHTML = `
+                            <span class="pellet-label corrected-pellet-label">Pocisk ${bulletNumber}:</span>
+                            <span class="pellet-damage corrected-pellet-damage"><strong>${perBulletDamage}</strong></span>`;
+                        pelletsSection.appendChild(item);
+                    }
+                }
+
+                let cycleItems = "";
+                let poolRemaining = fireCorrectionIsSuccess
+                    ? (fcDataDbg.remainingForCorrection ?? (bulletsFiredDbg - (fcDataDbg.hitBullets ?? 0)))
+                    : bulletsFiredDbg;
+
+                for (let i = 1; i <= correctedHits; i++) {
+                    const available = poolRemaining;
+                    const correctionCost = (fireCorrectionIsSuccess || i > 1) ? 3 : (failureMarginDbg * 3);
+                    const result = available - correctionCost - 1;
+                    const tooltipMath = correctionCost !== 3
+                        ? `${available} − ${correctionCost} − 1 = ${result}`
+                        : `${available} − 3 − 1 = ${result}`;
+                    cycleItems += `
+                        <div class="pellet-hit-item">
+                            <span class="pellet-label">Pocisk Korygowany ${i}</span>
+                            <span class="pellet-damage" data-tooltip="${tooltipMath}"><strong>${result}</strong></span>
+                        </div>`;
+                    poolRemaining = result;
+                }
+
+                const cyclesEl = document.createElement("div");
+                cyclesEl.className = "pellet-hits-section fire-correction-cycles";
+                cyclesEl.innerHTML = cycleItems;
+                debugEl.after(cyclesEl);
+            }
+        }
+
+        const weaponDetails = html.querySelector(".weapon-details");
+        if (weaponDetails) {
+            const existing = weaponDetails.querySelector(".detail-item.corrected-hits-detail");
+            if (existing) {
+                existing.querySelector(".value").innerHTML = `<strong>${correctedHits}</strong>`;
+            } else {
+                const detail = document.createElement("div");
+                detail.className = "detail-item corrected-hits-detail";
+                detail.innerHTML = `<span class="label">${game.i18n.localize("NEUROSHIMA.FireCorrection.HitsLabel")}:</span>
+                    <span class="value corrected-pp"><strong>${correctedHits}</strong></span>`;
+                weaponDetails.appendChild(detail);
+            }
         }
     }
 
@@ -1265,37 +1510,59 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 /**
  * Aktualizuje listę celów/zaznaczonych tokenów na karcie czatu.
  */
-function updateCardTargets(card, tab) {
+function updateCardTargets(card, tab, message) {
     if (!card) return;
     const targetList = card.querySelector(`.target-list[data-tab="${tab}"]`);
     if (!targetList) return;
     
-    let tokens = [];
     let emptyLabel = "";
+    let html = "";
 
     if (tab === "targets") {
-        tokens = Array.from(game.user.targets);
         emptyLabel = game.i18n.localize("NEUROSHIMA.Roll.NoTargets");
+        const snapshotTargets = message?.getFlag("neuroshima", "rollData")?.snapshotTargets ?? [];
+        if (snapshotTargets.length > 0) {
+            for (const t of snapshotTargets) {
+                html += `<div class="target-item">
+                    <img src="${t.img}" width="20" height="20" style="object-fit: cover; border-radius: 4px; border: 1px solid #777; margin-right: 5px;"/>
+                    <span>${t.name || "Unknown"}</span>
+                </div>`;
+            }
+        } else {
+            const tokens = Array.from(game.user.targets);
+            if (tokens.length === 0) {
+                targetList.innerHTML = `<div class="target-item no-targets" style="opacity: 0.6; font-style: italic;">${emptyLabel}</div>`;
+                return;
+            }
+            for (const token of tokens) {
+                if (!token) continue;
+                const img = token.document?.texture?.src || token.data?.img || token.img;
+                html += `<div class="target-item">
+                    <img src="${img}" width="20" height="20" style="object-fit: cover; border-radius: 4px; border: 1px solid #777; margin-right: 5px;"/>
+                    <span>${token.name || "Unknown"}</span>
+                </div>`;
+            }
+        }
     } else {
-        tokens = canvas.tokens.controlled;
         emptyLabel = game.i18n.localize("NEUROSHIMA.Roll.NoSelected");
+        const tokens = canvas.tokens.controlled;
+        if (tokens.length === 0) {
+            targetList.innerHTML = `<div class="target-item no-targets" style="opacity: 0.6; font-style: italic;">${emptyLabel}</div>`;
+            return;
+        }
+        for (const token of tokens) {
+            if (!token) continue;
+            const img = token.document?.texture?.src || token.data?.img || token.img;
+            html += `<div class="target-item">
+                <img src="${img}" width="20" height="20" style="object-fit: cover; border-radius: 4px; border: 1px solid #777; margin-right: 5px;"/>
+                <span>${token.name || "Unknown"}</span>
+            </div>`;
+        }
     }
 
-    if (tokens.length === 0) {
-        targetList.innerHTML = `<div class="target-item no-targets" style="opacity: 0.6; font-style: italic;">
-            ${emptyLabel}
-        </div>`;
+    if (!html) {
+        targetList.innerHTML = `<div class="target-item no-targets" style="opacity: 0.6; font-style: italic;">${emptyLabel}</div>`;
         return;
-    }
-
-    let html = "";
-    for (const token of tokens) {
-        if (!token) continue;
-        const img = token.document?.texture?.src || token.data?.img || token.img;
-        html += `<div class="target-item">
-            <img src="${img}" width="20" height="20" style="object-fit: cover; border-radius: 4px; border: 1px solid #777; margin-right: 5px;"/>
-            <span>${token.name || "Unknown"}</span>
-        </div>`;
     }
     targetList.innerHTML = html;
 }
@@ -1441,4 +1708,26 @@ Hooks.on("targetToken", (user) => {
 
 Hooks.on("controlToken", () => {
     refreshAllCombatCards();
+});
+
+Hooks.on("renderItemDirectory", (app, html) => {
+    const el = html instanceof HTMLElement ? html : html[0];
+    if (!el) return;
+
+    el.addEventListener("drop", async (event) => {
+        let data;
+        try { data = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { return; }
+        if (data.type !== "Item" || !data.uuid) return;
+        if (!data.uuid.includes(".Item.")) return;
+
+        const item = await fromUuid(data.uuid);
+        if (!item || !item.parent) return;
+
+        event.stopPropagation();
+
+        const itemData = item.toObject();
+        delete itemData._id;
+        await Item.create(itemData);
+        ui.notifications.info(game.i18n.format("NEUROSHIMA.Items.ExportedToSidebar", { name: item.name }));
+    });
 });

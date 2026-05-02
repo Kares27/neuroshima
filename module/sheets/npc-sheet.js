@@ -36,11 +36,11 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
     attributes:       { template: "systems/neuroshima/templates/actors/actor/parts/actor-attributes.hbs", scrollable: [""] },
     skills:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-skills.hbs", scrollable: [".skill-table"] },
     tricks:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-tricks.hbs" },
-    combat:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs" },
-    combatPaperDoll:  { template: "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll-partial.hbs" },
-    combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" },
+    combat:           { template: "systems/neuroshima/templates/actors/actor/parts/actor-combat.hbs", scrollable: [""] },
+    combatPaperDoll:  { template: "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll-partial.hbs", scrollable: [".paper-doll-scrollable"] },
+    combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs", scrollable: [".wounds-list-container"] },
     inventory:        { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""] },
-    effects:          { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
-    notes:            { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
+    effects:          { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs", scrollable: [""] },
+    notes:            { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs", scrollable: [""] }
   };
 }

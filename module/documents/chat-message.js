@@ -383,6 +383,21 @@ export class NeuroshimaChatMessage extends ChatMessage {
         }
     }
 
+    let snapshotTargets = [];
+    if (!rollData.isMelee) {
+        for (const token of game.user.targets) {
+            const targetActor = token.actor;
+            if (targetActor) {
+                snapshotTargets.push({
+                    id: targetActor.id,
+                    uuid: targetActor.uuid,
+                    name: targetActor.name,
+                    img: token.document?.texture?.src || targetActor.img
+                });
+            }
+        }
+    }
+
     const content = await this._renderTemplate(template, {
       ...rollData,
       meleeTargets: targetsData,
@@ -403,7 +418,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
           messageType: this.TYPES.WEAPON,
           rollData: {
             ...rollData,
-            rollMode
+            rollMode,
+            snapshotTargets
           }
         }
       }

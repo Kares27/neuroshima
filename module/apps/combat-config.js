@@ -54,7 +54,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 doubleSkillAction: game.settings.get("neuroshima", "doubleSkillAction"),
                 damageApplicationMinRole: game.settings.get("neuroshima", "damageApplicationMinRole"),
                 painResistanceMinRole: game.settings.get("neuroshima", "painResistanceMinRole"),
-                combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole")
+                combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole"),
+                fireCorrection: game.settings.get("neuroshima", "fireCorrection")
             },
             roleOptions: roleOptions
         };
@@ -82,7 +83,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 game.settings.set("neuroshima", "doubleSkillAction", !!data.doubleSkillAction),
                 game.settings.set("neuroshima", "damageApplicationMinRole", Number(data.damageApplicationMinRole)),
                 game.settings.set("neuroshima", "painResistanceMinRole", Number(data.painResistanceMinRole)),
-                game.settings.set("neuroshima", "combatActionsMinRole", Number(data.combatActionsMinRole))
+                game.settings.set("neuroshima", "combatActionsMinRole", Number(data.combatActionsMinRole)),
+                game.settings.set("neuroshima", "fireCorrection", !!data.fireCorrection)
             ];
             
             await Promise.all(updates);

@@ -601,6 +601,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     context.attributeList         = NEUROSHIMA.attributes;
     context.difficulties          = NEUROSHIMA.difficulties;
     context.difficultiesCollapsed = this._difficultiesCollapsed;
+    context.effectTooltips        = this._buildEffectTooltips(actor);
     context.experience            = system.experience ?? 0;
     context.kondycja              = system.kondycja   ?? 0;
 
@@ -844,6 +845,28 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       }
     }
     return groups;
+  }
+
+  _buildEffectTooltips(actor) {
+    const attrKeys = Object.keys(NEUROSHIMA.attributes);
+    const tooltips = {};
+    for (const key of attrKeys) tooltips[key] = "";
+    for (const effect of actor.effects) {
+      if (effect.disabled || effect.isSuppressed) continue;
+      for (const change of (effect.changes ?? [])) {
+        if (!change.key) continue;
+        const attrMatch = change.key.match(/^system\.attributeBonuses\.(\w+)$/);
+        const modMatch  = change.key.match(/^system\.bonuses\.(\w+)$/);
+        const match = attrMatch || modMatch;
+        if (!match) continue;
+        const key = match[1];
+        if (!attrKeys.includes(key)) continue;
+        const val  = Number(change.value) || 0;
+        const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
+        tooltips[key] = tooltips[key] ? tooltips[key] + "\n" + part : part;
+      }
+    }
+    return tooltips;
   }
 
   /** @private */

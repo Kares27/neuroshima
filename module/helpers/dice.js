@@ -134,7 +134,8 @@ export class NeuroshimaDice {
         isOpen, 
         skillBonus = 0, 
         attributeBonus = 0, 
-        distance = 0, 
+        distance = 0,
+        distancePenalty = 0,
         meleeAction = "attack", 
         maneuver = "none",
         tempoLevel = 0,
@@ -179,7 +180,7 @@ export class NeuroshimaDice {
     }
 
     const locationPenalty = this.getLocationPenalty(weapon.system.weaponType, hitLocation);
-    const totalPenalty = basePenalty + modifier + armorPenalty + woundPenalty + locationPenalty;
+    const totalPenalty = basePenalty + modifier + armorPenalty + woundPenalty + locationPenalty + distancePenalty;
 
     game.neuroshima.log("Kalkulacja kar (%)", {
         basePenalty,
@@ -188,6 +189,7 @@ export class NeuroshimaDice {
         armorPenalty,
         woundPenalty,
         locationPenalty,
+        distancePenalty,
         totalPenalty,
         weaponBonus,
         effectiveAttributeBonus
@@ -613,6 +615,28 @@ export class NeuroshimaDice {
 
     game.neuroshima.log("Wynik końcowy testu", { isSuccess, successPoints, isJamming, hitBullets, jammingOnDie: results[0] });
 
+    // 6a. Korygowanie Ognia (Fire Correction) — tylko dla nieudanej serii dystansowej
+    let fireCorrectionData = null;
+    const fireCorrectionEnabled = game.settings.get("neuroshima", "fireCorrection");
+    if (fireCorrectionEnabled && !isMelee && !isJamming && burstLevel > 0 && bulletsFired > 0) {
+        if (!isSuccess) {
+            const modifiedBest = Math.max(1, bestResult - skillValue);
+            const failureMargin = modifiedBest - target;
+            if (failureMargin > 0) {
+                const totalCorrectionCost = failureMargin * 3;
+                const canCorrect = totalCorrectionCost < bulletsFired;
+                fireCorrectionData = { failureMargin, totalCorrectionCost, bulletsFired, canCorrect, isSuccessCorrection: false };
+                game.neuroshima.log("Korygowanie Ognia (porażka)", fireCorrectionData);
+            }
+        } else {
+            const remainingForCorrection = bulletsFired - hitBullets;
+            const maxCorrectionHits = Math.floor(remainingForCorrection / 4);
+            const canCorrect = maxCorrectionHits > 0;
+            fireCorrectionData = { failureMargin: 0, totalCorrectionCost: 3, bulletsFired, hitBullets, remainingForCorrection, maxCorrectionHits, canCorrect, isSuccessCorrection: true };
+            game.neuroshima.log("Korygowanie Ognia (sukces — dodatkowe trafienia)", fireCorrectionData);
+        }
+    }
+
     // 6. Przygotowanie danych do karty czatu
     const rollData = {
         label: weapon.name,
@@ -681,7 +705,8 @@ export class NeuroshimaDice {
             base: basePenalty
         },
         bulletSequence: bulletSequence || [],
-        hitBulletsData: finalHitSequence
+        hitBulletsData: finalHitSequence,
+        fireCorrectionData
     };
 
     // Generate rich tooltip for weapon test

@@ -7,7 +7,8 @@ function baseSchema() {
     description: new fields.HTMLField({ initial: "" }),
     weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
     cost: new fields.NumberField({ required: true, initial: 0, min: 0 }),
-    quantity: new fields.NumberField({ required: true, integer: true, initial: 1, min: 0 })
+    quantity: new fields.NumberField({ required: true, integer: true, initial: 1, min: 0 }),
+    availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 })
   };
 }
 
@@ -199,8 +200,9 @@ export class MagazineData extends foundry.abstract.TypeDataModel {
  */
 export class TrickData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
+    const fields = foundry.data.fields;
     return {
-      ...baseSchema()
+      description: new fields.HTMLField({ initial: "" })
     };
   }
 }
@@ -257,39 +259,67 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
 
 /**
  * Data model for Specialization items.
- * Represents a character specialization unlocked by training or background.
+ * Represents a character specialization (e.g. Combat, Exploration, Social).
+ * Can optionally auto-unlock a skill specialization group on the actor.
  */
 export class SpecializationData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
-      description: new fields.HTMLField({ initial: "" })
+      description: new fields.HTMLField({ initial: "" }),
+      bonusText:   new fields.HTMLField({ initial: "" }),
+      skillSpecializations: new fields.SchemaField({
+        melee:             new fields.BooleanField({ initial: false }),
+        firearms:          new fields.BooleanField({ initial: false }),
+        ranged:            new fields.BooleanField({ initial: false }),
+        driving:           new fields.BooleanField({ initial: false }),
+        manual:            new fields.BooleanField({ initial: false }),
+        tracking:          new fields.BooleanField({ initial: false }),
+        alertness:         new fields.BooleanField({ initial: false }),
+        stealth:           new fields.BooleanField({ initial: false }),
+        survival:          new fields.BooleanField({ initial: false }),
+        negotiation:       new fields.BooleanField({ initial: false }),
+        empathy:           new fields.BooleanField({ initial: false }),
+        willpower:         new fields.BooleanField({ initial: false }),
+        medicine:          new fields.BooleanField({ initial: false }),
+        technology:        new fields.BooleanField({ initial: false }),
+        equipment:         new fields.BooleanField({ initial: false }),
+        pyrotechnics:      new fields.BooleanField({ initial: false }),
+        generalKnowledge1: new fields.BooleanField({ initial: false }),
+        generalKnowledge2: new fields.BooleanField({ initial: false }),
+        fitness:           new fields.BooleanField({ initial: false }),
+        riding:            new fields.BooleanField({ initial: false })
+      })
     };
   }
 }
 
 /**
  * Data model for Origin items.
- * Represents a character's place of origin or background story.
+ * Represents a character's place of origin or faction background (e.g. Moloch, Borgo).
  */
 export class OriginData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
-      description: new fields.HTMLField({ initial: "" })
+      description: new fields.HTMLField({ initial: "" }),
+      bonusText:   new fields.HTMLField({ initial: "" }),
+      faction:     new fields.StringField({ initial: "" })
     };
   }
 }
 
 /**
  * Data model for Profession items.
- * Represents a character's profession or occupational background.
+ * Represents a character's profession or occupational background (e.g. Soldier, Engineer).
  */
 export class ProfessionData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
-      description: new fields.HTMLField({ initial: "" })
+      description:    new fields.HTMLField({ initial: "" }),
+      bonusText:      new fields.HTMLField({ initial: "" }),
+      startingSkills: new fields.StringField({ initial: "" })
     };
   }
 }

@@ -4,25 +4,18 @@ const BaseEffectSheet = foundry.applications.sheets.ActiveEffectConfig;
 
 const NS_CHANGE_KEYS = [
   { group: "NEUROSHIMA.Effects.Keys.Group.Attributes", actorTypes: ["character", "npc", "creature"], keys: [
-    { key: "system.attributes.dexterity",    label: "NEUROSHIMA.Attribute.Dexterity" },
-    { key: "system.attributes.perception",   label: "NEUROSHIMA.Attribute.Perception" },
-    { key: "system.attributes.charisma",     label: "NEUROSHIMA.Attribute.Charisma" },
-    { key: "system.attributes.cleverness",   label: "NEUROSHIMA.Attribute.Cleverness" },
-    { key: "system.attributes.constitution", label: "NEUROSHIMA.Attribute.Constitution" }
-  ]},
-  { group: "NEUROSHIMA.Effects.Keys.Group.Modifiers", actorTypes: ["character", "npc", "creature"], keys: [
-    { key: "system.modifiers.dexterity",    label: "NEUROSHIMA.Modifier.Dexterity" },
-    { key: "system.modifiers.perception",   label: "NEUROSHIMA.Modifier.Perception" },
-    { key: "system.modifiers.charisma",     label: "NEUROSHIMA.Modifier.Charisma" },
-    { key: "system.modifiers.cleverness",   label: "NEUROSHIMA.Modifier.Cleverness" },
-    { key: "system.modifiers.constitution", label: "NEUROSHIMA.Modifier.Constitution" }
+    { key: "system.attributeBonuses.dexterity",    label: "NEUROSHIMA.Attributes.Dexterity" },
+    { key: "system.attributeBonuses.perception",   label: "NEUROSHIMA.Attributes.Perception" },
+    { key: "system.attributeBonuses.charisma",     label: "NEUROSHIMA.Attributes.Charisma" },
+    { key: "system.attributeBonuses.cleverness",   label: "NEUROSHIMA.Attributes.Cleverness" },
+    { key: "system.attributeBonuses.constitution", label: "NEUROSHIMA.Attributes.Constitution" }
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.HP", actorTypes: ["character", "npc", "creature"], keys: [
-    { key: "system.hp.max",   label: "NEUROSHIMA.HP.Max" },
-    { key: "system.hp.value", label: "NEUROSHIMA.HP.Value" }
+    { key: "system.hp.max", label: "NEUROSHIMA.HP.Max" }
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.Combat", actorTypes: ["character", "npc", "creature"], keys: [
-    { key: "system.combat.totalArmorPenalty", label: "NEUROSHIMA.Combat.ArmorPenalty" },
+    { key: "system.movement",                label: "NEUROSHIMA.Movement.Label" },
+    { key: "system.combat.armorPenaltyBonus", label: "NEUROSHIMA.Combat.ArmorPenalty" },
     { key: "system.combat.meleeInitiative",   label: "NEUROSHIMA.Combat.MeleeInitiative" },
     { key: "system.healingRate",              label: "NEUROSHIMA.Effects.Keys.HealingRate" }
   ]},
@@ -47,12 +40,12 @@ const NS_CHANGE_KEYS = [
     { key: "system.kondycja",    label: "NEUROSHIMA.Effects.Keys.Creature.Kondycja" }
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.VehicleAttributes", actorTypes: ["vehicle"], keys: [
-    { key: "system.attributes.agility",      label: "NEUROSHIMA.Vehicle.Attributes.Agility" },
-    { key: "system.attributes.topSpeed",     label: "NEUROSHIMA.Vehicle.Attributes.TopSpeed" },
-    { key: "system.attributes.acceleration", label: "NEUROSHIMA.Vehicle.Attributes.Acceleration" },
-    { key: "system.attributes.brakes",       label: "NEUROSHIMA.Vehicle.Attributes.Brakes" },
-    { key: "system.attributes.durability",   label: "NEUROSHIMA.Vehicle.Attributes.Durability" },
-    { key: "system.attributes.efficiency",   label: "NEUROSHIMA.Vehicle.Attributes.Efficiency" }
+    { key: "system.attributeBonuses.agility",      label: "NEUROSHIMA.Vehicle.Attributes.Agility" },
+    { key: "system.attributeBonuses.topSpeed",     label: "NEUROSHIMA.Vehicle.Attributes.TopSpeed" },
+    { key: "system.attributeBonuses.acceleration", label: "NEUROSHIMA.Vehicle.Attributes.Acceleration" },
+    { key: "system.attributeBonuses.brakes",       label: "NEUROSHIMA.Vehicle.Attributes.Brakes" },
+    { key: "system.attributeBonuses.durability",   label: "NEUROSHIMA.Vehicle.Attributes.Durability" },
+    { key: "system.attributeBonuses.efficiency",   label: "NEUROSHIMA.Vehicle.Attributes.Efficiency" }
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.VehicleArmorBonus", actorTypes: ["vehicle"], keys: [
     { key: "system.armorBonus.all",       label: "NEUROSHIMA.Effects.Keys.ArmorBonus.All" },
@@ -68,6 +61,76 @@ const NS_CHANGE_KEYS = [
     { key: "system.armor.leftSide.reduction",  label: "NEUROSHIMA.Effects.Keys.VehicleArmor.LeftSide" },
     { key: "system.armor.rear.reduction",      label: "NEUROSHIMA.Effects.Keys.VehicleArmor.Rear" },
     { key: "system.armor.bottom.reduction",    label: "NEUROSHIMA.Effects.Keys.VehicleArmor.Bottom" }
+  ]},
+  { group: "NEUROSHIMA.Effects.Keys.Group.SkillsDexterity", actorTypes: ["character", "npc", "creature"], keys: [
+    { key: "system.skillBonuses.brawl",          label: "NEUROSHIMA.Skills.brawl" },
+    { key: "system.skillBonuses.handWeapon",     label: "NEUROSHIMA.Skills.handWeapon" },
+    { key: "system.skillBonuses.throwing",       label: "NEUROSHIMA.Skills.throwing" },
+    { key: "system.skillBonuses.pistols",        label: "NEUROSHIMA.Skills.pistols" },
+    { key: "system.skillBonuses.rifles",         label: "NEUROSHIMA.Skills.rifles" },
+    { key: "system.skillBonuses.machineGuns",    label: "NEUROSHIMA.Skills.machineGuns" },
+    { key: "system.skillBonuses.bow",            label: "NEUROSHIMA.Skills.bow" },
+    { key: "system.skillBonuses.crossbow",       label: "NEUROSHIMA.Skills.crossbow" },
+    { key: "system.skillBonuses.sling",          label: "NEUROSHIMA.Skills.sling" },
+    { key: "system.skillBonuses.car",            label: "NEUROSHIMA.Skills.car" },
+    { key: "system.skillBonuses.truck",          label: "NEUROSHIMA.Skills.truck" },
+    { key: "system.skillBonuses.motorcycle",     label: "NEUROSHIMA.Skills.motorcycle" },
+    { key: "system.skillBonuses.pickpocketing",  label: "NEUROSHIMA.Skills.pickpocketing" },
+    { key: "system.skillBonuses.sleightOfHand",  label: "NEUROSHIMA.Skills.sleightOfHand" },
+    { key: "system.skillBonuses.lockpicking",    label: "NEUROSHIMA.Skills.lockpicking" }
+  ]},
+  { group: "NEUROSHIMA.Effects.Keys.Group.SkillsPerception", actorTypes: ["character", "npc", "creature"], keys: [
+    { key: "system.skillBonuses.directionSense",    label: "NEUROSHIMA.Skills.directionSense" },
+    { key: "system.skillBonuses.tracking",          label: "NEUROSHIMA.Skills.tracking" },
+    { key: "system.skillBonuses.traps",             label: "NEUROSHIMA.Skills.traps" },
+    { key: "system.skillBonuses.listening",         label: "NEUROSHIMA.Skills.listening" },
+    { key: "system.skillBonuses.spotting",          label: "NEUROSHIMA.Skills.spotting" },
+    { key: "system.skillBonuses.vigilance",         label: "NEUROSHIMA.Skills.vigilance" },
+    { key: "system.skillBonuses.sneaking",          label: "NEUROSHIMA.Skills.sneaking" },
+    { key: "system.skillBonuses.hiding",            label: "NEUROSHIMA.Skills.hiding" },
+    { key: "system.skillBonuses.camouflage",        label: "NEUROSHIMA.Skills.camouflage" },
+    { key: "system.skillBonuses.hunting",           label: "NEUROSHIMA.Skills.hunting" },
+    { key: "system.skillBonuses.waterGathering",    label: "NEUROSHIMA.Skills.waterGathering" },
+    { key: "system.skillBonuses.terrainKnowledge",  label: "NEUROSHIMA.Skills.terrainKnowledge" }
+  ]},
+  { group: "NEUROSHIMA.Effects.Keys.Group.SkillsCharisma", actorTypes: ["character", "npc", "creature"], keys: [
+    { key: "system.skillBonuses.persuasion",      label: "NEUROSHIMA.Skills.persuasion" },
+    { key: "system.skillBonuses.intimidation",    label: "NEUROSHIMA.Skills.intimidation" },
+    { key: "system.skillBonuses.leadership",      label: "NEUROSHIMA.Skills.leadership" },
+    { key: "system.skillBonuses.emotionPerception", label: "NEUROSHIMA.Skills.emotionPerception" },
+    { key: "system.skillBonuses.bluff",           label: "NEUROSHIMA.Skills.bluff" },
+    { key: "system.skillBonuses.animalCare",      label: "NEUROSHIMA.Skills.animalCare" },
+    { key: "system.skillBonuses.painResistance",  label: "NEUROSHIMA.Skills.painResistance" },
+    { key: "system.skillBonuses.steadfastness",   label: "NEUROSHIMA.Skills.steadfastness" },
+    { key: "system.skillBonuses.morale",          label: "NEUROSHIMA.Skills.morale" }
+  ]},
+  { group: "NEUROSHIMA.Effects.Keys.Group.SkillsCleverness", actorTypes: ["character", "npc", "creature"], keys: [
+    { key: "system.skillBonuses.woundTreatment",   label: "NEUROSHIMA.Skills.woundTreatment" },
+    { key: "system.skillBonuses.diseaseTreatment", label: "NEUROSHIMA.Skills.diseaseTreatment" },
+    { key: "system.skillBonuses.firstAid",         label: "NEUROSHIMA.Skills.firstAid" },
+    { key: "system.skillBonuses.mechanics",        label: "NEUROSHIMA.Skills.mechanics" },
+    { key: "system.skillBonuses.electronics",      label: "NEUROSHIMA.Skills.electronics" },
+    { key: "system.skillBonuses.computers",        label: "NEUROSHIMA.Skills.computers" },
+    { key: "system.skillBonuses.heavyMachinery",   label: "NEUROSHIMA.Skills.heavyMachinery" },
+    { key: "system.skillBonuses.combatVehicles",   label: "NEUROSHIMA.Skills.combatVehicles" },
+    { key: "system.skillBonuses.boats",            label: "NEUROSHIMA.Skills.boats" },
+    { key: "system.skillBonuses.gunsmithing",      label: "NEUROSHIMA.Skills.gunsmithing" },
+    { key: "system.skillBonuses.launchers",        label: "NEUROSHIMA.Skills.launchers" },
+    { key: "system.skillBonuses.explosives",       label: "NEUROSHIMA.Skills.explosives" },
+    { key: "system.skillBonuses.knowledge1",       label: "NEUROSHIMA.Skills.knowledge1" },
+    { key: "system.skillBonuses.knowledge2",       label: "NEUROSHIMA.Skills.knowledge2" },
+    { key: "system.skillBonuses.knowledge3",       label: "NEUROSHIMA.Skills.knowledge3" },
+    { key: "system.skillBonuses.knowledge4",       label: "NEUROSHIMA.Skills.knowledge4" },
+    { key: "system.skillBonuses.knowledge5",       label: "NEUROSHIMA.Skills.knowledge5" },
+    { key: "system.skillBonuses.knowledge6",       label: "NEUROSHIMA.Skills.knowledge6" }
+  ]},
+  { group: "NEUROSHIMA.Effects.Keys.Group.SkillsConstitution", actorTypes: ["character", "npc", "creature"], keys: [
+    { key: "system.skillBonuses.swimming",         label: "NEUROSHIMA.Skills.swimming" },
+    { key: "system.skillBonuses.climbing",         label: "NEUROSHIMA.Skills.climbing" },
+    { key: "system.skillBonuses.stamina",          label: "NEUROSHIMA.Skills.stamina" },
+    { key: "system.skillBonuses.horseRiding",      label: "NEUROSHIMA.Skills.horseRiding" },
+    { key: "system.skillBonuses.drivingCarriage",  label: "NEUROSHIMA.Skills.drivingCarriage" },
+    { key: "system.skillBonuses.taming",           label: "NEUROSHIMA.Skills.taming" }
   ]}
 ];
 

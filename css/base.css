@@ -696,6 +696,125 @@ body.theme-dark {
     background: rgba(160, 46, 46, 0.15);
 }
 
+/* Fire Correction */
+.neuroshima.roll-card .fire-correction-row {
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+.neuroshima.roll-card .fire-correction-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: rgba(160, 100, 30, 0.12);
+    border: 1px solid rgba(160, 100, 30, 0.45);
+    border-radius: 4px;
+    color: inherit;
+    font-size: 0.82em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.neuroshima.roll-card .fire-correction-button:hover:not(:disabled) {
+    background: rgba(160, 100, 30, 0.25);
+    border-color: rgba(160, 100, 30, 0.7);
+}
+
+.neuroshima.roll-card .fire-correction-button:disabled,
+.neuroshima.roll-card .fire-correction-button.applied {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.neuroshima.roll-card .correction-cost-badge {
+    background: rgba(0,0,0,0.15);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 0.92em;
+    font-weight: normal;
+}
+
+/* Fire Correction — corrected state */
+.neuroshima.roll-card .roll-outcome.corrected {
+    background: rgba(180, 100, 20, 0.15);
+    border-top-color: rgba(180, 100, 20, 0.5);
+}
+
+.neuroshima.roll-card .corrected-status {
+    color: #c87820 !important;
+}
+
+.neuroshima.roll-card .corrected-pp {
+    color: #c87820;
+}
+
+.neuroshima.roll-card .fire-correction-hits {
+    margin-top: 2px;
+}
+
+/* Fire Correction — debug step-by-step panel */
+.neuroshima.roll-card .fire-correction-debug {
+    margin: 4px 0;
+    padding: 6px 8px;
+    background: rgba(30, 80, 30, 0.12);
+    border: 1px solid rgba(60, 140, 60, 0.4);
+    border-radius: 4px;
+    font-size: 0.78em;
+}
+
+.neuroshima.roll-card .fc-debug-header {
+    font-weight: bold;
+    color: #4a9a4a;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    letter-spacing: 0.02em;
+}
+
+.neuroshima.roll-card .fc-debug-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 1px 0;
+    border-bottom: 1px solid rgba(60, 140, 60, 0.12);
+}
+
+.neuroshima.roll-card .fc-debug-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.roll-card .fc-debug-label {
+    color: var(--color-text-light-secondary, #aaa);
+    flex-shrink: 0;
+}
+
+.neuroshima.roll-card .fc-debug-value {
+    text-align: right;
+    font-family: monospace;
+    font-size: 1.05em;
+}
+
+.neuroshima.roll-card .fc-debug-formula {
+    background: rgba(60, 140, 60, 0.06);
+}
+
+.neuroshima.roll-card .fc-debug-result {
+    margin-top: 3px;
+    padding-top: 3px;
+    border-top: 1px solid rgba(60, 140, 60, 0.35) !important;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .fc-debug-result .fc-debug-value {
+    color: #5db85d;
+}
+
 /* Melee Opposed Duel Handler */
 .neuroshima.melee-opposed-handler {
     background: url('../ui/NS_paper_bg.webp');
@@ -1514,9 +1633,9 @@ body.theme-dark {
 
 /* Roll Dialog Window Overrides */
 .neuroshima.roll-dialog-window {
-    min-width: 450px !important;
-    width: 450px !important;
-    max-width: 450px !important;
+    min-width: 480px !important;
+    width: 480px !important;
+    max-width: 480px !important;
 }
 
 .neuroshima.roll-dialog-window .window-content {
@@ -1655,6 +1774,11 @@ body.theme-dark {
     border-radius: 4px;
     border-left: 3px solid transparent;
     cursor: help;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.pain-resistance-report .wound-item:hover {
+    transform: translateX(2px);
 }
 
 .pain-resistance-report .wound-item.success {
@@ -1662,9 +1786,29 @@ body.theme-dark {
     border-left-color: #28a745;
 }
 
+.pain-resistance-report .wound-item.success:hover {
+    background: rgba(40, 167, 69, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(40, 167, 69, 0.3);
+}
+
 .pain-resistance-report .wound-item.failure {
     background: rgba(220, 53, 69, 0.05);
     border-left-color: #dc3545;
+}
+
+.pain-resistance-report .wound-item.failure:hover {
+    background: rgba(220, 53, 69, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.3);
+}
+
+.pain-resistance-report .wound-item.critical {
+    background: rgba(180, 0, 0, 0.08);
+    border-left-color: #8b0000;
+}
+
+.pain-resistance-report .wound-item.critical:hover {
+    background: rgba(180, 0, 0, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(139, 0, 0, 0.5);
 }
 
 .pain-resistance-report .wound-item.reduced {
@@ -1672,14 +1816,25 @@ body.theme-dark {
     border-left-color: #6c757d;
 }
 
+.pain-resistance-report .wound-item.reduced:hover {
+    background: rgba(108, 117, 125, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(108, 117, 125, 0.3);
+}
+
 .pain-resistance-report .wound-icon {
     width: 16px;
     text-align: center;
     font-size: 0.8em;
+    transition: transform 0.2s ease;
+}
+
+.pain-resistance-report .wound-item:hover .wound-icon {
+    transform: scale(1.2);
 }
 
 .pain-resistance-report .wound-item.success .wound-icon { color: #28a745; }
 .pain-resistance-report .wound-item.failure .wound-icon { color: #dc3545; }
+.pain-resistance-report .wound-item.critical .wound-icon { color: #8b0000; }
 .pain-resistance-report .wound-item.reduced .wound-icon { color: #6c757d; }
 .pain-resistance-report .wound-item.force-passed .wound-icon { color: #28a745; }
 
@@ -5012,5 +5167,167 @@ body.theme-dark {
 
 .theme-dark .condition-row:hover {
     background: rgba(255,255,255,0.03);
+}
+
+/* Item Summary Dropdown */
+.item-wrap {
+    border-bottom: 1px solid var(--ns-border-color, rgba(255,255,255,0.1));
+}
+
+.item-wrap:last-child {
+    border-bottom: none;
+}
+
+.item-wrap .item {
+    border-bottom: none;
+}
+
+.item-summary {
+    padding: 6px 10px 8px 10px;
+    font-size: 0.85em;
+    background: rgba(0,0,0,0.15);
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.item-summary.collapsed {
+    display: none;
+}
+
+.item-summary .item-description {
+    color: var(--ns-text-secondary, #ccc);
+    line-height: 1.4;
+}
+
+.item-summary .item-description p {
+    margin: 0 0 4px;
+}
+
+.item-summary .item-description p:last-child {
+    margin-bottom: 0;
+}
+
+.item-summary .item-script-row {
+    margin-top: 6px;
+}
+
+.item-ctx-btn {
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.item-wrap:hover .item-ctx-btn,
+.item-ctx-btn:hover {
+    opacity: 1;
+}
+
+/* Manual script buttons — always visible below item row */
+.sheet-effect-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.1);
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.sheet-effect-buttons .manual-script-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 0.8em;
+    cursor: pointer;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    color: var(--ns-text-primary, #ddd);
+    transition: background 0.15s;
+}
+
+.sheet-effect-buttons .manual-script-btn:hover {
+    background: rgba(255,255,255,0.14);
+}
+
+/* Custom item context menu */
+.ns-item-ctx-menu {
+    min-width: 150px;
+}
+
+.ns-item-ctx-menu .context-items {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    background: var(--color-bg-option, #1a1a1a);
+    border: 1px solid var(--color-border-dark, #333);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.ns-item-ctx-menu .context-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.9em;
+    white-space: nowrap;
+    color: var(--color-text-primary, #eee);
+    transition: background 0.1s;
+}
+
+.ns-item-ctx-menu .context-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Distance Config Table */
+.distance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+}
+
+.distance-table thead tr {
+    border-bottom: 2px solid var(--ns-text-accent);
+}
+
+.distance-table th {
+    text-align: center;
+    padding: 5px 8px;
+}
+
+.distance-table th.distance-col-header {
+    white-space: nowrap;
+    border-right: 2px solid var(--ns-text-accent);
+}
+
+.distance-table tbody tr {
+    border-bottom: 1px solid var(--ns-text-accent);
+}
+
+.distance-table td {
+    text-align: center;
+    padding: 3px 4px;
+}
+
+.distance-table td.distance-col-cell {
+    padding: 3px 6px;
+    border-right: 2px solid var(--ns-text-accent);
+}
+
+.distance-table td input {
+    text-align: center;
+}
+
+.distance-table td input.distance-input {
+    width: 70px;
+}
+
+.distance-table td input.penalty-input {
+    width: 55px;
+}
+
+.distance-table .delete-row {
+    cursor: pointer;
+    color: #c33;
 }
 

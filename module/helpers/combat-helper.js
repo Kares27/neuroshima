@@ -530,6 +530,33 @@ export class CombatHelper {
         }
     }
 
+    // Korygowanie Ognia — inject corrected hits into flags before damage calculation
+    const fireCorrectionApplied = message.getFlag("neuroshima", "fireCorrectionApplied");
+    const correctedHits = fireCorrectionApplied ? (message.getFlag("neuroshima", "correctedHits") ?? 0) : 0;
+    const fireCorrectionIsSuccess = message.getFlag("neuroshima", "fireCorrectionIsSuccess") ?? false;
+
+    if (fireCorrectionApplied && correctedHits > 0) {
+        flags = foundry.utils.deepClone(flags);
+        const firstHit = flags.hitBulletsData?.[0];
+        const baseDamage = firstHit?.damage ?? flags.damage ?? "L";
+        const basePiercing = firstHit?.piercing ?? 0;
+        const baseIsPellet = firstHit?.isPellet ?? false;
+        const baseSP = baseIsPellet ? (firstHit?.successPoints ?? 1) : 1;
+        const correctionBullets = Array.from({ length: correctedHits }, () => ({
+            damage: baseDamage,
+            piercing: basePiercing,
+            isPellet: baseIsPellet,
+            successPoints: baseSP
+        }));
+        if (!fireCorrectionIsSuccess) {
+            flags.hitBulletsData = correctionBullets;
+            flags.isSuccess = true;
+        } else {
+            flags.hitBulletsData = [...(flags.hitBulletsData || []), ...correctionBullets];
+        }
+        game.neuroshima.log("Korygowanie Ognia | Obrażenia z korektą", { correctedHits, fireCorrectionIsSuccess, hitBulletsData: flags.hitBulletsData });
+    }
+
     game.neuroshima.log("Parametry wejściowe:", { messageId: message.id, flags, actors: actors.map(a => a.name) });
 
     if (!flags || !flags.isWeapon) {
@@ -702,12 +729,14 @@ export class CombatHelper {
             await roll.evaluate();
             diceResults = roll.terms[0].results.map(r => r.result);
             
-            // Obliczanie Suwaka (tylko umiejętność i kości naturalne)
+            // Nat 1 / Nat 20 zawsze wpływają na trudność; skillShift tylko gdy suwak jest włączony
             const allowShift = game.settings.get("neuroshima", "allowPainResistanceShift");
+            const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
             if (allowShift) {
                 const skillShift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
-                const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
                 totalShift = -skillShift + diceShift;
+            } else {
+                totalShift = diceShift;
             }
             
             shiftedDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);

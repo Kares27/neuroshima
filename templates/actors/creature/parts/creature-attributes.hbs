@@ -58,6 +58,18 @@
                     </td>
                     {{/each}}
                 </tr>
+                <tr class="attr-section-label-row">
+                    <td colspan="5"><strong>{{localize "NEUROSHIMA.Attributes.Total"}}</strong></td>
+                </tr>
+                <tr class="attribute-row attribute-total-row">
+                    {{#each attributeList as |attr key|}}
+                    <td>
+                        <input type="number" readonly
+                            value="{{lookup ../system.attributeTotals key}}"
+                            {{#if (lookup ../effectTooltips key)}}data-tooltip="{{lookup ../effectTooltips key}}" data-tooltip-direction="UP"{{/if}}/>
+                    </td>
+                    {{/each}}
+                </tr>
             </tbody>
         </table>
     </div>

@@ -14,33 +14,38 @@
                     <div class="specialization-row {{#if spec.owned}}owned{{/if}}">
                         <div class="spec-name-cell">
                             <label class="spec-toggle">
-                                <input type="checkbox" name="system.specializations.{{specKey}}" {{checked spec.owned}} hidden>
+                                <input type="checkbox" name="system.specializations.{{specKey}}" {{checked spec.owned}} hidden disabled>
                                 <span class="spec-name">{{localize spec.label}}</span>
                             </label>
                         </div>
 
                         <div class="skills-horizontal-grid">
                             {{#each spec.skills as |skill|}}
-                            <div class="skill-item">
-                                <a class="roll-skill-btn" data-action="rollSkill" data-skill="{{skill.key}}" title="{{localize "NEUROSHIMA.Actions.Roll"}}">
-                                    <i class="fas fa-dice-d20"></i>
-                                </a>
+                            <div class="skill-item" data-action="rollSkill" data-skill="{{skill.key}}" title="{{localize "NEUROSHIMA.Actions.Roll"}}: {{localize skill.label}}">
                                 <div class="skill-input-wrapper">
-                                    <input type="number" 
-                                           name="system.skills.{{skill.key}}.value" 
-                                           value="{{skill.value}}" 
-                                           min="0" max="20" 
+                                    <input type="number"
+                                           name="system.skills.{{skill.key}}.value"
+                                           value="{{skill.value}}"
+                                           min="0" max="20"
                                            class="skill-input">
+                                    <input type="number"
+                                           value="{{skill.total}}"
+                                           class="skill-input skill-total-input"
+                                           disabled
+                                           {{#if skill.bonusTooltip}}data-tooltip="{{skill.bonusTooltip}}"{{/if}}>
                                 </div>
                                 {{#if skill.isKnowledge}}
-                                    <input type="text" 
-                                           name="system.skills.{{skill.key}}.label" 
-                                           value="{{skill.customLabel}}" 
-                                           placeholder="{{localize skill.label}}"
-                                           class="skill-label-input"
-                                           title="{{skill.customLabel}}">
+                                    <div class="skill-knowledge-wrapper">
+                                        <span class="skill-knowledge-label">{{#if skill.customLabel}}{{skill.customLabel}}{{else}}{{localize skill.label}}{{/if}}</span>
+                                        <input type="text"
+                                               name="system.skills.{{skill.key}}.label"
+                                               value="{{skill.customLabel}}"
+                                               placeholder="{{localize skill.label}}"
+                                               class="skill-label-input">
+                                        <a class="skill-knowledge-edit-btn" data-action="toggleKnowledgeEdit" data-skill="{{skill.key}}"><i class="fas fa-pen"></i></a>
+                                    </div>
                                 {{else}}
-                                    <span class="skill-name" title="{{localize skill.label}}">{{localize skill.label}}</span>
+                                    <span class="skill-name">{{localize skill.label}}</span>
                                 {{/if}}
                             </div>
                             {{/each}}

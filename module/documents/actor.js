@@ -35,7 +35,7 @@ export class NeuroshimaActor extends Actor {
   /** @override */
   async _preCreate(data, options, user) {
     await super._preCreate(data, options, user);
-    const updates = {};
+    const updates = { "prototypeToken.sight.enabled": true };
     if (data.type === "character") {
       updates["prototypeToken.actorLink"] = true;
     }
@@ -46,14 +46,13 @@ export class NeuroshimaActor extends Actor {
     if (actorIcons[data.type] && (!data.img || data.img === "icons/svg/mystery-man.svg")) {
       updates.img = actorIcons[data.type];
     }
-    if (Object.keys(updates).length > 0) {
-      this.updateSource(updates);
-    }
+    this.updateSource(updates);
   }
 
   /** @override */
   prepareDerivedData() {
     super.prepareDerivedData();
+    this.system._preparePostEffects?.();
     NeuroshimaScriptRunner.executeSync("prepareData", { actor: this });
   }
 
@@ -531,6 +530,12 @@ export class NeuroshimaActor extends Actor {
     }
 
     return super.toggleStatusEffect(effectId, { active, overlay });
+  }
+
+  /** @override */
+  async _preUpdate(changed, options, user) {
+    const result = await super._preUpdate(changed, options, user);
+    if (result === false) return false;
   }
 
   /**

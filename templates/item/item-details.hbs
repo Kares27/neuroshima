@@ -103,6 +103,48 @@
         </div>
     {{/if}}
 
+    {{#if (eq item.type "specialization")}}
+        <div class="spec-master-table">
+            <div class="spec-master-header">{{localize "NEUROSHIMA.Background.SpecializationsHeader"}}</div>
+            <div class="spec-master-body">
+                {{#each config.specGroups as |group|}}
+                <div class="spec-attr-group">
+                    <div class="spec-attr-label">{{localize group.attrLabel}}</div>
+                    <div class="spec-attr-checks">
+                        {{#each group.specs as |spec|}}
+                        <label class="spec-check-label">
+                            <input type="checkbox"
+                                   name="system.skillSpecializations.{{spec.key}}"
+                                   {{#if spec.checked}}checked{{/if}}
+                                   {{#unless ../../editable}}disabled{{/unless}}/>
+                            {{localize spec.label}}
+                        </label>
+                        {{/each}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "origin")}}
+        <div class="item-features secondary-box" style="padding: 0.75rem;">
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Background.Faction"}}</label>
+                <input type="text" name="system.faction" value="{{system.faction}}" placeholder="np. Moloch, Borgo, Hegemonia..."/>
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "profession")}}
+        <div class="item-features secondary-box" style="padding: 0.75rem;">
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Background.StartingSkills"}}</label>
+                <input type="text" name="system.startingSkills" value="{{system.startingSkills}}" placeholder="np. Bijatyka 3, Pistolety 2..."/>
+            </div>
+        </div>
+    {{/if}}
+
     {{#if (eq item.type "beast-action")}}
         <div class="item-features beast-action-stats secondary-box">
             <div class="grid grid-3col">

@@ -98,9 +98,17 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       openSource: this.prototype._onOpenSource,
       invokeItemScript: this.prototype._onInvokeItemScript,
       toggleCondition: this.prototype._onToggleCondition,
-      adjustConditionValue: this.prototype._onAdjustConditionValue
+      adjustConditionValue: this.prototype._onAdjustConditionValue,
+      revertXpEntry: this.prototype._onRevertXpEntry,
+      toggleKnowledgeEdit: this.prototype._onToggleKnowledgeEdit,
+      toggleSummary: this.prototype._onToggleSummary,
+      itemContextMenu: this.prototype._onItemContextMenu,
+      postItemToChat: this.prototype._onPostItemToChat
     },
-    dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
+    dragDrop: [
+      { dragSelector: ".item[data-item-id]", dropSelector: "form" },
+      { dragSelector: ".effect-row[data-effect-id]:not([data-item-id])", dropSelector: "form" }
+    ]
   };
 
   /** @override */
@@ -130,7 +138,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" ,  scrollable: [".wounds-list-container"]},
     inventory: { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""]},
     effects: { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
-    notes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
+    notes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs", scrollable: [""] }
   };
 
   /** @inheritdoc */
@@ -156,6 +164,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     // Prepare Attributes
     context.attributeList = NEUROSHIMA.attributes;
     context.difficulties = NEUROSHIMA.difficulties;
+    context.effectTooltips = this._buildEffectTooltips(actor);
     context.difficultiesCollapsed = this._difficultiesCollapsed;
 
     // Prepare Skills
@@ -165,6 +174,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     context.owner = this.document.isOwner;
     context.editable = this.isEditable;
     context.isGM = game.user.isGM;
+    context.isCharacter = actor.type === "character";
 
     // Organize Items - Sort by 'sort' property to allow manual reordering
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
@@ -183,6 +193,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     context.tricks = items.filter(i => i.type === "trick");
     context.wounds = items.filter(i => i.type === "wound");
     context.itemManualScripts = this._prepareItemManualScripts(actor);
+    context.background = await this._prepareBackground(actor);
 
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
@@ -271,6 +282,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       penaltyTooltip: penaltyTooltip,
       totalDamagePoints: system.combat.totalDamagePoints,
       meleeInitiative: system.combat.meleeInitiative || 0,
+      movement: system.movement ?? 2,
+      movement2: (system.movement ?? 2) * 2,
+      movement3: (system.movement ?? 2) * 3,
       currentHP: system.hp.value || 0,
       maxHP: system.hp.max || 27,
       healingRate: healingRate,
@@ -353,16 +367,26 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         secrets: this.document.isOwner,
         rollData: this.document.getRollData(),
         relativeTo: this.document
-      })
+      }),
+      xpLog: [...(system.xpLog ?? [])].reverse().map(e => ({
+        ...e,
+        costClass:    e.cost > 0 ? "xp-cost-spent" : (e.cost < 0 ? "xp-cost-gain" : "xp-cost-free"),
+        costDisplay:  e.cost < 0 ? "+" + Math.abs(e.cost) : (e.cost > 0 ? "-" + e.cost : null)
+      }))
     };
 
     // Prepare effects — collect from actor directly + all owned items
+    const condDefs = getConditions();
+    const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
+
     const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
     const isTemporary = (e) => !!(e.duration?.rounds || e.duration?.seconds || e.duration?.turns);
+    const isConditionEffect = (e) => e.statuses?.size > 0;
 
-    const temporary = [];
-    const passive   = [];
-    const disabled  = [];
+    const temporary    = [];
+    const passive      = [];
+    const disabled     = [];
+    const statusEffects = [];
 
     const pushEffect = (e, itemId, sourceName, sourceIcon, isItemEffect) => {
       const entry = {
@@ -376,9 +400,17 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         durationLabel: effectDurationLabel(e),
         isItemEffect: !!isItemEffect
       };
-      if (e.disabled)          disabled.push(entry);
-      else if (isTemporary(e)) temporary.push(entry);
-      else                     passive.push(entry);
+      if (isConditionEffect(e)) {
+        const statusKey = [...(e.statuses ?? [])][0];
+        entry.conditionType = condTypeMap[statusKey] ?? "boolean";
+        statusEffects.push(entry);
+      } else if (e.disabled) {
+        disabled.push(entry);
+      } else if (isTemporary(e)) {
+        temporary.push(entry);
+      } else {
+        passive.push(entry);
+      }
     };
 
     for (const e of actor.effects) {
@@ -397,20 +429,21 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const docType      = e.getFlag?.("neuroshima", "documentType")  ?? "actor";
         const transferType = e.getFlag?.("neuroshima", "transferType")  ?? "owningDocument";
         const equipTransfer = e.getFlag?.("neuroshima", "equipTransfer") ?? false;
-        // Only "Owning Document + Actor" effects appear in the effects tab.
-        // Target / Damage / Other are applied situationally via scripts — not shown here.
         if (docType !== "actor" || transferType !== "owningDocument") continue;
-        // equipTransfer effects are managed as actor-level copies; skip from item list
         if (equipTransfer) continue;
         pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true);
       }
     }
 
-    context.effects = { temporary, passive, disabled };
-    context.effectsAny = temporary.length > 0 || passive.length > 0 || disabled.length > 0;
+    statusEffects.sort((a, b) => {
+      const order = { boolean: 0, int: 1 };
+      return (order[a.conditionType] ?? 0) - (order[b.conditionType] ?? 0);
+    });
+
+    context.effects = { temporary, passive, disabled, statusEffects };
+    context.effectsAny = temporary.length > 0 || passive.length > 0 || disabled.length > 0 || statusEffects.length > 0;
 
     // Conditions panel — WFRP-style: int conditions stored as ActiveEffects
-    const condDefs = getConditions();
     context.conditionStates = condDefs.map(c => {
       const isInt = c.type === "int";
       let active, value;
@@ -430,21 +463,17 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         active,
         value
       };
-    });
+    }).sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
 
     return context;
   }
 
   /** @override */
   _prepareSubmitData(event, form, formData) {
-    game.neuroshima.log("_prepareSubmitData triggered", {event, formData});
-
     this._saveWoundsScroll();
 
     const data = formData.object;
 
-    // Strip item fields from actor form data so they don't pollute the actor update.
-    // Item changes are handled individually by _onChangeForm.
     for (const key of Object.keys(data)) {
       if (key.startsWith("items.")) delete data[key];
     }
@@ -455,7 +484,57 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     if (!data.name) {
       data.name = this.document.name;
     }
+
     return super._prepareSubmitData(event, form, formData);
+  }
+
+  async _prepareBackground(actor) {
+    const bgTypes = ["specialization", "origin", "profession"];
+    const slots = { specialization: null, origin: null, profession: null, extras: [] };
+    const seen = { specialization: false, origin: false, profession: false };
+
+    for (const item of actor.items) {
+      if (!bgTypes.includes(item.type)) continue;
+      const slot = item.type;
+      const enriched = item.system.bonusText
+        ? await TextEditor.enrichHTML(item.system.bonusText, { relativeTo: item, rollData: item.getRollData?.() ?? {} })
+        : "";
+      const activeSpecializations = slot === "specialization" && item.system.skillSpecializations
+        ? Object.entries(item.system.skillSpecializations).filter(([, v]) => v).map(([k]) => k)
+        : [];
+      const wrapped = { id: item.id, name: item.name, img: item.img, type: item.type, system: item.system, bonusEnriched: enriched, activeSpecializations };
+      if (!seen[slot]) {
+        slots[slot] = wrapped;
+        seen[slot] = true;
+      } else {
+        const typeCap = slot.charAt(0).toUpperCase() + slot.slice(1);
+        slots.extras.push({ ...wrapped, typeCap });
+      }
+    }
+    return slots;
+  }
+
+  _buildEffectTooltips(actor) {
+    const attrKeys = Object.keys(NEUROSHIMA.attributes);
+    const tooltips = {};
+    for (const key of attrKeys) tooltips[key] = "";
+
+    for (const effect of actor.effects) {
+      if (effect.disabled || effect.isSuppressed) continue;
+      for (const change of (effect.changes ?? [])) {
+        if (!change.key) continue;
+        const attrMatch = change.key.match(/^system\.attributeBonuses\.(\w+)$/);
+        const modMatch  = change.key.match(/^system\.bonuses\.(\w+)$/);
+        const match = attrMatch || modMatch;
+        if (!match) continue;
+        const key = match[1];
+        if (!attrKeys.includes(key)) continue;
+        const val  = Number(change.value) || 0;
+        const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
+        tooltips[key] = tooltips[key] ? tooltips[key] + "\n" + part : part;
+      }
+    }
+    return tooltips;
   }
 
   /** @override */
@@ -484,6 +563,110 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       return;
     }
 
+    const isCharacter = this.document.type === "character";
+
+    const attrMatch = name?.match(/^system\.attributes\.(\w+)$/);
+    if (attrMatch) {
+      const key    = attrMatch[1];
+      const newVal = Number(input.value);
+      const oldVal = Number(this.document.system.attributes?.[key]) || 0;
+      if (isCharacter && newVal > oldVal) {
+        const { getAttrTotalCost, showXpDialog, applyXpEntry } = await import("../helpers/xp.js");
+        const cost       = getAttrTotalCost(oldVal, newVal);
+        const currentXp  = (Number(this.document.system.xp?.total) || 0) - (Number(this.document.system.xp?.spent) || 0);
+        const attrLabel  = game.i18n.localize(NEUROSHIMA.attributes[key]?.label ?? key);
+        const desc       = game.i18n.format("NEUROSHIMA.XP.Log.AttributeRaise", { attr: attrLabel, from: oldVal, to: newVal });
+        const choice     = await showXpDialog(cost, desc, currentXp);
+        if (choice === null) { input.value = oldVal; return; }
+        const updateData = {};
+        foundry.utils.setProperty(updateData, `system.attributes.${key}`, newVal);
+        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, `system.attributes.${key}`);
+        await this.document.update(updateData, { ns_skip_xp: true });
+        return;
+      }
+      return super._onChangeForm(formConfig, event);
+    }
+
+    const skillMatch = name?.match(/^system\.skills\.(\w+)\.value$/);
+    if (skillMatch) {
+      const key    = skillMatch[1];
+      const newVal = Number(input.value);
+      const oldVal = Number(this.document.system.skills?.[key]?.value) || 0;
+      if (isCharacter && newVal > oldVal) {
+        const { getSkillTotalCost, showXpDialog, applyXpEntry } = await import("../helpers/xp.js");
+        const cost       = getSkillTotalCost(key, oldVal, newVal, this.document);
+        const currentXp  = (Number(this.document.system.xp?.total) || 0) - (Number(this.document.system.xp?.spent) || 0);
+        const skillLabel = game.i18n.localize(`NEUROSHIMA.Skills.${key}`) || key;
+        const desc       = game.i18n.format("NEUROSHIMA.XP.Log.SkillRaise", { skill: skillLabel, from: oldVal, to: newVal });
+        const choice     = await showXpDialog(cost, desc, currentXp);
+        if (choice === null) { input.value = oldVal; return; }
+        const updateData = {};
+        foundry.utils.setProperty(updateData, `system.skills.${key}.value`, newVal);
+        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, `system.skills.${key}.value`);
+        await this.document.update(updateData, { ns_skip_xp: true });
+        return;
+      }
+      return super._onChangeForm(formConfig, event);
+    }
+
+    if (name === "system.xp.total") {
+      if (!isCharacter) return super._onChangeForm(formConfig, event);
+      const newVal = Number(input.value);
+      const oldVal = Number(this.document.system.xp?.total) || 0;
+      if (newVal > oldVal) {
+        const amount = newVal - oldVal;
+        const { showXpGrantDialog, applyXpGrantEntry } = await import("../helpers/xp.js");
+        const result = await showXpGrantDialog(amount);
+        if (result === null) {
+          input.value = oldVal;
+          return;
+        }
+        const updateData = {};
+        foundry.utils.setProperty(updateData, "system.xp.total", newVal);
+        applyXpGrantEntry(this.document, updateData, amount, result.reason);
+        await this.document.update(updateData, { ns_skip_xp: true });
+        return;
+      }
+      input.value = oldVal;
+      return;
+    }
+
+    if (name === "system.xp.spent") {
+      if (!isCharacter) return super._onChangeForm(formConfig, event);
+      const newVal = Number(input.value);
+      const oldVal = Number(this.document.system.xp?.spent) || 0;
+      if (newVal < 0) { input.value = oldVal; return; }
+      if (newVal > oldVal) {
+        const total = Number(this.document.system.xp?.total) || 0;
+        if (newVal > total) {
+          ui.notifications?.warn(game.i18n.localize("NEUROSHIMA.XP.Deduct.ExceedsTotal"));
+          input.value = oldVal;
+          return;
+        }
+        const amount = newVal - oldVal;
+        const { showXpDeductDialog } = await import("../helpers/xp.js");
+        const result = await showXpDeductDialog(amount);
+        if (result === null) { input.value = oldVal; return; }
+        const current = total - oldVal;
+        const entry = {
+          id:            foundry.utils.randomID(),
+          date:          new Date().toLocaleDateString("pl-PL"),
+          description:   result.reason,
+          cost:          amount,
+          xpBefore:      current,
+          xpAfter:       current - amount,
+          previousValue: oldVal,
+          fieldPath:     "system.xp.spent"
+        };
+        const log = foundry.utils.deepClone(this.document.system.xpLog ?? []);
+        log.push(entry);
+        await this.document.update({ "system.xp.spent": newVal, "system.xpLog": log }, { ns_skip_xp: true });
+        return;
+      }
+      input.value = oldVal;
+      return;
+    }
+
     return super._onChangeForm(formConfig, event);
   }
 
@@ -497,6 +680,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     html.querySelectorAll('[data-action="adjustQuantity"]').forEach(el => {
       el.addEventListener('contextmenu', (event) => {
         event.preventDefault();
+        event.stopPropagation();
         this._onAdjustQuantity(event, event.currentTarget);
       });
     });
@@ -527,6 +711,15 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     html.querySelectorAll('[data-action="adjustConditionValue"]').forEach(el => {
       el.addEventListener('change', (event) => {
         this._onAdjustConditionValue(event, event.currentTarget);
+      });
+    });
+
+    // Item context menu — right-click on .item-wrap
+    html.querySelectorAll('.item-wrap[data-item-id]').forEach(wrap => {
+      wrap.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._showItemContextMenu(event, wrap.dataset.itemId);
       });
     });
 
@@ -589,6 +782,19 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       el.addEventListener('click', (event) => {
         event.preventDefault();
         this._onIgnoreMelee(event);
+      });
+    });
+
+    // Explicit drag-and-drop for actor-owned effects (not from items)
+    html.querySelectorAll('.effect-row[data-effect-id]').forEach(el => {
+      if (el.dataset.itemId) return;
+      el.setAttribute('draggable', 'true');
+      el.addEventListener('dragstart', (event) => {
+        event.stopPropagation();
+        const effectId = el.dataset.effectId;
+        const effect = this.document.effects.get(effectId);
+        if (!effect) return;
+        event.dataTransfer.setData("text/plain", JSON.stringify(effect.toDragData()));
       });
     });
   }
@@ -706,6 +912,33 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   }
 
   /** @override */
+  _onDragStart(event) {
+    const el = event.currentTarget;
+    const effectId = el.dataset.effectId;
+    if (effectId && !el.dataset.itemId) {
+      const effect = this.document.effects.get(effectId);
+      if (effect) {
+        event.dataTransfer.setData("text/plain", JSON.stringify(effect.toDragData()));
+        return;
+      }
+    }
+    return super._onDragStart(event);
+  }
+
+  /** @override */
+  async _onDropActiveEffect(event, data) {
+    const effect = await ActiveEffect.fromDropData(data);
+    if (!effect) return false;
+    if (!this.document.isOwner) return false;
+    if (this.document.uuid === effect.parent?.uuid) return false;
+    const effectData = effect.toObject();
+    delete effectData._id;
+    effectData.transfer = false;
+    game.neuroshima.log(`[DragDrop] Dropping effect "${effect.name}" onto actor "${this.document.name}"`);
+    return this.document.createEmbeddedDocuments("ActiveEffect", [effectData]);
+  }
+
+  /** @override */
   async _onDrop(event) {
     game.neuroshima.log("_onDrop triggered");
     return super._onDrop(event);
@@ -732,10 +965,33 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     }
 
     if (sourceItem.type === "ammo" && targetItem?.type === "magazine") {
-        // Powstrzymaj natywny drop/sortowanie przy ładowaniu amunicji
         event.stopPropagation();
         this._onLoadAmmoIntoMagazine(sourceItem, targetItem);
         return false;
+    }
+
+    if (["specialization", "origin", "profession"].includes(sourceItem.type)) {
+      return this._onDropBackgroundItem(event, sourceItem, item);
+    }
+
+    if (sourceItem.type === "trick" && this.document.type === "character") {
+      const alreadyOwned = this.document.items.some(i => i.type === "trick" && i.name === sourceItem.name);
+      if (!alreadyOwned) {
+        const { TRICK_COST, showXpDialog, applyXpEntry } = await import("../helpers/xp.js");
+        const actor = this.document;
+        const currentXp = actor.system.xp?.current ?? 0;
+        const result = await showXpDialog(
+          TRICK_COST,
+          game.i18n.format("NEUROSHIMA.XP.Dialog.TrickDescription", { name: sourceItem.name }),
+          currentXp
+        );
+        if (result === null) return false;
+        if (!result.free) {
+          const changed = {};
+          applyXpEntry(actor, changed, result.cost, sourceItem.name, null, null);
+          await actor.update(changed);
+        }
+      }
     }
 
     // Pozwól natywnej implementacji obsłużyć tworzenie/sortowanie przedmiotu
@@ -749,6 +1005,40 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     }
     
     return result;
+  }
+
+  /**
+   * Handle dropping a background item (specialization / origin / profession) onto the actor.
+   * Replaces any existing item of the same type and updates system text field.
+   * @private
+   */
+  async _onDropBackgroundItem(event, sourceItem, rawDropData) {
+    const actor = this.document;
+    const type = sourceItem.type;
+    const fieldMap = { specialization: "system.specialization", origin: "system.origin", profession: "system.profession" };
+    const fieldPath = fieldMap[type];
+
+    const existing = actor.items.filter(i => i.type === type && i.id !== sourceItem.id);
+    for (const old of existing) await old.delete();
+
+    let created;
+    if (sourceItem.parent?.id !== actor.id) {
+      [created] = await actor.createEmbeddedDocuments("Item", [sourceItem.toObject()]);
+      if (sourceItem.actor && sourceItem.actor.id !== actor.id) await sourceItem.delete();
+    } else {
+      created = sourceItem;
+    }
+
+    const updateData = { [fieldPath]: created.name };
+
+    if (type === "specialization" && created.system.skillSpecializations) {
+      for (const [specKey, enabled] of Object.entries(created.system.skillSpecializations)) {
+        if (enabled) updateData[`system.specializations.${specKey}`] = true;
+      }
+    }
+
+    await actor.update(updateData);
+    game.neuroshima.log(`[Background] dropped ${type} "${created.name}" onto actor "${actor.name}"`);
   }
 
   /**
@@ -817,7 +1107,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    * @private
    */
   async _onUnloadMagazine(event, target) {
-      const magId = target.closest("[data-item-id]").dataset.itemId;
+      const magId = typeof target === 'string' ? target : target.closest("[data-item-id]").dataset.itemId;
       const magazine = this.document.items.get(magId);
       if (!magazine || magazine.type !== "magazine") return;
 
@@ -971,6 +1261,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   }
 
   async _onRollSkill(event, target) {
+    if (event.target.closest("input, button, a, select")) return;
+    if (target.classList.contains("knowledge-editing")) return;
     const skillKey = target.dataset.skill;
     const actor = this.document;
     const system = actor.system;
@@ -988,8 +1280,15 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     }
 
     const statValue = system.attributeTotals[attrKey];
-    const skillValue = system.skills[skillKey].value;
-    const label = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+    const skillValue = system.skillTotals?.[skillKey] ?? system.skills[skillKey].value;
+
+    let label;
+    if (skillKey.startsWith("knowledge")) {
+      const customLabel = system.skills[skillKey]?.label?.trim();
+      label = customLabel || game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+    } else {
+      label = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+    }
 
     return this._showRollDialog({
       stat: statValue,
@@ -999,6 +1298,30 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       isSkill: true,
       currentAttribute: attrKey
     });
+  }
+
+  _onToggleKnowledgeEdit(event, target) {
+    const skillKey = target.dataset.skill;
+    const skillItem = target.closest(".skill-item");
+    const labelEl = skillItem.querySelector(".skill-knowledge-label");
+    const input = skillItem.querySelector(".skill-label-input");
+    const icon = target.querySelector("i");
+    const isEditing = skillItem.classList.contains("knowledge-editing");
+
+    if (isEditing) {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      skillItem.classList.remove("knowledge-editing");
+      const newLabel = input.value.trim();
+      const fallback = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+      labelEl.textContent = newLabel ? newLabel : fallback;
+      icon.className = "fas fa-check";
+      requestAnimationFrame(() => { icon.className = "fas fa-pen"; });
+    } else {
+      skillItem.classList.add("knowledge-editing");
+      input.focus();
+      input.select();
+      icon.className = "fas fa-check";
+    }
   }
 
   /**
@@ -1872,7 +2195,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    * Handle editing an owned Item.
    */
   async _onEditItem(event, target) {
-    const li = target.closest(".item");
+    const li = target.closest("[data-item-id]");
     const item = this.document.items.get(li.dataset.itemId);
     return item.sheet.render(true);
   }
@@ -1933,6 +2256,20 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const groups = {};
     const skillConfig = NEUROSHIMA.skillConfiguration;
     const system = this.document.system;
+    const actor = this.document;
+
+    const skillTooltips = {};
+    for (const effect of (actor.effects ?? [])) {
+      if (effect.disabled || effect.isSuppressed) continue;
+      for (const change of (effect.changes ?? [])) {
+        const m = change.key?.match(/^system\.skillBonuses\.(\w+)$/);
+        if (!m) continue;
+        const sKey = m[1];
+        const val = Number(change.value) || 0;
+        const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
+        skillTooltips[sKey] = skillTooltips[sKey] ? skillTooltips[sKey] + "\n" + part : part;
+      }
+    }
 
     for (const [attrKey, specializations] of Object.entries(skillConfig)) {
       const attrConfig = NEUROSHIMA.attributes[attrKey];
@@ -1950,6 +2287,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             key: skillKey,
             label: `NEUROSHIMA.Skills.${skillKey}`,
             value: system.skills[skillKey].value,
+            total: system.skillTotals?.[skillKey] ?? system.skills[skillKey].value,
+            bonus: system.skillBonuses?.[skillKey] ?? 0,
+            bonusTooltip: skillTooltips[skillKey] ?? "",
             customLabel: system.skills[skillKey].label,
             isKnowledge: skillKey.startsWith("knowledge")
           }))
@@ -2432,7 +2772,133 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     if (!item) return ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Scripts.NoActor"));
     const effect = item.effects.get(effectId);
     if (!effect) return;
+
+    const actor = this.document;
+    if (item.type === "trick" && actor.type === "character") {
+      const { TRICK_COST, showXpDialog, applyXpEntry } = await import("../helpers/xp.js");
+      const currentXp = actor.system.xp?.current ?? 0;
+      const trickName = item.name;
+      const result = await showXpDialog(
+        TRICK_COST,
+        game.i18n.format("NEUROSHIMA.XP.Dialog.TrickDescription", { name: trickName }),
+        currentXp
+      );
+      if (result === null) return;
+      if (!result.free) {
+        const changed = {};
+        applyXpEntry(actor, changed, result.cost, trickName, null, null);
+        await actor.update(changed);
+      }
+    }
+
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
-    await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
+    await NeuroshimaScriptRunner.executeManual(actor, effect, Number(scriptIndex));
+  }
+
+  async _onRevertXpEntry(event, target) {
+    if (!game.user.isGM) return;
+    const entryId = target.dataset.entryId;
+    if (!entryId) return;
+    const { revertXpEntry } = await import("../helpers/xp.js");
+    await revertXpEntry(this.document, entryId);
+  }
+
+  _onToggleSummary(event, target) {
+    const wrap = target.closest(".item-wrap");
+    const summary = wrap?.querySelector(".item-summary");
+    if (!summary) return;
+    summary.classList.toggle("collapsed");
+    const chevron = wrap.querySelector(".item-summary-toggle i");
+    if (chevron) chevron.classList.toggle("fa-chevron-down");
+  }
+
+  _onItemContextMenu(event, target) {
+    const wrap = target.closest(".item-wrap");
+    if (!wrap?.dataset.itemId) return;
+    this._showItemContextMenu(event, wrap.dataset.itemId);
+  }
+
+  _showItemContextMenu(event, itemId) {
+    event.preventDefault();
+    const item = this.document.items.get(itemId);
+    if (!item) return;
+
+    document.querySelectorAll('.ns-item-ctx-menu').forEach(el => el.remove());
+
+    const isMagazine = item.type === 'magazine';
+    const menuItems = [
+      { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
+      { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
+      { action: 'duplicate', icon: 'fas fa-copy',     label: game.i18n.localize('NEUROSHIMA.ContextMenu.Duplicate') },
+    ];
+    if (isMagazine) {
+      menuItems.push({ action: 'unload', icon: 'fas fa-eject', label: game.i18n.localize('NEUROSHIMA.Actions.Unload') });
+    }
+    menuItems.push({ action: 'delete', icon: 'fas fa-trash', label: game.i18n.localize('Delete') });
+
+    const menu = document.createElement('nav');
+    menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
+    menu.style.cssText = 'position:fixed;z-index:99999;';
+    menu.innerHTML = `<menu class="context-items">${
+      menuItems.map(m => `<li class="context-item" data-action="${m.action}"><i class="${m.icon} fa-fw"></i><span>${m.label}</span></li>`).join('')
+    }</menu>`;
+    document.body.appendChild(menu);
+
+    const x = event.clientX;
+    const y = event.clientY;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) menu.style.left = `${x - rect.width}px`;
+      if (rect.bottom > window.innerHeight) menu.style.top = `${y - rect.height}px`;
+    });
+
+    menu.querySelectorAll('.context-item').forEach(li => {
+      li.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = li.dataset.action;
+        if (action === 'edit')      item.sheet.render(true);
+        else if (action === 'post')      this._postItemToChat(itemId);
+        else if (action === 'duplicate') item.clone({}, { save: true, parent: this.document });
+        else if (action === 'unload')    this._onUnloadMagazine(e, itemId);
+        else if (action === 'delete')    item.deleteDialog();
+        menu.remove();
+      });
+    });
+
+    const close = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', close, { capture: true });
+        document.removeEventListener('contextmenu', close, { capture: true });
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('click', close, { capture: true });
+      document.addEventListener('contextmenu', close, { capture: true });
+    }, 0);
+  }
+
+  async _postItemToChat(itemId) {
+    const item = this.document.items.get(itemId);
+    if (!item) return;
+    const description = item.system.description || "";
+    const enriched = await TextEditor.enrichHTML(description, { async: true });
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: this.document }),
+      content: `<div class="neuroshima item-chat-card">
+        <div class="item-card-header flexrow">
+          <img src="${item.img}" title="${item.name}" width="36" height="36"/>
+          <h3>${item.name}</h3>
+        </div>
+        <div class="item-card-body">${enriched}</div>
+      </div>`
+    });
+  }
+
+  async _onPostItemToChat(event, target) {
+    const wrap = target.closest(".item-wrap");
+    await this._postItemToChat(wrap?.dataset.itemId);
   }
 }

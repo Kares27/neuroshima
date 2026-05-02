@@ -575,8 +575,9 @@
     <pre><code><span class="cmt">// Trigger: immediate
 // Usuwa wyłącznie draśnięcia — nie leczy ran lekkich ani cięższych</span>
 (<span class="kw">async</span> () =&gt; {
+  <span class="cmt">// isMinDamage = D lub sD — skrót dla ["D","sD"].includes(type)</span>
   <span class="kw">const</span> <span class="var">wounds</span> = <span class="kw">this</span>.actor.<span class="fn">getWounds</span>({ active: <span class="kw">true</span> })
-    .<span class="fn">filter</span>(<span class="var">w</span> =&gt; [<span class="str">"D"</span>, <span class="str">"sD"</span>].<span class="fn">includes</span>(<span class="var">w</span>.system.damageType));
+    .<span class="fn">filter</span>(<span class="var">w</span> =&gt; <span class="kw">this</span>.<span class="fn">isMinDamage</span>(<span class="var">w</span>.system.damageType));
   <span class="kw">if</span> (!<span class="var">wounds</span>.length) {
     <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak draśnięć."</span>);
   }
@@ -1208,8 +1209,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <pre><code><span class="cmt">// Trigger: applyDamage — na efekcie broni
 // args.actor = obrońca (ten który dostał rany)
 // Skrypt uruchamia się PO tym jak system obliczył rany</span>
-<span class="kw">const</span> <span class="var">actualWounds</span> = args.wounds.<span class="fn">filter</span>(<span class="var">w</span> =&gt; !<span class="var">w</span>.forceSkip);
-<span class="kw">if</span> (!<span class="var">actualWounds</span>.length) <span class="kw">return</span>; <span class="cmt">// brak ran → brak trucizny</span>
+<span class="cmt">// getEffectiveWounds filtruje rany z forceSkip=true — skrót dla args.wounds.filter(w => !w.forceSkip)</span>
+<span class="kw">const</span> <span class="var">effective</span> = <span class="kw">this</span>.<span class="fn">getEffectiveWounds</span>(args);
+<span class="kw">if</span> (!<span class="var">effective</span>.length) <span class="kw">return</span>; <span class="cmt">// brak ran → brak trucizny</span>
 
 <span class="cmt">// Dodaj 1 poziom krwawienia na obrońcę</span>
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"bleeding"</span>, args.actor);
@@ -1780,9 +1782,15 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     </tr>
     <tr><td><code>this.isLightDamage(type)</code></td><td>Zwraca <code>true</code> dla D, sD, L, sL</td></tr>
     <tr><td><code>this.isHeavyDamage(type)</code></td><td>Zwraca <code>true</code> dla C, sC, K, sK</td></tr>
+    <tr><td><code>this.isBruiseDamage(type)</code></td><td>Zwraca <code>true</code> dla toru siniaków: sD, sL, sC, sK. Skrót dla <code>type.startsWith("s")</code>.</td></tr>
+    <tr><td><code>this.isMinDamage(type)</code></td><td>Zwraca <code>true</code> dla D lub sD (minimum na torze). Używaj zamiast <code>DAMAGE_ORDER.indexOf(type) === 0</code>.</td></tr>
+    <tr><td><code>this.isMaxDamage(type)</code></td><td>Zwraca <code>true</code> dla K lub sK (maksimum na torze)</td></tr>
     <tr><td><code>this.compareDamage(a, b)</code></td><td>Porównuje wagę ran. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
+    <tr><td><code>this.getSeverityIndex(type)</code></td><td>Zwraca pozycję w torze: D/sD=0, L/sL=1, C/sC=2, K/sK=3. Skrót dla <code>track.indexOf(type)</code>. Zwraca -1 jeśli typ nieznany.</td></tr>
     <tr><td><code>this.reduceDamageType(type, steps?)</code></td><td>Obniż typ obrażeń o <code>steps</code> poziomów w obrębie toru (min D/sD). <em>Regular: D→L→C→K; Siniak: sD→sL→sC→sK</em></td></tr>
     <tr><td><code>this.increaseDamageType(type, steps?)</code></td><td>Podwyższ typ obrażeń o <code>steps</code> poziomów w obrębie toru (max K/sK)</td></tr>
+    <tr><td><code>this.getDiceResults(roll, dieIndex?)</code></td><td>Wyciąga wyniki kości z <code>Roll</code> jako <code>number[]</code>. Skrót dla <code>roll.dice[idx].results.map(r =&gt; r.result)</code>. Domyślnie <code>dieIndex=0</code>.</td></tr>
+    <tr><td><code>this.getEffectiveWounds(args)</code></td><td>Zwraca rany z <code>args.wounds</code> które <strong>nie</strong> mają <code>forceSkip=true</code>. Skrót dla <code>args.wounds.filter(w =&gt; !w.forceSkip)</code>. Trigger: <code>applyDamage</code>.</td></tr>
     <tr>
       <td><code>this.getHitLocation(args)</code></td>
       <td>

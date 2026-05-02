@@ -118,7 +118,13 @@
         <div class="column left">
             <div class="form-group">
                 <label>{{localize "NEUROSHIMA.Roll.Distance"}} (m)</label>
-                <input type="number" name="distance" value="{{distance}}" step="0.1" min="0"/>
+                <input type="number" name="distance" id="distance-input" value="{{distance}}" step="0.1" min="0"/>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.DistancePenaltyFull'}}">{{localize "NEUROSHIMA.Roll.DistancePenalty"}} (%)</label>
+                <input type="number" name="distancePenalty" id="distance-penalty-input" value="{{distancePenalty}}" placeholder="0"/>
             </div>
         </div>
     </div>

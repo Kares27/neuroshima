@@ -40,6 +40,7 @@
             "BaseAbbr": "Base",
             "Modifier": "Modifier",
             "ModifierAbbr": "Mod.",
+            "Total": "Total",
             "Dexterity": "Dexterity",
             "Perception": "Perception",
             "Charisma": "Charisma",
@@ -65,7 +66,51 @@
             "Label": "Experience",
             "Current": "Current",
             "Spent": "Spent",
-            "Total": "Total"
+            "Total": "Total",
+            "Dialog": {
+                "Title": "Spend Experience",
+                "CostLine": "Cost: {cost} XP | Available: {current} XP",
+                "Available": "Available",
+                "CostLabel": "Cost",
+                "NotEnough": "Not enough XP! You can mark it as free.",
+                "Spend": "Spend XP",
+                "Free": "Free (0 XP)",
+                "TrickDescription": "Trick: {name}"
+            },
+            "Grant": {
+                "Title": "Grant Experience",
+                "Amount": "Amount granted: {amount} XP",
+                "Reason": "Reason for grant",
+                "ReasonPlaceholder": "e.g. Session 5, RP reward...",
+                "Confirm": "Confirm",
+                "DefaultReason": "XP Granted"
+            },
+            "Deduct": {
+                "Title": "Deduct Experience",
+                "Amount": "Amount deducted: {amount} XP",
+                "Reason": "Reason for deduction",
+                "ReasonPlaceholder": "e.g. Equipment purchase, penalty...",
+                "Confirm": "Confirm",
+                "DefaultReason": "XP Deducted",
+                "ExceedsTotal": "Spent XP cannot exceed total XP pool!"
+            },
+            "Log": {
+                "Title": "XP Log",
+                "Available": "Available",
+                "Spent": "Spent",
+                "Total": "Total",
+                "Empty": "No XP log entries yet.",
+                "Revert": "Revert this entry",
+                "AttributeRaise": "{attr}: {from} → {to}",
+                "SkillRaise": "{skill}: {from} → {to}",
+                "TrickLearned": "Trick: {name}",
+                "Col": {
+                    "Date": "Date",
+                    "Description": "Description",
+                    "Cost": "Cost",
+                    "Balance": "Balance"
+                }
+            }
         },
         "Roll": {
             "PenaltyLabel": "Test Penalty",
@@ -105,6 +150,7 @@
             "RollMode": "Roll Mode",
             "RefundAmmo": "Refund Ammunition",
             "ReverseDamage": "Reverse Damage",
+            "ReverseWounds": "Undo Wounds",
             "ReverseRest": "Reverse Rest",
             "BaseDifficulty": "Base Difficulty",
             "Difficulty": "Difficulty",
@@ -126,6 +172,8 @@
             "Slider": "Slider (Skill + Dice)",
             "DifficultyShift": "Difficulty Shift",
             "Distance": "Distance (m)",
+            "DistancePenalty": "Range Mod.",
+            "DistancePenaltyFull": "Distance Modifier",
             "Aiming": "Aiming",
             "Burst": "Burst",
             "BurstSingle": "Single",
@@ -201,6 +249,11 @@
                 "Other": "Other"
             }
         },
+        "ContextMenu": {
+            "Options": "Options",
+            "PostToChat": "Post to Chat",
+            "Duplicate": "Duplicate"
+        },
         "Actions": {
             "Attack": "Attack",
             "Defense": "Defense",
@@ -249,6 +302,12 @@
             "Days": "Days",
             "AttemptCount": "Attempts"
         },
+        "Movement": {
+            "Label": "Movement",
+            "PerSegment": "Movement per segment (m)",
+            "Seg2": "Movement for 2 segments (m)",
+            "Seg3": "Movement for 3 segments (m)"
+        },
         "Encumbrance": "Encumbrance",
         "Settings": {
             "EncumbranceConfig": {
@@ -263,6 +322,14 @@
                 "Hint": "Opens the configuration menu for combat mechanics and interface visibility.",
                 "Saved": "Combat settings saved.",
                 "VisibilityTitle": "Permissions & Visibility"
+            },
+            "DistanceConfig": {
+                "Title": "Distance Settings",
+                "Label": "Configure Distances",
+                "MenuHint": "Opens the range penalty table for ranged weapon types.",
+                "Hint": "Percentage penalties per distance bracket and weapon type. Empty means out of range.",
+                "AddRow": "Add Row",
+                "Saved": "Distance settings saved."
             },
             "EnableEncumbrance": {
                 "Name": "Encumbrance System",
@@ -283,6 +350,10 @@
             "AllowPainResistanceShift": {
                 "Name": "Allow Suwak in pain resistance",
                 "Hint": "Enables the Suwak rule during automatic pain resistance tests."
+            },
+            "FireCorrection": {
+                "Name": "Fire Correction",
+                "Hint": "Displays fire correction info on failed ranged bursts (3 bullets per failure point to correct)."
             },
             "MeleeCombatType": {
                 "Name": "Melee Combat System",
@@ -594,6 +665,7 @@
             "Tricks": "Tricks",
             "Combat": "Combat",
             "Inventory": "Inventory",
+            "Background": "Background",
             "Crew": "Crew",
             "Notes": "Notes",
             "Stats": "Stats",
@@ -658,6 +730,9 @@
             "RestReversed": "Reversed rest for {name}.",
             "NoWoundsFoundToReverse": "No matching wounds found to reverse.",
             "StatusReversed": "Damage has been reversed by GM."
+        },
+        "Distance": {
+            "Range": "Up to (m)"
         },
         "Damage": {
             "Type": "Damage Type",
@@ -770,9 +845,12 @@
             "stamina": "Stamina",
             "horseRiding": "Horse Riding",
             "drivingCarriage": "Driving Carriage",
-            "taming": "Taming"
+            "taming": "Taming",
+            "BonusEffect": "Effect bonus",
+            "KnowledgePrefix": "Knowledge:"
         },
         "Items": {
+            "ExportedToSidebar": "Item \"{name}\" added to the items sidebar.",
             "Type": {
                 "Weapon": "Weapon",
                 "WeaponMelee": "Melee Weapon",
@@ -854,7 +932,9 @@
                 "IsOverride": "Override stats",
                 "OverrideDamage": "Override damage",
                 "OverridePiercing": "Override piercing",
-                "OverrideJamming": "Override jamming"
+                "OverrideJamming": "Override jamming",
+                "Availability": "Availability",
+                "AvailabilityAbbr": "Avail."
             }
         },
         "Armor": {
@@ -1099,6 +1179,8 @@
             "Temporary": "Temporary Effects",
             "Passive": "Passive Effects",
             "DisabledGroup": "Disabled Effects",
+            "StatusGroup": "Status Effects",
+            "DurationHeader": "Duration",
             "NewEffect": "New Effect",
             "Description": "Description",
             "ArmorBonus": "Armor Bonus (Effect)",
@@ -1118,6 +1200,7 @@
             },
             "EquipTransfer": "Equip Transfer",
             "EquipTransferHint": "Only transfer this effect when the item is equipped.",
+            "BonusFromEffect": "Bonus from active effect",
             "ManualKeys": "Manual key",
             "ToggleManualKeys": "Toggle between predefined key list and manual input",
             "Change": {
@@ -1137,7 +1220,12 @@
                     "ArmorBonus": "Armor Bonus (Effect)",
                     "VehicleArmorBonus": "Vehicle Armor Bonus (Effect)",
                     "VehicleAttributes": "Vehicle Attributes",
-                    "VehicleArmor": "Vehicle Armor"
+                    "VehicleArmor": "Vehicle Armor",
+                    "SkillsDexterity": "Skills: Dexterity",
+                    "SkillsPerception": "Skills: Perception",
+                    "SkillsCharisma": "Skills: Charisma",
+                    "SkillsCleverness": "Skills: Cleverness",
+                    "SkillsConstitution": "Skills: Constitution"
                 },
                 "HealingRate": "Healing Rate",
                 "ArmorBonus": {
@@ -1223,6 +1311,41 @@
         },
         "Conditions": {
             "StatusLocked": "The condition status is locked and cannot be changed."
+        },
+        "FireCorrection": {
+            "Title": "Fire Correction",
+            "ButtonLabel": "Correct Fire",
+            "ButtonLabelSuccess": "Correct Fire (+1)",
+            "Hit": "hit",
+            "FailureMargin": "Failure Points",
+            "Cost": "Cost",
+            "Bullets": "bullets",
+            "Possible": "Possible",
+            "Impossible": "Not Possible",
+            "Applied": "Fire correction applied — {cost} bullets spent, {hits} bullet(s) hit.",
+            "AppliedSuccess": "Fire correction (success) — hit {hits}/{max}.",
+            "NoMagazine": "No magazine found for this weapon.",
+            "NotEnoughAmmo": "Not enough ammo in the magazine to correct fire.",
+            "CorrectedStatus": "Corrected",
+            "HitsLabel": "Hits (corr.)",
+            "CorrectedHitsLabel": "Corrected hits"
+        },
+        "Background": {
+            "Title": "Character Background",
+            "DragHere": "Drag here...",
+            "SkillSpecialization": "Unlocked Skill Specialization",
+            "SkillSpecializationsHint": "Check the skill specialization groups that this specialization unlocks:",
+            "SpecializationsHeader": "Specializations",
+            "BonusText": "Bonuses & Rules",
+            "Faction": "Faction",
+            "StartingSkills": "Starting Skills",
+            "None": "None",
+            "Empty": {
+                "Specialization": "Drag a Specialization item here",
+                "Origin": "Drag an Origin item here",
+                "Profession": "Drag a Profession item here"
+            },
+            "Extras": "Extra Background Items"
         }
     },
     "TOKEN": {

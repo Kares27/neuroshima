@@ -103,7 +103,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       rollDurability: async function(event, target) {
         const vehicle = this.document;
         const system  = vehicle.system;
-        const durStat = (system.attributes?.durability ?? 0) + (system.modifiers?.durability ?? 0);
+        const durStat = (system.attributes?.durability ?? 0) + (system.attributeBonuses?.durability ?? 0) + (system.modifiers?.durability ?? 0) + (system.bonuses?.durability ?? 0);
         const label   = game.i18n.localize(NEUROSHIMA.vehicleAttributes.durability.label);
         return NeuroshimaVehicleSheet._showRollDialog({ stat: durStat, skill: 0, label, actor: vehicle, isSkill: false });
       },
@@ -346,7 +346,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
 
     const damageItems = items.filter(i => i.type === "vehicle-damage");
     /** maxHP = efficiency (Sprawność) attribute + modifier */
-    const maxHP = (system.attributes?.efficiency ?? 0) + (system.modifiers?.efficiency ?? 0);
+    const maxHP = (system.attributes?.efficiency ?? 0) + (system.attributeBonuses?.efficiency ?? 0) + (system.modifiers?.efficiency ?? 0) + (system.bonuses?.efficiency ?? 0);
     /** totalDamagePoints = sum of Sprawność reductions across all damage items */
     const totalDamagePoints = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
     /** totalAgilityPenalty = sum of Zwrotność penalties across all damage items */

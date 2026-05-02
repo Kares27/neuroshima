@@ -43,6 +43,7 @@
             "BaseAbbr": "Podst.",
             "Modifier": "Modyfikator",
             "ModifierAbbr": "Zmodyf.",
+            "Total": "Suma",
             "Dexterity": "Zręczność",
             "Perception": "Percepcja",
             "Charisma": "Charyzma",
@@ -68,7 +69,51 @@
             "Label": "Doświadczenie",
             "Current": "Obecne",
             "Spent": "Wydane",
-            "Total": "Razem"
+            "Total": "Razem",
+            "Dialog": {
+                "Title": "Wydaj Doświadczenie",
+                "CostLine": "Koszt: {cost} PD | Dostępne: {current} PD",
+                "Available": "Dostępne",
+                "CostLabel": "Koszt",
+                "NotEnough": "Niewystarczająca ilość PD! Możesz oznaczyć jako za darmo.",
+                "Spend": "Wydaj PD",
+                "Free": "Za Darmo (0 PD)",
+                "TrickDescription": "Sztuczka: {name}"
+            },
+            "Grant": {
+                "Title": "Przyznaj Doświadczenie",
+                "Amount": "Przyznawana ilość: {amount} PD",
+                "Reason": "Powód przyznania",
+                "ReasonPlaceholder": "np. Sesja 5, nagroda za RP...",
+                "Confirm": "Zatwierdź",
+                "DefaultReason": "Przyznane PD"
+            },
+            "Deduct": {
+                "Title": "Odejmij Doświadczenie",
+                "Amount": "Odejmowana ilość: {amount} PD",
+                "Reason": "Powód odjęcia",
+                "ReasonPlaceholder": "np. Zakup sprzętu, kara...",
+                "Confirm": "Zatwierdź",
+                "DefaultReason": "Odejmowane PD",
+                "ExceedsTotal": "Wydane PD nie mogą przekroczyć łącznej puli PD!"
+            },
+            "Log": {
+                "Title": "Dziennik PD",
+                "Available": "Dostępne",
+                "Spent": "Wydane",
+                "Total": "Łącznie",
+                "Empty": "Brak wpisów w dzienniku PD.",
+                "Revert": "Cofnij ten wpis",
+                "AttributeRaise": "{attr}: {from} → {to}",
+                "SkillRaise": "{skill}: {from} → {to}",
+                "TrickLearned": "Sztuczka: {name}",
+                "Col": {
+                    "Date": "Data",
+                    "Description": "Opis",
+                    "Cost": "Koszt",
+                    "Balance": "Saldo"
+                }
+            }
         },
         "Roll": {
             "PenaltyLabel": "Kara do testu",
@@ -108,6 +153,7 @@
             "RollMode": "Tryb rzutu",
             "RefundAmmo": "Refundacja amunicji",
             "ReverseDamage": "Cofnij obrażenia",
+            "ReverseWounds": "Cofnij Rany",
             "ReverseRest": "Cofnij odpoczynek",
             "BaseDifficulty": "Bazowa Trudność",
             "Difficulty": "Trudność",
@@ -129,6 +175,8 @@
             "Slider": "Suwak (Umiejętność + Kości)",
             "DifficultyShift": "Przesunięcie Trudności",
             "Distance": "Dystans (m)",
+            "DistancePenalty": "Mod. Odległości",
+            "DistancePenaltyFull": "Modyfikator Odległości",
             "Aiming": "Celowanie",
             "Burst": "Seria",
             "BurstSingle": "Pojedyncza",
@@ -204,6 +252,11 @@
                 "Other": "Inne"
             }
         },
+        "ContextMenu": {
+            "Options": "Opcje",
+            "PostToChat": "Wyślij na czat",
+            "Duplicate": "Duplikuj"
+        },
         "Actions": {
             "Attack": "Atak",
             "Defense": "Obrona",
@@ -252,6 +305,12 @@
             "Days": "Dni",
             "AttemptCount": "Próby"
         },
+        "Movement": {
+            "Label": "Ruch",
+            "PerSegment": "Ruch na segment (m)",
+            "Seg2": "Ruch za 2 segmenty (m)",
+            "Seg3": "Ruch za 3 segmenty (m)"
+        },
         "Encumbrance": "Obciążenie",
         "Settings": {
             "EncumbranceConfig": {
@@ -266,6 +325,14 @@
                 "Hint": "Otwiera menu konfiguracji mechanik walki i widoczności interfejsu.",
                 "Saved": "Ustawienia walki zostały zapisane.",
                 "VisibilityTitle": "Uprawnienia i Widoczność"
+            },
+            "DistanceConfig": {
+                "Title": "Ustawienia Odległości",
+                "Label": "Skonfiguruj Odległości",
+                "MenuHint": "Otwiera tabelę kar za odległość dla typów broni zasięgowej.",
+                "Hint": "Kary procentowe do rzutu w zależności od dystansu i typu broni. Puste oznacza brak zasięgu.",
+                "AddRow": "Dodaj wiersz",
+                "Saved": "Ustawienia odległości zostały zapisane."
             },
             "EnableEncumbrance": {
                 "Name": "System obciążenia",
@@ -286,6 +353,10 @@
             "AllowPainResistanceShift": {
                 "Name": "Pozwól na Suwak w odporności na ból",
                 "Hint": "Włącza zasadę Suwaka podczas automatycznych testów odporności na ból."
+            },
+            "FireCorrection": {
+                "Name": "Korygowanie Ognia",
+                "Hint": "Wyświetla informację o możliwości korygowania ognia podczas nieudanej serii (3 kule za 1 punkt porażki)."
             },
             "MeleeCombatType": {
                 "Name": "System Walki Wręcz",
@@ -617,6 +688,7 @@
             "Tricks": "Sztuczki",
             "Combat": "Walka",
             "Inventory": "Ekwipunek",
+            "Background": "Tło Postaci",
             "Crew": "Załoga",
             "Notes": "Notatki",
             "Stats": "Statystyki",
@@ -684,6 +756,9 @@
         },
         "Tricks": {
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"
+        },
+        "Distance": {
+            "Range": "Do (m)"
         },
         "Damage": {
             "Type": "Typ Obrażenia",
@@ -796,9 +871,12 @@
             "stamina": "Kondycja",
             "horseRiding": "Jazda Konna",
             "drivingCarriage": "Powożenie",
-            "taming": "Ujeżdżanie"
+            "taming": "Ujeżdżanie",
+            "BonusEffect": "Bonus z efektu",
+            "KnowledgePrefix": "Wiedza:"
         },
         "Items": {
+            "ExportedToSidebar": "Przedmiot \"{name}\" dodany do biblioteki przedmiotów.",
             "Type": {
                 "Weapon": "Broń",
                 "WeaponMelee": "Broń Ręczna",
@@ -880,7 +958,9 @@
                 "IsOverride": "Nadpisz statystyki broni",
                 "OverrideDamage": "Nadpisz obrażenia",
                 "OverridePiercing": "Nadpisz przebicie",
-                "OverrideJamming": "Nadpisz zacięcie"
+                "OverrideJamming": "Nadpisz zacięcie",
+                "Availability": "Dostępność",
+                "AvailabilityAbbr": "Dost."
             }
         },
         "Armor": {
@@ -1126,6 +1206,8 @@
             "Temporary": "Efekty tymczasowe",
             "Passive": "Efekty pasywne",
             "DisabledGroup": "Efekty wyłączone",
+            "StatusGroup": "Stany",
+            "DurationHeader": "Długość",
             "NewEffect": "Nowy Efekt",
             "Description": "Opis",
             "ArmorBonus": "Bonus do Pancerza (Efekt)",
@@ -1145,6 +1227,7 @@
             },
             "EquipTransfer": "Transfer przy Założeniu",
             "EquipTransferHint": "Przenoś ten efekt tylko gdy przedmiot jest założony.",
+            "BonusFromEffect": "Bonus z aktywnego efektu",
             "ManualKeys": "Ręczny klucz",
             "ToggleManualKeys": "Przełącz między listą predefiniowanych kluczy a ręcznym wpisywaniem",
             "Change": {
@@ -1164,7 +1247,12 @@
                     "ArmorBonus": "Bonus do Pancerza (Efekt)",
                     "VehicleArmorBonus": "Bonus do Pancerza Pojazdu (Efekt)",
                     "VehicleAttributes": "Atrybuty Pojazdu",
-                    "VehicleArmor": "Pancerz Pojazdu"
+                    "VehicleArmor": "Pancerz Pojazdu",
+                    "SkillsDexterity": "Umiejętności: Zręczność",
+                    "SkillsPerception": "Umiejętności: Percepcja",
+                    "SkillsCharisma": "Umiejętności: Charyzma",
+                    "SkillsCleverness": "Umiejętności: Spryt",
+                    "SkillsConstitution": "Umiejętności: Kondycja"
                 },
                 "HealingRate": "Tempo Leczenia",
                 "ArmorBonus": {
@@ -1250,6 +1338,41 @@
         },
         "Conditions": {
             "StatusLocked": "Status efektu warunkowego jest zablokowany i nie może być zmieniony."
+        },
+        "FireCorrection": {
+            "Title": "Korygowanie Ognia",
+            "ButtonLabel": "Koryguj Ogień",
+            "ButtonLabelSuccess": "Koryguj Ogień (+1)",
+            "Hit": "trafienie",
+            "FailureMargin": "Punkty Porażki",
+            "Cost": "Koszt",
+            "Bullets": "kul",
+            "Possible": "Możliwe",
+            "Impossible": "Niemożliwe",
+            "Applied": "Korygowanie ognia zastosowane — wydano {cost} kul, trafia {hits} pocisk(ów).",
+            "AppliedSuccess": "Korygowanie ognia (sukces) — trafienie {hits}/{max}.",
+            "NoMagazine": "Nie znaleziono magazynka dla tej broni.",
+            "NotEnoughAmmo": "Za mało amunicji w magazynku do skorygowania ognia.",
+            "CorrectedStatus": "Skorygowane",
+            "HitsLabel": "Trafienia (kor.)",
+            "CorrectedHitsLabel": "Trafienia skorygowane"
+        },
+        "Background": {
+            "Title": "Tło Postaci",
+            "DragHere": "Przeciągnij tutaj...",
+            "SkillSpecialization": "Odblokowana Specjalizacja Umiejętności",
+            "SkillSpecializationsHint": "Zaznacz specjalizacje umiejętności, które ta specjalizacja odblokowuje:",
+            "SpecializationsHeader": "Specjalizacje",
+            "BonusText": "Bonusy i zasady",
+            "Faction": "Frakcja",
+            "StartingSkills": "Umiejętności startowe",
+            "None": "Brak",
+            "Empty": {
+                "Specialization": "Przeciągnij tutaj item Specjalizacji",
+                "Origin": "Przeciągnij tutaj item Pochodzenia",
+                "Profession": "Przeciągnij tutaj item Profesji"
+            },
+            "Extras": "Dodatkowe elementy tła"
         }
     }
 }
