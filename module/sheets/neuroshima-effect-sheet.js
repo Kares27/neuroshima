@@ -16,6 +16,7 @@ const NS_CHANGE_KEYS = [
   { group: "NEUROSHIMA.Effects.Keys.Group.Combat", actorTypes: ["character", "npc", "creature"], keys: [
     { key: "system.movement",                label: "NEUROSHIMA.Movement.Label" },
     { key: "system.combat.armorPenaltyBonus", label: "NEUROSHIMA.Combat.ArmorPenalty" },
+    { key: "system.combat.generalPenalty",    label: "NEUROSHIMA.Combat.GeneralPenalty" },
     { key: "system.combat.meleeInitiative",   label: "NEUROSHIMA.Combat.MeleeInitiative" },
     { key: "system.healingRate",              label: "NEUROSHIMA.Effects.Keys.HealingRate" }
   ]},

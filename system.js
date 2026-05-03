@@ -6,7 +6,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -28,6 +28,7 @@ import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
+import { TraitBrowserApp } from "./module/apps/trait-browser.js";
 
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
@@ -268,6 +269,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.ammo = AmmoData;
     CONFIG.Item.dataModels.magazine = MagazineData;
     CONFIG.Item.dataModels.trick = TrickData;
+    CONFIG.Item.dataModels.trait = TraitData;
     CONFIG.Item.dataModels.wound = WoundData;
     CONFIG.Item.dataModels["beast-action"]      = BeastActionData;
     CONFIG.Item.dataModels["specialization"]    = SpecializationData;
@@ -349,7 +351,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
+        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -732,7 +734,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/dialog/rest-dialog.hbs",
         "systems/neuroshima/templates/dialog/hp-config.hbs",
         "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs",
-        "systems/neuroshima/templates/apps/script-editor.hbs"
+        "systems/neuroshima/templates/apps/script-editor.hbs",
+        "systems/neuroshima/templates/prosemirror/text-colour.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);
@@ -807,7 +810,102 @@ Hooks.once("ready", async function () {
         }
         return this.effects.addChild(icon);
     };
+
 });
+
+Hooks.once("ready", () => {
+    if (typeof ProseMirrorMenu === "undefined") return;
+    const _origOnAction = ProseMirrorMenu.prototype._onAction;
+    ProseMirrorMenu.prototype._onAction = function(event) {
+        const view = this.view;
+        if (!view) return _origOnAction.call(this, event);
+        const origFocus = view.focus.bind(view);
+        view.focus = function(...args) {
+            try { return origFocus(...args); } catch {}
+        };
+        try {
+            return _origOnAction.call(this, event);
+        } finally {
+            view.focus = origFocus;
+        }
+    };
+});
+
+Hooks.on("getProseMirrorMenuItems", (menu, items) => {
+    if (menu.view?.dom?.closest?.(".monks-journal-sheet, .journal-sheet.journal-entry-page")) return;
+
+    if (!menu.schema.marks.nscolor) {
+        const colorMarkSpec = {
+            attrs: { color: {} },
+            inclusive: true,
+            parseDOM: [{ tag: "span", getAttrs: dom => ({ color: dom.style.color }) }],
+            toDOM: (mark) => ["span", { style: `color: ${mark.attrs.color}` }]
+        };
+        try {
+            const Schema = menu.schema.constructor;
+            const extended = new Schema({
+                nodes: menu.schema.spec.nodes,
+                marks: menu.schema.spec.marks.append({ nscolor: colorMarkSpec })
+            });
+            menu.schema.marks.nscolor = extended.marks.nscolor;
+        } catch (e) {
+            game.neuroshima?.log("ProseMirror nscolor mark extension failed:", e);
+            return;
+        }
+    }
+
+    const scopes = menu.constructor._MENU_ITEM_SCOPES;
+    items.push({
+        action: "ns-text-colour",
+        title: game.i18n.localize("NEUROSHIMA.ProseMirror.FontColor"),
+        icon: '<i class="fas fa-palette fa-fw"></i>',
+        scope: scopes?.BOTH ?? "both",
+        cmd: _nsChangeTextColourPrompt.bind(menu)
+    });
+});
+
+function _nsRgbToHex(rgb) {
+    if (!rgb) return null;
+    if (rgb.startsWith("#")) return rgb;
+    const m = rgb.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (!m) return null;
+    return "#" + [m[1], m[2], m[3]].map(n => (+n).toString(16).padStart(2, "0")).join("");
+}
+
+async function _nsChangeTextColourPrompt() {
+    const state = this.view.state;
+    const { $from, $to } = state.selection;
+    const mark = this.schema.marks.nscolor;
+    if (!mark) return;
+
+    const editorDefaultColor = _nsRgbToHex(window.getComputedStyle(this.view.dom).color) ?? "#000000";
+    let data = { color: editorDefaultColor };
+
+    try {
+        const { node } = this.view.domAtPos($from.pos);
+        const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+        if (el) {
+            const computed = _nsRgbToHex(window.getComputedStyle(el).color);
+            if (computed) data.color = computed;
+        }
+    } catch {}
+
+    const dialog = await this._showDialog(
+        "ns-text-colour",
+        "systems/neuroshima/templates/prosemirror/text-colour.hbs",
+        { data }
+    );
+    const form = dialog.querySelector("form");
+    form.elements.update.addEventListener("click", () => {
+        const color = form.elements.color?.value;
+        if (!color) return;
+        const colorMark = this.schema.marks.nscolor.create({ color });
+        const tr = state.tr.addMark($from.pos, $to.pos, colorMark);
+        this.view.dispatch(tr);
+        dialog.remove();
+    });
+    form.elements.cancel.addEventListener("click", () => dialog.remove());
+}
 
 // Add counter badge to int-type conditions on the token HUD.
 // Toggle logic is handled by NeuroshimaActor#toggleStatusEffect override.

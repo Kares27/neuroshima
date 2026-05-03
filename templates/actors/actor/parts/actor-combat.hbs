@@ -134,6 +134,15 @@
                     <div class="combat-weapons-list">
                         {{#each combat.weaponsRanged as |weapon|}}
                         <div class="equipment-item weapon-item-clickable item" data-item-id="{{weapon.id}}" data-uuid="{{weapon.uuid}}" draggable="true">
+                            {{#if ../combat.canUnjam}}
+                            <a class="weapon-jam-indicator {{#if weapon.jammed}}is-jammed{{/if}}" data-action="toggleJammed" title="{{localize (if weapon.jammed 'NEUROSHIMA.Weapon.Jammed' 'NEUROSHIMA.Weapon.NotJammed')}}">
+                                <i class="fas {{#if weapon.jammed}}fa-ban{{else}}fa-check-circle{{/if}}"></i>
+                            </a>
+                            {{else if weapon.jammed}}
+                            <span class="weapon-jam-indicator is-jammed" title="{{localize 'NEUROSHIMA.Weapon.Jammed'}}">
+                                <i class="fas fa-ban"></i>
+                            </span>
+                            {{/if}}
                             <img src="{{weapon.img}}" class="weapon-icon" alt="{{weapon.name}}">
                             <div class="weapon-info-column">
                                 <div class="weapon-name-rollable clickable" data-action="rollWeapon">{{weapon.name}}</div>

@@ -18,7 +18,8 @@ export class NeuroshimaItem extends Item {
       "beast-action":    "systems/neuroshima/assets/img/paw.svg",
       profession:        "systems/neuroshima/assets/img/profession.svg",
       specialization:    "systems/neuroshima/assets/img/specialization.svg",
-      origin:            "systems/neuroshima/assets/img/passport.svg"
+      origin:            "systems/neuroshima/assets/img/passport.svg",
+      trait:             "systems/neuroshima/assets/img/brain.svg"
     };
 
     const updates = {};

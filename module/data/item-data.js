@@ -55,7 +55,8 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       piercing: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       fireRate: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 })
+      jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
+      jammed: new fields.BooleanField({ initial: false })
     };
   }
 }
@@ -295,6 +296,19 @@ export class SpecializationData extends foundry.abstract.TypeDataModel {
 }
 
 /**
+ * Data model for Trait items.
+ * Represents a character trait (e.g. a passive ability granted by Origin or Profession).
+ */
+export class TraitData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
  * Data model for Origin items.
  * Represents a character's place of origin or faction background (e.g. Moloch, Borgo).
  */
@@ -304,7 +318,7 @@ export class OriginData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       bonusText:   new fields.HTMLField({ initial: "" }),
-      faction:     new fields.StringField({ initial: "" })
+      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] })
     };
   }
 }
@@ -317,9 +331,9 @@ export class ProfessionData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
-      description:    new fields.HTMLField({ initial: "" }),
-      bonusText:      new fields.HTMLField({ initial: "" }),
-      startingSkills: new fields.StringField({ initial: "" })
+      description: new fields.HTMLField({ initial: "" }),
+      bonusText:   new fields.HTMLField({ initial: "" }),
+      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] })
     };
   }
 }

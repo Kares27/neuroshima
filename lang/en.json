@@ -11,6 +11,7 @@
             "armor": "Armor",
             "gear": "Gear",
             "trick": "Trick",
+            "trait": "Trait",
             "ammo": "Ammo",
             "magazine": "Magazine",
             "wound": "Wound",
@@ -505,7 +506,8 @@
             "Combatants": "Combatants",
             "Turn": "Turn",
             "MeleeInitiative": "Melee Initiative",
-            "ArmorPenalty": "Armor Penalty"
+            "ArmorPenalty": "Armor Penalty",
+            "GeneralPenalty": "General Penalty"
         },
         "MeleeOpposed": {
             "Title": "Melee Opposed",
@@ -731,6 +733,27 @@
             "NoWoundsFoundToReverse": "No matching wounds found to reverse.",
             "StatusReversed": "Damage has been reversed by GM."
         },
+        "Traits": {
+            "Label": "Traits",
+            "FromOrigin": "Traits from Origin",
+            "FromProfession": "Traits from Profession",
+            "Source": "Source",
+            "AddTrait": "Add Trait",
+            "NoTraits": "No traits assigned",
+            "NoWorldTraits": "No trait items found in the world.",
+            "AllAdded": "All available traits are already added.",
+            "AlreadyAdded": "This trait is already added.",
+            "SelectTrait": "Select a trait",
+            "ChooseTraitDialog": "Choose a Trait to Transfer",
+            "ChooseTraitPrompt": "Choose one trait from {source} to copy onto the character:",
+            "NoTraitsInSource": "This item contains no traits.",
+            "SourceNotFound": "Could not find the original trait item in the world.",
+            "Browser": {
+                "Title": "Trait Browser",
+                "World": "World",
+                "NoResults": "No traits to display."
+            }
+        },
         "Distance": {
             "Range": "Up to (m)"
         },
@@ -859,6 +882,7 @@
                 "Armor": "Armor",
                 "Gear": "Gear",
                 "Trick": "Trick",
+                "Trait": "Trait",
                 "Ammo": "Ammo",
                 "Magazine": "Magazine",
                 "Magazines": "Magazines",
@@ -1346,6 +1370,10 @@
                 "Profession": "Drag a Profession item here"
             },
             "Extras": "Extra Background Items"
+        },
+        "ProseMirror": {
+            "FontColor": "Font Color",
+            "SelectTextFirst": "Select text before choosing a color."
         }
     },
     "TOKEN": {

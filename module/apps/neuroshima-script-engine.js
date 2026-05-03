@@ -413,6 +413,114 @@ export class NeuroshimaScript {
     return NeuroshimaScriptRunner.getTargetsOrSelected();
   }
 
+  // ── Weapon / Jamming helpers ─────────────────────────────────────────────
+
+  /**
+   * Return the effective jamming threshold for a weapon item.
+   * Reads `system.jamming` from the item and defaults to 20 if absent.
+   * @param {Item} weapon
+   * @returns {number}
+   */
+  getWeaponJammingThreshold(weapon) {
+    return weapon?.system?.jamming ?? 20;
+  }
+
+  /**
+   * Shift the effective jamming threshold in a `preWeaponJam` script.
+   * Positive delta makes the weapon HARDER to jam (threshold moves up).
+   * Negative delta makes it EASIER to jam (threshold moves down).
+   *
+   * @param {Object} args  - The args object from a preWeaponJam trigger.
+   * @param {number} delta - Amount to add to `args.jammingThreshold`.
+   *
+   * @example
+   * // In preWeaponJam — Rusznikarstwo passive: weapon is +3 harder to jam
+   * this.modifyJammingThreshold(args, 3);
+   */
+  modifyJammingThreshold(args, delta) {
+    if (typeof args?.jammingThreshold === "number") args.jammingThreshold += delta;
+  }
+
+  /**
+   * In a `weaponJam` script, allow the actor to fire one shot despite the jam.
+   * The weapon is still jammed (needs repair), but ammo is consumed and
+   * the hit sequence is evaluated normally.
+   * Implements the "Na pewno działa!" trick mechanic.
+   *
+   * @param {Object} args - The args object from a weaponJam trigger.
+   *
+   * @example
+   * // In weaponJam trigger — only allow if not a critical jam (19-20)
+   * if (args.bestResult <= 18) {
+   *   this.allowShotDespiteJam(args);
+   *   this.notification("Sztuczka: Na pewno działa! Broń oddaje ostatni strzał.");
+   * }
+   */
+  allowShotDespiteJam(args) {
+    if (args) args.canFireDespiteJam = true;
+  }
+
+  /**
+   * In a `weaponJam` script, clear the jam so the weapon fires normally.
+   * No jam is recorded and the shot proceeds as if it never happened.
+   *
+   * @param {Object} args - The args object from a weaponJam trigger.
+   *
+   * @example
+   * // In weaponJam — Szczęśliwa Awaria: jam is ignored entirely
+   * this.clearWeaponJam(args);
+   */
+  clearWeaponJam(args) {
+    if (args) args.clearJam = true;
+  }
+
+  /**
+   * In a `preWeaponJam` script, prevent the weapon from jamming this shot entirely.
+   * Equivalent to setting `args.forceNoJam = true`.
+   *
+   * @param {Object} args - The args object from a preWeaponJam trigger.
+   *
+   * @example
+   * // In preWeaponJam — Niezawodna Broń passive: weapon cannot jam
+   * this.preventWeaponJam(args);
+   */
+  preventWeaponJam(args) {
+    if (args) args.forceNoJam = true;
+  }
+
+  /**
+   * In a `preWeaponJam` script, force the weapon to jam regardless of the dice.
+   * Equivalent to setting `args.forceJam = true`.
+   *
+   * @param {Object} args - The args object from a preWeaponJam trigger.
+   *
+   * @example
+   * // In preWeaponJam — Wadliwa Amunicja: weapon always jams this shot
+   * this.forceWeaponJam(args);
+   */
+  forceWeaponJam(args) {
+    if (args) args.forceJam = true;
+  }
+
+  /**
+   * Check whether a die result falls within a given jam range (inclusive).
+   * Useful in `weaponJam` to distinguish a standard jam from a critical one.
+   *
+   * @param {number} bestResult   - The best die result from the weapon roll.
+   * @param {number} [min=11]     - Low end of the jam range.
+   * @param {number} [max=18]     - High end of the jam range (before critical 19-20).
+   * @returns {boolean}
+   *
+   * @example
+   * // In weaponJam — only allow firing if it's a non-critical jam
+   * if (this.isStandardJam(args.bestResult)) {
+   *   this.allowShotDespiteJam(args);
+   * }
+   */
+  isStandardJam(bestResult, min = 11, max = 18) {
+    return bestResult >= min && bestResult <= max;
+  }
+
   // ── Utility helpers ──────────────────────────────────────────────────────
 
   /**
@@ -996,6 +1104,40 @@ export class NeuroshimaScript {
  * endCombat        — End Combat: runs when combat ends (once per actor)
  *                    args: { actor, combat }
  *
+ * preWeaponJam     — Pre-Weapon Jam: runs BEFORE jamming is evaluated for a ranged shot.
+ *                    Allows scripts to shift the jam threshold or force/prevent jamming entirely.
+ *                    Never fires for melee weapons.
+ *                    args: { actor, weapon, jammingThreshold, ammoJamming, bestResult,
+ *                            forceNoJam, forceJam }
+ *                    Use: args.jammingThreshold += N  → raise threshold (harder to jam)
+ *                         args.jammingThreshold -= N  → lower threshold (easier to jam)
+ *                         args.forceNoJam = true      → weapon cannot jam this shot
+ *                         args.forceJam   = true      → weapon always jams this shot
+ *                    Helpers: this.modifyJammingThreshold(args, delta)
+ *                             this.preventWeaponJam(args)
+ *                             this.forceWeaponJam(args)
+ *                             this.getWeaponJammingThreshold(weapon)
+ *
+ * weaponJam        — Weapon Jam: runs ONLY when a jam is detected, before ammo is withheld.
+ *                    Allows scripts to allow firing despite the jam, or clear the jam.
+ *                    Never fires for melee weapons.
+ *                    args: { actor, weapon, bestResult, jammingThreshold,
+ *                            canFireDespiteJam, clearJam }
+ *                    Use: args.canFireDespiteJam = true → consume ammo and fire despite jam
+ *                              (weapon stays jammed — needs repair; implements "Na pewno działa!")
+ *                         args.clearJam = true          → jam is cancelled entirely (normal shot)
+ *                    Helpers: this.allowShotDespiteJam(args)
+ *                             this.clearWeaponJam(args)
+ *                             this.isStandardJam(args.bestResult)   → true if 11–18 (non-critical)
+ *
+ * postWeaponShot   — Post-Weapon Shot: runs AFTER the full ranged shot is resolved.
+ *                    Fires even if the weapon jammed (isJamming may be true).
+ *                    Never fires for melee weapons.
+ *                    args: { actor, weapon, isSuccess, isJamming, firedDespiteJam,
+ *                            hitBullets, bulletsFired, successPoints, rollData }
+ *                    Use: apply conditions/effects to shooter based on shot result,
+ *                         send custom chat messages, trigger secondary effects.
+ *
  * createEffect     — Effect Created: runs once when this effect is created on an actor
  *                    args: { actor, data, options }
  *
@@ -1032,6 +1174,15 @@ export class NeuroshimaScript {
  *   this.getLocationLabel(loc)       — localized location name
  *   this.getChatData(merge?)         — ChatMessage data with default speaker/flavor
  *   this.sendMessage(html, data?)    — Create a chat message (async)
+ *
+ * Weapon / Jamming helpers (use in preWeaponJam / weaponJam / postWeaponShot triggers):
+ *   this.getWeaponJammingThreshold(weapon)     — weapon's raw jamming value (default 20)
+ *   this.modifyJammingThreshold(args, delta)   — shift threshold in preWeaponJam (+harder, -easier)
+ *   this.preventWeaponJam(args)                — forceNoJam = true (preWeaponJam)
+ *   this.forceWeaponJam(args)                  — forceJam = true (preWeaponJam)
+ *   this.allowShotDespiteJam(args)             — canFireDespiteJam = true (weaponJam)
+ *   this.clearWeaponJam(args)                  — clearJam = true (weaponJam)
+ *   this.isStandardJam(bestResult, min?, max?) — true if result is in non-critical jam range (11–18)
  *
  * Wound helpers:
  *   this.getWounds(filter?, actor?)       — wound items matching filter (active, location, damageType, bruise)

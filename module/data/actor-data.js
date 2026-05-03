@@ -104,7 +104,8 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       }),
       combat: new fields.SchemaField({
         meleeInitiative:   new fields.NumberField({ integer: true, initial: 0 }),
-        armorPenaltyBonus: new fields.NumberField({ integer: true, initial: 0 })
+        armorPenaltyBonus: new fields.NumberField({ integer: true, initial: 0 }),
+        generalPenalty:    new fields.NumberField({ integer: true, initial: 0 })
       }),
       movement: new fields.NumberField({ integer: true, initial: 2, min: 0 }),
       healingRate: new fields.NumberField({ integer: true, initial: 5, min: 1, max: 100 }),
@@ -156,6 +157,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
     }
     if (this.combat) {
       this.combat.armorPenaltyBonus = 0;
+      this.combat.generalPenalty = 0;
     }
   }
 
@@ -199,7 +201,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
           totalArmorPenalty: items.reduce((total, i) => {
               if (i.type === "armor" && i.system.equipped) return total + (i.system.armor?.penalty || 0);
               return total;
-          }, 0) + (Number(system.combat?.armorPenaltyBonus) || 0),
+          }, 0) + (Number(system.combat?.armorPenaltyBonus) || 0) + (Number(system.combat?.generalPenalty) || 0),
           totalWoundPenalty: items.reduce((total, i) => {
               if (i.type === "wound" && i.system.isActive) return total + (i.system.penalty || 0);
               return total;

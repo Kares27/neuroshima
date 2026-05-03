@@ -128,21 +128,61 @@
     {{/if}}
 
     {{#if (eq item.type "origin")}}
-        <div class="item-features secondary-box" style="padding: 0.75rem;">
-            <div class="form-group row-group">
-                <label>{{localize "NEUROSHIMA.Background.Faction"}}</label>
-                <input type="text" name="system.faction" value="{{system.faction}}" placeholder="np. Moloch, Borgo, Hegemonia..."/>
+        <section class="inventory-section traits-container" data-drop-type="trait">
+            <div class="section-header">
+                <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
+                {{#if editable}}<a class="item-control" data-action="addTrait" title="{{localize 'NEUROSHIMA.Traits.AddTrait'}}"><i class="fas fa-plus"></i></a>{{/if}}
             </div>
-        </div>
+            <div class="inventory-items">
+                {{#each linkedTraitItems as |t|}}
+                <div class="item-wrap" data-trait-uuid="{{t.uuid}}">
+                    <div class="item">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image:url('{{t.img}}')" data-action="toggleTraitSummary"></div>
+                            <span class="name clickable" data-action="toggleTraitSummary">{{t.name}}</span>
+                        </div>
+                        <div class="item-controls flex0">
+                            {{#if ../editable}}<a class="item-control item-ctx-btn" data-action="traitContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>{{/if}}
+                        </div>
+                    </div>
+                    <div class="item-summary collapsed">
+                        <div class="item-description">{{{t.enrichedDescription}}}</div>
+                    </div>
+                </div>
+                {{else}}
+                <div class="trait-empty">{{localize "NEUROSHIMA.Traits.NoTraits"}}</div>
+                {{/each}}
+            </div>
+        </section>
     {{/if}}
 
     {{#if (eq item.type "profession")}}
-        <div class="item-features secondary-box" style="padding: 0.75rem;">
-            <div class="form-group row-group">
-                <label>{{localize "NEUROSHIMA.Background.StartingSkills"}}</label>
-                <input type="text" name="system.startingSkills" value="{{system.startingSkills}}" placeholder="np. Bijatyka 3, Pistolety 2..."/>
+        <section class="inventory-section traits-container" data-drop-type="trait">
+            <div class="section-header">
+                <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
+                {{#if editable}}<a class="item-control" data-action="addTrait" title="{{localize 'NEUROSHIMA.Traits.AddTrait'}}"><i class="fas fa-plus"></i></a>{{/if}}
             </div>
-        </div>
+            <div class="inventory-items">
+                {{#each linkedTraitItems as |t|}}
+                <div class="item-wrap" data-trait-uuid="{{t.uuid}}">
+                    <div class="item">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image:url('{{t.img}}')" data-action="toggleTraitSummary"></div>
+                            <span class="name clickable" data-action="toggleTraitSummary">{{t.name}}</span>
+                        </div>
+                        <div class="item-controls flex0">
+                            {{#if ../editable}}<a class="item-control item-ctx-btn" data-action="traitContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>{{/if}}
+                        </div>
+                    </div>
+                    <div class="item-summary collapsed">
+                        <div class="item-description">{{{t.enrichedDescription}}}</div>
+                    </div>
+                </div>
+                {{else}}
+                <div class="trait-empty">{{localize "NEUROSHIMA.Traits.NoTraits"}}</div>
+                {{/each}}
+            </div>
+        </section>
     {{/if}}
 
     {{#if (eq item.type "beast-action")}}

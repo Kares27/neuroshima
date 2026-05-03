@@ -5210,6 +5210,19 @@ body.theme-dark {
     margin-top: 6px;
 }
 
+.neuroshima prose-mirror .editor-content p {
+    margin: 0 0 0.5em;
+    min-height: 1em;
+}
+
+.neuroshima prose-mirror .editor-content p:last-child {
+    margin-bottom: 0;
+}
+
+.neuroshima prose-mirror .editor-content p:empty::after {
+    content: '\00a0';
+}
+
 .item-ctx-btn {
     opacity: 0.5;
     transition: opacity 0.15s;
@@ -5329,5 +5342,82 @@ body.theme-dark {
 .distance-table .delete-row {
     cursor: pointer;
     color: #c33;
+}
+
+.neuroshima.trait-browser .trait-browser-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.neuroshima.trait-browser .trait-browser-toolbar {
+    margin-bottom: 8px;
+}
+
+.neuroshima.trait-browser .trait-filter-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    border: 1px solid var(--ns-border-main, #999);
+    border-radius: 4px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.05));
+}
+
+.neuroshima.trait-browser .trait-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--ns-border-main, #999);
+    border-radius: 4px;
+}
+
+.neuroshima.trait-browser .trait-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--ns-bg-header, rgba(0,0,0,0.1));
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.neuroshima.trait-browser .trait-entry:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.trait-browser .trait-entry:hover {
+    background: var(--ns-bg-hover, rgba(255,0,0,0.05));
+}
+
+.neuroshima.trait-browser .trait-img {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--ns-border-main, #999);
+    border-radius: 3px;
+    object-fit: contain;
+}
+
+.neuroshima.trait-browser .trait-name {
+    flex: 1;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.trait-browser .trait-source {
+    font-size: 0.8em;
+    opacity: 0.7;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.neuroshima.trait-browser .trait-browser-empty {
+    padding: 10px;
+    text-align: center;
+    font-style: italic;
+    opacity: 0.6;
 }
 

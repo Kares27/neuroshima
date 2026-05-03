@@ -47,7 +47,7 @@
                     <input type="number" value="{{combat.movement3}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg3'}}"/>
                 </div>
             </div>
-            <div class="stat-box penalty-summary" title="{{combat.penaltyTooltip}}">
+            <div class="stat-box penalty-summary" data-tooltip="{{combat.penaltyTooltip}}" data-tooltip-direction="DOWN">
                 <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
                 <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
             </div>

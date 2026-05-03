@@ -452,7 +452,126 @@ Wprowadzono pakiet poprawek wizualnych i funkcjonalnych, zwiększających czytel
 - **Naprawa Błędu Segmentu**: Usunięto błąd `TypeError` uniemożliwiający rozstrzygnięcie turny, gdy w ostatnim segmencie nastąpił obustronny brak sukcesów.
 - **Prywatność i Tooltipy**: Pełna matematyka rzutów (atrybuty, modyfikatory, kary) jest dostępna w formie bogatych tooltipów HTML na etykietach sekcji, widocznych wyłącznie dla właściciela postaci i MG.
 
-## 19. System Komunikatów i Raportowania (Melee Feedback v1.1)
+## 19. System Zacięcia Broni — Triggery Skryptów (Jamming Hooks)
+
+Zaimplementowano trzy nowe triggery skryptów ActiveEffect pozwalające na pełną kontrolę nad mechaniką zacięcia broni dystansowej, bez potrzeby modyfikacji kodu systemowego.
+
+### Przepływ egzekucji
+
+```
+rollWeaponTest()
+  ↓
+[dice roll] → bestResult
+  ↓
+  preWeaponJam   ← scripts modify jammingThreshold / forceNoJam / forceJam
+  ↓
+[isJamming = bestResult >= jammingThreshold]
+  ↓ (if isJamming)
+  weaponJam      ← scripts set canFireDespiteJam / clearJam
+  ↓
+[ammo consumed if !isJamming || canFireDespiteJam]
+[hit sequence evaluated if isSuccess && (!isJamming || canFireDespiteJam)]
+  ↓
+  postWeaponShot ← scripts react to final shot result
+  ↓
+[chat card rendered]
+```
+
+### Trigger: `preWeaponJam`
+
+Uruchamiany **przed** wyznaczeniem zacięcia. Pozwala na modyfikację progu zacięcia.
+
+| Pole `args`         | Typ       | Opis |
+|---------------------|-----------|------|
+| `actor`             | Actor     | Strzelający |
+| `weapon`            | Item      | Broń |
+| `jammingThreshold`  | number    | Aktualny próg (min z broń i amunicja) — można modyfikować |
+| `ammoJamming`       | number    | Wartość zacięcia z amunicji (read-only) |
+| `bestResult`        | number    | Najlepsza (najniższa) kość |
+| `forceNoJam`        | boolean   | Ustaw `true` → broń nie może się zaciąć |
+| `forceJam`          | boolean   | Ustaw `true` → broń zawsze się zacina |
+
+**Przykłady scenariuszy:**
+- **Rusznikarstwo pasywne**: `this.modifyJammingThreshold(args, 3)` — próg podniesiony o 3 (trudniej zaciąć)
+- **Wadliwa amunicja**: `this.forceWeaponJam(args)` — broń zawsze się zacina
+- **Niezawodna broń**: `this.preventWeaponJam(args)` — broń nigdy się nie zacina
+
+### Trigger: `weaponJam`
+
+Uruchamiany **tylko gdy** zacięcie zostało wykryte. Pozwala na zezwolenie strzału mimo zacięcia lub anulowanie zacięcia.
+
+| Pole `args`         | Typ       | Opis |
+|---------------------|-----------|------|
+| `actor`             | Actor     | Strzelający |
+| `weapon`            | Item      | Broń |
+| `bestResult`        | number    | Kość, która wywołała zacięcie |
+| `jammingThreshold`  | number    | Próg, który został przekroczony |
+| `canFireDespiteJam` | boolean   | Ustaw `true` → amunicja zużyta, seria obliczona (broń nadal zacięta) |
+| `clearJam`          | boolean   | Ustaw `true` → zacięcie anulowane, broń strzela normalnie |
+
+**Przykład — Sztuczka "Na pewno działa!":**
+```js
+// Trigger: weaponJam
+// Rusznikarstwo 4+: jeden strzał mimo zacięcia (tylko standardowe zacięcie 11-18)
+if (this.isStandardJam(args.bestResult)) {
+    this.allowShotDespiteJam(args);
+    this.notification("Na pewno działa! Broń oddaje jeszcze jeden strzał.");
+}
+```
+
+**Inne przykłady:**
+- **Szczęśliwa Awaria**: `this.clearWeaponJam(args)` — zacięcie jest ignorowane
+- **Szybkie Odblokowanie** (wymaga testu): po zdanym teście umiejętności `this.clearWeaponJam(args)`
+
+### Trigger: `postWeaponShot`
+
+Uruchamiany **po** zakończeniu pełnego rzutu bronią (w tym przy zacięciu).
+
+| Pole `args`         | Typ       | Opis |
+|---------------------|-----------|------|
+| `actor`             | Actor     | Strzelający |
+| `weapon`            | Item      | Broń |
+| `isSuccess`         | boolean   | Czy rzut był sukcesem |
+| `isJamming`         | boolean   | Czy broń się zacięła |
+| `firedDespiteJam`   | boolean   | Czy oddano strzał mimo zacięcia |
+| `hitBullets`        | number    | Liczba trafionych pocisków |
+| `bulletsFired`      | number    | Liczba wystrzelonych pocisków |
+| `successPoints`     | number    | Punkty Przewagi z rzutu |
+| `rollData`          | Object    | Pełny obiekt danych rzutu (read-only) |
+
+**Przykłady scenariuszy:**
+- **Przegrzanie broni**: po 3+ pociskach w serii dodaj warunek "Gorąca Broń"
+- **Adrenalina z trafienia**: po sukcesie z 3+ PP — dodaj bonus do następnego testu
+- **Powiadomienie o zacięciu**: własna wiadomość na czacie po wykryciu zacięcia
+
+### Dostępne Helper Methods (`NeuroshimaScript`)
+
+| Metoda | Trigger | Opis |
+|--------|---------|------|
+| `getWeaponJammingThreshold(weapon)` | preWeaponJam | Zwraca wartość `jamming` broni |
+| `modifyJammingThreshold(args, delta)` | preWeaponJam | Zmienia próg zacięcia o delta |
+| `preventWeaponJam(args)` | preWeaponJam | Broń nie może się zaciąć |
+| `forceWeaponJam(args)` | preWeaponJam | Broń zawsze się zacina |
+| `allowShotDespiteJam(args)` | weaponJam | Strzał mimo zacięcia (broń nadal zacięta) |
+| `clearWeaponJam(args)` | weaponJam | Anuluj zacięcie całkowicie |
+| `isStandardJam(bestResult, min?, max?)` | weaponJam | `true` jeśli wynik w zakresie 11–18 |
+
+### Wymyślone Sztuczki Przykładowe (do implementacji jako AE)
+
+| Sztuczka / Efekt | Trigger | Mechanika |
+|------------------|---------|-----------|
+| **Na pewno działa!** (Rusznikarstwo 4+) | weaponJam | `allowShotDespiteJam` tylko przy `isStandardJam` |
+| **Niezawodna Broń** (pasywny AE) | preWeaponJam | `preventWeaponJam` (stałe) |
+| **Szczęśliwa Awaria** (pasywny AE, 1×/scenę) | weaponJam | `clearWeaponJam` + zużyj użycie |
+| **Rusznikarstwo Pasywne** (4 pkt = +1 próg) | preWeaponJam | `modifyJammingThreshold(args, floor(skill/4))` |
+| **Przegrzanie Broni** | postWeaponShot | Jeśli `bulletsFired >= 3`, dodaj warunek |
+| **Działa na Złomowisku** (wadliwa broń) | preWeaponJam | `modifyJammingThreshold(args, -3)` |
+| **Adrenalinowy Strzał** | postWeaponShot | Jeśli `successPoints >= 3`, dodaj 1 do nast. rzutu |
+| **Wymuszony Zacisk** (debuff wroga) | preWeaponJam | `forceJam` na podstawie flagi aktora |
+
+---
+
+## 20. System Komunikatów i Raportowania (Melee Feedback v1.1)
 
 Wprowadzono ujednolicony system raportowania przebiegu walki wręcz na czacie, korzystający z dedykowanych szablonów wizualnych.
 

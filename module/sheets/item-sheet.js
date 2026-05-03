@@ -1,5 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 
+import { TraitBrowserApp } from "../apps/trait-browser.js";
+
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
 
@@ -28,7 +30,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       createEffect: NeuroshimaItemSheet.prototype._onCreateEffect,
       editEffect: NeuroshimaItemSheet.prototype._onEditEffect,
       deleteEffect: NeuroshimaItemSheet.prototype._onDeleteEffect,
-      toggleEffect: NeuroshimaItemSheet.prototype._onToggleEffect
+      toggleEffect: NeuroshimaItemSheet.prototype._onToggleEffect,
+      addTrait: NeuroshimaItemSheet.prototype._onAddTrait,
+      traitContextMenu: NeuroshimaItemSheet.prototype._onTraitContextMenu,
+      toggleTraitSummary: NeuroshimaItemSheet.prototype._onToggleTraitSummary
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -46,22 +51,36 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   };
 
   /** @override */
-  static PARTS = {
-    form: {
-      template: "systems/neuroshima/templates/item/item-sheet.hbs",
-      scrollable: [".sheet-body", ".contents-list-items", ".magazine-contents-section", ".spec-master-body"]
-    }
-  };
-
-  /** @override */
   async _onDrop(event) {
     game.neuroshima.log("_onDrop triggered on Item Sheet");
+    const item = this.document;
+
+    let data;
+    try {
+      data = JSON.parse(event.dataTransfer.getData("text/plain"));
+    } catch(e) {
+      return super._onDrop(event);
+    }
+
+    if (["origin", "profession"].includes(item.type) && data.type === "Item") {
+      const sourceItem = await fromUuid(data.uuid);
+      if (sourceItem?.type === "trait") {
+        const uuid = data.uuid;
+        const currentTraits = Array.from(item.system.traits || []);
+        if (!currentTraits.includes(uuid)) {
+          await item.update({ "system.traits": [...currentTraits, uuid] });
+        }
+        return;
+      }
+    }
+
     return super._onDrop(event);
   }
 
   /** @override */
   async _onDropItem(event, data) {
     const item = this.document;
+
     if (item.type !== "magazine") return super._onDropItem(event, data);
 
     const sourceItem = await NeuroshimaItem.fromDropData(data);
@@ -72,6 +91,90 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         }
     }
     return super._onDropItem(event, data);
+  }
+
+  async _onAddTrait(event, target) {
+    const item = this.document;
+    const uuid = await TraitBrowserApp.pick();
+    if (!uuid) return;
+    const currentTraits = Array.from(item.system.traits || []);
+    if (currentTraits.includes(uuid)) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Traits.AlreadyAdded"));
+      return;
+    }
+    await item.update({ "system.traits": [...currentTraits, uuid] });
+  }
+
+  _onToggleTraitSummary(event, target) {
+    const entry = target.closest("[data-trait-uuid]");
+    if (!entry) return;
+    const summary = entry.querySelector(".item-summary");
+    if (!summary) return;
+    summary.classList.toggle("collapsed");
+  }
+
+  _onTraitContextMenu(event, target) {
+    const entry = target.closest("[data-trait-uuid]");
+    const uuid = entry?.dataset.traitUuid;
+    if (!uuid) return;
+    this._showTraitContextMenu(event, uuid);
+  }
+
+  _showTraitContextMenu(event, uuid) {
+    event.preventDefault();
+
+    document.querySelectorAll(".ns-item-ctx-menu").forEach(el => el.remove());
+
+    const menuItems = [
+      { action: "edit",   icon: "fas fa-edit",  label: game.i18n.localize("Edit") },
+      { action: "delete", icon: "fas fa-trash",  label: game.i18n.localize("Delete") }
+    ];
+
+    const menu = document.createElement("nav");
+    menu.className = "ns-item-ctx-menu context-menu themed theme-dark";
+    menu.style.cssText = "position:fixed;z-index:99999;";
+    menu.innerHTML = `<menu class="context-items">${
+      menuItems.map(m => `<li class="context-item" data-action="${m.action}"><i class="${m.icon} fa-fw"></i><span>${m.label}</span></li>`).join("")
+    }</menu>`;
+    document.body.appendChild(menu);
+
+    const x = event.clientX;
+    const y = event.clientY;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) menu.style.left = `${x - rect.width}px`;
+      if (rect.bottom > window.innerHeight) menu.style.top = `${y - rect.height}px`;
+    });
+
+    menu.querySelectorAll(".context-item").forEach(li => {
+      li.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const action = li.dataset.action;
+        if (action === "edit") {
+          const traitItem = await fromUuid(uuid);
+          traitItem?.sheet?.render(true);
+        } else if (action === "delete") {
+          const item = this.document;
+          const updated = (item.system.traits || []).filter(u => u !== uuid);
+          await item.update({ "system.traits": updated });
+        }
+        menu.remove();
+      });
+    });
+
+    const close = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener("click", close, { capture: true });
+        document.removeEventListener("contextmenu", close, { capture: true });
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener("click", close, { capture: true });
+      document.addEventListener("contextmenu", close, { capture: true });
+    }, 0);
   }
 
   /** @inheritdoc */
@@ -87,6 +190,21 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.system = item.system;
     context.fields = item.system.schema.fields;
     context.source = item.system.toObject();
+
+    const tabsByType = {
+      trick: ["description", "effects"],
+      trait: ["description", "effects"],
+      "vehicle-mod": ["stats", "description", "effects"],
+      "vehicle-damage": ["stats", "description", "effects"],
+      specialization: ["description", "stats", "effects"],
+      origin: ["description", "stats", "effects"],
+      profession: ["description", "stats", "effects"],
+    };
+    const allowedTabs = tabsByType[item.type] || ["stats", "description", "effects"];
+    if (!allowedTabs.includes(this.tabGroups.primary)) {
+      this.tabGroups.primary = allowedTabs[0];
+    }
+
     context.tabs = this._getTabs();
     context.enableEncumbrance = game.settings.get("neuroshima", "enableEncumbrance");
     context.usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
@@ -111,7 +229,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.editable = this.isEditable;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick"];
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
 
     // Prepare type label
@@ -246,6 +364,25 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       });
     }
 
+    if (["origin", "profession"].includes(item.type)) {
+      const resolved = [];
+      for (const uuid of (item.system.traits || [])) {
+        if (!uuid) continue;
+        const traitItem = await fromUuid(uuid);
+        if (!traitItem) continue;
+        const enriched = await foundry.applications.ux.TextEditor.enrichHTML(traitItem.system?.description || "", {
+          async: true, secrets: item.isOwner, relativeTo: traitItem
+        });
+        resolved.push({
+          uuid,
+          name: traitItem.name,
+          img: traitItem.img || "systems/neuroshima/assets/Brain.svg",
+          enrichedDescription: enriched
+        });
+      }
+      context.linkedTraitItems = resolved;
+    }
+
     if (item.type === "specialization") {
       const specGroups = [];
       for (const [attrKey, specs] of Object.entries(NEUROSHIMA.skillConfiguration)) {
@@ -322,7 +459,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       template: "templates/generic/tab-navigation.hbs"
     },
     stats: {
-      template: "systems/neuroshima/templates/item/item-details.hbs"
+      template: "systems/neuroshima/templates/item/item-details.hbs",
+      scrollable: [".sheet-body", ".contents-list-items", ".magazine-contents-section", ".spec-master-body"]
     },
     description: {
       template: "systems/neuroshima/templates/item/item-description.hbs"
@@ -332,6 +470,35 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
   };
 
+  /** @override */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    const activeTab = this.tabGroups?.primary;
+    if (!activeTab) return;
+    for (const partId of ["stats", "description", "effects"]) {
+      const el = this.element?.querySelector(`[data-application-part="${partId}"]`);
+      if (el) el.classList.toggle("active", partId === activeTab);
+    }
+
+    const item = this.document;
+    if (["origin", "profession"].includes(item.type)) {
+      const el = this.element;
+      if (el && !el._traitDropBound) {
+        el._traitDropBound = true;
+        el.addEventListener("dragover", ev => ev.preventDefault());
+        el.addEventListener("drop", ev => this._onDrop(ev));
+      }
+
+      this.element?.querySelectorAll("[data-trait-uuid]").forEach(row => {
+        row.addEventListener("contextmenu", (ev) => {
+          const uuid = row.dataset.traitUuid;
+          if (uuid) this._showTraitContextMenu(ev, uuid);
+        });
+      });
+    }
+
+  }
+
   /**
    * Prepare the tabs configuration for the sheet.
    * @returns {Object}
@@ -339,11 +506,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
    */
   _getTabs() {
     const item = this.document;
-    const activeTab = this.tabGroups.primary;
+    const rawActiveTab = this.tabGroups.primary;
 
     // 1. Definicja widocznych tabów dla poszczególnych typów
     const tabsByType = {
       trick: ["description", "effects"],
+      trait: ["description", "effects"],
       "vehicle-mod": ["stats", "description", "effects"],
       "vehicle-damage": ["stats", "description", "effects"],
       specialization: ["description", "stats", "effects"],
@@ -352,6 +520,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     };
 
     const allowedTabs = tabsByType[item.type] || ["stats", "description", "effects"];
+
+    // Jeśli aktywna zakładka nie należy do dozwolonych (np. "stats" dla trick/trait), użyj pierwszej dozwolonej
+    const activeTab = allowedTabs.includes(rawActiveTab) ? rawActiveTab : null;
 
     // 2. Filtrowanie i mapowanie
     const tabs = allowedTabs.reduce((obj, id) => {

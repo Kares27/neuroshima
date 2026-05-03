@@ -14,6 +14,7 @@
             "armor": "Pancerz",
             "gear": "Ekwipunek",
             "trick": "Sztuczka",
+            "trait": "Cecha",
             "ammo": "Amunicja",
             "magazine": "Magazynek",
             "wound": "Rana",
@@ -508,7 +509,8 @@
             "Combatants": "Uczestnicy",
             "Turn": "Tura",
             "MeleeInitiative": "Inicjatywa Wręcz",
-            "ArmorPenalty": "Kara od Pancerza"
+            "ArmorPenalty": "Kara od Pancerza",
+            "GeneralPenalty": "Ogólna Kara"
         },
         "MeleeOpposed": {
             "Title": "Starcie Wręcz",
@@ -757,6 +759,27 @@
         "Tricks": {
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"
         },
+        "Traits": {
+            "Label": "Cechy",
+            "FromOrigin": "Cechy z Pochodzenia",
+            "FromProfession": "Cechy z Profesji",
+            "Source": "Źródło",
+            "AddTrait": "Dodaj Cechę",
+            "NoTraits": "Brak przypisanych cech",
+            "NoWorldTraits": "Brak dostępnych cech (typ 'Cecha') w świecie.",
+            "AllAdded": "Wszystkie dostępne cechy są już dodane.",
+            "AlreadyAdded": "Ta cecha jest już dodana.",
+            "SelectTrait": "Wybierz cechę",
+            "ChooseTraitDialog": "Wybierz Cechę do przeniesienia",
+            "ChooseTraitPrompt": "Wybierz jedną cechę z {source}, która zostanie skopiowana na postać:",
+            "NoTraitsInSource": "Ten przedmiot nie zawiera żadnych cech.",
+            "SourceNotFound": "Nie znaleziono oryginalnego itemu cechy w świecie.",
+            "Browser": {
+                "Title": "Przeglądarka Cech",
+                "World": "Świat",
+                "NoResults": "Brak cech do wyświetlenia."
+            }
+        },
         "Distance": {
             "Range": "Do (m)"
         },
@@ -885,6 +908,7 @@
                 "Armor": "Pancerz",
                 "Gear": "Ekwipunek",
                 "Trick": "Sztuczka",
+                "Trait": "Cecha",
                 "Ammo": "Amunicja",
                 "Magazine": "Magazynek",
                 "Magazines": "Magazynki",
@@ -1373,6 +1397,10 @@
                 "Profession": "Przeciągnij tutaj item Profesji"
             },
             "Extras": "Dodatkowe elementy tła"
+        },
+        "ProseMirror": {
+            "FontColor": "Kolor tekstu",
+            "SelectTextFirst": "Zaznacz tekst przed wybraniem koloru."
         }
     }
 }

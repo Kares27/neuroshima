@@ -1,4 +1,49 @@
 <section class="tab tricks {{tabs.tricks.cssClass}}" data-group="primary" data-tab="tricks" data-application-part="tricks">
+    <section class="inventory-section traits-section">
+        <div class="section-header">
+            <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
+            {{#if isGM}}<a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>{{/if}}
+        </div>
+        <div class="inventory-list trait-list">
+            <div class="inventory-list-header flexrow">
+                <div class="item-name flex5">{{localize "Name"}}</div>
+                <div class="item-controls flex1"></div>
+            </div>
+            <div class="inventory-items">
+                {{#each traits as |item|}}
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-controls flex1">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
+                    </div>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-description">{{{item.system.description}}}</div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </section>
+
     <section class="inventory-section">
         <div class="section-header">
             <span>{{localize "NEUROSHIMA.Tabs.Tricks"}}</span>
@@ -43,4 +88,28 @@
             </div>
         </div>
     </section>
+
+    {{#if (gt linkedTraits.length 0)}}
+    <section class="inventory-section linked-traits-section">
+        <div class="section-header">
+            <span>{{localize "NEUROSHIMA.Traits.Label"}} ({{localize "NEUROSHIMA.Background.Title"}})</span>
+        </div>
+        <div class="linked-traits-table">
+            <div class="linked-traits-header flexrow">
+                <div class="flex0" style="width:28px;"></div>
+                <div class="flex3">{{localize "Name"}}</div>
+                <div class="flex2">{{localize "NEUROSHIMA.Traits.Source"}}</div>
+            </div>
+            {{#each linkedTraits as |entry|}}
+            <div class="linked-trait-row flexrow" data-item-id="{{entry.item.id}}" data-uuid="{{entry.item.uuid}}">
+                <div class="flex0" style="width:28px;">
+                    <img src="{{entry.item.img}}" title="{{entry.item.name}}" style="width:22px;height:22px;border:none;border-radius:3px;"/>
+                </div>
+                <div class="flex3 linked-trait-name">{{entry.item.name}}</div>
+                <div class="flex2 linked-trait-source">{{entry.source}}</div>
+            </div>
+            {{/each}}
+        </div>
+    </section>
+    {{/if}}
 </section>

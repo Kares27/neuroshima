@@ -7,11 +7,12 @@
     "vehicle": {}
   },
   "Item": {
-    "types": ["weapon", "armor", "gear", "trick", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
+    "types": ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
     "weapon": {},
     "armor": {},
     "gear": {},
     "trick": {},
+    "trait": {},
     "ammo": {},
     "magazine": {},
     "wound": {},

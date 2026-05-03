@@ -367,12 +367,30 @@ export class NeuroshimaDice {
 
     // 5. Rozstrzygnięcie sukcesu
     const weaponJammingValue = weapon.system.jamming || 20;
-    const jammingThreshold = Math.min(weaponJammingValue, ammoJamming);
-    // Zacięcie sprawdzamy na podstawie NAJLEPSZEJ kości (najniższy wynik) przed jakąkolwiek modyfikacją przez umiejętność.
-    const isJamming = isMelee ? false : (bestResult >= jammingThreshold);
+    let jammingThreshold = Math.min(weaponJammingValue, ammoJamming);
 
-    // Konsumpcja amunicji tylko jeśli broń się NIE zacięła
-    if (!isJamming) {
+    // preWeaponJam: scripts can shift the threshold or force/prevent jamming
+    const preJamArgs = { actor, weapon, jammingThreshold, ammoJamming, bestResult, forceNoJam: false, forceJam: false };
+    if (!isMelee) await NeuroshimaScriptRunner.execute("preWeaponJam", preJamArgs);
+    jammingThreshold = preJamArgs.jammingThreshold;
+
+    // Zacięcie sprawdzamy na podstawie NAJLEPSZEJ kości (najniższy wynik) przed jakąkolwiek modyfikacją przez umiejętność.
+    let isJamming = isMelee        ? false
+                  : preJamArgs.forceNoJam ? false
+                  : preJamArgs.forceJam   ? true
+                  : (bestResult >= jammingThreshold);
+
+    // weaponJam: scripts can allow firing despite jam, or clear the jam entirely
+    let canFireDespiteJam = false;
+    if (isJamming) {
+        const jamArgs = { actor, weapon, bestResult, jammingThreshold, canFireDespiteJam: false, clearJam: false };
+        await NeuroshimaScriptRunner.execute("weaponJam", jamArgs);
+        canFireDespiteJam = jamArgs.canFireDespiteJam;
+        if (jamArgs.clearJam) isJamming = false;
+    }
+
+    // Konsumpcja amunicji: zużyj jeśli broń NIE zacięła się, LUB sztuczka pozwala na strzał mimo zacięcia
+    if (!isJamming || canFireDespiteJam) {
         if (magazine && magazine.type === "magazine" && magazineUpdateData) {
             await magazine.update({ "system.contents": magazineUpdateData });
             game.neuroshima.log("Amunicja zużyta (brak zacięcia)");
@@ -541,7 +559,7 @@ export class NeuroshimaDice {
         const pp = isSuccess ? (overflow + 1) : 0;
 
         // 5.1 Ewaluacja trafień w serii (Indywidualna dla każdego pocisku)
-        if (isSuccess && !isJamming) {
+        if (isSuccess && (!isJamming || canFireDespiteJam)) {
             const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
             let totalPelletHits = 0;
 
@@ -654,6 +672,7 @@ export class NeuroshimaDice {
         damage: damageValue,
         piercing: ammoPiercing,
         isJamming,
+        firedDespiteJam: canFireDespiteJam,
         bestResult,
         modifiedResults,
         results,
@@ -718,6 +737,19 @@ export class NeuroshimaDice {
 
     // Obsługa różnej amunicji w jednej serii (wyświetlanie wielu statystyk)
     this._groupHitsData(rollData);
+
+    // postWeaponShot: scripts can react to the completed shot result
+    const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, hitBullets, bulletsFired, successPoints, rollData };
+    await NeuroshimaScriptRunner.execute("postWeaponShot", postShotArgs);
+
+    // Update weapon jammed flag
+    if (!isMelee) {
+        if (isJamming) {
+            await weapon.update({ "system.jammed": true });
+        } else if (isReroll && weapon.system.jammed) {
+            await weapon.update({ "system.jammed": false });
+        }
+    }
 
     game.neuroshima.log("Generowanie karty czatu", rollData);
     game.neuroshima.groupEnd();

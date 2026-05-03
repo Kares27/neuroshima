@@ -1,0 +1,18 @@
+<div class="trait-browser-inner">
+    <div class="trait-browser-toolbar">
+        <input class="trait-filter-input" type="text" value="{{filter}}" placeholder="{{localize 'Search'}}...">
+    </div>
+    <div class="trait-list">
+        {{#if traits.length}}
+            {{#each traits as |t|}}
+            <div class="trait-entry" data-trait-uuid="{{t.uuid}}" data-action="selectTrait" data-tooltip="{{t.name}}">
+                <img class="trait-img" src="{{t.img}}" alt="{{t.name}}">
+                <span class="trait-name">{{t.name}}</span>
+                <span class="trait-source">{{t.source}}</span>
+            </div>
+            {{/each}}
+        {{else}}
+            <p class="trait-browser-empty">{{localize "NEUROSHIMA.Traits.Browser.NoResults"}}</p>
+        {{/if}}
+    </div>
+</div>

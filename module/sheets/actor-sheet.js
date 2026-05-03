@@ -103,7 +103,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       toggleKnowledgeEdit: this.prototype._onToggleKnowledgeEdit,
       toggleSummary: this.prototype._onToggleSummary,
       itemContextMenu: this.prototype._onItemContextMenu,
-      postItemToChat: this.prototype._onPostItemToChat
+      postItemToChat: this.prototype._onPostItemToChat,
+      toggleJammed: this.prototype._onToggleJammed
     },
     dragDrop: [
       { dragSelector: ".item[data-item-id]", dropSelector: "form" },
@@ -191,6 +192,21 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       })
     };
     context.tricks = items.filter(i => i.type === "trick");
+    context.traits = items.filter(i => i.type === "trait");
+
+    const linkedTraits = [];
+    for (const bgItem of items.filter(i => ["origin", "profession"].includes(i.type))) {
+      const traitUuids = bgItem.system.traits || [];
+      for (const uuid of traitUuids) {
+        if (!uuid) continue;
+        const traitItem = await fromUuid(uuid);
+        if (traitItem && traitItem.type === "trait") {
+          linkedTraits.push({ item: traitItem, source: bgItem.name });
+        }
+      }
+    }
+    context.linkedTraits = linkedTraits;
+
     context.wounds = items.filter(i => i.type === "wound");
     context.itemManualScripts = this._prepareItemManualScripts(actor);
     context.background = await this._prepareBackground(actor);
@@ -198,7 +214,25 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
     const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty;
-    const penaltyTooltip = `${game.i18n.localize("NEUROSHIMA.Armor.TotalPenalty")}: ${totalArmorPenalty}% | ${game.i18n.localize("NEUROSHIMA.Wound.TotalPenalty")}: ${totalWoundPenalty}%`;
+
+    const penaltyLines = [];
+    const armorFromItems = items.reduce((t, i) => i.type === "armor" && i.system.equipped ? t + (i.system.armor?.penalty || 0) : t, 0);
+    if (armorFromItems) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Armor.TotalPenalty")}: ${armorFromItems}%`);
+    for (const effect of actor.effects) {
+      if (!effect.active) continue;
+      for (const change of effect.changes) {
+        const val = Number(change.value) || 0;
+        if (!val) continue;
+        if (change.key === "system.combat.armorPenaltyBonus") {
+          penaltyLines.push(`${effect.name} (${game.i18n.localize("NEUROSHIMA.Combat.ArmorPenalty")}): +${val}%`);
+        } else if (change.key === "system.combat.generalPenalty") {
+          penaltyLines.push(`${effect.name} (${game.i18n.localize("NEUROSHIMA.Combat.GeneralPenalty")}): +${val}%`);
+        }
+      }
+    }
+    if (totalWoundPenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Wound.TotalPenalty")}: ${totalWoundPenalty}%`);
+    penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Wound.TotalPenaltyAbbr")}: ${totalCombatPenalty}%`);
+    const penaltyTooltip = penaltyLines.join("\n");
 
     const healingRate = system.healingRate || 5;
     
@@ -270,10 +304,13 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
     // Prepare Combat Tab Data
     const weapons = this._prepareCombatWeapons(items);
+    const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
+    const canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
     context.combat = {
       armor: items.filter(i => i.type === "armor" && i.system.equipped),
       weaponsRanged: weapons.filter(w => w.type === "ranged" || w.type === "thrown"),
       weaponsMelee: weapons.filter(w => w.type === "melee"),
+      canUnjam,
       wounds: context.wounds,
       activeWounds: items.filter(i => i.type === "wound" && i.system.isActive),
       totalArmorPenalty: totalArmorPenalty,
@@ -797,6 +834,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         event.dataTransfer.setData("text/plain", JSON.stringify(effect.toDragData()));
       });
     });
+
   }
 
   /**
@@ -1039,6 +1077,59 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
     await actor.update(updateData);
     game.neuroshima.log(`[Background] dropped ${type} "${created.name}" onto actor "${actor.name}"`);
+
+    if (["origin", "profession"].includes(type) && actor.type === "character") {
+      const traits = Array.from(created.system.traits || []);
+      if (traits.length > 0) {
+        await this._showTraitChoiceDialog(traits, created.name, actor);
+      }
+    }
+  }
+
+  async _showTraitChoiceDialog(traitUuids, sourceName, actor) {
+    const resolved = [];
+    for (const uuid of traitUuids) {
+      const item = await fromUuid(uuid);
+      if (item) resolved.push({ uuid, item });
+    }
+    if (resolved.length === 0) return;
+
+    const prompt = game.i18n.format("NEUROSHIMA.Traits.ChooseTraitPrompt", { source: sourceName });
+
+    const listHtml = resolved.map(({ uuid, item }, idx) => {
+      const plainDesc = item.system?.description ? item.system.description.replace(/<[^>]*>/g, "").trim() : "";
+      const tooltip = plainDesc ? ` data-tooltip="${plainDesc.replace(/"/g, "&quot;")}"` : "";
+      return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--color-border-light-tertiary);"${tooltip}>
+        <img src="${item.img || "systems/neuroshima/assets/Brain.svg"}" style="width:24px;height:24px;border:none;border-radius:3px;">
+        <label style="cursor:pointer;display:flex;align-items:center;gap:8px;flex:1;">
+          <input type="radio" name="chosenTrait" value="${uuid}" ${resolved.length === 1 || idx === 0 ? "checked" : ""}>
+          <span>${item.name}</span>
+        </label>
+      </div>`;
+    }).join("");
+
+    const content = `
+      <p style="margin-bottom:8px;">${prompt}</p>
+      <div style="padding:4px 0;">${listHtml}</div>`;
+
+    const chosenUuid = await foundry.applications.api.DialogV2.prompt({
+      window: { title: game.i18n.localize("NEUROSHIMA.Traits.ChooseTraitDialog") },
+      content,
+      ok: {
+        label: game.i18n.localize("Confirm"),
+        callback: (event, button) => {
+          const checked = button.form.querySelector("input[name='chosenTrait']:checked");
+          return checked ? checked.value : null;
+        }
+      }
+    });
+
+    if (!chosenUuid) return;
+    const chosenItem = await fromUuid(chosenUuid);
+    if (!chosenItem) return;
+
+    await actor.createEmbeddedDocuments("Item", [chosenItem.toObject()]);
+    game.neuroshima.log(`[Trait] Copied trait "${chosenItem.name}" from "${sourceName}" to actor "${actor.name}"`);
   }
 
   /**
@@ -1492,6 +1583,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       const wData = weapon.system;
       const weaponObj = {
         id: weapon.id,
+        uuid: weapon.uuid,
         name: weapon.name,
         img: weapon.img,
         type: wData.weaponType,
@@ -1499,7 +1591,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         defense: wData.defenseBonus || 0,
         damage: wData.damage || "",
         piercing: wData.piercing || 0,
-        fireRate: wData.fireRate || 0
+        fireRate: wData.fireRate || 0,
+        jammed: !!wData.jammed
       };
 
       if (wData.weaponType === "melee") {
@@ -2226,6 +2319,15 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     if (!item || !("equipped" in item.system)) return;
     const newEquipped = !item.system.equipped;
     await item.update({ "system.equipped": newEquipped });
+  }
+
+  async _onToggleJammed(event, target) {
+    const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
+    if (!game.user.isGM && game.user.role < unjamMinRole) return;
+    const li = target.closest(".item");
+    const item = this.document.items.get(li.dataset.itemId);
+    if (!item || !("jammed" in item.system)) return;
+    await item.update({ "system.jammed": !item.system.jammed });
   }
 
   /**

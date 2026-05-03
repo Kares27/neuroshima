@@ -2,7 +2,7 @@
     "id": "neuroshima",
     "title": "Neuroshima 1.5",
     "description": "System do gry fabularnej Neuroshima 1.5.",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "compatibility": {
         "minimum": "13",
         "verified": "13"
@@ -22,7 +22,21 @@
         "css/items.css",
         "css/melee.css"
     ],
-    "packs": [],
+    "packs": [
+        {
+        "name": "Items",
+        "label": "Items",
+        "system": "neuroshima",
+        "path": "packs/items",
+        "type": "Item",
+        "flags": {},
+        "ownership": {
+            "PLAYER": "OBSERVER",
+            "ASSISTANT": "OWNER"
+      }
+    }
+
+    ],
     "languages": [
         {
             "lang": "en",
@@ -46,6 +60,7 @@
         "armor",
         "gear",
         "trick",
+        "trait",
         "ammo",
         "magazine",
         "wound",
