@@ -55,6 +55,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 damageApplicationMinRole: game.settings.get("neuroshima", "damageApplicationMinRole"),
                 painResistanceMinRole: game.settings.get("neuroshima", "painResistanceMinRole"),
                 combatActionsMinRole: game.settings.get("neuroshima", "combatActionsMinRole"),
+                unjamMinRole: game.settings.get("neuroshima", "unjamMinRole"),
                 fireCorrection: game.settings.get("neuroshima", "fireCorrection")
             },
             roleOptions: roleOptions
@@ -84,6 +85,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 game.settings.set("neuroshima", "damageApplicationMinRole", Number(data.damageApplicationMinRole)),
                 game.settings.set("neuroshima", "painResistanceMinRole", Number(data.painResistanceMinRole)),
                 game.settings.set("neuroshima", "combatActionsMinRole", Number(data.combatActionsMinRole)),
+                game.settings.set("neuroshima", "unjamMinRole", Number(data.unjamMinRole)),
                 game.settings.set("neuroshima", "fireCorrection", !!data.fireCorrection)
             ];
             

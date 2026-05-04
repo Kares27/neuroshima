@@ -402,6 +402,10 @@
                 "Name": "Akcje specjalne w menu",
                 "Hint": "Minimalna ranga wymagana do korzystania z opcji Refundacja amunicji i Cofnij obrażenia w menu kontekstowym czatu."
             },
+            "UnjamMinRole": {
+                "Name": "Odcinanie broni",
+                "Hint": "Minimalna ranga wymagana do używania checkboxa odcinania (unjam) broni na karcie postaci. Domyślnie tylko MG."
+            },
             "Roles": {
                 "None": "Wszyscy (Brak)",
                 "Player": "Gracz",
@@ -975,6 +979,7 @@
                 "Location": "Lokalizacja",
                 "IsHealing": "W trakcie leczenia",
                 "IsActive": "Aktywna",
+                "Jammed": "Zacięta",
                 "Penalty": "Kara",
                 "DamageType": "Typ obrażeń",
                 "Caliber": "Kaliber",
@@ -1397,6 +1402,11 @@
                 "Profession": "Przeciągnij tutaj item Profesji"
             },
             "Extras": "Dodatkowe elementy tła"
+        },
+        "Weapon": {
+            "Jammed": "Broń zacięta",
+            "NotJammed": "Broń sprawna",
+            "UnjamMessage": "Usunięto zacięcie z {weapon}"
         },
         "ProseMirror": {
             "FontColor": "Kolor tekstu",

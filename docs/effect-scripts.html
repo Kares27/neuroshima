@@ -396,6 +396,52 @@
     <tr><td>args.combatant</td><td>Combatant</td><td>Combatant (może być kilka na tego samego aktora)</td></tr>
   </tbody></table>
 
+  <!-- preWeaponJam -->
+  <h3>preWeaponJam — <em>Pre-Weapon Jam</em></h3>
+  <p>Uruchamiany <strong>przed</strong> wyznaczeniem zacięcia broni dystansowej, po rzucie kośćmi.
+  Pozwala skryptom modyfikować próg zacięcia lub wymusić/zapobiec zacięciu niezależnie od wyniku kości.</p>
+  <div class="callout warning">Uruchamiany <strong>tylko dla broni dystansowej</strong> (nie dla broni białej).</div>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Strzelający aktor</td></tr>
+    <tr><td>args.weapon</td><td>Item</td><td>Użyta broń dystansowa</td></tr>
+    <tr><td>args.bestResult</td><td>number</td><td>Najniższy wynik wśród rzuconych kości (read-only)</td></tr>
+    <tr><td>args.jammingThreshold</td><td>number</td><td>Aktualny próg zacięcia — min(broń.jamming, ammo.jamming). <strong>Modyfikuj przez helper</strong> <code>this.modifyJammingThreshold(args, delta)</code></td></tr>
+    <tr><td>args.ammoJamming</td><td>number</td><td>Wartość zacięcia z aktualnej amunicji (read-only)</td></tr>
+    <tr><td>args.forceNoJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.preventWeaponJam(args)</code> — broń nie może się zaciąć w tej turze</td></tr>
+    <tr><td>args.forceJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.forceWeaponJam(args)</code> — broń zawsze się zacina niezależnie od kości</td></tr>
+  </tbody></table>
+
+  <!-- weaponJam -->
+  <h3>weaponJam — <em>Weapon Jam</em></h3>
+  <p>Uruchamiany <strong>tylko gdy</strong> zacięcie zostało wykryte (<code>bestResult &gt;= jammingThreshold</code>).
+  Pozwala skryptom na zezwolenie strzału mimo zacięcia lub całkowite anulowanie zacięcia.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Strzelający aktor</td></tr>
+    <tr><td>args.weapon</td><td>Item</td><td>Broń która się zacięła</td></tr>
+    <tr><td>args.bestResult</td><td>number</td><td>Wynik kości który wywołał zacięcie</td></tr>
+    <tr><td>args.jammingThreshold</td><td>number</td><td>Próg który został przekroczony (read-only)</td></tr>
+    <tr><td>args.canFireDespiteJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.allowShotDespiteJam(args, count=1)</code> — strzał oddany mimo zacięcia, broń nadal zacięta; domyślnie 1 pocisk, podaj <code>count</code> aby przepuścić więcej</td></tr>
+    <tr><td>args.clearJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.clearWeaponJam(args)</code> — zacięcie anulowane, broń strzela normalnie</td></tr>
+  </tbody></table>
+
+  <!-- postWeaponShot -->
+  <h3>postWeaponShot — <em>Post-Weapon Shot</em></h3>
+  <p>Uruchamiany <strong>po zakończeniu</strong> pełnego rzutu bronią dystansową — niezależnie od tego czy doszło do zacięcia, sukcesu czy porażki. Pozwala na reakcję na finalny wynik strzału.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Strzelający aktor</td></tr>
+    <tr><td>args.weapon</td><td>Item</td><td>Użyta broń</td></tr>
+    <tr><td>args.isSuccess</td><td>boolean</td><td>Czy rzut był sukcesem</td></tr>
+    <tr><td>args.isJamming</td><td>boolean</td><td>Czy broń się zacięła w tej turze</td></tr>
+    <tr><td>args.firedDespiteJam</td><td>boolean</td><td>Czy oddano strzał mimo zacięcia (<code>canFireDespiteJam</code> był ustawiony)</td></tr>
+    <tr><td>args.hitBullets</td><td>number</td><td>Liczba trafionych pocisków</td></tr>
+    <tr><td>args.bulletsFired</td><td>number</td><td>Liczba wystrzelonych pocisków (zużyta amunicja)</td></tr>
+    <tr><td>args.successPoints</td><td>number</td><td>Punkty Przewagi z rzutu</td></tr>
+    <tr><td>args.rollData</td><td>Object</td><td>Pełny obiekt danych rzutu (read-only)</td></tr>
+  </tbody></table>
+
   <!-- lifecycle -->
   <h3>createEffect / deleteEffect — <em>Effect Created / Effect Deleted</em></h3>
   <p>Uruchamiane raz gdy efekt jest tworzony na aktorze lub usuwany z aktora.</p>
@@ -1330,6 +1376,189 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <span class="str">`💊 <strong>Oczyść Krew</strong>: Krwawienie ${current} → ${newValue}${newValue === 0 ? " (usunięte)" : ""}`</span>
   );
 })();</code></pre>
+  </div>
+
+
+
+  <h3 id="examples-jamming">Przykłady — Zacięcie Broni (Jamming)</h3>
+
+  <!-- preWeaponJam: Niezawodna Broń -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preWeaponJam</span>
+      Niezawodna Broń — pasywny AE, broń nie może się zaciąć
+    </div>
+    <pre><code><span class="cmt">// Trigger: preWeaponJam
+// Pasywny efekt na broni lub aktorze — broń nigdy się nie zacina</span>
+<span class="kw">this</span>.<span class="fn">preventWeaponJam</span>(args);
+<span class="cmt">// Możesz dodać adnotację na czacie — ale nie jest wymagana</span></code></pre>
+  </div>
+
+  <!-- preWeaponJam: Rusznikarstwo pasywne -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preWeaponJam</span>
+      Rusznikarstwo Pasywne — co 4 pkt umiejętności +1 do progu zacięcia
+    </div>
+    <pre><code><span class="cmt">// Trigger: preWeaponJam
+// Pasywny efekt na aktorze — Rusznikarstwo 4+ podnosi próg zacięcia</span>
+<span class="kw">const</span> <span class="var">gunsmith</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"gunsmithing"</span>);
+<span class="kw">const</span> <span class="var">bonus</span>    = Math.<span class="fn">floor</span>(<span class="var">gunsmith</span> / <span class="num">4</span>);
+<span class="kw">if</span> (<span class="var">bonus</span> > <span class="num">0</span>) {
+  <span class="kw">this</span>.<span class="fn">modifyJammingThreshold</span>(args, <span class="var">bonus</span>);
+  <span class="cmt">// bonus dodatni → wyższy próg → trudniej o zacięcie</span>
+}</code></pre>
+  </div>
+
+  <!-- preWeaponJam: Wadliwa broń -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preWeaponJam</span>
+      Działa na Złomowisku — wadliwa broń, próg obniżony o 3
+    </div>
+    <pre><code><span class="cmt">// Trigger: preWeaponJam
+// Pasywny debuff na broni — łatwiej o zacięcie (próg niższy = zacina się wcześniej)</span>
+<span class="kw">this</span>.<span class="fn">modifyJammingThreshold</span>(args, <span class="num">-3</span>);
+<span class="cmt">// ujemny delta → niższy próg → broń zacina się częściej</span></code></pre>
+  </div>
+
+  <!-- preWeaponJam: Wymuszony Zacisk -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preWeaponJam</span>
+      Wymuszony Zacisk — debuff z flagi aktora, zawsze zacina
+    </div>
+    <pre><code><span class="cmt">// Trigger: preWeaponJam
+// Jeśli wróg ma nałożony debuff "Wymuszony Zacisk" — broń zawsze się zacina</span>
+<span class="kw">const</span> <span class="var">hasDebuff</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"forcedJam"</span>);
+<span class="kw">if</span> (<span class="var">hasDebuff</span>) {
+  <span class="kw">this</span>.<span class="fn">forceWeaponJam</span>(args);
+  <span class="cmt">// Ustaw na false po zadziałaniu (jednorazowy debuff)</span>
+  <span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"forcedJam"</span>, <span class="kw">false</span>);
+}</code></pre>
+  </div>
+
+  <!-- weaponJam: Na pewno działa! -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">weaponJam</span>
+      "Na pewno działa!" — sztuczka, jeden strzał mimo standardowego zacięcia
+    </div>
+    <pre><code><span class="cmt">// Trigger: weaponJam
+// Sztuczka: przy standardowym zacięciu (11-18) broń oddaje jeszcze jeden strzał
+// (broń nadal jest zacięta — nie czyści zacięcia)
+// allowShotDespiteJam bez podanego count domyślnie przepuszcza 1 pocisk</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(args.bestResult)) {
+  <span class="kw">this</span>.<span class="fn">allowShotDespiteJam</span>(args);          <span class="cmt">// domyślnie count=1</span>
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Na pewno działa! Broń oddaje jeszcze jeden strzał."</span>, <span class="str">"info"</span>);
+}
+<span class="cmt">// Przy krytycznym zacięciu (19-20) sztuczka nie działa</span></code></pre>
+  </div>
+
+  <!-- weaponJam: Szczęśliwa Awaria -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">weaponJam</span>
+      Szczęśliwa Awaria — pasywny AE, 1×/scenę zacięcie jest ignorowane
+    </div>
+    <pre><code><span class="cmt">// Trigger: weaponJam
+// Pasywny efekt: raz na scenę zacięcie jest całkowicie ignorowane
+// Flaga "luckyJamUsed" resetowana na startScene lub ręcznie</span>
+<span class="kw">const</span> <span class="var">used</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"luckyJamUsed"</span>);
+<span class="kw">if</span> (!<span class="var">used</span>) {
+  <span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"luckyJamUsed"</span>, <span class="kw">true</span>);
+  <span class="kw">this</span>.<span class="fn">clearWeaponJam</span>(args);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Szczęśliwa Awaria! Zacięcie zignorowane."</span>, <span class="str">"info"</span>);
+} <span class="kw">else</span> {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Szczęśliwa Awaria już wykorzystana w tej scenie."</span>, <span class="str">"warn"</span>);
+}</code></pre>
+  </div>
+
+  <!-- weaponJam: Seria z ograniczeniem — 2 pociski mimo zacięcia -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">weaponJam</span>
+      Seria z Zacięciem — sprawdzenie zakresu zacięcia, 2 pociski mimo jam (tylko standardowe)
+    </div>
+    <pre><code><span class="cmt">// Trigger: weaponJam
+// Sztuczka lub cecha broni: przy standardowym zacięciu (11-18) broń oddaje
+// jeszcze 2 pociski zanim całkowicie się zacina.
+// Przy krytycznym zacięciu (19-20) żadna kula nie wychodzi.</span>
+<span class="kw">const</span> <span class="var">result</span> = args.bestResult;
+<span class="kw">const</span> <span class="var">threshold</span> = args.jammingThreshold;
+
+<span class="cmt">// isStandardJam(result) domyślnie sprawdza zakres 11-18.
+// Możesz podać własny zakres: isStandardJam(result, min, max)</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(<span class="var">result</span>)) {
+  <span class="cmt">// Standardowe zacięcie (próg &lt;= 18): 2 pociski wychodzą mimo jam</span>
+  <span class="kw">this</span>.<span class="fn">allowShotDespiteJam</span>(args, <span class="num">2</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Zacięcie w serii (wynik ${result}, próg ${threshold}) — wychodzą 2 pociski.`</span>, <span class="str">"warn"</span>);
+} <span class="kw">else</span> {
+  <span class="cmt">// Krytyczne zacięcie (19-20): żadna kula — weaponJam blokuje strzał całkowicie</span>
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Krytyczne zacięcie (wynik ${result})! Broń całkowicie zablokowana.`</span>, <span class="str">"error"</span>);
+}</code></pre>
+  </div>
+
+  <!-- weaponJam: Sprawdzenie zakresu ręcznie (własne zakresy) -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">weaponJam</span>
+      Własne Zakresy — broń z trzema poziomami zacięcia (lekkie / ciężkie / krytyczne)
+    </div>
+    <pre><code><span class="cmt">// Trigger: weaponJam
+// Broń ma trzy poziomy zacięcia:
+//  lekkie  (próg..+4): jeden strzał mimo zacięcia
+//  ciężkie (próg+5..18): brak strzału, ale gracz może spróbować odblokować
+//  krytyczne (19+): broń całkowicie zablokowana i traci 1 HP trwałości</span>
+<span class="kw">const</span> <span class="var">r</span> = args.bestResult;
+<span class="kw">const</span> <span class="var">t</span> = args.jammingThreshold;
+
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(<span class="var">r</span>, <span class="var">t</span>, <span class="var">t</span> + <span class="num">4</span>)) {
+  <span class="cmt">// Lekkie zacięcie: wychodzi 1 ostatni pocisk (count=1 jest domyślne)</span>
+  <span class="kw">this</span>.<span class="fn">allowShotDespiteJam</span>(args);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Lekkie zacięcie — ostatni strzał przeszedł."</span>, <span class="str">"info"</span>);
+} <span class="kw">else if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(<span class="var">r</span>, <span class="var">t</span> + <span class="num">5</span>, <span class="num">18</span>)) {
+  <span class="cmt">// Ciężkie zacięcie: brak strzału</span>
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Ciężkie zacięcie — brak strzału."</span>, <span class="str">"warn"</span>);
+} <span class="kw">else</span> {
+  <span class="cmt">// Krytyczne (19-20): broń traci trwałość</span>
+  <span class="kw">const</span> <span class="var">dur</span> = args.weapon.system.durability ?? <span class="num">0</span>;
+  <span class="kw">if</span> (<span class="var">dur</span> > <span class="num">0</span>) <span class="kw">await</span> args.weapon.<span class="fn">update</span>({ <span class="str">"system.durability"</span>: <span class="var">dur</span> - <span class="num">1</span> });
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Krytyczne zacięcie! Broń straciła 1 punkt trwałości."</span>, <span class="str">"error"</span>);
+}</code></pre>
+  </div>
+
+  <!-- postWeaponShot: Przegrzanie broni -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">postWeaponShot</span>
+      Przegrzanie Broni — po 3+ pociskach w serii dodaj kondycję
+    </div>
+    <pre><code><span class="cmt">// Trigger: postWeaponShot
+// Pasywny efekt na broni — po wystrzeleniu 3+ pocisków w jednej akcji
+// dodaj kondycję "Gorąca Broń" na aktora</span>
+<span class="kw">if</span> (args.bulletsFired >= <span class="num">3</span> && args.isSuccess) {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"hotWeapon"</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Broń się przegrzewa! Dodano kondycję Gorąca Broń."</span>, <span class="str">"warn"</span>);
+}</code></pre>
+  </div>
+
+  <!-- postWeaponShot: Adrenalina -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">postWeaponShot</span>
+      Adrenalinowy Strzał — po sukcesie z 3+ PP bonus do następnego rzutu
+    </div>
+    <pre><code><span class="cmt">// Trigger: postWeaponShot
+// Jeśli strzał był sukcesem z co najmniej 3 Punktami Przewagi,
+// dodaj flagę bonusu do następnego testu</span>
+<span class="kw">if</span> (args.isSuccess && args.successPoints >= <span class="num">3</span> && !args.isJamming) {
+  <span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"adrenalineBonus"</span>, <span class="num">10</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Adrenalinowy strzał! +10% do następnego testu."</span>, <span class="str">"info"</span>);
+}
+<span class="cmt">// W rollTest / preRollTest sprawdzasz i zeruj flagę:</span>
+<span class="cmt">// const bonus = this.actor.getFlag("neuroshima","adrenalineBonus") || 0;</span>
+<span class="cmt">// if (bonus) { args.stat += bonus; await this.actor.unsetFlag("neuroshima","adrenalineBonus"); }</span></code></pre>
   </div>
 
 </section>
@@ -2384,6 +2613,68 @@ args.penalties.mod += <span class="num">10</span>;
     <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
   }
 }</code></pre>
+
+  <!-- ── Jamming helpers ──────────────────────────────────────────────────── -->
+  <h3>Helpery zacięcia broni (Jamming)</h3>
+  <p>Poniższe helpery są dostępne wyłącznie w triggerach <code>preWeaponJam</code>, <code>weaponJam</code> i <code>postWeaponShot</code> (oraz bezpośrednio w triggerze <code>weaponJam</code>). Każdy z nich modyfikuje odpowiedni klucz obiektu <code>args</code> przekazanego przez silnik.</p>
+
+  <table>
+    <thead>
+      <tr><th>Helper</th><th>Dostępny w</th><th>Opis</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>this.modifyJammingThreshold(args, delta)</code></td>
+        <td>preWeaponJam</td>
+        <td>Modyfikuje próg zacięcia o wartość <code>delta</code>. Dodatni delta = trudniej się zaciąć, ujemny = łatwiej. Wartość <code>args.jammingThreshold</code> nigdy nie spada poniżej 0.</td>
+      </tr>
+      <tr>
+        <td><code>this.preventWeaponJam(args)</code></td>
+        <td>preWeaponJam</td>
+        <td>Ustawia <code>args.forceNoJam = true</code>. Broń nie może się zaciąć w tej turze niezależnie od wyniku kości. Wyższy priorytet niż <code>forceJam</code>.</td>
+      </tr>
+      <tr>
+        <td><code>this.forceWeaponJam(args)</code></td>
+        <td>preWeaponJam</td>
+        <td>Ustawia <code>args.forceJam = true</code>. Broń zawsze się zacina, nawet jeśli kości dały wynik poniżej progu zacięcia. Ignorowane gdy <code>forceNoJam</code> jest aktywne.</td>
+      </tr>
+      <tr>
+        <td><code>this.allowShotDespiteJam(args, count=1)</code></td>
+        <td>weaponJam</td>
+        <td>Ustawia <code>args.canFireDespiteJam = true</code>. Aktor oddaje strzał mimo zacięcia — broń nadal zostaje zacięta po strzale. <code>count</code> określa maksymalną liczbę pocisków ocenianych pod kątem trafień; domyślnie <strong>1</strong>. Podaj wyższą wartość przy seriach — np. <code>allowShotDespiteJam(args, 2)</code> przepuszcza 2 pociski zanim broń całkowicie się zatnie.</td>
+      </tr>
+      <tr>
+        <td><code>this.clearWeaponJam(args)</code></td>
+        <td>weaponJam</td>
+        <td>Ustawia <code>args.clearJam = true</code>. Zacięcie jest całkowicie anulowane — broń strzela normalnie i nie zostaje oznaczona jako zacięta.</td>
+      </tr>
+      <tr>
+        <td><code>this.isStandardJam(bestResult)</code></td>
+        <td>weaponJam</td>
+        <td>Zwraca <code>true</code> gdy wynik kości (bestResult) mieści się w zakresie standardowego zacięcia (11–18). Przydatne do rozróżnienia standardowego i krytycznego (19–20) zacięcia.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Kolejność wykonania helperów:</strong><br>
+    <code>preWeaponJam</code> → sprawdzenie progu → (jeśli zacięcie) <code>weaponJam</code> → oddanie/pominięcie strzału → <code>postWeaponShot</code>.<br>
+    Helper <code>preventWeaponJam</code> wywołany w <code>preWeaponJam</code> całkowicie zapobiega uruchomieniu <code>weaponJam</code>.
+  </div>
+
+  <h3>Pobieranie wartości broni w skryptach jammingu</h3>
+  <p>W skryptach wyzwalaczy jammingu masz bezpośredni dostęp do <code>args.weapon</code> (Item broni) i <code>args.actor</code> (Actor strzelającego). Możesz odczytać dane broni przez standardowe API Foundry:</p>
+  <pre><code><span class="cmt">// Odczyt wartości zacięcia broni</span>
+<span class="kw">const</span> <span class="var">weaponJamming</span> = args.weapon.system.jamming;     <span class="cmt">// próg zacięcia broni</span>
+<span class="kw">const</span> <span class="var">weaponName</span>    = args.weapon.name;               <span class="cmt">// nazwa broni</span>
+<span class="kw">const</span> <span class="var">isJammed</span>      = args.weapon.system.jammed;       <span class="cmt">// czy już zacięta</span>
+
+<span class="cmt">// Odczyt wartości skilla aktora (np. Rusznikarstwo)</span>
+<span class="kw">const</span> <span class="var">gunsmithLvl</span> = args.actor.system.skills?.gunsmithing?.value ?? <span class="num">0</span>;
+
+<span class="cmt">// Sprawdź bieżący próg (po modyfikacjach przez inne AE)</span>
+<span class="kw">const</span> <span class="var">threshold</span> = args.jammingThreshold;              <span class="cmt">// read-only odczyt; modyfikuj przez helper</span></code></pre>
+
 </section>
 
 <footer>

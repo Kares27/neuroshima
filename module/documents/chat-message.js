@@ -684,6 +684,37 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
+   * Renderuje wiadomość czatu o odcięciu zacięcia broni przez gracza.
+   * @param {Actor} actor   - Aktor który odciął broń
+   * @param {Item}  weapon  - Broń która była zacięta
+   */
+  static async renderUnjam(actor, weapon) {
+    const text = game.i18n.format("NEUROSHIMA.Weapon.UnjamMessage", { weapon: weapon.name });
+    return this.create({
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content: `<div class="neuroshima roll-card">
+        <header class="roll-header">
+          <div class="actor-image-container">
+            <img src="${actor.img}" width="32" height="32" title="${actor.name}"/>
+          </div>
+          <div class="header-details">
+            <div class="test-info">${text}</div>
+          </div>
+        </header>
+      </div>`,
+      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      flags: {
+        neuroshima: {
+          messageType: "weaponUnjam",
+          actorId: actor.id,
+          weaponId: weapon.id
+        }
+      }
+    });
+  }
+
+  /**
    * Sprawdza czy użytkownik może widzieć tooltipy rzutów.
    */
   static _canShowTooltip(actor) {

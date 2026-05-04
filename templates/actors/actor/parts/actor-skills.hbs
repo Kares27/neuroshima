@@ -21,7 +21,7 @@
 
                         <div class="skills-horizontal-grid">
                             {{#each spec.skills as |skill|}}
-                            <div class="skill-item" data-action="rollSkill" data-skill="{{skill.key}}" title="{{localize "NEUROSHIMA.Actions.Roll"}}: {{localize skill.label}}">
+                            <div class="skill-item">
                                 <div class="skill-input-wrapper">
                                     <input type="number"
                                            name="system.skills.{{skill.key}}.value"
@@ -36,7 +36,7 @@
                                 </div>
                                 {{#if skill.isKnowledge}}
                                     <div class="skill-knowledge-wrapper">
-                                        <span class="skill-knowledge-label">{{#if skill.customLabel}}{{skill.customLabel}}{{else}}{{localize skill.label}}{{/if}}</span>
+                                        <span class="skill-knowledge-label skill-name-rollable" data-action="rollSkill" data-skill="{{skill.key}}" title="{{localize "NEUROSHIMA.Actions.Roll"}}: {{#if skill.customLabel}}{{skill.customLabel}}{{else}}{{localize skill.label}}{{/if}}">{{#if skill.customLabel}}{{skill.customLabel}}{{else}}{{localize skill.label}}{{/if}}</span>
                                         <input type="text"
                                                name="system.skills.{{skill.key}}.label"
                                                value="{{skill.customLabel}}"
@@ -45,7 +45,7 @@
                                         <a class="skill-knowledge-edit-btn" data-action="toggleKnowledgeEdit" data-skill="{{skill.key}}"><i class="fas fa-pen"></i></a>
                                     </div>
                                 {{else}}
-                                    <span class="skill-name">{{localize skill.label}}</span>
+                                    <span class="skill-name skill-name-rollable" data-action="rollSkill" data-skill="{{skill.key}}" title="{{localize "NEUROSHIMA.Actions.Roll"}}: {{localize skill.label}}">{{localize skill.label}}</span>
                                 {{/if}}
                             </div>
                             {{/each}}

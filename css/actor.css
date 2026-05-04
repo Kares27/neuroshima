@@ -1179,7 +1179,11 @@
     word-break: break-word;
 }
 
-.neuroshima.sheet.actor .skill-item:hover .skill-name {
+.neuroshima.sheet.actor .skill-name-rollable {
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor .skill-name-rollable:hover {
     color: var(--color-link-text, var(--ns-text-light));
 }
 
@@ -1498,6 +1502,28 @@
     object-fit: contain;
     border: 1px solid var(--ns-border-main);
     border-radius: 3px;
+}
+
+.neuroshima.sheet.actor .weapon-jam-indicator {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
+}
+
+.neuroshima.sheet.actor a.weapon-jam-indicator.is-jammed {
+    color: #c0392b;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor a.weapon-jam-indicator.is-jammed:hover {
+    color: #e74c3c;
+}
+
+.neuroshima.sheet.actor span.weapon-jam-indicator.is-jammed {
+    color: #c0392b;
+    cursor: default;
 }
 
 .neuroshima.sheet.actor .wounds-table {

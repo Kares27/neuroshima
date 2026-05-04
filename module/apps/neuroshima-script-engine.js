@@ -442,12 +442,16 @@ export class NeuroshimaScript {
   }
 
   /**
-   * In a `weaponJam` script, allow the actor to fire one shot despite the jam.
+   * In a `weaponJam` script, allow the actor to fire despite the jam.
    * The weapon is still jammed (needs repair), but ammo is consumed and
    * the hit sequence is evaluated normally.
    * Implements the "Na pewno działa!" trick mechanic.
    *
-   * @param {Object} args - The args object from a weaponJam trigger.
+   * @param {Object} args          - The args object from a weaponJam trigger.
+   * @param {number} [count=1]     - Maximum number of bullets allowed to fire despite the jam.
+   *                                 Defaults to 1 (one shot through before the weapon locks up).
+   *                                 Pass a higher integer to allow more bullets —
+   *                                 useful for "2 shots fire before the weapon jams in a burst".
    *
    * @example
    * // In weaponJam trigger — only allow if not a critical jam (19-20)
@@ -455,9 +459,18 @@ export class NeuroshimaScript {
    *   this.allowShotDespiteJam(args);
    *   this.notification("Sztuczka: Na pewno działa! Broń oddaje ostatni strzał.");
    * }
+   *
+   * @example
+   * // In weaponJam trigger — burst weapon: allow only 2 bullets through before the jam locks up
+   * if (this.isStandardJam(args.bestResult)) {
+   *   this.allowShotDespiteJam(args, 2);
+   *   this.notification("Broń zacina się w serii — wychodzą tylko 2 pociski.");
+   * }
    */
-  allowShotDespiteJam(args) {
-    if (args) args.canFireDespiteJam = true;
+  allowShotDespiteJam(args, count = 1) {
+    if (!args) return;
+    args.canFireDespiteJam = true;
+    args.despiteJamBullets = Math.floor(Math.max(1, count));
   }
 
   /**
@@ -1233,7 +1246,10 @@ export class NeuroshimaScriptRunner {
     endRound:         "End Round",
     endCombat:        "End Combat",
     createEffect:     "Effect Created",
-    deleteEffect:     "Effect Deleted"
+    deleteEffect:     "Effect Deleted",
+    preWeaponJam:     "Pre-Weapon Jam",
+    weaponJam:        "Weapon Jam",
+    postWeaponShot:   "Post-Weapon Shot"
   };
 
   /**

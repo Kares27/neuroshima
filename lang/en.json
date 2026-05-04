@@ -399,6 +399,10 @@
                 "Name": "Context Menu Actions",
                 "Hint": "Minimum role required to use Refund Ammunition and Reverse Damage options in the chat context menu."
             },
+            "UnjamMinRole": {
+                "Name": "Weapon Unjamming",
+                "Hint": "Minimum role required to use the unjam checkbox on the character sheet. Defaults to Gamemaster only."
+            },
             "Roles": {
                 "None": "Everyone (None)",
                 "Player": "Player",
@@ -949,6 +953,7 @@
                 "Location": "Location",
                 "IsHealing": "Is Healing",
                 "IsActive": "Is Active",
+                "Jammed": "Jammed",
                 "Penalty": "Penalty",
                 "DamageType": "Damage Type",
                 "Caliber": "Caliber",
@@ -1370,6 +1375,11 @@
                 "Profession": "Drag a Profession item here"
             },
             "Extras": "Extra Background Items"
+        },
+        "Weapon": {
+            "Jammed": "Weapon jammed",
+            "NotJammed": "Weapon ready",
+            "UnjamMessage": "Weapon jam cleared: {weapon}"
         },
         "ProseMirror": {
             "FontColor": "Font Color",

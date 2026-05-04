@@ -575,6 +575,43 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   }
 
   /** @override */
+  async _processSubmitData(event, form, submitData) {
+    for (const key of Object.keys(this.document.system.attributes ?? {})) {
+      const path = `system.attributes.${key}`;
+      const submitted = foundry.utils.getProperty(submitData, path);
+      if (submitted === undefined) continue;
+      let aeBonus = 0;
+      for (const effect of (this.document.appliedEffects ?? [])) {
+        for (const change of (effect.changes ?? [])) {
+          if (change.key === path && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+            aeBonus += Number(change.value) || 0;
+          }
+        }
+      }
+      if (aeBonus !== 0) {
+        foundry.utils.setProperty(submitData, path, Math.max(0, Number(submitted) - aeBonus));
+      }
+    }
+    for (const key of Object.keys(this.document.system.skills ?? {})) {
+      const path = `system.skills.${key}.value`;
+      const submitted = foundry.utils.getProperty(submitData, path);
+      if (submitted === undefined) continue;
+      let aeBonus = 0;
+      for (const effect of (this.document.appliedEffects ?? [])) {
+        for (const change of (effect.changes ?? [])) {
+          if (change.key === path && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+            aeBonus += Number(change.value) || 0;
+          }
+        }
+      }
+      if (aeBonus !== 0) {
+        foundry.utils.setProperty(submitData, path, Math.max(0, Number(submitted) - aeBonus));
+      }
+    }
+    return super._processSubmitData(event, form, submitData);
+  }
+
+  /** @override */
   async _onChangeForm(formConfig, event) {
     const input = event.target;
     const name = input?.getAttribute?.("name") ?? input?.name;
@@ -615,9 +652,19 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const desc       = game.i18n.format("NEUROSHIMA.XP.Log.AttributeRaise", { attr: attrLabel, from: oldVal, to: newVal });
         const choice     = await showXpDialog(cost, desc, currentXp);
         if (choice === null) { input.value = oldVal; return; }
+        const attrPath = `system.attributes.${key}`;
+        let attrAeBonus = 0;
+        for (const effect of (this.document.appliedEffects ?? [])) {
+          for (const change of (effect.changes ?? [])) {
+            if (change.key === attrPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+              attrAeBonus += Number(change.value) || 0;
+            }
+          }
+        }
+        const storedAttr = Math.max(0, newVal - attrAeBonus);
         const updateData = {};
-        foundry.utils.setProperty(updateData, `system.attributes.${key}`, newVal);
-        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, `system.attributes.${key}`);
+        foundry.utils.setProperty(updateData, attrPath, storedAttr);
+        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, attrPath);
         await this.document.update(updateData, { ns_skip_xp: true });
         return;
       }
@@ -637,9 +684,19 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const desc       = game.i18n.format("NEUROSHIMA.XP.Log.SkillRaise", { skill: skillLabel, from: oldVal, to: newVal });
         const choice     = await showXpDialog(cost, desc, currentXp);
         if (choice === null) { input.value = oldVal; return; }
+        const skillPath = `system.skills.${key}.value`;
+        let valueAeBonus = 0;
+        for (const effect of (this.document.appliedEffects ?? [])) {
+          for (const change of (effect.changes ?? [])) {
+            if (change.key === skillPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+              valueAeBonus += Number(change.value) || 0;
+            }
+          }
+        }
+        const storedVal  = Math.max(0, newVal - valueAeBonus);
         const updateData = {};
-        foundry.utils.setProperty(updateData, `system.skills.${key}.value`, newVal);
-        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, `system.skills.${key}.value`);
+        foundry.utils.setProperty(updateData, skillPath, storedVal);
+        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, skillPath);
         await this.document.update(updateData, { ns_skip_xp: true });
         return;
       }
@@ -2327,7 +2384,11 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const li = target.closest(".item");
     const item = this.document.items.get(li.dataset.itemId);
     if (!item || !("jammed" in item.system)) return;
-    await item.update({ "system.jammed": !item.system.jammed });
+    if (!item.system.jammed) return;
+    await item.update({ "system.jammed": false });
+    if (this.document.type === "character") {
+      await CONFIG.ChatMessage.documentClass.renderUnjam(this.document, item);
+    }
   }
 
   /**
@@ -2364,7 +2425,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     for (const effect of (actor.effects ?? [])) {
       if (effect.disabled || effect.isSuppressed) continue;
       for (const change of (effect.changes ?? [])) {
-        const m = change.key?.match(/^system\.skillBonuses\.(\w+)$/);
+        const mBonus = change.key?.match(/^system\.skillBonuses\.(\w+)$/);
+        const mValue = change.key?.match(/^system\.skills\.(\w+)\.value$/);
+        const m = mBonus ?? mValue;
         if (!m) continue;
         const sKey = m[1];
         const val = Number(change.value) || 0;

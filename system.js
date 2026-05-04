@@ -516,6 +516,14 @@ Hooks.once('init', async function() {
         default: 4
     });
 
+    game.settings.register("neuroshima", "unjamMinRole", {
+        name: "NEUROSHIMA.Settings.UnjamMinRole.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 4
+    });
+
     game.settings.register("neuroshima", "fireCorrection", {
         name: "NEUROSHIMA.Settings.FireCorrection.Name",
         hint: "NEUROSHIMA.Settings.FireCorrection.Hint",

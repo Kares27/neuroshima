@@ -27,7 +27,7 @@
                 {{#each @root.changeKeys}}
                 <optgroup label="{{localize this.group}}">
                     {{#each this.keys}}
-                    <option value="{{this.key}}" {{#if (eq this.key ../../../this.key)}}selected{{/if}}>{{localize this.label}}</option>
+                    <option value="{{this.key}}" {{#if (eq this.key ../../../this.key)}}selected{{/if}}>{{#if this.prefix}}{{this.prefix}} {{/if}}{{localize this.label}}</option>
                     {{/each}}
                 </optgroup>
                 {{/each}}

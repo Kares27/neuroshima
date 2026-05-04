@@ -228,6 +228,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.owner = item.isOwner;
     context.editable = this.isEditable;
 
+    const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
+    context.canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
+    context.isJammedWeapon = item.type === "weapon" && "jammed" in item.system;
+
     // Non-countable item types have no quantity, cost, or weight
     const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);

@@ -382,11 +382,15 @@ export class NeuroshimaDice {
 
     // weaponJam: scripts can allow firing despite jam, or clear the jam entirely
     let canFireDespiteJam = false;
+    let despiteJamBullets  = null;
     if (isJamming) {
-        const jamArgs = { actor, weapon, bestResult, jammingThreshold, canFireDespiteJam: false, clearJam: false };
+        const jamArgs = { actor, weapon, bestResult, jammingThreshold, canFireDespiteJam: false, clearJam: false, despiteJamBullets: null };
         await NeuroshimaScriptRunner.execute("weaponJam", jamArgs);
         canFireDespiteJam = jamArgs.canFireDespiteJam;
         if (jamArgs.clearJam) isJamming = false;
+        if (canFireDespiteJam && typeof jamArgs.despiteJamBullets === "number" && jamArgs.despiteJamBullets > 0) {
+            despiteJamBullets = Math.floor(jamArgs.despiteJamBullets);
+        }
     }
 
     // Konsumpcja amunicji: zużyj jeśli broń NIE zacięła się, LUB sztuczka pozwala na strzał mimo zacięcia
@@ -563,8 +567,13 @@ export class NeuroshimaDice {
             const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
             let totalPelletHits = 0;
 
+            // Jeśli skrypt ustawił limit pocisków mimo zacięcia — ograniczamy pętlę do tej liczby
+            const effectiveBullets = (canFireDespiteJam && despiteJamBullets !== null)
+                ? Math.min(bulletsFired, despiteJamBullets)
+                : bulletsFired;
+
             // Iterujemy po wszystkich wystrzelonych pociskach (łuskach)
-            for (let j = 0; j < bulletsFired; j++) {
+            for (let j = 0; j < effectiveBullets; j++) {
                 // Pocisk j-ty trafia tylko jeśli nasze Punkty Przewagi (pp) są większe od j
                 if (pp <= j) break; 
 
@@ -739,7 +748,7 @@ export class NeuroshimaDice {
     this._groupHitsData(rollData);
 
     // postWeaponShot: scripts can react to the completed shot result
-    const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, hitBullets, bulletsFired, successPoints, rollData };
+    const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData };
     await NeuroshimaScriptRunner.execute("postWeaponShot", postShotArgs);
 
     // Update weapon jammed flag

@@ -40,6 +40,14 @@
                 <input type="number" name="system.availability" value="{{system.availability}}" min="0" max="100" data-dtype="Number"/>
                 <span class="availability-pct">%</span>
             </div>
+            {{#if canUnjam}}
+            {{#if isJammedWeapon}}
+            <div class="form-group checkbox row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.Jammed"}}</label>
+                <input type="checkbox" name="system.jammed" {{checked system.jammed}}/>
+            </div>
+            {{/if}}
+            {{/if}}
             {{/unless}}
             {{#if (eq item.type "wound")}}
             <div class="form-group checkbox row-group">

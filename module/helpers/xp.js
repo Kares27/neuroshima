@@ -273,7 +273,21 @@ export async function revertXpEntry(actor, entryId) {
   const updateData = {};
 
   if (entry.fieldPath && entry.previousValue !== undefined && entry.previousValue !== null) {
-    foundry.utils.setProperty(updateData, entry.fieldPath, entry.previousValue);
+    let storedValue = entry.previousValue;
+    const isSkillPath = /^system\.skills\.\w+\.value$/.test(entry.fieldPath);
+    const isAttrPath  = /^system\.attributes\.\w+$/.test(entry.fieldPath);
+    if (isSkillPath || isAttrPath) {
+      let aeBonus = 0;
+      for (const effect of (actor.appliedEffects ?? [])) {
+        for (const change of (effect.changes ?? [])) {
+          if (change.key === entry.fieldPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+            aeBonus += Number(change.value) || 0;
+          }
+        }
+      }
+      storedValue = Math.max(0, entry.previousValue - aeBonus);
+    }
+    foundry.utils.setProperty(updateData, entry.fieldPath, storedValue);
   }
 
   const cost = entry.cost ?? 0;
