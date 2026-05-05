@@ -759,3 +759,132 @@
     font-size: 0.85em;
 }
 
+/* ── Item Resources Tab ── */
+.neuroshima.sheet.item .resources-list {
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.neuroshima.sheet.item .resources-list-header,
+.neuroshima.sheet.item .resource-row {
+    display: grid;
+    grid-template-columns: 18px 1fr 1.4fr 54px 54px 54px 38px;
+    align-items: center;
+    column-gap: 2px;
+    row-gap: 0;
+    padding: 2px 4px;
+}
+
+.neuroshima.sheet.item .resources-list-header {
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--color-text-dark-secondary, #777);
+    border-bottom: 1px solid rgba(0,0,0,0.25);
+    margin-bottom: 2px;
+}
+
+.neuroshima.sheet.item .resource-row {
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    transition: background 0.12s;
+}
+
+.neuroshima.sheet.item .resource-row:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.neuroshima.sheet.item .resource-id-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--color-text-dark-secondary, #777);
+    background: rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.neuroshima.sheet.item .resource-id-badge:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.25);
+    color: var(--color-text-light-primary, #eee);
+}
+
+.neuroshima.sheet.item .resource-id-badge.active {
+    background: var(--ns-accent, #c07a30);
+    border-color: var(--ns-accent, #c07a30);
+    color: #fff;
+}
+
+.neuroshima.sheet.item .res-input-key {
+    width: 100%;
+    font-family: monospace;
+    font-size: 0.78em;
+}
+
+.neuroshima.sheet.item .res-input-label {
+    width: 100%;
+    font-size: 0.82em;
+}
+
+.neuroshima.sheet.item .res-col-id,
+.neuroshima.sheet.item .res-col-key,
+.neuroshima.sheet.item .res-col-label,
+.neuroshima.sheet.item .res-col-num,
+.neuroshima.sheet.item .res-col-controls {
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.neuroshima.sheet.item .res-col-id {
+    justify-content: center;
+}
+
+.neuroshima.sheet.item .res-col-num {
+    justify-content: center;
+}
+
+.neuroshima.sheet.item .res-col-num input {
+    width: 100%;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .res-col-controls {
+    justify-content: flex-end;
+    gap: 2px;
+}
+
+.neuroshima.sheet.item .resource-unclamped-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.6;
+    color: inherit;
+    font-size: inherit;
+    line-height: 1;
+    transition: opacity 0.12s, color 0.12s;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.item .resource-unclamped-btn:hover {
+    opacity: 1;
+}
+
+.neuroshima.sheet.item .resource-unclamped-btn.active {
+    opacity: 1;
+    color: var(--ns-accent, #c07a30);
+}
+

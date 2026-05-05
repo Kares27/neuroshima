@@ -1894,6 +1894,12 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             }
         }
 
+        if (wData.jammed && wData.weaponType !== "melee") {
+            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.WeaponIsJammed"));
+            game.neuroshima.log("Błąd: Broń jest zacięta, nie można oddać strzału");
+            throw new Error("Weapon is jammed");
+        }
+
         const lastRoll = this.document.system.lastWeaponRoll || {};
         let distance = 0;
         let targets = Array.from(game.user.targets ?? []);
@@ -1901,26 +1907,32 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
         // Tryb wyboru na mapie jeśli brak targetów
         if (targetUuids.length === 0) {
-            game.neuroshima.log("Brak aktywnych targetów, przechodzę do trybu wyboru na mapie");
-            await this.minimize();
-            const targetData = await this._waitForTarget();
-            await this.maximize();
+            const actorSourceToken = this._getSourceToken();
+            if (actorSourceToken) {
+                game.neuroshima.log("Brak aktywnych targetów, przechodzę do trybu wyboru na mapie");
+                await this.minimize();
+                const targetData = await this._waitForTarget();
+                await this.maximize();
 
-            if (targetData) {
-                game.neuroshima.log("Otrzymano dane z mapy:", targetData);
-                distance = targetData.distance || 0;
-                
-                if (targetData.token) {
-                    targetData.token.setTarget(true, { releaseOthers: true });
-                    // Odśwież listę targetów po wyborze
-                    targets = [targetData.token];
-                    targetUuids = targets.map(t => t.document.uuid);
+                if (targetData && !targetData.cancelled) {
+                    game.neuroshima.log("Otrzymano dane z mapy:", targetData);
+                    distance = targetData.distance || 0;
+
+                    if (targetData.token) {
+                        targetData.token.setTarget(true, { releaseOthers: true });
+                        targets = [targetData.token];
+                        targetUuids = targets.map(t => t.document.uuid);
+                    }
+                } else if (!targetData) {
+                    game.neuroshima.log("Timeout wyboru celu — anulowanie rzutu");
+                    this._isRolling = false;
+                    game.neuroshima.groupEnd();
+                    return;
+                } else {
+                    game.neuroshima.log("Anulowano wybór celu (PPM) — otwieranie dialogu bez celu");
                 }
             } else {
-                game.neuroshima.log("Anulowano wybór celu na mapie");
-                this._isRolling = false;
-                game.neuroshima.groupEnd();
-                return;
+                game.neuroshima.log("Brak tokena aktora na scenie — otwieranie dialogu bez celu (tryb narracyjny)");
             }
         }
         // Detect distance for ranged/thrown weapons
@@ -2168,10 +2180,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
             cleanup();
 
-            if (event.button === 2) { // PPM = Anulowanie
-                game.neuroshima.log("_waitForTarget: Wybór anulowany przez użytkownika");
-                this._isRolling = false;
-                resolve(null);
+            if (event.button === 2) { // PPM = Anulowanie (ale pokaż dialog bez celu)
+                game.neuroshima.log("_waitForTarget: Wybór anulowany przez użytkownika — otworzę dialog bez celu");
+                resolve({ cancelled: true });
                 return;
             }
 
@@ -2814,12 +2825,42 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const row = target.closest(".effect-row");
     const id = row?.dataset.effectId;
     const itemId = row?.dataset.itemId;
-    if (itemId) return this.document.items.get(itemId)?.effects.get(id) ?? null;
+    if (itemId) {
+      const fromItem = this.document.items.get(itemId)?.effects.get(id) ?? null;
+      if (fromItem) return fromItem;
+      return this.document.effects.get(id) ?? null;
+    }
+    return this.document.effects.get(id) ?? null;
+  }
+
+  _resolveEffectForEdit(target) {
+    const row = target.closest(".effect-row");
+    const id = row?.dataset.effectId;
+    const itemId = row?.dataset.itemId;
+    if (itemId) {
+      const actorEffect = this.document.effects.get(id);
+      if (actorEffect?.getFlag("neuroshima", "fromEquipTransfer")) {
+        const sourceId = actorEffect.getFlag("neuroshima", "sourceEffectId");
+        const item = this.document.items.get(itemId);
+        if (item) {
+          if (sourceId) {
+            const src = item.effects.get(sourceId);
+            if (src) return src;
+          }
+          const byId = item.effects.get(id);
+          if (byId) return byId;
+        }
+        return actorEffect;
+      }
+      const fromItem = this.document.items.get(itemId)?.effects.get(id) ?? null;
+      if (fromItem) return fromItem;
+      return actorEffect ?? this.document.effects.get(id) ?? null;
+    }
     return this.document.effects.get(id) ?? null;
   }
 
   async _onEditEffect(event, target) {
-    this._resolveEffect(target)?.sheet.render(true);
+    this._resolveEffectForEdit(target)?.sheet.render(true);
   }
 
   async _onDeleteEffect(event, target) {
@@ -3032,16 +3073,30 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       });
     });
 
-    const close = (e) => {
-      if (!menu.contains(e.target)) {
-        menu.remove();
-        document.removeEventListener('click', close, { capture: true });
-        document.removeEventListener('contextmenu', close, { capture: true });
-      }
+    const sheetEl = this.element;
+    const cleanup = () => {
+      menu.remove();
+      document.removeEventListener('click', onDocClick, { capture: true });
+      document.removeEventListener('contextmenu', onDocContext, { capture: true });
+      document.removeEventListener('keydown', onEscape);
+    };
+    const onDocClick = (e) => {
+      if (menu.contains(e.target)) return;
+      if (sheetEl && sheetEl.contains(e.target)) return;
+      cleanup();
+    };
+    const onDocContext = (e) => {
+      if (menu.contains(e.target)) return;
+      if (sheetEl && sheetEl.contains(e.target)) return;
+      cleanup();
+    };
+    const onEscape = (e) => {
+      if (e.key === 'Escape') cleanup();
     };
     setTimeout(() => {
-      document.addEventListener('click', close, { capture: true });
-      document.addEventListener('contextmenu', close, { capture: true });
+      document.addEventListener('click', onDocClick, { capture: true });
+      document.addEventListener('contextmenu', onDocContext, { capture: true });
+      document.addEventListener('keydown', onEscape);
     }, 0);
   }
 

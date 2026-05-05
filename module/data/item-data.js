@@ -8,7 +8,8 @@ function baseSchema() {
     weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
     cost: new fields.NumberField({ required: true, initial: 0, min: 0 }),
     quantity: new fields.NumberField({ required: true, integer: true, initial: 1, min: 0 }),
-    availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 })
+    availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 }),
+    resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
   };
 }
 
@@ -203,7 +204,8 @@ export class TrickData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
-      description: new fields.HTMLField({ initial: "" })
+      description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
     };
   }
 }
@@ -244,6 +246,7 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       actionType: new fields.StringField({ initial: "Atak" }),
       costType: new fields.StringField({
         initial: "segment",

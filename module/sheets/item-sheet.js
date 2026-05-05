@@ -33,7 +33,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       toggleEffect: NeuroshimaItemSheet.prototype._onToggleEffect,
       addTrait: NeuroshimaItemSheet.prototype._onAddTrait,
       traitContextMenu: NeuroshimaItemSheet.prototype._onTraitContextMenu,
-      toggleTraitSummary: NeuroshimaItemSheet.prototype._onToggleTraitSummary
+      toggleTraitSummary: NeuroshimaItemSheet.prototype._onToggleTraitSummary,
+      addResource: NeuroshimaItemSheet.prototype._onAddResource,
+      deleteResource: NeuroshimaItemSheet.prototype._onDeleteResource,
+      toggleResourceSummary: NeuroshimaItemSheet.prototype._onToggleResourceSummary,
+      toggleResourceUnclamped: NeuroshimaItemSheet.prototype._onToggleResourceUnclamped
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -192,15 +196,16 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.source = item.system.toObject();
 
     const tabsByType = {
-      trick: ["description", "effects"],
+      trick: ["description", "resources", "effects"],
       trait: ["description", "effects"],
+      gear: ["description", "resources", "effects"],
       "vehicle-mod": ["stats", "description", "effects"],
       "vehicle-damage": ["stats", "description", "effects"],
       specialization: ["description", "stats", "effects"],
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],
     };
-    const allowedTabs = tabsByType[item.type] || ["stats", "description", "effects"];
+    const allowedTabs = tabsByType[item.type] || ["stats", "description", "resources", "effects"];
     if (!allowedTabs.includes(this.tabGroups.primary)) {
       this.tabGroups.primary = allowedTabs[0];
     }
@@ -448,6 +453,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       tabs: [
         { id: "stats", group: "primary", label: "NEUROSHIMA.Tabs.Stats" },
         { id: "description", group: "primary", label: "NEUROSHIMA.Tabs.Description" },
+        { id: "resources", group: "primary", label: "NEUROSHIMA.Tabs.Resources" },
         { id: "effects", group: "primary", label: "NEUROSHIMA.Tabs.Effects" }
       ],
       initial: "stats"
@@ -468,6 +474,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     },
     description: {
       template: "systems/neuroshima/templates/item/item-description.hbs"
+    },
+    resources: {
+      template: "systems/neuroshima/templates/item/item-resources.hbs",
+      scrollable: [".resources-list"]
     },
     effects: {
       template: "systems/neuroshima/templates/item/item-effects.hbs"
@@ -514,8 +524,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     // 1. Definicja widocznych tabów dla poszczególnych typów
     const tabsByType = {
-      trick: ["description", "effects"],
+      trick: ["description", "resources", "effects"],
       trait: ["description", "effects"],
+      gear: ["description", "resources", "effects"],
       "vehicle-mod": ["stats", "description", "effects"],
       "vehicle-damage": ["stats", "description", "effects"],
       specialization: ["description", "stats", "effects"],
@@ -523,7 +534,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       profession: ["description", "stats", "effects"],
     };
 
-    const allowedTabs = tabsByType[item.type] || ["stats", "description", "effects"];
+    const allowedTabs = tabsByType[item.type] || ["stats", "description", "resources", "effects"];
 
     // Jeśli aktywna zakładka nie należy do dozwolonych (np. "stats" dla trick/trait), użyj pierwszej dozwolonej
     const activeTab = allowedTabs.includes(rawActiveTab) ? rawActiveTab : null;
@@ -543,6 +554,44 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }, {});
 
     return tabs;
+  }
+
+  async _onAddResource(event, target) {
+    const item = this.document;
+    const resources = Array.from(item.system.resources ?? []);
+    resources.push({ key: "", label: "", value: 0, min: 0, max: 0, showInSummary: false, unclamped: false });
+    await item.update({ "system.resources": resources });
+  }
+
+  async _onDeleteResource(event, target) {
+    const item = this.document;
+    const idx = parseInt(target.closest("[data-resource-index]")?.dataset.resourceIndex ?? "-1");
+    if (idx < 0) return;
+    const resources = Array.from(item.system.resources ?? []);
+    resources.splice(idx, 1);
+    await item.update({ "system.resources": resources });
+  }
+
+  async _onToggleResourceSummary(event, target) {
+    const item = this.document;
+    const idx = parseInt(target.dataset.resourceIndex ?? "-1");
+    if (idx < 0) return;
+    const resources = Array.from(item.system.resources ?? []);
+    if (idx >= resources.length) return;
+    const res = resources[idx];
+    resources[idx] = { ...res, showInSummary: !res.showInSummary };
+    await item.update({ "system.resources": resources });
+  }
+
+  async _onToggleResourceUnclamped(event, target) {
+    const item = this.document;
+    const idx = parseInt(target.dataset.resourceIndex ?? "-1");
+    if (idx < 0) return;
+    const resources = Array.from(item.system.resources ?? []);
+    if (idx >= resources.length) return;
+    const res = resources[idx];
+    resources[idx] = { ...res, unclamped: !res.unclamped };
+    await item.update({ "system.resources": resources });
   }
 
   /**

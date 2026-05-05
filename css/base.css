@@ -1543,6 +1543,27 @@ body.theme-dark {
     color: var(--ns-text-main);
 }
 
+.neuroshima.roll-card .roll-annotations {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 6px;
+    margin-top: 2px;
+}
+
+.neuroshima.roll-card .roll-annotation {
+    font-size: 0.85em;
+    font-style: italic;
+    color: var(--ns-text-muted, #666);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.theme-dark .neuroshima.roll-card .roll-annotation {
+    color: #aaa;
+}
+
 .neuroshima.debug-roll-dialog .notes {
     flex: 0 0 100%;
     margin: 4px 0 0 0;
@@ -5184,7 +5205,7 @@ body.theme-dark {
 
 .item-summary {
     padding: 6px 10px 8px 10px;
-    font-size: 0.85em;
+    font-size: 1.0em;
     background: rgba(0,0,0,0.15);
     border-top: 1px solid rgba(255,255,255,0.07);
 }
@@ -5208,6 +5229,102 @@ body.theme-dark {
 
 .item-summary .item-script-row {
     margin-top: 6px;
+}
+
+.item-summary .summary-section-header {
+    width: 100%;
+    font-size: 0.72em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ns-text-secondary, #888);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 2px;
+    margin-bottom: 3px;
+}
+
+.item-summary .item-stats-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.item-summary .item-stats-summary:not(:has(.stat-summary-chip)) {
+    display: none;
+}
+
+.item-summary .stat-summary-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.75em;
+    line-height: 1.5;
+}
+
+.item-summary .stat-summary-chip.stat-chip-warning {
+    border-color: rgba(200, 80, 60, 0.5);
+    background: rgba(200, 80, 60, 0.08);
+}
+
+.item-summary .stat-chip-label {
+    color: var(--ns-text-secondary, #999);
+    text-transform: uppercase;
+    font-size: 0.88em;
+    letter-spacing: 0.02em;
+}
+
+.item-summary .stat-chip-value {
+    font-weight: bold;
+    color: var(--ns-text-primary, #ddd);
+}
+
+.item-summary .stat-summary-chip.stat-chip-warning .stat-chip-value {
+    color: #e07060;
+}
+
+.item-summary .item-resources-wrapper {
+    margin-top: 4px;
+}
+
+.item-summary .item-resources-wrapper:not(:has(.resource-summary-chip)) {
+    display: none;
+}
+
+.item-summary .item-resources-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.item-summary .item-description-wrapper {
+    margin-top: 4px;
+}
+
+.item-summary .resource-summary-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.78em;
+    line-height: 1.5;
+}
+
+.item-summary .resource-chip-label {
+    color: var(--ns-text-secondary, #aaa);
+}
+
+.item-summary .resource-chip-value {
+    font-weight: bold;
+    color: var(--ns-text-primary, #eee);
 }
 
 .neuroshima prose-mirror .editor-content p {

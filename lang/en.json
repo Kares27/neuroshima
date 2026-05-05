@@ -676,6 +676,7 @@
             "Notes": "Notes",
             "Stats": "Stats",
             "Description": "Description",
+            "Resources": "Resources",
             "Effects": "Effects",
             "EffectsPlaceholder": "Item effects (TBD)",
             "Modifications": "Modifications",
@@ -683,6 +684,18 @@
             "Changes": "Changes",
             "Scripts": "Scripts",
             "Duration": "Duration"
+        },
+        "Resources": {
+            "Add": "Add Resource",
+            "Key": "Key",
+            "Label": "Name",
+            "Min": "Min",
+            "Value": "Value",
+            "Max": "Max",
+            "LabelPlaceholder": "Resource name",
+            "Empty": "No resources defined.",
+            "ToggleSummaryTooltip": "Click to toggle resource visibility in the item summary",
+            "UnclampedTooltip": "Ignore min/max limits — value is not clamped by the script engine"
         },
         "Dialogs": {
             "ConfirmReroll": "Confirm Reroll",
@@ -735,7 +748,8 @@
             "DamageReversed": "Reversed {count} wounds for {name}.",
             "RestReversed": "Reversed rest for {name}.",
             "NoWoundsFoundToReverse": "No matching wounds found to reverse.",
-            "StatusReversed": "Damage has been reversed by GM."
+            "StatusReversed": "Damage has been reversed by GM.",
+            "WeaponIsJammed": "Weapon is jammed! Clear the jam first."
         },
         "Traits": {
             "Label": "Traits",
@@ -945,11 +959,17 @@
                 "PelletRanges": "Pellet Ranges",
                 "Distance": "Distance",
                 "Head": "Head",
+                "HeadAbbr": "H",
                 "Torso": "Torso",
+                "TorsoAbbr": "T",
                 "LeftArm": "Left Arm",
+                "LeftArmAbbr": "LA",
                 "RightArm": "Right Arm",
+                "RightArmAbbr": "RA",
                 "LeftLeg": "Left Leg",
+                "LeftLegAbbr": "LL",
                 "RightLeg": "Right Leg",
+                "RightLegAbbr": "RL",
                 "Location": "Location",
                 "IsHealing": "Is Healing",
                 "IsActive": "Is Active",
@@ -1384,6 +1404,11 @@
         "ProseMirror": {
             "FontColor": "Font Color",
             "SelectTextFirst": "Select text before choosing a color."
+        },
+        "Summary": {
+            "Stats": "Statistics",
+            "Resources": "Resources",
+            "Description": "Description"
         }
     },
     "TOKEN": {

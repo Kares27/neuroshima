@@ -132,6 +132,7 @@
     <li><a href="#changes">Zakładka Changes — modyfikacje atrybutów</a></li>
     <li><a href="#details">Zakładka Details — konfiguracja transferu</a></li>
     <li><a href="#helpers">Helpery i narzędzia</a></li>
+    <li><a href="#item-resources">Zasoby itemu</a></li>
     <li><a href="#tips">Dobre praktyki</a></li>
   </ol>
 </nav>
@@ -199,6 +200,7 @@
     <div class="ctx-row"><span class="ctx-name">this.trigger</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyzwalacza który uruchomił ten skrypt</span></div>
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">void</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Działa w triggerach: <code>preRollTest</code>, <code>rollTest</code>, <code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getChatData(merge?)</span><span class="ctx-type">object</span><span class="ctx-desc">Domyślne dane do ChatMessage.create() z speaker aktora i flavorem efektu</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
@@ -241,6 +243,102 @@
     <div class="ctx-row"><span class="ctx-name">await this.repairArmorLocation(item, loc, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw SP w lokacji o <code>n</code>. Clamp: damage ≥ 0. Zwraca nową wartość damage.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.damageArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Uszkódź Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≤ max. Zwraca nową wartość.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.repairArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≥ 0. Zwraca nową wartość.</span></div>
+    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery zasobów itemu (po kluczu) —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">Dynamiczne zasoby z zakładki "Zasoby" karty itemu. Klucz = pole <code>key</code> zasobu. Użyj <code>this.item</code> dla własnego itemu efektu. Zasoby z włączonym <strong>showInSummary</strong> (kliknięcie w <em>badge #</em> w zakładce Zasoby) wyświetlane są jako chipy w podsumowaniu itemu na karcie aktora.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasItemResource(item, key)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli zasób o danym kluczu istnieje</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getItemResource(item, key)</span><span class="ctx-type">number | null</span><span class="ctx-desc">Aktualna wartość zasobu. null jeśli nie istnieje.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.setItemResource(item, key, value)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Ustaw wartość (clamp do [min, max]; max=0 = bez górnego limitu). Zwraca nową wartość.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.modifyItemResource(item, key, delta)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Dodaj <code>delta</code> do wartości (clamp). Ujemna wartość zmniejsza.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.increaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zwiększ o <code>|n|</code> (clamp do max).</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.decreaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zmniejsz o <code>|n|</code> (clamp do min).</span></div>
+    <div class="ctx-row" style="border-top:1px dashed rgba(255,255,255,0.1); margin-top:0.3rem; padding-top:0.5rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery zasobów itemu (po ID) —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">ID = indeks tablicy (0-based), widoczny w kolumnie # zakładki Zasoby. Po usunięciu zasobu ze środka, indeksy automatycznie się przepakowują (0,1,2,… bez przerw).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getItemResourceById(item, id)</span><span class="ctx-type">{ key, label, value, min, max } | null</span><span class="ctx-desc">Pełny obiekt zasobu pod danym indeksem. null jeśli nie istnieje.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.setItemResourceById(item, id, value)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Ustaw wartość zasobu pod indeksem (clamp).</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.modifyItemResourceById(item, id, delta)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">value += delta (clamp).</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.increaseItemResourceById(item, id, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zwiększ zasób pod indeksem o <code>|n|</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.decreaseItemResourceById(item, id, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zmniejsz zasób pod indeksem o <code>|n|</code>.</span></div>
+  </div>
+
+  <!-- ── Przykłady helperów zasobów itemu ── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Zasób "ładunki" — sprawdź i zużyj ładunek z itemu
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Typowy wzorzec: sprawdź czy item ma zasób o danym kluczu, odczytaj wartość,
+      a jeśli jest &gt; 0 — zmniejsz o 1 i wykonaj akcję.
+    </p>
+    <pre><code><span class="cmt">// Trigger: manual — na itemie z zasobem "charges" (Ładunki, min:0, max:5)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">hasItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>)) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak zasobu 'charges' na tym itemie."</span>, <span class="str">"error"</span>);
+  }
+  <span class="kw">const</span> <span class="var">current</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>);
+  <span class="kw">if</span> (<span class="var">current</span> &lt;= <span class="num">0</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak ładunków!"</span>, <span class="str">"warn"</span>);
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">decreaseItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>, <span class="num">1</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`Użyto ładunku. Pozostało: <span class="kw">${</span><span class="var">current</span> - <span class="num">1</span><span class="kw">}</span>.`</span>);
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preWeaponShot</span>
+      Zasób "amunicja specjalna" — zużyj przed strzałem lub anuluj
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      W <code>preWeaponShot</code> można anulować strzał (<code>args.cancel = true</code>)
+      jeśli specjalny zasób jest wyczerpany.
+    </p>
+    <pre><code><span class="cmt">// Trigger: preWeaponShot — na efekcie broni z zasobem "special_ammo"</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">weapon</span> = args.weapon;  <span class="cmt">// item broni z args</span>
+  <span class="kw">const</span> <span class="var">ammo</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="var">weapon</span>, <span class="str">"special_ammo"</span>);
+  <span class="kw">if</span> (<span class="var">ammo</span> === <span class="kw">null</span> || <span class="var">ammo</span> &lt;= <span class="num">0</span>) {
+    <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak specjalnej amunicji — strzał anulowany."</span>, <span class="str">"warn"</span>);
+    args.cancel = <span class="kw">true</span>;
+    <span class="kw">return</span>;
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">decreaseItemResource</span>(<span class="var">weapon</span>, <span class="str">"special_ammo"</span>, <span class="num">1</span>);
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Odczyt i ustawienie zasobu po ID (indeksie)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Gdy znasz stały indeks zasobu (widoczny w kolumnie <strong>#</strong> zakładki Zasoby),
+      możesz operować po ID. Pamiętaj: po usunięciu zasobu ze środka indeksy przepakowują się.
+    </p>
+    <pre><code><span class="cmt">// Trigger: manual — odczytaj zasób #0, wyświetl info, zresetuj do min</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">res</span> = <span class="kw">this</span>.<span class="fn">getItemResourceById</span>(<span class="kw">this</span>.item, <span class="num">0</span>);
+  <span class="kw">if</span> (!<span class="var">res</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak zasobu pod indeksem 0."</span>, <span class="str">"error"</span>);
+  }
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`<span class="kw">${</span><span class="var">res</span>.label<span class="kw">}</span>: <span class="kw">${</span><span class="var">res</span>.value<span class="kw">}</span> / <span class="kw">${</span><span class="var">res</span>.max || <span class="str">"∞"</span><span class="kw">}</span>`</span>);
+  <span class="cmt">// zresetuj zasób #0 do wartości minimalnej</span>
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">setItemResourceById</span>(<span class="kw">this</span>.item, <span class="num">0</span>, <span class="var">res</span>.min);
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">prepareData</span>
+      Bonus do cechy na podstawie wartości zasobu (synchroniczny)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      <code>prepareData</code> jest <strong>synchroniczny</strong> — nie używaj <code>await</code>.
+      Odczyt zasobu przez <code>getItemResource</code> jest synchroniczny i działa poprawnie.
+    </p>
+    <pre><code><span class="cmt">// Trigger: prepareData — bonus do Zręczności za każdy ładunek w zasobie "focus"</span>
+<span class="kw">const</span> <span class="var">focus</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="kw">this</span>.item, <span class="str">"focus"</span>);
+<span class="kw">if</span> (<span class="var">focus</span> &amp;&amp; <span class="var">focus</span> &gt; <span class="num">0</span>) {
+  args.dexterity = (args.dexterity || <span class="num">0</span>) + <span class="var">focus</span>;
+}</code></pre>
   </div>
 
   <h3>Argumenty <code>args</code></h3>
@@ -298,12 +396,18 @@
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
+    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu (read-only w preRollTest — modyfikuj w rollTest)</td></tr>
+    <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności (read-only w preRollTest)</td></tr>
+    <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności</td></tr>
+    <tr><td>args.attributeBonus</td><td>number</td><td>Bonus do atrybutu</td></tr>
+    <tr><td>args.penalties</td><td>object</td><td>Kopia kar: <code>{ mod, wounds, armor, base }</code> (read-only w preRollTest)</td></tr>
     <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code></td></tr>
     <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code></td></tr>
     <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (wyświetlana w chacie)</td></tr>
     <tr><td>args.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
     <tr><td>args.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
     <tr><td>args.annotation</td><td>string</td><td>Tekst pokazywany w chacie przy auto-sukcesie (zastępuje domyślny)</td></tr>
+    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu na karcie czatu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
 
   <!-- rollTest -->
@@ -311,13 +415,16 @@
   <p>Uruchamiany po <code>preRollTest</code> (tylko gdy nie anulowano/auto-sukces) — modyfikuje parametry rzutu przed rzuceniem kośćmi.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
-    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
+    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu — modyfikuj bezpośrednio (<code>args.stat = nowaWartość</code>)</td></tr>
     <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności — modyfikuj bezpośrednio</td></tr>
     <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności</td></tr>
     <tr><td>args.attributeBonus</td><td>number</td><td>Bonus do atrybutu</td></tr>
     <tr><td>args.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base }</code> — modyfikuj <code>args.penalties.mod</code></td></tr>
     <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu</td></tr>
     <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności</td></tr>
+    <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (read-only)</td></tr>
+    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
 
   <!-- preApplyDamage -->
@@ -396,8 +503,8 @@
     <tr><td>args.combatant</td><td>Combatant</td><td>Combatant (może być kilka na tego samego aktora)</td></tr>
   </tbody></table>
 
-  <!-- preWeaponJam -->
-  <h3>preWeaponJam — <em>Pre-Weapon Jam</em></h3>
+  <!-- preWeaponShot -->
+  <h3>preWeaponShot — <em>Pre-Weapon Shot</em></h3>
   <p>Uruchamiany <strong>przed</strong> wyznaczeniem zacięcia broni dystansowej, po rzucie kośćmi.
   Pozwala skryptom modyfikować próg zacięcia lub wymusić/zapobiec zacięciu niezależnie od wyniku kości.</p>
   <div class="callout warning">Uruchamiany <strong>tylko dla broni dystansowej</strong> (nie dla broni białej).</div>
@@ -410,6 +517,7 @@
     <tr><td>args.ammoJamming</td><td>number</td><td>Wartość zacięcia z aktualnej amunicji (read-only)</td></tr>
     <tr><td>args.forceNoJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.preventWeaponJam(args)</code> — broń nie może się zaciąć w tej turze</td></tr>
     <tr><td>args.forceJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.forceWeaponJam(args)</code> — broń zawsze się zacina niezależnie od kości</td></tr>
+    <tr><td>args.annotations</td><td>string[]</td><td>Adnotacje wyświetlane pod wynikiem na karcie czatu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
 
   <!-- weaponJam -->
@@ -422,13 +530,17 @@
     <tr><td>args.weapon</td><td>Item</td><td>Broń która się zacięła</td></tr>
     <tr><td>args.bestResult</td><td>number</td><td>Wynik kości który wywołał zacięcie</td></tr>
     <tr><td>args.jammingThreshold</td><td>number</td><td>Próg który został przekroczony (read-only)</td></tr>
-    <tr><td>args.canFireDespiteJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.allowShotDespiteJam(args, count=1)</code> — strzał oddany mimo zacięcia, broń nadal zacięta; domyślnie 1 pocisk, podaj <code>count</code> aby przepuścić więcej</td></tr>
-    <tr><td>args.clearJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.clearWeaponJam(args)</code> — zacięcie anulowane, broń strzela normalnie</td></tr>
+    <tr><td>args.wouldSucceed</td><td>boolean</td><td>Czy oryginalny rzut byłby sukcesem (gdyby nie zacięcie). Używane przez <code>this.isStandardJam(args, min, max)</code>.</td></tr>
+    <tr><td>args.canFireDespiteJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.allowShotDespiteJam(args, count)</code> — strzał oddany mimo zacięcia, broń nadal zacięta; domyślnie 1 pocisk, podaj <code>count</code> aby przepuścić więcej. Strzał trafia jeśli <code>args.wouldSucceed = true</code>.</td></tr>
+    <tr><td>args.despiteJamBullets</td><td>number|null</td><td>Limit pocisków przepuszczonych przez zacięcie — ustawiany przez <code>allowShotDespiteJam(args, count)</code>. Gdy <code>null</code> a <code>canFireDespiteJam = true</code>, system domyślnie przepuszcza 1 pocisk.</td></tr>
+    <tr><td>args.clearJam</td><td>boolean</td><td><strong>Ustaw przez helper</strong> <code>this.clearWeaponJam(args)</code> — zacięcie anulowane, broń strzela normalnie. Automatycznie czyści też flagę <code>system.jammed</code> jeśli broń była wcześniej zacięta.</td></tr>
+    <tr><td>args.annotations</td><td>string[]</td><td>Adnotacje wyświetlane pod wynikiem na karcie czatu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
 
   <!-- postWeaponShot -->
   <h3>postWeaponShot — <em>Post-Weapon Shot</em></h3>
-  <p>Uruchamiany <strong>po zakończeniu</strong> pełnego rzutu bronią dystansową — niezależnie od tego czy doszło do zacięcia, sukcesu czy porażki. Pozwala na reakcję na finalny wynik strzału.</p>
+  <p>Uruchamiany <strong>po zakończeniu</strong> pełnego rzutu bronią dystansową lub miotaną — niezależnie od tego czy doszło do zacięcia, sukcesu czy porażki. Pozwala na reakcję na finalny wynik strzału.</p>
+  <div class="callout warning">Uruchamiany <strong>tylko dla broni dystansowej i miotanej</strong> (nie dla broni białej).</div>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Strzelający aktor</td></tr>
@@ -436,10 +548,12 @@
     <tr><td>args.isSuccess</td><td>boolean</td><td>Czy rzut był sukcesem</td></tr>
     <tr><td>args.isJamming</td><td>boolean</td><td>Czy broń się zacięła w tej turze</td></tr>
     <tr><td>args.firedDespiteJam</td><td>boolean</td><td>Czy oddano strzał mimo zacięcia (<code>canFireDespiteJam</code> był ustawiony)</td></tr>
+    <tr><td>args.despiteJamBullets</td><td>number|null</td><td>Limit pocisków przepuszczonych przez zacięcie (ustawiony przez <code>allowShotDespiteJam</code>); <code>null</code> jeśli nie dotyczy</td></tr>
     <tr><td>args.hitBullets</td><td>number</td><td>Liczba trafionych pocisków</td></tr>
     <tr><td>args.bulletsFired</td><td>number</td><td>Liczba wystrzelonych pocisków (zużyta amunicja)</td></tr>
     <tr><td>args.successPoints</td><td>number</td><td>Punkty Przewagi z rzutu</td></tr>
     <tr><td>args.rollData</td><td>Object</td><td>Pełny obiekt danych rzutu (read-only)</td></tr>
+    <tr><td>args.annotations</td><td>string[]</td><td>Adnotacje wyświetlane pod wynikiem na karcie czatu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
 
   <!-- lifecycle -->
@@ -1382,25 +1496,25 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
   <h3 id="examples-jamming">Przykłady — Zacięcie Broni (Jamming)</h3>
 
-  <!-- preWeaponJam: Niezawodna Broń -->
+  <!-- preWeaponShot: Niezawodna Broń -->
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">preWeaponJam</span>
+      <span class="trigger-badge">preWeaponShot</span>
       Niezawodna Broń — pasywny AE, broń nie może się zaciąć
     </div>
-    <pre><code><span class="cmt">// Trigger: preWeaponJam
+    <pre><code><span class="cmt">// Trigger: preWeaponShot
 // Pasywny efekt na broni lub aktorze — broń nigdy się nie zacina</span>
 <span class="kw">this</span>.<span class="fn">preventWeaponJam</span>(args);
 <span class="cmt">// Możesz dodać adnotację na czacie — ale nie jest wymagana</span></code></pre>
   </div>
 
-  <!-- preWeaponJam: Rusznikarstwo pasywne -->
+  <!-- preWeaponShot: Rusznikarstwo pasywne -->
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">preWeaponJam</span>
+      <span class="trigger-badge">preWeaponShot</span>
       Rusznikarstwo Pasywne — co 4 pkt umiejętności +1 do progu zacięcia
     </div>
-    <pre><code><span class="cmt">// Trigger: preWeaponJam
+    <pre><code><span class="cmt">// Trigger: preWeaponShot
 // Pasywny efekt na aktorze — Rusznikarstwo 4+ podnosi próg zacięcia</span>
 <span class="kw">const</span> <span class="var">gunsmith</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"gunsmithing"</span>);
 <span class="kw">const</span> <span class="var">bonus</span>    = Math.<span class="fn">floor</span>(<span class="var">gunsmith</span> / <span class="num">4</span>);
@@ -1410,25 +1524,25 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 }</code></pre>
   </div>
 
-  <!-- preWeaponJam: Wadliwa broń -->
+  <!-- preWeaponShot: Wadliwa broń -->
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">preWeaponJam</span>
+      <span class="trigger-badge">preWeaponShot</span>
       Działa na Złomowisku — wadliwa broń, próg obniżony o 3
     </div>
-    <pre><code><span class="cmt">// Trigger: preWeaponJam
+    <pre><code><span class="cmt">// Trigger: preWeaponShot
 // Pasywny debuff na broni — łatwiej o zacięcie (próg niższy = zacina się wcześniej)</span>
 <span class="kw">this</span>.<span class="fn">modifyJammingThreshold</span>(args, <span class="num">-3</span>);
 <span class="cmt">// ujemny delta → niższy próg → broń zacina się częściej</span></code></pre>
   </div>
 
-  <!-- preWeaponJam: Wymuszony Zacisk -->
+  <!-- preWeaponShot: Wymuszony Zacisk -->
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">preWeaponJam</span>
+      <span class="trigger-badge">preWeaponShot</span>
       Wymuszony Zacisk — debuff z flagi aktora, zawsze zacina
     </div>
-    <pre><code><span class="cmt">// Trigger: preWeaponJam
+    <pre><code><span class="cmt">// Trigger: preWeaponShot
 // Jeśli wróg ma nałożony debuff "Wymuszony Zacisk" — broń zawsze się zacina</span>
 <span class="kw">const</span> <span class="var">hasDebuff</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"forcedJam"</span>);
 <span class="kw">if</span> (<span class="var">hasDebuff</span>) {
@@ -1438,39 +1552,57 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 }</code></pre>
   </div>
 
+  <div class="callout info">
+    <strong>Gdzie umieszczać efekty weaponJam?</strong><br>
+    Skrypty z triggerem <code>weaponJam</code> uruchamiane są ze wszystkich aktywnych efektów <strong>aktora</strong>
+    oraz ze wszystkich aktywnych efektów <strong>wyposażonych itemów</strong> aktora (sztuczki, cechy, ekwipunek).
+    <strong>Nie umieszczaj</strong> skryptów jammingu bezpośrednio na broni — jej rola to dostarczenie
+    <code>args.weapon</code> jako parametru, a nie hostowanie logiki reakcji na zacięcie.
+    Poprawne miejsca: sztuczka (<em>trick</em>) aktora, cecha postaci, lub efekt nałożony bezpośrednio na aktora.
+  </div>
+
   <!-- weaponJam: Na pewno działa! -->
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">weaponJam</span>
-      "Na pewno działa!" — sztuczka, jeden strzał mimo standardowego zacięcia
+      "Na pewno działa!" — <strong>sztuczka aktora</strong>, jeden strzał mimo standardowego zacięcia
     </div>
     <pre><code><span class="cmt">// Trigger: weaponJam
-// Sztuczka: przy standardowym zacięciu (11-18) broń oddaje jeszcze jeden strzał
-// (broń nadal jest zacięta — nie czyści zacięcia)
-// allowShotDespiteJam bez podanego count domyślnie przepuszcza 1 pocisk</span>
-<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(args.bestResult)) {
+// Umieszczenie: Active Effect na przedmiocie "Sztuczka: Na pewno działa!" aktora
+// (this.item = ta sztuczka, args.weapon = broń która się zacięła)
+//
+// Przy standardowym zacięciu (11-18) broń oddaje jeszcze 1 strzał.
+// isStandardJam(args, 11, 18) sprawdza zakres I to, że rzut byłby sukcesem (args.wouldSucceed).
+// Broń pozostaje zacięta — zacięcie nie jest czyszczone.
+// Przy krytycznym zacięciu (19-20) sztuczka nie działa.</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(args, <span class="num">11</span>, <span class="num">18</span>)) {
   <span class="kw">this</span>.<span class="fn">allowShotDespiteJam</span>(args);          <span class="cmt">// domyślnie count=1</span>
-  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Na pewno działa! Broń oddaje jeszcze jeden strzał."</span>, <span class="str">"info"</span>);
-}
-<span class="cmt">// Przy krytycznym zacięciu (19-20) sztuczka nie działa</span></code></pre>
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Na pewno działa! [${args.weapon.name}] oddaje ostatni strzał.`</span>, <span class="str">"info"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Na pewno działa! Broń oddaje ostatni strzał mimo zacięcia.`</span>);
+}</code></pre>
   </div>
 
   <!-- weaponJam: Szczęśliwa Awaria -->
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">weaponJam</span>
-      Szczęśliwa Awaria — pasywny AE, 1×/scenę zacięcie jest ignorowane
+      Szczęśliwa Awaria — <strong>cecha aktora</strong>, 1×/scenę zacięcie jest ignorowane
     </div>
     <pre><code><span class="cmt">// Trigger: weaponJam
-// Pasywny efekt: raz na scenę zacięcie jest całkowicie ignorowane
-// Flaga "luckyJamUsed" resetowana na startScene lub ręcznie</span>
+// Umieszczenie: Active Effect na cesze/sztuczce "Szczęśliwa Awaria" aktora
+// (this.item = ta cecha, args.weapon = broń która się zacięła)
+//
+// Pasywna zdolność: raz na scenę zacięcie jest całkowicie ignorowane.
+// Flaga "luckyJamUsed" resetowana triggerem startScene lub ręcznie przez GM.</span>
 <span class="kw">const</span> <span class="var">used</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"luckyJamUsed"</span>);
 <span class="kw">if</span> (!<span class="var">used</span>) {
   <span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"luckyJamUsed"</span>, <span class="kw">true</span>);
   <span class="kw">this</span>.<span class="fn">clearWeaponJam</span>(args);
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Szczęśliwa Awaria! Zacięcie zignorowane."</span>, <span class="str">"info"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Szczęśliwa Awaria! Zacięcie [${args.weapon.name}] zostało zignorowane.`</span>);
 } <span class="kw">else</span> {
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Szczęśliwa Awaria już wykorzystana w tej scenie."</span>, <span class="str">"warn"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Szczęśliwa Awaria: już wykorzystana w tej scenie."</span>);
 }</code></pre>
   </div>
 
@@ -1478,24 +1610,29 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">weaponJam</span>
-      Seria z Zacięciem — sprawdzenie zakresu zacięcia, 2 pociski mimo jam (tylko standardowe)
+      Seria z Zacięciem — <strong>sztuczka aktora</strong>, 2 pociski mimo jam (tylko standardowe)
     </div>
     <pre><code><span class="cmt">// Trigger: weaponJam
-// Sztuczka lub cecha broni: przy standardowym zacięciu (11-18) broń oddaje
-// jeszcze 2 pociski zanim całkowicie się zacina.
-// Przy krytycznym zacięciu (19-20) żadna kula nie wychodzi.</span>
-<span class="kw">const</span> <span class="var">result</span> = args.bestResult;
+// Umieszczenie: Active Effect na sztuczce "Seria przez Zacięcie" aktora
+// (this.item = ta sztuczka, args.weapon = broń która się zacięła)
+//
+// Przy standardowym zacięciu (11-18) broń oddaje 2 pociski zanim całkowicie się zatnie.
+// Strzały trafią tylko jeśli rzut byłby sukcesem (isStandardJam sprawdza args.wouldSucceed).
+// Przy krytycznym zacięciu (19-20) żadna kula nie wychodzi.
+//
+// isStandardJam(args) bez zakresów sprawdza pełny zakres 1–20.
+// Podaj własny zakres: isStandardJam(args, 11, 18) — standardowe, isStandardJam(args, 19, 20) — krytyczne.
+// Jeśli min > max, wartości są automatycznie zamieniane miejscami.</span>
 <span class="kw">const</span> <span class="var">threshold</span> = args.jammingThreshold;
 
-<span class="cmt">// isStandardJam(result) domyślnie sprawdza zakres 11-18.
-// Możesz podać własny zakres: isStandardJam(result, min, max)</span>
-<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(<span class="var">result</span>)) {
-  <span class="cmt">// Standardowe zacięcie (próg &lt;= 18): 2 pociski wychodzą mimo jam</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(args, <span class="num">11</span>, <span class="num">18</span>)) {
   <span class="kw">this</span>.<span class="fn">allowShotDespiteJam</span>(args, <span class="num">2</span>);
-  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Zacięcie w serii (wynik ${result}, próg ${threshold}) — wychodzą 2 pociski.`</span>, <span class="str">"warn"</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Seria przez Zacięcie! [${args.weapon.name}] — wychodzą 2 pociski (wynik: ${args.bestResult}, próg: ${threshold}).`</span>, <span class="str">"warn"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Seria przez Zacięcie: 2 pociski mimo zacięcia (wynik: ${args.bestResult}).`</span>);
 } <span class="kw">else</span> {
-  <span class="cmt">// Krytyczne zacięcie (19-20): żadna kula — weaponJam blokuje strzał całkowicie</span>
-  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Krytyczne zacięcie (wynik ${result})! Broń całkowicie zablokowana.`</span>, <span class="str">"error"</span>);
+  <span class="cmt">// Krytyczne (19-20): weaponJam nie ustawia canFireDespiteJam — brak strzału</span>
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Krytyczne zacięcie [${args.weapon.name}] (wynik: ${args.bestResult})! Brak strzału.`</span>, <span class="str">"error"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Krytyczne zacięcie [${args.weapon.name}] — brak strzału.`</span>);
 }</code></pre>
   </div>
 
@@ -1503,28 +1640,33 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">weaponJam</span>
-      Własne Zakresy — broń z trzema poziomami zacięcia (lekkie / ciężkie / krytyczne)
+      Własne Zakresy — <strong>cecha aktora</strong>, trzy poziomy zacięcia (lekkie / ciężkie / krytyczne)
     </div>
     <pre><code><span class="cmt">// Trigger: weaponJam
-// Broń ma trzy poziomy zacięcia:
-//  lekkie  (próg..+4): jeden strzał mimo zacięcia
-//  ciężkie (próg+5..18): brak strzału, ale gracz może spróbować odblokować
-//  krytyczne (19+): broń całkowicie zablokowana i traci 1 HP trwałości</span>
-<span class="kw">const</span> <span class="var">r</span> = args.bestResult;
+// Umieszczenie: Active Effect na cesze "Mechanik Polowy" lub podobnej sztuczce aktora
+// (this.item = ta cecha, args.weapon = broń która się zacięła)
+//
+// Trzy poziomy zacięcia:
+//  lekkie  (próg .. próg+4): 1 strzał mimo zacięcia
+//  ciężkie (próg+5 .. 18):   brak strzału
+//  krytyczne (19+):           brak strzału + broń traci 1 pkt trwałości</span>
 <span class="kw">const</span> <span class="var">t</span> = args.jammingThreshold;
 
-<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(<span class="var">r</span>, <span class="var">t</span>, <span class="var">t</span> + <span class="num">4</span>)) {
-  <span class="cmt">// Lekkie zacięcie: wychodzi 1 ostatni pocisk (count=1 jest domyślne)</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(args, <span class="var">t</span>, <span class="var">t</span> + <span class="num">4</span>)) {
+  <span class="cmt">// Lekkie: 1 pocisk przechodzi jeśli rzut byłby sukcesem</span>
   <span class="kw">this</span>.<span class="fn">allowShotDespiteJam</span>(args);
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Lekkie zacięcie — ostatni strzał przeszedł."</span>, <span class="str">"info"</span>);
-} <span class="kw">else if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(<span class="var">r</span>, <span class="var">t</span> + <span class="num">5</span>, <span class="num">18</span>)) {
-  <span class="cmt">// Ciężkie zacięcie: brak strzału</span>
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Mechanik Polowy: lekkie zacięcie [${args.weapon.name}] — 1 strzał przeszedł.`</span>);
+} <span class="kw">else if</span> (<span class="kw">this</span>.<span class="fn">isStandardJam</span>(args.bestResult, <span class="var">t</span> + <span class="num">5</span>, <span class="num">18</span>)) {
+  <span class="cmt">// Ciężkie: brak strzału (bez filtrowania wouldSucceed — zawsze brak strzału)</span>
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Ciężkie zacięcie — brak strzału."</span>, <span class="str">"warn"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Mechanik Polowy: ciężkie zacięcie [${args.weapon.name}] — brak strzału.`</span>);
 } <span class="kw">else</span> {
-  <span class="cmt">// Krytyczne (19-20): broń traci trwałość</span>
+  <span class="cmt">// Krytyczne (19+): broń (args.weapon) traci trwałość — UWAGA: update na broni, nie na this.item</span>
   <span class="kw">const</span> <span class="var">dur</span> = args.weapon.system.durability ?? <span class="num">0</span>;
   <span class="kw">if</span> (<span class="var">dur</span> > <span class="num">0</span>) <span class="kw">await</span> args.weapon.<span class="fn">update</span>({ <span class="str">"system.durability"</span>: <span class="var">dur</span> - <span class="num">1</span> });
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Krytyczne zacięcie! Broń straciła 1 punkt trwałości."</span>, <span class="str">"error"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Mechanik Polowy: krytyczne zacięcie [${args.weapon.name}] — stracono 1 pkt trwałości.`</span>);
 }</code></pre>
   </div>
 
@@ -1540,6 +1682,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <span class="kw">if</span> (args.bulletsFired >= <span class="num">3</span> && args.isSuccess) {
   <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"hotWeapon"</span>);
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Broń się przegrzewa! Dodano kondycję Gorąca Broń."</span>, <span class="str">"warn"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Przegrzanie: po ${args.bulletsFired} pociskach dodano kondycję Gorąca Broń.`</span>);
 }</code></pre>
   </div>
 
@@ -1555,6 +1698,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <span class="kw">if</span> (args.isSuccess && args.successPoints >= <span class="num">3</span> && !args.isJamming) {
   <span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"adrenalineBonus"</span>, <span class="num">10</span>);
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Adrenalinowy strzał! +10% do następnego testu."</span>, <span class="str">"info"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Adrenalinowy Strzał (${args.successPoints} PP) — +10% do następnego testu.`</span>);
 }
 <span class="cmt">// W rollTest / preRollTest sprawdzasz i zeruj flagę:</span>
 <span class="cmt">// const bonus = this.actor.getFlag("neuroshima","adrenalineBonus") || 0;</span>
@@ -2034,6 +2178,16 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <tr><td><code>this.getChatData(merge?)</code></td><td>Gotowy obiekt danych do <code>ChatMessage.create()</code> z domyślnym speakerem i flavor</td></tr>
     <tr><td><code>await this.sendMessage(html, data?)</code></td><td>Tworzy wiadomość czatu przypisaną do aktora skryptu</td></tr>
     <tr><td><code>this.notification(msg, type?)</code></td><td>Powiadomienie UI (info/warn/error)</td></tr>
+    <tr>
+      <td><code>this.addAnnotation(text)</code></td>
+      <td>
+        Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu w karcie czatu.<br>
+        Działa w triggerach: <code>preRollTest</code>, <code>rollTest</code>, <code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code>.<br>
+        <em>Przykład:</em>
+        <pre style="margin:4px 0 0;font-size:0.82em;"><code>// W weaponJam — poinformuj gracza
+this.addAnnotation(`Sztuczka pozwoliła oddać strzał mimo zacięcia!`);</code></pre>
+      </td>
+    </tr>
     <tr>
       <td><code>await this.dialog(content, type?, config?)</code></td>
       <td>
@@ -2577,8 +2731,151 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 </section>
 
 <!-- SECTION 9 -->
+<section id="item-resources">
+  <h2 class="section-title">9. Zasoby itemu</h2>
+
+  <p>
+    Zakładka <strong>Zasoby</strong> w każdej karcie itemu pozwala definiować dowolne zasoby numeryczne
+    (np. ładunki, wytrzymałość, amunicja specjalna). Każdy zasób ma unikalny klucz tekstowy, nazwę
+    wyświetlaną, wartość bieżącą oraz opcjonalne granice <strong>Min</strong> i <strong>Max</strong>.
+    Zasobami można zarządzać bezpośrednio ze skryptów efektów.
+  </p>
+
+  <h3>Pola zasobu</h3>
+  <table>
+    <tbody>
+      <tr><th>Pole</th><th>Typ</th><th>Opis</th></tr>
+      <tr><td><code>key</code></td><td>string</td><td>Unikalny identyfikator tekstowy (używany w helperach po kluczu). Powinien być krótki i bez spacji, np. <code>charges</code>, <code>fuel</code>.</td></tr>
+      <tr><td><code>label</code></td><td>string</td><td>Wyświetlana nazwa zasobu (widoczna w UI i w chipach podsumowania).</td></tr>
+      <tr><td><code>value</code></td><td>number</td><td>Aktualna wartość zasobu.</td></tr>
+      <tr><td><code>min</code></td><td>number</td><td>Dolna granica clampowania. Domyślnie 0. Ignorowane gdy zasób ma włączone <em>Unclamped</em>.</td></tr>
+      <tr><td><code>max</code></td><td>number</td><td>Górna granica clampowania. Wartość <code>0</code> oznacza brak górnego limitu (gdy Unclamped jest wyłączone). Ignorowane gdy zasób ma włączone <em>Unclamped</em>.</td></tr>
+      <tr><td><code>showInSummary</code></td><td>boolean</td><td>Gdy <code>true</code>, zasób pojawia się jako chip w podsumowaniu itemu na karcie aktora. Przełączany kliknięciem w badge <strong>#</strong> w zakładce Zasoby.</td></tr>
+      <tr><td><code>unclamped</code></td><td>boolean</td><td>Gdy <code>true</code>, silnik skryptów <strong>pomija całkowicie</strong> granice min/max przy ustawianiu wartości przez helpery. Pola Min i Max w UI są wtedy zablokowane. Przydatne do liczników nieograniczonych.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Kontrolki UI w zakładce Zasoby</h3>
+  <ul style="margin: 0.5rem 0 1rem 1.5rem; color: var(--text);">
+    <li><strong>Badge #</strong> (po lewej) — ID zasobu (indeks tablicy, 0-based). Kliknięcie przełącza <code>showInSummary</code>. Gdy aktywny — badge świeci na pomarańczowo, zasób pojawia się w podsumowaniu na karcie aktora.</li>
+    <li><strong>∞ (infinity)</strong> — przycisk obok kosza. Przełącza tryb <em>Unclamped</em>. Gdy aktywny — Min i Max są zablokowane, silnik skryptów nie clampuje wartości. Gdy nieaktywny — wartości ustawiane przez helpery są zawsze zawierane w przedziale [min, max].</li>
+    <li><strong>Kosz</strong> — usuwa zasób. Pozostałe zasoby są automatycznie przepakowywane (ID zostają przenumerowane 0,1,2,…).</li>
+  </ul>
+
+  <div class="callout warning">
+    <strong>Uwaga o ID (indeksach):</strong> po usunięciu zasobu ze środka tablicy, indeksy pozostałych zasobów
+    <em>przepakowują się</em> — zasób który miał ID=2 może stać się ID=1. Jeśli w skryptach odwołujesz się do zasobu
+    po ID (a nie po kluczu), sprawdź indeksy po każdej zmianie struktury zasobów. Kluczem (<code>key</code>) jest
+    bezpieczniejszy i preferowany sposób odwołania.
+  </div>
+
+  <h3>Wyświetlanie w podsumowaniu itemu</h3>
+  <p>
+    Zasoby z włączonym <code>showInSummary</code> pojawiają się jako chipy w sekcji <strong>Zasoby</strong>
+    w rozwijanym podsumowaniu itemu na karcie aktora (pod Statystykami, przed Opisem).
+    Format chipu: <em>Nazwa: wartość / max</em> (max pomijany gdy 0).
+  </p>
+
+  <h3>Helpery — po kluczu</h3>
+  <div class="context-box">
+    <div class="ctx-row"><span class="ctx-name">this.hasItemResource(item, key)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Zwraca <code>true</code> jeśli zasób o danym kluczu istnieje na itemie.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getItemResource(item, key)</span><span class="ctx-type">number | null</span><span class="ctx-desc">Odczytuje aktualną wartość zasobu. Zwraca <code>null</code> jeśli zasób nie istnieje.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.setItemResource(item, key, value)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Ustawia wartość zasobu. Jeśli <em>Unclamped</em> jest wyłączone — clampuje do [min, max] (max=0 = bez górnego limitu). Zwraca nową wartość lub <code>null</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.modifyItemResource(item, key, delta)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Dodaje <code>delta</code> do aktualnej wartości (clamp zależny od flagi <em>Unclamped</em>). Ujemna wartość zmniejsza.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.increaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zwiększa zasób o <code>|n|</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.decreaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zmniejsza zasób o <code>|n|</code>.</span></div>
+  </div>
+
+  <h3>Helpery — po ID (indeksie)</h3>
+  <p style="color:var(--text-dim); font-size:0.9em; margin-bottom:0.5rem;">
+    ID = indeks tablicy (0-based), widoczny w kolumnie <strong>#</strong> zakładki Zasoby.
+    Preferuj helpery po kluczu gdy to możliwe — są odporne na przepakowywanie indeksów.
+  </p>
+  <div class="context-box">
+    <div class="ctx-row"><span class="ctx-name">this.getItemResourceById(item, id)</span><span class="ctx-type">{ key, label, value, min, max, unclamped, showInSummary } | null</span><span class="ctx-desc">Zwraca pełny obiekt zasobu pod danym indeksem. <code>null</code> jeśli nie istnieje.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.setItemResourceById(item, id, value)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Ustawia wartość zasobu pod indeksem (z uwzględnieniem flagi <em>Unclamped</em>).</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.modifyItemResourceById(item, id, delta)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Dodaje delta do wartości zasobu pod indeksem.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.increaseItemResourceById(item, id, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zwiększa zasób pod indeksem o <code>|n|</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.decreaseItemResourceById(item, id, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zmniejsza zasób pod indeksem o <code>|n|</code>.</span></div>
+  </div>
+
+  <h3>Przykłady</h3>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Zużyj ładunek — sprawdź i zmniejsz zasób
+    </div>
+    <pre><code><span class="cmt">// Trigger: manual — na itemie z zasobem "charges" (Ładunki, min:0, max:5)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">hasItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>)) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak zasobu 'charges' na tym itemie."</span>, <span class="str">"error"</span>);
+  }
+  <span class="kw">const</span> <span class="var">current</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>);
+  <span class="kw">if</span> (<span class="var">current</span> &lt;= <span class="num">0</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak ładunków!"</span>, <span class="str">"warn"</span>);
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">decreaseItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>, <span class="num">1</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`Użyto ładunku. Pozostało: <span class="kw">${</span><span class="var">current</span> - <span class="num">1</span><span class="kw">}</span>.`</span>);
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preWeaponShot</span>
+      Amunicja specjalna — zużyj przed strzałem lub anuluj
+    </div>
+    <pre><code><span class="cmt">// Trigger: preWeaponShot — broń z zasobem "special_ammo" (Amunicja spec., min:0, max:3)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">weapon</span> = args.weapon;
+  <span class="kw">const</span> <span class="var">ammo</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="var">weapon</span>, <span class="str">"special_ammo"</span>);
+  <span class="kw">if</span> (<span class="var">ammo</span> === <span class="kw">null</span> || <span class="var">ammo</span> &lt;= <span class="num">0</span>) {
+    <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak specjalnej amunicji — strzał anulowany."</span>, <span class="str">"warn"</span>);
+    args.cancel = <span class="kw">true</span>;
+    <span class="kw">return</span>;
+  }
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">decreaseItemResource</span>(<span class="var">weapon</span>, <span class="str">"special_ammo"</span>, <span class="num">1</span>);
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Zasób Unclamped — licznik bez górnej granicy (np. punkty XP na itemie)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Gdy zasób ma włączony tryb <strong>Unclamped</strong> (przycisk ∞ w zakładce Zasoby),
+      silnik nie clampuje wartości — można ustawiać dowolne liczby bez ograniczeń.
+    </p>
+    <pre><code><span class="cmt">// Trigger: manual — item z zasobem "xp" (Doświadczenie, unclamped: true)</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">current</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="kw">this</span>.item, <span class="str">"xp"</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">increaseItemResource</span>(<span class="kw">this</span>.item, <span class="str">"xp"</span>, <span class="num">10</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`XP: <span class="kw">${</span><span class="var">current</span><span class="kw">}</span> → <span class="kw">${</span><span class="var">current</span> + <span class="num">10</span><span class="kw">}</span>`</span>);
+})();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">prepareData</span>
+      Bonus do cechy na podstawie wartości zasobu (synchroniczny)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      <code>prepareData</code> jest <strong>synchroniczny</strong> — nie używaj <code>await</code>.
+      <code>getItemResource</code> jest synchroniczny i działa poprawnie w tym triggerze.
+    </p>
+    <pre><code><span class="cmt">// Trigger: prepareData — item z zasobem "fuel" (Paliwo, min:0, max:10)</span>
+<span class="kw">const</span> <span class="var">fuel</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="kw">this</span>.item, <span class="str">"fuel"</span>);
+<span class="kw">if</span> (<span class="var">fuel</span> !== <span class="kw">null</span> &amp;&amp; <span class="var">fuel</span> &gt; <span class="num">5</span>) {
+  args.actor.system.attributes.strength.value += <span class="num">2</span>;
+}</code></pre>
+  </div>
+
+</section>
+
+<!-- SECTION 10 -->
 <section id="tips">
-  <h2 class="section-title">9. Dobre praktyki</h2>
+  <h2 class="section-title">10. Dobre praktyki</h2>
 
   <h3>Sprawdzaj warunki przed modyfikacją</h3>
   <pre><code><span class="cmt">// Dobry przykład — sprawdzamy czy rzut dotyczy właściwej umiejętności</span>
@@ -2616,7 +2913,7 @@ args.penalties.mod += <span class="num">10</span>;
 
   <!-- ── Jamming helpers ──────────────────────────────────────────────────── -->
   <h3>Helpery zacięcia broni (Jamming)</h3>
-  <p>Poniższe helpery są dostępne wyłącznie w triggerach <code>preWeaponJam</code>, <code>weaponJam</code> i <code>postWeaponShot</code> (oraz bezpośrednio w triggerze <code>weaponJam</code>). Każdy z nich modyfikuje odpowiedni klucz obiektu <code>args</code> przekazanego przez silnik.</p>
+  <p>Poniższe helpery są dostępne wyłącznie w triggerach <code>preWeaponShot</code>, <code>weaponJam</code> i <code>postWeaponShot</code> (oraz bezpośrednio w triggerze <code>weaponJam</code>). Każdy z nich modyfikuje odpowiedni klucz obiektu <code>args</code> przekazanego przez silnik.</p>
 
   <table>
     <thead>
@@ -2625,41 +2922,56 @@ args.penalties.mod += <span class="num">10</span>;
     <tbody>
       <tr>
         <td><code>this.modifyJammingThreshold(args, delta)</code></td>
-        <td>preWeaponJam</td>
+        <td>preWeaponShot</td>
         <td>Modyfikuje próg zacięcia o wartość <code>delta</code>. Dodatni delta = trudniej się zaciąć, ujemny = łatwiej. Wartość <code>args.jammingThreshold</code> nigdy nie spada poniżej 0.</td>
       </tr>
       <tr>
         <td><code>this.preventWeaponJam(args)</code></td>
-        <td>preWeaponJam</td>
+        <td>preWeaponShot</td>
         <td>Ustawia <code>args.forceNoJam = true</code>. Broń nie może się zaciąć w tej turze niezależnie od wyniku kości. Wyższy priorytet niż <code>forceJam</code>.</td>
       </tr>
       <tr>
         <td><code>this.forceWeaponJam(args)</code></td>
-        <td>preWeaponJam</td>
+        <td>preWeaponShot</td>
         <td>Ustawia <code>args.forceJam = true</code>. Broń zawsze się zacina, nawet jeśli kości dały wynik poniżej progu zacięcia. Ignorowane gdy <code>forceNoJam</code> jest aktywne.</td>
       </tr>
       <tr>
         <td><code>this.allowShotDespiteJam(args, count=1)</code></td>
         <td>weaponJam</td>
-        <td>Ustawia <code>args.canFireDespiteJam = true</code>. Aktor oddaje strzał mimo zacięcia — broń nadal zostaje zacięta po strzale. <code>count</code> określa maksymalną liczbę pocisków ocenianych pod kątem trafień; domyślnie <strong>1</strong>. Podaj wyższą wartość przy seriach — np. <code>allowShotDespiteJam(args, 2)</code> przepuszcza 2 pociski zanim broń całkowicie się zatnie.</td>
+        <td>
+          Ustawia <code>args.canFireDespiteJam = true</code>. Aktor oddaje strzał mimo zacięcia — broń nadal zostaje zacięta po strzale.<br>
+          <code>count</code>: maksymalna liczba pocisków (domyślnie <strong>1</strong>).<br>
+          Strzał <strong>trafia jeśli rzut byłby sukcesem</strong> (<code>args.wouldSucceed = true</code>). Najczęściej sprawdzaj przez <code>this.isStandardJam(args, min, max)</code>, które automatycznie filtruje po sukcesie.<br>
+          Przykład: <code>allowShotDespiteJam(args, 2)</code> — 2 pociski, trafią jeśli sukces.
+        </td>
       </tr>
       <tr>
         <td><code>this.clearWeaponJam(args)</code></td>
         <td>weaponJam</td>
-        <td>Ustawia <code>args.clearJam = true</code>. Zacięcie jest całkowicie anulowane — broń strzela normalnie i nie zostaje oznaczona jako zacięta.</td>
+        <td>Ustawia <code>args.clearJam = true</code>. Zacięcie jest całkowicie anulowane — broń strzela normalnie i nie zostaje oznaczona jako zacięta. Automatycznie czyści też istniejącą flagę <code>system.jammed</code> jeśli broń była wcześniej zacięta.</td>
       </tr>
       <tr>
-        <td><code>this.isStandardJam(bestResult)</code></td>
+        <td><code>this.getWeaponJammedState(weapon)</code></td>
+        <td>preWeaponShot, weaponJam, postWeaponShot</td>
+        <td>Zwraca <code>true</code> jeśli broń jest aktualnie oznaczona jako zacięta (<code>system.jammed</code>) — czyli była zacięta przed <em>bieżącym</em> strzałem. Przydatne do wykrywania powtórnego zacięcia lub specjalnych warunków dla broni chronicznej.</td>
+      </tr>
+      <tr>
+        <td><code>this.isStandardJam(args, min?, max?)</code></td>
         <td>weaponJam</td>
-        <td>Zwraca <code>true</code> gdy wynik kości (bestResult) mieści się w zakresie standardowego zacięcia (11–18). Przydatne do rozróżnienia standardowego i krytycznego (19–20) zacięcia.</td>
+        <td>
+          Zwraca <code>true</code> gdy wynik kości mieści się w zakresie [min, max] (włącznie) <strong>i</strong> rzut byłby sukcesem (<code>args.wouldSucceed</code>).<br>
+          Domyślny zakres: 1–20 (każde zacięcie). Jeśli <code>min &gt; max</code>, wartości są automatycznie zamieniane.<br>
+          Można też przekazać samą liczbę zamiast <code>args</code> — wtedy sprawdza tylko zakres, bez filtrowania po sukcesie.<br>
+          Przykład: <code>isStandardJam(args, 11, 18)</code> — standardowe i był sukces, <code>isStandardJam(args, 19, 20)</code> — krytyczne i był sukces.
+        </td>
       </tr>
     </tbody>
   </table>
 
   <div class="callout info">
     <strong>Kolejność wykonania helperów:</strong><br>
-    <code>preWeaponJam</code> → sprawdzenie progu → (jeśli zacięcie) <code>weaponJam</code> → oddanie/pominięcie strzału → <code>postWeaponShot</code>.<br>
-    Helper <code>preventWeaponJam</code> wywołany w <code>preWeaponJam</code> całkowicie zapobiega uruchomieniu <code>weaponJam</code>.
+    <code>preWeaponShot</code> → sprawdzenie progu → (jeśli zacięcie) <code>weaponJam</code> → oddanie/pominięcie strzału → <code>postWeaponShot</code>.<br>
+    Helper <code>preventWeaponJam</code> wywołany w <code>preWeaponShot</code> całkowicie zapobiega uruchomieniu <code>weaponJam</code>.
   </div>
 
   <h3>Pobieranie wartości broni w skryptach jammingu</h3>

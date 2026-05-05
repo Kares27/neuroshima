@@ -365,13 +365,73 @@ export class NeuroshimaDice {
         }
     }
 
-    // 5. Rozstrzygnięcie sukcesu
+    // 5. Obliczenie umiejętności i progu sukcesu (musi być przed triggerami jammingu)
+    const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
+
+    let skillValue = 0;
+    let skillKey = weapon.system.skill;
+    if (!skillKey || skillKey === "none") {
+        const attrGroups = NEUROSHIMA.skillConfiguration[weapon.system.attribute || "dexterity"] || {};
+        const firstGroup = Object.values(attrGroups)[0] || [];
+        skillKey = firstGroup[0] || "";
+    }
+    if (skillKey && skillKey !== "none") {
+        const isCreature = actor?.type === "creature";
+        const baseSkill = (skillKey === "experience" && isCreature)
+            ? (actor.system.experience ?? 0)
+            : (actor.system.skills[skillKey]?.value || 0);
+        skillValue = baseSkill + skillBonus;
+        if (isMelee) {
+            if (bonusMode === "skill" || bonusMode === "both") skillValue += weaponBonus;
+        } else {
+            skillValue += weaponBonus;
+        }
+    }
+
+    let totalShift = 0;
+    const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
+    if (allowCombatShift) {
+        if (!isMelee) totalShift -= this.getSkillShift(skillValue);
+        totalShift += this.getDiceShift(results);
+    }
+
+    const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
+    const finalDiff = shiftedDifficulty;
+
+    const baseAttr = Number(actor.system.attributeTotals[weapon.system.attribute]) || 10;
+    let finalStat = baseAttr + effectiveAttributeBonus;
+    if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) finalStat += weaponBonus;
+    const target = finalStat + finalDiff.mod;
+
+    game.neuroshima.log("Kalkulacja trudności i Suwaka", {
+        bazowaTrudnosc: baseDifficulty.label,
+        przesuniecieSuwaka: totalShift,
+        ostatecznaTrudnosc: finalDiff.label,
+        progSukcesu: target,
+        skillValue,
+        finalStat
+    });
+
+    // Wstępna kalkulacja sukcesu na potrzeby wyzwalaczy jammingu
+    const _jamModified = Math.max(1, bestResult - skillValue);
+    const jamWouldSucceed = !isMelee && bestResult !== 20 && _jamModified <= target;
+    game.neuroshima.log("[JamCheck] jamWouldSucceed kalkulacja", {
+        isMelee,
+        bestResult,
+        skillValue,
+        modifiedResult: _jamModified,
+        target,
+        jamWouldSucceed
+    });
+
+    // 5.1 Zacięcie
     const weaponJammingValue = weapon.system.jamming || 20;
     let jammingThreshold = Math.min(weaponJammingValue, ammoJamming);
 
-    // preWeaponJam: scripts can shift the threshold or force/prevent jamming
-    const preJamArgs = { actor, weapon, jammingThreshold, ammoJamming, bestResult, forceNoJam: false, forceJam: false };
-    if (!isMelee) await NeuroshimaScriptRunner.execute("preWeaponJam", preJamArgs);
+    // preWeaponShot: scripts can shift the threshold or force/prevent jamming
+    const rollAnnotations = [];
+    const preJamArgs = { actor, weapon, jammingThreshold, ammoJamming, bestResult, forceNoJam: false, forceJam: false, annotations: rollAnnotations };
+    if (!isMelee) await NeuroshimaScriptRunner.execute("preWeaponShot", preJamArgs);
     jammingThreshold = preJamArgs.jammingThreshold;
 
     // Zacięcie sprawdzamy na podstawie NAJLEPSZEJ kości (najniższy wynik) przed jakąkolwiek modyfikacją przez umiejętność.
@@ -383,11 +443,12 @@ export class NeuroshimaDice {
     // weaponJam: scripts can allow firing despite jam, or clear the jam entirely
     let canFireDespiteJam = false;
     let despiteJamBullets  = null;
+    let jamWasCleared = false;
     if (isJamming) {
-        const jamArgs = { actor, weapon, bestResult, jammingThreshold, canFireDespiteJam: false, clearJam: false, despiteJamBullets: null };
+        const jamArgs = { actor, weapon, bestResult, jammingThreshold, wouldSucceed: jamWouldSucceed, canFireDespiteJam: false, clearJam: false, despiteJamBullets: null, annotations: rollAnnotations };
         await NeuroshimaScriptRunner.execute("weaponJam", jamArgs);
         canFireDespiteJam = jamArgs.canFireDespiteJam;
-        if (jamArgs.clearJam) isJamming = false;
+        if (jamArgs.clearJam) { isJamming = false; jamWasCleared = true; }
         if (canFireDespiteJam && typeof jamArgs.despiteJamBullets === "number" && jamArgs.despiteJamBullets > 0) {
             despiteJamBullets = Math.floor(jamArgs.despiteJamBullets);
         }
@@ -408,69 +469,6 @@ export class NeuroshimaDice {
     } else {
         game.neuroshima.log("ZACIĘCIE: Amunicja NIE została zużyta");
     }
-
-    // Wyznaczenie ostatecznej trudności po uwzględnieniu Suwaka
-    const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
-    
-    let skillValue = 0;
-    let skillKey = weapon.system.skill;
-    // Fallback: if stored skill is empty/invalid, use first skill from the weapon's attribute group
-    if (!skillKey || skillKey === "none") {
-        const attrGroups = NEUROSHIMA.skillConfiguration[weapon.system.attribute || "dexterity"] || {};
-        const firstGroup = Object.values(attrGroups)[0] || [];
-        skillKey = firstGroup[0] || "";
-    }
-    if (skillKey && skillKey !== "none") {
-        const isCreature = actor?.type === "creature";
-        const baseSkill = (skillKey === "experience" && isCreature)
-            ? (actor.system.experience ?? 0)
-            : (actor.system.skills[skillKey]?.value || 0);
-        skillValue = baseSkill + skillBonus;
-        
-        // Bonus broni do umiejętności (tylko w melee i jeśli ustawienie na to pozwala)
-        if (isMelee) {
-            if (bonusMode === "skill" || bonusMode === "both") {
-                skillValue += weaponBonus;
-            }
-        } else {
-            // Dla broni dystansowej/miotanej bonus zawsze do umiejętności (tradycyjnie)
-            skillValue += weaponBonus;
-        }
-    }
-    
-    // Obliczanie przesunięć (Suwak)
-    let totalShift = 0;
-    const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
-    if (allowCombatShift) {
-        // W walce wręcz nie używamy umiejętności do przesuwania suwaka automatycznie, 
-        // cała pula umiejętności będzie dostępna do ręcznej alokacji.
-        if (!isMelee) {
-            totalShift -= this.getSkillShift(skillValue);
-        }
-        totalShift += this.getDiceShift(results);
-    }
-
-    const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
-    const finalDiff = shiftedDifficulty;
-    
-    // Próg sukcesu (Współczynnik + modyfikator PT + bonus do atrybutu)
-    const baseAttr = Number(actor.system.attributeTotals[weapon.system.attribute]) || 10;
-    let finalStat = baseAttr + effectiveAttributeBonus;
-    
-    // Bonus broni do atrybutu (progu) - tylko w Melee jeśli ustawienie na to pozwala
-    if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) {
-        finalStat += weaponBonus;
-    }
-    const target = finalStat + finalDiff.mod;
-
-    game.neuroshima.log("Kalkulacja trudności i Suwaka", {
-        bazowaTrudnosc: baseDifficulty.label,
-        przesuniecieSuwaka: totalShift,
-        ostatecznaTrudnosc: finalDiff.label,
-        progSukcesu: target,
-        skillValue,
-        finalStat
-    });
 
     let modifiedResults = [];
     let isSuccess = false;
@@ -567,9 +565,10 @@ export class NeuroshimaDice {
             const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
             let totalPelletHits = 0;
 
-            // Jeśli skrypt ustawił limit pocisków mimo zacięcia — ograniczamy pętlę do tej liczby
-            const effectiveBullets = (canFireDespiteJam && despiteJamBullets !== null)
-                ? Math.min(bulletsFired, despiteJamBullets)
+            // Jeśli skrypt ustawił limit pocisków mimo zacięcia — ograniczamy pętlę do tej liczby.
+            // Gdy canFireDespiteJam=true bez helpera (despiteJamBullets=null), domyślnie 1 pocisk.
+            const effectiveBullets = canFireDespiteJam
+                ? Math.min(bulletsFired, despiteJamBullets ?? 1)
                 : bulletsFired;
 
             // Iterujemy po wszystkich wystrzelonych pociskach (łuskach)
@@ -747,15 +746,18 @@ export class NeuroshimaDice {
     // Obsługa różnej amunicji w jednej serii (wyświetlanie wielu statystyk)
     this._groupHitsData(rollData);
 
-    // postWeaponShot: scripts can react to the completed shot result
-    const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData };
-    await NeuroshimaScriptRunner.execute("postWeaponShot", postShotArgs);
+    // postWeaponShot: scripts can react to the completed shot result (ranged/thrown only)
+    if (!isMelee) {
+        const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData, annotations: rollAnnotations };
+        await NeuroshimaScriptRunner.execute("postWeaponShot", postShotArgs);
+    }
+    rollData.annotations = rollAnnotations.filter(Boolean);
 
     // Update weapon jammed flag
     if (!isMelee) {
         if (isJamming) {
             await weapon.update({ "system.jammed": true });
-        } else if (isReroll && weapon.system.jammed) {
+        } else if (weapon.system.jammed && (isReroll || jamWasCleared)) {
             await weapon.update({ "system.jammed": false });
         }
     }
@@ -890,8 +892,9 @@ export class NeuroshimaDice {
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
 
     // Uruchomienie skryptów preRollTest — mogą anulować rzut lub wymusić automatyczny sukces
+    const testAnnotations = [];
     if (actor && !isReroll && !isDebug) {
-        const preArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, autoSuccess: false, cancelled: false };
+        const preArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, autoSuccess: false, cancelled: false, annotations: testAnnotations };
         await NeuroshimaScriptRunner.execute("preRollTest", preArgs);
         if (preArgs.cancelled) {
             game.neuroshima.log("rollTest cancelled by preRollTest script");
@@ -914,7 +917,7 @@ export class NeuroshimaDice {
 
     // Uruchomienie skryptów rollTest — mogą zmodyfikować stat, skill, penalties przed rzutem
     if (actor && !isReroll && !isDebug) {
-        const scriptArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey };
+        const scriptArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, annotations: testAnnotations };
         await NeuroshimaScriptRunner.execute("rollTest", scriptArgs);
         stat = scriptArgs.stat ?? stat;
         skill = scriptArgs.skill ?? skill;
@@ -1014,7 +1017,8 @@ export class NeuroshimaDice {
       actorId: actor?.id,
       actorImg: actor?.img,
       attributeKey,
-      skillKey
+      skillKey,
+      annotations: testAnnotations.filter(Boolean)
     };
 
     // 4. Ewaluacja testu w zależności od typu (Otwarty / Zamknięty)

@@ -36,7 +36,14 @@
                     {{/if}}
                     {{/with}}
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -81,7 +88,14 @@
                     {{/if}}
                     {{/with}}
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}

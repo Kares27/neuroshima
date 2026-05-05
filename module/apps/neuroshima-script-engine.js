@@ -426,15 +426,32 @@ export class NeuroshimaScript {
   }
 
   /**
-   * Shift the effective jamming threshold in a `preWeaponJam` script.
+   * Return whether the weapon is currently in the jammed state (from a previous shot).
+   * Useful in `preWeaponShot` or `weaponJam` scripts to check if the weapon was already jammed
+   * before this shot began.
+   * @param {Item} weapon
+   * @returns {boolean}
+   *
+   * @example
+   * // In preWeaponShot — extra penalty if weapon was already jammed
+   * if (this.getWeaponJammedState(args.weapon)) {
+   *   this.notification("Broń była już zacięta!", "warn");
+   * }
+   */
+  getWeaponJammedState(weapon) {
+    return weapon?.system?.jammed ?? false;
+  }
+
+  /**
+   * Shift the effective jamming threshold in a `preWeaponShot` script.
    * Positive delta makes the weapon HARDER to jam (threshold moves up).
    * Negative delta makes it EASIER to jam (threshold moves down).
    *
-   * @param {Object} args  - The args object from a preWeaponJam trigger.
+   * @param {Object} args  - The args object from a preWeaponShot trigger.
    * @param {number} delta - Amount to add to `args.jammingThreshold`.
    *
    * @example
-   * // In preWeaponJam — Rusznikarstwo passive: weapon is +3 harder to jam
+   * // In preWeaponShot — Rusznikarstwo passive: weapon is +3 harder to jam
    * this.modifyJammingThreshold(args, 3);
    */
   modifyJammingThreshold(args, delta) {
@@ -443,28 +460,25 @@ export class NeuroshimaScript {
 
   /**
    * In a `weaponJam` script, allow the actor to fire despite the jam.
-   * The weapon is still jammed (needs repair), but ammo is consumed and
-   * the hit sequence is evaluated normally.
-   * Implements the "Na pewno działa!" trick mechanic.
+   * The weapon is still jammed (needs repair), ammo is consumed and
+   * hit evaluation runs normally (shot hits if the roll would have succeeded).
    *
    * @param {Object} args          - The args object from a weaponJam trigger.
    * @param {number} [count=1]     - Maximum number of bullets allowed to fire despite the jam.
-   *                                 Defaults to 1 (one shot through before the weapon locks up).
-   *                                 Pass a higher integer to allow more bullets —
-   *                                 useful for "2 shots fire before the weapon jams in a burst".
+   *                                 Defaults to 1. Pass higher value for bursts.
    *
    * @example
-   * // In weaponJam trigger — only allow if not a critical jam (19-20)
-   * if (args.bestResult <= 18) {
+   * // Sztuczka "Na pewno działa!" — 1 strzał, trafia tylko jeśli rzut był sukcesem
+   * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args);
-   *   this.notification("Sztuczka: Na pewno działa! Broń oddaje ostatni strzał.");
+   *   this.addAnnotation(`Na pewno działa! [${args.weapon.name}] oddaje ostatni strzał.`);
    * }
    *
    * @example
-   * // In weaponJam trigger — burst weapon: allow only 2 bullets through before the jam locks up
-   * if (this.isStandardJam(args.bestResult)) {
+   * // 2 pociski przez zacięcie w serii
+   * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args, 2);
-   *   this.notification("Broń zacina się w serii — wychodzą tylko 2 pociski.");
+   *   this.addAnnotation(`Seria przez Zacięcie: 2 pociski mimo zacięcia.`);
    * }
    */
   allowShotDespiteJam(args, count = 1) {
@@ -488,13 +502,13 @@ export class NeuroshimaScript {
   }
 
   /**
-   * In a `preWeaponJam` script, prevent the weapon from jamming this shot entirely.
+   * In a `preWeaponShot` script, prevent the weapon from jamming this shot entirely.
    * Equivalent to setting `args.forceNoJam = true`.
    *
-   * @param {Object} args - The args object from a preWeaponJam trigger.
+   * @param {Object} args - The args object from a preWeaponShot trigger.
    *
    * @example
-   * // In preWeaponJam — Niezawodna Broń passive: weapon cannot jam
+   * // In preWeaponShot — Niezawodna Broń passive: weapon cannot jam
    * this.preventWeaponJam(args);
    */
   preventWeaponJam(args) {
@@ -502,13 +516,13 @@ export class NeuroshimaScript {
   }
 
   /**
-   * In a `preWeaponJam` script, force the weapon to jam regardless of the dice.
+   * In a `preWeaponShot` script, force the weapon to jam regardless of the dice.
    * Equivalent to setting `args.forceJam = true`.
    *
-   * @param {Object} args - The args object from a preWeaponJam trigger.
+   * @param {Object} args - The args object from a preWeaponShot trigger.
    *
    * @example
-   * // In preWeaponJam — Wadliwa Amunicja: weapon always jams this shot
+   * // In preWeaponShot — Wadliwa Amunicja: weapon always jams this shot
    * this.forceWeaponJam(args);
    */
   forceWeaponJam(args) {
@@ -516,22 +530,75 @@ export class NeuroshimaScript {
   }
 
   /**
-   * Check whether a die result falls within a given jam range (inclusive).
-   * Useful in `weaponJam` to distinguish a standard jam from a critical one.
+   * Check whether a weapon jam result falls within a given range (inclusive).
+   * When called with the full `args` object (recommended), also checks that
+   * the original roll would have been a success — so the entire `if` block
+   * (including `allowShotDespiteJam` and `addAnnotation`) only runs when both
+   * conditions are true.
    *
-   * @param {number} bestResult   - The best die result from the weapon roll.
-   * @param {number} [min=11]     - Low end of the jam range.
-   * @param {number} [max=18]     - High end of the jam range (before critical 19-20).
+   * Default range is 1–20 (covers any possible die result).
+   * If `min > max`, the values are automatically swapped so the check is always valid.
+   *
+   * @param {Object|number} argsOrResult - Pass the full `args` object (recommended) or a raw die number.
+   *                                       When an object is passed, checks range AND `args.wouldSucceed`.
+   * @param {number} [min=1]             - Low end of the range (inclusive).
+   * @param {number} [max=20]            - High end of the range (inclusive).
    * @returns {boolean}
    *
    * @example
-   * // In weaponJam — only allow firing if it's a non-critical jam
-   * if (this.isStandardJam(args.bestResult)) {
+   * // Zalecane — sprawdza zakres I czy rzut byłby sukcesem
+   * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args);
+   *   this.addAnnotation(`Na pewno działa! Broń oddaje ostatni strzał.`);
+   * }
+   *
+   * @example
+   * // Krytyczne zacięcie (19-20), bez sprawdzania sukcesu
+   * if (this.isStandardJam(args, 19, 20)) {
+   *   this.notification("Krytyczne zacięcie — sztuczka nie pomaga!", "warn");
+   * }
+   *
+   * @example
+   * // Dowolne zacięcie (domyślny zakres), bez sprawdzania sukcesu
+   * if (this.isStandardJam(args)) {
+   *   this.clearWeaponJam(args);
    * }
    */
-  isStandardJam(bestResult, min = 11, max = 18) {
-    return bestResult >= min && bestResult <= max;
+  isStandardJam(argsOrResult, min = 1, max = 20) {
+    const bestResult = typeof argsOrResult === "number" ? argsOrResult : argsOrResult?.bestResult;
+    if (bestResult === undefined || bestResult === null) return false;
+    const lo = Math.min(min, max);
+    const hi = Math.max(min, max);
+    const inRange = bestResult >= lo && bestResult <= hi;
+    if (typeof argsOrResult !== "object" || argsOrResult === null) return inRange;
+    if (typeof argsOrResult.wouldSucceed === "boolean") {
+      const result = inRange && argsOrResult.wouldSucceed;
+      game.neuroshima?.log?.("[isStandardJam]", {
+        bestResult, range: `[${lo},${hi}]`, inRange,
+        wouldSucceed: argsOrResult.wouldSucceed, result
+      });
+      return result;
+    }
+    return inRange;
+  }
+
+  /**
+   * Append a short annotation to the roll result card.
+   * Annotations appear below the roll-outcome footer.
+   * Available in `preRollTest`, `rollTest`, `preWeaponShot`, `weaponJam`, and `postWeaponShot` triggers.
+   * @param {string} text - Annotation text to display.
+   *
+   * @example
+   * // In weaponJam — inform the player that the trick allowed a shot through
+   * if (this.isStandardJam(args, 11, 18)) {
+   *   this.allowShotDespiteJam(args);
+   *   this.addAnnotation("Na pewno działa! Broń oddaje ostatni strzał mimo zacięcia.");
+   * }
+   */
+  addAnnotation(text) {
+    const annotations = this._currentArgs?.annotations;
+    if (!Array.isArray(annotations)) return;
+    annotations.push(String(text));
   }
 
   // ── Utility helpers ──────────────────────────────────────────────────────
@@ -976,6 +1043,205 @@ export class NeuroshimaScript {
     return next;
   }
 
+  // ── Item Resource helpers ─────────────────────────────────────────────────
+
+  /**
+   * Find a custom resource on an item by key.
+   * @param {Item} item
+   * @param {string} key
+   * @returns {{ key: string, label: string, value: number, min: number, max: number } | null}
+   */
+  _findResource(item, key) {
+    if (!item || !key) return null;
+    return (item.system?.resources ?? []).find(r => r.key === key) ?? null;
+  }
+
+  /**
+   * Return whether an item has a custom resource with the given key.
+   * @param {Item} item
+   * @param {string} key
+   * @returns {boolean}
+   *
+   * @example
+   * if (this.hasItemResource(this.item, "charges")) {
+   *   // item has a "charges" resource
+   * }
+   */
+  hasItemResource(item, key) {
+    return this._findResource(item, key) !== null;
+  }
+
+  /**
+   * Return the current value of a custom resource on an item.
+   * Returns null if the resource does not exist.
+   * @param {Item} item
+   * @param {string} key
+   * @returns {number | null}
+   *
+   * @example
+   * const charges = this.getItemResource(this.item, "charges");
+   * if (charges > 0) { ... }
+   */
+  getItemResource(item, key) {
+    const res = this._findResource(item, key);
+    return res ? (res.value ?? 0) : null;
+  }
+
+  /**
+   * Set the value of a custom resource on an item (clamped to [min, max]).
+   * When max === 0, no upper clamp is applied.
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} value
+   * @returns {Promise<number | null>} — new value, or null if resource not found
+   *
+   * @example
+   * await this.setItemResource(this.item, "charges", 3);
+   */
+  async setItemResource(item, key, value) {
+    if (!item || !key) return null;
+    const resources = Array.from(item.system?.resources ?? []);
+    const idx = resources.findIndex(r => r.key === key);
+    if (idx < 0) return null;
+    const res = resources[idx];
+    let next = value;
+    if (!res.unclamped) {
+      const min = res.min ?? 0;
+      const max = res.max ?? 0;
+      next = Math.max(min, next);
+      if (max > 0) next = Math.min(max, next);
+    }
+    resources[idx] = { ...res, value: next };
+    await item.update({ "system.resources": resources });
+    return next;
+  }
+
+  /**
+   * Add delta to the value of a custom resource (clamped to [min, max]).
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} delta - amount to add (can be negative)
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.modifyItemResource(this.item, "charges", -1);
+   */
+  async modifyItemResource(item, key, delta) {
+    const current = this.getItemResource(item, key);
+    if (current === null) return null;
+    return this.setItemResource(item, key, current + delta);
+  }
+
+  /**
+   * Increase the value of a custom resource by amount (clamped to max).
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} amount - positive number
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.increaseItemResource(this.item, "charges", 2);
+   */
+  async increaseItemResource(item, key, amount = 1) {
+    return this.modifyItemResource(item, key, Math.abs(amount));
+  }
+
+  /**
+   * Decrease the value of a custom resource by amount (clamped to min).
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} amount - positive number
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.decreaseItemResource(this.item, "charges", 1);
+   */
+  async decreaseItemResource(item, key, amount = 1) {
+    return this.modifyItemResource(item, key, -Math.abs(amount));
+  }
+
+  /**
+   * Return the full resource object at a given array index.
+   * Indices automatically re-pack when a resource is deleted, so index 0 is
+   * always the first defined resource regardless of how many were removed.
+   * @param {Item} item
+   * @param {number} id - Array index (0-based)
+   * @returns {{ key: string, label: string, value: number, min: number, max: number } | null}
+   *
+   * @example
+   * const res = this.getItemResourceById(this.item, 0);
+   * if (res) this.notification(`${res.label}: ${res.value}`);
+   */
+  getItemResourceById(item, id) {
+    if (!item || typeof id !== "number") return null;
+    return (item.system?.resources ?? [])[id] ?? null;
+  }
+
+  /**
+   * Set the value of a custom resource by its array index (clamped to [min, max]).
+   * @param {Item} item
+   * @param {number} id - Array index
+   * @param {number} value
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.setItemResourceById(this.item, 0, 5);
+   */
+  async setItemResourceById(item, id, value) {
+    if (!item || typeof id !== "number") return null;
+    const resources = Array.from(item.system?.resources ?? []);
+    if (id < 0 || id >= resources.length) return null;
+    const res = resources[id];
+    let next = value;
+    if (!res.unclamped) {
+      const min = res.min ?? 0;
+      const max = res.max ?? 0;
+      next = Math.max(min, next);
+      if (max > 0) next = Math.min(max, next);
+    }
+    resources[id] = { ...res, value: next };
+    await item.update({ "system.resources": resources });
+    return next;
+  }
+
+  /**
+   * Add delta to the value of a resource by its array index (clamped).
+   * @param {Item} item
+   * @param {number} id - Array index
+   * @param {number} delta
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.modifyItemResourceById(this.item, 0, -1);
+   */
+  async modifyItemResourceById(item, id, delta) {
+    const res = this.getItemResourceById(item, id);
+    if (!res) return null;
+    return this.setItemResourceById(item, id, (res.value ?? 0) + delta);
+  }
+
+  /**
+   * Increase a resource by index.
+   * @param {Item} item
+   * @param {number} id - Array index
+   * @param {number} amount
+   * @returns {Promise<number | null>}
+   */
+  async increaseItemResourceById(item, id, amount = 1) {
+    return this.modifyItemResourceById(item, id, Math.abs(amount));
+  }
+
+  /**
+   * Decrease a resource by index.
+   * @param {Item} item
+   * @param {number} id - Array index
+   * @param {number} amount
+   * @returns {Promise<number | null>}
+   */
+  async decreaseItemResourceById(item, id, amount = 1) {
+    return this.modifyItemResourceById(item, id, -Math.abs(amount));
+  }
+
   // ── Execution ─────────────────────────────────────────────────────────────
 
   /**
@@ -1005,6 +1271,7 @@ export class NeuroshimaScript {
     const executingActor = args.actor ?? null;
     const executingItem  = args.item  ?? null;
     const ctx = this._buildContext(executingActor, executingItem);
+    this._currentArgs = args;
     try {
       const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
 
@@ -1028,6 +1295,8 @@ export class NeuroshimaScript {
         console.error(`Neuroshima | Script Error [${this.label}]:`, e);
         ui.notifications.error(`Script Error [${this.label}]: ${e.message}`);
       }
+    } finally {
+      this._currentArgs = null;
     }
   }
 
@@ -1035,6 +1304,7 @@ export class NeuroshimaScript {
     const executingActor = args.actor ?? null;
     const executingItem  = args.item  ?? null;
     const ctx = this._buildContext(executingActor, executingItem);
+    this._currentArgs = args;
     try {
       const fn = new Function("args", this.code);
       return fn.call(ctx, args);
@@ -1045,6 +1315,8 @@ export class NeuroshimaScript {
         console.error(`Neuroshima | Script Error [${this.label}]:`, e);
         ui.notifications.error(`Script Error [${this.label}]: ${e.message}`);
       }
+    } finally {
+      this._currentArgs = null;
     }
   }
 }
@@ -1117,7 +1389,7 @@ export class NeuroshimaScript {
  * endCombat        — End Combat: runs when combat ends (once per actor)
  *                    args: { actor, combat }
  *
- * preWeaponJam     — Pre-Weapon Jam: runs BEFORE jamming is evaluated for a ranged shot.
+ * preWeaponShot    — Pre-Weapon Shot: runs BEFORE jamming is evaluated for a ranged shot.
  *                    Allows scripts to shift the jam threshold or force/prevent jamming entirely.
  *                    Never fires for melee weapons.
  *                    args: { actor, weapon, jammingThreshold, ammoJamming, bestResult,
@@ -1134,20 +1406,22 @@ export class NeuroshimaScript {
  * weaponJam        — Weapon Jam: runs ONLY when a jam is detected, before ammo is withheld.
  *                    Allows scripts to allow firing despite the jam, or clear the jam.
  *                    Never fires for melee weapons.
- *                    args: { actor, weapon, bestResult, jammingThreshold,
- *                            canFireDespiteJam, clearJam }
+ *                    args: { actor, weapon, bestResult, jammingThreshold, wouldSucceed,
+ *                            canFireDespiteJam, clearJam, despiteJamBullets }
  *                    Use: args.canFireDespiteJam = true → consume ammo and fire despite jam
  *                              (weapon stays jammed — needs repair; implements "Na pewno działa!")
- *                         args.clearJam = true          → jam is cancelled entirely (normal shot)
- *                    Helpers: this.allowShotDespiteJam(args)
+ *                         args.clearJam = true          → jam is cancelled entirely (normal shot,
+ *                              also clears pre-existing system.jammed flag on the weapon)
+ *                    Helpers: this.allowShotDespiteJam(args, count=1)
  *                             this.clearWeaponJam(args)
- *                             this.isStandardJam(args.bestResult)   → true if 11–18 (non-critical)
+ *                             this.isStandardJam(args, min=1, max=20) → inRange AND wouldSucceed
+ *                             this.getWeaponJammedState(weapon) → was weapon already jammed?
  *
  * postWeaponShot   — Post-Weapon Shot: runs AFTER the full ranged shot is resolved.
  *                    Fires even if the weapon jammed (isJamming may be true).
  *                    Never fires for melee weapons.
  *                    args: { actor, weapon, isSuccess, isJamming, firedDespiteJam,
- *                            hitBullets, bulletsFired, successPoints, rollData }
+ *                            despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData }
  *                    Use: apply conditions/effects to shooter based on shot result,
  *                         send custom chat messages, trigger secondary effects.
  *
@@ -1188,14 +1462,15 @@ export class NeuroshimaScript {
  *   this.getChatData(merge?)         — ChatMessage data with default speaker/flavor
  *   this.sendMessage(html, data?)    — Create a chat message (async)
  *
- * Weapon / Jamming helpers (use in preWeaponJam / weaponJam / postWeaponShot triggers):
+ * Weapon / Jamming helpers (use in preWeaponShot / weaponJam / postWeaponShot triggers):
  *   this.getWeaponJammingThreshold(weapon)     — weapon's raw jamming value (default 20)
- *   this.modifyJammingThreshold(args, delta)   — shift threshold in preWeaponJam (+harder, -easier)
- *   this.preventWeaponJam(args)                — forceNoJam = true (preWeaponJam)
- *   this.forceWeaponJam(args)                  — forceJam = true (preWeaponJam)
- *   this.allowShotDespiteJam(args)             — canFireDespiteJam = true (weaponJam)
- *   this.clearWeaponJam(args)                  — clearJam = true (weaponJam)
- *   this.isStandardJam(bestResult, min?, max?) — true if result is in non-critical jam range (11–18)
+ *   this.getWeaponJammedState(weapon)          — true if weapon.system.jammed (from previous shot)
+ *   this.modifyJammingThreshold(args, delta)   — shift threshold in preWeaponShot (+harder, -easier)
+ *   this.preventWeaponJam(args)                — forceNoJam = true (preWeaponShot)
+ *   this.forceWeaponJam(args)                  — forceJam = true (preWeaponShot)
+ *   this.allowShotDespiteJam(args, count=1)    — canFireDespiteJam = true + bullet limit (weaponJam)
+ *   this.clearWeaponJam(args)                  — clearJam = true, also clears system.jammed (weaponJam)
+ *   this.isStandardJam(args, min=1, max=20)    — true if bestResult in [min,max] AND wouldSucceed; swaps min/max if inverted
  *
  * Wound helpers:
  *   this.getWounds(filter?, actor?)       — wound items matching filter (active, location, damageType, bruise)
@@ -1224,6 +1499,21 @@ export class NeuroshimaScript {
  *   await this.damageArmorDurability(item, n)      — add n to durabilityDamage (clamped to max)
  *   await this.repairArmorDurability(item, n)      — reduce durabilityDamage by n (min 0)
  *
+ * Item resource helpers (item = any Item with a "resources" tab; use this.item for own item):
+ *   By KEY (string key field):
+ *   this.hasItemResource(item, key)                 — true if resource with key exists
+ *   this.getItemResource(item, key)                 — current value (null if not found)
+ *   await this.setItemResource(item, key, value)    — set value, clamped to [min, max] (max=0 = uncapped)
+ *   await this.modifyItemResource(item, key, delta) — value += delta, clamped
+ *   await this.increaseItemResource(item, key, n=1) — value += |n|, clamped to max
+ *   await this.decreaseItemResource(item, key, n=1) — value -= |n|, clamped to min
+ *   By ID (array index, auto re-packs on delete):
+ *   this.getItemResourceById(item, id)                 — full resource object (null if not found)
+ *   await this.setItemResourceById(item, id, value)    — set value by index, clamped
+ *   await this.modifyItemResourceById(item, id, delta) — value += delta by index, clamped
+ *   await this.increaseItemResourceById(item, id, n=1) — value += |n| by index
+ *   await this.decreaseItemResourceById(item, id, n=1) — value -= |n| by index
+ *
  * Damage type constants (for use in scripts):
  *   D  sD  L  sL  C  sC  K  sK    (rany postaci, od najlżejszej; s = siniak)
  *   VL  VC  VK                     (vehicle damage)
@@ -1247,7 +1537,7 @@ export class NeuroshimaScriptRunner {
     endCombat:        "End Combat",
     createEffect:     "Effect Created",
     deleteEffect:     "Effect Deleted",
-    preWeaponJam:     "Pre-Weapon Jam",
+    preWeaponShot:    "Pre-Weapon Shot",
     weaponJam:        "Weapon Jam",
     postWeaponShot:   "Post-Weapon Shot"
   };
@@ -1338,8 +1628,8 @@ export class NeuroshimaScriptRunner {
     const scripts = [];
     if (!actor) return scripts;
 
-    const collectFromEffect = (effect) => {
-      if (effect.isSuppressed) return;
+    const collectFromEffect = (effect, skipSuppressedCheck = false) => {
+      if (!skipSuppressedCheck && effect.isSuppressed) return;
       const isDisabled = effect.disabled;
       const effectScripts = effect.scripts ?? [];
       for (const script of effectScripts) {
@@ -1349,18 +1639,29 @@ export class NeuroshimaScriptRunner {
       }
     };
 
+    const actorItemUuids = new Set((actor.items ?? []).map(i => i.uuid));
+
     for (const effect of (actor.effects ?? [])) {
       if (effect.getFlag("neuroshima", "fromEquipTransfer")) continue;
+      if (effect.origin && actorItemUuids.has(effect.origin)) continue;
       collectFromEffect(effect);
     }
 
     for (const item of (actor.items ?? [])) {
-      const hasEquipped = "equipped" in (item.system ?? {});
-      if (hasEquipped && item.system.equipped === false && trigger !== "equipToggle") continue;
+      const hasEquipped  = "equipped" in (item.system ?? {});
+      const isUnequipped = hasEquipped && item.system.equipped === false;
       for (const effect of (item.effects ?? [])) {
-        collectFromEffect(effect);
+        const equipTransfer = effect.getFlag("neuroshima", "equipTransfer") ?? false;
+        const skipped = equipTransfer && isUnequipped && trigger !== "equipToggle";
+        if (skipped) {
+          game.neuroshima?.log?.(`[getScripts:${trigger}] POMINIĘTY efekt "${effect.name}" na item "${item.name}" (equipTransfer=true, unequipped)`);
+          continue;
+        }
+        collectFromEffect(effect, true);
       }
     }
+
+    game.neuroshima?.log?.(`[getScripts:${trigger}] znaleziono ${scripts.length} skryptów`, scripts.map(s => `${s.label} @ ${s.effect?.name}`));
 
     return scripts;
   }

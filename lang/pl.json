@@ -699,6 +699,7 @@
             "Notes": "Notatki",
             "Stats": "Statystyki",
             "Description": "Opis",
+            "Resources": "Zasoby",
             "Effects": "Efekty",
             "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)",
             "Modifications": "Modyfikacje",
@@ -706,6 +707,18 @@
             "Changes": "Zmiany",
             "Scripts": "Skrypty",
             "Duration": "Czas Trwania"
+        },
+        "Resources": {
+            "Add": "Dodaj zasób",
+            "Key": "Klucz",
+            "Label": "Nazwa",
+            "Min": "Min",
+            "Value": "Wartość",
+            "Max": "Max",
+            "LabelPlaceholder": "Nazwa zasobu",
+            "Empty": "Brak zdefiniowanych zasobów.",
+            "ToggleSummaryTooltip": "Kliknij, aby przełączyć widoczność zasobu w podsumowaniu itemu",
+            "UnclampedTooltip": "Ignoruj min/max — wartość nie jest ograniczana przez silnik skryptów"
         },
         "Dialogs": {
             "ConfirmReroll": "Potwierdź przerzut",
@@ -758,7 +771,8 @@
             "DamageReversed": "Wycofano {count} ran u {name}.",
             "RestReversed": "Cofnięto odpoczynek u {name}.",
             "NoWoundsFoundToReverse": "Nie znaleziono nałożonych ran do wycofania.",
-            "StatusReversed": "Obrażenia zostały wycofane przez MG."
+            "StatusReversed": "Obrażenia zostały wycofane przez MG.",
+            "WeaponIsJammed": "Broń jest zacięta! Najpierw usuń zacięcie."
         },
         "Tricks": {
             "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"
@@ -971,11 +985,17 @@
                 "PelletRanges": "Zasięgi Śrutu",
                 "Distance": "Dystans",
                 "Head": "Głowa",
+                "HeadAbbr": "G",
                 "Torso": "Tors",
+                "TorsoAbbr": "T",
                 "LeftArm": "Lewa Ręka",
+                "LeftArmAbbr": "LR",
                 "RightArm": "Prawa Ręka",
+                "RightArmAbbr": "PR",
                 "LeftLeg": "Lewa Noga",
+                "LeftLegAbbr": "LN",
                 "RightLeg": "Prawa Noga",
+                "RightLegAbbr": "PN",
                 "Location": "Lokalizacja",
                 "IsHealing": "W trakcie leczenia",
                 "IsActive": "Aktywna",
@@ -1411,6 +1431,11 @@
         "ProseMirror": {
             "FontColor": "Kolor tekstu",
             "SelectTextFirst": "Zaznacz tekst przed wybraniem koloru."
+        },
+        "Summary": {
+            "Stats": "Statystyki",
+            "Resources": "Zasoby",
+            "Description": "Opis"
         }
     }
 }

@@ -93,6 +93,20 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   _onUpdate(data, options, user) {
     super._onUpdate(data, options, user);
     this._scripts = null;
+    if (game.user.id !== user) return;
+    const isItemEffect = this.parent?.documentName === "Item";
+    const isEquipTransfer = this.getFlag("neuroshima", "equipTransfer") === true;
+    if (!isItemEffect || !isEquipTransfer) return;
+    const actor = this.parent.actor;
+    if (!actor) return;
+    const copy = actor.effects.find(
+      e => e.getFlag("neuroshima", "fromEquipTransfer") === true
+        && (e.getFlag("neuroshima", "sourceEffectId") === this.id || e.id === this.id)
+    );
+    if (!copy) return;
+    const syncData = foundry.utils.deepClone(data);
+    delete syncData._id;
+    copy.update(syncData).catch(err => console.error("NS | equipTransfer sync failed:", err));
   }
 
   async _onCreate(data, options, user) {

@@ -405,6 +405,7 @@ export class NeuroshimaActor extends Actor {
         data.transfer = false;
         data.origin   = item.uuid;
         foundry.utils.setProperty(data, "flags.neuroshima.fromEquipTransfer", true);
+        foundry.utils.setProperty(data, "flags.neuroshima.sourceEffectId", e.id);
         return data;
       });
       await this.createEmbeddedDocuments("ActiveEffect", toCreate);

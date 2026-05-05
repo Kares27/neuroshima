@@ -55,8 +55,38 @@
                             <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
                         </div>
                     </div>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.damage}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{item.system.damage}}</span></span>{{/if}}
+                            {{#if item.system.caliber}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</span><span class="stat-chip-value">{{item.system.caliber}}</span></span>{{/if}}
+                            {{#if item.system.fireRate}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.FireRate'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.FireRateAbbr"}}</span><span class="stat-chip-value">{{item.system.fireRate}}</span></span>{{/if}}
+                            {{#if item.system.piercing}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</span><span class="stat-chip-value">{{item.system.piercing}}</span></span>{{/if}}
+                            <span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.Jamming'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.JammingAbbr"}}</span><span class="stat-chip-value">{{item.system.jamming}}</span></span>
+                            {{#if item.system.capacity}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</span><span class="stat-chip-value">{{item.system.capacity}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -107,8 +137,35 @@
                             <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
                         </div>
                     </div>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{item.system.damageMelee1}}/{{item.system.damageMelee2}}/{{item.system.damageMelee3}}</span></span>
+                            {{#if item.system.attackBonus}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.AttackBonus'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.AttackBonusAbbr"}}</span><span class="stat-chip-value">{{item.system.attackBonus}}</span></span>{{/if}}
+                            {{#if item.system.defenseBonus}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.DefenseBonus'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.DefenseBonusAbbr"}}</span><span class="stat-chip-value">{{item.system.defenseBonus}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -159,8 +216,35 @@
                             <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
                         </div>
                     </div>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.damage}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{item.system.damage}}</span></span>{{/if}}
+                            {{#if item.system.caliber}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</span><span class="stat-chip-value">{{item.system.caliber}}</span></span>{{/if}}
+                            {{#if item.system.piercing}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</span><span class="stat-chip-value">{{item.system.piercing}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -211,8 +295,40 @@
                             <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
                         </div>
                     </div>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.effectiveArmor.head}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.Head'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.HeadAbbr"}}</span><span class="stat-chip-value">{{item.system.effectiveArmor.head}}</span></span>{{/if}}
+                            {{#if item.system.effectiveArmor.torso}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.Torso'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.TorsoAbbr"}}</span><span class="stat-chip-value">{{item.system.effectiveArmor.torso}}</span></span>{{/if}}
+                            {{#if item.system.effectiveArmor.leftArm}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.LeftArm'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.LeftArmAbbr"}}</span><span class="stat-chip-value">{{item.system.effectiveArmor.leftArm}}</span></span>{{/if}}
+                            {{#if item.system.effectiveArmor.rightArm}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.RightArm'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.RightArmAbbr"}}</span><span class="stat-chip-value">{{item.system.effectiveArmor.rightArm}}</span></span>{{/if}}
+                            {{#if item.system.effectiveArmor.leftLeg}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.LeftLeg'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.LeftLegAbbr"}}</span><span class="stat-chip-value">{{item.system.effectiveArmor.leftLeg}}</span></span>{{/if}}
+                            {{#if item.system.effectiveArmor.rightLeg}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.RightLeg'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.RightLegAbbr"}}</span><span class="stat-chip-value">{{item.system.effectiveArmor.rightLeg}}</span></span>{{/if}}
+                            {{#if item.system.armor.penalty}}<span class="stat-summary-chip stat-chip-warning"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Penalty"}}</span><span class="stat-chip-value">{{item.system.armor.penalty}}</span></span>{{/if}}
+                            {{#if item.system.armor.durability}}<span class="stat-summary-chip" data-tooltip="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span><span class="stat-chip-value">{{item.system.armor.durability}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -273,7 +389,14 @@
                     {{/if}}
                     {{/with}}
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -324,6 +447,15 @@
                         </div>
                     </div>
                     <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.caliber}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</span><span class="stat-chip-value">{{item.system.caliber}}</span></span>{{/if}}
+                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</span><span class="stat-chip-value">{{item.system.totalCount}} / {{item.system.capacity}}</span></span>
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
                         {{#if item.contentsReversed.length}}
                         <div class="magazine-contents flexcol">
                             {{#each item.contentsReversed as |ammoStack|}}
@@ -333,7 +465,10 @@
                             {{/each}}
                         </div>
                         {{else}}
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                         {{/if}}
                     </div>
                 </div>
@@ -382,7 +517,19 @@
                         </div>
                     </div>
                     <div class="item-summary collapsed">
-                        <div class="item-description">{{{item.system.description}}}</div>
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.caliber}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</span><span class="stat-chip-value">{{item.system.caliber}}</span></span>{{/if}}
+                            {{#if item.system.damage}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{item.system.damage}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
