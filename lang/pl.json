@@ -23,7 +23,8 @@
             "specialization": "Specjalizacja",
             "origin": "Pochodzenie",
             "profession": "Profesja",
-            "vehicle-damage": "Uszkodzenie"
+            "vehicle-damage": "Uszkodzenie",
+            "money": "Waluta"
         }
     },
     "NEUROSHIMA": {
@@ -314,6 +315,41 @@
         },
         "Encumbrance": "Obciążenie",
         "Settings": {
+            "ReputationConfig": {
+                "Title": "Ustawienia Reputacji",
+                "Label": "Skonfiguruj Reputację",
+                "Hint": "Otwiera menu konfiguracji systemu reputacji, trybów testowania i tabel relacji.",
+                "Saved": "Ustawienia reputacji zostały zapisane.",
+                "MinMaxError": "Minimalna wartość reputacji nie może być wyższa od maksymalnej."
+            },
+            "ReputationTestMode": {
+                "Name": "Tryb testu reputacji",
+                "Hint": "Wybierz sposób testowania reputacji: test umiejętnościowy (próg = wartość + sława) lub prosty rzut 1d100.",
+                "Skill": "Test umiejętnościowy (Próg = Wartość + Sława)",
+                "Simple": "Prosty rzut 1d100 (wynik ≤ Wartość + Sława)"
+            },
+            "ReputationMin": {
+                "Name": "Minimalna wartość reputacji"
+            },
+            "ReputationMax": {
+                "Name": "Maksymalna wartość reputacji"
+            },
+            "ReputationUseColors": {
+                "Name": "Używaj kolorów dla relacji",
+                "Hint": "Wyświetla kolor przypisany do danego poziomu relacji na karcie postaci."
+            },
+            "ReputationColorNames": {
+                "Name": "Używaj kolorów dla nazwy reputacji",
+                "Hint": "Wyświetla nazwę reputacji w kolorze odpowiadającej relacji w tabeli na karcie postaci."
+            },
+            "ReputationFameThreshold": {
+                "Name": "Próg reputacji → sława",
+                "Hint": "Ile punktów reputacji w jednym itemie trzeba zdobyć, aby automatycznie otrzymać pkt sławy."
+            },
+            "ReputationFamePoints": {
+                "Name": "Punkty sławy za próg",
+                "Hint": "Ile punktów sławy gracz otrzymuje po osiągnięciu progu reputacji."
+            },
             "EncumbranceConfig": {
                 "Title": "Ustawienia Udźwigu",
                 "Label": "Skonfiguruj Udźwig",
@@ -701,6 +737,7 @@
             "Description": "Opis",
             "Resources": "Zasoby",
             "Effects": "Efekty",
+            "Reputation": "Reputacja",
             "EffectsPlaceholder": "Efekty przedmiotu (w przygotowaniu)",
             "Modifications": "Modyfikacje",
             "Details": "Szczegóły",
@@ -937,7 +974,9 @@
                 "Origin": "Pochodzenie",
                 "Profession": "Profesja",
                 "Vehicle-damage": "Uszkodzenie Pojazdu",
-                "Vehicle-mod": "Modyfikacja Pojazdu"
+                "Vehicle-mod": "Modyfikacja Pojazdu",
+                "Money": "Waluta",
+                "Reputation": "Reputacja"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {
@@ -946,7 +985,7 @@
                 "Quantity": "Ilość",
                 "Description": "Opis",
                 "Equipped": "Założone",
-                "EquippedAbbr": "Dobyty",
+                "EquippedAbbr": "Dobycie",
                 "IsEquipable": "Można założyć",
                 "Damage": "Obrażenia",
                 "Speed": "Prędkość",
@@ -1009,8 +1048,39 @@
                 "OverridePiercing": "Nadpisz przebicie",
                 "OverrideJamming": "Nadpisz zacięcie",
                 "Availability": "Dostępność",
-                "AvailabilityAbbr": "Dost."
+                "AvailabilityAbbr": "Dost.",
+                "CoinValue": "Wartość w Gamblach"
             }
+        },
+        "Money": {
+            "Label": "Waluta",
+            "CoinValue": "Wartość w Gamblach",
+            "Consolidate": "Konsoliduj waluty",
+            "TotalValue": "Łączna wartość",
+            "Total": "Suma"
+        },
+        "Reputation": {
+            "Title": "Reputacja",
+            "Reputation": "Reputacja",
+            "Fame": "Sława",
+            "FameHint": "LPM: +1 | PPM: -1 (zakres: -40 do 40)",
+            "DragHere": "Przeciągnij item reputacji tutaj",
+            "Value": "Wartość Reputacji",
+            "ValueLabel": "Wartość Reputacji",
+            "OverrideRelations": "Nadpisz globalną tabelę relacji",
+            "RelationTable": "Tabela Relacji",
+            "GlobalRelationTable": "Globalna Tabela Relacji",
+            "RelationMin": "Min",
+            "RelationMax": "Max",
+            "RelationName": "Nazwa Relacji",
+            "RelationColor": "Kolor",
+            "AddRelation": "Dodaj relację",
+            "Roll": "Rzut na Reputację",
+            "SimpleRoll": "Rzut prosty 1d100",
+            "SimpleRollHint": "Rzut 1d100 — sukces gdy wynik ≤ Wartość + Sława.",
+            "FameGained": "{item}: osiągnięto próg — +{fame} pkt sławy!",
+            "Relation": "Relacja",
+            "AdjustHint": "LPM: +1 | PPM: -1 | Shift: ×5 | Ctrl: ×10 | Ctrl+Shift: ×100"
         },
         "Armor": {
             "TotalPenalty": "Kara",
@@ -1212,6 +1282,7 @@
                 "Rear":      "Tył",
                 "Bottom":    "Spód"
             },
+            "MaxLoad": "Maksymalne Obciążenie",
             "NoGear": "Brak wyposażenia",
             "Modifications": "Modyfikacje",
             "NoModifications": "Brak modyfikacji pojazdu.",

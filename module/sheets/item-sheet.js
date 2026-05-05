@@ -37,7 +37,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       addResource: NeuroshimaItemSheet.prototype._onAddResource,
       deleteResource: NeuroshimaItemSheet.prototype._onDeleteResource,
       toggleResourceSummary: NeuroshimaItemSheet.prototype._onToggleResourceSummary,
-      toggleResourceUnclamped: NeuroshimaItemSheet.prototype._onToggleResourceUnclamped
+      toggleResourceUnclamped: NeuroshimaItemSheet.prototype._onToggleResourceUnclamped,
+      addRelationRow: NeuroshimaItemSheet.prototype._onAddRelationRow,
+      deleteRelationRow: NeuroshimaItemSheet.prototype._onDeleteRelationRow
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -204,6 +206,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       specialization: ["description", "stats", "effects"],
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],
+      money: ["stats", "description", "effects"],
+      reputation: ["stats", "description", "resources", "effects"],
     };
     const allowedTabs = tabsByType[item.type] || ["stats", "description", "resources", "effects"];
     if (!allowedTabs.includes(this.tabGroups.primary)) {
@@ -238,7 +242,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.isJammedWeapon = item.type === "weapon" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait"];
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
 
     // Prepare type label
@@ -392,6 +396,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       context.linkedTraitItems = resolved;
     }
 
+    if (item.type === "reputation") {
+      context.repMin = game.settings.get("neuroshima", "reputationMin") ?? -20;
+      context.repMax = game.settings.get("neuroshima", "reputationMax") ?? 20;
+    }
+
     if (item.type === "specialization") {
       const specGroups = [];
       for (const [attrKey, specs] of Object.entries(NEUROSHIMA.skillConfiguration)) {
@@ -532,6 +541,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       specialization: ["description", "stats", "effects"],
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],
+      money: ["stats", "description", "effects"],
     };
 
     const allowedTabs = tabsByType[item.type] || ["stats", "description", "resources", "effects"];
@@ -592,6 +602,24 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const res = resources[idx];
     resources[idx] = { ...res, unclamped: !res.unclamped };
     await item.update({ "system.resources": resources });
+  }
+
+  async _onAddRelationRow(event, target) {
+    const item = this.document;
+    if (item.type !== "reputation") return;
+    const table = Array.from(item.system.relationTable ?? []);
+    table.push({ minVal: 0, maxVal: 0, name: "", color: "" });
+    await item.update({ "system.relationTable": table });
+  }
+
+  async _onDeleteRelationRow(event, target) {
+    const item = this.document;
+    if (item.type !== "reputation") return;
+    const idx = parseInt(target.dataset.index ?? "-1");
+    if (idx < 0) return;
+    const table = Array.from(item.system.relationTable ?? []);
+    table.splice(idx, 1);
+    await item.update({ "system.relationTable": table });
   }
 
   /**

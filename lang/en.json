@@ -20,7 +20,8 @@
             "specialization": "Specialization",
             "origin": "Origin",
             "profession": "Profession",
-            "vehicle-damage": "Damage"
+            "vehicle-damage": "Damage",
+            "money": "Currency"
         }
     },
     "NEUROSHIMA": {
@@ -311,6 +312,37 @@
         },
         "Encumbrance": "Encumbrance",
         "Settings": {
+            "ReputationConfig": {
+                "Title": "Reputation Settings",
+                "Label": "Configure Reputation",
+                "Hint": "Opens the reputation system configuration menu: test modes, value ranges, and relation tables.",
+                "Saved": "Reputation settings have been saved.",
+                "MinMaxError": "Minimum reputation value cannot be higher than the maximum."
+            },
+            "ReputationTestMode": {
+                "Name": "Reputation test mode",
+                "Hint": "Choose how reputation is tested: skill-like test (threshold = value + fame) or simple 1d100 roll.",
+                "Skill": "Skill-like test (Threshold = Value + Fame)",
+                "Simple": "Simple 1d100 roll (result ≤ Value + Fame)"
+            },
+            "ReputationMin": {
+                "Name": "Minimum reputation value"
+            },
+            "ReputationMax": {
+                "Name": "Maximum reputation value"
+            },
+            "ReputationUseColors": {
+                "Name": "Use colors for relations",
+                "Hint": "Displays the color assigned to each relation level on the character sheet."
+            },
+            "ReputationFameThreshold": {
+                "Name": "Reputation → Fame threshold",
+                "Hint": "How many reputation points in a single item must be reached to automatically gain fame points."
+            },
+            "ReputationFamePoints": {
+                "Name": "Fame points per threshold",
+                "Hint": "How many fame points the player receives upon reaching the reputation threshold."
+            },
             "EncumbranceConfig": {
                 "Title": "Encumbrance Settings",
                 "Label": "Configure Encumbrance",
@@ -678,6 +710,7 @@
             "Description": "Description",
             "Resources": "Resources",
             "Effects": "Effects",
+            "Reputation": "Reputation",
             "EffectsPlaceholder": "Item effects (TBD)",
             "Modifications": "Modifications",
             "Details": "Details",
@@ -911,7 +944,9 @@
                 "Origin": "Origin",
                 "Profession": "Profession",
                 "Vehicle-damage": "Vehicle Damage",
-                "Vehicle-mod": "Vehicle Modification"
+                "Vehicle-mod": "Vehicle Modification",
+                "Money": "Currency",
+                "Reputation": "Reputation"
             },
             "Empty": "No items.",
             "Fields": {
@@ -983,8 +1018,39 @@
                 "OverridePiercing": "Override piercing",
                 "OverrideJamming": "Override jamming",
                 "Availability": "Availability",
-                "AvailabilityAbbr": "Avail."
+                "AvailabilityAbbr": "Avail.",
+                "CoinValue": "Gamble Value"
             }
+        },
+        "Money": {
+            "Label": "Currency",
+            "CoinValue": "Gamble Value",
+            "Consolidate": "Consolidate currencies",
+            "TotalValue": "Total value",
+            "Total": "Total"
+        },
+        "Reputation": {
+            "Title": "Reputation",
+            "Reputation": "Reputation",
+            "Fame": "Fame",
+            "FameHint": "LMB: +1 | RMB: -1 (range: -40 to 40)",
+            "DragHere": "Drag a reputation item here",
+            "Value": "Reputation Value",
+            "ValueLabel": "Reputation Value",
+            "OverrideRelations": "Override global relation table",
+            "RelationTable": "Relation Table",
+            "GlobalRelationTable": "Global Relation Table",
+            "RelationMin": "Min",
+            "RelationMax": "Max",
+            "RelationName": "Relation Name",
+            "RelationColor": "Color",
+            "AddRelation": "Add relation",
+            "Roll": "Reputation Roll",
+            "SimpleRoll": "Simple Roll 1d100",
+            "SimpleRollHint": "Roll 1d100 — success if result ≤ Value + Fame.",
+            "FameGained": "{item}: threshold reached — +{fame} fame point(s)!",
+            "Relation": "Relation",
+            "AdjustHint": "LMB: +1 | RMB: -1 | Shift: ×5 | Ctrl: ×10 | Ctrl+Shift: ×100"
         },
         "Armor": {
             "TotalPenalty": "Total Penalty",
@@ -1185,6 +1251,7 @@
                 "Rear":      "Rear",
                 "Bottom":    "Bottom"
             },
+            "MaxLoad": "Maximum Load",
             "NoGear": "No gear",
             "Modifications": "Modifications",
             "NoModifications": "No vehicle modifications.",

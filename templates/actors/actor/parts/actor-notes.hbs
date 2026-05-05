@@ -1,69 +1,16 @@
 <section class="tab notes {{tabs.notes.cssClass}}" data-group="primary" data-tab="notes" data-application-part="notes">
     <div class="notes-layout">
 
-        {{!-- Top row: two columns --}}
-        <div class="notes-columns">
-
-            {{!-- Left column: Background items --}}
-            <div class="notes-sidebar">
-                <div class="notes-sidebar-header">{{localize "NEUROSHIMA.Background.Title"}}</div>
-
-                {{!-- Specialization row --}}
-                <div class="notes-bg-row" data-slot-type="specialization">
-                    <span class="notes-bg-type-label">{{localize "NEUROSHIMA.Info.Specialization"}}</span>
-                    {{#if background.specialization}}
-                    <div class="notes-bg-item" data-item-id="{{background.specialization.id}}">
-                        <img class="notes-bg-icon" src="{{background.specialization.img}}"/>
-                        <span class="notes-bg-name clickable" data-action="editItem" data-item-id="{{background.specialization.id}}">{{background.specialization.name}}</span>
-                        <a class="notes-bg-delete item-control" data-action="deleteItem" data-item-id="{{background.specialization.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
-                    </div>
-                    {{else}}
-                    <div class="notes-bg-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
-                    {{/if}}
-                </div>
-
-                {{!-- Origin row --}}
-                <div class="notes-bg-row" data-slot-type="origin">
-                    <span class="notes-bg-type-label">{{localize "NEUROSHIMA.Info.Origin"}}</span>
-                    {{#if background.origin}}
-                    <div class="notes-bg-item" data-item-id="{{background.origin.id}}">
-                        <img class="notes-bg-icon" src="{{background.origin.img}}"/>
-                        <span class="notes-bg-name clickable" data-action="editItem" data-item-id="{{background.origin.id}}">{{background.origin.name}}</span>
-                        <a class="notes-bg-delete item-control" data-action="deleteItem" data-item-id="{{background.origin.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
-                    </div>
-                    {{else}}
-                    <div class="notes-bg-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
-                    {{/if}}
-                </div>
-
-                {{!-- Profession row --}}
-                <div class="notes-bg-row" data-slot-type="profession">
-                    <span class="notes-bg-type-label">{{localize "NEUROSHIMA.Info.Profession"}}</span>
-                    {{#if background.profession}}
-                    <div class="notes-bg-item" data-item-id="{{background.profession.id}}">
-                        <img class="notes-bg-icon" src="{{background.profession.img}}"/>
-                        <span class="notes-bg-name clickable" data-action="editItem" data-item-id="{{background.profession.id}}">{{background.profession.name}}</span>
-                        <a class="notes-bg-delete item-control" data-action="deleteItem" data-item-id="{{background.profession.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
-                    </div>
-                    {{else}}
-                    <div class="notes-bg-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
-                    {{/if}}
-                </div>
-
-            </div>
-
-            {{!-- Right column: Notes editor --}}
-            <div class="notes-editor">
-                <prose-mirror
-                    name="system.notes"
-                    value="{{system.notes}}"
-                    document-uuid="{{actor.uuid}}"
-                    toggled
-                    {{#unless editable}}disabled{{/unless}}>
-                    {{{notes.enriched}}}
-                </prose-mirror>
-            </div>
-
+        {{!-- Top: prose-mirror full width --}}
+        <div class="notes-editor">
+            <prose-mirror
+                name="system.notes"
+                value="{{system.notes}}"
+                document-uuid="{{actor.uuid}}"
+                toggled
+                {{#unless editable}}disabled{{/unless}}>
+                {{{notes.enriched}}}
+            </prose-mirror>
         </div>
 
         {{!-- Bottom: XP log spanning full width, GM + character only --}}

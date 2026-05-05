@@ -6,7 +6,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -23,6 +23,7 @@ import { CombatConfig } from "./module/apps/combat-config.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/distance-config.js";
 import { HealingConfig } from "./module/apps/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/condition-config.js";
+import { ReputationSettingsApp } from "./module/apps/reputation-settings.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-dialog.js";
@@ -277,6 +278,8 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["profession"]        = ProfessionData;
     CONFIG.Item.dataModels["vehicle-damage"]    = VehicleDamageData;
     CONFIG.Item.dataModels["vehicle-mod"]       = VehicleModData;
+    CONFIG.Item.dataModels["money"]             = MoneyData;
+    CONFIG.Item.dataModels["reputation"]        = ReputationData;
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -351,7 +354,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod"],
+        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -389,7 +392,7 @@ Hooks.once('init', async function() {
         scope: "world",
         config: false,
         type: Boolean,
-        default: false,
+        default: true,
         requiresReload: true
     });
 
@@ -593,6 +596,85 @@ Hooks.once('init', async function() {
         config: false,
         type: Object,
         default: []
+    });
+
+    game.settings.registerMenu("neuroshima", "reputationConfig", {
+        name: "NEUROSHIMA.Settings.ReputationConfig.Label",
+        label: "NEUROSHIMA.Settings.ReputationConfig.Title",
+        hint: "NEUROSHIMA.Settings.ReputationConfig.Hint",
+        icon: "fas fa-handshake",
+        type: ReputationSettingsApp,
+        restricted: true
+    });
+
+    game.settings.register("neuroshima", "reputationTestMode", {
+        name: "NEUROSHIMA.Settings.ReputationTestMode.Name",
+        hint: "NEUROSHIMA.Settings.ReputationTestMode.Hint",
+        scope: "world",
+        config: false,
+        type: String,
+        choices: {
+            "skill": "NEUROSHIMA.Settings.ReputationTestMode.Skill",
+            "simple": "NEUROSHIMA.Settings.ReputationTestMode.Simple"
+        },
+        default: "skill"
+    });
+
+    game.settings.register("neuroshima", "reputationMin", {
+        name: "NEUROSHIMA.Settings.ReputationMin.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 0
+    });
+
+    game.settings.register("neuroshima", "reputationMax", {
+        name: "NEUROSHIMA.Settings.ReputationMax.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 20
+    });
+
+    game.settings.register("neuroshima", "reputationUseColors", {
+        name: "NEUROSHIMA.Settings.ReputationUseColors.Name",
+        hint: "NEUROSHIMA.Settings.ReputationUseColors.Hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
+    game.settings.register("neuroshima", "reputationColorNames", {
+        name: "NEUROSHIMA.Settings.ReputationColorNames.Name",
+        hint: "NEUROSHIMA.Settings.ReputationColorNames.Hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
+    game.settings.register("neuroshima", "reputationRelationTable", {
+        scope: "world",
+        config: false,
+        type: Array,
+        default: []
+    });
+
+    game.settings.register("neuroshima", "reputationFameThreshold", {
+        name: "NEUROSHIMA.Settings.ReputationFameThreshold.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 20
+    });
+
+    game.settings.register("neuroshima", "reputationFamePoints", {
+        name: "NEUROSHIMA.Settings.ReputationFamePoints.Name",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 1
     });
 
     // Rejestracja ustawień udźwigu (ukryte z głównego menu)
@@ -1814,6 +1896,60 @@ Hooks.on("targetToken", (user) => {
 
 Hooks.on("controlToken", () => {
     refreshAllCombatCards();
+});
+
+Hooks.on("createActor", async (actor, options, userId) => {
+    if (!["character", "npc"].includes(actor.type)) return;
+    if (userId !== game.user.id) return;
+    await actor.createEmbeddedDocuments("Item", [{
+        type: "money",
+        name: "Gamble",
+        img: "systems/neuroshima/assets/img/banknote.svg",
+        system: { coinValue: 1, quantity: 0, weight: 0 }
+    }]);
+});
+
+Hooks.on("updateItem", async (item, changes, options, userId) => {
+    if (item.type !== "reputation") return;
+    if (!item.parent || item.parent.documentName !== "Actor") return;
+    if (userId !== game.user.id) return;
+    if (options?.ns_skipFameRecalc) return;
+
+    const newValue = foundry.utils.getProperty(changes, "system.value");
+    if (newValue === undefined || newValue === null) return;
+
+    const threshold = Math.max(1, game.settings.get("neuroshima", "reputationFameThreshold") ?? 20);
+    const famePerThreshold = Math.max(1, game.settings.get("neuroshima", "reputationFamePoints") ?? 1);
+
+    const actor = item.parent;
+    const flagKey = `repFameBonus.${item.id}`;
+    const prevBonus = actor.getFlag("neuroshima", flagKey) ?? 0;
+    const newBonus = Math.floor(newValue / threshold) * famePerThreshold;
+
+    const delta = newBonus - prevBonus;
+    if (delta === 0) return;
+
+    const currentFame = actor.system?.fame ?? 0;
+    const updatedFame = Math.clamp(currentFame + delta, -40, 40);
+
+    await actor.setFlag("neuroshima", flagKey, newBonus);
+    await actor.update({ "system.fame": updatedFame }, { ns_skipFameRecalc: true });
+});
+
+Hooks.on("deleteItem", async (item, options, userId) => {
+    if (item.type !== "reputation") return;
+    if (!item.parent || item.parent.documentName !== "Actor") return;
+    if (userId !== game.user.id) return;
+
+    const actor = item.parent;
+    const flagKey = `repFameBonus.${item.id}`;
+    const prevBonus = actor.getFlag("neuroshima", flagKey) ?? 0;
+    if (prevBonus === 0) return;
+
+    const currentFame = actor.system?.fame ?? 0;
+    const updatedFame = Math.clamp(currentFame - prevBonus, -40, 40);
+    await actor.unsetFlag("neuroshima", flagKey);
+    await actor.update({ "system.fame": updatedFame }, { ns_skipFameRecalc: true });
 });
 
 Hooks.on("renderItemDirectory", (app, html) => {

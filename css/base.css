@@ -1643,7 +1643,7 @@ body.theme-dark {
     margin: 4px 0 0 0;
     font-size: 0.9em;
     font-style: italic;
-    color: #444;
+    color: var(--ns-text-main);
 }
 
 .neuroshima.encumbrance-config footer {

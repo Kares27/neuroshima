@@ -1,14 +1,14 @@
 <section class="tab tricks {{tabs.tricks.cssClass}}" data-group="primary" data-tab="tricks" data-application-part="tricks">
     <section class="inventory-section traits-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
-            {{#if isGM}}<a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>{{/if}}
+            {{#if isGM}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+            {{/if}}
         </div>
         <div class="inventory-list trait-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex5">{{localize "Name"}}</div>
-                <div class="item-controls flex1"></div>
-            </div>
             <div class="inventory-items">
                 {{#each traits as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -52,15 +52,15 @@
     </section>
 
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Tabs.Tricks"}}</span>
-            {{#if isGM}}<a class="item-control" data-action="createItem" data-type="trick" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>{{/if}}
+            {{#if isGM}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="trick" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+            {{/if}}
         </div>
         <div class="inventory-list trick-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex5">{{localize "Name"}}</div>
-                <div class="item-controls flex1"></div>
-            </div>
             <div class="inventory-items">
                 {{#each tricks as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">

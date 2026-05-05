@@ -365,6 +365,48 @@ export class VehicleModData extends foundry.abstract.TypeDataModel {
 }
 
 /**
+ * Data model for Money items.
+ * Represents a currency denomination. Each item defines its value in base units
+ * (coinValue=1 means base currency, e.g. Gamble; coinValue=10 means worth 10 base units).
+ */
+export class MoneyData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
+      quantity: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      coinValue: new fields.NumberField({ required: true, integer: true, initial: 1, min: 1 })
+    };
+  }
+}
+
+/**
+ * Data model for Reputation items.
+ * Represents a named reputation/standing entry — no cost, weight, or availability.
+ */
+export class ReputationData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      value: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      overrideRelations: new fields.BooleanField({ initial: false }),
+      relationTable: new fields.ArrayField(
+        new fields.SchemaField({
+          minVal: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+          maxVal: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+          name: new fields.StringField({ required: true, initial: "" }),
+          color: new fields.StringField({ initial: "" })
+        }),
+        { initial: [] }
+      )
+    };
+  }
+}
+
+/**
  * Data model for Vehicle Damage items.
  * Vehicle-specific equivalent of wounds — represents structural damage
  * to specific sections of a vehicle.

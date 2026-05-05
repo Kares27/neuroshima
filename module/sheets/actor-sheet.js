@@ -104,7 +104,12 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       toggleSummary: this.prototype._onToggleSummary,
       itemContextMenu: this.prototype._onItemContextMenu,
       postItemToChat: this.prototype._onPostItemToChat,
-      toggleJammed: this.prototype._onToggleJammed
+      toggleJammed: this.prototype._onToggleJammed,
+      consolidateMoney: this.prototype._onConsolidateMoney,
+      adjustFame: this.prototype._onAdjustFame,
+      rollReputation: this.prototype._onRollReputation,
+      rollReputationItem: this.prototype._onRollReputationItem,
+      adjustRepValue: this.prototype._onAdjustRepValue
     },
     dragDrop: [
       { dragSelector: ".item[data-item-id]", dropSelector: "form" },
@@ -121,6 +126,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         { id: "combat", group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "inventory", group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
         { id: "effects", group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
+        { id: "reputation", group: "primary", label: "NEUROSHIMA.Tabs.Reputation" },
         { id: "notes", group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "attributes"
@@ -139,6 +145,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" ,  scrollable: [".wounds-list-container"]},
     inventory: { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""]},
     effects: { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
+    reputation: { template: "systems/neuroshima/templates/actors/actor/parts/actor-reputation.hbs", scrollable: [""] },
     notes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs", scrollable: [""] }
   };
 
@@ -179,6 +186,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
     // Organize Items - Sort by 'sort' property to allow manual reordering
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+    const moneyItems = items.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
     context.inventory = {
       weaponsMelee: items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged: items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
@@ -189,7 +197,23 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       magazines: items.filter(i => i.type === "magazine").map(m => {
           m.contentsReversed = [...(m.system.contents || [])].reverse();
           return m;
-      })
+      }),
+      money: moneyItems
+    };
+
+    const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
+    const moneyDenominations = [];
+    let remaining = totalBaseUnits;
+    for (const item of moneyItems) {
+        const count = Math.floor(remaining / item.system.coinValue);
+        moneyDenominations.push({ name: item.name, count, coinValue: item.system.coinValue, id: item.id });
+        remaining -= count * item.system.coinValue;
+    }
+    context.moneyData = {
+        totalBaseUnits,
+        totalBaseUnitsFormatted: totalBaseUnits.toLocaleString("pl-PL"),
+        denominations: moneyDenominations,
+        hasAny: moneyItems.length > 0
     };
     context.tricks = items.filter(i => i.type === "trick");
     context.traits = items.filter(i => i.type === "trait");
@@ -395,6 +419,28 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       patientDataLocationsCount: context.combat.patientData?.locations?.length || 0,
       locations: context.combat.patientData?.locations?.map(l => ({ key: l.key, label: l.label })) || []
     });
+
+    context.reputationItems = items.filter(i => i.type === "reputation");
+
+    {
+      const relTable = game.settings.get("neuroshima", "reputationRelationTable") ?? [];
+      const useColors = game.settings.get("neuroshima", "reputationUseColors") ?? false;
+      const colorNames = game.settings.get("neuroshima", "reputationColorNames") ?? false;
+      const relMap = {};
+      for (const item of context.reputationItems) {
+        const val = item.system?.value ?? 0;
+        const rel = relTable.find(r => val >= (r.minVal ?? 0) && val <= (r.maxVal ?? 0));
+        if (rel) {
+          const color = rel.color ?? null;
+          relMap[item.id] = {
+            name: rel.name,
+            color: useColors ? color : null,
+            nameColor: colorNames ? color : null
+          };
+        }
+      }
+      context.reputationRelationMap = relMap;
+    }
 
     // Prepare notes object
     context.notes = {
@@ -771,6 +817,31 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const html = this.element;
     
     // Add listeners for custom actions
+    html.querySelectorAll('[data-action="adjustFame"]').forEach(el => {
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._onAdjustFame(event, event.currentTarget);
+      });
+    });
+
+    html.querySelectorAll('[data-action="adjustRepValue"]').forEach(el => {
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._onAdjustRepValue(event, event.currentTarget);
+      });
+    });
+
+    html.querySelectorAll('.rep-ctx-btn').forEach(el => {
+      el.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const wrap = el.closest('.item-wrap[data-item-id]');
+        if (wrap) this._showItemContextMenu(event, wrap.dataset.itemId);
+      });
+    });
+
     html.querySelectorAll('[data-action="adjustQuantity"]').forEach(el => {
       el.addEventListener('contextmenu', (event) => {
         event.preventDefault();
@@ -2402,9 +2473,70 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     }
   }
 
+  async _onConsolidateMoney(event, target) {
+    const actor = this.document;
+    const moneyItems = actor.items.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
+    if (!moneyItems.length) return;
+    const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
+    let remaining = totalBaseUnits;
+    const updates = [];
+    for (const item of moneyItems) {
+        const count = Math.floor(remaining / item.system.coinValue);
+        remaining -= count * item.system.coinValue;
+        updates.push({ _id: item.id, "system.quantity": count });
+    }
+    await actor.updateEmbeddedDocuments("Item", updates);
+  }
+
   /**
    * Handle changing the quantity of an owned Item.
    */
+  async _onAdjustFame(event, target) {
+    event.preventDefault();
+    const direction = event.button === 2 ? -1 : 1;
+    const current = this.document.system.fame ?? 0;
+    const newValue = Math.max(-40, Math.min(40, current + direction));
+    return this.document.update({ "system.fame": newValue });
+  }
+
+  async _onRollReputation(event, target) {
+    event.preventDefault();
+    const { ReputationRollDialog } = await import("../apps/reputation-roll-dialog.js");
+    const dialog = new ReputationRollDialog({ actor: this.document });
+    dialog.render(true);
+  }
+
+  async _onRollReputationItem(event, target) {
+    event.preventDefault();
+    const li = target.closest(".item");
+    const itemId = li?.dataset.itemId ?? target.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    if (!item || item.type !== "reputation") return;
+    const { ReputationRollDialog } = await import("../apps/reputation-roll-dialog.js");
+    const dialog = new ReputationRollDialog({ actor: this.document, reputationItem: item });
+    dialog.render(true);
+  }
+
+  async _onAdjustRepValue(event, target) {
+    event.preventDefault();
+    const itemId = target.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    if (!item || item.type !== "reputation") return;
+
+    const direction = event.button === 2 ? -1 : 1;
+
+    let amount = 1;
+    if ((event.shiftKey) && (event.ctrlKey || event.metaKey)) amount = 100;
+    else if (event.ctrlKey || event.metaKey) amount = 10;
+    else if (event.shiftKey) amount = 5;
+
+    const repMin = game.settings.get("neuroshima", "reputationMin") ?? -20;
+    const repMax = game.settings.get("neuroshima", "reputationMax") ?? 20;
+    const current = item.system.value ?? 0;
+    const newValue = Math.max(repMin, Math.min(repMax, current + direction * amount));
+    return item.update({ "system.value": newValue });
+  }
+
   async _onAdjustQuantity(event, target) {
     const direction = event.button === 2 ? -1 : 1;
     return this._onQuantityChange(event, target, direction);
@@ -2416,7 +2548,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     if (!item || !("quantity" in item.system)) return;
 
     let amount = 1;
-    if (event.ctrlKey || event.metaKey) amount = 100;
+    if ((event.shiftKey) && (event.ctrlKey || event.metaKey)) amount = 1000;
+    else if (event.ctrlKey || event.metaKey) amount = 100;
     else if (event.shiftKey) amount = 10;
 
     const newQuantity = Math.max(0, item.system.quantity + (amount * direction));

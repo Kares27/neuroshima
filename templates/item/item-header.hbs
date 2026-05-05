@@ -25,21 +25,25 @@
                 <input type="number" name="system.weight" value="{{system.weight}}" data-dtype="Number" step="0.5"/>
             </div>
             {{/if}}
+            {{#unless (eq item.type "money")}}
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Cost"}}</label>
                 <input type="number" name="system.cost" value="{{system.cost}}" data-dtype="Number"/>
             </div>
+            {{/unless}}
             {{#unless (eq system.equipped undefined)}}
             <div class="form-group checkbox row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Equipped"}}</label>
                 <input type="checkbox" name="system.equipped" {{checked system.equipped}}/>
             </div>
             {{/unless}}
+            {{#unless (eq item.type "money")}}
             <div class="form-group row-group">
                 <label title="{{localize 'NEUROSHIMA.Items.Fields.Availability'}}">{{localize "NEUROSHIMA.Items.Fields.AvailabilityAbbr"}}</label>
                 <input type="number" name="system.availability" value="{{system.availability}}" min="0" max="100" data-dtype="Number"/>
                 <span class="availability-pct">%</span>
             </div>
+            {{/unless}}
             {{#if canUnjam}}
             {{#if isJammedWeapon}}
             <div class="form-group checkbox row-group">

@@ -185,6 +185,57 @@
         </section>
     {{/if}}
 
+    {{#if (eq item.type "money")}}
+        <div class="item-features money-stats secondary-box">
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}</label>
+                <input type="number" name="system.coinValue" value="{{system.coinValue}}" min="1" data-dtype="Number"/>
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "reputation")}}
+        <div class="item-features reputation-stats secondary-box">
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Reputation.ValueLabel"}}</label>
+                <input type="number" name="system.value" value="{{system.value}}" min="{{repMin}}" max="{{repMax}}" data-dtype="Number"/>
+            </div>
+            <hr/>
+            <div class="form-group row-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="system.overrideRelations" {{checked system.overrideRelations}}/>
+                    <label>{{localize "NEUROSHIMA.Reputation.OverrideRelations"}}</label>
+                </div>
+            </div>
+            {{#if system.overrideRelations}}
+            <div class="rep-relation-table-editor">
+                <div class="section-header" style="font-size:0.85em; padding: 4px 0;">{{localize "NEUROSHIMA.Reputation.RelationTable"}}</div>
+                <div style="margin-bottom:6px;">
+                    <a class="item-control" data-action="addRelationRow" style="display:inline-flex; align-items:center; gap:4px; font-size:0.85em;">
+                        <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Reputation.AddRelation"}}
+                    </a>
+                </div>
+                <div class="rep-relation-header" style="display:grid; grid-template-columns:1fr 1fr 2fr 1fr auto; gap:4px; font-size:0.75em; opacity:0.6; padding: 2px 0;">
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationMin"}}</span>
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationMax"}}</span>
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationName"}}</span>
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationColor"}}</span>
+                    <span></span>
+                </div>
+                {{#each system.relationTable as |row idx|}}
+                <div class="rep-relation-row" style="display:grid; grid-template-columns:1fr 1fr 2fr 1fr auto; gap:4px; align-items:center; margin-bottom:3px;" data-index="{{idx}}">
+                    <input type="number" name="system.relationTable.{{@index}}.minVal" value="{{row.minVal}}" data-dtype="Number" style="text-align:center;"/>
+                    <input type="number" name="system.relationTable.{{@index}}.maxVal" value="{{row.maxVal}}" data-dtype="Number" style="text-align:center;"/>
+                    <input type="text" name="system.relationTable.{{@index}}.name" value="{{row.name}}"/>
+                    <input type="color" name="system.relationTable.{{@index}}.color" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}" style="width:100%; height:26px; padding:1px;"/>
+                    <a class="item-control" data-action="deleteRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+        </div>
+    {{/if}}
+
     {{#if (eq item.type "beast-action")}}
         <div class="item-features beast-action-stats secondary-box">
             <div class="grid grid-3col">

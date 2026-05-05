@@ -182,6 +182,34 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         if (!effect) return;
         const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
+      },
+
+      adjustQuantity: async function(event, target) {
+        const direction = event.button === 2 ? -1 : 1;
+        const el = target.closest("[data-item-id]");
+        const item = this.document.items.get(el?.dataset.itemId);
+        if (!item || !("quantity" in item.system)) return;
+        let amount = 1;
+        if ((event.shiftKey) && (event.ctrlKey || event.metaKey)) amount = 1000;
+        else if (event.ctrlKey || event.metaKey) amount = 100;
+        else if (event.shiftKey) amount = 10;
+        const newQuantity = Math.max(0, item.system.quantity + (amount * direction));
+        await item.update({ "system.quantity": newQuantity });
+      },
+
+      consolidateMoney: async function(event, target) {
+        const actor = this.document;
+        const moneyItems = actor.items.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
+        if (!moneyItems.length) return;
+        const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
+        let remaining = totalBaseUnits;
+        const updates = [];
+        for (const item of moneyItems) {
+          const count = Math.floor(remaining / item.system.coinValue);
+          remaining -= count * item.system.coinValue;
+          updates.push({ _id: item.id, "system.quantity": count });
+        }
+        await actor.updateEmbeddedDocuments("Item", updates);
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -268,14 +296,36 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     });
 
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+    const moneyItems = items.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
     context.inventory = {
+      money:          moneyItems,
       weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
       weaponsThrown:  items.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       armor:          items.filter(i => i.type === "armor"),
       gear:           items.filter(i => i.type === "gear"),
-      magazines:      items.filter(i => i.type === "magazine")
+      ammo:           items.filter(i => i.type === "ammo"),
+      magazines:      items.filter(i => i.type === "magazine"),
+      tricks:         items.filter(i => i.type === "trick"),
+      traits:         items.filter(i => i.type === "trait")
     };
+
+    const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
+    const moneyDenominations = [];
+    let remaining = totalBaseUnits;
+    for (const item of moneyItems) {
+      const count = Math.floor(remaining / item.system.coinValue);
+      moneyDenominations.push({ name: item.name, count, coinValue: item.system.coinValue, id: item.id });
+      remaining -= count * item.system.coinValue;
+    }
+    context.moneyData = {
+      totalBaseUnits,
+      totalBaseUnitsFormatted: totalBaseUnits.toLocaleString("pl-PL"),
+      denominations: moneyDenominations,
+      hasAny: moneyItems.length > 0
+    };
+    context.tricks = context.inventory.tricks;
+    context.traits = context.inventory.traits;
 
     const vehicleArmorKeys = NEUROSHIMA.vehicleArmorKeys;
     const vehicleLocationsConfig = NEUROSHIMA.vehicleLocations;
@@ -312,6 +362,18 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         tooltip:          tooltipParts.join("<br>")
       };
     });
+
+    const encValue = parseFloat(actor.items.reduce((t, i) => t + (parseFloat(i.system?.totalWeight) || 0), 0).toFixed(2));
+    const encMax   = Number(system.maxLoad) || 0;
+    const encPct   = encMax > 0 ? Math.min(100, (encValue / encMax) * 100) : 0;
+    let encColor = "#3a8c3a";
+    if (encValue >= encMax) encColor = "#9c2a2a";
+    else if (encPct >= 75)  encColor = "#a05800";
+    else if (encPct >= 50)  encColor = "#8c8000";
+    context.vehicleEncumbrance = { value: encValue, max: encMax, pct: encPct, color: encColor };
+
+    const enableEncumbrance = game.settings.get("neuroshima", "enableEncumbrance") ?? true;
+    context.enableEncumbrance = enableEncumbrance;
 
     const modCategoryLabels = {
       engine:      game.i18n.localize("NEUROSHIMA.VehicleMod.Categories.Engine"),
@@ -437,6 +499,25 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   }
 
   /** @override */
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    const html = this.element;
+    html.querySelectorAll('[data-action="adjustQuantity"]').forEach(el => {
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const item = this.document.items.get(el.closest("[data-item-id]")?.dataset.itemId);
+        if (!item || !("quantity" in item.system)) return;
+        let amount = 1;
+        if ((event.shiftKey) && (event.ctrlKey || event.metaKey)) amount = 1000;
+        else if (event.ctrlKey || event.metaKey) amount = 100;
+        else if (event.shiftKey) amount = 10;
+        item.update({ "system.quantity": Math.max(0, item.system.quantity - amount) });
+      });
+    });
+  }
+
+  /** @override */
   async _onChangeForm(formConfig, event) {
     const input = event.target;
     const name  = input?.getAttribute?.("name") ?? input?.name;
@@ -481,7 +562,7 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "gear", "armor", "magazine", "ammo", "vehicle-damage", "vehicle-mod"].includes(item.type)) {
+    if (["weapon", "gear", "armor", "magazine", "ammo", "vehicle-damage", "vehicle-mod", "money", "trick", "trait"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }

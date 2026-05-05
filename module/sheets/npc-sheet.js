@@ -23,6 +23,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
         { id: "combat",     group: "primary", label: "NEUROSHIMA.Tabs.Combat" },
         { id: "inventory",  group: "primary", label: "NEUROSHIMA.Tabs.Inventory" },
         { id: "effects",    group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
+        { id: "reputation", group: "primary", label: "NEUROSHIMA.Tabs.Reputation" },
         { id: "notes",      group: "primary", label: "NEUROSHIMA.Tabs.Notes" }
       ],
       initial: "attributes"
@@ -41,6 +42,7 @@ export class NeuroshimaNPCSheet extends NeuroshimaActorSheet {
     combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs", scrollable: [".wounds-list-container"] },
     inventory:        { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""] },
     effects:          { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs", scrollable: [""] },
+    reputation:       { template: "systems/neuroshima/templates/actors/actor/parts/actor-reputation.hbs", scrollable: [""] },
     notes:            { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs", scrollable: [""] }
   };
 }

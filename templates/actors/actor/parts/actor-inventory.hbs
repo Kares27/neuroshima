@@ -9,27 +9,84 @@
         </div>
         <div class="encumbrance-bar">
             <div class="encumbrance-fill" style="width: {{system.encumbrance.pct}}%; background: {{system.encumbrance.color}};"></div>
+            <div class="enc-marker enc-marker--yellow" style="left: 50%;" title="50% — żółty"></div>
+            <div class="enc-marker enc-marker--orange" style="left: 75%;" title="75% — pomarańczowy"></div>
+            <div class="enc-marker enc-marker--danger" style="left: 90%;" title="90% — czerwony"></div>
         </div>
     </div>
     {{/if}}
-    
+
+    {{!-- Money / Waluta --}}
+    {{#if inventory.money.length}}
+    <section class="inventory-section">
+        <div class="section-header money-section-header">
+            <div class="money-header-left">
+                <button class="money-consolidate-btn" data-action="consolidateMoney" type="button" title="{{localize 'NEUROSHIMA.Money.Consolidate'}}">
+                    <i class="fas fa-coins"></i>
+                </button>
+                <span>{{localize "NEUROSHIMA.Items.Type.Money"}} ({{localize "NEUROSHIMA.Money.Total"}}: {{moneyData.totalBaseUnitsFormatted}} Gamble)</span>
+            </div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="money" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+        </div>
+        <div class="inventory-list money-list">
+            <div class="inventory-items">
+                {{#each inventory.money as |item|}}
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight weight-controls text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
+                    </div>
+                    <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}</span><span class="stat-chip-value">{{item.system.coinValue}}</span></span>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </section>
+    {{/if}}
+
     {{!-- Ranged Weapons --}}
     {{#if inventory.weaponsRanged.length}}
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.WeaponRanged"}}</span>
-            <a class="item-control" data-action="createItem" data-type="weapon" data-weapon-type="ranged" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="weapon" data-weapon-type="ranged" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list ranged-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex3">{{localize "Name"}}</div>
-                <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
-                <div class="item-stat quantity text-center quantity-controls">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
-                {{#if enableEncumbrance}}
-                <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
-                {{/if}}
-                <div class="item-controls"></div>
-            </div>
             <div class="inventory-items">
                 {{#each inventory.weaponsRanged as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -98,20 +155,18 @@
     {{!-- Melee Weapons --}}
     {{#if inventory.weaponsMelee.length}}
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.WeaponMelee"}}</span>
-            <a class="item-control" data-action="createItem" data-type="weapon" data-weapon-type="melee" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="weapon" data-weapon-type="melee" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list melee-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex3">{{localize "Name"}}</div>
-                <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
-                <div class="item-stat quantity text-center quantity-controls">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
-                {{#if enableEncumbrance}}
-                <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
-                {{/if}}
-                <div class="item-controls"></div>
-            </div>
             <div class="inventory-items">
                 {{#each inventory.weaponsMelee as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -177,20 +232,18 @@
     {{!-- Thrown Weapons --}}
     {{#if inventory.weaponsThrown.length}}
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.WeaponThrown"}}</span>
-            <a class="item-control" data-action="createItem" data-type="weapon" data-weapon-type="thrown" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="weapon" data-weapon-type="thrown" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list thrown-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex3">{{localize "Name"}}</div>
-                <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
-                <div class="item-stat quantity text-center quantity-controls">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
-                {{#if enableEncumbrance}}
-                <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
-                {{/if}}
-                <div class="item-controls"></div>
-            </div>
             <div class="inventory-items">
                 {{#each inventory.weaponsThrown as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -256,20 +309,18 @@
     {{!-- Armor --}}
     {{#if inventory.armor.length}}
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.Armor"}}</span>
-            <a class="item-control" data-action="createItem" data-type="armor" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="armor" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list armor-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex3">{{localize "Name"}}</div>
-                <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
-                <div class="item-stat quantity text-center quantity-controls">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
-                {{#if enableEncumbrance}}
-                <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
-                {{/if}}
-                <div class="item-controls"></div>
-            </div>
             <div class="inventory-items">
                 {{#each inventory.armor as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -339,20 +390,18 @@
 
     {{!-- Gear --}}
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.Gear"}}</span>
-            <a class="item-control" data-action="createItem" data-type="gear" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-stat equipped"></div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="gear" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list gear-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex3">{{localize "Name"}}</div>
-                <div class="item-stat equipped"></div>
-                <div class="item-stat quantity text-center quantity-controls">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
-                {{#if enableEncumbrance}}
-                <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
-                {{/if}}
-                <div class="item-controls"></div>
-            </div>
             <div class="inventory-items">
                 {{#each inventory.gear as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -407,20 +456,18 @@
     {{!-- Magazines --}}
     {{#if inventory.magazines.length}}
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.Magazines"}}</span>
-            <a class="item-control" data-action="createItem" data-type="magazine" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="magazine" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list magazine-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex3">{{localize "Name"}}</div>
-                <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
-                <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</div>
-                {{#if enableEncumbrance}}
-                <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
-                {{/if}}
-                <div class="item-controls"></div>
-            </div>
             <div class="inventory-items">
                 {{#each inventory.magazines as |item|}}
                 <div class="item-wrap magazine-container magazine-item-row" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -481,20 +528,18 @@
     {{!-- Ammo --}}
     {{#if inventory.ammo.length}}
     <section class="inventory-section">
-        <div class="section-header">
+        <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.Ammo"}}</span>
-            <a class="item-control" data-action="createItem" data-type="ammo" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-stat equipped"></div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            {{#if enableEncumbrance}}
+            <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
+            {{/if}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="ammo" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list ammo-list">
-            <div class="inventory-list-header flexrow">
-                <div class="item-name flex3">{{localize "Name"}}</div>
-                <div class="item-stat equipped"></div>
-                <div class="item-stat quantity text-center quantity-controls">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
-                {{#if enableEncumbrance}}
-                <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
-                {{/if}}
-                <div class="item-controls"></div>
-            </div>
             <div class="inventory-items">
                 {{#each inventory.ammo as |item|}}
                 <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
@@ -537,4 +582,5 @@
         </div>
     </section>
     {{/if}}
+
 </section>

@@ -98,6 +98,8 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         isOpen: new fields.BooleanField({ initial: false })
       }),
       notes: new fields.HTMLField({ initial: "" }),
+      reputation: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      fame: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
       hp: new fields.SchemaField({
         value: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         max: new fields.NumberField({ integer: true, initial: 27, min: 1 })
@@ -271,10 +273,10 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       system.encumbrance.value = parseFloat((totalWeight || 0).toFixed(2));
       system.encumbrance.pct = system.encumbrance.max > 0 ? Math.min(100, (system.encumbrance.value / system.encumbrance.max) * 100) : 0;
 
-      let color = "#44ff44";
-      if (system.encumbrance.value >= system.encumbrance.max) color = "#ff4444";
-      else if (system.encumbrance.pct >= 75) color = "#ffa500";
-      else if (system.encumbrance.pct >= 50) color = "#ffff44";
+      let color = "#3a8c3a";
+      if (system.encumbrance.value >= system.encumbrance.max) color = "#9c2a2a";
+      else if (system.encumbrance.pct >= 75) color = "#a05800";
+      else if (system.encumbrance.pct >= 50) color = "#8c8000";
       system.encumbrance.color = color;
 
     } catch (err) {
@@ -447,6 +449,8 @@ export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {
         rear:      new fields.NumberField({ initial: 0 }),
         bottom:    new fields.NumberField({ initial: 0 })
       }),
+      maxLoad: new fields.NumberField({ required: true, initial: 100, min: 0 }),
+
       /** Per-section vehicle armor plate */
       armor:  new fields.SchemaField({
         front:     new fields.SchemaField({ reduction: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }), hitPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }), weakPoint: new fields.BooleanField({ initial: false }) }),

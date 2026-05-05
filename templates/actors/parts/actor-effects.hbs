@@ -48,24 +48,21 @@
 
             {{!-- Temporary --}}
             <div class="effects-group">
-                <div class="effects-group-header">
-                    <span>{{localize "NEUROSHIMA.Effects.Temporary"}}</span>
-                    {{#if owner}}
-                    <a class="item-control" data-action="createEffect" title="{{localize 'NEUROSHIMA.Effects.Create'}}">
-                        <i class="fas fa-plus"></i>
-                    </a>
-                    {{/if}}
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.Temporary"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr">
+                        {{#if owner}}
+                        <a class="item-control" data-action="createEffect" title="{{localize 'NEUROSHIMA.Effects.Create'}}">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                        {{/if}}
+                    </span>
                 </div>
 
                 {{#if effects.temporary.length}}
                 <div class="inventory-items effects-list">
-                    <div class="item effects-list-header flexrow">
-                        <div class="col-icon"></div>
-                        <div class="col-name">{{localize "Name"}}</div>
-                        <div class="col-source">{{localize "NEUROSHIMA.Effects.Source"}}</div>
-                        <div class="col-duration">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</div>
-                        <div class="col-controls"></div>
-                    </div>
                     {{#each effects.temporary}}
                     <div class="item effect-row flexrow" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
                         <div class="col-icon">
@@ -104,19 +101,15 @@
 
             {{!-- Passive --}}
             <div class="effects-group">
-                <div class="effects-group-header">
-                    <span>{{localize "NEUROSHIMA.Effects.Passive"}}</span>
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.Passive"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr"></span>
                 </div>
 
                 {{#if effects.passive.length}}
                 <div class="inventory-items effects-list">
-                    <div class="item effects-list-header flexrow">
-                        <div class="col-icon"></div>
-                        <div class="col-name">{{localize "Name"}}</div>
-                        <div class="col-source">{{localize "NEUROSHIMA.Effects.Source"}}</div>
-                        <div class="col-duration">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</div>
-                        <div class="col-controls"></div>
-                    </div>
                     {{#each effects.passive}}
                     <div class="item effect-row flexrow" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
                         <div class="col-icon">
@@ -155,19 +148,15 @@
 
             {{!-- Status / Condition Effects --}}
             <div class="effects-group">
-                <div class="effects-group-header">
-                    <span>{{localize "NEUROSHIMA.Effects.StatusGroup"}}</span>
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.StatusGroup"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr"></span>
                 </div>
 
                 {{#if effects.statusEffects.length}}
                 <div class="inventory-items effects-list">
-                    <div class="item effects-list-header flexrow">
-                        <div class="col-icon"></div>
-                        <div class="col-name">{{localize "Name"}}</div>
-                        <div class="col-source">{{localize "NEUROSHIMA.Effects.Source"}}</div>
-                        <div class="col-duration">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</div>
-                        <div class="col-controls"></div>
-                    </div>
                     {{#each effects.statusEffects}}
                     <div class="item effect-row flexrow {{#if this.disabled}}disabled{{/if}}" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
                         <div class="col-icon">
@@ -212,19 +201,15 @@
 
             {{!-- Disabled --}}
             <div class="effects-group effects-group-disabled">
-                <div class="effects-group-header">
-                    <span>{{localize "NEUROSHIMA.Effects.DisabledGroup"}}</span>
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.DisabledGroup"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr"></span>
                 </div>
 
                 {{#if effects.disabled.length}}
                 <div class="inventory-items effects-list">
-                    <div class="item effects-list-header flexrow">
-                        <div class="col-icon"></div>
-                        <div class="col-name">{{localize "Name"}}</div>
-                        <div class="col-source">{{localize "NEUROSHIMA.Effects.Source"}}</div>
-                        <div class="col-duration">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</div>
-                        <div class="col-controls"></div>
-                    </div>
                     {{#each effects.disabled}}
                     <div class="item effect-row flexrow disabled" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
                         <div class="col-icon">
