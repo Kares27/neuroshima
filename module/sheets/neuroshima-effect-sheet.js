@@ -197,6 +197,10 @@ const NS_CHANGE_KEYS = [
     { key: "system.skillBonuses.drivingCarriage",   label: "NEUROSHIMA.Skills.drivingCarriage",  prefix: "Bonus" },
     { key: "system.skills.taming.value",            label: "NEUROSHIMA.Skills.taming" },
     { key: "system.skillBonuses.taming",            label: "NEUROSHIMA.Skills.taming",           prefix: "Bonus" }
+  ]},
+  { group: "NEUROSHIMA.Effects.Keys.Group.Reputation", actorTypes: ["character", "npc", "creature"], keys: [
+    { key: "system.reputationBonus", label: "NEUROSHIMA.Effects.Keys.ReputationBonus" },
+    { key: "system.fameBonus",       label: "NEUROSHIMA.Effects.Keys.FameBonus" }
   ]}
 ];
 

@@ -109,7 +109,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       adjustFame: this.prototype._onAdjustFame,
       rollReputation: this.prototype._onRollReputation,
       rollReputationItem: this.prototype._onRollReputationItem,
-      adjustRepValue: this.prototype._onAdjustRepValue
+      adjustRepValue: this.prototype._onAdjustRepValue,
+      sortReputationItems: this.prototype._onSortReputationItems
     },
     dragDrop: [
       { dragSelector: ".item[data-item-id]", dropSelector: "form" },
@@ -423,21 +424,88 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     context.reputationItems = items.filter(i => i.type === "reputation");
 
     {
-      const relTable = game.settings.get("neuroshima", "reputationRelationTable") ?? [];
+      const globalRelTable = game.settings.get("neuroshima", "reputationRelationTable") ?? [];
       const useColors = game.settings.get("neuroshima", "reputationUseColors") ?? false;
       const colorNames = game.settings.get("neuroshima", "reputationColorNames") ?? false;
+      const showAsProgressBar = game.settings.get("neuroshima", "reputationShowAsProgressBar") ?? false;
+      const repMin = game.settings.get("neuroshima", "reputationMin") ?? 0;
+      const repMax = game.settings.get("neuroshima", "reputationMax") ?? 20;
+      const reputationBonus = this.document.system?.reputationBonus ?? 0;
+      const fameBonus = this.document.system?.fameBonus ?? 0;
+
+      const repBonusTooltipParts = [];
+      const fameBonusTooltipParts = [];
+      for (const effect of (this.document.effects ?? [])) {
+        if (effect.disabled || effect.isSuppressed) continue;
+        for (const change of (effect.changes ?? [])) {
+          const val = Number(change.value) || 0;
+          if (change.key === "system.reputationBonus") {
+            repBonusTooltipParts.push(`${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`);
+          } else if (change.key === "system.fameBonus") {
+            fameBonusTooltipParts.push(`${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`);
+          }
+        }
+      }
+
+      context.reputationBonus = reputationBonus;
+      context.fameBonus = fameBonus;
+      context.effectiveFame = (this.document.system?.fame ?? 0) + fameBonus;
+      context.fameBonusTooltip = fameBonusTooltipParts.length ? fameBonusTooltipParts.join("<br>") : null;
+      context.repBonusTooltip = repBonusTooltipParts.length ? repBonusTooltipParts.join("<br>") : null;
+      context.showRepAsProgressBar = showAsProgressBar;
+      context.repMin = repMin;
+      context.repMax = repMax;
+      context.repSortAsc = this._repSortAsc ?? false;
+
+      const _hexContrastColor = (hex) => {
+        if (!hex || !hex.startsWith("#") || hex.length < 7) return "#f0f0f0";
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? "#1a1a1a" : "#f0f0f0";
+      };
+
+      const _buildMarkers = (sortedTable, range) => {
+        const markers = [];
+        for (let i = 0; i < sortedTable.length - 1; i++) {
+          const boundary = sortedTable[i].maxVal ?? 0;
+          const pct = Math.round(Math.min(100, Math.max(0, ((boundary - repMin) / range) * 100)));
+          markers.push({ pct, color: sortedTable[i + 1].color ?? null });
+        }
+        return markers;
+      };
+
       const relMap = {};
       for (const item of context.reputationItems) {
-        const val = item.system?.value ?? 0;
-        const rel = relTable.find(r => val >= (r.minVal ?? 0) && val <= (r.maxVal ?? 0));
+        const baseVal = item.system?.value ?? 0;
+        const effectiveVal = baseVal + reputationBonus;
+        const activeTable = (item.system?.overrideRelations && item.system?.relationTable?.length)
+          ? item.system.relationTable
+          : globalRelTable;
+        const sorted = [...activeTable].sort((a, b) => (a.minVal ?? 0) - (b.minVal ?? 0));
+        let rel = sorted.find(r => effectiveVal >= (r.minVal ?? 0) && effectiveVal <= (r.maxVal ?? 0));
+        if (!rel && sorted.length) {
+          if (effectiveVal < (sorted[0].minVal ?? 0)) rel = sorted[0];
+          else rel = sorted[sorted.length - 1];
+        }
+        const range = Math.max(1, repMax - repMin);
+        const pct = Math.round(Math.min(100, Math.max(0, ((effectiveVal - repMin) / range) * 100)));
+        const markers = _buildMarkers(sorted, range);
         if (rel) {
           const color = rel.color ?? null;
           relMap[item.id] = {
             name: rel.name,
             color: useColors ? color : null,
-            nameColor: colorNames ? color : null
+            nameColor: colorNames ? color : null,
+            progressPct: pct,
+            progressColor: color,
+            progressTextColor: _hexContrastColor(color),
+            markers
           };
+        } else {
+          relMap[item.id] = { name: null, color: null, nameColor: null, progressPct: pct, progressColor: null, progressTextColor: "#f0f0f0", markers };
         }
+        item.effectiveValue = effectiveVal;
       }
       context.reputationRelationMap = relMap;
     }
@@ -842,6 +910,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       });
     });
 
+    this._initRepGripDrag(html);
+
     html.querySelectorAll('[data-action="adjustQuantity"]').forEach(el => {
       el.addEventListener('contextmenu', (event) => {
         event.preventDefault();
@@ -962,6 +1032,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         event.dataTransfer.setData("text/plain", JSON.stringify(effect.toDragData()));
       });
     });
+
+
 
   }
 
@@ -1107,6 +1179,13 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   /** @override */
   async _onDrop(event) {
     game.neuroshima.log("_onDrop triggered");
+    try {
+      const rawData = TextEditor.getDragEventData(event);
+      if (rawData?.fromChatCard) {
+        event._fromChatCard = true;
+        event._itemCardMessageId = rawData.messageId ?? null;
+      }
+    } catch(e) {}
     return super._onDrop(event);
   }
 
@@ -1160,12 +1239,34 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       }
     }
 
-    // Pozwól natywnej implementacji obsłużyć tworzenie/sortowanie przedmiotu
+    const fromChatCard = event._fromChatCard || item?.fromChatCard;
+
+    if (fromChatCard) {
+        const msgId = event._itemCardMessageId ?? item?.messageId;
+        if (msgId) {
+            const preventSelfTake = game.settings.get("neuroshima", "itemCardPreventSelfTake") ?? false;
+            if (preventSelfTake) {
+                const msg = game.messages.get(msgId);
+                const sourceActorId = msg?.getFlag("neuroshima", "itemCard")?.sourceActorId;
+                if (sourceActorId && sourceActorId === this.document.id) {
+                    ui.notifications.warn(game.i18n.localize("NEUROSHIMA.ItemCard.SelfTakeBlocked"));
+                    return;
+                }
+            }
+        }
+        const itemData = sourceItem.toObject();
+        delete itemData._id;
+        await this.document.createEmbeddedDocuments("Item", [itemData]);
+        if (msgId) {
+            const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+            await NeuroshimaChatMessage.decrementItemCardLimit(msgId);
+        }
+        return;
+    }
+
     const result = await super._onDropItem(event, item);
     
-    // Jeśli przedmiot został stworzony (nowy dokument) i pochodzi od innego aktora, usuń oryginał (ruch)
-    // UWAGA: super._onDropItem w AppV2 może zwracać stworzony przedmiot lub wynik sortowania
-    if (result && !event.altKey && sourceItem.actor && (sourceItem.actor.id !== this.document.id)) {
+    if (result && event.ctrlKey && sourceItem.actor && (sourceItem.actor.id !== this.document.id)) {
         await sourceItem.delete();
         game.neuroshima.log(`Moved item ${sourceItem.name} from actor ${sourceItem.actor.name} to ${this.document.name}`);
     }
@@ -1475,7 +1576,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       skill: 0,
       label: label,
       actor: actor,
-      isSkill: false
+      isSkill: false,
+      currentAttribute: attrKey
     });
   }
 
@@ -1515,7 +1617,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       label: label,
       actor: actor,
       isSkill: true,
-      currentAttribute: attrKey
+      currentAttribute: attrKey,
+      skillKey
     });
   }
 
@@ -1546,12 +1649,23 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   /**
    * Universal roll dialog for Neuroshima tests.
    */
-  async _showRollDialog({ stat, skill, label, actor, isSkill = false, currentAttribute = "" }) {
+  async _showRollDialog({ stat, skill, label, actor, isSkill = false, currentAttribute = "", skillKey = "" }) {
     const template = "systems/neuroshima/templates/dialog/roll-dialog.hbs";
     const lastRoll = actor.system.lastRoll || {};
     
     const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
     const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
+
+    const skillObj = isSkill ? { name: label, value: skill, key: skillKey } : null;
+    const attrObj = { name: currentAttribute, value: stat, key: currentAttribute };
+    const { dialogModifiers, totalDialogModifier, fieldTotals } = await NeuroshimaScriptRunner.runDialogScripts(actor, {
+      rollType: isSkill ? "skill" : "attribute",
+      label,
+      stat,
+      skill: skillObj,
+      attribute: attrObj,
+      difficulty: lastRoll.baseDifficulty || "average"
+    });
 
     const data = {
       difficulties: NEUROSHIMA.difficulties,
@@ -1566,14 +1680,17 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       isOpen: lastRoll.isOpen ?? true,
       isSkill: isSkill,
       rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode"),
-      rollModes: CONFIG.Dice.rollModes
+      rollModes: CONFIG.Dice.rollModes,
+      dialogModifiers,
+      totalDialogModifier,
+      fieldTotals: fieldTotals || { modifier: 0, attributeBonus: 0, skillBonus: 0 }
     };
     const content = await foundry.applications.handlebars.renderTemplate(template, data);
 
     const dialog = new foundry.applications.api.DialogV2({
       window: { 
         title: `${game.i18n.localize("NEUROSHIMA.Actions.Roll")}: ${label}`,
-        position: { width: 450, height: isSkill ? 420 : 350 }
+        position: { width: 520, height: isSkill ? 450 : 400 }
       },
       content: content,
       classes: ["neuroshima", "roll-dialog-window"],
@@ -1584,17 +1701,29 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
           default: true,
           callback: async (event, button, dialog) => {
             const form = button.form;
+            const checkboxes = form.querySelectorAll('.dm-checkbox');
+            for (const cb of checkboxes) {
+              if (!cb.checked) continue;
+              const idx = parseInt(cb.dataset.dmIndex);
+              const dm = dialogModifiers?.[idx];
+              if (dm?._script && dm._script.submissionScript) {
+                await dm._script.runSubmission({ actor });
+              }
+            }
             const isOpen = form.elements.isOpen.value === "true";
             const baseDiffKey = form.elements.baseDifficulty.value;
-            const modifier = parseInt(form.elements.modifier.value) || 0;
+            const modifierEl = form.elements.modifier;
+            const modifier = parseInt(modifierEl.value) || 0;
+            const modifierEffectDelta = parseInt(modifierEl?.dataset?.effectDelta) || 0;
             const rollMode = form.elements.rollMode.value;
             const useArmor = form.elements.useArmorPenalty.checked;
             const armorPenalty = useArmor ? (parseInt(form.elements.armorPenalty.value) || 0) : 0;
             const useWound = form.elements.useWoundPenalty.checked;
             const woundPenalty = useWound ? (parseInt(form.elements.woundPenalty.value) || 0) : 0;
             
-            const skillBonus = parseInt(form.elements.skillBonus.value) || 0;
-            const attributeBonus = parseInt(form.elements.attributeBonus.value) || 0;
+            const skillBonus = (parseInt(form.elements.skillBonus.value) || 0) + (parseInt(form.elements.dialogSkillBonus?.value) || 0);
+            const attributeBonus = (parseInt(form.elements.attributeBonus.value) || 0) + (parseInt(form.elements.dialogAttrBonus?.value) || 0);
+            const dialogModifier = parseInt(form.elements.dialogModifier?.value) || 0;
 
             let finalStat = stat;
             if (isSkill && form.elements.attribute) {
@@ -1602,10 +1731,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
               finalStat = actor.system.attributeTotals[selectedAttr];
             }
 
-            // Save last roll data
             await actor.update({
               "system.lastRoll": {
-                modifier,
+                modifier: modifier - modifierEffectDelta,
                 baseDifficulty: baseDiffKey,
                 useArmorPenalty: useArmor,
                 useWoundPenalty: useWound,
@@ -1618,7 +1746,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
               stat: finalStat,
               skill,
               penalties: {
-                mod: modifier,
+                mod: modifier + dialogModifier,
                 base: (NEUROSHIMA.difficulties[baseDiffKey]?.min || 0),
                 armor: armorPenalty,
                 wounds: woundPenalty
@@ -1658,6 +1786,46 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         }
       });
 
+      const recalcDialogModifier = () => {
+        NeuroshimaScriptRunner.applyDialogFieldOverrides(html[0], "baseDifficulty");
+      };
+
+      html.on('click', '[data-action="clickModifier"].dm-toggleable', async function() {
+        const li = $(this);
+        const cb = li.find('.dm-checkbox');
+        cb.prop('checked', !cb.prop('checked'));
+        li.toggleClass('dm-active', cb.prop('checked'));
+        const idx = parseInt(li.data('dm-index'));
+        const dm = dialogModifiers?.[idx];
+        if (dm?._script?.code) {
+          if (cb.prop('checked')) {
+            const liveCtx = {
+              difficulty: html.find('[name="baseDifficulty"]').val() ?? "average",
+              armorPenalty: parseInt(html.find('[name="baseArmorPenalty"]').val()) || 0,
+              woundPenalty: parseInt(html.find('[name="baseWoundPenalty"]').val()) || 0
+            };
+            const result = await NeuroshimaScriptRunner.execDialogModifier(dm, actor, liveCtx);
+            li[0].dataset.dmValue = Math.round(result.modifier);
+            li[0].dataset.dmAttrBonus = Math.round(result.attributeBonus);
+            li[0].dataset.dmSkillBonus = Math.round(result.skillBonus);
+            li[0].dataset.dmArmorDelta = Math.round(result.armorDelta) || 0;
+            li[0].dataset.dmWoundDelta = Math.round(result.woundDelta) || 0;
+            li[0].dataset.dmDifficulty = result.difficulty ?? "";
+            li[0].dataset.dmHitLocation = result.hitLocation ?? "";
+          } else {
+            li[0].dataset.dmValue = 0;
+            li[0].dataset.dmAttrBonus = 0;
+            li[0].dataset.dmSkillBonus = 0;
+            li[0].dataset.dmArmorDelta = 0;
+            li[0].dataset.dmWoundDelta = 0;
+            li[0].dataset.dmDifficulty = "";
+            li[0].dataset.dmHitLocation = "";
+          }
+        }
+        recalcDialogModifier();
+        updateSummary();
+      });
+
       const updateSummary = () => {
         const isOpen = html.find('[name="isOpen"]').val() === "true";
         const baseDiffKey = html.find('[name="baseDifficulty"]').val();
@@ -1666,6 +1834,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const armorPenalty = useArmor ? (parseInt(html.find('[name="armorPenalty"]').val()) || 0) : 0;
         const useWound = html.find('[name="useWoundPenalty"]').is(':checked');
         const woundPenalty = useWound ? (parseInt(html.find('[name="woundPenalty"]').val()) || 0) : 0;
+        const dialogMod = parseInt(html.find('[name="dialogModifier"]').val()) || 0;
         
         const skillBonus = parseInt(html.find('[name="skillBonus"]').val()) || 0;
         const attributeBonus = parseInt(html.find('[name="attributeBonus"]').val()) || 0;
@@ -1681,7 +1850,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const finalStat = currentStatValue + attributeBonus;
 
         const baseDiff = NEUROSHIMA.difficulties[baseDiffKey];
-        const totalPenalty = (baseDiff?.min || 0) + modifier + armorPenalty + woundPenalty;
+        const totalPenalty = (baseDiff?.min || 0) + modifier + dialogMod + armorPenalty + woundPenalty;
         
         const penaltyDiff = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
         const finalDiff = NeuroshimaDice._getShiftedDifficulty(penaltyDiff, -skillShift);
@@ -1693,7 +1862,59 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         html.find('.final-target').text(finalTarget);
       };
 
-      html.on('change input', 'input, select', updateSummary);
+      (async () => {
+        for (const [idx, dm] of (dialogModifiers || []).entries()) {
+          if (!dm.activated || !dm._script?.code) continue;
+          const li = html.find(`[data-dm-index="${idx}"]`)[0];
+          if (!li) continue;
+          const liveCtx = {
+            difficulty: html.find('[name="baseDifficulty"]').val() ?? "average",
+            armorPenalty: parseInt(html.find('[name="baseArmorPenalty"]').val()) || 0,
+            woundPenalty: parseInt(html.find('[name="baseWoundPenalty"]').val()) || 0
+          };
+          const result = await NeuroshimaScriptRunner.execDialogModifier(dm, actor, liveCtx);
+          li.dataset.dmValue = Math.round(result.modifier);
+          li.dataset.dmAttrBonus = Math.round(result.attributeBonus);
+          li.dataset.dmSkillBonus = Math.round(result.skillBonus);
+          li.dataset.dmArmorDelta = Math.round(result.armorDelta) || 0;
+          li.dataset.dmWoundDelta = Math.round(result.woundDelta) || 0;
+          li.dataset.dmDifficulty = result.difficulty ?? "";
+          li.dataset.dmHitLocation = result.hitLocation ?? "";
+        }
+        recalcDialogModifier();
+        updateSummary();
+      })();
+
+      const rerunActiveModifiers = async () => {
+        if (!dialogModifiers?.length) return;
+        for (const [idx, dm] of dialogModifiers.entries()) {
+          const li = html.find(`[data-dm-index="${idx}"]`)[0];
+          if (!li) continue;
+          const cb = li.querySelector('.dm-checkbox');
+          if (!cb?.checked) continue;
+          if (!dm?._script?.code) continue;
+          const diffEl = html.find('[name="baseDifficulty"]')[0];
+          const liveCtx = {
+            difficulty: diffEl?.dataset?.userDifficultyOverride || diffEl?.dataset?.userDifficulty || diffEl?.value || "average",
+            armorPenalty: parseInt(html.find('[name="baseArmorPenalty"]').val()) || 0,
+            woundPenalty: parseInt(html.find('[name="baseWoundPenalty"]').val()) || 0
+          };
+          const result = await NeuroshimaScriptRunner.execDialogModifier(dm, actor, liveCtx);
+          li.dataset.dmValue = Math.round(result.modifier);
+          li.dataset.dmAttrBonus = Math.round(result.attributeBonus);
+          li.dataset.dmSkillBonus = Math.round(result.skillBonus);
+          li.dataset.dmArmorDelta = Math.round(result.armorDelta) || 0;
+          li.dataset.dmWoundDelta = Math.round(result.woundDelta) || 0;
+          li.dataset.dmDifficulty = result.difficulty ?? "";
+          li.dataset.dmHitLocation = result.hitLocation ?? "";
+        }
+        recalcDialogModifier();
+      };
+
+      html.on('change input', 'input, select', async () => {
+        await rerunActiveModifiers();
+        updateSummary();
+      });
       updateSummary();
     }, 100);
 
@@ -2537,6 +2758,88 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     return item.update({ "system.value": newValue });
   }
 
+  async _onSortReputationItems(event, target) {
+    event.preventDefault();
+    this._repSortAsc = !(this._repSortAsc ?? false);
+    const repItems = this.document.items.filter(i => i.type === "reputation");
+    const reputationBonus = this.document.system?.reputationBonus ?? 0;
+    const asc = this._repSortAsc;
+    const sorted = [...repItems].sort((a, b) => {
+      const av = (a.system?.value ?? 0) + reputationBonus;
+      const bv = (b.system?.value ?? 0) + reputationBonus;
+      return asc ? av - bv : bv - av;
+    });
+    const updates = sorted.map((item, idx) => ({ _id: item.id, sort: (idx + 1) * CONST.SORT_INTEGER_DENSITY }));
+    return this.document.updateEmbeddedDocuments("Item", updates);
+  }
+
+  _initRepGripDrag(html) {
+    const container = html.querySelector(".rep-items-section .inventory-items");
+    if (!container) return;
+
+    let dragSrc = null;
+
+    const getWrap = (el) => el?.closest?.(".item-wrap[data-item-id]");
+
+    container.querySelectorAll(".rep-grip-handle").forEach(handle => {
+      const wrap = getWrap(handle);
+      if (!wrap) return;
+
+      handle.addEventListener("mousedown", () => {
+        wrap.setAttribute("draggable", "false");
+      });
+
+      handle.addEventListener("dragstart", (ev) => {
+        ev.stopPropagation();
+        dragSrc = wrap;
+        ev.dataTransfer.effectAllowed = "move";
+        ev.dataTransfer.setData("text/plain", wrap.dataset.itemId);
+        setTimeout(() => wrap.classList.add("rep-dragging"), 0);
+      });
+
+      handle.addEventListener("dragend", () => {
+        wrap.setAttribute("draggable", "true");
+        wrap.classList.remove("rep-dragging");
+        container.querySelectorAll(".rep-drop-target").forEach(el => el.classList.remove("rep-drop-target"));
+        dragSrc = null;
+      });
+
+      wrap.addEventListener("dragover", (ev) => {
+        if (!dragSrc || dragSrc === wrap) return;
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = "move";
+        container.querySelectorAll(".rep-drop-target").forEach(el => el.classList.remove("rep-drop-target"));
+        wrap.classList.add("rep-drop-target");
+      });
+
+      wrap.addEventListener("drop", async (ev) => {
+        if (!dragSrc || dragSrc === wrap) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        wrap.classList.remove("rep-drop-target");
+
+        const srcId = dragSrc.dataset.itemId;
+        const tgtId = wrap.dataset.itemId;
+        if (!srcId || !tgtId) return;
+
+        const allWraps = [...container.querySelectorAll(".item-wrap[data-item-id]")];
+        const srcIdx = allWraps.indexOf(dragSrc);
+        const tgtIdx = allWraps.indexOf(wrap);
+
+        const repItems = this.document.items.filter(i => i.type === "reputation");
+        const orderedIds = allWraps.map(w => w.dataset.itemId).filter(id => repItems.some(i => i.id === id));
+
+        const reordered = [...orderedIds];
+        const [removed] = reordered.splice(srcIdx, 1);
+        reordered.splice(tgtIdx, 0, removed);
+
+        const updates = reordered.map((id, idx) => ({ _id: id, sort: (idx + 1) * CONST.SORT_INTEGER_DENSITY }));
+        await this.document.updateEmbeddedDocuments("Item", updates);
+      });
+    });
+  }
+
   async _onAdjustQuantity(event, target) {
     const direction = event.button === 2 ? -1 : 1;
     return this._onQuantityChange(event, target, direction);
@@ -3086,9 +3389,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         flags.forEach((s, idx) => {
           if (s.trigger === "manual") {
             const rawLabel = s.label || eff.name;
-            const label = rawLabel
-              .replace(/@effect\.name/g, eff.name)
-              .replace(/@item\.name/g, item.name);
+            const label = NeuroshimaScriptRunner._resolveItemRef(rawLabel, item, eff);
             scripts.push({
               itemId: item.id,
               effectId: eff.id,
@@ -3113,22 +3414,6 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     if (!effect) return;
 
     const actor = this.document;
-    if (item.type === "trick" && actor.type === "character") {
-      const { TRICK_COST, showXpDialog, applyXpEntry } = await import("../helpers/xp.js");
-      const currentXp = actor.system.xp?.current ?? 0;
-      const trickName = item.name;
-      const result = await showXpDialog(
-        TRICK_COST,
-        game.i18n.format("NEUROSHIMA.XP.Dialog.TrickDescription", { name: trickName }),
-        currentXp
-      );
-      if (result === null) return;
-      if (!result.free) {
-        const changed = {};
-        applyXpEntry(actor, changed, result.cost, trickName, null, null);
-        await actor.update(changed);
-      }
-    }
 
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
     await NeuroshimaScriptRunner.executeManual(actor, effect, Number(scriptIndex));
@@ -3236,18 +3521,186 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
   async _postItemToChat(itemId) {
     const item = this.document.items.get(itemId);
     if (!item) return;
-    const description = item.system.description || "";
-    const enriched = await TextEditor.enrichHTML(description, { async: true });
-    await ChatMessage.create({
-      speaker: ChatMessage.getSpeaker({ actor: this.document }),
-      content: `<div class="neuroshima item-chat-card">
-        <div class="item-card-header flexrow">
-          <img src="${item.img}" title="${item.name}" width="36" height="36"/>
-          <h3>${item.name}</h3>
+    const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+    await NeuroshimaChatMessage.postItemToChat(item, { actor: this.document });
+  }
+
+  async _showItemCardLimitDialog() {
+    const content = `
+      <div class="neuroshima item-card-limit-dialog">
+        <h4 class="item-card-limit-heading">${game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Label")}</h4>
+        <div class="form-group">
+          <div class="form-fields">
+            <input type="number" name="limit" min="1" placeholder="∞" autofocus style="width:100%">
+          </div>
         </div>
-        <div class="item-card-body">${enriched}</div>
-      </div>`
+      </div>
+    `;
+
+    const result = await foundry.applications.api.DialogV2.wait({
+      window: { title: game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Title") },
+      content,
+      buttons: [
+        {
+          action: "confirm",
+          label: game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Confirm"),
+          icon: "fas fa-check",
+          default: true,
+          callback: (event, button) => {
+            const val = button.form.elements.limit.value.trim();
+            return val ? parseInt(val) : null;
+          }
+        },
+        {
+          action: "cancel",
+          label: game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Cancel"),
+          icon: "fas fa-times",
+          callback: () => "cancel"
+        }
+      ],
+      classes: ["neuroshima"],
+      rejectClose: false
     });
+
+    return result;
+  }
+
+  _buildItemChatStats(item) {
+    const loc = (key) => game.i18n.localize(key);
+    const s = item.system;
+    const stats = [];
+    let armorRatings = null;
+    let armorBoxStats = null;
+    let magazineContents = null;
+    let weight = null;
+    let availability = null;
+    let hasWeight = false;
+
+    const dash = "—";
+
+    const attrLabel = (key) => {
+      const cfg = NEUROSHIMA?.attributes?.[key];
+      return cfg ? loc(cfg.label) : (key || dash);
+    };
+    const skillLabel = (key) => {
+      const k = `NEUROSHIMA.Skills.${key}`;
+      const t = loc(k);
+      return t !== k ? t : (key || dash);
+    };
+
+    if (s.weight !== undefined) {
+      hasWeight = true;
+      weight = s.weight ?? 0;
+      availability = s.availability ?? null;
+    }
+
+    switch (item.type) {
+      case "weapon": {
+        const wType = s.weaponType ?? "melee";
+        const wTypeLabel = loc(`NEUROSHIMA.Items.Fields.${wType.charAt(0).toUpperCase() + wType.slice(1)}`);
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.WeaponSubtype"), value: wTypeLabel || wType });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Attribute"), value: attrLabel(s.attribute) });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Skill"), value: skillLabel(s.skill) });
+        if (wType === "melee") {
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: `${s.damageMelee1 || dash} / ${s.damageMelee2 || dash} / ${s.damageMelee3 || dash}` });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
+        } else {
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Caliber"), value: s.caliber || dash });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: s.damage || dash });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.FireRateAbbr"), value: s.fireRate ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Capacity"), value: s.capacity ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.JammingAbbr"), value: s.jamming ?? 20 });
+        }
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.RequiredBuild"), value: s.requiredBuild ?? 0 });
+        if (s.attackBonus !== 0) stats.push({ label: loc("NEUROSHIMA.Items.Fields.AttackBonusAbbr"), value: (s.attackBonus > 0 ? "+" : "") + s.attackBonus });
+        if (s.defenseBonus !== 0) stats.push({ label: loc("NEUROSHIMA.Items.Fields.DefenseBonusAbbr"), value: (s.defenseBonus > 0 ? "+" : "") + s.defenseBonus });
+        break;
+      }
+      case "armor": {
+        const locKeys = [
+          { key: "head",     abbr: "HeadAbbr" },
+          { key: "torso",    abbr: "TorsoAbbr" },
+          { key: "leftArm",  abbr: "LeftArmAbbr" },
+          { key: "rightArm", abbr: "RightArmAbbr" },
+          { key: "leftLeg",  abbr: "LeftLegAbbr" },
+          { key: "rightLeg", abbr: "RightLegAbbr" }
+        ];
+        armorRatings = locKeys.map(({ key, abbr }) => ({
+          label: loc(`NEUROSHIMA.Items.Fields.${abbr}`),
+          value: s.armor?.ratings?.[key] ?? 0
+        }));
+        const dur = (s.armor?.durability ?? 0) - (s.armor?.durabilityDamage ?? 0);
+        armorBoxStats = [
+          { label: loc("NEUROSHIMA.Items.Fields.DurabilityAbbr"), value: `${dur} / ${s.armor?.durability ?? 0}` },
+          { label: loc("NEUROSHIMA.Items.Fields.RequiredBuild"), value: s.armor?.requiredBuild ?? 0 },
+          { label: loc("NEUROSHIMA.Items.Fields.ArmorPenalty"), value: s.armor?.penalty ?? 0 }
+        ];
+        break;
+      }
+      case "gear": {
+        if (s.cost > 0) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Cost"), value: s.cost });
+        if (s.quantity !== undefined) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
+        break;
+      }
+      case "ammo": {
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Caliber"), value: s.caliber || dash });
+        if (s.isOverride) {
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: s.damage || dash });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.JammingAbbr"), value: s.jamming ?? 20 });
+        }
+        if (s.isPellet) {
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.PelletCount"), value: s.pelletCount });
+        }
+        if (s.quantity !== undefined) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
+        break;
+      }
+      case "magazine": {
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Caliber"), value: s.caliber || dash });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Capacity"), value: `${s.totalCount ?? 0} / ${s.capacity ?? 0}` });
+        magazineContents = (s.contents || []).filter(c => c.quantity > 0).map(c => ({ name: c.name || dash, quantity: c.quantity }));
+        break;
+      }
+      case "money": {
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.CoinValue"), value: s.coinValue });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
+        break;
+      }
+      case "reputation": {
+        stats.push({ label: loc("NEUROSHIMA.Reputation.Value"), value: s.value });
+        break;
+      }
+      case "beastAction":
+      case "beast-action": {
+        if (s.actionType) stats.push({ label: loc("NEUROSHIMA.BeastAction.TypeLabel"), value: s.actionType });
+        if (s.costType === "success") {
+          stats.push({ label: loc("NEUROSHIMA.BeastAction.SuccessCost"), value: `${s.successCost} SP` });
+        } else {
+          stats.push({ label: loc("NEUROSHIMA.BeastAction.SegmentCost"), value: `${s.segmentCost} seg.` });
+        }
+        if (s.attribute) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Attribute"), value: attrLabel(s.attribute) });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: s.damage || dash });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
+        break;
+      }
+      case "vehicleMod":
+      case "vehicle-mod": {
+        if (s.category) {
+          const catKey = `NEUROSHIMA.VehicleMod.Categories.${s.category.charAt(0).toUpperCase() + s.category.slice(1)}`;
+          stats.push({ label: loc("NEUROSHIMA.VehicleMod.Category"), value: loc(catKey) });
+        }
+        if (s.installDifficulty) {
+          const diffCfg = NEUROSHIMA?.difficulties?.[s.installDifficulty];
+          stats.push({ label: loc("NEUROSHIMA.VehicleMod.InstallDifficulty"), value: diffCfg ? loc(diffCfg.label) : s.installDifficulty });
+        }
+        break;
+      }
+      default:
+        break;
+    }
+
+    return { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight };
   }
 
   async _onPostItemToChat(event, target) {

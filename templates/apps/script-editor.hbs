@@ -1,38 +1,60 @@
-<div class="ns-script-editor-body standard-form">
-    <div class="form-group">
-        <label>{{localize "NEUROSHIMA.Scripts.Label"}}</label>
-        <div class="form-fields">
-            <input type="text" name="label" value="{{scriptData.label}}" placeholder="{{localize 'NEUROSHIMA.Scripts.LabelPlaceholder'}}">
+<div class="ns-script-editor-body">
+
+    <div class="ns-editor-fields">
+        <div class="form-group">
+            <label data-tooltip="Puste = użyj pola Test z zakładki Efekty itemu. Obsługuje referencje @item.ścieżka np. @item.system.tests.value">{{localize "NEUROSHIMA.Scripts.Label"}}</label>
+            <div class="form-fields">
+                <input type="text" name="label" value="{{scriptData.label}}" placeholder="{{localize 'NEUROSHIMA.Scripts.LabelPlaceholder'}}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Scripts.Trigger.Label"}}</label>
+            <div class="form-fields">
+                <select name="trigger">
+                    {{#each triggers}}
+                    <option value="{{@key}}" {{#if (eq @key ../scriptData.trigger)}}selected{{/if}}>{{this}}</option>
+                    {{/each}}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group ns-run-if-disabled-group">
+            <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.RunIfDisabledHint'}}">
+                {{localize "NEUROSHIMA.Scripts.RunIfDisabled"}}
+            </label>
+            <div class="form-fields">
+                <input type="checkbox" name="runIfDisabled" {{#if scriptData.runIfDisabled}}checked{{/if}}>
+            </div>
         </div>
     </div>
 
-    <div class="form-group">
-        <label>{{localize "NEUROSHIMA.Scripts.Trigger.Label"}}</label>
-        <div class="form-fields">
-            <select name="trigger">
-                {{#each triggers}}
-                <option value="{{@key}}" {{#if (eq @key ../scriptData.trigger)}}selected{{/if}}>{{this}}</option>
-                {{/each}}
-            </select>
+    <div class="ns-editor-scroll-area">
+        <div class="form-group stacked ns-script-code-group">
+            <label>{{#if (eq scriptData.trigger "dialog")}}{{localize "NEUROSHIMA.Scripts.DialogScript"}}{{else}}{{localize "NEUROSHIMA.Scripts.Code"}}{{/if}}</label>
+            <code-mirror name="code" language="javascript" indent="4">{{scriptData.code}}</code-mirror>
         </div>
-    </div>
 
-    <div class="form-group ns-run-if-disabled-group">
-        <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.RunIfDisabledHint'}}">
-            {{localize "NEUROSHIMA.Scripts.RunIfDisabled"}}
-        </label>
-        <div class="form-fields">
-            <input type="checkbox" name="runIfDisabled" {{#if scriptData.runIfDisabled}}checked{{/if}}>
+        {{#if (eq scriptData.trigger "dialog")}}
+        <div class="ns-dialog-subscripts">
+            <div class="form-group stacked ns-script-code-group">
+                <label>{{localize "NEUROSHIMA.Scripts.HideScript"}} <span class="hint">— return true to hide</span></label>
+                <code-mirror name="hideScript" language="javascript" indent="4">{{scriptData.hideScript}}</code-mirror>
+            </div>
+            <div class="form-group stacked ns-script-code-group">
+                <label>{{localize "NEUROSHIMA.Scripts.ActivateScript"}} <span class="hint">— return true to auto-activate</span></label>
+                <code-mirror name="activateScript" language="javascript" indent="4">{{scriptData.activateScript}}</code-mirror>
+            </div>
+            <div class="form-group stacked ns-script-code-group">
+                <label>{{localize "NEUROSHIMA.Scripts.SubmissionScript"}} <span class="hint">— runs on submit when active</span></label>
+                <code-mirror name="submissionScript" language="javascript" indent="4">{{scriptData.submissionScript}}</code-mirror>
+            </div>
         </div>
-    </div>
-
-    <div class="form-group stacked ns-script-code-group">
-        <label>{{localize "NEUROSHIMA.Scripts.Code"}}</label>
-        <code-mirror name="code" language="javascript" indent="4">{{scriptData.code}}</code-mirror>
+        {{/if}}
     </div>
 
     <footer class="form-footer">
-        <button type="submit">
+        <button type="button" class="ns-se-save-btn">
             <i class="fa-solid fa-floppy-disk"></i> {{localize "NEUROSHIMA.Sheet.SaveAndFinish"}}
         </button>
     </footer>

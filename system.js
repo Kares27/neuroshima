@@ -443,6 +443,15 @@ Hooks.once('init', async function() {
         requiresReload: false
     });
     
+    game.settings.register("neuroshima", "itemCardPreventSelfTake", {
+        name: "NEUROSHIMA.Settings.ItemCardPreventSelfTake.Name",
+        hint: "NEUROSHIMA.Settings.ItemCardPreventSelfTake.Hint",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false
+    });
+
     // Ustawienie limitujące liczbę śrucin (Buckshot/Birdshot) na podstawie statystyk amunicji
     game.settings.register("neuroshima", "usePelletCountLimit", {
         name: "NEUROSHIMA.Settings.UsePelletCountLimit.Name",
@@ -675,6 +684,15 @@ Hooks.once('init', async function() {
         config: false,
         type: Number,
         default: 1
+    });
+
+    game.settings.register("neuroshima", "reputationShowAsProgressBar", {
+        name: "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Name",
+        hint: "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
     });
 
     // Rejestracja ustawień udźwigu (ukryte z głównego menu)
@@ -1918,13 +1936,16 @@ Hooks.on("updateItem", async (item, changes, options, userId) => {
     const newValue = foundry.utils.getProperty(changes, "system.value");
     if (newValue === undefined || newValue === null) return;
 
-    const threshold = Math.max(1, game.settings.get("neuroshima", "reputationFameThreshold") ?? 20);
-    const famePerThreshold = Math.max(1, game.settings.get("neuroshima", "reputationFamePoints") ?? 1);
+    const threshold = game.settings.get("neuroshima", "reputationFameThreshold") ?? 20;
+    const famePerThreshold = game.settings.get("neuroshima", "reputationFamePoints") ?? 1;
+    if (threshold <= 0 || famePerThreshold <= 0) return;
 
     const actor = item.parent;
+    const reputationBonus = actor.system?.reputationBonus ?? 0;
+    const effectiveValue = newValue + reputationBonus;
     const flagKey = `repFameBonus.${item.id}`;
     const prevBonus = actor.getFlag("neuroshima", flagKey) ?? 0;
-    const newBonus = Math.floor(newValue / threshold) * famePerThreshold;
+    const newBonus = Math.floor(Math.max(0, effectiveValue) / threshold) * famePerThreshold;
 
     const delta = newBonus - prevBonus;
     if (delta === 0) return;
@@ -1950,6 +1971,23 @@ Hooks.on("deleteItem", async (item, options, userId) => {
     const updatedFame = Math.clamp(currentFame - prevBonus, -40, 40);
     await actor.unsetFlag("neuroshima", flagKey);
     await actor.update({ "system.fame": updatedFame }, { ns_skipFameRecalc: true });
+});
+
+Hooks.on("getItemDirectoryEntryContext", (html, options) => {
+    options.push({
+        name: game.i18n.localize("NEUROSHIMA.ContextMenu.PostToChat"),
+        icon: '<i class="fas fa-comment"></i>',
+        condition: (li) => {
+            const item = game.items.get(li.dataset?.entryId ?? li.dataset?.documentId ?? li[0]?.dataset?.entryId ?? li[0]?.dataset?.documentId);
+            return !!item;
+        },
+        callback: async (li) => {
+            const item = game.items.get(li.dataset?.entryId ?? li.dataset?.documentId ?? li[0]?.dataset?.entryId ?? li[0]?.dataset?.documentId);
+            if (!item) return;
+            const { NeuroshimaChatMessage } = await import("./module/documents/chat-message.js");
+            await NeuroshimaChatMessage.postItemToChat(item, {});
+        }
+    });
 });
 
 Hooks.on("renderItemDirectory", (app, html) => {

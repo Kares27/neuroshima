@@ -24,7 +24,8 @@
             "origin": "Pochodzenie",
             "profession": "Profesja",
             "vehicle-damage": "Uszkodzenie",
-            "money": "Waluta"
+            "money": "Waluta",
+            "reputation": "Reputacja"
         }
     },
     "NEUROSHIMA": {
@@ -165,6 +166,10 @@
             "Wounds": "Rany",
             "Summary": "Podsumowanie",
             "TotalModifier": "Suma modyfikatorów",
+            "DialogModifiers": "Modyfikatory Dialogu",
+            "UserEntry": "Własny",
+            "EffectBonus": "Efekty",
+            "Total": "Łącznie",
             "FinalDifficulty": "Ostateczna Trudność",
             "SkillBonus": "Bonus do Umiejętności",
             "SkillBonusAbbr": "Bon Umiej.",
@@ -350,6 +355,10 @@
                 "Name": "Punkty sławy za próg",
                 "Hint": "Ile punktów sławy gracz otrzymuje po osiągnięciu progu reputacji."
             },
+            "ReputationShowAsProgressBar": {
+                "Name": "Pokaż relację jako pasek postępu",
+                "Hint": "Zamiast nazwy relacji wyświetla animowany pasek postępu w kolorze relacji z nazwą wewnątrz."
+            },
             "EncumbranceConfig": {
                 "Title": "Ustawienia Udźwigu",
                 "Label": "Skonfiguruj Udźwig",
@@ -421,6 +430,10 @@
             "RollTooltipOwnerVisibility": {
                 "Name": "Pokazuj Tooltip Właścicielowi",
                 "Hint": "Zawsze pokazuj szczegółowe rozbicie kar właścicielowi rzutu (oraz MG), niezależnie od jego rangi."
+            },
+            "ItemCardPreventSelfTake": {
+                "Name": "Blokuj pobieranie własnych przedmiotów z czatu",
+                "Hint": "Gdy włączone, aktor który wysłał przedmiot na czat nie może sam go sobie stamtąd pobrać."
             },
             "UsePelletCountLimit": {
                 "Name": "Limit liczby śrucin",
@@ -1080,7 +1093,13 @@
             "SimpleRollHint": "Rzut 1d100 — sukces gdy wynik ≤ Wartość + Sława.",
             "FameGained": "{item}: osiągnięto próg — +{fame} pkt sławy!",
             "Relation": "Relacja",
-            "AdjustHint": "LPM: +1 | PPM: -1 | Shift: ×5 | Ctrl: ×10 | Ctrl+Shift: ×100"
+            "AdjustHint": "LPM: +1 | PPM: -1 | Shift: ×5 | Ctrl: ×10 | Ctrl+Shift: ×100",
+            "ValueAbbr": "Rep.",
+            "FameAbbr": "Sława",
+            "RepBonus": "Bon. do Rep.",
+            "RepBonusHint": "Dodatkowy bonus dodawany bezpośrednio do wartości reputacji przy tym rzucie.",
+            "SortByValue": "Sortuj według wartości reputacji (malejąco)",
+            "DragToReorder": "Przeciągnij aby zmienić kolejność"
         },
         "Armor": {
             "TotalPenalty": "Kara",
@@ -1348,6 +1367,8 @@
             "EquipTransfer": "Transfer przy Założeniu",
             "EquipTransferHint": "Przenoś ten efekt tylko gdy przedmiot jest założony.",
             "BonusFromEffect": "Bonus z aktywnego efektu",
+            "Test": "Test",
+            "TestHint": "Opcjonalna etykieta testu. Użyj w skryptach jako args.effect.test. Obsługuje referencje @item.system.xxx.",
             "ManualKeys": "Ręczny klucz",
             "ToggleManualKeys": "Przełącz między listą predefiniowanych kluczy a ręcznym wpisywaniem",
             "Change": {
@@ -1372,9 +1393,12 @@
                     "SkillsPerception": "Umiejętności: Percepcja",
                     "SkillsCharisma": "Umiejętności: Charyzma",
                     "SkillsCleverness": "Umiejętności: Spryt",
-                    "SkillsConstitution": "Umiejętności: Kondycja"
+                    "SkillsConstitution": "Umiejętności: Kondycja",
+                    "Reputation": "Reputacja"
                 },
                 "HealingRate": "Tempo Leczenia",
+                "ReputationBonus": "Globalny Bonus do Reputacji",
+                "FameBonus": "Bonus do Sławy",
                 "ArmorBonus": {
                     "All": "Bonus do Wszystkich Lokacji",
                     "Head": "Bonus do Głowy",
@@ -1446,8 +1470,13 @@
                 "EndRound": "Koniec Rundy",
                 "EndCombat": "Zakończenie Walki",
                 "CreateEffect": "Utworzenie Efektu",
-                "DeleteEffect": "Usunięcie Efektu"
+                "DeleteEffect": "Usunięcie Efektu",
+                "Dialog": "Modyfikator Dialogu"
             },
+            "DialogScript": "Skrypt Dialogu",
+            "HideScript": "Skrypt Ukrycia",
+            "ActivateScript": "Skrypt Aktywacji",
+            "SubmissionScript": "Skrypt Zatwierdzenia",
             "Help": {
                 "Actor": "Aktor właściciel efektu",
                 "Item": "Item właściciel efektu (jeśli efekt jest na itemu)",
@@ -1507,6 +1536,16 @@
             "Stats": "Statystyki",
             "Resources": "Zasoby",
             "Description": "Opis"
+        },
+        "ItemCard": {
+            "DragHint": "Przeciągnij na aktora aby przypisać ten przedmiot",
+            "SelfTakeBlocked": "Nie możesz pobrać własnego przedmiotu z czatu.",
+            "LimitDialog": {
+                "Title": "Ilość dostępnych kopii",
+                "Label": "Ile razy można zabrać ten przedmiot? (puste = nieskończoność)",
+                "Confirm": "Zatwierdź",
+                "Cancel": "Anuluj"
+            }
         }
     }
 }

@@ -1,10 +1,12 @@
-import { NEUROSHIMA } from "../config.js";
+import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ApplicationV2 } = foundry.applications.api;
 
 /**
  * Dialog for unified initiative rolls.
+ * Uses WFRP-inspired re-render pattern: userEntry tracks user overrides,
+ * scripts run fresh on every _prepareContext call - no DOM delta accumulation.
  */
 export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(options={}) {
@@ -16,10 +18,9 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     this.duelId = options.duelId;
     this.encounterId = options.encounterId;
     this.isMelee = options.isMelee;
-    this.meleeMode = options.meleeMode || "initiate"; // "initiate", "respond", "join"
+    this.meleeMode = options.meleeMode || "initiate";
     this.pendingId = options.pendingId || null;
-    
-    // Initial options
+
     this.rollOptions = {
       attribute: options.attribute || "dexterity",
       skill: options.skill || "",
@@ -30,9 +31,17 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
       useWoundPenalty: options.useWoundPenalty ?? true,
       rollMode: options.rollMode || game.settings.get("core", "rollMode")
     };
-    
+
     this._onRollCallback = options.onRoll;
     this._onCloseCallback = options.onClose;
+
+    this.userEntry = {};
+    this.selectedModifierIds = new Set();
+    this.unselectedModifierIds = new Set();
+    this._dialogModifiers = [];
+    this._scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null };
+    this._breakdown = { mod: [], attr: [], skill: [] };
+    this._userValues = { modifier: 0, attributeBonus: 0, skillBonus: 0 };
   }
 
   /** @override */
@@ -49,10 +58,9 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
       resizable: false,
       minimizable: false
     },
-    form: {
-        handler: NeuroshimaInitiativeRollDialog.prototype._onSubmit,
-        submitOnChange: false,
-        closeOnSubmit: true
+    actions: {
+      roll: NeuroshimaInitiativeRollDialog.prototype._onRoll,
+      cancel: NeuroshimaInitiativeRollDialog.prototype._onCancel
     }
   };
 
@@ -63,223 +71,100 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     }
   };
 
-  /**
-   * Handle form submission.
-   */
-  async _onSubmit(event, form, formData) {
-    const action = event.submitter?.dataset.action || event.submitter?.getAttribute("action");
-    
-    if (action === "cancel") {
-        return this.close();
-    }
-    
-    // Extract data from formData object
-    const rollData = this._extractRollData(formData.object);
-    
-    // Close dialog IMMEDIATELY
-    this.close();
-    
-    // Perform roll (this will await for Dice So Nice if configured)
-    const result = await this._performRoll(rollData);
-    
-    game.neuroshima?.log("Initiative roll completed", {
-        actor: this.actor.name,
-        successPoints: result?.successPoints,
-        rollData
-    });
-    
-    // Update combatant if needed
-    if (this.combatant && !this.isMelee) {
-        await this.combatant.update({ initiative: result.successPoints });
-    }
-    
-    // Handle Melee Initiation if this was a melee initiative roll
-    if (this.isMelee && result && this.meleeMode === "initiate") {
-        if (this.duelId || this.encounterId) {
-            // Joining or responding to an existing encounter
-            // This will be handled by the caller or a specific service
-        } else if (this.targets && this.targets.length === 1) {
-            const rawTarget = this.targets[0];
-            let targetDoc = rawTarget;
-            
-            // Normalize target if it's a UUID string
-            if (typeof rawTarget === "string") {
-                targetDoc = fromUuidSync(rawTarget);
-            }
-            
-            const targetActor = targetDoc?.actor || targetDoc;
-            if (!targetActor?.getFlag) {
-                console.warn("Neuroshima | Invalid melee target passed to initiative dialog", rawTarget);
-                return result;
-            }
-            
-            // If we are initiating a NEW melee from a weapon click
-            const { MeleeEncounter } = await import("../combat/melee-encounter.js");
-            const { MeleeStore } = await import("../combat/melee-store.js");
-            const activeEncounterId = targetActor.getFlag("neuroshima", "activeMeleeEncounter");
-            const activeEncounter = activeEncounterId ? MeleeStore.getEncounter(activeEncounterId) : null;
-            
-            if (activeEncounter) {
-                game.neuroshima?.log("Target already in encounter, joining", { activeEncounterId, target: targetActor.name });
-                // Join existing
-                await MeleeEncounter.join(activeEncounterId, {
-                    id: this.actor.uuid,
-                    actorUuid: this.actor.uuid,
-                    tokenUuid: this.actor.token?.uuid,
-                    actorId: this.actor.id,
-                    name: this.actor.name,
-                    img: this.actor.img,
-                    weaponId: this.weaponId,
-                    initiative: result.successPoints,
-                    chargeLevel: rollData.chargeLevel
-                }, "A"); // Team A for now, logic can be more complex
-            } else {
-                // If it has a stale flag, unset it
-                if (activeEncounterId) {
-                    game.neuroshima?.log("Target has stale activeMeleeEncounter flag, clearing", { activeEncounterId });
-                    await targetActor.unsetFlag("neuroshima", "activeMeleeEncounter");
-                }
-                
-                game.neuroshima?.log("Initiating new pending melee", { attacker: this.actor.name, target: targetActor.name });
-                // Initiate pending
-                const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-                await NeuroshimaMeleeCombat.initiateMeleePending(
-                    this.actor.uuid,
-                    targetActor.uuid,
-                    result.successPoints,
-                    this.weaponId,
-                    rollData.maneuver,
-                    rollData.chargeLevel
-                );
-            }
-        }
-    }
-    
-    return result;
-  }
-
-  /**
-   * Extracts and converts form data into roll options.
-   * @private
-   */
-  _extractRollData(data) {
-    const penalties = {
-        mod: parseInt(data.modifier) || 0,
-        armor: data.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0,
-        wounds: data.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0
-    };
-
-    return {
-        attribute: data.attribute,
-        skill: data.skill,
-        useSkill: !!data.useSkill,
-        difficulty: data.difficulty,
-        modifier: penalties.mod,
-        useArmorPenalty: !!data.useArmorPenalty,
-        useWoundPenalty: !!data.useWoundPenalty,
-        skillBonus: parseInt(data.skillBonus) || 0,
-        attributeBonus: parseInt(data.attributeBonus) || 0,
-        maneuver: data.maneuver || "none",
-        chargeLevel: parseInt(data.chargeLevel) || 0,
-        rollMode: data.rollMode
-    };
-  }
-
-  /**
-   * Executes the roll using the provided data.
-   * @private
-   */
-  async _performRoll(rollData) {
-    let result;
-    if (this._onRollCallback) {
-        result = await this._onRollCallback(rollData);
-    } else {
-        result = await game.neuroshima.NeuroshimaDice.rollInitiative({
-            ...rollData,
-            actor: this.actor
-        });
-    }
-    return result;
-  }
-
   /** @override */
   get title() {
     return `${game.i18n.localize("NEUROSHIMA.Roll.RollInitiative")}: ${this.actor.name}`;
   }
 
+  _buildTooltip(userVal, delta, breakdown) {
+    if (!delta) return null;
+    const sign = v => v >= 0 ? `+${v}` : `${v}`;
+    const userLabel = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
+    const effectLabel = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
+    const totalLabel = game.i18n.localize("NEUROSHIMA.Roll.Total");
+    const parts = [`<strong>${userLabel}:</strong> ${sign(userVal)}`];
+    if (breakdown.length) {
+      parts.push(`<strong>${effectLabel}:</strong>`);
+      for (const e of breakdown) parts.push(`&nbsp;&bull; ${e.label}: ${sign(e.value)}`);
+    }
+    parts.push(`<strong>${totalLabel}:</strong> ${sign(userVal + delta)}`);
+    return parts.join("<br>");
+  }
+
   /** @override */
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    
-    // Penalties from actor
-    const armorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
-    const woundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
+
+    const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
+    const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
+
+    const userModifier    = this.userEntry.modifier       ?? this.rollOptions.modifier ?? 0;
+    const userAttrBonus   = this.userEntry.attributeBonus ?? 0;
+    const userSkillBonus  = this.userEntry.skillBonus     ?? 0;
+    const useSkill        = this.userEntry.useSkill       ?? this.rollOptions.useSkill ?? true;
+    const difficulty      = this.userEntry.difficulty     ?? this.rollOptions.difficulty ?? "average";
+    const attribute       = this.userEntry.attribute      ?? this.rollOptions.attribute ?? "dexterity";
+    const skill           = this.userEntry.skill          ?? this.rollOptions.skill ?? "";
+    const useArmorPenalty = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? false;
+    const useWoundPenalty = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
+    const rollMode        = this.userEntry.rollMode       ?? this.rollOptions.rollMode;
+
+    const initAttrValue = this.actor.system.attributeTotals?.[attribute] ?? 0;
+    const initAttrObj = { name: attribute, value: initAttrValue, key: attribute };
+    const initSkillValue = skill ? (this.actor.system.skills?.[skill]?.value ?? 0) : 0;
+    const initSkillObj = skill ? { name: game.i18n.localize(`NEUROSHIMA.Skills.${skill}`) || skill, value: initSkillValue, key: skill } : null;
+
+    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
+      this.actor,
+      { rollType: "initiative", isMelee: this.isMelee, skill: initSkillObj, attribute: initAttrObj, difficulty },
+      this.selectedModifierIds,
+      this.unselectedModifierIds
+    );
+
+    this._dialogModifiers = dialogModifiers;
+    this._scriptFields = scriptFields;
+    this._breakdown = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown };
+    this._userValues = { modifier: userModifier, attributeBonus: userAttrBonus, skillBonus: userSkillBonus };
+
+    const equippedWeapon = this.actor.items.find(i => i.type === "weapon" && i.system.equipped);
+    const weaponSkillKey = equippedWeapon?.system.skill;
+    const skills = {};
+    const isCreature = this.actor?.type === "creature";
+    if (isCreature) {
+      const expVal = this.actor.system.experience ?? 0;
+      skills["experience"] = { key: "experience", label: game.i18n.localize("NEUROSHIMA.Creature.Experience"), value: expVal };
+    } else {
+      for (const [key, sk] of Object.entries(this.actor.system.skills)) {
+        let label = game.i18n.localize(`NEUROSHIMA.Skills.${key}`);
+        if (key === weaponSkillKey) label = `+ ${label}`;
+        skills[key] = { key, label, value: sk.value || 0 };
+      }
+    }
 
     context.actor = this.actor;
     context.attributes = NEUROSHIMA.attributes;
     context.difficulties = NEUROSHIMA.difficulties;
     context.isMelee = this.isMelee;
-    
-    // Prepare skills list
-    const equippedWeapon = this.actor.items.find(i => i.type === "weapon" && i.system.equipped);
-    const weaponSkillKey = equippedWeapon?.system.skill;
-
-    const skills = {};
-    const isCreature = this.actor?.type === "creature";
-    if (isCreature) {
-        const expVal = this.actor.system.experience ?? 0;
-        skills["experience"] = {
-            key: "experience",
-            label: game.i18n.localize("NEUROSHIMA.Creature.Experience"),
-            value: expVal
-        };
-    } else {
-        for (const [key, skill] of Object.entries(this.actor.system.skills)) {
-            let label = game.i18n.localize(`NEUROSHIMA.Skills.${key}`);
-            if (key === weaponSkillKey) {
-                label = `+ ${label}`;
-            }
-            skills[key] = {
-                key: key,
-                label: label,
-                value: skill.value || 0
-            };
-        }
-    }
     context.skills = skills;
     context.weaponSkillKey = isCreature ? "experience" : weaponSkillKey;
 
-    context.armorPenalty = armorPenalty;
-    context.woundPenalty = woundPenalty;
-    
-    // State values
-    context.currentAttribute = this.rollOptions.attribute;
-    context.currentSkill = this.rollOptions.skill || (weaponSkillKey || "");
-    context.useSkill = this.rollOptions.useSkill;
-    context.currentDifficulty = this.rollOptions.difficulty;
-    context.modifier = this.rollOptions.modifier;
-    context.useArmorPenalty = this.rollOptions.useArmorPenalty;
-    context.useWoundPenalty = this.rollOptions.useWoundPenalty;
-    context.rollMode = this.rollOptions.rollMode;
+    context.modifier      = userModifier + scriptFields.modifier;
+    context.attributeBonus= userAttrBonus + scriptFields.attributeBonus;
+    context.skillBonus    = userSkillBonus + scriptFields.skillBonus;
+    context.armorPenalty  = actorArmorPenalty + scriptFields.armorDelta;
+    context.woundPenalty  = actorWoundPenalty + scriptFields.woundDelta;
+
+    context.currentDifficulty = (scriptFields.difficulty && this.userEntry.difficulty === undefined)
+      ? scriptFields.difficulty : difficulty;
+    context.currentAttribute = attribute;
+    context.currentSkill = skill;
+    context.useSkill = useSkill;
+    context.useArmorPenalty = useArmorPenalty;
+    context.useWoundPenalty = useWoundPenalty;
+    context.rollMode = rollMode;
     context.rollModes = CONFIG.Dice.rollModes;
-    
-    // Buttons for footer
-    context.buttons = [
-        {
-            type: "submit",
-            action: "roll",
-            label: "NEUROSHIMA.Actions.Roll",
-            class: "bright",
-            autofocus: true
-        },
-        {
-            type: "submit",
-            action: "cancel",
-            label: "NEUROSHIMA.Actions.Cancel",
-            class: ""
-        }
-    ];
-    
+    context.dialogModifiers = dialogModifiers;
+
     return context;
   }
 
@@ -287,84 +172,148 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
   _onRender(context, options) {
     super._onRender(context, options);
     const html = this.element;
-    
-    // Attach event listeners for real-time preview
-    html.querySelectorAll('input, select').forEach(el => {
-      el.addEventListener('input', (event) => this._updatePreview(event));
+
+    this._applyTooltips(html);
+    this._updatePreview(html);
+
+    html.querySelectorAll('[data-action="clickModifier"].dm-toggleable').forEach(li => {
+      li.addEventListener('click', () => {
+        const effectId = li.dataset.dmEffectId;
+        if (!effectId) return;
+        const isActive = li.classList.contains('dm-active');
+        if (isActive) {
+          this.selectedModifierIds.delete(effectId);
+          this.unselectedModifierIds.add(effectId);
+        } else {
+          this.unselectedModifierIds.delete(effectId);
+          this.selectedModifierIds.add(effectId);
+        }
+        this.render();
+      });
     });
 
-    // Cancel button listener
+    html.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('change', ev => this._onFieldChange(ev));
+    });
+
+    const useSkillCb = html.querySelector('[name="useSkill"]');
+    const skillSelect = html.querySelector('select[name="skill"]');
+    const skillBonusInput = html.querySelector('input[name="skillBonus"]');
+    if (useSkillCb && skillSelect) {
+      useSkillCb.addEventListener('change', () => {
+        skillSelect.disabled = !useSkillCb.checked;
+        if (skillBonusInput) skillBonusInput.disabled = !useSkillCb.checked;
+      });
+    }
+
+    const maneuverSelect = html.querySelector('[name="maneuver"]');
+    const chargeWrapper = html.querySelector('.charge-level-wrapper');
+    if (maneuverSelect && chargeWrapper) {
+      maneuverSelect.addEventListener('change', () => {
+        chargeWrapper.hidden = maneuverSelect.value !== 'charge';
+      });
+    }
+
     const cancelBtn = html.querySelector('[data-action="cancel"]');
     if (cancelBtn) {
-        cancelBtn.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            this.close();
-        });
+      cancelBtn.addEventListener('click', ev => {
+        ev.preventDefault();
+        this.close();
+      });
     }
-
-    this._updatePreview();
   }
 
-  /**
-   * Update the difficulty preview box in real-time.
-   */
-  _updatePreview(event) {
-    const html = this.element;
-    const form = html.tagName === "FORM" ? html : html.querySelector('form');
-    if (!form) return;
+  _onFieldChange(ev) {
+    const el = ev.currentTarget;
+    const name = el.name;
+    if (!name) return;
+    let value = el.value;
+    if (el.type === 'checkbox') value = el.checked;
+    else if (el.type === 'number' || el.type === 'range') value = Number(value);
+    this.userEntry[name] = value;
+    this.render();
+  }
 
-    const formData = new foundry.applications.ux.FormDataExtended(form).object;
-    
-    // Show/hide charge level
-    const chargeWrapper = html.querySelector('.charge-level-wrapper');
-    if (chargeWrapper) {
-        chargeWrapper.hidden = formData.maneuver !== 'charge';
+  _applyTooltips(html) {
+    const sf = this._scriptFields;
+    const uv = this._userValues;
+    if (!sf || !uv) return;
+    const bd = this._breakdown;
+
+    const set = (name, tooltip) => {
+      const el = html.querySelector(`[name="${name}"]`);
+      if (!el) return;
+      if (tooltip) el.dataset.tooltip = tooltip;
+      else delete el.dataset.tooltip;
+    };
+
+    set('modifier',       this._buildTooltip(uv.modifier,       sf.modifier,       bd.mod));
+    set('attributeBonus', this._buildTooltip(uv.attributeBonus, sf.attributeBonus, bd.attr));
+    set('skillBonus',     this._buildTooltip(uv.skillBonus,     sf.skillBonus,     bd.skill));
+
+    const sign = v => v >= 0 ? `+${v}` : `${v}`;
+    const actorArmor = this.actor.system.combat?.totalArmorPenalty || 0;
+    const actorWound = this.actor.system.combat?.totalWoundPenalty || 0;
+    const userLabel = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
+    const effectLabel = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
+    const totalLabel = game.i18n.localize("NEUROSHIMA.Roll.Total");
+    if (sf.armorDelta) {
+      set('armorPenalty', `<strong>${userLabel}:</strong> ${sign(actorArmor)}<br><strong>${effectLabel}:</strong> ${sign(sf.armorDelta)}<br><strong>${totalLabel}:</strong> ${sign(actorArmor + sf.armorDelta)}`);
+    } else {
+      set('armorPenalty', null);
     }
+    if (sf.woundDelta) {
+      set('woundPenalty', `<strong>${userLabel}:</strong> ${sign(actorWound)}<br><strong>${effectLabel}:</strong> ${sign(sf.woundDelta)}<br><strong>${totalLabel}:</strong> ${sign(actorWound + sf.woundDelta)}`);
+    } else {
+      set('woundPenalty', null);
+    }
+  }
 
-    // Calculate total percentage
-    const basePenalty = NEUROSHIMA.difficulties[formData.difficulty]?.min || 0;
-    const modifier = parseInt(formData.modifier) || 0;
-    const armorPenalty = formData.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) : 0;
-    const woundPenalty = formData.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) : 0;
-    
+  _updatePreview(html) {
+    if (!html) html = this.element;
+
+    const sf = this._scriptFields || {};
+    const uv = this._userValues || {};
+
+    const userModifier    = uv.modifier       ?? 0;
+    const userAttrBonus   = uv.attributeBonus ?? 0;
+    const userSkillBonus  = uv.skillBonus     ?? 0;
+    const modifier        = userModifier + (sf.modifier || 0);
+    const attrBonus       = userAttrBonus + (sf.attributeBonus || 0);
+    const skillBonus      = userSkillBonus + (sf.skillBonus || 0);
+
+    const difficultyKey = (sf.difficulty && this.userEntry.difficulty === undefined)
+      ? sf.difficulty : (this.userEntry.difficulty ?? this.rollOptions.difficulty ?? "average");
+
+    const attribute       = this.userEntry.attribute ?? this.rollOptions.attribute ?? "dexterity";
+    const skill           = this.userEntry.skill ?? this.rollOptions.skill ?? "";
+    const useSkill        = this.userEntry.useSkill ?? this.rollOptions.useSkill ?? true;
+    const useArmorPenalty = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? false;
+    const useWoundPenalty = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
+
+    const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
+    const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
+    const armorPenalty = useArmorPenalty ? (actorArmorPenalty + (sf.armorDelta || 0)) : 0;
+    const woundPenalty = useWoundPenalty ? (actorWoundPenalty + (sf.woundDelta || 0)) : 0;
+
+    const basePenalty = NEUROSHIMA.difficulties[difficultyKey]?.min || 0;
     const totalPct = basePenalty + modifier + armorPenalty + woundPenalty;
 
-    // Update preview box
     const totalElement = html.querySelector('.total-modifier');
-    if (totalElement) {
-        totalElement.innerText = `${totalPct}%`;
-    }
+    if (totalElement) totalElement.innerText = `${totalPct}%`;
 
-    // Update target number
-    const attrKey = formData.attribute;
-    const attrTotal = Number(this.actor.system.attributeTotals[attrKey]) || 0;
-    const attrBonus = parseInt(formData.attributeBonus) || 0;
-    
-    // Charge bonus
-    let maneuverBonus = 0;
-    if (formData.maneuver === 'charge') {
-        maneuverBonus = parseInt(formData.chargeLevel) || 0;
-    }
+    const attrTotal = Number(this.actor.system.attributeTotals?.[attribute]) || 0;
 
-    // Calculate Shifted Difficulty (Suwak)
-    const skillKey = formData.skill;
-    const isCreatureRoll = this.actor?.type === "creature";
-    const skillValue = formData.useSkill
-        ? (skillKey === "experience" && isCreatureRoll
-            ? (this.actor.system.experience ?? 0)
-            : (Number(this.actor.system.skills[skillKey]?.value) || 0))
-        : 0;
-    const skillBonus = formData.useSkill ? (parseInt(formData.skillBonus) || 0) : 0;
-    const finalSkill = skillValue + skillBonus;
-    
-    // Skill shift logic from NeuroshimaDice
+    const isCreature = this.actor?.type === "creature";
+    const skillValue = useSkill
+      ? (skill === "experience" && isCreature
+        ? (this.actor.system.experience ?? 0)
+        : (Number(this.actor.system.skills?.[skill]?.value) || 0))
+      : 0;
+    const finalSkill = skillValue + (useSkill ? skillBonus : 0);
     const skillShift = (finalSkill <= 0) ? -1 : Math.floor(finalSkill / 4);
-    
-    // Find base difficulty from total percentage
+
     const baseDifficulty = game.neuroshima.NeuroshimaDice.getDifficultyFromPercent(totalPct);
-    
-    // Find shifted difficulty
-    const difficulties = Object.values(NEUROSHIMA.difficulties);
     const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];
     const baseDiffKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key].label === baseDifficulty.label);
     const baseDiffIndex = order.indexOf(baseDiffKey);
@@ -372,30 +321,124 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     const shiftedDifficulty = NEUROSHIMA.difficulties[order[shiftedIndex]];
 
     const shiftedElement = html.querySelector('.shifted-difficulty');
-    if (shiftedElement) {
-        shiftedElement.innerText = game.i18n.localize(shiftedDifficulty.label);
-    }
-    
-    // Update target with the shifted difficulty modifier and maneuver bonus
-    const targetElement = html.querySelector('.final-target');
-    if (targetElement) {
-        targetElement.innerText = attrTotal + attrBonus + maneuverBonus + shiftedDifficulty.mod;
-    }
+    if (shiftedElement) shiftedElement.innerText = game.i18n.localize(shiftedDifficulty.label);
 
-    // Toggle skill select disability
-    const skillSelect = html.querySelector('select[name="skill"]');
-    const skillBonusInput = html.querySelector('input[name="skillBonus"]');
-    if (skillSelect) skillSelect.disabled = !formData.useSkill;
-    if (skillBonusInput) skillBonusInput.disabled = !formData.useSkill;
+    const targetElement = html.querySelector('.final-target');
+    if (targetElement) targetElement.innerText = attrTotal + attrBonus + shiftedDifficulty.mod;
+
+    const chargeWrapper = html.querySelector('.charge-level-wrapper');
+    const maneuverSelect = html.querySelector('[name="maneuver"]');
+    if (chargeWrapper && maneuverSelect) {
+      chargeWrapper.hidden = maneuverSelect.value !== 'charge';
+    }
   }
 
-  /** @override */
-  _prepareSubmitData(event, form, formData) {
-    const data = super._prepareSubmitData(event, form, formData);
-    return data;
+  async _onRoll(event, target) {
+    const html = this.element;
+    const form = html.tagName === "FORM" ? html : html.querySelector('form');
+    if (!form) return;
+    const formData = new foundry.applications.ux.FormDataExtended(form).object;
+
+    const sf = this._scriptFields || {};
+    const uv = this._userValues || {};
+    const userModifier   = uv.modifier       ?? 0;
+    const userAttrBonus  = uv.attributeBonus ?? 0;
+    const userSkillBonus = uv.skillBonus     ?? 0;
+
+    const combinedModifier    = userModifier + (sf.modifier || 0);
+    const combinedAttrBonus   = userAttrBonus + (sf.attributeBonus || 0);
+    const combinedSkillBonus  = userSkillBonus + (sf.skillBonus || 0);
+
+    const difficultyKey = (sf.difficulty && this.userEntry.difficulty === undefined)
+      ? sf.difficulty : (this.userEntry.difficulty ?? this.rollOptions.difficulty ?? "average");
+
+    const useArmor = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? false;
+    const useWound = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
+    const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
+    const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
+
+    for (const dm of this._dialogModifiers) {
+      if (!dm.activated || !dm._script?.submissionScript) continue;
+      await dm._script.runSubmission({ actor: this.actor });
+    }
+
+    const rollData = {
+      attribute: this.userEntry.attribute ?? this.rollOptions.attribute ?? "dexterity",
+      skill: this.userEntry.skill ?? this.rollOptions.skill ?? "",
+      useSkill: this.userEntry.useSkill ?? this.rollOptions.useSkill ?? true,
+      difficulty: difficultyKey,
+      modifier: combinedModifier,
+      useArmorPenalty: useArmor,
+      useWoundPenalty: useWound,
+      skillBonus: combinedSkillBonus,
+      attributeBonus: combinedAttrBonus,
+      maneuver: formData.maneuver || "none",
+      chargeLevel: parseInt(formData.chargeLevel) || 0,
+      rollMode: this.userEntry.rollMode ?? this.rollOptions.rollMode
+    };
+
+    await this.actor.update({
+      "system.lastRoll": {
+        modifier: userModifier,
+        difficulty: difficultyKey,
+        useArmorPenalty: useArmor,
+        useWoundPenalty: useWound,
+        rollMode: rollData.rollMode
+      }
+    }).catch(() => {});
+
+    this.close();
+
+    const result = await this._performRoll(rollData);
+
+    game.neuroshima?.log("Initiative roll completed", { actor: this.actor.name, successPoints: result?.successPoints, rollData });
+
+    if (this.combatant && !this.isMelee) {
+      await this.combatant.update({ initiative: result.successPoints });
+    }
+
+    if (this.isMelee && result && this.meleeMode === "initiate") {
+      if (!this.duelId && !this.encounterId && this.targets && this.targets.length === 1) {
+        const rawTarget = this.targets[0];
+        let targetDoc = typeof rawTarget === "string" ? fromUuidSync(rawTarget) : rawTarget;
+        const targetActor = targetDoc?.actor || targetDoc;
+        if (targetActor?.getFlag) {
+          const { MeleeEncounter } = await import("../combat/melee-encounter.js");
+          const { MeleeStore } = await import("../combat/melee-store.js");
+          const activeEncounterId = targetActor.getFlag("neuroshima", "activeMeleeEncounter");
+          const activeEncounter = activeEncounterId ? MeleeStore.getEncounter(activeEncounterId) : null;
+          if (activeEncounter) {
+            await MeleeEncounter.join(activeEncounterId, {
+              id: this.actor.uuid, actorUuid: this.actor.uuid, tokenUuid: this.actor.token?.uuid,
+              actorId: this.actor.id, name: this.actor.name, img: this.actor.img,
+              weaponId: this.weaponId, initiative: result.successPoints, chargeLevel: rollData.chargeLevel
+            }, "A");
+          } else {
+            if (activeEncounterId) await targetActor.unsetFlag("neuroshima", "activeMeleeEncounter");
+            const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+            await NeuroshimaMeleeCombat.initiateMeleePending(
+              this.actor.uuid, targetActor.uuid, result.successPoints,
+              this.weaponId, rollData.maneuver, rollData.chargeLevel
+            );
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  async _performRoll(rollData) {
+    if (this._onRollCallback) return this._onRollCallback(rollData);
+    return game.neuroshima.NeuroshimaDice.rollInitiative({ ...rollData, actor: this.actor });
   }
 
   _onCancel(event, target) {
     this.close();
+  }
+
+  /** @override */
+  _prepareSubmitData(event, form, formData) {
+    return super._prepareSubmitData(event, form, formData);
   }
 }

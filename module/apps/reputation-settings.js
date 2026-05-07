@@ -13,8 +13,8 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             resizable: true
         },
         position: {
-            width: 520,
-            height: "auto"
+            width: 540,
+            height: 620
         },
         form: {
             handler: async function(event, form, formData) {
@@ -36,14 +36,16 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
     };
 
     async _prepareContext(options) {
-        const testMode = game.settings.get("neuroshima", "reputationTestMode");
-        const repMin = game.settings.get("neuroshima", "reputationMin");
-        const repMax = game.settings.get("neuroshima", "reputationMax");
-        const useColors = game.settings.get("neuroshima", "reputationUseColors");
-        const colorNames = game.settings.get("neuroshima", "reputationColorNames") ?? false;
-        const relationTable = game.settings.get("neuroshima", "reputationRelationTable") ?? [];
-        const fameThreshold = game.settings.get("neuroshima", "reputationFameThreshold") ?? 20;
-        const famePoints = game.settings.get("neuroshima", "reputationFamePoints") ?? 1;
+        const s = this._pendingState;
+        const testMode = s?.testMode ?? game.settings.get("neuroshima", "reputationTestMode");
+        const repMin = s?.repMin !== undefined ? s.repMin : game.settings.get("neuroshima", "reputationMin");
+        const repMax = s?.repMax !== undefined ? s.repMax : game.settings.get("neuroshima", "reputationMax");
+        const useColors = s ? !!s.useColors : game.settings.get("neuroshima", "reputationUseColors");
+        const colorNames = s ? !!s.colorNames : (game.settings.get("neuroshima", "reputationColorNames") ?? false);
+        const showAsProgressBar = s ? !!s.showAsProgressBar : (game.settings.get("neuroshima", "reputationShowAsProgressBar") ?? false);
+        const fameThreshold = s?.fameThreshold !== undefined ? s.fameThreshold : (game.settings.get("neuroshima", "reputationFameThreshold") ?? 20);
+        const famePoints = s?.famePoints !== undefined ? s.famePoints : (game.settings.get("neuroshima", "reputationFamePoints") ?? 1);
+        const relationTable = s?.relationTable ?? game.settings.get("neuroshima", "reputationRelationTable") ?? [];
 
         return {
             config: {
@@ -52,6 +54,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
                 repMax,
                 useColors,
                 colorNames,
+                showAsProgressBar,
                 relationTable,
                 fameThreshold,
                 famePoints
@@ -76,8 +79,8 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
 
         const relationTable = this._extractRelationTable(data);
 
-        const fameThreshold = Math.max(1, Number(data.fameThreshold ?? 20));
-        const famePoints = Math.max(1, Number(data.famePoints ?? 1));
+        const fameThreshold = Math.max(0, Number(data.fameThreshold ?? 0));
+        const famePoints = Math.max(0, Number(data.famePoints ?? 0));
 
         await Promise.all([
             game.settings.set("neuroshima", "reputationTestMode", data.testMode ?? "skill"),
@@ -85,11 +88,13 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             game.settings.set("neuroshima", "reputationMax", repMax),
             game.settings.set("neuroshima", "reputationUseColors", !!data.useColors),
             game.settings.set("neuroshima", "reputationColorNames", !!data.colorNames),
+            game.settings.set("neuroshima", "reputationShowAsProgressBar", !!data.showAsProgressBar),
             game.settings.set("neuroshima", "reputationRelationTable", relationTable),
             game.settings.set("neuroshima", "reputationFameThreshold", fameThreshold),
             game.settings.set("neuroshima", "reputationFamePoints", famePoints)
         ]);
 
+        this._pendingState = null;
         ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.ReputationConfig.Saved"));
     }
 
@@ -108,19 +113,89 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         return table;
     }
 
+    _onRender(context, options) {
+        super._onRender?.(context, options);
+        this._initColorPickers(this.element);
+    }
+
+    _initColorPickers(root) {
+        root.querySelectorAll(".rep-color-field").forEach(field => {
+            const swatch = field.querySelector(".rep-color-swatch");
+            const hex = field.querySelector(".rep-color-hex");
+            if (!swatch || !hex) return;
+
+            const resolveColor = (val) => {
+                const canvas = document.createElement("canvas");
+                canvas.width = canvas.height = 1;
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = "#000";
+                ctx.fillStyle = val;
+                ctx.fillRect(0, 0, 1, 1);
+                const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+                if (a === 0) return null;
+                return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+            };
+
+            const validate = (val) => {
+                const resolved = resolveColor(val.trim());
+                const isValid = resolved !== null && (resolved !== "#000000" || val.trim() === "#000000" || val.trim() === "#000" || val.trim().toLowerCase() === "black");
+                hex.classList.toggle("invalid", !isValid);
+                return isValid ? resolved : null;
+            };
+
+            swatch.addEventListener("input", () => {
+                hex.value = swatch.value;
+                hex.classList.remove("invalid");
+            });
+
+            hex.addEventListener("input", () => {
+                const resolved = validate(hex.value);
+                if (resolved) swatch.value = resolved;
+            });
+
+            hex.addEventListener("blur", () => {
+                const resolved = validate(hex.value);
+                if (resolved) {
+                    hex.value = resolved;
+                    swatch.value = resolved;
+                }
+            });
+
+            swatch.addEventListener("click", () => swatch.showPicker?.());
+
+            validate(hex.value);
+        });
+    }
+
+    _captureFormState() {
+        const fd = new FormDataExtended(this.element);
+        const data = fd.object;
+        return {
+            testMode: data.testMode ?? "skill",
+            repMin: data.repMin !== undefined ? Number(data.repMin) : 0,
+            repMax: data.repMax !== undefined ? Number(data.repMax) : 20,
+            useColors: !!data.useColors,
+            colorNames: !!data.colorNames,
+            showAsProgressBar: !!data.showAsProgressBar,
+            fameThreshold: data.fameThreshold !== undefined ? Number(data.fameThreshold) : 0,
+            famePoints: data.famePoints !== undefined ? Number(data.famePoints) : 0,
+            relationTable: this._extractRelationTable(data)
+        };
+    }
+
     async _onAddGlobalRelationRow(event, target) {
-        const table = game.settings.get("neuroshima", "reputationRelationTable") ?? [];
-        table.push({ minVal: 0, maxVal: 0, name: "", color: "" });
-        await game.settings.set("neuroshima", "reputationRelationTable", table);
+        const state = this._captureFormState();
+        state.relationTable.push({ minVal: 0, maxVal: 0, name: "", color: "" });
+        this._pendingState = state;
         this.render();
     }
 
     async _onDeleteGlobalRelationRow(event, target) {
         const idx = parseInt(target.dataset.index ?? "-1");
         if (idx < 0) return;
-        const table = Array.from(game.settings.get("neuroshima", "reputationRelationTable") ?? []);
-        table.splice(idx, 1);
-        await game.settings.set("neuroshima", "reputationRelationTable", table);
+        const state = this._captureFormState();
+        state.relationTable.splice(idx, 1);
+        this._pendingState = state;
         this.render();
     }
 }

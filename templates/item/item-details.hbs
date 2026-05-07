@@ -196,7 +196,7 @@
 
     {{#if (eq item.type "reputation")}}
         <div class="item-features reputation-stats secondary-box">
-            <div class="form-group row-group">
+            <div class="form-group row-group rep-value-row">
                 <label>{{localize "NEUROSHIMA.Reputation.ValueLabel"}}</label>
                 <input type="number" name="system.value" value="{{system.value}}" min="{{repMin}}" max="{{repMax}}" data-dtype="Number"/>
             </div>
@@ -227,7 +227,10 @@
                     <input type="number" name="system.relationTable.{{@index}}.minVal" value="{{row.minVal}}" data-dtype="Number" style="text-align:center;"/>
                     <input type="number" name="system.relationTable.{{@index}}.maxVal" value="{{row.maxVal}}" data-dtype="Number" style="text-align:center;"/>
                     <input type="text" name="system.relationTable.{{@index}}.name" value="{{row.name}}"/>
-                    <input type="color" name="system.relationTable.{{@index}}.color" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}" style="width:100%; height:26px; padding:1px;"/>
+                    <div class="rep-color-field">
+                        <input type="text" class="rep-color-hex" name="system.relationTable.{{@index}}.color" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}" placeholder="#rrggbb" maxlength="7"/>
+                        <input type="color" class="rep-color-swatch" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}" tabindex="-1"/>
+                    </div>
                     <a class="item-control" data-action="deleteRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
                 </div>
                 {{/each}}

@@ -4733,6 +4733,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     transition: background 0.12s;
 }
 
+.neuroshima .item-effects-list .effect-row {
+    grid-template-columns: 28px 1fr 60px 80px;
+}
+
 .neuroshima .effect-row:hover {
     background: rgba(255,255,255,0.06);
 }
@@ -4769,6 +4773,39 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima .effect-row .col-name:hover span {
     text-decoration: underline;
+}
+
+.neuroshima .item-effect-test-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.neuroshima .item-effect-test-field label {
+    font-size: 0.85em;
+    color: var(--color-text-dark-secondary, #aaa);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.neuroshima .item-effect-test-field .item-test-input {
+    flex: 1;
+    font-size: 0.85em;
+    height: 22px;
+    padding: 1px 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--ns-text, #d4c9aa);
+    border-radius: 3px;
+}
+
+.neuroshima .item-effect-test-field .item-test-input:focus {
+    background: rgba(255,255,255,0.1);
+    border-color: var(--ns-accent, #c07a30);
+    outline: none;
 }
 
 .neuroshima .effect-row .col-source {
@@ -4900,10 +4937,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     margin: 0;
 }
 
-/* Item sheet effects (no source column) */
+/* Item sheet effects (no source column, has test column) */
 .neuroshima.sheet.item .effects-list-header,
 .neuroshima.sheet.item .effect-row {
-    grid-template-columns: 28px 1fr 60px 80px;
+    grid-template-columns: 28px 1fr 130px 60px 80px;
 }
 
 /* ── Manual Script Invocation Buttons ── */
@@ -5244,7 +5281,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima .spec-master-table {
     border: 1px solid var(--ns-border-main);
     border-radius: 4px;
-    overflow: hidden;
+    overflow: visible;
     margin: 0.25rem 0;
 }
 
@@ -5265,6 +5302,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex-direction: column;
     gap: 0;
     padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ns-border-main) transparent;
 }
 
 .neuroshima .spec-attr-group {
@@ -5512,13 +5553,14 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima .rep-items-list-header {
     display: grid;
-    grid-template-columns: calc(30px + 10em) 1fr 4em 1.8em;
+    grid-template-columns: calc(1.2rem + 4px + 36px + 4px + 9rem) 1fr 3rem 1.8rem 1.8rem;
     padding: 2px 5px;
     font-size: 0.75em;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     opacity: 0.7;
     align-items: center;
+    gap: 4px;
 }
 
 .neuroshima .rep-items-list-header .rep-col-badge {
@@ -5530,13 +5572,40 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     justify-self: center;
 }
 
+.neuroshima .rep-items-list-header .rep-col-sort {
+    text-align: center;
+    justify-self: center;
+}
+
 .neuroshima .rep-item {
     display: grid;
-    grid-template-columns: 30px 10em 1fr 4em 1.8em;
-    padding: 6px 5px;
+    grid-template-columns: 1.2rem 1fr 1.8rem 1.8rem;
+    padding: 4px 5px;
     border-bottom: 1px solid var(--ns-bg-header);
     align-items: center;
-    gap: 0;
+    gap: 4px;
+}
+
+.neuroshima .rep-item-inner-box {
+    display: grid;
+    grid-template-columns: 36px 9rem 1fr 3rem;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 2px 6px 2px 3px;
+}
+
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) {
+    align-items: stretch;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) .item-image,
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) .rep-item-name,
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) .rep-item-value {
+    align-self: center;
 }
 
 .neuroshima .rep-item:last-child {
@@ -5582,11 +5651,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima .rep-relation-badge {
-    font-size: 0.78em;
-    opacity: 0.85;
+    font-size: 1em;
+    opacity: 0.9;
     padding: 1px 6px;
-    border: 1px solid currentColor;
-    border-radius: 3px;
     white-space: nowrap;
     text-align: center;
     overflow: hidden;
@@ -5594,7 +5661,70 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima .rep-relation-empty {
-    border-color: transparent;
+    opacity: 0;
+}
+
+.neuroshima .rep-relation-bar-container {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.neuroshima .rep-relation-bar-label {
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid var(--ns-border-main);
+    padding: 1px 6px;
+    font-size: 0.75em;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 14px;
+}
+
+.neuroshima .rep-relation-bar-track {
+    position: relative;
+    background: var(--ns-bg-input);
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    height: 20px;
+    width: 100%;
+}
+
+.neuroshima .rep-relation-bar-fill {
+    height: 100%;
+    border-radius: 0;
+    background: var(--ns-accent, #c07a30);
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.neuroshima .rep-bar-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.8;
+}
+
+.neuroshima .rep-roll-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.45;
+    cursor: pointer;
+    transition: opacity 0.15s, color 0.15s;
+    font-size: 1.5em;
+    color: var(--ns-accent, #c07a30);
+}
+
+.neuroshima .rep-roll-btn:hover {
+    opacity: 1;
 }
 
 .neuroshima .rep-ctx-btn {
@@ -5606,16 +5736,54 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-size: 0.9em;
 }
 
+.neuroshima .rep-bonus-sup {
+    font-size: 0.6em;
+    font-weight: normal;
+    opacity: 0.7;
+    color: var(--ns-accent, #c07a30);
+    margin-left: 1px;
+    vertical-align: super;
+}
+
 .neuroshima .rep-ctx-btn:hover {
     opacity: 1;
 }
 
+.neuroshima .rep-grip-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    opacity: 0.3;
+    font-size: 0.85em;
+    transition: opacity 0.15s;
+    color: var(--ns-text-main, #c8b89a);
+    user-select: none;
+}
+
+.neuroshima .rep-grip-handle:hover {
+    opacity: 0.8;
+}
+
+.neuroshima .rep-grip-handle:active {
+    cursor: grabbing;
+    opacity: 1;
+}
+
+.neuroshima .item-wrap.rep-dragging {
+    opacity: 0.4;
+}
+
+.neuroshima .item-wrap.rep-drop-target .rep-item {
+    border-top: 2px solid var(--ns-accent, #c07a30);
+}
+
 .neuroshima .item-wrap.draggable .rep-item .item-image {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     background-size: cover;
     background-position: center;
-    border-radius: 2px;
+    border-radius: 3px;
     cursor: pointer;
 }
 
@@ -5966,8 +6134,6 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     display: flex;
     flex-direction: column;
     gap: 3px;
-    overflow-y: auto;
-    max-height: 300px;
     padding-right: 4px;
 }
 

@@ -22,14 +22,6 @@
                     {{/each}}
                 </select>
             </div>
-            <div class="form-group">
-                <label>{{localize "NEUROSHIMA.Reputation.Value"}}</label>
-                <span class="roll-static-value">{{repValue}}</span>
-            </div>
-            <div class="form-group">
-                <label>{{localize "NEUROSHIMA.Reputation.Fame"}}</label>
-                <span class="roll-static-value">{{fame}}</span>
-            </div>
         </div>
         <div class="column right">
             <div class="form-group">
@@ -37,18 +29,23 @@
                 <input type="number" name="modifier" value="{{modifier}}" placeholder="0"/>
             </div>
             <div class="form-group">
-                <div class="checkbox-wrapper">
-                    <input type="checkbox" name="useArmorPenalty" {{checked useArmorPenalty}}/>
-                    <label>{{localize "NEUROSHIMA.Roll.Armor"}} (%)</label>
-                </div>
-                <input type="number" name="armorPenaltyDisplay" value="{{armorPenalty}}" placeholder="0" disabled/>
+                <label data-tooltip="{{localize 'NEUROSHIMA.Reputation.RepBonusHint'}}">{{localize "NEUROSHIMA.Reputation.RepBonus"}}</label>
+                <input type="number" name="repBonus" value="{{repBonus}}" placeholder="0"/>
             </div>
+        </div>
+    </div>
+
+    <div class="dialog-columns bonuses-row">
+        <div class="column left">
             <div class="form-group">
-                <div class="checkbox-wrapper">
-                    <input type="checkbox" name="useWoundPenalty" {{checked useWoundPenalty}}/>
-                    <label>{{localize "NEUROSHIMA.Roll.Wounds"}} (%)</label>
-                </div>
-                <input type="number" name="woundPenaltyDisplay" value="{{woundPenalty}}" placeholder="0" disabled/>
+                <label title="{{localize 'NEUROSHIMA.Reputation.Value'}}">{{localize "NEUROSHIMA.Reputation.ValueAbbr"}}</label>
+                <input type="number" value="{{repValue}}" disabled/>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Reputation.Fame'}}">{{localize "NEUROSHIMA.Reputation.FameAbbr"}}</label>
+                <input type="number" value="{{fame}}" disabled/>
             </div>
         </div>
     </div>
@@ -57,23 +54,37 @@
         <h3>{{localize "NEUROSHIMA.Roll.Summary"}}</h3>
         <table class="summary-table">
             <tr>
+                <td>{{localize "NEUROSHIMA.Roll.PenaltyLabel"}}</td>
+                <td class="rep-total-modifier">0%</td>
+            </tr>
+            <tr>
+                <td>{{localize "NEUROSHIMA.Roll.BaseDifficulty"}}</td>
+                <td class="rep-final-difficulty">-</td>
+            </tr>
+            <tr>
                 <td>{{localize "NEUROSHIMA.Roll.Target"}}</td>
-                <td><strong>{{threshold}}</strong> ({{repValue}} + {{fame}})</td>
+                <td class="rep-final-target">-</td>
             </tr>
         </table>
     </div>
     {{/if}}
 
     {{#if isSimpleMode}}
+    <div class="dialog-columns bonuses-row">
+        <div class="column left">
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Reputation.Value'}}">{{localize "NEUROSHIMA.Reputation.ValueAbbr"}}</label>
+                <input type="number" value="{{repValue}}" disabled/>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Reputation.Fame'}}">{{localize "NEUROSHIMA.Reputation.FameAbbr"}}</label>
+                <input type="number" value="{{fame}}" disabled/>
+            </div>
+        </div>
+    </div>
     <div class="reputation-simple-info">
-        <div class="form-group">
-            <label>{{localize "NEUROSHIMA.Reputation.Value"}}</label>
-            <span class="roll-static-value">{{repValue}}</span>
-        </div>
-        <div class="form-group">
-            <label>{{localize "NEUROSHIMA.Reputation.Fame"}}</label>
-            <span class="roll-static-value">{{fame}}</span>
-        </div>
         <div class="form-group">
             <label>{{localize "NEUROSHIMA.Roll.Target"}}</label>
             <strong class="roll-static-value">{{add repValue fame}}</strong>

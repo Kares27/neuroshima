@@ -24,12 +24,12 @@
     <div class="rep-settings-minmax">
         <div class="rep-settings-minmax-block">
             <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Name"}}</h3>
-            <input type="number" name="fameThreshold" value="{{config.fameThreshold}}" data-dtype="Number" min="1"/>
+            <input type="number" name="fameThreshold" value="{{config.fameThreshold}}" data-dtype="Number" min="0"/>
             <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Hint"}}</p>
         </div>
         <div class="rep-settings-minmax-block">
             <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Name"}}</h3>
-            <input type="number" name="famePoints" value="{{config.famePoints}}" data-dtype="Number" min="1"/>
+            <input type="number" name="famePoints" value="{{config.famePoints}}" data-dtype="Number" min="0"/>
             <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Hint"}}</p>
         </div>
     </div>
@@ -48,6 +48,14 @@
             <label>{{localize "NEUROSHIMA.Settings.ReputationColorNames.Name"}}</label>
         </div>
         <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationColorNames.Hint"}}</p>
+    </div>
+
+    <div class="form-group">
+        <div class="checkbox-wrapper">
+            <input type="checkbox" name="showAsProgressBar" {{checked config.showAsProgressBar}}/>
+            <label>{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Name"}}</label>
+        </div>
+        <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Hint"}}</p>
     </div>
 
     <hr/>
@@ -73,10 +81,18 @@
             <input type="number" name="relationTable.{{@index}}.minVal" value="{{minVal}}" data-dtype="Number"/>
             <input type="number" name="relationTable.{{@index}}.maxVal" value="{{maxVal}}" data-dtype="Number"/>
             <input type="text" name="relationTable.{{@index}}.name" value="{{name}}"/>
-            <input type="color" name="relationTable.{{@index}}.color" value="{{#if color}}{{color}}{{else}}#888888{{/if}}" class="rep-color-input"/>
+            <div class="rep-color-field">
+                <input type="text" class="rep-color-hex" name="relationTable.{{@index}}.color" value="{{#if color}}{{color}}{{else}}#888888{{/if}}" placeholder="#rrggbb" maxlength="7" list="rep-used-colors"/>
+                <input type="color" class="rep-color-swatch" value="{{#if color}}{{color}}{{else}}#888888{{/if}}" tabindex="-1"/>
+            </div>
             <a class="item-control" data-action="deleteGlobalRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
         </div>
         {{/each}}
+        <datalist id="rep-used-colors">
+            {{#each config.relationTable}}
+            {{#if color}}<option value="{{color}}">{{/if}}
+            {{/each}}
+        </datalist>
     </div>
 
     <footer class="form-footer">

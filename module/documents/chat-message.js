@@ -50,6 +50,24 @@ export class NeuroshimaChatMessage extends ChatMessage {
     });
 
     this._bindResultCardCollapsibles(root);
+
+    root.querySelectorAll(".item-card-draggable[data-uuid]").forEach(el => {
+      el.addEventListener("dragstart", event => {
+        const uuid = el.dataset.uuid;
+        if (!uuid) return;
+
+        const messageId = root.closest(".chat-message")?.dataset.messageId;
+        const message = messageId ? game.messages.get(messageId) : null;
+        const cardData = message?.getFlag("neuroshima", "itemCard");
+
+        if (cardData && cardData.remaining !== null && cardData.remaining <= 0) {
+          event.preventDefault();
+          return;
+        }
+
+        event.dataTransfer.setData("text/plain", JSON.stringify({ type: "Item", uuid, fromChatCard: true, messageId }));
+      });
+    });
   }
 
   /**
@@ -735,5 +753,217 @@ export class NeuroshimaChatMessage extends ChatMessage {
       return config ? game.i18n.localize(config.label) : t;
     });
     return labels.join(" / ");
+  }
+
+  static async showItemCardLimitDialog() {
+    const content = `
+      <div class="neuroshima item-card-limit-dialog">
+        <h4 class="item-card-limit-heading">${game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Label")}</h4>
+        <div class="form-group">
+          <div class="form-fields">
+            <input type="number" name="limit" min="1" placeholder="∞" autofocus style="width:100%">
+          </div>
+        </div>
+      </div>
+    `;
+    return foundry.applications.api.DialogV2.wait({
+      window: { title: game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Title") },
+      content,
+      buttons: [
+        {
+          action: "confirm",
+          label: game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Confirm"),
+          icon: "fas fa-check",
+          default: true,
+          callback: (event, button) => {
+            const val = button.form.elements.limit.value.trim();
+            return val ? parseInt(val) : null;
+          }
+        },
+        {
+          action: "cancel",
+          label: game.i18n.localize("NEUROSHIMA.ItemCard.LimitDialog.Cancel"),
+          icon: "fas fa-times",
+          callback: () => "cancel"
+        }
+      ],
+      classes: ["neuroshima"],
+      rejectClose: false
+    });
+  }
+
+  static buildItemChatStats(item) {
+    const loc = (key) => game.i18n.localize(key);
+    const s = item.system;
+    const stats = [];
+    let armorRatings = null;
+    let armorBoxStats = null;
+    let magazineContents = null;
+    let weight = null;
+    let availability = null;
+    let hasWeight = false;
+    const dash = "—";
+    const attrLabel = (key) => {
+      const cfg = NEUROSHIMA?.attributes?.[key];
+      return cfg ? loc(cfg.label) : (key || dash);
+    };
+    const skillLabel = (key) => {
+      const k = `NEUROSHIMA.Skills.${key}`;
+      const t = loc(k);
+      return t !== k ? t : (key || dash);
+    };
+    if (s.weight !== undefined) {
+      hasWeight = true;
+      weight = s.weight ?? 0;
+      availability = s.availability ?? null;
+    }
+    switch (item.type) {
+      case "weapon": {
+        const wType = s.weaponType ?? "melee";
+        const wTypeLabel = loc(`NEUROSHIMA.Items.Fields.${wType.charAt(0).toUpperCase() + wType.slice(1)}`);
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.WeaponSubtype"), value: wTypeLabel || wType });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Attribute"), value: attrLabel(s.attribute) });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Skill"), value: skillLabel(s.skill) });
+        if (wType === "melee") {
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: `${s.damageMelee1 || dash} / ${s.damageMelee2 || dash} / ${s.damageMelee3 || dash}` });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
+        } else {
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Caliber"), value: s.caliber || dash });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: s.damage || dash });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.FireRateAbbr"), value: s.fireRate ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Capacity"), value: s.capacity ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.JammingAbbr"), value: s.jamming ?? 20 });
+        }
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.RequiredBuild"), value: s.requiredBuild ?? 0 });
+        if (s.attackBonus !== 0) stats.push({ label: loc("NEUROSHIMA.Items.Fields.AttackBonusAbbr"), value: (s.attackBonus > 0 ? "+" : "") + s.attackBonus });
+        if (s.defenseBonus !== 0) stats.push({ label: loc("NEUROSHIMA.Items.Fields.DefenseBonusAbbr"), value: (s.defenseBonus > 0 ? "+" : "") + s.defenseBonus });
+        break;
+      }
+      case "armor": {
+        const locKeys = [
+          { key: "head",     abbr: "HeadAbbr" },
+          { key: "torso",    abbr: "TorsoAbbr" },
+          { key: "leftArm",  abbr: "LeftArmAbbr" },
+          { key: "rightArm", abbr: "RightArmAbbr" },
+          { key: "leftLeg",  abbr: "LeftLegAbbr" },
+          { key: "rightLeg", abbr: "RightLegAbbr" }
+        ];
+        armorRatings = locKeys.map(({ key, abbr }) => ({
+          label: loc(`NEUROSHIMA.Items.Fields.${abbr}`),
+          value: s.armor?.ratings?.[key] ?? 0
+        }));
+        const dur = (s.armor?.durability ?? 0) - (s.armor?.durabilityDamage ?? 0);
+        armorBoxStats = [
+          { label: loc("NEUROSHIMA.Items.Fields.DurabilityAbbr"), value: `${dur} / ${s.armor?.durability ?? 0}` },
+          { label: loc("NEUROSHIMA.Items.Fields.RequiredBuild"), value: s.armor?.requiredBuild ?? 0 },
+          { label: loc("NEUROSHIMA.Items.Fields.ArmorPenalty"), value: s.armor?.penalty ?? 0 }
+        ];
+        break;
+      }
+      case "gear": {
+        if (s.cost > 0) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Cost"), value: s.cost });
+        if (s.quantity !== undefined) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
+        break;
+      }
+      case "ammo": {
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Caliber"), value: s.caliber || dash });
+        if (s.isOverride) {
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: s.damage || dash });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
+          stats.push({ label: loc("NEUROSHIMA.Items.Fields.JammingAbbr"), value: s.jamming ?? 20 });
+        }
+        if (s.isPellet) stats.push({ label: loc("NEUROSHIMA.Items.Fields.PelletCount"), value: s.pelletCount });
+        if (s.quantity !== undefined) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
+        break;
+      }
+      case "magazine": {
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Caliber"), value: s.caliber || dash });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Capacity"), value: `${s.totalCount ?? 0} / ${s.capacity ?? 0}` });
+        magazineContents = (s.contents || []).filter(c => c.quantity > 0).map(c => ({ name: c.name || dash, quantity: c.quantity }));
+        break;
+      }
+      case "money": {
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.CoinValue"), value: s.coinValue });
+        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
+        break;
+      }
+      case "reputation": {
+        stats.push({ label: loc("NEUROSHIMA.Reputation.Value"), value: s.value });
+        break;
+      }
+      default:
+        if (s.quantity !== undefined) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
+        break;
+    }
+    return { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight };
+  }
+
+  static async postItemToChat(item, { actor = null } = {}) {
+    const limit = await NeuroshimaChatMessage.showItemCardLimitDialog();
+    if (limit === "cancel" || limit === undefined) return;
+
+    const description = item.system.description || "";
+    const enriched = description ? await TextEditor.enrichHTML(description, { async: true }) : "";
+
+    const typeKey = item.type.charAt(0).toUpperCase() + item.type.slice(1).replace(/-(\w)/g, (_, c) => c.toUpperCase());
+    const typeLabel = game.i18n.localize(`NEUROSHIMA.Items.Type.${typeKey}`) || item.type;
+
+    const { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight } = NeuroshimaChatMessage.buildItemChatStats(item);
+    const hasStats = stats.length > 0 || !!armorRatings || !!armorBoxStats;
+    const isUnlimited = limit === null;
+
+    const content = await NeuroshimaChatMessage._renderTemplate(
+      "systems/neuroshima/templates/chat/item-card.hbs",
+      {
+        name: item.name, img: item.img, type: item.type, typeLabel,
+        uuid: item.uuid, description: enriched,
+        stats, armorRatings, armorBoxStats, hasStats,
+        magazineContents,
+        weight, availability, hasWeight,
+        remaining: limit, isUnlimited, isExhausted: false
+      }
+    );
+
+    const rollMode = game.settings.get("core", "rollMode");
+    const msgData = {
+      speaker: actor ? ChatMessage.getSpeaker({ actor }) : ChatMessage.getSpeaker({}),
+      content,
+      flags: { neuroshima: { itemCard: { limit, remaining: limit, sourceActorId: actor?.id ?? null } } }
+    };
+    ChatMessage.applyRollMode(msgData, rollMode);
+    await ChatMessage.create(msgData);
+  }
+
+  static async decrementItemCardLimit(messageId) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const cardData = message.getFlag("neuroshima", "itemCard");
+    if (!cardData || cardData.remaining === null) return;
+
+    const newRemaining = Math.max(0, cardData.remaining - 1);
+    const isExhausted = newRemaining <= 0;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(message.content, "text/html");
+
+    const badge = doc.querySelector(".item-card-qty-badge");
+    if (badge) {
+      badge.textContent = `${newRemaining} ×`;
+      badge.dataset.remaining = newRemaining;
+    }
+
+    if (isExhausted) {
+      const card = doc.querySelector(".neuroshima.item-card");
+      if (card) card.classList.add("item-card-exhausted");
+      const draggable = doc.querySelector(".item-card-draggable");
+      if (draggable) draggable.setAttribute("draggable", "false");
+    }
+
+    await message.update({
+      content: doc.body.innerHTML,
+      flags: { neuroshima: { itemCard: { ...cardData, remaining: newRemaining } } }
+    });
   }
 }

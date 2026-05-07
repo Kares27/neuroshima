@@ -5,8 +5,8 @@ const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 /**
  * Dialog for rolling reputation checks.
  * Supports two modes:
- *   "skill" — threshold = reputation value + fame, standard open/closed test with difficulty
- *   "simple" — roll 1d100, success if result ≤ reputation value
+ *   "skill" — pure attribute test: threshold = repValue + fame + repBonus + diffMod (no skill shift)
+ *   "simple" — roll 1d100, success if result ≤ reputation value + fame
  */
 export class ReputationRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     constructor(options = {}) {
@@ -16,24 +16,25 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
 
         const testMode = game.settings.get("neuroshima", "reputationTestMode") ?? "skill";
         const fame = this.actor?.system?.fame ?? 0;
-        const repValue = this.reputationItem?.system?.value ?? 0;
+        const fameBonus = this.actor?.system?.fameBonus ?? 0;
+        const reputationBonus = this.actor?.system?.reputationBonus ?? 0;
+        const baseRepValue = this.reputationItem?.system?.value ?? 0;
 
         this.rollOptions = {
             testMode,
             isOpen: false,
             difficulty: "average",
             modifier: 0,
-            useArmorPenalty: false,
-            useWoundPenalty: true,
-            fame,
-            repValue,
+            repBonus: 0,
+            fame: fame + fameBonus,
+            repValue: baseRepValue + reputationBonus,
             rollMode: game.settings.get("core", "rollMode")
         };
     }
 
     static DEFAULT_OPTIONS = {
         tag: "form",
-        classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "reputation-roll-dialog"],
+        classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "roll-dialog", "reputation-roll-dialog"],
         position: { width: 460, height: "auto" },
         window: {
             resizable: false,
@@ -61,9 +62,6 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         const context = await super._prepareContext(options);
         const testMode = this.rollOptions.testMode;
 
-        const armorPenalty = this.actor?.system?.combat?.totalArmorPenalty ?? 0;
-        const woundPenalty = this.actor?.system?.combat?.totalWoundPenalty ?? 0;
-
         context.actor = this.actor;
         context.reputationItem = this.reputationItem;
         context.testMode = testMode;
@@ -74,21 +72,50 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         context.currentDifficulty = this.rollOptions.difficulty;
         context.isOpen = this.rollOptions.isOpen;
         context.modifier = this.rollOptions.modifier;
-        context.useArmorPenalty = this.rollOptions.useArmorPenalty;
-        context.useWoundPenalty = this.rollOptions.useWoundPenalty;
-        context.armorPenalty = armorPenalty;
-        context.woundPenalty = woundPenalty;
+        context.repBonus = this.rollOptions.repBonus;
         context.fame = this.rollOptions.fame;
         context.repValue = this.rollOptions.repValue;
         context.rollMode = this.rollOptions.rollMode;
         context.rollModes = CONFIG.Dice.rollModes;
 
-        if (testMode === "skill") {
-            const threshold = this.rollOptions.repValue + this.rollOptions.fame;
-            context.threshold = threshold;
-        }
-
         return context;
+    }
+
+    async _onRender(context, options) {
+        await super._onRender?.(context, options);
+        if (this.rollOptions.testMode !== "skill") return;
+
+        const el = this.element;
+        const NeuroshimaDice = game.neuroshima?.NeuroshimaDice;
+        if (!NeuroshimaDice) return;
+
+        const repValue = this.rollOptions.repValue;
+        const fame = this.rollOptions.fame;
+
+        const updateSummary = () => {
+            const difficultyKey = el.querySelector('[name="difficulty"]')?.value ?? "average";
+            const modifier = parseInt(el.querySelector('[name="modifier"]')?.value) || 0;
+            const repBonus = parseInt(el.querySelector('[name="repBonus"]')?.value) || 0;
+
+            const combinedStat = repValue + fame + repBonus;
+            const baseDiff = NEUROSHIMA.difficulties[difficultyKey];
+            const totalPenalty = (baseDiff?.min || 0) + modifier;
+
+            const finalDiff = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
+            const finalTarget = combinedStat + (finalDiff.mod || 0);
+
+            el.querySelector(".rep-total-modifier")?.replaceChildren(
+                document.createTextNode(`${totalPenalty}%`)
+            );
+            const diffLabel = el.querySelector(".rep-final-difficulty");
+            if (diffLabel) diffLabel.textContent = game.i18n.localize(finalDiff.label);
+            const targetEl = el.querySelector(".rep-final-target");
+            if (targetEl) targetEl.textContent = finalTarget;
+        };
+
+        el.addEventListener("change", updateSummary);
+        el.addEventListener("input", updateSummary);
+        updateSummary();
     }
 
     async _onRoll(event, target) {
@@ -155,24 +182,20 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         const repValue = this.rollOptions.repValue;
         const fame = this.rollOptions.fame;
         const modifier = parseInt(data.modifier) || 0;
+        const repBonus = parseInt(data.repBonus) || 0;
         const difficulty = data.difficulty ?? "average";
         const isOpen = data.isOpen === "true" || data.isOpen === true;
-        const useArmorPenalty = !!data.useArmorPenalty;
-        const useWoundPenalty = !!data.useWoundPenalty;
-
-        const armorPenalty = useArmorPenalty ? (this.actor?.system?.combat?.totalArmorPenalty ?? 0) : 0;
-        const woundPenalty = useWoundPenalty ? (this.actor?.system?.combat?.totalWoundPenalty ?? 0) : 0;
 
         const label = this.reputationItem?.name ?? game.i18n.localize("NEUROSHIMA.Reputation.Title");
 
-        await game.neuroshima.NeuroshimaDice.rollTest({
-            stat: repValue,
-            skill: fame,
+        const result = await game.neuroshima.NeuroshimaDice.rollTest({
+            stat: repValue + fame + repBonus,
+            skill: 0,
             penalties: {
                 mod: modifier,
                 base: NEUROSHIMA.difficulties[difficulty]?.min ?? 0,
-                armor: armorPenalty,
-                wounds: woundPenalty
+                armor: 0,
+                wounds: 0
             },
             isOpen,
             label,
@@ -180,8 +203,18 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
             attributeBonus: 0,
             skillBonus: 0,
             rollMode,
-            chatMessage: true
+            chatMessage: false
         });
+
+        if (!result) return;
+
+        result.isReputationRoll = true;
+        result.repRepValue = repValue;
+        result.repFame = fame;
+        result.repBonus = repBonus;
+
+        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        await NeuroshimaChatMessage.renderRoll(result, this.actor, result.roll);
     }
 
     async _onCancel(event, target) {

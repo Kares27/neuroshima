@@ -1,5 +1,4 @@
 import { NEUROSHIMA } from "../config.js";
-
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -418,7 +417,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       context.config = { ...context.config, specGroups };
     }
 
-    // Prepare item effects
+    context.itemTest = item.system.tests?.value ?? "";
+
     context.itemEffects = item.effects.map(e => ({
       id: e.id,
       name: e.name,
@@ -454,6 +454,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
     const effect = this.document.effects.get(id);
     if (effect) await effect.update({ disabled: !effect.disabled });
+  }
+
+  async _onSaveItemTest(event, target) {
+    const value = target.value ?? "";
+    await this.document.update({ "system.tests.value": value });
   }
 
   /** @override */
@@ -498,7 +503,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     await super._onRender(context, options);
     const activeTab = this.tabGroups?.primary;
     if (!activeTab) return;
-    for (const partId of ["stats", "description", "effects"]) {
+    for (const partId of ["stats", "description", "resources", "effects"]) {
       const el = this.element?.querySelector(`[data-application-part="${partId}"]`);
       if (el) el.classList.toggle("active", partId === activeTab);
     }
@@ -520,6 +525,66 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       });
     }
 
+    if (item.type === "reputation") {
+      this._initColorPickers(this.element);
+    }
+
+    const itemTestInput = this.element?.querySelector('.item-test-input');
+    if (itemTestInput) {
+      itemTestInput.addEventListener('change', async () => {
+        await this.document.update({ "system.tests.value": itemTestInput.value.trim() });
+      });
+    }
+
+  }
+
+  _initColorPickers(root) {
+    root.querySelectorAll(".rep-color-field").forEach(field => {
+      const swatch = field.querySelector(".rep-color-swatch");
+      const hex = field.querySelector(".rep-color-hex");
+      if (!swatch || !hex) return;
+
+      const resolveColor = (val) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#000";
+        ctx.fillStyle = val;
+        ctx.fillRect(0, 0, 1, 1);
+        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+        if (a === 0) return null;
+        return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+      };
+
+      const validate = (val) => {
+        const resolved = resolveColor(val.trim());
+        const isValid = resolved !== null && (resolved !== "#000000" || val.trim() === "#000000" || val.trim() === "#000" || val.trim().toLowerCase() === "black");
+        hex.classList.toggle("invalid", !isValid);
+        return isValid ? resolved : null;
+      };
+
+      swatch.addEventListener("input", () => {
+        hex.value = swatch.value;
+        hex.classList.remove("invalid");
+      });
+
+      hex.addEventListener("input", () => {
+        const resolved = validate(hex.value);
+        if (resolved) swatch.value = resolved;
+      });
+
+      hex.addEventListener("blur", () => {
+        const resolved = validate(hex.value);
+        if (resolved) {
+          hex.value = resolved;
+          swatch.value = resolved;
+        }
+      });
+
+      swatch.addEventListener("click", () => swatch.showPicker?.());
+
+      validate(hex.value);
+    });
   }
 
   /**
@@ -542,6 +607,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],
       money: ["stats", "description", "effects"],
+      reputation: ["stats", "description", "resources", "effects"],
     };
 
     const allowedTabs = tabsByType[item.type] || ["stats", "description", "resources", "effects"];

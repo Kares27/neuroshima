@@ -126,7 +126,32 @@
   <ol>
     <li><a href="#overview">Czym są skrypty efektów?</a></li>
     <li><a href="#context">Kontekst wykonania — <code>this</code> i <code>args</code></a></li>
-    <li><a href="#triggers">Lista wyzwalaczy (triggerów)</a></li>
+    <li><a href="#triggers">Lista wyzwalaczy (triggerów)</a>
+      <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
+        <li><a href="#trigger-manual">manual — Manually Invoked</a></li>
+        <li><a href="#trigger-immediate">immediate — Immediate</a></li>
+        <li><a href="#dialog">dialog — Dialog</a></li>
+        <li><a href="#trigger-prepareData">prepareData — Prepare Data</a></li>
+        <li><a href="#trigger-preRollTest">preRollTest — Pre-Roll Test</a></li>
+        <li><a href="#trigger-rollTest">rollTest — Roll Test</a></li>
+        <li><a href="#trigger-preApplyDamage">preApplyDamage — Pre-Apply Damage</a></li>
+        <li><a href="#trigger-applyDamage">applyDamage — Apply Damage</a></li>
+        <li><a href="#trigger-armorCalculation">armorCalculation — Armour Calculation</a></li>
+        <li><a href="#trigger-equipToggle">equipToggle — Equip Toggle</a></li>
+        <li><a href="#trigger-combat">startCombat / endCombat / startRound / endRound / startTurn / endTurn</a></li>
+      </ul>
+    </li>
+    <li><a href="#predefined-keys">Predefiniowane klucze</a>
+      <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
+        <li><a href="#keys-attributes">Atrybuty — Postać / NPC / Bestia</a></li>
+        <li><a href="#keys-vehicle-attributes">Atrybuty — Pojazd</a></li>
+        <li><a href="#keys-skills">Umiejętności — Postać / NPC / Bestia</a></li>
+        <li><a href="#keys-item-types">Typy Itemów</a></li>
+        <li><a href="#keys-item-fields">Pola Itemów</a></li>
+        <li><a href="#keys-difficulty">Klucze trudności</a></li>
+        <li><a href="#keys-hit-location">Klucze lokacji trafienia</a></li>
+      </ul>
+    </li>
     <li><a href="#examples">Przykłady gotowych skryptów</a></li>
     <li><a href="#manual-invoke">Manualne wywoływanie — przyciski w itemach</a></li>
     <li><a href="#changes">Zakładka Changes — modyfikacje atrybutów</a></li>
@@ -363,7 +388,7 @@
   <h2 class="section-title">3. Lista wyzwalaczy</h2>
 
   <!-- manual -->
-  <h3>manual — <em>Manually Invoked</em></h3>
+  <h3 id="trigger-manual">manual — <em>Manually Invoked</em></h3>
   <p>Wyzwalany ręcznie przez kliknięcie przycisku ▶ na liście skryptów efektu na arkuszu aktora.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -371,7 +396,7 @@
   </tbody></table>
 
   <!-- immediate -->
-  <h3>immediate — <em>Immediate</em></h3>
+  <h3 id="trigger-immediate">immediate — <em>Immediate</em></h3>
   <p>Uruchamiany <strong>raz</strong>, zaraz po tym jak efekt zostanie utworzony na aktorze. Idealny do efektów jednorazowych (konsumabli), gdzie efekt powinien zadziałać natychmiast, a następnie można go usunąć skryptem <code>deleteEffect</code> lub ręcznie.</p>
   <p>Różnica względem <code>createEffect</code>: <code>createEffect</code> uruchamia się chwilę wcześniej (hooks Foundry), <code>immediate</code> — tuż po nim, w tej samej ramce. W praktyce dla konsumabli użyj <code>immediate</code>.</p>
   <table>
@@ -381,8 +406,141 @@
     <tr><td>args.options</td><td>object</td><td>Opcje Foundry przekazane do _onCreate</td></tr>
   </tbody></table>
 
+  <!-- dialog -->
+  <h3 id="dialog">dialog — <em>Dialog</em></h3>
+  <p>Wyzwalacz <code>dialog</code> jest najsilniejszym i najbardziej elastycznym typem skryptu. Skrypty tego typu pojawiają się w panelu <strong>Dialog Modifiers</strong> w oknie dialogowym rzutu i mogą być przez użytkownika włączane lub wyłączane. Aktywowany skrypt modyfikuje pola dialogu (np. modyfikator, bonus do atrybutu, bonus do umiejętności) przed wykonaniem rzutu.</p>
+
+  <div class="callout info">
+    Wyzwalacz <code>dialog</code> obsługuje <strong>4 osobne pola kodu</strong>:
+    <ul style="margin-top: 0.5rem; padding-left: 1.25rem;">
+      <li><strong>Dialog Script</strong> — główny skrypt; modyfikuje <code>args.fields</code> gdy modyfikator jest aktywny.</li>
+      <li><strong>Hide Script</strong> — zwróć <code>true</code>, aby ukryć modyfikator w panelu. Gdy puste — modyfikator jest <strong>zawsze widoczny</strong>.</li>
+      <li><strong>Activate Script</strong> — zwróć <code>true</code>, aby modyfikator był automatycznie aktywowany.</li>
+      <li><strong>Submission Script</strong> — uruchamiany gdy modyfikator jest aktywny i użytkownik zatwierdza dialog. Służy do ustawiania flag dla innych wyzwalaczy.</li>
+    </ul>
+  </div>
+
+  <table>
+    <thead><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor wykonujący test.</td></tr>
+      <tr><td><code>args.skill</code></td><td>Object | null</td><td>Obiekt umiejętności: <code>{ name, value, key }</code> lub <code>null</code>.</td></tr>
+      <tr><td><code>args.attribute</code></td><td>Object | null</td><td>Obiekt atrybutu: <code>{ name, value, key }</code>.</td></tr>
+      <tr><td><code>args.rollType</code></td><td>string</td><td>Typ rzutu: <code>"skill"</code>, <code>"attribute"</code>, <code>"ranged"</code>, <code>"melee"</code>, <code>"initiative"</code>.</td></tr>
+      <tr><td><code>args.difficulty</code></td><td>string</td><td>Klucz bazowej trudności (np. <code>"average"</code>, <code>"hard"</code>).</td></tr>
+      <tr><td><code>args.weapon</code></td><td>Item | null</td><td>Broń (dostępna gdy <code>rollType</code> to <code>"ranged"</code> lub <code>"melee"</code>).</td></tr>
+      <tr><td><code>args.flags</code></td><td>Object</td><td>Wolny obiekt do własnego użytku skryptów — zapobiega wielokrotnemu wykonaniu.</td></tr>
+      <tr><td><code>args.fields</code></td><td>Object</td><td><strong>Tylko w Dialog Script</strong> — pola edytowalne dialogu (patrz niżej).</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Obiekt <code>args.fields</code></strong> (dostępny wyłącznie w Dialog Script):</p>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>args.fields.modifier</code></td><td>number</td><td>Ogólny modyfikator procentowy (np. <code>args.fields.modifier += 10</code>).</td></tr>
+      <tr><td><code>args.fields.difficulty</code></td><td>string</td><td>Klucz trudności (np. <code>"average"</code>, <code>"hard"</code>).</td></tr>
+      <tr><td><code>args.fields.attributeBonus</code></td><td>number</td><td>Bonus dodawany do wartości atrybutu.</td></tr>
+      <tr><td><code>args.fields.skillBonus</code></td><td>number</td><td>Bonus dodawany do wartości umiejętności.</td></tr>
+      <tr><td><code>args.fields.armorPenalty</code></td><td>number</td><td>Aktualna kara za pancerz (kontekst; modyfikuj przez flagi).</td></tr>
+      <tr><td><code>args.fields.woundPenalty</code></td><td>number</td><td>Aktualna kara za rany.</td></tr>
+      <tr><td><code>args.fields.distance</code></td><td>number</td><td>Dystans do celu (testy broni dystansowej).</td></tr>
+      <tr><td><code>args.fields.distanceModifier</code></td><td>number</td><td>Modyfikator kary za dystans.</td></tr>
+      <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Wartości klucza <code>args.fields.difficulty</code></strong> — dostępne klucze trudności:</p>
+  <table>
+    <thead><tr><th>Klucz</th><th>Nazwa</th><th>Mod atrybutu</th><th>Zakres % kary</th></tr></thead>
+    <tbody>
+      <tr><td><code>"easy"</code></td><td>Łatwy</td><td>+2</td><td>od −∞ do −1</td></tr>
+      <tr><td><code>"average"</code></td><td>Przeciętny</td><td>0</td><td>0 – 10</td></tr>
+      <tr><td><code>"problematic"</code></td><td>Kłopotliwy</td><td>−2</td><td>11 – 30</td></tr>
+      <tr><td><code>"hard"</code></td><td>Trudny</td><td>−5</td><td>31 – 60</td></tr>
+      <tr><td><code>"veryHard"</code></td><td>Bardzo Trudny</td><td>−8</td><td>61 – 90</td></tr>
+      <tr><td><code>"damnHard"</code></td><td>Cholernie Trudny</td><td>−11</td><td>91 – 120</td></tr>
+      <tr><td><code>"luck"</code></td><td>Szczęście</td><td>−15</td><td>121 – 160</td></tr>
+      <tr><td><code>"masterful"</code></td><td>Mistrzowski</td><td>−20</td><td>161 – 200</td></tr>
+      <tr><td><code>"grandmasterful"</code></td><td>Arcymistrzowski</td><td>−24</td><td>201+</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">Logika trudności stosuje zasadę <em>worst-of</em> — jeśli efekt wymusza trudniejszą trudność niż wybrał użytkownik, zostaje użyta trudniejsza.</div>
+
+  <p><strong>Wartości klucza <code>args.fields.hitLocation</code></strong> — dostępne lokacje trafienia:</p>
+  <table>
+    <thead><tr><th>Klucz</th><th>Nazwa</th><th>Wyrzucane oczka (k20)</th><th>Kara do trafienia (dystans/starcie)</th></tr></thead>
+    <tbody>
+      <tr><td><code>"random"</code></td><td>Losowo (rzut k20)</td><td>—</td><td>0</td></tr>
+      <tr><td><code>"head"</code></td><td>Głowa</td><td>1–2</td><td>+80% / +80%</td></tr>
+      <tr><td><code>"rightArm"</code></td><td>Prawa Ręka</td><td>3–4</td><td>+60% / +40%</td></tr>
+      <tr><td><code>"leftArm"</code></td><td>Lewa Ręka</td><td>5–6</td><td>+60% / +40%</td></tr>
+      <tr><td><code>"torso"</code></td><td>Tułów</td><td>7–16</td><td>+20% / +60%</td></tr>
+      <tr><td><code>"rightLeg"</code></td><td>Prawa Noga</td><td>17–18</td><td>+40% / +40%</td></tr>
+      <tr><td><code>"leftLeg"</code></td><td>Lewa Noga</td><td>19–20</td><td>+40% / +40%</td></tr>
+    </tbody>
+  </table>
+  <pre><code><span class="cmt">// Przykład — ustaw trudność na "Trudny" i lokację na "Głowę"</span>
+args.fields.difficulty = <span class="str">"hard"</span>;
+args.fields.hitLocation = <span class="str">"head"</span>;
+
+<span class="cmt">// Przykład — pogorsz trudność tylko gdy rzut jest strzałem dystansowym</span>
+<span class="kw">if</span> (args.rollType === <span class="str">"ranged"</span>) {
+  args.fields.difficulty = <span class="str">"hard"</span>;
+}</code></pre>
+
+  <p><strong>Pole <code>test</code> na Itemu</strong> — każdy Item może mieć pole <strong>Test</strong> (zakładka Efekty itemu, powyżej nagłówka). Przechowywane jako <code>flags.neuroshima.test</code>. Gdy skrypt Dialog nie ma ustawionego <em>Label</em>, system użyje tej wartości jako etykiety modyfikatora. Obsługuje referencje <code>@item.ścieżka.do.wartości</code>.</p>
+  <pre><code><span class="cmt">// Przykład — pobranie surowej wartości w skrypcie:</span>
+<span class="kw">const</span> <span class="var">rawTest</span> = this.effect.parent?.getFlag?.(<span class="str">"neuroshima"</span>, <span class="str">"test"</span>) ?? <span class="str">""</span>;</code></pre>
+
+  <h4 id="item-effect-references">Referencje <code>@item.*</code> i <code>@effect.*</code></h4>
+  <p>
+    Pola tekstowe w edytorze skryptu (pole <strong>Test</strong>, <strong>Label</strong> skryptu) obsługują dynamiczne referencje
+    rozwiązywane przez silnik przed wyświetleniem. Składnia: <code>@item.ścieżka</code> lub <code>@effect.ścieżka</code>.
+    Jeśli referencja nie zostanie rozwiązana, pozostaje niezmieniona w tekście.
+  </p>
+  <table>
+    <thead><tr><th>Referencja</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>@item.name</code></td><td>Nazwa itemu będącego rodzicem efektu.</td></tr>
+      <tr><td><code>@item.system.tests.value</code></td><td>Pole <strong>Test</strong> z zakładki Efekty itemu (flaga <code>neuroshima.test</code>).</td></tr>
+      <tr><td><code>@item.system.damage</code></td><td>Obrażenia broni (pole tekstowe).</td></tr>
+      <tr><td><code>@item.system.piercing</code></td><td>Punkty przebicia broni.</td></tr>
+      <tr><td><code>@item.resources.KEY.value</code></td><td>Bieżąca wartość zasobu o kluczu <code>KEY</code> (skrócona składnia).</td></tr>
+      <tr><td><code>@item.resources.KEY.max</code></td><td>Maksymalna wartość zasobu o kluczu <code>KEY</code>.</td></tr>
+      <tr><td><code>@item.resources.KEY.min</code></td><td>Minimalna wartość zasobu o kluczu <code>KEY</code>.</td></tr>
+      <tr><td><code>@item.resources.KEY.label</code></td><td>Wyświetlana nazwa zasobu o kluczu <code>KEY</code>.</td></tr>
+      <tr><td><code>@item.system.resources[0].value</code></td><td>Bieżąca wartość pierwszego zasobu (po indeksie tablicy — mniej bezpieczne).</td></tr>
+      <tr><td><code>@effect.name</code></td><td>Nazwa aktywnego efektu.</td></tr>
+      <tr><td><code>@effect.description</code></td><td>Opis aktywnego efektu.</td></tr>
+    </tbody>
+  </table>
+  <pre><code><span class="cmt">// Przykład — Label skryptu z dynamiczną nazwą zasobu</span>
+<span class="cmt">// Wpisz w polu Label: "Zmysł (@item.resources.sense.value / @item.resources.sense.max)"</span>
+<span class="cmt">// Wyświetli np.: "Zmysł (3 / 5)"</span>
+
+<span class="cmt">// Test z referencją do nazwy umiejętności z pola Test itemu:</span>
+<span class="cmt">// Wpisz w polu Test: "@item.system.tests.value"</span>
+<span class="cmt">// Etykieta modyfikatora dialogu przyjmie wartość pola Test z itemu</span>
+
+<span class="cmt">// Odwołanie do nazwy efektu:</span>
+<span class="cmt">// "@effect.name" → np. "Wspinaczka (Talent)"</span></code></pre>
+
+  <p><strong>Przykłady:</strong></p>
+  <pre><code><span class="cmt">// Hide Script — ukryj jeśli umiejętność to nie "Wspinaczka"</span>
+<span class="kw">return</span> args.skill?.key !== <span class="str">"climbing"</span>;
+
+<span class="cmt">// Activate Script — aktywuj automatycznie dla Wspinaczki</span>
+<span class="kw">return</span> args.skill?.key === <span class="str">"climbing"</span>;
+
+<span class="cmt">// Dialog Script — dodaj bonus do atrybutu</span>
+args.fields.attributeBonus++;</code></pre>
+
+  <pre><code><span class="cmt">// Submission Script — ustaw flagę dla wyzwalacza rollTest</span>
+args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
+
   <!-- prepareData -->
-  <h3>prepareData — <em>Prepare Data</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <h3 id="trigger-prepareData">prepareData — <em>Prepare Data</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
   <p>Uruchamiany podczas <code>actor.prepareDerivedData()</code> — czyli za każdym razem gdy Foundry przelicza dane aktora (po każdej aktualizacji). Idealny do modyfikacji wartości pochodnych.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -391,7 +549,7 @@
   <div class="callout warning">Nie używaj <code>await</code>. Nie wywołuj <code>actor.update()</code> — to spowoduje pętlę. Modyfikuj dane tymczasowe bezpośrednio na obiekcie.</div>
 
   <!-- preRollTest -->
-  <h3>preRollTest — <em>Pre-Roll Test</em></h3>
+  <h3 id="trigger-preRollTest">preRollTest — <em>Pre-Roll Test</em></h3>
   <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Może anulować rzut lub wymusić automatyczny sukces.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -411,7 +569,7 @@
   </tbody></table>
 
   <!-- rollTest -->
-  <h3>rollTest — <em>Roll Test</em></h3>
+  <h3 id="trigger-rollTest">rollTest — <em>Roll Test</em></h3>
   <p>Uruchamiany po <code>preRollTest</code> (tylko gdy nie anulowano/auto-sukces) — modyfikuje parametry rzutu przed rzuceniem kośćmi.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -428,7 +586,7 @@
   </tbody></table>
 
   <!-- preApplyDamage -->
-  <h3>preApplyDamage — <em>Pre-Apply Damage</em></h3>
+  <h3 id="trigger-preApplyDamage">preApplyDamage — <em>Pre-Apply Damage</em></h3>
   <p>Uruchamiany <strong>przed</strong> redukcją pancerza dla przychodzącego trafienia. Pozwala zmodyfikować surową listę ran zanim jeszcze SP pancerza zostanie odliczone lub przeliczone.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -440,7 +598,7 @@
   </tbody></table>
 
   <!-- applyDamage -->
-  <h3>applyDamage — <em>Apply Damage</em></h3>
+  <h3 id="trigger-applyDamage">applyDamage — <em>Apply Damage</em></h3>
   <p>Uruchamiany po pancerzu, przed sprawdzeniem odporności na ból. Pozwala modyfikować lub pomijać poszczególne rany.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -454,7 +612,7 @@
   </tbody></table>
 
   <!-- armorCalculation -->
-  <h3>armorCalculation — <em>Armour Calculation</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <h3 id="trigger-armorCalculation">armorCalculation — <em>Armour Calculation</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
   <p>Uruchamiany podczas obliczania redukcji pancerza dla trafienia. Pozwala modyfikować efektywne SP zbroi.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -467,7 +625,7 @@
   </tbody></table>
 
   <!-- equipToggle -->
-  <h3>equipToggle — <em>Equip Toggle</em></h3>
+  <h3 id="trigger-equipToggle">equipToggle — <em>Equip Toggle</em></h3>
   <p>Uruchamiany po założeniu lub zdjęciu ekwipunku przez aktora.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -477,7 +635,7 @@
   </tbody></table>
 
   <!-- combat triggers -->
-  <h3>startCombat / endCombat — <em>Start Combat / End Combat</em></h3>
+  <h3 id="trigger-combat">startCombat / endCombat — <em>Start Combat / End Combat</em></h3>
   <p>Uruchamiane gdy walka zaczyna się lub kończy. Wykonywane raz na aktora (deduplikacja).</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -564,6 +722,327 @@
     <tr><td>args.actor</td><td>Actor</td><td>Aktor docelowy</td></tr>
     <tr><td>args.data / args.options</td><td>object</td><td>Dane Foundry przekazane do operacji</td></tr>
   </tbody></table>
+</section>
+
+<!-- PREDEFINED KEYS -->
+<section id="predefined-keys">
+  <h2 class="section-title">3b. Predefiniowane klucze</h2>
+  <p>Poniżej zebrane są wszystkie klucze używane w systemie Neuroshima 1.5. Używaj ich w skryptach do odnoszenia się do atrybutów, umiejętności i pól itemów — np. <code>args.actor.system.skills.brawl.value</code> lub <code>args.skillKey === "climbing"</code>.</p>
+
+  <!-- ATTRIBUTES — Character / NPC / Creature -->
+  <h3 id="keys-attributes">Atrybuty — Postać / NPC / Bestia</h3>
+  <p>Dostępne jako <code>args.actor.system.attributes.&lt;klucz&gt;</code> (wartość bazowa) lub <code>args.actor.system.attributeTotals.&lt;klucz&gt;</code> (suma z bonusami).</p>
+  <table>
+    <thead><tr><th>Klucz</th><th>Nazwa</th><th>Skrót</th></tr></thead>
+    <tbody>
+      <tr><td><code>dexterity</code></td><td>Zręczność</td><td>ZR</td></tr>
+      <tr><td><code>perception</code></td><td>Percepcja</td><td>PE</td></tr>
+      <tr><td><code>charisma</code></td><td>Charyzma</td><td>CH</td></tr>
+      <tr><td><code>cleverness</code></td><td>Spryt</td><td>SP</td></tr>
+      <tr><td><code>constitution</code></td><td>Kondycja</td><td>KO</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info"><strong>Przykład:</strong> <code>args.actor.system.attributeTotals.dexterity</code> — pełna wartość Zręczności z bonusami AE.</div>
+
+  <!-- ATTRIBUTES — Vehicle -->
+  <h3 id="keys-vehicle-attributes">Atrybuty — Pojazd</h3>
+  <p>Dostępne jako <code>args.actor.system.attributes.&lt;klucz&gt;</code> lub <code>args.actor.system.attributeTotals.&lt;klucz&gt;</code>. Pojazdy nie mają umiejętności ani HP — używaj tych atrybutów bezpośrednio.</p>
+  <table>
+    <thead><tr><th>Klucz</th><th>Nazwa</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>agility</code></td><td>Zwinność</td><td>Zwinność manewrowa pojazdu</td></tr>
+      <tr><td><code>topSpeed</code></td><td>Prędkość max.</td><td>Maksymalna prędkość</td></tr>
+      <tr><td><code>acceleration</code></td><td>Przyspieszenie</td><td>Zdolność do przyspieszania</td></tr>
+      <tr><td><code>brakes</code></td><td>Hamulce</td><td>Skuteczność hamowania</td></tr>
+      <tr><td><code>durability</code></td><td>Wytrzymałość</td><td>Wytrzymałość kadłuba</td></tr>
+      <tr><td><code>efficiency</code></td><td>Sprawność</td><td>Ogólna sprawność pojazdu (odpowiednik HP)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- SKILLS — Character / NPC / Creature -->
+  <h3 id="keys-skills">Umiejętności — Postać / NPC / Bestia</h3>
+  <p>Dostępne jako <code>args.actor.system.skills.&lt;klucz&gt;.value</code> (bazowa wartość, 0–20) lub <code>args.actor.system.skillTotals.&lt;klucz&gt;</code> (z bonusami AE). W wyzwalaczach <code>dialog</code> i <code>rollTest</code> klucz aktywnej umiejętności jest dostępny jako <code>args.skill?.key</code>.</p>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Zręczność (dexterity)</h4>
+  <table>
+    <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
+    <tbody>
+      <tr><td><code>brawl</code></td><td>melee</td><td>Walka wręcz</td></tr>
+      <tr><td><code>handWeapon</code></td><td>melee</td><td>Broń biała</td></tr>
+      <tr><td><code>throwing</code></td><td>melee</td><td>Rzucanie</td></tr>
+      <tr><td><code>pistols</code></td><td>firearms</td><td>Pistolety</td></tr>
+      <tr><td><code>rifles</code></td><td>firearms</td><td>Karabiny</td></tr>
+      <tr><td><code>machineGuns</code></td><td>firearms</td><td>Karabiny maszynowe</td></tr>
+      <tr><td><code>bow</code></td><td>ranged</td><td>Łuk</td></tr>
+      <tr><td><code>crossbow</code></td><td>ranged</td><td>Kusza</td></tr>
+      <tr><td><code>sling</code></td><td>ranged</td><td>Proca</td></tr>
+      <tr><td><code>car</code></td><td>driving</td><td>Samochód</td></tr>
+      <tr><td><code>truck</code></td><td>driving</td><td>Ciężarówka</td></tr>
+      <tr><td><code>motorcycle</code></td><td>driving</td><td>Motocykl</td></tr>
+      <tr><td><code>pickpocketing</code></td><td>manual</td><td>Kieszonkarstwo</td></tr>
+      <tr><td><code>sleightOfHand</code></td><td>manual</td><td>Zręczność rąk</td></tr>
+      <tr><td><code>lockpicking</code></td><td>manual</td><td>Otwieranie zamków</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Percepcja (perception)</h4>
+  <table>
+    <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
+    <tbody>
+      <tr><td><code>directionSense</code></td><td>tracking</td><td>Orientacja w terenie</td></tr>
+      <tr><td><code>tracking</code></td><td>tracking</td><td>Tropienie</td></tr>
+      <tr><td><code>traps</code></td><td>tracking</td><td>Pułapki</td></tr>
+      <tr><td><code>listening</code></td><td>alertness</td><td>Słuchanie</td></tr>
+      <tr><td><code>spotting</code></td><td>alertness</td><td>Spostrzegawczość</td></tr>
+      <tr><td><code>vigilance</code></td><td>alertness</td><td>Czujność</td></tr>
+      <tr><td><code>sneaking</code></td><td>stealth</td><td>Skradanie</td></tr>
+      <tr><td><code>hiding</code></td><td>stealth</td><td>Ukrywanie się</td></tr>
+      <tr><td><code>camouflage</code></td><td>stealth</td><td>Kamuflarz</td></tr>
+      <tr><td><code>hunting</code></td><td>survival</td><td>Polowanie</td></tr>
+      <tr><td><code>waterGathering</code></td><td>survival</td><td>Pozyskiwanie wody</td></tr>
+      <tr><td><code>terrainKnowledge</code></td><td>survival</td><td>Znajomość terenu</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Charyzma (charisma)</h4>
+  <table>
+    <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
+    <tbody>
+      <tr><td><code>persuasion</code></td><td>negotiation</td><td>Perswazja</td></tr>
+      <tr><td><code>intimidation</code></td><td>negotiation</td><td>Zastraszanie</td></tr>
+      <tr><td><code>leadership</code></td><td>negotiation</td><td>Przywództwo</td></tr>
+      <tr><td><code>emotionPerception</code></td><td>empathy</td><td>Wyczucie emocji</td></tr>
+      <tr><td><code>bluff</code></td><td>empathy</td><td>Blef</td></tr>
+      <tr><td><code>animalCare</code></td><td>empathy</td><td>Opieka nad zwierzętami</td></tr>
+      <tr><td><code>painResistance</code></td><td>willpower</td><td>Odporność na ból</td></tr>
+      <tr><td><code>steadfastness</code></td><td>willpower</td><td>Stanowczość</td></tr>
+      <tr><td><code>morale</code></td><td>willpower</td><td>Morale</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Spryt (cleverness)</h4>
+  <table>
+    <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
+    <tbody>
+      <tr><td><code>woundTreatment</code></td><td>medicine</td><td>Leczenie ran</td></tr>
+      <tr><td><code>diseaseTreatment</code></td><td>medicine</td><td>Leczenie chorób</td></tr>
+      <tr><td><code>firstAid</code></td><td>medicine</td><td>Pierwsza pomoc</td></tr>
+      <tr><td><code>mechanics</code></td><td>technology</td><td>Mechanika</td></tr>
+      <tr><td><code>electronics</code></td><td>technology</td><td>Elektronika</td></tr>
+      <tr><td><code>computers</code></td><td>technology</td><td>Komputery</td></tr>
+      <tr><td><code>heavyMachinery</code></td><td>equipment</td><td>Ciężki sprzęt</td></tr>
+      <tr><td><code>combatVehicles</code></td><td>equipment</td><td>Pojazdy bojowe</td></tr>
+      <tr><td><code>boats</code></td><td>equipment</td><td>Łodzie</td></tr>
+      <tr><td><code>gunsmithing</code></td><td>pyrotechnics</td><td>Rusznikarstwo</td></tr>
+      <tr><td><code>launchers</code></td><td>pyrotechnics</td><td>Wyrzutnie</td></tr>
+      <tr><td><code>explosives</code></td><td>pyrotechnics</td><td>Materiały wybuchowe</td></tr>
+      <tr><td><code>knowledge1</code></td><td>generalKnowledge1</td><td>Wiedza ogólna 1</td></tr>
+      <tr><td><code>knowledge2</code></td><td>generalKnowledge1</td><td>Wiedza ogólna 2</td></tr>
+      <tr><td><code>knowledge3</code></td><td>generalKnowledge1</td><td>Wiedza ogólna 3</td></tr>
+      <tr><td><code>knowledge4</code></td><td>generalKnowledge2</td><td>Wiedza ogólna 4</td></tr>
+      <tr><td><code>knowledge5</code></td><td>generalKnowledge2</td><td>Wiedza ogólna 5</td></tr>
+      <tr><td><code>knowledge6</code></td><td>generalKnowledge2</td><td>Wiedza ogólna 6</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Kondycja (constitution)</h4>
+  <table>
+    <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
+    <tbody>
+      <tr><td><code>swimming</code></td><td>fitness</td><td>Pływanie</td></tr>
+      <tr><td><code>climbing</code></td><td>fitness</td><td>Wspinaczka</td></tr>
+      <tr><td><code>stamina</code></td><td>fitness</td><td>Kondycja</td></tr>
+      <tr><td><code>horseRiding</code></td><td>riding</td><td>Jazda konna</td></tr>
+      <tr><td><code>drivingCarriage</code></td><td>riding</td><td>Powożenie</td></tr>
+      <tr><td><code>taming</code></td><td>riding</td><td>Oswajanie</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ITEM TYPES -->
+  <h3 id="keys-item-types">Typy Itemów</h3>
+  <p>Klucz <code>item.type</code> — używaj np. w wyzwalaczu <code>equipToggle</code>: <code>if (args.item.type === "weapon") { ... }</code></p>
+  <table>
+    <thead><tr><th>Klucz</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>weapon</code></td><td>Broń (biała, palna, miotana)</td></tr>
+      <tr><td><code>armor</code></td><td>Pancerz / zbroja</td></tr>
+      <tr><td><code>gear</code></td><td>Ekwipunek ogólny</td></tr>
+      <tr><td><code>ammo</code></td><td>Amunicja</td></tr>
+      <tr><td><code>magazine</code></td><td>Magazynek</td></tr>
+      <tr><td><code>trick</code></td><td>Sztuczka / zdolność specjalna</td></tr>
+      <tr><td><code>wound</code></td><td>Rana (generowana przez system)</td></tr>
+      <tr><td><code>reputation</code></td><td>Reputacja</td></tr>
+      <tr><td><code>specialization</code></td><td>Specjalizacja / cecha</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ITEM FIELDS -->
+  <h3 id="keys-item-fields">Pola Itemów</h3>
+  <p>Klucze dostępne przez <code>args.item.system.&lt;pole&gt;</code> lub <code>this.item.system.&lt;pole&gt;</code>. Każdy item ma zawsze <code>description</code>, <code>weight</code>, <code>cost</code>, <code>quantity</code> i <code>availability</code>.</p>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Wspólne pola (wszystkie typy)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.description</code></td><td>string (HTML)</td><td>Opis itemu</td></tr>
+      <tr><td><code>system.weight</code></td><td>number</td><td>Waga w kg</td></tr>
+      <tr><td><code>system.cost</code></td><td>number</td><td>Cena</td></tr>
+      <tr><td><code>system.quantity</code></td><td>number</td><td>Ilość</td></tr>
+      <tr><td><code>system.availability</code></td><td>number (0–100)</td><td>Dostępność w %</td></tr>
+      <tr><td><code>system.equipped</code></td><td>boolean</td><td>Czy założony (weapon, armor, magazine)</td></tr>
+      <tr><td><code>system.resources</code></td><td>Array</td><td>Zasoby zdefiniowane na itemu</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Broń (<code>weapon</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.weaponType</code></td><td>string</td><td><code>"melee"</code>, <code>"ranged"</code>, <code>"thrown"</code></td></tr>
+      <tr><td><code>system.attribute</code></td><td>string</td><td>Klucz atrybutu używanego do rzutu (np. <code>"dexterity"</code>)</td></tr>
+      <tr><td><code>system.skill</code></td><td>string</td><td>Klucz umiejętności (np. <code>"brawl"</code>, <code>"pistols"</code>)</td></tr>
+      <tr><td><code>system.attackBonus</code></td><td>number</td><td>Bonus do ataku</td></tr>
+      <tr><td><code>system.defenseBonus</code></td><td>number</td><td>Bonus do obrony</td></tr>
+      <tr><td><code>system.damageMelee1</code></td><td>string</td><td>Obrażenia wręcz 1 (np. <code>"D"</code>)</td></tr>
+      <tr><td><code>system.damageMelee2</code></td><td>string</td><td>Obrażenia wręcz 2</td></tr>
+      <tr><td><code>system.damageMelee3</code></td><td>string</td><td>Obrażenia wręcz 3</td></tr>
+      <tr><td><code>system.damage</code></td><td>string</td><td>Obrażenia (broń palna, np. <code>"L"</code>)</td></tr>
+      <tr><td><code>system.rangedSubtype</code></td><td>string</td><td>Podtyp broni palnej: <code>"pistols"</code>, <code>"rifles"</code>, <code>"sniperRifles"</code>, <code>"shotguns"</code>, <code>"submachineRifles"</code></td></tr>
+      <tr><td><code>system.caliber</code></td><td>string</td><td>Kaliber</td></tr>
+      <tr><td><code>system.piercing</code></td><td>number</td><td>Przebicie pancerza (PP)</td></tr>
+      <tr><td><code>system.fireRate</code></td><td>number</td><td>Szybkostrzelność</td></tr>
+      <tr><td><code>system.capacity</code></td><td>number</td><td>Pojemność magazynka</td></tr>
+      <tr><td><code>system.jamming</code></td><td>number (0–20)</td><td>Próg zacięcia</td></tr>
+      <tr><td><code>system.jammed</code></td><td>boolean</td><td>Czy broń jest aktualnie zacięta</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Pancerz (<code>armor</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.armor.ratings.head</code></td><td>number</td><td>SP głowy</td></tr>
+      <tr><td><code>system.armor.ratings.torso</code></td><td>number</td><td>SP tułowia</td></tr>
+      <tr><td><code>system.armor.ratings.leftArm</code></td><td>number</td><td>SP lewego ramienia</td></tr>
+      <tr><td><code>system.armor.ratings.rightArm</code></td><td>number</td><td>SP prawego ramienia</td></tr>
+      <tr><td><code>system.armor.ratings.leftLeg</code></td><td>number</td><td>SP lewej nogi</td></tr>
+      <tr><td><code>system.armor.ratings.rightLeg</code></td><td>number</td><td>SP prawej nogi</td></tr>
+      <tr><td><code>system.armor.durability</code></td><td>number</td><td>Wytrzymałość pancerza</td></tr>
+      <tr><td><code>system.armor.durabilityDamage</code></td><td>number</td><td>Uszkodzenia wytrzymałości</td></tr>
+      <tr><td><code>system.armor.penalty</code></td><td>number</td><td>Kara do testów za noszenie pancerza</td></tr>
+      <tr><td><code>system.effectiveArmor.&lt;lokacja&gt;</code></td><td>number</td><td>Efektywne SP po odjęciu uszkodzeń (getter)</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Amunicja (<code>ammo</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.caliber</code></td><td>string</td><td>Kaliber</td></tr>
+      <tr><td><code>system.damage</code></td><td>string</td><td>Obrażenia (gdy nadpisuje broń)</td></tr>
+      <tr><td><code>system.piercing</code></td><td>number</td><td>PP (gdy nadpisuje broń)</td></tr>
+      <tr><td><code>system.jamming</code></td><td>number</td><td>Próg zacięcia (gdy nadpisuje)</td></tr>
+      <tr><td><code>system.isOverride</code></td><td>boolean</td><td>Czy amunicja nadpisuje statystyki broni</td></tr>
+      <tr><td><code>system.isPellet</code></td><td>boolean</td><td>Czy amunicja śrutowa</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Magazynek (<code>magazine</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.caliber</code></td><td>string</td><td>Kaliber magazynka</td></tr>
+      <tr><td><code>system.capacity</code></td><td>number</td><td>Pojemność</td></tr>
+      <tr><td><code>system.contents</code></td><td>Array</td><td>Zawartość: <code>[{ ammoId, name, quantity }]</code></td></tr>
+      <tr><td><code>system.totalCount</code></td><td>number</td><td>Aktualna liczba naboi (getter)</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Rana (<code>wound</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.location</code></td><td>string</td><td>Lokalizacja: <code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, <code>"rightArm"</code>, <code>"leftLeg"</code>, <code>"rightLeg"</code></td></tr>
+      <tr><td><code>system.damageType</code></td><td>string</td><td>Typ rany: <code>"D"</code>, <code>"sD"</code>, <code>"L"</code>, <code>"sL"</code>, <code>"C"</code>, <code>"sC"</code>, <code>"K"</code>, <code>"sK"</code></td></tr>
+      <tr><td><code>system.penalty</code></td><td>number</td><td>Kara do testów generowana przez ranę</td></tr>
+      <tr><td><code>system.isHealing</code></td><td>boolean</td><td>Czy rana jest w trakcie gojenia</td></tr>
+      <tr><td><code>system.isActive</code></td><td>boolean</td><td>Czy rana jest aktywna (wliczana do kar)</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Reputacja (<code>reputation</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.reputation</code></td><td>number</td><td>Wartość reputacji w tym itemu</td></tr>
+      <tr><td><code>system.reputationBonus</code></td><td>number</td><td>Bonus AE do reputacji (obliczany)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- DIFFICULTY KEYS -->
+  <h3 id="keys-difficulty">Klucze trudności (<code>args.fields.difficulty</code>)</h3>
+  <p>Pole <code>args.fields.difficulty</code> (w Dialog Script) oraz <code>args.difficulty</code> (w innych wyzwalaczach) przyjmuje jeden z poniższych kluczy string. Każdemu kluczowi odpowiada modyfikator kości (<code>mod</code>) i przedział procentowy (<code>min–max</code>).</p>
+  <table>
+    <thead><tr><th>Klucz</th><th>Nazwa</th><th>Mod kości</th><th>Próg % (min–max)</th></tr></thead>
+    <tbody>
+      <tr><td><code>"easy"</code></td><td>Łatwy</td><td>+2</td><td>−20 … −1 %</td></tr>
+      <tr><td><code>"average"</code></td><td>Przeciętny</td><td>0</td><td>0 … 10 %</td></tr>
+      <tr><td><code>"problematic"</code></td><td>Problematyczny</td><td>−2</td><td>11 … 30 %</td></tr>
+      <tr><td><code>"hard"</code></td><td>Trudny</td><td>−5</td><td>31 … 60 %</td></tr>
+      <tr><td><code>"veryHard"</code></td><td>Bardzo trudny</td><td>−8</td><td>61 … 90 %</td></tr>
+      <tr><td><code>"damnHard"</code></td><td>Cholernie trudny</td><td>−11</td><td>91 … 120 %</td></tr>
+      <tr><td><code>"luck"</code></td><td>Łut szczęścia</td><td>−15</td><td>121 … 160 %</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <strong>Przykład — zmiana trudności w Dialog Script:</strong>
+    <pre><code class="language-js">// Ustaw trudność na "Trudny" gdy modyfikator jest aktywny
+args.fields.difficulty = "hard";</code></pre>
+    <strong>Przykład — odczyt trudności w innym wyzwalaczu:</strong>
+    <pre><code class="language-js">if (args.difficulty === "easy" || args.difficulty === "average") {
+  args.fields.modifier += 10; // bonus dla łatwych testów
+}</code></pre>
+  </div>
+
+  <!-- HIT LOCATION KEYS -->
+  <h3 id="keys-hit-location">Klucze lokacji trafienia (<code>args.fields.hitLocation</code>)</h3>
+  <p>Pole <code>args.fields.hitLocation</code> (w Dialog Script dla rzutów na broń) przyjmuje jeden z poniższych kluczy. Wartość <code>"random"</code> oznacza losowanie lokacji (rzut k20 wg tabeli).</p>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Lokacje ciała (Postać / NPC / Bestia)</h4>
+  <table>
+    <thead><tr><th>Klucz</th><th>Lokacja</th><th>Rzut k20</th><th>Kara do celowania (dystansowy / wręcz)</th></tr></thead>
+    <tbody>
+      <tr><td><code>"random"</code></td><td>Losowo (k20)</td><td>—</td><td>0 % / 0 %</td></tr>
+      <tr><td><code>"head"</code></td><td>Głowa</td><td>1–2</td><td>+80 % / +80 %</td></tr>
+      <tr><td><code>"rightArm"</code></td><td>Prawe ramię</td><td>3–4</td><td>+60 % / +40 %</td></tr>
+      <tr><td><code>"leftArm"</code></td><td>Lewe ramię</td><td>5–6</td><td>+60 % / +40 %</td></tr>
+      <tr><td><code>"torso"</code></td><td>Tułów</td><td>7–16</td><td>+20 % / +60 %</td></tr>
+      <tr><td><code>"rightLeg"</code></td><td>Prawa noga</td><td>17–18</td><td>+40 % / +40 %</td></tr>
+      <tr><td><code>"leftLeg"</code></td><td>Lewa noga</td><td>19–20</td><td>+40 % / +40 %</td></tr>
+    </tbody>
+  </table>
+
+  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Lokacje pojazdu</h4>
+  <table>
+    <thead><tr><th>Klucz</th><th>Lokacja</th></tr></thead>
+    <tbody>
+      <tr><td><code>"random"</code></td><td>Losowo</td></tr>
+      <tr><td><code>"front"</code></td><td>Przód</td></tr>
+      <tr><td><code>"rightSide"</code></td><td>Prawy bok</td></tr>
+      <tr><td><code>"leftSide"</code></td><td>Lewy bok</td></tr>
+      <tr><td><code>"rear"</code></td><td>Tył</td></tr>
+      <tr><td><code>"bottom"</code></td><td>Dno</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <strong>Przykład — wymuszenie trafienia w głowę w Dialog Script:</strong>
+    <pre><code class="language-js">// Aktywny modyfikator ustawia cel na głowę
+args.fields.hitLocation = "head";</code></pre>
+    <strong>Przykład — sprawdzenie aktualnej lokacji w rollTest / applyDamage:</strong>
+    <pre><code class="language-js">if (args.location === "head") {
+  // trafienie w głowę — np. zwiększ obrażenia
+}</code></pre>
+  </div>
 </section>
 
 <!-- SECTION 4 -->

@@ -1,6 +1,15 @@
 /**
  * Base schema for all Neuroshima items.
  */
+function testsSchema() {
+  const fields = foundry.data.fields;
+  return {
+    tests: new fields.SchemaField({
+      value: new fields.StringField({ initial: "" })
+    })
+  };
+}
+
 function baseSchema() {
   const fields = foundry.data.fields;
   return {
@@ -9,7 +18,8 @@ function baseSchema() {
     cost: new fields.NumberField({ required: true, initial: 0, min: 0 }),
     quantity: new fields.NumberField({ required: true, integer: true, initial: 1, min: 0 }),
     availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 }),
-    resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
+    resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    ...testsSchema()
   };
 }
 
@@ -205,7 +215,8 @@ export class TrickData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
-      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema()
     };
   }
 }
@@ -218,6 +229,7 @@ export class WoundData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
+      ...testsSchema(),
       location: new fields.StringField({ 
         required: true, 
         initial: "torso",
@@ -247,6 +259,7 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
       actionType: new fields.StringField({ initial: "Atak" }),
       costType: new fields.StringField({
         initial: "segment",
@@ -272,6 +285,7 @@ export class SpecializationData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       bonusText:   new fields.HTMLField({ initial: "" }),
+      ...testsSchema(),
       skillSpecializations: new fields.SchemaField({
         melee:             new fields.BooleanField({ initial: false }),
         firearms:          new fields.BooleanField({ initial: false }),
@@ -306,7 +320,8 @@ export class TraitData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
-      description: new fields.HTMLField({ initial: "" })
+      description: new fields.HTMLField({ initial: "" }),
+      ...testsSchema()
     };
   }
 }
@@ -321,7 +336,8 @@ export class OriginData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       bonusText:   new fields.HTMLField({ initial: "" }),
-      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] })
+      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] }),
+      ...testsSchema()
     };
   }
 }
@@ -336,7 +352,8 @@ export class ProfessionData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       bonusText:   new fields.HTMLField({ initial: "" }),
-      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] })
+      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] }),
+      ...testsSchema()
     };
   }
 }
@@ -351,6 +368,7 @@ export class VehicleModData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       rules: new fields.HTMLField({ initial: "" }),
+      ...testsSchema(),
       category: new fields.StringField({
         required: true,
         initial: "engine",
@@ -376,7 +394,8 @@ export class MoneyData extends foundry.abstract.TypeDataModel {
       description: new fields.HTMLField({ initial: "" }),
       weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
       quantity: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
-      coinValue: new fields.NumberField({ required: true, integer: true, initial: 1, min: 1 })
+      coinValue: new fields.NumberField({ required: true, integer: true, initial: 1, min: 1 }),
+      ...testsSchema()
     };
   }
 }
@@ -391,6 +410,7 @@ export class ReputationData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
       value: new fields.NumberField({ required: true, integer: true, initial: 0 }),
       overrideRelations: new fields.BooleanField({ initial: false }),
       relationTable: new fields.ArrayField(
@@ -416,6 +436,7 @@ export class VehicleDamageData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
+      ...testsSchema(),
       location: new fields.StringField({
         required: true,
         initial: "front",

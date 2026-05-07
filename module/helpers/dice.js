@@ -2200,6 +2200,25 @@ export class NeuroshimaDice {
    */
   static buildRollTooltip(rollData) {
     if (!rollData) return "";
+
+    if (rollData.isReputationRoll) {
+      const repValue = rollData.repRepValue ?? 0;
+      const fame = rollData.repFame ?? 0;
+      const repBonus = rollData.repBonus ?? 0;
+      const totalPenalty = rollData.totalPenalty || rollData.penalty || 0;
+      const baseDifficultyLabel = rollData.baseDifficultyLabel || rollData.difficultyLabel || "";
+      const target = rollData.testTarget || rollData.target || 0;
+
+      let tooltip = `<strong>${game.i18n.localize('NEUROSHIMA.Reputation.Value')}:</strong> ${repValue}<br>`;
+      tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Reputation.Fame')}:</strong> ${fame}<br>`;
+      if (repBonus !== 0) {
+        tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Reputation.RepBonus')}:</strong> ${repBonus >= 0 ? "+" : ""}${repBonus}<br>`;
+      }
+      tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.PenaltyLabel')}:</strong> ${totalPenalty}%<br>`;
+      tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.BaseDifficulty')}:</strong> ${game.i18n.localize(baseDifficultyLabel || 'NEUROSHIMA.Difficulty.Average')}<br>`;
+      tooltip += `<strong>${game.i18n.localize('NEUROSHIMA.Roll.Target')}:</strong> ${target}`;
+      return tooltip.trim();
+    }
     
     const penalties = rollData.penalties || {};
     const baseStat = rollData.baseStat || rollData.stat || 0;

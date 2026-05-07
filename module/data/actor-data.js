@@ -100,6 +100,8 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       notes: new fields.HTMLField({ initial: "" }),
       reputation: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
       fame: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      reputationBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      fameBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
       hp: new fields.SchemaField({
         value: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
         max: new fields.NumberField({ integer: true, initial: 27, min: 1 })
@@ -161,6 +163,8 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       this.combat.armorPenaltyBonus = 0;
       this.combat.generalPenalty = 0;
     }
+    this.reputationBonus = 0;
+    this.fameBonus = 0;
   }
 
   /**

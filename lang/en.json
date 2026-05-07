@@ -21,7 +21,8 @@
             "origin": "Origin",
             "profession": "Profession",
             "vehicle-damage": "Damage",
-            "money": "Currency"
+            "money": "Currency",
+            "reputation": "Reputation"
         }
     },
     "NEUROSHIMA": {
@@ -162,6 +163,10 @@
             "Wounds": "Wounds",
             "Summary": "Summary",
             "TotalModifier": "Total Modifier",
+            "DialogModifiers": "Dialog Modifiers",
+            "UserEntry": "User",
+            "Total": "Total",
+            "EffectBonus": "Effects",
             "FinalDifficulty": "Final Difficulty",
             "SkillBonus": "Skill Bonus",
             "SkillBonusAbbr": "Skill Bon.",
@@ -335,6 +340,10 @@
                 "Name": "Use colors for relations",
                 "Hint": "Displays the color assigned to each relation level on the character sheet."
             },
+            "ReputationColorNames": {
+                "Name": "Use colors for reputation name",
+                "Hint": "Displays the reputation item name in the color of its matching relation on the character sheet reputation tab."
+            },
             "ReputationFameThreshold": {
                 "Name": "Reputation → Fame threshold",
                 "Hint": "How many reputation points in a single item must be reached to automatically gain fame points."
@@ -342,6 +351,10 @@
             "ReputationFamePoints": {
                 "Name": "Fame points per threshold",
                 "Hint": "How many fame points the player receives upon reaching the reputation threshold."
+            },
+            "ReputationShowAsProgressBar": {
+                "Name": "Show relation as progress bar",
+                "Hint": "Instead of the relation name, displays an animated progress bar colored by the relation with the name shown inside."
             },
             "EncumbranceConfig": {
                 "Title": "Encumbrance Settings",
@@ -414,6 +427,10 @@
             "RollTooltipOwnerVisibility": {
                 "Name": "Show Tooltip to Owner",
                 "Hint": "Always show the detailed penalty breakdown to the owner of the roll (and GM), regardless of their role."
+            },
+            "ItemCardPreventSelfTake": {
+                "Name": "Block self-take from chat card",
+                "Hint": "When enabled, the actor who posted an item to chat cannot take it back from the chat card."
             },
             "UsePelletCountLimit": {
                 "Name": "Pellet count limit",
@@ -1050,7 +1067,13 @@
             "SimpleRollHint": "Roll 1d100 — success if result ≤ Value + Fame.",
             "FameGained": "{item}: threshold reached — +{fame} fame point(s)!",
             "Relation": "Relation",
-            "AdjustHint": "LMB: +1 | RMB: -1 | Shift: ×5 | Ctrl: ×10 | Ctrl+Shift: ×100"
+            "AdjustHint": "LMB: +1 | RMB: -1 | Shift: ×5 | Ctrl: ×10 | Ctrl+Shift: ×100",
+            "ValueAbbr": "Rep.",
+            "FameAbbr": "Fame",
+            "RepBonus": "Rep. Bonus",
+            "RepBonusHint": "Additional bonus added directly to reputation value for this roll.",
+            "SortByValue": "Sort by reputation value (descending)",
+            "DragToReorder": "Drag to reorder"
         },
         "Armor": {
             "TotalPenalty": "Total Penalty",
@@ -1317,6 +1340,8 @@
             "EquipTransfer": "Equip Transfer",
             "EquipTransferHint": "Only transfer this effect when the item is equipped.",
             "BonusFromEffect": "Bonus from active effect",
+            "Test": "Test",
+            "TestHint": "Optional test label. Use in scripts as args.effect.test. Supports @item.system.xxx references.",
             "ManualKeys": "Manual key",
             "ToggleManualKeys": "Toggle between predefined key list and manual input",
             "Change": {
@@ -1341,9 +1366,12 @@
                     "SkillsPerception": "Skills: Perception",
                     "SkillsCharisma": "Skills: Charisma",
                     "SkillsCleverness": "Skills: Cleverness",
-                    "SkillsConstitution": "Skills: Constitution"
+                    "SkillsConstitution": "Skills: Constitution",
+                    "Reputation": "Reputation"
                 },
                 "HealingRate": "Healing Rate",
+                "ReputationBonus": "Global Reputation Bonus",
+                "FameBonus": "Fame Bonus",
                 "ArmorBonus": {
                     "All": "All Locations Bonus",
                     "Head": "Head Bonus",
@@ -1415,8 +1443,13 @@
                 "EndRound": "End Round",
                 "EndCombat": "End Combat",
                 "CreateEffect": "Effect Created",
-                "DeleteEffect": "Effect Deleted"
+                "DeleteEffect": "Effect Deleted",
+                "Dialog": "Dialog Modifier"
             },
+            "DialogScript": "Dialog Script",
+            "HideScript": "Hide Script",
+            "ActivateScript": "Activate Script",
+            "SubmissionScript": "Submission Script",
             "Help": {
                 "Actor": "The actor owning this effect",
                 "Item": "The item owning this effect (if effect is on an item)",
@@ -1476,6 +1509,16 @@
             "Stats": "Statistics",
             "Resources": "Resources",
             "Description": "Description"
+        },
+        "ItemCard": {
+            "DragHint": "Drag onto an actor to assign this item",
+            "SelfTakeBlocked": "You cannot take your own item from the chat card.",
+            "LimitDialog": {
+                "Title": "Available Copies",
+                "Label": "How many times can this item be taken? (empty = unlimited)",
+                "Confirm": "Confirm",
+                "Cancel": "Cancel"
+            }
         }
     },
     "TOKEN": {

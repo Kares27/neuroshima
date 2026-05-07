@@ -8,6 +8,9 @@ export class NeuroshimaScript {
     this.label = scriptData.label || "";
     this.code = scriptData.code || "";
     this.runIfDisabled = scriptData.runIfDisabled ?? false;
+    this.hideScript = scriptData.hideScript || "";
+    this.activateScript = scriptData.activateScript || "";
+    this.submissionScript = scriptData.submissionScript || "";
     this.effect = effect;
   }
 
@@ -34,6 +37,23 @@ export class NeuroshimaScript {
   notification(content, type = "info") {
     const name = this.effect?.name || "Effect";
     ui.notifications[type]?.(`${name}: ${content}`);
+  }
+
+  /**
+   * Add a dialog modifier entry from a `dialog` trigger script.
+   * Call this inside a dialog-trigger script to push a labeled modifier into the roll dialog.
+   * @param {string} label     - Display label for this modifier.
+   * @param {number} modifier  - Percentage modifier (positive = bonus, negative = penalty).
+   * @param {string} [description=""] - Optional longer description shown as tooltip.
+   *
+   * @example
+   * // In a dialog trigger script:
+   * this.addDialogModifier("Bon. za celowanie", 10, "Twój efekt pasywny dodaje premię do ataku.");
+   */
+  addDialogModifier(label, modifier, description = "") {
+    const args = this._currentArgs;
+    if (!args || !Array.isArray(args.dialogModifiers)) return;
+    args.dialogModifiers.push({ label, modifier: Number(modifier) || 0, description });
   }
 
   // ── Location helpers ─────────────────────────────────────────────────────
@@ -1267,26 +1287,21 @@ export class NeuroshimaScript {
     return proxy;
   }
 
-  async execute(args = {}) {
+  async _executeCode(code, args = {}) {
     const executingActor = args.actor ?? null;
     const executingItem  = args.item  ?? null;
     const ctx = this._buildContext(executingActor, executingItem);
+    const prev = this._currentArgs;
     this._currentArgs = args;
     try {
       const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
-
-      // Try to wrap the code as a return-expression so that Promises from IIFE
-      // patterns like `(async () => { ... })()` are properly returned and awaited
-      // by the caller.  If the code contains top-level statements (not a valid
-      // expression), AsyncFunction construction throws a SyntaxError → fall back.
       let fn;
-      const expr = this.code.trimEnd().replace(/;\s*$/, "");
+      const expr = code.trimEnd().replace(/;\s*$/, "");
       try {
         fn = new AsyncFunction("args", `return (${expr})`);
       } catch {
-        fn = new AsyncFunction("args", this.code);
+        fn = new AsyncFunction("args", code);
       }
-
       return await fn.call(ctx, args);
     } catch (e) {
       if (e instanceof SyntaxError) {
@@ -1296,8 +1311,27 @@ export class NeuroshimaScript {
         ui.notifications.error(`Script Error [${this.label}]: ${e.message}`);
       }
     } finally {
-      this._currentArgs = null;
+      this._currentArgs = prev;
     }
+  }
+
+  async execute(args = {}) {
+    return this._executeCode(this.code, args);
+  }
+
+  async evalHide(args = {}) {
+    if (!this.hideScript) return false;
+    return !!(await this._executeCode(this.hideScript, args));
+  }
+
+  async evalActivate(args = {}) {
+    if (!this.activateScript) return false;
+    return !!(await this._executeCode(this.activateScript, args));
+  }
+
+  async runSubmission(args = {}) {
+    if (!this.submissionScript) return;
+    return this._executeCode(this.submissionScript, args);
   }
 
   executeSync(args = {}) {
@@ -1522,6 +1556,7 @@ export class NeuroshimaScriptRunner {
   static TRIGGERS = {
     manual:           "Manually Invoked",
     immediate:        "Immediate",
+    dialog:           "Dialog",
     prepareData:      "Prepare Data",
     preRollTest:      "Pre-Roll Test",
     rollTest:         "Roll Test",
@@ -1541,6 +1576,270 @@ export class NeuroshimaScriptRunner {
     weaponJam:        "Weapon Jam",
     postWeaponShot:   "Post-Weapon Shot"
   };
+
+  /**
+   * Execute a single dialog modifier script and return the populated fields object.
+   * Call this when the user toggles a modifier ON in the roll dialog.
+   * @param {object} dm            - Dialog modifier entry from runDialogScripts (must have _script and _rollContext)
+   * @param {Actor}  actor
+   * @param {object} [liveContext] - Live form values to override stored rollContext fields
+   * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number}>}
+   */
+  static async execDialogModifier(dm, actor, liveContext = {}) {
+    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null };
+    const rc = dm._rollContext || {};
+    const initialDifficulty = liveContext.difficulty ?? rc.difficulty ?? "average";
+    const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
+    const initialArmorPenalty = liveContext.armorPenalty ?? rc.armorPenalty ?? (actor.system.combat?.totalArmorPenalty || 0);
+    const initialWoundPenalty = liveContext.woundPenalty ?? rc.woundPenalty ?? (actor.system.combat?.totalWoundPenalty || 0);
+    const fields = {
+      modifier: 0,
+      attributeBonus: 0,
+      skillBonus: 0,
+      armorPenalty: 0,
+      woundPenalty: 0,
+      distance: 0,
+      distanceModifier: 0,
+      difficulty: initialDifficulty,
+      hitLocation: initialHitLocation
+    };
+    const args = {
+      actor,
+      skill: rc.skill ?? null,
+      attribute: rc.attribute ?? null,
+      rollType: rc.rollType ?? null,
+      weapon: rc.weapon ?? null,
+      flags: {},
+      fields,
+      currentDifficulty: initialDifficulty,
+      currentHitLocation: initialHitLocation,
+      currentArmorPenalty: initialArmorPenalty,
+      currentWoundPenalty: initialWoundPenalty,
+      currentDistance: liveContext.distance ?? rc.distance ?? 0,
+      currentDistanceModifier: liveContext.distanceModifier ?? rc.distanceModifier ?? 0
+    };
+    await dm._script.execute(args);
+    return {
+      modifier: fields.modifier,
+      attributeBonus: fields.attributeBonus,
+      skillBonus: fields.skillBonus,
+      armorDelta: fields.armorPenalty,
+      woundDelta: fields.woundPenalty,
+      distanceDelta: fields.distance,
+      distanceModifierDelta: fields.distanceModifier,
+      difficulty: fields.difficulty !== initialDifficulty ? fields.difficulty : null,
+      hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null
+    };
+  }
+
+  /**
+   * @deprecated Replaced by computeDialogFields() + WFRP re-render pattern.
+   * Apply dialog field overrides from active dialog modifiers to the DOM.
+   * @param {HTMLElement} html - Root element of the dialog
+   * @param {string} [difficultySelectName="baseDifficulty"] - Name of the difficulty select element
+   */
+  static applyDialogFieldOverrides(html, difficultySelectName = "baseDifficulty") {
+    let modifierDelta = 0;
+    let attrBonusDelta = 0;
+    let skillBonusDelta = 0;
+    let armorDelta = 0;
+    let woundDelta = 0;
+    let difficultyOverride = null;
+    let hitLocationOverride = null;
+    const modBreakdown = [];
+    const attrBreakdown = [];
+    const skillBreakdown = [];
+
+    html.querySelectorAll('.dm-modifier-item.dm-active, .dm-modifier-item:not(.dm-toggleable)').forEach(li => {
+      const val = parseInt(li.dataset.dmValue) || 0;
+      const ab = parseInt(li.dataset.dmAttrBonus) || 0;
+      const sb = parseInt(li.dataset.dmSkillBonus) || 0;
+      const label = li.querySelector('a')?.textContent?.trim() || '';
+      modifierDelta += val;
+      attrBonusDelta += ab;
+      skillBonusDelta += sb;
+      armorDelta += parseInt(li.dataset.dmArmorDelta) || 0;
+      woundDelta += parseInt(li.dataset.dmWoundDelta) || 0;
+      if (val !== 0) modBreakdown.push({ label, value: val });
+      if (ab !== 0) attrBreakdown.push({ label, value: ab });
+      if (sb !== 0) skillBreakdown.push({ label, value: sb });
+      const diff = li.dataset.dmDifficulty;
+      if (diff) {
+        const NS = game.neuroshima?.NEUROSHIMA ?? {};
+        if (!difficultyOverride || (NS.difficulties?.[diff]?.mod ?? 0) < (NS.difficulties?.[difficultyOverride]?.mod ?? 0)) {
+          difficultyOverride = diff;
+        }
+      }
+      const hitLoc = li.dataset.dmHitLocation;
+      if (hitLoc) hitLocationOverride = hitLoc;
+    });
+
+    const userLabel = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
+    const effectLabel = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
+    const totalLabel = game.i18n.localize("NEUROSHIMA.Roll.Total");
+
+    const sign = v => v >= 0 ? `+${v}` : `${v}`;
+    const buildTooltip = (userVal, effectDelta, breakdown) => {
+      if (effectDelta === 0) return null;
+      const parts = [`<strong>${userLabel}:</strong> ${sign(userVal)}`];
+      if (breakdown.length) {
+        parts.push(`<strong>${effectLabel}:</strong>`);
+        for (const e of breakdown) {
+          parts.push(`&nbsp;&bull; ${e.label}: ${sign(e.value)}`);
+        }
+      }
+      parts.push(`<strong>${totalLabel}:</strong> ${sign(userVal + effectDelta)}`);
+      return parts.join("<br>");
+    };
+
+    const applyNumericField = (fieldName, hiddenName, effectDelta, breakdown) => {
+      const inp = html.querySelector(`[name="${fieldName}"]`);
+      if (!inp) return;
+
+      const prevEffectDelta = parseInt(inp.dataset.effectDelta) || 0;
+      const currentTotal = parseInt(inp.value) || 0;
+      const userVal = currentTotal - prevEffectDelta;
+
+      inp.dataset.effectDelta = String(effectDelta);
+      inp.value = userVal + effectDelta;
+
+      const tooltip = buildTooltip(userVal, effectDelta, breakdown);
+      if (tooltip) {
+        inp.dataset.tooltip = tooltip;
+      } else {
+        delete inp.dataset.tooltip;
+      }
+
+      const hidden = html.querySelector(`[name="${hiddenName}"]`);
+      if (hidden) hidden.value = 0;
+    };
+
+    applyNumericField("modifier", "dialogModifier", modifierDelta, modBreakdown);
+    applyNumericField("attributeBonus", "dialogAttrBonus", attrBonusDelta, attrBreakdown);
+    applyNumericField("skillBonus", "dialogSkillBonus", skillBonusDelta, skillBreakdown);
+
+    const baseArmor = parseInt(html.querySelector('[name="baseArmorPenalty"]')?.value) || 0;
+    const armorInput = html.querySelector('[name="armorPenalty"]');
+    if (armorInput) {
+      armorInput.value = baseArmor + armorDelta;
+      if (armorDelta !== 0) {
+        armorInput.dataset.tooltip = `<strong>${userLabel}:</strong> ${sign(baseArmor)}<br><strong>${effectLabel}:</strong> ${sign(armorDelta)}<br><strong>${totalLabel}:</strong> ${sign(baseArmor + armorDelta)}`;
+      } else {
+        delete armorInput.dataset.tooltip;
+      }
+    }
+
+    const baseWound = parseInt(html.querySelector('[name="baseWoundPenalty"]')?.value) || 0;
+    const woundInput = html.querySelector('[name="woundPenalty"]');
+    if (woundInput) {
+      woundInput.value = baseWound + woundDelta;
+      if (woundDelta !== 0) {
+        woundInput.dataset.tooltip = `<strong>${userLabel}:</strong> ${sign(baseWound)}<br><strong>${effectLabel}:</strong> ${sign(woundDelta)}<br><strong>${totalLabel}:</strong> ${sign(baseWound + woundDelta)}`;
+      } else {
+        delete woundInput.dataset.tooltip;
+      }
+    }
+
+    const diffSelect = html.querySelector(`[name="${difficultySelectName}"]`);
+    if (diffSelect) {
+      if (!this._dialogDiffListenerInstalled.has(diffSelect)) {
+        this._dialogDiffListenerInstalled.add(diffSelect);
+        diffSelect.dataset.userDifficulty = diffSelect.value;
+        diffSelect.addEventListener('input', function() {
+          this.dataset.userDifficulty = this.value;
+          if (this.dataset.effectDifficultyActive) {
+            this.dataset.userDifficultyOverride = this.value;
+          } else {
+            delete this.dataset.userDifficultyOverride;
+          }
+        }, { capture: true });
+      }
+      if (!diffSelect.dataset.userDifficulty) diffSelect.dataset.userDifficulty = diffSelect.value;
+
+      if (difficultyOverride) {
+        const userManualOverride = diffSelect.dataset.userDifficultyOverride;
+        diffSelect.value = userManualOverride || difficultyOverride;
+        diffSelect.dataset.effectDifficultyActive = difficultyOverride;
+      } else {
+        delete diffSelect.dataset.effectDifficultyActive;
+        delete diffSelect.dataset.userDifficultyOverride;
+        diffSelect.value = diffSelect.dataset.userDifficulty || diffSelect.value;
+      }
+    }
+
+    const hitLocSelect = html.querySelector('[name="hitLocation"]');
+    if (hitLocSelect) {
+      if (!this._dialogHitLocListenerInstalled.has(hitLocSelect)) {
+        this._dialogHitLocListenerInstalled.add(hitLocSelect);
+        hitLocSelect.dataset.userHitLocation = hitLocSelect.value;
+        hitLocSelect.addEventListener('input', function() {
+          this.dataset.userHitLocation = this.value;
+          if (this.dataset.effectHitLocActive) {
+            this.dataset.userHitLocOverride = this.value;
+          } else {
+            delete this.dataset.userHitLocOverride;
+          }
+        }, { capture: true });
+      }
+      if (!hitLocSelect.dataset.userHitLocation) hitLocSelect.dataset.userHitLocation = hitLocSelect.value;
+
+      if (hitLocationOverride) {
+        const userHitLocOverride = hitLocSelect.dataset.userHitLocOverride;
+        hitLocSelect.value = userHitLocOverride || hitLocationOverride;
+        hitLocSelect.dataset.effectHitLocActive = hitLocationOverride;
+      } else {
+        delete hitLocSelect.dataset.effectHitLocActive;
+        delete hitLocSelect.dataset.userHitLocOverride;
+        hitLocSelect.value = hitLocSelect.dataset.userHitLocation || hitLocSelect.value;
+      }
+    }
+  }
+
+  /**
+   * Resolve `@item.*` and `@effect.*` references in a string.
+   * Any occurrence of `@item.xxx` is replaced with the resolved property from the item document.
+   * Any occurrence of `@effect.xxx` is replaced with the resolved property from the effect document.
+   * Unresolved references are left as-is.
+   * @param {string} str
+   * @param {Item|null} item
+   * @param {ActiveEffect|null} [effect]
+   * @returns {string}
+   */
+  static _resolveItemRef(str, item, effect = null) {
+    if (!str) return str;
+    let result = str;
+    if (item) {
+      result = result.replace(/@item\.([a-zA-Z0-9_.[\]]+)/g, (match, path) => {
+        let val = foundry.utils.getProperty(item, path);
+        if (val !== undefined && val !== null) return String(val);
+        const tryResolveResource = (resources, resourceKey, prop) => {
+          if (!Array.isArray(resources)) return undefined;
+          const resource = resources.find(r => r.key === resourceKey);
+          if (!resource) return undefined;
+          const resourceVal = foundry.utils.getProperty(resource, prop);
+          return (resourceVal !== undefined && resourceVal !== null) ? String(resourceVal) : undefined;
+        };
+        const longMatch = path.match(/^system\.resources\.([^.]+)\.(.+)$/);
+        if (longMatch) {
+          const resolved = tryResolveResource(item.system?.resources, longMatch[1], longMatch[2]);
+          if (resolved !== undefined) return resolved;
+        }
+        const shortMatch = path.match(/^resources\.([^.]+)\.(.+)$/);
+        if (shortMatch) {
+          const resolved = tryResolveResource(item.system?.resources, shortMatch[1], shortMatch[2]);
+          if (resolved !== undefined) return resolved;
+        }
+        return match;
+      });
+    }
+    if (effect) {
+      result = result.replace(/@effect\.([a-zA-Z0-9_.[\]]+)/g, (match, path) => {
+        const val = foundry.utils.getProperty(effect, path);
+        return val !== undefined && val !== null ? String(val) : match;
+      });
+    }
+    return result;
+  }
 
   /**
    * Damage type severity order for helpers.
@@ -1749,6 +2048,135 @@ export class NeuroshimaScriptRunner {
     const args = { ...rollArgs, autoSuccess: false, cancelled: false };
     await this.execute("preRollTest", args);
     return { autoSuccess: !!args.autoSuccess, cancelled: !!args.cancelled };
+  }
+
+  /**
+   * Compute dialog modifiers (hide/activate/run scripts) and return combined field deltas.
+   * This is the WFRP-pattern replacement for runDialogScripts + applyDialogFieldOverrides.
+   * @param {Actor} actor
+   * @param {Object} rollContext - Contextual data passed to scripts
+   * @param {Set<string>} selectedModifierIds - Effect IDs user manually toggled ON
+   * @param {Set<string>} unselectedModifierIds - Effect IDs user manually toggled OFF
+   * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown}>}
+   */
+  static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set()) {
+    if (!actor) return {
+      dialogModifiers: [],
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null },
+      modBreakdown: [], attrBreakdown: [], skillBreakdown: []
+    };
+    const scripts = this.getScripts(actor, "dialog");
+    const dialogModifiers = [];
+
+    for (const [idx, script] of scripts.entries()) {
+      const effectId = script.effect?.id ?? `${actor.id}_script_${idx}`;
+      const flags = {};
+      const baseArgs = { actor, flags, ...rollContext };
+
+      const hidden = await script.evalHide(baseArgs);
+      if (hidden) continue;
+
+      let activated;
+      if (selectedModifierIds.has(effectId)) {
+        activated = true;
+      } else if (unselectedModifierIds.has(effectId)) {
+        activated = false;
+      } else {
+        activated = await script.evalActivate(baseArgs);
+      }
+
+      const parentItem = script.effect?.parent instanceof Item ? script.effect.parent : null;
+      const rawLabel = script.label || (parentItem?.getFlag?.("neuroshima", "test") ?? "");
+      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null);
+
+      dialogModifiers.push({
+        label: resolvedLabel,
+        activated,
+        canToggle: true,
+        _effectId: effectId,
+        _script: script,
+        _rollContext: { ...rollContext }
+      });
+    }
+
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null };
+    const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
+
+    for (const dm of dialogModifiers) {
+      if (!dm.activated || !dm._script?.code) continue;
+      const result = await this.execDialogModifier(dm, actor, {
+        difficulty: rollContext.difficulty || "average",
+        hitLocation: rollContext.hitLocation || "random",
+        armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
+        woundPenalty: actor.system.combat?.totalWoundPenalty || 0,
+        distance: rollContext.distance || 0,
+        distanceModifier: rollContext.distanceModifier || 0,
+      });
+      scriptFields.modifier += result.modifier || 0;
+      scriptFields.attributeBonus += result.attributeBonus || 0;
+      scriptFields.skillBonus += result.skillBonus || 0;
+      scriptFields.armorDelta += result.armorDelta || 0;
+      scriptFields.woundDelta += result.woundDelta || 0;
+      if (result.difficulty) scriptFields.difficulty = result.difficulty;
+      if (result.hitLocation) scriptFields.hitLocation = result.hitLocation;
+      const label = dm.label || "—";
+      if (result.modifier) modBreakdown.push({ label, value: result.modifier });
+      if (result.attributeBonus) attrBreakdown.push({ label, value: result.attributeBonus });
+      if (result.skillBonus) skillBreakdown.push({ label, value: result.skillBonus });
+    }
+
+    return { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown };
+  }
+
+  /**
+   * Run all `dialog` trigger scripts for the given actor and return collected dialog modifiers.
+   * @deprecated Use computeDialogFields() instead.
+   */
+  static async runDialogScripts(actor, rollContext = {}) {
+    if (!actor) return { dialogModifiers: [], totalDialogModifier: 0, fieldTotals: { modifier: 0, attributeBonus: 0, skillBonus: 0 } };
+    const scripts = this.getScripts(actor, "dialog");
+    const dialogModifiers = [];
+
+    for (const script of scripts) {
+      const flags = {};
+      const baseArgs = {
+        actor,
+        skill: rollContext.skill ?? null,
+        attribute: rollContext.attribute ?? null,
+        flags,
+        ...rollContext
+      };
+
+      const hidden = await script.evalHide(baseArgs);
+      if (hidden) continue;
+
+      const activated = await script.evalActivate(baseArgs);
+
+      const parentItem = script.effect?.parent instanceof Item ? script.effect.parent : null;
+      const rawLabel = script.label || (parentItem?.system?.tests?.value ?? "");
+      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null);
+
+      dialogModifiers.push({
+        label: resolvedLabel,
+        modifier: 0,
+        attributeBonus: 0,
+        skillBonus: 0,
+        description: "",
+        activated,
+        canToggle: true,
+        _script: script,
+        _rollContext: { ...rollContext }
+      });
+    }
+
+    const activatedMods = dialogModifiers.filter(m => m.activated !== false);
+    const fieldTotals = {
+      modifier: activatedMods.reduce((s, m) => s + (m.modifier || 0), 0),
+      attributeBonus: activatedMods.reduce((s, m) => s + (m.attributeBonus || 0), 0),
+      skillBonus: activatedMods.reduce((s, m) => s + (m.skillBonus || 0), 0)
+    };
+
+    return { dialogModifiers, totalDialogModifier: fieldTotals.modifier, fieldTotals };
   }
 
   /**
