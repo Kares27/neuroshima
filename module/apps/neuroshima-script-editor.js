@@ -52,6 +52,8 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
 
     form.querySelector('input[name="label"]')?.addEventListener("change", () => this._persist(form));
     form.querySelector('input[name="runIfDisabled"]')?.addEventListener("change", () => this._persist(form));
+    form.querySelector('input[name="targeter"]')?.addEventListener("change", () => this._persist(form));
+    form.querySelector('input[name="defendingAgainst"]')?.addEventListener("change", () => this._persist(form));
 
     form.querySelectorAll("code-mirror").forEach(cm => {
       cm.addEventListener("change", () => {
@@ -83,6 +85,12 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
 
     const ridEl = form.querySelector('input[name="runIfDisabled"]');
     s.runIfDisabled = ridEl ? ridEl.checked : (s.runIfDisabled ?? false);
+
+    const targeterEl = form.querySelector('input[name="targeter"]');
+    s.targeter = targeterEl ? targeterEl.checked : (s.targeter ?? false);
+
+    const defendingEl = form.querySelector('input[name="defendingAgainst"]');
+    s.defendingAgainst = defendingEl ? defendingEl.checked : (s.defendingAgainst ?? false);
 
     const code = this._readCmValue(form, "code");
     if (code !== undefined) s.code = code;

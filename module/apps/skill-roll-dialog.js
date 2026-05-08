@@ -1,3 +1,4 @@
+import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
 
@@ -42,7 +43,7 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "skill-roll-dialog"],
+    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "roll-dialog", "skill-roll-dialog"],
     position: { width: 520, height: "auto" },
     window: {
       resizable: false,
@@ -89,7 +90,8 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     const userAttrBonus   = this.userEntry.attributeBonus ?? 0;
     const userSkillBonus  = this.userEntry.skillBonus     ?? 0;
     const baseDifficulty  = this.userEntry.baseDifficulty ?? this.rollOptions.baseDifficulty ?? "average";
-    const isOpen          = this.userEntry.isOpen         ?? this.rollOptions.isOpen ?? true;
+    const isOpenRaw       = this.userEntry.isOpen         ?? this.rollOptions.isOpen ?? true;
+    const isOpen          = isOpenRaw === true || isOpenRaw === "true";
     const useArmorPenalty = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? true;
     const useWoundPenalty = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
     const rollMode        = this.userEntry.rollMode        ?? this.rollOptions.rollMode;
@@ -99,11 +101,13 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     const attrValue = currentAttribute ? (this.actor.system.attributeTotals?.[currentAttribute] ?? this.stat) : this.stat;
     const attrObj = { name: currentAttribute, value: attrValue, key: currentAttribute };
 
+    const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
     const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
       this.actor,
       { rollType: this.isSkill ? "skill" : "attribute", label: this.label, stat: this.stat, skill: skillObj, attribute: attrObj, difficulty: baseDifficulty },
       this.selectedModifierIds,
-      this.unselectedModifierIds
+      this.unselectedModifierIds,
+      targetActors
     );
 
     this._dialogModifiers = dialogModifiers;
@@ -123,8 +127,12 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     context.armorPenalty   = actorArmorPenalty + scriptFields.armorDelta;
     context.woundPenalty   = actorWoundPenalty + scriptFields.woundDelta;
 
-    context.baseDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
+    let effectDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
       ? scriptFields.difficulty : baseDifficulty;
+    if (scriptFields.difficultyShift) {
+      effectDifficulty = NeuroshimaScriptRunner.shiftDifficultyKey(effectDifficulty, scriptFields.difficultyShift);
+    }
+    context.baseDifficulty = effectDifficulty;
     context.isOpen          = isOpen;
     context.useArmorPenalty = useArmorPenalty;
     context.useWoundPenalty = useWoundPenalty;
@@ -244,9 +252,13 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     const attrBonus      = userAttrBonus + (sf.attributeBonus || 0);
     const skillBonus     = userSkillBonus + (sf.skillBonus || 0);
 
-    const baseDifficulty = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
+    let baseDifficulty = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
       ? sf.difficulty : (this.userEntry.baseDifficulty ?? this.rollOptions.baseDifficulty ?? "average");
-    const isOpen          = this.userEntry.isOpen ?? this.rollOptions.isOpen ?? true;
+    if (sf.difficultyShift) {
+      baseDifficulty = NeuroshimaScriptRunner.shiftDifficultyKey(baseDifficulty, sf.difficultyShift);
+    }
+    const isOpenRaw       = this.userEntry.isOpen ?? this.rollOptions.isOpen ?? true;
+    const isOpen          = isOpenRaw === true || isOpenRaw === "true";
     const useArmorPenalty = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? true;
     const useWoundPenalty = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
     const currentAttribute = this.userEntry.attribute ?? this.rollOptions.currentAttribute ?? "";
@@ -292,8 +304,11 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     const combinedAttrBonus  = userAttrBonus + (sf.attributeBonus || 0);
     const combinedSkillBonus = userSkillBonus + (sf.skillBonus || 0);
 
-    const baseDiffKey = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
+    let baseDiffKey = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
       ? sf.difficulty : (this.userEntry.baseDifficulty ?? this.rollOptions.baseDifficulty ?? "average");
+    if (sf.difficultyShift) {
+      baseDiffKey = NeuroshimaScriptRunner.shiftDifficultyKey(baseDiffKey, sf.difficultyShift);
+    }
     const isOpen          = this.userEntry.isOpen ?? this.rollOptions.isOpen ?? true;
     const useArmor        = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? true;
     const useWound        = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
@@ -305,9 +320,10 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     const armorPenalty = useArmor ? (actorArmorPenalty + (sf.armorDelta || 0)) : 0;
     const woundPenalty = useWound ? (actorWoundPenalty + (sf.woundDelta || 0)) : 0;
 
+    const submissionOptions = {};
     for (const dm of this._dialogModifiers) {
       if (!dm.activated || !dm._script?.submissionScript) continue;
-      await dm._script.runSubmission({ actor: this.actor });
+      await dm._script.runSubmission({ actor: this.actor, options: submissionOptions, fields: sf });
     }
 
     let finalStat = this.stat;
@@ -342,7 +358,8 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
       actor: this.actor,
       skillBonus: combinedSkillBonus,
       attributeBonus: combinedAttrBonus,
-      rollMode
+      rollMode,
+      options: submissionOptions
     });
   }
 

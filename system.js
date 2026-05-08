@@ -44,10 +44,11 @@ Hooks.once('init', async function() {
     const _isActorSheet = (app) => app instanceof NeuroshimaActorSheet || app instanceof NeuroshimaCreatureSheet;
 
     // Hook to re-render actor sheets when combat updates (for melee pendings)
-    Hooks.on("updateCombat", (combat, updates, options, userId) => {
+    Hooks.on("updateCombat", async (combat, updates, options, userId) => {
         Object.values(ui.windows).forEach(app => {
             if (_isActorSheet(app)) app.render(false);
         });
+        if (game.user.isGM) await NeuroshimaScriptRunner.runUpdateCombat(combat, updates);
     });
 
     // Hide GM-only elements in chat messages for non-GM users
@@ -1914,6 +1915,81 @@ Hooks.on("targetToken", (user) => {
 
 Hooks.on("controlToken", () => {
     refreshAllCombatCards();
+});
+
+Hooks.on("createToken", async (tokenDocument, options, userId) => {
+    if (userId !== game.user.id) return;
+    await NeuroshimaScriptRunner.runCreateToken(tokenDocument);
+    if (game.user.isGM) {
+        const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+        await NeuroshimaAuraManager.refreshAllAuras();
+    }
+});
+
+Hooks.on("preUpdateToken", (tokenDocument, changes, options) => {
+    if (!game.user.isGM) return;
+    if (!("x" in changes) && !("y" in changes)) return;
+    if (!options._nsNewPos) options._nsNewPos = {};
+    options._nsNewPos[tokenDocument.id] = {
+        x: changes.x ?? tokenDocument.x,
+        y: changes.y ?? tokenDocument.y
+    };
+});
+
+Hooks.on("updateToken", async (tokenDocument, changes, options) => {
+    if (!game.user.isGM) return;
+    if (!("x" in changes) && !("y" in changes)) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    const movedTokenNewPos = options._nsNewPos?.[tokenDocument.id] ?? null;
+    await NeuroshimaAuraManager.refreshAllAuras(tokenDocument, movedTokenNewPos);
+});
+
+Hooks.on("deleteToken", async (tokenDocument, options, userId) => {
+    if (!game.user.isGM) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    const actor = tokenDocument.actor;
+    if (actor) {
+        await NeuroshimaAuraManager.removeAllCopiesForEffect(null, actor.id);
+    }
+    for (const otherToken of canvas.scene?.tokens ?? []) {
+        if (otherToken.id === tokenDocument.id) continue;
+        const otherActor = otherToken.actor;
+        if (!otherActor) continue;
+        const stale = (otherActor.effects ?? []).filter(e => {
+            const fa = e.getFlag("neuroshima", "fromAura");
+            return fa && actor && fa.sourceActorId === actor.id;
+        });
+        if (stale.length) {
+            await otherActor.deleteEmbeddedDocuments("ActiveEffect", stale.map(e => e.id), { ns_skipAuraCleanup: true });
+        }
+    }
+});
+
+Hooks.on("canvasReady", async () => {
+    if (!game.user.isGM) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    await NeuroshimaAuraManager.refreshAllAuras();
+});
+
+Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {
+    if (!game.user.isGM) return;
+    if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    await NeuroshimaAuraManager.applyAreaEffect(templateDoc);
+});
+
+Hooks.on("updateMeasuredTemplate", async (templateDoc, changes, options, userId) => {
+    if (!game.user.isGM) return;
+    if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    await NeuroshimaAuraManager.applyAreaEffect(templateDoc);
+});
+
+Hooks.on("deleteMeasuredTemplate", async (templateDoc, options, userId) => {
+    if (!game.user.isGM) return;
+    if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    await NeuroshimaAuraManager.removeAreaCopies(templateDoc.id);
 });
 
 Hooks.on("createActor", async (actor, options, userId) => {

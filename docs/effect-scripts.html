@@ -133,12 +133,16 @@
         <li><a href="#dialog">dialog — Dialog</a></li>
         <li><a href="#trigger-prepareData">prepareData — Prepare Data</a></li>
         <li><a href="#trigger-preRollTest">preRollTest — Pre-Roll Test</a></li>
-        <li><a href="#trigger-rollTest">rollTest — Roll Test</a></li>
+        <li><a href="#trigger-rollTest">rollTest — Roll Test (post-roll)</a></li>
+        <li><a href="#trigger-getInitiativeFormula">getInitiativeFormula — Get Initiative Formula</a></li>
         <li><a href="#trigger-preApplyDamage">preApplyDamage — Pre-Apply Damage</a></li>
         <li><a href="#trigger-applyDamage">applyDamage — Apply Damage</a></li>
         <li><a href="#trigger-armorCalculation">armorCalculation — Armour Calculation</a></li>
         <li><a href="#trigger-equipToggle">equipToggle — Equip Toggle</a></li>
         <li><a href="#trigger-combat">startCombat / endCombat / startRound / endRound / startTurn / endTurn</a></li>
+        <li><a href="#trigger-updateCombat">updateCombat — Update Combat</a></li>
+        <li><a href="#trigger-createToken">createToken — Create Token</a></li>
+        <li><a href="#trigger-applyEffect">applyEffect / deleteEffect — Effect Applied / Deleted</a></li>
       </ul>
     </li>
     <li><a href="#predefined-keys">Predefiniowane klucze</a>
@@ -447,6 +451,7 @@
       <tr><td><code>args.fields.distance</code></td><td>number</td><td>Dystans do celu (testy broni dystansowej).</td></tr>
       <tr><td><code>args.fields.distanceModifier</code></td><td>number</td><td>Modyfikator kary za dystans.</td></tr>
       <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
+      <tr><td><code>args.fields.difficultyShift</code></td><td>number</td><td>Przesuwa poziom trudności o podaną liczbę stopni (np. <code>+1</code> = poziom wyżej, <code>-1</code> = poziom niżej). Kumuluje się z innymi modyfikatorami.</td></tr>
     </tbody>
   </table>
 
@@ -466,6 +471,151 @@
     </tbody>
   </table>
   <div class="callout info">Logika trudności stosuje zasadę <em>worst-of</em> — jeśli efekt wymusza trudniejszą trudność niż wybrał użytkownik, zostaje użyta trudniejsza.</div>
+
+  <h4>Przesunięcie poziomu trudności (<code>difficultyShift</code>)</h4>
+  <p>Zamiast ustawiać trudność bezpośrednio, możesz przesunąć ją o liczbę poziomów. Przesunięcia z wielu efektów się kumulują. Kolejność poziomów: <code>easy → average → problematic → hard → veryHard → damnHard → luck → masterful → grandmasterful</code>.</p>
+  <pre><code><span class="cmt">// Przesuń poziom trudności o 1 poziom w górę (trudniej)</span>
+args.fields.difficultyShift += <span class="num">1</span>;
+
+<span class="cmt">// Przesuń o 2 poziomy w dół (łatwiej)</span>
+args.fields.difficultyShift -= <span class="num">2</span>;</code></pre>
+
+  <h4>Specjalne opcje — Targeted i Defending Against</h4>
+  <p>Wyzwalacz <code>dialog</code> posiada dwa dodatkowe checkboxy w edytorze skryptów, które zmieniają <em>czyj</em> dialog jest modyfikowany:</p>
+  <table>
+    <thead><tr><th>Opcja</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Targeted</strong></td><td>Skrypt uruchamia się w dialogu <em>każdego aktora</em>, który celuje w aktora posiadającego efekt. <code>this.actor</code> = nosiciel efektu (cel ataku), <code>args.actor</code> = atakujący. Przydatny do efektów defensywnych (np. „−20 do atakujących dystansem", pancerz utrudniający trafienie).</td></tr>
+      <tr><td><strong>Defending Against</strong></td><td>Skrypt uruchamia się w dialogu <em>nosiciela efektu</em> gdy on sam atakuje inny aktor lub przedmiot. <code>this.actor</code> = nosiciel (atakujący), <code>args.actor</code> = cel ataku. Działa z perspektywy atakującego — przydatny do sztuczek ofensywnych (np. bonus gdy cel jest ranny).</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Kluczowa różnica — kto jest atakującym, kto celem:</strong><br>
+    <strong>Targeted</strong>: checkbox na efekcie <em>celu ataku</em>. Skrypt wstrzykuje modyfikator do dialogu atakującego. Użyj gdy chcesz utrudnić komuś trafienie w nosiciela efektu.<br>
+    <strong>Defending Against</strong>: checkbox na efekcie <em>atakującego</em>. Skrypt pojawia się w jego własnym dialogu rzutu gdy atakuje. Użyj gdy chcesz dać nosicielowi bonus (lub karę) podczas jego własnego ataku.
+  </div>
+
+  <pre><code><span class="cmt">// Defending Against — Dialog Script: zwiększ trudność ataku o 1 poziom (np. tarcza celownicza)</span>
+args.fields.difficultyShift += <span class="num">1</span>;
+
+<span class="cmt">// Targeted — Hide Script: pokaż tylko gdy rzut jest walką w zwarciu</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+
+  <!-- ── Targeted: Ciężki pancerz ─────────────────────────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog — Targeted</span>
+      Ciężki pancerz — +30% kary dla atakujących dystansem
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Efekt na <strong>pancerzu</strong> z zaznaczonym <strong>Targeted</strong>. Gdy ktokolwiek strzela do nosiciela,
+      w dialogu <em>atakującego</em> pojawia się automatycznie aktywowany modyfikator dokładający +30% kary.
+      <code>this.actor</code> = nosiciel pancerza, <code>args.actor</code> = strzelający.
+    </p>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <pre><code><span class="cmt">// Ukryj modyfikator dla rzutów nie-dystansowych</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <pre><code><span class="cmt">// Auto-aktywuj przy każdym strzale dystansowym</span>
+<span class="kw">return</span> args.rollType === <span class="str">"ranged"</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <pre><code><span class="cmt">// Dodaj karę do modyfikatora — atakujący trafia trudniej w opancerzonego</span>
+args.fields.modifier += <span class="num">30</span>;</code></pre>
+  </div>
+
+  <!-- ── Targeted: Sztuczka "Szybki" ──────────────────────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog — Targeted</span>
+      Sztuczka "Szybki" — difficultyShift dla atakujących wręcz
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Sztuczka na aktorze z <strong>Targeted</strong>. Każdy kto atakuje nosiciela wręcz dostaje w swoim dialogu
+      modyfikator przesuwający trudność o 1 poziom. Użycie <code>difficultyShift</code> (zamiast <code>difficulty</code>)
+      pozwala na sumowanie z innymi efektami.
+    </p>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"melee"</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <pre><code><span class="cmt">// Przesuń trudność w górę — kumuluje się z innymi efektami "Szybki", tarczami itp.</span>
+args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
+  </div>
+
+  <!-- ── Targeted: Ekran dymny skalowany Spryt ────────────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog — Targeted</span>
+      Ekran dymny — kara skalowana Sprytем nosiciela (tylko dystansowe)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Efekt granatu dymnego z <strong>Targeted</strong>. Kara dla strzelca rośnie z wartością Sprytu nosiciela
+      (max 40%). Pokazuje użycie <code>this.actor</code> (nosiciel dymu) vs <code>args.actor</code> (strzelec).
+    </p>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <pre><code><span class="cmt">// this.actor = nosiciel efektu (stoi w dymie)
+// args.actor = strzelający (ten z dialogiem)</span>
+<span class="kw">const</span> <span class="var">cleverness</span> = <span class="kw">this</span>.<span class="fn">getAttributeTotal</span>(<span class="str">"cleverness"</span>);
+<span class="kw">const</span> <span class="var">penalty</span>    = Math.<span class="fn">min</span>(<span class="var">cleverness</span> * <span class="num">5</span>, <span class="num">40</span>);
+args.fields.modifier += <span class="var">penalty</span>;</code></pre>
+  </div>
+
+  <!-- ── Defending Against: Precyzyjny atak ────────────────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog — Defending Against</span>
+      Sztuczka "Precyzyjny atak" — auto-bonus gdy cel ma ranę głowy
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Sztuczka na aktorze z <strong>Defending Against</strong>. Skrypt pojawia się w dialogu <em>nosiciela</em>
+      gdy on atakuje. <code>args.actor</code> to cel ataku — sprawdzamy czy ma ranę głowy i jeśli tak,
+      Activate Script automatycznie włącza bonus.
+    </p>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <pre><code><span class="cmt">// Pokaż tylko dla ataków wręcz i dystansowych</span>
+<span class="kw">return</span> ![<span class="str">"melee"</span>, <span class="str">"ranged"</span>].includes(args.rollType);</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <pre><code><span class="cmt">// Auto-aktywuj gdy cel (args.actor) ma aktywną ranę głowy</span>
+<span class="kw">const</span> <span class="var">headWounds</span> = <span class="kw">this</span>.<span class="fn">getWounds</span>({ active: <span class="kw">true</span>, location: <span class="str">"head"</span> }, args.actor);
+<span class="kw">return</span> <span class="var">headWounds</span>.length &gt; <span class="num">0</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <pre><code><span class="cmt">// Ujemna wartość modifier = bonus do trafienia (łatwiej trafić rannego)</span>
+args.fields.modifier -= <span class="num">10</span>;</code></pre>
+  </div>
+
+  <!-- ── Defending Against: Submission Script + rollTest ───────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog — Defending Against</span>
+      Sztuczka "Ogłuszające uderzenie" — Submission Script + flaga dla rollTest
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Pełny przykład używający wszystkich 4 pól kodu. Gdy gracz aktywuje modyfikator i zatwierdza dialog,
+      <strong>Submission Script</strong> ustawia flagę w <code>args.options</code>. Drugi skrypt (<code>rollTest</code>)
+      na tym samym efekcie odczytuje tę flagę i dodaje adnotację lub logikę ogłuszenia.
+    </p>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <pre><code><span class="cmt">// Aktywuj automatycznie gdy nosiciel jeszcze nie użył ogłuszenia w tej rundzie</span>
+<span class="kw">return</span> !args.flags.stunUsed;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <pre><code><span class="cmt">// Celuj w głowę automatycznie — lokacja wymagana przez sztuczke</span>
+args.fields.hitLocation = <span class="str">"head"</span>;</code></pre>
+    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Submission Script</h4>
+    <pre><code><span class="cmt">// Uruchamia się gdy modyfikator jest aktywny i gracz klika OK w dialogu
+// args.options przekazywane dalej do rollTest / preRollTest</span>
+args.options.applyStun = <span class="kw">true</span>;
+args.flags.stunUsed    = <span class="kw">true</span>; <span class="cmt">// blokuj ponowną auto-aktywację w tej rundzie</span></code></pre>
+    <p style="margin:8px 0 4px; font-size:0.85em; color:var(--text-dim);">Odpowiadający skrypt <strong>rollTest</strong> na tym samym efekcie:</p>
+    <pre><code><span class="cmt">// Trigger: rollTest — reaguj na flagę z Submission Script</span>
+<span class="kw">if</span> (!args.options?.applyStun) <span class="kw">return</span>;
+<span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Ogłuszające uderzenie: cel = głowa"</span>);</code></pre>
+  </div>
 
   <p><strong>Wartości klucza <code>args.fields.hitLocation</code></strong> — dostępne lokacje trafienia:</p>
   <table>
@@ -550,40 +700,91 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
 
   <!-- preRollTest -->
   <h3 id="trigger-preRollTest">preRollTest — <em>Pre-Roll Test</em></h3>
-  <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Może anulować rzut lub wymusić automatyczny sukces.</p>
+  <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Obsługuje wszystkie modyfikacje przed rzuceniem kośćmi: anulowanie rzutu, automatyczny sukces, zmianę parametrów (atrybut, umiejętność, kary, bonusy). Jest to główny trigger do mutowania wartości statystyk przed rzutem.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
-    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu (read-only w preRollTest — modyfikuj w rollTest)</td></tr>
-    <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności (read-only w preRollTest)</td></tr>
-    <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności</td></tr>
-    <tr><td>args.attributeBonus</td><td>number</td><td>Bonus do atrybutu</td></tr>
-    <tr><td>args.penalties</td><td>object</td><td>Kopia kar: <code>{ mod, wounds, armor, base }</code> (read-only w preRollTest)</td></tr>
-    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code></td></tr>
-    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code></td></tr>
-    <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (wyświetlana w chacie)</td></tr>
+    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu — modyfikuj bezpośrednio (<code>args.stat += 5</code>)</td></tr>
+    <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności — modyfikuj bezpośrednio (<code>args.skill += 1</code>)</td></tr>
+    <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base }</code> — modyfikuj <code>args.penalties.mod</code> (np. <code>args.penalties.mod -= 20</code>)</td></tr>
+    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code> (read-only)</td></tr>
+    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code> (read-only)</td></tr>
+    <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (wyświetlana w chacie, read-only)</td></tr>
+    <tr><td>args.options</td><td>object</td><td>Opcje rzutu przekazane z dialogu submission script — tu odczytuj flagi ustawione przez <code>args.options.mojaFlaga = true</code> w submission</td></tr>
     <tr><td>args.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
     <tr><td>args.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
     <tr><td>args.annotation</td><td>string</td><td>Tekst pokazywany w chacie przy auto-sukcesie (zastępuje domyślny)</td></tr>
-    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu na karcie czatu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
+    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
 
   <!-- rollTest -->
-  <h3 id="trigger-rollTest">rollTest — <em>Roll Test</em></h3>
-  <p>Uruchamiany po <code>preRollTest</code> (tylko gdy nie anulowano/auto-sukces) — modyfikuje parametry rzutu przed rzuceniem kośćmi.</p>
+  <h3 id="trigger-rollTest">rollTest — <em>Roll Test (post-roll)</em></h3>
+  <p>Uruchamiany <em>po</em> rzucie kośćmi — gdy kości zostały już rzucone i wynik znany. Pozwala reagować na wynik rzutu: modyfikować adnotacje, nakładać efekty zależne od sukcesu/porażki, liczyć punkty przewagi. <strong>Nie można już tutaj zmieniać wartości atrybutów ani kar</strong> — do tego służy <code>preRollTest</code>.</p>
+  <div class="callout info">
+    <strong>Uwaga:</strong> Trigger <code>rollTest</code> jest wołany tylko gdy rzut doszedł do skutku (nie został anulowany, nie było auto-sukcesu). Sprawdź <code>args.isSuccess</code> aby rozróżnić wynik.
+  </div>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
-    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu — modyfikuj bezpośrednio (<code>args.stat = nowaWartość</code>)</td></tr>
-    <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności — modyfikuj bezpośrednio</td></tr>
-    <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności</td></tr>
-    <tr><td>args.attributeBonus</td><td>number</td><td>Bonus do atrybutu</td></tr>
-    <tr><td>args.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base }</code> — modyfikuj <code>args.penalties.mod</code></td></tr>
-    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu</td></tr>
-    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności</td></tr>
-    <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (read-only)</td></tr>
-    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
+    <tr><td>args.isSuccess</td><td>boolean</td><td>Czy rzut był sukcesem</td></tr>
+    <tr><td>args.successCount</td><td>number</td><td>Liczba sukcesów (Punkty Przewagi) — może być ujemna przy porażce</td></tr>
+    <tr><td>args.rollData</td><td>object</td><td>Pełny obiekt danych rzutu (read-only) — zawiera m.in. <code>roll</code>, <code>successPoints</code>, <code>stat</code>, <code>skill</code></td></tr>
+    <tr><td>args.roll</td><td>Roll</td><td>Obiekt Foundry Roll z wynikami kości (read-only)</td></tr>
+    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu (read-only)</td></tr>
+    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności (read-only)</td></tr>
+    <tr><td>args.options</td><td>object</td><td>Opcje rzutu — zawiera flagi ustawione przez submission script dialogu</td></tr>
+    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">rollTest</span> Reaguj na wynik rzutu — nakładaj efekt przy porażce</div>
+    <pre><code><span class="cmt">// Trigger: rollTest — przy porażce rzutu Kondycji dodaj kondycję "wyczerpanie"</span>
+<span class="kw">if</span> (args.skillKey !== <span class="str">"stamina"</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (!args.isSuccess) {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"exhausted"</span>);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Wyczerpanie — porażka testu kondycji!"</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">rollTest</span> Odczyt flagi z submission script</div>
+    <pre><code><span class="cmt">// Submission script: args.options.useSpecialRule = true;</span>
+<span class="cmt">// Trigger: rollTest — sprawdź flagę ustawioną w dialogu</span>
+<span class="kw">if</span> (!args.options?.useSpecialRule) <span class="kw">return</span>;
+<span class="kw">if</span> (args.isSuccess &amp;&amp; args.successCount &gt;= <span class="num">2</span>) {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"D"</span>, <span class="str">"torso"</span>, args.actor);
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Specjalna reguła: rana tymczasowa przy dużym sukcesie"</span>);
+}</code></pre>
+  </div>
+
+  <!-- getInitiativeFormula -->
+  <h3 id="trigger-getInitiativeFormula">getInitiativeFormula — <em>Get Initiative Formula</em></h3>
+  <p>Uruchamiany po rzucie na inicjatywę, <em>przed</em> zapisaniem wartości do trackera walki. Pozwala zmodyfikować finalną liczbę Punktów Przewagi (successPoints) która trafi do kolejności inicjatywy.</p>
+  <div class="callout info">
+    <strong>Kolejność:</strong> rzut kośćmi → <code>rollTest</code> → <code>getInitiativeFormula</code> → zapis do Combat trackera.<br>
+    Zmieniaj <code>args.successPoints</code> zamiast próbować modyfikować wynik bezpośrednio na Combat.
+  </div>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
+    <tr><td>args.successPoints</td><td>number</td><td>Wynik inicjatywy — <strong>modyfikuj bezpośrednio</strong> (<code>args.successPoints += 3</code>)</td></tr>
+    <tr><td>args.rollData</td><td>object</td><td>Pełny obiekt danych rzutu (read-only)</td></tr>
+    <tr><td>args.roll</td><td>Roll</td><td>Obiekt Foundry Roll z wynikami kości (read-only)</td></tr>
+    <tr><td>args.attributeKey</td><td>string</td><td>Klucz atrybutu użytego w rzucie inicjatywy (read-only)</td></tr>
+    <tr><td>args.skillKey</td><td>string</td><td>Klucz umiejętności użytej w rzucie inicjatywy (read-only)</td></tr>
+  </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">getInitiativeFormula</span> Bonus do inicjatywy z umiejętności</div>
+    <pre><code><span class="cmt">// Trigger: getInitiativeFormula — aktor z talenty "Błyskawiczny refleks" dostaje +2 do inicjatywy</span>
+<span class="kw">const</span> <span class="var">reflex</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"reflexes"</span>);
+<span class="kw">if</span> (<span class="var">reflex</span> &gt; <span class="num">0</span>) {
+  args.successPoints += <span class="var">reflex</span>;
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Błyskawiczny refleks: +${<span class="var">reflex</span>} do inicjatywy`</span>, <span class="str">"info"</span>);
+}</code></pre>
+  </div>
 
   <!-- preApplyDamage -->
   <h3 id="trigger-preApplyDamage">preApplyDamage — <em>Pre-Apply Damage</em></h3>
@@ -714,14 +915,59 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td>args.annotations</td><td>string[]</td><td>Adnotacje wyświetlane pod wynikiem na karcie czatu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
   </tbody></table>
 
+  <!-- updateCombat -->
+  <h3 id="trigger-updateCombat">updateCombat — <em>Update Combat</em></h3>
+  <p>Uruchamiany po każdej aktualizacji dokumentu walki (zmiana rundy, tury, inicjatywy, itp.). Wykonywany raz na aktora (deduplikacja) przez GM. Przydatny do skryptów reagujących na zmianę stanu walki bez czekania na start/end tury.</p>
+  <div class="callout warning"><strong>Tylko GM:</strong> ten trigger jest wołany wyłącznie po stronie Mistrza Gry.</div>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor biorący udział w walce</td></tr>
+    <tr><td>args.combat</td><td>Combat</td><td>Dokument walki po aktualizacji</td></tr>
+    <tr><td>args.updates</td><td>object</td><td>Zmiany przekazane do <code>combat.update()</code> (np. <code>{ round: 3 }</code>, <code>{ turn: 2 }</code>)</td></tr>
+  </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">updateCombat</span> Reaguj na zmianę rundy walki</div>
+    <pre><code><span class="cmt">// Trigger: updateCombat — przy każdej zmianie rundy wyślij wiadomość</span>
+<span class="kw">if</span> (!(<span class="str">"round"</span> <span class="kw">in</span> args.updates)) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`Nowa runda: ${args.combat.round}`</span>);</code></pre>
+  </div>
+
+  <!-- createToken -->
+  <h3 id="trigger-createToken">createToken — <em>Create Token</em></h3>
+  <p>Uruchamiany gdy token aktora zostaje umieszczony na scenie. Wołany tylko po stronie właściciela tokena. Przydatny do inicjalizacji stanu aktora przy wejściu na scenę.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor którego token został umieszczony</td></tr>
+    <tr><td>args.token</td><td>TokenDocument</td><td>Dokument tokena który właśnie został stworzony</td></tr>
+  </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">createToken</span> Inicjalizacja przy wejściu na scenę</div>
+    <pre><code><span class="cmt">// Trigger: createToken — przy umieszczeniu tokena, zresetuj zasób "focus" do max</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">res</span> = <span class="kw">this</span>.<span class="fn">getItemResourceById</span>(<span class="kw">this</span>.item, <span class="num">0</span>);
+  <span class="kw">if</span> (<span class="var">res</span> &amp;&amp; <span class="var">res</span>.max) {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">setItemResourceById</span>(<span class="kw">this</span>.item, <span class="num">0</span>, <span class="var">res</span>.max);
+  }
+})();</code></pre>
+  </div>
+
   <!-- lifecycle -->
-  <h3>createEffect / deleteEffect — <em>Effect Created / Effect Deleted</em></h3>
-  <p>Uruchamiane raz gdy efekt jest tworzony na aktorze lub usuwany z aktora.</p>
+  <h3 id="trigger-applyEffect">applyEffect / deleteEffect — <em>Effect Applied / Effect Deleted</em></h3>
+  <p>Uruchamiane raz gdy efekt jest tworzony na aktorze (<code>applyEffect</code>) lub usuwany z aktora (<code>deleteEffect</code>). <code>applyEffect</code> jest alternatywą dla <code>immediate</code> — oba są wołane przy <code>_onCreate</code>, różnią się semantyką: <code>applyEffect</code> sugeruje "efekt został nałożony", <code>immediate</code> sugeruje "jednorazowe działanie".</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor docelowy</td></tr>
     <tr><td>args.data / args.options</td><td>object</td><td>Dane Foundry przekazane do operacji</td></tr>
   </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">applyEffect</span> Nałóż kondycję gdy efekt trafia na aktora</div>
+    <pre><code><span class="cmt">// Trigger: applyEffect — gdy ten efekt jest dodawany, nałóż "krwawienie" na aktora</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"bleeding"</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Efekt nałożony: krwawienie rozpoczęte."</span>, <span class="str">"warn"</span>);</code></pre>
+  </div>
 </section>
 
 <!-- PREDEFINED KEYS -->
@@ -2420,6 +2666,8 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><td><code>Target</code></td><td>Efekt jest aplikowany do wskazanego celu (token). Wymaga obsługi skryptem.</td></tr>
       <tr><td><code>Damage</code></td><td>Efekt jest przekazywany gdy aktor/item zadaje obrażenia. Wymaga obsługi skryptem.</td></tr>
       <tr><td><code>Other</code></td><td>Efekt nie jest transferowany automatycznie — pełna kontrola przez skrypty.</td></tr>
+      <tr><td><code>Aura</code></td><td>Efekt jest automatycznie aplikowany do wszystkich aktorów w promieniu wokół tokena właściciela. Kopie efektu pojawiają się w zakładce <em>Temporary</em> na arkuszach celów. Konfiguracja promienia i wizualizacji w <strong>Open Advanced Configuration</strong>.</td></tr>
+      <tr><td><code>Area</code></td><td>Efekt jest aplikowany do aktorów w obrębie szablonu (MeasuredTemplate). Szablon można umieścić ręcznie z <strong>Open Advanced Configuration → Place Template</strong>. Obsługuje tryby <em>Sustained</em> (stały) i <em>Instantaneous</em> (jednorazowy).</td></tr>
     </tbody>
   </table>
   <div class="callout info">
@@ -2447,6 +2695,8 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><td>Damage</td><td>Actor</td><td>Transfer do aktora który otrzymuje obrażenia.</td></tr>
       <tr><td>Damage</td><td>Item</td><td>Transfer do itemu gdy item zadaje obrażenia.</td></tr>
       <tr><td>Other</td><td>Actor / Item</td><td>Brak automatycznego transferu — pełna kontrola skryptami.</td></tr>
+      <tr><td>Aura</td><td>Actor</td><td>Automatyczny transfer do aktorów w promieniu tokena. Kopia pojawia się w <em>Temporary</em> u każdego celu. Usuwana gdy aktor wyjdzie poza promień (lub po wyłączeniu/usunięciu efektu źródłowego).</td></tr>
+      <tr><td>Area</td><td>Actor</td><td>Transfer do aktorów w obrębie umieszczonego szablonu. Szablon statyczny — nie porusza się z tokenem.</td></tr>
     </tbody>
   </table>
 
@@ -2494,6 +2744,169 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       Skrypt w triggerze <code>manual</code> lub <code>immediate</code> sam aplikuje efekt do wybranego aktora
       przez <code>actor.applyEffect()</code> lub <code>convertToApplied()</code>.
     </p>
+  </div>
+
+  <h3>Open Advanced Configuration</h3>
+  <p>
+    Na dole zakładki <strong>Details</strong> znajduje się przycisk <em>Open Advanced Configuration</em>,
+    który otwiera osobny dialog z zaawansowanymi opcjami efektu. Dostępne pola zależą od wybranego
+    <strong>Effect Application</strong>.
+  </p>
+  <h4>Test Independent</h4>
+  <p>Jeśli zaznaczone — efekt może być aplikowany bezpośrednio z arkusza aktora, bez rzutu ani chatu. Niedostępne dla <code>Owning Document</code>.</p>
+
+  <h4>Avoid Test</h4>
+  <p>Definiuje warunek który, jeśli spełniony, <strong>zapobiega</strong> nałożeniu efektu na cel. Opcje: <code>None</code> lub <code>Script</code> (skrypt zwracający <code>true</code> blokuje aplikację).</p>
+
+  <h4>Enable Script</h4>
+  <p>Synchroniczny skrypt JavaScript decydujący, czy efekt jest <em>aktywny</em>. Jeśli zwraca <code>false</code>, wszystkie skrypty i modyfikatory (<em>Changes</em>) tego efektu są pomijane.</p>
+  <div class="callout danger">
+    <strong>Tylko synchroniczny kod.</strong> Nie używaj <code>await</code> ani operacji asynchronicznych. Zwróć <code>true</code> lub <code>false</code>.
+  </div>
+  <p>Dostępne zmienne: <code>actor</code> (Actor posiadający efekt), <code>effect</code> (ten ActiveEffect).</p>
+
+  <div class="example-block">
+    <div class="example-header">Enable Script — Aktywny tylko gdy aktor ma ranę głowy</div>
+    <pre><code><span class="cmt">// Enable Script: efekt aktywny tylko gdy aktor ma przynajmniej 1 ranę głowy</span>
+<span class="kw">return</span> actor.getWounds?.({ location: <span class="str">"head"</span>, active: <span class="kw">true</span> }).length &gt; <span class="num">0</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Enable Script — Aktywny tylko dla postaci (nie NPC/bestii)</div>
+    <pre><code><span class="cmt">// Enable Script: efekt aktywny tylko dla aktorów typu "character"</span>
+<span class="kw">return</span> actor.type === <span class="str">"character"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Enable Script — Aktywny gdy konkretna kondycja jest aktywna</div>
+    <pre><code><span class="cmt">// Enable Script: aktywny gdy aktor ma kondycję "poisoned" (poziom > 0)</span>
+<span class="kw">const</span> <span class="var">poison</span> = actor.effects?.find(e =&gt; e.getFlag(<span class="str">"core"</span>, <span class="str">"statusId"</span>) === <span class="str">"poisoned"</span>);
+<span class="kw">return</span> !!<span class="var">poison</span> &amp;&amp; !<span class="var">poison</span>.disabled;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Enable Script — Aktywny gdy zasób itemu &gt; 0</div>
+    <pre><code><span class="kw">const</span> <span class="var">item</span> = effect.parent;
+<span class="kw">if</span> (!<span class="var">item</span> || <span class="var">item</span>.documentName !== <span class="str">"Item"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">const</span> <span class="var">charges</span> = <span class="var">item</span>.getFlag?.(<span class="str">"neuroshima"</span>, <span class="str">"resources"</span>)?.find(r =&gt; r.key === <span class="str">"charges"</span>);
+<span class="kw">return</span> <span class="var">charges</span> ? <span class="var">charges</span>.value &gt; <span class="num">0</span> : <span class="kw">true</span>;</code></pre>
+  </div>
+
+  <h4>Pre-Apply Script</h4>
+  <p>
+    Skrypt asynchroniczny wykonywany <strong>przed aplikacją efektu na cel</strong> (uruchamia się na kontekście źródła).
+    Zwróć <code>false</code> aby zablokować aplikację. Dostępny dla <code>Damage</code>, <code>Target</code>, <code>Aura</code> i <code>Area</code>.
+    Zmienne: <code>actor</code> (źródło), <code>effect</code>, <code>targetActor</code> (cel).
+  </p>
+  <div class="example-block">
+    <div class="example-header">Pre-Apply Script — Blokuj aplikację gdy źródło ma 0 wytrzymałości</div>
+    <pre><code><span class="kw">if</span> (actor.system?.attributes?.stamina?.value &lt;= <span class="num">0</span>) <span class="kw">return</span> <span class="kw">false</span>;</code></pre>
+  </div>
+
+  <h4>Filter</h4>
+  <p>
+    Skrypt filtrujący dokumenty. Zwróć <code>true</code> aby <strong>zapobiec</strong> aplikacji do danego celu.
+    Dostępny dla <code>Aura</code> i <code>Area</code>. Zmienne: <code>actor</code> (cel), <code>effect</code>, <code>sourceActor</code>.
+  </p>
+  <div class="example-block">
+    <div class="example-header">Filter — Aplikuj tylko do postaci gracza</div>
+    <pre><code><span class="kw">return</span> actor.type !== <span class="str">"character"</span>; <span class="cmt">// true = blokuj NPC</span></code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Filter — Wyklucz aktora będącego źródłem efektu</div>
+    <pre><code><span class="kw">return</span> actor.id === sourceActor?.id;</code></pre>
+  </div>
+
+  <h4>Prompt</h4>
+  <p>Gdy zaznaczony — przed aplikacją pojawia się okno wyboru dokumentu. Działa razem z <strong>Filter</strong> aby zawęzić listę.</p>
+
+  <h4>Area / Aura — pola konfiguracji</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Dostępne dla</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Radius</strong></td><td>liczba</td><td>Aura + Area</td><td>Promień w jednostkach sceny. Pusty = dziedziczone z itemu.</td></tr>
+      <tr><td><strong>Keep</strong></td><td>checkbox</td><td>Aura + Area</td><td>Kopia efektu pozostaje na celu po wyjściu z zasięgu / obszaru.</td></tr>
+      <tr><td><strong>Template Data</strong></td><td>przycisk</td><td>Aura + Area</td><td>Dialog konfiguracji wyglądu szablonu (kolor wypełnienia, obramowania, opacity).</td></tr>
+      <tr><td><strong>Render Aura</strong></td><td>checkbox</td><td>Aura</td><td>Widoczny szablon kołowy na canvasie, przemieszcza się z tokenem właściciela.</td></tr>
+      <tr><td><strong>Transferred Aura</strong></td><td>checkbox</td><td>Aura</td><td>Efekt aplikowany do wybranego celu zamiast do wszystkich w zasięgu.</td></tr>
+      <tr><td><strong>Area Effect Duration</strong></td><td>select</td><td>Area</td><td><code>Instantaneous</code> — szablon usuwa się po jednorazowym nałożeniu. <code>Sustained</code> — szablon pozostaje.</td></tr>
+      <tr><td><strong>Place Template</strong></td><td>przycisk</td><td>Area</td><td>Umieszcza szablon kołowy na canvasie przy tokenie właściciela.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Aura — przykłady</h3>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Aura</span>
+      Prosta aura strachu — wszyscy w promieniu 5m dostają -1 trudności rzutu
+    </div>
+    <p style="margin:6px 1rem;font-size:0.88em;color:#888;">
+      Effect Application: <strong>Aura</strong> | Radius: <strong>5</strong> | Render Aura: <strong>zaznaczony</strong>
+    </p>
+    <p style="margin:6px 1rem;font-size:0.88em;">Skrypt <code>dialog</code>:</p>
+    <pre><code>args.fields.difficultyShift -= <span class="num">1</span>;</code></pre>
+    <p style="margin:6px 1rem;font-size:0.88em;">Ukryj dla rzutów nie będących testem umiejętności (Hide):</p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"skill"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Aura</span>
+      Aura przywódcza — tylko postacie gracza, wyklucza NPC (Filter)
+    </div>
+    <p style="margin:6px 1rem;font-size:0.88em;color:#888;">Effect Application: <strong>Aura</strong> | Radius: <strong>10</strong></p>
+    <pre><code><span class="cmt">// Filter Script — blokuj NPC</span>
+<span class="kw">return</span> actor.type !== <span class="str">"character"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Aura</span>
+      Aura trwała — efekt pozostaje po wyjściu z zasięgu (Keep)
+    </div>
+    <p style="margin:6px 1rem;font-size:0.88em;color:#888;">
+      Effect Application: <strong>Aura</strong> | Radius: <strong>3</strong> | Keep: <strong>zaznaczony</strong><br>
+      Efekt nałożony raz pozostaje do ręcznego usunięcia. Przydatne dla zarażeń, klątw, naznaczenia.
+    </p>
+  </div>
+
+  <h3>Area — przykłady</h3>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Area</span>
+      Strefa ognia — jednorazowe obrażenia (Instantaneous)
+    </div>
+    <p style="margin:6px 1rem;font-size:0.88em;color:#888;">
+      Effect Application: <strong>Area</strong> | Radius: <strong>3</strong> | Area Effect Duration: <strong>Instantaneous</strong><br>
+      Szablon usuwa się automatycznie po nałożeniu efektów.
+    </p>
+    <pre><code><span class="cmt">// applyEffect — zadaj 3 obrażenia każdemu celowi w strefie</span>
+<span class="kw">await</span> actor.applyDamage?.(<span class="num">3</span>, { type: <span class="str">"fire"</span> });</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Area</span>
+      Strefa dymna — kara do percepcji (Sustained)
+    </div>
+    <p style="margin:6px 1rem;font-size:0.88em;color:#888;">
+      Effect Application: <strong>Area</strong> | Radius: <strong>5</strong> | Area Effect Duration: <strong>Sustained</strong><br>
+      Efekty usuwane gdy szablon zostanie usunięty lub aktor wyjdzie poza obszar.
+    </p>
+    <pre><code><span class="cmt">// dialog — kara do percepcji w strefie dymu</span>
+<span class="kw">if</span> (args.skill?.key === <span class="str">"perception"</span>) args.fields.difficultyShift += <span class="num">2</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Area</span>
+      Strefa ochronna — tylko sojusznicy (Filter)
+    </div>
+    <p style="margin:6px 1rem;font-size:0.88em;color:#888;">Effect Application: <strong>Area</strong> | Radius: <strong>6</strong></p>
+    <pre><code><span class="cmt">// Filter Script — wyklucz NPC</span>
+<span class="kw">return</span> actor.type === <span class="str">"npc"</span>;</code></pre>
   </div>
 </section>
 

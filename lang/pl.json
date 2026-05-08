@@ -1449,7 +1449,12 @@
             "NoActor": "Skrypt wymaga przypisanego aktora",
             "RunIfDisabled": "Uruchom gdy wyłączony",
             "RunIfDisabledHint": "Uruchamia ten skrypt nawet gdy efekt jest wyłączony",
+            "Targeter": "Targeted",
+            "TargeterHint": "Uruchamia ten skrypt w dialogu każdego aktora, który celuje w tego aktora",
+            "DefendingAgainst": "Obrona przed",
+            "DefendingAgainstHint": "Uruchamia ten skrypt w dialogu aktora, który celuje w tego aktora lub przedmiot",
             "DeletingItems": "Usuwanie przedmiotów stworzonych przez efekt:",
+            "AdvancedConfig": "Zaawansowana Konfiguracja",
             "ForcePassed": "Auto-zdany (przez skrypt efektu)",
             "AutoSuccess": "Automatyczny sukces (efekt aktywny)",
             "Trigger": {

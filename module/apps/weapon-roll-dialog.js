@@ -1,4 +1,5 @@
 
+import { NEUROSHIMA } from "../config.js";
 import { getDistancePenalty } from "./distance-config.js";
 import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
 
@@ -57,7 +58,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "weapon-roll-dialog"],
+    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "roll-dialog", "weapon-roll-dialog"],
     position: { width: 520, height: "auto" },
     window: {
       resizable: false,
@@ -113,7 +114,8 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const userSkillBonus  = this.userEntry.skillBonus      ?? 0;
     const baseDifficulty  = this.userEntry.baseDifficulty  ?? this.rollOptions.difficulty ?? "average";
     const hitLocation     = this.userEntry.hitLocation     ?? this.rollOptions.hitLocation ?? "random";
-    const isOpen          = this.userEntry.isOpen          ?? this.rollOptions.isOpen;
+    const isOpenRaw       = this.userEntry.isOpen          ?? this.rollOptions.isOpen;
+    const isOpen          = isOpenRaw === true || isOpenRaw === "true";
     const meleeAction     = this.userEntry.meleeAction     ?? this.rollOptions.meleeAction ?? "attack";
     const maneuver        = this.userEntry.maneuver        ?? this.rollOptions.maneuver ?? "none";
     const tempoLevel      = this.userEntry.tempoLevel      ?? this.rollOptions.tempoLevel ?? 1;
@@ -143,11 +145,13 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const weaponAttrValue  = this.actor.system.attributeTotals?.[weaponAttrKey] ?? 0;
     const weaponAttrObj    = { name: weaponAttrKey, value: weaponAttrValue, key: weaponAttrKey };
 
+    const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
     const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
       this.actor,
       { rollType: this.rollType, weapon: this.weapon, skill: weaponSkillObj, attribute: weaponAttrObj, difficulty: baseDifficulty, hitLocation, distance, distanceModifier: distancePenalty },
       this.selectedModifierIds,
-      this.unselectedModifierIds
+      this.unselectedModifierIds,
+      targetActors
     );
 
     this._dialogModifiers = dialogModifiers;
@@ -179,8 +183,12 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     context.woundPenalty  = actorWoundPenalty + scriptFields.woundDelta;
     context.crowdingDexPenalty = this.crowdingDexPenalty;
 
-    context.baseDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
+    let effectDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
       ? scriptFields.difficulty : baseDifficulty;
+    if (scriptFields.difficultyShift) {
+      effectDifficulty = NeuroshimaScriptRunner.shiftDifficultyKey(effectDifficulty, scriptFields.difficultyShift);
+    }
+    context.baseDifficulty = effectDifficulty;
     context.hitLocation    = (scriptFields.hitLocation && this.userEntry.hitLocation === undefined)
       ? scriptFields.hitLocation : hitLocation;
 
@@ -361,7 +369,11 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const bonusMode      = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
     const distancePenalty= parseInt(formData.distancePenalty) || 0;
     const modifier       = parseInt(formData.modifier) || 0;
-    const basePenalty    = NEUROSHIMA.difficulties[formData.baseDifficulty || (this.userEntry.baseDifficulty ?? this.rollOptions.difficulty ?? "average")]?.min || 0;
+    const _baseDiffKey   = this.userEntry.baseDifficulty ?? this.rollOptions.difficulty ?? "average";
+    const _sf            = this._scriptFields;
+    let _effectiveDiffKey = (_sf?.difficulty && this.userEntry.baseDifficulty === undefined) ? _sf.difficulty : _baseDiffKey;
+    if (_sf?.difficultyShift) _effectiveDiffKey = NeuroshimaScriptRunner.shiftDifficultyKey(_effectiveDiffKey, _sf.difficultyShift);
+    const basePenalty    = NEUROSHIMA.difficulties[_effectiveDiffKey]?.min || 0;
     const armorPenalty   = formData.useArmorPenalty ? (this.actor.system.combat?.totalArmorPenalty || 0) + (this._scriptFields?.armorDelta || 0) : 0;
     const woundPenalty   = formData.useWoundPenalty ? (this.actor.system.combat?.totalWoundPenalty || 0) + (this._scriptFields?.woundDelta || 0) : 0;
 
@@ -460,10 +472,12 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
   }
 
   async _runSubmissionScripts() {
+    const submissionOptions = {};
     for (const dm of this._dialogModifiers) {
       if (!dm.activated || !dm._script?.submissionScript) continue;
-      await dm._script.runSubmission({ actor: this.actor });
+      await dm._script.runSubmission({ actor: this.actor, options: submissionOptions, fields: this._scriptFields });
     }
+    return submissionOptions;
   }
 
   async _onRoll(event, target) {
@@ -481,10 +495,14 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     const aimingLevel      = formData.aimingLevel !== undefined ? parseInt(formData.aimingLevel) : (ue.aimingLevel ?? this.rollOptions.aimingLevel ?? 0);
     const tempoLevel       = parseInt(formData.tempoLevel)     || 1;
 
+    const _userBaseDiff = ue.baseDifficulty ?? this.rollOptions.difficulty ?? "average";
+    let _effectiveDiff  = (sf?.difficulty && ue.baseDifficulty === undefined) ? sf.difficulty : _userBaseDiff;
+    if (sf?.difficultyShift) _effectiveDiff = NeuroshimaScriptRunner.shiftDifficultyKey(_effectiveDiff, sf.difficultyShift);
+
     await this.actor.update({
       "system.lastWeaponRoll": {
         isOpen:            this.rollType === "melee" ? false : (formData.isOpen === "true"),
-        difficulty:        formData.baseDifficulty,
+        difficulty:        _userBaseDiff,
         meleeAction:       formData.meleeAction,
         maneuver:          formData.maneuver,
         tempoLevel:        tempoLevel,
@@ -505,7 +523,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       tempoLevel:      tempoLevel,
       aimingLevel:     aimingLevel,
       burstLevel:      burstLevel,
-      difficulty:      formData.baseDifficulty,
+      difficulty:      _effectiveDiff,
       hitLocation:     formData.hitLocation,
       modifier:        totalModifier,
       applyArmor:      !!formData.useArmorPenalty,
@@ -517,11 +535,11 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       rollMode:        formData.rollMode
     };
 
-    await this._runSubmissionScripts();
+    const submissionOptions = await this._runSubmissionScripts();
     this.close();
 
     if (this.isPoolRoll && this.onPoolRoll) {
-      const rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, chatMessage: false });
+      const rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
       if (rawResult) {
         const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
         await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
@@ -529,7 +547,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
       return this.onPoolRoll(rawResult);
     }
 
-    return game.neuroshima.NeuroshimaDice.rollWeaponTest(rollData);
+    return game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions });
   }
 
   _onCancel(event, target) {

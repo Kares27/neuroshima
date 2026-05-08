@@ -1,0 +1,149 @@
+<div class="advanced-effect-config">
+
+  {{!-- ── Test Independent (hidden for owningDocument) ── --}}
+  {{#unless isDocument}}
+  <div class="form-group">
+    <label>Test Independent</label>
+    <div class="form-fields">
+      <input type="checkbox" name="flags.neuroshima.testIndependent" {{#if testIndependent}}checked{{/if}}>
+    </div>
+    <p class="notes">If checked, this Effect can be applied directly from the owning Actor's sheet, instead of only from a roll or chat</p>
+  </div>
+
+  {{!-- ── Avoid Test fieldset ── --}}
+  <fieldset>
+    <legend>Avoid Test</legend>
+
+    <div class="form-group">
+      <label>Avoid Test</label>
+      <div class="form-fields">
+        <select name="flags.neuroshima.avoidTestType">
+          <option value="none"   {{#if (eq avoidTestType "none")}}selected{{/if}}>None</option>
+          <option value="script" {{#if (eq avoidTestType "script")}}selected{{/if}}>Script</option>
+        </select>
+      </div>
+      <p class="notes">Define a condition that, if met, prevents the effect from being applied. <strong>Script</strong> lets you write a custom script that returns <strong>true</strong> to prevent the effect.</p>
+    </div>
+
+    {{#if (eq avoidTestType "script")}}
+    <div class="form-group stacked">
+      <label>Avoid Script</label>
+      <p class="notes">Receives <code>actor</code> and <code>effect</code>. Return <strong>true</strong> to prevent application.</p>
+      <textarea name="flags.neuroshima.avoidTestScript" rows="3">{{avoidTestScript}}</textarea>
+    </div>
+    {{/if}}
+
+  </fieldset>
+  {{/unless}}
+
+  {{!-- ── Area / Aura fieldset (only for aura/area types) ── --}}
+  {{#if isAuraOrArea}}
+  <fieldset>
+    <legend>Area / Aura</legend>
+
+    {{#if isAura}}
+    <div class="form-group">
+      <label>Transferred Aura</label>
+      <div class="form-fields">
+        <input type="checkbox" name="flags.neuroshima.auraTransferred" {{#if auraTransferred}}checked{{/if}}>
+      </div>
+      <p class="notes">Apply this Aura to a target (or self) instead of constantly to nearby actors in range</p>
+    </div>
+
+    <div class="form-group">
+      <label>Render Aura</label>
+      <div class="form-fields">
+        <input type="checkbox" name="flags.neuroshima.auraRender" {{#if auraRender}}checked{{/if}}>
+      </div>
+      <p class="notes">Render the aura on the Canvas as a visible Measured Template</p>
+    </div>
+    {{/if}}
+
+    {{#if isArea}}
+    <div class="form-group">
+      <label>Area Effect Duration</label>
+      <div class="form-fields">
+        <select name="flags.neuroshima.areaDuration">
+          <option value="instantaneous" {{#if (eq areaDuration "instantaneous")}}selected{{/if}}>Instantaneous</option>
+          <option value="sustained"     {{#if (eq areaDuration "sustained")}}selected{{/if}}>Sustained</option>
+        </select>
+      </div>
+      <p class="notes"><strong>Instantaneous</strong> — applies once then removes the template. <strong>Sustained</strong> — template stays until manually removed.</p>
+    </div>
+    {{/if}}
+
+    <div class="form-group">
+      <label>Keep</label>
+      <div class="form-fields">
+        <input type="checkbox" name="flags.neuroshima.auraKeep" {{#if auraKeep}}checked{{/if}}>
+      </div>
+      <p class="notes">Prevents removing the effect upon leaving the Area / Aura range</p>
+    </div>
+
+    <div class="form-group">
+      <label>Radius</label>
+      <div class="form-fields">
+        <input type="text" name="flags.neuroshima.auraRadius" value="{{auraRadius}}" placeholder="Inherit">
+      </div>
+      <p class="notes">Radius in scene distance units. Leave empty to inherit from Item if available.</p>
+    </div>
+
+    <div class="form-group">
+      <label>Template Data</label>
+      <div class="form-fields">
+        <button type="button" data-action="configureTemplate" style="width:auto;">
+          <i class="fas fa-palette"></i> Configure Template Data
+        </button>
+      </div>
+      <p class="notes">Configure the visual template appearance (fill colour, border colour, opacity).</p>
+    </div>
+
+    {{#if isArea}}
+    <div class="form-group">
+      <label>Place Template</label>
+      <div class="form-fields">
+        <button type="button" data-action="placeTemplate" style="width:auto;">
+          <i class="fas fa-ruler-combined"></i> Place Area Template
+        </button>
+      </div>
+      <p class="notes">Place a circle template on the canvas to define the affected area. Closes this dialog.</p>
+    </div>
+    {{/if}}
+
+  </fieldset>
+  {{/if}}
+
+  {{!-- ── Pre-Apply Script (hidden for owningDocument) ── --}}
+  {{#unless isDocument}}
+  <div class="form-group stacked">
+    <label>Pre-Apply Script</label>
+    <p class="notes">This executes before an effect is applied — runs on the source, not the target. Return <strong>false</strong> to prevent application (Damage, Target, and Area/Aura only).</p>
+    <textarea name="flags.neuroshima.preApplyScript" rows="4">{{preApplyScript}}</textarea>
+  </div>
+  {{/unless}}
+
+  {{!-- ── Enable Script (always visible) ── --}}
+  <div class="form-group stacked">
+    <label>Enable Script</label>
+    <p class="notes">Condition for whether the effect should be enabled or disabled.</p>
+    <textarea name="flags.neuroshima.enableScript" rows="4">{{enableScript}}</textarea>
+  </div>
+
+  {{!-- ── Filter + Prompt (hidden for owningDocument) ── --}}
+  {{#unless isDocument}}
+  <div class="form-group stacked">
+    <label>Filter</label>
+    <p class="notes">Script to filter Documents to apply this Active Effect to. Should return <strong>true</strong> to prevent application.</p>
+    <textarea name="flags.neuroshima.filterScript" rows="4">{{filterScript}}</textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Prompt</label>
+    <div class="form-fields">
+      <input type="checkbox" name="flags.neuroshima.prompt" {{#if prompt}}checked{{/if}}>
+    </div>
+    <p class="notes">Provide a prompt and choose which document to apply the Active Effect to. Can be used with <strong>Filter</strong> to narrow the selection.</p>
+  </div>
+  {{/unless}}
+
+</div>

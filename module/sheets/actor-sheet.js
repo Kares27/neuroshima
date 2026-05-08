@@ -2,6 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/weapon-roll-dialog.js";
+import { NeuroshimaSkillRollDialog } from "../apps/skill-roll-dialog.js";
 import { AmmunitionLoadingDialog } from "../apps/ammo-loading-dialog.js";
 import { RestDialog } from "../apps/rest-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
@@ -531,7 +532,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
 
     const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    const isTemporary = (e) => !!(e.duration?.rounds || e.duration?.seconds || e.duration?.turns);
+    const isTemporary = (e) => !!(
+      e.duration?.rounds || e.duration?.seconds || e.duration?.turns ||
+      e.getFlag("neuroshima", "fromAura") || e.getFlag("neuroshima", "fromArea")
+    );
     const isConditionEffect = (e) => e.statuses?.size > 0;
 
     const temporary    = [];
@@ -571,7 +575,13 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         const srcIcon = originItem?.img  ?? actor.img ?? "icons/svg/mystery-man.svg";
         pushEffect(e, originItem?.id ?? null, srcName, srcIcon, !!originItem);
       } else {
-        pushEffect(e, null, actor.name, actor.img || "icons/svg/mystery-man.svg", false);
+        const fromAura = e.getFlag("neuroshima", "fromAura");
+        const fromArea = e.getFlag("neuroshima", "fromArea");
+        const sourceActorId = fromAura?.sourceActorId ?? fromArea?.sourceActorId ?? null;
+        const sourceActor = sourceActorId ? game.actors.get(sourceActorId) : null;
+        const srcName = sourceActor?.name ?? actor.name;
+        const srcIcon = sourceActor?.img  ?? actor.img ?? "icons/svg/mystery-man.svg";
+        pushEffect(e, null, srcName, srcIcon, false);
       }
     }
 
@@ -1650,274 +1660,17 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    * Universal roll dialog for Neuroshima tests.
    */
   async _showRollDialog({ stat, skill, label, actor, isSkill = false, currentAttribute = "", skillKey = "" }) {
-    const template = "systems/neuroshima/templates/dialog/roll-dialog.hbs";
-    const lastRoll = actor.system.lastRoll || {};
-    
-    const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
-    const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
-
-    const skillObj = isSkill ? { name: label, value: skill, key: skillKey } : null;
-    const attrObj = { name: currentAttribute, value: stat, key: currentAttribute };
-    const { dialogModifiers, totalDialogModifier, fieldTotals } = await NeuroshimaScriptRunner.runDialogScripts(actor, {
-      rollType: isSkill ? "skill" : "attribute",
-      label,
+    const dialog = new NeuroshimaSkillRollDialog({
+      actor,
       stat,
-      skill: skillObj,
-      attribute: attrObj,
-      difficulty: lastRoll.baseDifficulty || "average"
+      skill,
+      label,
+      isSkill,
+      skillKey,
+      currentAttribute,
+      lastRoll: actor.system.lastRoll || {}
     });
-
-    const data = {
-      difficulties: NEUROSHIMA.difficulties,
-      attributeList: NEUROSHIMA.attributes,
-      currentAttribute: currentAttribute,
-      baseDifficulty: lastRoll.baseDifficulty || "average",
-      modifier: lastRoll.modifier || 0,
-      armorPenalty: armorPenalty,
-      woundPenalty: woundPenalty,
-      useArmorPenalty: lastRoll.useArmorPenalty ?? true,
-      useWoundPenalty: lastRoll.useWoundPenalty ?? true,
-      isOpen: lastRoll.isOpen ?? true,
-      isSkill: isSkill,
-      rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode"),
-      rollModes: CONFIG.Dice.rollModes,
-      dialogModifiers,
-      totalDialogModifier,
-      fieldTotals: fieldTotals || { modifier: 0, attributeBonus: 0, skillBonus: 0 }
-    };
-    const content = await foundry.applications.handlebars.renderTemplate(template, data);
-
-    const dialog = new foundry.applications.api.DialogV2({
-      window: { 
-        title: `${game.i18n.localize("NEUROSHIMA.Actions.Roll")}: ${label}`,
-        position: { width: 520, height: isSkill ? 450 : 400 }
-      },
-      content: content,
-      classes: ["neuroshima", "roll-dialog-window"],
-      buttons: [
-        {
-          action: "roll",
-          label: game.i18n.localize("NEUROSHIMA.Actions.Roll"),
-          default: true,
-          callback: async (event, button, dialog) => {
-            const form = button.form;
-            const checkboxes = form.querySelectorAll('.dm-checkbox');
-            for (const cb of checkboxes) {
-              if (!cb.checked) continue;
-              const idx = parseInt(cb.dataset.dmIndex);
-              const dm = dialogModifiers?.[idx];
-              if (dm?._script && dm._script.submissionScript) {
-                await dm._script.runSubmission({ actor });
-              }
-            }
-            const isOpen = form.elements.isOpen.value === "true";
-            const baseDiffKey = form.elements.baseDifficulty.value;
-            const modifierEl = form.elements.modifier;
-            const modifier = parseInt(modifierEl.value) || 0;
-            const modifierEffectDelta = parseInt(modifierEl?.dataset?.effectDelta) || 0;
-            const rollMode = form.elements.rollMode.value;
-            const useArmor = form.elements.useArmorPenalty.checked;
-            const armorPenalty = useArmor ? (parseInt(form.elements.armorPenalty.value) || 0) : 0;
-            const useWound = form.elements.useWoundPenalty.checked;
-            const woundPenalty = useWound ? (parseInt(form.elements.woundPenalty.value) || 0) : 0;
-            
-            const skillBonus = (parseInt(form.elements.skillBonus.value) || 0) + (parseInt(form.elements.dialogSkillBonus?.value) || 0);
-            const attributeBonus = (parseInt(form.elements.attributeBonus.value) || 0) + (parseInt(form.elements.dialogAttrBonus?.value) || 0);
-            const dialogModifier = parseInt(form.elements.dialogModifier?.value) || 0;
-
-            let finalStat = stat;
-            if (isSkill && form.elements.attribute) {
-              const selectedAttr = form.elements.attribute.value;
-              finalStat = actor.system.attributeTotals[selectedAttr];
-            }
-
-            await actor.update({
-              "system.lastRoll": {
-                modifier: modifier - modifierEffectDelta,
-                baseDifficulty: baseDiffKey,
-                useArmorPenalty: useArmor,
-                useWoundPenalty: useWound,
-                isOpen,
-                rollMode
-              }
-            });
-
-            NeuroshimaDice.rollTest({
-              stat: finalStat,
-              skill,
-              penalties: {
-                mod: modifier + dialogModifier,
-                base: (NEUROSHIMA.difficulties[baseDiffKey]?.min || 0),
-                armor: armorPenalty,
-                wounds: woundPenalty
-              },
-              isOpen,
-              label,
-              actor,
-              skillBonus,
-              attributeBonus,
-              rollMode
-            });
-          }
-        },
-        {
-          action: "cancel",
-          label: game.i18n.localize("Cancel")
-        }
-      ]
-    });
-
     dialog.render(true);
-
-    // Add event listeners for dynamic summary updates and interactions
-    setTimeout(() => {
-      const html = $(dialog.element);
-      
-      // Make form-groups clickable to focus/toggle inputs
-      html.find('.form-group').on('click', (ev) => {
-        if ($(ev.target).is('select, input')) return;
-        const input = $(ev.currentTarget).find('select, input').first();
-        if (input.is('select')) {
-          input.focus();
-        } else if (input.is('input[type="checkbox"]')) {
-          input.prop('checked', !input.prop('checked')).trigger('change');
-        } else if (input.is('input[type="number"]')) {
-          input.focus().select();
-        }
-      });
-
-      const recalcDialogModifier = () => {
-        NeuroshimaScriptRunner.applyDialogFieldOverrides(html[0], "baseDifficulty");
-      };
-
-      html.on('click', '[data-action="clickModifier"].dm-toggleable', async function() {
-        const li = $(this);
-        const cb = li.find('.dm-checkbox');
-        cb.prop('checked', !cb.prop('checked'));
-        li.toggleClass('dm-active', cb.prop('checked'));
-        const idx = parseInt(li.data('dm-index'));
-        const dm = dialogModifiers?.[idx];
-        if (dm?._script?.code) {
-          if (cb.prop('checked')) {
-            const liveCtx = {
-              difficulty: html.find('[name="baseDifficulty"]').val() ?? "average",
-              armorPenalty: parseInt(html.find('[name="baseArmorPenalty"]').val()) || 0,
-              woundPenalty: parseInt(html.find('[name="baseWoundPenalty"]').val()) || 0
-            };
-            const result = await NeuroshimaScriptRunner.execDialogModifier(dm, actor, liveCtx);
-            li[0].dataset.dmValue = Math.round(result.modifier);
-            li[0].dataset.dmAttrBonus = Math.round(result.attributeBonus);
-            li[0].dataset.dmSkillBonus = Math.round(result.skillBonus);
-            li[0].dataset.dmArmorDelta = Math.round(result.armorDelta) || 0;
-            li[0].dataset.dmWoundDelta = Math.round(result.woundDelta) || 0;
-            li[0].dataset.dmDifficulty = result.difficulty ?? "";
-            li[0].dataset.dmHitLocation = result.hitLocation ?? "";
-          } else {
-            li[0].dataset.dmValue = 0;
-            li[0].dataset.dmAttrBonus = 0;
-            li[0].dataset.dmSkillBonus = 0;
-            li[0].dataset.dmArmorDelta = 0;
-            li[0].dataset.dmWoundDelta = 0;
-            li[0].dataset.dmDifficulty = "";
-            li[0].dataset.dmHitLocation = "";
-          }
-        }
-        recalcDialogModifier();
-        updateSummary();
-      });
-
-      const updateSummary = () => {
-        const isOpen = html.find('[name="isOpen"]').val() === "true";
-        const baseDiffKey = html.find('[name="baseDifficulty"]').val();
-        const modifier = parseInt(html.find('[name="modifier"]').val()) || 0;
-        const useArmor = html.find('[name="useArmorPenalty"]').is(':checked');
-        const armorPenalty = useArmor ? (parseInt(html.find('[name="armorPenalty"]').val()) || 0) : 0;
-        const useWound = html.find('[name="useWoundPenalty"]').is(':checked');
-        const woundPenalty = useWound ? (parseInt(html.find('[name="woundPenalty"]').val()) || 0) : 0;
-        const dialogMod = parseInt(html.find('[name="dialogModifier"]').val()) || 0;
-        
-        const skillBonus = parseInt(html.find('[name="skillBonus"]').val()) || 0;
-        const attributeBonus = parseInt(html.find('[name="attributeBonus"]').val()) || 0;
-        
-        const totalSkill = (skill || 0) + skillBonus;
-        const skillShift = NeuroshimaDice.getSkillShift(totalSkill);
-
-        let currentStatValue = stat;
-        if (isSkill && html.find('[name="attribute"]').length) {
-          const selectedAttr = html.find('[name="attribute"]').val();
-          currentStatValue = actor.system.attributeTotals[selectedAttr];
-        }
-        const finalStat = currentStatValue + attributeBonus;
-
-        const baseDiff = NEUROSHIMA.difficulties[baseDiffKey];
-        const totalPenalty = (baseDiff?.min || 0) + modifier + dialogMod + armorPenalty + woundPenalty;
-        
-        const penaltyDiff = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
-        const finalDiff = NeuroshimaDice._getShiftedDifficulty(penaltyDiff, -skillShift);
-        
-        const finalTarget = finalStat + (finalDiff.mod || 0);
-
-        html.find('.total-modifier').text(`${totalPenalty}%`);
-        html.find('.final-difficulty').text(game.i18n.localize(finalDiff.label));
-        html.find('.final-target').text(finalTarget);
-      };
-
-      (async () => {
-        for (const [idx, dm] of (dialogModifiers || []).entries()) {
-          if (!dm.activated || !dm._script?.code) continue;
-          const li = html.find(`[data-dm-index="${idx}"]`)[0];
-          if (!li) continue;
-          const liveCtx = {
-            difficulty: html.find('[name="baseDifficulty"]').val() ?? "average",
-            armorPenalty: parseInt(html.find('[name="baseArmorPenalty"]').val()) || 0,
-            woundPenalty: parseInt(html.find('[name="baseWoundPenalty"]').val()) || 0
-          };
-          const result = await NeuroshimaScriptRunner.execDialogModifier(dm, actor, liveCtx);
-          li.dataset.dmValue = Math.round(result.modifier);
-          li.dataset.dmAttrBonus = Math.round(result.attributeBonus);
-          li.dataset.dmSkillBonus = Math.round(result.skillBonus);
-          li.dataset.dmArmorDelta = Math.round(result.armorDelta) || 0;
-          li.dataset.dmWoundDelta = Math.round(result.woundDelta) || 0;
-          li.dataset.dmDifficulty = result.difficulty ?? "";
-          li.dataset.dmHitLocation = result.hitLocation ?? "";
-        }
-        recalcDialogModifier();
-        updateSummary();
-      })();
-
-      const rerunActiveModifiers = async () => {
-        if (!dialogModifiers?.length) return;
-        for (const [idx, dm] of dialogModifiers.entries()) {
-          const li = html.find(`[data-dm-index="${idx}"]`)[0];
-          if (!li) continue;
-          const cb = li.querySelector('.dm-checkbox');
-          if (!cb?.checked) continue;
-          if (!dm?._script?.code) continue;
-          const diffEl = html.find('[name="baseDifficulty"]')[0];
-          const liveCtx = {
-            difficulty: diffEl?.dataset?.userDifficultyOverride || diffEl?.dataset?.userDifficulty || diffEl?.value || "average",
-            armorPenalty: parseInt(html.find('[name="baseArmorPenalty"]').val()) || 0,
-            woundPenalty: parseInt(html.find('[name="baseWoundPenalty"]').val()) || 0
-          };
-          const result = await NeuroshimaScriptRunner.execDialogModifier(dm, actor, liveCtx);
-          li.dataset.dmValue = Math.round(result.modifier);
-          li.dataset.dmAttrBonus = Math.round(result.attributeBonus);
-          li.dataset.dmSkillBonus = Math.round(result.skillBonus);
-          li.dataset.dmArmorDelta = Math.round(result.armorDelta) || 0;
-          li.dataset.dmWoundDelta = Math.round(result.woundDelta) || 0;
-          li.dataset.dmDifficulty = result.difficulty ?? "";
-          li.dataset.dmHitLocation = result.hitLocation ?? "";
-        }
-        recalcDialogModifier();
-      };
-
-      html.on('change input', 'input, select', async () => {
-        await rerunActiveModifiers();
-        updateSummary();
-      });
-      updateSummary();
-    }, 100);
-
     return dialog;
   }
 

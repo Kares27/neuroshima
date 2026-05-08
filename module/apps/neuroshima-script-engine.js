@@ -11,6 +11,8 @@ export class NeuroshimaScript {
     this.hideScript = scriptData.hideScript || "";
     this.activateScript = scriptData.activateScript || "";
     this.submissionScript = scriptData.submissionScript || "";
+    this.targeter = scriptData.targeter ?? false;
+    this.defendingAgainst = scriptData.defendingAgainst ?? false;
     this.effect = effect;
   }
 
@@ -1558,6 +1560,7 @@ export class NeuroshimaScriptRunner {
     immediate:        "Immediate",
     dialog:           "Dialog",
     prepareData:      "Prepare Data",
+    getInitiativeFormula: "Get Initiative Formula",
     preRollTest:      "Pre-Roll Test",
     rollTest:         "Roll Test",
     preApplyDamage:   "Pre-Apply Damage",
@@ -1565,12 +1568,14 @@ export class NeuroshimaScriptRunner {
     armorCalculation: "Armour Calculation",
     equipToggle:      "Equip Toggle",
     startCombat:      "Start Combat",
+    updateCombat:     "Update Combat",
     startRound:       "Start Round",
     startTurn:        "Start Turn",
     endTurn:          "End Turn",
     endRound:         "End Round",
     endCombat:        "End Combat",
-    createEffect:     "Effect Created",
+    createToken:      "Create Token",
+    applyEffect:      "Effect Applied",
     deleteEffect:     "Effect Deleted",
     preWeaponShot:    "Pre-Weapon Shot",
     weaponJam:        "Weapon Jam",
@@ -1586,7 +1591,7 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null };
+    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
     const rc = dm._rollContext || {};
     const initialDifficulty = liveContext.difficulty ?? rc.difficulty ?? "average";
     const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
@@ -1600,11 +1605,13 @@ export class NeuroshimaScriptRunner {
       woundPenalty: 0,
       distance: 0,
       distanceModifier: 0,
+      difficultyShift: 0,
       difficulty: initialDifficulty,
       hitLocation: initialHitLocation
     };
     const args = {
       actor,
+      rollingActor: liveContext.rollingActor ?? actor,
       skill: rc.skill ?? null,
       attribute: rc.attribute ?? null,
       rollType: rc.rollType ?? null,
@@ -1627,6 +1634,7 @@ export class NeuroshimaScriptRunner {
       woundDelta: fields.woundPenalty,
       distanceDelta: fields.distance,
       distanceModifierDelta: fields.distanceModifier,
+      difficultyShift: fields.difficultyShift || 0,
       difficulty: fields.difficulty !== initialDifficulty ? fields.difficulty : null,
       hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null
     };
@@ -1930,6 +1938,15 @@ export class NeuroshimaScriptRunner {
     const collectFromEffect = (effect, skipSuppressedCheck = false) => {
       if (!skipSuppressedCheck && effect.isSuppressed) return;
       const isDisabled = effect.disabled;
+      const enableScript = effect.getFlag?.("neuroshima", "enableScript");
+      if (enableScript) {
+        try {
+          const fn = new Function("actor", "effect", enableScript);
+          if (!fn(actor, effect)) return;
+        } catch (e) {
+          console.error(`Neuroshima | enableScript error on "${effect.name}":`, e);
+        }
+      }
       const effectScripts = effect.scripts ?? [];
       for (const script of effectScripts) {
         if (script.trigger !== trigger) continue;
@@ -2050,6 +2067,16 @@ export class NeuroshimaScriptRunner {
     return { autoSuccess: !!args.autoSuccess, cancelled: !!args.cancelled };
   }
 
+  static DIFFICULTY_ORDER = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];
+
+  static shiftDifficultyKey(key, shift) {
+    const order = NeuroshimaScriptRunner.DIFFICULTY_ORDER;
+    const idx = order.indexOf(key);
+    if (idx === -1) return key;
+    const newIdx = Math.max(0, Math.min(order.length - 1, idx + shift));
+    return order[newIdx];
+  }
+
   /**
    * Compute dialog modifiers (hide/activate/run scripts) and return combined field deltas.
    * This is the WFRP-pattern replacement for runDialogScripts + applyDialogFieldOverrides.
@@ -2057,21 +2084,42 @@ export class NeuroshimaScriptRunner {
    * @param {Object} rollContext - Contextual data passed to scripts
    * @param {Set<string>} selectedModifierIds - Effect IDs user manually toggled ON
    * @param {Set<string>} unselectedModifierIds - Effect IDs user manually toggled OFF
+   * @param {Actor[]} [targetActors=[]] - Target actors for targeter/defendingAgainst scripts
    * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown}>}
    */
-  static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set()) {
+  static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
-    const scripts = this.getScripts(actor, "dialog");
-    const dialogModifiers = [];
 
-    for (const [idx, script] of scripts.entries()) {
-      const effectId = script.effect?.id ?? `${actor.id}_script_${idx}`;
+    const allScriptEntries = [];
+
+    const ownScripts = this.getScripts(actor, "dialog").filter(s => !s.targeter);
+    for (const script of ownScripts) {
+      allScriptEntries.push({ script, sourceActor: actor, sourceLabel: null });
+    }
+
+    for (const targetActor of targetActors) {
+      if (!targetActor) continue;
+      const targetScripts = this.getScripts(targetActor, "dialog");
+      for (const script of targetScripts) {
+        if (script.targeter || script.defendingAgainst) {
+          allScriptEntries.push({ script, sourceActor: targetActor, sourceLabel: targetActor.name });
+        }
+      }
+    }
+
+    const dialogModifiers = [];
+    for (const [idx, entry] of allScriptEntries.entries()) {
+      const { script, sourceActor } = entry;
+      const effectId = script.effect?.id
+        ? (sourceActor !== actor ? `target_${sourceActor.id}_${script.effect.id}_${idx}` : `${script.effect.id}_${idx}`)
+        : `${sourceActor.id}_script_${idx}`;
       const flags = {};
-      const baseArgs = { actor, flags, ...rollContext };
+      const isTargetScript = sourceActor !== actor;
+      const baseArgs = { actor: isTargetScript ? sourceActor : actor, rollingActor: actor, flags, ...rollContext };
 
       const hidden = await script.evalHide(baseArgs);
       if (hidden) continue;
@@ -2095,16 +2143,19 @@ export class NeuroshimaScriptRunner {
         canToggle: true,
         _effectId: effectId,
         _script: script,
+        _sourceActor: sourceActor,
         _rollContext: { ...rollContext }
       });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
       if (!dm.activated || !dm._script?.code) continue;
-      const result = await this.execDialogModifier(dm, actor, {
+      const srcActor = dm._sourceActor || actor;
+      const result = await this.execDialogModifier(dm, srcActor, {
+        rollingActor: actor,
         difficulty: rollContext.difficulty || "average",
         hitLocation: rollContext.hitLocation || "random",
         armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
@@ -2117,6 +2168,7 @@ export class NeuroshimaScriptRunner {
       scriptFields.skillBonus += result.skillBonus || 0;
       scriptFields.armorDelta += result.armorDelta || 0;
       scriptFields.woundDelta += result.woundDelta || 0;
+      scriptFields.difficultyShift += result.difficultyShift || 0;
       if (result.difficulty) scriptFields.difficulty = result.difficulty;
       if (result.hitLocation) scriptFields.hitLocation = result.hitLocation;
       const label = dm.label || "—";
@@ -2256,6 +2308,22 @@ export class NeuroshimaScriptRunner {
       actors.add(actor.id);
       await this.execute("endRound", { actor, combat, round: combat.round });
     }
+  }
+
+  static async runUpdateCombat(combat, updates) {
+    const actors = new Set();
+    for (const combatant of combat.combatants) {
+      const actor = combatant.actor;
+      if (!actor || actors.has(actor.id)) continue;
+      actors.add(actor.id);
+      await this.execute("updateCombat", { actor, combat, updates });
+    }
+  }
+
+  static async runCreateToken(tokenDocument) {
+    const actor = tokenDocument.actor;
+    if (!actor) return;
+    await this.execute("createToken", { actor, token: tokenDocument });
   }
 
   // ── Script utility helpers (available in scripts via game.neuroshima.NeuroshimaScriptRunner) ──

@@ -27,6 +27,24 @@
                 <input type="checkbox" name="runIfDisabled" {{#if scriptData.runIfDisabled}}checked{{/if}}>
             </div>
         </div>
+        {{#if (eq scriptData.trigger "dialog")}}
+        <div class="form-group">
+            <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.TargeterHint'}}">
+                {{localize "NEUROSHIMA.Scripts.Targeter"}}
+            </label>
+            <div class="form-fields">
+                <input type="checkbox" name="targeter" {{#if scriptData.targeter}}checked{{/if}}>
+            </div>
+        </div>
+        <div class="form-group">
+            <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.DefendingAgainstHint'}}">
+                {{localize "NEUROSHIMA.Scripts.DefendingAgainst"}}
+            </label>
+            <div class="form-fields">
+                <input type="checkbox" name="defendingAgainst" {{#if scriptData.defendingAgainst}}checked{{/if}}>
+            </div>
+        </div>
+        {{/if}}
     </div>
 
     <div class="ns-editor-scroll-area">

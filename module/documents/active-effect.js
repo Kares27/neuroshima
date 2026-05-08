@@ -113,7 +113,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     await super._onCreate(data, options, user);
     if (game.user.id !== user) return;
     if (!this.actor) return;
-    const createScripts = this.scripts.filter(s => s.trigger === "createEffect");
+    const createScripts = this.scripts.filter(s => s.trigger === "applyEffect");
     for (const script of createScripts) {
       await script.execute({ actor: this.actor, data, options });
     }
@@ -127,12 +127,31 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     await super._onDelete(options, user);
     if (game.user.id !== user) return;
     if (!this.actor) return;
-    if (!options.skipDeletingItems) {
+
+    const transferType = this.getFlag("neuroshima", "transferType");
+    const isAuraCopy   = !!this.getFlag("neuroshima", "fromAura");
+    const isAreaCopy   = !!this.getFlag("neuroshima", "fromArea");
+
+    if (!isAuraCopy && !isAreaCopy && !options.skipDeletingItems) {
       await this.deleteCreatedItems();
     }
-    const deleteScripts = this.scripts.filter(s => s.trigger === "deleteEffect");
-    for (const script of deleteScripts) {
-      await script.execute({ actor: this.actor, options });
+
+    if (!options.ns_skipAuraCleanup && !isAuraCopy && !isAreaCopy) {
+      if (transferType === "auraActor" && game.user.isGM) {
+        const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
+        await NeuroshimaAuraManager.removeAllCopiesForEffect(this.id, this.actor.id);
+      }
+      if (transferType === "areaActor" && game.user.isGM) {
+        const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
+        await NeuroshimaAuraManager.removeAllAreaCopiesForEffect(this.id, this.actor.id);
+      }
+    }
+
+    if (!isAuraCopy && !isAreaCopy) {
+      const deleteScripts = this.scripts.filter(s => s.trigger === "deleteEffect");
+      for (const script of deleteScripts) {
+        await script.execute({ actor: this.actor, options });
+      }
     }
   }
 

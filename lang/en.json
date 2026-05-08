@@ -1422,7 +1422,12 @@
             "NoActor": "Script requires an assigned actor",
             "RunIfDisabled": "Run if Disabled",
             "RunIfDisabledHint": "Run this script even when the effect is disabled",
+            "Targeter": "Targeter",
+            "TargeterHint": "Run this script in the dialog of any actor that is targeting this actor",
+            "DefendingAgainst": "Defending Against",
+            "DefendingAgainstHint": "Run this script in the dialog of an actor that has targeted this actor or item",
             "DeletingItems": "Deleting items created by effect:",
+            "AdvancedConfig": "Advanced Configuration",
             "ForcePassed": "Auto-passed (by effect script)",
             "AutoSuccess": "Automatic success (effect active)",
             "Trigger": {

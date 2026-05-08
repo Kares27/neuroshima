@@ -6351,3 +6351,62 @@ body.theme-dark {
     opacity: 0.6;
 }
 
+/* ─── Advanced Effect Config dialog ─────────────────────────────────────── */
+
+.neuroshima.advanced-effect-config-dialog .window-content {
+    overflow: hidden;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config {
+    padding: 0.25rem 0.5rem;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config fieldset {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 0.4rem 0.75rem 0.6rem;
+    margin: 0.5rem 0;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config fieldset legend {
+    font-weight: bold;
+    padding: 0 0.3rem;
+    color: var(--ns-text-accent);
+    font-size: 0.9em;
+}
+
+/* Force stacked layout for script textareas — overrides standard-form where needed */
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group.stacked {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group.stacked > * {
+    flex: none;
+    width: 100%;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group.stacked label {
+    width: auto;
+    font-weight: bold;
+}
+
+/* Textarea styling */
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+    font-family: monospace;
+    font-size: 0.82em;
+    box-sizing: border-box;
+}
+
+/* notes paragraph full-width in row groups */
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group > .notes {
+    flex: 1 0 100%;
+    margin: 0;
+}
+

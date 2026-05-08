@@ -354,11 +354,13 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       <div class="form-group">
         <label>Effect Application</label>
         <div class="form-fields">
-          <select name="flags.neuroshima.transferType">
+          <select name="flags.neuroshima.transferType" class="ns-tt-select">
             <option value="owningDocument"${transferType === "owningDocument" ? " selected" : ""}>Owning Document</option>
             <option value="target"        ${transferType === "target"         ? " selected" : ""}>Target</option>
             <option value="damage"        ${transferType === "damage"         ? " selected" : ""}>Damage</option>
             <option value="other"         ${transferType === "other"          ? " selected" : ""}>Other</option>
+            <option value="auraActor"     ${transferType === "auraActor"      ? " selected" : ""}>Aura</option>
+            <option value="areaActor"     ${transferType === "areaActor"      ? " selected" : ""}>Area</option>
           </select>
         </div>
         <p class="hint">How this effect is transferred to another document.</p>
@@ -379,9 +381,32 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
           <input type="checkbox" name="flags.neuroshima.equipTransfer"${equipTransfer ? " checked" : ""}>
         </div>
         <p class="hint">Only transfer this effect when the parent item is equipped.</p>
+      </div>
+      <hr>
+      <div class="form-group">
+        <label><a class="ns-open-advanced-config" style="cursor:pointer;">Open Advanced Configuration <i class="fa-solid fa-gears"></i></a></label>
+        <p class="hint">Configure Radius, Place Template, Scripts, Avoid Test, and more.</p>
       </div>`;
 
     section.appendChild(wrap);
+
+    wrap.querySelector(".ns-open-advanced-config")?.addEventListener("click", async () => {
+      const currentTransferType = wrap.querySelector(".ns-tt-select")?.value ?? transferType;
+      if (currentTransferType !== this.document.getFlag("neuroshima", "transferType")) {
+        await this.document.setFlag("neuroshima", "transferType", currentTransferType);
+      }
+
+      const { NeuroshimaAdvancedEffectConfig } = await import("../apps/neuroshima-advanced-effect-config.js");
+      const existing = Object.values(foundry.applications.instances ?? {}).find(
+        a => a instanceof NeuroshimaAdvancedEffectConfig && a.effect?.uuid === this.document.uuid
+      );
+      if (existing) {
+        existing.render({ force: true });
+        existing.bringToFront();
+        return;
+      }
+      new NeuroshimaAdvancedEffectConfig(this.document).render(true);
+    });
   }
 
   async _processSubmitData(event, form, submitData) {

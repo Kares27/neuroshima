@@ -1,3 +1,4 @@
+import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -52,7 +53,7 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "initiative-roll-dialog"],
+    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "roll-dialog", "initiative-roll-dialog"],
     position: { width: 480, height: "auto" },
     window: {
       resizable: false,
@@ -114,11 +115,13 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     const initSkillValue = skill ? (this.actor.system.skills?.[skill]?.value ?? 0) : 0;
     const initSkillObj = skill ? { name: game.i18n.localize(`NEUROSHIMA.Skills.${skill}`) || skill, value: initSkillValue, key: skill } : null;
 
+    const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
     const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
       this.actor,
       { rollType: "initiative", isMelee: this.isMelee, skill: initSkillObj, attribute: initAttrObj, difficulty },
       this.selectedModifierIds,
-      this.unselectedModifierIds
+      this.unselectedModifierIds,
+      targetActors
     );
 
     this._dialogModifiers = dialogModifiers;
@@ -154,8 +157,12 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     context.armorPenalty  = actorArmorPenalty + scriptFields.armorDelta;
     context.woundPenalty  = actorWoundPenalty + scriptFields.woundDelta;
 
-    context.currentDifficulty = (scriptFields.difficulty && this.userEntry.difficulty === undefined)
+    let effectDifficulty = (scriptFields.difficulty && this.userEntry.difficulty === undefined)
       ? scriptFields.difficulty : difficulty;
+    if (scriptFields.difficultyShift) {
+      effectDifficulty = NeuroshimaScriptRunner.shiftDifficultyKey(effectDifficulty, scriptFields.difficultyShift);
+    }
+    context.currentDifficulty = effectDifficulty;
     context.currentAttribute = attribute;
     context.currentSkill = skill;
     context.useSkill = useSkill;
@@ -282,8 +289,11 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     const attrBonus       = userAttrBonus + (sf.attributeBonus || 0);
     const skillBonus      = userSkillBonus + (sf.skillBonus || 0);
 
-    const difficultyKey = (sf.difficulty && this.userEntry.difficulty === undefined)
+    let difficultyKey = (sf.difficulty && this.userEntry.difficulty === undefined)
       ? sf.difficulty : (this.userEntry.difficulty ?? this.rollOptions.difficulty ?? "average");
+    if (sf.difficultyShift) {
+      difficultyKey = NeuroshimaScriptRunner.shiftDifficultyKey(difficultyKey, sf.difficultyShift);
+    }
 
     const attribute       = this.userEntry.attribute ?? this.rollOptions.attribute ?? "dexterity";
     const skill           = this.userEntry.skill ?? this.rollOptions.skill ?? "";
@@ -349,17 +359,21 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
     const combinedAttrBonus   = userAttrBonus + (sf.attributeBonus || 0);
     const combinedSkillBonus  = userSkillBonus + (sf.skillBonus || 0);
 
-    const difficultyKey = (sf.difficulty && this.userEntry.difficulty === undefined)
+    let difficultyKey = (sf.difficulty && this.userEntry.difficulty === undefined)
       ? sf.difficulty : (this.userEntry.difficulty ?? this.rollOptions.difficulty ?? "average");
+    if (sf.difficultyShift) {
+      difficultyKey = NeuroshimaScriptRunner.shiftDifficultyKey(difficultyKey, sf.difficultyShift);
+    }
 
     const useArmor = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? false;
     const useWound = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
     const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
     const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
 
+    const submissionOptions = {};
     for (const dm of this._dialogModifiers) {
       if (!dm.activated || !dm._script?.submissionScript) continue;
-      await dm._script.runSubmission({ actor: this.actor });
+      await dm._script.runSubmission({ actor: this.actor, options: submissionOptions, fields: this._scriptFields });
     }
 
     const rollData = {
@@ -389,7 +403,7 @@ export class NeuroshimaInitiativeRollDialog extends HandlebarsApplicationMixin(A
 
     this.close();
 
-    const result = await this._performRoll(rollData);
+    const result = await this._performRoll({ ...rollData, options: submissionOptions });
 
     game.neuroshima?.log("Initiative roll completed", { actor: this.actor.name, successPoints: result?.successPoints, rollData });
 

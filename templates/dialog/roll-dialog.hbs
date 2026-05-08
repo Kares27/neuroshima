@@ -1,4 +1,4 @@
-<div class="neuroshima roll-dialog">
+<div class="roll-dialog-content">
 
     <div class="rd-top-split">
         <div class="rd-inputs-col">
@@ -22,20 +22,15 @@
             </div>
             <div class="form-group">
                 <label title="{{localize 'NEUROSHIMA.Roll.AttributeBonus'}}">{{localize "NEUROSHIMA.Roll.AttributeBonusAbbr"}}</label>
-                <input type="number" name="attributeBonus" value="0" placeholder="0"/>
+                <input type="number" name="attributeBonus" value="{{attributeBonus}}" placeholder="0"/>
             </div>
             <div class="form-group">
                 <label title="{{localize 'NEUROSHIMA.Roll.SkillBonus'}}">{{localize "NEUROSHIMA.Roll.SkillBonusAbbr"}}</label>
-                <input type="number" name="skillBonus" value="0" placeholder="0" {{#unless isSkill}}disabled{{/unless}}/>
+                <input type="number" name="skillBonus" value="{{skillBonus}}" placeholder="0" {{#unless isSkill}}disabled{{/unless}}/>
             </div>
         </div>
 
         <div class="rd-modifiers-col">
-            <input type="hidden" name="dialogModifier" value="{{totalDialogModifier}}"/>
-            <input type="hidden" name="dialogAttrBonus" value="{{fieldTotals.attributeBonus}}"/>
-            <input type="hidden" name="dialogSkillBonus" value="{{fieldTotals.skillBonus}}"/>
-            <input type="hidden" name="baseArmorPenalty" value="{{armorPenalty}}"/>
-            <input type="hidden" name="baseWoundPenalty" value="{{woundPenalty}}"/>
             <div class="rd-modifiers-panel">
                 <h4 class="dialog-modifiers-header">{{localize "NEUROSHIMA.Roll.DialogModifiers"}}</h4>
                 <ul class="dm-modifier-list">
@@ -43,11 +38,8 @@
                     <li class="dm-modifier-item {{#if canToggle}}dm-toggleable{{/if}} {{#if activated}}dm-active{{/if}}"
                         data-action="clickModifier"
                         data-dm-index="{{@index}}"
-                        data-dm-value="{{modifier}}"
-                        data-dm-attr-bonus="{{attributeBonus}}"
-                        data-dm-skill-bonus="{{skillBonus}}"
+                        data-dm-effect-id="{{_effectId}}"
                         {{#if description}}data-tooltip="{{description}}" data-tooltip-direction="RIGHT"{{/if}}>
-                        <input type="checkbox" class="dm-checkbox" {{#if activated}}checked{{/if}} data-dm-index="{{@index}}" style="display:none">
                         <span class="dm-bullet">•</span><a>{{label}}</a>
                     </li>
                     {{else}}
@@ -68,7 +60,7 @@
         </div>
         <div class="form-group">
             <label>{{localize "NEUROSHIMA.Roll.Difficulty"}}</label>
-            <select name="baseDifficulty" data-user-difficulty="{{baseDifficulty}}">
+            <select name="baseDifficulty">
                 {{#each difficulties}}
                 <option value="{{@key}}" {{#if (eq @key ../baseDifficulty)}}selected{{/if}}>
                     {{localize label}}
@@ -117,4 +109,14 @@
         </table>
     </div>
 
+    <footer class="form-footer">
+        <button type="button" data-action="roll" class="" autofocus="">
+            <i class="fas fa-check"></i>
+            <span>{{localize "NEUROSHIMA.Actions.Roll"}}</span>
+        </button>
+        <button type="button" data-action="cancel" class="">
+            <i class="fas fa-times"></i>
+            <span>{{localize "NEUROSHIMA.Actions.Cancel"}}</span>
+        </button>
+    </footer>
 </div>

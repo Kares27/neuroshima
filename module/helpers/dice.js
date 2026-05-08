@@ -85,6 +85,17 @@ export class NeuroshimaDice {
         attributeKey: attribute,
         skillKey: skill
     });
+
+    const initiativeArgs = {
+        actor,
+        successPoints: rollResult.successPoints,
+        rollData: rollResult,
+        roll: rollResult.roll,
+        attributeKey: attribute,
+        skillKey: skill
+    };
+    await NeuroshimaScriptRunner.execute("getInitiativeFormula", initiativeArgs);
+    rollResult.successPoints = initiativeArgs.successPoints ?? rollResult.successPoints;
     
     // Add tooltip to rollResult for reuse in duels
     rollResult.tooltip = this._buildOpenTestTooltip(rollResult, "NEUROSHIMA.MeleeOpposed.InitiativeTest");
@@ -141,7 +152,8 @@ export class NeuroshimaDice {
         tempoLevel = 0,
         isReroll = false, 
         chatMessage = true, 
-        rollMode = game.settings.get("core", "rollMode") 
+        rollMode = game.settings.get("core", "rollMode"),
+        options = {}
     } = params;
     
     // Rozpoczęcie grupy logów dla rzutu bronią
@@ -430,7 +442,7 @@ export class NeuroshimaDice {
 
     // preWeaponShot: scripts can shift the threshold or force/prevent jamming
     const rollAnnotations = [];
-    const preJamArgs = { actor, weapon, jammingThreshold, ammoJamming, bestResult, forceNoJam: false, forceJam: false, annotations: rollAnnotations };
+    const preJamArgs = { actor, weapon, jammingThreshold, ammoJamming, bestResult, forceNoJam: false, forceJam: false, annotations: rollAnnotations, options };
     if (!isMelee) await NeuroshimaScriptRunner.execute("preWeaponShot", preJamArgs);
     jammingThreshold = preJamArgs.jammingThreshold;
 
@@ -445,7 +457,7 @@ export class NeuroshimaDice {
     let despiteJamBullets  = null;
     let jamWasCleared = false;
     if (isJamming) {
-        const jamArgs = { actor, weapon, bestResult, jammingThreshold, wouldSucceed: jamWouldSucceed, canFireDespiteJam: false, clearJam: false, despiteJamBullets: null, annotations: rollAnnotations };
+        const jamArgs = { actor, weapon, bestResult, jammingThreshold, wouldSucceed: jamWouldSucceed, canFireDespiteJam: false, clearJam: false, despiteJamBullets: null, annotations: rollAnnotations, options };
         await NeuroshimaScriptRunner.execute("weaponJam", jamArgs);
         canFireDespiteJam = jamArgs.canFireDespiteJam;
         if (jamArgs.clearJam) { isJamming = false; jamWasCleared = true; }
@@ -748,7 +760,7 @@ export class NeuroshimaDice {
 
     // postWeaponShot: scripts can react to the completed shot result (ranged/thrown only)
     if (!isMelee) {
-        const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData, annotations: rollAnnotations };
+        const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData, annotations: rollAnnotations, options };
         await NeuroshimaScriptRunner.execute("postWeaponShot", postShotArgs);
     }
     rollData.annotations = rollAnnotations.filter(Boolean);
@@ -883,7 +895,7 @@ export class NeuroshimaDice {
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null } = {}) {
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {} } = {}) {
     game.neuroshima.log("rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
     if (isNaN(stat)) {
         game.neuroshima.warn("rollTest received NaN stat!", { stat, label });
@@ -891,10 +903,9 @@ export class NeuroshimaDice {
     // Rozpoczęcie grupy logów dla testu standardowego
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
 
-    // Uruchomienie skryptów preRollTest — mogą anulować rzut lub wymusić automatyczny sukces
     const testAnnotations = [];
     if (actor && !isReroll && !isDebug) {
-        const preArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, autoSuccess: false, cancelled: false, annotations: testAnnotations };
+        const preArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, autoSuccess: false, cancelled: false, annotations: testAnnotations, options };
         await NeuroshimaScriptRunner.execute("preRollTest", preArgs);
         if (preArgs.cancelled) {
             game.neuroshima.log("rollTest cancelled by preRollTest script");
@@ -913,17 +924,11 @@ export class NeuroshimaDice {
             }
             return { autoSuccess: true, successes: 1, cancelled: false };
         }
-    }
-
-    // Uruchomienie skryptów rollTest — mogą zmodyfikować stat, skill, penalties przed rzutem
-    if (actor && !isReroll && !isDebug) {
-        const scriptArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, annotations: testAnnotations };
-        await NeuroshimaScriptRunner.execute("rollTest", scriptArgs);
-        stat = scriptArgs.stat ?? stat;
-        skill = scriptArgs.skill ?? skill;
-        skillBonus = scriptArgs.skillBonus ?? skillBonus;
-        attributeBonus = scriptArgs.attributeBonus ?? attributeBonus;
-        penalties = scriptArgs.penalties ?? penalties;
+        stat = preArgs.stat ?? stat;
+        skill = preArgs.skill ?? skill;
+        skillBonus = preArgs.skillBonus ?? skillBonus;
+        attributeBonus = preArgs.attributeBonus ?? attributeBonus;
+        penalties = preArgs.penalties ?? penalties;
     }
     
     // Sprawdzenie czy aktor ma oczekujący test przeciwstawny (Obrona)
@@ -1044,6 +1049,22 @@ export class NeuroshimaDice {
 
     game.neuroshima.log("Wyniki po modyfikacji (użycie umiejętności)", rollData.modifiedResults);
     game.neuroshima.groupEnd();
+
+    if (actor && !isReroll && !isDebug) {
+        const postArgs = {
+            actor,
+            rollData,
+            isSuccess: rollData.success ?? false,
+            successCount: rollData.successCount ?? 0,
+            roll,
+            label,
+            attributeKey,
+            skillKey,
+            annotations: testAnnotations,
+            options
+        };
+        await NeuroshimaScriptRunner.execute("rollTest", postArgs);
+    }
 
     if (!chatMessage) {
         return {
