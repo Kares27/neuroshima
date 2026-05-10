@@ -895,7 +895,7 @@ export class NeuroshimaDice {
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {} } = {}) {
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {}, resultCallback = null } = {}) {
     game.neuroshima.log("rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
     if (isNaN(stat)) {
         game.neuroshima.warn("rollTest received NaN stat!", { stat, label });
@@ -1064,6 +1064,10 @@ export class NeuroshimaDice {
             options
         };
         await NeuroshimaScriptRunner.execute("rollTest", postArgs);
+
+        if (resultCallback) {
+            await resultCallback({ isSuccess: rollData.success ?? false, successes: rollData.successCount ?? 0, rollData, actor });
+        }
     }
 
     if (!chatMessage) {
@@ -2361,7 +2365,7 @@ export class NeuroshimaDice {
    * @returns {Promise<Item>}
    */
   static async applyWound(actor, { damageType = "L", location = "torso", source = "" } = {}) {
-    const NEUROSHIMA = game.neuroshima?.NEUROSHIMA ?? {};
+    const NEUROSHIMA = game.neuroshima?.config ?? {};
     const woundConfig = NEUROSHIMA.woundConfiguration?.[damageType] ?? {};
     const penalty = woundConfig?.penalties?.[0] ?? 20;
     const name = game.i18n.localize(`NEUROSHIMA.DamageType.${damageType}`) || damageType;

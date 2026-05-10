@@ -5,6 +5,7 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
   constructor(effect, options = {}) {
     super(options);
     this.effect = effect;
+    this._cmSaveTimer = null;
   }
 
   static DEFAULT_OPTIONS = {
@@ -70,8 +71,32 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
     };
   }
 
+  _onRender(context, options) {
+    super._onRender(context, options);
+    const form = this.element;
+    form.querySelectorAll("code-mirror").forEach(cm => {
+      cm.addEventListener("change", () => {
+        clearTimeout(this._cmSaveTimer);
+        this._cmSaveTimer = setTimeout(() => this._saveFromCodeMirror(form), 400);
+      });
+    });
+  }
+
+  async _saveFromCodeMirror(form) {
+    const fd = new FormDataExtended(form);
+    const update = foundry.utils.expandObject(fd.object);
+    form.querySelectorAll("code-mirror[name]").forEach(cm => {
+      foundry.utils.setProperty(update, cm.getAttribute("name"), cm.value ?? "");
+    });
+    await this.effect.update(update);
+    this.render({ force: true });
+  }
+
   static async _onSubmit(event, form, formData) {
     const update = foundry.utils.expandObject(formData.object);
+    form.querySelectorAll("code-mirror[name]").forEach(cm => {
+      foundry.utils.setProperty(update, cm.getAttribute("name"), cm.value ?? "");
+    });
     await this.effect.update(update);
     this.render({ force: true });
   }

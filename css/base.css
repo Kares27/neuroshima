@@ -1,3 +1,8 @@
+:root {
+    --ns-color-green: #3a8c3a;
+    --ns-color-green-darker: #2a6a2a;
+}
+
 body.theme-light {
     /* === BAZA LIGHT (Domyślny - Papierowy) === */
     
@@ -919,7 +924,8 @@ body.theme-dark {
 /* Dark Mode Overrides */
 .theme-dark .chat-message:has(.neuroshima.roll-card),
 .theme-dark .chat-message:has(.neuroshima.patient-card),
-.theme-dark .chat-message:has(.neuroshima.heal-request-card) {
+.theme-dark .chat-message:has(.neuroshima.heal-request-card),
+.theme-dark .chat-message:has(.neuroshima.required-test-card) {
     background: #0b0a13e6;
     border-color: #5a5a54;
     color: #e0e0d0;
@@ -933,11 +939,15 @@ body.theme-dark {
 .theme-dark .chat-message:has(.neuroshima.patient-card) .message-header .message-metadata,
 .theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header,
 .theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-sender,
-.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-metadata {
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-metadata,
+.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header .message-metadata {
     color: #e0e0d0;
 }
 
-.theme-dark .neuroshima.roll-card .roll-header {
+.theme-dark .neuroshima.roll-card .roll-header,
+.theme-dark .neuroshima.required-test-card .roll-header {
     border-color: #5a5a54;
     color: #e0e0d0;
 }
@@ -979,24 +989,28 @@ body.theme-dark {
     color: #a0a090;
 }
 
-.theme-dark .neuroshima.roll-card .roll-outcome {
+.theme-dark .neuroshima.roll-card .roll-outcome,
+.theme-dark .neuroshima.required-test-card .roll-outcome {
     border-color: #5a5a54;
 }
 
-.chat-message:has(.neuroshima.roll-card) .message-header {
+.chat-message:has(.neuroshima.roll-card) .message-header,
+.chat-message:has(.neuroshima.required-test-card) .message-header {
     border-bottom: 1px solid #7a797144;
     padding-bottom: 3px;
     margin-bottom: 5px;
 }
 
-.neuroshima.roll-card {
+.neuroshima.roll-card,
+.neuroshima.required-test-card {
     display: flex;
     flex-direction: column;
     gap: 8px;
     font-family: 'SpecialElite', serif;
 }
 
-.neuroshima.roll-card .roll-header {
+.neuroshima.roll-card .roll-header,
+.neuroshima.required-test-card .roll-header {
     font-weight: bold;
     font-size: 1.05em;
     border-bottom: 2px solid #7a7971;
@@ -1990,14 +2004,23 @@ body.theme-dark {
     align-items: center;
 }
 
-.neuroshima.roll-card .roll-outcome {
+.neuroshima.roll-card .roll-outcome,
+.neuroshima.required-test-card .roll-outcome {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-weight: bold;
+    font-size: 0.9em;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
 }
 
-.neuroshima.roll-card .outcome-item {
+.theme-dark .neuroshima.required-test-card .roll-outcome {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .outcome-item,
+.neuroshima.required-test-card .outcome-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -3059,6 +3082,28 @@ body.theme-dark {
     justify-content: flex-end;
 }
 
+.required-test-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.required-test-actions .btn.btn-primary {
+    width: 100%;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 1em;
+    letter-spacing: 0.04em;
+    background-color: var(--ns-color-green);
+    border-color: var(--ns-color-green);
+    color: #fff;
+}
+
+.required-test-actions .btn.btn-primary:hover {
+    background-color: var(--ns-color-green-darker);
+    border-color: var(--ns-color-green-darker);
+}
+
 .btn.btn-primary {
     display: inline-flex;
     align-items: center;
@@ -3998,7 +4043,17 @@ body.theme-dark {
 
 /* Neuroshima Config Apps (Compact Mode) */
 .neuroshima-config {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     padding: 5px;
+}
+
+.neuroshima-config .config-body {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .neuroshima-config .config-section {
@@ -5859,7 +5914,8 @@ body.theme-dark {
 .conditions-list {
     border: 1px solid var(--ns-border, #ccc);
     border-radius: 4px;
-    overflow: hidden;
+    overflow-y: auto;
+    max-height: 380px;
     margin-bottom: 12px;
 }
 
@@ -5879,6 +5935,9 @@ body.theme-dark {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ns-text-muted, #888);
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .condition-row {

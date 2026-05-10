@@ -15,7 +15,7 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         },
         position: {
             width: 450,
-            height: "auto"
+            height: 560
         },
         form: {
             handler: async function(event, form, formData) {

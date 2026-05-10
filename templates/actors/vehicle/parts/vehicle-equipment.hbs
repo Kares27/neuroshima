@@ -1,4 +1,4 @@
-<section class="tab vehicle-equipment {{tabs.equipment.cssClass}}" data-group="primary" data-tab="equipment" data-application-part="equipment">
+<section class="tab inventory vehicle-equipment {{tabs.equipment.cssClass}}" data-group="primary" data-tab="equipment" data-application-part="equipment">
 
     {{!-- Encumbrance Bar --}}
     <div class="encumbrance-bar-container">
@@ -15,7 +15,7 @@
         </div>
     </div>
 
-    {{!-- Money / Waluta --}}
+    {{!-- Money --}}
     {{#if inventory.money.length}}
     <section class="inventory-section">
         <div class="section-header money-section-header">
@@ -36,22 +36,33 @@
         <div class="inventory-list money-list">
             <div class="inventory-items">
                 {{#each inventory.money as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-stat quantity quantity-controls">
-                        <span class="quantity-value clickable" data-action="adjustQuantity" title="{{item.system.quantity}}">{{item.system.quantity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
-                    </div>
-                    {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}</span><span class="stat-chip-value">{{item.system.coinValue}}</span></span>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -77,27 +88,61 @@
         <div class="inventory-list ranged-list">
             <div class="inventory-items">
                 {{#each inventory.weaponsRanged as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped text-center">
+                            <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                                <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
+                            </a>
+                        </div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-stat equipped text-center">
-                        <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
-                            <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
-                        </a>
-                    </div>
-                    <div class="item-stat quantity quantity-controls">
-                        <span class="quantity-value clickable" data-action="adjustQuantity" title="{{item.system.quantity}}">{{item.system.quantity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
                     </div>
                     {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.damage}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{item.system.damage}}</span></span>{{/if}}
+                            {{#if item.system.caliber}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</span><span class="stat-chip-value">{{item.system.caliber}}</span></span>{{/if}}
+                            {{#if item.system.fireRate}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.FireRateAbbr"}}</span><span class="stat-chip-value">{{item.system.fireRate}}</span></span>{{/if}}
+                            {{#if item.system.piercing}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</span><span class="stat-chip-value">{{item.system.piercing}}</span></span>{{/if}}
+                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.JammingAbbr"}}</span><span class="stat-chip-value">{{item.system.jamming}}</span></span>
+                            {{#if item.system.capacity}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</span><span class="stat-chip-value">{{item.system.capacity}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -123,27 +168,57 @@
         <div class="inventory-list melee-list">
             <div class="inventory-items">
                 {{#each inventory.weaponsMelee as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped text-center">
+                            <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                                <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
+                            </a>
+                        </div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-stat equipped text-center">
-                        <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
-                            <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
-                        </a>
-                    </div>
-                    <div class="item-stat quantity quantity-controls">
-                        <span class="quantity-value clickable" data-action="adjustQuantity" title="{{item.system.quantity}}">{{item.system.quantity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
                     </div>
                     {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.damage}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{item.system.damage}}</span></span>{{/if}}
+                            {{#if item.system.reach}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Reach"}}</span><span class="stat-chip-value">{{item.system.reach}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -169,27 +244,56 @@
         <div class="inventory-list thrown-list">
             <div class="inventory-items">
                 {{#each inventory.weaponsThrown as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped text-center">
+                            <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                                <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
+                            </a>
+                        </div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-stat equipped text-center">
-                        <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
-                            <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
-                        </a>
-                    </div>
-                    <div class="item-stat quantity quantity-controls">
-                        <span class="quantity-value clickable" data-action="adjustQuantity" title="{{item.system.quantity}}">{{item.system.quantity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
                     </div>
                     {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#if item.system.damage}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{item.system.damage}}</span></span>{{/if}}
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -204,7 +308,6 @@
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.Armor"}}</span>
             <div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>
-            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
             {{#if enableEncumbrance}}
             <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
             {{/if}}
@@ -215,27 +318,31 @@
         <div class="inventory-list armor-list">
             <div class="inventory-items">
                 {{#each inventory.armor as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped text-center">
+                            <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                                <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
+                            </a>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-stat equipped text-center">
-                        <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
-                            <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
-                        </a>
-                    </div>
-                    <div class="item-stat quantity quantity-controls">
-                        <span class="quantity-value clickable" data-action="adjustQuantity" title="{{item.system.quantity}}">{{item.system.quantity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
-                    </div>
-                    {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    <div class="item-summary collapsed">
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -260,39 +367,56 @@
         <div class="inventory-list gear-list">
             <div class="inventory-items">
                 {{#each inventory.gear as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped"></div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-stat equipped"></div>
-                    <div class="item-stat quantity quantity-controls">
-                        <span class="quantity-value clickable" data-action="adjustQuantity" title="{{item.system.quantity}}">{{item.system.quantity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
                     </div>
                     {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}</span><span class="stat-chip-value">{{item.system.coinValue}}</span></span>
+                        </div>
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
-                {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
-                {{#if scripts}}
-                <div class="item-script-row" data-item-id="{{item.id}}">
-                    {{#each scripts as |ms|}}
-                    <a class="manual-script-btn" data-action="invokeItemScript"
-                       data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
-                       data-script-index="{{ms.scriptIndex}}"
-                       title="{{ms.effectName}}">
-                        <i class="fas fa-play"></i> {{ms.label}}
-                    </a>
-                    {{/each}}
-                </div>
-                {{/if}}
-                {{/with}}
+                {{else}}
+                <div class="inventory-empty">{{localize "NEUROSHIMA.Items.Empty"}}</div>
                 {{/each}}
             </div>
         </div>
@@ -315,27 +439,46 @@
         <div class="inventory-list magazine-list">
             <div class="inventory-items">
                 {{#each inventory.magazines as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="magazine-container magazine-item-row" data-item-id="{{item.id}}">
+                        <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                            <div class="item-name flex3">
+                                <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                                <span class="name clickable" data-action="toggleSummary">{{item.name}} ({{item.system.totalCount}} / {{item.system.capacity}})</span>
+                            </div>
+                            <div class="item-stat equipped text-center">
+                                <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                                    <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
+                                </a>
+                            </div>
+                            <div class="item-stat quantity text-center">
+                                <span>{{item.system.capacity}}</span>
+                            </div>
+                            {{#if ../enableEncumbrance}}
+                            <div class="item-stat weight text-center">
+                                <span class="weight-value">{{item.system.totalWeight}}</span>
+                            </div>
+                            {{/if}}
+                            <div class="item-controls">
+                                <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                            </div>
+                        </div>
+                        {{#if item.contentsReversed.length}}
+                        <div class="magazine-contents flexcol">
+                            {{#each item.contentsReversed as |ammoStack|}}
+                            <div class="ammo-stack flexrow">
+                                <div class="stack-indicator"></div>
+                                <div class="stack-name flex3">{{ammoStack.name}} ({{ammoStack.quantity}})</div>
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{/if}}
                     </div>
-                    <div class="item-stat equipped text-center">
-                        <a class="item-control toggle-equipped" data-action="toggleEquipped" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
-                            <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
-                        </a>
-                    </div>
-                    <div class="item-stat quantity text-center">
-                        <span>{{item.system.capacity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
-                    </div>
-                    {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    <div class="item-summary collapsed">
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -361,23 +504,30 @@
         <div class="inventory-list ammo-list">
             <div class="inventory-items">
                 {{#each inventory.ammo as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex3">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped"></div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        {{#if ../enableEncumbrance}}
+                        <div class="item-stat weight text-center">
+                            <span class="weight-value">{{item.system.totalWeight}}</span>
+                        </div>
+                        {{/if}}
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-stat equipped"></div>
-                    <div class="item-stat quantity quantity-controls">
-                        <span class="quantity-value clickable" data-action="adjustQuantity" title="{{item.system.quantity}}">{{item.system.quantity}}</span>
-                    </div>
-                    {{#if ../enableEncumbrance}}
-                    <div class="item-stat weight text-center">
-                        <span class="weight-value">{{item.system.totalWeight}}</span>
-                    </div>
-                    {{/if}}
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    <div class="item-summary collapsed">
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
                 {{/each}}
@@ -391,35 +541,44 @@
     <section class="inventory-section">
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
-            <a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list trait-list">
             <div class="inventory-items">
                 {{#each inventory.traits as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex5">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
-                {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
-                {{#if scripts}}
-                <div class="item-script-row" data-item-id="{{item.id}}">
-                    {{#each scripts as |ms|}}
-                    <a class="manual-script-btn" data-action="invokeItemScript"
-                       data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
-                       data-script-index="{{ms.scriptIndex}}"
-                       title="{{ms.effectName}}">
-                        <i class="fas fa-play"></i> {{ms.label}}
-                    </a>
-                    {{/each}}
-                </div>
-                {{/if}}
-                {{/with}}
                 {{/each}}
             </div>
         </div>
@@ -431,35 +590,44 @@
     <section class="inventory-section">
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Tabs.Tricks"}}</span>
-            <a class="item-control" data-action="createItem" data-type="trick" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="trick" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
         </div>
         <div class="inventory-list trick-list">
             <div class="inventory-items">
                 {{#each inventory.tricks as |item|}}
-                <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
-                    <div class="item-name flex5">
-                        <div class="item-image clickable" style="background-image: url('{{item.img}}')" data-action="editItem"></div>
-                        <span class="name clickable" data-action="editItem">{{item.name}}</span>
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
                     </div>
-                    <div class="item-controls">
-                        <a class="item-control" data-action="editItem" data-item-id="{{item.id}}" title="{{localize 'Edit'}}"><i class="fas fa-edit"></i></a>
-                        <a class="item-control" data-action="deleteItem" data-item-id="{{item.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
                     </div>
                 </div>
-                {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
-                {{#if scripts}}
-                <div class="item-script-row" data-item-id="{{item.id}}">
-                    {{#each scripts as |ms|}}
-                    <a class="manual-script-btn" data-action="invokeItemScript"
-                       data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
-                       data-script-index="{{ms.scriptIndex}}"
-                       title="{{ms.effectName}}">
-                        <i class="fas fa-play"></i> {{ms.label}}
-                    </a>
-                    {{/each}}
-                </div>
-                {{/if}}
-                {{/with}}
                 {{/each}}
             </div>
         </div>

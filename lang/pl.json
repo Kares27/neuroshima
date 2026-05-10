@@ -25,7 +25,8 @@
             "profession": "Profesja",
             "vehicle-damage": "Uszkodzenie",
             "money": "Waluta",
-            "reputation": "Reputacja"
+            "reputation": "Reputacja",
+            "disease": "Choroba"
         }
     },
     "NEUROSHIMA": {
@@ -989,7 +990,28 @@
                 "Vehicle-damage": "Uszkodzenie Pojazdu",
                 "Vehicle-mod": "Modyfikacja Pojazdu",
                 "Money": "Waluta",
-                "Reputation": "Reputacja"
+                "Reputation": "Reputacja",
+                "Disease": "Choroba"
+            },
+            "Disease": {
+                "StateLabel": "Stan Choroby",
+                "CurrentState": "Aktualny Stan",
+                "DaysInState": "Dni w Stanie",
+                "Medication": "Lekarstwo",
+                "MedicationName": "Nazwa Lekarstwa",
+                "IsTaking": "Zażywa Leki",
+                "StateDescription": "Opis",
+                "StateDescriptionHint": "Opisz objawy…",
+                "Penalties": "Kary",
+                "TestModifier": "Modyfikator Trudności Testów (%)",
+                "TestModifierAbbr": "Test%",
+                "State": {
+                    "None": "Zdrowy",
+                    "FirstSymptoms": "Pierwsze Symptomy",
+                    "Acute": "Stan Ostry",
+                    "Critical": "Stan Krytyczny",
+                    "Terminal": "Stan Terminalny"
+                }
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {
@@ -1128,6 +1150,16 @@
             "Penalty": "Kara",
             "Medic": "Medyk",
             "Patient": "Pacjent"
+        },
+        "RequiredTest": {
+            "TestLabel": "Test",
+            "RequiredSuccesses": "Wymagane sukcesy",
+            "TestType": "Typ testu",
+            "TypeAttribute": "Atrybut",
+            "TypeSkill": "Umiejętność",
+            "TestMode": "Tryb",
+            "Roll": "Rzuć test",
+            "NoActor": "Brak wybranej postaci. Wybierz token lub przypisz postać."
         },
         "HealingRequest": {
             "Title": "Prośba o Leczenie",

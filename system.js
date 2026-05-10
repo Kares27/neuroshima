@@ -6,7 +6,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -52,14 +52,19 @@ Hooks.once('init', async function() {
     });
 
     // Hide GM-only elements in chat messages for non-GM users
-    Hooks.on("renderChatMessage", (message, html) => {
-        // Normalize: html may be an HTMLElement (v13 AppV2) or a jQuery object (legacy paths)
+    Hooks.on("renderChatMessageHTML", (message, html) => {
         const root = html instanceof HTMLElement ? html : html?.[0];
         if (!root) return;
 
         if (!game.user.isGM) {
             root.querySelectorAll("[data-gm-only]").forEach(el => { el.style.display = "none"; });
+            root.querySelectorAll("[data-debug-gm-only]").forEach(el => { el.style.display = "none"; });
             return;
+        }
+
+        const debugOn = game.settings.get("neuroshima", "debugMode");
+        if (!debugOn) {
+            root.querySelectorAll("[data-debug-gm-only]").forEach(el => { el.style.display = "none"; });
         }
 
         // Beast action spending — quantity +/− buttons and apply button (GM only)
@@ -281,6 +286,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["vehicle-mod"]       = VehicleModData;
     CONFIG.Item.dataModels["money"]             = MoneyData;
     CONFIG.Item.dataModels["reputation"]        = ReputationData;
+    CONFIG.Item.dataModels["disease"]           = DiseaseData;
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -355,7 +361,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation"],
+        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -817,6 +823,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs",
         "systems/neuroshima/templates/item/parts/magazine-details.hbs",
         "systems/neuroshima/templates/item/parts/ammunition-details.hbs",
+        "systems/neuroshima/templates/apps/reputation-settings.hbs",
         "systems/neuroshima/templates/apps/healing-config.hbs",
         "systems/neuroshima/templates/apps/healing-app-main.hbs",
         "systems/neuroshima/templates/apps/healing-app-header.hbs",
@@ -840,6 +847,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/rest-report.hbs",
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
+        "systems/neuroshima/templates/chat/required-test-card.hbs",
         "systems/neuroshima/templates/dialog/rest-dialog.hbs",
         "systems/neuroshima/templates/dialog/hp-config.hbs",
         "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs",
@@ -1948,16 +1956,20 @@ Hooks.on("deleteToken", async (tokenDocument, options, userId) => {
     if (!game.user.isGM) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     const actor = tokenDocument.actor;
+    const deletedTokenId = tokenDocument.id;
     if (actor) {
-        await NeuroshimaAuraManager.removeAllCopiesForEffect(null, actor.id);
+        await NeuroshimaAuraManager.removeAllCopiesForEffect(null, actor.id, actor.uuid);
     }
     for (const otherToken of canvas.scene?.tokens ?? []) {
-        if (otherToken.id === tokenDocument.id) continue;
+        if (otherToken.id === deletedTokenId) continue;
         const otherActor = otherToken.actor;
         if (!otherActor) continue;
         const stale = (otherActor.effects ?? []).filter(e => {
             const fa = e.getFlag("neuroshima", "fromAura");
-            return fa && actor && fa.sourceActorId === actor.id;
+            if (!fa || !actor) return false;
+            return fa.sourceActorUuid
+                ? fa.sourceActorUuid === actor.uuid
+                : fa.sourceActorId === actor.id && fa.sourceTokenId === deletedTokenId;
         });
         if (stale.length) {
             await otherActor.deleteEmbeddedDocuments("ActiveEffect", stale.map(e => e.id), { ns_skipAuraCleanup: true });
@@ -1969,6 +1981,11 @@ Hooks.on("canvasReady", async () => {
     if (!game.user.isGM) return;
     const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
     await NeuroshimaAuraManager.refreshAllAuras();
+});
+
+Hooks.on("updateWorldTime", async (worldTime, dt) => {
+    if (!game.user.isGM) return;
+    await NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt);
 });
 
 Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {

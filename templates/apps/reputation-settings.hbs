@@ -81,18 +81,10 @@
             <input type="number" name="relationTable.{{@index}}.minVal" value="{{minVal}}" data-dtype="Number"/>
             <input type="number" name="relationTable.{{@index}}.maxVal" value="{{maxVal}}" data-dtype="Number"/>
             <input type="text" name="relationTable.{{@index}}.name" value="{{name}}"/>
-            <div class="rep-color-field">
-                <input type="text" class="rep-color-hex" name="relationTable.{{@index}}.color" value="{{#if color}}{{color}}{{else}}#888888{{/if}}" placeholder="#rrggbb" maxlength="7" list="rep-used-colors"/>
-                <input type="color" class="rep-color-swatch" value="{{#if color}}{{color}}{{else}}#888888{{/if}}" tabindex="-1"/>
-            </div>
+            <input type="color" class="rep-color-input" name="relationTable.{{@index}}.color" value="{{#if color}}{{color}}{{else}}#888888{{/if}}">
             <a class="item-control" data-action="deleteGlobalRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
         </div>
         {{/each}}
-        <datalist id="rep-used-colors">
-            {{#each config.relationTable}}
-            {{#if color}}<option value="{{color}}">{{/if}}
-            {{/each}}
-        </datalist>
     </div>
 
     <footer class="form-footer">

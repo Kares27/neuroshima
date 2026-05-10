@@ -29,7 +29,7 @@
     <div class="form-group stacked">
       <label>Avoid Script</label>
       <p class="notes">Receives <code>actor</code> and <code>effect</code>. Return <strong>true</strong> to prevent application.</p>
-      <textarea name="flags.neuroshima.avoidTestScript" rows="3">{{avoidTestScript}}</textarea>
+      <code-mirror name="flags.neuroshima.avoidTestScript" language="javascript" indent="4">{{avoidTestScript}}</code-mirror>
     </div>
     {{/if}}
 
@@ -118,7 +118,7 @@
   <div class="form-group stacked">
     <label>Pre-Apply Script</label>
     <p class="notes">This executes before an effect is applied — runs on the source, not the target. Return <strong>false</strong> to prevent application (Damage, Target, and Area/Aura only).</p>
-    <textarea name="flags.neuroshima.preApplyScript" rows="4">{{preApplyScript}}</textarea>
+    <code-mirror name="flags.neuroshima.preApplyScript" language="javascript" indent="4">{{preApplyScript}}</code-mirror>
   </div>
   {{/unless}}
 
@@ -126,7 +126,7 @@
   <div class="form-group stacked">
     <label>Enable Script</label>
     <p class="notes">Condition for whether the effect should be enabled or disabled.</p>
-    <textarea name="flags.neuroshima.enableScript" rows="4">{{enableScript}}</textarea>
+    <code-mirror name="flags.neuroshima.enableScript" language="javascript" indent="4">{{enableScript}}</code-mirror>
   </div>
 
   {{!-- ── Filter + Prompt (hidden for owningDocument) ── --}}
@@ -134,7 +134,7 @@
   <div class="form-group stacked">
     <label>Filter</label>
     <p class="notes">Script to filter Documents to apply this Active Effect to. Should return <strong>true</strong> to prevent application.</p>
-    <textarea name="flags.neuroshima.filterScript" rows="4">{{filterScript}}</textarea>
+    <code-mirror name="flags.neuroshima.filterScript" language="javascript" indent="4">{{filterScript}}</code-mirror>
   </div>
 
   <div class="form-group">

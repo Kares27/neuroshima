@@ -21,7 +21,8 @@ export class NeuroshimaItem extends Item {
       origin:            "systems/neuroshima/assets/img/passport.svg",
       trait:             "systems/neuroshima/assets/img/brain.svg",
       money:             "systems/neuroshima/assets/img/banknote.svg",
-      reputation:        "systems/neuroshima/assets/img/shaking-hands.svg"
+      reputation:        "systems/neuroshima/assets/img/shaking-hands.svg",
+      disease:           "icons/svg/biohazard.svg"
     };
 
     const updates = {};

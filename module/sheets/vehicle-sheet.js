@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { getConditions } from "../apps/condition-config.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -184,6 +185,64 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
       },
 
+      toggleCondition: async function(event, target) {
+        const key  = target.dataset.conditionKey;
+        const type = target.dataset.conditionType;
+        if (!key) return;
+        if (type === "boolean") {
+          await this.document.toggleStatusEffect(key);
+        } else {
+          if (event.button === 2 || event.type === "contextmenu") {
+            await this.document.removeCondition(key);
+          } else {
+            await this.document.addCondition(key);
+          }
+        }
+      },
+
+      adjustConditionValue: async function(event, target) {
+        const key = target.dataset.conditionKey;
+        const allowNegative = target.dataset.allowNegative === "true";
+        if (!key) return;
+        const actor = this.document;
+        let val = parseInt(target.value, 10);
+        if (isNaN(val)) val = 0;
+        if (!allowNegative) val = Math.max(0, val);
+        const existing = actor.effects.find(
+          e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+        );
+        if (val === 0 && !allowNegative) {
+          if (existing) await existing.delete();
+          return;
+        }
+        if (existing) {
+          await existing.setFlag("neuroshima", "conditionValue", val);
+        } else if (val !== 0) {
+          const condDef = getConditions().find(c => c.key === key);
+          if (!condDef) return;
+          await actor.createEmbeddedDocuments("ActiveEffect", [{
+            name:        condDef.name,
+            img:         condDef.img          ?? "icons/svg/aura.svg",
+            tint:        condDef._tint        ?? null,
+            description: condDef._description ?? "",
+            disabled:    condDef._disabled    ?? false,
+            statuses:    [key],
+            changes:     foundry.utils.deepClone(condDef.changes   ?? []),
+            duration:    foundry.utils.deepClone(condDef._duration ?? {}),
+            flags: {
+              neuroshima: {
+                conditionNumbered: true,
+                conditionValue:    val,
+                scripts:           foundry.utils.deepClone(condDef.scripts      ?? []),
+                transferType:      condDef._transferType  ?? "owningDocument",
+                documentType:      condDef._documentType  ?? "actor",
+                equipTransfer:     condDef._equipTransfer ?? false
+              }
+            }
+          }]);
+        }
+      },
+
       adjustQuantity: async function(event, target) {
         const direction = event.button === 2 ? -1 : 1;
         const el = target.closest("[data-item-id]");
@@ -210,6 +269,19 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
           updates.push({ _id: item.id, "system.quantity": count });
         }
         await actor.updateEmbeddedDocuments("Item", updates);
+      },
+
+      toggleSummary: function(event, target) {
+        const wrap = target.closest(".item-wrap");
+        const summary = wrap?.querySelector(".item-summary");
+        if (!summary) return;
+        summary.classList.toggle("collapsed");
+      },
+
+      itemContextMenu: function(event, target) {
+        const wrap = target.closest(".item-wrap");
+        if (!wrap?.dataset.itemId) return;
+        this._showItemContextMenu(event, wrap.dataset.itemId);
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -432,38 +504,86 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
       })
     };
 
+    const condDefs = getConditions();
+    const condTypeMap = Object.fromEntries(condDefs.map(c => [c.key, c.type ?? "boolean"]));
     const effectDurationLabel = (e) => e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—");
-    context.effects = [];
+    const isTemporary = (e) => !!(
+      e.duration?.rounds || e.duration?.seconds || e.duration?.turns ||
+      e.getFlag("neuroshima", "fromAura") || e.getFlag("neuroshima", "fromArea")
+    );
+    const isConditionEffect = (e) => e.statuses?.size > 0;
 
-    for (const e of actor.effects) {
-      context.effects.push({
+    const temporary     = [];
+    const passive       = [];
+    const disabled      = [];
+    const statusEffects = [];
+
+    const pushEffect = (e, itemId, sourceName, sourceIcon, isItemEffect) => {
+      const entry = {
         id: e.id,
-        itemId: null,
+        itemId: itemId ?? null,
         name: e.name,
         icon: e.img || "icons/svg/aura.svg",
         disabled: e.disabled,
-        sourceName: actor.name,
-        sourceIcon: actor.img || "icons/svg/mystery-man.svg",
+        sourceName,
+        sourceIcon,
         durationLabel: effectDurationLabel(e),
-        isItemEffect: false
-      });
+        isItemEffect: !!isItemEffect
+      };
+      if (isConditionEffect(e)) {
+        const statusKey = [...(e.statuses ?? [])][0];
+        entry.conditionType = condTypeMap[statusKey] ?? "boolean";
+        statusEffects.push(entry);
+      } else if (e.disabled) {
+        disabled.push(entry);
+      } else if (isTemporary(e)) {
+        temporary.push(entry);
+      } else {
+        passive.push(entry);
+      }
+    };
+
+    for (const e of actor.effects) {
+      const fromAura = e.getFlag("neuroshima", "fromAura");
+      const fromArea = e.getFlag("neuroshima", "fromArea");
+      const sourceActorId = fromAura?.sourceActorId ?? fromArea?.sourceActorId ?? null;
+      const sourceActor = sourceActorId ? game.actors.get(sourceActorId) : null;
+      pushEffect(e, null, sourceActor?.name ?? actor.name, sourceActor?.img ?? actor.img ?? "icons/svg/mystery-man.svg", false);
     }
 
     for (const item of actor.items) {
       for (const e of item.effects) {
-        context.effects.push({
-          id: e.id,
-          itemId: item.id,
-          name: e.name,
-          icon: e.img || "icons/svg/aura.svg",
-          disabled: e.disabled,
-          sourceName: item.name,
-          sourceIcon: item.img || "icons/svg/item-bag.svg",
-          durationLabel: effectDurationLabel(e),
-          isItemEffect: true
-        });
+        const docType      = e.getFlag?.("neuroshima", "documentType")  ?? "actor";
+        const transferType = e.getFlag?.("neuroshima", "transferType")  ?? "owningDocument";
+        const equipTransfer = e.getFlag?.("neuroshima", "equipTransfer") ?? false;
+        if (docType !== "actor" || transferType !== "owningDocument") continue;
+        if (equipTransfer) continue;
+        pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true);
       }
     }
+
+    context.effects = { temporary, passive, disabled, statusEffects };
+
+    context.conditionStates = condDefs.map(c => {
+      const isInt = c.type === "int";
+      let active, value;
+      if (isInt) {
+        value  = actor.getConditionValue(c.key);
+        active = value !== 0;
+      } else {
+        active = actor.statuses.has(c.key);
+        value  = 0;
+      }
+      return {
+        key:           c.key,
+        name:          c.name,
+        img:           c.img,
+        type:          c.type,
+        allowNegative: !!c.allowNegative,
+        active,
+        value
+      };
+    }).sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
 
     context.itemManualScripts = this._prepareItemManualScripts(actor);
 
@@ -515,6 +635,86 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
         item.update({ "system.quantity": Math.max(0, item.system.quantity - amount) });
       });
     });
+
+    html.querySelectorAll('.vehicle-mod-row[data-item-id]').forEach(row => {
+      row.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._showItemContextMenu(event, row.dataset.itemId);
+      });
+    });
+  }
+
+  _showItemContextMenu(event, itemId) {
+    event.preventDefault();
+    const item = this.document.items.get(itemId);
+    if (!item) return;
+
+    document.querySelectorAll('.ns-item-ctx-menu').forEach(el => el.remove());
+
+    const menuItems = [
+      { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
+      { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
+      { action: 'duplicate', icon: 'fas fa-copy',     label: game.i18n.localize('NEUROSHIMA.ContextMenu.Duplicate') },
+      { action: 'delete',    icon: 'fas fa-trash',    label: game.i18n.localize('Delete') }
+    ];
+
+    const menu = document.createElement('nav');
+    menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
+    menu.style.cssText = 'position:fixed;z-index:99999;';
+    menu.innerHTML = `<menu class="context-items">${
+      menuItems.map(m => `<li class="context-item" data-action="${m.action}"><i class="${m.icon} fa-fw"></i><span>${m.label}</span></li>`).join('')
+    }</menu>`;
+    document.body.appendChild(menu);
+
+    const x = event.clientX;
+    const y = event.clientY;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    requestAnimationFrame(() => {
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) menu.style.left = `${x - rect.width}px`;
+      if (rect.bottom > window.innerHeight) menu.style.top = `${y - rect.height}px`;
+    });
+
+    menu.querySelectorAll('.context-item').forEach(li => {
+      li.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const action = li.dataset.action;
+        if (action === 'edit') item.sheet.render(true);
+        else if (action === 'post') {
+          const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+          await NeuroshimaChatMessage.postItemToChat(item, { actor: this.document });
+        }
+        else if (action === 'duplicate') item.clone({}, { save: true, parent: this.document });
+        else if (action === 'delete') item.deleteDialog();
+        menu.remove();
+      });
+    });
+
+    const sheetEl = this.element;
+    const cleanup = () => {
+      menu.remove();
+      document.removeEventListener('click', onDocClick, { capture: true });
+      document.removeEventListener('contextmenu', onDocContext, { capture: true });
+      document.removeEventListener('keydown', onEscape);
+    };
+    const onDocClick = (e) => {
+      if (menu.contains(e.target)) return;
+      if (sheetEl && sheetEl.contains(e.target)) return;
+      cleanup();
+    };
+    const onDocContext = (e) => {
+      if (menu.contains(e.target)) return;
+      if (sheetEl && sheetEl.contains(e.target)) return;
+      cleanup();
+    };
+    const onEscape = (e) => { if (e.key === 'Escape') cleanup(); };
+    setTimeout(() => {
+      document.addEventListener('click', onDocClick, { capture: true });
+      document.addEventListener('contextmenu', onDocContext, { capture: true });
+      document.addEventListener('keydown', onEscape);
+    }, 0);
   }
 
   /** @override */

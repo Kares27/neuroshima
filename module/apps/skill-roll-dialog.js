@@ -32,6 +32,7 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
       currentAttribute: options.currentAttribute || ""
     };
 
+    this.resultCallback = options.resultCallback ?? null;
     this.userEntry = {};
     this.selectedModifierIds = new Set();
     this.unselectedModifierIds = new Set();
@@ -359,7 +360,8 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
       skillBonus: combinedSkillBonus,
       attributeBonus: combinedAttrBonus,
       rollMode,
-      options: submissionOptions
+      options: submissionOptions,
+      resultCallback: this.resultCallback ?? null
     });
   }
 

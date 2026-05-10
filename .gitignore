@@ -1,6 +1,7 @@
 
 *.pdf
 .zenflow/
+.zenflow/tasks
 .zenflow-attachments
 .zenflow-attachments/
 *.md

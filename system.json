@@ -2,7 +2,7 @@
     "id": "neuroshima",
     "title": "Neuroshima 1.5",
     "description": "System do gry fabularnej Neuroshima 1.5.",
-    "version": "0.9.7",
+    "version": "0.9.8",
     "compatibility": {
         "minimum": "13",
         "verified": "13"
@@ -72,7 +72,8 @@
         "vehicle-mod",
         "reputation",
         "money",
-        "reputation"
+        "reputation",
+        "disease"
     ],
     "flags": {
         "hotReload": {

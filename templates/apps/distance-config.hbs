@@ -3,7 +3,13 @@
         <h3>{{localize "NEUROSHIMA.Settings.DistanceConfig.Title"}}</h3>
         <p class="notes">{{localize "NEUROSHIMA.Settings.DistanceConfig.Hint"}}</p>
 
-        <div class="distance-table-wrapper" style="overflow-x:auto;">
+        <div style="margin-bottom:8px;">
+            <button type="button" data-action="addRow" style="width:auto;">
+                <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DistanceConfig.AddRow"}}
+            </button>
+        </div>
+
+        <div class="distance-table-wrapper" style="overflow-x:auto; overflow-y:auto; max-height:340px;">
             <table class="distance-table">
                 <thead>
                     <tr>
@@ -48,11 +54,6 @@
             </table>
         </div>
 
-        <div style="margin-top:8px;">
-            <button type="button" data-action="addRow" style="width:auto;">
-                <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DistanceConfig.AddRow"}}
-            </button>
-        </div>
     </div>
 
     <footer class="sheet-footer flexrow">

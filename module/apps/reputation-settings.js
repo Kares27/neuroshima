@@ -100,6 +100,19 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
 
     _extractRelationTable(data) {
         const table = [];
+        const nested = Array.isArray(data.relationTable) ? data.relationTable : null;
+        if (nested) {
+            for (const row of nested) {
+                if (row == null) continue;
+                table.push({
+                    minVal: Number(row.minVal ?? 0),
+                    maxVal: Number(row.maxVal ?? 0),
+                    name: String(row.name ?? ""),
+                    color: String(row.color ?? "")
+                });
+            }
+            return table;
+        }
         let idx = 0;
         while (data[`relationTable.${idx}.name`] !== undefined) {
             table.push({
@@ -111,60 +124,6 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             idx++;
         }
         return table;
-    }
-
-    _onRender(context, options) {
-        super._onRender?.(context, options);
-        this._initColorPickers(this.element);
-    }
-
-    _initColorPickers(root) {
-        root.querySelectorAll(".rep-color-field").forEach(field => {
-            const swatch = field.querySelector(".rep-color-swatch");
-            const hex = field.querySelector(".rep-color-hex");
-            if (!swatch || !hex) return;
-
-            const resolveColor = (val) => {
-                const canvas = document.createElement("canvas");
-                canvas.width = canvas.height = 1;
-                const ctx = canvas.getContext("2d");
-                ctx.fillStyle = "#000";
-                ctx.fillStyle = val;
-                ctx.fillRect(0, 0, 1, 1);
-                const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
-                if (a === 0) return null;
-                return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-            };
-
-            const validate = (val) => {
-                const resolved = resolveColor(val.trim());
-                const isValid = resolved !== null && (resolved !== "#000000" || val.trim() === "#000000" || val.trim() === "#000" || val.trim().toLowerCase() === "black");
-                hex.classList.toggle("invalid", !isValid);
-                return isValid ? resolved : null;
-            };
-
-            swatch.addEventListener("input", () => {
-                hex.value = swatch.value;
-                hex.classList.remove("invalid");
-            });
-
-            hex.addEventListener("input", () => {
-                const resolved = validate(hex.value);
-                if (resolved) swatch.value = resolved;
-            });
-
-            hex.addEventListener("blur", () => {
-                const resolved = validate(hex.value);
-                if (resolved) {
-                    hex.value = resolved;
-                    swatch.value = resolved;
-                }
-            });
-
-            swatch.addEventListener("click", () => swatch.showPicker?.());
-
-            validate(hex.value);
-        });
     }
 
     _captureFormState() {

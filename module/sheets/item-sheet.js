@@ -197,18 +197,19 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.source = item.system.toObject();
 
     const tabsByType = {
+      disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
       trait: ["description", "effects"],
       gear: ["description", "resources", "effects"],
-      "vehicle-mod": ["stats", "description", "effects"],
-      "vehicle-damage": ["stats", "description", "effects"],
+      "vehicle-mod": ["description", "stats", "resources", "effects"],
+      "vehicle-damage": ["description", "stats", "effects"],
       specialization: ["description", "stats", "effects"],
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],
-      money: ["stats", "description", "effects"],
-      reputation: ["stats", "description", "resources", "effects"],
+      money: ["description", "stats", "effects"],
+      reputation: ["description", "stats", "resources", "effects"],
     };
-    const allowedTabs = tabsByType[item.type] || ["stats", "description", "resources", "effects"];
+    const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
     if (!allowedTabs.includes(this.tabGroups.primary)) {
       this.tabGroups.primary = allowedTabs[0];
     }
@@ -241,7 +242,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.isJammedWeapon = item.type === "weapon" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation"];
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
 
     // Prepare type label
@@ -470,7 +471,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         { id: "resources", group: "primary", label: "NEUROSHIMA.Tabs.Resources" },
         { id: "effects", group: "primary", label: "NEUROSHIMA.Tabs.Effects" }
       ],
-      initial: "stats"
+      initial: "description"
     }
   };
 
@@ -525,10 +526,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       });
     }
 
-    if (item.type === "reputation") {
-      this._initColorPickers(this.element);
-    }
-
     const itemTestInput = this.element?.querySelector('.item-test-input');
     if (itemTestInput) {
       itemTestInput.addEventListener('change', async () => {
@@ -536,55 +533,6 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       });
     }
 
-  }
-
-  _initColorPickers(root) {
-    root.querySelectorAll(".rep-color-field").forEach(field => {
-      const swatch = field.querySelector(".rep-color-swatch");
-      const hex = field.querySelector(".rep-color-hex");
-      if (!swatch || !hex) return;
-
-      const resolveColor = (val) => {
-        const canvas = document.createElement("canvas");
-        canvas.width = canvas.height = 1;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#000";
-        ctx.fillStyle = val;
-        ctx.fillRect(0, 0, 1, 1);
-        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
-        if (a === 0) return null;
-        return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-      };
-
-      const validate = (val) => {
-        const resolved = resolveColor(val.trim());
-        const isValid = resolved !== null && (resolved !== "#000000" || val.trim() === "#000000" || val.trim() === "#000" || val.trim().toLowerCase() === "black");
-        hex.classList.toggle("invalid", !isValid);
-        return isValid ? resolved : null;
-      };
-
-      swatch.addEventListener("input", () => {
-        hex.value = swatch.value;
-        hex.classList.remove("invalid");
-      });
-
-      hex.addEventListener("input", () => {
-        const resolved = validate(hex.value);
-        if (resolved) swatch.value = resolved;
-      });
-
-      hex.addEventListener("blur", () => {
-        const resolved = validate(hex.value);
-        if (resolved) {
-          hex.value = resolved;
-          swatch.value = resolved;
-        }
-      });
-
-      swatch.addEventListener("click", () => swatch.showPicker?.());
-
-      validate(hex.value);
-    });
   }
 
   /**
@@ -598,19 +546,20 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     // 1. Definicja widocznych tabów dla poszczególnych typów
     const tabsByType = {
+      disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
       trait: ["description", "effects"],
       gear: ["description", "resources", "effects"],
-      "vehicle-mod": ["stats", "description", "effects"],
-      "vehicle-damage": ["stats", "description", "effects"],
+      "vehicle-mod": ["description", "stats", "resources", "effects"],
+      "vehicle-damage": ["description", "stats", "effects"],
       specialization: ["description", "stats", "effects"],
       origin: ["description", "stats", "effects"],
       profession: ["description", "stats", "effects"],
-      money: ["stats", "description", "effects"],
-      reputation: ["stats", "description", "resources", "effects"],
+      money: ["description", "stats", "effects"],
+      reputation: ["description", "stats", "resources", "effects"],
     };
 
-    const allowedTabs = tabsByType[item.type] || ["stats", "description", "resources", "effects"];
+    const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
 
     // Jeśli aktywna zakładka nie należy do dozwolonych (np. "stats" dla trick/trait), użyj pierwszej dozwolonej
     const activeTab = allowedTabs.includes(rawActiveTab) ? rawActiveTab : null;

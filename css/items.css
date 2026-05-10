@@ -935,36 +935,93 @@
     text-align: right;
 }
 
-/* ── Color picker field (hex input + swatch) ── */
-.rep-color-field {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
-}
-
-.rep-color-field .rep-color-hex {
-    flex: 1;
-    min-width: 0;
-    font-family: monospace;
-    font-size: 0.85em;
-    padding: 2px 4px;
-    text-align: left;
-}
-
-.rep-color-field .rep-color-hex.invalid {
-    border-color: #cc3333;
-    background: rgba(204, 51, 51, 0.08);
-    color: #cc3333;
-}
-
-.rep-color-field .rep-color-swatch {
-    flex: 0 0 24px;
-    width: 24px;
-    height: 24px;
-    padding: 0;
+/* ── Color swatch input for relation table ── */
+input[type="color"].rep-color-input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    height: 26px;
+    padding: 1px;
     border: 1px solid var(--ns-border-main, #555);
     border-radius: 3px;
     cursor: pointer;
     background: none;
+    overflow: hidden;
+}
+
+input[type="color"].rep-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"].rep-color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+input[type="color"].rep-color-input::-moz-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+/* ── Disease item ── */
+.disease-stats-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.disease-header-row {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.disease-header-row .secondary-box {
+    margin-bottom: 0;
+}
+
+.disease-state-block {
+    border-left: 3px solid transparent;
+    transition: border-color 0.15s;
+}
+
+.disease-state-block.disease-state-active {
+    border-left-color: var(--color-border-highlight, #f0a000);
+    background-color: color-mix(in srgb, var(--ns-bg-sheet) 92%, #f0a000 8%);
+}
+
+.disease-state-terminal.disease-state-active {
+    border-left-color: var(--color-level-error, #c00);
+    background-color: color-mix(in srgb, var(--ns-bg-sheet) 92%, #c00 8%);
+}
+
+.disease-state-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.disease-dots {
+    color: var(--color-border-highlight, #f0a000);
+    font-size: 0.85em;
+    letter-spacing: -2px;
+}
+
+.disease-state-terminal .disease-state-label {
+    color: var(--color-level-error, #c00);
+}
+
+.disease-penalties-grid {
+    margin-top: 4px;
+}
+
+.disease-penalties-label {
+    display: block;
+    font-size: 0.78em;
+    opacity: 0.6;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }

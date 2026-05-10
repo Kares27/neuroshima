@@ -37,17 +37,4 @@
     </div>
 </div>
 
-{{!-- Zasady / Opis mechaniczny --}}
-<div class="form-group stacked">
-    <label>{{localize "NEUROSHIMA.VehicleMod.Rules"}}</label>
-    <div class="vehicle-mod-rules">
-        <prose-mirror
-            name="system.rules"
-            value="{{system.rules}}"
-            document-uuid="{{item.uuid}}"
-            toggled
-            {{#unless editable}}disabled{{/unless}}>
-            {{{enrichedRules}}}
-        </prose-mirror>
-    </div>
-</div>
+

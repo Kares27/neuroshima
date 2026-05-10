@@ -45,6 +45,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "applyOpposedDamage":
             this.onApplyOpposedDamage(event, message);
             break;
+          case "executeRequiredTest":
+            this.onExecuteRequiredTest(event, message);
+            break;
         }
       });
     });
@@ -117,6 +120,64 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
   static _bindResultCardCollapsibles(_root) {
     // No collapsibles on result card currently — kept as hook point for future use.
+  }
+
+  static async onExecuteRequiredTest(event, message) {
+    const data = message.getFlag("neuroshima", "requiredTestData");
+    if (!data) return;
+
+    const actor = game.user.character ?? canvas.tokens?.controlled?.[0]?.actor ?? null;
+    if (!actor) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.RequiredTest.NoActor"));
+      return;
+    }
+
+    const actorUuid = actor.uuid;
+
+    let resultCallback = null;
+    if (data.onSuccess || data.onFailure) {
+      const successConsequence = data.onSuccess ?? null;
+      const failureConsequence = data.onFailure ?? null;
+      resultCallback = async ({ isSuccess }) => {
+        const target = await fromUuid(actorUuid);
+        if (!target) return;
+        const consequence = isSuccess ? successConsequence : failureConsequence;
+        if (!consequence) return;
+        const actions = Array.isArray(consequence) ? consequence : [consequence];
+        for (const action of actions) {
+          if (action.addCondition) await target.addCondition(action.addCondition, action.value ?? 1);
+        }
+        game.neuroshima?.log("onExecuteRequiredTest | consequence applied", { actorUuid, isSuccess, consequence });
+      };
+    }
+
+    const { NeuroshimaSkillRollDialog } = await import("../apps/skill-roll-dialog.js");
+    const lastRoll = { ...(actor.system?.lastRoll ?? {}), isOpen: data.isOpen };
+
+    if (data.testType === "skill") {
+      let attrKey = "";
+      for (const [aKey, specs] of Object.entries(NEUROSHIMA.skillConfiguration ?? {})) {
+        for (const skills of Object.values(specs)) {
+          if (skills.includes(data.testKey)) { attrKey = aKey; break; }
+        }
+        if (attrKey) break;
+      }
+      const stat = actor.system?.attributeTotals?.[attrKey] ?? 0;
+      const skill = actor.system?.skillTotals?.[data.testKey] ?? actor.system?.skills?.[data.testKey]?.value ?? 0;
+      const loc = `NEUROSHIMA.Skills.${data.testKey}`;
+      const translated = game.i18n.localize(loc);
+      const label = data.title || (translated !== loc ? translated : data.testKey);
+
+      const dialog = new NeuroshimaSkillRollDialog({ actor, stat, skill, label, isSkill: true, skillKey: data.testKey, currentAttribute: attrKey, lastRoll, resultCallback });
+      dialog.render(true);
+    } else if (data.testType === "attribute") {
+      const stat = actor.system?.attributeTotals?.[data.testKey] ?? 0;
+      const attrDef = NEUROSHIMA.attributes?.[data.testKey];
+      const label = data.title || (attrDef?.label ? game.i18n.localize(attrDef.label) : data.testKey);
+
+      const dialog = new NeuroshimaSkillRollDialog({ actor, stat, skill: 0, label, isSkill: false, currentAttribute: data.testKey, lastRoll, resultCallback });
+      dialog.render(true);
+    }
   }
 
   /**

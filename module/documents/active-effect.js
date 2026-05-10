@@ -111,6 +111,19 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
   async _onCreate(data, options, user) {
     await super._onCreate(data, options, user);
+    const isAuraCopyOnCreate = !!this.getFlag("neuroshima", "fromAura");
+    const isAreaCopyOnCreate = !!this.getFlag("neuroshima", "fromArea");
+    if ((isAuraCopyOnCreate || isAreaCopyOnCreate) && this.actor && canvas?.interface) {
+      const tokens = this.actor.getActiveTokens();
+      for (const t of tokens) {
+        if (!t.visible || !t.renderable) continue;
+        canvas.interface.createScrollingText(t.center, "+" + this.name, {
+          anchor: CONST.TEXT_ANCHOR_POINTS.CENTER, direction: CONST.TEXT_ANCHOR_POINTS.TOP,
+          distance: 2 * t.h, fontSize: 36, fill: "0xFFFFFF",
+          stroke: "0x000000", strokeThickness: 4, jitter: 0.25
+        });
+      }
+    }
     if (game.user.id !== user) return;
     if (!this.actor) return;
     const createScripts = this.scripts.filter(s => s.trigger === "applyEffect");
@@ -121,16 +134,40 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     for (const script of immediateScripts) {
       await script.execute({ actor: this.actor, data, options });
     }
+    if (
+      game.user.isGM &&
+      !options.ns_skipAuraTrigger &&
+      this.getFlag("neuroshima", "transferType") === "auraActor" &&
+      this.getFlag("neuroshima", "auraTransferred") === true &&
+      !this.disabled
+    ) {
+      const targets = Array.from(game.user.targets).map(t => t.actor).filter(a => a);
+      if (targets.length) {
+        const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
+        await NeuroshimaAuraManager.applyTransferredAuraCopies(this, this.actor, targets);
+      }
+    }
   }
 
   async _onDelete(options, user) {
     await super._onDelete(options, user);
+    const isAuraCopy = !!this.getFlag("neuroshima", "fromAura");
+    const isAreaCopy = !!this.getFlag("neuroshima", "fromArea");
+    if ((isAuraCopy || isAreaCopy) && this.actor && canvas?.interface) {
+      const tokens = this.actor.getActiveTokens();
+      for (const t of tokens) {
+        if (!t.visible || !t.renderable) continue;
+        canvas.interface.createScrollingText(t.center, "-" + this.name, {
+          anchor: CONST.TEXT_ANCHOR_POINTS.CENTER, direction: CONST.TEXT_ANCHOR_POINTS.TOP,
+          distance: 2 * t.h, fontSize: 36, fill: "0xFF4444",
+          stroke: "0x000000", strokeThickness: 4, jitter: 0.25
+        });
+      }
+    }
     if (game.user.id !== user) return;
     if (!this.actor) return;
 
     const transferType = this.getFlag("neuroshima", "transferType");
-    const isAuraCopy   = !!this.getFlag("neuroshima", "fromAura");
-    const isAreaCopy   = !!this.getFlag("neuroshima", "fromArea");
 
     if (!isAuraCopy && !isAreaCopy && !options.skipDeletingItems) {
       await this.deleteCreatedItems();
@@ -139,7 +176,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     if (!options.ns_skipAuraCleanup && !isAuraCopy && !isAreaCopy) {
       if (transferType === "auraActor" && game.user.isGM) {
         const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");
-        await NeuroshimaAuraManager.removeAllCopiesForEffect(this.id, this.actor.id);
+        await NeuroshimaAuraManager.removeAllCopiesForEffect(this.id, this.actor.id, this.actor.uuid);
       }
       if (transferType === "areaActor" && game.user.isGM) {
         const { NeuroshimaAuraManager } = await import("../apps/aura-manager.js");

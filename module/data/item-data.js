@@ -368,6 +368,7 @@ export class VehicleModData extends foundry.abstract.TypeDataModel {
     return {
       description: new fields.HTMLField({ initial: "" }),
       rules: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
       category: new fields.StringField({
         required: true,
@@ -422,6 +423,67 @@ export class ReputationData extends foundry.abstract.TypeDataModel {
         }),
         { initial: [] }
       )
+    };
+  }
+}
+
+/**
+ * Data model for Disease items.
+ * Represents a disease with four progressive states (firstSymptoms → acute → critical → terminal).
+ * Non-countable — no weight, cost, quantity or availability tracking.
+ *
+ * States:
+ *   none          — character is healthy (taking meds or not yet symptomatic)
+ *   firstSymptoms — pierwsze symptomy (●)
+ *   acute         — stan ostry         (●●)
+ *   critical      — stan krytyczny     (●●●)
+ *   terminal      — stan terminalny    (death)
+ */
+export class DiseaseData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+
+    const penaltiesSchema = () => new fields.SchemaField({
+      dexterity:    new fields.NumberField({ integer: true, initial: 0 }),
+      perception:   new fields.NumberField({ integer: true, initial: 0 }),
+      charisma:     new fields.NumberField({ integer: true, initial: 0 }),
+      cleverness:   new fields.NumberField({ integer: true, initial: 0 }),
+      constitution: new fields.NumberField({ integer: true, initial: 0 }),
+      testModifier: new fields.NumberField({ integer: true, initial: 0 })
+    });
+
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
+
+      currentState: new fields.StringField({
+        initial: "none",
+        choices: ["none", "firstSymptoms", "acute", "critical", "terminal"]
+      }),
+      daysInState: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+
+      medication: new fields.SchemaField({
+        name:         new fields.StringField({ initial: "" }),
+        availability: new fields.NumberField({ integer: true, initial: 100, min: 0, max: 100 }),
+        isTaking:     new fields.BooleanField({ initial: false })
+      }),
+
+      firstSymptoms: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" }),
+        penalties:   penaltiesSchema()
+      }),
+      acute: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" }),
+        penalties:   penaltiesSchema()
+      }),
+      critical: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" }),
+        penalties:   penaltiesSchema()
+      }),
+      terminal: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" })
+      })
     };
   }
 }

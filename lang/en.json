@@ -22,7 +22,8 @@
             "profession": "Profession",
             "vehicle-damage": "Damage",
             "money": "Currency",
-            "reputation": "Reputation"
+            "reputation": "Reputation",
+            "disease": "Disease"
         }
     },
     "NEUROSHIMA": {
@@ -963,7 +964,28 @@
                 "Vehicle-damage": "Vehicle Damage",
                 "Vehicle-mod": "Vehicle Modification",
                 "Money": "Currency",
-                "Reputation": "Reputation"
+                "Reputation": "Reputation",
+                "Disease": "Disease"
+            },
+            "Disease": {
+                "StateLabel": "Disease State",
+                "CurrentState": "Current State",
+                "DaysInState": "Days in State",
+                "Medication": "Medication",
+                "MedicationName": "Medication Name",
+                "IsTaking": "Taking Meds",
+                "StateDescription": "Description",
+                "StateDescriptionHint": "Describe symptoms…",
+                "Penalties": "Penalties",
+                "TestModifier": "Test Difficulty Modifier (%)",
+                "TestModifierAbbr": "Test%",
+                "State": {
+                    "None": "Healthy",
+                    "FirstSymptoms": "First Symptoms",
+                    "Acute": "Acute State",
+                    "Critical": "Critical State",
+                    "Terminal": "Terminal State"
+                }
             },
             "Empty": "No items.",
             "Fields": {
@@ -1102,6 +1124,16 @@
             "Penalty": "Penalty",
             "Medic": "Medic",
             "Patient": "Patient"
+        },
+        "RequiredTest": {
+            "TestLabel": "Test",
+            "RequiredSuccesses": "Required Successes",
+            "TestType": "Test Type",
+            "TypeAttribute": "Attribute",
+            "TypeSkill": "Skill",
+            "TestMode": "Mode",
+            "Roll": "Roll Test",
+            "NoActor": "No character selected. Select a token or assign a character."
         },
         "HealingRequest": {
             "Title": "Healing Request",

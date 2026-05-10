@@ -132,7 +132,7 @@ export class NeuroshimaActor extends Actor {
     if (filter.location !== undefined)   wounds = wounds.filter(w => w.system.location === filter.location);
     if (filter.damageType !== undefined) wounds = wounds.filter(w => w.system.damageType === filter.damageType);
     if (filter.bruise !== undefined) {
-      const NEUROSHIMA = game.neuroshima?.NEUROSHIMA ?? {};
+      const NEUROSHIMA = game.neuroshima?.config ?? {};
       wounds = wounds.filter(w => !!(NEUROSHIMA.woundConfiguration?.[w.system.damageType]?.isBruise) === filter.bruise);
     }
     return wounds;
@@ -443,11 +443,12 @@ export class NeuroshimaActor extends Actor {
   /**
    * Add (or increment) a condition on this actor.
    * - Boolean conditions: enable via toggleStatusEffect.
-   * - Int conditions: increment the stored value, creating the effect if needed.
+   * - Int conditions: increment the stored value by `value`, creating the effect if needed.
    * @param {string} key
+   * @param {number} [value=1]  Amount to increment numeric conditions by.
    * @returns {Promise<void>}
    */
-  async addCondition(key) {
+  async addCondition(key, value = 1) {
     const condDef = getConditions().find(c => c.key === key);
     game.neuroshima?.log(`[addCondition] key="${key}" condDef:`, condDef ? { type: condDef.type, scriptsCount: condDef.scripts?.length ?? 0, scripts: condDef.scripts } : "NOT FOUND");
     if (!condDef) return;
@@ -461,13 +462,13 @@ export class NeuroshimaActor extends Actor {
     );
     if (existing) {
       const current = existing.getFlag("neuroshima", "conditionValue") ?? 0;
-      await existing.setFlag("neuroshima", "conditionValue", current + 1);
+      await existing.setFlag("neuroshima", "conditionValue", current + value);
       this._refreshTokenHUD();
       return;
     }
 
     return this.createEmbeddedDocuments("ActiveEffect", [
-      _condDefToEffectData(condDef, { conditionNumbered: true, conditionValue: 1 })
+      _condDefToEffectData(condDef, { conditionNumbered: true, conditionValue: value })
     ]);
   }
 

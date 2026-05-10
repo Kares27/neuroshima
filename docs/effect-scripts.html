@@ -143,6 +143,7 @@
         <li><a href="#trigger-updateCombat">updateCombat — Update Combat</a></li>
         <li><a href="#trigger-createToken">createToken — Create Token</a></li>
         <li><a href="#trigger-applyEffect">applyEffect / deleteEffect — Effect Applied / Deleted</a></li>
+        <li><a href="#trigger-worldTimeUpdate">worldTimeUpdate — World Time Update</a></li>
       </ul>
     </li>
     <li><a href="#predefined-keys">Predefiniowane klucze</a>
@@ -158,6 +159,7 @@
     </li>
     <li><a href="#examples">Przykłady gotowych skryptów</a></li>
     <li><a href="#manual-invoke">Manualne wywoływanie — przyciski w itemach</a></li>
+    <li><a href="#post-required-test">postRequiredTest — Wymagany rzut dla graczy</a></li>
     <li><a href="#changes">Zakładka Changes — modyfikacje atrybutów</a></li>
     <li><a href="#details">Zakładka Details — konfiguracja transferu</a></li>
     <li><a href="#helpers">Helpery i narzędzia</a></li>
@@ -967,6 +969,30 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <pre><code><span class="cmt">// Trigger: applyEffect — gdy ten efekt jest dodawany, nałóż "krwawienie" na aktora</span>
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"bleeding"</span>);
 <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Efekt nałożony: krwawienie rozpoczęte."</span>, <span class="str">"warn"</span>);</code></pre>
+  </div>
+
+  <h3 id="trigger-worldTimeUpdate">worldTimeUpdate — <em>World Time Update</em></h3>
+  <p>Uruchamiany dla każdego aktora z tokenem na aktywnej scenie gdy czas świata się zmienia
+  (np. <code>game.time.advance(seconds)</code> lub SimpleCalendar). Działa zarówno poza walką jak i w jej trakcie.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor z tokenem na scenie</td></tr>
+    <tr><td>args.worldTime</td><td>number</td><td>Aktualny czas świata w sekundach (<code>game.time.worldTime</code>)</td></tr>
+    <tr><td>args.dt</td><td>number</td><td>Sekundy minęłe od poprzedniej zmiany czasu (jeden skok — może być ujemny)</td></tr>
+  </tbody></table>
+  <div class="callout info">
+    Wyzwalacz jest wywoływany przez GM i działa tylko dla aktora posiadającego token na aktywnej scenie.
+    Do śledzenia nakumulowanego czasu używaj flag efektu — <code>args.dt</code> to różnica jednego skoku, nie suma.
+  </div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">worldTimeUpdate</span> Efekt co godzinę czasu świata</div>
+    <pre><code><span class="cmt">// worldTimeUpdate — wywołaj logikę raz na godzinę, niezależnie od rozmiaru skoku czasu</span>
+<span class="kw">const</span> <span class="var">INTERVAL</span> = <span class="num">3600</span>;
+<span class="kw">const</span> <span class="var">key</span> = <span class="str">`lastHourly_${<span class="kw">this</span>.effect.id}`</span>;
+<span class="kw">const</span> <span class="var">last</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">key</span>) ?? <span class="num">0</span>;
+<span class="kw">if</span> (args.worldTime - <span class="var">last</span> &lt; <span class="var">INTERVAL</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">key</span>, args.worldTime);
+<span class="cmt">// ... właściwa logika</span></code></pre>
   </div>
 </section>
 
@@ -2533,6 +2559,276 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   </div>
 </section>
 
+<!-- SECTION 5a — postRequiredTest -->
+<section id="post-required-test">
+  <h2 class="section-title">5a. <code>postRequiredTest</code> — Wymagany rzut dla graczy</h2>
+
+  <p>
+    <code>NeuroshimaScriptRunner.postRequiredTest(params)</code> to statyczna metoda wywoływana ze skryptów
+    efektów (najczęściej z triggera <strong>manual</strong>). Tworzy kartę czatu z przyciskiem, który
+    pozwala graczom otworzyć okno dialogowe rzutu dla ich postaci — bez ingerencji MG.
+  </p>
+  <p>
+    Typowe zastosowania: testy strachu, testy odporności na truciznę, testy wytrzymałości, testy
+    przetrwania — wszędzie tam, gdzie to gracz (a nie MG) ma wykonać rzut w odpowiedzi na zdarzenie
+    narracyjne.
+  </p>
+
+  <div class="callout info">
+    <strong>Jak to działa — podejście WFRP-style:</strong><br>
+    1. Skrypt <code>manual</code> (np. na potworze) wywołuje <code>postRequiredTest</code> — w czacie pojawia się karta.<br>
+    2. Każdy gracz klika przycisk — system otwiera dla <em>jego postaci</em> (identyfikowanej przez UUID) dialog rzutu.<br>
+    3. Po rzucie system automatycznie aplikuje konsekwencje (<code>onSuccess</code> / <code>onFailure</code>) bezpośrednio
+       na postać gracza — <strong>żaden efekt nie musi być zainstalowany na aktorze gracza</strong>.<br>
+    4. Jeśli nie podasz <code>onSuccess</code> / <code>onFailure</code>, wynik pojawia się tylko w czacie — MG lub
+       skrypt <code>rollTest</code> może zareagować ręcznie.
+  </div>
+
+  <h3>Sygnatura i parametry</h3>
+  <pre><code><span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+  title:             <span class="str">"Test Strachu"</span>,             <span class="cmt">// nagłówek karty czatu</span>
+  description:       <span class="str">"Opiszij sytuację…"</span>,        <span class="cmt">// opis widoczny pod tytułem (opcjonalny)</span>
+  testType:          <span class="str">"attribute"</span>,               <span class="cmt">// "skill" lub "attribute"</span>
+  testKey:           <span class="str">"charisma"</span>,                <span class="cmt">// klucz umiejętności lub atrybutu</span>
+  requiredSuccesses: <span class="num">2</span>,                         <span class="cmt">// minimalna liczba sukcesów (domyślnie 1)</span>
+  isOpen:            <span class="kw">false</span>,                     <span class="cmt">// true = rzut otwarty, false = zamknięty</span>
+  rollMode:          <span class="kw">null</span>,                      <span class="cmt">// null = ustawienie systemowe, lub np. "gmroll"</span>
+  onSuccess:         <span class="kw">null</span>,                      <span class="cmt">// konsekwencja na sukces (patrz formaty poniżej)</span>
+  onFailure:         { addCondition: <span class="str">"frightened"</span> } <span class="cmt">// konsekwencja na porażkę</span>
+});</code></pre>
+
+  <table>
+    <thead><tr><th>Parametr</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>title</code></td><td>string</td><td><code>""</code></td><td>Nagłówek karty czatu. Pojawia się też jako etykieta w dialogu rzutu gracza.</td></tr>
+      <tr><td><code>description</code></td><td>string</td><td><code>""</code></td><td>Opcjonalny tekst wyjaśniający cel testu. Pojawia się pod nagłówkiem na karcie.</td></tr>
+      <tr><td><code>testType</code></td><td>string</td><td><code>"skill"</code></td><td><code>"skill"</code> — test umiejętności lub specjalizacji; <code>"attribute"</code> — test czystego atrybutu.</td></tr>
+      <tr><td><code>testKey</code></td><td>string</td><td><code>""</code></td><td>Klucz umiejętności (np. <code>"spotting"</code>, <code>"painResistance"</code>) lub atrybutu (np. <code>"charisma"</code>, <code>"constitution"</code>, <code>"dexterity"</code>, <code>"perception"</code>, <code>"cleverness"</code>).</td></tr>
+      <tr><td><code>requiredSuccesses</code></td><td>number</td><td><code>1</code></td><td>Minimalna liczba sukcesów potrzebna do zaliczenia testu. Wyświetlana na karcie jako cel.</td></tr>
+      <tr><td><code>isOpen</code></td><td>boolean</td><td><code>false</code></td><td><code>true</code> = rzut otwarty (gracz może rzucać ponownie każdym sukcesem); <code>false</code> = rzut zamknięty (standardowy).</td></tr>
+      <tr><td><code>rollMode</code></td><td>string|null</td><td><code>null</code></td><td>Tryb rzutu Foundry. <code>null</code> = tryb z ustawień systemowych. Możliwe: <code>"roll"</code>, <code>"gmroll"</code>, <code>"blindroll"</code>, <code>"selfroll"</code>.</td></tr>
+      <tr><td><code>onSuccess</code></td><td>Object|Array|string|null</td><td><code>null</code></td><td>Konsekwencja automatycznie aplikowana gdy gracz <strong>zda</strong> test. Patrz formaty niżej.</td></tr>
+      <tr><td><code>onFailure</code></td><td>Object|Array|string|null</td><td><code>null</code></td><td>Konsekwencja automatycznie aplikowana gdy gracz <strong>nie zda</strong> testu. Patrz formaty niżej.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warning">
+    <strong>Metoda jest statyczna</strong> — wywołuj ją jako <code>NeuroshimaScriptRunner.postRequiredTest(...)</code>,
+    nie przez <code>this.postRequiredTest(...)</code>. Jest dostępna globalnie w skryptach efektów, bo
+    <code>NeuroshimaScriptRunner</code> jest wstrzyknięty do kontekstu wykonania.
+  </div>
+
+  <h3>Formaty <code>onSuccess</code> / <code>onFailure</code></h3>
+  <p>Parametry przyjmują kilka równoważnych form:</p>
+  <pre><code><span class="cmt">// 1. Krótki string — aplikuje jedną kondycję (wartość 1)</span>
+onFailure: <span class="str">"frightened"</span>
+
+<span class="cmt">// 2. Obiekt { addCondition } — to samo, bardziej jawnie</span>
+onFailure: { addCondition: <span class="str">"frightened"</span> }
+
+<span class="cmt">// 3. Obiekt z value — dla kondycji liczbowych, nakłada N stosów</span>
+onFailure: { addCondition: <span class="str">"bleeding"</span>, value: <span class="num">3</span> }
+
+<span class="cmt">// 4. Tablica — wiele kondycji jednocześnie (można mieszać)</span>
+onFailure: [
+  { addCondition: <span class="str">"frightened"</span> },
+  { addCondition: <span class="str">"bleeding"</span>, value: <span class="num">2</span> }
+]</code></pre>
+
+  <div class="callout info">
+    <strong>Kondycje liczbowe i <code>value</code>:</strong> Jeśli kondycja jest typu <em>int</em>
+    (np. <code>bleeding</code>, <code>stunned</code>), pole <code>value</code> określa o ile stosów ją
+    zwiększyć. Dla kondycji boolean pole <code>value</code> jest ignorowane — zawsze ustawia stan
+    <code>true</code>. Domyślna wartość to <code>1</code>.
+  </div>
+
+  <div class="callout info">
+    <strong>Wbudowana walidacja kluczy kondycji:</strong> Jeśli podasz nieznany klucz kondycji,
+    system wyświetli ostrzeżenie <code>ui.notifications.warn</code> i zaloguje do konsoli dostępne klucze —
+    karta zostanie mimo to wysłana, ale konsekwencja nie zostanie zaaplikowana.
+  </div>
+
+  <h3>Wzorzec WFRP-style — konsekwencja bez efektu na aktorze gracza</h3>
+  <p>
+    To podstawowy i zalecany sposób używania <code>postRequiredTest</code>. Wystarczy <strong>jeden skrypt</strong>
+    z triggerem <code>manual</code>. System automatycznie identyfikuje postać gracza przez jej UUID
+    i aplikuje kondycje bezpośrednio po rzucie.
+  </p>
+
+  <div class="callout info">
+    System używa <code>game.user.character</code> (postać przypisana do gracza w ustawieniach użytkownika)
+    lub — jeśli ta nie jest ustawiona — pierwszego aktywnie wybranego tokena gracza. Postać jest
+    identyfikowana przez UUID, więc jest odporna na reload sceny.
+  </div>
+
+  <!-- ── Przykład 1: Test strachu – jeden skrypt, automatyczna kondycja ── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Test Strachu — porażka nakłada kondycję (jeden skrypt, bez efektu na graczu)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Najprostsza forma — <strong>jeden skrypt manual</strong> na potworze lub przedmiocie.
+      Przy porażce test Charyzmy automatycznie nakłada kondycję <code>"frightened"</code> na postać gracza.
+      Nie trzeba żadnych efektów ani flag na aktorach graczy.
+    </p>
+<pre><code><span class="cmt">// Trigger: manual — na itemu "Budzący Strach Potwór"</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+    title:             <span class="str">"Test Strachu"</span>,
+    description:       <span class="str">"Musisz przezwyciężyć paraliżujący strach! Wykonaj test Charyzmy."</span>,
+    testType:          <span class="str">"attribute"</span>,
+    testKey:           <span class="str">"charisma"</span>,
+    requiredSuccesses: <span class="num">1</span>,
+    isOpen:            <span class="kw">false</span>,
+    onFailure:         { addCondition: <span class="str">"frightened"</span> }
+  });
+})();</code></pre>
+  </div>
+
+  <!-- ── Przykład 2: Trucizna – dwie kondycje na porażkę ────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Test Trucizny — porażka nakłada dwie kondycje jednocześnie
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Użyj tablicy w <code>onFailure</code> aby nałożyć wiele kondycji naraz.
+    </p>
+<pre><code>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+    title:             <span class="str">"Test Odporności na Truciznę"</span>,
+    description:       <span class="str">"Trucizna wchłonięta. Wykonaj test Budowy."</span>,
+    testType:          <span class="str">"attribute"</span>,
+    testKey:           <span class="str">"constitution"</span>,
+    requiredSuccesses: <span class="num">2</span>,
+    isOpen:            <span class="kw">false</span>,
+    onFailure: [
+      { addCondition: <span class="str">"poisoned"</span> },
+      { addCondition: <span class="str">"stunned"</span> }
+    ]
+  });
+})();</code></pre>
+  </div>
+
+  <!-- ── Przykład 3: Obie gałęzie – sukces i porażka ───────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Test Zasadzki — sukces nakłada premię, porażka nakłada kondycję
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Możesz podać obie gałęzie jednocześnie. System wybierze właściwą na podstawie wyniku rzutu.
+    </p>
+<pre><code>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+    title:             <span class="str">"Test Spostrzegawczości"</span>,
+    description:       <span class="str">"Czy widzisz zasadzkę?"</span>,
+    testType:          <span class="str">"skill"</span>,
+    testKey:           <span class="str">"spotting"</span>,
+    requiredSuccesses: <span class="num">1</span>,
+    isOpen:            <span class="kw">false</span>,
+    onSuccess:         { addCondition: <span class="str">"aware"</span> },
+    onFailure:         { addCondition: <span class="str">"surprised"</span> }
+  });
+})();</code></pre>
+  </div>
+
+  <!-- ── Przykład 4: Tylko wyślij kartę, MG ocenia ────────────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Skrócone użycie — karta informacyjna bez automatycznej konsekwencji
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Jeśli nie podasz <code>onSuccess</code> / <code>onFailure</code>, karta pojawi się w czacie
+      a MG ręcznie ocenia wynik lub reaguje skryptem <code>rollTest</code>.
+    </p>
+<pre><code>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+    title:             <span class="str">"Test Przetrwania"</span>,
+    description:       <span class="str">"Noc w dziczy. Każdy wykonuje test Orientacji terenu."</span>,
+    testType:          <span class="str">"skill"</span>,
+    testKey:           <span class="str">"terrainKnowledge"</span>,
+    requiredSuccesses: <span class="num">2</span>,
+    isOpen:            <span class="kw">false</span>
+  });
+})();</code></pre>
+  </div>
+
+  <h3>Zaawansowane — własna logika przez <code>rollTest</code></h3>
+  <p>
+    Gdy konsekwencja jest bardziej złożona niż nałożenie kondycji (np. różna liczba ran zależna od sukcesów,
+    leczenie innego aktora przez UUID, modyfikacja zasobów), użyj dodatkowego skryptu z triggerem
+    <code>rollTest</code>. Pamiętaj, że ten skrypt działa na efektach <em>na aktorze gracza</em> —
+    zatem efekt musi być zainstalowany na postaci gracza.
+  </p>
+
+  <!-- ── Przykład 5: Test leczenia – liczba sukcesów decyduje ──────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span> + <span class="trigger-badge">rollTest</span>
+      Test Leczenia Ran — liczba sukcesów decyduje o jakości leczenia (zaawansowane)
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Przykład gdy <code>onFailure/onSuccess</code> nie wystarczy — reagujemy na dokładną <em>liczbę</em>
+      sukcesów i leczymy innego aktora (pacjenta). UUID pacjenta jest przechowywane w fladze aktora leczącego.
+    </p>
+
+    <p style="margin:4px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Skrypt 1 — trigger: <strong>manual</strong> (na przedmiocie lekarza)</p>
+    <pre><code>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">targets</span> = NeuroshimaScriptRunner.<span class="fn">getTargets</span>();
+  <span class="kw">if</span> (!<span class="var">targets</span>.length) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Wskaż tokena pacjenta przed użyciem."</span>, <span class="str">"warn"</span>);
+  }
+
+  <span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+    title:             <span class="str">"Test Leczenia Ran"</span>,
+    description:       <span class="str">"Każdy sukces leczy jedną ranę pacjenta o poziom niżej."</span>,
+    testType:          <span class="str">"skill"</span>,
+    testKey:           <span class="str">"woundTreatment"</span>,
+    requiredSuccesses: <span class="num">1</span>,
+    isOpen:            <span class="kw">true</span>
+  });
+
+  <span class="cmt">// Zapisz UUID pacjenta w fladze aktora gracza (lekarza)</span>
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">`pendingTreatment_${<span class="kw">this</span>.effect.id}`</span>, <span class="var">targets</span>[<span class="num">0</span>].uuid);
+})();</code></pre>
+
+    <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Skrypt 2 — trigger: <strong>rollTest</strong> (na tym samym efekcie, na aktorze gracza)</p>
+    <pre><code>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">if</span> (args.rollData?.skill !== <span class="str">"woundTreatment"</span>) <span class="kw">return</span>;
+  <span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">`pendingTreatment_${<span class="kw">this</span>.effect.id}`</span>;
+  <span class="kw">const</span> <span class="var">patientUuid</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>);
+  <span class="kw">if</span> (!<span class="var">patientUuid</span>) <span class="kw">return</span>;
+
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>);
+
+  <span class="kw">if</span> (!args.isSuccess) {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"Leczenie nieudane — rany bez zmian."</span>);
+    <span class="kw">return</span>;
+  }
+
+  <span class="kw">const</span> <span class="var">patient</span> = <span class="kw">await</span> fromUuid(<span class="var">patientUuid</span>);
+  <span class="kw">if</span> (!<span class="var">patient</span>) <span class="kw">return</span>;
+
+  <span class="kw">const</span> <span class="var">successes</span> = args.rollData?.successes ?? <span class="num">1</span>;
+  <span class="kw">let</span> <span class="var">healed</span> = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">successes</span>; <span class="var">i</span>++) {
+    <span class="kw">const</span> <span class="var">ok</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>(<span class="var">patient</span>);
+    <span class="kw">if</span> (<span class="var">ok</span>) <span class="var">healed</span>++;
+    <span class="kw">else</span> <span class="kw">break</span>;
+  }
+
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="var">healed</span> &gt; <span class="num">0</span>
+      ? <span class="str">`&lt;strong&gt;Leczenie udane!&lt;/strong&gt; Wyleczono ${<span class="var">healed</span>} poziom(ów) ran.`</span>
+      : <span class="str">"Sukces, lecz brak ran do leczenia."</span>
+  );
+})();</code></pre>
+  </div>
+</section>
+
 <!-- SECTION 6 -->
 <section id="changes">
   <h2 class="section-title">6. Zakładka Changes — modyfikacje atrybutów</h2>
@@ -2792,15 +3088,152 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <span class="kw">return</span> <span class="var">charges</span> ? <span class="var">charges</span>.value &gt; <span class="num">0</span> : <span class="kw">true</span>;</code></pre>
   </div>
 
+  <div class="example-block">
+    <div class="example-header">Enable Script — Aktywny tylko gdy aktor jest wyposażony w konkretny ekwipunek</div>
+    <pre><code><span class="cmt">// Enable Script: aktywny gdy aktor ma item o nazwie "Tarcza" i jest wyposażony</span>
+<span class="kw">return</span> actor.items?.some(i =&gt; i.name === <span class="str">"Tarcza"</span> &amp;&amp; i.system?.equipped === <span class="kw">true</span>) ?? <span class="kw">false</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Enable Script — Aktywny tylko w nocy (czas świata)</div>
+    <pre><code><span class="cmt">// Enable Script: aktywny gdy czas świata odpowiada porze nocnej (20:00–06:00)
+// Zakłada że 1 doba = 86400 sekund</span>
+<span class="kw">const</span> <span class="var">hourOfDay</span> = Math.floor((game.time.worldTime % <span class="num">86400</span>) / <span class="num">3600</span>);
+<span class="kw">return</span> <span class="var">hourOfDay</span> &gt;= <span class="num">20</span> || <span class="var">hourOfDay</span> &lt; <span class="num">6</span>;</code></pre>
+  </div>
+
+  <h4>Skrypty dialogowe (dialog trigger) — Przykłady zaawansowane</h4>
+  <p>
+    Trigger <code>dialog</code> wykonuje się <strong>gdy otwierany jest dialog rzutu</strong> — pozwala modyfikować pola dialogu
+    (<code>args.fields</code>), ukrywać skrypt (<code>Hide Script</code>) lub warunkowo go aktywować (<code>Activate Script</code>).
+    Skrypt dialogowy jest synchroniczny.
+  </p>
+  <div class="callout info">
+    <strong>Logika operatorów w skryptach hide/activate:</strong><br>
+    Gdy chcesz dopasować <em>jeden z kilku</em> kluczy → użyj <code>||</code> (lub): <code>key === "a" || key === "b"</code><br>
+    Gdy chcesz wykluczyć <em>kilka</em> kluczy → użyj <code>&amp;&amp;</code> (i): <code>key !== "a" &amp;&amp; key !== "b"</code><br>
+    <strong>Pamiętaj:</strong> <code>key !== "a" || key !== "b"</code> jest zawsze <code>true</code> — ponieważ cokolwiek to jest, nie jest jednocześnie oboma wartościami. Używaj <code>&amp;&amp;</code> przy negacji.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      "Ciszej niż cień" — zwiększa trudność testów wykrycia (spotting i vigilance)
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Sztuczka nadaje posiadaczowi trudniejszy test wykrycia — każdy kto rzuca spotting lub vigilance przeciwko tej postaci otrzymuje wyższy poziom trudności.
+      Efekt z tym skryptem nakładany jest jako <strong>Aura</strong> na pobliskich aktorów.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog (modyfikacja trudności):</strong></p>
+    <pre><code>args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script (tylko dla spotting i vigilance):</strong></p>
+    <pre><code><span class="kw">return</span> (args.skill?.key === <span class="str">"spotting"</span> || args.skill?.key === <span class="str">"vigilance"</span>);</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script (ukryj dla wszystkich innych testów):</strong></p>
+    <pre><code><span class="kw">return</span> (args.skill?.key !== <span class="str">"spotting"</span> &amp;&amp; args.skill?.key !== <span class="str">"vigilance"</span>);</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em; color: var(--accent-err);">
+      ⚠ Błąd: <code>key !== "spotting" || key !== "vigilance"</code> jest zawsze <code>true</code>.
+      Poprawna negacja wielu wartości wymaga operatora <code>&amp;&amp;</code>.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Bonus do skradania się — działa tylko na skill "stealth"
+    </div>
+    <pre><code><span class="cmt">// Skrypt dialog — obniżenie trudności dla skradania</span>
+args.fields.difficultyShift -= <span class="num">1</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.skill?.key === <span class="str">"stealth"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"stealth"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Kara do kilku konkretnych umiejętności jednocześnie
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Efekt nakłada karę na perception, spotting i vigilance — trzy umiejętności wykrywania.
+    </p>
+    <pre><code><span class="cmt">// Skrypt dialog — kara do umiejętności percepcji</span>
+args.fields.difficultyShift += <span class="num">2</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script (aktywny dla którejkolwiek z trzech):</strong></p>
+    <pre><code><span class="kw">const</span> <span class="var">key</span> = args.skill?.key;
+<span class="kw">return</span> <span class="var">key</span> === <span class="str">"perception"</span> || <span class="var">key</span> === <span class="str">"spotting"</span> || <span class="var">key</span> === <span class="str">"vigilance"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script (ukryj dla wszystkich innych):</strong></p>
+    <pre><code><span class="kw">const</span> <span class="var">key</span> = args.skill?.key;
+<span class="kw">return</span> <span class="var">key</span> !== <span class="str">"perception"</span> &amp;&amp; <span class="var">key</span> !== <span class="str">"spotting"</span> &amp;&amp; <span class="var">key</span> !== <span class="str">"vigilance"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Bonus do rzutów atrybutu — wszystkie poza jednym wyjątkiem
+    </div>
+    <pre><code><span class="cmt">// Skrypt dialog — bonus +10% do wszystkich rzutów atrybutu poza "intelligence"</span>
+args.fields.mod = (args.fields.mod ?? <span class="num">0</span>) + <span class="num">10</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"attribute"</span> &amp;&amp; args.attributeKey !== <span class="str">"intelligence"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"attribute"</span> || args.attributeKey === <span class="str">"intelligence"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Warunek na podstawie listy — wiele umiejętności elegancko
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Zamiast łańcucha <code>||</code>, użyj tablicy z <code>includes()</code> dla czytelności.
+    </p>
+    <pre><code><span class="cmt">// Activate Script — elegancki sposób sprawdzania wielu kluczy</span>
+<span class="kw">const</span> <span class="var">affected</span> = [<span class="str">"spotting"</span>, <span class="str">"vigilance"</span>, <span class="str">"perception"</span>];
+<span class="kw">return</span> <span class="var">affected</span>.includes(args.skill?.key);</code></pre>
+    <pre><code><span class="cmt">// Hide Script — odpowiedni dla tej samej listy</span>
+<span class="kw">const</span> <span class="var">affected</span> = [<span class="str">"spotting"</span>, <span class="str">"vigilance"</span>, <span class="str">"perception"</span>];
+<span class="kw">return</span> !<span class="var">affected</span>.includes(args.skill?.key);</code></pre>
+  </div>
+
   <h4>Pre-Apply Script</h4>
   <p>
     Skrypt asynchroniczny wykonywany <strong>przed aplikacją efektu na cel</strong> (uruchamia się na kontekście źródła).
     Zwróć <code>false</code> aby zablokować aplikację. Dostępny dla <code>Damage</code>, <code>Target</code>, <code>Aura</code> i <code>Area</code>.
     Zmienne: <code>actor</code> (źródło), <code>effect</code>, <code>targetActor</code> (cel).
   </p>
+  <div class="callout info">
+    <strong>Kiedy używać Pre-Apply Script zamiast Filter?</strong><br>
+    <strong>Filter</strong> działa tylko dla Aura i Area — filtruje automatyczne kopiowanie do celów na scenie.<br>
+    <strong>Pre-Apply Script</strong> działa dla Damage, Target, Aura i Area — uruchamia się bezpośrednio przed aplikacją i ma dostęp zarówno do źródła (<code>actor</code>) jak i celu (<code>targetActor</code>).
+    Użyj Pre-Apply gdy decyzja zależy od <em>stanu źródła</em>, a Filter gdy zależy od <em>stanu celu</em>.
+  </div>
   <div class="example-block">
     <div class="example-header">Pre-Apply Script — Blokuj aplikację gdy źródło ma 0 wytrzymałości</div>
     <pre><code><span class="kw">if</span> (actor.system?.attributes?.stamina?.value &lt;= <span class="num">0</span>) <span class="kw">return</span> <span class="kw">false</span>;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Pre-Apply Script — Nie nakładaj efektu gdy cel już go posiada (deduplicacja)</div>
+    <pre><code><span class="cmt">// Zabezpiecza przed podwójnym nałożeniem tego samego efektu</span>
+<span class="kw">const</span> <span class="var">alreadyHas</span> = (targetActor.effects ?? []).some(e =&gt; e.name === effect.name);
+<span class="kw">return</span> !<span class="var">alreadyHas</span>;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Pre-Apply Script — Aura działa tylko gdy właściciel ma kondycję "ukryty"</div>
+    <pre><code><span class="cmt">// Efekt aury aplikuje się tylko gdy źródło jest ukryte (ma status hidden)</span>
+<span class="kw">const</span> <span class="var">isHidden</span> = actor.statuses?.has(<span class="str">"hidden"</span>) ?? <span class="kw">false</span>;
+<span class="kw">return</span> <span class="var">isHidden</span>;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Pre-Apply Script — Nie nakładaj efektu na siebie samego (Aura)</div>
+    <pre><code><span class="cmt">// Aura nie nakłada się na właściciela efektu</span>
+<span class="kw">return</span> actor.id !== targetActor.id;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Pre-Apply Script — Zezwól tylko gdy cel ma mniej niż połowę HP</div>
+    <pre><code><span class="kw">const</span> <span class="var">hp</span> = targetActor.system?.attributes?.hp;
+<span class="kw">if</span> (!<span class="var">hp</span>) <span class="kw">return</span> <span class="kw">false</span>;
+<span class="kw">return</span> <span class="var">hp</span>.value &lt;= <span class="var">hp</span>.max / <span class="num">2</span>;</code></pre>
   </div>
 
   <h4>Filter</h4>
@@ -2808,6 +3241,10 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     Skrypt filtrujący dokumenty. Zwróć <code>true</code> aby <strong>zapobiec</strong> aplikacji do danego celu.
     Dostępny dla <code>Aura</code> i <code>Area</code>. Zmienne: <code>actor</code> (cel), <code>effect</code>, <code>sourceActor</code>.
   </p>
+  <div class="callout info">
+    <strong>Logika filtra: <code>true</code> = blokuj, <code>false</code> = zezwól.</strong><br>
+    Pytaj: "czy chcę <em>wykluczyć</em> tego aktora?" — jeśli tak, zwróć <code>true</code>.
+  </div>
   <div class="example-block">
     <div class="example-header">Filter — Aplikuj tylko do postaci gracza</div>
     <pre><code><span class="kw">return</span> actor.type !== <span class="str">"character"</span>; <span class="cmt">// true = blokuj NPC</span></code></pre>
@@ -2815,6 +3252,29 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <div class="example-block">
     <div class="example-header">Filter — Wyklucz aktora będącego źródłem efektu</div>
     <pre><code><span class="kw">return</span> actor.id === sourceActor?.id;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Filter — Tylko wrogowie (nie gracze, nie źródło)</div>
+    <pre><code><span class="cmt">// Blokuj: postaci gracza i samo źródło aury</span>
+<span class="kw">if</span> (actor.id === sourceActor?.id) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">return</span> actor.type === <span class="str">"character"</span>; <span class="cmt">// blokuj graczy, przepuszczaj NPC/bestie</span></code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Filter — Tylko aktorzy z konkretnym typem (np. creature)</div>
+    <pre><code><span class="cmt">// Przepuszcza tylko typ "creature" (bestie)</span>
+<span class="kw">return</span> actor.type !== <span class="str">"creature"</span>;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Filter — Aura "Ciszej niż cień" — nakłada efekt tylko gdy ktoś rzuca test wykrycia</div>
+    <pre><code><span class="cmt">// Filter Script dla sztuczki "Ciszej niż cień"
+// Efekt nakładany zawsze (filter nie blokuje) — trudność testu wykrycia
+// modyfikowana jest przez skrypt dialog na kopii efektu
+return false; // nie blokuj nikogo</span></code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Filter — Wyklucz aktorów którzy mają już ten efekt (Aura, bez duplikatów)</div>
+    <pre><code><span class="cmt">// Nie nakładaj kopii jeśli cel już posiada efekt o tej samej nazwie</span>
+<span class="kw">return</span> (actor.effects ?? []).some(e =&gt; e.name === effect.name);</code></pre>
   </div>
 
   <h4>Prompt</h4>
@@ -2828,11 +3288,39 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><td><strong>Keep</strong></td><td>checkbox</td><td>Aura + Area</td><td>Kopia efektu pozostaje na celu po wyjściu z zasięgu / obszaru.</td></tr>
       <tr><td><strong>Template Data</strong></td><td>przycisk</td><td>Aura + Area</td><td>Dialog konfiguracji wyglądu szablonu (kolor wypełnienia, obramowania, opacity).</td></tr>
       <tr><td><strong>Render Aura</strong></td><td>checkbox</td><td>Aura</td><td>Widoczny szablon kołowy na canvasie, przemieszcza się z tokenem właściciela.</td></tr>
-      <tr><td><strong>Transferred Aura</strong></td><td>checkbox</td><td>Aura</td><td>Efekt aplikowany do wybranego celu zamiast do wszystkich w zasięgu.</td></tr>
+      <tr><td><strong>Transferred Aura</strong></td><td>checkbox</td><td>Aura</td><td>Efekt <strong>nie jest aplikowany automatycznie na podstawie zasięgu</strong>. Zamiast tego — po zaznaczeniu tej opcji — kopia efektu jest nakładana na aktualnie wskazane tokeny gdy efekt zostaje utworzony na aktorze (GM). Kopiowanie można też wywołać ręcznie przez skrypt: <code>await this.applyTransferredAura()</code> lub <code>await this.applyTransferredAura(targetActor)</code>. Cleanup (usunięcie kopii) działa identycznie jak dla normalnych aur — przez usunięcie/wyłączenie efektu źródłowego.</td></tr>
       <tr><td><strong>Area Effect Duration</strong></td><td>select</td><td>Area</td><td><code>Instantaneous</code> — szablon usuwa się po jednorazowym nałożeniu. <code>Sustained</code> — szablon pozostaje.</td></tr>
       <tr><td><strong>Place Template</strong></td><td>przycisk</td><td>Area</td><td>Umieszcza szablon kołowy na canvasie przy tokenie właściciela.</td></tr>
     </tbody>
   </table>
+
+  <h4>Kopie efektów Aura / Area — flagi identyfikacyjne</h4>
+  <p>
+    Gdy system aplikuje kopię efektu na cel (Aura lub Area), kopia otrzymuje flagi identyfikujące jej źródło.
+    Możesz je odczytać w skryptach działających na kopii efektu lub z zewnątrz:
+  </p>
+  <table>
+    <thead><tr><th>Flaga na kopii</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>flags.neuroshima.fromAura.sourceEffectId</code></td><td>string</td><td><strong>(Aura)</strong> ID efektu źródłowego na aktorze-źródle.</td></tr>
+      <tr><td><code>flags.neuroshima.fromAura.sourceActorId</code></td><td>string</td><td><strong>(Aura)</strong> ID aktora będącego źródłem aury.</td></tr>
+      <tr><td><code>flags.neuroshima.fromArea.templateId</code></td><td>string</td><td><strong>(Area)</strong> ID szablonu MeasuredTemplate w scenie.</td></tr>
+      <tr><td><code>flags.neuroshima.fromArea.sourceEffectId</code></td><td>string</td><td><strong>(Area)</strong> ID efektu źródłowego (na aktorze właścicielu).</td></tr>
+      <tr><td><code>flags.neuroshima.fromArea.sourceActorId</code></td><td>string</td><td><strong>(Area)</strong> ID aktora-właściciela efektu Area.</td></tr>
+      <tr><td><code>flags.neuroshima.transferType</code></td><td>string</td><td>Na kopii zawsze ustawiane na <code>"owningDocument"</code> — kopia jest traktowana jako zwykły efekt na docelowym aktorze.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <strong>Skrypty na kopiach:</strong> Triggery <code>applyEffect</code> i <code>deleteEffect</code> <strong>nie są wywoływane</strong>
+    na kopiach Aura/Area — system pomija je celowo, aby uniknąć kaskadowych efektów ubocznych. Cleanup kopii
+    (usuwanie) wykonuje manager aur automatycznie.
+  </div>
+  <div class="callout warning">
+    <strong>Cleanup Aury:</strong> Gdy efekt źródłowy jest usuwany lub wyłączany, manager automatycznie
+    usuwa wszystkie kopie ze wszystkich aktorów w scenie. Ręczne usunięcie kopii z arkusza aktora
+    nie blokuje przywrócenia jej przez manager (gdy aktor wróci w zasięg / jeśli szablon Area nadal istnieje).
+    Aby trwale zablokować ponowną aplikację, usuń lub wyłącz efekt źródłowy.
+  </div>
 
   <h3>Aura — przykłady</h3>
 
@@ -2908,6 +3396,114 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <pre><code><span class="cmt">// Filter Script — wyklucz NPC</span>
 <span class="kw">return</span> actor.type === <span class="str">"npc"</span>;</code></pre>
   </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual / prepareData</span>
+      Sprawdzenie czy efekt jest kopią Aury lub kopią Area
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Kopie Aura/Area mają odpowiednie flagi. Możesz sprawdzić to w skrypcie działającym na aktorze-celu.
+    </p>
+    <pre><code><span class="cmt">// Sprawdź czy ten efekt jest kopią Aury (flagę ma kopia, nie oryginał)</span>
+<span class="kw">const</span> <span class="var">fromAura</span> = <span class="kw">this</span>.effect.getFlag(<span class="str">"neuroshima"</span>, <span class="str">"fromAura"</span>);
+<span class="kw">if</span> (<span class="var">fromAura</span>) {
+  <span class="cmt">// fromAura.sourceActorId — kto nadaje aurę</span>
+  <span class="cmt">// fromAura.sourceEffectId — który efekt źródłowy</span>
+  <span class="kw">const</span> <span class="var">sourceActor</span> = game.actors.get(<span class="var">fromAura</span>.sourceActorId);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Kopia aury od: <span class="kw">${</span><span class="var">sourceActor</span>?.name ?? <span class="str">"nieznany"</span><span class="kw">}</span>`</span>);
+}
+
+<span class="cmt">// Sprawdź czy efekt pochodzi z Area (szablonu)</span>
+<span class="kw">const</span> <span class="var">fromArea</span> = <span class="kw">this</span>.effect.getFlag(<span class="str">"neuroshima"</span>, <span class="str">"fromArea"</span>);
+<span class="kw">if</span> (<span class="var">fromArea</span>) {
+  <span class="cmt">// fromArea.templateId — ID szablonu MeasuredTemplate</span>
+  <span class="cmt">// fromArea.sourceActorId, fromArea.sourceEffectId</span>
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Efekt ze strefy. Szablon: <span class="kw">${</span><span class="var">fromArea</span>.templateId<span class="kw">}</span>`</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preApplyScript</span>
+      Blokada aury — źródło musi mieć włączoną kondycję "focused"
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      <code>preApplyScript</code> działa na kontekście <strong>źródła</strong>. Zmienne: <code>actor</code> (źródło), <code>effect</code>, <code>targetActor</code> (cel).
+      Zwróć <code>false</code> aby zablokować aplikację.
+    </p>
+    <pre><code><span class="cmt">// Pre-Apply Script — aplikuj aurę tylko gdy źródło ma kondycję "focused"</span>
+<span class="kw">const</span> <span class="var">isFocused</span> = actor.effects?.some(e =&gt;
+  e.statuses?.has(<span class="str">"focused"</span>) &amp;&amp; !e.disabled
+);
+<span class="kw">if</span> (!<span class="var">isFocused</span>) <span class="kw">return</span> <span class="kw">false</span>;  <span class="cmt">// blokuj gdy brak kondycji</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Aura przekazana (Transferred Aura) — nałóż kopię efektu na wskazane tokeny
+    </div>
+    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+      Effect Application: <strong>Aura</strong> | <strong>Transferred Aura: zaznaczony</strong><br>
+      Efekt nie jest nakładany automatycznie przez zasięg. GM wskazuje tokeny docelowe, następnie tworzy lub
+      włącza efekt — system aplikuje kopię do wybranych celów. Można też wywołać ręcznie z wyzwalacza <code>manual</code>:
+    </p>
+    <pre><code><span class="cmt">// Manual trigger — nałóż aurę na aktualnie wskazane tokeny</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyTransferredAura</span>();
+
+<span class="cmt">// Lub podaj konkretnego aktora</span>
+<span class="kw">const</span> [<span class="var">target</span>] = <span class="kw">this</span>.<span class="fn">getTargets</span>();
+<span class="kw">if</span> (<span class="var">target</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyTransferredAura</span>(<span class="var">target</span>);</code></pre>
+  </div>
+
+  <h3>Czas świata — wyzwalacz <code>worldTimeUpdate</code></h3>
+  <p>
+    Wyzwalacz <code>worldTimeUpdate</code> jest wywoływany dla każdego aktora z tokenem na scenie gdy czas świata się zmienia
+    (<code>game.time.advance()</code> lub SimpleCalendar). Działa poza i w trakcie walki.
+    Dostępne argumenty: <code>args.worldTime</code> (aktualny czas w sekundach), <code>args.dt</code> (sekundy minęłe od ostatniej zmiany).
+  </p>
+
+  <div class="callout info">
+    <strong>Uwaga:</strong> <code>args.dt</code> to różnica jednego skoku czasu, nie suma.
+    Jeśli GM przesuwa czas o 15 minut trzy razy, wyzwalacz odpali się trzy razy z <code>args.dt = 900</code> każdorazowo.
+    Do śledzenia nakumulowanego czasu przechowuj timestamp w fladze efektu.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">worldTimeUpdate</span>
+      Efekt co godzinę — sprawdź czy minęła 1 godzina od ostatniego wywołania
+    </div>
+    <pre><code><span class="cmt">// worldTimeUpdate — uruchom logikę tylko gdy minęło ≥ 3600 sekund od ostatniego zapisu</span>
+<span class="kw">const</span> <span class="var">INTERVAL</span> = <span class="num">3600</span>; <span class="cmt">// 1 godzina</span>
+<span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">`lastHourly_${<span class="kw">this</span>.effect.id}`</span>;
+<span class="kw">const</span> <span class="var">last</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>) ?? <span class="num">0</span>;
+
+<span class="kw">if</span> (args.worldTime - <span class="var">last</span> &lt; <span class="var">INTERVAL</span>) <span class="kw">return</span>;
+
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>, args.worldTime);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Minęła godzina — efekt wywołany!"</span>);
+<span class="cmt">// ... właściwa logika (leczenie, zadawanie obrażeń, usuwanie efektu itp.)</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">worldTimeUpdate</span>
+      Efekt jednorazowy po 10 minutach — usuń się po upływie czasu
+    </div>
+    <pre><code><span class="cmt">// worldTimeUpdate — usuń efekt gdy upłynęło 10 minut od jego nałożenia</span>
+<span class="kw">const</span> <span class="var">start</span> = <span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"appliedAt"</span>) ?? args.worldTime;
+<span class="kw">const</span> <span class="var">elapsed</span> = args.worldTime - <span class="var">start</span>;
+<span class="kw">if</span> (<span class="var">elapsed</span> &gt;= <span class="num">600</span>) { <span class="cmt">// 600 sekund = 10 minut</span>
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+}</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Ustaw flagę <code>appliedAt</code> w wyzwalaczu <code>applyEffect</code>:<br>
+      <code>await this.effect.setFlag("neuroshima", "appliedAt", game.time.worldTime);</code>
+    </p>
+  </div>
+
 </section>
 
 <!-- SECTION 8 -->
@@ -2992,6 +3588,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <tr><td><code>this.getTargets()</code></td><td>Aktorzy wskazanych tokenów (<code>game.user.targets</code>)</td></tr>
     <tr><td><code>this.getSelected()</code></td><td>Aktorzy zaznaczonych tokenów; fallback: przypisana postać gracza</td></tr>
     <tr><td><code>this.getTargetsOrSelected()</code></td><td>Targets jeśli są, inaczej selected — najczęściej używana metoda celowania</td></tr>
+    <tr><td><code>await this.applyTransferredAura(targets?)</code></td><td>Nałóż kopię efektu aury (auraTransferred) na podanych aktorów lub aktualnie wskazane tokeny</td></tr>
     <tr>
       <td><code>this.DAMAGE_ORDER</code></td>
       <td>

@@ -1076,28 +1076,28 @@
 }
 
 .neuroshima.sheet.actor .item-stat.quantity {
-    flex: 0 0 90px;
+    flex: 0 0 80px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .neuroshima.sheet.actor .item-stat.weight {
-    flex: 0 0 90px;
+    flex: 0 0 70px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .neuroshima.sheet.actor .item-stat.equipped {
-    flex: 0 0 80px;
+    flex: 0 0 55px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .neuroshima.sheet.actor .item-controls {
-    flex: 0 0 80px;
+    flex: 0 0 25px;
     display: flex;
     justify-content: center;
     gap: 8px;

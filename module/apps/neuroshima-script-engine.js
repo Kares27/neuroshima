@@ -736,6 +736,33 @@ export class NeuroshimaScript {
     return foundry.applications.api.Dialog[type](this.dialogConfig(content, config));
   }
 
+  // ── Aura helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Apply the current transferred-aura effect (auraTransferred=true) to target actors.
+   * If no targets are provided, uses currently targeted tokens.
+   * Can be called from any trigger (e.g. manual, applyEffect).
+   *
+   * @param {Actor|Actor[]} [targets] - Target actor(s). Omit to use game.user.targets.
+   * @returns {Promise<void>}
+   *
+   * @example
+   * // Manual trigger — apply aura to all targeted tokens
+   * await this.applyTransferredAura();
+   *
+   * @example
+   * // Apply to a specific actor
+   * const [target] = this.getTargets();
+   * if (target) await this.applyTransferredAura(target);
+   */
+  async applyTransferredAura(targets) {
+    const { NeuroshimaAuraManager } = await import("./aura-manager.js");
+    const resolvedTargets = targets
+      ? (Array.isArray(targets) ? targets : [targets])
+      : null;
+    await NeuroshimaAuraManager.applyTransferredAuraCopies(this.effect, this.actor, resolvedTargets);
+  }
+
   // ── Wound helpers ────────────────────────────────────────────────────────
 
   /**
@@ -1300,11 +1327,11 @@ export class NeuroshimaScript {
       let fn;
       const expr = code.trimEnd().replace(/;\s*$/, "");
       try {
-        fn = new AsyncFunction("args", `return (${expr})`);
+        fn = new AsyncFunction("args", "NeuroshimaScriptRunner", `return (${expr})`);
       } catch {
-        fn = new AsyncFunction("args", code);
+        fn = new AsyncFunction("args", "NeuroshimaScriptRunner", code);
       }
-      return await fn.call(ctx, args);
+      return await fn.call(ctx, args, NeuroshimaScriptRunner);
     } catch (e) {
       if (e instanceof SyntaxError) {
         console.debug(`Neuroshima | Script Syntax [${this.label}]:`, e.message);
@@ -1461,6 +1488,14 @@ export class NeuroshimaScript {
  *                    Use: apply conditions/effects to shooter based on shot result,
  *                         send custom chat messages, trigger secondary effects.
  *
+ * worldTimeUpdate  — World Time Update: runs for every actor with a token on the active scene
+ *                    whenever the world time is advanced (game.time.advance or SimpleCalendar).
+ *                    args: { actor, worldTime, dt }
+ *                    worldTime — current world time in seconds (game.time.worldTime)
+ *                    dt        — seconds elapsed since the previous world time (can be negative)
+ *                    Use: check if a threshold of seconds/minutes/hours has passed (dt-based),
+ *                         or compare worldTime against a stored flag timestamp.
+ *
  * createEffect     — Effect Created: runs once when this effect is created on an actor
  *                    args: { actor, data, options }
  *
@@ -1480,6 +1515,7 @@ export class NeuroshimaScript {
  *   this.getTargets()              — Actors targeted by the user
  *   this.getSelected()             — Actors of selected tokens (fallback: assigned character)
  *   this.getTargetsOrSelected()    — Targets if any, otherwise selected
+ *   this.applyTransferredAura(targets?) — Apply this auraTransferred effect to actors (omit for user targets)
  *   this.isLightDamage(type)         — true for D, sD, L, sL
  *   this.isHeavyDamage(type)         — true for C, sC, K, sK
  *   this.isBruiseDamage(type)        — true for sD, sL, sC, sK (s-prefix track)
@@ -1673,7 +1709,7 @@ export class NeuroshimaScriptRunner {
       if (sb !== 0) skillBreakdown.push({ label, value: sb });
       const diff = li.dataset.dmDifficulty;
       if (diff) {
-        const NS = game.neuroshima?.NEUROSHIMA ?? {};
+        const NS = game.neuroshima?.config ?? {};
         if (!difficultyOverride || (NS.difficulties?.[diff]?.mod ?? 0) < (NS.difficulties?.[difficultyOverride]?.mod ?? 0)) {
           difficultyOverride = diff;
         }
@@ -1890,7 +1926,7 @@ export class NeuroshimaScriptRunner {
    * @returns {string}
    */
   static getLocationLabel(location) {
-    const NEUROSHIMA = game.neuroshima?.NEUROSHIMA ?? {};
+    const NEUROSHIMA = game.neuroshima?.config ?? {};
     const bodyEntry = NEUROSHIMA.bodyLocations?.[location];
     if (bodyEntry?.label) return game.i18n.localize(bodyEntry.label);
     const vehicleKey = NEUROSHIMA.vehicleLocations?.[location];
@@ -2326,7 +2362,117 @@ export class NeuroshimaScriptRunner {
     await this.execute("createToken", { actor, token: tokenDocument });
   }
 
+  /**
+   * Run worldTimeUpdate scripts for all actors with a token on the current scene.
+   * Called from the updateWorldTime hook. GM only.
+   * @param {number} worldTime - Current world time in seconds.
+   * @param {number} dt        - Seconds elapsed since the previous world time.
+   */
+  static async runWorldTimeUpdate(worldTime, dt) {
+    if (!canvas?.scene) return;
+    const seen = new Set();
+    for (const tokenDoc of canvas.scene.tokens) {
+      const actor = tokenDoc.actor;
+      if (!actor || seen.has(actor.id)) continue;
+      seen.add(actor.id);
+      await this.execute("worldTimeUpdate", { actor, worldTime, dt });
+    }
+  }
+
   // ── Script utility helpers (available in scripts via game.neuroshima.NeuroshimaScriptRunner) ──
+
+  /**
+   * Post a required test request to chat.
+   * Players click the button to open a roll dialog for their character.
+   * If onSuccess / onFailure are provided, conditions are applied automatically
+   * after the roll — no effect needs to be present on the player's actor.
+   *
+   * Consequence format (single or array):
+   *   { addCondition: "frightened" }
+   *   { addCondition: "bleeding", value: 3 }   ← numeric conditions: add 3 stacks
+   *   [ { addCondition: "frightened" }, { addCondition: "bleeding", value: 2 } ]
+   *   "frightened"   ← shorthand string, treated as { addCondition: "frightened" }
+   *
+   * @param {Object}       params
+   * @param {string}       params.title              - Title shown in chat card header.
+   * @param {string}       [params.description=""]   - Optional description shown below the title.
+   * @param {string}       params.testType           - "skill" or "attribute".
+   * @param {string}       params.testKey            - Skill key (e.g. "spotting") or attribute key (e.g. "intelligence").
+   * @param {number}       [params.requiredSuccesses=1] - Number of successes needed.
+   * @param {boolean}      [params.isOpen=false]     - If true, open test; if false, closed test.
+   * @param {string}       [params.rollMode]         - Foundry roll mode override.
+   * @param {Object|Array|string|null} [params.onSuccess=null] - Consequence(s) applied on success.
+   * @param {Object|Array|string|null} [params.onFailure=null] - Consequence(s) applied on failure.
+   */
+  static async postRequiredTest({
+    title = "",
+    description = "",
+    testType = "skill",
+    testKey = "",
+    requiredSuccesses = 1,
+    isOpen = false,
+    rollMode = null,
+    onSuccess = null,
+    onFailure = null
+  } = {}) {
+    const _normalizeConsequence = (c) => {
+      if (!c) return null;
+      const arr = Array.isArray(c) ? c : [typeof c === "string" ? { addCondition: c } : c];
+      return arr.length ? arr : null;
+    };
+
+    const successConsequence = _normalizeConsequence(onSuccess);
+    const failureConsequence = _normalizeConsequence(onFailure);
+
+    const { getConditions } = await import("./condition-config.js");
+    const validKeys = new Set(getConditions().map(c => c.key));
+    for (const consequence of [...(successConsequence ?? []), ...(failureConsequence ?? [])]) {
+      if (consequence.addCondition && !validKeys.has(consequence.addCondition)) {
+        const msg = `postRequiredTest: Unknown condition key "${consequence.addCondition}". Available: ${[...validKeys].join(", ")}`;
+        ui.notifications.warn(msg);
+        game.neuroshima?.warn(msg);
+      }
+    }
+
+    let testLabel = testKey;
+    if (testType === "skill") {
+      const skillLoc = `NEUROSHIMA.Skills.${testKey}`;
+      const skillTranslated = game.i18n.localize(skillLoc);
+      if (skillTranslated !== skillLoc) {
+        testLabel = skillTranslated;
+      } else {
+        const specLoc = `NEUROSHIMA.Specializations.${testKey}`;
+        const specTranslated = game.i18n.localize(specLoc);
+        testLabel = specTranslated !== specLoc ? specTranslated : testKey;
+      }
+    } else if (testType === "attribute") {
+      const _NS = game.neuroshima?.config ?? {};
+      const attrDef = _NS.attributes?.[testKey];
+      testLabel = attrDef?.label ? game.i18n.localize(attrDef.label) : testKey;
+    }
+
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/required-test-card.hbs",
+      { title, description, testType, testKey, testLabel, requiredSuccesses, isOpen }
+    );
+
+    const effectiveRollMode = rollMode ?? game.settings.get("core", "rollMode");
+
+    const msgData = ChatMessage.applyRollMode({
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({}),
+      content,
+      flags: {
+        neuroshima: {
+          type: "requiredTest",
+          requiredTestData: { title, description, testType, testKey, requiredSuccesses, isOpen, rollMode, onSuccess: successConsequence, onFailure: failureConsequence }
+        }
+      }
+    }, effectiveRollMode);
+
+    await ChatMessage.create(msgData);
+    game.neuroshima?.log("postRequiredTest | posted", { title, testType, testKey, requiredSuccesses, isOpen, onSuccess: successConsequence, onFailure: failureConsequence });
+  }
 
   /**
    * Return all actors targeted by the current user's token targeting.

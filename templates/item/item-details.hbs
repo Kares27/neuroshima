@@ -227,15 +227,195 @@
                     <input type="number" name="system.relationTable.{{@index}}.minVal" value="{{row.minVal}}" data-dtype="Number" style="text-align:center;"/>
                     <input type="number" name="system.relationTable.{{@index}}.maxVal" value="{{row.maxVal}}" data-dtype="Number" style="text-align:center;"/>
                     <input type="text" name="system.relationTable.{{@index}}.name" value="{{row.name}}"/>
-                    <div class="rep-color-field">
-                        <input type="text" class="rep-color-hex" name="system.relationTable.{{@index}}.color" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}" placeholder="#rrggbb" maxlength="7"/>
-                        <input type="color" class="rep-color-swatch" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}" tabindex="-1"/>
-                    </div>
+                    <input type="color" class="rep-color-input" name="system.relationTable.{{@index}}.color" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}">
                     <a class="item-control" data-action="deleteRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
                 </div>
                 {{/each}}
             </div>
             {{/if}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "disease")}}
+        <div class="disease-stats-wrapper">
+
+            {{!-- State tracking + Medication --}}
+            <div class="disease-header-row">
+                <div class="item-features secondary-box flex2">
+                    <label class="section-label">{{localize "NEUROSHIMA.Disease.StateLabel"}}</label>
+                    <div class="grid grid-2col">
+                        <div class="form-group row-group">
+                            <label>{{localize "NEUROSHIMA.Disease.CurrentState"}}</label>
+                            <select name="system.currentState">
+                                <option value="none" {{#if (eq system.currentState "none")}}selected{{/if}}>{{localize "NEUROSHIMA.Disease.State.None"}}</option>
+                                <option value="firstSymptoms" {{#if (eq system.currentState "firstSymptoms")}}selected{{/if}}>● {{localize "NEUROSHIMA.Disease.State.FirstSymptoms"}}</option>
+                                <option value="acute" {{#if (eq system.currentState "acute")}}selected{{/if}}>●● {{localize "NEUROSHIMA.Disease.State.Acute"}}</option>
+                                <option value="critical" {{#if (eq system.currentState "critical")}}selected{{/if}}>●●● {{localize "NEUROSHIMA.Disease.State.Critical"}}</option>
+                                <option value="terminal" {{#if (eq system.currentState "terminal")}}selected{{/if}}>{{localize "NEUROSHIMA.Disease.State.Terminal"}}</option>
+                            </select>
+                        </div>
+                        <div class="form-group row-group">
+                            <label>{{localize "NEUROSHIMA.Disease.DaysInState"}}</label>
+                            <input type="number" name="system.daysInState" value="{{system.daysInState}}" min="0" data-dtype="Number"/>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="item-features secondary-box flex1">
+                    <label class="section-label">{{localize "NEUROSHIMA.Disease.Medication"}}</label>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Disease.MedicationName"}}</label>
+                        <input type="text" name="system.medication.name" value="{{system.medication.name}}"/>
+                    </div>
+                    <div class="grid grid-2col">
+                        <div class="form-group row-group">
+                            <label>{{localize "NEUROSHIMA.Items.Fields.Availability"}}</label>
+                            <input type="number" name="system.medication.availability" value="{{system.medication.availability}}" min="0" max="100" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" name="system.medication.isTaking" {{checked system.medication.isTaking}}/>
+                                <label>{{localize "NEUROSHIMA.Disease.IsTaking"}}</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- State: First Symptoms --}}
+            <div class="item-features secondary-box disease-state-block {{#if (eq system.currentState "firstSymptoms")}}disease-state-active{{/if}}">
+                <label class="section-label disease-state-label">
+                    <span class="disease-dots">●</span>
+                    {{localize "NEUROSHIMA.Disease.State.FirstSymptoms"}}
+                </label>
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.Disease.StateDescription"}}</label>
+                    <input type="text" name="system.firstSymptoms.description" value="{{system.firstSymptoms.description}}" placeholder="{{localize 'NEUROSHIMA.Disease.StateDescriptionHint'}}"/>
+                </div>
+                <div class="disease-penalties-grid">
+                    <span class="disease-penalties-label">{{localize "NEUROSHIMA.Disease.Penalties"}}</span>
+                    <div class="grid grid-3col">
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Dexterity'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Dexterity"}}</label>
+                            <input type="number" name="system.firstSymptoms.penalties.dexterity" value="{{system.firstSymptoms.penalties.dexterity}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Perception'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Perception"}}</label>
+                            <input type="number" name="system.firstSymptoms.penalties.perception" value="{{system.firstSymptoms.penalties.perception}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Charisma'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Charisma"}}</label>
+                            <input type="number" name="system.firstSymptoms.penalties.charisma" value="{{system.firstSymptoms.penalties.charisma}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Cleverness'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Cleverness"}}</label>
+                            <input type="number" name="system.firstSymptoms.penalties.cleverness" value="{{system.firstSymptoms.penalties.cleverness}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Constitution'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Constitution"}}</label>
+                            <input type="number" name="system.firstSymptoms.penalties.constitution" value="{{system.firstSymptoms.penalties.constitution}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Disease.TestModifier'}}">{{localize "NEUROSHIMA.Disease.TestModifierAbbr"}}</label>
+                            <input type="number" name="system.firstSymptoms.penalties.testModifier" value="{{system.firstSymptoms.penalties.testModifier}}" data-dtype="Number"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- State: Acute --}}
+            <div class="item-features secondary-box disease-state-block {{#if (eq system.currentState "acute")}}disease-state-active{{/if}}">
+                <label class="section-label disease-state-label">
+                    <span class="disease-dots">●●</span>
+                    {{localize "NEUROSHIMA.Disease.State.Acute"}}
+                </label>
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.Disease.StateDescription"}}</label>
+                    <input type="text" name="system.acute.description" value="{{system.acute.description}}" placeholder="{{localize 'NEUROSHIMA.Disease.StateDescriptionHint'}}"/>
+                </div>
+                <div class="disease-penalties-grid">
+                    <span class="disease-penalties-label">{{localize "NEUROSHIMA.Disease.Penalties"}}</span>
+                    <div class="grid grid-3col">
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Dexterity'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Dexterity"}}</label>
+                            <input type="number" name="system.acute.penalties.dexterity" value="{{system.acute.penalties.dexterity}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Perception'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Perception"}}</label>
+                            <input type="number" name="system.acute.penalties.perception" value="{{system.acute.penalties.perception}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Charisma'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Charisma"}}</label>
+                            <input type="number" name="system.acute.penalties.charisma" value="{{system.acute.penalties.charisma}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Cleverness'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Cleverness"}}</label>
+                            <input type="number" name="system.acute.penalties.cleverness" value="{{system.acute.penalties.cleverness}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Constitution'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Constitution"}}</label>
+                            <input type="number" name="system.acute.penalties.constitution" value="{{system.acute.penalties.constitution}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Disease.TestModifier'}}">{{localize "NEUROSHIMA.Disease.TestModifierAbbr"}}</label>
+                            <input type="number" name="system.acute.penalties.testModifier" value="{{system.acute.penalties.testModifier}}" data-dtype="Number"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- State: Critical --}}
+            <div class="item-features secondary-box disease-state-block {{#if (eq system.currentState "critical")}}disease-state-active{{/if}}">
+                <label class="section-label disease-state-label">
+                    <span class="disease-dots">●●●</span>
+                    {{localize "NEUROSHIMA.Disease.State.Critical"}}
+                </label>
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.Disease.StateDescription"}}</label>
+                    <input type="text" name="system.critical.description" value="{{system.critical.description}}" placeholder="{{localize 'NEUROSHIMA.Disease.StateDescriptionHint'}}"/>
+                </div>
+                <div class="disease-penalties-grid">
+                    <span class="disease-penalties-label">{{localize "NEUROSHIMA.Disease.Penalties"}}</span>
+                    <div class="grid grid-3col">
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Dexterity'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Dexterity"}}</label>
+                            <input type="number" name="system.critical.penalties.dexterity" value="{{system.critical.penalties.dexterity}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Perception'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Perception"}}</label>
+                            <input type="number" name="system.critical.penalties.perception" value="{{system.critical.penalties.perception}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Charisma'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Charisma"}}</label>
+                            <input type="number" name="system.critical.penalties.charisma" value="{{system.critical.penalties.charisma}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Cleverness'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Cleverness"}}</label>
+                            <input type="number" name="system.critical.penalties.cleverness" value="{{system.critical.penalties.cleverness}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Attributes.Constitution'}}">{{localize "NEUROSHIMA.Attributes.Abbr.Constitution"}}</label>
+                            <input type="number" name="system.critical.penalties.constitution" value="{{system.critical.penalties.constitution}}" data-dtype="Number"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Disease.TestModifier'}}">{{localize "NEUROSHIMA.Disease.TestModifierAbbr"}}</label>
+                            <input type="number" name="system.critical.penalties.testModifier" value="{{system.critical.penalties.testModifier}}" data-dtype="Number"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- State: Terminal --}}
+            <div class="item-features secondary-box disease-state-block disease-state-terminal {{#if (eq system.currentState "terminal")}}disease-state-active{{/if}}">
+                <label class="section-label disease-state-label">
+                    {{localize "NEUROSHIMA.Disease.State.Terminal"}}
+                </label>
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.Disease.StateDescription"}}</label>
+                    <input type="text" name="system.terminal.description" value="{{system.terminal.description}}" placeholder="{{localize 'NEUROSHIMA.Disease.StateDescriptionHint'}}"/>
+                </div>
+            </div>
+
         </div>
     {{/if}}
 
