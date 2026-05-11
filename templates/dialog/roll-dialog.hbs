@@ -20,6 +20,15 @@
                 </div>
                 <input type="number" name="woundPenalty" value="{{woundPenalty}}" placeholder="0" disabled/>
             </div>
+            {{#if diseasePenalty}}
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useDiseasePenalty" {{checked useDiseasePenalty}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Disease"}} (%)</label>
+                </div>
+                <input type="number" name="diseasePenalty" value="{{diseasePenalty}}" placeholder="0" disabled/>
+            </div>
+            {{/if}}
             <div class="form-group">
                 <label title="{{localize 'NEUROSHIMA.Roll.AttributeBonus'}}">{{localize "NEUROSHIMA.Roll.AttributeBonusAbbr"}}</label>
                 <input type="number" name="attributeBonus" value="{{attributeBonus}}" placeholder="0"/>

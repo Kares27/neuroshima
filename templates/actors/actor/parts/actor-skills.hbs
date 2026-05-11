@@ -22,7 +22,7 @@
                         <div class="skills-horizontal-grid">
                             {{#each spec.skills as |skill|}}
                             <div class="skill-item">
-                                <div class="skill-input-wrapper">
+                                <div class="skill-input-wrapper" {{#if skill.bonusTooltip}}data-tooltip="{{skill.bonusTooltip}}" data-tooltip-direction="UP"{{/if}}>
                                     <input type="number"
                                            name="system.skills.{{skill.key}}.value"
                                            value="{{skill.value}}"
@@ -31,8 +31,7 @@
                                     <input type="number"
                                            value="{{skill.total}}"
                                            class="skill-input skill-total-input"
-                                           disabled
-                                           {{#if skill.bonusTooltip}}data-tooltip="{{skill.bonusTooltip}}"{{/if}}>
+                                           disabled>
                                 </div>
                                 {{#if skill.isKnowledge}}
                                     <div class="skill-knowledge-wrapper">

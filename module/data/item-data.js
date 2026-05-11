@@ -429,33 +429,35 @@ export class ReputationData extends foundry.abstract.TypeDataModel {
 
 /**
  * Data model for Disease items.
- * Represents a disease with four progressive states (firstSymptoms → acute → critical → terminal).
+ * Represents a disease with five progressive states.
  * Non-countable — no weight, cost, quantity or availability tracking.
  *
  * States:
- *   none          — character is healthy (taking meds or not yet symptomatic)
- *   firstSymptoms — pierwsze symptomy (●)
- *   acute         — stan ostry         (●●)
- *   critical      — stan krytyczny     (●●●)
- *   terminal      — stan terminalny    (death)
+ *   none          — Stabilny         (4 empty dots ○○○○)
+ *   firstSymptoms — Pierwsze symptomy (●○○○)
+ *   acute         — Stan ostry        (●●○○)
+ *   critical      — Stan krytyczny    (●●●○)
+ *   terminal      — Stan terminalny   (●●●●)
+ *
+ * Penalties for each state are applied via Active Effects with Enable Scripts.
+ * Example Enable Script for "firstSymptoms" penalties AE:
+ *   const disease = actor.items.find(i => i.type === "disease");
+ *   return disease?.system?.currentState === "firstSymptoms";
  */
 export class DiseaseData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
 
-    const penaltiesSchema = () => new fields.SchemaField({
-      dexterity:    new fields.NumberField({ integer: true, initial: 0 }),
-      perception:   new fields.NumberField({ integer: true, initial: 0 }),
-      charisma:     new fields.NumberField({ integer: true, initial: 0 }),
-      cleverness:   new fields.NumberField({ integer: true, initial: 0 }),
-      constitution: new fields.NumberField({ integer: true, initial: 0 }),
-      testModifier: new fields.NumberField({ integer: true, initial: 0 })
-    });
-
     return {
       description: new fields.HTMLField({ initial: "" }),
       resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
+
+      diseaseType: new fields.StringField({
+        initial: "chronic",
+        choices: ["chronic", "transient"]
+      }),
+      transientPenalty: new fields.NumberField({ integer: true, initial: 0 }),
 
       currentState: new fields.StringField({
         initial: "none",
@@ -470,16 +472,13 @@ export class DiseaseData extends foundry.abstract.TypeDataModel {
       }),
 
       firstSymptoms: new fields.SchemaField({
-        description: new fields.StringField({ initial: "" }),
-        penalties:   penaltiesSchema()
+        description: new fields.StringField({ initial: "" })
       }),
       acute: new fields.SchemaField({
-        description: new fields.StringField({ initial: "" }),
-        penalties:   penaltiesSchema()
+        description: new fields.StringField({ initial: "" })
       }),
       critical: new fields.SchemaField({
-        description: new fields.StringField({ initial: "" }),
-        penalties:   penaltiesSchema()
+        description: new fields.StringField({ initial: "" })
       }),
       terminal: new fields.SchemaField({
         description: new fields.StringField({ initial: "" })

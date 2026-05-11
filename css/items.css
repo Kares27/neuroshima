@@ -972,6 +972,19 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     gap: 6px;
 }
 
+.disease-two-col-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.disease-two-col-row .disease-type-col,
+.disease-two-col-row .disease-state-col {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
 .disease-header-row {
     display: flex;
     gap: 6px;

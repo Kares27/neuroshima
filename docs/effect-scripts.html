@@ -157,7 +157,11 @@
         <li><a href="#keys-hit-location">Klucze lokacji trafienia</a></li>
       </ul>
     </li>
-    <li><a href="#examples">Przykłady gotowych skryptów</a></li>
+    <li><a href="#examples">Przykłady gotowych skryptów</a>
+      <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
+        <li><a href="#example-disease">Choroba — Zwapnienie płuc (Enable Script + k20)</a></li>
+      </ul>
+    </li>
     <li><a href="#manual-invoke">Manualne wywoływanie — przyciski w itemach</a></li>
     <li><a href="#post-required-test">postRequiredTest — Wymagany rzut dla graczy</a></li>
     <li><a href="#changes">Zakładka Changes — modyfikacje atrybutów</a></li>
@@ -281,6 +285,11 @@
     <div class="ctx-row"><span class="ctx-name">await this.modifyItemResource(item, key, delta)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Dodaj <code>delta</code> do wartości (clamp). Ujemna wartość zmniejsza.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.increaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zwiększ o <code>|n|</code> (clamp do max).</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.decreaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zmniejsz o <code>|n|</code> (clamp do min).</span></div>
+    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery choroby —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">dostępne we wszystkich skryptach efektów (triggerach, Enable Script); aktor może mieć wiele chorób jednocześnie</span></div>
+    <div class="ctx-row"><span class="ctx-name">getDiseases(actor?)</span><span class="ctx-type">Array&lt;{id, name, diseaseType, currentState, transientPenalty}&gt;</span><span class="ctx-desc">Lista wszystkich chorób aktora. <code>diseaseType</code>: <code>"chronic"</code> | <code>"transient"</code>. <code>currentState</code>: klucz stanu (jak niżej). Pozwala iterować po wszystkich chorobach.</span></div>
+    <div class="ctx-row"><span class="ctx-name">getDisease(actor?)</span><span class="ctx-type">Item | null</span><span class="ctx-desc">Zwraca <strong>pierwszy</strong> item choroby aktora. Gdy AE siedzi na itemu choroby, użyj <code>this.item</code> zamiast tej funkcji.</span></div>
+    <div class="ctx-row"><span class="ctx-name">getDiseaseStateName(actorOrItem?)</span><span class="ctx-type">string</span><span class="ctx-desc">Klucz stanu choroby. Przyjmuje <strong>aktora</strong> (→ stan pierwszej choroby) <em>lub</em> <strong>Item choroby</strong> (→ stan tego konkretnego itemu, np. <code>getDiseaseStateName(this.item)</code>). Wartości: <code>"none"</code> | <code>"firstSymptoms"</code> | <code>"acute"</code> | <code>"critical"</code> | <code>"terminal"</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">getDiseaseStateId(actorOrItem?)</span><span class="ctx-type">number 0–4</span><span class="ctx-desc">Indeks stanu choroby. Przyjmuje aktora lub Item (tak jak <code>getDiseaseStateName</code>). <strong>0</strong> Zdrowy · <strong>1</strong> Pierwsze symptomy · <strong>2</strong> Stan ostry · <strong>3</strong> Stan krytyczny · <strong>4</strong> Stan terminalny.</span></div>
     <div class="ctx-row" style="border-top:1px dashed rgba(255,255,255,0.1); margin-top:0.3rem; padding-top:0.5rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery zasobów itemu (po ID) —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">ID = indeks tablicy (0-based), widoczny w kolumnie # zakładki Zasoby. Po usunięciu zasobu ze środka, indeksy automatycznie się przepakowują (0,1,2,… bez przerw).</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getItemResourceById(item, id)</span><span class="ctx-type">{ key, label, value, min, max } | null</span><span class="ctx-desc">Pełny obiekt zasobu pod danym indeksem. null jeśli nie istnieje.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.setItemResourceById(item, id, value)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Ustaw wartość zasobu pod indeksem (clamp).</span></div>
@@ -448,8 +457,9 @@
       <tr><td><code>args.fields.difficulty</code></td><td>string</td><td>Klucz trudności (np. <code>"average"</code>, <code>"hard"</code>).</td></tr>
       <tr><td><code>args.fields.attributeBonus</code></td><td>number</td><td>Bonus dodawany do wartości atrybutu.</td></tr>
       <tr><td><code>args.fields.skillBonus</code></td><td>number</td><td>Bonus dodawany do wartości umiejętności.</td></tr>
-      <tr><td><code>args.fields.armorPenalty</code></td><td>number</td><td>Aktualna kara za pancerz (kontekst; modyfikuj przez flagi).</td></tr>
-      <tr><td><code>args.fields.woundPenalty</code></td><td>number</td><td>Aktualna kara za rany.</td></tr>
+      <tr><td><code>args.fields.armorPenalty</code></td><td>number</td><td>Kara za pancerz dodawana do ogólnych kar rzutu (np. <code>args.fields.armorPenalty += 10</code>).</td></tr>
+      <tr><td><code>args.fields.woundPenalty</code></td><td>number</td><td>Kara za rany dodawana do ogólnych kar rzutu.</td></tr>
+      <tr><td><code>args.fields.diseasePenalty</code></td><td>number</td><td>Dodatkowa kara za chorobę przejściową doliczana do rzutu (np. <code>args.fields.diseasePenalty += 20</code>). Kumuluje się z karą wyliczoną automatycznie z itemów chorób przejściowych aktora. Dostępne w skryptach typu <code>dialog</code>.</td></tr>
       <tr><td><code>args.fields.distance</code></td><td>number</td><td>Dystans do celu (testy broni dystansowej).</td></tr>
       <tr><td><code>args.fields.distanceModifier</code></td><td>number</td><td>Modyfikator kary za dystans.</td></tr>
       <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
@@ -2456,6 +2466,169 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 <span class="cmt">// if (bonus) { args.stat += bonus; await this.actor.unsetFlag("neuroshima","adrenalineBonus"); }</span></code></pre>
   </div>
 
+
+  <!-- ── Choroba: Zwapnienie płuc ─────────────────────────────────────────── -->
+  <h3 id="example-disease">Choroba — automatyczne przełączanie kar na bazie stanu (Zwapnienie płuc)</h3>
+  <p>
+    Poniższy przykład pokazuje jak skonfigurować Active Effects dla choroby <strong>Zwapnienie płuc</strong>.
+    Choroba posiada cztery stany aktywności — każdy z nich definiujemy jako <em>osobny Active Effect</em> na itemie choroby,
+    z odpowiednim <strong>Enable Script</strong> sprawdzającym bieżący stan. Kary statystyczne wpisujemy w zakładce
+    <strong>Changes</strong> każdego efektu. System automatycznie włącza tylko ten efekt, którego warunek jest spełniony.
+  </p>
+
+  <div class="callout info">
+    <strong>Jak to działa:</strong> Item typu <code>disease</code> przechowuje pole <code>system.currentState</code>
+    (wartości: <code>"none"</code>, <code>"firstSymptoms"</code>, <code>"acute"</code>, <code>"critical"</code>, <code>"terminal"</code>).
+    Stan choroby zmienia się ręcznie (kropki w zakładce <strong>Efekty → Choroby</strong>) lub programowo przez skrypt.
+    Każdy AE sprawdza stan w Enable Script — jest aktywny tylko gdy warunek jest spełniony.
+    Przez <code>this.item</code> można odwołać się bezpośrednio do itemu choroby gdy efekt pochodzi z tego itemu.
+  </div>
+
+  <h4>Helpery dostępne w Enable Script (i we wszystkich skryptach efektów)</h4>
+  <table>
+    <thead><tr><th>Funkcja</th><th>Zwraca</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>getDiseases(actor?)</code></td>
+        <td>Array</td>
+        <td>Lista wszystkich chorób aktora jako obiekty <code>{id, name, diseaseType, currentState, transientPenalty}</code>. Użyj gdy aktor może mieć wiele chorób.</td>
+      </tr>
+      <tr>
+        <td><code>getDisease(actor?)</code></td>
+        <td>Item | null</td>
+        <td>Zwraca <strong>pierwszy</strong> item choroby aktora. Gdy AE siedzi na itemu choroby, użyj <code>this.item</code> zamiast tej funkcji.</td>
+      </tr>
+      <tr>
+        <td><code>getDiseaseStateName(actorOrItem?)</code></td>
+        <td>string</td>
+        <td>Klucz stanu choroby. Przyjmuje aktora (→ pierwsza choroba) <em>lub</em> Item choroby (→ ten konkretny item). Np. <code>getDiseaseStateName(this.item)</code>. Wartości: <code>"none"</code>, <code>"firstSymptoms"</code>, <code>"acute"</code>, <code>"critical"</code>, <code>"terminal"</code>.</td>
+      </tr>
+      <tr>
+        <td><code>getDiseaseStateId(actorOrItem?)</code></td>
+        <td>number (0–4)</td>
+        <td>Indeks stanu choroby (działa tak samo jak <code>getDiseaseStateName</code>): <strong>0</strong> Zdrowy, <strong>1</strong> Pierwsze symptomy, <strong>2</strong> Stan ostry, <strong>3</strong> Stan krytyczny, <strong>4</strong> Stan terminalny.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>Struktura: 4 Active Effects na itemie "Zwapnienie płuc"</h4>
+  <table>
+    <thead><tr><th>Nazwa AE</th><th>Enable Script</th><th>Changes (zakładka Changes)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Pierwsze symptomy</td>
+        <td><code>return getDiseaseStateName() === "firstSymptoms";</code></td>
+        <td>Budowa −2, Zręczność −2, Kondycja +30%</td>
+      </tr>
+      <tr>
+        <td>Stan ostry</td>
+        <td><code>return getDiseaseStateName() === "acute";</code></td>
+        <td>Budowa −4, Zręczność −4, Kondycja +60%</td>
+      </tr>
+      <tr>
+        <td>Stan krytyczny</td>
+        <td><code>return getDiseaseStateName() === "critical";</code></td>
+        <td>Budowa −10, Zręczność −10, Spryt −2, Percepcja −2, Kondycja +90%</td>
+      </tr>
+      <tr>
+        <td>Stan terminalny</td>
+        <td><code>return getDiseaseStateName() === "terminal";</code></td>
+        <td>(efekty zdefiniowane przez MG — np. brak akcji)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>Enable Script — przykłady</h4>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Enable Script</span>
+      Sprawdzanie po nazwie stanu — getDiseaseStateName()
+    </div>
+    <pre><code><span class="cmt">// getDiseaseStateName() zwraca klucz bieżącego stanu choroby</span>
+<span class="kw">return</span> <span class="fn">getDiseaseStateName</span>() === <span class="str">"firstSymptoms"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Enable Script</span>
+      Sprawdzanie po ID stanu — getDiseaseStateId()
+    </div>
+    <pre><code><span class="cmt">// getDiseaseStateId() zwraca liczbę 0–4
+// 0=Zdrowy, 1=Pierwsze symptomy, 2=Stan ostry, 3=Stan krytyczny, 4=Stan terminalny</span>
+<span class="kw">return</span> <span class="fn">getDiseaseStateId</span>() >= <span class="num">2</span>; <span class="cmt">// aktywny od stanu ostrego wzwyż</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Enable Script</span>
+      Odwołanie do konkretnej choroby przez this.item (zalecane gdy AE jest na itemu choroby)
+    </div>
+    <pre><code><span class="cmt">// getDiseaseStateName() i getDiseaseStateId() przyjmują aktora LUB Item choroby
+// Gdy efekt siedzi na itemu choroby — przekaż this.item aby odczytać stan tej choroby</span>
+<span class="kw">return</span> <span class="fn">getDiseaseStateName</span>(<span class="kw">this</span>.item) === <span class="str">"critical"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Enable Script</span>
+      Iteracja po wszystkich chorobach — getDiseases()
+    </div>
+    <pre><code><span class="cmt">// getDiseases() zwraca listę wszystkich chorób aktora
+// Przydatne gdy aktor może mieć wiele chorób naraz</span>
+<span class="kw">const</span> <span class="var">diseases</span> = <span class="fn">getDiseases</span>();
+<span class="kw">return</span> <span class="var">diseases</span>.some(d =&gt; d.diseaseType === <span class="str">"chronic"</span> &amp;&amp; d.currentState !== <span class="str">"none"</span>);</code></pre>
+  </div>
+
+  <h4>Programowa zmiana stanu choroby w skrypcie</h4>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual / rollTest / applyDamage</span>
+      Pogorszenie stanu choroby — skrypt MG lub trigger na efekcie
+    </div>
+    <pre><code><span class="cmt">// Pobierz item choroby i pogorsz stan o jeden stopień</span>
+<span class="kw">const</span> <span class="var">disease</span> = <span class="fn">getDisease</span>();  <span class="cmt">// lub: getDisease(args.actor)</span>
+<span class="kw">if</span> (!<span class="var">disease</span>) <span class="kw">return</span>;
+
+<span class="kw">const</span> <span class="var">states</span> = [<span class="str">"none"</span>, <span class="str">"firstSymptoms"</span>, <span class="str">"acute"</span>, <span class="str">"critical"</span>, <span class="str">"terminal"</span>];
+<span class="kw">const</span> <span class="var">current</span> = <span class="var">disease</span>.system.currentState ?? <span class="str">"none"</span>;
+<span class="kw">const</span> <span class="var">idx</span>     = <span class="var">states</span>.<span class="fn">indexOf</span>(<span class="var">current</span>);
+<span class="kw">const</span> <span class="var">next</span>    = <span class="var">states</span>[Math.<span class="fn">min</span>(<span class="num">4</span>, <span class="var">idx</span> + <span class="num">1</span>)];
+
+<span class="kw">await</span> <span class="var">disease</span>.<span class="fn">update</span>({ <span class="str">"system.currentState"</span>: <span class="var">next</span> });
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+  <span class="str">`Stan choroby &lt;strong&gt;${disease.name}&lt;/strong&gt; pogorszył się: ${current} → ${next}`</span>
+);</code></pre>
+  </div>
+
+  <div class="callout warning">
+    <strong>Wskazówka — rzut k20 na pogorszenie stanu:</strong><br>
+    Według zasad Neuroshimy MG rzuca k20 każdego dnia gdy postać nie zażywa leków.
+    16–20 na stanie <em>Stabilny</em> = Pierwsze symptomy; 18–20 na każdym kolejnym = przejście do następnego.
+    Możesz zautomatyzować to skryptem <code>manual</code> uruchamianym raz dziennie:
+    <pre style="margin:6px 0 0;"><code><span class="cmt">// Trigger: manual — "Dzienny rzut choroby"</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> <span class="var">disease</span> = <span class="fn">getDisease</span>();
+  <span class="kw">if</span> (!<span class="var">disease</span>) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak choroby u postaci."</span>);
+
+  <span class="kw">const</span> <span class="var">states</span>  = [<span class="str">"none"</span>, <span class="str">"firstSymptoms"</span>, <span class="str">"acute"</span>, <span class="str">"critical"</span>, <span class="str">"terminal"</span>];
+  <span class="kw">const</span> <span class="var">current</span> = <span class="var">disease</span>.system.currentState ?? <span class="str">"none"</span>;
+  <span class="kw">const</span> <span class="var">idx</span>     = <span class="var">states</span>.<span class="fn">indexOf</span>(<span class="var">current</span>);
+  <span class="kw">if</span> (<span class="var">idx</span> >= <span class="num">4</span>) <span class="kw">return</span>; <span class="cmt">// terminal — już najgorszy</span>
+
+  <span class="kw">const</span> <span class="var">roll</span>      = <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Roll</span>(<span class="str">"1d20"</span>).<span class="fn">evaluate</span>();
+  <span class="kw">const</span> <span class="var">threshold</span> = <span class="var">idx</span> === <span class="num">0</span> ? <span class="num">16</span> : <span class="num">18</span>; <span class="cmt">// 16+ na "none", 18+ na pozostałych</span>
+  <span class="kw">if</span> (<span class="var">roll</span>.total < <span class="var">threshold</span>) {
+    <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`Rzut k20 = ${roll.total} — stan choroby bez zmian.`</span>);
+  }
+
+  <span class="kw">const</span> <span class="var">next</span> = <span class="var">states</span>[<span class="var">idx</span> + <span class="num">1</span>];
+  <span class="kw">await</span> <span class="var">disease</span>.<span class="fn">update</span>({ <span class="str">"system.currentState"</span>: <span class="var">next</span> });
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="str">`⚠️ Rzut k20 = ${roll.total} — &lt;strong&gt;${disease.name}&lt;/strong&gt; pogorzał: &lt;em&gt;${current}&lt;/em&gt; → &lt;em&gt;${next}&lt;/em&gt;!`</span>
+  );
+})();</code></pre>
+  </div>
+
 </section>
 
 <!-- SECTION 5 — Manual Invocation -->
@@ -3059,7 +3232,12 @@ onFailure: [
   <div class="callout danger">
     <strong>Tylko synchroniczny kod.</strong> Nie używaj <code>await</code> ani operacji asynchronicznych. Zwróć <code>true</code> lub <code>false</code>.
   </div>
-  <p>Dostępne zmienne: <code>actor</code> (Actor posiadający efekt), <code>effect</code> (ten ActiveEffect).</p>
+  <p>Dostępne zmienne: <code>actor</code> (Actor posiadający efekt), <code>effect</code> (ten ActiveEffect), <code>item</code> (Item będący właścicielem efektu, lub <code>null</code>). Kontekst <code>this</code> = <code>{ actor, item }</code>.<br>
+  Dostępne helpery choroby: <code>getDiseases(actor?)</code>, <code>getDisease(actor?)</code>, <code>getDiseaseStateName(actorOrItem?)</code>, <code>getDiseaseStateId(actorOrItem?)</code>.<br>
+  <code>getDiseaseStateName</code> i <code>getDiseaseStateId</code> przyjmują aktora <em>lub</em> konkretny Item choroby — np. <code>getDiseaseStateName(this.item)</code> gdy efekt jest na itemu choroby.</p>
+  <div class="callout info">
+    <strong>Blokada ręczna.</strong> Gdy Enable Script zwraca <code>false</code>, efekt jest automatycznie wyłączony i <strong>nie można go ręcznie włączyć</strong> — toggle jest zablokowany ikoną kłódki.
+  </div>
 
   <div class="example-block">
     <div class="example-header">Enable Script — Aktywny tylko gdy aktor ma ranę głowy</div>

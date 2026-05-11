@@ -946,7 +946,7 @@ export class NeuroshimaDice {
     const finalStat = (Number(stat) || 0) + Number(attributeBonus || 0);
 
     // 1. Obliczanie całkowitej kary i trudności bazowej
-    const totalPenalty = (Number(penalties.mod) || 0) + (Number(penalties.wounds) || 0) + (Number(penalties.armor) || 0) + (Number(penalties.base) || 0);
+    const totalPenalty = (Number(penalties.mod) || 0) + (Number(penalties.wounds) || 0) + (Number(penalties.armor) || 0) + (Number(penalties.base) || 0) + (Number(penalties.disease) || 0);
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     
     // 2. Wykonanie rzutu 3k20

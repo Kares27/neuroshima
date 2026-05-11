@@ -111,7 +111,9 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       rollReputation: this.prototype._onRollReputation,
       rollReputationItem: this.prototype._onRollReputationItem,
       adjustRepValue: this.prototype._onAdjustRepValue,
-      sortReputationItems: this.prototype._onSortReputationItems
+      sortReputationItems: this.prototype._onSortReputationItems,
+      adjustDiseaseState: this.prototype._onAdjustDiseaseState,
+      adjustTransientPenalty: this.prototype._onAdjustTransientPenalty
     },
     dragDrop: [
       { dragSelector: ".item[data-item-id]", dropSelector: "form" },
@@ -146,7 +148,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     combatPaperDoll: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-paper-doll-partial.hbs" ,  scrollable: [".paper-doll-scrollable"]},
     combatWoundsList: { template: "systems/neuroshima/templates/actors/actor/parts/wounds-list-partial.hbs" ,  scrollable: [".wounds-list-container"]},
     inventory: { template: "systems/neuroshima/templates/actors/actor/parts/actor-inventory.hbs", scrollable: [""]},
-    effects: { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs" },
+    effects: { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs", scrollable: [""] },
     reputation: { template: "systems/neuroshima/templates/actors/actor/parts/actor-reputation.hbs", scrollable: [""] },
     notes: { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs", scrollable: [""] }
   };
@@ -239,26 +241,18 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
     const totalArmorPenalty = system.combat.totalArmorPenalty || 0;
     const totalWoundPenalty = system.combat.totalWoundPenalty || 0;
-    const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty;
+    const totalDiseasePenalty = actor.items
+      .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
+      .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
+    const totalCombatPenalty = totalArmorPenalty + totalWoundPenalty + totalDiseasePenalty;
 
     const penaltyLines = [];
-    const armorFromItems = items.reduce((t, i) => i.type === "armor" && i.system.equipped ? t + (i.system.armor?.penalty || 0) : t, 0);
-    if (armorFromItems) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Armor.TotalPenalty")}: ${armorFromItems}%`);
-    for (const effect of actor.effects) {
-      if (!effect.active) continue;
-      for (const change of effect.changes) {
-        const val = Number(change.value) || 0;
-        if (!val) continue;
-        if (change.key === "system.combat.armorPenaltyBonus") {
-          penaltyLines.push(`${effect.name} (${game.i18n.localize("NEUROSHIMA.Combat.ArmorPenalty")}): +${val}%`);
-        } else if (change.key === "system.combat.generalPenalty") {
-          penaltyLines.push(`${effect.name} (${game.i18n.localize("NEUROSHIMA.Combat.GeneralPenalty")}): +${val}%`);
-        }
-      }
-    }
-    if (totalWoundPenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Wound.TotalPenalty")}: ${totalWoundPenalty}%`);
-    penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Wound.TotalPenaltyAbbr")}: ${totalCombatPenalty}%`);
-    const penaltyTooltip = penaltyLines.join("\n");
+    if (totalArmorPenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Roll.Armor")}: ${totalArmorPenalty}%`);
+    if (totalWoundPenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Roll.Wounds")}: ${totalWoundPenalty}%`);
+    if (totalDiseasePenalty) penaltyLines.push(`${game.i18n.localize("NEUROSHIMA.Roll.Disease")}: ${totalDiseasePenalty}%`);
+    const penaltyTooltip = penaltyLines.length
+      ? penaltyLines.join("<br>")
+      : `${game.i18n.localize("NEUROSHIMA.Wound.TotalPenaltyAbbr")}: 0%`;
 
     const healingRate = system.healingRate || 5;
     
@@ -542,20 +536,26 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const passive      = [];
     const disabled     = [];
     const statusEffects = [];
+    const diseaseEffects = [];
 
-    const pushEffect = (e, itemId, sourceName, sourceIcon, isItemEffect) => {
+    const pushEffect = (e, itemId, sourceName, sourceIcon, isItemEffect, isDiseaseItem = false) => {
+      const hasEnableScript = !!(e.getFlag?.("neuroshima", "enableScript"));
       const entry = {
         id: e.id,
         itemId: itemId ?? null,
         name: e.name,
         icon: e.img || "icons/svg/aura.svg",
         disabled: e.disabled,
+        suppressed: hasEnableScript && e.isSuppressed,
+        scriptControlled: hasEnableScript,
         sourceName,
         sourceIcon,
         durationLabel: effectDurationLabel(e),
         isItemEffect: !!isItemEffect
       };
-      if (isConditionEffect(e)) {
+      if (isDiseaseItem) {
+        diseaseEffects.push(entry);
+      } else if (isConditionEffect(e)) {
         const statusKey = [...(e.statuses ?? [])][0];
         entry.conditionType = condTypeMap[statusKey] ?? "boolean";
         statusEffects.push(entry);
@@ -586,7 +586,12 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     }
 
     for (const item of actor.items) {
+      const isDisease = item.type === "disease";
       for (const e of item.effects) {
+        if (isDisease) {
+          pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true, true);
+          continue;
+        }
         const docType      = e.getFlag?.("neuroshima", "documentType")  ?? "actor";
         const transferType = e.getFlag?.("neuroshima", "transferType")  ?? "owningDocument";
         const equipTransfer = e.getFlag?.("neuroshima", "equipTransfer") ?? false;
@@ -601,8 +606,49 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       return (order[a.conditionType] ?? 0) - (order[b.conditionType] ?? 0);
     });
 
-    context.effects = { temporary, passive, disabled, statusEffects };
-    context.effectsAny = temporary.length > 0 || passive.length > 0 || disabled.length > 0 || statusEffects.length > 0;
+    const diseaseStateKeys = ["none", "firstSymptoms", "acute", "critical", "terminal"];
+    const diseaseStateLbls = {
+      none:          game.i18n.localize("NEUROSHIMA.Disease.State.None"),
+      firstSymptoms: game.i18n.localize("NEUROSHIMA.Disease.State.FirstSymptoms"),
+      acute:         game.i18n.localize("NEUROSHIMA.Disease.State.Acute"),
+      critical:      game.i18n.localize("NEUROSHIMA.Disease.State.Critical"),
+      terminal:      game.i18n.localize("NEUROSHIMA.Disease.State.Terminal")
+    };
+    const diseaseItems = actor.items
+      .filter(i => i.type === "disease")
+      .sort((a, b) => {
+        const typeOrder = { chronic: 0, transient: 1 };
+        return (typeOrder[a.system.diseaseType ?? "chronic"] ?? 0) - (typeOrder[b.system.diseaseType ?? "chronic"] ?? 0);
+      })
+      .map(item => {
+        const currentState = item.system.currentState ?? "none";
+        const stateIndex = diseaseStateKeys.indexOf(currentState);
+        const filledCount = Math.max(0, stateIndex);
+        const stateDots = [0, 1, 2, 3].map(i => ({ index: i, filled: i < filledCount }));
+        const diseaseType = item.system.diseaseType ?? "chronic";
+        const typeKey = diseaseType === "transient" ? "NEUROSHIMA.Disease.Type.TransientShort" : "NEUROSHIMA.Disease.Type.ChronicShort";
+        return {
+          id: item.id,
+          name: item.name,
+          img: item.img || "icons/svg/item-bag.svg",
+          diseaseType,
+          diseaseTypeShort: game.i18n.localize(typeKey),
+          currentState,
+          stateIndex,
+          stateLabel: diseaseStateLbls[currentState] ?? currentState,
+          transientPenalty: item.system.transientPenalty ?? 0,
+          stateDots
+        };
+      });
+
+    const chronicDiseaseItems   = diseaseItems.filter(d => d.diseaseType === "chronic");
+    const transientDiseaseItems = diseaseItems.filter(d => d.diseaseType === "transient");
+
+    context.effects = { temporary, passive, disabled, statusEffects, disease: diseaseEffects };
+    context.diseaseItems = diseaseItems;
+    context.chronicDiseaseItems   = chronicDiseaseItems;
+    context.transientDiseaseItems = transientDiseaseItems;
+    context.effectsAny = temporary.length > 0 || passive.length > 0 || disabled.length > 0 || statusEffects.length > 0 || diseaseEffects.length > 0 || diseaseItems.length > 0;
 
     // Conditions panel — WFRP-style: int conditions stored as ActiveEffects
     context.conditionStates = condDefs.map(c => {
@@ -651,10 +697,42 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
   async _prepareBackground(actor) {
     const bgTypes = ["specialization", "origin", "profession"];
-    const slots = { specialization: null, origin: null, profession: null, extras: [] };
+    const slots = { specialization: null, origin: null, profession: null, disease: null, extras: [] };
     const seen = { specialization: false, origin: false, profession: false };
 
+    const diseaseStates = ["none", "firstSymptoms", "acute", "critical", "terminal"];
+    const diseaseStateLabels = {
+      none:          game.i18n.localize("NEUROSHIMA.Disease.State.None"),
+      firstSymptoms: game.i18n.localize("NEUROSHIMA.Disease.State.FirstSymptoms"),
+      acute:         game.i18n.localize("NEUROSHIMA.Disease.State.Acute"),
+      critical:      game.i18n.localize("NEUROSHIMA.Disease.State.Critical"),
+      terminal:      game.i18n.localize("NEUROSHIMA.Disease.State.Terminal")
+    };
+
     for (const item of actor.items) {
+      if (item.type === "disease" && !slots.disease) {
+        const currentState = item.system.currentState ?? "none";
+        const stateIndex = diseaseStates.indexOf(currentState);
+        const filledCount = Math.max(0, stateIndex);
+        const stateDots = [0, 1, 2, 3].map(i => ({
+          index: i,
+          filled: i < filledCount,
+          label: diseaseStateLabels[diseaseStates[i + 1]] ?? ""
+        }));
+        slots.disease = {
+          id: item.id,
+          name: item.name,
+          img: item.img,
+          type: item.type,
+          system: item.system,
+          currentState,
+          stateIndex,
+          stateLabel: diseaseStateLabels[currentState] ?? currentState,
+          stateDots
+        };
+        continue;
+      }
+
       if (!bgTypes.includes(item.type)) continue;
       const slot = item.type;
       const enriched = item.system.bonusText
@@ -680,19 +758,35 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const tooltips = {};
     for (const key of attrKeys) tooltips[key] = "";
 
-    for (const effect of actor.effects) {
-      if (effect.disabled || effect.isSuppressed) continue;
+    const addAttrChanges = (effect) => {
+      if (effect.disabled || effect.isSuppressed) return;
       for (const change of (effect.changes ?? [])) {
         if (!change.key) continue;
-        const attrMatch = change.key.match(/^system\.attributeBonuses\.(\w+)$/);
-        const modMatch  = change.key.match(/^system\.bonuses\.(\w+)$/);
-        const match = attrMatch || modMatch;
+        const attrMatch   = change.key.match(/^system\.attributeBonuses\.(\w+)$/);
+        const modMatch    = change.key.match(/^system\.bonuses\.(\w+)$/);
+        const directMatch = change.key.match(/^system\.attributes\.(\w+)$/);
+        const modsMatch   = change.key.match(/^system\.modifiers\.(\w+)$/);
+        const match = attrMatch || modMatch || directMatch || modsMatch;
         if (!match) continue;
         const key = match[1];
         if (!attrKeys.includes(key)) continue;
-        const val  = Number(change.value) || 0;
+        const val = Number(change.value) || 0;
+        if (!val) continue;
         const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
-        tooltips[key] = tooltips[key] ? tooltips[key] + "\n" + part : part;
+        tooltips[key] = tooltips[key] ? tooltips[key] + "<br>" + part : part;
+      }
+    };
+
+    const actorItemUUIDs = new Set(actor.items.map(i => i.uuid));
+    for (const effect of actor.effects) {
+      const origin = effect.origin ?? "";
+      const isItemCopy = [...actorItemUUIDs].some(uuid => origin.startsWith(uuid));
+      if (isItemCopy) continue;
+      addAttrChanges(effect);
+    }
+    for (const item of actor.items) {
+      for (const effect of item.effects) {
+        addAttrChanges(effect);
       }
     }
     return tooltips;
@@ -911,6 +1005,14 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       });
     });
 
+    html.querySelectorAll('[data-action="adjustDiseaseState"]').forEach(el => {
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._onAdjustDiseaseState(event, event.currentTarget);
+      });
+    });
+
     html.querySelectorAll('.rep-ctx-btn').forEach(el => {
       el.addEventListener('click', (event) => {
         event.preventDefault();
@@ -952,10 +1054,37 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       });
     });
 
-    // Condition value number inputs — save on change
-    html.querySelectorAll('[data-action="adjustConditionValue"]').forEach(el => {
+    // Condition value spans — click to ±1/±10, right-click to decrement
+    html.querySelectorAll('.condition-int-span').forEach(el => {
+      el.addEventListener('click', (event) => {
+        event.preventDefault();
+        const delta = event.ctrlKey ? 10 : 1;
+        const allowNeg = el.dataset.allowNegative === "true";
+        let val = parseInt(el.dataset.value, 10) || 0;
+        val += delta;
+        if (!allowNeg) val = Math.max(0, val);
+        el.dataset.value = val;
+        el.textContent = val;
+        this._onAdjustConditionValue(event, el);
+      });
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.ctrlKey ? 10 : 1;
+        const allowNeg = el.dataset.allowNegative === "true";
+        let val = parseInt(el.dataset.value, 10) || 0;
+        val -= delta;
+        if (!allowNeg) val = Math.max(0, val);
+        el.dataset.value = val;
+        el.textContent = val;
+        this._onAdjustConditionValue(event, el);
+      });
+    });
+
+    // Transient disease penalty inputs — save on change
+    html.querySelectorAll('[data-action="adjustTransientPenalty"]').forEach(el => {
       el.addEventListener('change', (event) => {
-        this._onAdjustConditionValue(event, event.currentTarget);
+        this._onAdjustTransientPenalty(event, event.currentTarget);
       });
     });
 
@@ -1229,6 +1358,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       return this._onDropBackgroundItem(event, sourceItem, item);
     }
 
+    if (sourceItem.type === "disease" && ["character", "npc"].includes(this.document.type)) {
+      return this._onDropDiseaseItem(event, sourceItem);
+    }
+
     if (sourceItem.type === "trick" && this.document.type === "character") {
       const alreadyOwned = this.document.items.some(i => i.type === "trick" && i.name === sourceItem.name);
       if (!alreadyOwned) {
@@ -1323,6 +1456,44 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         await this._showTraitChoiceDialog(traits, created.name, actor);
       }
     }
+  }
+
+  async _onDropDiseaseItem(event, sourceItem) {
+    const actor = this.document;
+
+    if (sourceItem.parent?.id !== actor.id) {
+      await actor.createEmbeddedDocuments("Item", [sourceItem.toObject()]);
+      if (sourceItem.actor && sourceItem.actor.id !== actor.id) await sourceItem.delete();
+    }
+    game.neuroshima.log(`[Disease] dropped "${sourceItem.name}" onto actor "${actor.name}"`);
+  }
+
+  async _onAdjustDiseaseState(event, target) {
+    const itemId = target.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    if (!item || item.type !== "disease") return;
+
+    const states = ["none", "firstSymptoms", "acute", "critical", "terminal"];
+    const current = item.system.currentState ?? "none";
+    const currentIndex = states.indexOf(current);
+
+    let newIndex;
+    if (event.button === 2 || event.type === "contextmenu") {
+      newIndex = Math.max(0, currentIndex - 1);
+    } else {
+      newIndex = Math.min(4, currentIndex + 1);
+    }
+
+    const newState = states[Math.max(0, Math.min(4, newIndex))];
+    await item.update({ "system.currentState": newState });
+  }
+
+  async _onAdjustTransientPenalty(event, target) {
+    const itemId = target.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    if (!item || item.type !== "disease") return;
+    const value = parseInt(target.value) || 0;
+    await item.update({ "system.transientPenalty": value });
   }
 
   async _showTraitChoiceDialog(traitUuids, sourceName, actor) {
@@ -2334,6 +2505,10 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
       itemData.system.weaponType = actionElement.dataset.weaponType;
     }
 
+    if (actionElement.dataset.diseaseType && type === "disease") {
+      itemData.system.diseaseType = actionElement.dataset.diseaseType;
+    }
+
     // Pre-fill location if creating wound from extended section
     if (location && type === "wound") {
       this._saveWoundsScroll();
@@ -2622,8 +2797,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const actor = this.document;
 
     const skillTooltips = {};
-    for (const effect of (actor.effects ?? [])) {
-      if (effect.disabled || effect.isSuppressed) continue;
+    const addSkillChanges = (effect) => {
+      if (effect.disabled || effect.isSuppressed) return;
       for (const change of (effect.changes ?? [])) {
         const mBonus = change.key?.match(/^system\.skillBonuses\.(\w+)$/);
         const mValue = change.key?.match(/^system\.skills\.(\w+)\.value$/);
@@ -2631,8 +2806,20 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         if (!m) continue;
         const sKey = m[1];
         const val = Number(change.value) || 0;
+        if (!val) continue;
         const part = `${effect.name ?? "?"}: ${val >= 0 ? "+" : ""}${val}`;
-        skillTooltips[sKey] = skillTooltips[sKey] ? skillTooltips[sKey] + "\n" + part : part;
+        skillTooltips[sKey] = skillTooltips[sKey] ? skillTooltips[sKey] + "<br>" + part : part;
+      }
+    };
+    const _itemUUIDs = new Set((actor.items ?? []).map(i => i.uuid));
+    for (const effect of (actor.effects ?? [])) {
+      const origin = effect.origin ?? "";
+      if ([..._itemUUIDs].some(uuid => origin.startsWith(uuid))) continue;
+      addSkillChanges(effect);
+    }
+    for (const item of (actor.items ?? [])) {
+      for (const effect of item.effects) {
+        addSkillChanges(effect);
       }
     }
 
@@ -3060,7 +3247,12 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
   async _onToggleEffect(event, target) {
     const effect = this._resolveEffect(target);
-    if (effect) await effect.update({ disabled: !effect.disabled });
+    if (!effect) return;
+    if (effect.getFlag("neuroshima", "enableScript")) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Effects.ScriptControlledWarn"));
+      return;
+    }
+    await effect.update({ disabled: !effect.disabled });
   }
 
   async _onOpenSource(event, target) {
@@ -3091,7 +3283,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const allowNegative = target.dataset.allowNegative === "true";
     if (!key) return;
     const actor = this.document;
-    let val = parseInt(target.value, 10);
+    let val = parseInt(target.dataset.value ?? target.textContent, 10);
     if (isNaN(val)) val = 0;
     if (!allowNegative) val = Math.max(0, val);
 

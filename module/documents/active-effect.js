@@ -82,6 +82,38 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     }
   }
 
+  /**
+   * Evaluate the Enable Script flag and return true if the effect should be suppressed.
+   * When suppressed, Foundry will not apply this effect's Changes to the actor.
+   * The user cannot manually toggle a script-controlled effect.
+   * @override
+   */
+  get isSuppressed() {
+    if (super.isSuppressed) return true;
+    const enableScript = this.getFlag?.("neuroshima", "enableScript");
+    if (!enableScript) return false;
+    const actor = this.actor;
+    if (!actor) return false;
+    try {
+      const _diseaseStates = ["none", "firstSymptoms", "acute", "critical", "terminal"];
+      const getDiseases         = (a = actor) => (a?.items ?? []).filter(i => i.type === "disease").map(i => ({ id: i.id, name: i.name, diseaseType: i.system?.diseaseType ?? "chronic", currentState: i.system?.currentState ?? "none", transientPenalty: i.system?.transientPenalty ?? 0 }));
+      const getDisease          = (a = actor) => (a?.items ?? []).find(i => i.type === "disease") ?? null;
+      const getDiseaseStateName = (aOrItem = actor) => {
+        if (aOrItem && typeof aOrItem === "object" && aOrItem.documentName === "Item") return aOrItem.system?.currentState ?? "none";
+        return getDisease(aOrItem)?.system?.currentState ?? "none";
+      };
+      const getDiseaseStateId   = (aOrItem = actor) => { const s = getDiseaseStateName(aOrItem); const i = _diseaseStates.indexOf(s); return i < 0 ? 0 : i; };
+      const sourceItem    = (this.parent instanceof CONFIG.Item.documentClass) ? this.parent : null;
+      const thisCtx       = { actor, item: sourceItem };
+      const fn = new Function("actor", "effect", "item", "getDisease", "getDiseases", "getDiseaseStateName", "getDiseaseStateId", enableScript);
+      const result = fn.call(thisCtx, actor, this, sourceItem, getDisease, getDiseases, getDiseaseStateName, getDiseaseStateId);
+      return !result;
+    } catch (e) {
+      console.error(`Neuroshima | enableScript (isSuppressed) error on "${this.name}":`, e);
+      return false;
+    }
+  }
+
   prepareData() {
     super.prepareData();
     this._scripts = null;

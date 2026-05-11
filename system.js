@@ -38,6 +38,13 @@ import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
 
+    CONFIG.fontDefinitions["Special Elite"] = {
+        editor: true,
+        fonts: [{ urls: ["systems/neuroshima/fonts/SpecialElite.ttf"], weight: 400, style: "normal" }]
+    };
+
+    CONFIG.defaultFontFamily = "Special Elite";
+
     CONFIG.ui.combat = NeuroshimaCombatTracker;
     MeleeCombatApp.registerHooks();
 
@@ -979,6 +986,23 @@ Hooks.on("getProseMirrorMenuItems", (menu, items) => {
         scope: scopes?.BOTH ?? "both",
         cmd: _nsChangeTextColourPrompt.bind(menu)
     });
+});
+
+Hooks.on("getProseMirrorMenuDropDowns", (menu, config) => {
+    const fontsDd = config.fonts;
+    if (!fontsDd) return;
+    const entries = fontsDd.entries ?? fontsDd.items ?? [];
+    const already = entries.some(e => (e.title ?? e.label ?? "") === "Special Elite");
+    if (!already) {
+        entries.unshift({
+            title: "Special Elite",
+            action: "font-family",
+            attrs: { style: "font-family: 'Special Elite'" },
+            priority: 1
+        });
+        if (fontsDd.entries) fontsDd.entries = entries;
+        else if (fontsDd.items) fontsDd.items = entries;
+    }
 });
 
 function _nsRgbToHex(rgb) {

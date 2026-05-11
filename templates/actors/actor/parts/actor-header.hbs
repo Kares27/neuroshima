@@ -7,7 +7,12 @@
 
         <div class="header-details flexrow">
             <div class="header-field bg-holder-field" data-slot-type="specialization">
-                <label>{{localize "NEUROSHIMA.Info.Specialization"}}</label>
+                <label>
+                    {{localize "NEUROSHIMA.Info.Specialization"}}
+                    {{#if background.specialization}}
+                    <a class="bg-holder-delete-inline" data-action="deleteItem" data-item-id="{{background.specialization.id}}" title="{{localize 'Delete'}}">✕</a>
+                    {{/if}}
+                </label>
                 {{#if background.specialization}}
                 <div class="bg-holder-item" data-item-id="{{background.specialization.id}}" data-action="editItem" title="{{background.specialization.name}}">
                     <span class="bg-holder-name">{{background.specialization.name}}</span>
@@ -17,7 +22,12 @@
                 {{/if}}
             </div>
             <div class="header-field bg-holder-field" data-slot-type="origin">
-                <label>{{localize "NEUROSHIMA.Info.Origin"}}</label>
+                <label>
+                    {{localize "NEUROSHIMA.Info.Origin"}}
+                    {{#if background.origin}}
+                    <a class="bg-holder-delete-inline" data-action="deleteItem" data-item-id="{{background.origin.id}}" title="{{localize 'Delete'}}">✕</a>
+                    {{/if}}
+                </label>
                 {{#if background.origin}}
                 <div class="bg-holder-item" data-item-id="{{background.origin.id}}" data-action="editItem" title="{{background.origin.name}}">
                     <span class="bg-holder-name">{{background.origin.name}}</span>
@@ -27,7 +37,12 @@
                 {{/if}}
             </div>
             <div class="header-field bg-holder-field" data-slot-type="profession">
-                <label>{{localize "NEUROSHIMA.Info.Profession"}}</label>
+                <label>
+                    {{localize "NEUROSHIMA.Info.Profession"}}
+                    {{#if background.profession}}
+                    <a class="bg-holder-delete-inline" data-action="deleteItem" data-item-id="{{background.profession.id}}" title="{{localize 'Delete'}}">✕</a>
+                    {{/if}}
+                </label>
                 {{#if background.profession}}
                 <div class="bg-holder-item" data-item-id="{{background.profession.id}}" data-action="editItem" title="{{background.profession.name}}">
                     <span class="bg-holder-name">{{background.profession.name}}</span>
@@ -36,6 +51,7 @@
                 <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
                 {{/if}}
             </div>
+
         </div>
 
         <div class="xp-row-container">

@@ -420,13 +420,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     context.itemTest = item.system.tests?.value ?? "";
 
-    context.itemEffects = item.effects.map(e => ({
-      id: e.id,
-      name: e.name,
-      icon: e.img || "icons/svg/aura.svg",
-      disabled: e.disabled,
-      durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
-    }));
+    context.itemEffects = item.effects.map(e => {
+      const hasEnableScript = !!(e.getFlag?.("neuroshima", "enableScript"));
+      return {
+        id: e.id,
+        name: e.name,
+        icon: e.img || "icons/svg/aura.svg",
+        disabled: e.disabled,
+        suppressed: hasEnableScript && e.isSuppressed,
+        scriptControlled: hasEnableScript,
+        durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+      };
+    });
 
     game.neuroshima.log(`Item Sheet Context prepared for ${item.name}`, context);
 
@@ -454,7 +459,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   async _onToggleEffect(event, target) {
     const id = target.dataset.effectId ?? target.closest("[data-effect-id]")?.dataset.effectId;
     const effect = this.document.effects.get(id);
-    if (effect) await effect.update({ disabled: !effect.disabled });
+    if (!effect) return;
+    if (effect.getFlag("neuroshima", "enableScript")) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Effects.ScriptControlledWarn"));
+      return;
+    }
+    await effect.update({ disabled: !effect.disabled });
   }
 
   async _onSaveItemTest(event, target) {

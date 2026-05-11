@@ -162,6 +162,7 @@
             "Modifier": "Modifier",
             "Armor": "Armor",
             "Wounds": "Wounds",
+            "Disease": "Disease",
             "Summary": "Summary",
             "TotalModifier": "Total Modifier",
             "DialogModifiers": "Dialog Modifiers",
@@ -802,6 +803,10 @@
             "StatusReversed": "Damage has been reversed by GM.",
             "WeaponIsJammed": "Weapon is jammed! Clear the jam first."
         },
+        "Tricks": {
+            "Placeholder": "Your Tricks (coming soon)",
+            "SectionTitle": "Tricks"
+        },
         "Traits": {
             "Label": "Traits",
             "FromOrigin": "Traits from Origin",
@@ -966,26 +971,6 @@
                 "Money": "Currency",
                 "Reputation": "Reputation",
                 "Disease": "Disease"
-            },
-            "Disease": {
-                "StateLabel": "Disease State",
-                "CurrentState": "Current State",
-                "DaysInState": "Days in State",
-                "Medication": "Medication",
-                "MedicationName": "Medication Name",
-                "IsTaking": "Taking Meds",
-                "StateDescription": "Description",
-                "StateDescriptionHint": "Describe symptoms…",
-                "Penalties": "Penalties",
-                "TestModifier": "Test Difficulty Modifier (%)",
-                "TestModifierAbbr": "Test%",
-                "State": {
-                    "None": "Healthy",
-                    "FirstSymptoms": "First Symptoms",
-                    "Acute": "Acute State",
-                    "Critical": "Critical State",
-                    "Terminal": "Terminal State"
-                }
             },
             "Empty": "No items.",
             "Fields": {
@@ -1346,10 +1331,17 @@
             "Empty": "No active effects",
             "Enable": "Enable",
             "Disable": "Disable",
+            "ScriptControlled": "This effect is controlled by an Enable Script and cannot be manually toggled",
+            "ScriptControlledWarn": "This effect is controlled by an Enable Script and cannot be manually toggled.",
+            "ConditionClickHint": "LMB +1 / RMB -1 / CTRL±10",
             "Conditions": "Conditions",
             "Temporary": "Temporary Effects",
             "Passive": "Passive Effects",
             "DisabledGroup": "Disabled Effects",
+            "DiseaseGroup": "Diseases",
+            "DiseaseItemsGroup": "Diseases",
+            "TransientDiseaseItemsGroup": "Transient Diseases",
+            "DiseaseEffectsGroup": "Disease Effects",
             "StatusGroup": "Status Effects",
             "DurationHeader": "Duration",
             "NewEffect": "New Effect",
@@ -1555,6 +1547,34 @@
                 "Label": "How many times can this item be taken? (empty = unlimited)",
                 "Confirm": "Confirm",
                 "Cancel": "Cancel"
+            }
+        },
+        "Disease": {
+            "Label": "Disease",
+            "TypeLabel": "Disease Type",
+            "Type": {
+                "Chronic": "Chronic Disease",
+                "Transient": "Transient Disease",
+                "ChronicShort": "Chronic",
+                "TransientShort": "Transient"
+            },
+            "TransientPenalty": "Penalty",
+            "StateLabel": "Disease State",
+            "CurrentState": "Current State",
+            "DaysInState": "Days in State",
+            "Medication": "Medication",
+            "MedicationName": "Medication Name",
+            "IsTaking": "Taking Meds",
+            "StateDescription": "Description",
+            "StateDescriptionHint": "Describe symptoms…",
+            "DotsTooltip": "LMB: increase state | RMB: decrease state",
+            "AEHint": "Penalties for each disease state are defined via Active Effects with an Enable Script checking the current state.",
+            "State": {
+                "None": "Healthy",
+                "FirstSymptoms": "First Symptoms",
+                "Acute": "Acute State",
+                "Critical": "Critical State",
+                "Terminal": "Terminal State"
             }
         }
     },

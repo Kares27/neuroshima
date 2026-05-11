@@ -26,7 +26,7 @@
             <div class="col-controls"></div>
         </div>
         {{#each itemEffects}}
-        <div class="item effect-row flexrow {{#if this.disabled}}disabled{{/if}}" data-effect-id="{{this.id}}">
+        <div class="item effect-row flexrow {{#if this.suppressed}}effect-suppressed{{else}}{{#if this.disabled}}disabled{{/if}}{{/if}}" data-effect-id="{{this.id}}">
             <div class="col-icon">
                 <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
             </div>
@@ -37,9 +37,15 @@
                 <span>{{this.durationLabel}}</span>
             </div>
             <div class="col-controls effect-controls">
+                {{#if this.scriptControlled}}
+                <a class="item-control toggle-control script-lock {{#if this.suppressed}}suppressed{{else}}active{{/if}}" title="{{localize 'NEUROSHIMA.Effects.ScriptControlled'}}">
+                    <i class="fas fa-lock"></i>
+                </a>
+                {{else}}
                 <a class="item-control toggle-control {{#unless this.disabled}}active{{/unless}}" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{#if this.disabled}}{{localize 'NEUROSHIMA.Effects.Enable'}}{{else}}{{localize 'NEUROSHIMA.Effects.Disable'}}{{/if}}">
                     <i class="fas {{#if this.disabled}}fa-toggle-off{{else}}fa-toggle-on{{/if}}"></i>
                 </a>
+                {{/if}}
                 {{#if @root.owner}}
                 <a class="item-control" data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
                     <i class="fas fa-edit"></i>

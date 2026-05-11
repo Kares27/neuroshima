@@ -165,6 +165,7 @@
             "Modifier": "Modyfikator",
             "Armor": "Pancerz",
             "Wounds": "Rany",
+            "Disease": "Choroba",
             "Summary": "Podsumowanie",
             "TotalModifier": "Suma modyfikatorów",
             "DialogModifiers": "Modyfikatory Dialogu",
@@ -741,7 +742,7 @@
         "Tabs": {
             "Attributes": "Współczynniki",
             "Skills": "Umiejętności",
-            "Tricks": "Sztuczki",
+            "Tricks": "Atuty",
             "Combat": "Walka",
             "Inventory": "Ekwipunek",
             "Background": "Tło Postaci",
@@ -826,7 +827,8 @@
             "WeaponIsJammed": "Broń jest zacięta! Najpierw usuń zacięcie."
         },
         "Tricks": {
-            "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)"
+            "Placeholder": "Miejsce na Twoje Sztuczki (w przygotowaniu)",
+            "SectionTitle": "Sztuczki"
         },
         "Traits": {
             "Label": "Cechy",
@@ -993,26 +995,6 @@
                 "Reputation": "Reputacja",
                 "Disease": "Choroba"
             },
-            "Disease": {
-                "StateLabel": "Stan Choroby",
-                "CurrentState": "Aktualny Stan",
-                "DaysInState": "Dni w Stanie",
-                "Medication": "Lekarstwo",
-                "MedicationName": "Nazwa Lekarstwa",
-                "IsTaking": "Zażywa Leki",
-                "StateDescription": "Opis",
-                "StateDescriptionHint": "Opisz objawy…",
-                "Penalties": "Kary",
-                "TestModifier": "Modyfikator Trudności Testów (%)",
-                "TestModifierAbbr": "Test%",
-                "State": {
-                    "None": "Zdrowy",
-                    "FirstSymptoms": "Pierwsze Symptomy",
-                    "Acute": "Stan Ostry",
-                    "Critical": "Stan Krytyczny",
-                    "Terminal": "Stan Terminalny"
-                }
-            },
             "Empty": "Brak przedmiotów.",
             "Fields": {
                 "Weight": "Waga",
@@ -1071,7 +1053,7 @@
                 "RightLeg": "Prawa Noga",
                 "RightLegAbbr": "PN",
                 "Location": "Lokalizacja",
-                "IsHealing": "W trakcie leczenia",
+                "IsHealing": "Leczone",
                 "IsActive": "Aktywna",
                 "Jammed": "Zacięta",
                 "Penalty": "Kara",
@@ -1373,10 +1355,17 @@
             "Empty": "Brak aktywnych efektów",
             "Enable": "Włącz",
             "Disable": "Wyłącz",
+            "ScriptControlled": "Ten efekt jest kontrolowany przez Enable Script i nie może być ręcznie przełączany",
+            "ScriptControlledWarn": "Ten efekt jest kontrolowany przez Enable Script i nie może być ręcznie przełączany.",
+            "ConditionClickHint": "LPM +1 / PPM -1 / CTRL±10",
             "Conditions": "Stany",
             "Temporary": "Efekty tymczasowe",
             "Passive": "Efekty pasywne",
             "DisabledGroup": "Efekty wyłączone",
+            "DiseaseItemsGroup": "Choroby",
+            "TransientDiseaseItemsGroup": "Choroby Przejściowe",
+            "DiseaseEffectsGroup": "Efekty Chorób",
+            "DiseaseGroup": "Efekty Chorób",
             "StatusGroup": "Stany",
             "DurationHeader": "Długość",
             "NewEffect": "Nowy Efekt",
@@ -1582,6 +1571,34 @@
                 "Label": "Ile razy można zabrać ten przedmiot? (puste = nieskończoność)",
                 "Confirm": "Zatwierdź",
                 "Cancel": "Anuluj"
+            }
+        },
+        "Disease": {
+            "Label": "Choroba",
+            "TypeLabel": "Typ Choroby",
+            "Type": {
+                "Chronic": "Choroba Przewlekła",
+                "Transient": "Choroba Przejściowa",
+                "ChronicShort": "Przewlekła",
+                "TransientShort": "Przejściowa"
+            },
+            "TransientPenalty": "Kara",
+            "StateLabel": "Stan Choroby",
+            "CurrentState": "Aktualny Stan",
+            "DaysInState": "Dni w Stanie",
+            "Medication": "Lekarstwo",
+            "MedicationName": "Nazwa Lekarstwa",
+            "IsTaking": "Zażywa Leki",
+            "StateDescription": "Opis",
+            "StateDescriptionHint": "Opisz objawy…",
+            "DotsTooltip": "LPM: zwiększ stan | PPM: zmniejsz stan",
+            "AEHint": "Kary za poszczególne stany choroby definiuje się przez Aktywne Efekty z Enable Script sprawdzającym aktualny stan.",
+            "State": {
+                "None": "Zdrowy",
+                "FirstSymptoms": "Pierwsze Symptomy",
+                "Acute": "Stan Ostry",
+                "Critical": "Stan Krytyczny",
+                "Terminal": "Stan Terminalny"
             }
         }
     }

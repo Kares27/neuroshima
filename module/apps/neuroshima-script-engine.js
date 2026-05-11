@@ -1627,7 +1627,7 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
+    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
     const rc = dm._rollContext || {};
     const initialDifficulty = liveContext.difficulty ?? rc.difficulty ?? "average";
     const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
@@ -1639,6 +1639,7 @@ export class NeuroshimaScriptRunner {
       skillBonus: 0,
       armorPenalty: 0,
       woundPenalty: 0,
+      diseasePenalty: 0,
       distance: 0,
       distanceModifier: 0,
       difficultyShift: 0,
@@ -1668,6 +1669,7 @@ export class NeuroshimaScriptRunner {
       skillBonus: fields.skillBonus,
       armorDelta: fields.armorPenalty,
       woundDelta: fields.woundPenalty,
+      diseasePenalty: fields.diseasePenalty,
       distanceDelta: fields.distance,
       distanceModifierDelta: fields.distanceModifier,
       difficultyShift: fields.difficultyShift || 0,
@@ -1971,14 +1973,24 @@ export class NeuroshimaScriptRunner {
     const scripts = [];
     if (!actor) return scripts;
 
-    const collectFromEffect = (effect, skipSuppressedCheck = false) => {
+    const _diseaseStates = ["none", "firstSymptoms", "acute", "critical", "terminal"];
+    const getDiseases         = (a = actor) => (a?.items ?? []).filter(i => i.type === "disease").map(i => ({ id: i.id, name: i.name, diseaseType: i.system?.diseaseType ?? "chronic", currentState: i.system?.currentState ?? "none", transientPenalty: i.system?.transientPenalty ?? 0 }));
+    const getDisease          = (a = actor) => (a?.items ?? []).find(i => i.type === "disease") ?? null;
+    const getDiseaseStateName = (aOrItem = actor) => {
+      if (aOrItem && typeof aOrItem === "object" && aOrItem.documentName === "Item") return aOrItem.system?.currentState ?? "none";
+      return getDisease(aOrItem)?.system?.currentState ?? "none";
+    };
+    const getDiseaseStateId   = (aOrItem = actor) => { const s = getDiseaseStateName(aOrItem); const i = _diseaseStates.indexOf(s); return i < 0 ? 0 : i; };
+
+    const collectFromEffect = (effect, skipSuppressedCheck = false, sourceItem = null) => {
       if (!skipSuppressedCheck && effect.isSuppressed) return;
       const isDisabled = effect.disabled;
       const enableScript = effect.getFlag?.("neuroshima", "enableScript");
       if (enableScript) {
         try {
-          const fn = new Function("actor", "effect", enableScript);
-          if (!fn(actor, effect)) return;
+          const thisCtx = { actor, item: sourceItem };
+          const fn = new Function("actor", "effect", "item", "getDisease", "getDiseases", "getDiseaseStateName", "getDiseaseStateId", enableScript);
+          if (!fn.call(thisCtx, actor, effect, sourceItem, getDisease, getDiseases, getDiseaseStateName, getDiseaseStateId)) return;
         } catch (e) {
           console.error(`Neuroshima | enableScript error on "${effect.name}":`, e);
         }
@@ -2009,7 +2021,7 @@ export class NeuroshimaScriptRunner {
           game.neuroshima?.log?.(`[getScripts:${trigger}] POMINIĘTY efekt "${effect.name}" na item "${item.name}" (equipTransfer=true, unequipped)`);
           continue;
         }
-        collectFromEffect(effect, true);
+        collectFromEffect(effect, true, item);
       }
     }
 
@@ -2126,7 +2138,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, difficulty: null, hitLocation: null, difficultyShift: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
 
@@ -2184,7 +2196,7 @@ export class NeuroshimaScriptRunner {
       });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -2204,6 +2216,7 @@ export class NeuroshimaScriptRunner {
       scriptFields.skillBonus += result.skillBonus || 0;
       scriptFields.armorDelta += result.armorDelta || 0;
       scriptFields.woundDelta += result.woundDelta || 0;
+      scriptFields.diseasePenalty += result.diseasePenalty || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
       if (result.difficulty) scriptFields.difficulty = result.difficulty;
       if (result.hitLocation) scriptFields.hitLocation = result.hitLocation;

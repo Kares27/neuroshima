@@ -27,6 +27,7 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
       modifier: lastRoll.modifier || 0,
       useArmorPenalty: lastRoll.useArmorPenalty ?? true,
       useWoundPenalty: lastRoll.useWoundPenalty ?? true,
+      useDiseasePenalty: lastRoll.useDiseasePenalty ?? true,
       isOpen: lastRoll.isOpen ?? true,
       rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode"),
       currentAttribute: options.currentAttribute || ""
@@ -37,7 +38,7 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     this.selectedModifierIds = new Set();
     this.unselectedModifierIds = new Set();
     this._dialogModifiers = [];
-    this._scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, difficulty: null, hitLocation: null };
+    this._scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, difficulty: null, hitLocation: null };
     this._breakdown = { mod: [], attr: [], skill: [] };
     this._userValues = { modifier: 0, attributeBonus: 0, skillBonus: 0 };
   }
@@ -81,11 +82,18 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     return parts.join("<br>");
   }
 
+  _computeActorDiseasePenalty() {
+    return (this.actor?.items ?? [])
+      .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
+      .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
+  }
+
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
 
     const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
     const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
+    const actorDiseasePenalty = this._computeActorDiseasePenalty();
 
     const userModifier    = this.userEntry.modifier       ?? this.rollOptions.modifier    ?? 0;
     const userAttrBonus   = this.userEntry.attributeBonus ?? 0;
@@ -93,8 +101,9 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     const baseDifficulty  = this.userEntry.baseDifficulty ?? this.rollOptions.baseDifficulty ?? "average";
     const isOpenRaw       = this.userEntry.isOpen         ?? this.rollOptions.isOpen ?? true;
     const isOpen          = isOpenRaw === true || isOpenRaw === "true";
-    const useArmorPenalty = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? true;
-    const useWoundPenalty = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
+    const useArmorPenalty   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? true;
+    const useWoundPenalty   = this.userEntry.useWoundPenalty   ?? this.rollOptions.useWoundPenalty   ?? true;
+    const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
     const rollMode        = this.userEntry.rollMode        ?? this.rollOptions.rollMode;
     const currentAttribute = this.userEntry.attribute      ?? this.rollOptions.currentAttribute ?? "";
 
@@ -127,19 +136,21 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     context.skillBonus     = userSkillBonus + scriptFields.skillBonus;
     context.armorPenalty   = actorArmorPenalty + scriptFields.armorDelta;
     context.woundPenalty   = actorWoundPenalty + scriptFields.woundDelta;
+    context.diseasePenalty  = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
 
     let effectDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
       ? scriptFields.difficulty : baseDifficulty;
     if (scriptFields.difficultyShift) {
       effectDifficulty = NeuroshimaScriptRunner.shiftDifficultyKey(effectDifficulty, scriptFields.difficultyShift);
     }
-    context.baseDifficulty = effectDifficulty;
-    context.isOpen          = isOpen;
-    context.useArmorPenalty = useArmorPenalty;
-    context.useWoundPenalty = useWoundPenalty;
-    context.rollMode        = rollMode;
-    context.rollModes       = CONFIG.Dice.rollModes;
-    context.dialogModifiers = dialogModifiers;
+    context.baseDifficulty   = effectDifficulty;
+    context.isOpen           = isOpen;
+    context.useArmorPenalty  = useArmorPenalty;
+    context.useWoundPenalty  = useWoundPenalty;
+    context.useDiseasePenalty = useDiseasePenalty;
+    context.rollMode         = rollMode;
+    context.rollModes        = CONFIG.Dice.rollModes;
+    context.dialogModifiers  = dialogModifiers;
 
     return context;
   }
@@ -224,11 +235,12 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     set('skillBonus',     this._buildTooltip(uv.skillBonus,     sf.skillBonus,     bd.skill));
 
     const sign = v => v >= 0 ? `+${v}` : `${v}`;
-    const actorArmor = this.actor.system.combat?.totalArmorPenalty || 0;
-    const actorWound = this.actor.system.combat?.totalWoundPenalty || 0;
-    const userLabel = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
-    const effectLabel = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
-    const totalLabel = game.i18n.localize("NEUROSHIMA.Roll.Total");
+    const actorArmor   = this.actor.system.combat?.totalArmorPenalty || 0;
+    const actorWound   = this.actor.system.combat?.totalWoundPenalty || 0;
+    const actorDisease = this._computeActorDiseasePenalty();
+    const userLabel    = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
+    const effectLabel  = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
+    const totalLabel   = game.i18n.localize("NEUROSHIMA.Roll.Total");
     if (sf.armorDelta) {
       set('armorPenalty', `<strong>${userLabel}:</strong> ${sign(actorArmor)}<br><strong>${effectLabel}:</strong> ${sign(sf.armorDelta)}<br><strong>${totalLabel}:</strong> ${sign(actorArmor + sf.armorDelta)}`);
     } else {
@@ -238,6 +250,11 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
       set('woundPenalty', `<strong>${userLabel}:</strong> ${sign(actorWound)}<br><strong>${effectLabel}:</strong> ${sign(sf.woundDelta)}<br><strong>${totalLabel}:</strong> ${sign(actorWound + sf.woundDelta)}`);
     } else {
       set('woundPenalty', null);
+    }
+    if (sf.diseasePenalty) {
+      set('diseasePenalty', `<strong>${userLabel}:</strong> ${sign(actorDisease)}<br><strong>${effectLabel}:</strong> ${sign(sf.diseasePenalty)}<br><strong>${totalLabel}:</strong> ${sign(actorDisease + sf.diseasePenalty)}`);
+    } else {
+      set('diseasePenalty', null);
     }
   }
 
@@ -260,14 +277,17 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     }
     const isOpenRaw       = this.userEntry.isOpen ?? this.rollOptions.isOpen ?? true;
     const isOpen          = isOpenRaw === true || isOpenRaw === "true";
-    const useArmorPenalty = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? true;
-    const useWoundPenalty = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
+    const useArmorPenalty   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? true;
+    const useWoundPenalty   = this.userEntry.useWoundPenalty   ?? this.rollOptions.useWoundPenalty   ?? true;
+    const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
     const currentAttribute = this.userEntry.attribute ?? this.rollOptions.currentAttribute ?? "";
 
-    const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
-    const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
-    const armorPenalty = useArmorPenalty ? (actorArmorPenalty + (sf.armorDelta || 0)) : 0;
-    const woundPenalty = useWoundPenalty ? (actorWoundPenalty + (sf.woundDelta || 0)) : 0;
+    const actorArmorPenalty   = this.actor.system.combat?.totalArmorPenalty || 0;
+    const actorWoundPenalty   = this.actor.system.combat?.totalWoundPenalty || 0;
+    const actorDiseasePenalty = this._computeActorDiseasePenalty();
+    const armorPenalty   = useArmorPenalty   ? (actorArmorPenalty   + (sf.armorDelta   || 0)) : 0;
+    const woundPenalty   = useWoundPenalty   ? (actorWoundPenalty   + (sf.woundDelta   || 0)) : 0;
+    const diseasePenalty = useDiseasePenalty ? (actorDiseasePenalty + (sf.diseasePenalty || 0)) : 0;
 
     const totalSkill = (this.skill || 0) + skillBonus;
     const skillShift = NeuroshimaDice.getSkillShift(totalSkill);
@@ -279,7 +299,7 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     const finalStat = currentStatValue + attrBonus;
 
     const baseDiff = NEUROSHIMA.difficulties[baseDifficulty];
-    const totalPenalty = (baseDiff?.min || 0) + modifier + armorPenalty + woundPenalty;
+    const totalPenalty = (baseDiff?.min || 0) + modifier + armorPenalty + woundPenalty + diseasePenalty;
 
     const penaltyDiff = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
     const finalDiff = NeuroshimaDice._getShiftedDifficulty(penaltyDiff, -skillShift);
@@ -311,15 +331,18 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
       baseDiffKey = NeuroshimaScriptRunner.shiftDifficultyKey(baseDiffKey, sf.difficultyShift);
     }
     const isOpen          = this.userEntry.isOpen ?? this.rollOptions.isOpen ?? true;
-    const useArmor        = this.userEntry.useArmorPenalty ?? this.rollOptions.useArmorPenalty ?? true;
-    const useWound        = this.userEntry.useWoundPenalty ?? this.rollOptions.useWoundPenalty ?? true;
+    const useArmor        = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? true;
+    const useWound        = this.userEntry.useWoundPenalty   ?? this.rollOptions.useWoundPenalty   ?? true;
+    const useDisease      = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
     const rollMode        = this.userEntry.rollMode ?? this.rollOptions.rollMode;
     const currentAttribute = this.userEntry.attribute ?? this.rollOptions.currentAttribute ?? "";
 
-    const actorArmorPenalty = this.actor.system.combat?.totalArmorPenalty || 0;
-    const actorWoundPenalty = this.actor.system.combat?.totalWoundPenalty || 0;
-    const armorPenalty = useArmor ? (actorArmorPenalty + (sf.armorDelta || 0)) : 0;
-    const woundPenalty = useWound ? (actorWoundPenalty + (sf.woundDelta || 0)) : 0;
+    const actorArmorPenalty   = this.actor.system.combat?.totalArmorPenalty || 0;
+    const actorWoundPenalty   = this.actor.system.combat?.totalWoundPenalty || 0;
+    const actorDiseasePenalty = this._computeActorDiseasePenalty();
+    const armorPenalty   = useArmor   ? (actorArmorPenalty   + (sf.armorDelta   || 0)) : 0;
+    const woundPenalty   = useWound   ? (actorWoundPenalty   + (sf.woundDelta   || 0)) : 0;
+    const diseasePenalty = useDisease ? (actorDiseasePenalty + (sf.diseasePenalty || 0)) : 0;
 
     const submissionOptions = {};
     for (const dm of this._dialogModifiers) {
@@ -338,6 +361,7 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
         baseDifficulty: baseDiffKey,
         useArmorPenalty: useArmor,
         useWoundPenalty: useWound,
+        useDiseasePenalty: useDisease,
         isOpen: isOpen === true || isOpen === "true",
         rollMode
       }
@@ -352,7 +376,8 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
         mod: combinedModifier,
         base: (NEUROSHIMA.difficulties[baseDiffKey]?.min || 0),
         armor: armorPenalty,
-        wounds: woundPenalty
+        wounds: woundPenalty,
+        disease: diseasePenalty
       },
       isOpen: isOpen === true || isOpen === "true",
       label: this.label,
