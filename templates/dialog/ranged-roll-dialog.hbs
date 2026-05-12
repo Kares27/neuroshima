@@ -20,6 +20,7 @@
                 </div>
                 <input type="number" name="woundPenalty" value="{{#if applyWoundPenalty}}{{woundPenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
             </div>
+            {{#if showDiseasePenalty}}
             <div class="form-group">
                 <div class="checkbox-wrapper">
                     <input type="checkbox" name="useDiseasePenalty" {{checked useDiseasePenalty}}/>
@@ -27,6 +28,7 @@
                 </div>
                 <input type="number" name="diseasePenalty" value="{{#if useDiseasePenalty}}{{diseasePenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
             </div>
+            {{/if}}
             <div class="form-group">
                 <label title="{{localize 'NEUROSHIMA.Roll.SkillBonus'}}">{{localize "NEUROSHIMA.Roll.SkillBonusAbbr"}}</label>
                 <input type="number" name="skillBonus" value="{{skillBonus}}" placeholder="0"/>
@@ -35,6 +37,16 @@
                 <label title="{{localize 'NEUROSHIMA.Roll.AttributeBonus'}}">{{localize "NEUROSHIMA.Roll.AttributeBonusAbbr"}}</label>
                 <input type="number" name="attributeBonus" value="{{attributeBonus}}" placeholder="0"/>
             </div>
+            {{#if (eq rollType "ranged")}}
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.Distance"}} (m)</label>
+                <input type="number" name="distance" id="distance-input" value="{{distance}}" step="0.1" min="0"/>
+            </div>
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.DistancePenaltyFull'}}">{{localize "NEUROSHIMA.Roll.DistancePenalty"}} (%)</label>
+                <input type="number" name="distancePenalty" id="distance-penalty-input" value="{{distancePenalty}}" placeholder="0"/>
+            </div>
+            {{/if}}
             {{#if crowdingDexPenalty}}
             <div class="form-group">
                 <label>{{localize "NEUROSHIMA.Roll.CrowdingPenalty"}}</label>
@@ -135,19 +147,6 @@
                     {{localize 'NEUROSHIMA.Roll.DifficultyShift'}}: +<span class="tempo-shift">{{tempoLevel}}</span> PT
                 </div>
             </div>
-        </div>
-    </div>
-    {{/if}}
-
-    {{#if (eq rollType "ranged")}}
-    <div class="rd-dropdowns-row">
-        <div class="form-group">
-            <label>{{localize "NEUROSHIMA.Roll.Distance"}} (m)</label>
-            <input type="number" name="distance" id="distance-input" value="{{distance}}" step="0.1" min="0"/>
-        </div>
-        <div class="form-group">
-            <label title="{{localize 'NEUROSHIMA.Roll.DistancePenaltyFull'}}">{{localize "NEUROSHIMA.Roll.DistancePenalty"}} (%)</label>
-            <input type="number" name="distancePenalty" id="distance-penalty-input" value="{{distancePenalty}}" placeholder="0"/>
         </div>
     </div>
     {{/if}}

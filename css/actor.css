@@ -771,10 +771,11 @@
 }
 
 .neuroshima.sheet.actor .combat-weapons-list {
-    flex: 0 0 auto;
+    flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: 102px; /* Fits exactly 2 items (~50px each + borders) */
+    min-height: 0;
+    max-height: 305px;
 }
 
 .neuroshima.sheet.actor .combat-section .section-header.melee-header {
@@ -5989,7 +5990,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima .notes-xp-log-row {
-    flex-shrink: 0;
+    flex: 0 0 220px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     border: 2px solid var(--ns-border-main);
     border-radius: 3px;
     overflow: hidden;
@@ -5997,6 +6001,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima .xp-log-title-header {
     font-family: 'SpecialElite', serif;
+    flex-shrink: 0;
 }
 
 .neuroshima .xp-log-title {
@@ -6015,6 +6020,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima .xp-log-list-header {
     align-items: center;
     font-size: 0.78em;
+    flex-shrink: 0;
 }
 
 .neuroshima .xp-col-date {
@@ -6063,7 +6069,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima .xp-log-scroll-body {
-    max-height: 180px;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -6360,6 +6367,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex-direction: column;
     gap: 3px;
     padding-right: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .rep-relation-header,
@@ -6647,4 +6657,108 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.2;
+}
+
+/* ── Grenade item sheet ─────────────────────────────────────────────────── */
+
+.neuroshima .blast-zone-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima .blast-zone-header,
+.neuroshima .blast-zone-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima .blast-zone-header {
+    font-weight: bold;
+    font-size: 0.8em;
+    color: var(--ns-text-dim, rgba(255,255,255,0.55));
+    padding: 2px 0;
+    border-bottom: 1px solid var(--ns-border, rgba(255,255,255,0.15));
+    margin-bottom: 2px;
+}
+
+.neuroshima .blast-zone-col-radius  { flex: 0 0 80px; }
+.neuroshima .blast-zone-col-damage  { flex: 1; }
+.neuroshima .blast-zone-col-knockdown { flex: 0 0 80px; text-align: center; }
+.neuroshima .blast-zone-col-actions { flex: 0 0 32px; text-align: right; }
+
+.neuroshima .blast-zone-row input[type="number"] {
+    width: 100%;
+    padding: 2px 4px;
+    background: var(--ns-input-bg, rgba(0,0,0,0.25));
+    border: 1px solid var(--ns-border, rgba(255,255,255,0.15));
+    border-radius: 3px;
+    color: inherit;
+    font-size: 0.88em;
+}
+
+/* ── Grenade roll dialog ───────────────────────────────────────────────── */
+
+.neuroshima.grenade-roll-dialog .grenade-dist-penalty-row strong {
+    color: var(--color-warm-2, #e5a200);
+}
+
+/* ── Grenade chat card ─────────────────────────────────────────────────── */
+
+.neuroshima .grenade-roll-card .grenade-blast-result {
+    margin-top: 6px;
+}
+
+.neuroshima .grenade-roll-card .grenade-blast-header {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 4px;
+    color: var(--color-warm-2, #e5a200);
+}
+
+.neuroshima .grenade-roll-card .grenade-blast-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    margin-bottom: 6px;
+}
+
+.neuroshima .grenade-roll-card .grenade-blast-table th,
+.neuroshima .grenade-roll-card .grenade-blast-table td {
+    padding: 3px 6px;
+    border: 1px solid var(--ns-border, rgba(255,255,255,0.12));
+    text-align: center;
+}
+
+.neuroshima .grenade-roll-card .grenade-blast-table th {
+    background: rgba(0,0,0,0.25);
+    font-weight: bold;
+    font-size: 0.82em;
+    color: var(--ns-text-dim, rgba(255,255,255,0.6));
+}
+
+.neuroshima .grenade-roll-card .grenade-place-template-row {
+    text-align: center;
+    margin-top: 4px;
+}
+
+.neuroshima .grenade-roll-card .grenade-place-template-btn {
+    background: var(--ns-button-bg, rgba(255,255,255,0.08));
+    border: 1px solid var(--ns-border, rgba(255,255,255,0.2));
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.neuroshima .grenade-roll-card .grenade-place-template-btn:hover {
+    background: var(--ns-button-hover, rgba(255,255,255,0.15));
+}
+
+.neuroshima .grenade-roll-card .grenade-deviation-result .detail-item {
+    display: flex;
+    gap: 6px;
+    font-size: 0.88em;
 }

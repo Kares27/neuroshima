@@ -32,6 +32,7 @@ export class NeuroshimaItem extends Item {
         const wType = foundry.utils.getProperty(data, "system.weaponType");
         if (wType === "ranged") icons.weapon = "systems/neuroshima/assets/img/weapon-ranged.svg";
         else if (wType === "thrown") icons.weapon = "systems/neuroshima/assets/img/weapon-throwable.svg";
+        else if (wType === "grenade") icons.weapon = "systems/neuroshima/assets/img/grenade.svg";
     }
 
     // Ustaw domyślną ikonę, jeśli nie została podana lub jest domyślnym bagiem (a nie powinna dla tego typu)
@@ -79,6 +80,11 @@ export class NeuroshimaItem extends Item {
             action: "thrown",
             label: game.i18n.localize("NEUROSHIMA.Items.Type.WeaponThrown"),
             callback: (event, button, dialog) => "thrown"
+          },
+          {
+            action: "grenade",
+            label: game.i18n.localize("NEUROSHIMA.Items.Type.WeaponGrenade"),
+            callback: (event, button, dialog) => "grenade"
           }
         ],
         classes: ["neuroshima", "dialog-vertical"],
@@ -93,7 +99,11 @@ export class NeuroshimaItem extends Item {
         if (!currentImg || currentImg === "icons/svg/item-bag.svg" || currentImg === "systems/neuroshima/assets/img/weapon-melee.svg") {
             if (weaponType === "ranged") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-ranged.svg";
             else if (weaponType === "thrown") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-throwable.svg";
+            else if (weaponType === "grenade") weaponUpdates.img = "systems/neuroshima/assets/img/grenade.svg";
             else weaponUpdates.img = "systems/neuroshima/assets/img/weapon-melee.svg";
+        }
+        if (weaponType === "grenade") {
+          weaponUpdates.name = game.i18n.localize("NEUROSHIMA.Items.Type.WeaponGrenade");
         }
         
         this.updateSource(weaponUpdates);

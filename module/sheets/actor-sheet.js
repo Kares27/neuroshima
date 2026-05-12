@@ -9,6 +9,7 @@ import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { CombatHelper } from "../helpers/combat-helper.js";
 import { getConditions } from "../apps/condition-config.js";
 import { TraitChoiceDialog } from "../apps/trait-choice-dialog.js";
+import { NeuroshimaGrenadeRollDialog } from "../apps/grenade-roll-dialog.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -195,7 +196,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     context.inventory = {
       weaponsMelee: items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
       weaponsRanged: items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
-      weaponsThrown: items.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
+      weaponsThrown: items.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
       armor: items.filter(i => i.type === "armor"),
       gear: items.filter(i => i.type === "gear"),
       ammo: items.filter(i => i.type === "ammo"),
@@ -323,7 +324,8 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
     const canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
     context.combat = {
       armor: items.filter(i => i.type === "armor" && i.system.equipped),
-      weaponsRanged: weapons.filter(w => w.type === "ranged" || w.type === "thrown"),
+      weapons: weapons,
+      weaponsRanged: weapons.filter(w => w.type === "ranged" || w.type === "thrown" || w.type === "grenade"),
       weaponsMelee: weapons.filter(w => w.type === "melee"),
       canUnjam,
       wounds: context.wounds,
@@ -1723,6 +1725,14 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
    */
   async _onEditImage(event, target) {
     const actor = this.document;
+    const tokenizerMod = game.modules.get("tokenizer");
+    if (tokenizerMod?.active) {
+      if (typeof TokenizerManager !== "undefined" && TokenizerManager.tokenizeActor) {
+        return TokenizerManager.tokenizeActor(actor);
+      }
+      if (tokenizerMod.api?.launch) return tokenizerMod.api.launch(actor);
+      if (tokenizerMod.api?.tokenizeActor) return tokenizerMod.api.tokenizeActor(actor);
+    }
     return new FilePicker({
       type: "image",
       current: actor.img,
@@ -1858,6 +1868,12 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
       if (wData.weaponType === "melee") {
         weaponObj.damage = [wData.damageMelee1, wData.damageMelee2, wData.damageMelee3].filter(d => d).join("/");
+      } else if (wData.weaponType === "grenade") {
+        const blastZones = wData.blastZones ?? [];
+        weaponObj.isGrenade = true;
+        weaponObj.freeThrowDistance = wData.freeThrowDistance ?? 10;
+        weaponObj.maxRange = blastZones.length > 0 ? Math.max(...blastZones.map(z => z.radius ?? 0)) : 0;
+        weaponObj.blastZones = blastZones;
       } else {
         // Handle ranged and thrown weapon ammo stats
         let ammoJamming = wData.jamming || 20;
@@ -2302,19 +2318,28 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         }
     }
 
-        const dialog = new NeuroshimaWeaponRollDialog({
-            actor: this.document,
-            weapon: weapon,
-            rollType: (isRanged || isThrown) ? "ranged" : "melee",
-            targets: targetUuids,
-            lastRoll: {
-                ...lastRoll,
-                distance: distance || lastRoll.distance
-            },
-            onClose: () => { this._isRolling = false; }
-        });
-        
-        await dialog.render(true);
+        if (weapon.system.weaponType === "grenade") {
+            const grenadeDialog = new NeuroshimaGrenadeRollDialog({
+                actor: this.document,
+                weapon: weapon,
+                distance: distance || 0,
+                onClose: () => { this._isRolling = false; }
+            });
+            await grenadeDialog.render(true);
+        } else {
+            const dialog = new NeuroshimaWeaponRollDialog({
+                actor: this.document,
+                weapon: weapon,
+                rollType: (isRanged || isThrown) ? "ranged" : "melee",
+                targets: targetUuids,
+                lastRoll: {
+                    ...lastRoll,
+                    distance: distance || lastRoll.distance
+                },
+                onClose: () => { this._isRolling = false; }
+            });
+            await dialog.render(true);
+        }
     } catch (err) {
         game.neuroshima.log("Przerwano rzut bronią lub wystąpił błąd:", err.message);
         this._isRolling = false;

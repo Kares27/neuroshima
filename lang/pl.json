@@ -529,6 +529,21 @@
             "HealingDifficulties": {
                 "Name": "Bazowe trudności leczenia",
                 "Hint": "Konfiguracja bazowych trudności testów leczenia dla każdego typu obrażenia."
+            },
+            "GrenadeConfig": {
+                "Label": "Konfiguracja Granatów",
+                "Title": "Ustawienia Granatów",
+                "Hint": "Skonfiguruj premie do rzutów granatem na podstawie Budowy.",
+                "Saved": "Ustawienia granatów zapisane.",
+                "BonusTiers": "Progi Premii z Budowy",
+                "MinBuild": "Min. Budowa",
+                "MaxBuild": "Maks. Budowa",
+                "Bonus": "Premia (%)",
+                "AddTier": "Dodaj Próg",
+                "RemoveTier": "Usuń",
+                "ThrowParams": "Parametry Rzutu",
+                "BaseRange": "Zasięg Bazowy (m)",
+                "DistanceMultiplier": "Mnożnik Odległości"
             }
         },
         "Errors": {
@@ -976,6 +991,7 @@
                 "WeaponMelee": "Broń Ręczna",
                 "WeaponRanged": "Broń Dystansowa",
                 "WeaponThrown": "Broń Miotana",
+                "WeaponGrenade": "Granat",
                 "Armor": "Pancerz",
                 "Gear": "Ekwipunek",
                 "Trick": "Sztuczka",
@@ -1030,6 +1046,7 @@
                 "Melee": "Walka wręcz",
                 "Ranged": "Broń dystansowa",
                 "Thrown": "Broń miotana",
+                "Weapons": "Broń",
                 "Rating": "Punkty Pancerza",
                 "Durability": "Wytrzymałość",
                 "DurabilityAbbr": "Wytrz.",
@@ -1599,6 +1616,29 @@
                 "Acute": "Stan Ostry",
                 "Critical": "Stan Krytyczny",
                 "Terminal": "Stan Terminalny"
+            }
+        },
+        "Grenade": {
+            "RollTitle": "Rzut Granatem",
+            "ThrowRoll": "Rzut",
+            "ThrowInfo": "Informacje o Rzucie",
+            "Distance": "Dystans",
+            "FreeRange": "Zasięg Darmowy",
+            "MaxRange": "Zasięg Maksymalny",
+            "DistancePenalty": "Kara za Dystans",
+            "FreeThrowDistance": "Zasięg Darmowy (m)",
+            "UseBuildBonus": "Premia z Budowy",
+            "BlastZones": "Strefy Obrażeń",
+            "AddZone": "Dodaj Strefę",
+            "RemoveZone": "Usuń Strefę",
+            "NoZones": "Brak stref obrażeń",
+            "PlaceTemplate": "Umieść Szablon",
+            "FailureMargin": "Margines Porażki",
+            "Deviation": "Odchylenie",
+            "Zone": {
+                "Radius": "Promień (m)",
+                "Damage": "Obrażenia",
+                "Knockdown": "Przewrócenie"
             }
         }
     }

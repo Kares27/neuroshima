@@ -38,7 +38,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       toggleResourceSummary: NeuroshimaItemSheet.prototype._onToggleResourceSummary,
       toggleResourceUnclamped: NeuroshimaItemSheet.prototype._onToggleResourceUnclamped,
       addRelationRow: NeuroshimaItemSheet.prototype._onAddRelationRow,
-      deleteRelationRow: NeuroshimaItemSheet.prototype._onDeleteRelationRow
+      deleteRelationRow: NeuroshimaItemSheet.prototype._onDeleteRelationRow,
+      addBlastZone: NeuroshimaItemSheet.prototype._onAddBlastZone,
+      removeBlastZone: NeuroshimaItemSheet.prototype._onRemoveBlastZone
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -256,6 +258,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.attributes = NEUROSHIMA.attributes;
     context.damageTypes = NEUROSHIMA.damageTypes;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
+    context.grenadeTypes = NEUROSHIMA.grenadeTypes;
     context.locations = NEUROSHIMA.locations;
     context.vehicleLocations    = NEUROSHIMA.vehicleLocations;
     context.vehicleDamageTypes  = NEUROSHIMA.vehicleDamageTypes;
@@ -645,6 +648,25 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const table = Array.from(item.system.relationTable ?? []);
     table.splice(idx, 1);
     await item.update({ "system.relationTable": table });
+  }
+
+  async _onAddBlastZone(event, target) {
+    const item = this.document;
+    if (item.type !== "weapon" || item.system.weaponType !== "grenade") return;
+    const zones = foundry.utils.deepClone(item.system.blastZones ?? []);
+    const maxRadius = zones.reduce((m, z) => Math.max(m, z.radius ?? 0), 0);
+    zones.push({ radius: maxRadius + 1, damage: "L", knockdown: false });
+    await item.update({ "system.blastZones": zones });
+  }
+
+  async _onRemoveBlastZone(event, target) {
+    const item = this.document;
+    if (item.type !== "weapon" || item.system.weaponType !== "grenade") return;
+    const idx = parseInt(target.dataset.zoneIndex ?? "-1");
+    if (idx < 0) return;
+    const zones = foundry.utils.deepClone(item.system.blastZones ?? []);
+    zones.splice(idx, 1);
+    await item.update({ "system.blastZones": zones });
   }
 
   /**

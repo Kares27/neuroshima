@@ -1,0 +1,134 @@
+<div class="neuroshima roll-card"
+    data-actor-id="{{actorId}}"
+    data-weapon-id="{{weaponId}}">
+
+    <header class="roll-header">
+        <div class="actor-image-container"
+            data-tooltip="{{neuroshimaRollTooltip this}}"
+            data-tooltip-direction="LEFT">
+            <img src="{{actorImg}}" width="32" height="32" />
+        </div>
+        <div class="header-details">
+            <div class="weapon-title">{{label}}</div>
+            <div class="test-info">
+                {{localize difficultyLabel}}
+                {{localize "NEUROSHIMA.Roll.ClosedTest"}}
+                {{localize "NEUROSHIMA.Roll.On"}} {{localize "NEUROSHIMA.Grenade.ThrowRoll"}}
+            </div>
+        </div>
+    </header>
+
+    <hr class="dotted-hr">
+
+    <div class="weapon-details">
+        <div class="detail-item">
+            <span class="label">{{localize "NEUROSHIMA.Grenade.Distance"}}:</span>
+            <span class="value"><strong>{{distance}}m</strong></span>
+        </div>
+        {{#if distancePenalty}}
+        <div class="detail-item"
+            data-tooltip="{{localize 'NEUROSHIMA.Roll.DistancePenaltyFull'}}"
+            data-tooltip-direction="RIGHT">
+            <span class="label">{{localize "NEUROSHIMA.Roll.DistancePenalty"}}:</span>
+            <span class="value"><strong>{{distancePenalty}}%</strong></span>
+        </div>
+        {{/if}}
+        {{#if totalPenalty}}
+        <div class="detail-item"
+            data-tooltip="{{localize 'NEUROSHIMA.Roll.TotalModifier'}}"
+            data-tooltip-direction="RIGHT">
+            <span class="label">{{localize "NEUROSHIMA.Roll.TotalModifier"}}:</span>
+            <span class="value"><strong>{{totalPenalty}}%</strong></span>
+        </div>
+        {{/if}}
+        <div class="detail-item"
+            data-tooltip="{{localize 'NEUROSHIMA.Roll.Target'}}"
+            data-tooltip-direction="RIGHT">
+            <span class="label">{{localize "NEUROSHIMA.Roll.Target"}}:</span>
+            <span class="value"><strong>{{target}}</strong></span>
+        </div>
+    </div>
+
+    <div class="dice-results-grid">
+        {{#each modifiedResults}}
+            <div class="die-result {{#if this.ignored}}ignored{{/if}}">
+                <span class="die-label">D{{add @index 1}} = </span>
+                <div class="die-square-container">
+                    <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}}">
+                        {{this.original}}
+                    </span>
+                    {{#if (gt ../skill 0)}}
+                        <i class="fas fa-long-arrow-alt-right"></i>
+                        <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
+                            {{this.modified}}
+                        </span>
+                    {{/if}}
+                </div>
+            </div>
+        {{/each}}
+    </div>
+
+    <hr class="dotted-hr">
+
+    {{#if isSuccess}}
+    <div class="grenade-blast-result">
+        <div class="grenade-blast-header">
+            <i class="fas fa-bomb"></i> {{localize "NEUROSHIMA.Grenade.BlastZones"}}
+        </div>
+        {{#if blastZones.length}}
+        <table class="grenade-blast-table">
+            <thead>
+                <tr>
+                    <th>{{localize "NEUROSHIMA.Grenade.Zone.Radius"}}</th>
+                    <th>{{localize "NEUROSHIMA.Grenade.Zone.Damage"}}</th>
+                    <th>{{localize "NEUROSHIMA.Grenade.Zone.Knockdown"}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each blastZones}}
+                <tr>
+                    <td>{{this.radius}}m</td>
+                    <td><strong>{{this.damage}}</strong></td>
+                    <td>{{#if this.knockdown}}<i class="fas fa-check" style="color: var(--color-warm-3);"></i>{{else}}—{{/if}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        {{/if}}
+
+        {{#if templateRadius}}
+        <div class="grenade-place-template-row">
+            <button class="grenade-place-template-btn" data-action="placeGrenadeTemplate"
+                    data-radius="{{templateRadius}}"
+                    data-actor-id="{{actorId}}">
+                <i class="fas fa-circle-notch"></i>
+                {{localize "NEUROSHIMA.Grenade.PlaceTemplate"}} ({{templateRadius}}m)
+            </button>
+        </div>
+        {{/if}}
+    </div>
+    {{else}}
+    <div class="grenade-deviation-result">
+        <div class="detail-item">
+            <span class="label">{{localize "NEUROSHIMA.Grenade.FailureMargin"}}:</span>
+            <span class="value"><strong>{{failureMargin}}</strong></span>
+        </div>
+        <div class="detail-item">
+            <span class="label">{{localize "NEUROSHIMA.Grenade.Deviation"}}:</span>
+            <span class="value"><strong>{{deviationMetres}}m</strong></span>
+        </div>
+    </div>
+    {{/if}}
+
+    <footer class="roll-outcome {{#if isSuccess}}success{{else}}failure{{/if}}">
+        <div class="outcome-item roll-status">
+            <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
+            <span class="value"><strong>{{successCount}}</strong></span>
+        </div>
+        <div class="outcome-item">
+            <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">
+                <strong>{{#if isCritSuccess}}{{localize "NEUROSHIMA.Roll.CritSuccess"}}{{else if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else if isCritFailure}}{{localize "NEUROSHIMA.Roll.CritFailure"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
+            </span>
+        </div>
+    </footer>
+</div>

@@ -526,6 +526,21 @@
             "HealingDifficulties": {
                 "Name": "Base healing difficulties",
                 "Hint": "Configuration of base difficulty levels for healing tests by damage type."
+            },
+            "GrenadeConfig": {
+                "Label": "Grenade Configuration",
+                "Title": "Grenade Settings",
+                "Hint": "Configure throw bonuses based on Constitution attribute.",
+                "Saved": "Grenade settings saved.",
+                "BonusTiers": "Constitution Bonus Tiers",
+                "MinBuild": "Min. Build",
+                "MaxBuild": "Max. Build",
+                "Bonus": "Bonus (%)",
+                "AddTier": "Add Tier",
+                "RemoveTier": "Remove",
+                "ThrowParams": "Throw Parameters",
+                "BaseRange": "Base Range (m)",
+                "DistanceMultiplier": "Distance Multiplier"
             }
         },
         "Errors": {
@@ -953,6 +968,7 @@
                 "WeaponMelee": "Melee Weapon",
                 "WeaponRanged": "Ranged Weapon",
                 "WeaponThrown": "Thrown Weapon",
+                "WeaponGrenade": "Grenade",
                 "Armor": "Armor",
                 "Gear": "Gear",
                 "Trick": "Trick",
@@ -1007,6 +1023,7 @@
                 "Melee": "Melee",
                 "Ranged": "Ranged",
                 "Thrown": "Thrown",
+                "Weapons": "Weapons",
                 "Rating": "Armor Points",
                 "Durability": "Durability",
                 "DurabilityAbbr": "Dur.",
@@ -1575,6 +1592,29 @@
                 "Acute": "Acute State",
                 "Critical": "Critical State",
                 "Terminal": "Terminal State"
+            }
+        },
+        "Grenade": {
+            "RollTitle": "Grenade Throw",
+            "ThrowRoll": "Throw",
+            "ThrowInfo": "Throw Info",
+            "Distance": "Distance",
+            "FreeRange": "Free Range",
+            "MaxRange": "Max Range",
+            "DistancePenalty": "Distance Penalty",
+            "FreeThrowDistance": "Free Throw Distance (m)",
+            "UseBuildBonus": "Build Bonus",
+            "BlastZones": "Blast Zones",
+            "AddZone": "Add Zone",
+            "RemoveZone": "Remove Zone",
+            "NoZones": "No blast zones defined",
+            "PlaceTemplate": "Place Template",
+            "FailureMargin": "Failure Margin",
+            "Deviation": "Deviation",
+            "Zone": {
+                "Radius": "Radius (m)",
+                "Damage": "Damage",
+                "Knockdown": "Knockdown"
             }
         }
     },

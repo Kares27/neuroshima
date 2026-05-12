@@ -191,6 +191,7 @@ export class NeuroshimaWeaponRollDialog extends HandlebarsApplicationMixin(Appli
     context.armorPenalty  = actorArmorPenalty + scriptFields.armorDelta;
     context.woundPenalty  = actorWoundPenalty + scriptFields.woundDelta;
     context.diseasePenalty = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
+    context.showDiseasePenalty = context.diseasePenalty > 0;
     context.useDiseasePenalty = useDiseasePenalty;
     context.crowdingDexPenalty = this.crowdingDexPenalty;
 

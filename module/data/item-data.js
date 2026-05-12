@@ -45,9 +45,8 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       weaponType: new fields.StringField({ 
         required: true, 
         initial: "melee", 
-        choices: ["melee", "ranged", "thrown"] 
+        choices: ["melee", "ranged", "thrown", "grenade"] 
       }),
-      requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       attribute: new fields.StringField({ initial: "dexterity" }),
       skill: new fields.StringField({ initial: "brawl" }),
       attackBonus: new fields.NumberField({ integer: true, initial: 0 }),
@@ -67,7 +66,19 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       fireRate: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
-      jammed: new fields.BooleanField({ initial: false })
+      jammed: new fields.BooleanField({ initial: false }),
+
+      // Grenade specific
+      freeThrowDistance: new fields.NumberField({ integer: true, initial: 10, min: 1 }),
+      useBuildBonus: new fields.BooleanField({ initial: true }),
+      blastZones: new fields.ArrayField(
+        new fields.SchemaField({
+          radius:    new fields.NumberField({ integer: true, initial: 1, min: 1 }),
+          damage:    new fields.StringField({ initial: "L" }),
+          knockdown: new fields.BooleanField({ initial: false })
+        }),
+        { initial: [] }
+      )
     };
   }
 }

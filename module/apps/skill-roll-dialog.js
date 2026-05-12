@@ -137,6 +137,7 @@ export class NeuroshimaSkillRollDialog extends HandlebarsApplicationMixin(Applic
     context.armorPenalty   = actorArmorPenalty + scriptFields.armorDelta;
     context.woundPenalty   = actorWoundPenalty + scriptFields.woundDelta;
     context.diseasePenalty  = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
+    context.showDiseasePenalty = context.diseasePenalty > 0;
 
     let effectDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
       ? scriptFields.difficulty : baseDifficulty;

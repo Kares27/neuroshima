@@ -123,16 +123,21 @@
                 </div>
             </section>
 
-            {{!-- Combined Weapons Section --}}
+            {{!-- Unified Weapons Section --}}
             <section class="combat-section weapons-section">
-                {{!-- Ranged Weapons Group --}}
-                <div class="weapons-group ranged">
-                    <div class="section-header">
-                        <i class="fas fa-crosshairs"></i>
-                        <span>{{localize "NEUROSHIMA.Items.Fields.Ranged"}}</span>
+                <div class="weapons-group all-weapons">
+                    <div class="section-header melee-header">
+                        <div class="header-left-controls">
+                            <i class="fas fa-fist-raised"></i>
+                            <input type="number" name="system.combat.meleeInitiative" value="{{combat.meleeInitiative}}" class="melee-initiative-input" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}" />
+                            <a class="roll-melee-initiative" data-action="rollMeleeInitiative" title="{{localize 'NEUROSHIMA.MeleeOpposed.RollInitiative'}}">
+                                <i class="fas fa-dice"></i>
+                            </a>
+                        </div>
+                        <span class="header-label">{{localize "NEUROSHIMA.Items.Fields.Weapons"}}</span>
                     </div>
                     <div class="combat-weapons-list">
-                        {{#each combat.weaponsRanged as |weapon|}}
+                        {{#each combat.weapons as |weapon|}}
                         <div class="equipment-item weapon-item-clickable item" data-item-id="{{weapon.id}}" data-uuid="{{weapon.uuid}}" draggable="true">
                             {{#if weapon.jammed}}
                             {{#if ../combat.canUnjam}}
@@ -148,6 +153,36 @@
                             <img src="{{weapon.img}}" class="weapon-icon" alt="{{weapon.name}}">
                             <div class="weapon-info-column">
                                 <div class="weapon-name-rollable clickable" data-action="rollWeapon">{{weapon.name}}</div>
+                                {{#if weapon.isGrenade}}
+                                <div class="weapon-stats-row">
+                                    <span class="stat-item">
+                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Grenade.FreeThrowDistance"}}">{{localize "NEUROSHIMA.Grenade.FreeRange"}}:</span>
+                                        <span class="stat-value">{{weapon.freeThrowDistance}}m</span>
+                                    </span>
+                                    <span class="stat-separator">|</span>
+                                    <span class="stat-item">
+                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Grenade.MaxRange"}}">Max:</span>
+                                        <span class="stat-value">{{weapon.maxRange}}m</span>
+                                    </span>
+                                </div>
+                                {{else if (eq weapon.type "melee")}}
+                                <div class="weapon-stats-row">
+                                    <span class="stat-item">
+                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Damage"}}">Obr.:</span>
+                                        <span class="stat-value">{{weapon.damage}}</span>
+                                    </span>
+                                    <span class="stat-separator">|</span>
+                                    <span class="stat-item">
+                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.AttackBonus"}}">Atak:</span>
+                                        <span class="stat-value">{{weapon.attack}}</span>
+                                    </span>
+                                    <span class="stat-separator">|</span>
+                                    <span class="stat-item">
+                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.DefenseBonus"}}">Obrona:</span>
+                                        <span class="stat-value">{{weapon.defense}}</span>
+                                    </span>
+                                </div>
+                                {{else}}
                                 <div class="weapon-stats-row">
                                     <span class="stat-item">
                                         <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Damage"}}">Obr.:</span>
@@ -186,51 +221,7 @@
                                     </div>
                                 </div>
                                 {{/if}}
-                            </div>
-                            <div class="weapon-edit-column">
-                                <a class="item-control" data-action="editItem" title="{{localize "NEUROSHIMA.Sheet.Edit"}}">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            </div>
-                        </div>
-                        {{/each}}
-                    </div>
-                </div>
-
-                {{!-- Melee Weapons Group --}}
-                <div class="weapons-group melee">
-                    <div class="section-header melee-header">
-                        <div class="header-left-controls">
-                            <i class="fas fa-fist-raised"></i>
-                            <input type="number" name="system.combat.meleeInitiative" value="{{combat.meleeInitiative}}" class="melee-initiative-input" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}" />
-                            <a class="roll-melee-initiative" data-action="rollMeleeInitiative" title="{{localize 'NEUROSHIMA.MeleeOpposed.RollInitiative'}}">
-                                <i class="fas fa-dice"></i>
-                            </a>
-                        </div>
-                        <span class="header-label">{{localize "NEUROSHIMA.Items.Fields.Melee"}}</span>
-                    </div>
-                    <div class="combat-weapons-list">
-                        {{#each combat.weaponsMelee as |weapon|}}
-                        <div class="equipment-item weapon-item-clickable item" data-item-id="{{weapon.id}}" data-uuid="{{weapon.uuid}}" draggable="true">
-                            <img src="{{weapon.img}}" class="weapon-icon" alt="{{weapon.name}}">
-                            <div class="weapon-info-column">
-                                <div class="weapon-name-rollable clickable" data-action="rollWeapon">{{weapon.name}}</div>
-                                <div class="weapon-stats-row">
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Damage"}}">Obr.:</span>
-                                        <span class="stat-value">{{weapon.damage}}</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.AttackBonus"}}">Atak:</span>
-                                        <span class="stat-value">{{weapon.attack}}</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.DefenseBonus"}}">Obrona:</span>
-                                        <span class="stat-value">{{weapon.defense}}</span>
-                                    </span>
-                                </div>
+                                {{/if}}
                             </div>
                             <div class="weapon-edit-column">
                                 <a class="item-control" data-action="editItem" title="{{localize "NEUROSHIMA.Sheet.Edit"}}">

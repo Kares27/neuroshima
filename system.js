@@ -24,6 +24,7 @@ import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/distan
 import { HealingConfig } from "./module/apps/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/condition-config.js";
 import { ReputationSettingsApp } from "./module/apps/reputation-settings.js";
+import { GrenadeConfig } from "./module/apps/grenade-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-dialog.js";
@@ -342,6 +343,10 @@ Hooks.once('init', async function() {
         if (!str || typeof str !== 'string') return '';
         return str.charAt(0).toUpperCase() + str.slice(1);
     });
+    Handlebars.registerHelper('grenadeMaxRadius', (zones) => {
+        if (!zones || !zones.length) return 0;
+        return Math.max(...zones.map(z => z.radius ?? 0));
+    });
 
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
@@ -630,6 +635,40 @@ Hooks.once('init', async function() {
         restricted: true
     });
 
+    game.settings.registerMenu("neuroshima", "grenadeConfig", {
+        name: "NEUROSHIMA.Settings.GrenadeConfig.Label",
+        label: "NEUROSHIMA.Settings.GrenadeConfig.Title",
+        hint: "NEUROSHIMA.Settings.GrenadeConfig.Hint",
+        icon: "fas fa-bomb",
+        type: GrenadeConfig,
+        restricted: true
+    });
+
+    game.settings.register("neuroshima", "grenadeConstitutionBonuses", {
+        scope: "world",
+        config: false,
+        type: Array,
+        default: [
+            { minBuild: 12, maxBuild: 14, bonus: 10 },
+            { minBuild: 15, maxBuild: 16, bonus: 20 },
+            { minBuild: 17, maxBuild: 99, bonus: 30 }
+        ]
+    });
+
+    game.settings.register("neuroshima", "grenadeBaseRange", {
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 10
+    });
+
+    game.settings.register("neuroshima", "grenadeDistanceMultiplier", {
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 3
+    });
+
     game.settings.register("neuroshima", "reputationTestMode", {
         name: "NEUROSHIMA.Settings.ReputationTestMode.Name",
         hint: "NEUROSHIMA.Settings.ReputationTestMode.Hint",
@@ -824,6 +863,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/weapon-melee.hbs",
         "systems/neuroshima/templates/item/parts/weapon-ranged.hbs",
         "systems/neuroshima/templates/item/parts/weapon-thrown.hbs",
+        "systems/neuroshima/templates/item/parts/weapon-grenade.hbs",
         "systems/neuroshima/templates/item/parts/ammo-details.hbs",
         "systems/neuroshima/templates/item/parts/wound-details.hbs",
         "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",
@@ -882,6 +922,17 @@ Hooks.once('init', async function() {
 Hooks.once("ready", async function () {
     game.neuroshima.log("Tryb debugowania jest WŁĄCZONY");
     console.log("Neuroshima 1.5 | System gotowy");
+
+    const savedGrenadeBonuses = game.settings.get("neuroshima", "grenadeConstitutionBonuses");
+    if (Array.isArray(savedGrenadeBonuses) && savedGrenadeBonuses.length) {
+        NEUROSHIMA.grenadeConstitutionBonuses = savedGrenadeBonuses;
+    }
+
+    const savedGrenadeBaseRange = game.settings.get("neuroshima", "grenadeBaseRange");
+    if (savedGrenadeBaseRange != null) NEUROSHIMA.grenadeBaseRange = savedGrenadeBaseRange;
+
+    const savedGrenadeMultiplier = game.settings.get("neuroshima", "grenadeDistanceMultiplier");
+    if (savedGrenadeMultiplier != null) NEUROSHIMA.grenadeDistanceMultiplier = savedGrenadeMultiplier;
 
     // ── Token PIXI counter for numbered conditions ────────────────────────────
     // Mirrors WFRP4e's FoundryOverrides: override _drawEffects and _drawEffect

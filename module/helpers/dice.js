@@ -2361,6 +2361,140 @@ export class NeuroshimaDice {
   }
 
   /**
+   * Calculate the throw penalty for a grenade at a given distance.
+   * @param {number} distance   - Distance in metres.
+   * @param {number} build      - Thrower's Constitution attribute.
+   * @param {number} [freeRange=10] - Distance (m) with no penalty.
+   * @returns {number} Penalty percentage (positive = harder).
+   */
+  static getGrenadePenalty(distance, build = 0, freeRange = null, useBuildBonus = true) {
+    const cfg = game.neuroshima?.config ?? {};
+    const baseRange = freeRange ?? cfg.grenadeBaseRange ?? 10;
+    const multiplier = cfg.grenadeDistanceMultiplier ?? 3;
+    if (distance <= baseRange) return 0;
+    const rawPenalty = Math.round((distance - baseRange) * multiplier);
+    let buildBonus = 0;
+    if (useBuildBonus) {
+      const { grenadeConstitutionBonuses } = cfg;
+      if (grenadeConstitutionBonuses) {
+        for (const tier of grenadeConstitutionBonuses) {
+          if (build >= tier.minBuild && build <= tier.maxBuild) {
+            buildBonus = tier.bonus;
+            break;
+          }
+        }
+      }
+    }
+    return Math.max(0, rawPenalty - buildBonus);
+  }
+
+  /**
+   * Perform a grenade throw roll.
+   * @param {Object} params
+   * @returns {Promise<Object>} Roll result data
+   */
+  static async rollGrenade(params) {
+    const {
+      actor,
+      weapon,
+      distance = 0,
+      distancePenalty: providedDistancePenalty = null,
+      modifier = 0,
+      scriptModifier = 0,
+      attributeBonus = 0,
+      skillBonus = 0,
+      armorPenalty = 0,
+      useWoundPenalty = true,
+      useDiseasePenalty = true,
+      diseasePenalty: rawDiseasePenalty = 0,
+      rollMode = game.settings.get("core", "rollMode")
+    } = params;
+
+    game.neuroshima.group(`Rzut Granatem: ${weapon.name}`);
+
+    const wData = weapon.system;
+
+    const build = actor.system?.attributes?.constitution ?? 0;
+    const useBuildBonus = wData.useBuildBonus !== false;
+    const distancePenalty = providedDistancePenalty ?? this.getGrenadePenalty(distance, build, null, useBuildBonus);
+
+    const woundPenalty   = useWoundPenalty   ? (actor?.system?.combat?.totalWoundPenalty ?? 0) : 0;
+    const diseasePenalty = useDiseasePenalty  ? rawDiseasePenalty : 0;
+
+    const totalPenalty = modifier + scriptModifier + armorPenalty + woundPenalty + diseasePenalty + distancePenalty;
+
+    const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
+
+    const attributeKey   = wData.attribute || "dexterity";
+    const skillKey       = wData.skill || "throwing";
+    const attributeValue = (actor.system?.attributeTotals?.[attributeKey] ?? actor.system?.attributes?.[attributeKey] ?? 0) + attributeBonus;
+    const skillValue     = (actor.system?.skills?.[skillKey]?.value ?? 0) + skillBonus;
+    const target         = attributeValue + (baseDifficulty?.mod ?? 0);
+
+    game.neuroshima.log("Kalkulacja rzutu granatu", {
+      distance, distancePenalty, armorPenalty, woundPenalty, diseasePenalty, modifier, scriptModifier, totalPenalty, attributeValue, skillValue, target, baseDifficulty: baseDifficulty?.label
+    });
+
+    const roll = new Roll("3d20");
+    await roll.evaluate();
+    const rawResults = roll.dice[0].results.map(r => r.result);
+
+    const dice = rawResults.map((r, i) => ({ original: r, index: i, modified: r }));
+    const rollData = { target, skill: skillValue };
+    this._evaluateClosedTest(rollData, dice);
+
+    const { modifiedResults, successCount, success: isSuccess, isCritSuccess, isCritFailure } = rollData;
+
+    const failureMargin = isSuccess ? 0 : (3 - successCount);
+    const distanceFactor = distance <= 10 ? 1 : Math.ceil(distance / 10);
+    const deviationMetres = isSuccess ? 0 : failureMargin * distanceFactor;
+
+    const blastZones = [...(wData.blastZones ?? [])].sort((a, b) => a.radius - b.radius);
+    const templateRadius = blastZones.length > 0 ? Math.max(...blastZones.map(z => z.radius)) : 0;
+
+    const chatData = {
+      isGrenade: true,
+      actorId: actor.id,
+      weaponId: weapon.id,
+      actorImg: actor.prototypeToken?.texture?.src ?? actor.img,
+      label: weapon.name,
+      difficultyLabel: baseDifficulty?.label ?? "NEUROSHIMA.Difficulty.Average",
+      modifiedResults,
+      successCount,
+      skill: skillValue,
+      totalPenalty,
+      target,
+      isSuccess,
+      isCritSuccess,
+      isCritFailure,
+      failureMargin,
+      deviationMetres,
+      distance,
+      distancePenalty,
+      blastZones,
+      templateRadius,
+      rollMode
+    };
+
+    game.neuroshima.log("Wynik rzutu granatu", chatData);
+
+    const html = await renderTemplate(
+      "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
+      chatData
+    );
+
+    await ChatMessage.create({
+      content: html,
+      speaker: ChatMessage.getSpeaker({ actor }),
+      rollMode,
+      flags: { neuroshima: { grenadeRoll: chatData } }
+    });
+
+    game.neuroshima.groupEnd();
+    return chatData;
+  }
+
+  /**
    * Apply a wound directly to an actor, bypassing pain resistance tests.
    * Creates a wound item on the actor immediately.
    * Useful for scripted effects like Bleeding that deal automatic damage.

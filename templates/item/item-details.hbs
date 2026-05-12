@@ -70,6 +70,10 @@
              {{#if (eq system.weaponType "thrown")}}
                 {{> "systems/neuroshima/templates/item/parts/weapon-thrown.hbs"}}
              {{/if}}
+
+             {{#if (eq system.weaponType "grenade")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-grenade.hbs"}}
+             {{/if}}
         </div>
     {{/if}}
 

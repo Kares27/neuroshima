@@ -1,0 +1,73 @@
+
+    {{!-- Górna sekcja: Atrybut, Umiejętność, Premia z Budowy w jednym wierszu --}}
+    <div class="flexrow grenade-main-stats" style="gap:12px; align-items:flex-end;">
+        <div class="form-group row-group" style="flex:1;">
+            <label>{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
+            <select name="system.attribute">
+                {{selectOptions attributes selected=system.attribute labelAttr="label" localize=true}}
+            </select>
+        </div>
+
+        <div class="form-group row-group" style="flex:1;">
+            <label>{{localize "NEUROSHIMA.Items.Fields.Skill"}}</label>
+            <select name="system.skill">
+                {{selectOptions availableSkills selected=selectedSkill localize=true}}
+            </select>
+        </div>
+
+        <div class="form-group row-group" style="align-items:center; flex:0 0 auto;">
+            <label>{{localize "NEUROSHIMA.Grenade.UseBuildBonus"}}</label>
+            <input type="checkbox" name="system.useBuildBonus" {{#if system.useBuildBonus}}checked{{/if}}/>
+        </div>
+    </div>
+
+    {{!-- Strefy obrażeń --}}
+    <div class="grenade-blast-zones">
+        <div class="section-header inv-section-header" style="margin-bottom:4px;">
+            <span>{{localize "NEUROSHIMA.Grenade.BlastZones"}}</span>
+            {{#if owner}}
+            <div class="item-controls">
+                <a class="item-control" data-action="addBlastZone" title="{{localize 'NEUROSHIMA.Grenade.AddZone'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
+            </div>
+            {{/if}}
+        </div>
+
+        {{#if system.blastZones.length}}
+        <div class="blast-zone-list">
+            <div class="blast-zone-header flexrow">
+                <span class="blast-zone-col-radius">{{localize "NEUROSHIMA.Grenade.Zone.Radius"}}</span>
+                <span class="blast-zone-col-damage">{{localize "NEUROSHIMA.Grenade.Zone.Damage"}}</span>
+                <span class="blast-zone-col-knockdown">{{localize "NEUROSHIMA.Grenade.Zone.Knockdown"}}</span>
+                <span class="blast-zone-col-actions"></span>
+            </div>
+            {{#each system.blastZones as |zone|}}
+            <div class="blast-zone-row flexrow" data-zone-index="{{@index}}">
+                <div class="blast-zone-col-radius">
+                    <input type="number" name="system.blastZones.{{@index}}.radius"
+                           value="{{zone.radius}}" data-dtype="Number" min="1" style="width:100%;"/>
+                </div>
+                <div class="blast-zone-col-damage">
+                    <select name="system.blastZones.{{@index}}.damage">
+                        {{selectOptions ../damageTypes selected=zone.damage localize=true}}
+                    </select>
+                </div>
+                <div class="blast-zone-col-knockdown" style="text-align:center;">
+                    <input type="checkbox" name="system.blastZones.{{@index}}.knockdown"
+                           {{#if zone.knockdown}}checked{{/if}}/>
+                </div>
+                <div class="blast-zone-col-actions" style="text-align:right;">
+                    <a class="item-control" data-action="removeBlastZone" data-zone-index="{{@index}}"
+                       title="{{localize 'NEUROSHIMA.Grenade.RemoveZone'}}">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+        {{else}}
+        <p class="hint" style="text-align:center; opacity:0.6;">{{localize "NEUROSHIMA.Grenade.NoZones"}}</p>
+        {{/if}}
+    </div>
+

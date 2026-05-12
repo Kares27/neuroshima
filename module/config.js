@@ -254,6 +254,17 @@ export const NEUROSHIMA = {
             shotguns: "NEUROSHIMA.WeaponSubtype.shotguns"
         }
     },
+    grenadeTypes: {
+        offensive: "NEUROSHIMA.Grenade.Type.Offensive",
+        defensive: "NEUROSHIMA.Grenade.Type.Defensive"
+    },
+    grenadeConstitutionBonuses: [
+        { minBuild: 12, maxBuild: 14, bonus: 10 },
+        { minBuild: 15, maxBuild: 16, bonus: 20 },
+        { minBuild: 17, maxBuild: 99, bonus: 30 }
+    ],
+    grenadeBaseRange: 10,
+    grenadeDistanceMultiplier: 3,
     burstLabels: [
         "NEUROSHIMA.Roll.BurstSingle",
         "NEUROSHIMA.Roll.BurstShort",
