@@ -1,0 +1,69 @@
+<div class="melee-view-container">
+    {{#each activeMeleeEncounters as |encounter|}}
+    <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{encounter.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.ClickToOpen'}}">
+        <div class="melee-header">
+            <i class="fas fa-swords"></i>
+            {{#if @root.user.isGM}}
+            <div class="duel-controls">
+                <a class="action-btn delete" data-action="delete-duel" data-duel-id="{{encounter.id}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+            {{/if}}
+        </div>
+        <div class="melee-participants">
+            <div class="team team-a">
+                {{#each encounter.teamsData.A}}
+                    <div class="participant-mini">
+                        <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
+                        <span class="participant-name-tiny">{{this.name}}</span>
+                    </div>
+                {{/each}}
+            </div>
+            <div class="vs">VS</div>
+            <div class="team team-b">
+                {{#each encounter.teamsData.B}}
+                    <div class="participant-mini">
+                        <img src="{{this.img}}" class="participant-img-tiny" title="{{this.name}}">
+                        <span class="participant-name-tiny">{{this.name}}</span>
+                    </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+    {{/each}}
+
+    {{#each pendingMeleeDuels as |pending|}}
+    <div class="pending-melee-panel full-view" data-pending-id="{{pending.id}}">
+        <div class="melee-header">
+            <i class="fas fa-hourglass-half"></i> {{localize "NEUROSHIMA.MeleeDuel.Pending"}}
+            <div class="pending-controls">
+                <a class="action-btn dismiss" data-action="dismiss-melee" data-pending-id="{{pending.id}}" title="{{localize 'NEUROSHIMA.Actions.Dismiss'}}">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+        </div>
+        <div class="melee-participants">
+            <span>{{pending.attackerName}}</span>
+            <i class="fas fa-arrow-right"></i>
+            <span>{{pending.defenderName}}</span>
+        </div>
+        <div class="melee-instruction">
+            {{localize "NEUROSHIMA.MeleeDuel.WaitingForDefender"}}
+        </div>
+        {{#if (or @root.user.isGM (eq @root.user.character.uuid pending.defenderId))}}
+        <button type="button" class="join-melee-btn" data-action="join-melee" data-pending-id="{{pending.id}}">
+            <i class="fas fa-check"></i> {{localize "NEUROSHIMA.MeleeOpposed.Join"}}
+        </button>
+        {{/if}}
+    </div>
+    {{/each}}
+
+    {{#if (and (not activeMeleeEncounters.length) (not pendingMeleeDuels.length))}}
+    <div class="no-melee-active">
+        <i class="fas fa-info-circle"></i>
+        <p>{{localize "NEUROSHIMA.MeleeDuel.NoActiveFights"}}</p>
+        <small>{{localize "NEUROSHIMA.MeleeDuel.StartInstruction"}}</small>
+    </div>
+    {{/if}}
+</div>

@@ -1,0 +1,55 @@
+<section class="tab effect-changes {{tabs.changes.cssClass}}" data-group="sheet" data-tab="changes" data-application-part="changes">
+    <div class="effect-changes-header">
+        <button type="button" data-action="addChange" class="neuroshima-btn small">
+            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Effects.AddChange"}}
+        </button>
+        <label class="change-mode-toggle" title="{{localize 'NEUROSHIMA.Effects.ToggleManualKeys'}}">
+            <input type="checkbox" data-action="toggleChangeMode" {{#if manualChangeKeys}}checked{{/if}}>
+            <span>{{localize "NEUROSHIMA.Effects.ManualKeys"}}</span>
+        </label>
+    </div>
+    {{#if effect.changes.length}}
+    <div class="effect-changes-list">
+        <div class="changes-header">
+            <span>{{localize "NEUROSHIMA.Effects.Change.Key"}}</span>
+            <span>{{localize "NEUROSHIMA.Effects.Change.Mode"}}</span>
+            <span>{{localize "NEUROSHIMA.Effects.Change.Value"}}</span>
+            <span>{{localize "NEUROSHIMA.Effects.Change.Priority"}}</span>
+            <span></span>
+        </div>
+        {{#each effect.changes}}
+        <div class="change-row" data-index="{{@index}}">
+            {{#if @root.manualChangeKeys}}
+            <input type="text" name="changes.{{@index}}.key" value="{{this.key}}" placeholder="system.attributes.dexterity">
+            {{else}}
+            <select name="changes.{{@index}}.key">
+                <option value="{{this.key}}" {{#unless this.key}}selected{{/unless}}>— {{localize "NEUROSHIMA.Effects.Change.SelectKey"}} —</option>
+                {{#each @root.changeKeys}}
+                <optgroup label="{{localize this.group}}">
+                    {{#each this.keys}}
+                    <option value="{{this.key}}" {{#if (eq this.key ../../../this.key)}}selected{{/if}}>{{#if this.prefix}}{{this.prefix}} {{/if}}{{localize this.label}}</option>
+                    {{/each}}
+                </optgroup>
+                {{/each}}
+            </select>
+            {{/if}}
+            <select name="changes.{{@index}}.mode">
+                <option value="0" {{#if (eq this.mode 0)}}selected{{/if}}>Custom</option>
+                <option value="1" {{#if (eq this.mode 1)}}selected{{/if}}>Multiply</option>
+                <option value="2" {{#if (eq this.mode 2)}}selected{{/if}}>Add</option>
+                <option value="3" {{#if (eq this.mode 3)}}selected{{/if}}>Downgrade</option>
+                <option value="4" {{#if (eq this.mode 4)}}selected{{/if}}>Upgrade</option>
+                <option value="5" {{#if (eq this.mode 5)}}selected{{/if}}>Override</option>
+            </select>
+            <input type="text" name="changes.{{@index}}.value" value="{{this.value}}" placeholder="0">
+            <input type="number" name="changes.{{@index}}.priority" value="{{this.priority}}" placeholder="20">
+            <a data-action="deleteChange" data-index="{{@index}}" title="{{localize 'DOCUMENT.Delete'}}">
+                <i class="fas fa-trash"></i>
+            </a>
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <p class="empty-list">{{localize "NEUROSHIMA.Effects.NoChanges"}}</p>
+    {{/if}}
+</section>

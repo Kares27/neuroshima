@@ -1,0 +1,25 @@
+<div class="trait-choice-dialog-inner">
+
+    <p class="trait-choice-prompt">{{prompt}}</p>
+
+    <div class="trait-choice-list">
+        {{#each traits as |t|}}
+        <div class="trait-choice-row {{#if t.isSelected}}selected{{/if}}"
+             data-action="selectTrait"
+             data-trait-idx="{{@index}}"
+             data-trait-uuid="{{t.uuid}}">
+            <span class="trait-choice-cb {{#if t.isSelected}}checked{{/if}}">
+                <span class="trait-choice-mark"></span>
+            </span>
+            <img src="{{t.img}}" class="trait-choice-img" alt="{{t.name}}">
+            <span class="trait-choice-name">{{t.name}}</span>
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="trait-choice-footer">
+        <button type="button" data-action="confirmTrait">{{localize "Confirm"}}</button>
+        <button type="button" data-action="cancelTrait">{{localize "Cancel"}}</button>
+    </div>
+
+</div>

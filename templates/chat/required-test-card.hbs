@@ -1,0 +1,54 @@
+<div class="neuroshima required-test-card">
+
+    <header class="roll-header">
+        <div class="header-details">
+            <div class="test-info">
+                <i class="fas fa-dice-d20"></i>
+                <strong>{{title}}</strong>
+            </div>
+        </div>
+    </header>
+
+    {{#if description}}
+    <p class="required-test-description">{{{description}}}</p>
+    {{/if}}
+
+    <hr class="dotted-hr">
+
+    <div data-debug-gm-only>
+        <div class="roll-outcome">
+            <div class="outcome-item">
+                <span class="label">{{localize "NEUROSHIMA.RequiredTest.TestType"}}:</span>
+                <span class="value">
+                    {{#if (eq testType "skill")}}
+                        <strong>{{localize "NEUROSHIMA.RequiredTest.TypeSkill"}}</strong>
+                    {{else}}
+                        <strong>{{localize "NEUROSHIMA.RequiredTest.TypeAttribute"}}</strong>
+                    {{/if}}
+                </span>
+            </div>
+            <div class="outcome-item">
+                <span class="label">{{localize "NEUROSHIMA.RequiredTest.TestLabel"}}:</span>
+                <span class="value"><strong>{{testLabel}}</strong></span>
+            </div>
+            <div class="outcome-item">
+                <span class="label">{{localize "NEUROSHIMA.RequiredTest.RequiredSuccesses"}}:</span>
+                <span class="value"><strong>{{requiredSuccesses}}</strong></span>
+            </div>
+            <div class="outcome-item">
+                <span class="label">{{localize "NEUROSHIMA.RequiredTest.TestMode"}}:</span>
+                <span class="value">
+                    {{#if isOpen}}{{localize "NEUROSHIMA.Roll.OpenTest"}}{{else}}{{localize "NEUROSHIMA.Roll.ClosedTest"}}{{/if}}
+                </span>
+            </div>
+        </div>
+        <hr class="dotted-hr">
+    </div>
+
+    <footer class="required-test-actions">
+        <button type="button" class="btn btn-primary" data-action="executeRequiredTest">
+            <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.RequiredTest.Roll"}}
+        </button>
+    </footer>
+
+</div>

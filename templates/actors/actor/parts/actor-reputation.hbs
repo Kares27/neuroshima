@@ -1,0 +1,115 @@
+<section class="tab reputation {{tabs.reputation.cssClass}}" data-group="primary" data-tab="reputation" data-application-part="reputation">
+    <div class="reputation-layout">
+
+        {{!-- Reputacja items --}}
+        <div class="rep-panel">
+            <section class="inventory-section rep-items-section">
+                <div class="inventory-list">
+                    {{!-- Fame row — full-width strip inside the list --}}
+                    <div class="rep-fame-row">
+                        <span class="rep-fame-label">{{localize "NEUROSHIMA.Reputation.Fame"}}</span>
+                        <span class="rep-fame-value clickable"
+                              data-action="adjustFame"
+                              data-tooltip="{{localize 'NEUROSHIMA.Reputation.FameHint'}}">{{actor.system.fame}}</span>
+                    </div>
+                    <div class="section-header inv-section-header rep-items-list-header">
+                        <span class="rep-col-name">{{localize "NEUROSHIMA.Reputation.Title"}}</span>
+                        <span class="rep-col-badge"></span>
+                        <span class="rep-col-value"></span>
+                        <a class="item-control rep-col-sort" data-action="sortReputationItems" data-tooltip="{{localize 'NEUROSHIMA.Reputation.SortByValue'}}">{{#if repSortAsc}}<i class="fas fa-sort-amount-up"></i>{{else}}<i class="fas fa-sort-amount-down"></i>{{/if}}</a>
+                        <a class="item-control rep-col-add" data-action="createItem" data-type="reputation" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+                    </div>
+                    <div class="inventory-items">
+                        {{#each reputationItems as |item|}}
+                        <div class="item-wrap draggable" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" data-sort="{{item.sort}}" draggable="true">
+                            <div class="item rep-item">
+                                <span class="rep-grip-handle" draggable="true" data-tooltip="{{localize 'NEUROSHIMA.Reputation.DragToReorder'}}"><i class="fas fa-grip-lines"></i></span>
+                                {{#with (lookup ../reputationRelationMap item.id) as |rel|}}
+                                <div class="rep-item-inner-box" {{#if rel.color}}style="border-color:{{rel.color}}"{{/if}}>
+                                    <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                                    <span class="name clickable rep-item-name" data-action="toggleSummary" data-tooltip="{{item.name}}" {{#if rel.nameColor}}style="color:{{rel.nameColor}}"{{/if}}>{{item.name}}</span>
+                                    {{#if ../../showRepAsProgressBar}}
+                                    <div class="rep-relation-bar-container">
+                                        <div class="rep-relation-bar-label" {{#if rel.color}}style="color:{{rel.color}}"{{/if}}>
+                                            <span>{{rel.name}}</span>
+                                        </div>
+                                        <div class="rep-relation-bar-track">
+                                            <div class="rep-relation-bar-fill" style="width:{{rel.progressPct}}%;{{#if rel.progressColor}}background:{{rel.progressColor}};{{/if}}"></div>
+                                            {{#each rel.markers as |marker|}}
+                                            <div class="rep-bar-marker" style="left:{{marker.pct}}%;{{#if marker.color}}background:{{marker.color}};{{/if}}"></div>
+                                            {{/each}}
+                                        </div>
+                                    </div>
+                                    {{else}}
+                                    <span class="rep-relation-badge" {{#if rel.color}}style="color:{{rel.color}}"{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Reputation.Relation'}}: {{rel.name}}">{{rel.name}}</span>
+                                    {{/if}}
+                                    {{#if ../../repBonusTooltip}}
+                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}<br>{{../../repBonusTooltip}}">{{item.effectiveValue}}</span>
+                                    {{else}}
+                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}">{{item.effectiveValue}}</span>
+                                    {{/if}}
+                                </div>
+                                {{else}}
+                                <div class="rep-item-inner-box">
+                                    <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                                    <span class="name clickable rep-item-name" data-action="toggleSummary" data-tooltip="{{item.name}}">{{item.name}}</span>
+                                    {{#if ../showRepAsProgressBar}}
+                                    <div class="rep-relation-bar-container">
+                                        <div class="rep-relation-bar-label"><span></span></div>
+                                        <div class="rep-relation-bar-track">
+                                            <div class="rep-relation-bar-fill" style="width:0%"></div>
+                                        </div>
+                                    </div>
+                                    {{else}}
+                                    <span class="rep-relation-badge rep-relation-empty"></span>
+                                    {{/if}}
+                                    {{#if ../repBonusTooltip}}
+                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}<br>{{../repBonusTooltip}}">{{item.effectiveValue}}</span>
+                                    {{else}}
+                                    <span class="rep-item-value clickable" data-action="adjustRepValue" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.ValueLabel'}}: {{item.system.value}}">{{item.effectiveValue}}</span>
+                                    {{/if}}
+                                </div>
+                                {{/with}}
+                                <a class="rep-roll-btn item-control" data-action="rollReputationItem" data-item-id="{{item.id}}" data-tooltip="{{localize 'NEUROSHIMA.Reputation.Roll'}}: {{item.name}}"><i class="fas fa-dice-d20"></i></a>
+                                <a class="rep-ctx-btn item-control" data-action="contextMenu" data-tooltip="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fas fa-ellipsis-v"></i></a>
+                            </div>
+                            {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                            {{#if scripts}}
+                            <div class="item-script-row" data-item-id="{{item.id}}">
+                                {{#each scripts as |ms|}}
+                                <a class="manual-script-btn" data-action="invokeItemScript"
+                                   data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                                   data-script-index="{{ms.scriptIndex}}"
+                                   title="{{ms.effectName}}">
+                                    <i class="fas fa-play"></i> {{ms.label}}
+                                </a>
+                                {{/each}}
+                            </div>
+                            {{/if}}
+                            {{/with}}
+                            <div class="item-summary collapsed">
+                                {{#if item.system.resources.length}}
+                                <div class="item-resources-wrapper">
+                                    <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                                    <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                                </div>
+                                {{/if}}
+                                {{#if item.system.description}}
+                                <div class="item-description-wrapper">
+                                    <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                                    <div class="item-description">{{{item.system.description}}}</div>
+                                </div>
+                                {{/if}}
+                            </div>
+                        </div>
+                        {{/each}}
+                        {{#unless reputationItems.length}}
+                        <div class="rep-empty">{{localize "NEUROSHIMA.Reputation.DragHere"}}</div>
+                        {{/unless}}
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </div>
+</section>

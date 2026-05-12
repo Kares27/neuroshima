@@ -1,0 +1,44 @@
+<div class="neuroshima melee-opposed-card melee-opposed-pending {{#if (eq status "resolved")}}is-resolved{{/if}}">
+
+  <header class="melee-card-header">
+    <div class="participant attacker">
+      <img src="{{attackerImg}}" width="36" height="36" alt="{{attackerName}}">
+      <span class="name">{{attackerName}}</span>
+    </div>
+    <div class="vs-badge">⚔</div>
+    <div class="participant defender">
+      <img src="{{defenderImg}}" width="36" height="36" alt="{{defenderName}}">
+      <span class="name">{{defenderName}}</span>
+    </div>
+  </header>
+
+  <div class="mode-label">{{modeLabel}}</div>
+
+  <hr class="dotted-hr">
+
+  {{#if (eq status "pending")}}
+    <div class="pending-defense">
+      <div class="awaiting-label">
+        <i class="fas fa-hourglass-half"></i>
+        {{defenderName}} — {{localize "NEUROSHIMA.MeleeOpposedChat.AwaitingDefense"}}
+      </div>
+
+      <div class="defender-options" data-gm-only="true">
+        <button type="button" class="melee-opposed-defend-btn unarmed" data-action="meleeOpposedDefend" data-weapon-id="" data-tooltip="{{localize 'NEUROSHIMA.MeleeOpposedChat.Unarmed'}}" aria-label="{{localize 'NEUROSHIMA.MeleeOpposedChat.Unarmed'}}">
+          <i class="fas fa-hand-paper"></i>
+        </button>
+        {{#each defenderWeapons}}
+          <button type="button" class="melee-opposed-defend-btn" data-action="meleeOpposedDefend" data-weapon-id="{{id}}" data-tooltip="{{name}}" aria-label="{{name}}">
+            <img src="{{img}}" width="20" height="20" alt="">
+          </button>
+        {{/each}}
+      </div>
+    </div>
+  {{else}}
+    <div class="resolved-label">
+      <i class="fas fa-check-circle"></i>
+      {{localize "NEUROSHIMA.MeleeOpposedChat.Resolved"}}
+    </div>
+  {{/if}}
+
+</div>

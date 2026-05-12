@@ -1,0 +1,33 @@
+<div class="flexcol magazine-stats">
+    <div class="magazine-row">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</label>
+        <input type="text" name="system.caliber" value="{{system.caliber}}" list="caliber-list-{{item.id}}"/>
+        <datalist id="caliber-list-{{item.id}}">
+            {{#each worldCalibers as |caliber|}}
+            <option value="{{caliber}}"></option>
+            {{/each}}
+        </datalist>
+        
+        <label>{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</label>
+        <input type="number" name="system.capacity" value="{{system.capacity}}" min="0"/>
+
+        <div class="ammo-info-display" title="{{localize 'NEUROSHIMA.Items.Fields.AmmoCount'}}">
+            <span class="value">{{system.totalCount}} / {{system.capacity}}</span>
+        </div>
+    </div>
+
+    {{#if system.contents.length}}
+    <hr>
+    <div class="magazine-contents-section">
+        <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.MagazineContents"}}</label>
+        <div class="contents-list-items ammo-stack">
+            {{#each displayContents as |stack|}}
+            <div class="content-stack flexrow" title="{{stack.tooltip}}">
+                <span class="name flex3">{{stack.name}}</span>
+                <span class="quantity text-right">x{{stack.quantity}}</span>
+            </div>
+            {{/each}}
+        </div>
+    </div>
+    {{/if}}
+</div>

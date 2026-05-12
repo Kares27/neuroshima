@@ -1,0 +1,94 @@
+<div class="neuroshima roll-card melee-roll-card {{rollMode}}" 
+    data-weapon-id="{{weaponId}}"
+    data-actor-id="{{actorId}}"
+    data-damage="{{damage}}">
+    
+    <header class="roll-header">
+        <div class="actor-image-container" 
+            {{#if showTooltip}}
+            data-tooltip="{{neuroshimaRollTooltip this}}"
+            data-tooltip-direction="LEFT"
+            {{/if}}>
+            <img src="{{actorImg}}" width="32" height="32" />
+        </div>
+        <div class="header-details">
+            <div class="weapon-title">
+                {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
+                {{label}}{{#if actionLabel}}: {{actionLabel}}{{/if}}
+            </div>
+            <div class="test-type">
+                {{localize difficultyLabel}} | {{#if (eq meleeAction "attack")}}{{localize "NEUROSHIMA.Actions.Attack"}}{{else}}{{localize "NEUROSHIMA.Actions.Defense"}}{{/if}}
+            </div>
+        </div>
+    </header>
+    <hr class="dotted-hr">
+
+    <div class="weapon-details">
+        <div class="detail-item">
+            <span class="label">{{localize "NEUROSHIMA.Roll.Location"}}:</span>
+            <span class="value"><strong>{{localize locationLabel}}</strong> {{#if locationRoll}}({{locationRoll}}){{/if}}</span>
+        </div>
+        {{#if damage}}
+        <div class="detail-item">
+            <span class="label">{{localize "NEUROSHIMA.Roll.Damage"}}:</span>
+            <span class="value"><strong>{{damage}}</strong></span>
+        </div>
+        {{/if}}
+    </div>
+
+    <div class="dice-results-grid">
+        {{#each modifiedResults}}
+            <div class="die-result">
+                <span class="die-label">D{{add @index 1}} = </span>
+                <div class="die-square-container">
+                    <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}}">
+                        {{this.original}}
+                    </span>
+                    {{#if (ne ../skill 0)}}
+                        <i class="fas fa-long-arrow-alt-right"></i> 
+                        <span class="die-square modified {{#if this.isSuccess}}success{{else}}failure{{/if}}">
+                            {{this.modified}}
+                        </span>
+                    {{/if}}
+                </div>
+            </div>
+        {{/each}}
+    </div>
+
+    <hr class="dotted-hr">
+
+    <footer class="roll-outcome {{#if isSuccess}}success{{else}}failure{{/if}}">
+        <div class="outcome-item success-points">
+            <span class="label">{{localize "NEUROSHIMA.Roll.SuccessPointsAbbr"}}:</span>
+            <span class="value"><strong>{{successPoints}}</strong></span>
+        </div>
+        
+        <div class="outcome-item roll-status">
+            <span class="value {{#if isSuccess}}success{{else}}failure{{/if}}">
+                <strong>{{#if isSuccess}}{{localize "NEUROSHIMA.Roll.Success"}}{{else}}{{localize "NEUROSHIMA.Roll.Failure"}}{{/if}}</strong>
+            </span>
+        </div>
+    </footer>
+
+    {{#if meleeTargets.length}}
+    <hr class="dotted-hr">
+    <div class="melee-targets-section">
+        <div class="targets-header">{{localize "NEUROSHIMA.MeleeOpposed.Participants"}}:</div>
+        <div class="targets-list">
+            {{#each meleeTargets}}
+            <div class="target-item" data-actor-id="{{this.id}}">
+                <img src="{{this.img}}" width="24" height="24" />
+                <span>{{this.name}}</span>
+            </div>
+            {{/each}}
+        </div>
+        {{#if isVanillaMelee}}
+        <div class="melee-actions">
+            <button type="button" class="start-melee-btn" data-action="start-melee">
+                <i class="fas fa-swords"></i> {{localize "NEUROSHIMA.MeleeDuel.StartDuel"}}
+            </button>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+</div>

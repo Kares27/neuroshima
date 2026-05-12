@@ -1,0 +1,27 @@
+<div class="melee-shell">
+  {{#if isGM}}
+    {{> MeleeGmControls}}
+  {{/if}}
+
+  {{> MeleeTopBar}}
+
+  <div class="melee-arena">
+    <div class="team-column team-column--a">
+      {{#each teamsData.A}}
+        {{> FighterCard fighter=this side="a"}}
+      {{/each}}
+    </div>
+
+    {{> ArenaCenter}}
+
+    <div class="team-column team-column--b">
+      {{#each teamsData.B}}
+        {{> FighterCard fighter=this side="b"}}
+      {{/each}}
+    </div>
+  </div>
+
+  {{> MeleeActionBar}}
+
+  {{> CombatLog}}
+</div>

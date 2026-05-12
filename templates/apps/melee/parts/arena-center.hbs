@@ -1,0 +1,23 @@
+<div class="arena-center">
+  {{#if arenaStrength}}
+    <div class="arena-strength arena-strength--{{arenaStrength}}s">
+      <div class="arena-strength__value">{{arenaStrength}}s</div>
+      {{#if currentDamageLabel}}
+        <div class="arena-strength__damage">→ {{currentDamageLabel}}</div>
+      {{/if}}
+    </div>
+  {{else if arenaLastResult}}
+    <div class="arena-result arena-result--{{arenaLastResult.cls}}">
+      <i class="fas {{arenaLastResult.icon}}"></i>
+      <span>{{arenaLastResult.label}}</span>
+    </div>
+  {{else}}
+    <div class="arena-vs">
+      <span>VS</span>
+    </div>
+  {{/if}}
+
+  <div class="arena-initiative-label">
+    <i class="fas fa-bolt"></i> {{initiativeOwnerName}}
+  </div>
+</div>

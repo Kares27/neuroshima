@@ -1,0 +1,16 @@
+<div class="neuroshima chat-card melee-pool-card">
+    <header class="card-header">
+        <img src="{{actor.img}}" width="36" height="36" />
+        <h3>{{localize "NEUROSHIMA.MeleeDuel.PoolRoll"}}</h3>
+    </header>
+    <div class="card-content">
+        <p>{{actor.name}} {{localize "NEUROSHIMA.MeleeDuel.RolledPool"}}:</p>
+        <div class="dice-results">
+            {{#each dice}}
+                <span class="die-result {{#if this.success}}success{{else}}failure{{/if}}">
+                    {{this.value}}
+                </span>
+            {{/each}}
+        </div>
+    </div>
+</div>

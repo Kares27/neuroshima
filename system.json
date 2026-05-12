@@ -1,0 +1,96 @@
+{
+    "id": "neuroshima",
+    "title": "Neuroshima 1.5",
+    "description": "System do gry fabularnej Neuroshima 1.5.",
+    "version": "0.9.9",
+    "compatibility": {
+        "minimum": "13",
+        "verified": "13"
+    },
+    "authors": [
+        {
+            "name": "Kares"
+        }
+    ],
+    "esmodules": [
+        "system.js"
+    ],
+    "socket": true,
+    "styles": [
+        "css/base.css",
+        "css/actor.css",
+        "css/items.css",
+        "css/melee.css"
+    ],
+    "packs": [
+        {
+        "name": "Items",
+        "label": "Items",
+        "system": "neuroshima",
+        "path": "packs/items",
+        "type": "Item",
+        "flags": {},
+        "ownership": {
+            "PLAYER": "OBSERVER",
+            "ASSISTANT": "OWNER"
+      }
+    }
+
+    ],
+    "languages": [
+        {
+            "lang": "en",
+            "name": "English",
+            "path": "lang/en.json"
+        },
+        {
+            "lang": "pl",
+            "name": "Polski",
+            "path": "lang/pl.json"
+        }
+    ],
+    "actorTypes": [
+        "character",
+        "npc",
+        "creature",
+        "vehicle"
+    ],
+    "itemTypes": [
+        "weapon",
+        "armor",
+        "gear",
+        "trick",
+        "trait",
+        "ammo",
+        "magazine",
+        "wound",
+        "beast-action",
+        "specialization",
+        "origin",
+        "profession",
+        "vehicle-damage",
+        "vehicle-mod",
+        "reputation",
+        "money",
+        "reputation",
+        "disease"
+    ],
+    "flags": {
+        "hotReload": {
+        "paths": ["templates", "styles", "lang", "scripts"]
+        }
+    },
+    "url": "https://github.com/Kares27/neuroshima",
+    "manifest": "https://github.com/Kares27/neuroshima/releases/latest/download/system.json",
+    "download": "https://github.com/Kares27/neuroshima/releases/latest/download/neuroshima.zip",
+	"background": "systems/neuroshima/assets/NeuroshimaWallpaper.jpg",
+    "relationships": {
+    "requires": [
+            {
+            "id": "socketlib",
+            "type": "module",
+            "manifest": "https://github.com/farling42/foundryvtt-socketlib/releases/latest/download/module.json"
+            }
+        ]
+    }
+}

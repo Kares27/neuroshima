@@ -1,0 +1,32 @@
+<section class="compact-exchange-status phase-{{turnState.phase}}">
+  {{#if (or attacker defender)}}
+    <div class="exchange-summary">
+      <div class="combatant attacker-side">
+        <span class="name">{{attacker.name}}</span>
+        <span class="tag">Atakuje</span>
+      </div>
+      <i class="fas fa-swords center-icon"></i>
+      <div class="combatant defender-side">
+        <span class="name">{{defender.name}}</span>
+        <span class="tag">Broni się</span>
+      </div>
+    </div>
+    
+    <div class="selection-progress-bar">
+      <div class="progress-step {{#if (ge currentExchange.attackerSelectedDice.length currentExchange.declaredDiceCount)}}done{{/if}}">
+        {{localize "NEUROSHIMA.MeleeDuel.Attacker"}}: {{currentExchange.attackerSelectedDice.length}}{{#if currentExchange.declaredDiceCount}}/{{currentExchange.declaredDiceCount}}{{/if}}
+      </div>
+      {{#if currentExchange.declaredDiceCount}}
+        <div class="progress-step {{#if (ge currentExchange.defenderSelectedDice.length currentExchange.declaredDiceCount)}}done{{/if}}">
+          {{localize "NEUROSHIMA.MeleeDuel.Defender"}}: {{currentExchange.defenderSelectedDice.length}}/{{currentExchange.declaredDiceCount}}
+        </div>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  {{#if (and isGM (eq turnState.phase "primary-ready"))}}
+    <button type="button" class="resolve-btn-mini pulse" data-action="resolveExchange">
+      <i class="fas fa-check-double"></i> {{localize "NEUROSHIMA.MeleeDuel.ResolveSegment"}}
+    </button>
+  {{/if}}
+</section>

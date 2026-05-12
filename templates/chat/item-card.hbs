@@ -1,0 +1,80 @@
+<div class="neuroshima item-card {{type}}{{#if isExhausted}} item-card-exhausted{{/if}}" data-uuid="{{uuid}}">
+    <div class="item-card-qty-badge" data-remaining="{{remaining}}">
+        {{#if isUnlimited}}<i class="fas fa-infinity"></i>{{else}}{{remaining}} ×{{/if}}
+    </div>
+
+    <div class="item-card-draggable" draggable="true" data-uuid="{{uuid}}"
+         data-tooltip="{{localize 'NEUROSHIMA.ItemCard.DragHint'}}">
+        <div class="item-card-title">
+            <span class="item-card-type-label">{{typeLabel}}</span>
+            <h3 class="item-card-name">{{name}}</h3>
+        </div>
+        <div class="item-card-image-wrap">
+            <img class="item-card-img" src="{{img}}" alt="{{name}}"/>
+        </div>
+        {{#if hasWeight}}
+        <div class="item-card-meta">
+            {{#if availability}}<span class="item-meta-chip"><i class="fas fa-store"></i> {{availability}}%</span>{{/if}}
+            <span class="item-meta-chip"><i class="fas fa-weight-hanging"></i> {{weight}} kg</span>
+        </div>
+        {{/if}}
+    </div>
+
+    {{#if hasStats}}
+    <div class="item-card-stats">
+        {{#if armorRatings}}
+        <div class="item-card-armor-grid">
+            {{#each armorRatings}}
+            <div class="armor-cell">
+                <span class="armor-cell-label">{{this.label}}</span>
+                <span class="armor-cell-value">{{this.value}}</span>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+        {{#if armorBoxStats}}
+        <div class="item-card-box-stats">
+            {{#each armorBoxStats}}
+            <div class="item-box-stat">
+                <span class="box-stat-label">{{this.label}}</span>
+                <span class="box-stat-value">{{this.value}}</span>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+        {{#if stats.length}}
+        <div class="item-card-stat-list">
+            {{#each stats}}
+            <div class="item-stat-row">
+                <span class="item-stat-label">{{this.label}}</span>
+                <span class="item-stat-value">{{this.value}}</span>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+
+    {{#if magazineContents.length}}
+    <div class="item-card-magazine-contents">
+        <div class="magazine-contents-header">
+            <span class="mag-col-name">{{localize "NEUROSHIMA.Items.Fields.Ammo"}}</span>
+            <span class="mag-col-qty">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</span>
+        </div>
+        {{#each magazineContents}}
+        <div class="magazine-contents-row">
+            <span class="mag-ammo-name">{{this.name}}</span>
+            <span class="mag-ammo-qty">{{this.quantity}}</span>
+        </div>
+        {{/each}}
+    </div>
+    {{/if}}
+
+    {{#if description}}
+    <hr class="dotted-hr">
+    <div class="item-card-description">
+        {{{description}}}
+    </div>
+    {{/if}}
+
+</div>

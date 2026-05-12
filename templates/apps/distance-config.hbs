@@ -1,0 +1,64 @@
+<section class="neuroshima-config distance-config-content">
+    <div class="config-section">
+        <h3>{{localize "NEUROSHIMA.Settings.DistanceConfig.Title"}}</h3>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.DistanceConfig.Hint"}}</p>
+
+        <div style="margin-bottom:8px;">
+            <button type="button" data-action="addRow" style="width:auto;">
+                <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DistanceConfig.AddRow"}}
+            </button>
+        </div>
+
+        <div class="distance-table-wrapper" style="overflow-x:auto; overflow-y:auto; max-height:340px;">
+            <table class="distance-table">
+                <thead>
+                    <tr>
+                        <th class="distance-col-header">{{localize "NEUROSHIMA.Distance.Range"}}</th>
+                        <th title="{{localize 'NEUROSHIMA.WeaponSubtype.pistols'}}">P</th>
+                        <th title="{{localize 'NEUROSHIMA.WeaponSubtype.submachineRifles'}}">PM</th>
+                        <th title="{{localize 'NEUROSHIMA.WeaponSubtype.rifles'}}">K</th>
+                        <th title="{{localize 'NEUROSHIMA.WeaponSubtype.sniperRifles'}}">S</th>
+                        <th title="{{localize 'NEUROSHIMA.WeaponSubtype.shotguns'}}">ŚR</th>
+                        <th style="width:32px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each rows}}
+                    <tr data-row-index="{{@index}}">
+                        <td class="distance-col-cell">
+                            <input type="number" name="distance_{{@index}}" value="{{this.distance}}" min="0" step="1" class="distance-input">
+                        </td>
+                        <td>
+                            <input type="number" name="P_{{@index}}" value="{{this.P}}" step="1" min="0" class="penalty-input" placeholder="—">
+                        </td>
+                        <td>
+                            <input type="number" name="PM_{{@index}}" value="{{this.PM}}" step="1" min="0" class="penalty-input" placeholder="—">
+                        </td>
+                        <td>
+                            <input type="number" name="K_{{@index}}" value="{{this.K}}" step="1" min="0" class="penalty-input" placeholder="—">
+                        </td>
+                        <td>
+                            <input type="number" name="S_{{@index}}" value="{{this.S}}" step="1" min="0" class="penalty-input" placeholder="—">
+                        </td>
+                        <td>
+                            <input type="number" name="SR_{{@index}}" value="{{this.SR}}" step="1" min="0" class="penalty-input" placeholder="—">
+                        </td>
+                        <td>
+                            <a class="delete-row" title="{{localize 'DOCUMENT.Delete'}}">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <footer class="sheet-footer flexrow">
+        <button type="submit" name="submit">
+            <i class="fas fa-save"></i> {{localize "NEUROSHIMA.Actions.Save"}}
+        </button>
+    </footer>
+</section>

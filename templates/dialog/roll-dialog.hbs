@@ -1,0 +1,129 @@
+<div class="roll-dialog-content">
+
+    <div class="rd-top-split">
+        <div class="rd-inputs-col">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.Modifier"}} (%)</label>
+                <input type="number" name="modifier" value="{{modifier}}" placeholder="0"/>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useArmorPenalty" {{checked useArmorPenalty}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Armor"}} (%)</label>
+                </div>
+                <input type="number" name="armorPenalty" value="{{#if useArmorPenalty}}{{armorPenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useWoundPenalty" {{checked useWoundPenalty}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Wounds"}} (%)</label>
+                </div>
+                <input type="number" name="woundPenalty" value="{{#if useWoundPenalty}}{{woundPenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useDiseasePenalty" {{checked useDiseasePenalty}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Disease"}} (%)</label>
+                </div>
+                <input type="number" name="diseasePenalty" value="{{#if useDiseasePenalty}}{{diseasePenalty}}{{else}}0{{/if}}" placeholder="0" disabled/>
+            </div>
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.AttributeBonus'}}">{{localize "NEUROSHIMA.Roll.AttributeBonusAbbr"}}</label>
+                <input type="number" name="attributeBonus" value="{{attributeBonus}}" placeholder="0"/>
+            </div>
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.SkillBonus'}}">{{localize "NEUROSHIMA.Roll.SkillBonusAbbr"}}</label>
+                <input type="number" name="skillBonus" value="{{skillBonus}}" placeholder="0" {{#unless isSkill}}disabled{{/unless}}/>
+            </div>
+        </div>
+
+        <div class="rd-modifiers-col">
+            <div class="rd-modifiers-panel">
+                <h4 class="dialog-modifiers-header">{{localize "NEUROSHIMA.Roll.DialogModifiers"}}</h4>
+                <ul class="dm-modifier-list">
+                    {{#each dialogModifiers}}
+                    <li class="dm-modifier-item {{#if canToggle}}dm-toggleable{{/if}} {{#if activated}}dm-active{{/if}}"
+                        data-action="clickModifier"
+                        data-dm-index="{{@index}}"
+                        data-dm-effect-id="{{_effectId}}"
+                        {{#if description}}data-tooltip="{{description}}" data-tooltip-direction="RIGHT"{{/if}}>
+                        <span class="dm-bullet">•</span><a>{{label}}</a>
+                    </li>
+                    {{else}}
+                    <li class="dm-modifier-empty">—</li>
+                    {{/each}}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="rd-dropdowns-row">
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Roll.Test"}}</label>
+            <select name="isOpen">
+                <option value="true" {{#if isOpen}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.OpenTestShort"}}</option>
+                <option value="false" {{#unless isOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.Roll.ClosedTestShort"}}</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Roll.Difficulty"}}</label>
+            <select name="baseDifficulty">
+                {{#each difficulties}}
+                <option value="{{@key}}" {{#if (eq @key ../baseDifficulty)}}selected{{/if}}>
+                    {{localize label}}
+                </option>
+                {{/each}}
+            </select>
+        </div>
+        {{#if isSkill}}
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Roll.Attribute"}}</label>
+            <select name="attribute">
+                {{#each attributeList}}
+                <option value="{{@key}}" {{#if (eq @key ../currentAttribute)}}selected{{/if}}>
+                    {{localize label}}
+                </option>
+                {{/each}}
+            </select>
+        </div>
+        {{/if}}
+    </div>
+
+    <div class="rd-rollmode-row">
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Roll.RollMode"}}</label>
+            <select name="rollMode" class="rd-rollmode-select">
+                {{selectOptions rollModes selected=rollMode localize=true}}
+            </select>
+        </div>
+    </div>
+
+    <div class="summary-section">
+        <h3>{{localize "NEUROSHIMA.Roll.Summary"}}</h3>
+        <table class="summary-table">
+            <tr>
+                <td>{{localize "NEUROSHIMA.Roll.TotalModifier"}}</td>
+                <td class="total-modifier">0%</td>
+            </tr>
+            <tr>
+                <td>{{localize "NEUROSHIMA.Roll.FinalDifficulty"}}</td>
+                <td class="final-difficulty">-</td>
+            </tr>
+            <tr>
+                <td>{{localize "NEUROSHIMA.Roll.Target"}}</td>
+                <td class="final-target">-</td>
+            </tr>
+        </table>
+    </div>
+
+    <footer class="form-footer">
+        <button type="button" data-action="roll" class="" autofocus="">
+            <i class="fas fa-check"></i>
+            <span>{{localize "NEUROSHIMA.Actions.Roll"}}</span>
+        </button>
+        <button type="button" data-action="cancel" class="">
+            <i class="fas fa-times"></i>
+            <span>{{localize "NEUROSHIMA.Actions.Cancel"}}</span>
+        </button>
+    </footer>
+</div>

@@ -1,0 +1,133 @@
+<div class="neuroshima healing-roll-dialog">
+    <div class="dialog-columns">
+        <div class="column left">
+            <div class="form-group vertical">
+                <label>{{localize "NEUROSHIMA.HealingRequest.Method"}}</label>
+                <select name="healingMethod">
+                    <option value="firstAid" {{#if (eq healingMethod "firstAid")}}selected{{/if}}>{{localize "NEUROSHIMA.Skills.firstAid"}}</option>
+                    <option value="woundTreatment" {{#unless (eq healingMethod "firstAid")}}selected{{/unless}}>{{localize "NEUROSHIMA.Skills.woundTreatment"}}</option>
+                </select>
+            </div>
+            <div class="form-group vertical">
+                <label>{{localize "NEUROSHIMA.Roll.Attribute"}}</label>
+                <select name="attribute">
+                    {{#each attributeList}}
+                    <option value="{{@key}}" {{#if (eq @key ../currentAttribute)}}selected{{/if}}>
+                        {{localize label}}
+                    </option>
+                    {{/each}}
+                </select>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.Modifier"}} (%)</label>
+                <input type="number" name="globalModifier" value="{{percentageModifier}}" placeholder="0"/>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useArmorPenalty" {{#if useArmorPenalty}}checked{{/if}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Armor"}} (%)</label>
+                </div>
+                <input type="number" name="armorPenalty" value="{{armorPenalty}}" placeholder="0" disabled/>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useWoundPenalty" {{#if useWoundPenalty}}checked{{/if}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.Wounds"}} (%)</label>
+                </div>
+                <input type="number" name="woundPenalty" value="{{woundPenalty}}" placeholder="0" disabled/>
+            </div>
+        </div>
+    </div>
+
+    <div class="dialog-columns bonuses-row">
+        <div class="column left">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.Skill"}}</label>
+                <input type="number" name="skillValue" value="{{skillValue}}" placeholder="0" disabled/>
+            </div>
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.SkillBonus'}}">{{localize "NEUROSHIMA.Roll.SkillBonusAbbr"}}</label>
+                <input type="number" name="skillBonus" value="{{skillBonus}}" placeholder="0"/>
+            </div>
+        </div>
+        <div class="column right">
+            <div class="form-group">
+                <label title="{{localize 'NEUROSHIMA.Roll.AttributeBonus'}}">{{localize "NEUROSHIMA.Roll.AttributeBonusAbbr"}}</label>
+                <input type="number" name="attributeBonus" value="{{attributeBonus}}" placeholder="0"/>
+            </div>
+        </div>
+    </div>
+
+    <div class="wounds-summary-section">
+        <div class="wounds-header">
+            <h3>{{localize "NEUROSHIMA.PatientCard.Wounds"}} ({{totalWounds}})</h3>
+            <div class="wound-symbols">
+                {{#each woundGroups}}
+                <div class="wound-group-badge" 
+                     data-damage-type="{{this.damageType}}"
+                     title="{{localize (concat 'NEUROSHIMA.Damage.Full.' this.damageType)}}">
+                    {{this.count}}x<strong>{{this.damageType}}</strong>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        
+        <table class="wounds-config-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>{{localize "NEUROSHIMA.Roll.Difficulty"}}</th>
+                    <th>{{localize "NEUROSHIMA.HealingRequest.HealingPercent"}}</th>
+                    <th>{{localize "NEUROSHIMA.Roll.Modifier"}} %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each woundGroups}}
+                <tr data-damage-type="{{this.damageType}}" class="wound-group-row">
+                    <td class="wound-type-cell" title="{{localize (concat 'NEUROSHIMA.Damage.Full.' this.damageType)}}">
+                        <strong>{{this.damageType}}</strong>
+                    </td>
+                    <td class="wound-difficulty-select">
+                        <select name="difficulty-{{this.damageType}}" class="difficulty-select" data-damage-type="{{this.damageType}}">
+                            {{#each ../difficulties}}
+                            <option value="{{@key}}" {{#if (eq @key ../this.difficulty)}}selected{{/if}}>
+                                {{localize label}}
+                            </option>
+                            {{/each}}
+                        </select>
+                    </td>
+                    <td class="wound-healing-percent">
+                        {{#if (gte this.healingPercent 0)}}+{{/if}}{{this.healingPercent}}%
+                    </td>
+                    <td>
+                        <input type="number" 
+                               name="modifier-{{this.damageType}}" 
+                               class="wound-modifier" 
+                               value="0" 
+                               min="-100" 
+                               max="100" 
+                               placeholder="0"
+                               data-damage-type="{{this.damageType}}"/>
+                    </td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="summary-section">
+        <h3>{{localize "NEUROSHIMA.Roll.Summary"}}</h3>
+        <table class="summary-table">
+            <tr>
+                <td>{{localize "NEUROSHIMA.HealingRequest.DifficultyModifier"}}</td>
+                <td class="difficulty-modifier">0%</td>
+            </tr>
+            <tr>
+                <td>{{localize "NEUROSHIMA.Roll.Difficulty"}}</td>
+                <td class="final-difficulty">{{localize "NEUROSHIMA.HealingRequest.AdjustedPerWound"}}</td>
+            </tr>
+        </table>
+    </div>
+</div>

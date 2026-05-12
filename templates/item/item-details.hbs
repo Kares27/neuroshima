@@ -1,0 +1,323 @@
+<section class="tab tab-stats {{tabs.stats.cssClass}}" data-group="primary" data-tab="stats">
+    {{#if (eq item.type "armor")}}
+        <div class="stats-grid flexrow">
+            {{!-- Left: Armor Ratings (2 cols, 3 rows) --}}
+            <div class="armor-ratings-table flex2">
+                <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.Rating"}}</label>
+                <div class="grid grid-2col">
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.Head"}}</label>
+                        <input type="number" name="system.armor.ratings.head" value="{{system.armor.ratings.head}}" data-dtype="Number" min="0"/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.Torso"}}</label>
+                        <input type="number" name="system.armor.ratings.torso" value="{{system.armor.ratings.torso}}" data-dtype="Number" min="0"/>
+                    </div>
+                    
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.LeftArm"}}</label>
+                        <input type="number" name="system.armor.ratings.leftArm" value="{{system.armor.ratings.leftArm}}" data-dtype="Number" min="0"/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.RightArm"}}</label>
+                        <input type="number" name="system.armor.ratings.rightArm" value="{{system.armor.ratings.rightArm}}" data-dtype="Number" min="0"/>
+                    </div>
+
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.LeftLeg"}}</label>
+                        <input type="number" name="system.armor.ratings.leftLeg" value="{{system.armor.ratings.leftLeg}}" data-dtype="Number" min="0"/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.RightLeg"}}</label>
+                        <input type="number" name="system.armor.ratings.rightLeg" value="{{system.armor.ratings.rightLeg}}" data-dtype="Number" min="0"/>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- Right: Durability and Penalty (Single Box) --}}
+            <div class="armor-secondary-stats flex1 flexcol">
+                <div class="item-features secondary-box">
+                    <label class="section-label">{{localize "NEUROSHIMA.Tabs.Stats"}}</label>
+                    <div class="grid grid-1col">
+                        <div class="form-group row-group">
+                            <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
+                            <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="0"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
+                            <input type="number" name="system.armor.durability" value="{{system.armor.durability}}" data-dtype="Number" min="0"/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
+                            <input type="number" name="system.armor.penalty" value="{{system.armor.penalty}}" data-dtype="Number" min="0"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "weapon")}}
+        <div class="item-features weapon-stats secondary-box">
+             {{#if (eq system.weaponType "melee")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-melee.hbs"}}
+             {{/if}}
+
+             {{#if (eq system.weaponType "ranged")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-ranged.hbs"}}
+             {{/if}}
+
+             {{#if (eq system.weaponType "thrown")}}
+                {{> "systems/neuroshima/templates/item/parts/weapon-thrown.hbs"}}
+             {{/if}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "wound")}}
+        <div class="item-features wound-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/wound-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "vehicle-damage")}}
+        <div class="item-features wound-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "vehicle-mod")}}
+        <div class="item-features vehicle-mod-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "ammo")}}
+        <div class="item-features ammo-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/ammo-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "magazine")}}
+        <div class="item-features magazine-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/magazine-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "specialization")}}
+        <div class="spec-master-table">
+            <div class="spec-master-header">{{localize "NEUROSHIMA.Background.SpecializationsHeader"}}</div>
+            <div class="spec-master-body">
+                {{#each config.specGroups as |group|}}
+                <div class="spec-attr-group">
+                    <div class="spec-attr-label">{{localize group.attrLabel}}</div>
+                    <div class="spec-attr-checks">
+                        {{#each group.specs as |spec|}}
+                        <label class="spec-check-label">
+                            <input type="checkbox"
+                                   name="system.skillSpecializations.{{spec.key}}"
+                                   {{#if spec.checked}}checked{{/if}}
+                                   {{#unless ../../editable}}disabled{{/unless}}/>
+                            {{localize spec.label}}
+                        </label>
+                        {{/each}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "origin")}}
+        <section class="inventory-section traits-container" data-drop-type="trait">
+            <div class="section-header">
+                <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
+                {{#if editable}}<a class="item-control" data-action="addTrait" title="{{localize 'NEUROSHIMA.Traits.AddTrait'}}"><i class="fas fa-plus"></i></a>{{/if}}
+            </div>
+            <div class="inventory-items">
+                {{#each linkedTraitItems as |t|}}
+                <div class="item-wrap" data-trait-uuid="{{t.uuid}}">
+                    <div class="item">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image:url('{{t.img}}')" data-action="toggleTraitSummary"></div>
+                            <span class="name clickable" data-action="toggleTraitSummary">{{t.name}}</span>
+                        </div>
+                        <div class="item-controls flex0">
+                            {{#if ../editable}}<a class="item-control item-ctx-btn" data-action="traitContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>{{/if}}
+                        </div>
+                    </div>
+                    <div class="item-summary collapsed">
+                        <div class="item-description">{{{t.enrichedDescription}}}</div>
+                    </div>
+                </div>
+                {{else}}
+                <div class="trait-empty">{{localize "NEUROSHIMA.Traits.NoTraits"}}</div>
+                {{/each}}
+            </div>
+        </section>
+    {{/if}}
+
+    {{#if (eq item.type "profession")}}
+        <section class="inventory-section traits-container" data-drop-type="trait">
+            <div class="section-header">
+                <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
+                {{#if editable}}<a class="item-control" data-action="addTrait" title="{{localize 'NEUROSHIMA.Traits.AddTrait'}}"><i class="fas fa-plus"></i></a>{{/if}}
+            </div>
+            <div class="inventory-items">
+                {{#each linkedTraitItems as |t|}}
+                <div class="item-wrap" data-trait-uuid="{{t.uuid}}">
+                    <div class="item">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image:url('{{t.img}}')" data-action="toggleTraitSummary"></div>
+                            <span class="name clickable" data-action="toggleTraitSummary">{{t.name}}</span>
+                        </div>
+                        <div class="item-controls flex0">
+                            {{#if ../editable}}<a class="item-control item-ctx-btn" data-action="traitContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>{{/if}}
+                        </div>
+                    </div>
+                    <div class="item-summary collapsed">
+                        <div class="item-description">{{{t.enrichedDescription}}}</div>
+                    </div>
+                </div>
+                {{else}}
+                <div class="trait-empty">{{localize "NEUROSHIMA.Traits.NoTraits"}}</div>
+                {{/each}}
+            </div>
+        </section>
+    {{/if}}
+
+    {{#if (eq item.type "money")}}
+        <div class="item-features money-stats secondary-box">
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}</label>
+                <input type="number" name="system.coinValue" value="{{system.coinValue}}" min="1" data-dtype="Number"/>
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "reputation")}}
+        <div class="item-features reputation-stats secondary-box">
+            <div class="form-group row-group rep-value-row">
+                <label>{{localize "NEUROSHIMA.Reputation.ValueLabel"}}</label>
+                <input type="number" name="system.value" value="{{system.value}}" min="{{repMin}}" max="{{repMax}}" data-dtype="Number"/>
+            </div>
+            <hr/>
+            <div class="form-group row-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="system.overrideRelations" {{checked system.overrideRelations}}/>
+                    <label>{{localize "NEUROSHIMA.Reputation.OverrideRelations"}}</label>
+                </div>
+            </div>
+            {{#if system.overrideRelations}}
+            <div class="rep-relation-table-editor">
+                <div class="section-header" style="font-size:0.85em; padding: 4px 0;">{{localize "NEUROSHIMA.Reputation.RelationTable"}}</div>
+                <div style="margin-bottom:6px;">
+                    <a class="item-control" data-action="addRelationRow" style="display:inline-flex; align-items:center; gap:4px; font-size:0.85em;">
+                        <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Reputation.AddRelation"}}
+                    </a>
+                </div>
+                <div class="rep-relation-header" style="display:grid; grid-template-columns:1fr 1fr 2fr 1fr auto; gap:4px; font-size:0.75em; opacity:0.6; padding: 2px 0;">
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationMin"}}</span>
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationMax"}}</span>
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationName"}}</span>
+                    <span>{{localize "NEUROSHIMA.Reputation.RelationColor"}}</span>
+                    <span></span>
+                </div>
+                {{#each system.relationTable as |row idx|}}
+                <div class="rep-relation-row" style="display:grid; grid-template-columns:1fr 1fr 2fr 1fr auto; gap:4px; align-items:center; margin-bottom:3px;" data-index="{{idx}}">
+                    <input type="number" name="system.relationTable.{{@index}}.minVal" value="{{row.minVal}}" data-dtype="Number" style="text-align:center;"/>
+                    <input type="number" name="system.relationTable.{{@index}}.maxVal" value="{{row.maxVal}}" data-dtype="Number" style="text-align:center;"/>
+                    <input type="text" name="system.relationTable.{{@index}}.name" value="{{row.name}}"/>
+                    <input type="color" class="rep-color-input" name="system.relationTable.{{@index}}.color" value="{{#if row.color}}{{row.color}}{{else}}#888888{{/if}}">
+                    <a class="item-control" data-action="deleteRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                </div>
+                {{/each}}
+            </div>
+            {{/if}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "disease")}}
+        <div class="disease-stats-wrapper">
+            <div class="disease-two-col-row">
+                <div class="item-features secondary-box disease-type-col">
+                    <label class="section-label">{{localize "NEUROSHIMA.Disease.TypeLabel"}}</label>
+                    <div class="form-group row-group">
+                        <select name="system.diseaseType">
+                            <option value="chronic" {{#if (eq system.diseaseType "chronic")}}selected{{/if}}>{{localize "NEUROSHIMA.Disease.Type.Chronic"}}</option>
+                            <option value="transient" {{#if (eq system.diseaseType "transient")}}selected{{/if}}>{{localize "NEUROSHIMA.Disease.Type.Transient"}}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="item-features secondary-box disease-state-col">
+                    {{#if (eq system.diseaseType "transient")}}
+                        <label class="section-label">{{localize "NEUROSHIMA.Disease.TransientPenalty"}}</label>
+                        <div class="form-group row-group">
+                            <input type="number" name="system.transientPenalty" value="{{system.transientPenalty}}" min="-100" max="100"/>
+                        </div>
+                    {{else}}
+                        <label class="section-label">{{localize "NEUROSHIMA.Disease.StateLabel"}}</label>
+                        <div class="form-group row-group">
+                            <select name="system.currentState">
+                                <option value="none" {{#if (eq system.currentState "none")}}selected{{/if}}>○○○○ {{localize "NEUROSHIMA.Disease.State.None"}}</option>
+                                <option value="firstSymptoms" {{#if (eq system.currentState "firstSymptoms")}}selected{{/if}}>●○○○ {{localize "NEUROSHIMA.Disease.State.FirstSymptoms"}}</option>
+                                <option value="acute" {{#if (eq system.currentState "acute")}}selected{{/if}}>●●○○ {{localize "NEUROSHIMA.Disease.State.Acute"}}</option>
+                                <option value="critical" {{#if (eq system.currentState "critical")}}selected{{/if}}>●●●○ {{localize "NEUROSHIMA.Disease.State.Critical"}}</option>
+                                <option value="terminal" {{#if (eq system.currentState "terminal")}}selected{{/if}}>●●●● {{localize "NEUROSHIMA.Disease.State.Terminal"}}</option>
+                            </select>
+                        </div>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "beast-action")}}
+        <div class="item-features beast-action-stats secondary-box">
+            <div class="grid grid-3col">
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.BeastAction.TypeLabel"}}</label>
+                    <input type="text" name="system.actionType" value="{{system.actionType}}"/>
+                </div>
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.BeastAction.CostTypeLabel"}}</label>
+                    <select name="system.costType">
+                        <option value="segment" {{#if (eq system.costType "segment")}}selected{{/if}}>{{localize "NEUROSHIMA.BeastAction.CostType.Segment"}}</option>
+                        <option value="success" {{#if (eq system.costType "success")}}selected{{/if}}>{{localize "NEUROSHIMA.BeastAction.CostType.Success"}}</option>
+                    </select>
+                </div>
+                {{#if (eq system.costType "segment")}}
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.BeastAction.SegmentCost"}}</label>
+                    <input type="number" name="system.segmentCost" value="{{system.segmentCost}}" min="1" max="3"/>
+                </div>
+                {{else}}
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.BeastAction.SuccessCost"}}</label>
+                    <input type="number" name="system.successCost" value="{{system.successCost}}" min="0" max="3"/>
+                </div>
+                {{/if}}
+            </div>
+
+            <hr class="dotted-hr" style="margin: 6px 0;">
+            <div class="flexrow" style="gap: 12px; align-items: flex-end; justify-content: center;">
+                <div class="form-group row-group" style="flex: 1;">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
+                    <select name="system.attribute">
+                        {{selectOptions attributes selected=system.attribute labelAttr="label" localize=true}}
+                    </select>
+                </div>
+                <div class="form-group row-group" style="flex: 0 0 60px; text-align: center;">
+                    <label title="Punkty Przebicia">PP</label>
+                    <input type="number" name="system.piercing" value="{{system.piercing}}" min="0" max="10" style="text-align: center;"/>
+                </div>
+                <div class="form-group row-group" style="flex: 0 0 80px; text-align: center;">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+                    <select name="system.damage" style="text-align: center;">
+                        {{selectOptions damageTypes selected=system.damage localize=true}}
+                    </select>
+                </div>
+            </div>
+        </div>
+    {{/if}}
+
+</section>

@@ -1,0 +1,89 @@
+<div class="combatant-row {{#if (eq @root.turnState.selectionTurn participant.id)}}active-turn{{/if}} {{participant.statusBadge.class}}" data-participant-id="{{participant.id}}">
+    <div class="participant-header">
+        <img src="{{participant.img}}" class="avatar" title="{{participant.name}}">
+        <div class="participant-info">
+            <span class="name">{{participant.name}}</span>
+            <div class="stats-row">
+                <span class="init-tag">Inicjatywa: {{participant.initiative}}</span>
+                {{#if participant.isCrowded}}
+                    <span class="penalty-tag" title="Kara za osaczenie">-{{participant.dexPenalty}} Zr</span>
+                {{/if}}
+            </div>
+            {{#if participant.statusBadge}}
+                <span class="status-badge {{participant.statusBadge.class}}">{{participant.statusBadge.label}}</span>
+            {{/if}}
+        </div>
+        
+        {{#if (and participant.isOwner (eq participant.pool.length 0) (eq @root.turnState.phase "awaiting-pool-rolls"))}}
+            <button type="button" class="roll-pool-btn" data-action="openPoolDialog" data-id="{{participant.id}}">
+                <i class="fas fa-dice-d20"></i> Rzuć 3k20
+            </button>
+        {{/if}}
+    </div>
+
+    {{#if (gt participant.pool.length 0)}}
+        <div class="dice-pool">
+            {{#each participant.pool}}
+                <div class="die {{#if (meleeDieSelected ../participant.selectedDiceIndices @index)}}selected{{/if}} 
+                            {{#if (meleeDieUsed ../participant.usedDice @index)}}used{{/if}}
+                            {{#if (eq this 1)}}nat-1{{/if}}
+                            {{#if (eq this 20)}}nat-20{{/if}}
+                            {{#if (le this ../participant.currentEffectiveTarget)}}success{{else}}failure{{/if}}"
+                     data-action="selectDie" 
+                     data-id="{{../participant.id}}" 
+                     data-index="{{@index}}">
+                    {{this}}
+                </div>
+            {{/each}}
+        </div>
+    {{/if}}
+
+    {{!-- Target Selection --}}
+    {{#if (and participant.isOwner (eq @root.turnState.phase "target-selection") (eq @root.turnState.selectionTurn participant.id))}}
+        <div class="target-selection-controls">
+            <span class="label">Wybierz cel:</span>
+            {{#if (eq participant.team 'A')}}
+                {{#each @root.teamsData.B}}
+                    <button type="button" class="target-btn {{#if (eq (resolveRef @root.primaryTargets ../participant.id) this.id)}}selected{{/if}}" 
+                            data-action="selectTarget" data-id="{{../participant.id}}" data-target-id="{{this.id}}">
+                        {{this.name}}
+                    </button>
+                {{/each}}
+            {{else}}
+                {{#each @root.teamsData.A}}
+                    <button type="button" class="target-btn {{#if (eq (resolveRef @root.primaryTargets ../participant.id) this.id)}}selected{{/if}}" 
+                            data-action="selectTarget" data-id="{{../participant.id}}" data-target-id="{{this.id}}">
+                        {{this.name}}
+                    </button>
+                {{/each}}
+            {{/if}}
+        </div>
+    {{/if}}
+
+    {{!-- Attack/Defense Confirmation --}}
+    {{#if (and participant.isOwner (eq @root.turnState.selectionTurn participant.id))}}
+        <div class="confirmation-controls">
+            {{#if (eq @root.turnState.phase "primary-attack-selection")}}
+                <button type="button" class="confirm-btn attack" data-action="confirmAttack" data-id="{{participant.id}}" 
+                        {{#if (eq participant.selectedDiceIndices.length 0)}}disabled{{/if}}>
+                    Potwierdź atak ({{participant.selectedDiceIndices.length}}s)
+                </button>
+            {{/if}}
+            {{#if (eq @root.turnState.phase "primary-defense-selection")}}
+                <button type="button" class="confirm-btn defense" data-action="confirmDefense" data-id="{{participant.id}}"
+                        {{#if (ne participant.selectedDiceIndices.length @root.currentExchange.declaredDiceCount)}}disabled{{/if}}>
+                    Potwierdź obronę ({{participant.selectedDiceIndices.length}}/{{@root.currentExchange.declaredDiceCount}})
+                </button>
+            {{/if}}
+        </div>
+    {{/if}}
+
+    <div class="participant-footer">
+        {{#if participant.targetName}}
+            <span class="target-info">Cel: <strong>{{participant.targetName}}</strong></span>
+        {{/if}}
+        {{#if participant.primaryOpponentName}}
+            <span class="opponent-info">Główny przeciwnik: <strong>{{participant.primaryOpponentName}}</strong></span>
+        {{/if}}
+    </div>
+</div>

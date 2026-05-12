@@ -1,0 +1,59 @@
+<section class="neuroshima debug-roll-dialog">
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Attributes.Attributes"}} (Base)</label>
+        <div class="form-fields">
+            <input type="number" name="stat" value="10" min="1" max="20">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Skill"}}</label>
+        <div class="form-fields">
+            <input type="number" name="skill" value="0" min="0" max="20">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Penalty"}} (%)</label>
+        <div class="form-fields">
+            <input type="number" name="penalty" value="0" step="5">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Roll.OpenTest"}}</label>
+        <div class="form-fields">
+            <input type="checkbox" name="isOpen">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.AllowCombatShift.Name"}} (isCombat)</label>
+        <div class="form-fields">
+            <input type="checkbox" name="isCombat">
+        </div>
+    </div>
+
+    <hr>
+    <p class="notes">Dice Results (Enter value or leave empty for random)</p>
+    <div class="dice-inputs flexrow">
+        <div class="die-input">
+            <label>D1</label>
+            <input type="number" name="d1" min="1" max="20">
+        </div>
+        <div class="die-input">
+            <label>D2</label>
+            <input type="number" name="d2" min="1" max="20">
+        </div>
+        <div class="die-input">
+            <label>D3</label>
+            <input type="number" name="d3" min="1" max="20">
+        </div>
+    </div>
+
+    <footer class="sheet-footer flexrow flex-center">
+        <button type="submit" name="submit" class="roll-button">
+            <i class="fas fa-dice"></i> {{localize "NEUROSHIMA.Actions.Roll"}} (DEBUG)
+        </button>
+    </footer>
+</section>

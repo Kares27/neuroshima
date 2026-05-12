@@ -1,0 +1,111 @@
+<section class="tab tricks {{tabs.tricks.cssClass}}" data-group="primary" data-tab="tricks" data-application-part="tricks">
+    <section class="inventory-section traits-section">
+        <div class="section-header inv-section-header">
+            <span>{{localize "NEUROSHIMA.Traits.Label"}}</span>
+            {{#if isGM}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="trait" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+            {{/if}}
+        </div>
+        <div class="inventory-list trait-list">
+            <div class="inventory-items">
+                {{#each traits as |item|}}
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <div class="trait-name-block">
+                                <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                                {{#with (lookup ../traitSourceMap item.id) as |src|}}
+                                <span class="trait-source-label">{{src.name}}</span>
+                                {{/with}}
+                            </div>
+                        </div>
+                        <div class="item-controls flex1">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
+                    </div>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </section>
+
+    <section class="inventory-section">
+        <div class="section-header inv-section-header">
+            <span>{{localize "NEUROSHIMA.Tricks.SectionTitle"}}</span>
+            {{#if isGM}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="trick" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+            {{/if}}
+        </div>
+        <div class="inventory-list trick-list">
+            <div class="inventory-items">
+                {{#each tricks as |item|}}
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex5">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-controls flex1">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
+                    </div>
+                    {{#with (lookup ../itemManualScripts item.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </section>
+
+</section>

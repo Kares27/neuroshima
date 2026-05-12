@@ -1,0 +1,109 @@
+<section class="neuroshima condition-config">
+    <h2>{{localize "NEUROSHIMA.Settings.ConditionConfig.Title"}}</h2>
+    <p class="hint">{{localize "NEUROSHIMA.Settings.ConditionConfig.Hint"}}</p>
+
+    <div class="conditions-toolbar">
+        <button type="button" class="condition-reset-btn" data-action="resetConditions">
+            <i class="fas fa-undo"></i> {{localize "NEUROSHIMA.Settings.ConditionConfig.ResetDefaults"}}
+        </button>
+        <button type="button" class="condition-add-btn" data-action="addCondition">
+            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.ConditionConfig.AddCondition"}}
+        </button>
+    </div>
+
+    <div class="conditions-list">
+        <div class="conditions-list-header">
+            <span class="col-img">{{localize "NEUROSHIMA.Settings.ConditionConfig.Col.Icon"}}</span>
+            <span class="col-name">{{localize "NEUROSHIMA.Settings.ConditionConfig.Col.Name"}}</span>
+            <span class="col-key">{{localize "NEUROSHIMA.Settings.ConditionConfig.Col.Key"}}</span>
+            <span class="col-type">{{localize "NEUROSHIMA.Settings.ConditionConfig.Col.Type"}}</span>
+            <span class="col-neg" title="{{localize 'NEUROSHIMA.Settings.ConditionConfig.Col.AllowNegativeHint'}}">{{localize "NEUROSHIMA.Settings.ConditionConfig.Col.AllowNegative"}}</span>
+            <span class="col-actions"></span>
+        </div>
+
+        {{#each conditions}}
+        <div class="condition-row" data-index="{{@index}}">
+            <input type="hidden" name="condition-{{@index}}-id" value="{{this.id}}">
+            <input type="hidden" name="condition-{{@index}}-img" value="{{this.img}}" class="condition-img-input">
+
+            <span class="col-img">
+                <img src="{{this.img}}" width="28" height="28" class="condition-img-preview clickable"
+                     data-action="pickImage" data-index="{{@index}}"
+                     title="{{localize 'NEUROSHIMA.Settings.ConditionConfig.ClickToChange'}}"
+                     style="cursor:pointer; object-fit:contain; border-radius:3px; border:1px solid #555;">
+            </span>
+
+            <span class="col-name">
+                <input type="text"
+                       name="condition-{{@index}}-name"
+                       value="{{this.name}}"
+                       placeholder="{{localize 'NEUROSHIMA.Settings.ConditionConfig.NamePlaceholder'}}"
+                       required>
+            </span>
+
+            <span class="col-key">
+                <input type="text"
+                       name="condition-{{@index}}-key"
+                       value="{{this.key}}"
+                       placeholder="{{localize 'NEUROSHIMA.Settings.ConditionConfig.KeyPlaceholder'}}"
+                       class="condition-key-input"
+                       required>
+            </span>
+
+            <span class="col-type">
+                <select name="condition-{{@index}}-type" class="condition-type-select">
+                    <option value="boolean" {{#if (eq this.type "boolean")}}selected{{/if}}>
+                        {{localize "NEUROSHIMA.Settings.ConditionConfig.TypeBoolean"}}
+                    </option>
+                    <option value="int" {{#if (eq this.type "int")}}selected{{/if}}>
+                        {{localize "NEUROSHIMA.Settings.ConditionConfig.TypeInt"}}
+                    </option>
+                </select>
+            </span>
+
+            <span class="col-neg">
+                <input type="checkbox"
+                       name="condition-{{@index}}-allowNegative"
+                       {{#if this.allowNegative}}checked{{/if}}
+                       class="condition-neg-checkbox"
+                       {{#if (ne this.type "int")}}disabled{{/if}}>
+            </span>
+
+            <span class="col-actions">
+                <a class="condition-edit-btn" data-action="editConditionEffect" data-index="{{@index}}"
+                   title="{{localize 'NEUROSHIMA.Settings.ConditionConfig.EditTemplate'}}">
+                    <i class="fas fa-scroll"></i>
+                </a>
+                <a class="condition-delete-btn" data-action="deleteCondition" data-index="{{@index}}"
+                   title="{{localize 'NEUROSHIMA.Settings.ConditionConfig.Delete'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </span>
+        </div>
+        {{else}}
+        <div class="condition-row condition-row-empty">
+            <span>{{localize "NEUROSHIMA.Settings.ConditionConfig.NoConditions"}}</span>
+        </div>
+        {{/each}}
+    </div>
+
+    <footer class="sheet-footer flexrow">
+        <button type="submit" name="submit">
+            <i class="fas fa-save"></i> {{localize "NEUROSHIMA.Actions.Save"}}
+        </button>
+    </footer>
+
+    <script>
+    document.querySelectorAll(".condition-type-select").forEach(sel => {
+        const row = sel.closest(".condition-row");
+        const negCheckbox = row?.querySelector(".condition-neg-checkbox");
+        function syncNeg() {
+            if (!negCheckbox) return;
+            negCheckbox.disabled = sel.value !== "int";
+            if (sel.value !== "int") negCheckbox.checked = false;
+        }
+        sel.addEventListener("change", syncNeg);
+        syncNeg();
+    });
+    </script>
+</section>

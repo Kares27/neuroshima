@@ -1,0 +1,68 @@
+<section class="tab vehicle-mods {{tabs.mods.cssClass}}" data-group="primary" data-tab="mods" data-application-part="mods">
+
+    <section class="inventory-section">
+        <div class="section-header inv-section-header">
+            <span>{{localize "NEUROSHIMA.Vehicle.Modifications"}}</span>
+            {{#if owner}}
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="vehicle-mod"
+                    title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+            {{/if}}
+        </div>
+        <div class="inventory-list vehicle-mods-list">
+            <div class="inventory-items">
+                {{#each mods as |mod|}}
+                <div class="item-wrap" data-item-id="{{mod.id}}" data-uuid="{{mod.uuid}}">
+                    <div class="item draggable flexrow vehicle-mod-row" data-item-id="{{mod.id}}" data-uuid="{{mod.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{mod.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{mod.name}}</span>
+                            <span class="mod-category item-tag">{{lookup ../modCategoryLabels mod.system.category}}</span>
+                        </div>
+                        <div class="mod-difficulty">
+                            <span title="{{localize 'NEUROSHIMA.VehicleMod.InstallDifficulty'}}">{{lookup ../modDifficultyLabels mod.system.installDifficulty}}</span>
+                        </div>
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
+                    </div>
+                    {{#with (lookup ../itemManualScripts mod.id) as |scripts|}}
+                    {{#if scripts}}
+                    <div class="sheet-effect-buttons">
+                        {{#each scripts as |ms|}}
+                        <button class="manual-script-btn" data-action="invokeItemScript"
+                               data-item-id="{{ms.itemId}}" data-effect-id="{{ms.effectId}}"
+                               data-script-index="{{ms.scriptIndex}}"
+                               title="{{ms.effectName}}" type="button">
+                            <i class="fas fa-play"></i> {{ms.label}}
+                        </button>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    {{/with}}
+                    <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.VehicleMod.InstallDifficulty"}}</span><span class="stat-chip-value">{{lookup ../modDifficultyLabels mod.system.installDifficulty}}</span></span>
+                        </div>
+                        {{#if mod.system.resources.length}}
+                        <div class="item-resources-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                            <div class="item-resources-summary">{{#each mod.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
+                        </div>
+                        {{/if}}
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{mod.system.description}}}</div>
+                        </div>
+                    </div>
+                </div>
+                {{else}}
+                <div class="inventory-empty">{{localize "NEUROSHIMA.Vehicle.NoModifications"}}</div>
+                {{/each}}
+            </div>
+        </div>
+    </section>
+
+</section>

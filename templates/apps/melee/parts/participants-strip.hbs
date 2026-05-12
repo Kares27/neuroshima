@@ -1,0 +1,27 @@
+<div class="participants-strip">
+  <div class="team team-a">
+    <div class="team-label">{{localize "NEUROSHIMA.MeleeDuel.TeamA"}}</div>
+    {{#each teamsData.A}}
+      <div class="participant-thumb {{#if (eq ../turnState.selectionTurn this.id)}}current-selection{{/if}}" data-id="{{this.id}}" title="{{this.name}}">
+        <img src="{{this.img}}" width="32" height="32" />
+        {{#if this.pool.length}}
+          <span class="pool-ready"><i class="fas fa-check"></i></span>
+        {{/if}}
+      </div>
+    {{/each}}
+  </div>
+  
+  <div class="vs-divider"><i class="fas fa-bolt"></i></div>
+  
+  <div class="team team-b">
+    <div class="team-label">{{localize "NEUROSHIMA.MeleeDuel.TeamB"}}</div>
+    {{#each teamsData.B}}
+      <div class="participant-thumb {{#if (eq ../turnState.selectionTurn this.id)}}current-selection{{/if}}" data-id="{{this.id}}" title="{{this.name}}">
+        <img src="{{this.img}}" width="32" height="32" />
+        {{#if this.pool.length}}
+          <span class="pool-ready"><i class="fas fa-check"></i></span>
+        {{/if}}
+      </div>
+    {{/each}}
+  </div>
+</div>

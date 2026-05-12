@@ -1,0 +1,19 @@
+<header class="melee-top-bar">
+  <span class="top-bar__turn">
+    {{localize "NEUROSHIMA.Combat.Turn"}} {{turnState.turn}}
+  </span>
+
+  <div class="top-bar__segments">
+    {{#each segmentDots}}
+      <div class="seg-dot seg-dot--{{this.state}}" title="Segment {{this.number}}">
+        {{#if (eq this.state "done")}}<i class="fas fa-check"></i>{{else}}{{this.number}}{{/if}}
+      </div>
+    {{/each}}
+  </div>
+
+  <span class="top-bar__phase">{{phaseLabel}}</span>
+
+  {{#unless (eq resolutionMode "normal")}}
+    <span class="top-bar__mode-badge">{{resolutionModeLabel}}</span>
+  {{/unless}}
+</header>

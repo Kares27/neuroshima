@@ -1,0 +1,60 @@
+<section class="melee-exchange-banner">
+  {{#if attacker}}
+    <div class="exchange-card exchange-card--attacker">
+      <img src="{{attacker.img}}" class="exchange-card__img" alt="{{attacker.name}}">
+      <div class="exchange-card__body">
+        <div class="exchange-card__label">{{localize "NEUROSHIMA.MeleeDuel.Attacker"}}</div>
+        <div class="exchange-card__name">{{attacker.name}}</div>
+        <div class="exchange-card__target">Zr: <strong>{{attacker.currentEffectiveTarget}}</strong></div>
+      </div>
+    </div>
+  {{else}}
+    <div class="exchange-card exchange-card--empty">
+      {{localize "NEUROSHIMA.MeleeDuel.NoActiveAttacker"}}
+    </div>
+  {{/if}}
+
+  <div class="melee-exchange-banner__middle">
+    {{#if currentExchange.declaredDiceCount}}
+      <div class="attack-strength-display attack-strength-display--{{currentExchange.declaredDiceCount}}s">
+        <div class="attack-strength-display__label">{{localize "NEUROSHIMA.MeleeDuel.AttackStrength"}}</div>
+        <div class="attack-strength-display__count">{{currentExchange.declaredDiceCount}}s</div>
+        {{#if currentDamageLabel}}
+          <div class="attack-strength-display__damage">
+            → {{currentDamageLabel}}
+          </div>
+        {{/if}}
+      </div>
+      <div class="defense-requirement">
+        <i class="fas fa-shield-alt"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.DefenseRequired"}}: <strong>{{currentExchange.declaredDiceCount}}</strong>
+      </div>
+    {{else}}
+      <div class="exchange-state">
+        <i class="fas fa-swords"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.WaitingDeclaration"}}
+      </div>
+    {{/if}}
+
+    {{#if (and isGM (eq turnState.phase "primary-ready"))}}
+      <button type="button" class="resolve-btn-mini pulse" data-action="resolveExchange">
+        <i class="fas fa-check-double"></i> {{localize "NEUROSHIMA.MeleeDuel.ResolveSegment"}}
+      </button>
+    {{/if}}
+  </div>
+
+  {{#if defender}}
+    <div class="exchange-card exchange-card--defender">
+      <img src="{{defender.img}}" class="exchange-card__img" alt="{{defender.name}}">
+      <div class="exchange-card__body">
+        <div class="exchange-card__label">{{localize "NEUROSHIMA.MeleeDuel.Defender"}}</div>
+        <div class="exchange-card__name">{{defender.name}}</div>
+        <div class="exchange-card__target">Zr: <strong>{{defender.currentEffectiveTarget}}</strong></div>
+      </div>
+    </div>
+  {{else}}
+    <div class="exchange-card exchange-card--empty">
+      {{localize "NEUROSHIMA.MeleeDuel.NoActiveDefender"}}
+    </div>
+  {{/if}}
+</section>

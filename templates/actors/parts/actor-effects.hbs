@@ -1,0 +1,407 @@
+<section class="tab effects {{tabs.effects.cssClass}}" data-group="primary" data-tab="effects" data-application-part="effects">
+
+    <div class="effects-columns">
+
+        {{!-- ── LEFT: Conditions panel ─────────────────────────────────────── --}}
+        <div class="conditions-column">
+            <div class="conditions-column-header">
+                <span>{{localize "NEUROSHIMA.Effects.Conditions"}}</span>
+            </div>
+            <div class="conditions-state-list">
+                {{#each conditionStates}}
+                <div class="condition-state-row {{#if this.active}}active{{/if}}" data-condition-key="{{this.key}}">
+                    <div class="condition-state-left">
+                        <img src="{{this.img}}"
+                             class="condition-state-icon {{#if this.active}}condition-active{{/if}} clickable"
+                             data-action="toggleCondition"
+                             data-condition-key="{{this.key}}"
+                             data-condition-type="{{this.type}}"
+                             data-allow-negative="{{this.allowNegative}}"
+                             title="{{this.name}}"
+                             width="24" height="24">
+                        <span class="condition-state-name">{{this.name}}</span>
+                    </div>
+                    <div class="condition-state-right">
+                        {{#if (eq this.type "boolean")}}
+                        <span class="condition-bool-checkbox {{#if this.active}}checked{{/if}}"
+                              data-action="toggleCondition"
+                              data-condition-key="{{this.key}}"
+                              data-condition-type="boolean"
+                              title="{{#if this.active}}{{localize 'NEUROSHIMA.Effects.Disable'}}{{else}}{{localize 'NEUROSHIMA.Effects.Enable'}}{{/if}}"></span>
+                        {{else}}
+                        <span class="condition-int-span"
+                              data-condition-key="{{this.key}}"
+                              data-allow-negative="{{this.allowNegative}}"
+                              data-value="{{this.value}}"
+                              title="{{localize 'NEUROSHIMA.Effects.ConditionClickHint'}}">{{this.value}}</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+
+        {{!-- ── RIGHT: Active Effects ───────────────────────────────────────── --}}
+        <div class="active-effects-column">
+
+            {{#if showDiseaseSection}}
+            {{!-- Chronic Disease Items --}}
+            <div class="effects-group effects-group-disease-items">
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.DiseaseItemsGroup"}}</span>
+                    <span class="col-source-hdr"></span>
+                    <span class="col-duration-hdr"></span>
+                    <span class="col-controls-hdr">
+                        {{#if owner}}
+                        <a class="item-control" data-action="createItem" data-type="disease" title="{{localize 'DOCUMENT.Create'}}">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                        {{/if}}
+                    </span>
+                </div>
+
+                {{#if chronicDiseaseItems.length}}
+                <div class="disease-items-list">
+                    {{#each chronicDiseaseItems}}
+                    <div class="disease-effect-item" data-item-id="{{this.id}}">
+                        <div class="disease-effect-row-1">
+                            <img src="{{this.img}}" class="disease-effect-icon clickable" data-action="editItem" data-item-id="{{this.id}}" width="32" height="32" alt="{{this.name}}">
+                            <span class="disease-effect-name clickable" data-action="editItem" data-item-id="{{this.id}}">{{this.name}}</span>
+                            <span class="disease-state-label-text">{{this.stateLabel}}</span>
+                            <div class="disease-dots" data-action="adjustDiseaseState" data-item-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Disease.DotsTooltip'}}">
+                                {{#each this.stateDots}}
+                                <span class="disease-dot {{#if this.filled}}filled{{/if}}">{{#if this.filled}}●{{else}}○{{/if}}</span>
+                                {{/each}}
+                            </div>
+                            {{#if @root.owner}}
+                            <a class="item-control disease-effect-delete" data-action="deleteItem" data-item-id="{{this.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <p class="effects-empty-hint hint">—</p>
+                {{/if}}
+            </div>
+
+            {{!-- Transient Disease Items --}}
+            <div class="effects-group effects-group-disease-items">
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.TransientDiseaseItemsGroup"}}</span>
+                    <span class="col-source-hdr"></span>
+                    <span class="col-duration-hdr"></span>
+                    <span class="col-controls-hdr">
+                        {{#if owner}}
+                        <a class="item-control" data-action="createItem" data-type="disease" data-disease-type="transient" title="{{localize 'DOCUMENT.Create'}}">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                        {{/if}}
+                    </span>
+                </div>
+
+                {{#if transientDiseaseItems.length}}
+                <div class="disease-items-list">
+                    {{#each transientDiseaseItems}}
+                    <div class="disease-effect-item" data-item-id="{{this.id}}">
+                        <div class="disease-effect-row-1">
+                            <img src="{{this.img}}" class="disease-effect-icon clickable" data-action="editItem" data-item-id="{{this.id}}" width="32" height="32" alt="{{this.name}}">
+                            <span class="disease-effect-name clickable" data-action="editItem" data-item-id="{{this.id}}">{{this.name}}</span>
+                            <span class="disease-transient-label">{{localize "NEUROSHIMA.Disease.TransientPenalty"}}:</span>
+                            <input type="number" class="disease-transient-input" data-action="adjustTransientPenalty" data-item-id="{{this.id}}" value="{{this.transientPenalty}}" step="1">
+                            {{#if @root.owner}}
+                            <a class="item-control disease-effect-delete" data-action="deleteItem" data-item-id="{{this.id}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <p class="effects-empty-hint hint">—</p>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Passive --}}
+            <div class="effects-group effects-group-passive">
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.Passive"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-controls-hdr"></span>
+                </div>
+
+                {{#if effects.passive.length}}
+                <div class="inventory-items effects-list">
+                    {{#each effects.passive}}
+                    <div class="item effect-row flexrow {{#if this.suppressed}}effect-suppressed{{/if}}" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
+                        <div class="col-icon">
+                            <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
+                        </div>
+                        <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}" title="{{this.name}}">
+                            <span>{{this.name}}</span>
+                        </div>
+                        <div class="col-source {{#if this.itemId}}clickable{{/if}}" {{#if this.itemId}}data-action="openSource" data-item-id="{{this.itemId}}"{{/if}} title="{{this.sourceName}}">
+                            <img src="{{this.sourceIcon}}" alt="{{this.sourceName}}" width="16" height="16" class="source-icon">
+                            <span>{{this.sourceName}}</span>
+                        </div>
+                        <div class="col-controls effect-controls">
+                            {{#if this.scriptControlled}}
+                            <a class="item-control toggle-control script-lock {{#if this.suppressed}}suppressed{{else}}active{{/if}}" title="{{localize 'NEUROSHIMA.Effects.ScriptControlled'}}">
+                                <i class="fas fa-lock"></i>
+                            </a>
+                            {{else}}
+                            <a class="item-control toggle-control active" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Effects.Disable'}}">
+                                <i class="fas fa-toggle-on"></i>
+                            </a>
+                            {{/if}}
+                            {{#if @root.owner}}
+                            <a class="item-control" data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{#unless this.isItemEffect}}
+                            <a class="item-control" data-action="deleteEffect" data-effect-id="{{this.id}}" title="{{localize 'DOCUMENT.Delete'}}">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            {{/unless}}
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <p class="effects-empty-hint hint">—</p>
+                {{/if}}
+            </div>
+
+            {{!-- Temporary --}}
+            <div class="effects-group">
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.Temporary"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr">
+                        {{#if owner}}
+                        <a class="item-control" data-action="createEffect" title="{{localize 'NEUROSHIMA.Effects.Create'}}">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                        {{/if}}
+                    </span>
+                </div>
+
+                {{#if effects.temporary.length}}
+                <div class="inventory-items effects-list">
+                    {{#each effects.temporary}}
+                    <div class="item effect-row flexrow {{#if this.suppressed}}effect-suppressed{{/if}}" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
+                        <div class="col-icon">
+                            <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
+                        </div>
+                        <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}" title="{{this.name}}">
+                            <span>{{this.name}}</span>
+                        </div>
+                        <div class="col-source {{#if this.itemId}}clickable{{/if}}" {{#if this.itemId}}data-action="openSource" data-item-id="{{this.itemId}}"{{/if}} title="{{this.sourceName}}">
+                            <img src="{{this.sourceIcon}}" alt="{{this.sourceName}}" width="16" height="16" class="source-icon">
+                            <span>{{this.sourceName}}</span>
+                        </div>
+                        <div class="col-duration" title="{{this.durationLabel}}"><span>{{this.durationLabel}}</span></div>
+                        <div class="col-controls effect-controls">
+                            {{#if this.scriptControlled}}
+                            <a class="item-control toggle-control script-lock {{#if this.suppressed}}suppressed{{else}}active{{/if}}" title="{{localize 'NEUROSHIMA.Effects.ScriptControlled'}}">
+                                <i class="fas fa-lock"></i>
+                            </a>
+                            {{else}}
+                            <a class="item-control toggle-control active" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Effects.Disable'}}">
+                                <i class="fas fa-toggle-on"></i>
+                            </a>
+                            {{/if}}
+                            {{#if @root.owner}}
+                            <a class="item-control" data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{#unless this.isItemEffect}}
+                            <a class="item-control" data-action="deleteEffect" data-effect-id="{{this.id}}" title="{{localize 'DOCUMENT.Delete'}}">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            {{/unless}}
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <p class="effects-empty-hint hint">—</p>
+                {{/if}}
+            </div>
+
+            {{!-- Status / Condition Effects --}}
+            <div class="effects-group">
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.StatusGroup"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr"></span>
+                </div>
+
+                {{#if effects.statusEffects.length}}
+                <div class="inventory-items effects-list">
+                    {{#each effects.statusEffects}}
+                    <div class="item effect-row flexrow {{#if this.suppressed}}effect-suppressed{{else}}{{#if this.disabled}}disabled{{/if}}{{/if}}" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
+                        <div class="col-icon">
+                            <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
+                        </div>
+                        <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}" title="{{this.name}}">
+                            <span>{{this.name}}</span>
+                        </div>
+                        <div class="col-source {{#if this.itemId}}clickable{{/if}}" {{#if this.itemId}}data-action="openSource" data-item-id="{{this.itemId}}"{{/if}} title="{{this.sourceName}}">
+                            <img src="{{this.sourceIcon}}" alt="{{this.sourceName}}" width="16" height="16" class="source-icon">
+                            <span>{{this.sourceName}}</span>
+                        </div>
+                        <div class="col-duration" title="{{this.durationLabel}}"><span>{{this.durationLabel}}</span></div>
+                        <div class="col-controls effect-controls">
+                            {{#if this.scriptControlled}}
+                            <a class="item-control toggle-control script-lock {{#if this.suppressed}}suppressed{{else}}active{{/if}}" title="{{localize 'NEUROSHIMA.Effects.ScriptControlled'}}">
+                                <i class="fas fa-lock"></i>
+                            </a>
+                            {{else}}
+                            {{#if this.disabled}}
+                            <a class="item-control toggle-control" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Effects.Enable'}}">
+                                <i class="fas fa-toggle-off"></i>
+                            </a>
+                            {{else}}
+                            <a class="item-control toggle-control active" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Effects.Disable'}}">
+                                <i class="fas fa-toggle-on"></i>
+                            </a>
+                            {{/if}}
+                            {{/if}}
+                            {{#if @root.owner}}
+                            <a class="item-control" data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{#unless this.isItemEffect}}
+                            <a class="item-control" data-action="deleteEffect" data-effect-id="{{this.id}}" title="{{localize 'DOCUMENT.Delete'}}">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            {{/unless}}
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <p class="effects-empty-hint hint">—</p>
+                {{/if}}
+            </div>
+
+            {{#if showDiseaseSection}}
+            {{!-- Disease Effects (AEs from disease items) --}}
+            <div class="effects-group effects-group-disease">
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.DiseaseEffectsGroup"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr"></span>
+                </div>
+
+                {{#if effects.disease.length}}
+                <div class="inventory-items effects-list">
+                    {{#each effects.disease}}
+                    <div class="item effect-row flexrow {{#if this.suppressed}}effect-suppressed{{else}}{{#if this.disabled}}disabled{{/if}}{{/if}}" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
+                        <div class="col-icon">
+                            <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
+                        </div>
+                        <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}" title="{{this.name}}">
+                            <span>{{this.name}}</span>
+                        </div>
+                        <div class="col-source clickable" data-action="openSource" data-item-id="{{this.itemId}}" title="{{this.sourceName}}">
+                            <img src="{{this.sourceIcon}}" alt="{{this.sourceName}}" width="16" height="16" class="source-icon">
+                            <span>{{this.sourceName}}</span>
+                        </div>
+                        <div class="col-duration" title="{{this.durationLabel}}"><span>{{this.durationLabel}}</span></div>
+                        <div class="col-controls effect-controls">
+                            {{#if this.scriptControlled}}
+                            <a class="item-control toggle-control script-lock {{#if this.suppressed}}suppressed{{else}}active{{/if}}" title="{{localize 'NEUROSHIMA.Effects.ScriptControlled'}}">
+                                <i class="fas fa-lock"></i>
+                            </a>
+                            {{else}}
+                            {{#if this.disabled}}
+                            <a class="item-control toggle-control" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Effects.Enable'}}">
+                                <i class="fas fa-toggle-off"></i>
+                            </a>
+                            {{else}}
+                            <a class="item-control toggle-control active" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Effects.Disable'}}">
+                                <i class="fas fa-toggle-on"></i>
+                            </a>
+                            {{/if}}
+                            {{/if}}
+                            {{#if @root.owner}}
+                            <a class="item-control" data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <p class="effects-empty-hint hint">—</p>
+                {{/if}}
+            </div>
+            {{/if}}
+
+            {{!-- Disabled --}}
+            <div class="effects-group effects-group-disabled">
+                <div class="effects-group-header effects-group-header-cols">
+                    <span class="group-title">{{localize "NEUROSHIMA.Effects.DisabledGroup"}}</span>
+                    <span class="col-source-hdr">{{localize "NEUROSHIMA.Effects.Source"}}</span>
+                    <span class="col-duration-hdr">{{localize "NEUROSHIMA.Effects.DurationHeader"}}</span>
+                    <span class="col-controls-hdr"></span>
+                </div>
+
+                {{#if effects.disabled.length}}
+                <div class="inventory-items effects-list">
+                    {{#each effects.disabled}}
+                    <div class="item effect-row flexrow disabled" data-effect-id="{{this.id}}" {{#if this.itemId}}data-item-id="{{this.itemId}}"{{/if}}>
+                        <div class="col-icon">
+                            <img src="{{this.icon}}" alt="{{this.name}}" width="24" height="24">
+                        </div>
+                        <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}" title="{{this.name}}">
+                            <span>{{this.name}}</span>
+                        </div>
+                        <div class="col-source {{#if this.itemId}}clickable{{/if}}" {{#if this.itemId}}data-action="openSource" data-item-id="{{this.itemId}}"{{/if}} title="{{this.sourceName}}">
+                            <img src="{{this.sourceIcon}}" alt="{{this.sourceName}}" width="16" height="16" class="source-icon">
+                            <span>{{this.sourceName}}</span>
+                        </div>
+                        <div class="col-duration" title="{{this.durationLabel}}"><span>{{this.durationLabel}}</span></div>
+                        <div class="col-controls effect-controls">
+                            {{#if this.scriptControlled}}
+                            <a class="item-control toggle-control script-lock suppressed" title="{{localize 'NEUROSHIMA.Effects.ScriptControlled'}}">
+                                <i class="fas fa-lock"></i>
+                            </a>
+                            {{else}}
+                            <a class="item-control toggle-control" data-action="toggleEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Effects.Enable'}}">
+                                <i class="fas fa-toggle-off"></i>
+                            </a>
+                            {{/if}}
+                            {{#if @root.owner}}
+                            <a class="item-control" data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {{#unless this.isItemEffect}}
+                            <a class="item-control" data-action="deleteEffect" data-effect-id="{{this.id}}" title="{{localize 'DOCUMENT.Delete'}}">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            {{/unless}}
+                            {{/if}}
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{else}}
+                <p class="effects-empty-hint hint">—</p>
+                {{/if}}
+            </div>
+
+        </div>{{!-- /active-effects-column --}}
+
+    </div>{{!-- /effects-columns --}}
+
+</section>

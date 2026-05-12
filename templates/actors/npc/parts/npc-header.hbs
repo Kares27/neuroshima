@@ -1,0 +1,67 @@
+<header class="sheet-header" data-application-part="header">
+    <img class="profile-img" src="{{actor.img}}" data-action="editImage" title="{{actor.name}}" height="128" width="128"/>
+    <div class="header-fields">
+        <h1 class="charname">
+            <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
+        </h1>
+
+        <div class="header-details flexrow">
+            <div class="header-field bg-holder-field" data-slot-type="specialization">
+                <label>{{localize "NEUROSHIMA.Info.Specialization"}}</label>
+                {{#if background.specialization}}
+                <div class="bg-holder-item" data-item-id="{{background.specialization.id}}" data-action="editItem" title="{{background.specialization.name}}">
+                    <span class="bg-holder-name">{{background.specialization.name}}</span>
+                </div>
+                {{else}}
+                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                {{/if}}
+            </div>
+            <div class="header-field bg-holder-field" data-slot-type="origin">
+                <label>{{localize "NEUROSHIMA.Info.Origin"}}</label>
+                {{#if background.origin}}
+                <div class="bg-holder-item" data-item-id="{{background.origin.id}}" data-action="editItem" title="{{background.origin.name}}">
+                    <span class="bg-holder-name">{{background.origin.name}}</span>
+                </div>
+                {{else}}
+                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                {{/if}}
+            </div>
+            <div class="header-field bg-holder-field" data-slot-type="profession">
+                <label>{{localize "NEUROSHIMA.Info.Profession"}}</label>
+                {{#if background.profession}}
+                <div class="bg-holder-item" data-item-id="{{background.profession.id}}" data-action="editItem" title="{{background.profession.name}}">
+                    <span class="bg-holder-name">{{background.profession.name}}</span>
+                </div>
+                {{else}}
+                <div class="bg-holder-empty">{{localize "NEUROSHIMA.Background.DragHere"}}</div>
+                {{/if}}
+            </div>
+        </div>
+
+        <div class="header-stats-row">
+            <div class="stat-box movement-summary">
+                <label>{{localize "NEUROSHIMA.Movement.Label"}}</label>
+                <div class="movement-fields">
+                    <input type="number" name="system.movement" value="{{system.movement}}" min="0" class="movement-base" title="{{localize 'NEUROSHIMA.Movement.PerSegment'}}"/>
+                    <input type="number" value="{{combat.movement2}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg2'}}"/>
+                    <input type="number" value="{{combat.movement3}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg3'}}"/>
+                </div>
+            </div>
+            <div class="stat-box penalty-summary" data-tooltip="{{combat.penaltyTooltip}}" data-tooltip-direction="DOWN">
+                <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
+                <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
+            </div>
+            <div class="stat-box hp-summary" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
+                {{#if isGM}}
+                <a class="hp-config-btn" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+                {{/if}}
+                <label>HP</label>
+                <div class="stat-value">
+                    {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                </div>
+            </div>
+        </div>
+    </div>
+</header>

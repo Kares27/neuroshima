@@ -1,0 +1,66 @@
+<section class="tab notes {{tabs.notes.cssClass}}" data-group="primary" data-tab="notes" data-application-part="notes">
+    <div class="notes-layout">
+
+        {{!-- Notes block: header + prose-mirror --}}
+        <div class="notes-editor-block">
+            <div class="section-header notes-editor-header">
+                <span>{{localize "NEUROSHIMA.Tabs.Notes"}}</span>
+            </div>
+            <div class="notes-editor">
+                <prose-mirror
+                    name="system.notes"
+                    value="{{system.notes}}"
+                    document-uuid="{{actor.uuid}}"
+                    toggled
+                    {{#unless editable}}disabled{{/unless}}>
+                    {{{notes.enriched}}}
+                </prose-mirror>
+            </div>
+        </div>
+
+        {{!-- Bottom: XP log spanning full width, GM + character only --}}
+        {{#if (and isGM isCharacter)}}
+        <div class="notes-xp-log-row">
+            <div class="section-header xp-log-title-header">
+                <span class="xp-log-title">{{localize "NEUROSHIMA.XP.Log.Title"}}</span>
+                <span class="xp-log-balance">
+                    {{localize "NEUROSHIMA.XP.Log.Available"}}: <strong>{{system.xp.current}}</strong>
+                    &nbsp;|&nbsp;
+                    {{localize "NEUROSHIMA.XP.Log.Spent"}}: <strong>{{system.xp.spent}}</strong>
+                    &nbsp;|&nbsp;
+                    {{localize "NEUROSHIMA.XP.Log.Total"}}: <strong>{{system.xp.total}}</strong>
+                </span>
+            </div>
+            <div class="inventory-list-header flexrow xp-log-list-header">
+                <div class="xp-col-date">{{localize "NEUROSHIMA.XP.Log.Col.Date"}}</div>
+                <div class="xp-col-desc">{{localize "NEUROSHIMA.XP.Log.Col.Description"}}</div>
+                <div class="xp-col-cost">{{localize "NEUROSHIMA.XP.Log.Col.Cost"}}</div>
+                <div class="xp-col-actions"></div>
+            </div>
+            <div class="xp-log-scroll-body">
+                {{#if notes.xpLog.length}}
+                <ul class="xp-log-list">
+                    {{#each notes.xpLog as |entry|}}
+                    <li class="xp-log-item flexrow">
+                        <span class="xp-col-date">{{entry.date}}</span>
+                        <span class="xp-col-desc">{{entry.description}}</span>
+                        <span class="xp-col-cost">
+                            <span class="{{entry.costClass}}">{{#if entry.costDisplay}}{{entry.costDisplay}}{{else}}{{localize "NEUROSHIMA.XP.Dialog.Free"}}{{/if}}</span>
+                        </span>
+                        <span class="xp-col-actions">
+                            <a data-action="revertXpEntry" data-entry-id="{{entry.id}}" title="{{localize 'NEUROSHIMA.XP.Log.Revert'}}" class="xp-revert-btn">
+                                <i class="fas fa-undo"></i>
+                            </a>
+                        </span>
+                    </li>
+                    {{/each}}
+                </ul>
+                {{else}}
+                <p class="xp-log-empty">{{localize "NEUROSHIMA.XP.Log.Empty"}}</p>
+                {{/if}}
+            </div>
+        </div>
+        {{/if}}
+
+    </div>
+</section>

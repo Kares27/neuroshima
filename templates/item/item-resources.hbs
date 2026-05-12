@@ -1,0 +1,103 @@
+<section class="tab resources {{tabs.resources.cssClass}}" data-group="primary" data-tab="resources" data-application-part="resources">
+    <div class="section-header">
+        <div class="header-title">
+            <i class="fas fa-database"></i>
+            <span>{{localize "NEUROSHIMA.Tabs.Resources"}}</span>
+        </div>
+        {{#if editable}}
+        <div class="header-actions">
+            <a class="item-control" data-action="addResource" title="{{localize 'NEUROSHIMA.Resources.Add'}}">
+                <i class="fas fa-plus"></i>
+            </a>
+        </div>
+        {{/if}}
+    </div>
+
+    {{#if system.resources.length}}
+    <div class="item resources-list-header">
+        <div class="res-col-id">#</div>
+        <div class="res-col-key">{{localize "NEUROSHIMA.Resources.Key"}}</div>
+        <div class="res-col-label">{{localize "NEUROSHIMA.Resources.Label"}}</div>
+        <div class="res-col-num">{{localize "NEUROSHIMA.Resources.Min"}}</div>
+        <div class="res-col-num">{{localize "NEUROSHIMA.Resources.Max"}}</div>
+        <div class="res-col-num">{{localize "NEUROSHIMA.Resources.Value"}}</div>
+        <div class="res-col-controls"></div>
+    </div>
+    <div class="resources-list">
+        {{#each system.resources}}
+        <div class="item resource-row" data-resource-index="{{@index}}">
+            <div class="res-col-id">
+                <input type="checkbox"
+                       name="system.resources.{{@index}}.showInSummary"
+                       {{#if this.showInSummary}}checked{{/if}}
+                       style="display:none">
+                <button type="button"
+                        class="resource-id-badge {{#if this.showInSummary}}active{{/if}}"
+                        data-action="toggleResourceSummary"
+                        data-resource-index="{{@index}}"
+                        data-tooltip="{{localize 'NEUROSHIMA.Resources.ToggleSummaryTooltip'}}">{{@index}}</button>
+            </div>
+            <div class="res-col-key">
+                <input type="text"
+                       class="condition-int-input res-input-key"
+                       name="system.resources.{{@index}}.key"
+                       value="{{this.key}}"
+                       placeholder="klucz"
+                       {{#unless @root.editable}}disabled{{/unless}}/>
+            </div>
+            <div class="res-col-label">
+                <input type="text"
+                       class="condition-int-input res-input-label"
+                       name="system.resources.{{@index}}.label"
+                       value="{{this.label}}"
+                       placeholder="{{localize 'NEUROSHIMA.Resources.LabelPlaceholder'}}"
+                       {{#unless @root.editable}}disabled{{/unless}}/>
+            </div>
+            <div class="res-col-num">
+                <input type="number"
+                       class="condition-int-input"
+                       name="system.resources.{{@index}}.min"
+                       value="{{this.min}}"
+                       {{#if this.unclamped}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}/>
+            </div>
+            <div class="res-col-num">
+                <input type="number"
+                       class="condition-int-input"
+                       name="system.resources.{{@index}}.max"
+                       value="{{this.max}}"
+                       {{#if this.unclamped}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}/>
+            </div>
+            <div class="res-col-num">
+                <input type="number"
+                       class="condition-int-input"
+                       name="system.resources.{{@index}}.value"
+                       value="{{this.value}}"
+                       min="{{#unless this.unclamped}}{{this.min}}{{/unless}}"
+                       max="{{#unless this.unclamped}}{{this.max}}{{/unless}}"
+                       {{#unless @root.editable}}disabled{{/unless}}/>
+            </div>
+            <div class="res-col-controls">
+                {{#if @root.editable}}
+                <input type="checkbox"
+                       name="system.resources.{{@index}}.unclamped"
+                       {{#if this.unclamped}}checked{{/if}}
+                       style="display:none">
+                <button type="button"
+                        class="resource-unclamped-btn {{#if this.unclamped}}active{{/if}}"
+                        data-action="toggleResourceUnclamped"
+                        data-resource-index="{{@index}}"
+                        data-tooltip="{{localize 'NEUROSHIMA.Resources.UnclampedTooltip'}}">
+                    <i class="fas fa-infinity"></i>
+                </button>
+                <a class="item-control" data-action="deleteResource" data-resource-index="{{@index}}" title="{{localize 'DOCUMENT.Delete'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+                {{/if}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <p class="empty-list">{{localize "NEUROSHIMA.Resources.Empty"}}</p>
+    {{/if}}
+</section>

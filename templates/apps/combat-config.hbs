@@ -1,0 +1,133 @@
+<section class="neuroshima-config">
+    <div class="config-body">
+    <div class="config-section">
+        <h3>{{localize "NEUROSHIMA.Settings.CombatConfig.Title"}}</h3>
+        
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.UsePelletCountLimit.Name"}}</label>
+            <div class="form-fields">
+                <input type="checkbox" name="usePelletCountLimit" {{checked config.usePelletCountLimit}}>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.UsePelletCountLimit.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.AllowCombatShift.Name"}}</label>
+            <div class="form-fields">
+                <input type="checkbox" name="allowCombatShift" {{checked config.allowCombatShift}}>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.AllowCombatShift.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.AllowPainResistanceShift.Name"}}</label>
+            <div class="form-fields">
+                <input type="checkbox" name="allowPainResistanceShift" {{checked config.allowPainResistanceShift}}>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.AllowPainResistanceShift.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.FireCorrection.Name"}}</label>
+            <div class="form-fields">
+                <input type="checkbox" name="fireCorrection" {{checked config.fireCorrection}}>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.FireCorrection.Hint"}}</p>
+        </div>
+    </div>
+
+    <div class="config-section">
+        <h3>{{localize "NEUROSHIMA.MeleeOpposed.Title"}}</h3>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.MeleeCombatType.Name"}}</label>
+            <div class="form-fields">
+                <select name="meleeCombatType">
+                    <option value="default" {{#if (eq config.meleeCombatType "default")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeCombatType.Default"}}</option>
+                    <option value="opposedPips" {{#if (eq config.meleeCombatType "opposedPips")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeCombatType.OpposedPips"}}</option>
+                    <option value="opposedSuccesses" {{#if (eq config.meleeCombatType "opposedSuccesses")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeCombatType.OpposedSuccesses"}}</option>
+                </select>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.MeleeCombatType.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.DoubleSkillAction.Name"}}</label>
+            <div class="form-fields">
+                <input type="checkbox" name="doubleSkillAction" {{checked config.doubleSkillAction}}>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.DoubleSkillAction.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Name"}}</label>
+            <div class="form-fields">
+                <select name="meleeBonusMode">
+                    <option value="attribute" {{#if (eq config.meleeBonusMode "attribute")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Attribute"}}</option>
+                    <option value="skill" {{#if (eq config.meleeBonusMode "skill")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Skill"}}</option>
+                    <option value="both" {{#if (eq config.meleeBonusMode "both")}}selected{{/if}}>{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Both"}}</option>
+                </select>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.MeleeBonusMode.Hint"}}</p>
+        </div>
+    </div>
+
+    <div class="config-section">
+        <h3>{{localize "NEUROSHIMA.Settings.CombatConfig.VisibilityTitle"}}</h3>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.DamageApplicationMinRole.Name"}}</label>
+            <div class="form-fields">
+                <select name="damageApplicationMinRole">
+                    {{#each roleOptions}}
+                    <option value="{{@key}}" {{#if (eq (number @key) ../config.damageApplicationMinRole)}}selected{{/if}}>{{this}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.DamageApplicationMinRole.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.PainResistanceMinRole.Name"}}</label>
+            <div class="form-fields">
+                <select name="painResistanceMinRole">
+                    {{#each roleOptions}}
+                    <option value="{{@key}}" {{#if (eq (number @key) ../config.painResistanceMinRole)}}selected{{/if}}>{{this}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.PainResistanceMinRole.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.CombatActionsMinRole.Name"}}</label>
+            <div class="form-fields">
+                <select name="combatActionsMinRole">
+                    {{#each roleOptions}}
+                    <option value="{{@key}}" {{#if (eq (number @key) ../config.combatActionsMinRole)}}selected{{/if}}>{{this}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.CombatActionsMinRole.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.Settings.UnjamMinRole.Name"}}</label>
+            <div class="form-fields">
+                <select name="unjamMinRole">
+                    {{#each roleOptions}}
+                    <option value="{{@key}}" {{#if (eq (number @key) ../config.unjamMinRole)}}selected{{/if}}>{{this}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.UnjamMinRole.Hint"}}</p>
+        </div>
+    </div>
+    </div>
+
+    <footer class="sheet-footer flexrow">
+        <button type="submit" name="submit">
+            <i class="fas fa-save"></i> {{localize "NEUROSHIMA.Actions.Save"}}
+        </button>
+    </footer>
+</section>

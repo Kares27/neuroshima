@@ -1,0 +1,518 @@
+/**
+ * Base schema for all Neuroshima items.
+ */
+function testsSchema() {
+  const fields = foundry.data.fields;
+  return {
+    tests: new fields.SchemaField({
+      value: new fields.StringField({ initial: "" })
+    })
+  };
+}
+
+function baseSchema() {
+  const fields = foundry.data.fields;
+  return {
+    description: new fields.HTMLField({ initial: "" }),
+    weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
+    cost: new fields.NumberField({ required: true, initial: 0, min: 0 }),
+    quantity: new fields.NumberField({ required: true, integer: true, initial: 1, min: 0 }),
+    availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 }),
+    resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+    ...testsSchema()
+  };
+}
+
+/**
+ * Equipable sub-schema.
+ */
+function equipableSchema() {
+  const fields = foundry.data.fields;
+  return {
+    equipped: new fields.BooleanField({ initial: false })
+  };
+}
+
+/**
+ * Data model for Weapons.
+ */
+export class WeaponData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      ...equipableSchema(),
+      weaponType: new fields.StringField({ 
+        required: true, 
+        initial: "melee", 
+        choices: ["melee", "ranged", "thrown"] 
+      }),
+      requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      attribute: new fields.StringField({ initial: "dexterity" }),
+      skill: new fields.StringField({ initial: "brawl" }),
+      attackBonus: new fields.NumberField({ integer: true, initial: 0 }),
+      defenseBonus: new fields.NumberField({ integer: true, initial: 0 }),
+      
+      // Melee specific
+      damageMelee1: new fields.StringField({ initial: "D" }),
+      damageMelee2: new fields.StringField({ initial: "L" }),
+      damageMelee3: new fields.StringField({ initial: "C" }),
+
+      // Ranged specific
+      rangedSubtype: new fields.StringField({ initial: "pistols" }),
+      damage: new fields.StringField({ initial: "L" }),
+      caliber: new fields.StringField({ initial: "" }),
+      magazine: new fields.StringField({ initial: "" }),
+      piercing: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      fireRate: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
+      jammed: new fields.BooleanField({ initial: false })
+    };
+  }
+}
+
+/**
+ * Armor sub-schema.
+ */
+function armorSchema() {
+  const fields = foundry.data.fields;
+  return {
+    ratings: new fields.SchemaField({
+      head: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      torso: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      leftArm: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      rightArm: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      leftLeg: new fields.NumberField({ initial: 0, min: 0, step: 0.5 }),
+      rightLeg: new fields.NumberField({ initial: 0, min: 0, step: 0.5 })
+    }),
+    durability: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+    durabilityDamage: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+    requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+    damage: new fields.SchemaField({
+      head: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      torso: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      leftArm: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      rightArm: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      leftLeg: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      rightLeg: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+    }),
+    penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+  };
+}
+
+/**
+ * Data model for Armor.
+ */
+export class ArmorData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      ...equipableSchema(),
+      armor: new fields.SchemaField(armorSchema())
+    };
+  }
+
+  /**
+   * Getter zwracający efektywne wartości pancerza (ratings - damage, min 0)
+   */
+  get effectiveArmor() {
+    const effective = {};
+    const locations = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
+    
+    for (const loc of locations) {
+      const rating = this.armor.ratings?.[loc] || 0;
+      const damageVal = this.armor.damage?.[loc] || 0;
+      effective[loc] = Math.max(0, rating - damageVal);
+    }
+    
+    return effective;
+  }
+}
+
+/**
+ * Data model for Gear.
+ */
+export class GearData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    return {
+      ...baseSchema(),
+      ...equipableSchema()
+    };
+  }
+}
+
+/**
+ * Data model for Ammo.
+ */
+export class AmmoData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      caliber: new fields.StringField({ initial: "" }),
+      isOverride: new fields.BooleanField({ initial: false }),
+      overrideDamage: new fields.BooleanField({ initial: false }),
+      damage: new fields.StringField({ initial: "L" }),
+      overridePiercing: new fields.BooleanField({ initial: false }),
+      piercing: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      overrideJamming: new fields.BooleanField({ initial: false }),
+      jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
+      isPellet: new fields.BooleanField({ initial: false }),
+      pelletCount: new fields.NumberField({ integer: true, initial: 1, min: 1 }),
+      pelletRanges: new fields.SchemaField({
+        range1: new fields.SchemaField({ 
+            distance: new fields.NumberField({ initial: 2, min: 0 }), 
+            damage: new fields.StringField({ initial: "K" }) 
+        }),
+        range2: new fields.SchemaField({ 
+            distance: new fields.NumberField({ initial: 5, min: 0 }), 
+            damage: new fields.StringField({ initial: "C" }) 
+        }),
+        range3: new fields.SchemaField({ 
+            distance: new fields.NumberField({ initial: 10, min: 0 }), 
+            damage: new fields.StringField({ initial: "L" }) 
+        }),
+        range4: new fields.SchemaField({ 
+            distance: new fields.NumberField({ initial: 20, min: 0 }), 
+            damage: new fields.StringField({ initial: "D" }) 
+        })
+      })
+    };
+  }
+}
+
+/**
+ * Data model for Magazines.
+ */
+export class MagazineData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      ...equipableSchema(),
+      caliber: new fields.StringField({ initial: "" }),
+      capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      // contents: Array of { ammoId, name, quantity, overrides: { damage, piercing, jamming } }
+      contents: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
+    };
+  }
+
+  /**
+   * Get total number of bullets in magazine.
+   */
+  get totalCount() {
+    return this.contents.reduce((acc, stack) => acc + stack.quantity, 0);
+  }
+}
+
+/**
+ * Data model for Tricks.
+ */
+export class TrickData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema()
+    };
+  }
+}
+
+/**
+ * Data model for Wounds.
+ */
+export class WoundData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      ...testsSchema(),
+      location: new fields.StringField({ 
+        required: true, 
+        initial: "torso",
+        choices: ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"]
+      }),
+      damageType: new fields.StringField({ 
+        required: true, 
+        initial: "D"
+      }),
+      penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      isHealing: new fields.BooleanField({ initial: false }),
+      isActive: new fields.BooleanField({ initial: true }),
+      hadFirstAid: new fields.BooleanField({ initial: false }),
+      healingAttempts: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+    };
+  }
+}
+
+/**
+ * Data model for Beast Action items (special actions available to Creature actors).
+ * Beast actions are innate, non-countable abilities — no quantity or weight tracking.
+ * costType determines whether the action costs segments or successes.
+ */
+export class BeastActionData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
+      actionType: new fields.StringField({ initial: "Atak" }),
+      costType: new fields.StringField({
+        initial: "segment",
+        choices: ["segment", "success"]
+      }),
+      segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
+      successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
+      attribute: new fields.StringField({ initial: "dexterity" }),
+      damage: new fields.StringField({ initial: "D" }),
+      piercing: new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 })
+    };
+  }
+}
+
+/**
+ * Data model for Specialization items.
+ * Represents a character specialization (e.g. Combat, Exploration, Social).
+ * Can optionally auto-unlock a skill specialization group on the actor.
+ */
+export class SpecializationData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      bonusText:   new fields.HTMLField({ initial: "" }),
+      ...testsSchema(),
+      skillSpecializations: new fields.SchemaField({
+        melee:             new fields.BooleanField({ initial: false }),
+        firearms:          new fields.BooleanField({ initial: false }),
+        ranged:            new fields.BooleanField({ initial: false }),
+        driving:           new fields.BooleanField({ initial: false }),
+        manual:            new fields.BooleanField({ initial: false }),
+        tracking:          new fields.BooleanField({ initial: false }),
+        alertness:         new fields.BooleanField({ initial: false }),
+        stealth:           new fields.BooleanField({ initial: false }),
+        survival:          new fields.BooleanField({ initial: false }),
+        negotiation:       new fields.BooleanField({ initial: false }),
+        empathy:           new fields.BooleanField({ initial: false }),
+        willpower:         new fields.BooleanField({ initial: false }),
+        medicine:          new fields.BooleanField({ initial: false }),
+        technology:        new fields.BooleanField({ initial: false }),
+        equipment:         new fields.BooleanField({ initial: false }),
+        pyrotechnics:      new fields.BooleanField({ initial: false }),
+        generalKnowledge1: new fields.BooleanField({ initial: false }),
+        generalKnowledge2: new fields.BooleanField({ initial: false }),
+        fitness:           new fields.BooleanField({ initial: false }),
+        riding:            new fields.BooleanField({ initial: false })
+      })
+    };
+  }
+}
+
+/**
+ * Data model for Trait items.
+ * Represents a character trait (e.g. a passive ability granted by Origin or Profession).
+ */
+export class TraitData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      ...testsSchema()
+    };
+  }
+}
+
+/**
+ * Data model for Origin items.
+ * Represents a character's place of origin or faction background (e.g. Moloch, Borgo).
+ */
+export class OriginData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      bonusText:   new fields.HTMLField({ initial: "" }),
+      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] }),
+      ...testsSchema()
+    };
+  }
+}
+
+/**
+ * Data model for Profession items.
+ * Represents a character's profession or occupational background (e.g. Soldier, Engineer).
+ */
+export class ProfessionData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      bonusText:   new fields.HTMLField({ initial: "" }),
+      traits:      new fields.ArrayField(new fields.StringField({ required: true, blank: false }), { initial: [] }),
+      ...testsSchema()
+    };
+  }
+}
+
+/**
+ * Data model for Vehicle Modification items.
+ * Represents mechanical or structural upgrades installed on a vehicle.
+ */
+export class VehicleModData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      rules: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
+      category: new fields.StringField({
+        required: true,
+        initial: "engine",
+        choices: ["engine", "gearbox", "brakes", "turbo", "boring", "electronics", "exhaust", "suspension", "wheels", "frame", "armor", "surprises", "extras", "other"]
+      }),
+      installDifficulty: new fields.StringField({
+        initial: "average",
+        choices: ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"]
+      })
+    };
+  }
+}
+
+/**
+ * Data model for Money items.
+ * Represents a currency denomination. Each item defines its value in base units
+ * (coinValue=1 means base currency, e.g. Gamble; coinValue=10 means worth 10 base units).
+ */
+export class MoneyData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
+      quantity: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      coinValue: new fields.NumberField({ required: true, integer: true, initial: 1, min: 1 }),
+      ...testsSchema()
+    };
+  }
+}
+
+/**
+ * Data model for Reputation items.
+ * Represents a named reputation/standing entry — no cost, weight, or availability.
+ */
+export class ReputationData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
+      value: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      overrideRelations: new fields.BooleanField({ initial: false }),
+      relationTable: new fields.ArrayField(
+        new fields.SchemaField({
+          minVal: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+          maxVal: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+          name: new fields.StringField({ required: true, initial: "" }),
+          color: new fields.StringField({ initial: "" })
+        }),
+        { initial: [] }
+      )
+    };
+  }
+}
+
+/**
+ * Data model for Disease items.
+ * Represents a disease with five progressive states.
+ * Non-countable — no weight, cost, quantity or availability tracking.
+ *
+ * States:
+ *   none          — Stabilny         (4 empty dots ○○○○)
+ *   firstSymptoms — Pierwsze symptomy (●○○○)
+ *   acute         — Stan ostry        (●●○○)
+ *   critical      — Stan krytyczny    (●●●○)
+ *   terminal      — Stan terminalny   (●●●●)
+ *
+ * Penalties for each state are applied via Active Effects with Enable Scripts.
+ * Example Enable Script for "firstSymptoms" penalties AE:
+ *   const disease = actor.items.find(i => i.type === "disease");
+ *   return disease?.system?.currentState === "firstSymptoms";
+ */
+export class DiseaseData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
+
+      diseaseType: new fields.StringField({
+        initial: "chronic",
+        choices: ["chronic", "transient"]
+      }),
+      transientPenalty: new fields.NumberField({ integer: true, initial: 0 }),
+
+      currentState: new fields.StringField({
+        initial: "none",
+        choices: ["none", "firstSymptoms", "acute", "critical", "terminal"]
+      }),
+      daysInState: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+
+      medication: new fields.SchemaField({
+        name:         new fields.StringField({ initial: "" }),
+        availability: new fields.NumberField({ integer: true, initial: 100, min: 0, max: 100 }),
+        isTaking:     new fields.BooleanField({ initial: false })
+      }),
+
+      firstSymptoms: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" })
+      }),
+      acute: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" })
+      }),
+      critical: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" })
+      }),
+      terminal: new fields.SchemaField({
+        description: new fields.StringField({ initial: "" })
+      })
+    };
+  }
+}
+
+/**
+ * Data model for Vehicle Damage items.
+ * Vehicle-specific equivalent of wounds — represents structural damage
+ * to specific sections of a vehicle.
+ */
+export class VehicleDamageData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      description: new fields.HTMLField({ initial: "" }),
+      ...testsSchema(),
+      location: new fields.StringField({
+        required: true,
+        initial: "front",
+        choices: ["front", "rightSide", "leftSide", "rear", "bottom"]
+      }),
+      damageType: new fields.StringField({
+        required: true,
+        initial: "VL",
+        choices: ["VL", "VC", "VK"]
+      }),
+      /** Sprawność (efficiency) point reduction */
+      penalty: new fields.NumberField({ integer: true, initial: 1, min: 0 }),
+      /** Zwrotność (agility) % penalty */
+      agilityPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      isActive: new fields.BooleanField({ initial: true })
+    };
+  }
+}

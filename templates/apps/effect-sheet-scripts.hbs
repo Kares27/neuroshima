@@ -1,0 +1,30 @@
+<section class="tab scrollable" data-group="sheet" data-tab="scripts" data-application-part="scripts">
+    <div class="neuroshima-script-list">
+        {{#each scripts}}
+        <div class="ns-script-row" data-index="{{@index}}">
+            <label class="ns-script-label">
+                <a data-action="editScript" data-index="{{@index}}">
+                    <i class="fa-solid fa-code"></i> {{this.label}}
+                </a>
+            </label>
+            <span class="ns-script-trigger">{{localize (lookup ../triggers this.trigger)}}</span>
+            {{#if (eq this.trigger "manual")}}
+            <a class="ns-script-action" data-action="runManualScript" data-index="{{@index}}" data-tooltip="{{localize 'NEUROSHIMA.Scripts.Run'}}">
+                <i class="fa-solid fa-play"></i>
+            </a>
+            {{/if}}
+            <a class="ns-script-action" data-action="removeScript" data-index="{{@index}}" data-tooltip="{{localize 'DOCUMENT.Delete'}}">
+                <i class="fa-solid fa-xmark"></i>
+            </a>
+        </div>
+        {{/each}}
+        {{#unless scripts.length}}
+        <p class="ns-scripts-empty hint">{{localize "NEUROSHIMA.Scripts.Empty"}}</p>
+        {{/unless}}
+        <div class="ns-script-add">
+            <button type="button" data-action="addScript">
+                <i class="fa-solid fa-plus"></i> {{localize "NEUROSHIMA.Scripts.Add"}}
+            </button>
+        </div>
+    </div>
+</section>

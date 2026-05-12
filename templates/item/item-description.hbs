@@ -1,0 +1,10 @@
+<div class="tab {{tabs.description.cssClass}}" data-group="primary" data-tab="description">
+  <prose-mirror
+    name="system.description"
+    value="{{system.description}}"
+    document-uuid="{{item.uuid}}"
+    toggled
+    {{#unless editable}}disabled{{/unless}}>
+    {{{enrichedDescription}}}
+  </prose-mirror>
+</div>

@@ -1,0 +1,130 @@
+<div class="sheet-main-wrapper actor-sheet-content" data-application-part="main">
+    {{> VehicleHeader}}
+
+    <section class="sheet-body vehicle-body">
+        <div class="header-details flexrow">
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Vehicle.Type"}}</label>
+                <input type="text" name="system.vehicleType" value="{{system.vehicleType}}"/>
+            </div>
+            <div class="header-field">
+                <label>{{localize "NEUROSHIMA.Vehicle.Condition"}}</label>
+                <input type="text" name="system.condition" value="{{system.condition}}"/>
+            </div>
+        </div>
+
+        <div class="vehicle-stats-grid">
+            <div class="vehicle-stat-block hp-summary">
+                {{#if isGM}}
+                <a class="hp-config-btn" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
+                    <i class="fas fa-cog"></i>
+                </a>
+                {{/if}}
+                <label>{{localize "NEUROSHIMA.Vehicle.Hull"}}</label>
+                <div class="stat-pair">
+                    <input type="number" name="system.hull.value" value="{{system.hull.value}}" min="0"/>
+                    <span>/</span>
+                    <input type="number" name="system.hull.max" value="{{system.hull.max}}" min="1"/>
+                </div>
+            </div>
+
+            <div class="vehicle-stat-block">
+                <label>{{localize "NEUROSHIMA.Vehicle.Fuel"}}</label>
+                <div class="stat-pair">
+                    <input type="number" name="system.fuel.value" value="{{system.fuel.value}}" min="0"/>
+                    <span>/</span>
+                    <input type="number" name="system.fuel.max" value="{{system.fuel.max}}" min="1"/>
+                </div>
+            </div>
+
+            <div class="vehicle-stat-block">
+                <label>{{localize "NEUROSHIMA.Vehicle.Armor"}}</label>
+                <input type="number" name="system.armor" value="{{system.armor}}" min="0"/>
+            </div>
+
+            <div class="vehicle-stat-block">
+                <label>{{localize "NEUROSHIMA.Vehicle.Speed"}}</label>
+                <div class="stat-pair">
+                    <input type="number" name="system.speed.current" value="{{system.speed.current}}" min="0"/>
+                    <span>/</span>
+                    <input type="number" name="system.speed.max" value="{{system.speed.max}}" min="0"/>
+                </div>
+            </div>
+
+            <div class="vehicle-stat-block">
+                <label>{{localize "NEUROSHIMA.Vehicle.Crew"}}</label>
+                <div class="stat-pair">
+                    <input type="number" name="system.crew.current" value="{{system.crew.current}}" min="0"/>
+                    <span>/</span>
+                    <input type="number" name="system.crew.max" value="{{system.crew.max}}" min="0"/>
+                </div>
+            </div>
+
+            <div class="vehicle-stat-block">
+                <label>{{localize "NEUROSHIMA.Vehicle.Passengers"}}</label>
+                <div class="stat-pair">
+                    <input type="number" name="system.passengers.current" value="{{system.passengers.current}}" min="0"/>
+                    <span>/</span>
+                    <input type="number" name="system.passengers.max" value="{{system.passengers.max}}" min="0"/>
+                </div>
+            </div>
+        </div>
+
+        {{!-- Weapons --}}
+        <div class="vehicle-section">
+            <div class="section-header">
+                <h3>{{localize "NEUROSHIMA.Inventory.Weapons"}}</h3>
+                <a data-action="createItem" data-type="weapon" title="{{localize 'NEUROSHIMA.Actions.CreateItem'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
+            </div>
+            {{#if weapons.length}}
+            <ul class="item-list">
+                {{#each weapons}}
+                <li class="item" data-item-id="{{this.id}}">
+                    <span class="item-name">{{this.name}}</span>
+                    <span class="item-controls">
+                        <a data-action="rollWeapon"  data-item-id="{{this.id}}"><i class="fas fa-dice-d20"></i></a>
+                        <a data-action="editItem"    data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
+                        <a data-action="deleteItem"  data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
+                    </span>
+                </li>
+                {{/each}}
+            </ul>
+            {{else}}
+            <p class="empty-list">{{localize "NEUROSHIMA.Vehicle.NoWeapons"}}</p>
+            {{/if}}
+        </div>
+
+        {{!-- Gear --}}
+        <div class="vehicle-section">
+            <div class="section-header">
+                <h3>{{localize "NEUROSHIMA.Inventory.Gear"}}</h3>
+                <a data-action="createItem" data-type="gear" title="{{localize 'NEUROSHIMA.Actions.CreateItem'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
+            </div>
+            {{#if gear.length}}
+            <ul class="item-list">
+                {{#each gear}}
+                <li class="item" data-item-id="{{this.id}}">
+                    <span class="item-name">{{this.name}}</span>
+                    <span class="item-controls">
+                        <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
+                        <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
+                    </span>
+                </li>
+                {{/each}}
+            </ul>
+            {{else}}
+            <p class="empty-list">{{localize "NEUROSHIMA.Vehicle.NoGear"}}</p>
+            {{/if}}
+        </div>
+
+        {{!-- Notes --}}
+        <div class="vehicle-section">
+            <h3>{{localize "NEUROSHIMA.Tabs.Notes"}}</h3>
+            <div class="editor-content" data-edit="system.notes">{{{system.notes}}}</div>
+        </div>
+    </section>
+</div>

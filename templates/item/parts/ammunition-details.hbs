@@ -1,0 +1,54 @@
+<div class="flexcol ammunition-stats secondary-box">
+    {{!-- Row 1: Amunicja [Current] / [Max] | [X] Magazine --}}
+    <div class="ammo-main-row">
+        <div class="form-group row-group ammo-group">
+            <label>{{localize "NEUROSHIMA.Items.Fields.Ammo"}}</label>
+            {{#if system.isMagazine}}
+            <div class="ammo-inputs">
+                <input type="number" name="system.ammoCount" value="{{system.ammoCount}}" data-dtype="Number" min="0" title="{{localize 'NEUROSHIMA.Items.Fields.AmmoCount'}}"/>
+                <span class="separator">/</span>
+                <input type="number" name="system.ammoMax" value="{{system.ammoMax}}" data-dtype="Number" min="0" title="{{localize 'NEUROSHIMA.Items.Fields.AmmoMax'}}"/>
+            </div>
+            {{else}}
+            <div class="ammo-info-loose">
+                <span>{{localize "NEUROSHIMA.Items.Fields.LooseAmmo"}}</span>
+            </div>
+            {{/if}}
+        </div>
+        <div class="form-group checkbox-right">
+            <input type="checkbox" name="system.isMagazine" {{checked system.isMagazine}}/>
+            <label>{{localize "NEUROSHIMA.Items.Fields.IsMagazine"}}</label>
+        </div>
+    </div>
+
+    {{#if system.isMagazine}}
+    <hr>
+
+    {{!-- Row 2: [X] Override Stats --}}
+    <div class="override-section">
+        <div class="form-group checkbox-right override-toggle">
+            <input type="checkbox" name="system.isOverride" {{checked system.isOverride}}/>
+            <label>{{localize "NEUROSHIMA.Items.Fields.IsOverride"}}</label>
+        </div>
+
+        {{#if system.isOverride}}
+        <div class="grid grid-3col override-fields">
+            <div class="form-group row-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+                <select name="system.damage">
+                    {{selectOptions damageTypes selected=system.damage localize=true}}
+                </select>
+            </div>
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</label>
+                <input type="number" name="system.piercing" value="{{system.piercing}}" data-dtype="Number" min="0"/>
+            </div>
+            <div class="form-group row-group">
+                <label title="{{localize 'NEUROSHIMA.Items.Fields.Jamming'}}">{{localize "NEUROSHIMA.Items.Fields.JammingAbbr"}}</label>
+                <input type="number" name="system.jamming" value="{{system.jamming}}" data-dtype="Number" min="0" max="20"/>
+            </div>
+        </div>
+        {{/if}}
+    </div>
+    {{/if}}
+</div>

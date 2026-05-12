@@ -1,0 +1,112 @@
+<div class="neuroshima chat-card melee-opposed-result">
+
+  <div class="mode-label">{{modeLabel}}</div>
+
+  <header class="melee-card-header">
+    <div class="participant attacker">
+      <img src="{{attackerImg}}" width="32" height="32" alt="{{attackerName}}">
+      <span class="name">{{attackerName}}</span>
+    </div>
+    <div class="vs-badge">⚔</div>
+    <div class="participant defender">
+      <img src="{{defenderImg}}" width="32" height="32" alt="{{defenderName}}">
+      <span class="name">{{defenderName}}</span>
+    </div>
+  </header>
+
+  <hr class="dotted-hr">
+
+  <div class="dice-duel-grid">
+    {{#each pairedDice}}
+      <div class="dice-duel-row">
+        <span class="die-slot-label">{{label}}</span>
+        <div class="die-slot">
+          {{#if attack}}
+            <span class="die-square {{#if attack.isSuccess}}success{{else}}failure{{/if}} {{#if attack.isNat1}}nat-1{{/if}} {{#if attack.isNat20}}nat-20{{/if}} {{#if attackWon}}die-winner{{else if defenseWon}}die-loser{{/if}}">
+              {{#if (ne attack.modified attack.value)}}{{attack.modified}}{{else}}{{attack.value}}{{/if}}
+            </span>
+          {{else}}
+            <span class="die-square no-die">—</span>
+          {{/if}}
+        </div>
+        <span class="duel-vs">vs</span>
+        <div class="die-slot">
+          {{#if defense}}
+            <span class="die-square {{#if defense.isSuccess}}success{{else}}failure{{/if}} {{#if defense.isNat1}}nat-1{{/if}} {{#if defense.isNat20}}nat-20{{/if}} {{#if defenseWon}}die-winner{{else if attackWon}}die-loser{{/if}}">
+              {{#if (ne defense.modified defense.original)}}{{defense.modified}}{{else}}{{defense.original}}{{/if}}
+            </span>
+          {{else}}
+            <span class="die-square no-die">—</span>
+          {{/if}}
+        </div>
+      </div>
+    {{/each}}
+  </div>
+
+  <div class="successes-row">
+    <span></span>
+    <span class="successes-line">SP: <strong>{{attackSuccesses}}</strong></span>
+    <span class="duel-vs" aria-hidden="true"></span>
+    <span class="successes-line">SP: <strong>{{defenseSuccesses}}</strong></span>
+  </div>
+
+  <hr class="dotted-hr">
+
+  <div class="result-section {{resultType}}">
+    {{#if isHit}}
+      <div class="hits-detail">
+        {{#each hits}}
+          <span class="hit-badge">D{{tier}}: {{damageType}}</span>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="result-text"><strong>{{resultText}}</strong></div>
+    {{/if}}
+  </div>
+
+  {{#if hasBeastActions}}
+  <div class="beast-action-spending" data-gm-only="true" data-net-successes="{{netSuccesses}}">
+    <div class="beast-spending-header">
+      <i class="fas fa-paw"></i>
+      <span>{{localize "NEUROSHIMA.BeastAction.SpendingTitle"}} <strong>({{netSuccesses}}s)</strong></span>
+      <span class="beast-spent-counter">
+        {{localize "NEUROSHIMA.BeastAction.Spent"}}: <strong class="spent-value">0</strong>/{{netSuccesses}}
+      </span>
+    </div>
+    <div class="beast-action-list">
+      {{#each affordableBeastActions}}
+      <div class="beast-action-row" data-action-id="{{id}}" data-action-cost="{{cost}}">
+        <div class="beast-action-info">
+          <img src="{{img}}" width="20" height="20" alt="">
+          <span class="beast-action-name">{{name}}</span>
+          <span class="beast-action-cost-badge">{{cost}}s</span>
+          {{#if damage}}<span class="beast-action-damage-badge">→ {{damage}}</span>{{/if}}
+          {{#if hasEffects}}<i class="fas fa-magic beast-action-effect-icon" title="{{localize 'NEUROSHIMA.BeastAction.HasEffects'}}"></i>{{/if}}
+        </div>
+        <div class="beast-action-qty">
+          <button type="button" class="beast-qty-btn beast-qty-minus" data-action-id="{{id}}">−</button>
+          <span class="beast-qty-value" data-action-id="{{id}}">0</span>
+          <button type="button" class="beast-qty-btn beast-qty-plus" data-action-id="{{id}}" data-cost="{{cost}}">+</button>
+        </div>
+      </div>
+      {{/each}}
+    </div>
+    <div class="beast-spending-footer">
+      <button type="button" class="apply-beast-actions-btn" data-action="applyBeastActions" disabled>
+        <i class="fas fa-paw"></i> {{localize "NEUROSHIMA.BeastAction.Apply"}}
+      </button>
+    </div>
+  </div>
+  {{/if}}
+
+  {{#if isHit}}
+  {{#unless hasBeastActions}}
+  <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
+    <button type="button" class="apply-damage-button apply-opposed-damage-btn" data-action="applyOpposedDamage">
+      <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.Actions.Damage"}}
+    </button>
+  </div>
+  {{/unless}}
+  {{/if}}
+
+</div>

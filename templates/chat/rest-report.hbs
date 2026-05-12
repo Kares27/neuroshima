@@ -1,0 +1,48 @@
+<div class="neuroshima roll-card rest-report">
+    <header class="roll-header">
+        <div class="weapon-title">
+            <i class="fas fa-bed"></i> {{localize "NEUROSHIMA.Rest.Title"}}
+        </div>
+    </header>
+
+    <div class="report-summary">
+        <div class="summary-item">
+            <span class="label">{{localize "NEUROSHIMA.Rest.Days"}}:</span>
+            <span class="value"><strong>{{days}}</strong></span>
+        </div>
+        <div class="summary-divider">|</div>
+        <div class="summary-item">
+            <span class="label">{{localize "NEUROSHIMA.Roll.Wounds"}}:</span>
+            <span class="value"><strong>{{count}}</strong></span>
+        </div>
+    </div>
+
+    <hr class="dotted-hr">
+
+    <div class="collapsible-section rest-details">
+        <div class="damage-application-header collapsible-toggle">
+            <span>{{localize "NEUROSHIMA.Roll.Summary"}}</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        
+        <div class="wound-list collapsible-content" style="display: none;">
+            {{#each details}}
+                <div class="wound-item {{#if this.removed}}success{{/if}} rest-wound-line">
+                    <span class="wound-type">[{{this.damageType}}]</span>
+                    <span class="wound-name"><strong>{{this.name}}</strong> ({{this.location}})</span>
+                    <span class="wound-path">
+                        {{#if this.removed}}
+                            <span class="old-penalty">{{this.old}}%</span> <i class="fas fa-long-arrow-alt-right"></i> <span class="new-penalty removed">0%</span>
+                        {{else}}
+                            <span class="old-penalty">{{this.old}}%</span> <i class="fas fa-long-arrow-alt-right"></i> <span class="new-penalty">{{this.new}}%</span>
+                        {{/if}}
+                    </span>
+                </div>
+            {{/each}}
+        </div>
+    </div>
+
+    <div class="whisper-info" style="margin-top: 10px; font-style: italic; font-size: 0.9em; opacity: 0.8;">
+        {{localize "NEUROSHIMA.Rest.Whisper" actor=actor days=days count=count}}
+    </div>
+</div>

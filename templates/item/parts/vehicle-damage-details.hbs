@@ -1,0 +1,29 @@
+<div class="grid grid-2col">
+    {{!-- Lokalizacja pojazdu --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Location"}}</label>
+        <select name="system.location">
+            {{selectOptions vehicleLocations selected=system.location localize=true}}
+        </select>
+    </div>
+
+    {{!-- Typ uszkodzenia pojazdu --}}
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.DamageType"}}</label>
+        <select name="system.damageType">
+            {{selectOptions vehicleDamageTypes selected=system.damageType localize=true}}
+        </select>
+    </div>
+
+    {{!-- Redukcja Sprawności --}}
+    <div class="form-group row-group">
+        <label title="{{localize 'NEUROSHIMA.Vehicle.DamageSprawnosc'}}">{{localize "NEUROSHIMA.Vehicle.DamageSprawnoscAbbr"}}</label>
+        <input type="number" name="system.penalty" value="{{system.penalty}}" data-dtype="Number" min="0"/>
+    </div>
+
+    {{!-- Kara Zwrotności --}}
+    <div class="form-group row-group">
+        <label title="{{localize 'NEUROSHIMA.Vehicle.DamageAgilityPenalty'}}">{{localize "NEUROSHIMA.Vehicle.DamageAgilityPenaltyAbbr"}}</label>
+        <input type="number" name="system.agilityPenalty" value="{{system.agilityPenalty}}" data-dtype="Number" min="0"/>
+    </div>
+</div>

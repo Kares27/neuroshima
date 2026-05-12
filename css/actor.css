@@ -1,0 +1,6650 @@
+/* Pellet hits in chat card */
+.neuroshima.roll-card .pellet-hits-section {
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    margin: 5px 0;
+}
+
+.neuroshima.roll-card .pellet-hit-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85em;
+    padding: 2px 0;
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.roll-card .pellet-hit-item:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.roll-card .pellet-label {
+    flex: 1;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.neuroshima.roll-card .pellet-damage {
+    flex: 0 0 30px;
+    text-align: center;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.roll-card .corrected-pellet-label {
+    color: orange;
+    opacity: 1;
+}
+
+.neuroshima.roll-card .corrected-pellet-damage {
+    color: orange;
+}
+
+.neuroshima.roll-card .pellet-sp {
+    flex: 0 0 60px;
+    text-align: right;
+    font-size: 0.9em;
+    opacity: 0.7;
+}
+
+.neuroshima.roll-card .pellet-total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: bold;
+    color: #ff4444;
+}
+
+
+.neuroshima.sheet.actor select {
+    background: var(--ns-bg-input);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor select option {
+    background-color: #333 !important; /* Wymuszenie ciemnego tła */
+    color: #eee !important; /* Wymuszenie jasnego tekstu */
+}
+
+.neuroshima.sheet.actor .actor-sheet-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    color: var(--ns-text-main);
+    background-color: var(--ns-bg-sheet);
+}
+
+/* Form handling for ApplicationV2 */
+.neuroshima.sheet.actor form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Header - Horizontal Layout */
+.neuroshima.sheet.actor .sheet-header {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    border-bottom: 2px solid var(--ns-border-main);
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+}
+
+.neuroshima.sheet.actor .profile-img {
+    flex: 0 0 140px;
+    width: 140px;
+    height: 182px;
+    object-fit: cover;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 5px;
+}
+
+.neuroshima.sheet.actor .header-fields {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 5px;
+}
+
+.neuroshima.sheet.actor .charname {
+    margin: 0;
+    height: 45px;
+    border-bottom: 2px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .charname input {
+    width: 100%;
+    height: 100%;
+    font-size: 0.6em;
+    font-weight: bold;
+    border: none;
+    background: transparent;
+}
+
+.neuroshima.sheet.actor .header-bottom-row {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.neuroshima.sheet.actor .header-details {
+    
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.neuroshima.sheet.actor .header-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor .header-field label {
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--ns-border-main);
+    margin-bottom: 2px;
+}
+
+.neuroshima.sheet.actor .header-field input {
+    height: 24px;
+    border: 1px solid var(--ns-border-main);
+    background: var(--ns-bg-input);
+    color: var(--ns-text-main);
+    padding: 0 5px;
+    width: 100%;
+}
+
+/* XP Row Container */
+.neuroshima.sheet.actor .xp-row-container {
+    border: 2px solid var(--ns-border-main);
+    border-radius: 5px;
+    background: var(--ns-bg-panel);
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 36px;
+    margin-top: 5px;
+}
+
+.neuroshima.sheet.actor .xp-row-label {
+    flex: 0 0 120px;
+    background: var(--ns-border-main);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neuroshima.sheet.actor .xp-row-label span {
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 1px;
+}
+
+.neuroshima.sheet.actor .xp-fields-row {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .xp-field-item {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-right: 1px solid var(--ns-border-main);
+    padding: 0 10px;
+    height: 100%;
+}
+
+.neuroshima.sheet.actor .xp-field-item:last-child {
+    border-right: none;
+}
+
+.neuroshima.sheet.actor .xp-field-item label {
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor .xp-field-item input {
+    width: 80px;
+    height: 24px;
+    border: 1px solid var(--ns-bg-header);
+    background: transparent;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Header Stats Row */
+.neuroshima.sheet.actor .header-stats-row {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    margin-top: 2px;
+}
+
+.neuroshima.sheet.actor .stat-box {
+    flex: 1;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 5px;
+    background: var(--ns-bg-panel);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow: hidden;
+    height: 36px;
+}
+
+.neuroshima.sheet.actor .stat-box label {
+    flex: 0 0 70px;
+    background: var(--ns-border-main);
+    color: #fff;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 1px;
+}
+
+.neuroshima.sheet.actor .stat-box .stat-value {
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* Tabs - Horizontal Layout */
+.neuroshima.sheet.actor nav.tabs {
+    flex: 0 0 32px;
+    display: flex;
+    flex-direction: row;
+    border-top: 1px solid var(--ns-border-main);
+    border-bottom: 1px solid var(--ns-border-main);
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.actor nav.tabs .item {
+    flex: 1;
+    text-align: center;
+    line-height: 32px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor nav.tabs .item.active {
+    text-shadow: 0 0 10px red;
+    border-bottom: 3px solid red;
+}
+
+/* Inventory Section Header - Shared across sections */
+.neuroshima.sheet.actor .inventory-section {
+    margin-bottom: 20px;
+    border: 1px solid var(--ns-border-main);
+    background: var(--ns-bg-panel);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+/* Magazine Styles */
+.neuroshima.sheet.actor .magazine-container {
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .magazine-container:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .magazine-contents {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0 0 5px 30px;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor .flexcol-reverse {
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.neuroshima.sheet.actor .ammo-stack {
+    height: 24px;
+    line-height: 24px;
+    font-size: 0.9em;
+    border-left: 2px solid #8B0000;
+    margin-left: 5px;
+    padding-left: 5px;
+    position: relative;
+}
+
+.neuroshima.sheet.actor .ammo-stack::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    bottom: 0;
+    width: 8px;
+    height: 1px;
+    background: #8B0000;
+}
+
+.neuroshima.sheet.actor .stack-name {
+    color: var(--ns-text-main);
+    opacity: 0.8;
+}
+.neuroshima.sheet.actor [data-application-part] {
+    display: none;
+}
+
+.neuroshima.sheet.actor [data-application-part="header"] {
+    display: flex !important;
+    flex-direction: row;
+}
+
+.neuroshima.sheet.actor [data-application-part="tabs"] {
+    display: flex !important;
+    flex-direction: row;
+}
+
+.neuroshima.sheet.actor [data-application-part="combatPaperDoll"],
+.neuroshima.sheet.actor [data-application-part="combatWoundsList"] {
+    display: none;
+}
+
+.neuroshima.sheet.actor .tab.active[data-tab="combat"] [data-application-part="combatPaperDoll"],
+.neuroshima.sheet.actor .tab.active[data-tab="combat"] [data-application-part="combatWoundsList"] {
+    display: flex !important;
+}
+
+.neuroshima.sheet.actor [data-application-part="attributes"].active {
+    flex: 0 1 auto;
+    display: block !important;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.neuroshima.sheet.actor [data-application-part="skills"].active {
+    flex: 1;
+    display: flex !important;
+    flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
+    margin-top: 2px;
+}
+
+.neuroshima.sheet.actor [data-application-part="tricks"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.actor [data-application-part="combat"].active {
+    display: flex !important;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.actor .reactions-section {
+    background: rgba(139, 0, 0, 0.1);
+    border: 1px solid #8B0000;
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.actor .reaction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 10px;
+    border-bottom: 1px solid rgba(139, 0, 0, 0.2);
+}
+
+.neuroshima.sheet.actor .reaction-item:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .reaction-item .attacker-name {
+    font-weight: bold;
+    color: #ff4444;
+}
+
+.neuroshima.sheet.actor .reaction-item button {
+    width: auto;
+    padding: 2px 10px;
+    height: 24px;
+    line-height: 20px;
+}
+
+.neuroshima.sheet.actor [data-application-part="inventory"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.actor [data-application-part="notes"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.actor [data-application-part="effects"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.neuroshima.sheet.actor [data-application-part="reputation"].active {
+    display: flex !important;
+    flex-direction: row;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Base tab active state for any other tabs */
+.neuroshima.sheet.actor .tab.active:not([data-application-part]) {
+    display: block;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Tables */
+.neuroshima.sheet.actor table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.neuroshima.sheet.actor th,
+.neuroshima.sheet.actor td {
+    border: 1px solid var(--ns-border-main);
+    padding: 4px;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor th {
+    background: var(--ns-bg-input);
+}
+
+.neuroshima.sheet.actor .attributes-table input {
+    width: 100%;
+    height: 20px;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor .attributes-table input:hover,
+.neuroshima.sheet.actor .attributes-table input:focus {
+    background: var(--ns-bg-input);
+}
+
+.neuroshima.sheet.actor .attribute-header-cell.clickable,
+.neuroshima.sheet.actor .attr-abbr-column.clickable {
+    color: var(--ns-text-attribute);
+    transition: all 0.2s;
+}
+
+.neuroshima.sheet.actor .attribute-header-cell.clickable:hover,
+.neuroshima.sheet.actor .attr-abbr-column.clickable:hover {
+    background: rgba(255, 0, 0, 0.15) !important;
+    color: red;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor .attribute-abbr,
+.neuroshima.sheet.actor .attr-abbr-wrapper strong {
+    display: block;
+    width: 100%;
+    height: 100%;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor .label-column {
+    width: auto;
+    white-space: nowrap;
+    text-align: left !important;
+    padding-left: 8px !important;
+    font-weight: bold;
+}
+
+/* Difficulty Toggle */
+.neuroshima.sheet.actor .toggle-cell {
+    padding: 0 !important;
+}
+
+.neuroshima.sheet.actor .difficulties-toggle-wrapper {
+    margin-top: 0;
+}
+
+.neuroshima.sheet.actor .toggle-difficulties-btn {
+    width: 100%;
+    background: var(--ns-bg-input);
+    border: none;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 3px 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.neuroshima.sheet.actor .toggle-difficulties-btn:hover {
+    background: var(--ns-bg-header);
+    color: red;
+}
+
+.neuroshima.sheet.actor .difficulties-table {
+    margin-top: 0;
+}
+
+.neuroshima.sheet.actor .attributes-table {
+    margin-bottom: 0;
+}
+
+.neuroshima.sheet.actor .skill-table {
+    margin-top: 0;
+}
+
+.neuroshima.sheet.actor .attr-section-label-row td {
+    background: var(--ns-bg-header);
+    padding: 3px 8px;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .attribute-total-row td input {
+    background: var(--ns-bg-header);
+    color: var(--color-text-primary);
+    font-weight: bold;
+    cursor: default;
+    pointer-events: none;
+    border-color: transparent;
+}
+
+.neuroshima.sheet.actor .attribute-total-row td input[data-tooltip] {
+    pointer-events: auto;
+    cursor: help;
+}
+
+.neuroshima.sheet.actor .difficulty-row td {
+    font-size: 0.9em;
+    background: var(--ns-bg-panel);
+}
+
+.neuroshima.sheet.actor .difficulty-row:hover td {
+    background: rgba(255, 0, 0, 0.1);
+}
+
+.neuroshima.sheet.actor .tab.inventory {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Skill rows */
+.neuroshima.sheet.actor .skill-table {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--ns-border-main);
+    padding: 5px;
+    background: rgba(0,0,0,0.02);
+}
+
+.neuroshima.sheet.actor .skills-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima.sheet.actor .attribute-skill-group {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 2px solid var(--ns-border-main);
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+}
+
+.neuroshima.sheet.actor .attribute-skill-group:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .attr-abbr-column {
+    flex: 0 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ns-bg-input);
+    border-right: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .attr-abbr-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.sheet.actor .attr-abbr-wrapper strong {
+    font-size: 1.4em;
+}
+
+.neuroshima.sheet.actor .specializations-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor .specialization-row:nth-child(even) {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.neuroshima.sheet.actor .specialization-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .specialization-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .spec-name-cell {
+    flex: 0 0 150px;
+    border-right: 2px solid var(--ns-border-main);
+    padding: 6px 0 6px 10px;
+    display: flex;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .spec-toggle {
+    cursor: default;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85em;
+}
+
+/* Combat Tab Styles */
+
+
+.neuroshima.sheet.actor .combat-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.neuroshima.sheet.actor .combat-top-row {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+}
+
+.neuroshima.sheet.actor .combat-top-row .combat-section {
+    flex: 1;
+    min-width: 0; /* Prevent flex items from overflowing */
+}
+
+.neuroshima.sheet.actor .combat-section {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    background: var(--ns-bg-panel);
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header {
+    background: var(--ns-bg-header);
+    color: white;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.theme-dark .neuroshima.sheet.actor .location-header {
+    background: var(--ns-bg-armor);
+    color: white;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .combat-section.weapons-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Allow shrinking */
+}
+
+.neuroshima.sheet.actor .weapons-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .weapons-group:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .combat-weapons-list {
+    flex: 0 0 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 102px; /* Fits exactly 2 items (~50px each + borders) */
+}
+
+.neuroshima.sheet.actor .combat-section .section-header.melee-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .header-left-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .melee-initiative-input {
+    width: 45px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+    margin: 0 5px;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .roll-melee-initiative {
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.8);
+    transition: color 0.2s;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .roll-melee-initiative:hover {
+    color: white;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .header-label {
+    flex: 0;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor .combat-section .section-header .item-control {
+    color: white;
+    font-size: 1.1em;
+}
+
+.neuroshima.sheet.actor .combat-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor .combat-table .table-header {
+    display: flex;
+    flex-direction: row;
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid var(--ns-border-main);
+    font-weight: bold;
+    font-size: 0.85em;
+    padding: 4px 0;
+}
+
+.neuroshima.sheet.actor .combat-table .table-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-bottom: 1px solid var(--ns-border-main)44;
+    font-size: 0.9em;
+    padding: 2px 0;
+}
+
+.neuroshima.sheet.actor .combat-table .table-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .combat-table .table-row:hover {
+    background: rgba(255, 0, 0, 0.05);
+}
+
+.neuroshima.sheet.actor .combat-table .col-name {
+    flex: 2;
+    padding-left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor .combat-table .col-rating,
+.neuroshima.sheet.actor .combat-table .col-durability,
+.neuroshima.sheet.actor .combat-table .col-stats,
+.neuroshima.sheet.actor .combat-table .col-location,
+.neuroshima.sheet.actor .combat-table .col-penalty,
+.neuroshima.sheet.actor .combat-table .col-type {
+    flex: 1.5;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor .combat-table .col-controls {
+    flex: 0 0 90px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor .combat-table .item-name.clickable:hover {
+    color: red;
+    cursor: pointer;
+}
+
+/* Inventory and Tricks List Styles (Div based) */
+.neuroshima.sheet.actor .encumbrance-bar-container {
+    margin-bottom: 10px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor .encumbrance-label {
+    background: var(--ns-bg-header);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--ns-border-main);
+    font-weight: bold;
+    font-size: 0.9em;
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.actor .encumbrance-bar {
+    height: 15px;
+    background: var(--ns-bg-input);
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    position: relative;
+}
+
+.neuroshima.sheet.actor .encumbrance-fill {
+    height: 100%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.neuroshima.sheet.actor .enc-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    margin-left: -1px;
+    background: rgba(255, 255, 255, 0.35);
+    pointer-events: all;
+    z-index: 2;
+    cursor: default;
+}
+
+.neuroshima.sheet.actor .enc-marker--yellow {
+    background: rgba(140, 128, 0, 0.6);
+}
+
+.neuroshima.sheet.actor .enc-marker--orange {
+    background: rgba(160, 88, 0, 0.65);
+}
+
+.neuroshima.sheet.actor .enc-marker--danger {
+    background: rgba(156, 42, 42, 0.7);
+    width: 2px;
+}
+
+.neuroshima.sheet.actor .enc-marker:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ns-bg-header);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 0.75em;
+    white-space: nowrap;
+    pointer-events: none;
+    color: var(--ns-text-primary, #ccc);
+    z-index: 10;
+}
+
+.neuroshima.sheet.actor .encumbrance-maxload-input {
+    width: 50px;
+    height: 20px;
+    background: transparent;
+    border: 1px solid transparent;
+    text-align: center;
+    font-weight: bold;
+    color: inherit;
+    border-radius: 3px;
+    transition: border-color 0.15s ease;
+}
+
+.neuroshima.sheet.actor .encumbrance-maxload-input:hover,
+.neuroshima.sheet.actor .encumbrance-maxload-input:focus {
+    border-color: var(--ns-border-main);
+    outline: none;
+}
+
+.neuroshima.sheet.actor .inventory-section {
+    margin-bottom: 10px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor .section-header.inv-section-header,
+.neuroshima.sheet.actor .section-header.money-section-header {
+    padding: 4px 5px;
+    gap: 10px;
+}
+
+.neuroshima.sheet.actor .section-header.inv-section-header > span,
+.neuroshima.sheet.actor .section-header.money-section-header > span {
+    flex: 1;
+    text-align: left;
+}
+
+
+.neuroshima.sheet.actor .section-header.inv-section-header .item-controls,
+.neuroshima.sheet.actor .section-header.money-section-header .item-controls {
+    border-left: none;
+}
+
+.neuroshima.sheet.actor .section-header.money-section-header .money-header-left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor .money-consolidate-btn {
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    margin: 0;
+    cursor: pointer;
+    color: inherit;
+    font-size: inherit;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    border-radius: 3px;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.neuroshima.sheet.actor .money-consolidate-btn:hover {
+    color: var(--ns-color-gold, #c9a227);
+    background: rgba(201, 162, 39, 0.12);
+}
+
+.neuroshima.sheet.actor .section-header {
+    background: var(--ns-bg-header);
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--ns-border-main);
+    text-transform: uppercase;
+    font-size: 0.9em;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .inventory-list-header {
+    background: var(--ns-bg-input);
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 3px 5px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    min-height: 32px;
+}
+
+.neuroshima.sheet.actor .inventory-list-header .item-name,
+.neuroshima.sheet.actor .inventory-list-header .item-stat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.1;
+    text-align: center;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+.neuroshima.sheet.actor .inventory-list-header .item-name {
+    justify-content: flex-start;
+}
+
+.neuroshima.sheet.actor .item-stat.equipped {
+    flex: 0 0 80px;
+}
+
+.neuroshima.sheet.actor .item-stat.quantity {
+    flex: 0 0 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neuroshima.sheet.actor .item-stat.weight {
+    flex: 0 0 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neuroshima.sheet.actor .item-stat.equipped {
+    flex: 0 0 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neuroshima.sheet.actor .item-controls {
+    flex: 0 0 25px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    border-left: 1px solid var(--ns-bg-header);
+}
+
+.neuroshima.sheet.actor .inventory-items .item {
+    padding: 3px 5px;
+    border-bottom: 1px solid var(--ns-bg-header);
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .inventory-items .item:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .inventory-items .item:nth-child(even) {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.neuroshima.sheet.actor .inventory-items .item:hover {
+    background: var(--ns-bg-input);
+}
+
+.neuroshima.sheet.actor .item-stat {
+    text-align: center;
+    border-left: 1px solid var(--ns-bg-header);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9em;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor .flex0-5 {
+    flex: 0.5;
+}
+
+.neuroshima.sheet.actor .inventory-list-header .item-stat {
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor .item-controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    border-left: 1px solid var(--ns-bg-header);
+}
+
+.neuroshima.sheet.actor .item-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor .item-image {
+    flex: 0 0 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+}
+
+.neuroshima.sheet.actor .item-control {
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor .item-control:hover {
+    color: red;
+}
+
+.neuroshima.sheet.actor .item-control.toggle-equipped {
+    font-size: 1.1em;
+}
+
+.neuroshima.sheet.actor .item-control.toggle-equipped .fa-check-circle {
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor .item-control.toggle-equipped .fa-circle {
+    opacity: 0.2;
+}
+
+.neuroshima.sheet.actor .quantity-controls {
+    margin-left: 0;
+}
+
+/* Clickable elements */
+.neuroshima.sheet.actor .clickable {
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor .clickable:hover {
+    color: var(--ns-text-clickable);
+    text-shadow: 0 0 5px rgba(255, 0, 0, 0.2);
+}
+
+.neuroshima.sheet.actor .item-image.clickable:hover {
+    border-color: var(--ns-text-accent);
+    box-shadow: 0 0 5px rgba(160, 46, 46, 0.5);
+}
+
+/* Quantity and Stat Controls */
+.neuroshima.sheet.actor .quantity-controls,
+.neuroshima.sheet.actor .weight-controls,
+.neuroshima.sheet.actor .stat-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.neuroshima.sheet.actor .quantity-value,
+.neuroshima.sheet.actor .weight-value,
+.neuroshima.sheet.actor .stat-value {
+    min-width: 30px;
+    max-width: 100%;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 3px;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.actor .quantity-value:hover,
+.neuroshima.sheet.actor .stat-value:hover {
+    background: rgba(160, 46, 46, 0.1);
+}
+
+/* Alignment Helpers */
+.neuroshima.sheet.actor .text-center {
+    text-align: center;
+}
+
+.neuroshima.sheet.actor .item-stat.text-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.neuroshima.sheet.actor .specialization-row.owned .spec-name {
+    color: red;
+}
+
+.neuroshima.sheet.actor .skills-horizontal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+    gap: 0 10px;
+    flex: 1;
+    padding-left: 10px;
+    align-items: stretch;
+}
+
+.neuroshima.sheet.actor .skill-item[data-action] {
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor .skill-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    border-right: 1px solid rgba(122, 121, 113, 0.3);
+    padding: 6px 8px 6px 0;
+    height: 100%;
+}
+
+.neuroshima.sheet.actor .skill-item:last-child {
+    border-right: none;
+}
+
+.neuroshima.sheet.actor .skill-input-wrapper {
+    flex: 0 0 70px;
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+}
+
+.neuroshima.sheet.actor .skill-input {
+    width: 33px;
+    height: 24px;
+    text-align: center;
+    font-weight: bold;
+    border: 1px solid var(--ns-border-main);
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor .skill-total-input {
+    background: rgba(0,0,0,0.06);
+    color: var(--color-text-dark-secondary);
+    font-weight: bold;
+    cursor: default;
+    opacity: 0.85;
+}
+
+.neuroshima.sheet.actor .skill-name {
+    flex: 1;
+    font-size: 0.9em;
+    line-height: 1.1;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+}
+
+.neuroshima.sheet.actor .skill-name-rollable {
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor .skill-name-rollable:hover {
+    color: var(--color-link-text, var(--ns-text-light));
+}
+
+.neuroshima.sheet.actor .skill-knowledge-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+}
+
+.neuroshima.sheet.actor .skill-knowledge-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85em;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor .skill-label-input {
+    display: none;
+    flex: 1;
+    min-width: 0;
+    height: 22px;
+    border: none;
+    border-bottom: 1px dashed var(--ns-border-main);
+    background: transparent;
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor .skill-item.knowledge-editing .skill-knowledge-label {
+    display: none;
+}
+
+.neuroshima.sheet.actor .skill-item.knowledge-editing .skill-label-input {
+    display: block;
+}
+
+.neuroshima.sheet.actor .skill-knowledge-edit-btn {
+    flex-shrink: 0;
+    font-size: 0.75em;
+    opacity: 0.35;
+    transition: opacity 0.15s;
+    cursor: pointer;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor .skill-item:hover .skill-knowledge-edit-btn {
+    opacity: 0.75;
+}
+
+.neuroshima.sheet.actor .skill-item:hover .skill-knowledge-label {
+    color: var(--color-link-text, var(--ns-text-light));
+}
+
+.neuroshima.sheet.actor .skill-item.knowledge-editing .skill-knowledge-edit-btn {
+    opacity: 1;
+    color: var(--color-level-success, #4caf50);
+}
+
+.neuroshima.sheet.actor .roll-attribute-btn {
+    cursor: pointer;
+    color: var(--ns-text-light);
+    transition: color 0.2s;
+}
+
+.neuroshima.sheet.actor .roll-attribute-btn:hover {
+    color: red;
+}
+
+/* Anatomical Armor Styles */
+.neuroshima.sheet.actor .armor-section-anatomical .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .armor-penalty-total {
+    font-size: 0.9em;
+}
+
+.neuroshima.sheet.actor .armor-penalty-total strong {
+    color: var(--ns-border-focus);
+    font-size:14px;
+    
+}
+
+.neuroshima.sheet.actor .ap-sum-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: bold;
+    font-size: 0.95em;
+    color: var(--ns-border-focus, #c8a45a);
+    margin-right: 0.5rem;
+}
+
+.neuroshima.sheet.actor .armor-anatomical-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    padding: 2px;
+}
+
+.neuroshima.sheet.actor .armor-location-box {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    min-height: 100px;
+}
+
+.neuroshima.sheet.actor .armor-location-box.empty {
+    opacity: 0.6;
+}
+
+.neuroshima.sheet.actor .armor-location-box.has-items {
+    border-color: var(--ns-bg-armor);
+    background: rgba(160, 46, 46, 0.03);
+}
+
+.neuroshima.sheet.actor .location-header {
+    background: var(--ns-border-main);
+    color: white;
+    padding: 2px 8px;
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .location-ap-sum {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0 5px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.neuroshima.sheet.actor .armor-location-box.has-items .location-header {
+    background: var(--ns-bg-armor);
+}
+
+.neuroshima.sheet.actor .armor-column-headers {
+    display: flex;
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: var(--ns-bg-header);
+    padding: 2px 4px;
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor .armor-header-icon { flex: 0 0 20px; }
+.neuroshima.sheet.actor .armor-header-name { flex: 2; }
+.neuroshima.sheet.actor .armor-header-dur { flex: 1; text-align: center; }
+.neuroshima.sheet.actor .armor-header-ap { flex: 1; text-align: center; }
+
+.neuroshima.sheet.actor .location-armor-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor .armor-item-row {
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+    border-bottom: 1px solid var(--ns-bg-header);
+    font-size: 16px;
+}
+
+.neuroshima.sheet.actor .armor-item-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .armor-icon-tiny {
+    flex: 0 0 16px;
+    height: 16px;
+    margin-right: 4px;
+    border: none;
+}
+
+.neuroshima.sheet.actor .armor-name-tiny {
+    flex: 2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 16px;
+}
+
+.neuroshima.sheet.actor .armor-durability,
+.neuroshima.sheet.actor .armor-ap-value {
+    flex: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor .is-damaged {
+    color: #ad0000;
+}
+
+.neuroshima.sheet.actor .location-empty {
+    padding: 8px;
+    text-align: center;
+    font-size: 0.8em;
+    font-style: italic;
+    color: var(--ns-text-light);
+}
+
+/* Combat Weapon Cards */
+.neuroshima.sheet.actor .combat {
+    position: relative;
+    padding-top: 45px;
+}
+
+.combat-tab-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+}
+
+.combat-tab-actions .item-control {
+    font-size: 1.2em;
+    color: var(--ns-text-light);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    cursor: pointer;
+}
+
+.combat-tab-actions .item-control:hover {
+    opacity: 1;
+}
+
+.combat-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.combat-grid.wounds-first {
+    flex-direction: column-reverse;
+}
+
+.wounds-section-extended .section-header {
+    display: flex;
+    align-items: center;
+}
+
+.wounds-section-extended .wound-stats-total {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    background: rgba(0, 0, 0, 0.3);
+    margin: 0 20px;
+    padding: 6px 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.wounds-section-extended .hp-sum,
+.wounds-section-extended .penalty-sum,
+.wounds-section-extended .healing-days-sum {
+    flex: 0 0 auto !important;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    font-size: 1.1em;
+}
+
+.wounds-section-extended .hp-sum { color: #ff4444; }
+.wounds-section-extended .penalty-sum { color: #ff9800; }
+.wounds-section-extended .healing-days-sum { color: #4caf50; }
+
+.wounds-section-extended .hp-sum i,
+.wounds-section-extended .penalty-sum i,
+.wounds-section-extended .healing-days-sum i {
+    font-size: 0.9em;
+}
+
+.wounds-section-extended .header-title {
+    flex: 0 0 auto !important;
+}
+
+.wounds-section-extended .header-actions {
+    flex: 0 0 auto !important;
+}
+
+.neuroshima.sheet.actor .equipment-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 5px 10px;
+}
+
+.neuroshima.sheet.actor .weapon-icon {
+    flex: 0 0 40px;
+    height: 40px;
+    object-fit: contain;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+}
+
+.neuroshima.sheet.actor .weapon-jam-indicator {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
+}
+
+.neuroshima.sheet.actor a.weapon-jam-indicator.is-jammed {
+    color: #c0392b;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor a.weapon-jam-indicator.is-jammed:hover {
+    color: #e74c3c;
+}
+
+.neuroshima.sheet.actor span.weapon-jam-indicator.is-jammed {
+    color: #c0392b;
+    cursor: default;
+}
+
+.neuroshima.sheet.actor .wounds-table {
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.sheet.actor .wounds-table select,
+.neuroshima.sheet.actor .wounds-table input {
+    width: 100%;
+    height: 24px;
+    background: rgba(0, 0, 0, 0.1);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    font-family: 'SpecialElite', serif;
+}
+
+body.theme-dark .neuroshima.sheet.actor .wounds-table select,
+body.theme-dark .neuroshima.sheet.actor .wounds-table input {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.sheet.actor .wounds-table .col-controls {
+    flex: 0 0 90px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+    padding-right: 8px;
+}
+
+.neuroshima.sheet.actor .wounds-table .item-control {
+    color: var(--ns-text-light);
+    transition: color 0.2s;
+}
+
+.neuroshima.sheet.actor .wounds-table .item-control:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor .wounds-table .item-control.active {
+    color: #27ae60;
+    text-shadow: 0 0 5px rgba(39, 174, 96, 0.3);
+}
+
+.neuroshima.sheet.actor .weapon-info-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor .weapon-name-rollable {
+    font-weight: bold;
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor .weapon-stats-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.neuroshima.sheet.actor .stat-item {
+    display: flex;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor .stat-label {
+    font-weight: bold;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor .stat-value {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor .stat-separator {
+    color: var(--ns-border-light);
+}
+
+.neuroshima.sheet.actor .weapon-magazine-row {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    font-size: 13px;
+    margin-top: 2px;
+}
+
+.neuroshima.sheet.actor .magazine-info {
+    display: flex;
+    gap: 5px;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor .magazine-name {
+    font-style: italic;
+}
+
+.neuroshima.sheet.actor .magazine-count {
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor .weapon-edit-column {
+    flex: 0 0 30px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Wounds Section Header Alignment */
+.neuroshima.sheet.actor .wounds-section .section-header {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.neuroshima.sheet.actor .wounds-section .header-title {
+    flex: 3.5;
+    padding-left: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor .wounds-section .wound-stats-total {
+    flex: 3;
+    display: flex;
+}
+
+.neuroshima.sheet.actor .wounds-section .hp-sum,
+.neuroshima.sheet.actor .wounds-section .penalty-sum {
+    flex: 1;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor .wounds-section .healing-days-sum {
+    flex: 1.5;
+    text-align: center;
+    color: #4caf50;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.healing-rate-input-wrapper {
+    display: flex;
+    align-items: center;
+    font-size: 0.8em;
+    font-weight: normal;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    margin-left: 4px;
+}
+
+.healing-rate-input {
+    width: 35px !important;
+    height: 18px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: #4caf50 !important;
+    text-align: center !important;
+    font-weight: bold !important;
+}
+
+.healing-rate-input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.neuroshima.sheet.actor .wounds-section .header-actions {
+    flex: 0 0 90px;
+    padding-right: 8px;
+    justify-content: flex-end;
+    display: flex;
+    gap: 10px;
+}
+
+/* Wound Grid Layout */
+.healing-app-section .wound-item {
+  padding: 8px 0;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.healing-app-section .wound-item:last-child {
+  border-bottom: none;
+}
+
+.healing-app-section .wound-checkbox {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.wound-item-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.wound-grid-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wound-grid-section.wound-penalty-section,
+.wound-grid-section.wound-days-section {
+  align-items: center;
+}
+
+.wound-type {
+  font-weight: bold;
+  color: #ff6b6b;
+}
+
+.wound-item-name {
+  color: var(--ns-text-main);
+}
+
+.wound-penalty-label,
+.wound-days-label {
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
+.wound-penalty {
+  font-weight: bold;
+  color: #ff9900;
+}
+
+.wound-days {
+  font-weight: bold;
+  color: #66bb6a;
+}
+
+.wound-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.wound-badge {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+  font-size: 1.1em;
+}
+
+.wound-badge[title] {
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.wound-badge[title]:hover {
+  opacity: 1;
+}
+
+.wound-badge.first-aid-badge {
+  color: #42a5f5;
+}
+
+.wound-badge.healing-badge {
+  color: #66bb6a;
+}
+
+.wound-badge.attempts-badge {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+/* Compact wound item */
+.wound-item-compact {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wound-item-compact:last-child {
+  border-bottom: none;
+}
+
+.wound-days-compact {
+  font-weight: bold;
+  color: #66bb6a;
+}
+
+.wound-badge-compact {
+  display: inline-flex;
+  cursor: help;
+  font-size: 1em;
+}
+
+.wound-badge-compact[title] {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.wound-badge-compact[title]:hover {
+  opacity: 1;
+}
+
+.wound-badge-compact.first-aid {
+  color: #42a5f5;
+}
+
+.wound-badge-compact.attempts {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+/* Extended Wounds Editable Elements */
+.location-wounds-header {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  background: rgba(100, 150, 200, 0.08);
+  border-left: 2px solid rgba(100, 150, 200, 0.2);
+  transition: all 0.2s ease;
+  font-family: 'SpecialElite', serif;
+  font-size: 1.15em;
+  font-weight: bold;
+  min-height: 32px;
+  visibility: visible !important;
+}
+
+.location-wounds-header.active {
+  display: flex !important;
+  background: rgba(100, 150, 200, 0.2);
+  border-left-color: rgba(100, 150, 200, 0.8);
+  color: #fff;
+}
+
+.location-wounds-header .location-wounds-title {
+  margin: 0;
+  flex: 1;
+}
+
+.btn-add-wound {
+  padding: 4px 8px;
+  min-width: 32px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(100, 150, 200, 0.2);
+  border: 1px solid rgba(100, 150, 200, 0.4);
+  color: rgba(100, 150, 200, 0.8);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9em;
+}
+
+.btn-add-wound:hover {
+  background: rgba(100, 150, 200, 0.3);
+  border-color: rgba(100, 150, 200, 0.6);
+  color: rgba(100, 150, 200, 1);
+}
+
+.wound-item-editable {
+  padding: 8px;
+  margin: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+
+.wound-item-editable:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wound-item-editable .wound-item-grid {
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 8px;
+}
+
+.wound-type-select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(100, 150, 200, 0.4);
+  color: #ff6b6b;
+  padding: 4px 6px;
+  border-radius: 2px;
+  font-weight: bold;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wound-type-select:hover,
+.wound-type-select:focus {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(100, 150, 200, 0.6);
+  outline: none;
+}
+
+.wound-penalty-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 153, 0, 0.4);
+  color: var(--ns-text-woundpenalty);
+  padding: 4px 6px;
+  border-radius: 2px;
+  font-weight: bold;
+  font-size: 0.95em;
+  width: 50px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.wound-penalty-input:hover,
+.wound-penalty-input:focus {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 153, 0, 0.6);
+  outline: none;
+}
+
+.wound-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.wound-item-editable .item-control {
+  padding: 4px 6px;
+  font-size: 0.9em;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.6;
+  color: var(--ns-text-light);
+}
+
+.wound-item-editable .item-control:hover {
+  opacity: 1;
+  color: var(--ns-text-main);
+}
+
+.wound-item-editable .item-control.active {
+  color: #66bb6a;
+  opacity: 1;
+}
+
+/* Extended Healing Panel in Actor Sheet */
+.healing-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.healing-panel-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 15px;
+  height: 450px;
+}
+
+.healing-panel-section.paper-doll-section {
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.healing-panel-section.wounds-list-section {
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: 'SpecialElite', serif;
+  font-size: 1.1em;
+}
+
+.wounds-list-container {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.section-title {
+  font-size: 0.95em;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--ns-text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.paper-doll-scrollable {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 1 auto;
+  
+}
+
+.paper-doll-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  flex-shrink: 0;
+  height: 100px;
+}
+
+.body-diagram {
+  width: 100%;
+  height: auto;
+  max-width: 180px;
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
+}
+
+.body-location-hotspot {
+  cursor: pointer;
+  fill: rgba(100, 150, 200, 0.3);
+  stroke: rgba(100, 150, 200, 0.6);
+  stroke-width: 1.5;
+  transition: all 0.2s ease;
+}
+
+.body-location-hotspot:hover {
+  fill: rgba(100, 150, 200, 0.5);
+  stroke: rgba(100, 150, 200, 0.9);
+  stroke-width: 2;
+}
+
+.body-location-hotspot.selected {
+  fill: rgba(255, 100, 100, 0.5);
+  stroke: rgba(255, 100, 100, 1);
+  stroke-width: 2.5;
+}
+
+.wound-count-badge {
+  font-size: 12px;
+  font-weight: bold;
+  fill: white;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.wounds-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.location-wounds-group {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.location-wounds-group.active {
+  display: flex !important;
+}
+
+.location-wounds-title {
+  font-size: 0.85em;
+  font-weight: 600;
+  margin: 6px 0 4px 0;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wound-item {
+  padding: 8px;
+  margin: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(245, 40, 40, 0.15);
+  transition: background 0.2s ease;
+}
+
+.wound-item.is-healing {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+.wound-item-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  z-index: 10;
+}
+
+.wound-type-select {
+  flex-shrink: 0;
+  padding: 2px 4px;
+  font-size: 0.85em;
+  width: 40px;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.wound-item-name {
+  flex: 0 1 auto;
+  min-width: 60px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'SpecialElite', serif;
+  font-size: 1.05em;
+}
+
+.wound-penalty-input {
+  flex-shrink: 0;
+  width: 40px;
+  padding: 2px 4px;
+  font-size: 0.85em;
+  text-align: center;
+  background: rgba(255, 153, 0, 0.15) !important;
+  border: 1px solid rgba(255, 153, 0, 0.4) !important;
+  color: var(--ns-text-woundpenalty) !important;
+  border-radius: 2px;
+  cursor: text !important;
+  pointer-events: auto !important;
+}
+
+.wound-penalty-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: auto !important;
+}
+
+.wound-days {
+  flex-shrink: 0;
+  min-width: 30px;
+  text-align: center;
+  font-size: 0.85em;
+  display: none;
+}
+
+.wound-status-icons {
+  flex-shrink: 0;
+  display: flex;
+  gap: 3px;
+}
+
+.wound-inline-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  z-index: 20;
+  position: relative;
+  pointer-events: auto !important;
+}
+
+.wound-inline-controls .item-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: rgba(100, 150, 200, 0.2);
+  color: rgba(100, 150, 200, 0.8);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9em;
+}
+
+.wound-inline-controls .item-control:hover {
+  background: rgba(100, 150, 200, 0.4);
+  color: rgba(100, 150, 200, 1);
+}
+
+.wound-inline-controls .item-control.active {
+  background: rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+.wound-item:last-child {
+  border-bottom: none;
+}
+
+.wound-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 2px;
+}
+
+.wound-item-grid {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+/* === HEALING APP SPECIFIC STYLES === */
+.healing-app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 95vh;
+}
+
+.healing-app-header {
+    padding: 16px;
+    border-bottom: 2px solid var(--ns-border-main);
+    background-color: var(--ns-bg-input);
+    flex-shrink: 0;
+}
+
+.patient-header-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.patient-avatar-container {
+    flex-shrink: 0;
+}
+
+.patient-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--ns-border-main);
+}
+
+.patient-header-details {
+    flex: 1;
+}
+
+.patient-name {
+    margin: 0 0 8px 0 !important;
+    font-size: 1.3em !important;
+    font-weight: bold;
+    color: var(--ns-text-header);
+    border: none !important;
+}
+
+.patient-vital-signs {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.vital-sign {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.95em;
+}
+
+.vital-sign i {
+    font-size: 1.1em;
+    color: var(--ns-color-accent);
+}
+
+.vital-label {
+    font-weight: 600;
+    color: var(--ns-text-light);
+}
+
+.vital-value {
+    color: var(--ns-text-main);
+    font-weight: bold;
+}
+
+.healing-app-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.healing-app-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    flex: 1;
+    overflow: hidden;
+    padding: 15px;
+}
+
+.healing-app-section {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.healing-app .paper-doll-section {
+    flex: 0 0 350px;
+}
+
+.healing-app .wounds-list-section {
+    flex: 1;
+    min-width: 0;
+}
+
+.healing-app .section-title {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border-bottom: 2px solid var(--ns-border-light);
+}
+
+.healing-app .wound-item {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    margin: 5px;
+}
+
+.healing-app .wound-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.healing-app .paper-doll-container {
+    flex: 1;
+    min-height: 0;
+    background: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid var(--ns-border-main);
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.healing-app .wounds-summary-bar {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--ns-border-light);
+    font-size: 0.9em;
+}
+
+.healing-app .select-all-container {
+    display: flex;
+    align-items: center;
+    padding-right: 12px;
+    border-right: 1px solid var(--ns-border-light);
+    height: 100%;
+}
+
+.healing-app .select-all-wounds {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.healing-app .wound-type-counts {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+}
+
+.healing-app .location-penalty-sum {
+    color: var(--ns-text-woundpenalty);
+    font-weight: 500;
+    margin-left: auto;
+}
+
+.healing-app .location-penalty-sum strong {
+    font-size: 1.1em;
+}
+
+.healing-app .body-diagram {
+    max-width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 5px rgba(0,0,0,0.2));
+}
+
+.healing-app .wound-type {
+    color: var(--ns-text-accent);
+    font-size: 1em;
+    font-weight: bold;
+    background: rgba(0, 0, 0, 0.2);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.healing-app .wound-penalty {
+    color: var(--ns-text-woundpenalty);
+    font-size: 1em;
+    font-weight: bold;
+    background: transparent;
+    padding: 0 5px;
+}
+
+.healing-app .wounds-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+.healing-app .location-wounds-group {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border-left: 3px solid var(--ns-color-accent);
+}
+
+.healing-app .all-wounds-location {
+    margin-bottom: 15px;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 2px solid var(--ns-border-main);
+}
+
+.healing-app .wound-item-grid {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 4px 8px;
+}
+
+.healing-app .wound-grid-section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+}
+
+.healing-app .wound-badges {
+    display: flex;
+    gap: 4px;
+}
+
+.healing-app .wound-item-name {
+    font-size: 0.9em;
+    color: var(--ns-text-light);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.8;
+}
+
+.healing-app .wound-item-compact .wound-item-grid {
+    gap: 10px;
+}
+
+.healing-app .wound-checkbox {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.healing-app .healing-actions-footer {
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid var(--ns-border-main);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.healing-app .selected-location-info {
+    padding: 8px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.healing-app .location-name {
+    margin: 0;
+    font-weight: bold;
+    color: var(--ns-color-accent);
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.healing-app .no-selection {
+    margin: 0;
+    font-style: italic;
+    color: var(--ns-text-light);
+    font-size: 0.85em;
+}
+
+/* Rest Dialog Styles */
+.rest-dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+}
+
+.rest-dialog-content p {
+    margin: 0;
+    text-align: center;
+    font-size: 0.95em;
+    line-height: 1.4;
+}
+
+.rest-config-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px 20px;
+}
+
+.rest-config-grid label {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.9em;
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.input-with-unit input {
+    width: 50px !important;
+    height: 30px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--ns-border-main);
+    color: var(--ns-text-light);
+    font-family: 'SpecialElite', serif;
+}
+
+.input-with-unit .unit {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 1.1em;
+    width: 20px;
+    text-align: left;
+    opacity: 0.8;
+}
+
+/* Rest Report Chat Card Styles */
+.rest-report .rest-wound-line {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 5px;
+    font-size: 0.9em;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.rest-report .rest-wound-line:last-child {
+    border-bottom: none;
+}
+
+.rest-report .wound-type {
+    flex: 0 0 35px;
+    font-size: 0.85em;
+    opacity: 0.7;
+    text-align: center;
+}
+
+.rest-report .wound-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rest-report .wound-path {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.rest-report .old-penalty {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.rest-report .new-penalty {
+    font-weight: bold;
+    color: #4caf50;
+}
+
+.rest-report .new-penalty.removed {
+    color: #4caf50;
+}
+
+.rest-report .fa-long-arrow-alt-right {
+    opacity: 0.4;
+    font-size: 0.8em;
+}
+
+/* Melee Pending Attacker Section */
+.neuroshima.sheet.actor .melee-pending-attacker {
+    background: #600;
+    color: white;
+    padding: 8px 12px;
+    margin: 5px 0 10px 0;
+    border: 1px solid #300;
+    border-radius: 4px;
+    font-family: 'SpecialElite', serif;
+    animation: pulse-red 2s infinite;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-header {
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-name {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .action-btn.ignore {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .action-btn.ignore:hover {
+    background: #f00;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker .attacker-instruction {
+    font-size: 0.75em;
+    font-style: italic;
+    margin-top: 6px;
+    opacity: 0.9;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(102, 0, 0, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(102, 0, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(102, 0, 0, 0); }
+}
+
+/* Melee Opposed Handler - Hidden Dice Placeholder */
+.melee-opposed-handler .dice-hidden-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    margin: 10px 0;
+    width: 100%;
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    text-align: center;
+}
+
+.melee-opposed-handler .dice-hidden-placeholder i {
+    font-size: 1.5em;
+    opacity: 0.3;
+}
+
+.melee-opposed-handler.phase-initiative .participant-section.attacker .dice-results-grid,
+.melee-opposed-handler.phase-initiative .participant-section.defender .dice-results-grid {
+    border: none;
+    background: transparent;
+}
+
+/* Roll Card in Tooltip Mode */
+.neuroshima.roll-card.tooltip-mode {
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid var(--ns-border-main);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    width: 280px;
+    font-size: 1.3em;
+    pointer-events: none;
+}
+
+.neuroshima.roll-card .roll-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.neuroshima.roll-card .roll-header .actor-image-container {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid var(--ns-border-main);
+    cursor: help;
+}
+
+.neuroshima.roll-card .roll-header .actor-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.neuroshima.roll-card .roll-header .header-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.neuroshima.roll-card .roll-header .header-details .weapon-title,
+.neuroshima.roll-card .roll-header .header-details .test-info {
+    line-height: 1.2;
+}
+
+.neuroshima.roll-card .roll-header .header-details .test-info,
+.neuroshima.roll-card .roll-header .header-details .initiative-tag {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+
+.neuroshima.roll-card.tooltip-mode .dice-results-grid {
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.neuroshima.roll-card.tooltip-mode .die-result {
+    font-size: 1em;
+}
+
+.neuroshima.roll-card.tooltip-mode .die-square {
+    width: 26px;
+    height: 26px;
+    line-height: 26px;
+    font-size: 1.1em;
+}
+
+.neuroshima.roll-card.tooltip-mode .roll-header {
+    font-size: 1.1em;
+    padding: 2px 0;
+    text-transform: uppercase;
+}
+
+.neuroshima.roll-card.tooltip-mode hr {
+    margin: 6px 0;
+}
+
+.neuroshima.roll-card.tooltip-mode .roll-outcome {
+    margin-top: 8px;
+}
+
+.neuroshima.roll-card.tooltip-mode .outcome-item {
+    font-size: 0.9em;
+}
+
+/* Melee Summary in Combat Tracker */
+.active-duels-wrapper {
+    margin: 5px;
+    border: 1px solid var(--ns-border-main, #444);
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 4px;
+    overflow: hidden;
+    font-family: 'SpecialElite', serif;
+}
+
+.active-duels-section .section-header {
+    background: #600;
+    color: white;
+    padding: 4px 8px;
+    font-size: 0.9em;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.melee-duels-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.melee-duel-item {
+    padding: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.melee-duel-item:first-child {
+    border-top: none;
+}
+
+.melee-duel-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.duel-participants {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.participant img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--ns-border-main, #444);
+    object-fit: cover;
+}
+
+.vs {
+    font-size: 0.8em;
+    font-weight: bold;
+    opacity: 0.6;
+    color: #ff4444;
+}
+
+.duel-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8em;
+    line-height: 1.2;
+}
+
+.duel-meta .turn {
+    font-weight: bold;
+    color: #eee;
+}
+
+.duel-meta .phase {
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.duel-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.duel-actions a {
+    color: #eee;
+    opacity: 0.6;
+    transition: all 0.2s;
+}
+
+.duel-actions a:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.duel-actions a.finish-duel:hover {
+    color: #ff4444;
+}
+
+.melee-status-icon {
+    animation: pulse-red-icon 2s infinite;
+}
+
+@keyframes pulse-red-icon {
+    0% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 68, 68, 0); }
+    50% { transform: scale(1.2); text-shadow: 0 0 5px rgba(255, 68, 68, 0.8); }
+    100% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 68, 68, 0); }
+}
+
+/* ── Melee Pending Cards on Actor Sheet Combat Tab ──────────── */
+.neuroshima.sheet.actor .melee-pending-attacker-card,
+.neuroshima.sheet.actor .melee-pending-defender-card {
+    font-family: 'SpecialElite', serif;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: 100%;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card {
+    background: rgba(120, 0, 0, 0.25);
+    border: 2px solid #c0392b;
+    animation: pulse-red 2s infinite;
+}
+
+.neuroshima.sheet.actor .melee-pending-defender-card {
+    background: rgba(60, 45, 0, 0.25);
+    border: 1px solid rgba(243, 156, 18, 0.35);
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-header,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-header {
+    background: rgba(192, 57, 43, 0.2);
+}
+
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-card-header {
+    background: rgba(243, 156, 18, 0.08);
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-header-main {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #e74c3c;
+}
+
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-header-main {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(243, 156, 18, 0.7);
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-dismiss-btn,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-dismiss-btn {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.78em;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-dismiss-btn:hover,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-dismiss-btn:hover {
+    background: rgba(192, 57, 43, 0.6);
+    color: #fff;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-content,
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-card-content {
+    display: block;
+    padding: 8px 10px;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .attacker-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .attacker-identity {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .attacker-label {
+    font-size: 0.68em;
+    color: rgba(255, 255, 255, 0.38);
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .attacker-name {
+    font-size: 1em;
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .initiative-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .initiative-badge .label {
+    font-size: 0.65em;
+    color: rgba(255, 255, 255, 0.38);
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .initiative-badge .value {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #f39c12;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-instruction {
+    font-size: 0.73em;
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    margin: 0 0 8px;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pending-card-actions {
+    margin-top: 4px;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .join-melee-btn {
+    width: 100%;
+    padding: 6px 10px;
+    background: rgba(192, 57, 43, 0.8);
+    border: 1px solid #c0392b;
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .join-melee-btn:hover {
+    background: rgba(231, 76, 60, 0.9);
+}
+
+.neuroshima.sheet.actor .melee-pending-attacker-card .pulse-button {
+    animation: pulse-red 2s infinite;
+}
+
+.neuroshima.sheet.actor .melee-pending-defender-card .duel-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 4px;
+}
+
+.neuroshima.sheet.actor .melee-pending-defender-card .duel-info i {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+.neuroshima.sheet.actor .melee-pending-defender-card .pending-status-msg {
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    margin: 0;
+}
+
+/* ===== Shared Sheet Wrapper ===== */
+.neuroshima.sheet.actor .sheet-main-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== Creature Sheet ===== */
+.neuroshima.sheet.actor-creature {
+    min-width: 560px;
+}
+
+.neuroshima.sheet.actor-creature .sheet-body {
+    padding: 10px 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-creature .creature-attributes-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.neuroshima.sheet.actor-creature .creature-attr-block {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 60px;
+    gap: 2px 6px;
+    align-items: center;
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+
+.neuroshima.sheet.actor-creature .creature-attr-block .attr-label,
+.neuroshima.sheet.actor-creature .creature-attr-block .attr-mod-label {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.6);
+    grid-column: 1;
+}
+
+.neuroshima.sheet.actor-creature .creature-attr-block input {
+    grid-column: 2;
+    text-align: center;
+    width: 100%;
+}
+
+.neuroshima.sheet.actor-creature .creature-attr-block .attr-total {
+    grid-column: 1 / -1;
+    font-size: 0.8em;
+    color: var(--ns-accent, #c9aa71);
+    text-align: right;
+}
+
+.neuroshima.sheet.actor-creature .creature-section {
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.actor-creature .creature-section h3 {
+    font-size: 0.85em;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+}
+
+.neuroshima.sheet.actor-creature .full-width {
+    width: 100%;
+}
+
+/* ===== Vehicle Sheet ===== */
+.neuroshima.sheet.actor-vehicle {
+    min-width: 560px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-body {
+    padding: 10px 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-stat-block {
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-stat-block label {
+    display: block;
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-stat-block .stat-pair {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-stat-block input {
+    width: 50px;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-vehicle .mini-progress {
+    height: 5px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor-vehicle .mini-progress-fill {
+    height: 100%;
+    background: #4caf50;
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+
+.neuroshima.sheet.actor-vehicle .mini-progress.damaged .mini-progress-fill { background: #ff9800; }
+.neuroshima.sheet.actor-vehicle .mini-progress.critical .mini-progress-fill { background: #f44336; }
+.neuroshima.sheet.actor-vehicle .mini-progress-fill.fuel { background: #2196f3; }
+
+.neuroshima.sheet.actor-vehicle .vehicle-section {
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-section h3 {
+    font-size: 0.85em;
+    margin: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-notes {
+    margin-top: 8px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-notes label {
+    display: block;
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .profile-img {
+    flex: 0 0 200px;
+    width: 200px;
+    height: 200px;
+}
+
+.neuroshima.sheet.actor-vehicle .sheet-header {
+    gap: 2px;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-top {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-top .header-fields {
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+    margin-top: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-details .header-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-details .header-field label {
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.55);
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-details .header-field input,
+.neuroshima.sheet.actor-vehicle .vehicle-header-details .header-field select {
+    width: 100%;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-fuel-cap {
+    grid-column: 1 / -1;
+}
+
+.neuroshima.sheet.actor-vehicle .fuel-cap-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .fuel-inputs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .fuel-inputs input {
+    width: 50px !important;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-vehicle .fuel-gauge {
+    width: 100%;
+    height: 10px;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--ns-border-main);
+    display: block;
+}
+
+.neuroshima.sheet.actor-vehicle .fuel-gauge::-webkit-progress-bar {
+    background: rgba(0,0,0,0.3);
+}
+
+.neuroshima.sheet.actor-vehicle .fuel-gauge::-webkit-progress-value {
+    background: linear-gradient(90deg, #c8860a, #f0b030);
+    border-radius: 5px;
+}
+
+.neuroshima.sheet.actor-vehicle .fuel-gauge::-moz-progress-bar {
+    background: linear-gradient(90deg, #c8860a, #f0b030);
+    border-radius: 5px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    margin: 8px 0 0 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-card {
+    display: flex;
+    flex-direction: row;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--ns-bg-panel);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-name {
+    flex: 0 0 42%;
+    background: var(--ns-border-main);
+    color: #fff;
+    font-size: 0.82em;
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3px 5px;
+    word-break: break-word;
+    line-height: 1.2;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-inputs {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box:first-child {
+    border-right: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box label {
+    background: var(--ns-border-main);
+    color: #fff;
+    font-size: 0.60em;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px 2px;
+    line-height: 1.3;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box input {
+    flex: 1;
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.0em;
+    font-family: 'SpecialElite', serif;
+    background: var(--ns-bg-input);
+    border: none;
+    padding: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-attr-input-box input:focus {
+    background: rgba(255,255,255,0.15);
+    outline: none;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-stats-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-stat {
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    padding: 4px 8px;
+    position: relative;
+    flex: 1;
+    min-width: 80px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-stat label {
+    display: block;
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.55);
+    margin-bottom: 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-stat .stat-pair {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-header-stat input {
+    width: 48px;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-vehicle .tab {
+    padding: 10px 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-vehicle [data-application-part="crew"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="mods"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="combat"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="equipment"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="notes"].active,
+.neuroshima.sheet.actor-vehicle [data-application-part="effects"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.actor-creature [data-application-part="effects"].active,
+.neuroshima.sheet.actor-creature [data-application-part="inventory"].active,
+.neuroshima.sheet.actor-creature [data-application-part="notes"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+/* --- Crew Tab --- */
+.neuroshima.sheet.actor-vehicle .crew-qty {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-qty-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-qty-field label {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.85em;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-qty-field input {
+    width: 56px;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-occupants {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.neuroshima.sheet.actor-vehicle .crew-empty {
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    text-align: center;
+    width: 100%;
+    margin: 20px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 110px;
+    background: var(--ns-bg-panel);
+    border: 2px solid var(--ns-border-main);
+    border-radius: 5px;
+    overflow: hidden;
+    gap: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant.is-exposed {
+    border-color: #e8a020;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-position {
+    width: 100%;
+    background: var(--ns-border-main);
+    padding: 2px 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-position select {
+    width: 100%;
+    background: transparent;
+    color: #fff;
+    border: none;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.90em;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    padding: 1px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-position select option {
+    background: #222;
+    color: #fff;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-image {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    margin: 6px auto 2px;
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main);
+    display: block;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-name {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-exposed {
+    width: 100%;
+    padding: 2px 4px;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-exposed .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    font-size: 0.68em;
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main);
+    color: rgba(255,255,255,0.5);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-exposed .button.active {
+    background: rgba(232, 160, 32, 0.3);
+    border-color: #e8a020;
+    color: #e8a020;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons {
+    display: flex;
+    width: 100%;
+    border-top: 1px solid var(--ns-border-main);
+    margin-top: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .button {
+    flex: 1;
+    text-align: center;
+    padding: 3px 0;
+    font-size: 0.80em;
+    cursor: pointer;
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    transition: color 0.15s, background 0.15s;
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .button:hover {
+    color: #fff;
+    background: rgba(255,255,255,0.08);
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .crew-remove:hover {
+    color: #e05050;
+    background: rgba(224,80,80,0.15);
+}
+
+.neuroshima.sheet.actor-vehicle .occupant-buttons .button + .button {
+    border-left: 1px solid var(--ns-border-main);
+}
+
+/* HP Configuration Dialog */  
+.hp-config-dialog .hp-config-grid {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+}
+
+.hp-config-dialog .hp-config-grid input {
+    text-align: center;
+}
+
+.hp-config-dialog .hp-config-grid label {
+    font-weight: bold;
+    white-space: nowrap;
+}  
+.stat-box.hp-summary,
+.vehicle-stat-block.hp-summary {
+    position: relative;
+}
+
+.hp-config-btn {
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    color: var(--ns-text-muted);
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: color 0.2s;
+    z-index: 5;
+}
+
+.hp-config-btn:hover {
+    color: var(--ns-text-main);
+}  
+/* ===== Creature Stat Boxes with Editable Inputs ===== */
+.neuroshima.sheet.actor .stat-value.stat-value-input {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 2px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor .stat-value.stat-value-input input {
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.95em;
+    color: inherit;
+    padding: 0 2px;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.actor .stat-value.stat-value-input input:focus {
+    outline: 1px solid var(--ns-border-main);
+    border-radius: 2px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.1));
+}
+
+.stat-box.creature-type-stat,
+.stat-box.creature-terrain-stat {
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-creature .header-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 5px;
+}
+
+.neuroshima.sheet.actor-creature .creature-info-row {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.neuroshima.sheet.actor-creature .stat-box {
+    flex: unset;
+}
+
+/* ===== Creature Berserker Stat Box ===== */
+.stat-box.berserker-summary {
+    flex: 0 0 auto;
+    min-width: 90px;
+}
+
+.stat-box.berserker-summary .stat-value {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-box.berserker-summary .berserker-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    margin: 0;
+}
+
+/* ===== Creature Combat Tab Layout ===== */
+.neuroshima.sheet.actor-creature .creature-combat-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 8px 0;
+}
+
+.neuroshima.sheet.actor-creature .creature-combat-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-creature .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    color: var(--ns-accent, #c9aa71);
+}
+
+.neuroshima.sheet.actor-creature .section-header .header-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-creature .section-header .header-controls {
+    display: flex;
+    gap: 4px;
+}
+
+/* Creature armor grid — 2 columns, tighter gap than the actor inventory grid */
+.neuroshima.sheet.actor-creature .creature-armor-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+}
+
+/* Column sub-headers for nat-armor inputs (Red. / UTR.% / hazard icon) */
+.neuroshima.sheet.actor-creature .nat-armor-col-headers {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: 1px 4px 0;
+    gap: 0;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-col-headers span {
+    flex: 1;
+    text-align: center;
+    font-size: 0.64em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-icon-hdr {
+    width: 11px;
+    height: 11px;
+    opacity: 0.4;
+    filter: grayscale(1);
+    vertical-align: middle;
+}
+
+/* Inputs row: flat single-height row */
+.neuroshima.sheet.actor-creature .nat-armor-body {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 2px 4px 3px;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-reduction-input,
+.neuroshima.sheet.actor-creature .nat-armor-penalty-input {
+    flex: 1;
+    min-width: 0;
+    width: 34px;
+    height: 20px;
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: bold;
+    padding: 0 2px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 3px;
+    color: inherit;
+    line-height: 20px;
+}
+
+/* Weak point toggle — hazard icon, orange/red when enabled */
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 28px;
+    cursor: pointer;
+    user-select: none;
+    padding: 1px 0;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.3;
+    transition: opacity 0.15s, filter 0.15s;
+    filter: grayscale(1);
+}
+
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"]:checked ~ .nat-armor-weakpoint-icon,
+.neuroshima.sheet.actor-creature .nat-armor-weakpoint-toggle input[type="checkbox"]:checked + .nat-armor-weakpoint-icon {
+    opacity: 1;
+    filter: none;
+}
+
+/* Shared item list style for both actions and maneuvers */
+.neuroshima.sheet.actor-creature .creature-actions-list,
+.neuroshima.sheet.actor-creature .creature-maneuvers-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.neuroshima.sheet.actor-creature .creature-actions-list .item,
+.neuroshima.sheet.actor-creature .creature-maneuvers-list .item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 5px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+    font-size: 0.82em;
+}
+
+.neuroshima.sheet.actor-creature .creature-actions-list .item-name,
+.neuroshima.sheet.actor-creature .creature-maneuvers-list .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.actor-creature .beast-action-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor-creature .action-type-badge {
+    padding: 1px 5px;
+    border-radius: 10px;
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Beast Action type badge colours */
+.neuroshima.sheet.actor-creature .action-type-attack   { background: rgba(200, 40, 40, 0.5);  color: #f99; }
+.neuroshima.sheet.actor-creature .action-type-special  { background: rgba(50, 120, 200, 0.5); color: #9cf; }
+.neuroshima.sheet.actor-creature .action-type-reaction { background: rgba(30, 160, 100, 0.5); color: #9fc; }
+
+/* Beast Maneuver type badge colours */
+.neuroshima.sheet.actor-creature .maneuver-type-offensive { background: rgba(200, 100, 20, 0.5); color: #fca; }
+.neuroshima.sheet.actor-creature .maneuver-type-defensive { background: rgba(30, 100, 180, 0.5); color: #acf; }
+.neuroshima.sheet.actor-creature .maneuver-type-special   { background: rgba(130, 40, 200, 0.5); color: #daf; }
+
+.neuroshima.sheet.actor-creature .action-cost {
+    color: rgba(255,255,255,0.5);
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-creature .creature-wounds-section {
+    margin-top: 12px;
+}
+
+.neuroshima.sheet.actor-creature .wounds-section .section-header {
+    border-bottom: 1px solid var(--ns-border-main);
+    padding: 4px 0;
+    margin-bottom: 0;
+}
+
+/* Creature wounds table — extend actor-sheet combat-table/wounds-table styles */
+.neuroshima.sheet.actor-creature .combat-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor-creature .combat-table .table-header {
+    display: flex;
+    flex-direction: row;
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid var(--ns-border-main);
+    font-weight: bold;
+    font-size: 0.8em;
+    padding: 3px 0;
+}
+
+.neuroshima.sheet.actor-creature .combat-table .table-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.85em;
+    padding: 2px 0;
+}
+
+.neuroshima.sheet.actor-creature .combat-table .table-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor-creature .combat-table .table-row:hover {
+    background: rgba(255,0,0,0.05);
+}
+
+.neuroshima.sheet.actor-creature .combat-table .col-name {
+    flex: 2;
+    padding-left: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor-creature .combat-table .col-location,
+.neuroshima.sheet.actor-creature .combat-table .col-penalty,
+.neuroshima.sheet.actor-creature .combat-table .col-type {
+    flex: 1.2;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-creature .combat-table .col-controls {
+    flex: 0 0 80px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-creature .combat-table .item-name.clickable:hover {
+    color: var(--ns-accent, #c9aa71);
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-creature .wounds-table select,
+.neuroshima.sheet.actor-creature .wounds-table input {
+    width: 100%;
+    height: 22px;
+    background: rgba(0,0,0,0.2);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    font-family: inherit;
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-creature .wounds-table .col-controls {
+    flex: 0 0 80px;
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    align-items: center;
+    padding-right: 6px;
+}
+
+.neuroshima.sheet.actor-creature .wounds-table .item-control {
+    color: var(--ns-text-light);
+    transition: color 0.2s;
+}
+
+.neuroshima.sheet.actor-creature .wounds-table .item-control:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-creature .wounds-table .item-control.active {
+    color: #27ae60;
+}
+
+.neuroshima.sheet.actor-creature .item-list-empty {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.4);
+    padding: 4px 6px;
+    font-style: italic;
+}
+
+.neuroshima.sheet.actor-creature .text-center { text-align: center; }
+
+.neuroshima.sheet.actor-creature [data-application-part="attributes"].active {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.actor-creature [data-application-part="combat"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.neuroshima.sheet.actor-creature .creature-attributes-table table {
+    width: 100%;
+}
+
+.neuroshima.sheet.actor-creature .creature-attributes-table .attribute-header-cell {
+    text-align: center;
+}
+
+
+.neuroshima.sheet.actor-creature .creature-skill-section {
+    margin-bottom: 4px;
+    border: 1px solid var(--ns-border-main);
+}
+
+.neuroshima.sheet.actor-creature .creature-skill-section .skills-horizontal-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* ===== Vehicle Combat Tab ===== */
+.neuroshima.sheet.actor-vehicle [data-application-part="combat"].active {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    color: var(--ns-accent, #c9aa71);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col .section-header .header-label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-combat-col .section-header .header-controls {
+    display: flex;
+    gap: 4px;
+}
+
+/* Vehicle armor grid — same as creature nat-armor but 5 slots */
+.neuroshima.sheet.actor-vehicle .vehicle-armor-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+}
+
+/* "Spód" (bottom) is the 5th item — span full width */
+.neuroshima.sheet.actor-vehicle .vehicle-armor-grid .armor-vehicle-bottom {
+    grid-column: 1 / -1;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-location-box {
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 0 0 4px;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor-vehicle .location-header {
+    background: var(--ns-bg-header);
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--ns-border-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.neuroshima.sheet.actor-vehicle .location-name {
+    font-weight: bold;
+    font-size: 0.78em;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-col-headers {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    padding: 1px 4px 0;
+    gap: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-col-headers span {
+    flex: 1;
+    text-align: center;
+    font-size: 0.64em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-col-weakpoint-spacer {
+    flex: 0 0 28px;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-body {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 2px 4px 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-reduction-input,
+.neuroshima.sheet.actor-vehicle .nat-armor-penalty-input {
+    flex: 1;
+    min-width: 0;
+    width: 34px;
+    height: 20px;
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: bold;
+    padding: 0 2px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 3px;
+    color: inherit;
+    line-height: 20px;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    cursor: pointer;
+    user-select: none;
+    padding: 1px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.3;
+    transition: opacity 0.15s, filter 0.15s;
+    filter: grayscale(1);
+}
+
+.neuroshima.sheet.actor-vehicle .nat-armor-weakpoint-toggle input[type="checkbox"]:checked + .nat-armor-weakpoint-icon {
+    opacity: 1;
+    filter: none;
+}
+
+/* Armor items listed inside location box */
+.neuroshima.sheet.actor-vehicle .armor-column-headers {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.45);
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.neuroshima.sheet.actor-vehicle .armor-header-icon { flex: 0 0 20px; }
+.neuroshima.sheet.actor-vehicle .armor-header-name { flex: 1; }
+.neuroshima.sheet.actor-vehicle .armor-header-dur,
+.neuroshima.sheet.actor-vehicle .armor-header-ap  { flex: 0 0 28px; text-align: center; }
+
+.neuroshima.sheet.actor-vehicle .armor-item-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 4px;
+    font-size: 0.80em;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-icon-tiny {
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-name-tiny {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-durability,
+.neuroshima.sheet.actor-vehicle .armor-ap-value {
+    flex: 0 0 28px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-vehicle .armor-durability.is-damaged,
+.neuroshima.sheet.actor-vehicle .armor-ap-value.is-damaged { color: #e87070; }
+
+/* Vehicle weapons list */
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 5px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-image {
+    width: 32px;
+    height: 32px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main);
+    flex: 0 0 32px;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-controls {
+    display: flex;
+    gap: 6px;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-weapons-list .item-controls a:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .empty-list {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.4);
+    padding: 4px 6px;
+    font-style: italic;
+}
+
+/* Vehicle damage section */
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section {
+    margin-top: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    color: var(--ns-accent, #c9aa71);
+    justify-content: space-between;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .header-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .wound-stats-total {
+    display: flex;
+    gap: 10px;
+    font-size: 0.85em;
+    color: rgba(255,255,255,0.6);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .header-actions {
+    display: flex;
+    gap: 6px;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-damage-section .header-actions a:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .table-header {
+    display: flex;
+    flex-direction: row;
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid var(--ns-border-main);
+    font-weight: bold;
+    font-size: 0.8em;
+    padding: 3px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .table-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.85em;
+    padding: 2px 0;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .table-row:last-child { border-bottom: none; }
+.neuroshima.sheet.actor-vehicle .combat-table .table-row:hover { background: rgba(255,255,255,0.04); }
+
+.neuroshima.sheet.actor-vehicle .combat-table .col-name {
+    flex: 2;
+    padding-left: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .col-location,
+.neuroshima.sheet.actor-vehicle .combat-table .col-type,
+.neuroshima.sheet.actor-vehicle .combat-table .col-penalty {
+    flex: 1.2;
+    text-align: center;
+}
+
+.neuroshima.sheet.actor-vehicle .combat-table .col-controls {
+    flex: 0 0 60px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-vehicle .wounds-table select,
+.neuroshima.sheet.actor-vehicle .wounds-table input {
+    width: 100%;
+    height: 22px;
+    background: rgba(0,0,0,0.2);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    font-family: inherit;
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor-vehicle .wounds-table .item-control {
+    color: var(--ns-text-light);
+    transition: color 0.2s;
+}
+
+.neuroshima.sheet.actor-vehicle .wounds-table .item-control:hover {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.sheet.actor-vehicle .item-name.clickable:hover {
+    color: var(--ns-accent, #c9aa71);
+    cursor: pointer;
+}
+
+/* === Vehicle Modifications Tab === */
+.neuroshima.sheet.actor-vehicle .vehicle-mods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: var(--ns-bg-secondary, rgba(0,0,0,0.1));
+    border: 1px solid var(--ns-border-light, rgba(255,255,255,0.1));
+    border-radius: 3px;
+    min-height: 36px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-icon img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border-radius: 2px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-name {
+    font-size: 0.9em;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-name:hover {
+    color: var(--ns-accent, #c9aa71);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-category {
+    font-size: 0.75em;
+    color: var(--ns-text-light, #888);
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .mod-difficulty {
+    flex: 0 0 auto;
+    font-size: 0.8em;
+    color: var(--ns-text-muted, #999);
+    padding: 0 4px;
+}
+
+.neuroshima.sheet.actor-vehicle .vehicle-mod-row .item-controls {
+    display: flex;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+/* ============================================================
+   EFFECTS TAB
+   ============================================================ */
+
+.neuroshima .effects-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima .effects-list-header {
+    display: grid;
+    grid-template-columns: 36px 1fr 110px 60px 80px;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--color-text-dark-secondary, #777);
+    border-bottom: 1px solid rgba(0,0,0,0.25);
+    margin-bottom: 2px;
+}
+
+.neuroshima .effect-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 110px 60px 80px;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    transition: background 0.12s;
+}
+
+.neuroshima .item-effects-list .effect-row {
+    grid-template-columns: 36px 1fr 60px 80px;
+}
+
+.neuroshima .effect-row:hover {
+    background: rgba(255,255,255,0.06);
+}
+
+.neuroshima .effect-row.disabled {
+    opacity: 0.5;
+}
+
+.neuroshima .effect-row.disabled .effect-controls {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.neuroshima .effect-row.disabled .effect-controls .item-control {
+    pointer-events: all;
+    cursor: pointer;
+}
+
+.neuroshima .effect-row.effect-suppressed {
+    opacity: 0.45;
+    filter: grayscale(60%);
+}
+
+.neuroshima .effect-row.effect-suppressed .effect-controls {
+    opacity: 1;
+    filter: none;
+    pointer-events: all;
+}
+
+.neuroshima .toggle-control.script-lock {
+    cursor: default;
+    pointer-events: none;
+}
+
+.neuroshima .toggle-control.script-lock.active {
+    color: #4ade80;
+}
+
+.neuroshima .toggle-control.script-lock.suppressed {
+    color: #f87171;
+}
+
+.neuroshima .effect-row .col-icon img {
+    width: 32px;
+    height: 32px;
+    border-radius: 3px;
+    object-fit: contain;
+    border: none;
+}
+
+.neuroshima .effect-row .col-name {
+    font-size: var(--font-size-14, 14px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.neuroshima .effect-row .col-name:hover span {
+    text-decoration: underline;
+}
+
+.neuroshima .item-effect-test-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.15);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.neuroshima .item-effect-test-field label {
+    font-size: 0.85em;
+    color: var(--color-text-dark-secondary, #aaa);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.neuroshima .item-effect-test-field .item-test-input {
+    flex: 1;
+    font-size: 0.85em;
+    height: 22px;
+    padding: 1px 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--ns-text, #d4c9aa);
+    border-radius: 3px;
+}
+
+.neuroshima .item-effect-test-field .item-test-input:focus {
+    background: rgba(255,255,255,0.1);
+    border-color: var(--ns-accent, #c07a30);
+    outline: none;
+}
+
+.neuroshima .effect-row .col-source {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8em;
+    color: var(--color-text-dark-secondary, #888);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .effect-row .col-source .source-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    object-fit: cover;
+    border: none;
+    opacity: 0.8;
+}
+
+.neuroshima .effect-row .col-source span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .effect-row .col-duration {
+    font-size: 0.8em;
+    color: var(--color-text-dark-secondary, #888);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .effect-controls {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.neuroshima .effect-controls .item-control {
+    font-size: 0.85em;
+    opacity: 0.55;
+    transition: opacity 0.12s, color 0.12s;
+}
+
+.neuroshima .effect-controls .item-control:hover {
+    opacity: 1;
+}
+
+.neuroshima .effect-controls .toggle-control {
+    opacity: 0.8;
+}
+
+.neuroshima .effect-controls .toggle-control.active {
+    color: var(--color-level-success, #4caf50);
+    opacity: 1;
+}
+
+/* ── Effects groups (Temporary / Passive / Disabled) ── */
+.neuroshima .effects-group {
+    margin-bottom: 0.75rem;
+}
+
+.neuroshima .effects-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 6px;
+    margin-bottom: 3px;
+    background: rgba(0,0,0,0.18);
+    border-left: 3px solid var(--ns-color-gold, #c8a45a);
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ns-color-gold, #c8a45a);
+}
+
+.neuroshima .effects-group-header.effects-group-header-cols {
+    display: grid;
+    grid-template-columns: 1fr 110px 60px 80px;
+    gap: 4px;
+    padding: 3px 4px;
+}
+
+.neuroshima .effects-group-header.effects-group-header-cols .group-title {
+    padding-left: 2px;
+}
+
+.neuroshima .effects-group-header.effects-group-header-cols .col-source-hdr {
+    width: 110px;
+    text-align: center;
+}
+
+.neuroshima .effects-group-header.effects-group-header-cols .col-duration-hdr {
+    width: 60px;
+    text-align: center;
+}
+
+.neuroshima .effects-group-header.effects-group-header-cols .col-controls-hdr {
+    width: 80px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.neuroshima .effects-group-disabled .effects-group-header {
+    border-left-color: rgba(150,150,150,0.5);
+    color: #999;
+}
+
+.neuroshima .effects-group-disabled .effect-row {
+    opacity: 0.55;
+}
+
+.neuroshima .effects-group-disabled .effect-row .effect-controls {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.neuroshima .effects-empty-hint {
+    padding: 2px 8px;
+    font-size: 0.8em;
+    color: #777;
+    margin: 0;
+}
+
+/* Item sheet effects (no source column, has test column) */
+.neuroshima.sheet.item .effects-list-header,
+.neuroshima.sheet.item .effect-row {
+    grid-template-columns: 36px 1fr 130px 60px 80px;
+}
+
+/* Passive effects — no duration column */
+.neuroshima .effects-group-passive .effects-list-header,
+.neuroshima .effects-group-passive .effect-row {
+    grid-template-columns: 36px 1fr 110px 80px;
+}
+.neuroshima .effects-group-passive .effects-group-header.effects-group-header-cols {
+    grid-template-columns: 1fr 110px 80px;
+}
+
+/* ── Manual Script Invocation Buttons ── */
+.neuroshima .item-script-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 3px 8px 4px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.15));
+    border-top: 1px dashed rgba(255,255,255,0.08);
+}
+
+.neuroshima .manual-script-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--ns-bg-header, rgba(0,0,0,0.3));
+    border: 1px solid var(--ns-border-main, rgba(255,255,255,0.2));
+    border-radius: 3px;
+    color: var(--ns-color-gold, #c8a45a);
+    font-size: 0.78em;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.neuroshima .manual-script-btn:hover {
+    background: rgba(200,164,90,0.2);
+    border-color: var(--ns-color-gold, #c8a45a);
+    color: var(--ns-color-gold, #c8a45a);
+}
+
+.neuroshima .manual-script-btn i {
+    font-size: 0.75em;
+    opacity: 0.8;
+}
+
+/* ── Effects tab two-column layout ── */
+.neuroshima .effects-columns {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0 12px;
+    align-items: start;
+}
+
+.neuroshima .conditions-column {
+    border-right: 1px solid rgba(255,255,255,0.1);
+    padding-right: 10px;
+}
+
+.neuroshima .conditions-column-header {
+    display: flex;
+    align-items: center;
+    padding: 3px 4px;
+    margin-bottom: 4px;
+    background: rgba(0,0,0,0.18);
+    border-left: 3px solid var(--ns-accent, #8b0000);
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ns-accent, #8b0000);
+}
+
+.neuroshima .conditions-state-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima .condition-state-row {
+    display: grid;
+    grid-template-columns: 1fr 26px;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.1s;
+}
+
+.neuroshima .condition-state-row:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.neuroshima .condition-state-row.active {
+    background: rgba(139,0,0,0.12);
+}
+
+.neuroshima .condition-state-icon {
+    border-radius: 3px;
+    object-fit: contain;
+    opacity: 0.4;
+    transition: opacity 0.15s, filter 0.15s;
+    cursor: pointer;
+    user-select: none;
+}
+
+.neuroshima .condition-state-icon.condition-active,
+.neuroshima .condition-state-row.active .condition-state-icon {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(200,164,90,0.6));
+}
+
+.neuroshima .condition-state-icon:hover {
+    opacity: 0.85;
+}
+
+.neuroshima .condition-state-left {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.neuroshima .condition-state-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.neuroshima .condition-state-name {
+    font-size: 0.82em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .condition-state-row.active .condition-state-name {
+    color: var(--ns-color-gold, #c8a45a);
+    font-weight: 600;
+}
+
+.neuroshima .condition-toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.neuroshima .condition-bool-checkbox {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(0,0,0,0.3);
+    transition: background 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.neuroshima .condition-bool-checkbox:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.4);
+}
+
+.neuroshima .condition-bool-checkbox.checked {
+    background: rgba(139,0,0,0.35);
+    border-color: var(--ns-accent, #8b0000);
+}
+
+.neuroshima .condition-bool-checkbox::after {
+    content: '';
+    display: none;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(1px, -2px);
+}
+
+.neuroshima .condition-bool-checkbox.checked::after {
+    display: block;
+}
+
+.neuroshima .condition-int-span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    font-size: 1.0em;
+    font-weight: 600;
+    line-height: 1;
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(0,0,0,0.3);
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.neuroshima .condition-int-span:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.4);
+}
+
+.neuroshima .active-effects-column {
+    min-width: 0;
+}
+
+/* ── Token HUD int-condition badge ── */
+.condition-int-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: var(--ns-accent, #8b0000);
+    color: #fff;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: 1;
+    padding: 1px 3px;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.neuroshima .xp-log-balance {
+    font-size: var(--font-size-12);
+    font-weight: normal;
+    text-transform: none;
+    color: var(--color-text-dark-secondary);
+}
+
+
+
+.neuroshima .xp-revert-btn {
+    opacity: 0.5;
+    cursor: pointer;
+}
+
+.neuroshima .xp-revert-btn:hover {
+    opacity: 1;
+    color: var(--color-level-warning, #c00);
+}
+
+.neuroshima .xp-cost-spent {
+    color: var(--color-level-warning, #c00);
+    font-weight: bold;
+}
+
+.neuroshima .xp-cost-gain {
+    color: var(--color-level-success, #1a7a1a);
+    font-weight: bold;
+}
+
+.neuroshima .xp-cost-free {
+    color: var(--color-text-dark-secondary);
+    font-style: italic;
+}
+
+.neuroshima .xp-log-empty {
+    font-style: italic;
+    color: var(--color-text-dark-secondary);
+    font-size: var(--font-size-12);
+    text-align: center;
+    padding: 6px 0;
+}
+
+/* ───────────────────── Background Tab ───────────────────── */
+
+.neuroshima .background-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.neuroshima .background-slot {
+    border: 1px solid var(--color-border-light-tertiary, #ccc);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.neuroshima .background-slot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    background: var(--color-bg-header, rgba(0,0,0,0.08));
+    border-bottom: 1px solid var(--color-border-light-tertiary, #ccc);
+}
+
+.neuroshima .background-slot-title {
+    font-weight: bold;
+    font-size: var(--font-size-13, 13px);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.neuroshima .background-slot-empty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 10px;
+    color: var(--color-text-dark-secondary);
+    font-style: italic;
+    font-size: var(--font-size-12, 12px);
+}
+
+.neuroshima .background-slot-empty i {
+    font-size: 1.1em;
+    opacity: 0.5;
+}
+
+.neuroshima .background-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+}
+
+.neuroshima .background-item-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid var(--color-border-light-tertiary, #ccc);
+}
+
+.neuroshima .background-item-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima .background-item-name {
+    font-weight: bold;
+    font-size: var(--font-size-13, 13px);
+    cursor: pointer;
+}
+
+.neuroshima .background-item-name:hover {
+    text-decoration: underline;
+    color: var(--color-level-info, #246);
+}
+
+.neuroshima .background-item-meta {
+    font-size: var(--font-size-11, 11px);
+    color: var(--color-text-dark-secondary);
+    margin-top: 2px;
+}
+
+.neuroshima .background-item-meta i {
+    margin-right: 3px;
+    opacity: 0.7;
+}
+
+.neuroshima .background-item-bonus {
+    margin-top: 4px;
+    font-size: var(--font-size-12, 12px);
+    line-height: 1.4;
+}
+
+.neuroshima .background-item-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.neuroshima .background-item-controls .item-control {
+    opacity: 0.5;
+    font-size: var(--font-size-12, 12px);
+    cursor: pointer;
+}
+
+.neuroshima .background-item-controls .item-control:hover {
+    opacity: 1;
+}
+
+.neuroshima .background-spec-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima .spec-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: var(--font-size-11, 11px);
+    background: rgba(0,0,0,0.08);
+    border: 1px solid rgba(0,0,0,0.15);
+}
+
+.neuroshima .spec-master-table {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    overflow: visible;
+    margin: 0.25rem 0;
+}
+
+.neuroshima .spec-master-header {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: var(--font-size-14, 14px);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-align: center;
+    padding: 5px 8px;
+    background: var(--ns-bg-input);
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima .spec-master-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ns-border-main) transparent;
+}
+
+.neuroshima .spec-attr-group {
+    border: none;
+    border-bottom: 1px solid var(--color-border-dark, #7a7971);
+}
+
+.neuroshima .spec-attr-group:last-child {
+    border-bottom: none;
+}
+
+.neuroshima .spec-attr-label {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: var(--font-size-12, 12px);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+    padding: 5px 6px;
+    background: var(--ns-bg-input);
+    border-bottom: 1px solid var(--ns-border-main);
+}
+
+.neuroshima .spec-attr-checks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    padding: 6px 8px;
+}
+
+.neuroshima .spec-check-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 6px;
+    font-size: var(--font-size-13, 13px);
+    cursor: pointer;
+    white-space: nowrap;
+    border: 1px solid var(--color-border-dark, #7a7971);
+    border-radius: 3px;
+    background: transparent;
+    user-select: none;
+    transition: background 0.1s, color 0.1s;
+}
+
+.neuroshima .spec-check-label:hover {
+    border-color: var(--color-border-dark-primary, #4b4a44);
+    background: rgba(0,0,0,0.06);
+}
+
+.neuroshima .spec-check-label:has(input:checked) {
+    background: var(--color-warm-2, #5a1a1a);
+    border-color: var(--color-warm-2, #5a1a1a);
+    color: #fff;
+}
+
+.neuroshima .spec-check-label input[type="checkbox"] {
+    display: none;
+}
+
+/* ───────────────────── Notes Tab Layout ───────────────────── */
+
+.neuroshima .sheet-body .tab.notes {
+    padding: 0;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.neuroshima .sheet-body .tab.reputation {
+    padding: 0;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.neuroshima .reputation-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+}
+
+.neuroshima .notes-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 8px;
+    padding: 6px;
+    box-sizing: border-box;
+}
+
+.neuroshima .notes-editor-block {
+    flex: 1 1 0;
+    min-height: 0;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 3px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima .notes-editor-header {
+    font-family: 'SpecialElite', serif;
+    flex-shrink: 0;
+}
+
+.neuroshima .notes-editor {
+    flex: 1 1 0;
+    overflow: hidden;
+    padding: 0.5rem;
+    min-width: 0;
+    min-height: 150px;
+}
+
+.neuroshima .notes-editor prose-mirror {
+    min-height: 150px;
+}
+
+.neuroshima .notes-bottom-row {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.neuroshima .rep-bg-panel {
+    width: 220px;
+    min-width: 180px;
+    flex-shrink: 0;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.neuroshima .rep-bg-header {
+    border-bottom: 2px solid var(--ns-border-main);
+}
+
+.neuroshima .rep-bg-row {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--ns-border-main);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.neuroshima .rep-bg-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima .rep-bg-type-label {
+    font-size: var(--font-size-11, 11px);
+    text-transform: uppercase;
+    opacity: 0.65;
+    letter-spacing: 0.05em;
+}
+
+.neuroshima .rep-bg-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima .rep-bg-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.neuroshima .rep-bg-name {
+    flex: 1;
+    font-size: var(--font-size-12, 12px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .rep-bg-delete {
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.neuroshima .rep-bg-row:hover .rep-bg-delete {
+    opacity: 1;
+}
+
+.neuroshima .rep-bg-empty {
+    font-style: italic;
+    opacity: 0.45;
+    font-size: 0.85em;
+    padding: 2px 0;
+}
+
+.neuroshima .rep-disease-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 1px 4px;
+    align-items: center;
+    flex: 1 1 auto;
+}
+
+.neuroshima .disease-row-main {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima .disease-row-desc {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-left: 2px;
+}
+
+.neuroshima .disease-delete-span {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+}
+
+.neuroshima .disease-dots-row {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.12s;
+}
+
+.neuroshima .disease-dots-row:hover {
+    background: rgba(230, 126, 34, 0.12);
+}
+
+.neuroshima .disease-dot {
+    font-size: 1rem;
+    line-height: 1;
+    user-select: none;
+    opacity: 0.3;
+    transition: opacity 0.12s, transform 0.1s;
+    color: #e67e22;
+    pointer-events: none;
+}
+
+.neuroshima .disease-dot.filled {
+    opacity: 1;
+}
+
+.neuroshima .disease-state-name {
+    font-size: var(--font-size-11, 11px);
+    opacity: 0.7;
+    font-style: italic;
+    white-space: nowrap;
+}
+
+.neuroshima .disease-header-label-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima .disease-header-label-row label {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.neuroshima .rep-fame-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--ns-border-main);
+    background: rgba(0,0,0,0.12);
+}
+
+.neuroshima .rep-fame-label {
+    font-size: var(--font-size-16, 16px);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: bold;
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+.neuroshima .rep-fame-value {
+    font-family: 'SpecialElite', serif;
+    font-size: var(--font-size-16, 16px);
+    font-weight: bold;
+    min-width: 2em;
+    text-align: center;
+    padding: 1px 8px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.neuroshima .rep-fame-value:hover {
+    background: rgba(200,164,90,0.12);
+    border-color: rgba(200,164,90,0.4);
+    color: var(--ns-color-gold, #c8a45a);
+}
+
+.neuroshima .rep-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.neuroshima .rep-items-section {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.neuroshima .rep-items-section .inventory-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+.neuroshima .rep-items-list-header {
+    display: grid;
+    grid-template-columns: calc(1.2rem + 4px + 36px + 4px + 9rem) 1fr 3rem 1.8rem 1.8rem;
+    padding: 2px 5px;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.7;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima .rep-items-list-header .rep-col-badge {
+    text-align: center;
+}
+
+.neuroshima .rep-items-list-header .rep-col-add {
+    text-align: center;
+    justify-self: center;
+}
+
+.neuroshima .rep-items-list-header .rep-col-sort {
+    text-align: center;
+    justify-self: center;
+}
+
+.neuroshima .rep-item {
+    display: grid;
+    grid-template-columns: 1.2rem 1fr 1.8rem 1.8rem;
+    padding: 4px 5px;
+    border-bottom: 1px solid var(--ns-bg-header);
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima .rep-item-inner-box {
+    display: grid;
+    grid-template-columns: 36px 9rem 1fr 3rem;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 2px 6px 2px 3px;
+}
+
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) {
+    align-items: stretch;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) .item-image,
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) .rep-item-name,
+.neuroshima .rep-item-inner-box:has(.rep-relation-bar-container) .rep-item-value {
+    align-self: center;
+}
+
+.neuroshima .rep-item:last-child {
+    border-bottom: none;
+}
+
+.neuroshima .rep-item:hover {
+    background: var(--ns-bg-input);
+}
+
+.neuroshima .rep-empty {
+    padding: 8px;
+    text-align: center;
+    opacity: 0.5;
+    font-style: italic;
+    font-size: 0.85em;
+}
+
+.neuroshima .rep-item-value {
+    font-family: 'SpecialElite', serif;
+    font-size: 1em;
+    font-weight: bold;
+    text-align: center;
+    padding: 1px 4px;
+    opacity: 0.85;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.neuroshima .rep-item-value:hover {
+    background: var(--ns-bg-input);
+    opacity: 1;
+}
+
+.neuroshima .rep-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 6px 0 4px;
+    cursor: pointer;
+}
+
+.neuroshima .rep-relation-badge {
+    font-size: 1em;
+    opacity: 0.9;
+    padding: 1px 6px;
+    white-space: nowrap;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .rep-relation-empty {
+    opacity: 0;
+}
+
+.neuroshima .rep-relation-bar-container {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.neuroshima .rep-relation-bar-label {
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid var(--ns-border-main);
+    padding: 1px 6px;
+    font-size: 0.75em;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 14px;
+}
+
+.neuroshima .rep-relation-bar-track {
+    position: relative;
+    background: var(--ns-bg-input);
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    height: 20px;
+    width: 100%;
+}
+
+.neuroshima .rep-relation-bar-fill {
+    height: 100%;
+    border-radius: 0;
+    background: var(--ns-accent, #c07a30);
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.neuroshima .rep-bar-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.8;
+}
+
+.neuroshima .rep-roll-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.45;
+    cursor: pointer;
+    transition: opacity 0.15s, color 0.15s;
+    font-size: 1.5em;
+    color: var(--ns-accent, #c07a30);
+}
+
+.neuroshima .rep-roll-btn:hover {
+    opacity: 1;
+}
+
+.neuroshima .rep-ctx-btn {
+    text-align: center;
+    justify-self: center;
+    opacity: 0.5;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    font-size: 0.9em;
+}
+
+.neuroshima .rep-bonus-sup {
+    font-size: 0.6em;
+    font-weight: normal;
+    opacity: 0.7;
+    color: var(--ns-accent, #c07a30);
+    margin-left: 1px;
+    vertical-align: super;
+}
+
+.neuroshima .rep-ctx-btn:hover {
+    opacity: 1;
+}
+
+.neuroshima .rep-grip-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    opacity: 0.3;
+    font-size: 0.85em;
+    transition: opacity 0.15s;
+    color: var(--ns-text-main, #c8b89a);
+    user-select: none;
+}
+
+.neuroshima .rep-grip-handle:hover {
+    opacity: 0.8;
+}
+
+.neuroshima .rep-grip-handle:active {
+    cursor: grabbing;
+    opacity: 1;
+}
+
+.neuroshima .item-wrap.rep-dragging {
+    opacity: 0.4;
+}
+
+.neuroshima .item-wrap.rep-drop-target .rep-item {
+    border-top: 2px solid var(--ns-accent, #c07a30);
+}
+
+.neuroshima .item-wrap.draggable .rep-item .item-image {
+    width: 36px;
+    height: 36px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.neuroshima .notes-xp-log-row {
+    flex-shrink: 0;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.neuroshima .xp-log-title-header {
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima .xp-log-title {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.neuroshima .xp-log-balance {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+.neuroshima .xp-log-list-header {
+    align-items: center;
+    font-size: 0.78em;
+}
+
+.neuroshima .xp-col-date {
+    flex: 0 0 90px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .xp-col-desc {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0 6px;
+}
+
+.neuroshima .xp-col-cost {
+    flex: 0 0 60px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.neuroshima .xp-col-actions {
+    flex: 0 0 28px;
+    text-align: center;
+}
+
+.neuroshima .xp-log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.neuroshima .xp-log-item {
+    padding: 4px 5px;
+    border-bottom: 1px solid var(--color-border-light-tertiary, rgba(0,0,0,0.1));
+    font-size: var(--font-size-12);
+    align-items: center;
+}
+
+.neuroshima .xp-log-item:last-child {
+    border-bottom: none;
+}
+
+.neuroshima .xp-log-item:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+.neuroshima .xp-log-scroll-body {
+    max-height: 180px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.neuroshima .notes-bg-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--color-border-light-tertiary, #ddd);
+    min-height: 32px;
+}
+
+.neuroshima .notes-bg-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima .notes-bg-type-label {
+    font-size: var(--font-size-10, 10px);
+    font-weight: bold;
+    font-family: 'SpecialElite', serif;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 95px;
+    flex-shrink: 0;
+    text-align: center;
+    color: var(--color-text-dark-secondary);
+    border-right: 1px solid var(--ns-border-main);
+    padding-right: 6px;
+    margin-right: 2px;
+}
+
+.neuroshima .notes-bg-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima .notes-bg-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.neuroshima .notes-bg-name {
+    flex: 1;
+    font-size: var(--font-size-12, 12px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .notes-bg-name.clickable {
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.neuroshima .notes-bg-name.clickable:hover {
+    color: var(--color-link-text, #4b4a44);
+}
+
+.neuroshima .notes-bg-delete {
+    opacity: 0.4;
+    cursor: pointer;
+    font-size: var(--font-size-11, 11px);
+    flex-shrink: 0;
+}
+
+.neuroshima .notes-bg-delete:hover {
+    opacity: 1;
+    color: var(--color-level-warning, #c00);
+}
+
+.neuroshima .notes-bg-empty {
+    font-style: italic;
+    font-size: var(--font-size-11, 11px);
+    color: var(--color-text-dark-secondary);
+    flex: 1;
+}
+
+/* ───────────────────── Header Background Holders ───────────────────── */
+
+.neuroshima .bg-holder-field {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 100px;
+    flex: 1;
+}
+
+.neuroshima .bg-holder-field > label {
+    font-size: var(--font-size-11, 11px);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-dark-secondary);
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima .bg-holder-delete-inline {
+    margin-left: auto;
+    font-size: 0.9em;
+    line-height: 1;
+    opacity: 0;
+    color: var(--color-text-dark-secondary);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+    transition: opacity 0.12s, color 0.12s;
+    flex-shrink: 0;
+}
+
+.neuroshima .bg-holder-field:hover .bg-holder-delete-inline {
+    opacity: 0.6;
+}
+
+.neuroshima .bg-holder-delete-inline:hover {
+    opacity: 1 !important;
+    color: #e74c3c;
+}
+
+.neuroshima .bg-holder-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    padding: 2px 5px;
+    background: var(--ns-bg-input);
+    min-height: 24px;
+}
+
+.neuroshima .bg-holder-item:hover {
+    border-color: var(--color-border-dark-primary);
+    background: rgba(0,0,0,0.06);
+}
+
+.neuroshima .bg-holder-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.neuroshima .bg-holder-name {
+    font-size: var(--font-size-12, 12px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.neuroshima .bg-holder-empty {
+    font-style: italic;
+    font-size: var(--font-size-11, 11px);
+    color: var(--color-text-dark-secondary);
+    border: 1px dashed var(--ns-border-main);
+    border-radius: 3px;
+    padding: 2px 6px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+}
+
+/* ===== Movement Stat Box ===== */
+.stat-box.movement-summary {
+    min-width: 110px;
+}
+
+.stat-box.movement-summary label {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.movement-fields {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.movement-fields input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    text-align: center;
+    background: transparent;
+    border: none;
+    border-left: 1px solid rgba(255,255,255,0.2);
+    padding: 2px 4px;
+    font-size: 0.9em;
+    color: var(--ns-text-main);
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+}
+
+.movement-fields input:first-child {
+    border-left: none;
+}
+
+.movement-fields input::-webkit-outer-spin-button,
+.movement-fields input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.movement-fields .movement-base {
+    font-weight: bold;
+    color: var(--ns-text-main);
+}
+
+.movement-fields .movement-base:focus {
+    outline: none;
+    background: var(--ns-bg-input, rgba(0,0,0,0.15));
+}
+
+.movement-fields .movement-seg {
+    color: var(--ns-text-secondary, #aaa);
+    cursor: default;
+}
+
+/* ───────────────────── Reputation Settings Form ───────────────────── */
+
+.reputation-settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    max-height: 80vh;
+    padding: 0 4px;
+}
+
+.reputation-settings-form h3.rep-settings-header {
+    margin: 4px 0 2px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--ns-border-main);
+    font-size: var(--font-size-14, 14px);
+    color: var(--ns-text-main);
+}
+
+.rep-settings-minmax {
+    display: flex;
+    gap: 12px;
+}
+
+.rep-settings-minmax-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rep-settings-minmax-block input {
+    width: 100%;
+}
+
+.rep-settings-minmax .form-group {
+    flex: 1;
+}
+
+.rep-relation-add-top {
+    margin-bottom: 6px;
+}
+
+.rep-relation-add-top .item-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.rep-relation-add-top .item-control:hover {
+    opacity: 1;
+}
+
+.rep-relation-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-right: 4px;
+}
+
+.rep-relation-header,
+.rep-relation-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr 1fr auto;
+    gap: 4px;
+    align-items: center;
+}
+
+.rep-relation-header {
+    font-size: 0.75em;
+    opacity: 0.65;
+    padding: 2px 0;
+}
+
+.rep-color-input {
+    width: 100%;
+    height: 26px;
+    padding: 1px;
+    cursor: pointer;
+}
+
+.rep-relation-add {
+    margin-top: 6px;
+}
+
+.rep-relation-add .item-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.rep-relation-add .item-control:hover {
+    opacity: 1;
+}
+
+/* ── Reputation Fame Row ─────────────────────────────────────────────────── */
+
+.neuroshima .rep-fame-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--ns-border-main);
+    margin-bottom: 4px;
+}
+
+.neuroshima .rep-fame-label {
+    font-size: var(--font-size-16, 16px);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-dark-secondary);
+    white-space: nowrap;
+}
+
+.neuroshima .rep-fame-input {
+    width: 60px;
+    text-align: center;
+    font-size: var(--font-size-13, 13px);
+    font-weight: bold;
+    color: var(--ns-accent, #c07a30);
+}
+
+/* ── Effects Tab: Disease Items Section ────────────────────────────────── */
+
+.neuroshima .effects-group-disease-items .disease-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px 0;
+}
+
+.neuroshima .disease-effect-item {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 3px 4px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.neuroshima .disease-effect-item:hover {
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.neuroshima .disease-effect-row-1 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+
+.neuroshima .disease-effect-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 3px;
+    border: none;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.neuroshima .disease-effect-name {
+    flex: 1 1 auto;
+    font-size: var(--font-size-14, 14px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .disease-effect-row-1 .disease-dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.12s;
+}
+
+.neuroshima .disease-effect-row-1 .disease-dots:hover {
+    background: rgba(230, 126, 34, 0.15);
+}
+
+.neuroshima .disease-type-badge {
+    font-size: var(--font-size-11, 11px);
+    opacity: 0.65;
+    font-style: italic;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.neuroshima .disease-state-label-text {
+    font-size: var(--font-size-11, 11px);
+    opacity: 0.65;
+    font-style: italic;
+}
+
+.neuroshima .disease-transient-label {
+    font-size: var(--font-size-11, 11px);
+    opacity: 0.7;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.neuroshima .disease-transient-input {
+    width: 52px;
+    text-align: center;
+    font-size: var(--font-size-12, 12px);
+    padding: 1px 2px;
+    flex-shrink: 0;
+}
+
+.neuroshima .disease-effect-delete {
+    margin-left: auto;
+    opacity: 0.5;
+    font-size: 0.8em;
+    flex-shrink: 0;
+}
+
+.neuroshima .disease-effect-delete:hover {
+    opacity: 1;
+    color: #e74c3c;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-dialog-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-prompt {
+    font-size: 13px;
+    margin: 0;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid rgba(180, 160, 80, 0.25);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(180, 160, 80, 0.5);
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-row.selected {
+    background: rgba(139, 0, 0, 0.1);
+    border-color: rgba(139, 0, 0, 0.6);
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-cb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-cb.checked {
+    background: rgba(139, 0, 0, 0.35);
+    border-color: #8b0000;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-mark {
+    display: none;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(1px, -2px);
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-cb.checked .trait-choice-mark {
+    display: block;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-img {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-name {
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+}
+
+.neuroshima.trait-choice-dialog .trait-choice-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.neuroshima .trait-name-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+}
+
+.neuroshima .trait-name-block .name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima .trait-source-label {
+    font-size: 0.72em;
+    color: var(--ns-text-dim, rgba(255,255,255,0.45));
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}

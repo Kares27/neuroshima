@@ -1,0 +1,185 @@
+<div class="healing-app-container">
+    {{#if error}}
+    <div class="error-message">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>{{errorMessage}}</p>
+    </div>
+    {{else}}
+    
+    <div class="healing-app-layout">
+        <!-- Lewa strona: Paper Doll -->
+        <div class="healing-app-section paper-doll-section">
+            <h3 class="section-title">{{localize "NEUROSHIMA.HealingRequest.PaperDoll"}}</h3>
+            
+            <div class="selected-location-info">
+                {{#if selectedLocation}}
+                <p class="location-name">{{#each patientData.locations}}{{#if (eq this.key ../selectedLocation)}}{{this.label}}{{/if}}{{/each}}</p>
+                {{else}}
+                <p class="no-selection">{{localize "NEUROSHIMA.HealingRequest.SelectLocation"}}</p>
+                {{/if}}
+            </div>
+            
+            <div class="paper-doll-container">
+                <svg class="body-diagram" viewBox="0 0 240 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                    <!-- Głowa -->
+                    <g data-location="head">
+                        <circle cx="120" cy="55" r="48" class="body-location-hotspot {{#if (eq selectedLocation 'head')}}selected{{/if}}" data-location="head" data-tooltip="{{localize 'NEUROSHIMA.Location.Head'}}" />
+                        <text x="120" y="60" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.head.wounds.length}}</text>
+                    </g>
+                    
+                    <!-- Tułów -->
+                    <g data-location="torso">
+                        <rect x="88" y="110" width="64" height="170" class="body-location-hotspot {{#if (eq selectedLocation 'torso')}}selected{{/if}}" data-location="torso" data-tooltip="{{localize 'NEUROSHIMA.Location.Torso'}}" />
+                        <text x="120" y="192" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.torso.wounds.length}}</text>
+                    </g>
+                    
+                    <!-- Lewe ramię -->
+                    <g data-location="leftArm">
+                        <rect x="35" y="125" width="50" height="120" class="body-location-hotspot {{#if (eq selectedLocation 'leftArm')}}selected{{/if}}" data-location="leftArm" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftArm'}}" />
+                        <text x="60" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.leftArm.wounds.length}}</text>
+                    </g>
+                    
+                    <!-- Prawe ramię -->
+                    <g data-location="rightArm">
+                        <rect x="155" y="125" width="50" height="120" class="body-location-hotspot {{#if (eq selectedLocation 'rightArm')}}selected{{/if}}" data-location="rightArm" data-tooltip="{{localize 'NEUROSHIMA.Location.RightArm'}}" />
+                        <text x="180" y="182" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.rightArm.wounds.length}}</text>
+                    </g>
+                    
+                    <!-- Lewa noga -->
+                    <g data-location="leftLeg">
+                        <rect x="70" y="290" width="48" height="150" class="body-location-hotspot {{#if (eq selectedLocation 'leftLeg')}}selected{{/if}}" data-location="leftLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.LeftLeg'}}" />
+                        <text x="94" y="365" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.leftLeg.wounds.length}}</text>
+                    </g>
+                    
+                    <!-- Prawa noga -->
+                    <g data-location="rightLeg">
+                        <rect x="122" y="290" width="48" height="150" class="body-location-hotspot {{#if (eq selectedLocation 'rightLeg')}}selected{{/if}}" data-location="rightLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.RightLeg'}}" />
+                        <text x="146" y="365" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{locationsMap.rightLeg.wounds.length}}</text>
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Prawa strona: Lista ran -->
+        <div class="healing-app-section wounds-list-section">
+            <h3 class="section-title">{{localize "NEUROSHIMA.PatientCard.Wounds"}}</h3>
+            
+            <div class="wounds-summary-bar">
+                <div class="select-all-container">
+                    <input type="checkbox" class="select-all-wounds" title="{{localize 'NEUROSHIMA.HealingRequest.SelectAllWounds'}}">
+                </div>
+                <div class="wound-type-counts">
+                    <span class="count-item" title="Krytyczne"><strong>{{summary.K}}</strong>xK</span>
+                    <span class="count-item" title="Ciężkie"><strong>{{summary.C}}</strong>xC</span>
+                    <span class="count-item" title="Lekkie"><strong>{{summary.L}}</strong>xL</span>
+                    <span class="count-item" title="Draśnięcia"><strong>{{summary.D}}</strong>xD</span>
+                </div>
+                {{#if selectedLocation}}
+                <div class="location-penalty-sum">
+                    <i class="fas fa-percent"></i>
+                    {{localize "NEUROSHIMA.Wound.TotalPenalty"}}: <strong>{{summary.penalty}}%</strong>
+                </div>
+                {{/if}}
+            </div>
+
+            <div class="wounds-list-container">
+                {{#if patientData.hasWounds}}
+                    {{#if selectedLocation}}
+                        {{#if selectedLocationWounds.length}}
+                        <div class="location-wounds-group active">
+                            <h4 class="location-wounds-title">{{#each patientData.locations}}{{#if (eq this.key ../selectedLocation)}}{{this.label}}{{/if}}{{/each}}</h4>
+                            {{#each selectedLocationWounds}}
+                            <div class="wound-item">
+                                <div class="wound-item-grid">
+                                    <input type="checkbox" class="wound-checkbox" data-wound-id="{{id}}" title="Zaznacz ranę do leczenia">
+                                    
+                                    <span class="wound-type" title="{{fullWoundName}}">{{damageType}}</span>
+                                    
+                                    <div class="wound-grid-section wound-penalty-section">
+                                        <span class="wound-penalty">{{penalty}}%</span>
+                                    </div>
+                                    
+                                    <!-- Statusy -->
+                                    <div class="wound-grid-section wound-badges">
+                                        {{#if hadFirstAid}}
+                                        <span class="wound-badge first-aid-badge" title="Opatrzona pierwszą pomocą">
+                                            <i class="fas fa-syringe"></i>
+                                        </span>
+                                        {{/if}}
+                                        {{#if isHealing}}
+                                        <span class="wound-badge healing-badge" title="Gojąca się">
+                                            <i class="fas fa-bandage"></i>
+                                        </span>
+                                        {{/if}}
+                                        {{#if (gt healingAttempts 0)}}
+                                        <span class="wound-badge attempts-badge" title="Próby: {{healingAttempts}}">
+                                            {{healingAttempts}}×
+                                        </span>
+                                        {{/if}}
+                                    </div>
+
+                                    <span class="wound-item-name">{{name}}</span>
+                                </div>
+                            </div>
+                            {{/each}}
+                        </div>
+                        {{else}}
+                        <div class="no-wounds-message">
+                            <i class="fas fa-check-circle"></i>
+                            <p>{{localize "NEUROSHIMA.PatientCard.NoWounds"}}</p>
+                        </div>
+                        {{/if}}
+                    {{else}}
+                        <div class="wounds-all-locations">
+                            {{#each patientData.locations}}
+                            {{#if this.wounds.length}}
+                            <div class="all-wounds-location">
+                                <h4 class="location-wounds-title">{{label}} ({{this.wounds.length}})</h4>
+                                {{#each this.wounds}}
+                                <div class="wound-item wound-item-compact">
+                                    <div class="wound-item-grid">
+                                        <input type="checkbox" class="wound-checkbox" data-wound-id="{{id}}" title="Zaznacz ranę do leczenia">
+                                        <span class="wound-type" title="{{fullWoundName}}">{{damageType}}</span>
+                                        <span class="wound-penalty">{{penalty}}%</span>
+                                        <div class="wound-grid-section wound-badges">
+                                            {{#if hadFirstAid}}
+                                            <span class="wound-badge-compact first-aid" title="Pierwsza pomoc">
+                                                <i class="fas fa-syringe"></i>
+                                            </span>
+                                            {{/if}}
+                                            {{#if (gt healingAttempts 0)}}
+                                            <span class="wound-badge-compact attempts" title="Próby: {{healingAttempts}}">
+                                                {{healingAttempts}}×
+                                            </span>
+                                            {{/if}}
+                                        </div>
+                                        <span class="wound-item-name">{{name}}</span>
+                                    </div>
+                                </div>
+                                {{/each}}
+                            </div>
+                            {{/if}}
+                            {{/each}}
+                        </div>
+                    {{/if}}
+                {{else}}
+                <div class="no-wounds-message">
+                    <i class="fas fa-check-circle"></i>
+                    <p>{{localize "NEUROSHIMA.PatientCard.NoWounds"}}</p>
+                </div>
+                {{/if}}
+            </div>
+            
+            {{#if patientData.hasWounds}}
+            <div class="healing-actions-footer">
+                <button class="btn btn-primary heal-selected-wounds" disabled>
+                    <i class="fas fa-heart-plus"></i>
+                    {{localize "NEUROSHIMA.HealingRequest.HealSelected"}}
+                </button>
+            </div>
+            {{/if}}
+        </div>
+    </div>
+    
+    {{/if}}
+</div>

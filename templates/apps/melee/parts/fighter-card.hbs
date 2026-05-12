@@ -1,0 +1,138 @@
+{{#if fighter}}
+<div class="fighter-card fighter-card--{{side}} {{#if fighter.isActiveSide}}is-active{{/if}}">
+
+  <div class="fighter-card__avatar-wrap">
+    <img src="{{fighter.img}}" class="fighter-card__avatar" alt="{{fighter.name}}">
+    {{#if fighter.isCrowded}}
+      <span class="fc-crowded-badge" title="{{localize "NEUROSHIMA.MeleeDuel.Crowded"}}">
+        -{{fighter.dexPenalty}}
+      </span>
+    {{/if}}
+  </div>
+
+  <div class="fighter-card__info">
+    <div class="fighter-card__name">{{fighter.name}}</div>
+    <div class="fighter-card__sub">
+      <i class="fas fa-bolt"></i> {{fighter.initiative}}
+    </div>
+
+    {{#if (gt fighter.pool.length 0)}}
+      <div class="fighter-card__weapon-label">{{fighter.weaponName}}</div>
+    {{else if (gt fighter.meleeWeapons.length 0)}}
+      <select class="fc-weapon-select" data-participant-id="{{fighter.id}}">
+        {{#each fighter.meleeWeapons}}
+          <option value="{{this.id}}" {{#if this.isCurrent}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
+    {{else}}
+      <div class="fighter-card__weapon-label">{{fighter.weaponName}}</div>
+    {{/if}}
+
+    {{#if fighter.canChooseTargetDropdown}}
+      <select class="fc-target-select fc-target-select--inline" data-participant-id="{{fighter.id}}">
+        <option value="">— {{localize "NEUROSHIMA.MeleeDuel.ChooseTarget"}} —</option>
+        {{#each fighter.availableTargets}}
+          <option value="{{this.id}}" {{#if (eq this.id ../fighter.currentTargetId)}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
+    {{else if fighter.targetName}}
+      <div class="fighter-card__target">→ {{fighter.targetName}}</div>
+    {{/if}}
+
+    {{#if (ne fighter.maneuver "none")}}
+      <div class="fighter-card__maneuver">{{fighter.maneuverLabel}}</div>
+    {{/if}}
+  </div>
+
+  <div class="fighter-card__dice">
+    {{#if (gt fighter.effectivePool.length 0)}}
+
+      {{#if fighter.isAllocationPhase}}
+        <div class="skill-budget-row">
+          <i class="fas fa-star-of-david"></i>
+          <span class="skill-budget-label">{{localize "NEUROSHIMA.MeleeDuel.SkillRemaining"}}:</span>
+          <span class="skill-budget-value {{#if (le fighter.skillRemaining 0)}}is-zero{{/if}}">{{fighter.skillRemaining}}</span>
+          <button type="button" class="skill-reset-btn" data-action="resetSkillAllocation" data-id="{{fighter.id}}"
+                  title="{{localize "NEUROSHIMA.MeleeDuel.ResetAllocation"}}">
+            <i class="fas fa-undo"></i>
+          </button>
+        </div>
+      {{/if}}
+
+      {{#each fighter.effectivePool}}
+        <div class="die-wrap">
+          <button
+            type="button"
+            class="die-chip
+              {{#if (meleeDieSelected ../fighter.selectedDiceIndices @index)}}is-selected{{/if}}
+              {{#if (meleeDieUsed ../fighter.usedDice @index)}}is-used{{/if}}
+              {{#if this.isSuccess}}is-success{{else}}is-failure{{/if}}
+              {{#if this.isNat20}}is-nat20{{/if}}"
+            data-action="selectDie"
+            data-id="{{../fighter.id}}"
+            data-index="{{@index}}"
+            title="{{#if this.isNat20}}{{localize "NEUROSHIMA.MeleeDuel.DieNat20"}}{{else if this.isSuccess}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
+            {{this.effective}}
+          </button>
+          {{#if ../fighter.isAllocationPhase}}
+            <div class="die-alloc-btns">
+              <button type="button" class="die-alloc-btn die-alloc-btn--up"
+                      data-action="unspendSkillSelf"
+                      data-id="{{../fighter.id}}"
+                      data-index="{{@index}}"
+                      title="{{localize "NEUROSHIMA.MeleeDuel.UnspendSelf"}}"
+                      {{#unless this.reduction}}disabled{{/unless}}>▲</button>
+              <button type="button" class="die-alloc-btn die-alloc-btn--down"
+                      data-action="spendSkillSelf"
+                      data-id="{{../fighter.id}}"
+                      data-index="{{@index}}"
+                      title="{{localize "NEUROSHIMA.MeleeDuel.SpendSelf"}}"
+                      {{#if (le ../fighter.skillRemaining 0)}}disabled{{/if}}>▼</button>
+            </div>
+          {{/if}}
+          {{#if (gt ../fighter.mySpenderIds.length 0)}}
+            {{#each ../fighter.mySpenderIds}}
+              <div class="die-alloc-btns die-alloc-btns--opponent">
+                <button type="button" class="die-alloc-btn die-alloc-btn--spoil"
+                        data-action="spendSkillOnOpponent"
+                        data-spender-id="{{this.spenderId}}"
+                        data-target-id="{{../../fighter.id}}"
+                        data-index="{{@../index}}"
+                        title="{{localize "NEUROSHIMA.MeleeDuel.SpoilOpponent"}}"
+                        {{#if (le this.remaining 0)}}disabled{{/if}}>↑</button>
+              </div>
+            {{/each}}
+          {{/if}}
+        </div>
+      {{/each}}
+
+    {{else if fighter.canRollPool}}
+      <button type="button" class="action-btn action-btn--roll pulse"
+              data-action="openPoolDialog" data-id="{{fighter.id}}">
+        <i class="fas fa-dice-d20"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+      </button>
+    {{else if (gt fighter.pool.length 0)}}
+      {{#each fighter.pool}}
+        <button
+          type="button"
+          class="die-chip
+            {{#if (meleeDieSelected ../fighter.selectedDiceIndices @index)}}is-selected{{/if}}
+            {{#if (meleeDieUsed ../fighter.usedDice @index)}}is-used{{/if}}
+            {{#if (eq this 20)}}is-failure is-nat20{{else if (le this ../fighter.currentEffectiveTarget)}}is-success{{else}}is-failure{{/if}}"
+          data-action="selectDie"
+          data-id="{{../fighter.id}}"
+          data-index="{{@index}}"
+          title="{{#if (eq this 20)}}{{localize "NEUROSHIMA.MeleeDuel.DieNat20"}}{{else if (le this ../fighter.currentEffectiveTarget)}}{{localize "NEUROSHIMA.MeleeDuel.DieSuccess"}}{{else}}{{localize "NEUROSHIMA.MeleeDuel.DieFailure"}}{{/if}}">
+          {{this}}
+        </button>
+      {{/each}}
+    {{else}}
+      <div class="dice-empty-state">
+        <i class="fas fa-hourglass-half"></i>
+      </div>
+    {{/if}}
+  </div>
+
+</div>
+{{/if}}

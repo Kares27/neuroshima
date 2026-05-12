@@ -1,0 +1,6471 @@
+:root {
+    --ns-color-green: #3a8c3a;
+    --ns-color-green-darker: #2a6a2a;
+}
+
+body.theme-light {
+    /* === BAZA LIGHT (Domyślny - Papierowy) === */
+    
+    /* Główne Tła */
+    --ns-bg-sheet: #f0f0e0;       /* Kolor papieru */
+    --ns-bg-panel: rgba(0, 0, 0, 0.02); /* Tło pod panelami */
+    
+    /* Interaktywne (Inputy, Tabele) */
+    --ns-bg-input: rgba(0, 0, 0, 0.05); /* Lekko ciemniejszy od tła */
+    --ns-bg-header: rgba(0, 0, 0, 0.1); /* Nagłówki tabel */
+    --ns-bg-hover: rgba(255, 0, 0, 0.05); /* Hover myszką */
+
+    /* Ramki i Linie */
+    --ns-border-main: #7a7971;    /* Twój główny szary kolor ramek */
+    --ns-border-light: rgba(122, 121, 113, 0.3); /* Delikatne linie */
+    --ns-border-focus: #a02e2e;   /* Akcent (np. przy kliknięciu) */
+
+    /* Tekst */
+    --ns-text-main: #191813;      /* Prawie czarny */
+    --ns-text-light: #4b4a44;     /* Ciemnoszary */
+    --ns-text-header: #000000;    /* Czarny */
+    --ns-text-accent: #a02e2e;    /* Czerwony Neuroshimy */
+    --ns-text-clickable:#a0692e;
+    --ns-text-woundpenalty:#ff8400;
+    --ns-dice-text: #191813;
+    --ns-chat-border: #e7d1b1;
+}
+
+/* === BAZA DARK (Tryb Nocny) === */
+body.theme-dark {
+    /* Główne Tła */
+    --ns-bg-sheet: #121212;       /* Bardzo ciemny grafit */
+    --ns-bg-panel: rgba(0, 0, 0, 0.4);
+
+    /* Interaktywne */
+    --ns-bg-input: rgba(255, 255, 255, 0.05);
+    --ns-bg-header: rgba(0, 0, 0, 0.4);      /* Czarne nagłówki sekcji jak na screenie */
+    --ns-bg-hover: rgba(255, 255, 255, 0.1);
+    --ns-bg-armor: #3f3f3f;
+
+    /* Ramki */
+    --ns-border-main: #7a7971;    /* Ciemniejszy szary */
+    --ns-border-light: rgba(255, 255, 255, 0.1);
+    --ns-border-focus: #ff6400;   /* Domyślny akcent Foundry (pomarańcz) */
+
+    /* Tekst */
+    --ns-text-main: #f0f0e0;      /* Standardowy kolor tekstu Foundry */
+    --ns-text-light: #a0a090;
+    --ns-text-header: #ffffff;
+    --ns-text-accent: #a02e2e;    /* Jasna czerwień Neuroshimy dla Dark Mode */
+    --ns-text-clickable:#945e23;
+    --ns-text-attribute: #a02e2e;
+    --ns-text-woundpenalty:#ff8400;
+    --ns-dice-text: #e0e0d0;
+}
+
+@font-face {
+    font-family: 'SpecialElite';
+    src: url('../fonts/SpecialElite.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Global System Styles - Scoped to .neuroshima */
+.neuroshima {
+    letter-spacing: 1px;
+}
+
+/* Stosujemy czcionkę tylko do pól wprowadzania i etykiet */
+.neuroshima input, 
+.neuroshima select, 
+.neuroshima textarea,
+.neuroshima label,
+.neuroshima span,
+.neuroshima .item-type,
+.neuroshima .charname,
+.neuroshima .section-label,
+.neuroshima nav.tabs .item {
+    font-family: 'SpecialElite', "Signika", sans-serif;
+}
+
+.neuroshima [hidden] {
+    display: none !important;
+}
+
+.neuroshima .grid {
+    display: grid;
+}
+
+.neuroshima .grid-2col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.neuroshima .grid-3col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.neuroshima .grid-4col {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.neuroshima .grid-5col {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+.neuroshima .text-center {
+    text-align: center;
+}
+
+.neuroshima .invisible {
+    visibility: hidden;
+}
+
+.neuroshima .flexcol {
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima .flexrow {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
+
+.neuroshima .flex-right {
+    justify-content: flex-end;
+}
+
+/* Melee Duel Integration in Sidebar */
+.active-duels-wrapper {
+    margin: 5px 0;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.active-duels-section {
+    background: var(--ns-bg-panel);
+    padding: 5px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.active-duels-section .section-header {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.9em;
+    border-bottom: 1px solid var(--ns-border-light);
+    margin-bottom: 5px;
+    padding-bottom: 2px;
+    color: var(--ns-text-accent);
+}
+
+.melee-duels-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.melee-duel-item {
+    padding: 5px;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.melee-duel-item:last-child {
+    border-bottom: none;
+}
+
+.duel-participants {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.duel-participants .participant img {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+}
+
+.duel-participants .vs {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+}
+
+.duel-participants .duel-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75em;
+    line-height: 1.1;
+    overflow: hidden;
+}
+
+.duel-participants .duel-meta .turn,
+.duel-participants .duel-meta .phase {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.duel-participants .duel-meta .phase {
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.duel-participants .duel-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.duel-participants .open-duel,
+.duel-participants .finish-duel {
+    color: var(--ns-text-main);
+    padding: 5px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.duel-participants .open-duel:hover {
+    background: var(--ns-bg-hover);
+    color: var(--ns-text-accent);
+}
+
+.duel-participants .finish-duel:hover {
+    background: rgba(160, 46, 46, 0.2);
+    color: #ff4444;
+}
+
+/* Melee Duel Tracker Application */
+.melee-duel-tracker {
+    min-height: 400px;
+}
+
+.melee-duel-tracker .tracker-header {
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.melee-duel-tracker .gm-controls {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.melee-duel-tracker .control-btn.finish {
+    color: var(--ns-text-accent);
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.melee-duel-tracker .control-btn.finish:hover {
+    transform: scale(1.2);
+}
+
+.melee-duel-tracker .duel-status {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.melee-duel-tracker .participant-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 15px;
+}
+
+.melee-duel-tracker .participant-card {
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+}
+
+.melee-duel-tracker .participant-card.active {
+    border-color: var(--ns-text-accent);
+    box-shadow: 0 0 10px rgba(160, 46, 46, 0.3);
+}
+
+.melee-duel-tracker .participant-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.melee-duel-tracker .participant-info img {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 4px;
+}
+
+.melee-duel-tracker .participant-info .name {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.melee-duel-tracker .stat-line {
+    font-size: 0.9em;
+    display: flex;
+    gap: 10px;
+}
+
+.melee-duel-tracker .dice-pool {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.melee-duel-tracker .pool-title {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    color: var(--ns-text-accent);
+    border-bottom: 1px solid var(--ns-border-light);
+    width: 100%;
+    text-align: center;
+    padding-bottom: 5px;
+}
+
+.theme-dark .melee-duel-tracker .dice-pool {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.melee-duel-tracker .die-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.melee-duel-tracker .mod-btn {
+    font-size: 0.7em;
+    padding: 2px 5px;
+    line-height: 1;
+}
+
+.melee-duel-tracker .segment-controls {
+    grid-column: span 2;
+    padding: 10px 15px;
+    border-top: 1px solid var(--ns-border-light);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.melee-duel-tracker .segment-header {
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    text-align: center;
+    font-size: 1.2em;
+}
+
+.melee-duel-tracker .action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.melee-duel-tracker .ready-banner {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #4caf50;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.melee-duel-tracker .initiative-badge {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    background: var(--ns-text-accent);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 5;
+}
+
+/* DialogV2 Styles */
+.neuroshima.dialog-vertical .dialog-buttons,
+.neuroshima.dialog-vertical .standard-form .form-footer {
+    flex-direction: column;
+    gap: 5px;
+}
+
+.neuroshima.dialog-vertical button {
+    width: 100%;
+    margin: 0;
+}
+
+/* Chat Message Styling */
+.chat-message:has(.neuroshima.roll-card),
+.chat-message:has(.neuroshima.patient-card),
+.chat-message:has(.neuroshima.item-card) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+
+/* Item Card */
+.neuroshima.item-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-family: 'SpecialElite', serif;
+    position: relative;
+}
+
+.neuroshima.item-card .item-card-qty-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--ns-bg-header);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 0 4px 0 6px;
+    padding: 2px 7px;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    line-height: 1.4;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.neuroshima.item-card.item-card-exhausted .item-card-draggable {
+    opacity: 0.35;
+    cursor: not-allowed;
+    filter: grayscale(0.6);
+}
+
+.neuroshima.item-card.item-card-exhausted .item-card-qty-badge {
+    color: var(--ns-text-light);
+    background: var(--ns-bg-input);
+}
+
+.neuroshima.item-card .item-card-title {
+    text-align: center;
+    line-height: 1.2;
+}
+
+.neuroshima.item-card .item-card-type-label {
+    display: block;
+    font-size: 0.75em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ns-text-light);
+    margin-bottom: 2px;
+}
+
+.neuroshima.item-card .item-card-name {
+    margin: 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    font-family: 'SpecialElite', serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.neuroshima.item-card .item-card-image-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0;
+}
+
+.neuroshima.item-card .item-card-img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    background: rgba(0,0,0,0.04);
+    padding: 2px;
+}
+
+.neuroshima.item-card .item-card-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neuroshima.item-card .item-card-armor-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+    background: var(--ns-bg-header);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.neuroshima.item-card .armor-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+}
+
+.neuroshima.item-card .armor-cell-label {
+    font-size: 0.7em;
+    color: var(--ns-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.neuroshima.item-card .armor-cell-value {
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.item-card .item-card-draggable {
+    cursor: grab;
+    border: 3px solid transparent;
+    border-image: repeating-linear-gradient(
+        45deg,
+        var(--ns-chat-border, #e7d1b1) 0px,
+        var(--ns-chat-border, #e7d1b1) 6px,
+        transparent 6px,
+        transparent 12px
+    ) 3;
+    border-radius: 0;
+    padding: 4px;
+    transition: border-image 0.2s;
+}
+
+.neuroshima.item-card .item-card-draggable:hover {
+    border-image: repeating-linear-gradient(
+        45deg,
+        #c9a87a 0px,
+        #c9a87a 6px,
+        transparent 6px,
+        transparent 12px
+    ) 3;
+}
+
+.neuroshima.item-card .item-card-meta {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 2px;
+}
+
+.neuroshima.item-card .item-meta-chip {
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.item-card .item-meta-chip i {
+    margin-right: 2px;
+}
+
+.neuroshima.item-card .item-card-stat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    padding: 5px 7px;
+}
+
+.neuroshima.item-card .item-card-stat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    padding: 5px 7px;
+}
+
+.neuroshima.item-card .item-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.neuroshima.item-card .item-stat-label {
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+    white-space: nowrap;
+}
+
+.neuroshima.item-card .item-stat-label::after {
+    content: ":";
+}
+
+.neuroshima.item-card .item-stat-value {
+    font-size: 0.95em;
+    font-weight: bold;
+    color: var(--ns-text-main);
+    white-space: nowrap;
+    text-align: right;
+}
+
+.neuroshima.item-card .item-card-box-stats {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.neuroshima.item-card .item-box-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--ns-bg-panel);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    padding: 4px 8px;
+    min-width: 48px;
+    flex: 1;
+}
+
+.neuroshima.item-card .box-stat-label {
+    font-size: 0.72em;
+    color: var(--ns-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+}
+
+.neuroshima.item-card .box-stat-value {
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--ns-text-main);
+    text-align: center;
+}
+
+.neuroshima.item-card .item-card-description {
+    font-family: inherit;
+    font-size: 0.9em;
+    color: var(--ns-text-main);
+    line-height: 1.5;
+}
+
+.neuroshima.item-card .item-card-description p {
+    margin: 0 0 4px 0;
+}
+
+.neuroshima.item-card .item-card-magazine-contents {
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.neuroshima.item-card .magazine-contents-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 7px;
+    background: var(--ns-bg-header);
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.item-card .magazine-contents-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 7px;
+    font-size: 0.88em;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.item-card .magazine-contents-row:nth-child(even) {
+    background: var(--ns-bg-input);
+}
+
+.neuroshima.item-card .mag-ammo-name {
+    flex: 1;
+}
+
+.neuroshima.item-card .mag-ammo-qty {
+    font-weight: bold;
+    min-width: 28px;
+    text-align: right;
+}
+
+.chat-message:has(.neuroshima.item-card) .message-header {
+    border-bottom: 1px solid #7a797144;
+    padding-bottom: 3px;
+    margin-bottom: 5px;
+}
+
+.theme-dark .chat-message:has(.neuroshima.item-card) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .chat-message:has(.neuroshima.item-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.item-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.item-card) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.item-card .item-card-img {
+    background: rgba(255,255,255,0.05);
+}
+
+.theme-dark .neuroshima.item-card .item-card-stat-grid {
+    background: rgba(255,255,255,0.04);
+}
+
+.theme-dark .neuroshima.item-card .item-card-armor-grid {
+    background: rgba(255,255,255,0.06);
+}
+
+/* Vanilla Foundry Dice Roll Styling */
+.chat-message:has(.dice-roll) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+
+.chat-message:has(.dice-roll) .message-header {
+    border-bottom: 1px solid rgba(122, 121, 113, 0.35);
+    padding-bottom: 3px;
+    margin-bottom: 4px;
+}
+
+.chat-message:has(.dice-roll) .dice-roll {
+    font-family: 'SpecialElite', serif;
+}
+
+.chat-message:has(.dice-roll) .dice-formula {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    color: var(--ns-text-light);
+    text-align: center;
+    border-bottom: 1px solid rgba(122, 121, 113, 0.3);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    letter-spacing: 0.03em;
+}
+
+.chat-message:has(.dice-roll) .dice-total {
+    font-family: 'SpecialElite', serif;
+    font-size: 1.4em;
+    font-weight: bold;
+    color: var(--ns-dice-text);
+    text-align: center;
+    border-top: 1px solid rgba(122, 121, 113, 0.3);
+    margin: 4px 0 0 0;
+    padding-top: 4px;
+    line-height: 1.2;
+}
+
+.chat-message:has(.dice-roll) .dice-tooltip {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(122, 121, 113, 0.25);
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin: 2px 0;
+}
+
+.chat-message:has(.dice-roll) .tooltip-part {
+    border: none;
+    padding: 0;
+    background: none;
+}
+
+.chat-message:has(.dice-roll) .part-header {
+    font-family: 'SpecialElite', serif;
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+    border-bottom: 1px solid rgba(122, 121, 113, 0.2);
+    padding-bottom: 3px;
+    margin-bottom: 4px;
+}
+
+.chat-message:has(.dice-roll) .part-formula {
+    font-weight: bold;
+}
+
+.chat-message:has(.dice-roll) .part-total {
+    font-weight: bold;
+    color: var(--ns-dice-text);
+}
+
+.chat-message:has(.dice-roll) .dice-rolls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    justify-content: flex-start;
+}
+
+.chat-message:has(.dice-roll) .dice-rolls .roll {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 4px;
+    background: #ffffff;
+    border: 1px solid #7a7971;
+    border-radius: 4px;
+    font-family: 'SpecialElite', serif;
+    font-size: 1em;
+    font-weight: bold;
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.13);
+    color: var(--ns-text-main);
+}
+
+.chat-message:has(.dice-roll) .dice-rolls li.roll.min,
+.chat-message:has(.dice-roll) .dice-rolls li.roll.min:not(.discarded) {
+    background: #fff9c4 !important;
+    border-color: #fbc02d !important;
+    color: #f57f17 !important;
+    opacity: 1 !important;
+    box-shadow: 0 0 5px #fbc02d55 !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+.chat-message:has(.dice-roll) .dice-rolls li.roll.max,
+.chat-message:has(.dice-roll) .dice-rolls li.roll.max:not(.discarded) {
+    background: #ffcdd2 !important;
+    border-color: #d32f2f !important;
+    color: #b71c1c !important;
+    opacity: 1 !important;
+    box-shadow: 0 0 5px #d32f2f55 !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+.chat-message:has(.dice-roll) .dice-rolls .roll.discarded {
+    opacity: 0.45;
+    text-decoration: line-through;
+}
+
+/* Dark mode */
+.theme-dark .chat-message:has(.dice-roll) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .chat-message:has(.dice-roll) .message-header,
+.theme-dark .chat-message:has(.dice-roll) .message-header .message-sender,
+.theme-dark .chat-message:has(.dice-roll) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+.theme-dark .chat-message:has(.dice-roll) .dice-tooltip {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(90, 90, 84, 0.4);
+}
+
+.theme-dark .chat-message:has(.dice-roll) .dice-rolls .roll {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .chat-message:has(.dice-roll) .dice-rolls li.roll.min,
+.theme-dark .chat-message:has(.dice-roll) .dice-rolls li.roll.min:not(.discarded) {
+    background: #332b00 !important;
+    border-color: #fbc02d !important;
+    color: #fbc02d !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+.theme-dark .chat-message:has(.dice-roll) .dice-rolls li.roll.max,
+.theme-dark .chat-message:has(.dice-roll) .dice-rolls li.roll.max:not(.discarded) {
+    background: #3d0c0c !important;
+    border-color: #d32f2f !important;
+    color: #ef9a9a !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+    filter: none !important;
+}
+
+/* Dark Mode Overrides */
+.theme-dark .chat-message:has(.neuroshima.roll-card),
+.theme-dark .chat-message:has(.neuroshima.patient-card),
+.theme-dark .chat-message:has(.neuroshima.heal-request-card),
+.theme-dark .chat-message:has(.neuroshima.required-test-card) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.roll-card) .message-header .message-metadata,
+.theme-dark .chat-message:has(.neuroshima.patient-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.patient-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.patient-card) .message-header .message-metadata,
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-metadata,
+.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.roll-card .roll-header,
+.theme-dark .neuroshima.required-test-card .roll-header {
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.roll-card .die-square {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+    box-shadow: inset 0 0 4px #ffffff11;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.nat-1 {
+    background: #332b00;
+    border-color: #fbc02d;
+    color: #ffeb3b;
+    box-shadow: 0 0 8px #fbc02d44;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.nat-20 {
+    background: #3d0c0c;
+    border-color: #d32f2f;
+    color: #ff8a80;
+    box-shadow: 0 0 8px #d32f2f44;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.modified.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.modified.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.theme-dark .neuroshima.roll-card .die-square-container i {
+    color: #a0a090;
+}
+
+.theme-dark .neuroshima.roll-card .roll-outcome,
+.theme-dark .neuroshima.required-test-card .roll-outcome {
+    border-color: #5a5a54;
+}
+
+.chat-message:has(.neuroshima.roll-card) .message-header,
+.chat-message:has(.neuroshima.required-test-card) .message-header {
+    border-bottom: 1px solid #7a797144;
+    padding-bottom: 3px;
+    margin-bottom: 5px;
+}
+
+.neuroshima.roll-card,
+.neuroshima.required-test-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.roll-card .roll-header,
+.neuroshima.required-test-card .roll-header {
+    font-weight: bold;
+    font-size: 1.05em;
+    border-bottom: 2px solid #7a7971;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.neuroshima.roll-card .base-difficulty {
+    opacity: 0.6;
+    font-weight: normal;
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima.roll-card .die-result {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.neuroshima.roll-card .die-result.ignored {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.neuroshima.roll-card .die-label {
+    min-width: 35px;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .die-square-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.neuroshima.roll-card .die-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: #ffffff;
+    border: 1px solid #7a7971;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 4px;
+    box-shadow: inset 0 0 4px #00000022;
+}
+
+.neuroshima.roll-card .die-square.nat-1 {
+    background: #fff9c4;
+    border-color: #fbc02d;
+    color: #f57f17;
+    box-shadow: 0 0 5px #fbc02d;
+}
+
+.neuroshima.roll-card .melee-targets {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 4px 0;
+}
+
+.neuroshima.roll-card .melee-targets .targets-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.neuroshima.roll-card .melee-targets .target-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.theme-dark .neuroshima.roll-card .melee-targets .target-item {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .melee-targets img {
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+}
+
+.neuroshima.roll-card .melee-targets .name {
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .die-square.nat-20 {
+    background: #ffcdd2;
+    border-color: #d32f2f;
+    color: #b71c1c;
+}
+
+.neuroshima.roll-card .die-square.modified.success {
+    background: #e8f5e9;
+    border-color: #4caf50;
+    color: #1b5e20;
+}
+
+.neuroshima.roll-card .die-square.modified.failure {
+    background: #ffebee;
+    border-color: #ef5350;
+    color: #c62828;
+}
+
+/* Wyraźne zaznaczenie wybranej kości w duelu */
+@keyframes die-pulse {
+    0% { transform: scale(1.15); box-shadow: 0 0 10px #f57c00; }
+    50% { transform: scale(1.22); box-shadow: 0 0 20px #f57c00, 0 0 8px rgba(255, 255, 255, 0.4); }
+    100% { transform: scale(1.15); box-shadow: 0 0 10px #f57c00; }
+}
+
+.neuroshima.roll-card .die-result.selected .die-square {
+    animation: die-pulse 1.5s infinite ease-in-out;
+    border: 3px solid #f57c00 !important;
+    z-index: 10;
+    position: relative;
+}
+
+.neuroshima.roll-card .die-result.selected .die-square::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #f57c00;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+.neuroshima.roll-card .die-square-container.interactive:hover .die-square {
+    cursor: pointer;
+    border-color: #f57c00;
+    box-shadow: 0 0 8px rgba(245, 124, 0, 0.5);
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
+.neuroshima.roll-card .die-square-container i {
+    font-size: 0.9em;
+    color: #7a7971;
+}
+
+.neuroshima.roll-card .die-result.best .die-square.original {
+    box-shadow: 0 0 10px rgba(160, 46, 46, 0.4);
+    border-color: #a02e2e;
+}
+
+.neuroshima.roll-card .apply-damage-section,
+.neuroshima.melee-opposed-result .apply-damage-section {
+    margin-top: 4px;
+    background: rgba(160, 46, 46, 0.05);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.theme-dark .neuroshima.roll-card .apply-damage-section,
+.theme-dark .neuroshima.melee-opposed-result .apply-damage-section {
+    background: rgba(160, 46, 46, 0.15);
+}
+
+/* Fire Correction */
+.neuroshima.roll-card .fire-correction-row {
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+.neuroshima.roll-card .fire-correction-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 5px 10px;
+    background: rgba(160, 100, 30, 0.12);
+    border: 1px solid rgba(160, 100, 30, 0.45);
+    border-radius: 4px;
+    color: inherit;
+    font-size: 0.82em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.neuroshima.roll-card .fire-correction-button:hover:not(:disabled) {
+    background: rgba(160, 100, 30, 0.25);
+    border-color: rgba(160, 100, 30, 0.7);
+}
+
+.neuroshima.roll-card .fire-correction-button:disabled,
+.neuroshima.roll-card .fire-correction-button.applied {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.neuroshima.roll-card .correction-cost-badge {
+    background: rgba(0,0,0,0.15);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 0.92em;
+    font-weight: normal;
+}
+
+/* Fire Correction — corrected state */
+.neuroshima.roll-card .roll-outcome.corrected {
+    background: rgba(180, 100, 20, 0.15);
+    border-top-color: rgba(180, 100, 20, 0.5);
+}
+
+.neuroshima.roll-card .corrected-status {
+    color: #c87820 !important;
+}
+
+.neuroshima.roll-card .corrected-pp {
+    color: #c87820;
+}
+
+.neuroshima.roll-card .fire-correction-hits {
+    margin-top: 2px;
+}
+
+/* Fire Correction — debug step-by-step panel */
+.neuroshima.roll-card .fire-correction-debug {
+    margin: 4px 0;
+    padding: 6px 8px;
+    background: rgba(30, 80, 30, 0.12);
+    border: 1px solid rgba(60, 140, 60, 0.4);
+    border-radius: 4px;
+    font-size: 0.78em;
+}
+
+.neuroshima.roll-card .fc-debug-header {
+    font-weight: bold;
+    color: #4a9a4a;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    letter-spacing: 0.02em;
+}
+
+.neuroshima.roll-card .fc-debug-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    padding: 1px 0;
+    border-bottom: 1px solid rgba(60, 140, 60, 0.12);
+}
+
+.neuroshima.roll-card .fc-debug-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.roll-card .fc-debug-label {
+    color: var(--color-text-light-secondary, #aaa);
+    flex-shrink: 0;
+}
+
+.neuroshima.roll-card .fc-debug-value {
+    text-align: right;
+    font-family: monospace;
+    font-size: 1.05em;
+}
+
+.neuroshima.roll-card .fc-debug-formula {
+    background: rgba(60, 140, 60, 0.06);
+}
+
+.neuroshima.roll-card .fc-debug-result {
+    margin-top: 3px;
+    padding-top: 3px;
+    border-top: 1px solid rgba(60, 140, 60, 0.35) !important;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .fc-debug-result .fc-debug-value {
+    color: #5db85d;
+}
+
+/* Melee Opposed Duel Handler */
+.neuroshima.melee-opposed-handler {
+    background: url('../ui/NS_paper_bg.webp');
+    padding: 10px;
+    border: 1px solid #444;
+    font-family: 'SpecialElite', serif;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler {
+    background: #222;
+    color: #eee;
+}
+
+.neuroshima.melee-opposed-handler .opposed-header {
+    text-align: center;
+    border-bottom: 2px solid #600;
+    margin-bottom: 10px;
+}
+
+.neuroshima.melee-opposed-handler .duel-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.neuroshima.melee-opposed-handler .duel-participants {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .duel-participants {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.melee-opposed-handler .participant-summary {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.melee-opposed-handler .pool-line {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px;
+    min-height: 20px;
+}
+
+.neuroshima.melee-opposed-handler .pool-badge {
+    background: #600;
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .pool-badge {
+    background: #800;
+}
+
+.neuroshima.melee-opposed-handler .participant-summary img {
+    border-radius: 50%;
+    border: 2px solid #600;
+    object-fit: cover;
+    background: #000;
+    transition: all 0.3s ease;
+}
+
+.neuroshima.melee-opposed-handler .participant-summary.active-turn img {
+    border-color: #f57c00;
+    box-shadow: 0 0 10px #f57c00;
+    animation: die-pulse 1.5s infinite ease-in-out;
+}
+
+.segments-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.1);
+    border-bottom: 2px solid var(--ns-border-dark);
+    font-family: 'SpecialElite', serif;
+    font-weight: bold;
+    font-size: 1.1em;
+    color: var(--ns-text-accent);
+}
+
+.segments-header-info .turn-count {
+    color: #f57c00;
+}
+
+.neuroshima.melee-opposed-handler .participant-summary.waiting .waiting-placeholder {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.5);
+    border: 2px dashed #666;
+}
+
+.neuroshima.melee-opposed-handler .participant-summary .name {
+    font-size: 0.85em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.neuroshima.melee-opposed-handler .duel-vs {
+    padding: 0 10px;
+    font-weight: bold;
+    font-style: italic;
+    color: #600;
+}
+
+.neuroshima.melee-opposed-handler .targeting-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 5px;
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.neuroshima.melee-opposed-handler .target-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .target-chip {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .target-chip img {
+    border-radius: 50%;
+    border: 1px solid #777;
+    object-fit: cover;
+}
+
+.neuroshima.melee-opposed-handler .opposed-content {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.neuroshima.melee-opposed-handler .participant-section {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .participant-section {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.neuroshima.melee-opposed-handler .participant-section.active-selection {
+    border-color: #f57c00;
+    background: rgba(245, 124, 0, 0.05);
+    box-shadow: 0 0 8px rgba(245, 124, 0, 0.2);
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .participant-section.active-selection {
+    background: rgba(245, 124, 0, 0.1);
+    border-color: #fb8c00;
+}
+
+.neuroshima.melee-opposed-handler .participant-section.waiting {
+    opacity: 0.7;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(0, 0, 0, 0.03) 10px,
+        rgba(0, 0, 0, 0.03) 20px
+    );
+}
+
+.neuroshima.melee-opposed-handler .section-label {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--ns-text-accent);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .section-label {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .test-type-label {
+    font-size: 0.7em;
+    text-align: center;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 12px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 1.4em;
+}
+
+.neuroshima.melee-opposed-handler .reset-pool-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 1.1em;
+    color: var(--ns-text-accent);
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 15%;
+}
+
+.neuroshima.melee-opposed-handler .reset-pool-button:hover {
+    opacity: 1;
+}
+
+.neuroshima.melee-opposed-handler .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 10px 0;
+    align-items: center;
+}
+
+.neuroshima.melee-opposed-handler .die-result {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: center;
+}
+
+.neuroshima.melee-opposed-handler .die-mod {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    line-height: 18px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .die-mod {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.neuroshima.melee-opposed-handler .die-mod:hover:not(:disabled) {
+    background: var(--ns-bg-accent);
+    color: white;
+}
+
+.neuroshima.melee-opposed-handler .die-square {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+}
+
+.neuroshima.melee-opposed-handler .allocation-ui {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.neuroshima.melee-opposed-handler .ready-button {
+    width: auto;
+    min-width: 100px;
+    padding: 3px 10px;
+    font-size: 0.8em;
+    font-family: 'SpecialElite', serif;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.neuroshima.melee-opposed-handler .ready-button:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .ready-button.active {
+    background: #2e7d32;
+    color: white;
+    border-color: #1b5e20;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .ready-button {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #eee;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .ready-button.active {
+    background: #388e3c;
+}
+
+.neuroshima.melee-opposed-handler .skill-pool {
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.neuroshima.melee-opposed-handler .melee-init-btn {
+    width: auto;
+    padding: 2px 8px;
+    font-size: 0.85em;
+    font-family: 'SpecialElite', serif;
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+    transition: all 0.2s;
+}
+
+.neuroshima.melee-opposed-handler .melee-init-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .melee-init-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.neuroshima.melee-opposed-handler .waiting-ui {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 15px 5px;
+    text-align: center;
+}
+
+.neuroshima.melee-opposed-handler .waiting-ui p {
+    font-size: 0.85em;
+    font-style: italic;
+    opacity: 0.7;
+    margin-bottom: 10px;
+}
+
+.neuroshima.melee-opposed-handler .join-duel-button,
+.neuroshima.melee-opposed-handler .resolve-duel-button {
+    width: 100%;
+    background: #600;
+    color: white;
+    border: 1px solid #300;
+    padding: 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    cursor: pointer;
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.neuroshima.melee-opposed-handler .resolve-duel-button {
+    margin-top: 15px;
+}
+
+.neuroshima.melee-opposed-handler .join-duel-button:hover,
+.neuroshima.melee-opposed-handler .resolve-duel-button:hover {
+    background: #800;
+}
+
+.neuroshima.melee-opposed-handler .duel-resolution {
+    margin-top: 15px;
+    padding: 12px;
+    background: rgba(100, 0, 0, 0.05);
+    border: 1px solid #600;
+    border-radius: 4px;
+    text-align: center;
+    box-shadow: inset 0 0 10px rgba(100, 0, 0, 0.1);
+}
+
+.neuroshima.melee-opposed-handler .result-msg {
+    font-weight: bold;
+    font-size: 1em;
+    margin-bottom: 8px;
+    color: #600;
+    text-transform: uppercase;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .result-msg {
+    color: #f66;
+}
+
+.neuroshima.melee-opposed-handler .success-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.neuroshima.melee-opposed-handler .success-summary span {
+    font-size: 1.8em;
+    font-weight: bold;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.melee-opposed-handler .success-summary .atk-succ { color: #600; }
+.theme-dark .neuroshima.melee-opposed-handler .success-summary .atk-succ { color: #f66; }
+
+.neuroshima.melee-opposed-handler .success-summary .sep { opacity: 0.5; }
+
+.neuroshima.melee-opposed-handler .damage-result {
+    border-top: 1px dashed rgba(100, 0, 0, 0.3);
+    padding-top: 8px;
+    font-size: 1.1em;
+}
+
+.neuroshima.melee-opposed-handler .damage-result .label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-right: 5px;
+}
+
+.neuroshima.melee-opposed-handler .damage-result .value {
+    color: #600;
+}
+
+.theme-dark .neuroshima.melee-opposed-handler .damage-result .value {
+    color: #f66;
+}
+
+/* Healing Effects Section */
+.neuroshima.roll-card .healing-effects-section {
+    margin-top: 4px;
+    background: rgba(76, 175, 80, 0.05);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    overflow: hidden;
+    padding: 8px;
+}
+
+.theme-dark .neuroshima.roll-card .healing-effects-section {
+    background: rgba(76, 175, 80, 0.15);
+}
+
+.neuroshima.roll-card .healing-effects-title {
+    font-size: 0.85em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    margin: 0 0 8px 0;
+    padding: 0;
+}
+
+.neuroshima.roll-card .healing-effects-table {
+    width: 100%;
+    font-size: 0.75em;
+    border-collapse: collapse;
+}
+
+.neuroshima.roll-card .healing-effects-table th,
+.neuroshima.roll-card .healing-effects-table td {
+    padding: 4px 6px;
+    text-align: left;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.neuroshima.roll-card .healing-effects-table th {
+    background: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.theme-dark .neuroshima.roll-card .healing-effects-table th {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .healing-effects-table td.reduction.positive {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .healing-effects-table td.reduction.negative {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.neuroshima.roll-card .damage-application-header,
+.neuroshima.melee-opposed-result .damage-application-header {
+    background: rgba(160, 46, 46, 0.1);
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.neuroshima.roll-card .damage-application-header:hover,
+.neuroshima.melee-opposed-result .damage-application-header:hover {
+    background: rgba(160, 46, 46, 0.2);
+}
+
+/* Damage Tabs */
+.neuroshima.roll-card .damage-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--ns-border-light);
+    margin-bottom: 5px;
+}
+
+.neuroshima.roll-card .damage-tab-header {
+    flex: 1;
+    text-align: center;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: var(--ns-text-light);
+    border-bottom: 2px solid transparent;
+}
+
+.neuroshima.roll-card .damage-tab-header.active {
+    color: var(--ns-text-accent);
+    border-bottom-color: var(--ns-text-accent);
+    background: rgba(160, 46, 46, 0.05);
+}
+
+.neuroshima.roll-card .damage-tab-header:hover:not(.active) {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.theme-dark .neuroshima.roll-card .damage-tab-header:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .damage-application-content,
+.neuroshima.melee-opposed-result .damage-application-content {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.neuroshima.roll-card .damage-actions,
+.neuroshima.melee-opposed-result .damage-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.neuroshima.roll-card .target-list-section {
+    font-size: 0.85em;
+    border-bottom: 1px solid var(--ns-border-light);
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+}
+
+.neuroshima.roll-card .target-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neuroshima.roll-card .target-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 3px;
+}
+
+.theme-dark .neuroshima.roll-card .target-item {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .target-item img {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 2px;
+}
+
+.neuroshima.roll-card .apply-damage-button,
+.neuroshima.melee-opposed-result .apply-damage-button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.roll-card .apply-damage-button:hover,
+.neuroshima.melee-opposed-result .apply-damage-button:hover {
+    background: var(--ns-bg-hover);
+    border-color: var(--ns-text-accent);
+}
+
+.neuroshima.roll-card .apply-damage-button i {
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card .test-type {
+    font-size: 0.8em;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+.neuroshima.roll-card hr.dotted-hr {
+    border: none;
+    border-top: 1px dotted var(--ns-border-main);
+    margin: 5px 0;
+    width: 100%;
+}
+
+.neuroshima.roll-card .weapon-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.9em;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.theme-dark .neuroshima.roll-card .weapon-details {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.roll-card .roll-outcome,
+.neuroshima.required-test-card .roll-outcome {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.9em;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.theme-dark .neuroshima.required-test-card .roll-outcome {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.roll-card .outcome-item,
+.neuroshima.required-test-card .outcome-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.neuroshima.roll-card .roll-outcome.success .success-points {
+    color: #1b5e20;
+}
+
+.theme-dark .neuroshima.roll-card .roll-outcome.success .success-points {
+    color: #a5d6a7;
+}
+
+.neuroshima.roll-card .roll-outcome.failure .success-points {
+    color: #c62828;
+}
+
+.theme-dark .neuroshima.roll-card .roll-outcome.failure .success-points {
+    color: #ef9a9a;
+}
+
+.neuroshima.roll-card .roll-outcome.success {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.roll-card .roll-outcome.failure {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.roll-card .roll-annotations {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 6px;
+    margin-top: 2px;
+}
+
+.neuroshima.roll-card .roll-annotation {
+    font-size: 0.85em;
+    font-style: italic;
+    color: var(--ns-text-muted, #666);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.theme-dark .neuroshima.roll-card .roll-annotation {
+    color: #aaa;
+}
+
+.neuroshima.debug-roll-dialog .notes {
+    flex: 0 0 100%;
+    margin: 4px 0 0 0;
+    font-size: 0.9em;
+    font-style: italic;
+    color: #444;
+}
+
+.neuroshima.debug-roll-dialog .dice-inputs {
+    justify-content: space-around;
+    margin: 10px 0;
+}
+
+.neuroshima.debug-roll-dialog .die-input {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.neuroshima.debug-roll-dialog .die-input label {
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.neuroshima.debug-roll-dialog .die-input input {
+    width: 50px;
+    text-align: center;
+}
+
+.neuroshima.debug-roll-dialog .flex-center {
+    justify-content: center;
+}
+
+.neuroshima.debug-roll-dialog .roll-button {
+    width: 200px;
+    height: 35px;
+}
+
+.neuroshima.edit-roll-dialog .save-button {
+    width: 150px;
+    height: 30px;
+}
+
+.neuroshima.edit-roll-dialog .flex-center {
+    justify-content: center;
+}
+
+/* Encumbrance Config Layout */
+.neuroshima.encumbrance-config .form-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #7a797144;
+}
+
+.neuroshima.encumbrance-config .form-group:last-of-type {
+    border-bottom: none;
+}
+
+.neuroshima.encumbrance-config .form-group label {
+    flex: 1;
+    font-weight: bold;
+}
+
+.neuroshima.encumbrance-config .form-group .form-fields {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.neuroshima.encumbrance-config .form-group .notes {
+    flex: 0 0 100%;
+    margin: 4px 0 0 0;
+    font-size: 0.9em;
+    font-style: italic;
+    color: var(--ns-text-main);
+}
+
+.neuroshima.encumbrance-config footer {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 2px solid #7a7971;
+}
+
+/* Roll Dialog Window Overrides */
+.neuroshima.roll-dialog-window {
+    min-width: 520px !important;
+    width: 520px !important;
+    max-width: 520px !important;
+}
+
+.neuroshima.roll-dialog-window .window-content {
+    width: 100% !important;
+    padding: 10px !important;
+}
+
+/* Roll Dialog Content */
+.neuroshima.roll-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* --- New top-split layout --- */
+.neuroshima.roll-dialog .rd-top-split {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.neuroshima.roll-dialog .rd-inputs-col {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.neuroshima.roll-dialog .rd-modifiers-col {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.roll-dialog .rd-modifiers-panel {
+    flex: 1 1 auto;
+    border: 1px solid var(--ns-accent, #c07a30);
+    border-radius: 4px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 90px;
+}
+
+.neuroshima.roll-dialog .rd-modifiers-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #7a7971;
+    font-style: italic;
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+/* --- Dropdowns row --- */
+.neuroshima.roll-dialog .rd-dropdowns-row {
+    display: flex;
+    gap: 8px;
+}
+
+.neuroshima.roll-dialog .rd-dropdowns-row .form-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.neuroshima.roll-dialog .rd-dropdowns-row .form-group label {
+    width: 100%;
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin: 0;
+}
+
+.neuroshima.roll-dialog .rd-dropdowns-row .form-group select,
+.neuroshima.roll-dialog .rd-dropdowns-row .form-group input[type="number"] {
+    width: 100%;
+    height: 22px;
+    flex: 0 0 auto;
+}
+
+/* --- Roll mode row --- */
+.neuroshima.roll-dialog .rd-rollmode-row {
+    border-top: 1px solid var(--ns-border-main, #7a7971);
+    padding-top: 6px;
+    margin-top: 2px;
+}
+
+.neuroshima.roll-dialog .rd-rollmode-row .form-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.neuroshima.roll-dialog .rd-rollmode-row .form-group label {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.neuroshima.roll-dialog .rd-rollmode-row .rd-rollmode-select,
+.neuroshima.roll-dialog .rd-rollmode-select {
+    flex: 1 1 auto !important;
+    width: 100%;
+    min-width: 0;
+    height: 24px;
+}
+
+/* --- Full-width row (hit location, maneuver) --- */
+.neuroshima.roll-dialog .rd-fullwidth-row {
+    display: flex;
+}
+
+.neuroshima.roll-dialog .rd-fullwidth-row .form-group {
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.neuroshima.roll-dialog .rd-fullwidth-row .form-group label {
+    width: 100%;
+    text-align: center;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin: 0;
+}
+
+.neuroshima.roll-dialog .rd-fullwidth-row .form-group select {
+    width: 100%;
+    height: 24px !important;
+    max-height: 24px;
+    flex: 0 0 24px;
+}
+
+/* --- Sliders row separator --- */
+.neuroshima.roll-dialog .rd-sliders-row {
+    border-top: 1px dashed var(--ns-border-main, #7a7971);
+    padding-top: 6px;
+    margin-top: 2px;
+}
+
+/* --- Inputs column form-groups --- */
+.neuroshima.roll-dialog .rd-inputs-col .form-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.neuroshima.roll-dialog .rd-inputs-col .form-group label {
+    flex: 1;
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.roll-dialog .rd-inputs-col .form-group input[type="number"] {
+    flex: 0 0 62px;
+    height: 22px;
+}
+
+.neuroshima.roll-dialog .rd-inputs-col .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+
+.neuroshima.roll-dialog .rd-inputs-col .checkbox-wrapper input[type="checkbox"] {
+    margin: 0;
+}
+
+/* --- Legacy form-group (kept for compatibility) --- */
+.neuroshima.roll-dialog .form-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.neuroshima.roll-dialog .form-group label {
+    flex: 1;
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.roll-dialog .form-group input[type="number"],
+.neuroshima.roll-dialog .form-group select {
+    flex: 0 0 75px;
+    height: 22px;
+}
+
+.neuroshima.roll-dialog .form-group.vertical {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.neuroshima.roll-dialog .form-group.vertical label {
+    width: 100%;
+    text-align: center;
+    margin-bottom: -2px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.neuroshima.roll-dialog .form-group.vertical select {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.neuroshima.roll-dialog .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+
+.neuroshima.roll-dialog .checkbox-wrapper input[type="checkbox"] {
+    margin: 0;
+}
+
+.neuroshima.roll-dialog .summary-section {
+    border-top: 1px solid #7a7971;
+    padding-top: 5px;
+}
+
+.neuroshima.roll-dialog .summary-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    border: none;
+}
+
+.neuroshima.roll-dialog .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.neuroshima.roll-dialog .summary-table td {
+    padding: 5px;
+}
+
+.neuroshima.roll-dialog .summary-table td:last-child {
+    text-align: right;
+    font-weight: bold;
+}
+
+.neuroshima.roll-dialog .dialog-modifiers-section,
+.neuroshima.roll-dialog-window .dialog-modifiers-section {
+    border-top: 1px solid var(--ns-accent, #c07a30);
+    padding-top: 4px;
+    margin-top: 2px;
+}
+
+.neuroshima.roll-dialog .rd-modifiers-panel,
+.neuroshima.roll-dialog-window .rd-modifiers-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.neuroshima.roll-dialog .dialog-modifiers-header,
+.neuroshima.roll-dialog-window .dialog-modifiers-header {
+    margin: 0;
+    padding: 5px 8px;
+    font-size: 0.82em;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ns-accent, #c07a30);
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--ns-border-main, #7a7971);
+    flex-shrink: 0;
+}
+
+.neuroshima.roll-dialog .dm-modifier-list,
+.neuroshima.roll-dialog-window .dm-modifier-list {
+    list-style: none;
+    margin: 0;
+    padding: 2px 0;
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: 150px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--ns-border-main, #7a7971);
+    background: rgba(0,0,0,0.1);
+}
+
+.neuroshima.roll-dialog .dm-modifier-item,
+.neuroshima.roll-dialog-window .dm-modifier-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 6px;
+    font-size: 0.82em;
+    line-height: 1.3;
+    cursor: default;
+    user-select: none;
+}
+
+.neuroshima.roll-dialog .dm-modifier-item.dm-toggleable,
+.neuroshima.roll-dialog-window .dm-modifier-item.dm-toggleable {
+    cursor: pointer;
+}
+
+.neuroshima.roll-dialog .dm-modifier-item.dm-toggleable:hover a,
+.neuroshima.roll-dialog-window .dm-modifier-item.dm-toggleable:hover a {
+    color: #e8d8c0;
+    text-shadow: 0 0 6px rgba(232, 216, 192, 0.4);
+}
+
+.neuroshima.roll-dialog .dm-modifier-item.dm-active,
+.neuroshima.roll-dialog-window .dm-modifier-item.dm-active {
+    background: #7a1a1a;
+    color: #e8d8c0;
+}
+
+.neuroshima.roll-dialog .dm-modifier-item a,
+.neuroshima.roll-dialog-window .dm-modifier-item a {
+    text-decoration: none;
+    color: inherit;
+    pointer-events: none;
+    transition: color 0.15s ease, text-shadow 0.15s ease;
+}
+
+.neuroshima.roll-dialog .dm-bullet,
+.neuroshima.roll-dialog-window .dm-bullet {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.neuroshima.roll-dialog .dm-modifier-item.dm-active .dm-bullet,
+.neuroshima.roll-dialog-window .dm-modifier-item.dm-active .dm-bullet {
+    opacity: 1;
+}
+
+.neuroshima.roll-dialog .dm-modifier-empty,
+.neuroshima.roll-dialog-window .dm-modifier-empty {
+    padding: 4px 6px;
+    font-size: 0.8em;
+    color: var(--ns-text-muted, #8a8575);
+    text-align: center;
+}
+
+/* Weapon Roll Dialog specific */
+.neuroshima.weapon-roll-dialog-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0;
+}
+
+.neuroshima.weapon-roll-dialog-content .dialog-columns.sliders-row {
+    margin-top: 5px;
+    border-top: 1px dashed var(--ns-border-main);
+    padding-top: 8px;
+}
+
+.neuroshima.weapon-roll-dialog-content .slider-hint {
+    text-align: center;
+    font-size: 0.8em;
+    font-style: italic;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.weapon-roll-dialog form .form-footer {
+    border-top: 1px solid var(--ns-border-main);
+    margin-top: 10px;
+    padding-top: 10px;
+}
+
+/* Pain Resistance Report Styles */
+.pain-resistance-report .wound-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    margin: 2px 0;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    cursor: help;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.pain-resistance-report .wound-item:hover {
+    transform: translateX(2px);
+}
+
+.pain-resistance-report .wound-item.success {
+    background: rgba(40, 167, 69, 0.05);
+    border-left-color: #28a745;
+}
+
+.pain-resistance-report .wound-item.success:hover {
+    background: rgba(40, 167, 69, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(40, 167, 69, 0.3);
+}
+
+.pain-resistance-report .wound-item.failure {
+    background: rgba(220, 53, 69, 0.05);
+    border-left-color: #dc3545;
+}
+
+.pain-resistance-report .wound-item.failure:hover {
+    background: rgba(220, 53, 69, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.3);
+}
+
+.pain-resistance-report .wound-item.critical {
+    background: rgba(180, 0, 0, 0.08);
+    border-left-color: #8b0000;
+}
+
+.pain-resistance-report .wound-item.critical:hover {
+    background: rgba(180, 0, 0, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(139, 0, 0, 0.5);
+}
+
+.pain-resistance-report .wound-item.reduced {
+    background: rgba(108, 117, 125, 0.05);
+    border-left-color: #6c757d;
+}
+
+.pain-resistance-report .wound-item.reduced:hover {
+    background: rgba(108, 117, 125, 0.15);
+    box-shadow: inset 0 0 0 1px rgba(108, 117, 125, 0.3);
+}
+
+.pain-resistance-report .wound-icon {
+    width: 16px;
+    text-align: center;
+    font-size: 0.8em;
+    transition: transform 0.2s ease;
+}
+
+.pain-resistance-report .wound-item:hover .wound-icon {
+    transform: scale(1.2);
+}
+
+.pain-resistance-report .wound-item.success .wound-icon { color: #28a745; }
+.pain-resistance-report .wound-item.failure .wound-icon { color: #dc3545; }
+.pain-resistance-report .wound-item.critical .wound-icon { color: #8b0000; }
+.pain-resistance-report .wound-item.reduced .wound-icon { color: #6c757d; }
+.pain-resistance-report .wound-item.force-passed .wound-icon { color: #28a745; }
+
+
+
+.pain-resistance-report .wound-info-main {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Healing Batch Report Styles */
+.healing-batch-report .wound-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    margin: 2px 0;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    cursor: help;
+}
+
+.healing-batch-report .wound-item.success {
+    background: rgba(40, 167, 69, 0.05);
+    border-left-color: #28a745;
+}
+
+.healing-batch-report .wound-item.failure {
+    background: rgba(220, 53, 69, 0.05);
+    border-left-color: #dc3545;
+}
+
+.healing-batch-report .wound-icon {
+    width: 16px;
+    text-align: center;
+    font-size: 0.8em;
+}
+
+.healing-batch-report .wound-item.success .wound-icon { color: #28a745; }
+.healing-batch-report .wound-item.failure .wound-icon { color: #dc3545; }
+
+.healing-batch-report .wound-info-main {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.healing-batch-report .wound-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reroll-healing-btn {
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    cursor: pointer;
+    color: #666;
+    font-size: 0.8em;
+    transition: color 0.2s;
+}
+
+.reroll-healing-btn:hover {
+    color: #007bff;
+}
+
+.theme-dark .reroll-healing-btn {
+    color: #aaa;
+}
+
+.theme-dark .reroll-healing-btn:hover {
+    color: #4da6ff;
+}
+
+.healing-apply-footer {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin-top: 8px;
+}
+
+.apply-healing-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.apply-healing-btn:hover {
+    background: #218838;
+}
+
+.apply-healing-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.theme-dark .healing-apply-footer {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.theme-dark .apply-healing-btn {
+    background: #1e7e34;
+}
+
+.theme-dark .apply-healing-btn:hover {
+    background: #198754;
+}
+
+.report-restricted-info {
+    text-align: center;
+    padding: 10px;
+    font-style: italic;
+    opacity: 0.6;
+    font-size: 0.9em;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 4px;
+}
+
+.theme-dark .report-restricted-info {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Custom Roll Tooltip Styles & Tiny Roll Card */
+.neuroshima.roll-card.tooltip-mode {
+    background: #f0f0e0;
+    padding: 8px;
+    border: 1px solid #7a7971;
+    min-width: 180px;
+}
+
+.theme-dark .neuroshima.roll-card.tooltip-mode {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.neuroshima.roll-card .roll-header.tiny {
+    font-size: 0.85em;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+}
+
+.neuroshima.roll-card .dotted-hr.tiny {
+    margin: 4px 0;
+}
+
+.neuroshima.roll-card .dice-results-grid.tiny {
+    gap: 1px;
+}
+
+.neuroshima.roll-card .die-square.tiny {
+    width: 20px;
+    height: 20px;
+    font-size: 13px;
+    border-radius: 2px;
+}
+
+.neuroshima.roll-card .die-square-container.tiny {
+    gap: 4px;
+}
+
+.neuroshima.roll-card .die-label.tiny {
+    min-width: 25px;
+    font-size: 0.8em;
+}
+
+.neuroshima.roll-card .roll-outcome.tiny {
+    font-size: 0.85em;
+    padding-top: 2px;
+}
+
+.neuroshima-roll-tooltip {
+    min-width: 150px;
+}
+
+/* === PATIENT CARD === */
+.neuroshima.patient-card {
+    background-color: var(--ns-bg-sheet);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--ns-text-main);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.patient-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--ns-border-light);
+}
+
+.patient-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.patient-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--ns-border-main);
+}
+
+.patient-details {
+    flex: 1;
+}
+
+.patient-name {
+    margin: 0 0 6px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+}
+
+.patient-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.9em;
+}
+
+.patient-stats span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-hp, .stat-penalty, .stat-wounds {
+    color: var(--ns-text-light);
+}
+
+.stat-hp i {
+    color: #d94a4a;
+}
+
+.stat-penalty i {
+    color: #d9a024;
+}
+
+.stat-wounds i {
+    color: #9494d9;
+}
+
+/* Rany po lokacjach */
+.patient-wounds {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.wounds-toggle-header {
+    margin-bottom: 8px;
+}
+
+.collapsible-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 8px 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.95em;
+    color: var(--ns-text-header);
+    transition: background-color 0.2s;
+}
+
+.collapsible-btn:hover {
+    background-color: var(--ns-bg-input);
+    border-radius: 4px;
+}
+
+.collapsible-btn i {
+    transition: transform 0.2s;
+}
+
+.collapsible-btn[data-collapsed="true"] i {
+    transform: rotate(-90deg);
+}
+
+.location-group {
+    background-color: var(--ns-bg-input);
+    border-left: 3px solid var(--ns-text-accent);
+    padding: 0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.location-toggle {
+    width: 100%;
+    padding: 10px;
+}
+
+.location-wound-count {
+    font-size: 0.85em;
+    color: var(--ns-text-light);
+    font-weight: normal;
+    margin-left: auto;
+}
+
+.wounds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--ns-border-light);
+}
+
+.wound-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 3px;
+    font-size: 0.9em;
+    border-left: 2px solid transparent;
+    flex-wrap: nowrap;
+}
+
+.wound-row:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-left-color: var(--ns-text-accent);
+}
+
+.wound-type {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    width: 24px;
+    height: 24px;
+    background-color: var(--ns-text-accent);
+    color: white;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 12px;
+    cursor: help;
+    flex-shrink: 0;
+}
+
+.wound-type i {
+    display: none;
+}
+
+.wound-name {
+    flex: 1 1 auto;
+    min-width: 120px;
+    color: var(--ns-text-main);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wound-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+    padding: 2px 6px;
+    background-color: rgba(217, 160, 36, 0.15);
+    border-radius: 3px;
+}
+
+.wound-status i {
+    display: inline;
+}
+
+.wound-penalty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.85em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.penalty-badge {
+    background-color: rgba(217, 46, 46, 0.2);
+    color: #d92e2e;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+.penalty-badge.no-penalty {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+/* Brak ran */
+.patient-no-wounds {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--ns-text-light);
+    font-size: 1em;
+}
+
+.patient-no-wounds i {
+    font-size: 2em;
+    color: #4caf50;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.patient-no-wounds p {
+    margin: 8px 0 0 0;
+}
+
+/* === HEALING REQUEST CARD === */
+.healing-request-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+}
+
+.healing-request-info {
+    font-size: 0.9em;
+    color: var(--ns-text-light);
+    margin-top: 4px;
+}
+
+.healing-request-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ns-border-light);
+    justify-content: flex-end;
+}
+
+.required-test-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.required-test-actions .btn.btn-primary {
+    width: 100%;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 1em;
+    letter-spacing: 0.04em;
+    background-color: var(--ns-color-green);
+    border-color: var(--ns-color-green);
+    color: #fff;
+}
+
+.required-test-actions .btn.btn-primary:hover {
+    background-color: var(--ns-color-green-darker);
+    border-color: var(--ns-color-green-darker);
+}
+
+.btn.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: var(--ns-color-accent);
+    color: white;
+    border: 1px solid var(--ns-color-accent);
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95em;
+}
+
+.btn.btn-primary:hover {
+    background-color: var(--ns-color-accent-darker);
+    border-color: var(--ns-color-accent-darker);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn.btn-primary:active {
+    transform: scale(0.98);
+}
+
+/* === HEALING REQUEST CARD === */
+.neuroshima.heal-request-card {
+    background-color: var(--ns-bg-sheet);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--ns-text-main);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode styling for healing request cards in chat */
+.message.dark-mode .neuroshima.heal-request-card {
+    background-color: var(--ns-bg-sheet);
+    color: var(--ns-text-main);
+}
+
+.theme-dark .neuroshima.heal-request-card {
+    background-color: #0b0a13e6;
+    color: #e0e0d0;
+    border-color: #5a5a54;
+}
+
+.theme-dark .neuroshima.heal-request-card .patient-header {
+    border-bottom-color: #5a5a54;
+}
+
+.theme-dark .neuroshima.heal-request-card .patient-name {
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.heal-request-card .patient-stats span {
+    color: #b0b0a0;
+}
+
+.theme-dark .neuroshima.heal-request-card .location-group {
+    background-color: #1a1a14;
+    border-left-color: #9494d9;
+}
+
+.theme-dark .neuroshima.heal-request-card .wound-row {
+    background-color: rgba(224, 224, 208, 0.05);
+    border-left-color: rgba(148, 148, 217, 0.3);
+}
+
+/* === HEALING APP (moved to actor.css) === */
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background-color: rgba(217, 46, 46, 0.1);
+    border: 1px solid rgba(217, 46, 46, 0.3);
+    border-radius: 4px;
+    margin: 20px;
+    color: #d92e2e;
+}
+
+.error-message i {
+    font-size: 1.5em;
+}
+
+/* Layout */
+.healing-app-layout {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    overflow: hidden;
+    padding: 16px;
+}
+
+.healing-app-section {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 6px;
+    background-color: var(--ns-bg-sheet);
+    overflow: hidden;
+}
+
+.paper-doll-section {
+    flex: 0 0 45%;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.wounds-list-section {
+    flex: 1;
+    min-width: 300px;
+    padding: 16px;
+}
+
+.section-title {
+    margin: 0 0 12px 0;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ns-border-light);
+}
+
+/* Paper Doll */
+.paper-doll-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    min-height: 300px;
+    background-color: var(--ns-bg-input);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.body-diagram {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.body-location-hotspot {
+    fill: var(--ns-color-accent);
+    opacity: 0.7;
+    stroke: var(--ns-border-main);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.body-location-hotspot:hover {
+    opacity: 0.9;
+    stroke-width: 3;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.body-location-hotspot.selected {
+    opacity: 1;
+    stroke-width: 4;
+    stroke: var(--ns-color-accent-darker);
+    filter: drop-shadow(0 0 12px var(--ns-color-accent));
+}
+
+.wound-count-badge {
+    font-size: 12px;
+    font-weight: bold;
+    fill: white;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.selected-location-info {
+    order: -1;
+    margin-bottom: 12px;
+    padding: 12px;
+    background-color: var(--ns-bg-input);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.location-name {
+    margin: 0;
+    font-weight: bold;
+    color: var(--ns-text-header);
+    font-size: 1em;
+}
+
+.no-selection {
+    margin: 0;
+    color: var(--ns-text-light);
+    font-style: italic;
+    font-size: 0.95em;
+}
+
+/* Wounds List */
+.wounds-list-container {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.wounds-all-locations {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.all-wounds-location {
+    background-color: var(--ns-bg-input);
+    border-left: 3px solid var(--ns-text-accent);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.location-wounds-group {
+    display: none;
+    background-color: var(--ns-bg-input);
+    border-left: 3px solid var(--ns-color-accent);
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.location-wounds-group.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.location-wounds-title {
+    margin: 0 0 8px 0;
+    font-size: 0.95em;
+    font-weight: bold;
+    color: var(--ns-text-header);
+}
+
+.wound-item {
+    background-color: rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 3px;
+    padding: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wound-checkbox {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--ns-color-accent);
+}
+
+.wound-item-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.wound-item-name {
+    flex: 1;
+    font-weight: 500;
+    color: var(--ns-text-main);
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wound-healing-badge {
+    background-color: rgba(217, 160, 36, 0.2);
+    color: #d9a024;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.75em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.wound-item-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.heal-wound-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    background-color: var(--ns-color-accent);
+    color: white;
+    border: none;
+    border-radius: 3px;
+    font-size: 0.75em;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.heal-wound-btn:hover {
+    background-color: var(--ns-color-accent-darker);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.heal-wound-btn:active {
+    transform: scale(0.98);
+}
+
+.heal-wound-btn i {
+    font-size: 0.9em;
+}
+
+.wound-item-compact {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.healing-actions-footer {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ns-border-light);
+    justify-content: flex-end;
+}
+
+.heal-selected-wounds:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.no-wounds-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--ns-text-light);
+    text-align: center;
+}
+
+.no-wounds-message i {
+    font-size: 2.5em;
+    color: #4caf50;
+    margin-bottom: 12px;
+}
+
+.no-wounds-message p {
+    margin: 0;
+}
+
+/* === HEALING DIALOG === */
+.healing-dialog {
+    padding: 16px;
+    text-align: center;
+}
+
+.healing-dialog p {
+    margin: 8px 0;
+    font-size: 0.95em;
+}
+
+.healing-dialog p:first-child {
+    font-size: 1.1em;
+    margin-bottom: 12px;
+}
+
+.healing-dialog p:last-child {
+    color: var(--ns-text-light);
+    font-size: 0.9em;
+    margin-top: 16px;
+}
+
+/* === MEDIC SELECTION DIALOG === */
+.medic-selection-dialog {
+    padding: 16px;
+}
+
+.medic-selection-dialog .form-group {
+    margin-bottom: 12px;
+}
+
+.medic-selection-dialog label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--ns-text-header);
+    font-size: 0.95em;
+}
+
+.medic-selection-dialog select {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: var(--ns-bg-input);
+    color: var(--ns-text-main);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    font-size: 0.95em;
+    cursor: pointer;
+}
+
+.medic-selection-dialog select:hover {
+    border-color: var(--ns-color-accent);
+}
+
+.medic-selection-dialog select:focus {
+    outline: none;
+    border-color: var(--ns-color-accent);
+    box-shadow: 0 0 0 3px rgba(148, 148, 217, 0.1);
+}
+
+/* === HEALING METHOD DIALOG === */
+.healing-method-dialog {
+    padding: 16px;
+}
+
+.healing-method-dialog > p {
+    margin-bottom: 16px;
+    font-weight: 600;
+    color: var(--ns-text-header);
+}
+
+.healing-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.healing-method-option {
+    padding: 12px;
+    background-color: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+}
+
+.healing-method-option h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.95em;
+    color: var(--ns-text-header);
+    font-weight: bold;
+}
+
+.healing-method-description {
+    margin: 0 0 8px 0;
+    font-size: 0.85em;
+    color: var(--ns-text-light);
+    font-style: italic;
+}
+
+.healing-method-rules {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.8em;
+    color: var(--ns-text-main);
+}
+
+.healing-method-rules li {
+    margin-bottom: 4px;
+}
+
+/* Healing Roll Dialog */
+.neuroshima.healing-roll-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.neuroshima.healing-roll-dialog .dialog-columns {
+    display: flex;
+    gap: 10px;
+}
+
+.neuroshima.healing-roll-dialog .column {
+    flex: 1;
+    display: flex;
+    justify-content: space-evenly;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.neuroshima.healing-roll-dialog .form-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 5px;
+}
+
+.neuroshima.healing-roll-dialog .form-group label {
+    flex: 1;
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .form-group input[type="number"],
+.neuroshima.healing-roll-dialog .form-group select {
+    flex: 0 0 75px;
+    height: 22px;
+}
+
+.neuroshima.healing-roll-dialog .form-group.vertical {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.neuroshima.healing-roll-dialog .form-group.vertical label {
+    width: 100%;
+    text-align: center;
+    margin-bottom: -2px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.neuroshima.healing-roll-dialog .form-group.vertical select {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.neuroshima.healing-roll-dialog .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+
+.neuroshima.healing-roll-dialog .checkbox-wrapper input[type="checkbox"] {
+    margin: 0;
+}
+
+.neuroshima.healing-roll-dialog .summary-section {
+    border-top: 1px solid #7a7971;
+    padding-top: 5px;
+}
+
+.neuroshima.healing-roll-dialog .summary-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1em;
+    border: none;
+}
+
+.neuroshima.healing-roll-dialog .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.neuroshima.healing-roll-dialog .summary-table td {
+    padding: 5px;
+}
+
+.neuroshima.healing-roll-dialog .summary-table td:last-child {
+    text-align: right;
+    font-weight: bold;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section {
+    border-top: 1px solid #7a7971;
+    padding-top: 5px;
+    margin-top: 5px;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.1em;
+    border: none;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section p {
+    margin: 4px 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .healing-info-section p span {
+    font-weight: bold;
+}
+
+/* Healing Batch Report Styles */
+.neuroshima.roll-card.healing-batch-report {
+    background: rgba(76, 175, 80, 0.03);
+}
+
+.theme-dark .neuroshima.roll-card.healing-batch-report {
+    background: rgba(76, 175, 80, 0.08);
+}
+
+.healing-batch-report .report-summary {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0;
+    font-size: 0.95em;
+}
+
+.healing-batch-report .summary-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.healing-batch-report .summary-item.success .value {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.healing-batch-report .summary-item.failed .value {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.healing-batch-report .summary-divider {
+    color: var(--ns-border-light);
+}
+
+.healing-batch-report .healing-details {
+    margin-top: 4px;
+}
+
+.healing-batch-report .healing-results-header {
+    background: rgba(76, 175, 80, 0.1);
+    padding: 6px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 3px;
+}
+
+.theme-dark .healing-batch-report .healing-results-header {
+    background: rgba(76, 175, 80, 0.15);
+}
+
+.healing-batch-report .wound-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 0;
+}
+
+.healing-batch-report .wound-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    cursor: help;
+}
+
+.healing-batch-report .wound-item.success {
+    background: rgba(76, 175, 80, 0.08);
+    border-left-color: #4caf50;
+}
+
+.healing-batch-report .wound-item.failure {
+    background: rgba(255, 107, 107, 0.08);
+    border-left-color: #ff6b6b;
+}
+
+.healing-batch-report .wound-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 0.9em;
+    flex-shrink: 0;
+}
+
+.healing-batch-report .wound-item.success .wound-icon {
+    color: #4caf50;
+}
+
+.healing-batch-report .wound-item.failure .wound-icon {
+    color: #ff6b6b;
+}
+
+.healing-batch-report .wound-info-main {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.healing-batch-report .wound-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.healing-batch-report .penalty-value {
+    min-width: 50px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.healing-batch-report .wound-item.success .penalty-value {
+    color: #4caf50;
+}
+
+.healing-batch-report .wound-item.failure .penalty-value {
+    color: #ff6b6b;
+}
+
+/* Wounds Configuration Table in Dialog */
+.neuroshima.healing-roll-dialog .wounds-configuration-section {
+    margin: 12px 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wounds-configuration-section {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.neuroshima.healing-roll-dialog .wounds-configuration-section h3 {
+    margin: 0 0 8px 0;
+    padding: 0;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table {
+    width: 100%;
+    font-size: 0.85em;
+    border-collapse: collapse;
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th,
+.neuroshima.healing-roll-dialog .wounds-config-table td {
+    padding: 6px 4px;
+    text-align: left;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.healing-roll-dialog .wound-modifier {
+    width: 60px;
+    padding: 3px 4px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .wound-difficulty {
+    font-weight: 500;
+}
+
+.neuroshima.healing-roll-dialog .wound-healing-percent {
+    font-weight: 600;
+    color: var(--ns-text-accent);
+    text-align: center;
+}
+
+/* Healing Roll Dialog Styles */
+.neuroshima.healing-roll-dialog .wounds-summary-section {
+    margin: 8px 0;
+    padding: 8px;
+    background: rgba(76, 175, 80, 0.03);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+}
+
+.neuroshima.healing-roll-dialog .wounds-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.neuroshima.healing-roll-dialog .wounds-summary-section h3 {
+    margin: 0;
+    padding: 0;
+    font-size: 0.9em;
+    font-weight: bold;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.neuroshima.healing-roll-dialog .wound-symbols {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.neuroshima.healing-roll-dialog .wound-group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    background: rgba(76, 175, 80, 0.15);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-weight: 500;
+    cursor: help;
+}
+
+.neuroshima.healing-roll-dialog .wound-group-badge strong {
+    color: var(--ns-text-accent);
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wound-group-badge {
+    background: rgba(76, 175, 80, 0.2);
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table {
+    width: 100%;
+    font-size: 0.85em;
+    border-collapse: collapse;
+    margin-top: 6px;
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th,
+.neuroshima.healing-roll-dialog .wounds-config-table td {
+    padding: 6px 4px;
+    text-align: left;
+    border-bottom: 1px solid var(--ns-border-light);
+}
+
+.neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .wounds-config-table th {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.neuroshima.healing-roll-dialog .wound-type-cell {
+    font-weight: 600;
+    text-align: center;
+    min-width: 30px;
+}
+
+.neuroshima.healing-roll-dialog .wound-modifier {
+    width: 55px;
+    padding: 4px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+    font-size: 0.85em;
+}
+
+.neuroshima.healing-roll-dialog .wound-difficulty-select {
+    padding: 0;
+}
+
+.neuroshima.healing-roll-dialog .difficulty-select {
+    width: 100%;
+    padding: 4px 3px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 2px;
+    font-size: 0.85em;
+    background: white;
+    cursor: pointer;
+}
+
+.theme-dark .neuroshima.healing-roll-dialog .difficulty-select {
+    background: var(--color-shadow-dark);
+    color: var(--color-text-light);
+}
+
+/* Roll Mode Row in Dialogs */
+.neuroshima .roll-mode-row {
+    margin: 10px 0;
+    padding: 0 5px;
+}
+
+/* Roll Mode Specific Styles on Chat Messages */
+.chat-message:has(.neuroshima.roll-card.gmroll) {
+    border: 2px solid #4a5a96 !important;
+}
+
+.chat-message:has(.neuroshima.roll-card.blindroll) {
+    border: 2px solid #964a4a !important;
+}
+
+.chat-message:has(.neuroshima.roll-card.selfroll) {
+    border: 2px solid #4a964a !important;
+}
+
+/* Flavor text for roll modes */
+.neuroshima.roll-card.gmroll::before,
+.neuroshima.roll-card.blindroll::before,
+.neuroshima.roll-card.selfroll::before {
+    font-size: 0.7em;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+    opacity: 0.7;
+}
+
+.neuroshima.roll-card.gmroll::before {
+    content: "PRIVATE GM ROLL";
+}
+
+.neuroshima.roll-card.blindroll::before {
+    content: "BLIND GM ROLL";
+}
+
+.neuroshima.roll-card.selfroll::before {
+    content: "SELF ROLL";
+}
+
+.theme-dark .chat-message:has(.neuroshima.roll-card.gmroll) { border-color: #6a7ab6 !important; }
+.theme-dark .chat-message:has(.neuroshima.roll-card.blindroll) { border-color: #b66a6a !important; }
+.theme-dark .chat-message:has(.neuroshima.roll-card.selfroll) { border-color: #6ab66a !important; }
+
+/* Neuroshima Config Apps (Compact Mode) */
+.neuroshima-config {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 5px;
+}
+
+.neuroshima-config .config-body {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.neuroshima-config .config-section {
+    border-bottom: 1px solid var(--ns-border-light);
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+}
+
+.neuroshima-config .config-section:last-of-type {
+    border-bottom: none;
+}
+
+.neuroshima-config h3 {
+    margin: 5px 0 10px 0;
+    font-size: 1.1em;
+    border-bottom: 1px solid var(--ns-border-main);
+    color: var(--ns-text-accent);
+}
+
+.neuroshima-config .form-group {
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.neuroshima-config .form-group label {
+    font-size: 0.9em;
+    flex: 2;
+}
+
+.neuroshima-config .form-group .form-fields {
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.neuroshima-config .notes {
+    font-size: 0.75em;
+    margin-top: -2px;
+    opacity: 0.8;
+    line-height: 1.1;
+}
+
+/* Roll Tags */
+.neuroshima.roll-card .roll-header .reroll-tag {
+    color: #f57c00;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card .roll-header .debug-tag {
+    color: #7b1fa2;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+/* Opposed Handler Styles */
+.neuroshima.opposed-handler {
+    min-width: 350px;
+}
+
+.opposed-context-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 4px;
+    margin: 5px 0;
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+
+.opposed-context-flex .participant {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    text-align: center;
+    min-width: 0;
+}
+
+.opposed-context-flex .participant img {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.opposed-context-flex .participant .name {
+    font-weight: bold;
+    font-size: 0.75em;
+    line-height: 1.1;
+    width: 100%;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.opposed-context-flex .participant .role {
+    font-size: 0.6em;
+    opacity: 0.6;
+    text-transform: uppercase;
+}
+
+.opposed-context-flex .vs-divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0 5px;
+    color: var(--ns-text-accent);
+    flex: 0 0 30px;
+}
+
+.opposed-context-flex .vs-text {
+    font-weight: bold;
+    font-size: 1em;
+    font-style: italic;
+}
+
+.opposed-context-flex .vs-divider i {
+    font-size: 0.9em;
+    opacity: 0.5;
+}
+
+/* Allocation Section */
+.opposed-allocation-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.allocation-column {
+    flex: 1 1 120px;
+    min-width: 0;
+}
+
+/* Dice Allocation UI */
+.dice-pool-allocation {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 3px;
+    border-radius: 4px;
+    border: 1px solid var(--ns-border-light);
+}
+
+.theme-dark .dice-pool-allocation {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.skill-pool {
+    display: none;
+}
+
+.pool-header {
+    font-size: 0.75em;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--ns-border-light);
+    padding-bottom: 2px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+}
+
+.pool-header i {
+    color: var(--ns-text-accent);
+}
+
+.pool-value {
+    color: #ffc107;
+    text-shadow: 0 0 2px black;
+}
+
+.theme-light .pool-value {
+    color: #a0692e;
+    text-shadow: none;
+}
+
+.target-info {
+    font-size: 0.65em;
+    opacity: 0.7;
+    text-align: center;
+    margin-bottom: 3px;
+    font-style: italic;
+}
+
+.dice-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.die-allocation-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.theme-dark .die-allocation-box {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.die-allocation-box .die-val {
+    opacity: 0.6;
+    width: 15px;
+    font-weight: bold;
+}
+
+.allocation-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.allocation-controls .control-btn {
+    cursor: pointer;
+    color: var(--ns-text-light);
+    transition: color 0.1s;
+    font-size: 1em;
+    padding: 0 2px;
+}
+
+.allocation-controls .control-btn:hover {
+    color: var(--ns-text-accent);
+}
+
+.allocation-controls .modified-val {
+    font-weight: bold;
+    min-width: 20px;
+    text-align: center;
+    padding: 0 3px;
+    border-radius: 2px;
+    font-size: 1em;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.allocation-controls .modified-val.success {
+    color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.allocation-controls .modified-val.failure {
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.opposed-actions {
+    margin-top: 10px;
+}
+
+.resolve-opposed-button {
+    width: 100%;
+    background: #4a5a96;
+    color: white;
+    border: 1px solid #6a7ab6;
+    font-family: inherit;
+    padding: 8px;
+    cursor: pointer;
+}
+
+/* Melee Duel Tracker */
+.melee-duel-tracker {
+    font-family: 'SpecialElite', sans-serif;
+    background: var(--ns-bg-sheet);
+    border: 2px solid var(--ns-border-main);
+}
+
+.melee-duel-tracker .participants-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+}
+
+.melee-duel-tracker .participant {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.melee-duel-tracker .participant img {
+    width: 48px;
+    height: 48px;
+    border: 1px solid var(--ns-border-main);
+}
+
+.melee-duel-tracker .participant.is-active-turn img {
+    border: 2px solid #f57c00;
+    box-shadow: 0 0 10px rgba(245, 124, 0, 0.8);
+    transform: scale(1.05);
+}
+
+.melee-duel-tracker .participant.has-initiative {
+    box-shadow: 0 0 10px var(--ns-text-accent);
+    border: 1px solid var(--ns-text-accent);
+}
+
+.melee-duel-tracker .vs {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    padding: 0 20px;
+}
+
+.melee-duel-tracker .duel-status-info {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--ns-border-light);
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.melee-duel-tracker .turn-counter {
+    color: var(--ns-text-accent);
+}
+
+.melee-duel-tracker .segment-info {
+    color: var(--ns-text-main);
+}
+
+.melee-duel-tracker .dice-pools {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+}
+
+.melee-duel-tracker .dice-pool {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.melee-duel-tracker .dice-pool.active {
+    background: rgba(245, 124, 0, 0.08);
+    border: 1px solid rgba(245, 124, 0, 0.4);
+    box-shadow: inset 0 0 10px rgba(245, 124, 0, 0.1);
+}
+
+.melee-duel-tracker .dice-pool.has-initiative {
+    border-top: 2px solid var(--ns-text-accent);
+}
+
+.melee-duel-tracker .dice-grid {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.melee-duel-tracker .die-container {
+    position: relative;
+    width: 50px;
+}
+
+.melee-duel-tracker .die {
+    width: 50px;
+    height: 50px;
+    line-height: 50px;
+    font-size: 1.2em;
+    border: 2px solid var(--ns-border-main);
+    background: var(--ns-bg-input);
+    cursor: pointer;
+    text-align: center;
+}
+
+.melee-duel-tracker .die.success {
+    border-color: #2e7d32;
+    background: rgba(46, 125, 50, 0.1);
+}
+
+.melee-duel-tracker .die.selected {
+    border-color: #f57c00;
+    box-shadow: 0 0 15px rgba(245, 124, 0, 0.6);
+    transform: scale(1.1);
+    z-index: 5;
+}
+
+.melee-duel-tracker .die.selected::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #f57c00;
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid white;
+}
+
+.melee-duel-tracker .die:hover:not(.spent) {
+    border-color: var(--ns-text-accent);
+    background: var(--ns-bg-hover);
+}
+
+.melee-duel-tracker .die.spent {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.melee-duel-tracker .die-mods {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.melee-duel-tracker .die-mods button {
+    padding: 0 5px;
+    font-size: 0.8em;
+}
+
+.melee-duel-tracker .melee-tracker-footer {
+    padding: 10px;
+    border-top: 2px solid var(--ns-border-main);
+    text-align: center;
+}
+
+.melee-duel-tracker .ready-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.melee-duel-tracker .ready-btn {
+    padding: 5px 15px;
+    border: 1px solid var(--ns-border-main);
+    cursor: pointer;
+}
+
+.melee-duel-tracker .ready-btn.active {
+    background: #2e7d32;
+    color: white;
+}
+
+/* Combat Tracker View Logic */
+.neuroshima.combat-tracker[data-view="encounter"] [data-application-part="melee"] {
+    display: none !important;
+}
+
+.neuroshima.combat-tracker[data-view="melee"] [data-application-part="header"],
+.neuroshima.combat-tracker[data-view="melee"] [data-application-part="tracker"],
+.neuroshima.combat-tracker[data-view="melee"] [data-application-part="footer"] {
+    display: none !important;
+}
+
+/* Combat Tracker Tabs */
+.neuroshima.combat-tracker .combat-tabs {
+    flex: 0 0 32px;
+    border-top: 1px solid var(--ns-border-main);
+    border-bottom: 1px solid var(--ns-border-main);
+    background: var(--ns-bg-header);
+    display: flex;
+    justify-content: space-around;
+}
+
+.neuroshima.combat-tracker .combat-tabs .item {
+    line-height: 32px;
+    font-size: 0.9rem;
+    font-family: 'SpecialElite', serif;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+    text-transform: uppercase;
+    color: var(--ns-text-light);
+    transition: all 0.2s;
+}
+
+.neuroshima.combat-tracker .combat-tabs .item.active {
+    text-shadow: 0 0 10px var(--ns-border-focus);
+    border-bottom: 3px solid var(--ns-border-focus);
+}
+
+.neuroshima.combat-tracker .melee-view-container {
+    padding: 5px;
+    overflow-y: auto;
+}
+
+.neuroshima.combat-tracker .melee-duels-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.neuroshima.combat-tracker .melee-duel-item {
+    border: 1px solid var(--ns-border-main);
+    background: var(--ns-bg-panel);
+    margin-bottom: 5px;
+    padding: 5px;
+    border-radius: 3px;
+}
+
+.neuroshima.combat-tracker .duel-participants {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px;
+}
+
+.neuroshima.combat-tracker .participant {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    font-size: 0.75rem;
+    text-align: center;
+    min-width: 0;
+}
+
+.neuroshima.combat-tracker .participant-img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border: 2px solid var(--ns-border-main);
+    border-radius: 50%;
+    margin-bottom: 4px;
+}
+
+.neuroshima.combat-tracker .participant-name {
+    font-family: 'SpecialElite', serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.neuroshima.combat-tracker .vs {
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.neuroshima.combat-tracker .duel-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+    border-top: 1px dashed var(--ns-border-light);
+    padding-top: 3px;
+    font-size: 0.9rem;
+}
+
+.neuroshima.combat-tracker .open-duel {
+    color: var(--ns-text-clickable);
+    cursor: pointer;
+}
+
+.neuroshima.combat-tracker .open-duel:hover {
+    text-shadow: 0 0 5px var(--ns-text-clickable);
+}
+
+/* ── Active / Pending Melee Panels ──────────────────────────── */
+.neuroshima.combat-tracker .active-melee-panel.full-view {
+    background: var(--ns-bg-panel, #1e1e1e);
+    border: 1px solid rgba(192, 57, 43, 0.4);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+}
+
+.neuroshima.combat-tracker .active-melee-panel.full-view:hover {
+    border-color: #c0392b;
+    box-shadow: 0 0 8px rgba(192, 57, 43, 0.3);
+}
+
+.neuroshima.combat-tracker .pending-melee-panel.full-view {
+    background: var(--ns-bg-panel, #1e1e1e);
+    border: 1px solid rgba(243, 156, 18, 0.3);
+    border-radius: 6px;
+    margin-bottom: 6px;
+    overflow: hidden;
+}
+
+.neuroshima.combat-tracker .melee-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 6px;
+}
+
+.neuroshima.combat-tracker .active-melee-panel.full-view .melee-header {
+    background: rgba(192, 57, 43, 0.15);
+    color: #ffffff;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel.full-view .melee-header {
+    background: rgba(243, 156, 18, 0.1);
+    color: rgba(243, 156, 18, 0.8);
+}
+
+.neuroshima.combat-tracker .pending-controls,
+.neuroshima.combat-tracker .duel-controls {
+    margin-left: auto;
+}
+
+.neuroshima.combat-tracker .action-btn.dismiss,
+.neuroshima.combat-tracker .action-btn.delete {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: color 0.15s;
+    padding: 2px 4px;
+}
+
+.neuroshima.combat-tracker .action-btn.dismiss:hover,
+.neuroshima.combat-tracker .action-btn.delete:hover {
+    color: #e74c3c;
+}
+
+.neuroshima.combat-tracker .melee-participants {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 8px;
+}
+
+.neuroshima.combat-tracker .melee-participants .team {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.combat-tracker .melee-participants .team-a { align-items: flex-end; }
+.neuroshima.combat-tracker .melee-participants .team-b { align-items: flex-start; }
+
+.neuroshima.combat-tracker .participant-mini {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 90px;
+}
+
+.neuroshima.combat-tracker .participant-img-tiny {
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.neuroshima.combat-tracker .participant-name-tiny {
+    font-size: 0.72em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.neuroshima.combat-tracker .melee-participants .vs {
+    font-size: 0.72em;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.22);
+    flex-shrink: 0;
+}
+
+.neuroshima.combat-tracker .melee-instruction,
+.neuroshima.combat-tracker .melee-status {
+    padding: 0 8px 6px;
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.32);
+    text-align: center;
+    font-style: italic;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel .melee-participants {
+    font-size: 0.82em;
+    color: rgba(255, 255, 255, 0.6);
+    gap: 8px;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel .melee-participants span {
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.combat-tracker .pending-melee-panel .melee-participants i {
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.neuroshima.combat-tracker .join-melee-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: calc(100% - 16px);
+    margin: 0 8px 8px;
+    padding: 5px 8px;
+    background: rgba(192, 57, 43, 0.7);
+    border: 1px solid #c0392b;
+    border-radius: 4px;
+    color: #fff;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.neuroshima.combat-tracker .join-melee-btn:hover {
+    background: rgba(231, 76, 60, 0.85);
+}
+
+.neuroshima.combat-tracker .no-melee-active {
+    text-align: center;
+    padding: 20px 10px;
+    color: rgba(255, 255, 255, 0.25);
+    font-style: italic;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.combat-tracker .no-melee-active i {
+    font-size: 1.4em;
+    display: block;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.neuroshima.combat-tracker .no-melee-active p {
+    font-size: 0.85em;
+    margin: 0 0 4px;
+}
+
+.neuroshima.combat-tracker .no-melee-active small {
+    font-size: 0.72em;
+    opacity: 0.6;
+}
+
+/* =============================================
+   DICE TOOLTIP — .tooltip-inline inside Foundry's #tooltip
+   Uses .neuroshima.roll-card classes so existing styles apply,
+   with dark-theme overrides since #tooltip always has dark bg.
+   ============================================= */
+
+.neuroshima.roll-card.tooltip-inline {
+    gap: 4px;
+    min-width: 160px;
+    font-size: 0.9em;
+}
+
+.neuroshima.roll-card.tooltip-inline .roll-header {
+    font-size: 0.9em;
+    border-bottom-color: #5a5a54;
+    color: #e0e0d0;
+    padding-bottom: 2px;
+    margin-bottom: 0;
+}
+
+.neuroshima.roll-card.tooltip-inline .dotted-hr {
+    border-color: #5a5a5455;
+    margin: 2px 0;
+}
+
+.neuroshima.roll-card.tooltip-inline .dice-results-grid {
+    gap: 2px;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-label {
+    color: #e0e0d0;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+    box-shadow: inset 0 0 4px #ffffff11;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.nat-1 {
+    background: #332b00;
+    border-color: #fbc02d;
+    color: #ffeb3b;
+    box-shadow: 0 0 8px #fbc02d44;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.nat-20 {
+    background: #3d0c0c;
+    border-color: #d32f2f;
+    color: #ff8a80;
+    box-shadow: 0 0 8px #d32f2f44;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.modified.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square.modified.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.neuroshima.roll-card.tooltip-inline .die-square-container i {
+    color: #a0a090;
+}
+
+.neuroshima.roll-card.tooltip-inline .roll-outcome {
+    border-color: #5a5a54;
+    color: #e0e0d0;
+    gap: 1px;
+}
+
+.neuroshima.roll-card.tooltip-inline .outcome-item .label {
+    color: #a0a090;
+    font-size: 0.85em;
+}
+
+.neuroshima.roll-card.tooltip-inline .outcome-item .value {
+    color: #e0e0d0;
+}
+
+/* ===== Changes Tab ===== */
+
+.neuroshima.effect .ns-change-key-toggle {
+    border-bottom: 1px solid var(--ns-border-main);
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85em;
+    margin-bottom: 0.25rem;
+}
+
+.neuroshima.effect section[data-tab="changes"] .key select {
+    width: 100%;
+    height: 24px;
+    font-size: 0.82em;
+    padding: 0 4px;
+    box-sizing: border-box;
+}
+
+/* ===== Script List (Effect Sheet Scripts Tab) ===== */
+
+.neuroshima.effect .neuroshima-script-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+}
+
+.neuroshima.effect .ns-script-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 2rem;
+    line-height: 2rem;
+    padding: 0 0.5rem;
+    background: var(--ns-bg-header);
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    gap: 0.25rem;
+}
+
+.neuroshima.effect .ns-script-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+}
+
+.neuroshima.effect .ns-script-label a {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--ns-text-main);
+    text-decoration: none;
+}
+
+.neuroshima.effect .ns-script-label a:hover {
+    color: var(--ns-border-focus);
+}
+
+.neuroshima.effect .ns-script-trigger {
+    flex: 0 0 auto;
+    font-size: 0.8em;
+    opacity: 0.65;
+    padding: 0 0.4rem;
+}
+
+.neuroshima.effect .ns-script-action {
+    flex: 0 0 1.5rem;
+    text-align: center;
+    line-height: 2rem;
+    color: var(--ns-text-light);
+    cursor: pointer;
+}
+
+.neuroshima.effect .ns-script-action:hover {
+    color: var(--ns-border-focus);
+}
+
+.neuroshima.effect .ns-scripts-empty {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.neuroshima.effect .ns-script-add {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.neuroshima.effect .ns-script-add button {
+    width: auto;
+    padding: 0 1.5rem;
+    height: 1.8rem;
+    line-height: 1.8rem;
+}
+
+/* ===== Script Editor Popup ===== */
+
+.neuroshima.script-editor .window-content {
+    overflow: hidden;
+    padding: 0;
+}
+
+.neuroshima.script-editor .window-content > [data-application-part] {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.neuroshima.script-editor .ns-script-editor-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0.75rem;
+    box-sizing: border-box;
+    gap: 0.5rem;
+    overflow: hidden;
+}
+
+.neuroshima.script-editor .ns-editor-fields {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.neuroshima.script-editor .ns-editor-fields .form-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-height: 26px;
+}
+
+.neuroshima.script-editor .ns-editor-fields .form-group label {
+    flex: 0 0 120px;
+    font-size: 0.85em;
+    font-weight: bold;
+    white-space: nowrap;
+    margin: 0;
+    text-align: left;
+}
+
+.neuroshima.script-editor .ns-editor-fields .form-group .form-fields {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.neuroshima.script-editor .ns-editor-fields .form-group select,
+.neuroshima.script-editor .ns-editor-fields .form-group input[type="text"] {
+    width: 100%;
+    height: 26px;
+    margin: 0;
+}
+
+.neuroshima.script-editor .ns-editor-fields .form-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.neuroshima.script-editor .ns-editor-scroll-area {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.neuroshima.script-editor .ns-run-if-disabled-group {
+    margin: 0;
+    padding: 0;
+    min-height: unset;
+}
+
+.neuroshima.script-editor .ns-dialog-subscripts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border-top: 1px solid var(--ns-border-main, #7a7971);
+    padding-top: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+.neuroshima.script-editor .ns-script-code-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+.neuroshima.script-editor .ns-script-code-group label {
+    flex-shrink: 0;
+    margin-bottom: 0.25rem;
+    font-size: 0.85em;
+}
+
+.neuroshima.script-editor .ns-script-code-group label .hint {
+    opacity: 0.6;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.neuroshima.script-editor .ns-script-code-group code-mirror {
+    display: block;
+    width: 100%;
+    height: 200px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.neuroshima.script-editor .ns-dialog-subscripts .ns-script-code-group code-mirror {
+    height: 140px;
+}
+
+.neuroshima.script-editor .ns-script-code-group code-mirror .cm-editor {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.neuroshima.script-editor .ns-script-code-group code-mirror .cm-scroller {
+    overflow: auto;
+}
+
+.neuroshima .cm-editor *,
+.neuroshima .cm-editor {
+    font-family: "Fira Code", "Cascadia Code", "Consolas", "Menlo", "Monaco", monospace !important;
+}
+
+.neuroshima.script-editor .form-footer {
+    flex-shrink: 0;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--ns-border-main, #7a7971);
+}
+
+/* ── Melee Opposed Chat Cards ────────────────────────────────────────────── */
+
+.chat-message:has(.neuroshima.melee-opposed-card) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-card) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+.neuroshima.melee-opposed-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+}
+
+.neuroshima.melee-opposed-card .melee-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 1em;
+    border-bottom: 2px solid var(--ns-text-accent, #a02e2e);
+    padding-bottom: 4px;
+}
+.neuroshima.melee-opposed-card .melee-card-header .participant {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+.neuroshima.melee-opposed-card .melee-card-header .participant img {
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main, #7a7971);
+}
+.neuroshima.melee-opposed-card .melee-card-header .vs-badge {
+    font-size: 1.1em;
+    color: var(--ns-text-accent, #a02e2e);
+    flex-shrink: 0;
+}
+
+.neuroshima.melee-opposed-card .mode-label {
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.65;
+    text-align: center;
+}
+
+.neuroshima.melee-opposed-card .weapon-line {
+    font-size: 0.9em;
+}
+.neuroshima.melee-opposed-card .weapon-line .damage-tiers {
+    font-weight: bold;
+    color: var(--ns-text-accent, #a02e2e);
+    margin-left: 4px;
+}
+
+.neuroshima.melee-opposed-card .section-label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+.neuroshima.melee-opposed-card .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.neuroshima.melee-opposed-card .die-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.neuroshima.melee-opposed-card .die-label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    min-width: 36px;
+}
+.neuroshima.melee-opposed-card .die-square-container {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.neuroshima.melee-opposed-card .die-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid #7a7971;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 0.88em;
+    background: rgba(0,0,0,0.04);
+}
+.neuroshima.melee-opposed-card .die-square.success {
+    background: #d4edda;
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+.neuroshima.melee-opposed-card .die-square.failure {
+    background: #fdecea;
+    border-color: #ef5350;
+    color: #c62828;
+}
+.neuroshima.melee-opposed-card .die-square.nat-1 {
+    background: #fff8e1;
+    border-color: #fbc02d;
+    color: #f57f17;
+}
+.neuroshima.melee-opposed-card .die-square.nat-20 {
+    background: #fdecea;
+    border-color: #b71c1c;
+    color: #b71c1c;
+}
+.theme-dark .neuroshima.melee-opposed-card .die-square {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+}
+.theme-dark .neuroshima.melee-opposed-card .die-square.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-opposed-card .die-square.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+
+.neuroshima.melee-opposed-card .successes-line {
+    font-size: 0.85em;
+    margin-top: 2px;
+    opacity: 0.85;
+}
+
+.neuroshima.melee-opposed-card .pending-defense {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 4px 0;
+}
+.neuroshima.melee-opposed-card .awaiting-label {
+    font-size: 0.82em;
+    opacity: 0.65;
+    font-style: italic;
+    text-align: center;
+}
+.neuroshima.melee-opposed-card .defender-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-top: 4px;
+}
+.neuroshima.melee-opposed-card .melee-opposed-defend-btn {
+    background: #1a6aa0;
+    color: #fff;
+    border: 1px solid #145580;
+    border-radius: 6px;
+    padding: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    line-height: 1;
+    font-size: 1em;
+}
+.neuroshima.melee-opposed-card .melee-opposed-defend-btn img {
+    border-radius: 3px;
+    object-fit: cover;
+}
+.neuroshima.melee-opposed-card .melee-opposed-defend-btn:hover {
+    background: #1580bf;
+    border-color: #1068a0;
+}
+
+.neuroshima.melee-opposed-card .resolved-label {
+    font-size: 0.82em;
+    opacity: 0.6;
+    font-style: italic;
+    text-align: center;
+    color: #4caf50;
+}
+.neuroshima.melee-opposed-card.is-resolved .melee-opposed-defend-btn {
+    display: none;
+}
+
+/* Result card specific */
+.neuroshima.melee-opposed-result .dice-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.neuroshima.melee-opposed-result .dice-column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.neuroshima.melee-opposed-result .column-header {
+    font-size: 0.78em;
+    font-weight: bold;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.neuroshima.melee-opposed-result .column-header.attacker-header {
+    color: var(--ns-text-accent, #a02e2e);
+}
+.neuroshima.melee-opposed-result .column-header.defender-header {
+    color: #1565c0;
+}
+.theme-dark .neuroshima.melee-opposed-result .column-header.defender-header {
+    color: #64b5f6;
+}
+
+.neuroshima.melee-opposed-result .result-section {
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+.neuroshima.melee-opposed-result .result-section.hit {
+    background: #d4edda;
+    color: #1b5e20;
+    border-left: 3px solid #4caf50;
+}
+.neuroshima.melee-opposed-result .result-section.block {
+    background: #fdecea;
+    color: #c62828;
+    border-left: 3px solid #ef5350;
+}
+.theme-dark .neuroshima.melee-opposed-result .result-section.hit {
+    background: #1b301b;
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-opposed-result .result-section.block {
+    background: #3d1c1c;
+    color: #ef9a9a;
+}
+
+.neuroshima.melee-opposed-result .hits-detail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+.neuroshima.melee-opposed-result .hit-badge {
+    background: rgba(0,0,0,0.12);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 0.82em;
+    font-weight: bold;
+}
+
+.neuroshima.melee-opposed-result .apply-damage-row {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn {
+    background: #a02e2e;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 0.85em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn:hover {
+    background: #c0392b;
+}
+
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn.applied,
+.neuroshima.melee-opposed-result .apply-opposed-damage-btn:disabled {
+    opacity: 0.55;
+    cursor: default;
+    pointer-events: none;
+    background: #5a6268;
+    color: #fff;
+}
+
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn {
+    background: #7b1a1a;
+}
+
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn:hover {
+    background: #a02e2e;
+}
+
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn.applied,
+.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn:disabled {
+    background: #3a3f44;
+}
+
+/* === Chat message wrapper for result card === */
+.chat-message:has(.neuroshima.melee-opposed-result) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) .message-header,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.melee-opposed-result) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+/* === Result card base layout === */
+.neuroshima.melee-opposed-result {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+}
+
+/* === Result card shared inner elements === */
+.neuroshima.melee-opposed-result .melee-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 1em;
+    border-bottom: 2px solid var(--ns-text-accent, #a02e2e);
+    padding-bottom: 4px;
+}
+.neuroshima.melee-opposed-result .melee-card-header .participant {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+.neuroshima.melee-opposed-result .melee-card-header .participant img {
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main, #7a7971);
+}
+.neuroshima.melee-opposed-result .melee-card-header .vs-badge {
+    font-size: 1.1em;
+    color: var(--ns-text-accent, #a02e2e);
+    flex-shrink: 0;
+}
+.neuroshima.melee-opposed-result .mode-label {
+    font-size: 0.78em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.65;
+    text-align: center;
+}
+.neuroshima.melee-opposed-result .dice-results-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.neuroshima.melee-opposed-result .die-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.neuroshima.melee-opposed-result .die-label {
+    font-size: 0.8em;
+    opacity: 0.7;
+    min-width: 36px;
+}
+.neuroshima.melee-opposed-result .die-square-container {
+    display: flex;
+    align-items: center;
+}
+.neuroshima.melee-opposed-result .die-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.95em;
+    border: 1px solid #ccc;
+    background: #f5f5ec;
+}
+.neuroshima.melee-opposed-result .die-square.success {
+    background: #e8f5e9;
+    border-color: #4caf50;
+    color: #1b5e20;
+}
+.neuroshima.melee-opposed-result .die-square.failure {
+    background: #fdecea;
+    border-color: #ef5350;
+    color: #c62828;
+}
+.neuroshima.melee-opposed-result .die-square.nat-1 {
+    background: #fff9c4;
+    border-color: #fbc02d;
+    color: #e65100;
+}
+.neuroshima.melee-opposed-result .die-square.nat-20 {
+    background: #fdecea;
+    border-color: #d32f2f;
+    color: #b71c1c;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.failure {
+    background: #3d1c1c;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+.neuroshima.melee-opposed-result .successes-line {
+    font-size: 0.82em;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+.neuroshima.melee-opposed-result .dotted-hr {
+    border: none;
+    border-top: 1px dashed rgba(0,0,0,0.15);
+    margin: 2px 0;
+}
+.theme-dark .neuroshima.melee-opposed-result .dotted-hr {
+    border-top-color: rgba(255,255,255,0.1);
+}
+
+/* === Dice duel grid (paired attacker vs defender per row) === */
+.neuroshima.melee-opposed-result .dice-duel-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.neuroshima.melee-opposed-result .dice-duel-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto 1fr;
+    align-items: center;
+    gap: 6px;
+}
+.neuroshima.melee-opposed-result .die-slot-label {
+    font-size: 0.78em;
+    opacity: 0.65;
+    font-weight: bold;
+    text-align: right;
+}
+.neuroshima.melee-opposed-result .die-slot {
+    display: flex;
+    justify-content: center;
+}
+.neuroshima.melee-opposed-result .die-slot:last-child {
+    justify-content: center;
+}
+.neuroshima.melee-opposed-result .duel-vs {
+    font-size: 0.72em;
+    opacity: 0.45;
+    text-align: center;
+    font-style: italic;
+}
+.neuroshima.melee-opposed-result .successes-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto 1fr;
+    gap: 6px;
+    margin-top: 2px;
+}
+.neuroshima.melee-opposed-result .successes-row .successes-line {
+    font-size: 0.8em;
+    opacity: 0.75;
+    text-align: center;
+}
+.neuroshima.melee-opposed-result .die-square.no-die {
+    background: transparent;
+    border-color: rgba(0,0,0,0.12);
+    color: rgba(0,0,0,0.25);
+    font-size: 1em;
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.no-die {
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.2);
+}
+
+.neuroshima.melee-opposed-result .die-square.die-winner {
+    outline: 2px solid #ffd700;
+    box-shadow: 0 0 7px rgba(255, 215, 0, 0.7);
+    font-weight: bold;
+}
+.neuroshima.melee-opposed-result .die-square.die-loser {
+    opacity: 0.4;
+    filter: grayscale(70%);
+}
+.theme-dark .neuroshima.melee-opposed-result .die-square.die-winner {
+    outline: 2px solid #ffd700;
+    box-shadow: 0 0 9px rgba(255, 215, 0, 0.6);
+}
+
+.neuroshima.melee-opposed-result .opposed-apply-row {
+    display: flex;
+    padding: 4px 0 0;
+    border-top: none;
+    background: none;
+    border: none;
+    margin-top: 2px;
+}
+
+/* ── Beast Action Spending UI ─────────────────────────────────────────── */
+.beast-action-spending {
+    margin-top: 6px;
+    border: 1px solid rgba(120, 80, 20, 0.4);
+    border-radius: 4px;
+    background: rgba(100, 60, 10, 0.08);
+    overflow: hidden;
+    font-size: 12px;
+}
+
+.beast-spending-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: rgba(100, 60, 10, 0.18);
+    border-bottom: 1px solid rgba(120, 80, 20, 0.3);
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.beast-spending-header .fas {
+    color: #a0650a;
+}
+
+.beast-spent-counter {
+    margin-left: auto;
+    font-size: 11px;
+    color: #888;
+}
+
+.beast-action-list {
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.beast-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 4px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.03);
+}
+
+.beast-action-row:hover {
+    background: rgba(255,255,255,0.07);
+}
+
+.beast-action-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+    min-width: 0;
+}
+
+.beast-action-info img {
+    border: none;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.beast-action-name {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.beast-action-cost-badge {
+    background: rgba(100, 60, 10, 0.35);
+    color: #c8860a;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 5px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.beast-action-damage-badge {
+    background: rgba(160, 30, 30, 0.25);
+    color: #c04040;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 5px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.beast-action-effect-icon {
+    color: #8060c0;
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.beast-action-qty {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.beast-qty-btn {
+    width: 20px;
+    height: 20px;
+    border: 1px solid rgba(120, 80, 20, 0.5);
+    border-radius: 3px;
+    background: rgba(100, 60, 10, 0.2);
+    color: inherit;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.beast-qty-btn:hover:not(:disabled) {
+    background: rgba(100, 60, 10, 0.4);
+}
+
+.beast-qty-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.beast-qty-value {
+    min-width: 18px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.beast-spending-footer {
+    padding: 5px 8px;
+    border-top: 1px solid rgba(120, 80, 20, 0.3);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.apply-beast-actions-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border: 1px solid rgba(120, 80, 20, 0.6);
+    border-radius: 3px;
+    background: rgba(100, 60, 10, 0.3);
+    color: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.apply-beast-actions-btn:hover:not(:disabled) {
+    background: rgba(140, 90, 10, 0.5);
+}
+
+.apply-beast-actions-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.theme-dark .beast-action-spending {
+    border-color: rgba(180, 120, 30, 0.4);
+    background: rgba(80, 50, 5, 0.25);
+}
+
+.theme-dark .beast-spending-header {
+    background: rgba(80, 50, 5, 0.4);
+    border-color: rgba(180, 120, 30, 0.3);
+}
+
+/* ===== Condition Config ===== */
+.condition-config {
+    padding: 8px;
+}
+
+.condition-config h2 {
+    margin: 0 0 4px;
+    font-size: 1.1em;
+}
+
+.condition-config .hint {
+    font-size: 0.85em;
+    color: var(--ns-text-muted, #888);
+    margin: 0 0 10px;
+}
+
+.conditions-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.condition-add-btn,
+.condition-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.condition-add-btn {
+    background: var(--ns-accent, #8b0000);
+}
+
+.condition-add-btn:hover {
+    background: var(--ns-accent-hover, #a00000);
+}
+
+.condition-reset-btn {
+    background: #555;
+}
+
+.condition-reset-btn:hover {
+    background: #444;
+}
+
+.conditions-list {
+    border: 1px solid var(--ns-border, #ccc);
+    border-radius: 4px;
+    overflow-y: auto;
+    max-height: 380px;
+    margin-bottom: 12px;
+}
+
+.conditions-list-header,
+.condition-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 1fr 140px 36px 32px;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+}
+
+.conditions-list-header {
+    background: var(--ns-bg-header, rgba(0,0,0,0.1));
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ns-text-muted, #888);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.condition-row {
+    border-top: 1px solid var(--ns-border, #ccc);
+}
+
+.condition-row:first-of-type {
+    border-top: none;
+}
+
+.condition-row:hover {
+    background: var(--ns-bg-hover, rgba(0,0,0,0.03));
+}
+
+.condition-row-empty {
+    justify-content: center;
+    grid-template-columns: 1fr;
+    padding: 12px;
+    color: var(--ns-text-muted, #888);
+    font-size: 0.85em;
+    text-align: center;
+    font-style: italic;
+}
+
+.condition-row .col-img {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.condition-row .col-neg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.condition-row .col-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.condition-edit-btn {
+    color: var(--ns-blue, #2a5a8a);
+    cursor: pointer;
+    font-size: 0.9em;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+    margin-right: 4px;
+}
+
+.condition-edit-btn:hover {
+    opacity: 1;
+}
+
+.condition-delete-btn {
+    color: var(--ns-accent, #8b0000);
+    cursor: pointer;
+    font-size: 0.9em;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+
+.condition-delete-btn:hover {
+    opacity: 1;
+}
+
+.condition-row input[type="text"] {
+    width: 100%;
+    font-size: 0.85em;
+    padding: 2px 4px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.05));
+    border: 1px solid var(--ns-border, #ccc);
+    border-radius: 3px;
+    color: inherit;
+}
+
+.condition-row select {
+    width: 100%;
+    font-size: 0.82em;
+    padding: 2px 2px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.05));
+    border: 1px solid var(--ns-border, #ccc);
+    border-radius: 3px;
+    color: inherit;
+}
+
+.condition-neg-checkbox:disabled {
+    opacity: 0.3;
+}
+
+.condition-key-input {
+    font-family: monospace;
+    font-size: 0.8em !important;
+}
+
+.condition-img-preview {
+    border-radius: 3px;
+    border: 1px solid var(--ns-border, #ccc);
+    object-fit: contain;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.condition-img-preview:hover {
+    border-color: var(--ns-accent, #8b0000);
+    box-shadow: 0 0 3px rgba(139,0,0,0.3);
+}
+
+.theme-dark .condition-config .hint {
+    color: #aaa;
+}
+
+.theme-dark .conditions-list {
+    border-color: rgba(255,255,255,0.12);
+}
+
+.theme-dark .condition-row {
+    border-top-color: rgba(255,255,255,0.08);
+}
+
+.theme-dark .condition-row:hover {
+    background: rgba(255,255,255,0.03);
+}
+
+/* Item Summary Dropdown */
+.item-wrap {
+    border-bottom: 1px solid var(--ns-border-color, rgba(255,255,255,0.1));
+}
+
+.item-wrap:last-child {
+    border-bottom: none;
+}
+
+.item-wrap .item {
+    border-bottom: none;
+}
+
+.item-summary {
+    padding: 6px 10px 8px 10px;
+    font-size: 1.0em;
+    background: rgba(0,0,0,0.15);
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.item-summary.collapsed {
+    display: none;
+}
+
+.item-summary .item-description {
+    color: var(--ns-text-secondary, #ccc);
+    line-height: 1.4;
+}
+
+.item-summary .item-description p {
+    margin: 0 0 4px;
+}
+
+.item-summary .item-description p:last-child {
+    margin-bottom: 0;
+}
+
+.item-summary .item-script-row {
+    margin-top: 6px;
+}
+
+.item-summary .summary-section-header {
+    width: 100%;
+    font-size: 0.72em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ns-text-secondary, #888);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding-bottom: 2px;
+    margin-bottom: 3px;
+}
+
+.item-summary .item-stats-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.item-summary .item-stats-summary:not(:has(.stat-summary-chip)) {
+    display: none;
+}
+
+.item-summary .stat-summary-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.75em;
+    line-height: 1.5;
+}
+
+.item-summary .stat-summary-chip.stat-chip-warning {
+    border-color: rgba(200, 80, 60, 0.5);
+    background: rgba(200, 80, 60, 0.08);
+}
+
+.item-summary .stat-chip-label {
+    color: var(--ns-text-secondary, #999);
+    text-transform: uppercase;
+    font-size: 0.88em;
+    letter-spacing: 0.02em;
+}
+
+.item-summary .stat-chip-value {
+    font-weight: bold;
+    color: var(--ns-text-primary, #ddd);
+}
+
+.item-summary .stat-summary-chip.stat-chip-warning .stat-chip-value {
+    color: #e07060;
+}
+
+.item-summary .item-resources-wrapper {
+    margin-top: 4px;
+}
+
+.item-summary .item-resources-wrapper:not(:has(.resource-summary-chip)) {
+    display: none;
+}
+
+.item-summary .item-resources-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.item-summary .item-description-wrapper {
+    margin-top: 4px;
+}
+
+.item-summary .resource-summary-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.78em;
+    line-height: 1.5;
+}
+
+.item-summary .resource-chip-label {
+    color: var(--ns-text-secondary, #aaa);
+}
+
+.item-summary .resource-chip-value {
+    font-weight: bold;
+    color: var(--ns-text-primary, #eee);
+}
+
+.neuroshima prose-mirror .editor-content p {
+    margin: 0 0 0.5em;
+    min-height: 1em;
+}
+
+.neuroshima prose-mirror .editor-content p:last-child {
+    margin-bottom: 0;
+}
+
+.neuroshima prose-mirror .editor-content p:empty::after {
+    content: '\00a0';
+}
+
+.item-ctx-btn {
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.item-wrap:hover .item-ctx-btn,
+.item-ctx-btn:hover {
+    opacity: 1;
+}
+
+/* Manual script buttons — always visible below item row */
+.sheet-effect-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.1);
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.sheet-effect-buttons .manual-script-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 0.8em;
+    cursor: pointer;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 3px;
+    color: var(--ns-text-primary, #ddd);
+    transition: background 0.15s;
+}
+
+.sheet-effect-buttons .manual-script-btn:hover {
+    background: rgba(255,255,255,0.14);
+}
+
+/* Custom item context menu */
+.ns-item-ctx-menu {
+    min-width: 150px;
+}
+
+.ns-item-ctx-menu .context-items {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    background: var(--color-bg-option, #1a1a1a);
+    border: 1px solid var(--color-border-dark, #333);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.ns-item-ctx-menu .context-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.9em;
+    white-space: nowrap;
+    color: var(--color-text-primary, #eee);
+    transition: background 0.1s;
+}
+
+.ns-item-ctx-menu .context-item:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Distance Config Table */
+.distance-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+}
+
+.distance-table thead tr {
+    border-bottom: 2px solid var(--ns-text-accent);
+}
+
+.distance-table th {
+    text-align: center;
+    padding: 5px 8px;
+}
+
+.distance-table th.distance-col-header {
+    white-space: nowrap;
+    border-right: 2px solid var(--ns-text-accent);
+}
+
+.distance-table tbody tr {
+    border-bottom: 1px solid var(--ns-text-accent);
+}
+
+.distance-table td {
+    text-align: center;
+    padding: 3px 4px;
+}
+
+.distance-table td.distance-col-cell {
+    padding: 3px 6px;
+    border-right: 2px solid var(--ns-text-accent);
+}
+
+.distance-table td input {
+    text-align: center;
+}
+
+.distance-table td input.distance-input {
+    width: 70px;
+}
+
+.distance-table td input.penalty-input {
+    width: 55px;
+}
+
+.distance-table .delete-row {
+    cursor: pointer;
+    color: #c33;
+}
+
+.neuroshima.trait-browser .trait-browser-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.neuroshima.trait-browser .trait-browser-toolbar {
+    margin-bottom: 8px;
+}
+
+.neuroshima.trait-browser .trait-filter-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 8px;
+    border: 1px solid var(--ns-border-main, #999);
+    border-radius: 4px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.05));
+}
+
+.neuroshima.trait-browser .trait-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--ns-border-main, #999);
+    border-radius: 4px;
+}
+
+.neuroshima.trait-browser .trait-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--ns-bg-header, rgba(0,0,0,0.1));
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.neuroshima.trait-browser .trait-entry:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.trait-browser .trait-entry:hover {
+    background: var(--ns-bg-hover, rgba(255,0,0,0.05));
+}
+
+.neuroshima.trait-browser .trait-img {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--ns-border-main, #999);
+    border-radius: 3px;
+    object-fit: contain;
+}
+
+.neuroshima.trait-browser .trait-name {
+    flex: 1;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.trait-browser .trait-source {
+    font-size: 0.8em;
+    opacity: 0.7;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.neuroshima.trait-browser .trait-browser-empty {
+    padding: 10px;
+    text-align: center;
+    font-style: italic;
+    opacity: 0.6;
+}
+
+/* ─── Advanced Effect Config dialog ─────────────────────────────────────── */
+
+.neuroshima.advanced-effect-config-dialog .window-content {
+    overflow: hidden;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config {
+    padding: 0.25rem 0.5rem;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config fieldset {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 0.4rem 0.75rem 0.6rem;
+    margin: 0.5rem 0;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config fieldset legend {
+    font-weight: bold;
+    padding: 0 0.3rem;
+    color: var(--ns-text-accent);
+    font-size: 0.9em;
+}
+
+/* Force stacked layout for script textareas — overrides standard-form where needed */
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group.stacked {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group.stacked > * {
+    flex: none;
+    width: 100%;
+}
+
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group.stacked label {
+    width: auto;
+    font-weight: bold;
+}
+
+/* Textarea styling */
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+    font-family: monospace;
+    font-size: 0.82em;
+    box-sizing: border-box;
+}
+
+/* notes paragraph full-width in row groups */
+.neuroshima.advanced-effect-config-dialog .advanced-effect-config .form-group > .notes {
+    flex: 1 0 100%;
+    margin: 0;
+}
+
