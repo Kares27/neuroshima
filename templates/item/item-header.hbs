@@ -1,18 +1,18 @@
-<header class="sheet-header flexrow">
-    <div class="profile-container flex0">
+<header class="sheet-header">
+    <div class="profile-container">
         <img class="profile-img" src="{{item.img}}" data-action="editImage" title="{{item.name}}" height="100" width="100"/>
     </div>
-    <div class="header-details flexcol">
-        <div class="item-subtitle flexrow">
+    <div class="header-details">
+        <div class="item-subtitle">
             <h4 class="item-type">{{localize typeLabel}}</h4>
             {{#unless isNonCountable}}
-            <div class="item-qty flexrow">
+            <div class="item-qty">
                 <input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" title="{{localize 'NEUROSHIMA.Items.Fields.Quantity'}}"/>
                 <div class="qty-x">×</div>
             </div>
             {{/unless}}
         </div>
-        <div class="item-name-row flexrow">
+        <div class="item-name-row">
             <h1>
                 <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'Name'}}"/>
             </h1>

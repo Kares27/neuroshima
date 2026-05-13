@@ -1,5 +1,3 @@
-2026/05/12-22:54:00.638 71c Log #113: 0 ops saved to Table #114 OK
-2026/05/12-22:54:00.648 71c Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items/000113.log: OK
-2026/05/12-22:54:00.648 71c Table #107: 5 entries OK
-2026/05/12-22:54:00.648 71c Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items/MANIFEST-000112: OK
-2026/05/12-22:54:00.648 71c **** Repaired leveldb H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items; recovered 1 files; 762 bytes. Some data may have been lost. ****
+2026/05/13-10:29:43.819 297c Recovering log #130
+2026/05/13-10:29:43.823 297c Delete type=0 #130
+2026/05/13-10:29:43.823 297c Delete type=3 #129

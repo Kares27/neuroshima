@@ -2169,6 +2169,8 @@ body.theme-dark {
 .neuroshima.roll-dialog-window .window-content {
     width: 100% !important;
     padding: 10px !important;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 /* Roll Dialog Content */
@@ -2408,13 +2410,22 @@ body.theme-dark {
 .neuroshima.roll-dialog .summary-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .neuroshima.roll-dialog .summary-table td {
     padding: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima.roll-dialog .summary-table td:first-child {
+    width: 60%;
 }
 
 .neuroshima.roll-dialog .summary-table td:last-child {
+    width: 40%;
     text-align: right;
     font-weight: bold;
 }

@@ -241,7 +241,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
     context.canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
-    context.isJammedWeapon = item.type === "weapon" && "jammed" in item.system;
+    context.isJammedWeapon = item.type === "weapon" && item.system.weaponType !== "grenade" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
     const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease"];
@@ -257,6 +257,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     // Common options
     context.attributes = NEUROSHIMA.attributes;
     context.damageTypes = NEUROSHIMA.damageTypes;
+    context.blastDamageTypes = NEUROSHIMA.blastDamageTypes;
+    context.blastDamageTypesFull = NEUROSHIMA.blastDamageTypesFull;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
     context.grenadeTypes = NEUROSHIMA.grenadeTypes;
     context.locations = NEUROSHIMA.locations;
@@ -655,7 +657,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     if (item.type !== "weapon" || item.system.weaponType !== "grenade") return;
     const zones = foundry.utils.deepClone(item.system.blastZones ?? []);
     const maxRadius = zones.reduce((m, z) => Math.max(m, z.radius ?? 0), 0);
-    zones.push({ radius: maxRadius + 1, damage: "L", knockdown: false });
+    zones.push({ radius: maxRadius + 1, damage: "L", knockdown: false, shrapnel: 0 });
     await item.update({ "system.blastZones": zones });
   }
 

@@ -74,8 +74,9 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       blastZones: new fields.ArrayField(
         new fields.SchemaField({
           radius:    new fields.NumberField({ integer: true, initial: 1, min: 1 }),
-          damage:    new fields.StringField({ initial: "L" }),
-          knockdown: new fields.BooleanField({ initial: false })
+          damage:    new fields.StringField({ initial: "L", choices: ["none","D","L","C","K","sD","sL","sC","sK"] }),
+          knockdown: new fields.BooleanField({ initial: false }),
+          shrapnel:  new fields.NumberField({ integer: true, initial: 0, min: 0 })
         }),
         { initial: [] }
       )

@@ -6683,9 +6683,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     margin-bottom: 2px;
 }
 
-.neuroshima .blast-zone-col-radius  { flex: 0 0 80px; }
+.neuroshima .blast-zone-col-radius  { flex: 0 0 70px; }
 .neuroshima .blast-zone-col-damage  { flex: 1; }
-.neuroshima .blast-zone-col-knockdown { flex: 0 0 80px; text-align: center; }
+.neuroshima .blast-zone-col-shrapnel { flex: 0 0 60px; }
+.neuroshima .blast-zone-col-knockdown { flex: 0 0 70px; text-align: center; }
 .neuroshima .blast-zone-col-actions { flex: 0 0 32px; text-align: right; }
 
 .neuroshima .blast-zone-row input[type="number"] {
@@ -6738,27 +6739,188 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: var(--ns-text-dim, rgba(255,255,255,0.6));
 }
 
-.neuroshima .grenade-roll-card .grenade-place-template-row {
-    text-align: center;
-    margin-top: 4px;
+.neuroshima.grenade-roll-card .grenade-place-template-row {
+    margin-top: 6px;
 }
 
-.neuroshima .grenade-roll-card .grenade-place-template-btn {
-    background: var(--ns-button-bg, rgba(255,255,255,0.08));
-    border: 1px solid var(--ns-border, rgba(255,255,255,0.2));
-    border-radius: 4px;
-    padding: 4px 10px;
-    font-size: 0.85em;
-    cursor: pointer;
-    transition: background 0.15s;
+.neuroshima.grenade-roll-card .grenade-place-template-btn {
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    background: #7f1d1d !important;
+    background-image: none !important;
+    border: 1px solid #5a0f0f !important;
+    border-radius: 4px !important;
+    padding: 6px 14px !important;
+    font-size: 0.9em !important;
+    font-weight: bold !important;
+    color: #fff !important;
+    text-shadow: none !important;
+    cursor: pointer !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+    box-shadow: none !important;
+    outline: none !important;
+    transition: background 0.15s, box-shadow 0.15s;
 }
 
-.neuroshima .grenade-roll-card .grenade-place-template-btn:hover {
-    background: var(--ns-button-hover, rgba(255,255,255,0.15));
+.neuroshima.grenade-roll-card .grenade-place-template-btn:hover {
+    background: #991b1b !important;
+    box-shadow: 0 0 8px rgba(153, 27, 27, 0.5) !important;
+    color: #fff !important;
 }
 
-.neuroshima .grenade-roll-card .grenade-deviation-result .detail-item {
+.neuroshima.grenade-roll-card .grenade-place-template-btn i {
+    font-size: 1em !important;
+    color: #fff !important;
+}
+
+.neuroshima.grenade-roll-card .grenade-deviation-result .detail-item {
     display: flex;
     gap: 6px;
     font-size: 0.88em;
+}
+
+.neuroshima.grenade-blast-result .grenade-blast-header {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 4px;
+    color: var(--color-warm-2, #e5a200);
+}
+
+.neuroshima.grenade-blast-result .grenade-blast-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    margin-bottom: 6px;
+}
+
+.neuroshima.grenade-blast-result .grenade-blast-table th,
+.neuroshima.grenade-blast-result .grenade-blast-table td {
+    padding: 3px 6px;
+    border: 1px solid var(--ns-border, rgba(255,255,255,0.12));
+    text-align: center;
+}
+
+.neuroshima.grenade-blast-result .grenade-blast-table th {
+    background: rgba(0,0,0,0.25);
+    font-weight: bold;
+    font-size: 0.82em;
+    color: var(--ns-text-dim, rgba(255,255,255,0.6));
+}
+
+/* ── Grenade inline blast section ───────────────────────────────────────── */
+
+.neuroshima.roll-card.grenade-roll-card .grenade-blast-inline-section {
+    margin-top: 4px;
+}
+
+.neuroshima.roll-card.grenade-roll-card .grenade-blast-inline-content {
+    flex-direction: column;
+    padding: 4px;
+}
+
+.neuroshima.roll-card.grenade-roll-card .grenade-blast-table-wrapper {
+    max-height: 120px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    border-radius: 2px;
+}
+
+.neuroshima.roll-card.grenade-roll-card .grenade-blast-targets-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    table-layout: fixed;
+}
+
+.neuroshima.roll-card.grenade-roll-card .grenade-blast-targets-table th,
+.neuroshima.roll-card.grenade-roll-card .grenade-blast-targets-table td {
+    padding: 2px 4px;
+    border: 1px solid var(--ns-border-light);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+}
+
+.neuroshima.roll-card.grenade-roll-card .grenade-blast-targets-table th {
+    background: var(--ns-bg-header);
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.neuroshima.roll-card.grenade-roll-card .grenade-shrapnel-row td {
+    font-style: italic;
+    opacity: 0.8;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.neuroshima.roll-card.grenade-roll-card .grenade-shrapnel-row .shrapnel-token-name {
+    color: var(--ns-text-light);
+    padding-left: 8px;
+}
+
+/* ── Grenade blast pain report (combined) ────────────────────────────────── */
+
+.neuroshima.roll-card.grenade-blast-pain-report .grenade-actor-blast-section {
+    padding: 4px 0;
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .grenade-actor-blast-header {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-weight: bold;
+    font-size: 0.92em;
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .grenade-actor-blast-header .actor-name {
+    color: var(--color-warm-2, #e5a200);
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .grenade-actor-blast-header .actor-distance {
+    font-size: 0.82em;
+    opacity: 0.7;
+    font-weight: normal;
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .shrapnel-list {
+    padding: 2px 4px;
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .shrapnel-roll-item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.85em;
+    padding: 2px 0;
+    border-bottom: 1px solid var(--ns-border-light, rgba(255,255,255,0.08));
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .shrapnel-roll-item:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .shrapnel-roll-val {
+    opacity: 0.6;
+    min-width: 52px;
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .shrapnel-miss {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.neuroshima.roll-card.grenade-blast-pain-report .shrapnel-loc {
+    opacity: 0.7;
+    font-size: 0.9em;
 }

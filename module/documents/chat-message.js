@@ -48,6 +48,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "executeRequiredTest":
             this.onExecuteRequiredTest(event, message);
             break;
+          case "placeGrenadeTemplate":
+            this.onPlaceGrenadeTemplate(event, btn, message);
+            break;
+          case "applyGrenadeDamage":
+            this.onApplyGrenadeDamage(event, message);
+            break;
         }
       });
     });
@@ -180,6 +186,524 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  static _setTokenTargets(tokenIds) {
+    const currentIds = new Set(Array.from(game.user.targets).map(t => t.id));
+    for (const t of Array.from(game.user.targets)) {
+      if (!tokenIds.includes(t.id))
+        t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+    }
+    for (const id of tokenIds) {
+      if (!currentIds.has(id)) {
+        const t = canvas?.tokens?.get(id);
+        if (t) t.setTarget(true, { user: game.user, releaseOthers: false, groupSelection: true });
+      }
+    }
+  }
+
+  static _clearTokenTargets() {
+    for (const t of Array.from(game.user.targets)) {
+      t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+    }
+  }
+
+  /**
+   * Place a grenade blast circle template on the canvas.
+   * After placement, computes blast zone damage for all tokens inside and posts a results chat message.
+   */
+  static async onPlaceGrenadeTemplate(event, btn, message) {
+    return this.startGrenadeTemplatePlacement(message);
+  }
+
+  static async _deleteExistingGrenadeTemplates(messageId) {
+    if (!canvas?.scene || !messageId) return;
+    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+    await NeuroshimaSocket.gmExecute("deleteGrenadeTemplates", messageId);
+  }
+
+  static async placeGrenadeTemplateAt(message, point) {
+    if (!canvas?.scene) return;
+
+    const grenadeData = message.getFlag("neuroshima", "grenadeRoll");
+    if (!grenadeData) return;
+
+    const radius     = Number(grenadeData.templateRadius ?? 0);
+    const blastZones = grenadeData.blastZones ?? [];
+    if (!radius) return;
+
+    await this._deleteExistingGrenadeTemplates(message.id);
+
+    const snapPos = (x, y) => {
+      try {
+        if (canvas.grid?.getSnappedPoint)
+          return canvas.grid.getSnappedPoint({ x, y }, { mode: CONST.GRID_SNAPPING_MODES.CENTER });
+        return { x, y };
+      } catch (e) { return { x, y }; }
+    };
+
+    const snapped = snapPos(point.x, point.y);
+
+    const templateData = {
+      t: "circle",
+      user: game.user.id,
+      x: snapped.x,
+      y: snapped.y,
+      distance: radius,
+      fillColor: game.user.color ?? "#FF0000",
+      flags: {
+        neuroshima: {
+          isGrenadeTemplate: true,
+          grenadeBlastZones: blastZones,
+          grenadeMessageId: message.id
+        }
+      }
+    };
+
+    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+    await NeuroshimaSocket.gmExecute("createGrenadeTemplate", templateData);
+  }
+
+  static async startGrenadeTemplatePlacement(message) {
+    if (!canvas?.scene) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoScene"));
+      return;
+    }
+
+    const grenadeData = message.getFlag("neuroshima", "grenadeRoll");
+    if (!grenadeData) return;
+
+    const radius     = Number(grenadeData.templateRadius ?? 0);
+    const blastZones = grenadeData.blastZones ?? [];
+
+    if (!radius) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Grenade.NoRadius"));
+      return;
+    }
+
+    await this._deleteExistingGrenadeTemplates(message.id);
+
+    const templateData = {
+      t: "circle",
+      user: game.user.id,
+      x: 0,
+      y: 0,
+      distance: radius,
+      fillColor: game.user.color ?? "#FF0000",
+      flags: {
+        neuroshima: {
+          isGrenadeTemplate: true,
+          grenadeBlastZones: blastZones,
+          grenadeMessageId: message.id
+        }
+      }
+    };
+
+    canvas.templates.activate();
+
+    const doc = new CONFIG.MeasuredTemplate.documentClass(templateData, { parent: canvas.scene });
+    let previewObj = null;
+
+    try {
+      previewObj = new CONFIG.MeasuredTemplate.objectClass(doc);
+      canvas.templates.preview.addChild(previewObj);
+      await previewObj.draw();
+    } catch (e) {
+      console.warn("Neuroshima | Template preview draw failed:", e);
+      previewObj = null;
+    }
+
+    const snapPos = (x, y) => {
+      try {
+        if (canvas.grid?.getSnappedPoint) {
+          return canvas.grid.getSnappedPoint({ x, y }, { mode: CONST.GRID_SNAPPING_MODES.CENTER });
+        }
+        return canvas.grid?.getSnappedPosition?.(x, y, 1) ?? { x, y };
+      } catch (e) { return { x, y }; }
+    };
+
+    const updateDynamicTargets = (originX, originY) => {
+      if (!previewObj?.shape || !canvas?.tokens?.placeables) return;
+      const gs = canvas.grid?.size ?? 100;
+      const targetIds = canvas.tokens.placeables
+        .filter(tokenObj => {
+          const td = tokenObj.document;
+          const cx = td.x + (td.width  * gs) / 2;
+          const cy = td.y + (td.height * gs) / 2;
+          return previewObj.shape.contains(cx - originX, cy - originY);
+        })
+        .map(t => t.id);
+      NeuroshimaChatMessage._setTokenTargets(targetIds);
+    };
+
+    const updatePreview = (x, y) => {
+      const pos = snapPos(x, y);
+      try { doc.updateSource(pos); previewObj?.refresh?.(); } catch (e) {}
+      updateDynamicTargets(pos.x, pos.y);
+    };
+
+    const cleanup = (clearTargets = true) => {
+      canvas.stage.off("pointermove", onMove);
+      canvas.stage.off("pointerdown", onDown);
+      canvas.stage.off("rightdown", onRight);
+      if (clearTargets) NeuroshimaChatMessage._clearTokenTargets();
+      if (previewObj) {
+        try { canvas.templates.preview.removeChild(previewObj); previewObj.destroy({ children: true }); } catch (e) {}
+        previewObj = null;
+      }
+    };
+
+    const onMove = (pixi_event) => {
+      try {
+        const global = pixi_event.global ?? pixi_event.data?.global;
+        if (!global) return;
+        const pos = canvas.stage.toLocal(global);
+        updatePreview(pos.x, pos.y);
+      } catch (e) {}
+    };
+
+    const onDown = async (pixi_event) => {
+      const button = pixi_event.button ?? pixi_event.data?.button;
+      if (button !== 0) return;
+      try {
+        const global = pixi_event.global ?? pixi_event.data?.global;
+        const raw = global ? canvas.stage.toLocal(global) : { x: doc.x, y: doc.y };
+        const snapped = snapPos(raw.x, raw.y);
+        cleanup(false);
+        const data = { ...templateData, ...snapped };
+        const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+        await NeuroshimaSocket.gmExecute("createGrenadeTemplate", data);
+      } catch (e) {
+        console.error("Neuroshima | Template placement failed:", e);
+        cleanup();
+      }
+    };
+
+    const onRight = () => { cleanup(true); };
+
+    canvas.stage.on("pointermove", onMove);
+    canvas.stage.on("pointerdown", onDown);
+    canvas.stage.on("rightdown", onRight);
+  }
+
+  /**
+   * Compute grenade blast damage for tokens within a placed template.
+   * Targets all tokens inside the radius, rolls random locations, and posts a
+   * damage-application card with a collapsible per-target damage section.
+   * @param {MeasuredTemplateDocument} templateDoc
+   * @param {Array} blastZones
+   * @param {Actor|null} sourceActor
+   * @param {ChatMessage|null} sourceMessage
+   */
+  static async _computeGrenadeBlast(templateDoc, blastZones, sourceActor, sourceMessage) {
+    game.neuroshima.group("_computeGrenadeBlast");
+
+    let templateObj = canvas.templates.get(templateDoc.id);
+    if (!templateObj?.shape) {
+      await new Promise(r => setTimeout(r, 150));
+      templateObj = canvas.templates.get(templateDoc.id);
+    }
+
+    game.neuroshima.log("Stan szablonu", {
+      templateId: templateDoc.id, found: !!templateObj, hasShape: !!templateObj?.shape,
+      blastZonesCount: blastZones.length, tokenCount: canvas.scene.tokens.size
+    });
+
+    if (!templateObj?.shape) {
+      game.neuroshima.log("BŁĄD: brak obiektu PIXI szablonu po opóźnieniu");
+      game.neuroshima.groupEnd();
+      return;
+    }
+
+    const originX     = templateDoc.x;
+    const originY     = templateDoc.y;
+    const gs          = canvas.grid.size;
+    const gridDist    = canvas.scene.grid.distance || 1;
+    const NS          = game.neuroshima?.config ?? {};
+    const bodyLocs    = NS.bodyLocations ?? {};
+
+    const resolveLocation = async () => {
+      const roll = await new Roll("1d20").evaluate();
+      const val  = roll.total;
+      const entry = Object.entries(bodyLocs).find(([, d]) => val >= d.roll[0] && val <= d.roll[1]);
+      return entry ? { key: entry[0], label: entry[1].label } : { key: "torso", label: "NEUROSHIMA.Location.Torso" };
+    };
+
+    const sortedZones = [...blastZones].sort((a, b) => a.radius - b.radius);
+    const rawResults = [];
+    const targetIds = [];
+
+    for (const tokenDoc of canvas.scene.tokens) {
+      const centerX = tokenDoc.x + (tokenDoc.width  * gs) / 2;
+      const centerY = tokenDoc.y + (tokenDoc.height * gs) / 2;
+      const relX    = centerX - originX;
+      const relY    = centerY - originY;
+      if (!templateObj.shape.contains(relX, relY)) continue;
+
+      targetIds.push(tokenDoc.id);
+
+      const pixelDist = Math.sqrt(relX * relX + relY * relY);
+      const metres    = (pixelDist / gs) * gridDist;
+      const zone      = sortedZones.find(z => metres <= z.radius);
+
+      game.neuroshima.log(`Token ${tokenDoc.name}`, { metres: metres.toFixed(2), zone });
+
+      const actor     = tokenDoc.actor;
+      const tokenName = tokenDoc.name || actor?.name || "?";
+
+      const shrapnelCount = zone?.shrapnel ?? 0;
+      const damage        = zone?.damage ?? "none";
+      const loc = damage !== "none" ? await resolveLocation() : null;
+
+      rawResults.push({
+        tokenName,
+        tokenId:       tokenDoc.id,
+        actorId:       actor?.id ?? null,
+        actorUuid:     actor?.uuid ?? null,
+        distanceM:     Math.round(metres * 10) / 10,
+        damage,
+        locationKey:   loc?.key ?? null,
+        locationLabel: loc?.label ?? null,
+        knockdown:     zone?.knockdown ?? false,
+        shrapnelCount
+      });
+    }
+
+    NeuroshimaChatMessage._setTokenTargets(targetIds);
+    game.neuroshima.log("Wyniki wybuchu", { rawResultsCount: rawResults.length });
+
+    if (!rawResults.length) {
+      game.neuroshima.groupEnd();
+      ui.notifications.info(game.i18n.localize("NEUROSHIMA.Grenade.NoTargetsInBlast"));
+      return;
+    }
+
+    game.neuroshima.log("Wyniki wybuchu", { rawResultsCount: rawResults.length });
+
+    if (sourceMessage) {
+      const origData = sourceMessage.getFlag("neuroshima", "grenadeRoll") ?? {};
+      const updatedChatData = {
+        ...origData,
+        blastResults: rawResults,
+        damageApplied: false
+      };
+      const newContent = await this._renderTemplate(
+        "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
+        updatedChatData
+      );
+      await sourceMessage.update({
+        content: newContent,
+        "flags.neuroshima.grenadeRoll": updatedChatData,
+        "flags.neuroshima.grenadeResults": rawResults,
+        "flags.neuroshima.damageApplied": false
+      });
+      game.neuroshima.log("Wyniki wybuchu dodane do istniejącej wiadomości");
+    } else {
+      const grenadeLabel = sourceActor?.name ?? game.i18n.localize("NEUROSHIMA.Items.Type.Weapon");
+      const context = {
+        actorId:         sourceActor?.id ?? null,
+        actorImg:        sourceActor?.img ?? "icons/svg/mystery-man.svg",
+        grenadeLabel,
+        blastResults:    rawResults,
+        damageApplied:   false
+      };
+      const template = "systems/neuroshima/templates/chat/grenade-blast-result.hbs";
+      const content  = await this._renderTemplate(template, context);
+      await this.create({
+        user:    game.user.id,
+        speaker: sourceActor ? ChatMessage.getSpeaker({ actor: sourceActor }) : undefined,
+        content,
+        style:   CONST.CHAT_MESSAGE_STYLES.OTHER,
+        flags: {
+          neuroshima: {
+            messageType:    "grenadeBlastResult",
+            actorId:        sourceActor?.id ?? null,
+            grenadeResults: rawResults,
+            damageApplied:  false
+          }
+        }
+      });
+    }
+
+    game.neuroshima.log("Karta wyników wybuchu opublikowana");
+    game.neuroshima.groupEnd();
+  }
+
+  /**
+   * Apply grenade blast damage to all targets listed in the blast result card.
+   * Runs pain resistance rolls via CombatHelper infrastructure for each target.
+   */
+  static async onApplyGrenadeDamage(event, message) {
+    if (!game.user.isGM) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.GMOnly"));
+      return;
+    }
+
+    if (message.getFlag("neuroshima", "damageApplied")) {
+      ui.notifications.info(game.i18n.localize("NEUROSHIMA.Grenade.BlastDamageApplied"));
+      return;
+    }
+
+    const grenadeResults = message.getFlag("neuroshima", "grenadeResults")
+      ?? message.getFlag("neuroshima", "grenadeRoll")?.blastResults
+      ?? [];
+    if (!grenadeResults.length) return;
+
+    const btn = event.currentTarget;
+    btn.disabled = true;
+
+    const { CombatHelper } = await import("../helpers/combat-helper.js");
+
+    const grenadeLabel = message.getFlag("neuroshima", "grenadeLabel")
+      ?? message.getFlag("neuroshima", "grenadeRoll")?.label
+      ?? game.i18n.localize("NEUROSHIMA.Items.Type.Weapon");
+
+    const NS         = game.neuroshima?.config ?? {};
+    const bodyLocs   = NS.bodyLocations ?? {};
+
+    const resolveLocation = async () => {
+      const roll  = await new Roll("1d20").evaluate();
+      const val   = roll.total;
+      const entry = Object.entries(bodyLocs).find(([, d]) => val >= d.roll[0] && val <= d.roll[1]);
+      return entry ? { key: entry[0], label: entry[1].label } : { key: "torso", label: "NEUROSHIMA.Location.Torso" };
+    };
+
+    const actorDamages = [];
+
+    for (const result of grenadeResults) {
+      if (!result.actorUuid && !result.actorId) continue;
+
+      let actor = null;
+      if (result.actorUuid) {
+        const doc = await fromUuid(result.actorUuid);
+        actor = doc?.actor ?? doc;
+      }
+      if (!actor && result.actorId) actor = game.actors.get(result.actorId);
+      if (!actor) continue;
+
+      const combinedResults        = [];
+      const combinedWoundIds       = [];
+      let   combinedReduced        = 0;
+      const combinedReducedDetails = [];
+      const shrapnelRolled         = [];
+
+      if (result.damage && result.damage !== "none" && result.locationKey) {
+        const attackData = {
+          damage:         result.damage,
+          finalLocation:  result.locationKey,
+          label:          grenadeLabel,
+          isMelee:        false,
+          isGrenade:      true,
+          piercing:       0,
+          hitBulletsData: [{ damage: result.damage, piercing: 0, successPoints: 1 }]
+        };
+        const partial = await CombatHelper.applyDamageToActor(actor, attackData, {
+          location:          result.locationKey,
+          attackerMessageId: message.id,
+          suppressChat:      true
+        });
+        if (partial) {
+          combinedResults.push(...(partial.results ?? []));
+          combinedWoundIds.push(...(partial.woundIds ?? []));
+          combinedReduced += partial.reducedProjectiles ?? 0;
+          combinedReducedDetails.push(...(partial.reducedDetails ?? []));
+        }
+      }
+
+      const shrapnelCount = result.shrapnelCount ?? 0;
+      for (let s = 0; s < shrapnelCount; s++) {
+        const sRoll = await new Roll("1d20").evaluate();
+        const sv    = sRoll.total;
+        let sDmg    = null;
+        if      (sv <= 5)  sDmg = "C";
+        else if (sv <= 10) sDmg = "L";
+        else if (sv <= 15) sDmg = "D";
+
+        const sLoc = await resolveLocation();
+        shrapnelRolled.push({ roll: sv, damage: sDmg, locationKey: sLoc.key, locationLabel: sLoc.label });
+
+        if (sDmg) {
+          const sAttack = {
+            damage:         sDmg,
+            finalLocation:  sLoc.key,
+            label:          grenadeLabel + " (odłamek)",
+            isMelee:        false,
+            isGrenade:      true,
+            piercing:       0,
+            hitBulletsData: [{ damage: sDmg, piercing: 0, successPoints: 1 }]
+          };
+          const sPartial = await CombatHelper.applyDamageToActor(actor, sAttack, {
+            location:          sLoc.key,
+            attackerMessageId: message.id,
+            suppressChat:      true
+          });
+          if (sPartial) {
+            combinedResults.push(...(sPartial.results ?? []));
+            combinedWoundIds.push(...(sPartial.woundIds ?? []));
+            combinedReduced += sPartial.reducedProjectiles ?? 0;
+            combinedReducedDetails.push(...(sPartial.reducedDetails ?? []));
+          }
+        }
+      }
+
+      actorDamages.push({
+        actorId:              actor.id,
+        actorUuid:            actor.uuid,
+        actorName:            actor.name,
+        distanceM:            result.distanceM,
+        damage:               result.damage,
+        locationLabel:        result.locationLabel,
+        knockdown:            result.knockdown,
+        shrapnelRolled,
+        results:              combinedResults,
+        woundIds:             combinedWoundIds,
+        reducedCount:         combinedReduced,
+        reducedDetails:       combinedReducedDetails,
+        passedCount:          combinedResults.filter(r => !r.isCritical && r.isPassed).length,
+        failedCount:          combinedResults.filter(r => !r.isCritical && !r.isPassed).length,
+        criticalCount:        combinedResults.filter(r => r.isCritical).length
+      });
+    }
+
+    if (actorDamages.length > 0) {
+      const allWoundIds = actorDamages.flatMap(d => d.woundIds);
+      const content = await this._renderTemplate(
+        "systems/neuroshima/templates/chat/grenade-blast-pain-report.hbs",
+        { grenadeLabel, actorDamages, config: NEUROSHIMA ?? game.neuroshima?.config }
+      );
+      await this.create({
+        user:    game.user.id,
+        content,
+        style:   CONST.CHAT_MESSAGE_STYLES.OTHER,
+        flags: {
+          neuroshima: {
+            messageType:  "grenadeBlastReport",
+            grenadeLabel,
+            actorDamages,
+            allWoundIds,
+            isReversed:   false
+          }
+        }
+      });
+    }
+
+    await message.setFlag("neuroshima", "damageApplied", true);
+
+    const grenadeRollData = message.getFlag("neuroshima", "grenadeRoll");
+    if (grenadeRollData) {
+      const updatedData = { ...grenadeRollData, damageApplied: true };
+      const newContent = await this._renderTemplate(
+        "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
+        updatedData
+      );
+      await message.update({
+        content: newContent,
+        "flags.neuroshima.grenadeRoll": updatedData
+      });
+    } else {
+      btn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.Grenade.BlastDamageApplied");
+      btn.classList.add("applied");
+    }
+  }
+
   /**
    * Obsługa przerzutu leczenia.
    */
@@ -303,7 +827,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
 
     if (!patient.isOwner && !game.user.isGM) {
-        return game.neuroshima.socket.executeAsGM("applyHealingBatch", {
+        const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+        return NeuroshimaSocket.gmExecute("applyHealingBatch", {
             patientUuid: patient.uuid,
             results: results,
             messageId: message.id

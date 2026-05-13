@@ -818,6 +818,12 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td>args.damageType</td><td>string</td><td>Typ obrażeń — możesz zmienić</td></tr>
     <tr><td>args.rawWounds</td><td>Array</td><td>Surowa lista ran przed pancerzem — możesz modyfikować (push/pop/splice)</td></tr>
     <tr><td>args.piercing</td><td>number</td><td>Wartość przebicia pancerza</td></tr>
+    <tr><td>args.isGrenade</td><td>boolean</td><td><code>true</code> gdy atak pochodzi z granatu.</td></tr>
+    <tr><td>args.isMelee</td><td>boolean</td><td><code>true</code> gdy atak pochodzi z broni białej.</td></tr>
+    <tr><td>args.isRanged</td><td>boolean</td><td><code>true</code> gdy atak pochodzi z broni dystansowej.</td></tr>
+    <tr><td>args.isThrown</td><td>boolean</td><td><code>true</code> gdy atak pochodzi z broni miotanej.</td></tr>
+    <tr><td>args.attackLabel</td><td>string|null</td><td>Nazwa broni/ataku.</td></tr>
+    <tr><td>args.weaponType</td><td>string|null</td><td>Typ broni (<code>"ranged"</code>, <code>"melee"</code>, <code>"grenade"</code>, <code>"thrown"</code>).</td></tr>
   </tbody></table>
 
   <!-- applyDamage -->
@@ -842,10 +848,144 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor posiadający pancerz</td></tr>
     <tr><td>args.location</td><td>string</td><td>Lokalizacja trafienia</td></tr>
     <tr><td>args.damageType</td><td>string</td><td>Typ obrażeń</td></tr>
-    <tr><td>args.sp</td><td>number</td><td>Aktualne SP pancerza — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.sp</td><td>number</td><td>Aktualne SP pancerza — modyfikuj bezpośrednio. Ustaw na 0 aby zignorować pancerz, lub na wartość zasobu aby zastąpić ochronę zasobem.</td></tr>
     <tr><td>args.piercing</td><td>number</td><td>Wartość przebicia pancerza ataku</td></tr>
     <tr><td>args.bonusSP</td><td>number</td><td>Dodatkowe SP do doliczenia — dodaj tutaj bonus</td></tr>
+    <tr><td>args.pendingResourceUpdates</td><td>Array</td><td>Tablica odroczonego zapisu do zasobów itemu. Dozwolone formaty: <code>{ item, key, delta }</code> (stała zmiana), <code>{ item, key, useReduction: true }</code> (zmniejsz o wartość rzeczywistej redukcji), <code>{ item, key, setValue: N }</code> (ustaw na wartość bezwzględną). Operacje wykonywane asynchronicznie po obliczeniu wszystkich ran. <strong>Preferuj helper functions</strong> <code>this.deferResourceDrain/Add/DrainByReduction/Set</code> zamiast ręcznego push.</td></tr>
+    <tr><td>args.isGrenade</td><td>boolean</td><td><code>true</code> gdy obrażenia pochodzą z granatu (blast lub odłamki). Używaj do warunkowego nadpisania SP wyłącznie przy atakach wybuchowych.</td></tr>
+    <tr><td>args.isMelee</td><td>boolean</td><td><code>true</code> gdy atak pochodzi z broni białej.</td></tr>
+    <tr><td>args.isRanged</td><td>boolean</td><td><code>true</code> gdy atak pochodzi z broni dystansowej (ranged).</td></tr>
+    <tr><td>args.isThrown</td><td>boolean</td><td><code>true</code> gdy atak pochodzi z broni miotanej (thrown).</td></tr>
+    <tr><td>args.attackLabel</td><td>string|null</td><td>Nazwa broni/ataku który wywołał obrażenia.</td></tr>
+    <tr><td>args.weaponType</td><td>string|null</td><td>Typ broni (<code>"ranged"</code>, <code>"melee"</code>, <code>"grenade"</code>, <code>"thrown"</code>) jeśli przekazany przez system.</td></tr>
   </tbody></table>
+  <h4>ResourceHandle — zalecane API dla armorCalculation i SYNC triggerów</h4>
+  <p><code>this.resource(item, key)</code> zwraca obiekt <strong>ResourceHandle</strong>, który łączy odczyt wartości z metodami odraczającymi zapis — wszystko bez powtarzania itemu i klucza. Jest szczególnie wygodny w <code>armorCalculation</code>, gdzie zapis musi być odroczony (trigger SYNC).</p>
+  <table>
+    <tbody><tr><th>Właściwość / Metoda</th><th>Opis</th></tr>
+    <tr><td><code>r.value</code></td><td>Aktualna wartość zasobu (number | null gdy nieznaleziony).</td></tr>
+    <tr><td><code>r.exists</code></td><td><code>true</code> gdy zasób o podanym kluczu istnieje na itemu.</td></tr>
+    <tr><td><code>r.min</code> / <code>r.max</code></td><td>Minimalna / maksymalna wartość (z definicji zasobu).</td></tr>
+    <tr><td><code>r.label</code></td><td>Wyświetlana nazwa zasobu.</td></tr>
+    <tr><td><code>r.deferDrain(amount)</code></td><td>Odejmij <code>amount</code> od zasobu po zakończeniu wszystkich kalkulacji. Chainable.</td></tr>
+    <tr><td><code>r.deferAdd(amount)</code></td><td>Dodaj <code>amount</code> do zasobu po zakończeniu kalkulacji. Chainable.</td></tr>
+    <tr><td><code>r.deferDrainByReduction()</code></td><td>Zmniejsz zasób o dokładnie tyle ile wynosiła rzeczywista redukcja SP. Chainable.</td></tr>
+    <tr><td><code>r.deferSet(value)</code></td><td>Ustaw zasób na wartość bezwzględną po zakończeniu kalkulacji. Chainable.</td></tr>
+    <tr><td><code>r.deferRoll(count, sides, options)</code></td><td>Rzut synchroniczny + odroczony wpis na czat z flavorem. Opcje: <code>{ flavor, rollMode, speaker }</code>. Zwraca <code>number[]</code>. Użyj w triggerach SYNC.</td></tr>
+    <tr><td><code>await r.roll(count, sides, options)</code></td><td>Prawdziwy rzut Foundry z natychmiastowym postem na czat. Opcje: <code>{ flavor, rollMode, toMessage }</code>. Zwraca <code>Roll</code>. Użyj w triggerach ASYNC.</td></tr>
+  </tbody></table>
+
+  <h4>Niskopoziomowe helper functions (item + key explicite)</h4>
+  <p>Metody <code>defer*</code> na <code>this</code> działają identycznie jak odpowiedniki na ResourceHandle, ale wymagają podania itemu i klucza przy każdym wywołaniu. Używaj gdy zasób pochodzi z innego itemu niż ten obsługiwany przez uchwyt.</p>
+  <table>
+    <tbody><tr><th>Metoda</th><th>Opis</th></tr>
+    <tr><td><code>this.deferResourceDrain(item, key, amount)</code></td><td>Odejmij <code>amount</code> od zasobu po zakończeniu kalkulacji (clamped do min).</td></tr>
+    <tr><td><code>this.deferResourceAdd(item, key, amount)</code></td><td>Dodaj <code>amount</code> do zasobu po zakończeniu kalkulacji (clamped do max).</td></tr>
+    <tr><td><code>this.deferResourceDrainByReduction(item, key)</code></td><td>Zmniejsz zasób o dokładnie tyle ile wynosiła rzeczywista redukcja SP.</td></tr>
+    <tr><td><code>this.deferResourceSet(item, key, value)</code></td><td>Ustaw zasób na wartość bezwzględną po zakończeniu kalkulacji.</td></tr>
+    <tr><td><code>this.rollDice(count, sides)</code></td><td>Rzuć <code>count</code> kośćmi synchronicznie. Zwraca <code>number[]</code>. Brak wpisu na czat.</td></tr>
+    <tr><td><code>this.deferRollToChat(count, sides, options)</code></td><td>Rzut synchroniczny (wynik od razu) + odroczony wpis na czat. Opcje: <code>{ flavor, rollMode, speaker }</code>. Zwraca <code>number[]</code>.</td></tr>
+  </tbody></table>
+
+  <div class="callout info">
+    <strong>Ważne:</strong> Nie zmniejszaj zasobu samym ustawieniem <code>args.sp</code> — to tylko powiada systemowi ile SP ma pancerz w tej kalkulacji. Żeby zasób faktycznie zmalał, wywołaj którąś z metod <code>defer*</code> lub nie wywołuj żadnej (zasób pozostanie bez zmian).
+  </div>
+
+  <h4>Przykład 1 — używaj zasobu jako SP przy wybuchu, bez zużycia</h4>
+  <p>Zasób <code>ExplosionAP</code> na pancerzu zastępuje normalny SP przy atakach granatem, ale <strong>nie jest zużywany</strong>. Pokazane w obu stylach.</p>
+  <pre><code><span class="cmt">// ── Styl ResourceHandle (zalecany) ──────────────────────────────────────</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
+  <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
+    args.sp = <span class="var">expAP</span>.value;
+    args.bonusSP = <span class="num">0</span>;
+    <span class="cmt">// brak deferDrain — zasób nie zostanie zmieniony</span>
+  }
+}
+
+<span class="cmt">// ── Styl niskopoziomowy (równoważny) ────────────────────────────────────</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">val</span> = <span class="kw">this</span>.<span class="fn">getItemResource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
+  <span class="kw">if</span> (<span class="var">val</span> !== <span class="kw">null</span>) {
+    args.sp = <span class="var">val</span>;
+    args.bonusSP = <span class="num">0</span>;
+  }
+}</code></pre>
+
+  <h4>Przykład 2 — używaj zasobu jako SP i zużywaj go o wartość redukcji</h4>
+  <p>Zasób <code>ExplosionAP</code> zastępuje SP <em>i</em> jest zmniejszany o tyle ile faktycznie zablokował.</p>
+  <pre><code><span class="cmt">// armorCalculation — zasób jako SP + zużycie proporcjonalne do zablokowania</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
+  <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
+    args.sp = <span class="var">expAP</span>.value;
+    args.bonusSP = <span class="num">0</span>;
+    <span class="var">expAP</span>.<span class="fn">deferDrainByReduction</span>();   <span class="cmt">// odejmij dokładnie tyle ile zablokowano</span>
+  }
+}</code></pre>
+
+  <h4>Przykład 3 — używaj zasobu jako SP + rzut kością z flavor na czacie</h4>
+  <p>Zasób <code>ShieldCharge</code> zastępuje SP. Rzucamy 1d20 — wynik ≥ 15 oznacza uszkodzenie tarczy (–2 do zasobu). Rzut pojawia się w chacie z opisem.</p>
+  <pre><code><span class="cmt">// armorCalculation — SP z zasobu + rzut 1d20 z wiadomością na czacie (SYNC)</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">shield</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ShieldCharge"</span>);
+  <span class="kw">if</span> (<span class="var">shield</span>.exists && <span class="var">shield</span>.value > <span class="num">0</span>) {
+    args.sp = <span class="var">shield</span>.value;
+    args.bonusSP = <span class="num">0</span>;
+    <span class="kw">const</span> [<span class="var">roll</span>] = <span class="var">shield</span>.<span class="fn">deferRoll</span>(<span class="num">1</span>, <span class="num">20</span>, {
+      flavor: <span class="str">`Test wytrzymałości tarczy (${this.item.name}) — wynik ≥ 15 = uszkodzenie`</span>
+    });
+    <span class="kw">if</span> (<span class="var">roll</span> >= <span class="num">15</span>) <span class="var">shield</span>.<span class="fn">deferDrain</span>(<span class="num">2</span>);
+  }
+}</code></pre>
+
+  <h4>Przykład 4 — bonus +1 AP gdy trafienie idzie w tors (niezależnie od źródła)</h4>
+  <p>Pancerz z wzmocnieniem na klatkę — dodaje +1 do <code>bonusSP</code> gdy lokacja to <code>torso</code>. Działa przy każdym ataku.</p>
+  <pre><code><span class="cmt">// armorCalculation — +1 bonusSP przy trafieniu w tors</span>
+<span class="kw">if</span> (args.location === <span class="str">"torso"</span>) {
+  args.bonusSP += <span class="num">1</span>;
+}</code></pre>
+
+  <h4>Przykład 5 — zrównaj SP do wartości zasobu ExplosionAP przy wybuchu na dowolnej lokacji</h4>
+  <p>Zasób <code>ExplosionAP</code> zastępuje normalne SP tylko przy atakach wybuchowych (granat). Jeśli zasób wyczerpany, normalny pancerz działa bez zmian.</p>
+  <pre><code><span class="cmt">// armorCalculation — SP = ExplosionAP dla każdej lokacji, tylko przy wybuchu</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
+  <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
+    args.sp = <span class="var">expAP</span>.value;
+    args.bonusSP = <span class="num">0</span>;
+    <span class="cmt">// Opcjonalnie — odejmij tyle ile zablokowano (zasób zmaleje o redukcję)</span>
+    <span class="cmt">// expAP.deferDrainByReduction();</span>
+  }
+}</code></pre>
+
+  <h4>Przykład 6 — ExplosionAP jako SP + rzut 1d20 z flavorem + zużycie przy niepowodzeniu</h4>
+  <p>Kompletny przykład: zasób <code>ExplosionAP</code> zastępuje normalny pancerz przy wybuchu. Rzucamy 1d20 — wynik pojawia się w chacie. Wynik ≥ 15 oznacza, że warstwa absorpcyjna ucierpiała (–1 do zasobu).</p>
+  <pre><code><span class="cmt">// armorCalculation — ExplosionAP jako SP przy granate + rzut 1d20 z chatowym flavorem</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
+  <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
+    args.sp = <span class="var">expAP</span>.value;
+    args.bonusSP = <span class="num">0</span>;
+    <span class="kw">const</span> [<span class="var">roll</span>] = <span class="var">expAP</span>.<span class="fn">deferRoll</span>(<span class="num">1</span>, <span class="num">20</span>, {
+      flavor: <span class="str">`Ochrona na wybuchy (${this.item.name}) — wynik ≥ 15 niszczy warstwę`</span>
+    });
+    <span class="kw">if</span> (<span class="var">roll</span> >= <span class="num">15</span>) <span class="var">expAP</span>.<span class="fn">deferDrain</span>(<span class="num">1</span>);
+  }
+}</code></pre>
+
+  <h4>Przykład 7 — zużyj zasób, drainując inny zasób (crossresource)</h4>
+  <p>Gdy wynik zależy od jednego zasobu, a zużywamy inny — np. <code>ShieldAP</code> jako SP, a <code>ShieldHP</code> drainowany o faktyczną redukcję.</p>
+  <pre><code><span class="cmt">// armorCalculation — SP z ShieldAP, zużycie z ShieldHP</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">shieldAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ShieldAP"</span>);
+  <span class="kw">const</span> <span class="var">shieldHP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ShieldHP"</span>);
+  <span class="kw">if</span> (<span class="var">shieldAP</span>.exists && <span class="var">shieldAP</span>.value > <span class="num">0</span>) {
+    args.sp = <span class="var">shieldAP</span>.value;
+    args.bonusSP = <span class="num">0</span>;
+    <span class="var">shieldHP</span>.<span class="fn">deferDrainByReduction</span>();  <span class="cmt">// HP tarczy maleje o tyle ile zablokowano</span>
+  }
+}</code></pre>
 
   <!-- equipToggle -->
   <h3 id="trigger-equipToggle">equipToggle — <em>Equip Toggle</em></h3>

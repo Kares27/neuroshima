@@ -577,7 +577,8 @@
             "Turn": "Turn",
             "MeleeInitiative": "Melee Initiative",
             "ArmorPenalty": "Armor Penalty",
-            "GeneralPenalty": "General Penalty"
+            "GeneralPenalty": "General Penalty",
+            "PiercingAbbr": "AP"
         },
         "MeleeOpposed": {
             "Title": "Melee Opposed",
@@ -1107,7 +1108,11 @@
         "Chat": {
             "ArmorReduction": "Armor Reduction",
             "ArmorReductionStats": "{reduced} out of {total} projectiles reduced by armor at {location}",
-            "AllDamageNegated": "All damage has been completely negated by the armor!"
+            "AllDamageNegated": "All damage has been completely negated by the armor!",
+            "OriginalDamage": "Original Damage",
+            "EffectiveReduction": "Effective Reduction",
+            "FinalDamage": "Final Damage",
+            "None": "None"
         },
         "Location": {
             "Head": "Head",
@@ -1116,6 +1121,14 @@
             "RightArm": "Right Arm",
             "LeftLeg": "Left Leg",
             "RightLeg": "Right Leg"
+        },
+        "LocationAbbrev": {
+            "Head": "Head",
+            "Torso": "Torso",
+            "LeftArm": "L.Arm",
+            "RightArm": "R.Arm",
+            "LeftLeg": "L.Leg",
+            "RightLeg": "R.Leg"
         },
         "PatientCard": {
             "Title": "Patient Card",
@@ -1611,11 +1624,23 @@
             "PlaceTemplate": "Place Template",
             "FailureMargin": "Failure Margin",
             "Deviation": "Deviation",
+            "BlastTarget": "Target",
+            "BlastDamageAbbr": "Dmg.",
             "Zone": {
                 "Radius": "Radius (m)",
                 "Damage": "Damage",
-                "Knockdown": "Knockdown"
-            }
+                "Knockdown": "Knockdown",
+                "Shrapnel": "Shrapnel",
+                "ShrapnelHit": "Shrapnel Hit",
+                "DistanceM": "Distance (m)"
+            },
+            "ShrapnelMiss": "No hit",
+            "BlastReport": {
+                "Title": "Grenade Blast",
+                "ReverseAll": "Reverse blast damage",
+                "Reversed": "Reversed {count} wounds from grenade blast"
+            },
+            "BlastDamageApplied": "Damage applied"
         }
     },
     "TOKEN": {

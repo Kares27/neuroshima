@@ -2234,6 +2234,21 @@ export class NeuroshimaDice {
   static buildRollTooltip(rollData) {
     if (!rollData) return "";
 
+    if (rollData.isGrenade) {
+      const loc = (k) => game.i18n.localize(k);
+      const distance     = rollData.distance ?? 0;
+      const distPenalty  = rollData.distancePenalty ?? 0;
+      const totalPenalty = rollData.totalPenalty ?? 0;
+      const target       = rollData.target ?? 0;
+      const diffLabel    = rollData.difficultyLabel ? loc(rollData.difficultyLabel) : "";
+      let tooltip = `<strong>${loc('NEUROSHIMA.Grenade.Distance')}:</strong> ${distance}m<br>`;
+      if (distPenalty !== 0) tooltip += `<strong>${loc('NEUROSHIMA.Roll.DistancePenalty')}:</strong> ${distPenalty}%<br>`;
+      if (totalPenalty !== 0) tooltip += `<strong>${loc('NEUROSHIMA.Roll.TotalModifier')}:</strong> ${totalPenalty}%<br>`;
+      if (diffLabel) tooltip += `<strong>${loc('NEUROSHIMA.Roll.BaseDifficulty')}:</strong> ${diffLabel}<br>`;
+      tooltip += `<strong>${loc('NEUROSHIMA.Roll.Target')}:</strong> ${target}`;
+      return tooltip.trim();
+    }
+
     if (rollData.isReputationRoll) {
       const repValue = rollData.repRepValue ?? 0;
       const fame = rollData.repFame ?? 0;
@@ -2478,12 +2493,12 @@ export class NeuroshimaDice {
 
     game.neuroshima.log("Wynik rzutu granatu", chatData);
 
-    const html = await renderTemplate(
+    const html = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
       chatData
     );
 
-    await ChatMessage.create({
+    const message = await ChatMessage.create({
       content: html,
       speaker: ChatMessage.getSpeaker({ actor }),
       rollMode,
@@ -2491,7 +2506,7 @@ export class NeuroshimaDice {
     });
 
     game.neuroshima.groupEnd();
-    return chatData;
+    return { ...chatData, message };
   }
 
   /**

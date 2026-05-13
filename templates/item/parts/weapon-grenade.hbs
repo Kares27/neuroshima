@@ -39,6 +39,7 @@
             <div class="blast-zone-header flexrow">
                 <span class="blast-zone-col-radius">{{localize "NEUROSHIMA.Grenade.Zone.Radius"}}</span>
                 <span class="blast-zone-col-damage">{{localize "NEUROSHIMA.Grenade.Zone.Damage"}}</span>
+                <span class="blast-zone-col-shrapnel">{{localize "NEUROSHIMA.Grenade.Zone.Shrapnel"}}</span>
                 <span class="blast-zone-col-knockdown">{{localize "NEUROSHIMA.Grenade.Zone.Knockdown"}}</span>
                 <span class="blast-zone-col-actions"></span>
             </div>
@@ -50,8 +51,12 @@
                 </div>
                 <div class="blast-zone-col-damage">
                     <select name="system.blastZones.{{@index}}.damage">
-                        {{selectOptions ../damageTypes selected=zone.damage localize=true}}
+                        {{selectOptions ../blastDamageTypesFull selected=zone.damage localize=true}}
                     </select>
+                </div>
+                <div class="blast-zone-col-shrapnel">
+                    <input type="number" name="system.blastZones.{{@index}}.shrapnel"
+                           value="{{zone.shrapnel}}" data-dtype="Number" min="0" style="width:100%;"/>
                 </div>
                 <div class="blast-zone-col-knockdown" style="text-align:center;">
                     <input type="checkbox" name="system.blastZones.{{@index}}.knockdown"

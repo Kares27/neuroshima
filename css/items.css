@@ -8,20 +8,26 @@
 
 .neuroshima.sheet.item .sheet-header {
     flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
     border-bottom: 2px solid var(--ns-border-main);
     margin-bottom: 5px;
     padding-bottom: 2px;
     gap: 15px;
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 .neuroshima.sheet.item .profile-container {
     flex: 0 0 100px;
+    width: 100px;
+    display: flex;
+    align-items: stretch;
 }
 
-.neuroshima.sheet.item .profile {
-    width: 100px;
-    height: 100px;
+.neuroshima.sheet.item .profile-img {
+    width: 100%;
+    height: 100%;
+    min-height: 80px;
     object-fit: contain;
     border: 2px solid var(--ns-border-main);
     border-radius: 5px;
@@ -30,12 +36,15 @@
 
 .neuroshima.sheet.item .header-details {
     flex: 1;
+    min-width: 0;
     gap: 0;
     border-left: 2px solid var(--ns-border-main);
     padding-left: 10px;
 }
 
 .neuroshima.sheet.item .item-subtitle {
+    display: flex;
+    flex-direction: row;
     border-bottom: 2px solid var(--ns-border-main);
     margin-bottom: 2px;
     justify-content: space-between;
@@ -52,6 +61,8 @@
 }
 
 .neuroshima.sheet.item .item-qty {
+    display: flex;
+    flex-direction: row;
     flex: 0 0 auto;
     align-items: center;
     gap: 4px;

@@ -1,13 +1,11 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
-const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
-
-export class NeuroshimaGrenadeRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
+export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
   constructor(options = {}) {
     super(options);
-    this.actor  = options.actor;
     this.weapon = options.weapon;
 
     this.rollOptions = {
@@ -21,12 +19,7 @@ export class NeuroshimaGrenadeRollDialog extends HandlebarsApplicationMixin(Appl
       rollMode:          options.rollMode           ?? game.settings.get("core", "rollMode")
     };
 
-    this._onCloseCallback  = options.onClose ?? null;
-    this.userEntry         = {};
-    this.selectedModifierIds   = new Set();
-    this.unselectedModifierIds = new Set();
-    this._dialogModifiers  = [];
-    this._scriptFields     = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, difficulty: null };
+    this.grenadeTargetPoint = options.grenadeTargetPoint ?? null;
   }
 
   static DEFAULT_OPTIONS = {
@@ -48,17 +41,6 @@ export class NeuroshimaGrenadeRollDialog extends HandlebarsApplicationMixin(Appl
 
   get title() {
     return `${game.i18n.localize("NEUROSHIMA.Grenade.RollTitle")}: ${this.weapon?.name ?? ""}`;
-  }
-
-  async close(options = {}) {
-    if (this._onCloseCallback) this._onCloseCallback();
-    return super.close(options);
-  }
-
-  _computeActorDiseasePenalty() {
-    return (this.actor?.items ?? [])
-      .filter(i => i.type === "disease" && (i.system.diseaseType ?? "chronic") === "transient")
-      .reduce((sum, i) => sum + (Number(i.system.transientPenalty) || 0), 0);
   }
 
   async _prepareContext(options) {
@@ -239,7 +221,7 @@ export class NeuroshimaGrenadeRollDialog extends HandlebarsApplicationMixin(Appl
     const useDisease      = !!data.useDiseasePenalty;
     const sf              = this._scriptFields ?? {};
 
-    await NeuroshimaDice.rollGrenade({
+    const result = await NeuroshimaDice.rollGrenade({
       actor:              this.actor,
       weapon:             this.weapon,
       distance,
@@ -256,6 +238,11 @@ export class NeuroshimaGrenadeRollDialog extends HandlebarsApplicationMixin(Appl
     });
 
     await this.close();
+
+    if (result?.message && this.grenadeTargetPoint && canvas?.scene) {
+      const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+      await NeuroshimaChatMessage.placeGrenadeTemplateAt(result.message, this.grenadeTargetPoint);
+    }
   }
 
   async _onCancel(event, target) {

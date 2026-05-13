@@ -2,7 +2,6 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaItem } from "../documents/item.js";
 import { NeuroshimaWeaponRollDialog } from "../apps/weapon-roll-dialog.js";
-import { NeuroshimaSkillRollDialog } from "../apps/skill-roll-dialog.js";
 import { AmmunitionLoadingDialog } from "../apps/ammo-loading-dialog.js";
 import { RestDialog } from "../apps/rest-dialog.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
@@ -10,9 +9,7 @@ import { CombatHelper } from "../helpers/combat-helper.js";
 import { getConditions } from "../apps/condition-config.js";
 import { TraitChoiceDialog } from "../apps/trait-choice-dialog.js";
 import { NeuroshimaGrenadeRollDialog } from "../apps/grenade-roll-dialog.js";
-
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-const { ActorSheetV2 } = foundry.applications.sheets;
+import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -36,7 +33,7 @@ function _collectArmorBonusByEffect(actor) {
 /**
  * Actor sheet for Neuroshima 1.5 using ApplicationV2.
  */
-export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
+export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   /** @override */
   static DEFAULT_OPTIONS = {
     tag: "form",
@@ -2124,6 +2121,13 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
         let distance = 0;
         let targets = Array.from(game.user.targets ?? []);
         let targetUuids = targets.map(t => t.document.uuid);
+        let grenadeTargetPoint = null;
+
+        if (weapon.system.weaponType === "grenade" && targets.length > 0) {
+            for (const t of targets) t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+            targets = [];
+            targetUuids = [];
+        }
 
         // Tryb wyboru na mapie jeśli brak targetów
         if (targetUuids.length === 0) {
@@ -2131,12 +2135,26 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             if (actorSourceToken) {
                 game.neuroshima.log("Brak aktywnych targetów, przechodzę do trybu wyboru na mapie");
                 await this.minimize();
-                const targetData = await this._waitForTarget();
+                const _grenadeBlastZones = weapon.system.blastZones ?? [];
+                const _grenadeRadius = (weapon.system.weaponType === "grenade" && _grenadeBlastZones.length > 0)
+                    ? Math.max(..._grenadeBlastZones.map(z => z.radius))
+                    : 0;
+                const targetData = await this._waitForTarget({ templateRadius: _grenadeRadius });
                 await this.maximize();
 
                 if (targetData && !targetData.cancelled) {
                     game.neuroshima.log("Otrzymano dane z mapy:", targetData);
                     distance = targetData.distance || 0;
+
+                    if (weapon.system.weaponType === "grenade") {
+                        if (targetData.point) {
+                            grenadeTargetPoint = targetData.point;
+                        } else if (targetData.token) {
+                            const gs = canvas.grid?.size ?? 100;
+                            const td = targetData.token.document;
+                            grenadeTargetPoint = { x: td.x + (td.width * gs) / 2, y: td.y + (td.height * gs) / 2 };
+                        }
+                    }
 
                     if (targetData.token) {
                         targetData.token.setTarget(true, { releaseOthers: true });
@@ -2323,6 +2341,7 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                 actor: this.document,
                 weapon: weapon,
                 distance: distance || 0,
+                grenadeTargetPoint,
                 onClose: () => { this._isRolling = false; }
             });
             await grenadeDialog.render(true);
@@ -2370,57 +2389,122 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
 
   /**
    * Oczekuje na kliknięcie na token lub punkt na mapie w celu obliczenia dystansu.
+   * @param {object} [options]
+   * @param {number} [options.templateRadius] Jeśli > 0, pokazuje podgląd szablonu granatu podczas celowania.
    * @private
    */
-  async _waitForTarget() {
+  async _waitForTarget(options = {}) {
+    const { templateRadius = 0 } = options;
     const actorToken = this._getSourceToken();
     if (!actorToken) {
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoActorTokenOnCanvas"));
         return null;
     }
 
-    // Zmiana kursora na celownik dla lepszego feedbacku
     const body = document.body;
     const originalCursor = body.style.cursor;
     body.style.cursor = "crosshair";
+
+    const snapPos = (x, y) => {
+        try {
+            if (canvas.grid?.getSnappedPoint)
+                return canvas.grid.getSnappedPoint({ x, y }, { mode: CONST.GRID_SNAPPING_MODES.CENTER });
+            return { x, y };
+        } catch (e) { return { x, y }; }
+    };
+
+    let previewObj = null;
+    let previewDoc = null;
+
+    if (templateRadius > 0 && canvas?.templates?.preview) {
+        try {
+            const tplData = {
+                t: "circle", user: game.user.id, x: 0, y: 0,
+                distance: templateRadius, fillColor: game.user.color ?? "#FF0000"
+            };
+            previewDoc = new CONFIG.MeasuredTemplate.documentClass(tplData, { parent: canvas.scene });
+            previewObj = new CONFIG.MeasuredTemplate.objectClass(previewDoc);
+            canvas.templates.preview.addChild(previewObj);
+            await previewObj.draw();
+            canvas.templates.activate();
+        } catch (e) {
+            console.warn("Neuroshima | Template preview (waitForTarget) failed:", e);
+            previewObj = null;
+        }
+    }
+
+    const destroyPreview = () => {
+        if (previewObj) {
+            try { canvas.templates.preview.removeChild(previewObj); previewObj.destroy({ children: true }); } catch (e) {}
+            previewObj = null;
+        }
+        for (const t of Array.from(game.user.targets)) {
+            t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+        }
+    };
 
     game.neuroshima.log("_waitForTarget: Rozpoczynam przechwytywanie kliknięcia (window capture)");
     ui.notifications.info(game.i18n.localize("NEUROSHIMA.Notifications.SelectTargetOrPoint"));
 
     return new Promise((resolve) => {
         let cleanupCalled = false;
-        
-        const cleanup = () => {
+
+        const cleanup = (clearPreview = true) => {
             if (cleanupCalled) return;
             cleanupCalled = true;
+            window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mousedown', onMouseDown, { capture: true });
             window.removeEventListener('contextmenu', onContextMenu, { capture: true });
             body.style.cursor = originalCursor;
+            if (clearPreview) destroyPreview();
+        };
+
+        const onMouseMove = () => {
+            if (!previewObj || !canvas?.mousePosition) return;
+            const pos = snapPos(canvas.mousePosition.x, canvas.mousePosition.y);
+            try { previewDoc.updateSource(pos); previewObj.refresh?.(); } catch (e) {}
+            if (previewObj?.shape && canvas?.tokens?.placeables) {
+                const gs = canvas.grid?.size ?? 100;
+                const inIds = canvas.tokens.placeables
+                    .filter(t => {
+                        const td = t.document;
+                        const cx = td.x + (td.width  * gs) / 2;
+                        const cy = td.y + (td.height * gs) / 2;
+                        return previewObj.shape.contains(cx - pos.x, cy - pos.y);
+                    })
+                    .map(t => t.id);
+                const currentIds = new Set(Array.from(game.user.targets).map(t => t.id));
+                for (const t of Array.from(game.user.targets)) {
+                    if (!inIds.includes(t.id))
+                        t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
+                }
+                for (const id of inIds) {
+                    if (!currentIds.has(id)) {
+                        const t = canvas.tokens.get(id);
+                        if (t) t.setTarget(true, { user: game.user, releaseOthers: false, groupSelection: true });
+                    }
+                }
+            }
         };
 
         const onMouseDown = async (event) => {
-            // Obsługujemy tylko LPM (0) i PPM (2)
             if (event.button !== 0 && event.button !== 2) return;
 
-            // Blokujemy domyślne akcje i propagację (Foundry nie otworzy arkusza)
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            cleanup();
-
-            if (event.button === 2) { // PPM = Anulowanie (ale pokaż dialog bez celu)
-                game.neuroshima.log("_waitForTarget: Wybór anulowany przez użytkownika — otworzę dialog bez celu");
+            if (event.button === 2) {
+                cleanup(true);
+                game.neuroshima.log("_waitForTarget: Wybór anulowany przez użytkownika");
                 resolve({ cancelled: true });
                 return;
             }
 
-            // Pobieramy aktualną pozycję myszy w świecie gry bezpośrednio z silnika Foundry (V13)
-            // canvas.mousePosition jest automatycznie aktualizowany i przeliczany przez system.
+            cleanup(false);
+
             const worldPos = { x: canvas.mousePosition.x, y: canvas.mousePosition.y };
-            game.neuroshima.log("_waitForTarget: Pozycja kliknięcia (world):", worldPos);
-            
-            // Szukanie tokena pod kursorem
+
             const clickedToken = canvas.tokens.placeables.find(t => {
                 if (!t.visible) return false;
                 const b = t.bounds;
@@ -2428,30 +2512,18 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
                        worldPos.y >= b.y && worldPos.y <= (b.y + b.height);
             });
 
-            if (clickedToken) {
-                game.neuroshima.log(`_waitForTarget: Wybrano token: ${clickedToken.name}. Ustawiam jako target.`);
-                // Programowe ustawienie targetu dla użytkownika (V13 compatible)
-                clickedToken.setTarget(true, { releaseOthers: true });
-                
-                const distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, clickedToken);
-                game.neuroshima.log(`_waitForTarget: Obliczony dystans do tokena: ${distance}m`);
+            destroyPreview();
 
-                resolve({
-                    distance,
-                    token: clickedToken
-                });
+            if (clickedToken) {
+                clickedToken.setTarget(true, { releaseOthers: true });
+                const distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, clickedToken);
+                resolve({ distance, token: clickedToken });
             } else {
-                game.neuroshima.log("_waitForTarget: Kliknięto w puste miejsce. Obliczam dystans do punktu.");
-                // V13: canvas.grid.getCenter zwraca środek komórki siatki dla podanych współrzędnych
-                const gridPos = canvas.grid.getCenter(worldPos.x, worldPos.y);
-                
+                const gridPos = canvas.grid.getCenterPoint
+                    ? canvas.grid.getCenterPoint({ x: worldPos.x, y: worldPos.y })
+                    : canvas.grid.getCenter(worldPos.x, worldPos.y);
                 const distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, gridPos);
-                game.neuroshima.log(`_waitForTarget: Obliczony dystans do punktu: ${distance}m`);
-                
-                resolve({
-                    distance,
-                    point: gridPos
-                });
+                resolve({ distance, point: gridPos });
             }
         };
 
@@ -2460,15 +2532,13 @@ export class NeuroshimaActorSheet extends HandlebarsApplicationMixin(ActorSheetV
             event.stopPropagation();
         };
 
-        // Nasłuchujemy na window z capture: true, aby być przed jakimkolwiek innym listenerem
+        if (previewObj) window.addEventListener('mousemove', onMouseMove);
         window.addEventListener('mousedown', onMouseDown, { capture: true });
         window.addEventListener('contextmenu', onContextMenu, { capture: true });
 
-        // Safety timeout - po 30 sekundach automatycznie anuluj, gdyby coś poszło nie tak
         setTimeout(() => {
             if (!cleanupCalled) {
-                game.neuroshima.log("_waitForTarget: Timeout safety triggered");
-                cleanup();
+                cleanup(true);
                 resolve(null);
             }
         }, 30000);

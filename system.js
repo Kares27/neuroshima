@@ -347,6 +347,28 @@ Hooks.once('init', async function() {
         if (!zones || !zones.length) return 0;
         return Math.max(...zones.map(z => z.radius ?? 0));
     });
+    Handlebars.registerHelper('damageLabel', (damageKey) => {
+        if (!damageKey || damageKey === "none") return game.i18n.localize("NEUROSHIMA.Damage.None");
+        const key = `NEUROSHIMA.Damage.${damageKey}`;
+        const loc = game.i18n.localize(key);
+        return loc !== key ? loc : damageKey;
+    });
+
+    Handlebars.registerHelper('locationAbbrev', (locationKey) => {
+        if (!locationKey) return "-";
+        const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+        const key = `NEUROSHIMA.LocationAbbrev.${capitalize(locationKey)}`;
+        const loc = game.i18n.localize(key);
+        return loc !== key ? loc : locationKey;
+    });
+
+    Handlebars.registerHelper('locationFull', (locationKey) => {
+        if (!locationKey) return "-";
+        const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+        const key = `NEUROSHIMA.Location.${capitalize(locationKey)}`;
+        const loc = game.i18n.localize(key);
+        return loc !== key ? loc : locationKey;
+    });
 
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
@@ -888,6 +910,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/melee/parts/footer-danger.hbs",
         "systems/neuroshima/templates/apps/melee/parts/melee-gm-controls.hbs",
         "systems/neuroshima/templates/chat/weapon-roll-card.hbs",
+        "systems/neuroshima/templates/chat/grenade-blast-result.hbs",
+        "systems/neuroshima/templates/chat/grenade-blast-pain-report.hbs",
         "systems/neuroshima/templates/chat/roll-card.hbs",
         "systems/neuroshima/templates/chat/patient-card.hbs",
         "systems/neuroshima/templates/chat/pain-resistance-report.hbs",
@@ -1198,6 +1222,53 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
             CombatHelper.reverseDamage(message);
+        }
+    });
+
+    options.push({
+        name: "NEUROSHIMA.Grenade.BlastReport.ReverseAll",
+        icon: '<i class="fas fa-bomb"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const messageType = message?.getFlag("neuroshima", "messageType");
+            const allWoundIds = message?.getFlag("neuroshima", "allWoundIds") ?? [];
+            const alreadyReversed = message?.getFlag("neuroshima", "isReversed");
+            if (!CombatHelper.canPerformCombatAction()) return false;
+            return messageType === "grenadeBlastReport" && allWoundIds.length > 0 && !alreadyReversed;
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const actorDamages = message?.getFlag("neuroshima", "actorDamages") ?? [];
+            const alreadyReversed = message?.getFlag("neuroshima", "isReversed");
+            if (alreadyReversed) return;
+            let totalReversed = 0;
+            for (const ad of actorDamages) {
+                if (!ad.woundIds?.length) continue;
+                let actor = null;
+                if (ad.actorUuid) {
+                    const doc = await fromUuid(ad.actorUuid);
+                    actor = doc?.actor ?? doc;
+                }
+                if (!actor && ad.actorId) actor = game.actors.get(ad.actorId);
+                if (!actor) continue;
+                const existing = ad.woundIds.filter(id => actor.items.has(id));
+                if (existing.length > 0) {
+                    await actor.deleteEmbeddedDocuments("Item", existing);
+                    totalReversed += existing.length;
+                }
+            }
+            await message.setFlag("neuroshima", "isReversed", true);
+            if (totalReversed > 0) {
+                ui.notifications.info(game.i18n.format("NEUROSHIMA.Grenade.BlastReport.Reversed", { count: totalReversed }));
+            }
+            const html = document.createElement("div");
+            html.innerHTML = message.content;
+            const statusDiv = document.createElement("div");
+            statusDiv.className = "refund-status";
+            statusDiv.style.cssText = "text-align:center;font-style:italic;opacity:0.7;margin-top:5px;border-top:1px dashed #777;padding-top:5px;";
+            statusDiv.textContent = game.i18n.localize("NEUROSHIMA.Notifications.StatusReversed");
+            html.appendChild(statusDiv);
+            await message.update({ content: html.innerHTML });
         }
     });
 
@@ -1979,6 +2050,36 @@ function initializeSocketlib() {
         if (!actor) return;
         return actor.unsetFlag(scope, key);
     });
+
+    game.neuroshima.socket.register("computeGrenadeBlast", async (data) => {
+        const { templateId, messageId } = data;
+        const templateDoc = canvas?.scene?.getEmbeddedDocument("MeasuredTemplate", templateId);
+        if (!templateDoc) {
+            console.warn("Neuroshima | computeGrenadeBlast: brak szablonu", templateId);
+            return;
+        }
+        const blastZones = templateDoc.getFlag("neuroshima", "grenadeBlastZones") ?? [];
+        const message    = game.messages.get(messageId);
+        const actorId    = message?.getFlag("neuroshima", "grenadeRoll")?.actorId;
+        const actor      = actorId ? game.actors.get(actorId) : null;
+        game.neuroshima.log("computeGrenadeBlast (via socket)", { templateId, messageId, blastZonesCount: blastZones.length, hasActor: !!actor, hasMessage: !!message });
+        const { NeuroshimaChatMessage } = await import("./module/documents/chat-message.js");
+        await NeuroshimaChatMessage._computeGrenadeBlast(templateDoc, blastZones, actor, message);
+    });
+
+    game.neuroshima.socket.register("deleteGrenadeTemplates", async (messageId) => {
+        if (!canvas?.scene || !messageId) return;
+        const existing = canvas.scene.templates.filter(t => t.getFlag("neuroshima", "grenadeMessageId") === messageId);
+        if (existing.length > 0) {
+            await canvas.scene.deleteEmbeddedDocuments("MeasuredTemplate", existing.map(t => t.id));
+        }
+    });
+
+    game.neuroshima.socket.register("createGrenadeTemplate", async (templateData) => {
+        if (!canvas?.scene) return null;
+        const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [templateData]);
+        return created?.[0]?.id ?? null;
+    });
 }
 
 // Rejestracja socketlib po załadowaniu modułu
@@ -2064,10 +2165,25 @@ Hooks.on("updateWorldTime", async (worldTime, dt) => {
 });
 
 Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {
-    if (!game.user.isGM) return;
-    if (!templateDoc.getFlag("neuroshima", "fromAreaEffect")) return;
-    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
-    await NeuroshimaAuraManager.applyAreaEffect(templateDoc);
+    if (templateDoc.getFlag("neuroshima", "fromAreaEffect")) {
+        if (!game.user.isGM) return;
+        const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+        await NeuroshimaAuraManager.applyAreaEffect(templateDoc);
+    }
+
+    if (templateDoc.getFlag("neuroshima", "isGrenadeTemplate")) {
+        const gmActive = game.users.some(u => u.isGM && u.active);
+        if (!game.user.isGM && gmActive) return;
+
+        const blastZones = templateDoc.getFlag("neuroshima", "grenadeBlastZones") ?? [];
+        const messageId  = templateDoc.getFlag("neuroshima", "grenadeMessageId");
+        const message    = game.messages.get(messageId);
+        const actorId    = message?.getFlag("neuroshima", "grenadeRoll")?.actorId;
+        const actor      = actorId ? game.actors.get(actorId) : null;
+        game.neuroshima.log("createMeasuredTemplate | granat", { templateId: templateDoc.id, isGM: game.user.isGM, blastZonesCount: blastZones.length, messageId, hasActor: !!actor });
+        const { NeuroshimaChatMessage } = await import("./module/documents/chat-message.js");
+        await NeuroshimaChatMessage._computeGrenadeBlast(templateDoc, blastZones, actor, message);
+    }
 });
 
 Hooks.on("updateMeasuredTemplate", async (templateDoc, changes, options, userId) => {

@@ -1,4 +1,109 @@
 /**
+ * Fluent resource handle returned by NeuroshimaScript#resource().
+ * Captures item + key and provides chainable defer/roll helpers.
+ * Obtain via: const r = this.resource(this.item, "KeyName");
+ */
+export class ResourceHandle {
+  constructor(scriptInstance, item, key) {
+    this._script = scriptInstance;
+    this._item   = item;
+    this._key    = key;
+    this._res    = item?.system?.resources?.find?.(r => r.key === key) ?? null;
+  }
+
+  /** Current value of the resource, or null if not found. */
+  get value()  { return this._res !== null ? (this._res.value ?? 0) : null; }
+  /** True if the resource exists on the item. */
+  get exists() { return this._res !== null; }
+  /** Minimum allowed value (default 0). */
+  get min()    { return this._res?.min ?? 0; }
+  /** Maximum allowed value (0 = uncapped). */
+  get max()    { return this._res?.max ?? 0; }
+  /** Display label of the resource. */
+  get label()  { return this._res?.label ?? this._key; }
+
+  /**
+   * Queue a fixed drain — deducted after all armor calculations finish.
+   * @param {number} amount - Positive number removed from current value.
+   * @returns {ResourceHandle} this (chainable)
+   */
+  deferDrain(amount) {
+    this._script.deferResourceDrain(this._item, this._key, amount);
+    return this;
+  }
+
+  /**
+   * Queue a fixed addition — added after all armor calculations finish.
+   * @param {number} amount - Positive number added to current value.
+   * @returns {ResourceHandle} this (chainable)
+   */
+  deferAdd(amount) {
+    this._script.deferResourceAdd(this._item, this._key, amount);
+    return this;
+  }
+
+  /**
+   * Queue a drain equal to the actual SP reduction applied this hit.
+   * @returns {ResourceHandle} this (chainable)
+   */
+  deferDrainByReduction() {
+    this._script.deferResourceDrainByReduction(this._item, this._key);
+    return this;
+  }
+
+  /**
+   * Queue setting the resource to an absolute value.
+   * @param {number} value - Target value (clamped to [min, max]).
+   * @returns {ResourceHandle} this (chainable)
+   */
+  deferSet(value) {
+    this._script.deferResourceSet(this._item, this._key, value);
+    return this;
+  }
+
+  /**
+   * Roll N dice synchronously AND queue a chat message with optional flavor.
+   * Use inside SYNC triggers (armorCalculation). The chat post is deferred.
+   * @param {number} count
+   * @param {number} sides
+   * @param {object} [options] - { flavor, rollMode, speaker }
+   * @returns {number[]} Array of individual die results (available immediately).
+   */
+  deferRoll(count, sides, options = {}) {
+    return this._script.deferRollToChat(count, sides, options);
+  }
+
+  /**
+   * Roll N dice and post to chat immediately. Use inside ASYNC triggers.
+   * @param {number} count
+   * @param {number} sides
+   * @param {object} [options] - { flavor, rollMode, toMessage }
+   * @returns {Promise<Roll>}
+   */
+  async roll(count, sides, options = {}) {
+    const formula = `${Math.max(1, Math.floor(count))}d${Math.max(2, Math.floor(sides))}`;
+    return this._script.roll(formula, {}, {
+      flavor:    options.flavor ?? "",
+      toMessage: options.toMessage ?? true,
+      rollMode:  options.rollMode
+    });
+  }
+
+  /**
+   * Unified roll that auto-detects SYNC vs ASYNC context via the parent script.
+   * Delegates to `deferRoll` in SYNC triggers, `roll` in ASYNC triggers.
+   * Callers can safely `await` in both contexts.
+   * @param {number} count
+   * @param {number} sides
+   * @param {object} [options] - { flavor, rollMode, speaker, toMessage }
+   * @returns {number[] | Promise<Roll>}
+   */
+  rollToChat(count, sides, options = {}) {
+    return this._script.rollToChat(count, sides, options);
+  }
+}
+
+/**
  * Represents a single executable script attached to an ActiveEffect.
  * Inspired by WFRP4e's script system but adapted for Neuroshima 1.5.
  */
@@ -1214,6 +1319,38 @@ export class NeuroshimaScript {
   }
 
   /**
+   * Return a fluent ResourceHandle for an item resource.
+   * The handle exposes `.value`, `.exists`, `.min`, `.max`, `.label` and the
+   * defer helpers `.deferDrain()`, `.deferAdd()`, `.deferDrainByReduction()`,
+   * `.deferSet()`, `.deferRoll()` (sync+chat) and `.roll()` (async).
+   *
+   * Prefer this over `getItemResource` when you also need to defer changes,
+   * since it keeps item + key together and allows chaining.
+   *
+   * @param {Item} item
+   * @param {string} key - Resource key string.
+   * @returns {ResourceHandle}
+   *
+   * @example
+   * // armorCalculation (SYNC trigger)
+   * const expAP = this.resource(this.item, "ExplosionAP");
+   * if (expAP.exists) {
+   *   args.sp = expAP.value;
+   *   args.bonusSP = 0;
+   *   expAP.deferDrain(2);                          // drain 2 after all calcs
+   *   // or: expAP.deferDrainByReduction();         // drain exactly what was blocked
+   * }
+   *
+   * @example
+   * // Chaining
+   * this.resource(this.item, "ShieldCharge")
+   *   .deferSet(0);                                  // reset to 0 after calcs
+   */
+  resource(item, key) {
+    return new ResourceHandle(this, item, key);
+  }
+
+  /**
    * Set the value of a custom resource on an item (clamped to [min, max]).
    * When max === 0, no upper clamp is applied.
    * @param {Item} item
@@ -1366,6 +1503,173 @@ export class NeuroshimaScript {
    */
   async decreaseItemResourceById(item, id, amount = 1) {
     return this.modifyItemResourceById(item, id, -Math.abs(amount));
+  }
+
+  // ── Deferred resource update helpers (armorCalculation / SYNC triggers) ───
+
+  /**
+   * Queue a drain of `amount` from a resource, applied after the armor calculation finishes.
+   * Safe to use in SYNC triggers (armorCalculation).
+   * Does NOT touch the resource immediately — the update is batched and written once all
+   * armor calculations for this attack are complete.
+   * @param {Item} item - The item that owns the resource.
+   * @param {string} key - Resource key string.
+   * @param {number} amount - Positive number; deducted from current value (clamped to min).
+   *
+   * @example
+   * this.deferResourceDrain(this.item, "ShieldCharge", 1);
+   */
+  deferResourceDrain(item, key, amount) {
+    const pending = this._currentArgs?.pendingResourceUpdates;
+    if (!Array.isArray(pending)) return;
+    pending.push({ item, key, delta: -Math.abs(amount) });
+  }
+
+  /**
+   * Queue an addition of `amount` to a resource, applied after armor calculations.
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} amount - Positive number added to current value (clamped to max).
+   *
+   * @example
+   * this.deferResourceAdd(this.item, "ReactiveArmor", 2);
+   */
+  deferResourceAdd(item, key, amount) {
+    const pending = this._currentArgs?.pendingResourceUpdates;
+    if (!Array.isArray(pending)) return;
+    pending.push({ item, key, delta: +Math.abs(amount) });
+  }
+
+  /**
+   * Queue a drain equal to the actual SP reduction applied, calculated after armor math.
+   * Use this when the resource should decrease by exactly how much it blocked.
+   * @param {Item} item
+   * @param {string} key
+   *
+   * @example
+   * args.sp = this.getItemResource(this.item, "ExplosionAP");
+   * this.deferResourceDrainByReduction(this.item, "ExplosionAP");
+   */
+  deferResourceDrainByReduction(item, key) {
+    const pending = this._currentArgs?.pendingResourceUpdates;
+    if (!Array.isArray(pending)) return;
+    pending.push({ item, key, useReduction: true });
+  }
+
+  /**
+   * Queue setting a resource to an absolute value, applied after armor calculations.
+   * Replaces the existing value (clamped to [min, max]).
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} value - Absolute target value.
+   *
+   * @example
+   * this.deferResourceSet(this.item, "ShieldCharge", 0);
+   */
+  deferResourceSet(item, key, value) {
+    const pending = this._currentArgs?.pendingResourceUpdates;
+    if (!Array.isArray(pending)) return;
+    pending.push({ item, key, setValue: value });
+  }
+
+  /**
+   * Roll N dice with `sides` faces synchronously and return the array of individual results.
+   * Usable inside SYNC triggers (armorCalculation). Each result is an integer in [1, sides].
+   * @param {number} count - Number of dice.
+   * @param {number} sides - Number of faces per die (e.g. 20 for d20).
+   * @returns {number[]} Array of results, length === count.
+   *
+   * @example
+   * const rolls = this.rollDice(3, 20); // roll 3d20
+   * const total = rolls.reduce((s, r) => s + r, 0);
+   * if (rolls.some(r => r >= 15)) { ... }
+   */
+  rollDice(count, sides) {
+    const n = Math.max(1, Math.floor(count));
+    const s = Math.max(2, Math.floor(sides));
+    const results = [];
+    for (let i = 0; i < n; i++) results.push(Math.floor(Math.random() * s) + 1);
+    return results;
+  }
+
+  /**
+   * Unified roll helper that works in both SYNC and ASYNC triggers.
+   *
+   * - In SYNC triggers (e.g. armorCalculation): `pendingChatRolls` array is present,
+   *   so the roll is computed synchronously and queued for chat. Returns `number[]`.
+   * - In ASYNC triggers: posts the roll to chat immediately via Foundry Roll API.
+   *   Returns `Promise<Roll>`.
+   *
+   * In both cases the caller can safely `await` the result — awaiting a non-Promise
+   * value in JS simply returns that value unchanged.
+   *
+   * @param {number} count - Number of dice.
+   * @param {number} sides - Faces per die (e.g. 20 for d20).
+   * @param {object} [options]
+   * @param {string} [options.flavor]    - Flavor text shown above the roll in chat.
+   * @param {string} [options.rollMode]  - Roll mode: "publicroll", "gmroll", "blindroll", "selfroll".
+   * @param {object} [options.speaker]   - ChatMessage speaker descriptor.
+   * @returns {number[] | Promise<Roll>}
+   *
+   * @example
+   * // Works in both SYNC and ASYNC triggers:
+   * const result = await this.rollToChat(1, 20, { flavor: "Test wytrzymałości" });
+   * // SYNC: result is number[]  →  const [r] = result;
+   * // ASYNC: result is Roll     →  r = result.total;
+   */
+  rollToChat(count, sides, options = {}) {
+    if (Array.isArray(this._currentArgs?.pendingChatRolls)) {
+      return this.deferRollToChat(count, sides, options);
+    }
+    const n = Math.max(1, Math.floor(count));
+    const s = Math.max(2, Math.floor(sides));
+    return this.roll(`${n}d${s}`, {}, {
+      flavor:    options.flavor    ?? "",
+      toMessage: options.toMessage ?? true,
+      rollMode:  options.rollMode
+    });
+  }
+
+  /**
+   * Roll N dice synchronously AND queue them to be posted to chat with a flavor message.
+   * The roll result is returned immediately so you can use it in the same sync script.
+   * The actual chat message is sent asynchronously after all armor calculations finish.
+   * Safe to use in SYNC triggers (armorCalculation).
+   *
+   * @param {number} count - Number of dice.
+   * @param {number} sides - Faces per die (e.g. 20 for d20).
+   * @param {object} [options]
+   * @param {string} [options.flavor]    - Flavor text shown above the roll in chat.
+   * @param {string} [options.rollMode]  - Roll mode: "publicroll", "gmroll", "blindroll", "selfroll".
+   * @param {object} [options.speaker]   - ChatMessage speaker descriptor.
+   * @returns {number[]} Array of individual die results, length === count.
+   *
+   * @example
+   * // In armorCalculation — roll 1d20 and post to chat, then drain resource if roll >= 15
+   * if (args.isGrenade) {
+   *   const expAP = this.getItemResource(this.item, "ExplosionAP");
+   *   if (expAP !== null) {
+   *     args.sp = expAP;
+   *     args.bonusSP = 0;
+   *     const [roll] = this.deferRollToChat(1, 20, { flavor: "Test wytrzymałości tarczy" });
+   *     if (roll >= 15) this.deferResourceDrain(this.item, "ExplosionAP", 1);
+   *   }
+   * }
+   */
+  deferRollToChat(count, sides, options = {}) {
+    const results = this.rollDice(count, sides);
+    const pending = this._currentArgs?.pendingChatRolls;
+    if (Array.isArray(pending)) {
+      pending.push({
+        count: Math.max(1, Math.floor(count)),
+        sides: Math.max(2, Math.floor(sides)),
+        results,
+        flavor:   options.flavor   ?? "",
+        rollMode: options.rollMode ?? "publicroll",
+        speaker:  options.speaker  ?? null
+      });
+    }
+    return results;
   }
 
   // ── Execution ─────────────────────────────────────────────────────────────
@@ -1665,7 +1969,7 @@ export class NeuroshimaScript {
  * Item resource helpers (item = any Item with a "resources" tab; use this.item for own item):
  *   By KEY (string key field):
  *   this.hasItemResource(item, key)                 — true if resource with key exists
- *   this.getItemResource(item, key)                 — current value (null if not found)
+ *   this.getItemResource(item, key)                 — current value as number (null if not found)
  *   await this.setItemResource(item, key, value)    — set value, clamped to [min, max] (max=0 = uncapped)
  *   await this.modifyItemResource(item, key, delta) — value += delta, clamped
  *   await this.increaseItemResource(item, key, n=1) — value += |n|, clamped to max
@@ -1676,6 +1980,25 @@ export class NeuroshimaScript {
  *   await this.modifyItemResourceById(item, id, delta) — value += delta by index, clamped
  *   await this.increaseItemResourceById(item, id, n=1) — value += |n| by index
  *   await this.decreaseItemResourceById(item, id, n=1) — value -= |n| by index
+ *
+ * Fluent ResourceHandle — preferred in armorCalculation / SYNC triggers:
+ *   const r = this.resource(item, key)  → ResourceHandle with .value, .exists, .min, .max, .label
+ *   r.deferDrain(amount)                — queue deduct |amount| (clamped to min)        → chainable
+ *   r.deferAdd(amount)                  — queue add |amount| (clamped to max)            → chainable
+ *   r.deferDrainByReduction()           — queue deduct by actual SP reduction value       → chainable
+ *   r.deferSet(value)                   — queue set to absolute value (clamped)           → chainable
+ *   r.deferRoll(count, sides, options)  — sync roll + deferred chat post → number[]       (SYNC)
+ *   await r.roll(count, sides, options) — real Roll, immediate chat post → Roll            (ASYNC)
+ *
+ * Low-level deferred helpers (item + key explicit — prefer ResourceHandle above):
+ *   this.deferResourceDrain(item, key, amount)      — queue deduct |amount| (clamped to min)
+ *   this.deferResourceAdd(item, key, amount)        — queue add |amount| (clamped to max)
+ *   this.deferResourceDrainByReduction(item, key)  — queue deduct by actual SP reduction value
+ *   this.deferResourceSet(item, key, value)        — queue set to absolute value (clamped)
+ *   this.rollDice(count, sides)                    — sync dice roll → number[] (no chat)
+ *   this.deferRollToChat(count, sides, options)    — sync roll + queue chat post with flavor → number[]
+ *                                                    options: { flavor, rollMode, speaker }
+ *                                                    Result usable immediately; chat sent after all calcs.
  *
  * Damage type constants (for use in scripts):
  *   D  sD  L  sL  C  sC  K  sK    (rany postaci, od najlżejszej; s = siniak)

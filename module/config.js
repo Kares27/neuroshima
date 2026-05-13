@@ -132,6 +132,28 @@ export const NEUROSHIMA = {
         "sC": "NEUROSHIMA.Damage.sC",
         "sK": "NEUROSHIMA.Damage.sK"
     },
+    blastDamageTypes: {
+        "none": "NEUROSHIMA.Damage.None",
+        "D": "NEUROSHIMA.Damage.D",
+        "L": "NEUROSHIMA.Damage.L",
+        "C": "NEUROSHIMA.Damage.C",
+        "K": "NEUROSHIMA.Damage.K",
+        "sD": "NEUROSHIMA.Damage.sD",
+        "sL": "NEUROSHIMA.Damage.sL",
+        "sC": "NEUROSHIMA.Damage.sC",
+        "sK": "NEUROSHIMA.Damage.sK"
+    },
+    blastDamageTypesFull: {
+        "none": "NEUROSHIMA.Damage.None",
+        "D": "NEUROSHIMA.Damage.Full.D",
+        "L": "NEUROSHIMA.Damage.Full.L",
+        "C": "NEUROSHIMA.Damage.Full.C",
+        "K": "NEUROSHIMA.Damage.Full.K",
+        "sD": "NEUROSHIMA.Damage.Full.sD",
+        "sL": "NEUROSHIMA.Damage.Full.sL",
+        "sC": "NEUROSHIMA.Damage.Full.sC",
+        "sK": "NEUROSHIMA.Damage.Full.sK"
+    },
     woundConfiguration: {
         "D": {
             label: "NEUROSHIMA.Damage.D",

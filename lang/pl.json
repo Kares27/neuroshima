@@ -580,7 +580,8 @@
             "Turn": "Tura",
             "MeleeInitiative": "Inicjatywa Wręcz",
             "ArmorPenalty": "Kara od Pancerza",
-            "GeneralPenalty": "Ogólna Kara"
+            "GeneralPenalty": "Ogólna Kara",
+            "PiercingAbbr": "PP"
         },
         "MeleeOpposed": {
             "Title": "Starcie Wręcz",
@@ -871,6 +872,7 @@
         },
         "Damage": {
             "Type": "Typ Obrażenia",
+            "None": "Brak",
             "D": "D",
             "L": "L",
             "C": "C",
@@ -1130,7 +1132,11 @@
         "Chat": {
             "ArmorReduction": "Redukcja Pancerza",
             "ArmorReductionStats": "{reduced} z {total} pocisków zredukowanych przez pancerz na {location}",
-            "AllDamageNegated": "Wszystkie obrażenia zostały całkowicie zneutralizowane przez pancerz!"
+            "AllDamageNegated": "Wszystkie obrażenia zostały całkowicie zneutralizowane przez pancerz!",
+            "OriginalDamage": "Oryginalne Obrażenia",
+            "EffectiveReduction": "Efektywna Redukcja",
+            "FinalDamage": "Finalne Obrażenia",
+            "None": "Brak"
         },
         "Location": {
             "Head": "Głowa",
@@ -1139,6 +1145,14 @@
             "RightArm": "Prawa Ręka",
             "LeftLeg": "Lewa Noga",
             "RightLeg": "Prawa Noga"
+        },
+        "LocationAbbrev": {
+            "Head": "Głowa",
+            "Torso": "Tors",
+            "LeftArm": "L.Ręka",
+            "RightArm": "P.Ręka",
+            "LeftLeg": "L.Noga",
+            "RightLeg": "P.Noga"
         },
         "PatientCard": {
             "Title": "Karta Pacjenta",
@@ -1632,13 +1646,33 @@
             "AddZone": "Dodaj Strefę",
             "RemoveZone": "Usuń Strefę",
             "NoZones": "Brak stref obrażeń",
-            "PlaceTemplate": "Umieść Szablon",
+            "PlaceTemplate": "Połóż Promień",
+            "PlaceTemplateTooltip": "Kliknij aby aktywować tryb kładzenia szablonu. Szablon będzie podążał za kursorem — kliknij lewym przyciskiem aby postawić.",
             "FailureMargin": "Margines Porażki",
             "Deviation": "Odchylenie",
+            "DeviationTooltip": "Odchylenie określa o ile metrów granat wylądował obok celu. Każdy punkt porażki to 1m odchylenia (pomnożony przez czynnik dystansu).",
+            "Radius": "Promień",
+            "NoRadius": "Brak zdefiniowanego promienia dla tego granatu.",
+            "TemplatePlaced": "Szablon granatu umieszczono. Możesz go przesunąć na miejsce.",
+            "NoTargetsInBlast": "Brak celów w zasięgu eksplozji.",
+            "BlastDamageTitle": "Efekty Wybuchu",
+            "BlastTarget": "Cel",
+            "BlastDamageAbbr": "Obr.",
             "Zone": {
                 "Radius": "Promień (m)",
                 "Damage": "Obrażenia",
-                "Knockdown": "Przewrócenie"
+                "Knockdown": "Przewrócenie",
+                "KnockdownTooltip": "Przewrócenie i oszołomienie",
+                "Shrapnel": "Odłamki",
+                "ShrapnelHit": "Odłamek",
+                "DistanceM": "Dystans (m)"
+            },
+            "BlastDamageApplied": "Obrażenia zastosowane",
+            "ShrapnelMiss": "Brak trafienia",
+            "BlastReport": {
+                "Title": "Wybuch Granatu",
+                "ReverseAll": "Cofnij obrażenia wybuchu",
+                "Reversed": "Cofnięto {count} ran po wybuchu granatu"
             }
         }
     }

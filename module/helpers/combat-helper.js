@@ -255,9 +255,21 @@ export class CombatHelper {
     const reducedDetails = [];
     let totalProjectiles = 0;
     let reducedProjectiles = 0;
+    const allPendingResourceUpdates = [];
+    const allPendingChatRolls = [];
+
+    const _wType = attackData.weaponType ?? null;
+    const attackContext = {
+      isGrenade:   attackData.isGrenade   ?? (_wType === "grenade"),
+      isMelee:     attackData.isMelee     ?? (_wType === "melee"),
+      isRanged:    _wType === "ranged",
+      isThrown:    _wType === "thrown",
+      attackLabel: attackData.label       ?? null,
+      weaponType:  _wType
+    };
 
     // preApplyDamage: scripts can modify damageType, piercing, or push extra wounds
-    const preArgs = { actor, location, damageType, piercing, rawWounds };
+    const preArgs = { actor, location, damageType, piercing, rawWounds, ...attackContext };
     await NeuroshimaScriptRunner.execute("preApplyDamage", preArgs);
     damageType = preArgs.damageType;
     piercing   = preArgs.piercing;
@@ -266,7 +278,9 @@ export class CombatHelper {
         totalProjectiles = 1;
         
         // Apply armor reduction
-        const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing);
+        const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing, attackContext);
+        if (reductionData.pendingResourceUpdates?.length) allPendingResourceUpdates.push(...reductionData.pendingResourceUpdates);
+        if (reductionData.pendingChatRolls?.length) allPendingChatRolls.push(...reductionData.pendingChatRolls);
         
         if (reductionData.reducedDamageType) {
             rawWounds.push({
@@ -289,7 +303,9 @@ export class CombatHelper {
             const count = bullet.isPellet ? (bullet.successPoints || 1) : 1;
             for (let i = 0; i < count; i++) {
                 totalProjectiles++;
-                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bullet.damage || damageType, bullet.piercing ?? piercing);
+                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bullet.damage || damageType, bullet.piercing ?? piercing, attackContext);
+                if (reductionData.pendingResourceUpdates?.length) allPendingResourceUpdates.push(...reductionData.pendingResourceUpdates);
+                if (reductionData.pendingChatRolls?.length) allPendingChatRolls.push(...reductionData.pendingChatRolls);
                 if (reductionData.reducedDamageType) {
                     rawWounds.push({
                         name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
@@ -300,6 +316,61 @@ export class CombatHelper {
                     reductionData.fullName = game.i18n.localize(NEUROSHIMA.woundConfiguration[bullet.damage || damageType]?.fullLabel || bullet.damage || damageType);
                     reducedDetails.push(reductionData);
                 }
+            }
+        }
+    }
+
+    if (allPendingResourceUpdates.length > 0) {
+        const updatesByItemId = new Map();
+        for (const upd of allPendingResourceUpdates) {
+            if (!upd?.item || !upd?.key) continue;
+            if (upd.delta === undefined && upd.setValue === undefined) continue;
+            const id = upd.item.id;
+            if (!updatesByItemId.has(id)) updatesByItemId.set(id, { item: upd.item, deltas: [] });
+            updatesByItemId.get(id).deltas.push({ key: upd.key, delta: upd.delta, setValue: upd.setValue });
+        }
+        for (const { item, deltas } of updatesByItemId.values()) {
+            try {
+                const resources = Array.from(item.system?.resources ?? []).map(r => ({ ...r }));
+                for (const upd of deltas) {
+                    const idx = resources.findIndex(r => r.key === upd.key);
+                    if (idx < 0) continue;
+                    const res = resources[idx];
+                    const min = res.min ?? 0;
+                    const max = res.max ?? 0;
+                    let newVal;
+                    if (upd.setValue !== undefined) {
+                        newVal = upd.setValue;
+                    } else {
+                        newVal = (res.value ?? 0) + (upd.delta ?? 0);
+                    }
+                    newVal = Math.max(min, newVal);
+                    if (max > 0) newVal = Math.min(max, newVal);
+                    resources[idx] = { ...res, value: newVal };
+                }
+                await item.update({ "system.resources": resources });
+            } catch (e) {
+                console.warn("Neuroshima | pendingResourceUpdate failed:", e);
+            }
+        }
+    }
+
+    if (allPendingChatRolls.length > 0) {
+        for (const rollData of allPendingChatRolls) {
+            try {
+                const die = new Die({ faces: rollData.sides, number: rollData.count });
+                die.results = rollData.results.map(v => ({ result: v, active: true }));
+                die._evaluated = true;
+                const roll = Roll.fromTerms([die]);
+                roll._total = rollData.results.reduce((s, v) => s + v, 0);
+                roll._evaluated = true;
+                await roll.toMessage({
+                    flavor: rollData.flavor ?? "",
+                    rollMode: rollData.rollMode ?? "publicroll",
+                    speaker: rollData.speaker ?? ChatMessage.getSpeaker()
+                });
+            } catch (e) {
+                console.warn("Neuroshima | pendingChatRoll failed:", e);
             }
         }
     }
@@ -1166,9 +1237,10 @@ export class CombatHelper {
 
   /**
    * Zmniejsza obrażenia i zwraca szczegółowe dane redukcji dla tooltipa.
+   * @param {object} [context] - dodatkowy kontekst przekazywany do armorCalculation (np. isGrenade, attackLabel)
    * @private
    */
-  static reduceArmorDamageWithDetails(actor, location, damageType, piercing) {
+  static reduceArmorDamageWithDetails(actor, location, damageType, piercing, context = {}) {
     const reductionData = {
       originalDamage: damageType,
       piercing: piercing,
@@ -1195,7 +1267,12 @@ export class CombatHelper {
     reductionData.totalArmor = totalArmorRating;
 
     // Uruchomienie skryptów armorCalculation — mogą modyfikować SP lub dodawać bonusSP
-    const armorArgs = { actor, location, damageType, sp: totalArmorRating, piercing, bonusSP: 0 };
+    const armorArgs = {
+      actor, location, damageType, sp: totalArmorRating, piercing, bonusSP: 0,
+      pendingResourceUpdates: [],
+      pendingChatRolls: [],
+      ...context
+    };
     NeuroshimaScriptRunner.executeSync("armorCalculation", armorArgs);
     totalArmorRating = (armorArgs.sp ?? totalArmorRating) + (armorArgs.bonusSP ?? 0);
     reductionData.totalArmor = totalArmorRating;
@@ -1203,6 +1280,16 @@ export class CombatHelper {
     // Calculate reduction: Armor - Piercing (unified formula)
     const actualReduction = this.computeActualReduction(totalArmorRating, piercing);
     reductionData.reduction = actualReduction;
+
+    // Resolve pendingResourceUpdates: items with useReduction:true get delta = -actualReduction
+    reductionData.pendingResourceUpdates = (armorArgs.pendingResourceUpdates ?? []).map(upd => {
+      if (upd.useReduction) {
+        return { item: upd.item, key: upd.key, delta: -actualReduction };
+      }
+      return upd;
+    });
+
+    reductionData.pendingChatRolls = armorArgs.pendingChatRolls ?? [];
     
     // Get wound reduction points from config (not HP points!)
     const woundConfig = NEUROSHIMA.woundConfiguration[damageType];

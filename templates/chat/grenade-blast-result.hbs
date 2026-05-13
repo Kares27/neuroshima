@@ -1,0 +1,52 @@
+<div class="neuroshima roll-card grenade-blast-result-card"
+    data-actor-id="{{actorId}}"
+    data-source-message-id="{{sourceMessageId}}">
+
+    <header class="roll-header">
+        <div class="actor-image-container">
+            <img src="{{actorImg}}" width="32" height="32" />
+        </div>
+        <div class="header-details">
+            <div class="weapon-title"><i class="fas fa-bomb"></i> {{grenadeLabel}}</div>
+            <div class="test-info">{{localize "NEUROSHIMA.Grenade.BlastDamageTitle"}}</div>
+        </div>
+    </header>
+
+    <hr class="dotted-hr">
+
+    <div class="apply-damage-section">
+        <div class="damage-application-header collapsible-toggle">
+            <span>{{localize "NEUROSHIMA.Roll.ApplyDamage"}} ({{results.length}})</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="damage-application-content" style="display: none;">
+            <table class="grenade-blast-targets-table">
+                <thead>
+                    <tr>
+                        <th>{{localize "NEUROSHIMA.Grenade.BlastTarget"}}</th>
+                        <th>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</th>
+                        <th>{{localize "NEUROSHIMA.Roll.Location"}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each results}}
+                    <tr>
+                        <td>{{this.tokenName}}</td>
+                        <td>
+                            <strong>{{damageLabel this.damage}}</strong>
+                            {{#if this.knockdown}}<span class="grenade-knockdown-tag" data-tooltip="{{localize 'NEUROSHIMA.Grenade.Zone.KnockdownTooltip'}}" data-tooltip-direction="UP">⊕</span>{{/if}}
+                        </td>
+                        <td>{{localize this.locationLabel}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+            <div class="damage-actions">
+                <button class="apply-damage-button" data-action="applyGrenadeDamage">
+                    <i class="fas fa-hand-holding-medical"></i>
+                    {{localize "NEUROSHIMA.Actions.Damage"}}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

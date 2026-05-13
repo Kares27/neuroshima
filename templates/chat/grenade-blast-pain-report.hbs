@@ -1,0 +1,117 @@
+<div class="neuroshima roll-card grenade-blast-pain-report">
+
+    <header class="roll-header">
+        <div class="weapon-title">
+            <i class="fas fa-bomb"></i>
+            {{localize "NEUROSHIMA.Grenade.BlastReport.Title"}}: {{grenadeLabel}}
+        </div>
+    </header>
+
+    {{#each actorDamages}}
+    <div class="grenade-actor-blast-section" data-actor-id="{{this.actorId}}" data-actor-uuid="{{this.actorUuid}}" data-wound-ids='{{json this.woundIds}}'>
+
+        <div class="grenade-actor-blast-header">
+            <span class="actor-name">{{this.actorName}}</span>
+            {{#if this.distanceM}}<span class="actor-distance"><i class="fas fa-ruler"></i> {{this.distanceM}}m</span>{{/if}}
+        </div>
+
+        {{#if (or this.passedCount this.failedCount this.criticalCount this.reducedCount)}}
+        <div class="report-summary">
+            {{#if this.passedCount}}
+            <div class="summary-item passed">
+                <span class="label">{{localize "NEUROSHIMA.PainResistance.Passed"}}:</span>
+                <span class="value"><strong>{{this.passedCount}}</strong></span>
+            </div>
+            {{/if}}
+            {{#if this.failedCount}}
+            <div class="summary-divider">|</div>
+            <div class="summary-item failed">
+                <span class="label">{{localize "NEUROSHIMA.PainResistance.Failed"}}:</span>
+                <span class="value"><strong>{{this.failedCount}}</strong></span>
+            </div>
+            {{/if}}
+            {{#if this.criticalCount}}
+            <div class="summary-divider">|</div>
+            <div class="summary-item critical">
+                <span class="label">{{localize "NEUROSHIMA.PainResistance.Critical"}}:</span>
+                <span class="value"><strong>{{this.criticalCount}}</strong></span>
+            </div>
+            {{/if}}
+            {{#if this.reducedCount}}
+            <div class="summary-divider">|</div>
+            <div class="summary-item reduced">
+                <span class="label">{{localize "NEUROSHIMA.PainResistance.Reduced"}}:</span>
+                <span class="value"><strong>{{this.reducedCount}}</strong></span>
+            </div>
+            {{/if}}
+        </div>
+        {{/if}}
+
+        {{#if (or this.results.length this.reducedDetails.length)}}
+        <div class="collapsible-section pain-resistance-details">
+            <div class="damage-application-header collapsible-toggle">
+                <span>{{localize "NEUROSHIMA.Roll.Wounds"}} ({{this.results.length}}{{#if this.reducedDetails.length}} + {{this.reducedDetails.length}}{{/if}})</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="wound-list collapsible-content" style="display: none;">
+                {{#each this.results}}
+                    {{#if this.isCritical}}
+                    <div class="wound-item critical" data-tooltip="{{this.tooltip}}" data-tooltip-direction="LEFT">
+                        <div class="wound-icon"><i class="fas fa-skull"></i></div>
+                        <div class="wound-info-main">
+                            <span class="wound-name">{{this.name}}</span>
+                            <span class="penalty-value"><strong>{{this.penalty}}%</strong></span>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="wound-item {{#if this.isPassed}}success{{else}}failure{{/if}}"
+                         {{#if this.forcePassed}}data-tooltip="{{this.tooltip}}"{{else}}data-tooltip-html="{{this.tooltipHtml}}"{{/if}}
+                         data-tooltip-direction="LEFT">
+                        <div class="wound-icon"><i class="fas {{#if this.isPassed}}fa-check{{else}}fa-times{{/if}}"></i></div>
+                        <div class="wound-info-main">
+                            <span class="wound-name">{{this.name}}</span>
+                            <span class="penalty-value"><strong>{{this.penalty}}%</strong></span>
+                        </div>
+                    </div>
+                    {{/if}}
+                {{/each}}
+                {{#each this.reducedDetails}}
+                <div class="wound-item reduced" data-tooltip="{{this.tooltip}}" data-tooltip-direction="LEFT">
+                    <div class="wound-icon"><i class="fas fa-shield"></i></div>
+                    <div class="wound-info-main">
+                        <span class="wound-name">{{this.fullName}}</span>
+                        <span class="penalty-value">-</span>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{#if this.shrapnelRolled.length}}
+        <div class="collapsible-section grenade-shrapnel-section">
+            <div class="damage-application-header collapsible-toggle">
+                <span>{{localize "NEUROSHIMA.Grenade.Zone.Shrapnel"}} ({{this.shrapnelRolled.length}})</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="collapsible-content shrapnel-list" style="display: none;">
+                {{#each this.shrapnelRolled}}
+                <div class="shrapnel-roll-item {{#if this.damage}}hit{{else}}miss{{/if}}">
+                    <span class="shrapnel-roll-val">k20={{this.roll}}</span>
+                    {{#if this.damage}}
+                    <span class="shrapnel-dmg">→ <strong>{{damageLabel this.damage}}</strong></span>
+                    <span class="shrapnel-loc">{{localize this.locationLabel}}</span>
+                    {{else}}
+                    <span class="shrapnel-miss">→ {{localize "NEUROSHIMA.Grenade.ShrapnelMiss"}}</span>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+    </div>
+    {{#unless @last}}<hr class="dotted-hr">{{/unless}}
+    {{/each}}
+
+</div>
