@@ -1049,3 +1049,514 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+
+/* ─── Mods Tab ─────────────────────────────────────────── */
+
+.mod-lock-banner {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: color-mix(in srgb, var(--ns-warning, #f59e0b) 15%, transparent);
+    border: 1px solid var(--ns-warning, #f59e0b);
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    font-size: 0.82em;
+    color: var(--ns-text-main);
+}
+
+.mod-lock-banner i {
+    color: var(--ns-warning, #f59e0b);
+    flex-shrink: 0;
+}
+
+.mods-list .mod-row {
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ns-border-main) 40%, transparent);
+    min-height: 30px;
+}
+
+.mods-list .mod-row:last-child {
+    border-bottom: none;
+}
+
+.mods-list .mod-row-header {
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.65;
+    border-bottom: 1px solid var(--ns-border-main);
+    padding-bottom: 4px;
+    min-height: unset;
+}
+
+.mods-list .col-icon {
+    flex: 0 0 28px;
+}
+
+.mods-list .col-icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    border-radius: 3px;
+}
+
+.mods-list .col-name {
+    flex: 2;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.mods-list .mod-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mod-type-badge {
+    font-size: 0.7em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--ns-accent, #64748b) 20%, transparent);
+    color: var(--ns-text-muted, #94a3b8);
+    border: 1px solid color-mix(in srgb, var(--ns-accent, #64748b) 30%, transparent);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.mods-list .col-category {
+    flex: 1;
+    min-width: 0;
+}
+
+.mod-category-badge {
+    font-size: 0.72em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.mod-category-badge.mod-category-modification {
+    background: color-mix(in srgb, var(--ns-accent-blue, #3b82f6) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ns-accent-blue, #3b82f6) 35%, transparent);
+    color: var(--ns-accent-blue, #3b82f6);
+}
+
+.mod-category-badge.mod-category-trait {
+    background: color-mix(in srgb, var(--ns-accent-green, #22c55e) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ns-accent-green, #22c55e) 30%, transparent);
+    color: var(--ns-accent-green, #22c55e);
+}
+
+
+.mod-attach-btn--attached {
+    color: var(--ns-accent-green, #22c55e) !important;
+}
+
+.mod-attach-btn--detached {
+    color: var(--ns-text-muted, #94a3b8);
+}
+
+.mod-row-attached {
+    background: color-mix(in srgb, var(--ns-accent-green, #22c55e) 5%, transparent);
+}
+
+.mods-list .col-controls {
+    flex: 0 0 46px;
+    display: flex;
+    gap: 2px;
+    justify-content: flex-end;
+}
+
+.mod-controls .item-control {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75em;
+    border-radius: 3px;
+    color: var(--ns-text-muted, #94a3b8);
+    transition: color 0.15s, background 0.15s;
+    cursor: pointer;
+}
+
+.mod-controls .item-control:hover {
+    color: var(--ns-text-main);
+    background: color-mix(in srgb, var(--ns-border-main) 30%, transparent);
+}
+
+.mod-toggle-summary {
+    cursor: pointer;
+}
+
+.mod-toggle-summary:hover .mod-name {
+    text-decoration: underline;
+}
+
+.mod-drop-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 30px 20px;
+    border: 2px dashed color-mix(in srgb, var(--ns-border-main) 60%, transparent);
+    border-radius: 6px;
+    margin-top: 8px;
+    color: var(--ns-text-muted, #94a3b8);
+    font-size: 0.85em;
+    text-align: center;
+}
+
+.mod-drop-zone i {
+    font-size: 1.8em;
+    opacity: 0.4;
+}
+
+.mod-drop-zone p {
+    margin: 0;
+    opacity: 0.7;
+}
+
+/* ─── weapon-mod-stats / armor-mod-stats: scrollable stats tab containers ─── */
+
+.neuroshima.sheet.item .weapon-mod-stats,
+.neuroshima.sheet.item .armor-mod-stats {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ns-border-main) transparent;
+}
+
+.neuroshima.sheet.item .weapon-mod-stats::-webkit-scrollbar,
+.neuroshima.sheet.item .armor-mod-stats::-webkit-scrollbar {
+    width: 6px;
+}
+
+.neuroshima.sheet.item .weapon-mod-stats::-webkit-scrollbar-track,
+.neuroshima.sheet.item .armor-mod-stats::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.neuroshima.sheet.item .weapon-mod-stats::-webkit-scrollbar-thumb,
+.neuroshima.sheet.item .armor-mod-stats::-webkit-scrollbar-thumb {
+    background: var(--ns-border-main);
+    border-radius: 3px;
+}
+
+/* ─── weapon-mod-bazowe: bordered "Bazowe" box ─── */
+
+.neuroshima.sheet.item .weapon-mod-bazowe {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline label {
+    flex: 0 0 64px;
+    width: 64px;
+    font-size: 0.78em;
+    font-weight: bold;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > input,
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > select,
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > .mod-field-wrap,
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > .cost-input-row,
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > .override-input-row,
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > .damage-input-row {
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .weapon-mod-bazowe .mod-field-wrap,
+.neuroshima.sheet.item .weapon-mod-bazowe .cost-input-row,
+.neuroshima.sheet.item .weapon-mod-bazowe .override-input-row {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 2px 4px;
+    min-height: 26px;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.item .weapon-mod-bazowe .mod-field-wrap {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .weapon-mod-bazowe .mod-field-wrap input,
+.neuroshima.sheet.item .weapon-mod-bazowe .cost-input-row input[type="number"],
+.neuroshima.sheet.item .weapon-mod-bazowe .override-input-row input[type="number"] {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding: 1px 4px;
+}
+
+.neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline > select {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 0 4px;
+    height: 36px !important;
+    min-height: 36px;
+    max-height: 36px !important;
+    line-height: 22px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* ─── weapon-stat-col: column layout with centered label ─── */
+
+.neuroshima.sheet.item .weapon-stat-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .weapon-stat-col label {
+    text-align: center;
+    width: 100%;
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.item .weapon-stat-col input:not([type="checkbox"]),
+.neuroshima.sheet.item .weapon-stat-col select {
+    width: 100%;
+    text-align: center;
+}
+
+.neuroshima.sheet.item .weapon-stat-col input[type="checkbox"] {
+    width: auto;
+    flex: 0 0 auto;
+}
+
+/* ─── damage-input-row: checkbox + select side by side ─── */
+
+.neuroshima.sheet.item .damage-input-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    overflow: visible;
+}
+
+.neuroshima.sheet.item .damage-input-row select,
+.neuroshima.sheet.item .weapon-stat-col .damage-input-row select,
+.neuroshima.sheet.item .weapon-mod-bazowe .damage-input-row select {
+    flex: 1 1 0%;
+    width: 0;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .damage-input-row input[type="checkbox"] {
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+
+/* ─── cost-input-row: cost number + modifies-cost checkbox inline ─── */
+
+.neuroshima.sheet.item .cost-input-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+}
+
+.neuroshima.sheet.item .cost-input-row input[type="number"] {
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .cost-input-row input[type="checkbox"] {
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+
+/* ─── override-input-row: number input + override-mode checkbox grouped ─── */
+
+.neuroshima.sheet.item .override-input-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 2px 4px;
+}
+
+.neuroshima.sheet.item .override-input-row input[type="number"] {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    padding: 1px 4px;
+}
+
+/* weapon-stat-col override-input-row: strip Foundry default border from number input */
+.neuroshima.sheet.item .weapon-stat-col .override-input-row input[type="number"] {
+    text-align: center;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding: 1px 4px;
+}
+
+/* ─── shared custom checkbox style: override-input-row, cost-input-row, damage-input-row ─── */
+
+.neuroshima.sheet.item .override-input-row input[type="checkbox"],
+.neuroshima.sheet.item .cost-input-row input[type="checkbox"],
+.neuroshima.sheet.item .damage-input-row input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(0,0,0,0.3);
+    cursor: pointer;
+    position: relative;
+    transition: background 0.12s, border-color 0.12s;
+    margin: 0;
+}
+
+.neuroshima.sheet.item .override-input-row input[type="checkbox"]::before,
+.neuroshima.sheet.item .cost-input-row input[type="checkbox"]::before,
+.neuroshima.sheet.item .damage-input-row input[type="checkbox"]::before {
+    content: none;
+}
+
+.neuroshima.sheet.item .override-input-row input[type="checkbox"]::after,
+.neuroshima.sheet.item .cost-input-row input[type="checkbox"]::after,
+.neuroshima.sheet.item .damage-input-row input[type="checkbox"]::after {
+    content: '';
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: translate(-50%, -60%) rotate(-45deg);
+}
+
+.neuroshima.sheet.item .override-input-row input[type="checkbox"]:checked,
+.neuroshima.sheet.item .cost-input-row input[type="checkbox"]:checked,
+.neuroshima.sheet.item .damage-input-row input[type="checkbox"]:checked {
+    background: rgba(139,0,0,0.35);
+    border-color: var(--ns-accent, #8b0000);
+}
+
+.neuroshima.sheet.item .override-input-row input[type="checkbox"]:checked::after,
+.neuroshima.sheet.item .cost-input-row input[type="checkbox"]:checked::after,
+.neuroshima.sheet.item .damage-input-row input[type="checkbox"]:checked::after {
+    display: block;
+}
+
+.neuroshima.sheet.item .override-input-row input[type="checkbox"]:hover,
+.neuroshima.sheet.item .cost-input-row input[type="checkbox"]:hover,
+.neuroshima.sheet.item .damage-input-row input[type="checkbox"]:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.4);
+}
+
+/* ─── weapon-mod-section: collapsible summary with arrow ─── */
+
+.neuroshima.sheet.item .weapon-mod-section-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+}
+
+.neuroshima.sheet.item .weapon-mod-section-summary::-webkit-details-marker {
+    display: none;
+}
+
+.neuroshima.sheet.item .weapon-mod-section-arrow {
+    font-size: 0.8em;
+    color: var(--ns-text-muted, #94a3b8);
+    transform: rotate(180deg);
+}
+
+.neuroshima.sheet.item details.weapon-mod-section.weapon-mod-ready .weapon-mod-section-arrow {
+    transition: transform 0.2s ease;
+}
+
+.neuroshima.sheet.item details.weapon-mod-section:not([open]) .weapon-mod-section-arrow {
+    transform: rotate(0deg);
+}
+
+/* ─── damage-input-row in ranged + melee sections: container border, inner controls borderless ─── */
+
+.neuroshima.sheet.item .weapon-mod-section .bazowe-inline .damage-input-row,
+.neuroshima.sheet.item .weapon-mod-section .damage-col .damage-input-row {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 2px 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .weapon-mod-section .bazowe-inline .damage-input-row select,
+.neuroshima.sheet.item .weapon-mod-section .bazowe-inline .damage-input-row input[type="text"],
+.neuroshima.sheet.item .weapon-mod-section .damage-col .damage-input-row select {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    flex: 1;
+    min-width: 0;
+}
+
+/* ─── ns-divider: dedicated vertical separator between input and checkbox ─── */
+
+.neuroshima.sheet.item .ns-divider {
+    flex: 0 0 1px;
+    width: 1px;
+    align-self: stretch;
+    background: var(--ns-border-main);
+    margin: 2px 0;
+}
+
+/* ─── select option dark background ─── */
+
+.neuroshima.sheet.item select option {
+    background: #1a1a1a;
+    color: #e2e8f0;
+}
+
+

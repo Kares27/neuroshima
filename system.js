@@ -6,7 +6,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -295,6 +295,11 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["money"]             = MoneyData;
     CONFIG.Item.dataModels["reputation"]        = ReputationData;
     CONFIG.Item.dataModels["disease"]           = DiseaseData;
+    CONFIG.Item.dataModels["weapon-mod"]        = WeaponModData;
+    CONFIG.Item.dataModels["armor-mod"]         = ArmorModData;
+
+    CONFIG.Item.defaultIcons = CONFIG.Item.defaultIcons ?? {};
+    CONFIG.Item.defaultIcons["weapon-mod"] = "systems/neuroshima/assets/img/modification-weapon.svg";
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -370,6 +375,12 @@ Hooks.once('init', async function() {
         return loc !== key ? loc : locationKey;
     });
 
+    Handlebars.registerHelper('formatDelta', (v) => {
+        const n = Number(v);
+        if (isNaN(n)) return v;
+        return n > 0 ? `+${n}` : `${n}`;
+    });
+
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
     foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaActorSheet, {
@@ -395,7 +406,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease"],
+        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -890,6 +901,9 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/wound-details.hbs",
         "systems/neuroshima/templates/item/parts/vehicle-damage-details.hbs",
         "systems/neuroshima/templates/item/parts/vehicle-mod-details.hbs",
+        "systems/neuroshima/templates/item/parts/weapon-mod-details.hbs",
+        "systems/neuroshima/templates/item/parts/armor-mod-details.hbs",
+        "systems/neuroshima/templates/item/parts/mods-tab.hbs",
         "systems/neuroshima/templates/item/parts/magazine-details.hbs",
         "systems/neuroshima/templates/item/parts/ammunition-details.hbs",
         "systems/neuroshima/templates/apps/reputation-settings.hbs",

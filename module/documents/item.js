@@ -15,6 +15,8 @@ export class NeuroshimaItem extends Item {
       wound: "systems/neuroshima/assets/img/wound.svg",
       "vehicle-damage":  "systems/neuroshima/assets/img/tire-iron.svg",
       "vehicle-mod":     "systems/neuroshima/assets/img/tire-iron.svg",
+      "weapon-mod":      "systems/neuroshima/assets/img/modification.svg",
+      "armor-mod":       "systems/neuroshima/assets/img/modification.svg",
       "beast-action":    "systems/neuroshima/assets/img/paw.svg",
       profession:        "systems/neuroshima/assets/img/profession.svg",
       specialization:    "systems/neuroshima/assets/img/specialization.svg",

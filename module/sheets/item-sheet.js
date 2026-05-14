@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
+import { installMod, attachMod, detachMod, removeMod, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveWeight, getEffectiveCost } from "../helpers/mod-helpers.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -40,7 +41,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       addRelationRow: NeuroshimaItemSheet.prototype._onAddRelationRow,
       deleteRelationRow: NeuroshimaItemSheet.prototype._onDeleteRelationRow,
       addBlastZone: NeuroshimaItemSheet.prototype._onAddBlastZone,
-      removeBlastZone: NeuroshimaItemSheet.prototype._onRemoveBlastZone
+      removeBlastZone: NeuroshimaItemSheet.prototype._onRemoveBlastZone,
+      attachMod: NeuroshimaItemSheet.prototype._onAttachMod,
+      detachMod: NeuroshimaItemSheet.prototype._onDetachMod,
+      removeMod: NeuroshimaItemSheet.prototype._onRemoveMod
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -77,6 +81,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         if (!currentTraits.includes(uuid)) {
           await item.update({ "system.traits": [...currentTraits, uuid] });
         }
+        return;
+      }
+    }
+
+    if (data.type === "Item") {
+      const sourceItem = await fromUuid(data.uuid);
+      if (sourceItem?.type === "weapon-mod" && item.type === "weapon") {
+        await installMod(item, sourceItem);
+        return;
+      }
+      if (sourceItem?.type === "armor-mod" && item.type === "armor") {
+        await installMod(item, sourceItem);
         return;
       }
     }
@@ -210,6 +226,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       profession: ["description", "stats", "effects"],
       money: ["description", "stats", "effects"],
       reputation: ["description", "stats", "resources", "effects"],
+      weapon: ["description", "stats", "resources", "effects", "mods"],
+      armor: ["description", "stats", "resources", "effects", "mods"],
+      "weapon-mod": ["description", "stats", "resources", "effects"],
+      "armor-mod": ["description", "stats", "resources", "effects"]
     };
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
     if (!allowedTabs.includes(this.tabGroups.primary)) {
@@ -246,6 +266,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     // Non-countable item types have no quantity, cost, or weight
     const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
+    context.isModItem = item.type === "weapon-mod" || item.type === "armor-mod";
 
     // Prepare type label
     let typeLabelKey = item.type.charAt(0).toUpperCase() + item.type.slice(1);
@@ -274,13 +295,20 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       context.difficulties = difficulties;
     }
     
-    // Collect all unique calibers from world items (Weapons) for suggestions
+    // Collect all unique calibers from world items (Weapons, Ammo, Magazines) for suggestions
     const worldCalibers = new Set();
     game.items.forEach(i => {
-        if (i.type === "weapon" && i.system.caliber) {
+        if (["weapon", "ammo", "magazine"].includes(i.type) && i.system.caliber) {
             worldCalibers.add(i.system.caliber);
         }
     });
+    if (item.actor) {
+        item.actor.items.forEach(i => {
+            if (["weapon", "ammo", "magazine"].includes(i.type) && i.system.caliber) {
+                worldCalibers.add(i.system.caliber);
+            }
+        });
+    }
     context.worldCalibers = Array.from(worldCalibers).sort();
 
     // Skill and Magazine filtering
@@ -427,6 +455,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     context.itemEffects = item.effects.map(e => {
       const hasEnableScript = !!(e.getFlag?.("neuroshima", "enableScript"));
+      const fromModId = e.getFlag?.("neuroshima", "fromModId") ?? null;
+      const sourceName = fromModId
+        ? (item.system?.mods?.[fromModId]?.name ?? fromModId)
+        : null;
       return {
         id: e.id,
         name: e.name,
@@ -434,9 +466,41 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         disabled: e.disabled,
         suppressed: hasEnableScript && e.isSuppressed,
         scriptControlled: hasEnableScript,
-        durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+        durationLabel: e.duration?.rounds ? `${e.duration.rounds}r` : (e.duration?.seconds ? `${e.duration.seconds}s` : "—"),
+        fromModId,
+        sourceName
       };
     });
+
+    if (item.type === "weapon" || item.type === "armor") {
+      const modsRaw = item.system.mods ?? {};
+      context.isModded = !!(modsRaw.__modded);
+      context.installedMods = Object.entries(modsRaw)
+        .filter(([k]) => !k.startsWith("__"))
+        .map(([id, snap]) => ({
+          ...snap,
+          deltaSummary: buildModDeltaSummary(snap, item.type),
+          categoryLabel: game.i18n.localize(`NEUROSHIMA.Mods.Category.${snap.category ?? "modification"}`)
+        }));
+
+      if (context.isModded) {
+        context.effectiveArmorRatings = getEffectiveArmorRatings(item);
+        context.effectiveWeight = getEffectiveWeight(item);
+        context.effectiveCost   = getEffectiveCost(item);
+      }
+
+      if (item.type === "weapon-mod") {
+        context.weaponModTypeSuggestions = NEUROSHIMA.weaponModTypeSuggestions ?? [];
+      } else if (item.type === "armor-mod") {
+        context.armorModTypeSuggestions = NEUROSHIMA.armorModTypeSuggestions ?? [];
+      }
+    }
+
+    if (item.type === "weapon-mod") {
+      context.weaponModTypeSuggestions = NEUROSHIMA.weaponModTypeSuggestions ?? [];
+    } else if (item.type === "armor-mod") {
+      context.armorModTypeSuggestions = NEUROSHIMA.armorModTypeSuggestions ?? [];
+    }
 
     game.neuroshima.log(`Item Sheet Context prepared for ${item.name}`, context);
 
@@ -484,7 +548,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         { id: "stats", group: "primary", label: "NEUROSHIMA.Tabs.Stats" },
         { id: "description", group: "primary", label: "NEUROSHIMA.Tabs.Description" },
         { id: "resources", group: "primary", label: "NEUROSHIMA.Tabs.Resources" },
-        { id: "effects", group: "primary", label: "NEUROSHIMA.Tabs.Effects" }
+        { id: "effects", group: "primary", label: "NEUROSHIMA.Tabs.Effects" },
+        { id: "mods", group: "primary", label: "NEUROSHIMA.Tabs.Modifications" }
       ],
       initial: "description"
     }
@@ -500,7 +565,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     },
     stats: {
       template: "systems/neuroshima/templates/item/item-details.hbs",
-      scrollable: [".sheet-body", ".contents-list-items", ".magazine-contents-section", ".spec-master-body"]
+      scrollable: ["", ".sheet-body", ".contents-list-items", ".magazine-contents-section", ".spec-master-body", ".weapon-mod-stats", ".armor-mod-stats", ".weapon-mod-details", ".armor-mod-details"]
     },
     description: {
       template: "systems/neuroshima/templates/item/item-description.hbs"
@@ -510,29 +575,118 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       scrollable: [".resources-list"]
     },
     effects: {
-      template: "systems/neuroshima/templates/item/item-effects.hbs"
+      template: "systems/neuroshima/templates/item/item-effects.hbs",
+      scrollable: [".effects-list"]
+    },
+    mods: {
+      template: "systems/neuroshima/templates/item/parts/mods-tab.hbs",
+      scrollable: [".mods-list"]
     }
   };
 
   /** @override */
+  _detailsState = {};
+  _scrollState = {};
+
+  static _SCROLL_SELECTORS = [
+    '[data-application-part="stats"]',
+    "section.window-content",
+    ".weapon-mod-stats",
+    ".armor-mod-stats",
+    ".weapon-mod-details",
+    ".armor-mod-details"
+  ];
+
+  async _preRender(context, options) {
+    await super._preRender(context, options);
+    this._scrollState = {};
+    for (const sel of NeuroshimaItemSheet._SCROLL_SELECTORS) {
+      const el = this.element?.querySelector(sel);
+      if (el && el.scrollTop > 0) this._scrollState[sel] = el.scrollTop;
+    }
+  }
+
   async _onRender(context, options) {
     await super._onRender(context, options);
+
+    this.element?.querySelectorAll("details[data-details-id]").forEach(d => {
+      const id = d.dataset.detailsId;
+      if (id in this._detailsState) d.open = this._detailsState[id];
+      d.addEventListener("toggle", () => { this._detailsState[id] = d.open; });
+    });
+
+    requestAnimationFrame(() => {
+      this.element?.querySelectorAll(".weapon-mod-section").forEach(d => d.classList.add("weapon-mod-ready"));
+    });
+
+    if (Object.keys(this._scrollState).length) {
+      const savedState = { ...this._scrollState };
+      setTimeout(() => {
+        for (const [sel, top] of Object.entries(savedState)) {
+          const el = this.element?.querySelector(sel);
+          if (el) el.scrollTop = top;
+        }
+      }, 0);
+    }
+
+    this.element?.querySelectorAll(".delta-modifies-cost-cb").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const costInput = cb.closest(".cost-input-row")?.querySelector("input[type='number']");
+        if (costInput) costInput.disabled = !cb.checked;
+      });
+    });
+
+    this.element?.querySelectorAll("input[name='system.overrideCaliber']").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const row = cb.closest(".damage-input-row");
+        const textInput = row?.querySelector("input[type='text']");
+        if (textInput) textInput.disabled = !cb.checked;
+      });
+    });
+
     const activeTab = this.tabGroups?.primary;
-    if (!activeTab) return;
-    for (const partId of ["stats", "description", "resources", "effects"]) {
-      const el = this.element?.querySelector(`[data-application-part="${partId}"]`);
-      if (el) el.classList.toggle("active", partId === activeTab);
+    if (activeTab) {
+      for (const partId of ["stats", "description", "resources", "effects", "mods"]) {
+        const el = this.element?.querySelector(`[data-application-part="${partId}"]`);
+        if (el) el.classList.toggle("active", partId === activeTab);
+      }
     }
 
     const item = this.document;
-    if (["origin", "profession"].includes(item.type)) {
+    if (["origin", "profession", "weapon", "armor"].includes(item.type)) {
       const el = this.element;
-      if (el && !el._traitDropBound) {
-        el._traitDropBound = true;
+      if (el && !el._dropBound) {
+        el._dropBound = true;
         el.addEventListener("dragover", ev => ev.preventDefault());
         el.addEventListener("drop", ev => this._onDrop(ev));
       }
+    }
 
+    if (["weapon", "armor"].includes(item.type)) {
+      const modsPart = this.element?.querySelector('[data-application-part="mods"]');
+      if (modsPart && !modsPart._modsClickBound) {
+        modsPart._modsClickBound = true;
+        modsPart.addEventListener("click", async (ev) => {
+          const btn = ev.target.closest("[data-action]");
+          if (!btn) return;
+          const action = btn.dataset.action;
+          if (!["attachMod", "detachMod", "removeMod", "toggleModSummary"].includes(action)) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          const modId = btn.dataset.modId ?? btn.closest("[data-mod-id]")?.dataset.modId;
+          if (!modId) return;
+          if (action === "attachMod") await attachMod(this.document, modId);
+          else if (action === "detachMod") await detachMod(this.document, modId);
+          else if (action === "removeMod") await removeMod(this.document, modId);
+          else if (action === "toggleModSummary") {
+            const wrap = modsPart.querySelector(`.mod-row-wrap[data-mod-id="${modId}"]`);
+            wrap?.querySelector(".item-summary")?.classList.toggle("collapsed");
+          }
+        });
+      }
+    }
+
+    if (["origin", "profession"].includes(item.type)) {
       this.element?.querySelectorAll("[data-trait-uuid]").forEach(row => {
         row.addEventListener("contextmenu", (ev) => {
           const uuid = row.dataset.traitUuid;
@@ -572,6 +726,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       profession: ["description", "stats", "effects"],
       money: ["description", "stats", "effects"],
       reputation: ["description", "stats", "resources", "effects"],
+      weapon: item.system?.weaponType === "grenade"
+        ? ["description", "stats", "resources", "effects"]
+        : ["description", "stats", "resources", "effects", "mods"],
+      armor: ["description", "stats", "resources", "effects", "mods"],
+      "weapon-mod": ["description", "stats", "resources", "effects"],
+      "armor-mod": ["description", "stats", "resources", "effects"]
     };
 
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
@@ -687,4 +847,23 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       }
     }).browse();
   }
+
+  async _onAttachMod(event, target) {
+    const modId = target.dataset.modId ?? target.closest("[data-mod-id]")?.dataset.modId;
+    if (!modId) return;
+    await attachMod(this.document, modId);
+  }
+
+  async _onDetachMod(event, target) {
+    const modId = target.dataset.modId ?? target.closest("[data-mod-id]")?.dataset.modId;
+    if (!modId) return;
+    await detachMod(this.document, modId);
+  }
+
+  async _onRemoveMod(event, target) {
+    const modId = target.dataset.modId ?? target.closest("[data-mod-id]")?.dataset.modId;
+    if (!modId) return;
+    await removeMod(this.document, modId);
+  }
+
 }

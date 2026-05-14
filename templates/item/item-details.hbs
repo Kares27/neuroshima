@@ -1,5 +1,11 @@
 <section class="tab tab-stats {{tabs.stats.cssClass}}" data-group="primary" data-tab="stats">
     {{#if (eq item.type "armor")}}
+        {{#if isModded}}
+        <div class="mod-lock-banner">
+            <i class="fas fa-lock"></i>
+            <span>{{localize "NEUROSHIMA.Mods.LockedBanner"}}</span>
+        </div>
+        {{/if}}
         <div class="stats-grid flexrow">
             {{!-- Left: Armor Ratings (2 cols, 3 rows) --}}
             <div class="armor-ratings-table flex2">
@@ -7,29 +13,29 @@
                 <div class="grid grid-2col">
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.Head"}}</label>
-                        <input type="number" name="system.armor.ratings.head" value="{{system.armor.ratings.head}}" data-dtype="Number" min="0"/>
+                        <input type="number" name="system.armor.ratings.head" value="{{#if isModded}}{{effectiveArmorRatings.head}}{{else}}{{system.armor.ratings.head}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.head}}"{{/if}}/>
                     </div>
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.Torso"}}</label>
-                        <input type="number" name="system.armor.ratings.torso" value="{{system.armor.ratings.torso}}" data-dtype="Number" min="0"/>
+                        <input type="number" name="system.armor.ratings.torso" value="{{#if isModded}}{{effectiveArmorRatings.torso}}{{else}}{{system.armor.ratings.torso}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.torso}}"{{/if}}/>
                     </div>
                     
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.LeftArm"}}</label>
-                        <input type="number" name="system.armor.ratings.leftArm" value="{{system.armor.ratings.leftArm}}" data-dtype="Number" min="0"/>
+                        <input type="number" name="system.armor.ratings.leftArm" value="{{#if isModded}}{{effectiveArmorRatings.leftArm}}{{else}}{{system.armor.ratings.leftArm}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.leftArm}}"{{/if}}/>
                     </div>
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.RightArm"}}</label>
-                        <input type="number" name="system.armor.ratings.rightArm" value="{{system.armor.ratings.rightArm}}" data-dtype="Number" min="0"/>
+                        <input type="number" name="system.armor.ratings.rightArm" value="{{#if isModded}}{{effectiveArmorRatings.rightArm}}{{else}}{{system.armor.ratings.rightArm}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.rightArm}}"{{/if}}/>
                     </div>
 
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.LeftLeg"}}</label>
-                        <input type="number" name="system.armor.ratings.leftLeg" value="{{system.armor.ratings.leftLeg}}" data-dtype="Number" min="0"/>
+                        <input type="number" name="system.armor.ratings.leftLeg" value="{{#if isModded}}{{effectiveArmorRatings.leftLeg}}{{else}}{{system.armor.ratings.leftLeg}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.leftLeg}}"{{/if}}/>
                     </div>
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.RightLeg"}}</label>
-                        <input type="number" name="system.armor.ratings.rightLeg" value="{{system.armor.ratings.rightLeg}}" data-dtype="Number" min="0"/>
+                        <input type="number" name="system.armor.ratings.rightLeg" value="{{#if isModded}}{{effectiveArmorRatings.rightLeg}}{{else}}{{system.armor.ratings.rightLeg}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.rightLeg}}"{{/if}}/>
                     </div>
                 </div>
             </div>
@@ -41,15 +47,15 @@
                     <div class="grid grid-1col">
                         <div class="form-group row-group">
                             <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
-                            <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="0"/>
+                            <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
                         </div>
                         <div class="form-group row-group">
                             <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
-                            <input type="number" name="system.armor.durability" value="{{system.armor.durability}}" data-dtype="Number" min="0"/>
+                            <input type="number" name="system.armor.durability" value="{{system.armor.durability}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
                         </div>
                         <div class="form-group row-group">
                             <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
-                            <input type="number" name="system.armor.penalty" value="{{system.armor.penalty}}" data-dtype="Number" min="0"/>
+                            <input type="number" name="system.armor.penalty" value="{{system.armor.penalty}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
                         </div>
                     </div>
                 </div>
@@ -58,6 +64,12 @@
     {{/if}}
 
     {{#if (eq item.type "weapon")}}
+        {{#if isModded}}
+        <div class="mod-lock-banner">
+            <i class="fas fa-lock"></i>
+            <span>{{localize "NEUROSHIMA.Mods.LockedBanner"}}</span>
+        </div>
+        {{/if}}
         <div class="item-features weapon-stats secondary-box">
              {{#if (eq system.weaponType "melee")}}
                 {{> "systems/neuroshima/templates/item/parts/weapon-melee.hbs"}}
@@ -74,6 +86,18 @@
              {{#if (eq system.weaponType "grenade")}}
                 {{> "systems/neuroshima/templates/item/parts/weapon-grenade.hbs"}}
              {{/if}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "weapon-mod")}}
+        <div class="item-features weapon-mod-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/weapon-mod-details.hbs"}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "armor-mod")}}
+        <div class="item-features armor-mod-stats secondary-box">
+            {{> "systems/neuroshima/templates/item/parts/armor-mod-details.hbs"}}
         </div>
     {{/if}}
 

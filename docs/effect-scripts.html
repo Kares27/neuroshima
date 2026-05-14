@@ -88,12 +88,14 @@
   .callout strong { color: var(--text); }
 
   /* Context box */
-  .context-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; }
-  .context-box .ctx-row { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .context-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; margin: 1rem 0; overflow-x: auto; }
+  .context-box .ctx-row { display: grid; grid-template-columns: minmax(0, 44%) minmax(0, 20%) 1fr; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.25rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
   .context-box .ctx-row:last-child { border-bottom: none; }
-  .context-box .ctx-name { font-family: monospace; color: var(--fn); min-width: 200px; }
-  .context-box .ctx-type { color: var(--num); min-width: 80px; font-family: monospace; font-size: 0.8rem; }
+  .context-box .ctx-name { font-family: monospace; color: var(--fn); word-break: break-word; }
+  .context-box .ctx-type { color: var(--num); font-family: monospace; font-size: 0.8rem; word-break: break-word; }
   .context-box .ctx-desc { color: var(--text-dim); }
+  .context-box .ctx-row.ctx-separator { grid-template-columns: minmax(0, 30%) 1fr; }
+  .context-box .ctx-row.ctx-separator .ctx-type { display: none; }
 
   /* Example block */
   .example-block { border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
@@ -111,6 +113,22 @@
   .dmg-chip.crit .dmg-code { color: var(--accent-err); }
 
   footer { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 3rem; color: var(--text-dim); font-size: 0.8rem; }
+
+  /* ── Utility classes — replaces scattered inline styles ── */
+
+  /* h4 sub-heading used for attribute/skill/item-field groups in predefined-keys section */
+  h4.key-group { margin: 0.6rem 0 0.2rem; color: var(--accent); text-transform: none; letter-spacing: 0; }
+
+  /* h4 sub-section label inside .example-block (Hide Script / Dialog Script / Activate…) */
+  h4.script-label { font-size: 0.78rem; margin: 0.6rem 0 0.2rem; color: var(--accent3); }
+
+  /* Short description paragraph inside .example-block */
+  .example-desc { margin: 4px 0 8px; font-size: 0.88em; color: var(--text-dim); }
+
+  /* Separator row inside .context-box (e.g. "— Helpery ran —") */
+  .ctx-row.ctx-separator { border-top: 2px solid var(--border); margin-top: 0.4rem; padding-top: 0.6rem; }
+  .ctx-row.ctx-separator .ctx-name { color: var(--accent3); font-weight: bold; }
+  .ctx-row.ctx-separator .ctx-desc { color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -141,6 +159,8 @@
         <li><a href="#trigger-preApplyDamage">preApplyDamage — Pre-Apply Damage</a></li>
         <li><a href="#trigger-applyDamage">applyDamage — Apply Damage</a></li>
         <li><a href="#trigger-armorCalculation">armorCalculation — Armour Calculation</a></li>
+        <li><a href="#guide-roll-to-chat">Rzuty kością — porównanie metod (rollToChat / deferRollToChat / rollDice)</a></li>
+        <li><a href="#guide-roll-results">Praca z wieloma kośćmi — RollResult</a></li>
         <li><a href="#trigger-equipToggle">equipToggle — Equip Toggle</a></li>
         <li><a href="#trigger-combat">startCombat / endCombat / startRound / endRound / startTurn / endTurn</a></li>
         <li><a href="#trigger-updateCombat">updateCombat — Update Combat</a></li>
@@ -239,7 +259,10 @@
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
     <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">void</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Działa w triggerach: <code>preRollTest</code>, <code>rollTest</code>, <code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code>.</span></div>
-    <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora. <strong>Tylko w triggerach ASYNC.</strong></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.rollToChat(count, sides, options?)</span><span class="ctx-type">number[] | Promise&lt;Roll&gt;</span><span class="ctx-desc"><strong>Ujednolicony rzut kością — działa w SYNC i ASYNC.</strong> W triggerze SYNC (<code>armorCalculation</code>) zachowuje się jak <code>deferRollToChat</code>: wykonuje rzut natychmiast i zwraca <code>number[]</code>, wpis na czat jest odroczony. W triggerze ASYNC działa jak <code>this.roll</code> i zwraca <code>Promise&lt;Roll&gt;</code>. Możesz bezpiecznie pisać <code>await this.rollToChat(...)</code> w obu kontekstach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.deferRollToChat(count, sides, options?)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Rzut synchroniczny — wynik dostępny natychmiast jako <code>number[]</code>. Wpis na czat z flavorem odroczony do momentu zakończenia wszystkich kalkulacji. <strong>Tylko w triggerach SYNC</strong> (<code>armorCalculation</code>). Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.rollDice(count, sides)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Rzut synchroniczny bez wpisu na czat. Zwraca tablicę wyników. Używaj gdy chcesz tylko policzyć wynik bez wyświetlania rzutu graczom.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getChatData(merge?)</span><span class="ctx-type">object</span><span class="ctx-desc">Domyślne dane do ChatMessage.create() z speaker aktora i flavorem efektu</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.dialog(content, type?, config?)</span><span class="ctx-type">Promise&lt;any&gt;</span><span class="ctx-desc">Dialog Foundry: "confirm" → true/false, "prompt" → string|null, "input" → dane formularza. Tytuł = nazwa efektu.</span></div>
@@ -258,21 +281,21 @@
     <div class="ctx-row"><span class="ctx-name">this.isBodyLocation(loc)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli lokacja należy do ciała (postać / NPC / bestia)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isVehicleLocation(loc)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli lokacja należy do pojazdu</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getLocationLabel(loc)</span><span class="ctx-type">string</span><span class="ctx-desc">Zlokalizowana nazwa lokacji trafienia ("Głowa", "Przód" itp.)</span></div>
-    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery ran —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">wszystkie przyjmują opcjonalny argument <code>actor</code>; domyślnie <code>this.actor</code></span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery ran —</span><span class="ctx-type"></span><span class="ctx-desc">wszystkie przyjmują opcjonalny argument <code>actor</code>; domyślnie <code>this.actor</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getWounds(filter?, actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Rany z filtrem: <code>{ active, location, damageType, bruise }</code> — identyczny jak <code>actor.getWounds()</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getWoundCount(actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba aktywnych ran na aktorze</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?, actor?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę bezpośrednio na aktorze z pominięciem odporności na ból. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
-    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery kondycji —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">operacje na status efektach (krwawienie, trucizna, itp.)</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery kondycji —</span><span class="ctx-type"></span><span class="ctx-desc">operacje na status efektach (krwawienie, trucizna, itp.)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getConditionValue(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Aktualny poziom kondycji int (0 = nieaktywna)</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustaw poziom kondycji int bezpośrednio. <code>0</code> usuwa efekt kondycji.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.addCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Dodaj/inkrementuj kondycję (bool: włącza; int: +1)</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.removeCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Usuń/dekrementuj kondycję (bool: wyłącza; int: −1, usuwa przy 0)</span></div>
-    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery statystyk aktora —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">skróty do odczytu danych aktora</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery statystyk aktora —</span><span class="ctx-type"></span><span class="ctx-desc">skróty do odczytu danych aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getAttribute(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Atrybut bazowy (<code>"dexterity"</code>, <code>"constitution"</code>, …)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getAttributeTotal(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Atrybut + modyfikator po <code>prepareDerivedData</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getSkill(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Wartość umiejętności (<code>"brawl"</code>, <code>"painResistance"</code>, …). Zwraca 0 jeśli brak.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.hasEffect(nameOrId, actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor ma aktywny (nie-wyłączony) efekt o tej nazwie lub ID</span></div>
-    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery pancerza —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);"><code>item</code> = Item typu armor; lokacje: head, torso, leftArm, rightArm, leftLeg, rightLeg</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery pancerza —</span><span class="ctx-type"></span><span class="ctx-desc"><code>item</code> = Item typu armor; lokacje: head, torso, leftArm, rightArm, leftLeg, rightLeg</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getEquippedArmors(actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Założone pancerze aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getArmorRating(item, location)</span><span class="ctx-type">number</span><span class="ctx-desc">Bazowe SP pancerza w danej lokacji</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getArmorEffective(item, location)</span><span class="ctx-type">number</span><span class="ctx-desc">Efektywne SP (bazowe − uszkodzenia, min 0)</span></div>
@@ -281,19 +304,19 @@
     <div class="ctx-row"><span class="ctx-name">await this.repairArmorLocation(item, loc, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw SP w lokacji o <code>n</code>. Clamp: damage ≥ 0. Zwraca nową wartość damage.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.damageArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Uszkódź Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≤ max. Zwraca nową wartość.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.repairArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≥ 0. Zwraca nową wartość.</span></div>
-    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery zasobów itemu (po kluczu) —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">Dynamiczne zasoby z zakładki "Zasoby" karty itemu. Klucz = pole <code>key</code> zasobu. Użyj <code>this.item</code> dla własnego itemu efektu. Zasoby z włączonym <strong>showInSummary</strong> (kliknięcie w <em>badge #</em> w zakładce Zasoby) wyświetlane są jako chipy w podsumowaniu itemu na karcie aktora.</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery zasobów itemu (po kluczu) —</span><span class="ctx-type"></span><span class="ctx-desc">Dynamiczne zasoby z zakładki "Zasoby" karty itemu. Klucz = pole <code>key</code> zasobu. Użyj <code>this.item</code> dla własnego itemu efektu. Zasoby z włączonym <strong>showInSummary</strong> (kliknięcie w <em>badge #</em> w zakładce Zasoby) wyświetlane są jako chipy w podsumowaniu itemu na karcie aktora.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.hasItemResource(item, key)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli zasób o danym kluczu istnieje</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getItemResource(item, key)</span><span class="ctx-type">number | null</span><span class="ctx-desc">Aktualna wartość zasobu. null jeśli nie istnieje.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.setItemResource(item, key, value)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Ustaw wartość (clamp do [min, max]; max=0 = bez górnego limitu). Zwraca nową wartość.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.modifyItemResource(item, key, delta)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Dodaj <code>delta</code> do wartości (clamp). Ujemna wartość zmniejsza.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.increaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zwiększ o <code>|n|</code> (clamp do max).</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.decreaseItemResource(item, key, n=1)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Zmniejsz o <code>|n|</code> (clamp do min).</span></div>
-    <div class="ctx-row" style="border-top:2px solid var(--border); margin-top:0.4rem; padding-top:0.6rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery choroby —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">dostępne we wszystkich skryptach efektów przez <code>this.*</code>; w Enable Script dostępne też jako bare functions; aktor może mieć wiele chorób jednocześnie</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery choroby —</span><span class="ctx-type"></span><span class="ctx-desc">dostępne we wszystkich skryptach efektów przez <code>this.*</code>; w Enable Script dostępne też jako bare functions; aktor może mieć wiele chorób jednocześnie</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getDiseases(actor?)</span><span class="ctx-type">Array&lt;{id, name, diseaseType, currentState, transientPenalty}&gt;</span><span class="ctx-desc">Lista wszystkich chorób aktora. <code>diseaseType</code>: <code>"chronic"</code> | <code>"transient"</code>. <code>currentState</code>: klucz stanu (jak niżej). Pozwala iterować po wszystkich chorobach.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getDisease(actor?)</span><span class="ctx-type">Item | null</span><span class="ctx-desc">Zwraca <strong>pierwszy</strong> item choroby aktora. Gdy AE siedzi na itemu choroby, użyj <code>this.item</code> zamiast tej funkcji.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getDiseaseStateName(actorOrItem?)</span><span class="ctx-type">string</span><span class="ctx-desc">Klucz stanu choroby. Przyjmuje <strong>aktora</strong> (→ stan pierwszej choroby) <em>lub</em> <strong>Item choroby</strong> (→ stan tego konkretnego itemu, np. <code>this.getDiseaseStateName(this.item)</code>). Wartości: <code>"none"</code> | <code>"firstSymptoms"</code> | <code>"acute"</code> | <code>"critical"</code> | <code>"terminal"</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getDiseaseStateId(actorOrItem?)</span><span class="ctx-type">number 0–4</span><span class="ctx-desc">Indeks stanu choroby. Przyjmuje aktora lub Item (tak jak <code>getDiseaseStateName</code>). <strong>0</strong> Zdrowy · <strong>1</strong> Pierwsze symptomy · <strong>2</strong> Stan ostry · <strong>3</strong> Stan krytyczny · <strong>4</strong> Stan terminalny.</span></div>
-    <div class="ctx-row" style="border-top:1px dashed rgba(255,255,255,0.1); margin-top:0.3rem; padding-top:0.5rem;"><span class="ctx-name" style="color:var(--accent3); font-weight:bold;">— Helpery zasobów itemu (po ID) —</span><span class="ctx-type"></span><span class="ctx-desc" style="color:var(--text-dim);">ID = indeks tablicy (0-based), widoczny w kolumnie # zakładki Zasoby. Po usunięciu zasobu ze środka, indeksy automatycznie się przepakowują (0,1,2,… bez przerw).</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery zasobów itemu (po ID) —</span><span class="ctx-type"></span><span class="ctx-desc">ID = indeks tablicy (0-based), widoczny w kolumnie # zakładki Zasoby. Po usunięciu zasobu ze środka, indeksy automatycznie się przepakowują (0,1,2,… bez przerw).</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getItemResourceById(item, id)</span><span class="ctx-type">{ key, label, value, min, max } | null</span><span class="ctx-desc">Pełny obiekt zasobu pod danym indeksem. null jeśli nie istnieje.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.setItemResourceById(item, id, value)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">Ustaw wartość zasobu pod indeksem (clamp).</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.modifyItemResourceById(item, id, delta)</span><span class="ctx-type">Promise&lt;number | null&gt;</span><span class="ctx-desc">value += delta (clamp).</span></div>
@@ -307,7 +330,7 @@
       <span class="trigger-badge">manual</span>
       Zasób "ładunki" — sprawdź i zużyj ładunek z itemu
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Typowy wzorzec: sprawdź czy item ma zasób o danym kluczu, odczytaj wartość,
       a jeśli jest &gt; 0 — zmniejsz o 1 i wykonaj akcję.
     </p>
@@ -330,7 +353,7 @@
       <span class="trigger-badge">preWeaponShot</span>
       Zasób "amunicja specjalna" — zużyj przed strzałem lub anuluj
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       W <code>preWeaponShot</code> można anulować strzał (<code>args.cancel = true</code>)
       jeśli specjalny zasób jest wyczerpany.
     </p>
@@ -352,7 +375,7 @@
       <span class="trigger-badge">manual</span>
       Odczyt i ustawienie zasobu po ID (indeksie)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Gdy znasz stały indeks zasobu (widoczny w kolumnie <strong>#</strong> zakładki Zasoby),
       możesz operować po ID. Pamiętaj: po usunięciu zasobu ze środka indeksy przepakowują się.
     </p>
@@ -373,7 +396,7 @@
       <span class="trigger-badge">prepareData</span>
       Bonus do cechy na podstawie wartości zasobu (synchroniczny)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       <code>prepareData</code> jest <strong>synchroniczny</strong> — nie używaj <code>await</code>.
       Odczyt zasobu przez <code>getItemResource</code> jest synchroniczny i działa poprawnie.
     </p>
@@ -411,7 +434,11 @@
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor właściciel efektu</td></tr>
+    <tr><td>args.item</td><td>Item | null</td><td>Item, na którym siedzi efekt — dostępny gdy efekt pochodzi z itemu (broń, pancerz, trick itp.). <code>null</code> gdy efekt jest bezpośrednio na aktorze. Identyczny z <code>this.item</code>.</td></tr>
   </tbody></table>
+  <div class="callout info">
+    <strong>args.item w skryptach na itemach:</strong> Jeśli efekt (ActiveEffect) należy do itemu (np. trick, pancerz, broń), zarówno <code>args.item</code> jak i <code>this.item</code> wskazują na ten item. Możesz wtedy korzystać z zasobów itemu (<code>this.resource(this.item, "klucz")</code>) bezpośrednio. Gdy efekt siedzi na aktorze, obie wartości to <code>null</code>.
+  </div>
 
   <!-- immediate -->
   <h3 id="trigger-immediate">immediate — <em>Immediate</em></h3>
@@ -487,7 +514,7 @@
       <tr><td><code>"hard"</code></td><td>Trudny</td><td>−5</td><td>31 – 60</td></tr>
       <tr><td><code>"veryHard"</code></td><td>Bardzo Trudny</td><td>−8</td><td>61 – 90</td></tr>
       <tr><td><code>"damnHard"</code></td><td>Cholernie Trudny</td><td>−11</td><td>91 – 120</td></tr>
-      <tr><td><code>"luck"</code></td><td>Szczęście</td><td>−15</td><td>121 – 160</td></tr>
+      <tr><td><code>"luck"</code></td><td>Fart</td><td>−15</td><td>121 – 160</td></tr>
       <tr><td><code>"masterful"</code></td><td>Mistrzowski</td><td>−20</td><td>161 – 200</td></tr>
       <tr><td><code>"grandmasterful"</code></td><td>Arcymistrzowski</td><td>−24</td><td>201+</td></tr>
     </tbody>
@@ -530,18 +557,18 @@ args.fields.difficultyShift += <span class="num">1</span>;
       <span class="trigger-badge">dialog — Targeted</span>
       Ciężki pancerz — +30% kary dla atakujących dystansem
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Efekt na <strong>pancerzu</strong> z zaznaczonym <strong>Targeted</strong>. Gdy ktokolwiek strzela do nosiciela,
       w dialogu <em>atakującego</em> pojawia się automatycznie aktywowany modyfikator dokładający +30% kary.
       <code>this.actor</code> = nosiciel pancerza, <code>args.actor</code> = strzelający.
     </p>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <h4 class="script-label">Hide Script</h4>
     <pre><code><span class="cmt">// Ukryj modyfikator dla rzutów nie-dystansowych</span>
 <span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <h4 class="script-label">Activate Script</h4>
     <pre><code><span class="cmt">// Auto-aktywuj przy każdym strzale dystansowym</span>
 <span class="kw">return</span> args.rollType === <span class="str">"ranged"</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <h4 class="script-label">Dialog Script</h4>
     <pre><code><span class="cmt">// Dodaj karę do modyfikatora — atakujący trafia trudniej w opancerzonego</span>
 args.fields.modifier += <span class="num">30</span>;</code></pre>
   </div>
@@ -552,16 +579,16 @@ args.fields.modifier += <span class="num">30</span>;</code></pre>
       <span class="trigger-badge">dialog — Targeted</span>
       Sztuczka "Szybki" — difficultyShift dla atakujących wręcz
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Sztuczka na aktorze z <strong>Targeted</strong>. Każdy kto atakuje nosiciela wręcz dostaje w swoim dialogu
       modyfikator przesuwający trudność o 1 poziom. Użycie <code>difficultyShift</code> (zamiast <code>difficulty</code>)
       pozwala na sumowanie z innymi efektami.
     </p>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <h4 class="script-label">Hide Script</h4>
     <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <h4 class="script-label">Activate Script</h4>
     <pre><code><span class="kw">return</span> args.rollType === <span class="str">"melee"</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <h4 class="script-label">Dialog Script</h4>
     <pre><code><span class="cmt">// Przesuń trudność w górę — kumuluje się z innymi efektami "Szybki", tarczami itp.</span>
 args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
   </div>
@@ -572,13 +599,13 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       <span class="trigger-badge">dialog — Targeted</span>
       Ekran dymny — kara skalowana Sprytем nosiciela (tylko dystansowe)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Efekt granatu dymnego z <strong>Targeted</strong>. Kara dla strzelca rośnie z wartością Sprytu nosiciela
       (max 40%). Pokazuje użycie <code>this.actor</code> (nosiciel dymu) vs <code>args.actor</code> (strzelec).
     </p>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <h4 class="script-label">Hide Script</h4>
     <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <h4 class="script-label">Dialog Script</h4>
     <pre><code><span class="cmt">// this.actor = nosiciel efektu (stoi w dymie)
 // args.actor = strzelający (ten z dialogiem)</span>
 <span class="kw">const</span> <span class="var">cleverness</span> = <span class="kw">this</span>.<span class="fn">getAttributeTotal</span>(<span class="str">"cleverness"</span>);
@@ -592,19 +619,19 @@ args.fields.modifier += <span class="var">penalty</span>;</code></pre>
       <span class="trigger-badge">dialog — Defending Against</span>
       Sztuczka "Precyzyjny atak" — auto-bonus gdy cel ma ranę głowy
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Sztuczka na aktorze z <strong>Defending Against</strong>. Skrypt pojawia się w dialogu <em>nosiciela</em>
       gdy on atakuje. <code>args.actor</code> to cel ataku — sprawdzamy czy ma ranę głowy i jeśli tak,
       Activate Script automatycznie włącza bonus.
     </p>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <h4 class="script-label">Hide Script</h4>
     <pre><code><span class="cmt">// Pokaż tylko dla ataków wręcz i dystansowych</span>
 <span class="kw">return</span> ![<span class="str">"melee"</span>, <span class="str">"ranged"</span>].includes(args.rollType);</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <h4 class="script-label">Activate Script</h4>
     <pre><code><span class="cmt">// Auto-aktywuj gdy cel (args.actor) ma aktywną ranę głowy</span>
 <span class="kw">const</span> <span class="var">headWounds</span> = <span class="kw">this</span>.<span class="fn">getWounds</span>({ active: <span class="kw">true</span>, location: <span class="str">"head"</span> }, args.actor);
 <span class="kw">return</span> <span class="var">headWounds</span>.length &gt; <span class="num">0</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <h4 class="script-label">Dialog Script</h4>
     <pre><code><span class="cmt">// Ujemna wartość modifier = bonus do trafienia (łatwiej trafić rannego)</span>
 args.fields.modifier -= <span class="num">10</span>;</code></pre>
   </div>
@@ -615,20 +642,20 @@ args.fields.modifier -= <span class="num">10</span>;</code></pre>
       <span class="trigger-badge">dialog — Defending Against</span>
       Sztuczka "Ogłuszające uderzenie" — Submission Script + flaga dla rollTest
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Pełny przykład używający wszystkich 4 pól kodu. Gdy gracz aktywuje modyfikator i zatwierdza dialog,
       <strong>Submission Script</strong> ustawia flagę w <code>args.options</code>. Drugi skrypt (<code>rollTest</code>)
       na tym samym efekcie odczytuje tę flagę i dodaje adnotację lub logikę ogłuszenia.
     </p>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Hide Script</h4>
+    <h4 class="script-label">Hide Script</h4>
     <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Activate Script</h4>
+    <h4 class="script-label">Activate Script</h4>
     <pre><code><span class="cmt">// Aktywuj automatycznie gdy nosiciel jeszcze nie użył ogłuszenia w tej rundzie</span>
 <span class="kw">return</span> !args.flags.stunUsed;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Dialog Script</h4>
+    <h4 class="script-label">Dialog Script</h4>
     <pre><code><span class="cmt">// Celuj w głowę automatycznie — lokacja wymagana przez sztuczke</span>
 args.fields.hitLocation = <span class="str">"head"</span>;</code></pre>
-    <h4 style="font-size:0.78rem; margin:0.6rem 0 0.2rem; color:var(--accent3);">Submission Script</h4>
+    <h4 class="script-label">Submission Script</h4>
     <pre><code><span class="cmt">// Uruchamia się gdy modyfikator jest aktywny i gracz klika OK w dialogu
 // args.options przekazywane dalej do rollTest / preRollTest</span>
 args.options.applyStun = <span class="kw">true</span>;
@@ -873,6 +900,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td><code>r.deferSet(value)</code></td><td>Ustaw zasób na wartość bezwzględną po zakończeniu kalkulacji. Chainable.</td></tr>
     <tr><td><code>r.deferRoll(count, sides, options)</code></td><td>Rzut synchroniczny + odroczony wpis na czat z flavorem. Opcje: <code>{ flavor, rollMode, speaker }</code>. Zwraca <code>number[]</code>. Użyj w triggerach SYNC.</td></tr>
     <tr><td><code>await r.roll(count, sides, options)</code></td><td>Prawdziwy rzut Foundry z natychmiastowym postem na czat. Opcje: <code>{ flavor, rollMode, toMessage }</code>. Zwraca <code>Roll</code>. Użyj w triggerach ASYNC.</td></tr>
+    <tr><td><code>r.rollToChat(count, sides, options)</code></td><td><strong>Ujednolicony — zalecany.</strong> Auto-wykrywa kontekst: SYNC → jak <code>deferRoll</code>, zwraca <code>number[]</code>; ASYNC → jak <code>roll</code>, zwraca <code>Promise&lt;Roll&gt;</code>. Bezpieczny do <code>await</code> w obu przypadkach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</td></tr>
   </tbody></table>
 
   <h4>Niskopoziomowe helper functions (item + key explicite)</h4>
@@ -884,16 +912,21 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td><code>this.deferResourceDrainByReduction(item, key)</code></td><td>Zmniejsz zasób o dokładnie tyle ile wynosiła rzeczywista redukcja SP.</td></tr>
     <tr><td><code>this.deferResourceSet(item, key, value)</code></td><td>Ustaw zasób na wartość bezwzględną po zakończeniu kalkulacji.</td></tr>
     <tr><td><code>this.rollDice(count, sides)</code></td><td>Rzuć <code>count</code> kośćmi synchronicznie. Zwraca <code>number[]</code>. Brak wpisu na czat.</td></tr>
-    <tr><td><code>this.deferRollToChat(count, sides, options)</code></td><td>Rzut synchroniczny (wynik od razu) + odroczony wpis na czat. Opcje: <code>{ flavor, rollMode, speaker }</code>. Zwraca <code>number[]</code>.</td></tr>
+    <tr><td><code>this.deferRollToChat(count, sides, options)</code></td><td>Rzut synchroniczny (wynik od razu) + odroczony wpis na czat. Opcje: <code>{ flavor, rollMode, speaker }</code>. Zwraca <code>number[]</code>. Tylko SYNC.</td></tr>
+    <tr><td><code>this.rollToChat(count, sides, options)</code></td><td><strong>Ujednolicony — zalecany.</strong> Auto-wykrywa SYNC/ASYNC. Zwraca <code>number[]</code> w SYNC lub <code>Promise&lt;Roll&gt;</code> w ASYNC. Bezpieczny do <code>await</code>. Opcje: <code>{ flavor, rollMode, speaker }</code>.</td></tr>
   </tbody></table>
 
   <div class="callout info">
     <strong>Ważne:</strong> Nie zmniejszaj zasobu samym ustawieniem <code>args.sp</code> — to tylko powiada systemowi ile SP ma pancerz w tej kalkulacji. Żeby zasób faktycznie zmalał, wywołaj którąś z metod <code>defer*</code> lub nie wywołuj żadnej (zasób pozostanie bez zmian).
   </div>
 
-  <h4>Przykład 1 — używaj zasobu jako SP przy wybuchu, bez zużycia</h4>
-  <p>Zasób <code>ExplosionAP</code> na pancerzu zastępuje normalny SP przy atakach granatem, ale <strong>nie jest zużywany</strong>. Pokazane w obu stylach.</p>
-  <pre><code><span class="cmt">// ── Styl ResourceHandle (zalecany) ──────────────────────────────────────</span>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Przykład 1 — zasób jako SP przy wybuchu, bez zużycia
+    </div>
+    <p class="example-desc">Zasób <code>ExplosionAP</code> na pancerzu zastępuje normalny SP przy atakach granatem, ale <strong>nie jest zużywany</strong>. Pokazane w obu stylach: ResourceHandle (zalecany) i niskopoziomowym.</p>
+    <pre><code><span class="cmt">// ── Styl ResourceHandle (zalecany) ──────────────────────────────────────</span>
 <span class="kw">if</span> (args.isGrenade) {
   <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
   <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
@@ -911,10 +944,15 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     args.bonusSP = <span class="num">0</span>;
   }
 }</code></pre>
+  </div>
 
-  <h4>Przykład 2 — używaj zasobu jako SP i zużywaj go o wartość redukcji</h4>
-  <p>Zasób <code>ExplosionAP</code> zastępuje SP <em>i</em> jest zmniejszany o tyle ile faktycznie zablokował.</p>
-  <pre><code><span class="cmt">// armorCalculation — zasób jako SP + zużycie proporcjonalne do zablokowania</span>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Przykład 2 — zasób jako SP + zużycie proporcjonalne do redukcji
+    </div>
+    <p class="example-desc">Zasób <code>ExplosionAP</code> zastępuje SP <em>i</em> jest zmniejszany o tyle ile faktycznie zablokował.</p>
+    <pre><code><span class="cmt">// armorCalculation — zasób jako SP + zużycie proporcjonalne do zablokowania</span>
 <span class="kw">if</span> (args.isGrenade) {
   <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
   <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
@@ -923,10 +961,15 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <span class="var">expAP</span>.<span class="fn">deferDrainByReduction</span>();   <span class="cmt">// odejmij dokładnie tyle ile zablokowano</span>
   }
 }</code></pre>
+  </div>
 
-  <h4>Przykład 3 — używaj zasobu jako SP + rzut kością z flavor na czacie</h4>
-  <p>Zasób <code>ShieldCharge</code> zastępuje SP. Rzucamy 1d20 — wynik ≥ 15 oznacza uszkodzenie tarczy (–2 do zasobu). Rzut pojawia się w chacie z opisem.</p>
-  <pre><code><span class="cmt">// armorCalculation — SP z zasobu + rzut 1d20 z wiadomością na czacie (SYNC)</span>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Przykład 3 — zasób jako SP + rzut 1d20 z flavorem na czacie
+    </div>
+    <p class="example-desc">Zasób <code>ShieldCharge</code> zastępuje SP. Rzucamy 1d20 — wynik ≥ 15 oznacza uszkodzenie tarczy (–2 do zasobu). Rzut pojawia się w chacie z opisem.</p>
+    <pre><code><span class="cmt">// armorCalculation — SP z zasobu + rzut 1d20 z wiadomością na czacie (SYNC)</span>
 <span class="kw">if</span> (args.isGrenade) {
   <span class="kw">const</span> <span class="var">shield</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ShieldCharge"</span>);
   <span class="kw">if</span> (<span class="var">shield</span>.exists && <span class="var">shield</span>.value > <span class="num">0</span>) {
@@ -938,17 +981,27 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <span class="kw">if</span> (<span class="var">roll</span> >= <span class="num">15</span>) <span class="var">shield</span>.<span class="fn">deferDrain</span>(<span class="num">2</span>);
   }
 }</code></pre>
+  </div>
 
-  <h4>Przykład 4 — bonus +1 AP gdy trafienie idzie w tors (niezależnie od źródła)</h4>
-  <p>Pancerz z wzmocnieniem na klatkę — dodaje +1 do <code>bonusSP</code> gdy lokacja to <code>torso</code>. Działa przy każdym ataku.</p>
-  <pre><code><span class="cmt">// armorCalculation — +1 bonusSP przy trafieniu w tors</span>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Przykład 4 — bonus +1 SP gdy trafienie idzie w tors
+    </div>
+    <p class="example-desc">Pancerz z wzmocnieniem na klatkę — dodaje +1 do <code>bonusSP</code> gdy lokacja to <code>torso</code>. Działa przy każdym ataku, niezależnie od źródła.</p>
+    <pre><code><span class="cmt">// armorCalculation — +1 bonusSP przy trafieniu w tors</span>
 <span class="kw">if</span> (args.location === <span class="str">"torso"</span>) {
   args.bonusSP += <span class="num">1</span>;
 }</code></pre>
+  </div>
 
-  <h4>Przykład 5 — zrównaj SP do wartości zasobu ExplosionAP przy wybuchu na dowolnej lokacji</h4>
-  <p>Zasób <code>ExplosionAP</code> zastępuje normalne SP tylko przy atakach wybuchowych (granat). Jeśli zasób wyczerpany, normalny pancerz działa bez zmian.</p>
-  <pre><code><span class="cmt">// armorCalculation — SP = ExplosionAP dla każdej lokacji, tylko przy wybuchu</span>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Przykład 5 — zasób ExplosionAP jako SP przy wybuchu, bez drainowania
+    </div>
+    <p class="example-desc">Zasób <code>ExplosionAP</code> zastępuje normalne SP tylko przy atakach wybuchowych (granat). Jeśli zasób wyczerpany, normalny pancerz działa bez zmian. Opcjonalne drainowanie zakomentowane.</p>
+    <pre><code><span class="cmt">// armorCalculation — SP = ExplosionAP dla każdej lokacji, tylko przy wybuchu</span>
 <span class="kw">if</span> (args.isGrenade) {
   <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
   <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
@@ -958,10 +1011,15 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <span class="cmt">// expAP.deferDrainByReduction();</span>
   }
 }</code></pre>
+  </div>
 
-  <h4>Przykład 6 — ExplosionAP jako SP + rzut 1d20 z flavorem + zużycie przy niepowodzeniu</h4>
-  <p>Kompletny przykład: zasób <code>ExplosionAP</code> zastępuje normalny pancerz przy wybuchu. Rzucamy 1d20 — wynik pojawia się w chacie. Wynik ≥ 15 oznacza, że warstwa absorpcyjna ucierpiała (–1 do zasobu).</p>
-  <pre><code><span class="cmt">// armorCalculation — ExplosionAP jako SP przy granate + rzut 1d20 z chatowym flavorem</span>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Przykład 6 — ExplosionAP jako SP + rzut 1d20 + drainowanie przy niepowodzeniu
+    </div>
+    <p class="example-desc">Kompletny przykład: zasób <code>ExplosionAP</code> zastępuje normalny pancerz przy wybuchu. Rzucamy 1d20 — wynik pojawia się w chacie. Wynik ≥ 15 oznacza, że warstwa absorpcyjna ucierpiała (–1 do zasobu).</p>
+    <pre><code><span class="cmt">// armorCalculation — ExplosionAP jako SP przy granacie + rzut 1d20 z chatowym flavorem</span>
 <span class="kw">if</span> (args.isGrenade) {
   <span class="kw">const</span> <span class="var">expAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ExplosionAP"</span>);
   <span class="kw">if</span> (<span class="var">expAP</span>.exists) {
@@ -973,10 +1031,15 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <span class="kw">if</span> (<span class="var">roll</span> >= <span class="num">15</span>) <span class="var">expAP</span>.<span class="fn">deferDrain</span>(<span class="num">1</span>);
   }
 }</code></pre>
+  </div>
 
-  <h4>Przykład 7 — zużyj zasób, drainując inny zasób (crossresource)</h4>
-  <p>Gdy wynik zależy od jednego zasobu, a zużywamy inny — np. <code>ShieldAP</code> jako SP, a <code>ShieldHP</code> drainowany o faktyczną redukcję.</p>
-  <pre><code><span class="cmt">// armorCalculation — SP z ShieldAP, zużycie z ShieldHP</span>
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Przykład 7 — SP z jednego zasobu, drainowanie z innego (cross-resource)
+    </div>
+    <p class="example-desc">Gdy wynik zależy od jednego zasobu, a zużywamy inny — np. <code>ShieldAP</code> jako SP, a <code>ShieldHP</code> drainowany o faktyczną redukcję.</p>
+    <pre><code><span class="cmt">// armorCalculation — SP z ShieldAP, zużycie z ShieldHP</span>
 <span class="kw">if</span> (args.isGrenade) {
   <span class="kw">const</span> <span class="var">shieldAP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ShieldAP"</span>);
   <span class="kw">const</span> <span class="var">shieldHP</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ShieldHP"</span>);
@@ -986,6 +1049,212 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <span class="var">shieldHP</span>.<span class="fn">deferDrainByReduction</span>();  <span class="cmt">// HP tarczy maleje o tyle ile zablokowano</span>
   }
 }</code></pre>
+  </div>
+
+  <!-- rollToChat guide -->
+  <h3 id="guide-roll-to-chat">Rzuty kością w skryptach — porównanie metod</h3>
+  <p>
+    System udostępnia trzy warianty rzutów kością. Kluczowa różnica leży w <strong>kontekście triggera</strong>:
+    triggery <em>SYNC</em> (<code>armorCalculation</code>) nie mogą korzystać z <code>await</code>, bo ich wynik musi być
+    dostępny natychmiast. Triggery <em>ASYNC</em> (wszystkie pozostałe) są pełnoprawnymi funkcjami async.
+  </p>
+
+  <table>
+    <tbody>
+    <tr><th>Metoda</th><th>SYNC (<code>armorCalculation</code>)</th><th>ASYNC (pozostałe)</th><th>Wpis na czat</th><th>Zwraca</th></tr>
+    <tr>
+      <td><code>this.rollDice(n, s)</code></td>
+      <td>✅</td><td>✅</td>
+      <td>❌ brak</td>
+      <td><code>number[]</code></td>
+    </tr>
+    <tr>
+      <td><code>this.deferRollToChat(n, s, opts)</code></td>
+      <td>✅</td><td>❌</td>
+      <td>⏳ odroczony po kalkulacji</td>
+      <td><code>number[]</code></td>
+    </tr>
+    <tr>
+      <td><code>await this.roll(formula)</code></td>
+      <td>❌</td><td>✅</td>
+      <td>✅ natychmiastowy</td>
+      <td><code>Roll</code></td>
+    </tr>
+    <tr>
+      <td><code>this.rollToChat(n, s, opts)</code> <strong>★ zalecany</strong></td>
+      <td>✅ (jak <code>deferRollToChat</code>)</td><td>✅ (jak <code>roll</code>)</td>
+      <td>✅ / ⏳ auto</td>
+      <td><code>number[]</code> lub <code>Promise&lt;Roll&gt;</code></td>
+    </tr>
+    <tr>
+      <td><code>this.rollResults(rollOrArray)</code></td>
+      <td>✅</td><td>✅</td>
+      <td>— (wrapper, nie rzuca)</td>
+      <td><code>RollResult</code></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Rada:</strong> Używaj <code>this.rollToChat()</code> gdy nie jesteś pewien w którym triggerze skrypt będzie uruchomiony.
+    Możesz bezpiecznie pisać <code>await this.rollToChat(...)</code> — w triggerach SYNC <code>await</code> na wartości
+    niebędącej Promise po prostu zwraca tę wartość bez żadnego efektu ubocznego.
+  </div>
+
+  <h3 id="guide-roll-results">Praca z wieloma kośćmi — RollResult</h3>
+  <p>
+    Gdy rzucasz wieloma kośćmi naraz (<code>10d20</code>, <code>5d6</code> itp.), zamiast destrukturyzować dziesiątki
+    zmiennych, użyj <code>this.rollResults()</code> — wrappera który normalizuje zarówno <code>number[]</code> (SYNC)
+    jak i Foundry <code>Roll</code> (ASYNC) do jednego fluent API.
+  </p>
+
+  <div class="context-box">
+    <div class="ctx-row ctx-separator"><span class="ctx-name">Właściwości RollResult</span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">.all</span><span class="ctx-type">number[]</span><span class="ctx-desc">Wszystkie wyniki jako tablica.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.total</span><span class="ctx-type">number</span><span class="ctx-desc">Suma wszystkich kości.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.count</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba rzuconych kości.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.highest</span><span class="ctx-type">number</span><span class="ctx-desc">Najwyższy pojedynczy wynik (0 gdy brak).</span></div>
+    <div class="ctx-row"><span class="ctx-name">.lowest</span><span class="ctx-type">number</span><span class="ctx-desc">Najniższy pojedynczy wynik (0 gdy brak).</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">Metody filtrujące — zwracają number[]</span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">.above(n)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Kości z wynikiem <strong>ściśle powyżej</strong> n.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.atLeast(n)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Kości z wynikiem ≥ n.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.below(n)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Kości z wynikiem <strong>ściśle poniżej</strong> n.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.atMost(n)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Kości z wynikiem ≤ n.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.equal(n)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Kości z wynikiem równym n.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.between(min, max)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Kości w zakresie [min, max] włącznie.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.where(fn)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Kości pasujące do dowolnego predykatu: <code>.where(r => r % 2 === 0)</code>.</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">Metody zliczające — zwracają number</span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">.countAtLeast(n)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba kości z wynikiem ≥ n.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.countAbove(n)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba kości z wynikiem ściśle powyżej n.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.countWhere(fn)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba kości pasujących do predykatu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">.sum(fn?)</span><span class="ctx-type">number</span><span class="ctx-desc">Suma kości pasujących do predykatu; bez argumentu — suma wszystkich.</span></div>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      rollResults — odłamki (SYNC): liczenie trafień powyżej progu
+    </div>
+    <p class="example-desc">Klasyczny wzorzec odłamkowy — rzuć N kości i policz ile przekroczyło próg. Bez destrukturyzacji zmiennych.</p>
+    <pre><code><span class="cmt">// armorCalculation / manual — rzut Nd20, policz wyniki ≥ 15</span>
+<span class="kw">const</span> <span class="var">r</span> = <span class="kw">this</span>.<span class="fn">rollResults</span>(<span class="kw">this</span>.<span class="fn">rollToChat</span>(<span class="num">10</span>, <span class="num">20</span>, { flavor: <span class="str">"Odłamki granatu"</span> }));
+<span class="kw">const</span> <span class="var">hits</span>   = <span class="var">r</span>.<span class="fn">countAtLeast</span>(<span class="num">15</span>);  <span class="cmt">// liczba kości ≥ 15</span>
+<span class="kw">const</span> <span class="var">crits</span>  = <span class="var">r</span>.<span class="fn">countAtLeast</span>(<span class="num">20</span>);  <span class="cmt">// liczba perfekcyjnych</span>
+<span class="kw">const</span> <span class="var">misses</span> = <span class="var">r</span>.<span class="fn">countWhere</span>(<span class="var">v</span> => <span class="var">v</span> < <span class="num">5</span>); <span class="cmt">// kości poniżej 5</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      rollResults — suma wybranych kości (ASYNC)
+    </div>
+    <p class="example-desc">Rzuć 5d6 i zsumuj tylko kości, które wypadły 4 lub więcej — np. mechanika puli sukcesów.</p>
+    <pre><code><span class="cmt">// manual / preRollTest — 5d6, sumuj kości ≥ 4</span>
+<span class="kw">const</span> <span class="var">r</span> = <span class="kw">this</span>.<span class="fn">rollResults</span>(<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">rollToChat</span>(<span class="num">5</span>, <span class="num">6</span>, { flavor: <span class="str">"Pula sukcesów"</span> }));
+<span class="kw">const</span> <span class="var">successes</span> = <span class="var">r</span>.<span class="fn">countAtLeast</span>(<span class="num">4</span>);
+<span class="kw">const</span> <span class="var">bonus</span>     = <span class="var">r</span>.<span class="fn">sum</span>(<span class="var">v</span> => <span class="var">v</span> >= <span class="num">4</span>);  <span class="cmt">// suma wartości sukcesów</span>
+<span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Sukcesy: ${successes}, bonus: +${bonus}`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      rollResults — inline bez pośredniej zmiennej
+    </div>
+    <p class="example-desc">Wszystkie metody filtrujące zwracają <code>number[]</code> — można wywoływać metody tablicy bezpośrednio po filtrze, bez tworzenia dodatkowych zmiennych.</p>
+    <pre><code><span class="cmt">// Ile kości w zakresie 5–10?</span>
+<span class="kw">const</span> <span class="var">mid</span>  = <span class="kw">this</span>.<span class="fn">rollResults</span>(<span class="kw">this</span>.<span class="fn">rollDice</span>(<span class="num">8</span>, <span class="num">20</span>)).<span class="fn">between</span>(<span class="num">5</span>, <span class="num">10</span>).length;
+
+<span class="cmt">// Najwyższa kość, która wypadła ≥ 15 (0 jeśli żadna)</span>
+<span class="kw">const</span> <span class="var">r</span>    = <span class="kw">this</span>.<span class="fn">rollResults</span>(<span class="kw">this</span>.<span class="fn">rollDice</span>(<span class="num">6</span>, <span class="num">20</span>));
+<span class="kw">const</span> <span class="var">best</span> = <span class="var">r</span>.<span class="fn">atLeast</span>(<span class="num">15</span>).reduce((<span class="var">a</span>, <span class="var">b</span>) => Math.<span class="fn">max</span>(<span class="var">a</span>, <span class="var">b</span>), <span class="num">0</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      Bez helpera — SYNC: czysty number[] + filter / Math.max / reduce
+    </div>
+    <p class="example-desc"><code>rollDice</code> i <code>rollToChat</code> w SYNC zwracają <code>number[]</code> — zwykłe metody JS działają bez żadnych wrapperów.</p>
+    <pre><code><span class="cmt">// armorCalculation — 10d20 bez helpera</span>
+<span class="kw">const</span> <span class="var">rolls</span> = <span class="kw">this</span>.<span class="fn">rollDice</span>(<span class="num">10</span>, <span class="num">20</span>);
+
+<span class="kw">const</span> <span class="var">total</span>   = <span class="var">rolls</span>.reduce((<span class="var">a</span>, <span class="var">b</span>) => <span class="var">a</span> + <span class="var">b</span>, <span class="num">0</span>);          <span class="cmt">// suma wszystkich</span>
+<span class="kw">const</span> <span class="var">hits</span>    = <span class="var">rolls</span>.filter(<span class="var">r</span> => <span class="var">r</span> >= <span class="num">15</span>).length;           <span class="cmt">// ile kości ≥ 15</span>
+<span class="kw">const</span> <span class="var">highest</span> = Math.<span class="fn">max</span>(...<span class="var">rolls</span>);                           <span class="cmt">// najwyższy wynik</span>
+<span class="kw">const</span> <span class="var">lowest</span>  = Math.<span class="fn">min</span>(...<span class="var">rolls</span>);                           <span class="cmt">// najniższy wynik</span>
+<span class="kw">const</span> <span class="var">sumHits</span> = <span class="var">rolls</span>.filter(<span class="var">r</span> => <span class="var">r</span> >= <span class="num">15</span>).reduce((<span class="var">a</span>, <span class="var">b</span>) => <span class="var">a</span> + <span class="var">b</span>, <span class="num">0</span>); <span class="cmt">// suma trafień</span>
+<span class="kw">const</span> <span class="var">hasCrit</span> = <span class="var">rolls</span>.some(<span class="var">r</span> => <span class="var">r</span> === <span class="num">20</span>);                   <span class="cmt">// czy wypadł nat20</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Bez helpera — ASYNC: wyciągnięcie tablicy z Foundry Roll
+    </div>
+    <p class="example-desc">W triggerach ASYNC <code>await this.rollToChat()</code> zwraca Foundry <code>Roll</code>. Tablicę wyników wyciągasz przez <code>.dice[0].results.map(r => r.result)</code>, po czym używasz zwykłego JS.</p>
+    <pre><code><span class="cmt">// manual — 8d6 z wpisem na czat, potem analiza</span>
+<span class="kw">const</span> <span class="var">roll</span>  = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">rollToChat</span>(<span class="num">8</span>, <span class="num">6</span>, { flavor: <span class="str">"Pula obrażeń"</span> });
+<span class="kw">const</span> <span class="var">rolls</span> = <span class="var">roll</span>.dice[<span class="num">0</span>].results.<span class="fn">map</span>(<span class="var">r</span> => <span class="var">r</span>.result); <span class="cmt">// number[]</span>
+
+<span class="kw">const</span> <span class="var">total</span>   = <span class="var">roll</span>.total;                                    <span class="cmt">// suma (shortcut z Roll)</span>
+<span class="kw">const</span> <span class="var">sixes</span>   = <span class="var">rolls</span>.filter(<span class="var">r</span> => <span class="var">r</span> === <span class="num">6</span>).length;            <span class="cmt">// ile szóstek</span>
+<span class="kw">const</span> <span class="var">highest</span> = Math.<span class="fn">max</span>(...<span class="var">rolls</span>);
+<span class="kw">const</span> <span class="var">avg</span>     = (<span class="var">total</span> / <span class="var">rolls</span>.length).<span class="fn">toFixed</span>(<span class="num">1</span>);             <span class="cmt">// średnia</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">manual</span>
+      Bez helpera — rollDice (brak wpisu na czat) + klasyczny JS
+    </div>
+    <p class="example-desc"><code>rollDice</code> działa w obu kontekstach i zawsze zwraca <code>number[]</code> bez wpisu na czat — idealne gdy chcesz tylko przeliczyć wyniki bez pokazywania rzutu.</p>
+    <pre><code><span class="cmt">// Rzuć 5d6, weź trzy najwyższe (drop lowest 2)</span>
+<span class="kw">const</span> <span class="var">rolls</span>   = <span class="kw">this</span>.<span class="fn">rollDice</span>(<span class="num">5</span>, <span class="num">6</span>);
+<span class="kw">const</span> <span class="var">top3</span>    = [...<span class="var">rolls</span>].sort((<span class="var">a</span>, <span class="var">b</span>) => <span class="var">b</span> - <span class="var">a</span>).slice(<span class="num">0</span>, <span class="num">3</span>);
+<span class="kw">const</span> <span class="var">result</span>  = <span class="var">top3</span>.reduce((<span class="var">a</span>, <span class="var">b</span>) => <span class="var">a</span> + <span class="var">b</span>, <span class="num">0</span>);
+
+<span class="cmt">// Rzuć k20 per zasięg odłamka, zlicz trafienia</span>
+<span class="kw">const</span> <span class="var">shrapnel</span> = <span class="kw">this</span>.<span class="fn">rollDice</span>(<span class="num">6</span>, <span class="num">20</span>);
+<span class="kw">const</span> <span class="var">wounds</span>   = shrapnel.filter(<span class="var">r</span> => <span class="var">r</span> <= <span class="num">10</span>).length;       <span class="cmt">// 1–10 = rana</span>
+<span class="kw">const</span> <span class="var">crits</span>    = shrapnel.filter(<span class="var">r</span> => <span class="var">r</span> <= <span class="num">5</span>).length;        <span class="cmt">// 1–5  = rana ciężka</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preRollTest</span>
+      rollToChat w triggerze ASYNC z adnotacją
+    </div>
+    <p class="example-desc">Trigger <code>preRollTest</code> i <code>rollTest</code> umożliwiają dodanie krótkiej adnotacji pod wynikiem rzutu przez <code>this.addAnnotation(text)</code>. Poniższy przykład rzuca 1d6 dodatkowych ataków i dodaje wynik jako adnotację.</p>
+    <pre><code><span class="cmt">// preRollTest — dodatkowy rzut d6 z wpisem na czat i adnotacją pod wynikiem</span>
+<span class="kw">const</span> <span class="var">extraRoll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">rollToChat</span>(<span class="num">1</span>, <span class="num">6</span>, {
+  flavor: <span class="str">"Dodatkowe ataki z efektu Furia"</span>
+});
+<span class="cmt">// W triggerze ASYNC rollToChat zwraca Roll; .total = suma wyników</span>
+<span class="kw">const</span> <span class="var">extra</span> = <span class="var">extraRoll</span>.total;
+<span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Furia: +${extra} ataków`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">armorCalculation</span>
+      rollToChat w triggerze SYNC — losowe SP z zasobu
+    </div>
+    <p class="example-desc">W <code>armorCalculation</code> <code>rollToChat</code> działa synchronicznie i zwraca <code>number[]</code>. Chat z flavorem pojawi się dopiero po zakończeniu wszystkich kalkulacji.</p>
+    <pre><code><span class="cmt">// armorCalculation — losowe SP z zasobu + rzut kością z flavorem</span>
+<span class="kw">if</span> (args.isGrenade) {
+  <span class="kw">const</span> <span class="var">r</span> = <span class="kw">this</span>.<span class="fn">resource</span>(<span class="kw">this</span>.item, <span class="str">"ReactiveAP"</span>);
+  <span class="kw">if</span> (<span class="var">r</span>.exists && <span class="var">r</span>.value > <span class="num">0</span>) {
+    <span class="cmt">// W SYNC rollToChat zwraca number[] — destrukturyzacja bezpośrednia</span>
+    <span class="kw">const</span> [<span class="var">roll1</span>, <span class="var">roll2</span>] = <span class="kw">this</span>.<span class="fn">rollToChat</span>(<span class="num">2</span>, <span class="num">6</span>, {
+      flavor: <span class="str">`Reaktywny pancerz (${this.item.name}) — losowe SP`</span>
+    });
+    args.sp = <span class="var">roll1</span> + <span class="var">roll2</span>;
+    args.bonusSP = <span class="num">0</span>;
+    <span class="var">r</span>.<span class="fn">deferDrain</span>(<span class="num">1</span>);
+  }
+}</code></pre>
+  </div>
 
   <!-- equipToggle -->
   <h3 id="trigger-equipToggle">equipToggle — <em>Equip Toggle</em></h3>
@@ -1195,7 +1464,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
   <h3 id="keys-skills">Umiejętności — Postać / NPC / Bestia</h3>
   <p>Dostępne jako <code>args.actor.system.skills.&lt;klucz&gt;.value</code> (bazowa wartość, 0–20) lub <code>args.actor.system.skillTotals.&lt;klucz&gt;</code> (z bonusami AE). W wyzwalaczach <code>dialog</code> i <code>rollTest</code> klucz aktywnej umiejętności jest dostępny jako <code>args.skill?.key</code>.</p>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Zręczność (dexterity)</h4>
+  <h4 class="key-group">Zręczność (dexterity)</h4>
   <table>
     <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
     <tbody>
@@ -1217,7 +1486,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Percepcja (perception)</h4>
+  <h4 class="key-group">Percepcja (perception)</h4>
   <table>
     <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
     <tbody>
@@ -1236,7 +1505,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Charyzma (charisma)</h4>
+  <h4 class="key-group">Charyzma (charisma)</h4>
   <table>
     <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
     <tbody>
@@ -1252,7 +1521,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Spryt (cleverness)</h4>
+  <h4 class="key-group">Spryt (cleverness)</h4>
   <table>
     <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
     <tbody>
@@ -1277,7 +1546,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Kondycja (constitution)</h4>
+  <h4 class="key-group">Kondycja (constitution)</h4>
   <table>
     <thead><tr><th>Klucz</th><th>Specjalizacja</th><th>Nazwa umiejętności</th></tr></thead>
     <tbody>
@@ -1313,7 +1582,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
   <h3 id="keys-item-fields">Pola Itemów</h3>
   <p>Klucze dostępne przez <code>args.item.system.&lt;pole&gt;</code> lub <code>this.item.system.&lt;pole&gt;</code>. Każdy item ma zawsze <code>description</code>, <code>weight</code>, <code>cost</code>, <code>quantity</code> i <code>availability</code>.</p>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Wspólne pola (wszystkie typy)</h4>
+  <h4 class="key-group">Wspólne pola (wszystkie typy)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -1327,7 +1596,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Broń (<code>weapon</code>)</h4>
+  <h4 class="key-group">Broń (<code>weapon</code>)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -1350,7 +1619,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Pancerz (<code>armor</code>)</h4>
+  <h4 class="key-group">Pancerz (<code>armor</code>)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -1367,7 +1636,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Amunicja (<code>ammo</code>)</h4>
+  <h4 class="key-group">Amunicja (<code>ammo</code>)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -1380,7 +1649,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Magazynek (<code>magazine</code>)</h4>
+  <h4 class="key-group">Magazynek (<code>magazine</code>)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -1391,7 +1660,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Rana (<code>wound</code>)</h4>
+  <h4 class="key-group">Rana (<code>wound</code>)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -1403,7 +1672,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Reputacja (<code>reputation</code>)</h4>
+  <h4 class="key-group">Reputacja (<code>reputation</code>)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
     <tbody>
@@ -1412,7 +1681,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Choroba (<code>disease</code>)</h4>
+  <h4 class="key-group">Choroba (<code>disease</code>)</h4>
   <p>Itemy chorób przechowywane są bezpośrednio na aktorze. W Enable Script oraz skryptach efektów z itemu choroby dostępne jest <code>this.item</code> wskazujące na ten konkretny item.</p>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
@@ -1428,7 +1697,7 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <code>this.getDisease(actor?)</code> — pierwszy item choroby (lub <code>null</code>)<br>
     <code>this.getDiseaseStateName(actorOrItem?)</code> — klucz stanu choroby (string)<br>
     <code>this.getDiseaseStateId(actorOrItem?)</code> — indeks stanu 0–4<br>
-    <em style="color:var(--text-dim);">W Enable Script dostępne też jako bare functions: <code>getDiseaseStateName()</code> itp.</em>
+    <em>W Enable Script dostępne też jako bare functions: <code>getDiseaseStateName()</code> itp.</em>
   </div>
 
   <!-- DIFFICULTY KEYS -->
@@ -1460,7 +1729,7 @@ args.fields.difficulty = "hard";</code></pre>
   <h3 id="keys-hit-location">Klucze lokacji trafienia (<code>args.fields.hitLocation</code>)</h3>
   <p>Pole <code>args.fields.hitLocation</code> (w Dialog Script dla rzutów na broń) przyjmuje jeden z poniższych kluczy. Wartość <code>"random"</code> oznacza losowanie lokacji (rzut k20 wg tabeli).</p>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Lokacje ciała (Postać / NPC / Bestia)</h4>
+  <h4 class="key-group">Lokacje ciała (Postać / NPC / Bestia)</h4>
   <table>
     <thead><tr><th>Klucz</th><th>Lokacja</th><th>Rzut k20</th><th>Kara do celowania (dystansowy / wręcz)</th></tr></thead>
     <tbody>
@@ -1474,7 +1743,7 @@ args.fields.difficulty = "hard";</code></pre>
     </tbody>
   </table>
 
-  <h4 style="margin:0.6rem 0 0.2rem; color:var(--accent);">Lokacje pojazdu</h4>
+  <h4 class="key-group">Lokacje pojazdu</h4>
   <table>
     <thead><tr><th>Klucz</th><th>Lokacja</th></tr></thead>
     <tbody>
@@ -1520,7 +1789,7 @@ args.fields.hitLocation = "head";</code></pre>
       <span class="trigger-badge">manual</span>
       Propital — Wariant 1: natychmiastowo redukuje najcięższe rany (jeden skrypt)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Najprostszy wzorzec konsumabla — <strong>jeden skrypt manual</strong> bezpośrednio na itemie.
       Brak pośredniego efektu: zużywa sztukę i od razu redukuje każdą z najcięższych ran o 1 stopień
       (np. C → L, L → D, D → usunięta).
@@ -1553,7 +1822,7 @@ args.fields.hitLocation = "head";</code></pre>
       <span class="trigger-badge">startTurn</span>
       Propital — Wariant 2: natychmiastowe leczenie + podtrzymane działanie przez 2 rundy
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Skrypt <strong>manual</strong> (na itemie) zużywa sztukę, redukuje najcięższą ranę natychmiast,
       a następnie nakłada na aktora <em>drugi efekt</em> z czasem trwania 2 rund walki.
       Ten efekt posiada skrypt <strong>startTurn</strong>, który na początku każdej tury aktora
@@ -1611,7 +1880,7 @@ args.fields.hitLocation = "head";</code></pre>
       <span class="trigger-badge">startTurn</span>
       Propital — Wariant 3: przycisk nakłada efekt, który redukuje ranę 3 razy (1× od razu + 2× na turę)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Skrypt <strong>manual</strong> (Efekt 0 na itemie) tylko zużywa sztukę i nakłada Efekt 1 z <code>duration.rounds: 3</code>.
       Efekt 1 ma dwa skrypty: <strong>immediate</strong> odpala redukcję natychmiast po nałożeniu,
       a <strong>startTurn</strong> odpala ją na początku każdej z 2 kolejnych tur — łącznie 3 redukcje.
@@ -1687,7 +1956,7 @@ args.fields.hitLocation = "head";</code></pre>
       <span class="trigger-badge">preApplyDamage</span>
       Odporność — zmiana ciężkiej rany na lekką przed pancerzem
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Trigger <strong>preApplyDamage</strong> pozwala modyfikować typ obrażeń <em>zanim</em>
       pancerz zostanie przeliczony i zanim rana zostanie stworzona.
       <code>reduceDamageType</code> przesuwa typ w dół o podaną liczbę poziomów w obrębie toru
@@ -1715,7 +1984,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
       <span class="trigger-badge">applyDamage</span>
       Niewrażliwość na lekkie rany — auto-sukces odporności na ból dla D, sD, L, sL
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Wariant <strong>bez annotation</strong> — w raporcie czatu pojawi się domyślny tekst systemowy
       <em>"Auto-zdany (przez skrypt efektu)"</em>.
     </p>
@@ -1733,7 +2002,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
       <span class="trigger-badge">applyDamage</span>
       Niewrażliwość na lekkie rany — z <code>annotation</code> (własny tekst w raporcie czatu)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Wariant <strong>z annotation</strong> — zamiast domyślnego tekstu pojawi się niestandardowy opis
       bezpośrednio przy nazwie rany w raporcie. Tooltip zawiera ten sam tekst.
     </p>
@@ -1752,7 +2021,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
       <span class="trigger-badge">preRollTest</span>
       Brak rzutu na odporność na ból przy draśnięciach (D)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Wariant <strong>bez annotation</strong> — wiadomość czatu wyświetla domyślny tekst
       <em>"Automatyczny sukces (efekt aktywny)"</em>.
     </p>
@@ -1768,7 +2037,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
       <span class="trigger-badge">preRollTest</span>
       Brak rzutu na odporność na ból — z <code>annotation</code> (własny tekst w wiadomości czatu)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Wariant <strong>z annotation</strong> — zamiast generycznej wiadomości w chacie pojawia się
       podany przez skrypt tekst, np. nazwa tricku lub efektu.
     </p>
@@ -2836,7 +3105,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <span class="trigger-badge">manual</span>
       Wypij Wyciąg Uzdrawiający — redukuje rany, zużywa 1 szt. przedmiotu
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Rzut 2d4 + Budowa wyznacza liczbę poziomów redukcji — każdy poziom redukuje jedną ranę
       o 1 stopień (lub usuwa draśnięcie). Animacja Dice So Nice odgrywa się przed leczeniem.
     </p>
@@ -3016,7 +3285,7 @@ onFailure: [
       <span class="trigger-badge">manual</span>
       Test Strachu — porażka nakłada kondycję (jeden skrypt, bez efektu na graczu)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Najprostsza forma — <strong>jeden skrypt manual</strong> na potworze lub przedmiocie.
       Przy porażce test Charyzmy automatycznie nakłada kondycję <code>"frightened"</code> na postać gracza.
       Nie trzeba żadnych efektów ani flag na aktorach graczy.
@@ -3041,7 +3310,7 @@ onFailure: [
       <span class="trigger-badge">manual</span>
       Test Trucizny — porażka nakłada dwie kondycje jednocześnie
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Użyj tablicy w <code>onFailure</code> aby nałożyć wiele kondycji naraz.
     </p>
 <pre><code>(<span class="kw">async</span> () =&gt; {
@@ -3066,7 +3335,7 @@ onFailure: [
       <span class="trigger-badge">manual</span>
       Test Zasadzki — sukces nakłada premię, porażka nakłada kondycję
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Możesz podać obie gałęzie jednocześnie. System wybierze właściwą na podstawie wyniku rzutu.
     </p>
 <pre><code>(<span class="kw">async</span> () =&gt; {
@@ -3089,7 +3358,7 @@ onFailure: [
       <span class="trigger-badge">manual</span>
       Skrócone użycie — karta informacyjna bez automatycznej konsekwencji
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Jeśli nie podasz <code>onSuccess</code> / <code>onFailure</code>, karta pojawi się w czacie
       a MG ręcznie ocenia wynik lub reaguje skryptem <code>rollTest</code>.
     </p>
@@ -3119,7 +3388,7 @@ onFailure: [
       <span class="trigger-badge">manual</span> + <span class="trigger-badge">rollTest</span>
       Test Leczenia Ran — liczba sukcesów decyduje o jakości leczenia (zaawansowane)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Przykład gdy <code>onFailure/onSuccess</code> nie wystarczy — reagujemy na dokładną <em>liczbę</em>
       sukcesów i leczymy innego aktora (pacjenta). UUID pacjenta jest przechowywane w fladze aktora leczącego.
     </p>
@@ -3756,7 +4025,7 @@ return false; // nie blokuj nikogo</span></code></pre>
       <span class="trigger-badge">manual / prepareData</span>
       Sprawdzenie czy efekt jest kopią Aury lub kopią Area
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Kopie Aura/Area mają odpowiednie flagi. Możesz sprawdzić to w skrypcie działającym na aktorze-celu.
     </p>
     <pre><code><span class="cmt">// Sprawdź czy ten efekt jest kopią Aury (flagę ma kopia, nie oryginał)</span>
@@ -3782,7 +4051,7 @@ return false; // nie blokuj nikogo</span></code></pre>
       <span class="trigger-badge">preApplyScript</span>
       Blokada aury — źródło musi mieć włączoną kondycję "focused"
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       <code>preApplyScript</code> działa na kontekście <strong>źródła</strong>. Zmienne: <code>actor</code> (źródło), <code>effect</code>, <code>targetActor</code> (cel).
       Zwróć <code>false</code> aby zablokować aplikację.
     </p>
@@ -3798,7 +4067,7 @@ return false; // nie blokuj nikogo</span></code></pre>
       <span class="trigger-badge">manual</span>
       Aura przekazana (Transferred Aura) — nałóż kopię efektu na wskazane tokeny
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Effect Application: <strong>Aura</strong> | <strong>Transferred Aura: zaznaczony</strong><br>
       Efekt nie jest nakładany automatycznie przez zasięg. GM wskazuje tokeny docelowe, następnie tworzy lub
       włącza efekt — system aplikuje kopię do wybranych celów. Można też wywołać ręcznie z wyzwalacza <code>manual</code>:
@@ -3937,7 +4206,10 @@ return false; // nie blokuj nikogo</span></code></pre>
   <h4>Helpery na <code>this</code> — pełna lista</h4>
   <table>
     <tbody><tr><th>Metoda</th><th>Opis</th></tr>
-    <tr><td><code>await this.roll(formula, data?)</code></td><td>Rzut kością → obiekt <code>Roll</code>. Skrót dla <code>new Roll(formula).evaluate()</code>.</td></tr>
+    <tr><td><code>await this.roll(formula, data?)</code></td><td>Rzut kością → obiekt <code>Roll</code>. Skrót dla <code>new Roll(formula).evaluate()</code>. <strong>Tylko ASYNC.</strong></td></tr>
+    <tr><td><code>this.rollDice(count, sides)</code></td><td>Rzut synchroniczny bez wpisu na czat. Zwraca <code>number[]</code>. Działa w SYNC i ASYNC.</td></tr>
+    <tr><td><code>this.deferRollToChat(count, sides, options?)</code></td><td>Rzut synchroniczny + odroczony wpis na czat z flavorem. Wynik dostępny natychmiast jako <code>number[]</code>. Opcje: <code>{ flavor, rollMode, speaker }</code>. <strong>Tylko SYNC</strong> (<code>armorCalculation</code>).</td></tr>
+    <tr><td><code>this.rollToChat(count, sides, options?)</code></td><td><strong>Ujednolicony — zalecany.</strong> Auto-wykrywa SYNC/ASYNC. W SYNC działa jak <code>deferRollToChat</code> (zwraca <code>number[]</code>); w ASYNC działa jak <code>roll</code> (zwraca <code>Promise&lt;Roll&gt;</code>). Bezpieczny do <code>await</code> w obu kontekstach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</td></tr>
     <tr><td><code>await this.sleep(ms)</code></td><td>Pauza asynchroniczna w milisekundach (np. czekanie na Dice So Nice)</td></tr>
     <tr><td><code>this.getTargets()</code></td><td>Aktorzy wskazanych tokenów (<code>game.user.targets</code>)</td></tr>
     <tr><td><code>this.getSelected()</code></td><td>Aktorzy zaznaczonych tokenów; fallback: przypisana postać gracza</td></tr>
@@ -4686,7 +4958,7 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
       <span class="trigger-badge">manual</span>
       Zasób Unclamped — licznik bez górnej granicy (np. punkty XP na itemie)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       Gdy zasób ma włączony tryb <strong>Unclamped</strong> (przycisk ∞ w zakładce Zasoby),
       silnik nie clampuje wartości — można ustawiać dowolne liczby bez ograniczeń.
     </p>
@@ -4703,7 +4975,7 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
       <span class="trigger-badge">prepareData</span>
       Bonus do cechy na podstawie wartości zasobu (synchroniczny)
     </div>
-    <p style="margin:4px 0 6px; font-size:0.88em; color:#555;">
+    <p class="example-desc">
       <code>prepareData</code> jest <strong>synchroniczny</strong> — nie używaj <code>await</code>.
       <code>getItemResource</code> jest synchroniczny i działa poprawnie w tym triggerze.
     </p>

@@ -10,7 +10,7 @@
 
         <div class="form-group row-group">
             <label title="{{localize 'NEUROSHIMA.Items.Fields.DefenseBonus'}}">{{localize "NEUROSHIMA.Items.Fields.DefenseBonusAbbr"}}</label>
-            <input type="number" name="system.defenseBonus" value="{{system.defenseBonus}}" data-dtype="Number"/>
+            <input type="number" name="system.defenseBonus" value="{{system.defenseBonus}}" data-dtype="Number" {{#if isModded}}disabled{{/if}}/>
         </div>
 
         <div class="form-group row-group">
@@ -22,7 +22,7 @@
 
         <div class="form-group row-group">
             <label title="{{localize 'NEUROSHIMA.Items.Fields.AttackBonus'}}">{{localize "NEUROSHIMA.Items.Fields.AttackBonusAbbr"}}</label>
-            <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" data-dtype="Number"/>
+            <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" data-dtype="Number" {{#if isModded}}disabled{{/if}}/>
         </div>
     </div>
 
@@ -46,7 +46,7 @@
         
         <div class="form-group row-group">
             <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
-            <select name="system.damage">
+            <select name="system.damage" {{#if isModded}}disabled{{/if}}>
                 {{selectOptions damageTypes selected=system.damage localize=true}}
             </select>
         </div>

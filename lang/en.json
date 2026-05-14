@@ -21,9 +21,12 @@
             "origin": "Origin",
             "profession": "Profession",
             "vehicle-damage": "Damage",
+            "vehicle-mod": "Vehicle Modification",
             "money": "Currency",
             "reputation": "Reputation",
-            "disease": "Disease"
+            "disease": "Disease",
+            "weapon-mod": "Weapon Modification",
+            "armor-mod": "Armor Modification"
         }
     },
     "NEUROSHIMA": {
@@ -987,7 +990,9 @@
                 "Vehicle-mod": "Vehicle Modification",
                 "Money": "Currency",
                 "Reputation": "Reputation",
-                "Disease": "Disease"
+                "Disease": "Disease",
+                "Weapon-mod": "Weapon Modification",
+                "Armor-mod": "Armor Modification"
             },
             "Empty": "No items.",
             "Fields": {
@@ -1063,6 +1068,56 @@
                 "AvailabilityAbbr": "Avail.",
                 "CoinValue": "Gamble Value"
             }
+        },
+        "Mods": {
+            "InstalledMods": "Installed Modifications",
+            "TabHeader": "Modifications",
+            "NoneInstalled": "No modifications installed. Drag a weapon or armor mod here.",
+            "DropZone": "Drag modification here",
+            "Attach": "Mount",
+            "Attached": "Mounted",
+            "Detach": "Unmount",
+            "Detached": "Unmounted",
+            "Remove": "Remove",
+            "OpenMod": "Open modification",
+            "AlreadyInstalled": "This modification is already installed.",
+            "LockedBanner": "Base stats locked — at least one modification is mounted.",
+            "CategoryLabel": "Category",
+            "ModType": "Type",
+            "ModTypePlaceholder": "e.g. barrel, scope...",
+            "OverrideDamage": "Override damage",
+            "OverrideCaliber": "Override caliber",
+            "OverrideMode": "Checked = overrides base value; unchecked = adds/subtracts from base value",
+            "ModifiesCost": "Modifies item cost",
+            "DeltaWeightAbbr": "Weight",
+            "DeltaCostAbbr": "Cost",
+            "ColCategory": "Category",
+            "ColDelta": "Effect",
+            "NoDetails": "No details",
+            "Sections": {
+                "Basic": "Basic",
+                "Common": "Common",
+                "Ranged": "Ranged / Thrown",
+                "Melee": "Melee"
+            },
+            "Category": {
+                "modification": "Modification",
+                "trait": "Trait"
+            },
+            "Deltas": {
+                "Label": "Stat deltas",
+                "Damage": "Dmg.",
+                "Piercing": "PP",
+                "FireRate": "Rate",
+                "Capacity": "Cap.",
+                "Jamming": "Jam.",
+                "AttackBonus": "ATK",
+                "DefenseBonus": "DEF",
+                "Durability": "Dur.",
+                "Penalty": "Penalty",
+                "RequiredBuild": "Build"
+            },
+            "EffectText": "Effect description"
         },
         "Money": {
             "Label": "Currency",

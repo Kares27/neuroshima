@@ -22,6 +22,7 @@
         <div class="item effects-list-header flexrow">
             <div class="col-icon"></div>
             <div class="col-name">{{localize "Name"}}</div>
+            <div class="col-source">{{localize "NEUROSHIMA.Effects.Source"}}</div>
             <div class="col-duration">{{localize "NEUROSHIMA.Tabs.Duration"}}</div>
             <div class="col-controls"></div>
         </div>
@@ -32,6 +33,13 @@
             </div>
             <div class="col-name clickable" data-action="editEffect" data-effect-id="{{this.id}}">
                 <span>{{this.name}}</span>
+            </div>
+            <div class="col-source">
+                {{#if this.sourceName}}
+                <span class="effect-source-mod" data-tooltip="{{this.sourceName}}"><i class="fas fa-wrench"></i> {{this.sourceName}}</span>
+                {{else}}
+                <span class="effect-source-native">—</span>
+                {{/if}}
             </div>
             <div class="col-duration">
                 <span>{{this.durationLabel}}</span>

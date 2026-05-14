@@ -79,7 +79,8 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
           shrapnel:  new fields.NumberField({ integer: true, initial: 0, min: 0 })
         }),
         { initial: [] }
-      )
+      ),
+      mods: new fields.ObjectField({ initial: {} })
     };
   }
 }
@@ -122,7 +123,8 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
     return {
       ...baseSchema(),
       ...equipableSchema(),
-      armor: new fields.SchemaField(armorSchema())
+      armor: new fields.SchemaField(armorSchema()),
+      mods: new fields.ObjectField({ initial: {} })
     };
   }
 
@@ -495,6 +497,85 @@ export class DiseaseData extends foundry.abstract.TypeDataModel {
       terminal: new fields.SchemaField({
         description: new fields.StringField({ initial: "" })
       })
+    };
+  }
+}
+
+/**
+ * Data model for Weapon Modification items.
+ * Stores stat deltas applied to the parent weapon when the mod is attached.
+ */
+export class WeaponModData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      category: new fields.StringField({
+        required: true,
+        initial: "modification",
+        choices: ["modification", "trait"]
+      }),
+      modType: new fields.StringField({ initial: "" }),
+      deltaWeight: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaCost: new fields.NumberField({ integer: true, initial: 0 }),
+      deltaAttackBonus: new fields.NumberField({ integer: true, initial: 0 }),
+      overrideAttackBonus: new fields.BooleanField({ initial: false }),
+      deltaDefenseBonus: new fields.NumberField({ integer: true, initial: 0 }),
+      overrideDefenseBonus: new fields.BooleanField({ initial: false }),
+      deltaPiercing: new fields.NumberField({ integer: true, initial: 0 }),
+      overridePiercing: new fields.BooleanField({ initial: false }),
+      deltaRequiredBuild: new fields.NumberField({ integer: true, initial: 0 }),
+      overrideRequiredBuild: new fields.BooleanField({ initial: false }),
+      overrideDamage: new fields.BooleanField({ initial: false }),
+      damage: new fields.StringField({ initial: "L" }),
+      overrideCaliber: new fields.BooleanField({ initial: false }),
+      modCaliber: new fields.StringField({ initial: "" }),
+      deltaFireRate: new fields.NumberField({ integer: true, initial: 0 }),
+      overrideFireRate: new fields.BooleanField({ initial: false }),
+      deltaCapacity: new fields.NumberField({ integer: true, initial: 0 }),
+      overrideCapacity: new fields.BooleanField({ initial: false }),
+      deltaJamming: new fields.NumberField({ integer: true, initial: 0 }),
+      overrideJamming: new fields.BooleanField({ initial: false }),
+      overrideDamageMelee1: new fields.BooleanField({ initial: false }),
+      damageMelee1: new fields.StringField({ initial: "D" }),
+      overrideDamageMelee2: new fields.BooleanField({ initial: false }),
+      damageMelee2: new fields.StringField({ initial: "L" }),
+      overrideDamageMelee3: new fields.BooleanField({ initial: false }),
+      damageMelee3: new fields.StringField({ initial: "C" }),
+      deltaModifiesCost: new fields.BooleanField({ initial: true }),
+      effectText: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
+ * Data model for Armor Modification items.
+ * Stores stat deltas applied to the parent armor when the mod is attached.
+ */
+export class ArmorModData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      category: new fields.StringField({
+        required: true,
+        initial: "modification",
+        choices: ["modification", "trait"]
+      }),
+      modType: new fields.StringField({ initial: "" }),
+      deltaWeight: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaCost: new fields.NumberField({ integer: true, initial: 0 }),
+      deltaHead: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaTorso: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaLeftArm: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaRightArm: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaLeftLeg: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaRightLeg: new fields.NumberField({ initial: 0, step: 0.5 }),
+      deltaDurability: new fields.NumberField({ integer: true, initial: 0 }),
+      deltaPenalty: new fields.NumberField({ integer: true, initial: 0 }),
+      deltaRequiredBuild: new fields.NumberField({ integer: true, initial: 0 }),
+      deltaModifiesCost: new fields.BooleanField({ initial: true }),
+      effectText: new fields.HTMLField({ initial: "" })
     };
   }
 }

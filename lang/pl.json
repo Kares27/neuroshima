@@ -24,9 +24,12 @@
             "origin": "Pochodzenie",
             "profession": "Profesja",
             "vehicle-damage": "Uszkodzenie",
+            "vehicle-mod": "Modyfikacja Pojazdu",
             "money": "Waluta",
             "reputation": "Reputacja",
-            "disease": "Choroba"
+            "disease": "Choroba",
+            "weapon-mod": "Modyfikacja Broni",
+            "armor-mod": "Modyfikacja Pancerza"
         }
     },
     "NEUROSHIMA": {
@@ -1011,7 +1014,9 @@
                 "Vehicle-mod": "Modyfikacja Pojazdu",
                 "Money": "Waluta",
                 "Reputation": "Reputacja",
-                "Disease": "Choroba"
+                "Disease": "Choroba",
+                "Weapon-mod": "Modyfikacja Broni",
+                "Armor-mod": "Modyfikacja Pancerza"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {
@@ -1087,6 +1092,56 @@
                 "AvailabilityAbbr": "Dost.",
                 "CoinValue": "Wartość w Gamblach"
             }
+        },
+        "Mods": {
+            "InstalledMods": "Zainstalowane Modyfikacje",
+            "TabHeader": "Modyfikacje",
+            "NoneInstalled": "Brak zainstalowanych modyfikacji. Przeciągnij modyfikację broni lub pancerza.",
+            "DropZone": "Przeciągnij modyfikację tutaj",
+            "Attach": "Zamontuj",
+            "Attached": "Zamontowana",
+            "Detach": "Odmontuj",
+            "Detached": "Odmontowana",
+            "Remove": "Usuń",
+            "OpenMod": "Otwórz modyfikację",
+            "AlreadyInstalled": "Ta modyfikacja jest już zainstalowana.",
+            "LockedBanner": "Statystyki bazowe zablokowane — zamontowana co najmniej jedna modyfikacja.",
+            "CategoryLabel": "Kategoria",
+            "ModType": "Typ",
+            "ModTypePlaceholder": "np. lufa, celownik...",
+            "OverrideDamage": "Nadpisz obrażenia",
+            "OverrideCaliber": "Nadpisz kaliber",
+            "OverrideMode": "Zaznaczone = nadpisuje wartość bazową; odznaczone = dodaje/odejmuje od wartości bazowej",
+            "ModifiesCost": "Modyfikuje koszt itemu",
+            "DeltaWeightAbbr": "Waga",
+            "DeltaCostAbbr": "Koszt",
+            "ColCategory": "Kategoria",
+            "ColDelta": "Efekt",
+            "NoDetails": "Brak opisu",
+            "Sections": {
+                "Basic": "Bazowe",
+                "Common": "Wspólne",
+                "Ranged": "Zasięgowe / Miotane",
+                "Melee": "Walka wręcz"
+            },
+            "Category": {
+                "modification": "Modyfikacja",
+                "trait": "Cecha"
+            },
+            "Deltas": {
+                "Label": "Delty statystyk",
+                "Damage": "Obr.",
+                "Piercing": "PP",
+                "FireRate": "Sz",
+                "Capacity": "Poj.",
+                "Jamming": "Zac.",
+                "AttackBonus": "ATK",
+                "DefenseBonus": "OBR",
+                "Durability": "Wytrz.",
+                "Penalty": "Kara",
+                "RequiredBuild": "Bud."
+            },
+            "EffectText": "Opis efektu"
         },
         "Money": {
             "Label": "Waluta",

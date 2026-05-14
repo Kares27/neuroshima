@@ -20,15 +20,17 @@
         <div class="item-header-stats">
             {{#unless isNonCountable}}
             {{#if enableEncumbrance}}
+            {{#unless isModItem}}
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Weight"}}</label>
-                <input type="number" name="system.weight" value="{{system.weight}}" data-dtype="Number" step="0.5"/>
+                <input type="number" name="system.weight" value="{{#if isModded}}{{effectiveWeight}}{{else}}{{system.weight}}{{/if}}" data-dtype="Number" step="0.5" {{#if isModded}}disabled title="Bazowo: {{system.weight}}"{{/if}}/>
             </div>
+            {{/unless}}
             {{/if}}
             {{#unless (eq item.type "money")}}
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Cost"}}</label>
-                <input type="number" name="system.cost" value="{{system.cost}}" data-dtype="Number"/>
+                <input type="number" name="system.cost" value="{{#if isModded}}{{effectiveCost}}{{else}}{{system.cost}}{{/if}}" data-dtype="Number" {{#if isModded}}disabled title="Bazowo: {{system.cost}}"{{/if}}/>
             </div>
             {{/unless}}
             {{#unless (eq system.equipped undefined)}}

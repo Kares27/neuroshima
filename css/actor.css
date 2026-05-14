@@ -4753,7 +4753,27 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .neuroshima .item-effects-list .effect-row {
-    grid-template-columns: 36px 1fr 60px 80px;
+    grid-template-columns: 36px 1fr 110px 60px 80px;
+}
+
+.neuroshima .item-effects-list .effects-list-header {
+    grid-template-columns: 36px 1fr 110px 60px 80px;
+}
+
+.neuroshima .item-effects-list .effect-source-mod {
+    font-size: 0.78em;
+    color: var(--ns-text-muted, #94a3b8);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.neuroshima .item-effects-list .effect-source-native {
+    color: var(--ns-text-muted, #94a3b8);
+    opacity: 0.4;
 }
 
 .neuroshima .effect-row:hover {

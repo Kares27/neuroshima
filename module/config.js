@@ -311,5 +311,13 @@ export const NEUROSHIMA = {
         armorCalculation: "NEUROSHIMA.Scripts.Trigger.ArmorCalculation",
         applyDamage: "NEUROSHIMA.Scripts.Trigger.ApplyDamage",
         equipToggle: "NEUROSHIMA.Scripts.Trigger.EquipToggle"
-    }
+    },
+    weaponModTypeSuggestions: [
+        "barrel", "stock", "sight", "grip", "suppressor", "bipod",
+        "flashlight", "laser", "magazine", "underbarrel", "other"
+    ],
+    armorModTypeSuggestions: [
+        "plates", "padding", "straps", "helmet", "visor",
+        "electronics", "camouflage", "reinforcement", "other"
+    ]
 };

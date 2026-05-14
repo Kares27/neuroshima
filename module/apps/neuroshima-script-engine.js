@@ -1,4 +1,56 @@
 /**
+ * Thin wrapper around a roll result that normalises both a Foundry Roll object
+ * (returned by async rollToChat / roll) and a plain number[] (returned by SYNC
+ * rollToChat / rollDice / deferRollToChat) into a single fluent API.
+ *
+ * Obtain via: const r = this.rollResults(rollOrArray);
+ */
+export class RollResult {
+  constructor(rollOrArray) {
+    if (Array.isArray(rollOrArray)) {
+      this._results = rollOrArray;
+    } else {
+      this._results = rollOrArray?.dice?.[0]?.results?.map(r => r.result) ?? [];
+    }
+  }
+
+  /** All individual die values as a plain array. */
+  get all()     { return [...this._results]; }
+  /** Sum of all dice. */
+  get total()   { return this._results.reduce((a, b) => a + b, 0); }
+  /** Number of dice rolled. */
+  get count()   { return this._results.length; }
+  /** Highest single die value (0 if no dice). */
+  get highest() { return this._results.length ? Math.max(...this._results) : 0; }
+  /** Lowest single die value (0 if no dice). */
+  get lowest()  { return this._results.length ? Math.min(...this._results) : 0; }
+
+  /** Dice with value strictly above n. Returns number[]. */
+  above(n)          { return this._results.filter(r => r > n); }
+  /** Dice with value >= n. Returns number[]. */
+  atLeast(n)        { return this._results.filter(r => r >= n); }
+  /** Dice with value strictly below n. Returns number[]. */
+  below(n)          { return this._results.filter(r => r < n); }
+  /** Dice with value <= n. Returns number[]. */
+  atMost(n)         { return this._results.filter(r => r <= n); }
+  /** Dice equal to n. Returns number[]. */
+  equal(n)          { return this._results.filter(r => r === n); }
+  /** Dice in inclusive range [min, max]. Returns number[]. */
+  between(min, max) { return this._results.filter(r => r >= min && r <= max); }
+  /** Dice matching a custom predicate. Returns number[]. */
+  where(fn)         { return this._results.filter(fn); }
+
+  /** Count of dice with value >= n. */
+  countAtLeast(n)   { return this.atLeast(n).length; }
+  /** Count of dice with value strictly above n. */
+  countAbove(n)     { return this.above(n).length; }
+  /** Count of dice matching a custom predicate. */
+  countWhere(fn)    { return this._results.filter(fn).length; }
+  /** Sum of dice matching an optional predicate (all dice if omitted). */
+  sum(fn)           { return (fn ? this._results.filter(fn) : this._results).reduce((a, b) => a + b, 0); }
+}
+
+/**
  * Fluent resource handle returned by NeuroshimaScript#resource().
  * Captures item + key and provides chainable defer/roll helpers.
  * Obtain via: const r = this.resource(this.item, "KeyName");
@@ -1631,6 +1683,32 @@ export class NeuroshimaScript {
   }
 
   /**
+   * Wrap a roll result in a RollResult helper that normalises both a Foundry Roll
+   * (from async rollToChat / roll) and a plain number[] (from SYNC rollToChat /
+   * rollDice / deferRollToChat) into a single fluent API.
+   *
+   * Works in both SYNC and ASYNC contexts — pass the result of any roll method directly.
+   *
+   * @param {Roll|number[]} rollOrArray - Result from rollToChat, rollDice, or roll.
+   * @returns {RollResult}
+   *
+   * @example
+   * // SYNC (armorCalculation)
+   * const r = this.rollResults(this.rollToChat(10, 20, { flavor: "10k20" }));
+   * const hits = r.countAtLeast(15);  // how many dice rolled >= 15
+   *
+   * // ASYNC (manual, preRollTest…)
+   * const r = this.rollResults(await this.rollToChat(10, 20, { flavor: "10k20" }));
+   * const hits = r.countAtLeast(15);
+   *
+   * // Chained inline (SYNC)
+   * const hits = this.rollResults(this.rollDice(5, 6)).above(4).length;
+   */
+  rollResults(rollOrArray) {
+    return new RollResult(rollOrArray);
+  }
+
+  /**
    * Roll N dice synchronously AND queue them to be posted to chat with a flavor message.
    * The roll result is returned immediately so you can use it in the same sync script.
    * The actual chat message is sent asynchronously after all armor calculations finish.
@@ -2426,9 +2504,17 @@ export class NeuroshimaScriptRunner {
     }
 
     for (const item of (actor.items ?? [])) {
+      if (item.type === "weapon-mod" || item.type === "armor-mod") continue;
       const hasEquipped  = "equipped" in (item.system ?? {});
       const isUnequipped = hasEquipped && item.system.equipped === false;
       for (const effect of (item.effects ?? [])) {
+        const fromModId = effect.getFlag("neuroshima", "fromModId");
+        if (fromModId) {
+          const modSnap = item.system?.mods?.[fromModId];
+          if (!modSnap?.attached) continue;
+          collectFromEffect(effect, true, item);
+          continue;
+        }
         const equipTransfer = effect.getFlag("neuroshima", "equipTransfer") ?? false;
         const skipped = equipTransfer && isUnequipped && trigger !== "equipToggle";
         if (skipped) {

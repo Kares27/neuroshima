@@ -1,9 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { getConditions } from "../apps/condition-config.js";
-import { NeuroshimaSkillRollDialog } from "../apps/skill-roll-dialog.js";
-
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-const { ActorSheetV2 } = foundry.applications.sheets;
+import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 
 function _collectVehicleArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -27,7 +24,7 @@ function _collectVehicleArmorBonusByEffect(actor) {
 /**
  * Actor sheet for Vehicle actors (cars, bikes, trucks, etc.).
  */
-export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
+export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
   /** @override */
   static DEFAULT_OPTIONS = {
     tag: "form",
@@ -314,19 +311,6 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     effects:   { template: "systems/neuroshima/templates/actors/parts/actor-effects.hbs", scrollable: [""] },
     notes:     { template: "systems/neuroshima/templates/actors/actor/parts/actor-notes.hbs" }
   };
-
-  _getTabs() {
-    const activeTab = this.tabGroups.primary;
-    const tabs = foundry.utils.deepClone(this.constructor.TABS.primary.tabs).reduce((obj, t) => {
-      obj[t.id] = t;
-      return obj;
-    }, {});
-    for (const v of Object.values(tabs)) {
-      v.active   = activeTab === v.id;
-      v.cssClass = v.active ? "active" : "";
-    }
-    return tabs;
-  }
 
   /** @override */
   async _prepareContext(options) {
@@ -779,22 +763,4 @@ export class NeuroshimaVehicleSheet extends HandlebarsApplicationMixin(ActorShee
     await this.document.update({ "system.crewMembers": crewMembers });
   }
 
-  /**
-   * Standard roll dialog — uses NeuroshimaSkillRollDialog for full feature parity
-   * (armor, wounds, disease penalty, dialog modifiers, scripts).
-   */
-  static async _showRollDialog({ stat, skill = 0, label, actor, isSkill = false, currentAttribute = "", skillKey = "" }) {
-    const dialog = new NeuroshimaSkillRollDialog({
-      actor,
-      stat,
-      skill,
-      label,
-      isSkill,
-      skillKey,
-      currentAttribute,
-      lastRoll: actor?.system?.lastRoll || {}
-    });
-    dialog.render(true);
-    return dialog;
-  }
 }

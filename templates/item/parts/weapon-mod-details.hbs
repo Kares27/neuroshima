@@ -1,0 +1,195 @@
+<div class="weapon-mod-details">
+
+    {{!-- Bazowe: left = Kategoria/Typ/Waga/Koszt, right = ATK/OBR/PP/Budowa --}}
+    <div class="secondary-box weapon-mod-bazowe">
+        <label class="section-label">{{localize "NEUROSHIMA.Mods.Sections.Basic"}}</label>
+
+        <div class="flexrow" style="gap: 12px; align-items: flex-start; margin-top: 4px;">
+
+            {{!-- Left: Kategoria, Typ, Waga, Koszt --}}
+            <div class="flexcol" style="flex: 1; gap: 4px;">
+                <div class="form-group bazowe-inline">
+                    <label>{{localize "NEUROSHIMA.Mods.CategoryLabel"}}</label>
+                    <select name="system.category">
+                        <option value="modification" {{#if (eq system.category "modification")}}selected{{/if}}>{{localize "NEUROSHIMA.Mods.Category.modification"}}</option>
+                        <option value="trait" {{#if (eq system.category "trait")}}selected{{/if}}>{{localize "NEUROSHIMA.Mods.Category.trait"}}</option>
+                    </select>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label>{{localize "NEUROSHIMA.Mods.ModType"}}</label>
+                    <div class="mod-field-wrap">
+                        <input type="text" name="system.modType" value="{{system.modType}}" list="weapon-mod-type-list-{{item.id}}" placeholder="{{localize 'NEUROSHIMA.Mods.ModTypePlaceholder'}}"/>
+                        <datalist id="weapon-mod-type-list-{{item.id}}">
+                            {{#each weaponModTypeSuggestions as |suggestion|}}
+                            <option value="{{suggestion}}"></option>
+                            {{/each}}
+                        </datalist>
+                    </div>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Weight'}}">{{localize "NEUROSHIMA.Mods.DeltaWeightAbbr"}}</label>
+                    <div class="mod-field-wrap">
+                        <input type="number" name="system.deltaWeight" value="{{system.deltaWeight}}" data-dtype="Number" step="0.5"/>
+                    </div>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Cost'}}">{{localize "NEUROSHIMA.Mods.DeltaCostAbbr"}}</label>
+                    <div class="cost-input-row">
+                        <input type="number" name="system.deltaCost" value="{{system.deltaCost}}" data-dtype="Number" {{#unless system.deltaModifiesCost}}disabled{{/unless}}/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.deltaModifiesCost" {{#if system.deltaModifiesCost}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.ModifiesCost'}}" class="delta-modifies-cost-cb"/>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- Right: ATK, OBR, PP, Budowa (with override checkboxes) --}}
+            {{#if (eq system.category "modification")}}
+            <div class="flexcol" style="flex: 1; gap: 4px;">
+                <div class="form-group bazowe-inline">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.AttackBonus'}}">{{localize "NEUROSHIMA.Items.Fields.AttackBonusAbbr"}}</label>
+                    <div class="override-input-row">
+                        <input type="number" name="system.deltaAttackBonus" value="{{system.deltaAttackBonus}}" data-dtype="Number"/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.overrideAttackBonus" {{#if system.overrideAttackBonus}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
+                    </div>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.DefenseBonus'}}">{{localize "NEUROSHIMA.Items.Fields.DefenseBonusAbbr"}}</label>
+                    <div class="override-input-row">
+                        <input type="number" name="system.deltaDefenseBonus" value="{{system.deltaDefenseBonus}}" data-dtype="Number"/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.overrideDefenseBonus" {{#if system.overrideDefenseBonus}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
+                    </div>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</label>
+                    <div class="override-input-row">
+                        <input type="number" name="system.deltaPiercing" value="{{system.deltaPiercing}}" data-dtype="Number"/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.overridePiercing" {{#if system.overridePiercing}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
+                    </div>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
+                    <div class="override-input-row">
+                        <input type="number" name="system.deltaRequiredBuild" value="{{system.deltaRequiredBuild}}" data-dtype="Number"/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.overrideRequiredBuild" {{#if system.overrideRequiredBuild}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
+                    </div>
+                </div>
+            </div>
+            {{/if}}
+
+        </div>
+    </div>
+
+    {{#if (eq system.category "modification")}}
+
+    {{!-- Zasięgowe / Miotane (Ranged / Thrown) — first after Bazowe --}}
+    <details class="weapon-mod-section secondary-box" data-details-id="ranged">
+        <summary class="weapon-mod-section-summary">
+            <i class="weapon-mod-section-arrow fas fa-chevron-up"></i>
+            <span class="section-label">{{localize "NEUROSHIMA.Mods.Sections.Ranged"}}</span>
+        </summary>
+        <div class="flexcol" style="gap: 6px; margin-top: 8px;">
+            {{!-- Row 1: Obrażenia + Kaliber --}}
+            <div class="grid grid-2col">
+                <div class="form-group bazowe-inline">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+                    <div class="damage-input-row">
+                        <input type="checkbox" name="system.overrideDamage" {{#if system.overrideDamage}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.OverrideDamage'}}"/>
+                        <span class="ns-divider"></span>
+                        <select name="system.damage" {{#unless system.overrideDamage}}disabled{{/unless}}>
+                            {{selectOptions damageTypes selected=system.damage localize=true}}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.Caliber"}}</label>
+                    <div class="damage-input-row">
+                        <input type="checkbox" name="system.overrideCaliber" {{#if system.overrideCaliber}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.OverrideCaliber'}}"/>
+                        <span class="ns-divider"></span>
+                        <input type="text" name="system.modCaliber" value="{{system.modCaliber}}" {{#unless system.overrideCaliber}}disabled{{/unless}} list="weapon-mod-caliber-list-{{item.id}}"/>
+                        <datalist id="weapon-mod-caliber-list-{{item.id}}">
+                            {{#each worldCalibers as |caliber|}}
+                            <option value="{{caliber}}"></option>
+                            {{/each}}
+                        </datalist>
+                    </div>
+                </div>
+            </div>
+            {{!-- Row 2: Szybkostrz., Pojemność, Zacięcie (with override checkboxes) --}}
+            <div class="grid grid-3col">
+                <div class="form-group weapon-stat-col">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.FireRate'}}">{{localize "NEUROSHIMA.Items.Fields.FireRateAbbr"}}</label>
+                    <div class="override-input-row">
+                        <input type="number" name="system.deltaFireRate" value="{{system.deltaFireRate}}" data-dtype="Number"/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.overrideFireRate" {{#if system.overrideFireRate}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
+                    </div>
+                </div>
+                <div class="form-group weapon-stat-col">
+                    <label>{{localize "NEUROSHIMA.Mods.Deltas.Capacity"}}</label>
+                    <div class="override-input-row">
+                        <input type="number" name="system.deltaCapacity" value="{{system.deltaCapacity}}" data-dtype="Number"/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.overrideCapacity" {{#if system.overrideCapacity}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
+                    </div>
+                </div>
+                <div class="form-group weapon-stat-col">
+                    <label>{{localize "NEUROSHIMA.Mods.Deltas.Jamming"}}</label>
+                    <div class="override-input-row">
+                        <input type="number" name="system.deltaJamming" value="{{system.deltaJamming}}" data-dtype="Number"/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.overrideJamming" {{#if system.overrideJamming}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    {{!-- Walka Wręcz (Melee) --}}
+    <details class="weapon-mod-section secondary-box" data-details-id="melee" open>
+        <summary class="weapon-mod-section-summary">
+            <i class="weapon-mod-section-arrow fas fa-chevron-up"></i>
+            <span class="section-label">{{localize "NEUROSHIMA.Mods.Sections.Melee"}}</span>
+        </summary>
+        <div style="margin-top: 8px;">
+            <div class="damage-horizontal-grid">
+                <div class="damage-col">
+                    <span class="damage-number">1</span>
+                    <div class="damage-input-row">
+                        <input type="checkbox" name="system.overrideDamageMelee1" {{#if system.overrideDamageMelee1}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.OverrideDamage'}}"/>
+                        <span class="ns-divider"></span>
+                        <select name="system.damageMelee1" {{#unless system.overrideDamageMelee1}}disabled{{/unless}}>
+                            {{selectOptions damageTypes selected=system.damageMelee1 localize=true}}
+                        </select>
+                    </div>
+                </div>
+                <div class="damage-col">
+                    <span class="damage-number">2</span>
+                    <div class="damage-input-row">
+                        <input type="checkbox" name="system.overrideDamageMelee2" {{#if system.overrideDamageMelee2}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.OverrideDamage'}}"/>
+                        <span class="ns-divider"></span>
+                        <select name="system.damageMelee2" {{#unless system.overrideDamageMelee2}}disabled{{/unless}}>
+                            {{selectOptions damageTypes selected=system.damageMelee2 localize=true}}
+                        </select>
+                    </div>
+                </div>
+                <div class="damage-col">
+                    <span class="damage-number">3</span>
+                    <div class="damage-input-row">
+                        <input type="checkbox" name="system.overrideDamageMelee3" {{#if system.overrideDamageMelee3}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.OverrideDamage'}}"/>
+                        <span class="ns-divider"></span>
+                        <select name="system.damageMelee3" {{#unless system.overrideDamageMelee3}}disabled{{/unless}}>
+                            {{selectOptions damageTypes selected=system.damageMelee3 localize=true}}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    {{/if}}
+
+</div>

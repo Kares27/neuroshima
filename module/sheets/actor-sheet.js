@@ -10,6 +10,7 @@ import { getConditions } from "../apps/condition-config.js";
 import { TraitChoiceDialog } from "../apps/trait-choice-dialog.js";
 import { NeuroshimaGrenadeRollDialog } from "../apps/grenade-roll-dialog.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
+import { getEffectiveArmorRatings } from "../helpers/mod-helpers.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -586,6 +587,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true, true);
           continue;
         }
+        const fromModId = e.getFlag?.("neuroshima", "fromModId");
+        if (fromModId) {
+          const modSnap = item.system?.mods?.[fromModId];
+          if (modSnap?.attached) {
+            pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true);
+          }
+          continue;
+        }
+        if (item.type === "weapon-mod" || item.type === "armor-mod") continue;
         const docType      = e.getFlag?.("neuroshima", "documentType")  ?? "actor";
         const transferType = e.getFlag?.("neuroshima", "transferType")  ?? "owningDocument";
         const equipTransfer = e.getFlag?.("neuroshima", "equipTransfer") ?? false;
@@ -1747,7 +1757,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const attrValue = system.attributeTotals[attrKey];
     const label = game.i18n.localize(NEUROSHIMA.attributes[attrKey].label);
 
-    return this._showRollDialog({
+    return NeuroshimaActorSheet._showRollDialog({
       stat: attrValue,
       skill: 0,
       label: label,
@@ -1787,7 +1797,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       label = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
     }
 
-    return this._showRollDialog({
+    return NeuroshimaActorSheet._showRollDialog({
       stat: statValue,
       skill: skillValue,
       label: label,
@@ -1820,24 +1830,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       input.select();
       icon.className = "fas fa-check";
     }
-  }
-
-  /**
-   * Universal roll dialog for Neuroshima tests.
-   */
-  async _showRollDialog({ stat, skill, label, actor, isSkill = false, currentAttribute = "", skillKey = "" }) {
-    const dialog = new NeuroshimaSkillRollDialog({
-      actor,
-      stat,
-      skill,
-      label,
-      isSkill,
-      skillKey,
-      currentAttribute,
-      lastRoll: actor.system.lastRoll || {}
-    });
-    dialog.render(true);
-    return dialog;
   }
 
   /**
@@ -1948,7 +1940,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     for (const item of equippedArmor) {
       const armor = item.system.armor || {};
-      const ratings = armor.ratings || {};
+      const ratings = getEffectiveArmorRatings(item);
       const damages = armor.damage || {};
       const durDamage = armor.durabilityDamage || 0;
       const durability = armor.durability || 0;
@@ -3243,23 +3235,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     hotspot.classList.add('selected');
     
     game.neuroshima?.log("Paper doll location selected visually", { location: locationKey });
-  }
-
-  /**
-   * Prepare the tabs configuration for the sheet.
-   */
-  _getTabs() {
-    const activeTab = this.tabGroups.primary;
-    const tabs = foundry.utils.deepClone(this.constructor.TABS.primary.tabs).reduce((obj, t) => {
-      obj[t.id] = t;
-      return obj;
-    }, {});
-
-    for (const v of Object.values(tabs)) {
-      v.active = activeTab === v.id;
-      v.cssClass = v.active ? "active" : "";
-    }
-    return tabs;
   }
 
   /**

@@ -1,0 +1,102 @@
+<section class="tab mods {{tabs.mods.cssClass}}" data-group="primary" data-tab="mods" data-application-part="mods">
+
+    <div class="section-header">
+        <div class="header-title">
+            <i class="fas fa-wrench"></i>
+            <span>{{localize "NEUROSHIMA.Mods.TabHeader"}}</span>
+        </div>
+    </div>
+
+    {{#if installedMods.length}}
+    <div class="inventory-items mods-list">
+        <div class="item mod-row mod-row-header flexrow">
+            <div class="col-icon"></div>
+            <div class="col-name">{{localize "Name"}}</div>
+            <div class="col-category">{{localize "NEUROSHIMA.Mods.ColCategory"}}</div>
+            <div class="col-controls"></div>
+        </div>
+        {{#each installedMods as |mod|}}
+        <div class="mod-row-wrap" data-mod-id="{{mod.id}}">
+            <div class="item mod-row flexrow {{#if mod.attached}}mod-row-attached{{/if}}">
+                <div class="col-icon mod-toggle-summary" data-action="toggleModSummary" data-mod-id="{{mod.id}}">
+                    <img src="{{mod.img}}" alt="{{mod.name}}" width="24" height="24">
+                </div>
+                <div class="col-name mod-toggle-summary" data-action="toggleModSummary" data-mod-id="{{mod.id}}">
+                    <span class="mod-name">{{mod.name}}</span>
+                    {{#if mod.modType}}<span class="mod-type-badge">{{mod.modType}}</span>{{/if}}
+                </div>
+                <div class="col-category">
+                    <span class="mod-category-badge mod-category-{{mod.category}}">{{mod.categoryLabel}}</span>
+                </div>
+                {{#if @root.owner}}
+                <div class="col-controls mod-controls">
+                    {{#if mod.attached}}
+                    <a class="item-control mod-attach-btn mod-attach-btn--attached" data-action="detachMod" data-mod-id="{{mod.id}}" data-tooltip="{{localize 'NEUROSHIMA.Mods.Detach'}}">
+                        <i class="fas fa-link"></i>
+                    </a>
+                    {{else}}
+                    <a class="item-control mod-attach-btn mod-attach-btn--detached" data-action="attachMod" data-mod-id="{{mod.id}}" data-tooltip="{{localize 'NEUROSHIMA.Mods.Attach'}}">
+                        <i class="fas fa-link"></i>
+                    </a>
+                    {{/if}}
+                    <a class="item-control" data-action="removeMod" data-mod-id="{{mod.id}}" data-tooltip="{{localize 'NEUROSHIMA.Mods.Remove'}}">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+                {{/if}}
+            </div>
+            <div class="item-summary collapsed">
+                <div class="item-stats-summary">
+                    <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                    {{#if (eq @root.item.type "weapon")}}
+                    {{#if mod.deltaAttackBonus}}<span class="stat-summary-chip"><span class="stat-chip-label">ATK</span><span class="stat-chip-value">{{formatDelta mod.deltaAttackBonus}}</span></span>{{/if}}
+                    {{#if mod.deltaDefenseBonus}}<span class="stat-summary-chip"><span class="stat-chip-label">OBR</span><span class="stat-chip-value">{{formatDelta mod.deltaDefenseBonus}}</span></span>{{/if}}
+                    {{#if mod.deltaPiercing}}<span class="stat-summary-chip"><span class="stat-chip-label">PP</span><span class="stat-chip-value">{{formatDelta mod.deltaPiercing}}</span></span>{{/if}}
+                    {{#if mod.overrideDamage}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</span><span class="stat-chip-value">{{mod.damage}}</span></span>{{/if}}
+                    {{#if mod.deltaFireRate}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.FireRateAbbr"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaFireRate}}</span></span>{{/if}}
+                    {{#if mod.deltaCapacity}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Capacity"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaCapacity}}</span></span>{{/if}}
+                    {{#if mod.deltaJamming}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.JammingAbbr"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaJamming}}</span></span>{{/if}}
+                    {{#if mod.overrideDamageMelee1}}<span class="stat-summary-chip"><span class="stat-chip-label">M1</span><span class="stat-chip-value">{{mod.damageMelee1}}</span></span>{{/if}}
+                    {{#if mod.overrideDamageMelee2}}<span class="stat-summary-chip"><span class="stat-chip-label">M2</span><span class="stat-chip-value">{{mod.damageMelee2}}</span></span>{{/if}}
+                    {{#if mod.overrideDamageMelee3}}<span class="stat-summary-chip"><span class="stat-chip-label">M3</span><span class="stat-chip-value">{{mod.damageMelee3}}</span></span>{{/if}}
+                    {{#if mod.deltaWeight}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaWeight}}</span></span>{{/if}}
+                    {{#if mod.deltaCost}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Cost"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaCost}}</span></span>{{/if}}
+                    {{/if}}
+                    {{#if (eq @root.item.type "armor")}}
+                    {{#if mod.deltaHead}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Head"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaHead}}</span></span>{{/if}}
+                    {{#if mod.deltaTorso}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Torso"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaTorso}}</span></span>{{/if}}
+                    {{#if mod.deltaLeftArm}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.LeftArm"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaLeftArm}}</span></span>{{/if}}
+                    {{#if mod.deltaRightArm}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.RightArm"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaRightArm}}</span></span>{{/if}}
+                    {{#if mod.deltaLeftLeg}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.LeftLeg"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaLeftLeg}}</span></span>{{/if}}
+                    {{#if mod.deltaRightLeg}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.RightLeg"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaRightLeg}}</span></span>{{/if}}
+                    {{#if mod.deltaDurability}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaDurability}}</span></span>{{/if}}
+                    {{#if mod.deltaPenalty}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaPenalty}}</span></span>{{/if}}
+                    {{#if mod.deltaRequiredBuild}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaRequiredBuild}}</span></span>{{/if}}
+                    {{#if mod.deltaWeight}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaWeight}}</span></span>{{/if}}
+                    {{#if mod.deltaCost}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Cost"}}</span><span class="stat-chip-value">{{formatDelta mod.deltaCost}}</span></span>{{/if}}
+                    {{/if}}
+                </div>
+                <div class="item-resources-wrapper">
+                    <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
+                    <div class="item-resources-summary">
+                        {{#each mod.resources}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/each}}
+                    </div>
+                </div>
+                {{#if mod.effectText}}
+                <div class="item-description-wrapper">
+                    <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                    <div class="item-description">{{{mod.effectText}}}</div>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <div class="mod-drop-zone">
+        <i class="fas fa-plus-circle"></i>
+        <p>{{localize "NEUROSHIMA.Mods.NoneInstalled"}}</p>
+    </div>
+    {{/if}}
+
+</section>

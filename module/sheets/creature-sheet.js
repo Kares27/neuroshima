@@ -1,10 +1,9 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
-import { NeuroshimaSkillRollDialog } from "../apps/skill-roll-dialog.js";
 import { RestDialog } from "../apps/rest-dialog.js";
 import { getConditions } from "../apps/condition-config.js";
-const { HandlebarsApplicationMixin } = foundry.applications.api;
-const { ActorSheetV2 } = foundry.applications.sheets;
+import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
+import { getEffectiveArmorRatings } from "../helpers/mod-helpers.js";
 
 function _collectCreatureArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -33,7 +32,7 @@ function _collectCreatureArmorBonusByEffect(actor) {
  * creature-combat partial that shows natural armor, beast actions, and a
  * simplified wounds list instead of the full healing-panel system.
  */
-export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
+export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   /** @override */
   static DEFAULT_OPTIONS = {
     tag: "form",
@@ -979,20 +978,6 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     return tooltips;
   }
 
-  /** @private */
-  _getTabs() {
-    const activeTab = this.tabGroups.primary;
-    const tabs = foundry.utils.deepClone(this.constructor.TABS.primary.tabs).reduce((obj, t) => {
-      obj[t.id] = t;
-      return obj;
-    }, {});
-    for (const v of Object.values(tabs)) {
-      v.active   = activeTab === v.id;
-      v.cssClass = v.active ? "active" : "";
-    }
-    return tabs;
-  }
-
   /** @override */
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
@@ -1015,7 +1000,7 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
     }
     for (const item of equippedArmor) {
       const armor    = item.system.armor || {};
-      const ratings  = armor.ratings     || {};
+      const ratings  = getEffectiveArmorRatings(item);
       const damages  = armor.damage      || {};
       const durDamage   = armor.durabilityDamage || 0;
       const durability  = armor.durability       || 0;
@@ -1040,31 +1025,6 @@ export class NeuroshimaCreatureSheet extends HandlebarsApplicationMixin(ActorShe
       }
     }
     return locations;
-  }
-
-  /**
-   * Universal roll dialog shared with the character sheet.
-   * @param {object} opts
-   * @param {number}  opts.stat
-   * @param {number}  opts.skill
-   * @param {string}  opts.label
-   * @param {Actor}   opts.actor
-   * @param {boolean} [opts.isSkill=false]
-   * @param {string}  [opts.currentAttribute=""]
-   */
-  static async _showRollDialog({ stat, skill, label, actor, isSkill = false, currentAttribute = "", skillKey = "" }) {
-    const dialog = new NeuroshimaSkillRollDialog({
-      actor,
-      stat,
-      skill,
-      label,
-      isSkill,
-      skillKey,
-      currentAttribute,
-      lastRoll: actor.system.lastRoll || {}
-    });
-    dialog.render(true);
-    return dialog;
   }
 
   /** @override */
