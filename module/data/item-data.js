@@ -129,18 +129,24 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
   }
 
   /**
-   * Getter zwracający efektywne wartości pancerza (ratings - damage, min 0)
+   * Getter zwracający efektywne wartości pancerza (ratings + mod deltas - damage, min 0)
    */
   get effectiveArmor() {
     const effective = {};
     const locations = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
-    
+    const mods = this.mods ?? {};
+
     for (const loc of locations) {
-      const rating = this.armor.ratings?.[loc] || 0;
+      let rating = this.armor.ratings?.[loc] || 0;
+      const capKey = loc.charAt(0).toUpperCase() + loc.slice(1);
+      for (const [key, snap] of Object.entries(mods)) {
+        if (key.startsWith("__") || !snap.attached) continue;
+        rating += (snap[`delta${capKey}`] ?? 0);
+      }
       const damageVal = this.armor.damage?.[loc] || 0;
       effective[loc] = Math.max(0, rating - damageVal);
     }
-    
+
     return effective;
   }
 }

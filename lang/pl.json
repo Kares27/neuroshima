@@ -789,7 +789,8 @@
             "LabelPlaceholder": "Nazwa zasobu",
             "Empty": "Brak zdefiniowanych zasobów.",
             "ToggleSummaryTooltip": "Kliknij, aby przełączyć widoczność zasobu w podsumowaniu itemu",
-            "UnclampedTooltip": "Ignoruj min/max — wartość nie jest ograniczana przez silnik skryptów"
+            "UnclampedTooltip": "Ignoruj min/max — wartość nie jest ograniczana przez silnik skryptów",
+            "FromMod": "Zasób pochodzi z modyfikacji — nie można go usunąć ani edytować"
         },
         "Dialogs": {
             "ConfirmReroll": "Potwierdź przerzut",
@@ -1105,6 +1106,7 @@
             "Remove": "Usuń",
             "OpenMod": "Otwórz modyfikację",
             "AlreadyInstalled": "Ta modyfikacja jest już zainstalowana.",
+            "ResourceKeyCollision": "Uwaga: modyfikacja na '{item}' dodaje zasoby z kluczami już istniejącymi w przedmiocie: {keys}. Skrypty używające @item.resources.{keys}.value mogą zwracać niejednoznaczne wyniki — użyj @mod.resources.{keys}.value, aby odwołać się do zasobów własnej modyfikacji.",
             "LockedBanner": "Statystyki bazowe zablokowane — zamontowana co najmniej jedna modyfikacja.",
             "CategoryLabel": "Kategoria",
             "ModType": "Typ",
@@ -1451,6 +1453,7 @@
             "DiseaseItemsGroup": "Choroby",
             "TransientDiseaseItemsGroup": "Choroby Przejściowe",
             "DiseaseEffectsGroup": "Efekty Chorób",
+            "ModItemEffectsGroup": "Efekty Modyfikacji Przedmiotów",
             "DiseaseGroup": "Efekty Chorób",
             "StatusGroup": "Stany",
             "DurationHeader": "Długość",
@@ -1647,6 +1650,7 @@
         "Summary": {
             "Stats": "Statystyki",
             "Resources": "Zasoby",
+            "Mods": "Modyfikacje",
             "Description": "Opis"
         },
         "ItemCard": {

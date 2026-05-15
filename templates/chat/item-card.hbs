@@ -70,6 +70,45 @@
     </div>
     {{/if}}
 
+    {{#if summaryResources.length}}
+    <div class="item-card-resources item-card-collapsible">
+        <div class="item-card-collapsible-header">
+            <span class="item-card-section-label">{{localize "NEUROSHIMA.Summary.Resources"}}</span>
+            <i class="fas fa-chevron-right item-card-chevron"></i>
+        </div>
+        <div class="item-card-collapsible-content collapsed">
+            <div class="item-card-resources-list">
+                {{#each summaryResources}}
+                <div class="item-card-resource-row">
+                    <span class="item-card-resource-label">{{this.label}}</span>
+                    <span class="item-card-resource-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
+    {{#if attachedMods.length}}
+    <div class="item-card-mods item-card-collapsible">
+        <div class="item-card-collapsible-header">
+            <span class="item-card-section-label">{{localize "NEUROSHIMA.Summary.Mods"}}</span>
+            <i class="fas fa-chevron-right item-card-chevron"></i>
+        </div>
+        <div class="item-card-collapsible-content collapsed">
+            <div class="item-card-mods-list">
+                {{#each attachedMods}}
+                <div class="item-card-mod-row">
+                    <img class="item-card-mod-img" src="{{this.img}}" alt="{{this.name}}"/>
+                    <span class="item-card-mod-name">{{this.name}}</span>
+                    {{#if this.effectText}}<span class="item-card-mod-effect">{{this.effectText}}</span>{{/if}}
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
     {{#if description}}
     <hr class="dotted-hr">
     <div class="item-card-description">

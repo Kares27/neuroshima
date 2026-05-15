@@ -1340,6 +1340,344 @@ export class NeuroshimaScript {
   }
 
   /**
+   * Return the modId stored on the current effect (fromModId flag), or null.
+   * @returns {string | null}
+   */
+  _getModId() {
+    return this.effect?.getFlag?.("neuroshima", "fromModId") ?? null;
+  }
+
+  /**
+   * Find this effect's own propagated resource on an item, matched by both _fromModId and key.
+   * @param {Item} item
+   * @param {string} key
+   * @returns {object | null}
+   */
+  _findModResource(item, key) {
+    const modId = this._getModId();
+    if (!modId || !item || !key) return null;
+    return (item.system?.resources ?? []).find(r => r._fromModId === modId && r.key === key) ?? null;
+  }
+
+  // ── Mod-scoped resource helpers ────────────────────────────────────────────
+
+  /**
+   * Return the current value of a resource that was propagated to the item by THIS modification.
+   * Uses _fromModId from the current effect — no manual filtering needed.
+   * Returns null if the resource is not found on the item.
+   * @param {Item} item - The host item (usually this.item).
+   * @param {string} key - Resource key.
+   * @returns {number | null}
+   *
+   * @example
+   * const charges = this.getModResource(this.item, "charges");
+   * if (charges > 0) { ... }
+   */
+  getModResource(item, key) {
+    const res = this._findModResource(item, key);
+    return res ? (res.value ?? 0) : null;
+  }
+
+  /**
+   * Return the full resource object propagated by THIS modification (includes label, min, max, value).
+   * Returns null if not found.
+   * @param {Item} item
+   * @param {string} key
+   * @returns {object | null}
+   *
+   * @example
+   * const r = this.getModResourceObject(this.item, "charges");
+   * if (r) this.notification(`${r.label}: ${r.value}/${r.max}`);
+   */
+  getModResourceObject(item, key) {
+    return this._findModResource(item, key);
+  }
+
+  /**
+   * Set the value of a resource propagated by THIS modification (clamped to [min, max]).
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} value
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.setModResource(this.item, "charges", 0);
+   */
+  async setModResource(item, key, value) {
+    const modId = this._getModId();
+    if (!modId || !item || !key) return null;
+    const resources = Array.from(item.system?.resources ?? []);
+    const idx = resources.findIndex(r => r._fromModId === modId && r.key === key);
+    if (idx < 0) return null;
+    const res = resources[idx];
+    let next = value;
+    if (!res.unclamped) {
+      const min = res.min ?? 0;
+      const max = res.max ?? 0;
+      next = Math.max(min, next);
+      if (max > 0) next = Math.min(max, next);
+    }
+    resources[idx] = { ...res, value: next };
+    await item.update({ "system.resources": resources });
+    return next;
+  }
+
+  /**
+   * Add delta to the value of THIS modification's own resource on an item.
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} delta - amount to add (can be negative)
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.modifyModResource(this.item, "charges", -1);
+   */
+  async modifyModResource(item, key, delta) {
+    const current = this.getModResource(item, key);
+    if (current === null) return null;
+    return this.setModResource(item, key, current + delta);
+  }
+
+  /**
+   * Increase THIS modification's own resource by amount (clamped to max).
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} amount - positive number
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.increaseModResource(this.item, "BatteryValue", 1);
+   */
+  async increaseModResource(item, key, amount = 1) {
+    return this.modifyModResource(item, key, Math.abs(amount));
+  }
+
+  /**
+   * Decrease THIS modification's own resource by amount (clamped to min).
+   * @param {Item} item
+   * @param {string} key
+   * @param {number} amount - positive number
+   * @returns {Promise<number | null>}
+   *
+   * @example
+   * await this.decreaseModResource(this.item, "BatteryValue", 1);
+   */
+  async decreaseModResource(item, key, amount = 1) {
+    return this.modifyModResource(item, key, -Math.abs(amount));
+  }
+
+  // ── Mod effect helpers ────────────────────────────────────────────────────
+
+  /**
+   * Return all ActiveEffect documents on `item` that were propagated from THIS mod (fromModId).
+   * Optionally filter by name and / or transferType.
+   *
+   * @param {Item}   item               - The host item (usually this.item).
+   * @param {Object} [options]
+   * @param {string} [options.name]              - Filter by effect name (exact match).
+   * @param {string} [options.transferType]      - Filter by transferType flag (e.g. "other").
+   * @param {boolean}[options.includeDisabled]   - Include disabled effects (default false).
+   * @returns {ActiveEffect[]}
+   *
+   * @example
+   * const allModEffects = this.getModEffects(this.item);
+   *
+   * @example
+   * const otherEffects = this.getModEffects(this.item, { transferType: "other" });
+   *
+   * @example
+   * const poisonEffect = this.getModEffects(this.item, { name: "Trucizna" });
+   */
+  getModEffects(item, { name, transferType, includeDisabled = false } = {}) {
+    const modId = this._getModId();
+    if (!modId) {
+      ui.notifications?.warn("getModEffects: skrypt nie jest uruchamiany w kontekście modyfikacji (brak fromModId).");
+      return [];
+    }
+    if (!item) {
+      ui.notifications?.warn("getModEffects: item jest null — przekaż this.item.");
+      return [];
+    }
+    return (item.effects?.contents ?? []).filter(e => {
+      if (e.getFlag("neuroshima", "fromModId") !== modId) return false;
+      if (!includeDisabled && e.disabled) return false;
+      if (name !== undefined && e.name !== name) return false;
+      if (transferType !== undefined) {
+        const tt = e.getFlag("neuroshima", "transferType") ?? "owningDocument";
+        if (tt !== transferType) return false;
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Apply "Other"-type effects from THIS mod to target actors.
+   * By default applies all non-disabled effects with transferType "other" from this mod.
+   * Returns the number of effect×target pairs applied (0 on failure).
+   *
+   * @param {Item}           item               - The host item (usually this.item).
+   * @param {Object}         [options]
+   * @param {string}         [options.name]     - Restrict to a single effect by name.
+   * @param {Actor[]|Token[]}[options.targets]  - Defaults to this.getTargetsOrSelected().
+   * @param {Object}         [options.overrides]- Merged into each convertToApplied() call
+   *                                              (e.g. { "duration.seconds": 3600 }).
+   * @returns {Promise<number>}
+   *
+   * @example
+   * // Apply all "Other" effects from this mod to current targets
+   * await this.applyModEffectsToTargets(this.item);
+   *
+   * @example
+   * // Apply only the "Trucizna" effect, 1-hour duration
+   * await this.applyModEffectsToTargets(this.item, {
+   *   name: "Trucizna",
+   *   overrides: { "duration.seconds": 3600 }
+   * });
+   *
+   * @example
+   * // Apply to a specific actor instead of current targets
+   * await this.applyModEffectsToTargets(this.item, { targets: [someActor] });
+   */
+  async applyModEffectsToTargets(item, { name, targets, overrides = {} } = {}) {
+    const modId = this._getModId();
+    if (!modId) {
+      ui.notifications?.warn("applyModEffectsToTargets: skrypt nie jest uruchamiany w kontekście modyfikacji (brak fromModId).");
+      return 0;
+    }
+    if (!item) {
+      ui.notifications?.warn("applyModEffectsToTargets: item jest null — przekaż this.item.");
+      return 0;
+    }
+    const effects = this.getModEffects(item, { name, transferType: "other" });
+    if (!effects.length) {
+      const label = name ? `"${name}"` : "żaden";
+      ui.notifications?.warn(`applyModEffectsToTargets: ${label} efekt 'Other' nie znaleziony na ${item.name} dla tej modyfikacji.`);
+      return 0;
+    }
+    const resolved = (targets ?? this.getTargetsOrSelected()).map(t => t.actor ?? t);
+    if (!resolved.length) {
+      ui.notifications?.warn("applyModEffectsToTargets: brak celów — wskaż token lub zaznacz cel.");
+      return 0;
+    }
+    const effectData = effects.map(e => {
+      if (typeof e.convertToApplied === "function") return e.convertToApplied(overrides);
+      const d = e.toObject();
+      delete d._id;
+      d.transfer = false;
+      if (Object.keys(overrides).length) foundry.utils.mergeObject(d, foundry.utils.expandObject(overrides));
+      return d;
+    });
+    for (const actor of resolved) {
+      await actor.applyEffect({ effectData });
+    }
+    return effects.length * resolved.length;
+  }
+
+  /**
+   * Remove all ActiveEffect documents that were applied to actors from THIS effect
+   * (i.e. actor effects whose flags.neuroshima.sourceEffect matches this.effect.uuid).
+   *
+   * Use this in a `deleteEffect` trigger to auto-clean effects that were applied
+   * to actors when the mod was detached or the item was removed.
+   *
+   * @param {Actor[]|Token[]|null} [targets] - Actors to search. Defaults to all actors
+   *   with tokens on the active scene.
+   * @returns {Promise<number>} Number of effects deleted.
+   *
+   * @example
+   * // deleteEffect trigger — remove applied copies when mod is detached
+   * await this.removeEffectsAppliedFromThis();
+   *
+   * @example
+   * // Only clean up on the actor who owns the host item
+   * await this.removeEffectsAppliedFromThis([this.actor]);
+   */
+  async removeEffectsAppliedFromThis(targets = null) {
+    const sourceUuid = this.effect?.uuid;
+    if (!sourceUuid) return 0;
+
+    let actors;
+    if (targets) {
+      actors = targets.map(t => t.actor ?? t).filter(Boolean);
+    } else {
+      const seen = new Set();
+      actors = [];
+      for (const tokenDoc of (canvas.scene?.tokens ?? [])) {
+        const actor = tokenDoc.actor;
+        if (actor && !seen.has(actor.id)) {
+          seen.add(actor.id);
+          actors.push(actor);
+        }
+      }
+    }
+
+    let removed = 0;
+    for (const actor of actors) {
+      const toDelete = actor.effects.contents
+        .filter(e => e.getFlag("neuroshima", "sourceEffect") === sourceUuid)
+        .map(e => e.id);
+      if (toDelete.length) {
+        await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete);
+        removed += toDelete.length;
+      }
+    }
+    return removed;
+  }
+
+  /**
+   * Apply one or more effects to target actors.
+   * Generic version of applyModEffectsToTargets that works with any effects array,
+   * not just effects scoped to this mod.
+   *
+   * Each effect must have a convertToApplied() method (NeuroshimaActiveEffect).
+   * Falls back to toObject() if convertToApplied is absent.
+   *
+   * @param {ActiveEffect|ActiveEffect[]} effects    - One or more effects to apply.
+   * @param {Actor[]|Token[]|null}        [targets]  - Defaults to this.getTargetsOrSelected().
+   * @param {Object}                      [overrides={}] - Merged into each convertToApplied() call.
+   * @returns {Promise<number>} Total effect×actor pairs applied (0 on failure).
+   *
+   * @example
+   * // Apply all "Other" effects from this item to current targets
+   * const others = this.item.effects.contents.filter(
+   *   e => e.getFlag("neuroshima", "transferType") === "other"
+   * );
+   * await this.applyEffects(others);
+   *
+   * @example
+   * // Apply one specific effect by index to current targets
+   * await this.applyEffects(this.item.effects.contents[0]);
+   *
+   * @example
+   * // Apply effects to a specific actor with duration override
+   * await this.applyEffects(this.item.effects.contents, [this.actor], {
+   *   "duration.seconds": 3600
+   * });
+   */
+  async applyEffects(effects, targets = null, overrides = {}) {
+    const list = Array.isArray(effects) ? effects : [effects];
+    const valid = list.filter(e => e && typeof e === "object");
+    if (!valid.length) return 0;
+    const resolved = (targets ?? this.getTargetsOrSelected()).map(t => t.actor ?? t);
+    if (!resolved.length) {
+      ui.notifications?.warn("applyEffects: brak celów — wskaż token lub zaznacz cel.");
+      return 0;
+    }
+    const effectData = valid.map(e => {
+      if (typeof e.convertToApplied === "function") return e.convertToApplied(overrides);
+      const d = e.toObject?.() ?? foundry.utils.deepClone(e);
+      delete d._id;
+      d.transfer = false;
+      if (Object.keys(overrides).length) foundry.utils.mergeObject(d, foundry.utils.expandObject(overrides));
+      return d;
+    });
+    for (const actor of resolved) {
+      await actor.applyEffect({ effectData });
+    }
+    return effectData.length * resolved.length;
+  }
+
+  /**
    * Return whether an item has a custom resource with the given key.
    * @param {Item} item
    * @param {string} key
@@ -1750,6 +2088,100 @@ export class NeuroshimaScript {
     return results;
   }
 
+  // ── World-time helpers (worldTimeUpdate trigger) ──────────────────────────
+
+  /**
+   * Return the current world time in seconds (alias for game.time.worldTime).
+   * @returns {number}
+   */
+  getWorldTime() {
+    return game.time.worldTime;
+  }
+
+  /**
+   * Return how many seconds have elapsed since a timestamp stored in a flag.
+   * If the flag is not yet set, returns Infinity so the first call always passes a threshold check.
+   * @param {string} flagKey - Flag key under the "neuroshima" namespace.
+   * @param {Actor|ActiveEffect} [target] - Object holding the flag (defaults to this.actor).
+   * @returns {number}
+   *
+   * @example
+   * // worldTimeUpdate — react only after 1 hour has accumulated
+   * if (this.worldTimeElapsed("lastHeal") < 3600) return;
+   * await this.actor.applyDamage(-2);
+   * await this.worldTimeStampNow("lastHeal");
+   */
+  worldTimeElapsed(flagKey, target) {
+    const doc = target ?? this.actor;
+    const stored = doc?.getFlag?.("neuroshima", flagKey);
+    if (stored === undefined || stored === null) return Infinity;
+    return game.time.worldTime - stored;
+  }
+
+  /**
+   * Check whether `intervalSeconds` have elapsed since the stored timestamp.
+   * If yes — update the stored timestamp and return true.
+   * If no flag is stored yet — initialise it to the current worldTime and return false
+   *   (first-run guard: the script won't fire immediately on the very first tick).
+   * Designed for "fire every N seconds" patterns in worldTimeUpdate.
+   * @param {string} flagKey - Flag key under the "neuroshima" namespace.
+   * @param {number} intervalSeconds - Minimum seconds between triggers.
+   * @param {Actor|ActiveEffect} [target] - Object holding the flag (defaults to this.actor).
+   * @returns {Promise<boolean>} true if the interval elapsed (and flag updated), false otherwise.
+   *
+   * @example
+   * // worldTimeUpdate — heal 1 HP every 6 hours of in-game time
+   * if (!await this.worldTimeOnInterval("healInterval", 6 * 3600)) return;
+   * await this.modifyItemResource(this.item, "hp", 1);
+   */
+  async worldTimeOnInterval(flagKey, intervalSeconds, target) {
+    const doc = target ?? this.actor;
+    if (!doc?.getFlag || !doc?.setFlag) return false;
+    const stored = doc.getFlag("neuroshima", flagKey);
+    const now = game.time.worldTime;
+    if (stored === undefined || stored === null) {
+      await doc.setFlag("neuroshima", flagKey, now);
+      return false;
+    }
+    if (now - stored < intervalSeconds) return false;
+    await doc.setFlag("neuroshima", flagKey, now);
+    return true;
+  }
+
+  /**
+   * Store the current world time as a flag timestamp.
+   * Shorthand for: await this.actor.setFlag("neuroshima", flagKey, game.time.worldTime)
+   * @param {string} flagKey - Flag key under the "neuroshima" namespace.
+   * @param {Actor|ActiveEffect} [target] - Object holding the flag (defaults to this.actor).
+   * @returns {Promise<void>}
+   *
+   * @example
+   * // Store when an effect was last triggered
+   * await this.worldTimeStampNow("lastTriggered");
+   */
+  async worldTimeStampNow(flagKey, target) {
+    const doc = target ?? this.actor;
+    await doc?.setFlag?.("neuroshima", flagKey, game.time.worldTime);
+  }
+
+  /**
+   * Return a human-readable string representing a duration in seconds.
+   * e.g. 3661 → "1 g 1 min 1 s"
+   * @param {number} seconds
+   * @returns {string}
+   */
+  worldTimeDurationLabel(seconds) {
+    const abs = Math.abs(Math.floor(seconds));
+    const h   = Math.floor(abs / 3600);
+    const m   = Math.floor((abs % 3600) / 60);
+    const s   = abs % 60;
+    const parts = [];
+    if (h) parts.push(`${h} g`);
+    if (m) parts.push(`${m} min`);
+    if (s || !parts.length) parts.push(`${s} s`);
+    return (seconds < 0 ? "-" : "") + parts.join(" ");
+  }
+
   // ── Execution ─────────────────────────────────────────────────────────────
 
   /**
@@ -1956,11 +2388,24 @@ export class NeuroshimaScript {
  *
  * worldTimeUpdate  — World Time Update: runs for every actor with a token on the active scene
  *                    whenever the world time is advanced (game.time.advance or SimpleCalendar).
- *                    args: { actor, worldTime, dt }
- *                    worldTime — current world time in seconds (game.time.worldTime)
- *                    dt        — seconds elapsed since the previous world time (can be negative)
- *                    Use: check if a threshold of seconds/minutes/hours has passed (dt-based),
- *                         or compare worldTime against a stored flag timestamp.
+ *                    args: { actor, worldTime, dt, dtMinutes, dtHours, dtDays, minutesCrossed, hoursCrossed, daysCrossed }
+ *                    worldTime      — current world time in seconds (game.time.worldTime)
+ *                    dt             — seconds elapsed since the previous world time (can be negative)
+ *                    dtMinutes      — dt converted to minutes  (dt / 60)
+ *                    dtHours        — dt converted to hours    (dt / 3600)
+ *                    dtDays         — dt converted to days     (dt / 86400)
+ *                    minutesCrossed — number of full minute boundaries crossed in this jump (integer, flag-free)
+ *                    hoursCrossed   — number of full hour   boundaries crossed in this jump (integer, flag-free)
+ *                    daysCrossed    — number of full day    boundaries crossed in this jump (integer, flag-free)
+ *                    Use: if (args.daysCrossed >= 1) { ... } — fires when at least one day boundary was crossed,
+ *                         no flags required. Works correctly for any jump size.
+ *                         Or compare worldTime against a stored flag timestamp for elapsed-time patterns.
+ *                    WorldTime helpers (see below for full API):
+ *                      this.getWorldTime()                           — current worldTime in seconds
+ *                      this.worldTimeElapsed(flagKey, target?)       — seconds since stored timestamp (Infinity if unset)
+ *                      await this.worldTimeOnInterval(flagKey, secs, target?) — true + update if interval elapsed
+ *                      await this.worldTimeStampNow(flagKey, target?)         — store current worldTime as flag
+ *                      this.worldTimeDurationLabel(seconds)           — "2 g 30 min 5 s" human label
  *
  * createEffect     — Effect Created: runs once when this effect is created on an actor
  *                    args: { actor, data, options }
@@ -1982,6 +2427,41 @@ export class NeuroshimaScript {
  *   this.getSelected()             — Actors of selected tokens (fallback: assigned character)
  *   this.getTargetsOrSelected()    — Targets if any, otherwise selected
  *   this.applyTransferredAura(targets?) — Apply this auraTransferred effect to actors (omit for user targets)
+ *
+ * Effect application helpers (available in ALL triggers):
+ *   effect.applyEffect(targets?, overrides?)
+ *     — Available directly on any NeuroshimaActiveEffect instance.
+ *       Converts to applied data via convertToApplied() and creates it on each target actor.
+ *       targets: null (auto targets/selected), Actor, Actor[], Token, Token[].
+ *       overrides: plain object merged before creation, e.g. { "duration.seconds": 3600 }.
+ *       Returns Promise<number> — number of actors applied to.
+ *       Stores flags.neuroshima.sourceEffect for later cleanup via removeEffectsAppliedFromThis().
+ *     Examples:
+ *       await this.effect.applyEffect();                           // apply to current targets
+ *       await this.item.effects.contents[0].applyEffect();        // WFRP-style index access
+ *       await this.item.effects.getName("Trucizna").applyEffect(this.getTargets());
+ *       await effect.applyEffect(null, { "duration.seconds": 3600 });
+ *
+ *   this.applyEffects(effects, targets?, overrides?)
+ *     — Script engine helper for applying an array (or single) of any ActiveEffect to targets.
+ *       Falls back to this.getTargetsOrSelected() if targets omitted.
+ *       Returns Promise<number> — total effect×actor pairs applied.
+ *     Examples:
+ *       const others = this.item.effects.contents.filter(
+ *         e => e.getFlag("neuroshima", "transferType") === "other"
+ *       );
+ *       await this.applyEffects(others);
+ *       await this.applyEffects(this.item.effects.contents[0], [this.actor]);
+ *
+ *   effect.convertToApplied(overrides?)
+ *     — Native NeuroshimaActiveEffect method. Returns plain data object suitable for
+ *       actor.applyEffect({ effectData }) or actor.createEmbeddedDocuments("ActiveEffect", [data]).
+ *       Sets sourceItem and sourceEffect flags on the result.
+ *
+ *   actor.applyEffect({ effectUuids?, effectData? })
+ *     — Native Actor method. Applies effects by UUID list or raw effectData array.
+ *       UUID path uses Foundry's native resolution (no sourceEffect flag written).
+ *       effectData path uses our createEmbeddedDocuments override.
  *   this.isLightDamage(type)         — true for D, sD, L, sL
  *   this.isHeavyDamage(type)         — true for C, sC, K, sK
  *   this.isBruiseDamage(type)        — true for sD, sL, sC, sK (s-prefix track)
@@ -2059,6 +2539,25 @@ export class NeuroshimaScript {
  *   await this.increaseItemResourceById(item, id, n=1) — value += |n| by index
  *   await this.decreaseItemResourceById(item, id, n=1) — value -= |n| by index
  *
+ * Mod-scoped resource helpers (for effects propagated from a weapon-mod/armor-mod):
+ *   These helpers automatically scope to the current modification (via _fromModId on the effect).
+ *   No need to call resources.find() manually — the mod's identity is inferred from the effect.
+ *   this.getModResource(item, key)                  — current value of this mod's own resource (null if not found)
+ *   this.getModResourceObject(item, key)            — full resource object: { key, label, value, min, max, ... }
+ *   await this.setModResource(item, key, value)     — set value, clamped to [min, max]
+ *   await this.modifyModResource(item, key, delta)  — value += delta, clamped
+ *   await this.increaseModResource(item, key, n=1)  — value += |n|, clamped to max
+ *   await this.decreaseModResource(item, key, n=1)  — value -= |n|, clamped to min
+ *   NOTE: Only works when this.effect has a "fromModId" flag (i.e. effect was propagated from a mod).
+ *
+ * World-time helpers (worldTimeUpdate trigger):
+ *   this.getWorldTime()                              — current world time in seconds
+ *   this.worldTimeElapsed(flagKey, target?)          — seconds since stored timestamp flag (Infinity if not set)
+ *   await this.worldTimeOnInterval(flagKey, secs, target?) — returns true (and updates flag) if interval elapsed;
+ *                                                       returns false and initialises flag on first call
+ *   await this.worldTimeStampNow(flagKey, target?)   — save current worldTime to a flag
+ *   this.worldTimeDurationLabel(seconds)             — format seconds as "2 g 30 min 5 s"
+ *
  * Fluent ResourceHandle — preferred in armorCalculation / SYNC triggers:
  *   const r = this.resource(item, key)  → ResourceHandle with .value, .exists, .min, .max, .label
  *   r.deferDrain(amount)                — queue deduct |amount| (clamped to min)        → chainable
@@ -2107,7 +2606,8 @@ export class NeuroshimaScriptRunner {
     deleteEffect:     "Effect Deleted",
     preWeaponShot:    "Pre-Weapon Shot",
     weaponJam:        "Weapon Jam",
-    postWeaponShot:   "Post-Weapon Shot"
+    postWeaponShot:   "Post-Weapon Shot",
+    worldTimeUpdate:  "World Time Update"
   };
 
   /**
@@ -2334,16 +2834,24 @@ export class NeuroshimaScriptRunner {
   }
 
   /**
-   * Resolve `@item.*` and `@effect.*` references in a string.
+   * Resolve `@item.*`, `@effect.*` and `@mod.*` references in a string.
    * Any occurrence of `@item.xxx` is replaced with the resolved property from the item document.
    * Any occurrence of `@effect.xxx` is replaced with the resolved property from the effect document.
+   * Any occurrence of `@mod.xxx` is replaced with the resolved property from the mod snapshot
+   *   (plain-object snapshot stored in parentItem.system.mods[modId], populated when a weapon-mod
+   *   or armor-mod is installed on the host item). Useful when the effect is propagated from a mod
+   *   and you want to reference the mod's own data (e.g. @mod.name) rather than the host item's.
+   * `@mod.resources.key.prop` resolves from the HOST item's resources filtered by _fromModId so that
+   *   each mod accesses its OWN propagated resource, even when multiple mods share the same key.
    * Unresolved references are left as-is.
    * @param {string} str
    * @param {Item|null} item
    * @param {ActiveEffect|null} [effect]
+   * @param {object|null} [modSnapshot]
+   * @param {string|null} [modId]
    * @returns {string}
    */
-  static _resolveItemRef(str, item, effect = null) {
+  static _resolveItemRef(str, item, effect = null, modSnapshot = null, modId = null) {
     if (!str) return str;
     let result = str;
     if (item) {
@@ -2373,6 +2881,23 @@ export class NeuroshimaScriptRunner {
     if (effect) {
       result = result.replace(/@effect\.([a-zA-Z0-9_.[\]]+)/g, (match, path) => {
         const val = foundry.utils.getProperty(effect, path);
+        return val !== undefined && val !== null ? String(val) : match;
+      });
+    }
+    if (modSnapshot) {
+      result = result.replace(/@mod\.([a-zA-Z0-9_.[\]]+)/g, (match, path) => {
+        const resourceMatch = path.match(/^resources\.([^.]+)\.(.+)$/);
+        if (resourceMatch && modId && item) {
+          const resources = item.system?.resources;
+          if (Array.isArray(resources)) {
+            const resource = resources.find(r => r._fromModId === modId && r.key === resourceMatch[1]);
+            if (resource) {
+              const resourceVal = foundry.utils.getProperty(resource, resourceMatch[2]);
+              if (resourceVal !== undefined && resourceVal !== null) return String(resourceVal);
+            }
+          }
+        }
+        const val = foundry.utils.getProperty(modSnapshot, path);
         return val !== undefined && val !== null ? String(val) : match;
       });
     }
@@ -2512,6 +3037,8 @@ export class NeuroshimaScriptRunner {
         if (fromModId) {
           const modSnap = item.system?.mods?.[fromModId];
           if (!modSnap?.attached) continue;
+          const modEquipTransfer = effect.getFlag("neuroshima", "equipTransfer") ?? false;
+          if (modEquipTransfer && isUnequipped && trigger !== "equipToggle") continue;
           collectFromEffect(effect, true, item);
           continue;
         }
@@ -2531,6 +3058,21 @@ export class NeuroshimaScriptRunner {
   }
 
   /**
+   * Return a sanitized copy of args suitable for debug logging.
+   * Replaces large document objects (actor, token, targetActor) with their names.
+   * @param {Object} args
+   * @returns {Object}
+   */
+  static _triggerArgsForLog(args) {
+    const { actor, token, targetActor, ...rest } = args;
+    const out = { ...rest };
+    if (actor)       out._actor       = actor.name;
+    if (token)       out._token       = token.name ?? token.id;
+    if (targetActor) out._targetActor = targetActor.name;
+    return out;
+  }
+
+  /**
    * Execute all scripts for a given trigger on the actor (async).
    * @param {string} trigger
    * @param {Object} args - Arguments passed to each script
@@ -2539,6 +3081,7 @@ export class NeuroshimaScriptRunner {
   static async execute(trigger, args = {}) {
     const actor = args.actor;
     if (!actor) return;
+    game.neuroshima?.log?.(`[${trigger}] odpalił się`, NeuroshimaScriptRunner._triggerArgsForLog(args));
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
       if (trigger === "applyDamage" && Array.isArray(args.wounds)) {
@@ -2570,6 +3113,7 @@ export class NeuroshimaScriptRunner {
   static executeSync(trigger, args = {}) {
     const actor = args.actor;
     if (!actor) return;
+    game.neuroshima?.log?.(`[${trigger}] odpalił się`, NeuroshimaScriptRunner._triggerArgsForLog(args));
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
       script.executeSync(args);
@@ -2598,6 +3142,7 @@ export class NeuroshimaScriptRunner {
     const effectScripts = effect.getFlag("neuroshima", "scripts") || [];
     const scriptData = effectScripts[scriptIndex];
     if (!scriptData || scriptData.trigger !== "manual") return;
+    game.neuroshima?.log?.(`[manual] odpalił się`, { _actor: resolvedActor.name, effect: effect.name, label: scriptData.label ?? "" });
     const script = new NeuroshimaScript(scriptData, effect);
     await script.execute({ actor: resolvedActor, item: effect.parent?.documentName === "Item" ? effect.parent : null });
   }
@@ -2641,6 +3186,7 @@ export class NeuroshimaScriptRunner {
       scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, difficulty: null, hitLocation: null, difficultyShift: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
+    game.neuroshima?.log?.(`[dialog] odpalił się`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
 
     const allScriptEntries = [];
 
@@ -2683,7 +3229,9 @@ export class NeuroshimaScriptRunner {
 
       const parentItem = script.effect?.parent instanceof Item ? script.effect.parent : null;
       const rawLabel = script.label || (parentItem?.getFlag?.("neuroshima", "test") ?? "");
-      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null);
+      const _modId1 = script.effect?.getFlag?.("neuroshima", "fromModId");
+      const _modSnap1 = _modId1 ? (parentItem?.system?.mods?.[_modId1] ?? null) : null;
+      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null, _modSnap1, _modId1 ?? null);
 
       dialogModifiers.push({
         label: resolvedLabel,
@@ -2735,6 +3283,7 @@ export class NeuroshimaScriptRunner {
    */
   static async runDialogScripts(actor, rollContext = {}) {
     if (!actor) return { dialogModifiers: [], totalDialogModifier: 0, fieldTotals: { modifier: 0, attributeBonus: 0, skillBonus: 0 } };
+    game.neuroshima?.log?.(`[dialog] odpalił się`, { _actor: actor.name, ...rollContext });
     const scripts = this.getScripts(actor, "dialog");
     const dialogModifiers = [];
 
@@ -2755,7 +3304,9 @@ export class NeuroshimaScriptRunner {
 
       const parentItem = script.effect?.parent instanceof Item ? script.effect.parent : null;
       const rawLabel = script.label || (parentItem?.system?.tests?.value ?? "");
-      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null);
+      const _modId2 = script.effect?.getFlag?.("neuroshima", "fromModId");
+      const _modSnap2 = _modId2 ? (parentItem?.system?.mods?.[_modId2] ?? null) : null;
+      const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null, _modSnap2, _modId2 ?? null);
 
       dialogModifiers.push({
         label: resolvedLabel,
@@ -2888,7 +3439,14 @@ export class NeuroshimaScriptRunner {
       const actor = tokenDoc.actor;
       if (!actor || seen.has(actor.id)) continue;
       seen.add(actor.id);
-      await this.execute("worldTimeUpdate", { actor, worldTime, dt });
+      const dtMinutes     = dt / 60;
+      const dtHours       = dt / 3600;
+      const dtDays        = dt / 86400;
+      const prevTime      = worldTime - dt;
+      const minutesCrossed = Math.floor(worldTime / 60)    - Math.floor(prevTime / 60);
+      const hoursCrossed   = Math.floor(worldTime / 3600)  - Math.floor(prevTime / 3600);
+      const daysCrossed    = Math.floor(worldTime / 86400) - Math.floor(prevTime / 86400);
+      await this.execute("worldTimeUpdate", { actor, worldTime, dt, dtMinutes, dtHours, dtDays, minutesCrossed, hoursCrossed, daysCrossed });
     }
   }
 

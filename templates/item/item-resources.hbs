@@ -25,7 +25,7 @@
     </div>
     <div class="resources-list">
         {{#each system.resources}}
-        <div class="item resource-row" data-resource-index="{{@index}}">
+        <div class="item resource-row{{#if this._fromModId}} resource-row-from-mod{{/if}}" data-resource-index="{{@index}}">
             <div class="res-col-id">
                 <input type="checkbox"
                        name="system.resources.{{@index}}.showInSummary"
@@ -35,7 +35,8 @@
                         class="resource-id-badge {{#if this.showInSummary}}active{{/if}}"
                         data-action="toggleResourceSummary"
                         data-resource-index="{{@index}}"
-                        data-tooltip="{{localize 'NEUROSHIMA.Resources.ToggleSummaryTooltip'}}">{{@index}}</button>
+                        data-tooltip="{{localize 'NEUROSHIMA.Resources.ToggleSummaryTooltip'}}"
+                        {{#if this._fromModId}}disabled{{/if}}>{{@index}}</button>
             </div>
             <div class="res-col-key">
                 <input type="text"
@@ -43,7 +44,7 @@
                        name="system.resources.{{@index}}.key"
                        value="{{this.key}}"
                        placeholder="klucz"
-                       {{#unless @root.editable}}disabled{{/unless}}/>
+                       {{#if this._fromModId}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}/>
             </div>
             <div class="res-col-label">
                 <input type="text"
@@ -51,21 +52,21 @@
                        name="system.resources.{{@index}}.label"
                        value="{{this.label}}"
                        placeholder="{{localize 'NEUROSHIMA.Resources.LabelPlaceholder'}}"
-                       {{#unless @root.editable}}disabled{{/unless}}/>
+                       {{#if this._fromModId}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}/>
             </div>
             <div class="res-col-num">
                 <input type="number"
                        class="condition-int-input"
                        name="system.resources.{{@index}}.min"
                        value="{{this.min}}"
-                       {{#if this.unclamped}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}/>
+                       {{#if this._fromModId}}disabled{{else}}{{#if this.unclamped}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}{{/if}}/>
             </div>
             <div class="res-col-num">
                 <input type="number"
                        class="condition-int-input"
                        name="system.resources.{{@index}}.max"
                        value="{{this.max}}"
-                       {{#if this.unclamped}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}/>
+                       {{#if this._fromModId}}disabled{{else}}{{#if this.unclamped}}disabled{{else}}{{#unless @root.editable}}disabled{{/unless}}{{/if}}{{/if}}/>
             </div>
             <div class="res-col-num">
                 <input type="number"
@@ -77,6 +78,11 @@
                        {{#unless @root.editable}}disabled{{/unless}}/>
             </div>
             <div class="res-col-controls">
+                {{#if this._fromModId}}
+                <a class="item-control res-mod-source-icon" data-tooltip="{{this._fromModId}}" title="{{localize 'NEUROSHIMA.Resources.FromMod'}}">
+                    <i class="fas fa-wrench"></i>
+                </a>
+                {{else}}
                 {{#if @root.editable}}
                 <input type="checkbox"
                        name="system.resources.{{@index}}.unclamped"
@@ -92,6 +98,7 @@
                 <a class="item-control" data-action="deleteResource" data-resource-index="{{@index}}" title="{{localize 'DOCUMENT.Delete'}}">
                     <i class="fas fa-trash"></i>
                 </a>
+                {{/if}}
                 {{/if}}
             </div>
         </div>

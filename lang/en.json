@@ -766,7 +766,8 @@
             "LabelPlaceholder": "Resource name",
             "Empty": "No resources defined.",
             "ToggleSummaryTooltip": "Click to toggle resource visibility in the item summary",
-            "UnclampedTooltip": "Ignore min/max limits — value is not clamped by the script engine"
+            "UnclampedTooltip": "Ignore min/max limits — value is not clamped by the script engine",
+            "FromMod": "Resource comes from a modification — cannot be deleted or edited"
         },
         "Dialogs": {
             "ConfirmReroll": "Confirm Reroll",
@@ -1081,6 +1082,7 @@
             "Remove": "Remove",
             "OpenMod": "Open modification",
             "AlreadyInstalled": "This modification is already installed.",
+            "ResourceKeyCollision": "Warning: modification on '{item}' adds resources with keys already present in the item: {keys}. Scripts using @item.resources.{keys}.value may return ambiguous results — use @mod.resources.{keys}.value to reference this modification's own resources.",
             "LockedBanner": "Base stats locked — at least one modification is mounted.",
             "CategoryLabel": "Category",
             "ModType": "Type",
@@ -1427,6 +1429,7 @@
             "DiseaseItemsGroup": "Diseases",
             "TransientDiseaseItemsGroup": "Transient Diseases",
             "DiseaseEffectsGroup": "Disease Effects",
+            "ModItemEffectsGroup": "Item Modification Effects",
             "StatusGroup": "Status Effects",
             "DurationHeader": "Duration",
             "NewEffect": "New Effect",
@@ -1622,6 +1625,7 @@
         "Summary": {
             "Stats": "Statistics",
             "Resources": "Resources",
+            "Mods": "Modifications",
             "Description": "Description"
         },
         "ItemCard": {

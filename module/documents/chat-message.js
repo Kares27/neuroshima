@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
  * Rozszerzona klasa ChatMessage z ujednoliconym API renderowania kart czatu.
@@ -124,8 +125,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
-  static _bindResultCardCollapsibles(_root) {
-    // No collapsibles on result card currently — kept as hook point for future use.
+  static _bindResultCardCollapsibles(root) {
+    root.querySelectorAll(".neuroshima.item-card .item-card-collapsible-header").forEach(header => {
+      header.addEventListener("click", () => {
+        const content = header.nextElementSibling;
+        if (!content) return;
+        const isCollapsed = content.classList.toggle("collapsed");
+        header.querySelector(".item-card-chevron")?.classList.toggle("expanded", !isCollapsed);
+      });
+    });
   }
 
   static async onExecuteRequiredTest(event, message) {
@@ -1389,6 +1397,20 @@ export class NeuroshimaChatMessage extends ChatMessage {
     let availability = null;
     let hasWeight = false;
     const dash = "—";
+    const attachedMods = Object.entries(s.mods || {})
+      .filter(([k, v]) => !k.startsWith('__') && v?.attached)
+      .map(([modId, v]) => ({
+        ...v,
+        effectText: NeuroshimaScriptRunner._resolveItemRef(v.effectText ?? "", item, null, v, modId)
+      }));
+    const summaryResources = (s.resources ?? []).filter(r => r.showInSummary).map(r => {
+      const modId = r._fromModId ?? null;
+      const modSnap = modId ? (s.mods?.[modId] ?? null) : null;
+      return {
+        ...r,
+        label: NeuroshimaScriptRunner._resolveItemRef(r.label ?? "", item, null, modSnap, modId)
+      };
+    });
     const attrLabel = (key) => {
       const cfg = NEUROSHIMA?.attributes?.[key];
       return cfg ? loc(cfg.label) : (key || dash);
@@ -1435,9 +1457,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
           { key: "leftLeg",  abbr: "LeftLegAbbr" },
           { key: "rightLeg", abbr: "RightLegAbbr" }
         ];
+        const eff = s.effectiveArmor ?? {};
         armorRatings = locKeys.map(({ key, abbr }) => ({
           label: loc(`NEUROSHIMA.Items.Fields.${abbr}`),
-          value: s.armor?.ratings?.[key] ?? 0
+          value: eff[key] ?? s.armor?.ratings?.[key] ?? 0
         }));
         const dur = (s.armor?.durability ?? 0) - (s.armor?.durabilityDamage ?? 0);
         armorBoxStats = [
@@ -1482,7 +1505,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         if (s.quantity !== undefined) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
         break;
     }
-    return { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight };
+    return { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight, attachedMods, summaryResources };
   }
 
   static async postItemToChat(item, { actor = null } = {}) {
@@ -1495,7 +1518,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const typeKey = item.type.charAt(0).toUpperCase() + item.type.slice(1).replace(/-(\w)/g, (_, c) => c.toUpperCase());
     const typeLabel = game.i18n.localize(`NEUROSHIMA.Items.Type.${typeKey}`) || item.type;
 
-    const { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight } = NeuroshimaChatMessage.buildItemChatStats(item);
+    const { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight, attachedMods, summaryResources } = NeuroshimaChatMessage.buildItemChatStats(item);
     const hasStats = stats.length > 0 || !!armorRatings || !!armorBoxStats;
     const isUnlimited = limit === null;
 
@@ -1506,6 +1529,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         uuid: item.uuid, description: enriched,
         stats, armorRatings, armorBoxStats, hasStats,
         magazineContents,
+        attachedMods, summaryResources,
         weight, availability, hasWeight,
         remaining: limit, isUnlimited, isExhausted: false
       }

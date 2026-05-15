@@ -381,6 +381,38 @@ Hooks.once('init', async function() {
         return n > 0 ? `+${n}` : `${n}`;
     });
 
+    Handlebars.registerHelper('hasAttachedMods', (mods) => {
+        if (!mods || typeof mods !== 'object') return false;
+        return Object.entries(mods).some(([k, v]) => !k.startsWith('__') && v?.attached);
+    });
+
+    Handlebars.registerHelper('attachedMods', (mods) => {
+        if (!mods || typeof mods !== 'object') return [];
+        return Object.entries(mods)
+            .filter(([k, v]) => !k.startsWith('__') && v?.attached)
+            .map(([, v]) => v);
+    });
+
+    Handlebars.registerHelper('nsModTooltip', (mods, deltaKey, overrideKey) => {
+        if (!mods || typeof mods !== 'object') return '';
+        const lines = [];
+        for (const [key, snap] of Object.entries(mods)) {
+            if (key.startsWith('__') || !snap?.attached) continue;
+            if (overrideKey && snap[overrideKey]) {
+                const val = snap[deltaKey];
+                if (val !== undefined && val !== null && val !== '') {
+                    lines.push(`${snap.name}: ${val}`);
+                }
+            } else {
+                const delta = Number(snap[deltaKey] ?? 0);
+                if (delta !== 0) {
+                    lines.push(`${snap.name}: ${delta > 0 ? '+' : ''}${delta}`);
+                }
+            }
+        }
+        return lines.join('<br>');
+    });
+
     // Rejestracja arkuszy
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
     foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaActorSheet, {

@@ -185,7 +185,9 @@ export function buildWeaponWriteback(effective) {
     "system.capacity":      effective.capacity,
     "system.jamming":       effective.jamming,
     "system.attackBonus":   effective.attackBonus,
-    "system.defenseBonus":  effective.defenseBonus
+    "system.defenseBonus":  effective.defenseBonus,
+    "system.caliber":       effective.caliber,
+    "system.requiredBuild": effective.requiredBuild
   };
 }
 
@@ -447,6 +449,16 @@ async function _propagateModResources(item, modId, snapshot, attach) {
   if (!modResources.length) return;
 
   const current = Array.from(item.system.resources ?? []);
+  const existingKeys = new Set(current.filter(r => r._fromModId !== modId).map(r => r.key).filter(Boolean));
+  const collisions = modResources.map(r => r.key).filter(k => k && existingKeys.has(k));
+  if (collisions.length) {
+    const names = collisions.join(", ");
+    ui.notifications?.warn(
+      game.i18n.format("NEUROSHIMA.Mods.ResourceKeyCollision", { item: item.name, keys: names }),
+      { permanent: false }
+    );
+    game.neuroshima?.log?.(`[mod-helpers] Kolizja kluczy zasobów przy montowaniu modyfikacji ${modId} na ${item.name}: ${names}`);
+  }
   const tagged = modResources.map(r => ({ ...r, _fromModId: modId }));
   await item.update({ "system.resources": [...current, ...tagged] });
 }

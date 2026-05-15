@@ -722,6 +722,117 @@ body.theme-dark {
     text-align: right;
 }
 
+.neuroshima.item-card .item-card-section-label {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ns-text-light);
+    padding: 0 2px;
+}
+
+.neuroshima.item-card .item-card-collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 2px;
+}
+
+.neuroshima.item-card .item-card-collapsible-header:hover .item-card-section-label {
+    color: var(--ns-text-main);
+}
+
+.neuroshima.item-card .item-card-chevron {
+    font-size: 0.65em;
+    color: var(--ns-text-light);
+    transition: transform 0.15s ease;
+}
+
+.neuroshima.item-card .item-card-chevron.expanded {
+    transform: rotate(90deg);
+}
+
+.neuroshima.item-card .item-card-collapsible-content {
+    overflow: hidden;
+    padding-top: 4px;
+}
+
+.neuroshima.item-card .item-card-collapsible-content.collapsed {
+    display: none;
+}
+
+.neuroshima.item-card .item-card-resources {
+    margin-top: 6px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    padding: 4px 6px;
+}
+
+.neuroshima.item-card .item-card-resources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima.item-card .item-card-resource-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85em;
+    padding: 1px 2px;
+}
+
+.neuroshima.item-card .item-card-resource-label {
+    color: var(--ns-text-secondary, #aaa);
+}
+
+.neuroshima.item-card .item-card-resource-value {
+    font-weight: bold;
+    color: var(--ns-text-primary, #eee);
+}
+
+.neuroshima.item-card .item-card-mods {
+    margin-top: 6px;
+    border: 1px solid rgba(80, 140, 220, 0.35);
+    border-radius: 4px;
+    padding: 4px 6px;
+    background: rgba(80, 140, 220, 0.04);
+}
+
+.neuroshima.item-card .item-card-mods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.neuroshima.item-card .item-card-mod-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 0.85em;
+}
+
+.neuroshima.item-card .item-card-mod-img {
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    object-fit: cover;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.neuroshima.item-card .item-card-mod-name {
+    font-weight: bold;
+    color: var(--ns-text-primary, #eee);
+    flex-shrink: 0;
+}
+
+.neuroshima.item-card .item-card-mod-effect {
+    color: var(--ns-text-secondary, #aaa);
+    font-style: italic;
+}
+
 .chat-message:has(.neuroshima.item-card) .message-header {
     border-bottom: 1px solid #7a797144;
     padding-bottom: 3px;
@@ -6163,18 +6274,23 @@ body.theme-dark {
 .item-summary .stat-summary-chip {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
+    gap: 4px;
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 4px;
-    padding: 1px 5px;
-    font-size: 0.75em;
+    padding: 2px 7px;
+    font-size: 0.8em;
     line-height: 1.5;
 }
 
 .item-summary .stat-summary-chip.stat-chip-warning {
     border-color: rgba(200, 80, 60, 0.5);
     background: rgba(200, 80, 60, 0.08);
+}
+
+.item-summary .stat-summary-chip.stat-chip-modified {
+    border-color: rgba(80, 140, 220, 0.45);
+    background: rgba(80, 140, 220, 0.08);
 }
 
 .item-summary .stat-chip-label {
@@ -6206,6 +6322,31 @@ body.theme-dark {
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 2px;
+}
+
+.item-summary .item-mods-wrapper {
+    margin-top: 4px;
+}
+
+.item-summary .item-mods-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.item-summary .mod-name-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(80, 140, 220, 0.1);
+    border: 1px solid rgba(80, 140, 220, 0.3);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.78em;
+    line-height: 1.5;
+    color: var(--ns-text-primary, #eee);
+    cursor: default;
 }
 
 .item-summary .item-description-wrapper {

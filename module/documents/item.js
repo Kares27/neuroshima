@@ -272,6 +272,37 @@ export class NeuroshimaItem extends Item {
   }
 
   /** @override */
+  async _preUpdate(changed, options, userId) {
+    await super._preUpdate(changed, options, userId);
+
+    const newResources = foundry.utils.getProperty(changed, "system.resources");
+    if (!newResources) return;
+
+    const currentResources = Array.from(this.system?.resources ?? []);
+    const hasMod = currentResources.some(r => r._fromModId);
+    if (!hasMod) return;
+
+    let resourcesArray;
+    if (Array.isArray(newResources)) {
+      resourcesArray = newResources;
+    } else if (typeof newResources === "object") {
+      resourcesArray = Object.entries(newResources)
+        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+        .map(([, v]) => v);
+    } else {
+      return;
+    }
+
+    const merged = resourcesArray.map((submitted, idx) => {
+      const original = currentResources[idx];
+      if (!original?._fromModId) return submitted;
+      return { ...original, value: submitted?.value ?? original.value };
+    });
+
+    foundry.utils.setProperty(changed, "system.resources", merged);
+  }
+
+  /** @override */
   _onUpdate(data, options, userId) {
     super._onUpdate(data, options, userId);
     if (game.user.id !== userId) return;

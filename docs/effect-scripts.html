@@ -192,6 +192,7 @@
     <li><a href="#helpers">Helpery i narzędzia</a></li>
     <li><a href="#item-resources">Zasoby itemu</a></li>
     <li><a href="#tips">Dobre praktyki</a></li>
+    <li><a href="#weapon-armor-mods">Modyfikacje broni i pancerza (weapon-mod / armor-mod)</a></li>
   </ol>
 </nav>
 
@@ -692,16 +693,17 @@ args.fields.hitLocation = <span class="str">"head"</span>;
   <pre><code><span class="cmt">// Przykład — pobranie surowej wartości w skrypcie:</span>
 <span class="kw">const</span> <span class="var">rawTest</span> = this.effect.parent?.getFlag?.(<span class="str">"neuroshima"</span>, <span class="str">"test"</span>) ?? <span class="str">""</span>;</code></pre>
 
-  <h4 id="item-effect-references">Referencje <code>@item.*</code> i <code>@effect.*</code></h4>
+  <h4 id="item-effect-references">Referencje <code>@item.*</code>, <code>@effect.*</code> i <code>@mod.*</code></h4>
   <p>
     Pola tekstowe w edytorze skryptu (pole <strong>Test</strong>, <strong>Label</strong> skryptu) obsługują dynamiczne referencje
-    rozwiązywane przez silnik przed wyświetleniem. Składnia: <code>@item.ścieżka</code> lub <code>@effect.ścieżka</code>.
+    rozwiązywane przez silnik przed wyświetleniem. Składnia: <code>@item.ścieżka</code>, <code>@effect.ścieżka</code>
+    lub <code>@mod.ścieżka</code>.
     Jeśli referencja nie zostanie rozwiązana, pozostaje niezmieniona w tekście.
   </p>
   <table>
     <thead><tr><th>Referencja</th><th>Opis</th></tr></thead>
     <tbody>
-      <tr><td><code>@item.name</code></td><td>Nazwa itemu będącego rodzicem efektu.</td></tr>
+      <tr><td><code>@item.name</code></td><td>Nazwa itemu będącego rodzicem efektu (dla efektów modyfikacji: nazwa broni/pancerza-hosta).</td></tr>
       <tr><td><code>@item.system.tests.value</code></td><td>Pole <strong>Test</strong> z zakładki Efekty itemu (flaga <code>neuroshima.test</code>).</td></tr>
       <tr><td><code>@item.system.damage</code></td><td>Obrażenia broni (pole tekstowe).</td></tr>
       <tr><td><code>@item.system.piercing</code></td><td>Punkty przebicia broni.</td></tr>
@@ -712,6 +714,11 @@ args.fields.hitLocation = <span class="str">"head"</span>;
       <tr><td><code>@item.system.resources[0].value</code></td><td>Bieżąca wartość pierwszego zasobu (po indeksie tablicy — mniej bezpieczne).</td></tr>
       <tr><td><code>@effect.name</code></td><td>Nazwa aktywnego efektu.</td></tr>
       <tr><td><code>@effect.description</code></td><td>Opis aktywnego efektu.</td></tr>
+      <tr><td><code>@mod.name</code></td><td>Nazwa modyfikacji (weapon-mod / armor-mod). Działa tylko gdy efekt pochodzi z dołączonej modyfikacji (<code>fromModId</code>). Pozwala wyświetlić nazwę samej modyfikacji zamiast nazwy broni/pancerza-hosta.</td></tr>
+      <tr><td><code>@mod.effectText</code></td><td>Tekst efektu wpisany w modyfikacji.</td></tr>
+      <tr><td><code>@mod.modType</code></td><td>Typ modyfikacji (np. <code>"optical"</code>, <code>"mechanical"</code>).</td></tr>
+      <tr><td><code>@mod.category</code></td><td>Kategoria modyfikacji.</td></tr>
+      <tr><td><code>@mod.img</code></td><td>Ścieżka do obrazka modyfikacji.</td></tr>
     </tbody>
   </table>
   <pre><code><span class="cmt">// Przykład — Label skryptu z dynamiczną nazwą zasobu</span>
@@ -723,7 +730,11 @@ args.fields.hitLocation = <span class="str">"head"</span>;
 <span class="cmt">// Etykieta modyfikatora dialogu przyjmie wartość pola Test z itemu</span>
 
 <span class="cmt">// Odwołanie do nazwy efektu:</span>
-<span class="cmt">// "@effect.name" → np. "Wspinaczka (Talent)"</span></code></pre>
+<span class="cmt">// "@effect.name" → np. "Wspinaczka (Talent)"</span>
+
+<span class="cmt">// W efekcie weapon-mod/armor-mod — nazwa samej modyfikacji, nie hosta:</span>
+<span class="cmt">// "@mod.name" → np. "Celownik laserowy" (nawet jeśli host to "Kałasznikow")</span>
+<span class="cmt">// "@item.name" → np. "Kałasznikow" (broń-host)</span></code></pre>
 
   <p><strong>Przykłady:</strong></p>
   <pre><code><span class="cmt">// Hide Script — ukryj jeśli umiejętność to nie "Wspinaczka"</span>
@@ -1408,21 +1419,77 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor z tokenem na scenie</td></tr>
     <tr><td>args.worldTime</td><td>number</td><td>Aktualny czas świata w sekundach (<code>game.time.worldTime</code>)</td></tr>
     <tr><td>args.dt</td><td>number</td><td>Sekundy minęłe od poprzedniej zmiany czasu (jeden skok — może być ujemny)</td></tr>
+    <tr><td>args.dtMinutes</td><td>number</td><td>Jak <code>args.dt</code>, ale przeliczone na minuty (<code>dt / 60</code>)</td></tr>
+    <tr><td>args.dtHours</td><td>number</td><td>Jak <code>args.dt</code>, ale przeliczone na godziny (<code>dt / 3600</code>)</td></tr>
+    <tr><td>args.dtDays</td><td>number</td><td>Jak <code>args.dt</code>, ale przeliczone na dni (<code>dt / 86400</code>)</td></tr>
+    <tr><td>args.minutesCrossed</td><td>number (int)</td><td>Liczba pełnych granic minut przekroczonych w tym skoku — <strong>bez flag</strong>. <code>0</code> gdy skok &lt; 1 minuty.</td></tr>
+    <tr><td>args.hoursCrossed</td><td>number (int)</td><td>Liczba pełnych granic godzin przekroczonych w tym skoku — <strong>bez flag</strong>. <code>0</code> gdy skok &lt; 1 godziny.</td></tr>
+    <tr><td>args.daysCrossed</td><td>number (int)</td><td>Liczba pełnych granic dni przekroczonych w tym skoku — <strong>bez flag</strong>. <code>0</code> gdy skok &lt; 1 dnia.</td></tr>
   </tbody></table>
   <div class="callout info">
     Wyzwalacz jest wywoływany przez GM i działa tylko dla aktora posiadającego token na aktywnej scenie.
-    Do śledzenia nakumulowanego czasu używaj flag efektu — <code>args.dt</code> to różnica jednego skoku, nie suma.
+    <code>args.daysCrossed</code> to liczba całkowita granic dni przekroczonych w tym jednym skoku — <strong>nie wymaga flag</strong>.
+    Dla GM-a który przesuwa czas o 2 dni jednym ruchem, <code>args.daysCrossed === 2</code>.
+    Pola <code>*Crossed</code> bazują na matematyce (<code>floor(worldTime/86400) − floor(prevTime/86400)</code>), a nie na flagach.
   </div>
+
+  <h4>Helpery worldTimeUpdate</h4>
+  <div class="context-box">
+    <div class="ctx-row"><span class="ctx-name">this.getWorldTime()</span><span class="ctx-type">number</span><span class="ctx-desc">Aktualny czas świata w sekundach (alias <code>game.time.worldTime</code>).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.worldTimeElapsed(flagKey, target?)</span><span class="ctx-type">number</span><span class="ctx-desc">Sekundy minęłe od zapisanego znacznika czasu w fladze <code>flagKey</code>. Zwraca <code>Infinity</code> gdy flaga nie istnieje — pierwsze wywołanie zawsze przejdzie test próg.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.worldTimeOnInterval(flagKey, secs, target?)</span><span class="ctx-type">Promise&lt;boolean&gt;</span><span class="ctx-desc">Zwraca <code>true</code> i aktualizuje flagę gdy minęło ≥ <code>secs</code> sekund od poprzedniego wywołania. Przy pierwszym wywołaniu inicjalizuje flagę i zwraca <code>false</code> (guard). Zalecane do wzorców "wywołaj co N sekund".</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.worldTimeStampNow(flagKey, target?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Zapisuje aktualny czas świata w fladze. Skrót dla <code>actor.setFlag("neuroshima", flagKey, worldTime)</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.worldTimeDurationLabel(seconds)</span><span class="ctx-type">string</span><span class="ctx-desc">Formatuje sekundy jako czytelny ciąg: <code>3661</code> → <code>"1 g 1 min 1 s"</code>.</span></div>
+  </div>
+  <p style="font-size:0.85em;color:var(--text-dim);margin-top:0.3rem;">
+    Parametr <code>target</code> jest opcjonalny — domyślnie <code>this.actor</code>. Możesz też przekazać <code>this.effect</code> aby przechowywać flagę bezpośrednio na efekcie.
+  </p>
+
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">worldTimeUpdate</span> Efekt co godzinę czasu świata</div>
-    <pre><code><span class="cmt">// worldTimeUpdate — wywołaj logikę raz na godzinę, niezależnie od rozmiaru skoku czasu</span>
-<span class="kw">const</span> <span class="var">INTERVAL</span> = <span class="num">3600</span>;
-<span class="kw">const</span> <span class="var">key</span> = <span class="str">`lastHourly_${<span class="kw">this</span>.effect.id}`</span>;
-<span class="kw">const</span> <span class="var">last</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">key</span>) ?? <span class="num">0</span>;
-<span class="kw">if</span> (args.worldTime - <span class="var">last</span> &lt; <span class="var">INTERVAL</span>) <span class="kw">return</span>;
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">key</span>, args.worldTime);
-<span class="cmt">// ... właściwa logika</span></code></pre>
+    <div class="example-header"><span class="trigger-badge">worldTimeUpdate</span> Bateria — codziennie -1 ładunek, <code>daysCrossed</code> (zalecane, bez flag)</div>
+    <pre><code><span class="cmt">// args.daysCrossed = ile granic dób przekroczono w tym jednym skoku GM-a (int, bez flag).</span>
+<span class="cmt">// Przykład: GM skipuje miesiąc (30 dni) → args.daysCrossed === 30 → bateria traci 30 ładunków.</span>
+<span class="kw">if</span> (args.daysCrossed &lt; <span class="num">1</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">remaining</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">decreaseModResource</span>(<span class="kw">this</span>.item, <span class="str">"BatteryValue"</span>, args.daysCrossed);
+<span class="kw">if</span> (<span class="var">remaining</span> !== <span class="kw">null</span> &amp;&amp; <span class="var">remaining</span> &lt;= <span class="num">0</span>) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Bateria rozładowana!"</span>, <span class="str">"warn"</span>);
+}</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Zero flag — czysta matematyka. Działa poprawnie przy dowolnym skoku GM-a: skok o 1 dzień odejmuje 1, skok o miesiąc (30 dni) odejmuje 30 w jednym wywołaniu.
+      Żeby ograniczyć drain zawsze do 1 niezależnie od skoku: <code>decreaseModResource(this.item, "BatteryValue", 1)</code>.
+    </p>
   </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">worldTimeUpdate</span> Wywołaj co godzinę — <code>worldTimeOnInterval</code> (z flagą)</div>
+    <pre><code><span class="cmt">// Wzorzec z flagą: wywołaj logikę raz na godzinę niezależnie od rozmiaru skoku</span>
+<span class="kw">if</span> (!<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">worldTimeOnInterval</span>(<span class="str">"hourlyKey"</span>, <span class="num">3600</span>)) <span class="kw">return</span>;
+<span class="cmt">// ... właściwa logika — wykona się co najwyżej raz na godzinę od poprzedniego wywołania</span>
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Minęła godzina — efekt wywołany!"</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">worldTimeUpdate</span> Odmierzanie czasu od nałożenia efektu — worldTimeElapsed</div>
+    <pre><code><span class="cmt">// Usuń efekt po 10 minutach od jego nałożenia</span>
+<span class="cmt">// (ustaw flagę "appliedAt" w wyzwalaczu applyEffect)</span>
+<span class="kw">const</span> <span class="var">elapsed</span> = <span class="kw">this</span>.<span class="fn">worldTimeElapsed</span>(<span class="str">"appliedAt"</span>);
+<span class="kw">if</span> (<span class="var">elapsed</span> &gt;= <span class="num">600</span>) {
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+}</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Ustaw flagę w wyzwalaczu <code>applyEffect</code>: <code>await this.worldTimeStampNow("appliedAt");</code>
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">worldTimeUpdate</span> Ładowanie zasobu co 30 minut + etykieta czasu</div>
+    <pre><code><span class="cmt">// Co 30 minut dodaj 1 ładunek do zasobu "charge" w broni (this.item)</span>
+<span class="kw">if</span> (!<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">worldTimeOnInterval</span>(<span class="str">"rechargeTimer"</span>, <span class="num">30</span> * <span class="num">60</span>)) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">newVal</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">increaseItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charge"</span>, <span class="num">1</span>);
+<span class="kw">const</span> <span class="var">label</span> = <span class="kw">this</span>.<span class="fn">worldTimeDurationLabel</span>(args.worldTime);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Ładunek naładowany o ${<span class="var">label</span>} — wartość: ${<span class="var">newVal</span>}`</span>);</code></pre>
+  </div>
+
 </section>
 
 <!-- PREDEFINED KEYS -->
@@ -4084,46 +4151,103 @@ return false; // nie blokuj nikogo</span></code></pre>
   <p>
     Wyzwalacz <code>worldTimeUpdate</code> jest wywoływany dla każdego aktora z tokenem na scenie gdy czas świata się zmienia
     (<code>game.time.advance()</code> lub SimpleCalendar). Działa poza i w trakcie walki.
-    Dostępne argumenty: <code>args.worldTime</code> (aktualny czas w sekundach), <code>args.dt</code> (sekundy minęłe od ostatniej zmiany).
+    Dostępne argumenty:
+  </p>
+  <table>
+    <thead><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>args.worldTime</code></td><td>number</td><td>Aktualny czas świata w sekundach (<code>game.time.worldTime</code>).</td></tr>
+      <tr><td><code>args.dt</code></td><td>number</td><td>Sekundy minęłe od ostatniej zmiany (jeden skok — może być ujemny).</td></tr>
+      <tr><td><code>args.dtMinutes</code></td><td>number</td><td><code>dt / 60</code> — ułamkowe minuty.</td></tr>
+      <tr><td><code>args.dtHours</code></td><td>number</td><td><code>dt / 3600</code> — ułamkowe godziny.</td></tr>
+      <tr><td><code>args.dtDays</code></td><td>number</td><td><code>dt / 86400</code> — ułamkowe dni.</td></tr>
+      <tr><td><code>args.minutesCrossed</code></td><td>number (int)</td><td>Ile pełnych granic minut przekroczono w tym skoku — <strong>bez flag</strong>.</td></tr>
+      <tr><td><code>args.hoursCrossed</code></td><td>number (int)</td><td>Ile pełnych granic godzin przekroczono w tym skoku — <strong>bez flag</strong>.</td></tr>
+      <tr><td><code>args.daysCrossed</code></td><td>number (int)</td><td>Ile pełnych granic dni przekroczono w tym skoku — <strong>bez flag</strong>. Najprostszy sposób na sprawdzenie "minął dzień".</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <strong>daysCrossed vs dtDays:</strong> <code>args.dtDays</code> to ułamek (np. <code>0.5</code> dla 12-godzinnego skoku).
+    <code>args.daysCrossed</code> to liczba całkowita granic dni kalendarzowych przekroczonych w tym skoku — obliczona ze wzoru
+    <code>floor(worldTime/86400) − floor(prevTime/86400)</code>, bez żadnych flag. Gdy GM przesuwa czas o 2 dni jednym ruchem, <code>daysCrossed === 2</code>.
+  </div>
+
+  <h4>Dedykowane helpery</h4>
+  <p>
+    System dostarcza gotowe helpery które eliminują potrzebę ręcznego zarządzania flagami czasowymi:
+  </p>
+  <table>
+    <thead><tr><th>Helper</th><th>Zwraca</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>this.getWorldTime()</code></td><td>number</td><td>Aktualny <code>game.time.worldTime</code> w sekundach.</td></tr>
+      <tr><td><code>this.worldTimeElapsed(flagKey, target?)</code></td><td>number</td><td>Sekundy minęłe od flagi <code>flagKey</code>. Gdy flaga nie istnieje — <code>Infinity</code> (pierwsze wywołanie zawsze przechodzi próg).</td></tr>
+      <tr><td><code>await this.worldTimeOnInterval(flagKey, secs, target?)</code></td><td>Promise&lt;boolean&gt;</td><td>Zwraca <code>true</code> i aktualizuje flagę gdy ≥ <code>secs</code> sekund od poprzedniego. Przy pierwszym wywołaniu inicjalizuje i zwraca <code>false</code>.</td></tr>
+      <tr><td><code>await this.worldTimeStampNow(flagKey, target?)</code></td><td>Promise&lt;void&gt;</td><td>Zapisuje bieżący worldTime jako flagę.</td></tr>
+      <tr><td><code>this.worldTimeDurationLabel(seconds)</code></td><td>string</td><td>Formatuje sekundy: <code>3661</code> → <code>"1 g 1 min 1 s"</code>.</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.85em;color:var(--text-dim);">
+    Parametr <code>target</code> jest opcjonalny (domyślnie <code>this.actor</code>). Możesz przekazać <code>this.effect</code> by zapisywać flag bezpośrednio na efekcie.
   </p>
 
-  <div class="callout info">
-    <strong>Uwaga:</strong> <code>args.dt</code> to różnica jednego skoku czasu, nie suma.
-    Jeśli GM przesuwa czas o 15 minut trzy razy, wyzwalacz odpali się trzy razy z <code>args.dt = 900</code> każdorazowo.
-    Do śledzenia nakumulowanego czasu przechowuj timestamp w fladze efektu.
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">worldTimeUpdate</span>
+      Wywołaj co godzinę — helper <code>worldTimeOnInterval</code> (zalecane)
+    </div>
+    <pre><code><span class="cmt">// Najprostszy wzorzec: uruchom logikę co 1 godzinę czasu świata</span>
+<span class="kw">if</span> (!<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">worldTimeOnInterval</span>(<span class="str">"hourlyEffect"</span>, <span class="num">3600</span>)) <span class="kw">return</span>;
+<span class="cmt">// ... wywołaj się tutaj — działa co najwcześniej raz na godzinę</span>
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Minęła godzina — efekt wywołany!"</span>);</code></pre>
   </div>
 
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">worldTimeUpdate</span>
-      Efekt co godzinę — sprawdź czy minęła 1 godzina od ostatniego wywołania
+      Usuń efekt po 10 minutach od nałożenia — <code>worldTimeElapsed</code>
     </div>
-    <pre><code><span class="cmt">// worldTimeUpdate — uruchom logikę tylko gdy minęło ≥ 3600 sekund od ostatniego zapisu</span>
-<span class="kw">const</span> <span class="var">INTERVAL</span> = <span class="num">3600</span>; <span class="cmt">// 1 godzina</span>
-<span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">`lastHourly_${<span class="kw">this</span>.effect.id}`</span>;
-<span class="kw">const</span> <span class="var">last</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>) ?? <span class="num">0</span>;
-
-<span class="kw">if</span> (args.worldTime - <span class="var">last</span> &lt; <span class="var">INTERVAL</span>) <span class="kw">return</span>;
-
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>, args.worldTime);
-<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Minęła godzina — efekt wywołany!"</span>);
-<span class="cmt">// ... właściwa logika (leczenie, zadawanie obrażeń, usuwanie efektu itp.)</span></code></pre>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header">
-      <span class="trigger-badge">worldTimeUpdate</span>
-      Efekt jednorazowy po 10 minutach — usuń się po upływie czasu
-    </div>
-    <pre><code><span class="cmt">// worldTimeUpdate — usuń efekt gdy upłynęło 10 minut od jego nałożenia</span>
-<span class="kw">const</span> <span class="var">start</span> = <span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"appliedAt"</span>) ?? args.worldTime;
-<span class="kw">const</span> <span class="var">elapsed</span> = args.worldTime - <span class="var">start</span>;
-<span class="kw">if</span> (<span class="var">elapsed</span> &gt;= <span class="num">600</span>) { <span class="cmt">// 600 sekund = 10 minut</span>
+    <pre><code><span class="cmt">// Usuń efekt po 10 minutach od jego nałożenia (flaga ustawiona w applyEffect)</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">worldTimeElapsed</span>(<span class="str">"appliedAt"</span>) &gt;= <span class="num">600</span>) {
   <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
 }</code></pre>
     <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
-      Ustaw flagę <code>appliedAt</code> w wyzwalaczu <code>applyEffect</code>:<br>
-      <code>await this.effect.setFlag("neuroshima", "appliedAt", game.time.worldTime);</code>
+      Ustaw flagę w wyzwalaczu <code>applyEffect</code>: <code>await this.worldTimeStampNow("appliedAt");</code>
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">worldTimeUpdate</span>
+      Ładowanie zasobu broni co 30 minut — <code>increaseItemResource</code> + <code>worldTimeDurationLabel</code>
+    </div>
+    <pre><code><span class="cmt">// Co 30 minut dodaj 1 ładunek do zasobu "charge" w broni-hoście (this.item)</span>
+<span class="kw">if</span> (!<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">worldTimeOnInterval</span>(<span class="str">"rechargeTimer"</span>, <span class="num">30</span> * <span class="num">60</span>)) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">newVal</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">increaseItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charge"</span>, <span class="num">1</span>);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Ładunek naładowany — stan: ${<span class="var">newVal</span>}`</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">worldTimeUpdate</span>
+      Bateria modyfikacji — <code>daysCrossed</code> (zalecane, bez flag)
+    </div>
+    <pre><code><span class="cmt">// args.daysCrossed = liczba pełnych granic dób przekroczonych w tym skoku GM-a.</span>
+<span class="cmt">// Brak flag — czysta matematyka: floor(worldTime/86400) − floor(prevTime/86400).</span>
+<span class="cmt">//</span>
+<span class="cmt">// Scenariusz:  skok o 1 dzień  → daysCrossed === 1 → bateria traci 1 ładunek</span>
+<span class="cmt">// Scenariusz:  GM skipuje miesiąc (30 dni) → daysCrossed === 30 → bateria traci 30 ładunków</span>
+<span class="cmt">// Scenariusz:  skok o 12 godzin → daysCrossed === 0 → return, nic się nie dzieje</span>
+<span class="kw">if</span> (args.daysCrossed &lt; <span class="num">1</span>) <span class="kw">return</span>;
+
+<span class="kw">const</span> <span class="var">remaining</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">decreaseModResource</span>(<span class="kw">this</span>.item, <span class="str">"BatteryValue"</span>, args.daysCrossed);
+<span class="kw">if</span> (<span class="var">remaining</span> !== <span class="kw">null</span> &amp;&amp; <span class="var">remaining</span> &lt;= <span class="num">0</span>) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Bateria rozładowana!"</span>, <span class="str">"warn"</span>);
+}</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Podejście zalecane — zero flag, zero stanu. Działa poprawnie przy dowolnym skoku GM-a, włącznie ze skipem tygodnia lub miesiąca.
+      Jeśli chcesz ograniczyć drain do maksymalnie 1 na skok niezależnie od jego rozmiaru, zamień
+      <code>args.daysCrossed</code> na <code>1</code> w wywołaniu <code>decreaseModResource</code>.
+      Zasoby muszą być zdefiniowane w zakładce <strong>Zasoby</strong> modyfikacji.
     </p>
   </div>
 
@@ -5101,6 +5225,400 @@ args.penalties.mod += <span class="num">10</span>;
 
 <span class="cmt">// Sprawdź bieżący próg (po modyfikacjach przez inne AE)</span>
 <span class="kw">const</span> <span class="var">threshold</span> = args.jammingThreshold;              <span class="cmt">// read-only odczyt; modyfikuj przez helper</span></code></pre>
+
+</section>
+
+<!-- SECTION 11 -->
+<section id="weapon-armor-mods">
+  <h2 class="section-title">11. Modyfikacje broni i pancerza (weapon-mod / armor-mod)</h2>
+
+  <p>
+    Itemom typu <strong>weapon-mod</strong> i <strong>armor-mod</strong> można przypisywać Active Effects ze skryptami
+    dokładnie tak samo jak każdemu innemu itemowi. Jednak ze względu na specyficzny model dołączania modyfikacji,
+    sposób wykonania tych efektów różni się od standardowych efektów na broniach czy pancerzach.
+  </p>
+
+  <h3>Model propagacji efektów</h3>
+  <p>
+    Gdy modyfikacja jest <strong>dołączona</strong> (<em>attached</em>) do broni lub pancerza, system automatycznie
+    <strong>kopiuje</strong> wszystkie efekty z modyfikacji na broń/pancerz-hosta. Każda taka kopia jest oznaczona
+    flagą <code>flags.neuroshima.fromModId = &lt;id_modyfikacji&gt;</code>.
+  </p>
+  <div class="callout info">
+    <strong>Zasada:</strong> Oryginalne efekty na samym itemie <code>weapon-mod</code> / <code>armor-mod</code>
+    <strong>nigdy nie są wykonywane bezpośrednio</strong>. Wykonywane są tylko skopiowane kopie na hoście,
+    i tylko wtedy gdy modyfikacja jest aktualnie dołączona (<code>attached === true</code>).
+  </div>
+
+  <h3>Kontekst <code>this.item</code> w skryptach modyfikacji</h3>
+  <p>
+    W skryptach efektów z modyfikacji <code>this.item</code> wskazuje na <strong>broń lub pancerz-host</strong>,
+    a <strong>nie</strong> na samą modyfikację. Dzięki temu skrypty mogą bezpośrednio odczytywać i modyfikować
+    dane broni/pancerza, do której modyfikacja jest przymocowana.
+  </p>
+  <div class="context-box">
+    <div class="ctx-row"><span class="ctx-name">this.actor</span><span class="ctx-type">Actor</span><span class="ctx-desc">Aktor posiadający broń/pancerz z dołączoną modyfikacją</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.item</span><span class="ctx-type">Item</span><span class="ctx-desc">Broń lub pancerz-host (NIE sama modyfikacja)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.effect</span><span class="ctx-type">ActiveEffect</span><span class="ctx-desc">Propagowana kopia efektu z modyfikacji (z flagą <code>fromModId</code>), znajdująca się na hoście</span></div>
+  </div>
+
+  <p style="margin-top:0.75rem;">
+    Aby uzyskać dostęp do danych samej modyfikacji z poziomu skryptu, możesz odczytać snapshot ze słownika
+    <code>mods</code> na hoście lub pobrać item modyfikacji przez <code>fromUuid</code>:
+  </p>
+  <pre><code><span class="cmt">// this.item = broń/pancerz-host</span>
+<span class="cmt">// this.effect.getFlag("neuroshima", "fromModId") = id modyfikacji</span>
+<span class="kw">const</span> <span class="var">modId</span> = <span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"fromModId"</span>);
+<span class="kw">const</span> <span class="var">modSnap</span> = <span class="kw">this</span>.item.system?.mods?.[modId]; <span class="cmt">// snapshot modyfikacji</span>
+
+<span class="cmt">// Odczyt danych broni-hosta</span>
+<span class="kw">const</span> <span class="var">weaponDmg</span> = <span class="kw">this</span>.item.system.damage;       <span class="cmt">// obrażenia bazowe broni</span>
+<span class="kw">const</span> <span class="var">weaponAtk</span> = <span class="kw">this</span>.item.system.attack;        <span class="cmt">// atak bazowy broni</span></code></pre>
+
+  <h3>Zasoby modyfikacji — <code>@mod.resources</code> vs <code>@item.resources</code></h3>
+  <p>
+    Jeśli modyfikacja dodaje własne zasoby do hosta (zakładka <strong>Zasoby</strong> na karcie modyfikacji),
+    są one propagowane na hosta z dodatkowym polem <code>_fromModId</code> wskazującym źródłową modyfikację.
+  </p>
+
+  <h4>Problem kolizji kluczy</h4>
+  <p>
+    Gdy dwie lub więcej modyfikacji doda zasoby z <strong>tym samym kluczem</strong> (np. obie mają zasób o kluczu <code>charges</code>),
+    użycie <code>@item.resources.charges.value</code> zwróci wartość z <em>pierwszej</em> pasującej pozycji — niezależnie od tego, która modyfikacja jest aktualnie aktywna.
+  </p>
+  <div class="callout warning">
+    <strong>System ostrzeże Cię przy montowaniu</strong> — jeśli modyfikacja tworzy kolizję kluczy zasobów z istniejącymi zasobami na hoście,
+    pojawi się powiadomienie UI z listą kolidujących kluczy oraz sugestią użycia <code>@mod.resources.key.value</code>.
+  </div>
+
+  <h4>Rozwiązanie: <code>@mod.resources.key.prop</code></h4>
+  <p>
+    Placeholder <code>@mod.resources.&lt;key&gt;.&lt;prop&gt;</code> rozwiązuje zasób z hosta filtrując
+    jednocześnie po <code>_fromModId</code> — każda modyfikacja dostaje swój własny zasób nawet gdy klucze się pokrywają.
+  </p>
+
+  <table>
+    <thead><tr><th>Placeholder</th><th>Zachowanie</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>@item.resources.charges.value</code></td>
+        <td>Zwraca wartość <strong>pierwszego</strong> zasobu o kluczu <code>charges</code> na hoście — może trafić w zasób innej modyfikacji.</td>
+      </tr>
+      <tr>
+        <td><code>@mod.resources.charges.value</code></td>
+        <td>Zwraca wartość zasobu o kluczu <code>charges</code> <strong>tej konkretnej modyfikacji</strong> (<code>_fromModId</code> musi pasować). Bezpieczne nawet gdy wiele modów ma ten sam klucz.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4>Helpery mod-scoped — bezpieczny dostęp bez ręcznego filtrowania</h4>
+  <p>
+    System dostarcza dedykowane helpery które automatycznie scopują do <strong>własnej modyfikacji</strong>
+    efektu (via <code>fromModId</code> na efekcie). Nie ma potrzeby ręcznego <code>resources.find()</code>.
+  </p>
+  <table>
+    <thead><tr><th>Helper</th><th>Zwraca</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>this.getModResource(item, key)</code></td><td>number | null</td><td>Wartość własnego zasobu modyfikacji (null gdy nie znaleziono).</td></tr>
+      <tr><td><code>this.getModResourceObject(item, key)</code></td><td>object | null</td><td>Pełny obiekt zasobu: <code>{ key, label, value, min, max }</code>.</td></tr>
+      <tr><td><code>await this.setModResource(item, key, value)</code></td><td>Promise&lt;number | null&gt;</td><td>Ustaw wartość, clamped do [min, max].</td></tr>
+      <tr><td><code>await this.modifyModResource(item, key, delta)</code></td><td>Promise&lt;number | null&gt;</td><td>Zmień wartość o delta, clamped.</td></tr>
+      <tr><td><code>await this.increaseModResource(item, key, n=1)</code></td><td>Promise&lt;number | null&gt;</td><td>Zwiększ o |n|, clamped do max.</td></tr>
+      <tr><td><code>await this.decreaseModResource(item, key, n=1)</code></td><td>Promise&lt;number | null&gt;</td><td>Zmniejsz o |n|, clamped do min.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    Helpery działają tylko gdy efekt posiada flagę <code>fromModId</code> — co jest automatycznie zapewniane dla efektów propagowanych z modyfikacji.
+    Zwracają <code>null</code> gdy efekt nie pochodzi z modyfikacji lub zasób nie istnieje.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Efekt z modyfikacji — zużyj 1 ładunek (zalecany sposób)</div>
+    <pre><code><span class="cmt">// Trigger: preRollTest — zużyj 1 ładunek z zasobu "charges" tej modyfikacji</span>
+<span class="cmt">// decreaseModResource automatycznie wie, o której modyfikacji chodzi</span>
+<span class="kw">const</span> <span class="var">charges</span> = <span class="kw">this</span>.<span class="fn">getModResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>);
+<span class="kw">if</span> (<span class="var">charges</span> === <span class="kw">null</span> || <span class="var">charges</span> &lt;= <span class="num">0</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">decreaseModResource</span>(<span class="kw">this</span>.item, <span class="str">"charges"</span>, <span class="num">1</span>);</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Gdy wiesz, że tylko jedna modyfikacja dodaje zasób o tym kluczu, możesz użyć prostszego <code>this.decreaseItemResource(this.item, "charges", 1)</code>.
+      Gdy klucze mogą się pokrywać między modyfikacjami — zawsze używaj <code>decreaseModResource</code>.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Efekt z modyfikacji — odczyt pełnych danych zasobu</div>
+    <pre><code><span class="cmt">// Odczytaj pełny obiekt zasobu (label, value, min, max)</span>
+<span class="kw">const</span> <span class="var">res</span> = <span class="kw">this</span>.<span class="fn">getModResourceObject</span>(<span class="kw">this</span>.item, <span class="str">"BatteryValue"</span>);
+<span class="kw">if</span> (<span class="var">res</span>) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`${<span class="var">res</span>.label}: ${<span class="var">res</span>.value} / ${<span class="var">res</span>.max}`</span>);
+}</code></pre>
+  </div>
+
+  <div class="callout info">
+    <strong>Tip:</strong> W nazwach efektów i etykietach skryptów możesz używać <code>@mod.resources.charges.value</code>
+    (jako placeholder w polu <em>Label</em>) — system automatycznie rozwiąże wartość zasobu własnej modyfikacji.
+  </div>
+
+  <h3>Cykl życia efektów modyfikacji</h3>
+  <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
+    <li><strong>Dołączenie modyfikacji</strong> — efekty modyfikacji są kopiowane na hosta. Wyzwalacze
+      <code>applyEffect</code> i <code>immediate</code> uruchamiają się w tym momencie z kontekstem hosta.</li>
+    <li><strong>Odłączenie modyfikacji</strong> — kopie efektów są usuwane z hosta. Wyzwalacz
+      <code>deleteEffect</code> uruchamia się w tym momencie.</li>
+    <li><strong>Zmiana danych</strong> — po każdej zmianie wartości w modyfikacji, kopie efektów na hoście są
+      usuwane i tworzone od nowa (z aktualnymi danymi skryptu z oryginału).</li>
+  </ul>
+
+  <h3>Wyświetlanie w arkuszu aktora</h3>
+  <p>
+    Efekty z dołączonych modyfikacji są wyświetlane w liście efektów aktora jako efekty należące do
+    <strong>broni lub pancerza-hosta</strong> (z ikoną i nazwą hosta). Efekty na samym itemie
+    <code>weapon-mod</code>/<code>armor-mod</code> są ukryte w arkuszu aktora — nigdy nie pojawiają się
+    na liście jako efekty samej modyfikacji. Gdy modyfikacja jest odłączona (<code>attached === false</code>),
+    jej efekty w ogóle nie figurują na liście aktora.
+  </p>
+
+  <h3>Wyzwalacze — wszystkie obsługiwane</h3>
+  <p>
+    Wszystkie standardowe wyzwalacze działają poprawnie dla efektów modyfikacji. Poniżej kilka uwag szczególnych:
+  </p>
+  <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
+    <li><strong>prepareData, armorCalculation, dialog, preRollTest, rollTest</strong> itd. — uruchamiane przez
+      <code>getScripts()</code>; wymagają żeby modyfikacja była <code>attached === true</code> i żeby host był
+      założony (respektują <code>equipTransfer</code>).</li>
+    <li><strong>applyEffect / immediate</strong> — uruchamiane przy <code>_onCreate</code> propagowanej kopii
+      (tj. przy dołączaniu modyfikacji). <code>this.item</code> = host, <code>this.actor</code> = właściciel hosta.</li>
+    <li><strong>deleteEffect</strong> — uruchamiany przy <code>_onDelete</code> propagowanej kopii
+      (tj. przy odłączaniu). Analogiczny kontekst.</li>
+    <li><strong>manual</strong> — dostępny przez przycisk ▶ na efekcie; <code>effect.parent</code> = host,
+      więc <code>this.item</code> = host.</li>
+    <li><strong>equipToggle</strong> — respektowany: efekty modyfikacji z <code>equipTransfer=true</code> są
+      pomijane gdy host jest zdjęty, chyba że wyzwalacz to właśnie <code>equipToggle</code>.</li>
+  </ul>
+
+  <h3>Helpery do efektów modyfikacji (typ Other)</h3>
+  <p>
+    Efekt na modyfikacji z <strong>Effect Application: Other</strong> jest kopiowany na hosta przy montowaniu,
+    ale nie jest automatycznie stosowany do żadnego aktora — czeka na ręczne nałożenie przez skrypt.
+    Trzy dedykowane helpery obsługują nakładanie i automatyczne sprzątanie po odłączeniu moda:
+  </p>
+  <table>
+    <thead><tr><th>Helper</th><th>Zwraca</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>this.getModEffects(item, options?)</code></td>
+        <td>ActiveEffect[]</td>
+        <td>
+          Zwraca efekty na <code>item</code> należące do <strong>tej konkretnej modyfikacji</strong> (dopasowanie po <code>fromModId</code>).
+          Opcje: <code>{ name, transferType, includeDisabled }</code>.
+        </td>
+      </tr>
+      <tr>
+        <td><code>await this.applyModEffectsToTargets(item, options?)</code></td>
+        <td>Promise&lt;number&gt;</td>
+        <td>
+          Nakłada wszystkie efekty <code>Other</code> tej modyfikacji na cele (domyślnie <code>getTargetsOrSelected()</code>).
+          Opcje: <code>{ name, targets, overrides }</code>.
+          Używa <code>convertToApplied()</code> — każda kopia ma zapisany <code>sourceEffect</code> (UUID propagowanej kopii na hoście)
+          co umożliwia późniejsze sprzątanie przez <code>removeEffectsAppliedFromThis()</code>.
+          Zwraca liczbę nałożonych par efekt×aktor; <code>0</code> gdy walidacja nie przeszła.
+        </td>
+      </tr>
+      <tr>
+        <td><code>await this.removeEffectsAppliedFromThis(targets?)</code></td>
+        <td>Promise&lt;number&gt;</td>
+        <td>
+          Usuwa z aktorów wszystkie efekty, które zostały nałożone przez <strong>ten konkretny efekt</strong>
+          (wyszukuje po <code>flags.neuroshima.sourceEffect === this.effect.uuid</code>).
+          Domyślnie przeszukuje wszystkich aktorów z tokenami na aktywnej scenie.
+          Zwraca liczbę usuniętych efektów.
+          Przeznaczone do wyzwalacza <code>deleteEffect</code> — uruchamia się przy odłączaniu moda.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Jak działa <code>sourceEffect</code>?</strong>
+    Gdy <code>applyModEffectsToTargets</code> nakłada efekt na aktora, każda kopia na aktorze otrzymuje flagę
+    <code>flags.neuroshima.sourceEffect</code> = UUID propagowanej kopii efektu na hoście (przedmiocie).
+    Gdy mod jest odłączany, propagowana kopia jest usuwana z hosta i uruchamiany jest wyzwalacz
+    <code>deleteEffect</code> — wtedy <code>removeEffectsAppliedFromThis()</code> może odnaleźć i usunąć
+    powiązane kopie na aktorach, korzystając właśnie z tego UUID.
+  </div>
+
+  <div class="callout info">
+    Helpery <code>getModEffects</code> i <code>applyModEffectsToTargets</code> są dostępne <strong>tylko gdy efekt pochodzi z modyfikacji</strong>
+    (automatycznie, gdy skrypt jest na propagowanej kopii efektu). W przypadku braku <code>fromModId</code>
+    wyświetlają ostrzeżenie i zwracają pustą tablicę / 0.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Broń z truciznowym modem — nanieś efekt "Trucizna" z czasem trwania</div>
+    <pre><code><span class="cmt">// Trigger: manual — "Zatruć cel"</span>
+<span class="cmt">// Efekt "Trucizna" na modyfikacji ma transferType: "other"</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyModEffectsToTargets</span>(<span class="kw">this</span>.item, {
+  name:      <span class="str">"Trucizna"</span>,
+  overrides: { <span class="str">"duration.seconds"</span>: <span class="num">3600</span> }  <span class="cmt">// trwa 1 godzinę</span>
+});</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Helper szuka efektu "Trucizna" <strong>tylko dla tej modyfikacji</strong>, ignorując efekty innych modów i samej broni.
+      Nakłada kopię na wszystkich zaznaczonych / namierzonych aktorów. Bez <code>overrides</code> — trwa do ręcznego usunięcia.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Efekt do czasu odłączenia moda — kompletny wzorzec apply + auto-cleanup</div>
+    <pre><code><span class="cmt">// ─── EFEKT 1: "Zatrucie" — trigger: manual ─────────────────────────────────</span>
+<span class="cmt">// Nałóż efekt na cel. Bez duration = trwa aż do ręcznego usunięcia LUB odłączenia moda.</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyModEffectsToTargets</span>(<span class="kw">this</span>.item, { name: <span class="str">"Zatrucie"</span> });
+
+<span class="cmt">// ─── EFEKT 1: "Zatrucie" — trigger: deleteEffect ───────────────────────────</span>
+<span class="cmt">// Uruchamia się gdy mod jest odłączany (propagowana kopia efektu jest kasowana z hosta).</span>
+<span class="cmt">// Usuwa wszystkie kopie "Zatrucia" nałożone przez ten konkretny efekt na aktorach.</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">removeEffectsAppliedFromThis</span>();</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Oba skrypty są na <strong>tym samym efekcie</strong> modyfikacji — jeden z triggerem <code>manual</code>,
+      drugi z <code>deleteEffect</code>. System automatycznie koreluje je przez UUID efektu.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Nałóż wszystkie efekty Other tej modyfikacji na cele</div>
+    <pre><code><span class="cmt">// Trigger: manual — nałóż wszystkie "Other" efekty tej modyfikacji</span>
+<span class="kw">const</span> <span class="var">applied</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyModEffectsToTargets</span>(<span class="kw">this</span>.item);
+<span class="kw">if</span> (<span class="var">applied</span> > <span class="num">0</span>) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Nałożono ${<span class="var">applied</span>} efektów.`</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Odczyt listy efektów tej modyfikacji (UUID-based, ręczne nakładanie)</div>
+    <pre><code><span class="cmt">// Pobierz efekty Other tej modyfikacji, nałóż przez UUID (ścieżka natywna Foundry)</span>
+<span class="kw">const</span> <span class="var">effects</span> = <span class="kw">this</span>.<span class="fn">getModEffects</span>(<span class="kw">this</span>.item, { transferType: <span class="str">"other"</span> });
+<span class="kw">if</span> (!<span class="var">effects</span>.length) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">uuids</span> = <span class="var">effects</span>.map(e => e.uuid);
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">target</span> <span class="kw">of</span> <span class="kw">this</span>.<span class="fn">getTargets</span>()) {
+  <span class="kw">await</span> <span class="var">target</span>.<span class="fn">applyEffect</span>({ effectUuids: <span class="var">uuids</span> });
+}</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Ścieżka UUID jest prostsza gdy nie potrzebujesz <code>overrides</code> ani automatycznego sprzątania.
+      Uwaga: kopia na aktorze <strong>nie będzie miała</strong> flagi <code>sourceEffect</code> — nie zadziała
+      wtedy <code>removeEffectsAppliedFromThis()</code>.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Cleanup tylko na właścicielu broni (zamiast całej sceny)</div>
+    <pre><code><span class="cmt">// Trigger: deleteEffect — usuń tylko z aktora który posiada broń</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">removeEffectsAppliedFromThis</span>([<span class="kw">this</span>.actor]);</code></pre>
+  </div>
+
+  <h3>Nakładanie efektów przez <code>effect.applyEffect()</code> — styl natywny</h3>
+  <p>
+    Każdy efekt (instancja <code>NeuroshimaActiveEffect</code>) posiada własną metodę
+    <code>applyEffect(targets?, overrides?)</code>. Pozwala to nakładać efekty bezpośrednio ze
+    skryptu, iterując po liście efektów przedmiotu — bez potrzeby używania mod-scoped helperów.
+    Działa ze <strong>wszystkich wyzwalaczy</strong>, w tym <code>manual</code>.
+  </p>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual</span> Nałóż efekt przez indeks listy — styl WFRP</div>
+    <pre><code><span class="cmt">// Trigger: manual — "Użyj efektu"</span>
+<span class="cmt">// Nałóż pierwszy efekt z listy this.item.effects na zaznaczony cel</span>
+<span class="kw">const</span> <span class="var">effect</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>];
+<span class="kw">if</span> (!<span class="var">effect</span>) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak efektów na tym przedmiocie."</span>, <span class="str">"warn"</span>);
+<span class="kw">await</span> <span class="var">effect</span>.<span class="fn">applyEffect</span>();  <span class="cmt">// cele: getTargetsOrSelected() automatycznie</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual</span> Nałóż efekt po nazwie z opcjonalnym czasem trwania</div>
+    <pre><code><span class="cmt">// Trigger: manual — "Zatruć cel"</span>
+<span class="kw">const</span> <span class="var">effect</span> = <span class="kw">this</span>.item.effects.<span class="fn">getName</span>(<span class="str">"Trucizna"</span>);
+<span class="kw">if</span> (!<span class="var">effect</span>) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Efekt Trucizna nie istnieje."</span>, <span class="str">"warn"</span>);
+<span class="kw">await</span> <span class="var">effect</span>.<span class="fn">applyEffect</span>(<span class="kw">null</span>, { <span class="str">"duration.seconds"</span>: <span class="num">3600</span> });  <span class="cmt">// 1 godzina</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual</span> Nałóż efekt na konkretnego aktora (nie zaznaczenie)</div>
+    <pre><code><span class="cmt">// Trigger: manual — nałóż efekt na właściciela broni (nie na cel)</span>
+<span class="kw">const</span> <span class="var">effect</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>];
+<span class="kw">if</span> (!<span class="var">effect</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="var">effect</span>.<span class="fn">applyEffect</span>(<span class="kw">this</span>.actor);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual</span> Iteracja listy efektów — nałóż wszystkie "Other"</div>
+    <pre><code><span class="cmt">// Trigger: manual — nałóż wszystkie efekty z transferType "other" na cele</span>
+<span class="kw">const</span> <span class="var">targets</span> = <span class="kw">this</span>.<span class="fn">getTargetsOrSelected</span>();
+<span class="kw">if</span> (!<span class="var">targets</span>.length) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Wskaż cel!"</span>, <span class="str">"warn"</span>);
+
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">e</span> <span class="kw">of</span> <span class="kw">this</span>.item.effects.contents) {
+  <span class="kw">if</span> (<span class="var">e</span>.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"transferType"</span>) !== <span class="str">"other"</span>) <span class="kw">continue</span>;
+  <span class="kw">if</span> (<span class="var">e</span>.disabled) <span class="kw">continue</span>;
+  <span class="kw">await</span> <span class="var">e</span>.<span class="fn">applyEffect</span>(<span class="var">targets</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual</span> this.applyEffects() — skrócony zapis tej samej logiki</div>
+    <pre><code><span class="cmt">// Trigger: manual — ekwiwalent powyższego, zwięźlejszy zapis</span>
+<span class="kw">const</span> <span class="var">others</span> = <span class="kw">this</span>.item.effects.contents.<span class="fn">filter</span>(
+  e => !e.disabled && e.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"transferType"</span>) === <span class="str">"other"</span>
+);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">others</span>);</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      <code>this.applyEffects()</code> automatycznie rozwiązuje cele przez <code>getTargetsOrSelected()</code>,
+      wyświetla ostrzeżenie gdy brak celów i stosuje <code>convertToApplied()</code> dla każdego efektu
+      (z zapisem <code>sourceEffect</code>).
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">manual</span> Kompletny wzorzec: apply + auto-cleanup przy odłączeniu moda</div>
+    <pre><code><span class="cmt">// ─── Skrypt 1 na efekcie moda — trigger: manual ────────────────────────────</span>
+<span class="cmt">// Nałóż efekt "Zatrucie" na wskazany cel (z auto-cleanup gdy mod odłączony)</span>
+<span class="kw">const</span> <span class="var">effect</span> = <span class="kw">this</span>.item.effects.<span class="fn">getName</span>(<span class="str">"Zatrucie"</span>);
+<span class="kw">if</span> (!<span class="var">effect</span>) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Efekt Zatrucie nie znaleziony."</span>, <span class="str">"warn"</span>);
+<span class="kw">const</span> <span class="var">applied</span> = <span class="kw">await</span> <span class="var">effect</span>.<span class="fn">applyEffect</span>();
+<span class="kw">if</span> (<span class="var">applied</span>) <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Zatrucie nałożone na ${<span class="var">applied</span>} cel/e.`</span>, <span class="str">"info"</span>);
+
+<span class="cmt">// ─── Skrypt 2 na TYM SAMYM efekcie — trigger: deleteEffect ─────────────────</span>
+<span class="cmt">// Sprzątanie: gdy mod jest odłączany, usuń nałożone kopie efektu z aktorów</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">removeEffectsAppliedFromThis</span>();</code></pre>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#555;">
+      Oba skrypty znajdują się na <strong>tym samym efekcie</strong> modyfikacji — różnią się tylko wyzwalaczem.
+      Połączenie przez UUID efektu (<code>sourceEffect</code>) jest automatyczne.
+    </p>
+  </div>
+
+  <h3>Przykład: skrypt w weapon-mod modyfikujący atak broni-hosta</h3>
+  <pre><code><span class="cmt">// Trigger: prepareData</span>
+<span class="cmt">// this.item = broń-host (NIE modyfikacja)</span>
+<span class="cmt">// Zwiększ atak broni o 1 gdy modyfikacja jest dołączona</span>
+<span class="kw">if</span> (<span class="kw">this</span>.item?.type !== <span class="str">"weapon"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">currentAtk</span> = <span class="kw">this</span>.item.system.attack ?? <span class="num">0</span>;
+<span class="kw">await</span> <span class="kw">this</span>.item.<span class="fn">update</span>({ <span class="str">"system.attack"</span>: currentAtk + <span class="num">1</span> });</code></pre>
+
+  <div class="callout danger">
+    <strong>Uwaga:</strong> <code>prepareData</code> jest triggerem <strong>synchronicznym</strong> — nie używaj w nim
+    <code>await</code> ani operacji asynchronicznych (takich jak <code>item.update()</code>). Używaj triggerów
+    asynchronicznych (<code>applyEffect</code>, <code>immediate</code>, <code>manual</code>) do modyfikacji danych
+    dokumentów.
+  </div>
+
+  <h3>Przykład: skrypt w armor-mod reagujący na obliczenie pancerza</h3>
+  <pre><code><span class="cmt">// Trigger: armorCalculation</span>
+<span class="cmt">// this.item = pancerz-host (NIE modyfikacja)</span>
+<span class="cmt">// args.location, args.sp — bieżące obliczenia SP</span>
+<span class="kw">if</span> (args.location !== <span class="str">"torso"</span>) <span class="kw">return</span>;
+args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułowia przez modyfikację pancerza</span></code></pre>
+
+  <div class="callout info">
+    <strong>Identyfikacja hosta w skrypcie:</strong> Zawsze sprawdzaj <code>this.item?.type</code>, żeby
+    upewnić się że skrypt działa na właściwym typie itemu (np. <code>"weapon"</code> vs <code>"armor"</code>),
+    ponieważ technicznie ten sam efekt mógłby (w teorii) trafić na różny typ hosta.
+  </div>
 
 </section>
 

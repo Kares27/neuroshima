@@ -292,6 +292,63 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   }
 
   /**
+   * Apply this effect to one or more actors.
+   *
+   * Uses convertToApplied() internally — each resulting copy on an actor carries
+   * flags.neuroshima.sourceEffect = this.uuid, enabling cleanup via
+   * NeuroshimaScript#removeEffectsAppliedFromThis().
+   *
+   * @param {Actor|Actor[]|Token|Token[]|null} [targets]
+   *   Targets to apply the effect to.
+   *   - null / undefined → resolved automatically: user's current targets, falling back to
+   *     selected tokens, falling back to the user's assigned character.
+   *   - A single Actor or Token → wrapped into a one-element array.
+   *   - An array of Actors / Tokens → each is unwrapped (token.actor ?? token).
+   * @param {Object} [overrides={}]
+   *   Plain data merged into the effect before creating it on each actor
+   *   (e.g. { "duration.seconds": 3600 }). Same semantics as convertToApplied(overrides).
+   * @returns {Promise<number>} Number of actors the effect was successfully applied to.
+   *
+   * @example
+   * // In any trigger — apply this effect to current targets
+   * await this.effect.applyEffect();
+   *
+   * @example
+   * // Apply to targets with a 1-hour duration override
+   * await this.effect.applyEffect(null, { "duration.seconds": 3600 });
+   *
+   * @example
+   * // Iterate effects list and apply all "Other" ones
+   * for (const e of this.item.effects.contents) {
+   *   if (e.getFlag("neuroshima", "transferType") === "other") {
+   *     await e.applyEffect(this.getTargets());
+   *   }
+   * }
+   *
+   * @example
+   * // WFRP-style: apply effect[0] from item
+   * await this.item.effects.contents[0].applyEffect();
+   */
+  async applyEffect(targets = null, overrides = {}) {
+    let resolved;
+    if (targets === null || targets === undefined) {
+      const runner = game.neuroshima?.NeuroshimaScriptRunner;
+      resolved = runner ? runner.getTargetsOrSelected() : [];
+    } else if (Array.isArray(targets)) {
+      resolved = targets.map(t => t.actor ?? t).filter(a => a instanceof CONFIG.Actor.documentClass);
+    } else {
+      const a = targets.actor ?? targets;
+      resolved = (a instanceof CONFIG.Actor.documentClass) ? [a] : [];
+    }
+    if (!resolved.length) return 0;
+    const effectData = [this.convertToApplied(overrides)];
+    for (const actor of resolved) {
+      await actor.applyEffect({ effectData });
+    }
+    return resolved.length;
+  }
+
+  /**
    * UUID of the source item this effect was originally embedded on.
    * Set automatically by convertToApplied(). Returns null if not applied from an item.
    * @type {string|null}

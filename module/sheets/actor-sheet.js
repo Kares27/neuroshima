@@ -532,8 +532,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const disabled     = [];
     const statusEffects = [];
     const diseaseEffects = [];
+    const modItemEffects = [];
 
-    const pushEffect = (e, itemId, sourceName, sourceIcon, isItemEffect, isDiseaseItem = false) => {
+    const pushEffect = (e, itemId, sourceName, sourceIcon, isItemEffect, isDiseaseItem = false, isModItem = false) => {
       const hasEnableScript = !!(e.getFlag?.("neuroshima", "enableScript"));
       const entry = {
         id: e.id,
@@ -550,6 +551,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       };
       if (isDiseaseItem) {
         diseaseEffects.push(entry);
+      } else if (isModItem) {
+        modItemEffects.push(entry);
       } else if (isConditionEffect(e)) {
         const statusKey = [...(e.statuses ?? [])][0];
         entry.conditionType = condTypeMap[statusKey] ?? "boolean";
@@ -591,7 +594,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         if (fromModId) {
           const modSnap = item.system?.mods?.[fromModId];
           if (modSnap?.attached) {
-            pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true);
+            pushEffect(e, item.id, item.name, item.img || "icons/svg/item-bag.svg", true, false, true);
           }
           continue;
         }
@@ -648,7 +651,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const chronicDiseaseItems   = diseaseItems.filter(d => d.diseaseType === "chronic");
     const transientDiseaseItems = diseaseItems.filter(d => d.diseaseType === "transient");
 
-    context.effects = { temporary, passive, disabled, statusEffects, disease: diseaseEffects };
+    context.effects = { temporary, passive, disabled, statusEffects, disease: diseaseEffects, modItem: modItemEffects };
+    context.showModItemEffectsSection = modItemEffects.length > 0;
     context.diseaseItems = diseaseItems;
     context.chronicDiseaseItems   = chronicDiseaseItems;
     context.transientDiseaseItems = transientDiseaseItems;
@@ -3398,7 +3402,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         flags.forEach((s, idx) => {
           if (s.trigger === "manual") {
             const rawLabel = s.label || eff.name;
-            const label = NeuroshimaScriptRunner._resolveItemRef(rawLabel, item, eff);
+            const _modId = eff.getFlag?.("neuroshima", "fromModId") ?? null;
+            const _modSnap = _modId ? (item?.system?.mods?.[_modId] ?? null) : null;
+            const label = NeuroshimaScriptRunner._resolveItemRef(rawLabel, item, eff, _modSnap, _modId);
             scripts.push({
               itemId: item.id,
               effectId: eff.id,

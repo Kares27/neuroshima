@@ -285,6 +285,12 @@
 .neuroshima.sheet.item .armor-secondary-stats {
     gap: 10px;
     flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.sheet.item .armor-secondary-stats .item-features.secondary-box {
+    flex: 1;
 }
 
 .neuroshima.sheet.item .armor-secondary-stats .grid-1col {
@@ -826,6 +832,24 @@
 
 .neuroshima.sheet.item .resource-row:hover {
     background: rgba(255,255,255,0.06);
+}
+
+.neuroshima.sheet.item .resource-row.resource-row-from-mod {
+    border: 2px solid rgba(80, 140, 220, 0.5);
+    border-radius: 4px;
+    margin-bottom: 2px;
+    background: rgba(80, 140, 220, 0.05);
+}
+
+.neuroshima.sheet.item .resource-row.resource-row-from-mod:hover {
+    background: rgba(80, 140, 220, 0.1);
+}
+
+.neuroshima.sheet.item .res-mod-source-icon {
+    color: rgba(80, 140, 220, 0.8);
+    font-size: 0.9em;
+    cursor: default;
+    pointer-events: all;
 }
 
 .neuroshima.sheet.item .resource-id-badge {
