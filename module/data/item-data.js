@@ -67,6 +67,7 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       capacity: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
       jammed: new fields.BooleanField({ initial: false }),
+      weaponModifier: new fields.NumberField({ integer: true, initial: 0 }),
 
       // Grenade specific
       freeThrowDistance: new fields.NumberField({ integer: true, initial: 10, min: 1 }),
@@ -548,6 +549,7 @@ export class WeaponModData extends foundry.abstract.TypeDataModel {
       damageMelee2: new fields.StringField({ initial: "L" }),
       overrideDamageMelee3: new fields.BooleanField({ initial: false }),
       damageMelee3: new fields.StringField({ initial: "C" }),
+      deltaWeaponModifier: new fields.NumberField({ integer: true, initial: 0 }),
       deltaModifiesCost: new fields.BooleanField({ initial: true }),
       effectText: new fields.HTMLField({ initial: "" })
     };

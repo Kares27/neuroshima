@@ -41,6 +41,7 @@ export function buildWeaponModSnapshot(mod) {
     damageMelee2:         s.damageMelee2 ?? "L",
     overrideDamageMelee3: s.overrideDamageMelee3 ?? false,
     damageMelee3:         s.damageMelee3 ?? "C",
+    deltaWeaponModifier:  s.deltaWeaponModifier ?? 0,
     deltaModifiesCost:    s.deltaModifiesCost ?? true,
     resources:            (s.resources ?? []).filter(r => r.showInSummary)
   };
@@ -91,8 +92,9 @@ export function snapshotWeaponBaseStats(weapon) {
     fireRate:     s.fireRate ?? 0,
     capacity:     s.capacity ?? 0,
     jamming:      s.jamming ?? 20,
-    attackBonus:  s.attackBonus ?? 0,
-    defenseBonus: s.defenseBonus ?? 0
+    attackBonus:   s.attackBonus ?? 0,
+    defenseBonus:  s.defenseBonus ?? 0,
+    weaponModifier: s.weaponModifier ?? 0
   };
 }
 
@@ -143,6 +145,7 @@ export function computeWeaponEffective(baseStats, installedMap) {
     if (mod.overrideDamageMelee1) eff.damageMelee1 = mod.damageMelee1;
     if (mod.overrideDamageMelee2) eff.damageMelee2 = mod.damageMelee2;
     if (mod.overrideDamageMelee3) eff.damageMelee3 = mod.damageMelee3;
+    eff.weaponModifier = (eff.weaponModifier ?? 0) + (mod.deltaWeaponModifier ?? 0);
   }
   return eff;
 }
@@ -184,10 +187,11 @@ export function buildWeaponWriteback(effective) {
     "system.fireRate":      effective.fireRate,
     "system.capacity":      effective.capacity,
     "system.jamming":       effective.jamming,
-    "system.attackBonus":   effective.attackBonus,
-    "system.defenseBonus":  effective.defenseBonus,
-    "system.caliber":       effective.caliber,
-    "system.requiredBuild": effective.requiredBuild
+    "system.attackBonus":    effective.attackBonus,
+    "system.defenseBonus":   effective.defenseBonus,
+    "system.caliber":        effective.caliber,
+    "system.requiredBuild":  effective.requiredBuild,
+    "system.weaponModifier": effective.weaponModifier
   };
 }
 

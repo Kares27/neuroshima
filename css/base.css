@@ -3203,6 +3203,77 @@ body.theme-dark {
     justify-content: flex-end;
 }
 
+/* === HEALING REQUEST DIALOG === */
+.healing-request-dialog .ns-dialog-icon {
+    text-align: center;
+    margin: 0 0 4px 0;
+}
+
+.healing-request-dialog .ns-dialog-title {
+    text-align: center;
+    font-size: 1.2rem;
+    margin: 0 0 12px 0;
+}
+
+.healing-request-dialog p {
+    margin: 0 0 4px 0;
+}
+
+.ns-section-divider {
+    border-bottom: 1px solid var(--ns-border-light, #ccc);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.ns-actor-container {
+    min-height: 80px;
+    border: 2px dashed var(--ns-border-medium, #888);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+    text-align: center;
+}
+
+.ns-actor-container.drag-over {
+    border-color: var(--color-accent, #4a90d9);
+    background-color: rgba(74, 144, 217, 0.08);
+}
+
+.ns-actor-container.ns-actor-filled {
+    border-style: solid;
+    cursor: default;
+}
+
+.ns-actor-container img {
+    border: 1px solid var(--ns-border-light, #ccc);
+    border-radius: 4px;
+}
+
+.ns-timer-bar {
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.ns-timer-fill {
+    height: 100%;
+    width: 100%;
+    background: var(--color-accent, #4a90d9);
+    animation: ns-timer-countdown 60s linear forwards;
+}
+
+@keyframes ns-timer-countdown {
+    from { width: 100%; }
+    to { width: 0%; }
+}
+
 .required-test-actions {
     display: flex;
     justify-content: center;

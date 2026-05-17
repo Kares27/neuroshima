@@ -66,4 +66,37 @@ export class NeuroshimaSocket {
     if (!socket) return [];
     return socket.executeForEveryone(action, ...args);
   }
+
+  /**
+   * Execute a named action on a specific connected client.
+   * The handler runs on the target user's machine and the return value is
+   * forwarded back to the caller as a resolved Promise.
+   *
+   * @param {string} action  - The action name registered via `register()`.
+   * @param {string} userId  - The Foundry User ID of the target client.
+   * @param {...any} args    - Arguments forwarded to the handler.
+   * @returns {Promise<any>} Resolves with the handler's return value.
+   */
+  static async executeAsUser(action, userId, ...args) {
+    const socket = NeuroshimaSocket.socket;
+    if (!socket) {
+      console.error(`Neuroshima | NeuroshimaSocket.executeAsUser: socket not available (action=${action})`);
+      return null;
+    }
+    return socket.executeAsUser(action, userId, ...args);
+  }
+
+  /**
+   * Execute a named action on a specific subset of connected clients.
+   *
+   * @param {string}   action   - The action name registered via `register()`.
+   * @param {string[]} userIds  - Array of Foundry User IDs.
+   * @param {...any}   args     - Arguments forwarded to every matched handler.
+   * @returns {Promise<any[]>}
+   */
+  static async executeForUsers(action, userIds, ...args) {
+    const socket = NeuroshimaSocket.socket;
+    if (!socket) return [];
+    return socket.executeForUsers(action, userIds, ...args);
+  }
 }

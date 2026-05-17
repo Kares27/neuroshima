@@ -1,0 +1,67 @@
+<div class="neuroshima healing-request-dialog flexcol">
+
+    <p class="ns-dialog-icon"><i class="fas fa-heartbeat fa-2x"></i></p>
+    <p class="ns-dialog-title"><strong>{{localize "NEUROSHIMA.HealingRequest.Title"}}</strong></p>
+
+    <p>{{localize "NEUROSHIMA.HealingRequest.ChooseMedic"}}</p>
+    <div class="ns-section-divider">
+        <div class="form-group flexrow" style="justify-content:center;">
+            <select id="ns-medic-user-select" name="medicUserId" style="width:66%;">
+                {{#each users}}
+                <option value="{{this.id}}" {{#if this.isSelected}}selected{{/if}} data-is-gm="{{this.isGM}}">
+                    {{this.label}}
+                </option>
+                {{/each}}
+            </select>
+        </div>
+    </div>
+
+    <div class="ns-section-divider">
+        <div class="form-group flexcol" style="align-items:center;">
+            <label class="flexrow" style="align-items:center;gap:6px;">
+                <input type="checkbox" id="ns-private-healing" name="privateHealing" style="margin:0;" />
+                <span>{{localize "NEUROSHIMA.HealingRequest.PrivateHealing"}}</span>
+            </label>
+            <small style="text-align:center;margin-top:4px;">{{localize "NEUROSHIMA.HealingRequest.PrivateHealingExplanation"}}</small>
+        </div>
+    </div>
+
+    {{#if showPatientSelect}}
+    <p>{{localize "NEUROSHIMA.HealingRequest.ChoosePatientActor"}}</p>
+    <div class="ns-section-divider">
+        <div class="ns-actor-container" id="ns-patient-drop-zone">
+            <div id="ns-patient-preview"><p>{{localize "NEUROSHIMA.HealingRequest.DropActorHint"}}</p></div>
+        </div>
+        <div class="flexrow">
+            <button type="button" id="ns-pick-patient-token" style="width:100%;">
+                <i class="fas fa-expand"></i> {{localize "NEUROSHIMA.HealingRequest.PickControlledToken"}}
+            </button>
+        </div>
+    </div>
+    {{else}}
+    <p>{{localize "NEUROSHIMA.HealingRequest.YourPatientActor"}}</p>
+    <div class="ns-section-divider">
+        <div class="ns-actor-container ns-actor-filled">
+            <div class="flexcol" style="align-items:center;gap:4px;">
+                <img src="{{patientImg}}" style="width:52px;height:52px;border-radius:4px;object-fit:cover;" />
+                <span>{{patientName}}</span>
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
+    <div id="ns-gm-actor-section" style="display:none;">
+        <p>{{localize "NEUROSHIMA.HealingRequest.ChooseMedicActor"}}</p>
+        <div class="ns-section-divider">
+            <div class="ns-actor-container" id="ns-actor-drop-zone">
+                <div id="ns-actor-preview"><p>{{localize "NEUROSHIMA.HealingRequest.DropActorHint"}}</p></div>
+            </div>
+            <div class="flexrow">
+                <button type="button" id="ns-pick-medic-token" style="width:100%;">
+                    <i class="fas fa-expand"></i> {{localize "NEUROSHIMA.HealingRequest.PickControlledToken"}}
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -30,6 +30,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       useArmorPenalty: lastRoll.useArmorPenalty ?? true,
       useWoundPenalty: lastRoll.useWoundPenalty ?? true,
       useDiseasePenalty: lastRoll.useDiseasePenalty ?? true,
+      weaponModifier: lastRoll.weaponModifier ?? 0,
+      useWeaponModifier: lastRoll.useWeaponModifier ?? true,
       distance: lastRoll.distance || 0,
       distancePenalty: lastRoll.distancePenalty || 0,
       rollMode: lastRoll.rollMode || game.settings.get("core", "rollMode")
@@ -94,6 +96,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const useArmorPenalty   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? true;
     const useWoundPenalty   = this.userEntry.useWoundPenalty   ?? this.rollOptions.useWoundPenalty   ?? true;
     const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
+    const useWeaponModifier = this.userEntry.useWeaponModifier ?? this.rollOptions.useWeaponModifier ?? true;
     const rollMode          = this.userEntry.rollMode          ?? this.rollOptions.rollMode;
 
     let distance = this.userEntry.distance ?? this.rollOptions.distance ?? 0;
@@ -155,6 +158,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.diseasePenalty = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
     context.showDiseasePenalty = context.diseasePenalty > 0;
     context.useDiseasePenalty = useDiseasePenalty;
+    context.weaponModifier = this.userEntry.weaponModifier ?? ((this.weapon?.system?.weaponModifier ?? 0) + (scriptFields.weaponModifier || 0));
+    context.showWeaponModifier = true;
+    context.useWeaponModifier = useWeaponModifier;
     context.crowdingDexPenalty = this.crowdingDexPenalty;
 
     let effectDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
@@ -304,7 +310,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const basePenalty    = NEUROSHIMA.difficulties[_effectiveDiffKey]?.min || 0;
     const armorPenalty   = formData.useArmorPenalty   ? (this.actor.system.combat?.totalArmorPenalty || 0) + (this._scriptFields?.armorDelta || 0) : 0;
     const woundPenalty   = formData.useWoundPenalty   ? (this.actor.system.combat?.totalWoundPenalty || 0) + (this._scriptFields?.woundDelta || 0) : 0;
-    const diseasePenalty = formData.useDiseasePenalty ? this._computeActorDiseasePenalty() + (this._scriptFields?.diseasePenalty || 0) : 0;
+    const diseasePenalty  = formData.useDiseasePenalty  ? this._computeActorDiseasePenalty() + (this._scriptFields?.diseasePenalty || 0) : 0;
+    const weaponModifier  = formData.useWeaponModifier  ? (parseInt(formData.weaponModifier) || 0) : 0;
 
     let weaponBonus = 0;
     if (isMelee) {
@@ -314,7 +321,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     }
 
     const locationPenalty = game.neuroshima.NeuroshimaDice.getLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
-    const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + diseasePenalty + locationPenalty + distancePenalty;
+    const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + diseasePenalty + weaponModifier + locationPenalty + distancePenalty;
 
     const totalElement = html.querySelector('.total-modifier');
     if (totalElement) totalElement.innerText = `${totalPct}%`;
@@ -438,6 +445,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         percentageModifier:(ue.modifier ?? this.rollOptions.percentageModifier ?? 0),
         useArmorPenalty:   !!formData.useArmorPenalty,
         useWoundPenalty:   !!formData.useWoundPenalty,
+        weaponModifier:    parseInt(formData.weaponModifier) || 0,
+        useWeaponModifier: !!formData.useWeaponModifier,
         rollMode:          formData.rollMode
       }
     });
@@ -459,6 +468,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       applyWounds:     !!formData.useWoundPenalty,
       applyDisease:    !!formData.useDiseasePenalty,
       diseasePenalty:  formData.useDiseasePenalty ? this._computeActorDiseasePenalty() + (sf?.diseasePenalty || 0) : 0,
+      weaponModifier:  formData.useWeaponModifier ? (parseInt(formData.weaponModifier) || 0) : 0,
       skillBonus:      totalSkillBonus,
       attributeBonus:  totalAttrBonus - (this.crowdingDexPenalty || 0),
       distance:        parseFloat(formData.distance) || 0,

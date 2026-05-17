@@ -3100,66 +3100,149 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Poproś medyka o leczenie - zachowanie zależy od ustawienia patientCardVersion
-   * - "simple": pokaż zwykłą kartę pacjenta
-   * - "extended": pokaż dialog wyboru medyka i wyślij prośbę o leczenie
-   */
-  /**
    * Prośba o leczenie dla medyka.
    */
   async _onRequestHealing(event) {
     event.preventDefault();
-    game.neuroshima.log("Prosimy o leczenie dla:", this.actor.name);
+    await NeuroshimaActorSheet.requestHealingFor(this.actor);
+  }
 
-    // Sprawdź wersję karty pacjenta
+  /**
+   * Centralny punkt wejścia do pipeline prośby o leczenie.
+   * Wywoływany zarówno przez przycisk na karcie aktora jak i przez przycisk w panelu graczy.
+   *
+   * @param {Actor} patientActor - Aktor pacjenta.
+   */
+  static async requestHealingFor(patientActor) {
+    if (!patientActor && !game.user.isGM) return;
+    game.neuroshima.log("Prosimy o leczenie dla:", patientActor?.name ?? "(GM wybiera aktora)");
+
     const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
-    
-    // Wersja uproszczona - pokaż kartę pacjenta bez prośby
-    if (patientCardVersion === "simple") {
+
+    if (patientCardVersion === "simple" && patientActor) {
       game.neuroshima.log("Wyświetlanie uproszczonej karty pacjenta (bez prośby do medyka)");
-      await game.neuroshima.NeuroshimaChatMessage.renderPatientCard(this.actor);
+      await game.neuroshima.NeuroshimaChatMessage.renderPatientCard(patientActor);
       ui.notifications.info(game.i18n.localize("NEUROSHIMA.PatientCard.ShowPatientCard"));
       return;
     }
 
-    // Wersja rozszerzona - pokaż dialog i wyślij prośbę
     game.neuroshima.log("Wersja rozszerzona: wyświetlanie dialoga wyboru medyka");
 
-    // Pobierz listę potencjalnych medyków (tylko PC aktywnych graczy)
+    // Filtr analogiczny do Item Piles: aktywni, nie ja, mają postać lub są GM
     const possibleMedics = game.users
-        .filter(u => u.active && !u.isGM && u.character)
-        .filter(u => u.character.id !== this.actor.id);
+      .filter(u => u.active && u !== game.user)
+      .filter(u => u.character || u.isGM)
+      .filter(u => !patientActor || !u.character || u.character.id !== patientActor.id);
 
     if (possibleMedics.length === 0) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.NoMedicsAvailable"));
       return;
     }
 
-    const medicChoices = {};
-    for (const user of possibleMedics) {
-      medicChoices[user.id] = `${user.character.name} (${user.name})`;
+    // Fast-path preselection: zaznaczony token na mapie → preselect właściciela
+    let preselectedUserId = null;
+    const controlled = canvas?.tokens?.controlled ?? [];
+    if (controlled.length === 1 && patientActor) {
+      const tokenActor = controlled[0].actor;
+      if (tokenActor && tokenActor.id !== patientActor.id) {
+        const tokenOwner = possibleMedics.find(u => u.character?.id === tokenActor.id);
+        if (tokenOwner) {
+          preselectedUserId = tokenOwner.id;
+          game.neuroshima.log("Fast-path preselect: token medyka", tokenActor.name);
+        }
+      }
     }
 
-    const content = `
-      <div class="neuroshima medic-selection-dialog">
-        <div class="form-group">
-          <p style="margin-bottom: 10px;">${game.i18n.localize("NEUROSHIMA.HealingRequest.RequestHealingHint")}</p>
-          <label for="medic-select">${game.i18n.localize("NEUROSHIMA.HealingRequest.ChooseMedic")}:</label>
-          <select id="medic-select">
-            ${Object.entries(medicChoices).map(([userId, label]) => 
-              `<option value="${userId}">${label}</option>`
-            ).join("")}
-          </select>
-        </div>
-      </div>
-    `;
+    const usersData = possibleMedics.map(u => ({
+      id: u.id,
+      label: u.character ? `${u.character.name} (${u.name})` : u.name,
+      isGM: u.isGM,
+      isSelected: u.id === preselectedUserId
+    }));
 
-    const selectedUserId = await foundry.applications.api.DialogV2.wait({
+    const showPatientSelect = !patientActor;
+    const template = "systems/neuroshima/templates/dialog/healing-request-dialog.hbs";
+    const content = await foundry.applications.handlebars.renderTemplate(template, {
+      users: usersData,
+      showPatientSelect,
+      patientImg: patientActor?.img ?? null,
+      patientName: patientActor?.name ?? null
+    });
+
+    const result = await foundry.applications.api.DialogV2.wait({
       window: {
         title: game.i18n.localize("NEUROSHIMA.HealingRequest.SelectMedic"),
-        classes: ["neuroshima", "medic-selection"]
+        classes: ["neuroshima", "healing-request-dialog"]
       },
-      content: content,
+      content,
+      render: (event, html) => {
+        const root = (html instanceof HTMLElement ? html : html?.[0] instanceof HTMLElement ? html[0] : null)
+          ?? (event?.element instanceof HTMLElement ? event.element : null);
+        if (!root) return;
+        const userSelect = root.querySelector("#ns-medic-user-select");
+        const gmSection = root.querySelector("#ns-gm-actor-section");
+        const dropZone = root.querySelector("#ns-actor-drop-zone");
+        const preview = root.querySelector("#ns-actor-preview");
+        const patientDropZone = root.querySelector("#ns-patient-drop-zone");
+        const patientPreview = root.querySelector("#ns-patient-preview");
+
+        const setActorPreview = (zone, previewEl, actor) => {
+          zone.dataset.actorUuid = actor.uuid;
+          if (previewEl) {
+            previewEl.innerHTML = `
+              <div class="flexcol" style="align-items:center;gap:4px;">
+                <img src="${actor.img}" style="width:52px;height:52px;border-radius:4px;object-fit:cover;" />
+                <span>${actor.name}</span>
+              </div>`;
+          }
+        };
+
+        const attachDropZone = (zone, previewEl) => {
+          zone.addEventListener("dragover", e => e.preventDefault());
+          zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+          zone.addEventListener("dragenter", () => zone.classList.add("drag-over"));
+          zone.addEventListener("drop", async e => {
+            e.preventDefault();
+            zone.classList.remove("drag-over");
+            let data;
+            try { data = JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return; }
+            if (data.type !== "Actor" && data.type !== "Token") return;
+            const doc = await fromUuid(data.uuid);
+            const actor = doc?.actor ?? doc;
+            if (actor) setActorPreview(zone, previewEl, actor);
+          });
+        };
+
+        const attachPickToken = (btnId, zone, previewEl) => {
+          root.querySelector(btnId)?.addEventListener("click", () => {
+            const controlled = canvas?.tokens?.controlled ?? [];
+            if (controlled.length !== 1) {
+              ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.SelectOneToken"));
+              return;
+            }
+            const actor = controlled[0].actor;
+            if (actor) setActorPreview(zone, previewEl, actor);
+          });
+        };
+
+        const updateGMSection = () => {
+          const uid = userSelect?.value;
+          const u = game.users.get(uid);
+          if (gmSection) gmSection.style.display = u?.isGM ? "" : "none";
+        };
+
+        userSelect?.addEventListener("change", updateGMSection);
+        updateGMSection();
+
+        if (dropZone) {
+          attachDropZone(dropZone, preview);
+          attachPickToken("#ns-pick-medic-token", dropZone, preview);
+        }
+        if (patientDropZone) {
+          attachDropZone(patientDropZone, patientPreview);
+          attachPickToken("#ns-pick-patient-token", patientDropZone, patientPreview);
+        }
+      },
       buttons: [
         {
           action: "confirm",
@@ -3167,8 +3250,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           default: true,
           icon: "fas fa-check",
           callback: (event, button) => {
-            const select = button.form.querySelector("#medic-select");
-            return select.value;
+            const form = button.form;
+            const patientActorUuid = form.querySelector("#ns-patient-drop-zone")?.dataset.actorUuid ?? null;
+            const medicUserId = form.querySelector("#ns-medic-user-select")?.value;
+            const medicUser = game.users.get(medicUserId);
+            const medicActorUuid = medicUser?.isGM
+              ? form.querySelector("#ns-actor-drop-zone")?.dataset.actorUuid ?? null
+              : medicUser?.character?.uuid ?? null;
+            const isPrivate = form.querySelector("#ns-private-healing")?.checked ?? false;
+            return { patientActorUuid, medicUserId, medicActorUuid, isPrivate };
           }
         },
         {
@@ -3180,30 +3270,45 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       ]
     });
 
-    if (!selectedUserId) return;
+    if (!result) return;
 
-    const medicUser = game.users.get(selectedUserId);
-    const medicActor = medicUser?.character;
-    if (!medicActor) {
-      ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.MedicNotFound"));
+    const { patientActorUuid, medicUserId, medicActorUuid, isPrivate } = result;
+
+    let resolvedPatientActor = patientActor;
+    if (!resolvedPatientActor && patientActorUuid) {
+      const doc = await fromUuid(patientActorUuid);
+      resolvedPatientActor = doc?.actor ?? doc ?? null;
+    }
+    if (!resolvedPatientActor) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.NoPatientSelected"));
       return;
     }
 
+    const medicUser = game.users.get(medicUserId);
+    if (!medicUser) {
+      ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.MedicNotFound"));
+      return;
+    }
     try {
+      const medicLabel = medicUser.character?.name ?? medicUser.name;
       game.neuroshima.log("Wysyłanie prośby o leczenie", {
-        pacjent: this.actor.name,
-        medyk: medicActor.name
+        pacjent: resolvedPatientActor.name,
+        medyk: medicLabel,
+        isPrivate
       });
 
-      // Renderuj kartę prośby o leczenie
-      await game.neuroshima.NeuroshimaChatMessage.renderHealingRequest(
-        this.actor,
-        medicActor,
-        game.user.id
-      );
+      const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+      NeuroshimaSocket.executeAsUser("healingRequestPrompt", medicUserId, {
+        patientUuid: resolvedPatientActor.uuid,
+        patientName: resolvedPatientActor.name,
+        patientPortrait: resolvedPatientActor.img,
+        requesterUserId: game.user.id,
+        medicActorUuid,
+        isPrivate
+      });
 
       ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.RequestSent", {
-        medic: medicActor.name
+        medic: medicLabel
       }));
     } catch (err) {
       game.neuroshima.log("Błąd podczas wysyłania prośby:", err);

@@ -107,6 +107,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     context.woundPenalty   = actorWoundPenalty + scriptFields.woundDelta;
     context.diseasePenalty  = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
     context.showDiseasePenalty = context.diseasePenalty > 0;
+    context.showWeaponModifier = false;
 
     let effectDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
       ? scriptFields.difficulty : baseDifficulty;

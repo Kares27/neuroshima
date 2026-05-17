@@ -29,7 +29,7 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     this._scriptFields         = {
       modifier: 0, attributeBonus: 0, skillBonus: 0,
       armorDelta: 0, woundDelta: 0, diseasePenalty: 0,
-      difficulty: null, hitLocation: null
+      weaponModifier: 0, difficulty: null, hitLocation: null
     };
     this._breakdown  = { mod: [], attr: [], skill: [] };
     this._userValues = { modifier: 0, attributeBonus: 0, skillBonus: 0 };

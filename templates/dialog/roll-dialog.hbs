@@ -6,6 +6,15 @@
                 <label>{{localize "NEUROSHIMA.Roll.Modifier"}} (%)</label>
                 <input type="number" name="modifier" value="{{modifier}}" placeholder="0"/>
             </div>
+            {{#if showWeaponModifier}}
+            <div class="form-group">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" name="useWeaponModifier" {{checked useWeaponModifier}}/>
+                    <label>{{localize "NEUROSHIMA.Roll.WeaponModifier"}} (%)</label>
+                </div>
+                <input type="number" name="weaponModifier" value="{{weaponModifier}}" placeholder="0"/>
+            </div>
+            {{/if}}
             <div class="form-group">
                 <div class="checkbox-wrapper">
                     <input type="checkbox" name="useArmorPenalty" {{checked useArmorPenalty}}/>

@@ -1,6 +1,6 @@
 <div class="flexrow weapon-stats-container">
     {{!-- Lewa strona: Atrybuty, Umiejętności i Bonusy --}}
-    <div class="stats-left grid grid-2col">
+    <div class="stats-left grid grid-2col secondary-box">
         <div class="form-group row-group">
             <label>{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
             <select name="system.attribute">
@@ -26,22 +26,30 @@
         </div>
     </div>
 
-    {{!-- Prawa strona: Budowa, Amunicja i Obrażenia --}}
-    <div class="stats-right flexcol">
-        <div class="grid grid-2col">
-            <div class="form-group row-group">
+    {{!-- Prawa strona: Budowa, PP, Modyfikator, Amunicja i Obrażenia --}}
+    <div class="stats-right flexcol secondary-box">
+        <div class="flexrow" style="gap:6px;">
+            <div class="form-group row-group" style="flex:1;">
                 <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
                 <input type="number" name="system.requiredBuild" value="{{system.requiredBuild}}" data-dtype="Number" min="0"/>
             </div>
-            <div class="form-group row-group">
-                <label>{{localize "NEUROSHIMA.Items.Fields.Ammo"}}</label>
-                <select name="system.magazine">
-                    <option value="">—</option>
-                    {{#each availableAmmo as |ammo|}}
-                    <option value="{{ammo.id}}" title="{{ammo.tooltip}}" {{#if (eq ../system.magazine ammo.id)}}selected{{/if}}>{{ammo.name}}</option>
-                    {{/each}}
-                </select>
+            <div class="form-group row-group" style="flex:1; text-align:center;">
+                <label title="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</label>
+                <input type="number" name="system.piercing" value="{{system.piercing}}" data-dtype="Number" min="0" style="text-align:center;" {{#if isModded}}disabled{{/if}}/>
             </div>
+            <div class="form-group row-group" style="flex:1; text-align:center;">
+                <label title="{{localize 'NEUROSHIMA.Items.Fields.WeaponModifier'}}">{{localize "NEUROSHIMA.Items.Fields.WeaponModifierAbbr"}}</label>
+                <input type="number" name="system.weaponModifier" value="{{system.weaponModifier}}" data-dtype="Number" style="text-align:center;" {{#if isModded}}disabled{{/if}}/>
+            </div>
+        </div>
+        <div class="form-group row-group">
+            <label>{{localize "NEUROSHIMA.Items.Fields.Ammo"}}</label>
+            <select name="system.magazine">
+                <option value="">—</option>
+                {{#each availableAmmo as |ammo|}}
+                <option value="{{ammo.id}}" title="{{ammo.tooltip}}" {{#if (eq ../system.magazine ammo.id)}}selected{{/if}}>{{ammo.name}}</option>
+                {{/each}}
+            </select>
         </div>
         
         <div class="form-group row-group">

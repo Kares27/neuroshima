@@ -14,6 +14,49 @@ const { ActorSheetV2 } = foundry.applications.sheets;
  */
 export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
+  _scrollState = {};
+
+  static _SCROLL_SELECTORS = [
+    "section.window-content",
+    ".skill-table",
+    ".paper-doll-scrollable",
+    ".wounds-list-container",
+    ".inventory",
+    ".combat"
+  ];
+
+  async _preRender(context, options) {
+    await super._preRender(context, options);
+    this._scrollState = {};
+    if (!this.element) return;
+    for (const sel of this.constructor._SCROLL_SELECTORS) {
+      const el = this.element.querySelector(sel);
+      if (el?.scrollTop > 0) this._scrollState[sel] = el.scrollTop;
+    }
+    for (const part of this.element.querySelectorAll("[data-application-part]")) {
+      if (part.scrollTop > 0) {
+        this._scrollState[`part:${part.dataset.applicationPart}`] = part.scrollTop;
+      }
+    }
+  }
+
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+    if (!Object.keys(this._scrollState).length) return;
+    const savedState = { ...this._scrollState };
+    setTimeout(() => {
+      for (const [key, top] of Object.entries(savedState)) {
+        let el;
+        if (key.startsWith("part:")) {
+          el = this.element?.querySelector(`[data-application-part="${key.slice(5)}"]`);
+        } else {
+          el = this.element?.querySelector(key);
+        }
+        if (el) el.scrollTop = top;
+      }
+    }, 0);
+  }
+
   /**
    * Build the tab map expected by HBS templates.
    * Reads `this.constructor.TABS.primary.tabs` and marks the active entry.

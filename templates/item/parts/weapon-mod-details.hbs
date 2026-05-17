@@ -1,21 +1,21 @@
 <div class="weapon-mod-details">
 
-    {{!-- Bazowe: left = Kategoria/Typ/Waga/Koszt, right = ATK/OBR/PP/Budowa --}}
+    {{!-- Bazowe: Row1 = 3col (Kategoria/Typ/Modyfikator), Row2 = 2col (ATK/OBR), Row3 = 2col (Waga/Koszt), Row4 = 2col (PP/Budowa) --}}
     <div class="secondary-box weapon-mod-bazowe">
         <label class="section-label">{{localize "NEUROSHIMA.Mods.Sections.Basic"}}</label>
 
-        <div class="flexrow" style="gap: 12px; align-items: flex-start; margin-top: 4px;">
+        <div class="flexcol" style="gap: 4px; margin-top: 4px;">
 
-            {{!-- Left: Kategoria, Typ, Waga, Koszt --}}
-            <div class="flexcol" style="flex: 1; gap: 4px;">
-                <div class="form-group bazowe-inline">
+            {{!-- Row 1: Kategoria | Typ | Modyfikator --}}
+            <div class="grid grid-3col">
+                <div class="form-group weapon-stat-col">
                     <label>{{localize "NEUROSHIMA.Mods.CategoryLabel"}}</label>
                     <select name="system.category">
                         <option value="modification" {{#if (eq system.category "modification")}}selected{{/if}}>{{localize "NEUROSHIMA.Mods.Category.modification"}}</option>
                         <option value="trait" {{#if (eq system.category "trait")}}selected{{/if}}>{{localize "NEUROSHIMA.Mods.Category.trait"}}</option>
                     </select>
                 </div>
-                <div class="form-group bazowe-inline">
+                <div class="form-group weapon-stat-col">
                     <label>{{localize "NEUROSHIMA.Mods.ModType"}}</label>
                     <div class="mod-field-wrap">
                         <input type="text" name="system.modType" value="{{system.modType}}" list="weapon-mod-type-list-{{item.id}}" placeholder="{{localize 'NEUROSHIMA.Mods.ModTypePlaceholder'}}"/>
@@ -26,25 +26,17 @@
                         </datalist>
                     </div>
                 </div>
-                <div class="form-group bazowe-inline">
-                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Weight'}}">{{localize "NEUROSHIMA.Mods.DeltaWeightAbbr"}}</label>
+                <div class="form-group weapon-stat-col">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.WeaponModifier'}}">{{localize "NEUROSHIMA.Items.Fields.WeaponModifierAbbr"}}</label>
                     <div class="mod-field-wrap">
-                        <input type="number" name="system.deltaWeight" value="{{system.deltaWeight}}" data-dtype="Number" step="0.5"/>
-                    </div>
-                </div>
-                <div class="form-group bazowe-inline">
-                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Cost'}}">{{localize "NEUROSHIMA.Mods.DeltaCostAbbr"}}</label>
-                    <div class="cost-input-row">
-                        <input type="number" name="system.deltaCost" value="{{system.deltaCost}}" data-dtype="Number" {{#unless system.deltaModifiesCost}}disabled{{/unless}}/>
-                        <span class="ns-divider"></span>
-                        <input type="checkbox" name="system.deltaModifiesCost" {{#if system.deltaModifiesCost}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.ModifiesCost'}}" class="delta-modifies-cost-cb"/>
+                        <input type="number" name="system.deltaWeaponModifier" value="{{system.deltaWeaponModifier}}" data-dtype="Number"/>
                     </div>
                 </div>
             </div>
 
-            {{!-- Right: ATK, OBR, PP, Budowa (with override checkboxes) --}}
             {{#if (eq system.category "modification")}}
-            <div class="flexcol" style="flex: 1; gap: 4px;">
+            {{!-- Row 2: ATK | OBR --}}
+            <div class="grid grid-2col">
                 <div class="form-group bazowe-inline">
                     <label title="{{localize 'NEUROSHIMA.Items.Fields.AttackBonus'}}">{{localize "NEUROSHIMA.Items.Fields.AttackBonusAbbr"}}</label>
                     <div class="override-input-row">
@@ -61,6 +53,30 @@
                         <input type="checkbox" name="system.overrideDefenseBonus" {{#if system.overrideDefenseBonus}}checked{{/if}} data-tooltip="{{localize 'NEUROSHIMA.Mods.OverrideMode'}}"/>
                     </div>
                 </div>
+            </div>
+            {{/if}}
+
+            {{!-- Row 3: Waga | Koszt --}}
+            <div class="grid grid-2col">
+                <div class="form-group bazowe-inline">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Weight'}}">{{localize "NEUROSHIMA.Mods.DeltaWeightAbbr"}}</label>
+                    <div class="mod-field-wrap">
+                        <input type="number" name="system.deltaWeight" value="{{system.deltaWeight}}" data-dtype="Number" step="0.5"/>
+                    </div>
+                </div>
+                <div class="form-group bazowe-inline">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Cost'}}">{{localize "NEUROSHIMA.Mods.DeltaCostAbbr"}}</label>
+                    <div class="cost-input-row">
+                        <input type="number" name="system.deltaCost" value="{{system.deltaCost}}" data-dtype="Number" {{#unless system.deltaModifiesCost}}disabled{{/unless}}/>
+                        <span class="ns-divider"></span>
+                        <input type="checkbox" name="system.deltaModifiesCost" {{#if system.deltaModifiesCost}}checked{{/if}} title="{{localize 'NEUROSHIMA.Mods.ModifiesCost'}}" class="delta-modifies-cost-cb"/>
+                    </div>
+                </div>
+            </div>
+
+            {{#if (eq system.category "modification")}}
+            {{!-- Row 4: PP | Budowa --}}
+            <div class="grid grid-2col">
                 <div class="form-group bazowe-inline">
                     <label title="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</label>
                     <div class="override-input-row">
