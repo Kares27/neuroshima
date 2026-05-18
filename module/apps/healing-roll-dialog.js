@@ -1,10 +1,10 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
+import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
 /**
- * PHASE 3 - SETTINGS SYSTEM
- * Helper: Get healing difficulty based on wound damage type from world settings
- * Pobiera ustawioną na świecie trudność testu leczenia dla danego typu obrażenia
+ * Helper: Get healing difficulty based on wound damage type from world settings.
  */
 function getHealingDifficulty(damageType) {
   const diffs = game.settings.get("neuroshima", "healingDifficulties");
@@ -12,295 +12,362 @@ function getHealingDifficulty(damageType) {
 }
 
 /**
- * PHASE 2 - CLOSED TEST LOGIC
- * Helper: Get healing reduction percent based on method and wound history
- * Zwraca procent redukcji kary na ranie w zależności od metody leczenia i historii rany
- * Pierwsza pomoc: 5%
- * Leczenie ran: 15% (świeża) lub 10% (już opatrzona)
+ * Helper: Get healing reduction percent based on method and wound history.
+ * First Aid: 5%
+ * Treat Wounds: 15% (fresh) or 10% (had First Aid already)
  */
 function getHealingPercent(healingMethod, hadFirstAid = false) {
-  if (healingMethod === "firstAid") {
-    return 5; // ±5% for First Aid
-  } else {
-    // Treat Wounds: 15% if not previously treated, 10% if had First Aid
-    return hadFirstAid ? 10 : 15;
+  if (healingMethod === "firstAid") return 5;
+  return hadFirstAid ? 10 : 15;
+}
+
+/**
+ * Dialog for healing rolls.
+ *
+ * ## Script Integration
+ *
+ * Scripts with trigger `dialog` are evaluated when this dialog opens.
+ * Use `rollType === "healing"` to target this dialog.
+ *
+ * ### args.fields available to dialog scripts:
+ * ```
+ * rollType:      "healing"
+ * healingMethod: "firstAid" | "woundTreatment"
+ * attribute:     { name: string, value: number, key: string }
+ * skill:         { name: string, value: number, key: string }
+ * wounds:        Array<{ id, name, damageType, hadFirstAid }>
+ * stat:          number  // attribute total value
+ * ```
+ *
+ * ### Supported script return fields:
+ * - modifier, attributeBonus, skillBonus
+ * - armorDelta, woundDelta, diseasePenalty
+ * - difficultyShift
+ *
+ * @example Script condition to target healing rolls only:
+ * ```js
+ * return args.rollType === "healing";
+ * ```
+ */
+export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
+  constructor(options = {}) {
+    super(options);
+    this.medicActor  = options.medicActor  ?? options.actor ?? null;
+    this.patientActor = options.patientActor ?? null;
+    this.wounds      = options.wounds || [];
+
+    const lastRoll = options.lastRoll || {};
+
+    this._woundGroupMap = this._buildWoundGroupMap(this.wounds, lastRoll);
+
+    this.rollOptions = {
+      healingMethod:     lastRoll.healingMethod     || "firstAid",
+      currentAttribute:  lastRoll.currentAttribute  || "cleverness",
+      percentageModifier: lastRoll.percentageModifier || 0,
+      useArmorPenalty:   lastRoll.useArmorPenalty   ?? false,
+      useWoundPenalty:   lastRoll.useWoundPenalty   ?? true,
+      useDiseasePenalty: lastRoll.useDiseasePenalty ?? true,
+      skillBonus:        lastRoll.skillBonus        || 0,
+      attributeBonus:    lastRoll.attributeBonus    || 0,
+    };
+  }
+
+  static DEFAULT_OPTIONS = {
+    tag: "form",
+    classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "roll-dialog", "healing-roll-dialog"],
+    position: { width: 540, height: "auto" },
+    window: {
+      resizable: false,
+      minimizable: false
+    },
+    actions: {
+      roll: NeuroshimaHealingRollDialog.prototype._onRoll,
+      cancel: NeuroshimaHealingRollDialog.prototype._onCancel
+    }
+  };
+
+  static PARTS = {
+    form: {
+      template: "systems/neuroshima/templates/dialog/healing-roll-dialog.hbs"
+    }
+  };
+
+  get title() {
+    const patientName = this.patientActor?.name ?? "";
+    return `${game.i18n.localize("NEUROSHIMA.HealingRequest.Title")}${patientName ? " - " + patientName : ""}`;
+  }
+
+  _buildWoundGroupMap(wounds, lastRoll) {
+    const map = {};
+    const method = lastRoll.healingMethod || "firstAid";
+    wounds.forEach(wound => {
+      const dt = wound.damageType;
+      if (!map[dt]) {
+        map[dt] = {
+          damageType: dt,
+          count: 0,
+          difficulty: getHealingDifficulty(dt),
+          healingPercent: getHealingPercent(method, wound.hadFirstAid),
+          woundList: []
+        };
+      }
+      map[dt].count++;
+      map[dt].woundList.push(wound);
+    });
+    return map;
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
+
+    const medicActor = this.medicActor;
+    const actorArmorPenalty  = medicActor.system.combat?.totalArmorPenalty || 0;
+    const actorWoundPenalty  = medicActor.system.combat?.totalWoundPenalty || 0;
+    const actorDiseasePenalty = this._computeActorDiseasePenalty();
+
+    const healingMethod    = this.userEntry.healingMethod    ?? this.rollOptions.healingMethod    ?? "firstAid";
+    const currentAttribute = this.userEntry.attribute        ?? this.rollOptions.currentAttribute ?? "cleverness";
+    const userModifier     = this.userEntry.modifier         ?? this.rollOptions.percentageModifier ?? 0;
+    const userAttrBonus    = this.userEntry.attributeBonus   ?? this.rollOptions.attributeBonus    ?? 0;
+    const userSkillBonus   = this.userEntry.skillBonus       ?? this.rollOptions.skillBonus        ?? 0;
+    const useArmorPenalty  = this.userEntry.useArmorPenalty  ?? this.rollOptions.useArmorPenalty   ?? false;
+    const useWoundPenalty  = this.userEntry.useWoundPenalty  ?? this.rollOptions.useWoundPenalty   ?? true;
+    const useDiseasePenalty = this.userEntry.useDiseasePenalty ?? this.rollOptions.useDiseasePenalty ?? true;
+
+    const skillName  = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
+    const skillValue = medicActor.system.skills?.[skillName]?.value || 0;
+    const skillObj   = { name: game.i18n.localize(`NEUROSHIMA.Skills.${skillName}`), value: skillValue, key: skillName };
+    const attrValue  = medicActor.system.attributeTotals?.[currentAttribute] ?? 0;
+    const attrObj    = { name: currentAttribute, value: attrValue, key: currentAttribute };
+
+    const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
+    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
+      medicActor,
+      {
+        rollType: "healing",
+        healingMethod,
+        attribute: attrObj,
+        skill: skillObj,
+        wounds: this.wounds,
+        stat: attrValue
+      },
+      this.selectedModifierIds,
+      this.unselectedModifierIds,
+      targetActors
+    );
+
+    this._dialogModifiers = dialogModifiers;
+    this._scriptFields    = scriptFields;
+    this._breakdown       = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown };
+    this._userValues      = { modifier: userModifier, attributeBonus: userAttrBonus, skillBonus: userSkillBonus };
+
+    const woundGroups = Object.values(this._woundGroupMap).map(group => {
+      const dt         = group.damageType;
+      const selDiff    = this.userEntry[`difficulty-${dt}`] ?? group.difficulty;
+      const selWoundMod = this.userEntry[`woundModifier-${dt}`] ?? 0;
+      const healPct    = getHealingPercent(healingMethod, group.woundList[0]?.hadFirstAid);
+      return { ...group, difficulty: selDiff, healingPercent: healPct, woundModifier: selWoundMod };
+    });
+
+    context.actor             = medicActor;
+    context.patientActor      = this.patientActor;
+    context.woundGroups       = woundGroups;
+    context.woundGroupCount   = woundGroups.length;
+    context.totalWounds       = this.wounds.length;
+    context.healingMethod     = healingMethod;
+    context.currentAttribute  = currentAttribute;
+    context.attributeList     = NEUROSHIMA.attributes;
+    context.difficulties      = NEUROSHIMA.difficulties;
+    context.modifier          = userModifier + scriptFields.modifier;
+    context.attributeBonus    = userAttrBonus + scriptFields.attributeBonus;
+    context.skillBonus        = userSkillBonus + scriptFields.skillBonus;
+    context.armorPenalty      = actorArmorPenalty + scriptFields.armorDelta;
+    context.woundPenalty      = actorWoundPenalty + scriptFields.woundDelta;
+    context.diseasePenalty    = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
+    context.showDiseasePenalty = context.diseasePenalty > 0;
+    context.useArmorPenalty   = useArmorPenalty;
+    context.useWoundPenalty   = useWoundPenalty;
+    context.useDiseasePenalty = useDiseasePenalty;
+    context.dialogModifiers   = dialogModifiers;
+
+    return context;
+  }
+
+  _onRender(context, options) {
+    super._onRender?.(context, options);
+    const html = this.element;
+
+    this._applyTooltips(html);
+    this._updateSummary(html);
+
+    html.querySelectorAll('[data-action="clickModifier"].dm-toggleable').forEach(li => {
+      li.addEventListener('click', () => {
+        const effectId = li.dataset.dmEffectId;
+        if (!effectId) return;
+        if (li.classList.contains('dm-active')) {
+          this.selectedModifierIds.delete(effectId);
+          this.unselectedModifierIds.add(effectId);
+        } else {
+          this.unselectedModifierIds.delete(effectId);
+          this.selectedModifierIds.add(effectId);
+        }
+        this.render();
+      });
+    });
+
+    html.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('change', ev => this._onFieldChange(ev));
+    });
+
+    html.querySelectorAll('input[type="number"]').forEach(el => {
+      el.addEventListener('input', () => this._updateSummary(html));
+    });
+
+    const cancelBtn = html.querySelector('[data-action="cancel"]');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', ev => {
+        ev.preventDefault();
+        this.close();
+      });
+    }
+  }
+
+  _updateSummary(html) {
+    if (!html) html = this.element;
+
+    const healingMethod  = html.querySelector('[name="healingMethod"]')?.value  ?? this.rollOptions.healingMethod ?? "firstAid";
+    const modifier       = parseInt(html.querySelector('[name="modifier"]')?.value ?? 0) || 0;
+    const useArmor       = html.querySelector('[name="useArmorPenalty"]')?.checked  ?? this.rollOptions.useArmorPenalty  ?? false;
+    const useWound       = html.querySelector('[name="useWoundPenalty"]')?.checked  ?? this.rollOptions.useWoundPenalty  ?? true;
+    const useDisease     = html.querySelector('[name="useDiseasePenalty"]')?.checked ?? this.rollOptions.useDiseasePenalty ?? true;
+
+    const medicActor = this.medicActor;
+    const sf = this._scriptFields || {};
+
+    const armorPenalty   = useArmor   ? (medicActor.system.combat?.totalArmorPenalty  || 0) + (sf.armorDelta   || 0) : 0;
+    const woundPenalty   = useWound   ? (medicActor.system.combat?.totalWoundPenalty  || 0) + (sf.woundDelta   || 0) : 0;
+    const diseasePenalty = useDisease ? this._computeActorDiseasePenalty() + (sf.diseasePenalty || 0) : 0;
+
+    const diffModifier = modifier + armorPenalty + woundPenalty + diseasePenalty + (sf.modifier || 0);
+
+    const diffModEl = html.querySelector('.difficulty-modifier');
+    if (diffModEl) diffModEl.innerText = `${diffModifier >= 0 ? '+' : ''}${diffModifier}%`;
+
+    const diffShift = sf.difficultyShift || 0;
+
+    const woundGroups = Object.values(this._woundGroupMap);
+    const diffParts = [];
+    woundGroups.forEach(group => {
+      const dt         = group.damageType;
+      const selDiffKey = html.querySelector(`[name="difficulty-${dt}"]`)?.value ?? group.difficulty;
+      const diffData   = NEUROSHIMA.difficulties[selDiffKey] || NEUROSHIMA.difficulties.average;
+      const totalPct   = (diffData.min || 0) + diffModifier;
+      const adjusted   = NeuroshimaDice.getDifficultyFromPercent(totalPct);
+      const adjustedKey = Object.entries(NEUROSHIMA.difficulties).find(([, v]) => v === adjusted)?.[0] ?? selDiffKey;
+      const shiftedKey  = diffShift ? NeuroshimaScriptRunner.shiftDifficultyKey(adjustedKey, diffShift) : adjustedKey;
+      const finalDiff   = NEUROSHIMA.difficulties[shiftedKey] || adjusted;
+      diffParts.push(`${group.count}x ${game.i18n.localize(finalDiff.label)}`);
+
+      const healPct  = getHealingPercent(healingMethod, group.woundList[0]?.hadFirstAid);
+      const pctEl    = html.querySelector(`.wound-healing-percent[data-damage-type="${dt}"]`);
+      if (pctEl) pctEl.innerText = `${healPct >= 0 ? '+' : ''}${healPct}%`;
+    });
+
+    const finalDiffEl = html.querySelector('.final-difficulty');
+    if (finalDiffEl) finalDiffEl.innerText = diffParts.join(', ') || '—';
+  }
+
+  async _onRoll(event, target) {
+    const html = this.element;
+    const form = html.tagName === "FORM" ? html : html.querySelector('form');
+    const formData = new foundry.applications.ux.FormDataExtended(form).object;
+
+    const healingMethod  = formData.healingMethod || "firstAid";
+    const selectedAttr   = formData.attribute     || "cleverness";
+    const globalModifier = parseInt(formData.modifier) || 0;
+    const useArmor       = formData.useArmorPenalty  === true || formData.useArmorPenalty  === "true";
+    const useWound       = formData.useWoundPenalty  === true || formData.useWoundPenalty  === "true";
+    const skillBonus     = parseInt(formData.skillBonus)     || 0;
+    const attributeBonus = parseInt(formData.attributeBonus) || 0;
+
+    const medicActor   = this.medicActor;
+    const armorPenalty = medicActor.system.combat?.totalArmorPenalty || 0;
+    const woundPenalty = medicActor.system.combat?.totalWoundPenalty || 0;
+
+    const woundGroups = Object.values(this._woundGroupMap);
+    const woundConfigs = [];
+    woundGroups.forEach(group => {
+      const dt              = group.damageType;
+      const healingModifier = parseInt(formData[`woundModifier-${dt}`]) || 0;
+      const selDifficulty   = formData[`difficulty-${dt}`] || group.difficulty;
+      const difficultyMod   = globalModifier + (useArmor ? armorPenalty : 0) + (useWound ? woundPenalty : 0);
+
+      group.woundList.forEach(wound => {
+        const failedAttempts = healingMethod === "firstAid"
+          ? (wound.failedFirstAidAttempts || 0)
+          : (wound.failedTreatmentAttempts || 0);
+        woundConfigs.push({
+          woundId:        wound.id,
+          woundName:      wound.name,
+          damageType:     wound.damageType,
+          difficulty:     selDifficulty,
+          modifier:       difficultyMod,
+          healingModifier: healingModifier,
+          hadFirstAid:    wound.hadFirstAid || false,
+          failedAttempts
+        });
+      });
+    });
+
+    await medicActor.update({
+      "system.lastRoll": {
+        percentageModifier: globalModifier,
+        healingMethod,
+        currentAttribute: selectedAttr,
+        useArmorPenalty: useArmor,
+        useWoundPenalty: useWound,
+        skillBonus,
+        attributeBonus
+      }
+    });
+
+    const attrValue = medicActor.system.attributeTotals[selectedAttr];
+
+    await NeuroshimaDice.rollBatchHealingTests({
+      medicActor,
+      patientActor: this.patientActor,
+      healingMethod,
+      woundConfigs,
+      stat: attrValue,
+      skillBonus,
+      attributeBonus
+    });
+
+    await this.close();
+  }
+
+  async _onCancel(event, target) {
+    await this.close();
   }
 }
 
 /**
- * PHASE 1 - CORE HEALING DIALOG & LAYOUT REDESIGN
- * Dialog for healing rolls with per-wound difficulty selection and dynamic updates
- * Wykorzystuje Application V2 API i wyświetla rany pogrupowane po typie obrażenia
- * Każda grupa ran ma:
- * - Dropdown do wyboru trudności testu (osobny dla każdego typu)
- * - Modifier % do redukcji kary (zaaplikowany na wszystkie rany tego typu)
- * - Dynamiczne podsumowanie z uwzględnieniem modyfikatorów
+ * Open the healing roll dialog.
+ *
+ * @param {object} options
+ * @param {Actor}  options.medicActor   - The medic performing the healing.
+ * @param {Actor}  options.patientActor - The patient being healed.
+ * @param {Array}  options.wounds       - Array of wound data objects.
+ * @param {object} options.lastRoll     - Last roll options for persistence.
  */
-export async function showHealingRollDialog({
-  medicActor,
-  patientActor,
-  wounds = [],
-  lastRoll = {}
-}) {
-  game.neuroshima?.group("showHealingRollDialog");
-  game.neuroshima?.log("Otwarcie dialoga leczenia", {
-    medyk: medicActor?.name,
-    pacjent: patientActor?.name,
-    liczbaRan: wounds.length
+export async function showHealingRollDialog({ medicActor, patientActor, wounds = [], lastRoll = {} }) {
+  const dialog = new NeuroshimaHealingRollDialog({
+    actor:        medicActor,
+    medicActor,
+    patientActor,
+    wounds,
+    lastRoll
   });
-
-  const template = "systems/neuroshima/templates/dialog/healing-roll-dialog.hbs";
-
-  // PHASE 1: Group wounds by damage type for compact display
-  // Wyświetla wiele ran jako "4x L, 2x C" zamiast listy
-  const woundGroupMap = {};
-  const woundIds = {}; // Store all wound IDs for each damage type
-  
-  wounds.forEach(wound => {
-    const damageType = wound.damageType;
-    // PHASE 3: Get base difficulty from settings (D/L default to Average, C/K to Problematic)
-    if (!woundGroupMap[damageType]) {
-      woundGroupMap[damageType] = {
-        damageType: damageType,
-        count: 0,
-        // difficulty: pobierana z ustawień świata (PHASE 3)
-        difficulty: getHealingDifficulty(damageType),
-        difficultyLabel: `NEUROSHIMA.Roll.${getHealingDifficulty(damageType) === 'average' ? 'Average' : 'Problematic'}`,
-        // healingPercent: procent redukcji kary (PHASE 2)
-        healingPercent: getHealingPercent(lastRoll.healingMethod || "firstAid", wound.hadFirstAid),
-        woundList: []
-      };
-      woundIds[damageType] = [];
-    }
-    woundGroupMap[damageType].count++;
-    woundGroupMap[damageType].woundList.push(wound);
-    woundIds[damageType].push(wound.id);
-  });
-
-  // PHASE 1: Convert wound map to array for template
-  const woundGroups = Object.values(woundGroupMap);
-
-  const armorPenalty = medicActor.system.combat?.totalArmorPenalty || 0;
-  const woundPenalty = medicActor.system.combat?.totalWoundPenalty || 0;
-
-  let healingMethod = lastRoll.healingMethod || "firstAid";
-  if (healingMethod === "treatWounds") {
-    healingMethod = "woundTreatment";
-  }
-
-  const skillName = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
-  const skillValue = medicActor.system.skills?.[skillName]?.value || 0;
-
-  const data = {
-    woundGroups: woundGroups,
-    woundGroupCount: woundGroups.length,
-    totalWounds: wounds.length,
-    percentageModifier: lastRoll.percentageModifier || 0,
-    healingMethod: healingMethod,
-    currentAttribute: lastRoll.currentAttribute || "cleverness",
-    attributeList: NEUROSHIMA.attributes,
-    difficulties: NEUROSHIMA.difficulties,
-    armorPenalty: armorPenalty,
-    woundPenalty: woundPenalty,
-    useArmorPenalty: lastRoll.useArmorPenalty ?? false,
-    useWoundPenalty: lastRoll.useWoundPenalty ?? true,
-    woundIds: woundIds,
-    wounds: wounds,
-    skillValue: skillValue,
-    skillBonus: lastRoll.skillBonus || 0,
-    attributeBonus: lastRoll.attributeBonus || 0
-  };
-
-  const content = await foundry.applications.handlebars.renderTemplate(template, data);
-
-  const dialog = new foundry.applications.api.DialogV2({
-    window: { 
-      title: `${game.i18n.localize("NEUROSHIMA.HealingRequest.Title")} - ${patientActor.name}`,
-      position: { width: 480, height: 600 }
-    },
-    content: content,
-    classes: ["neuroshima", "roll-dialog-window"],
-    buttons: [
-      {
-        action: "roll",
-        label: game.i18n.localize("NEUROSHIMA.Actions.Roll"),
-        default: true,
-        callback: async (event, button, dialog) => {
-          const form = button.form;
-          const healingMethod = form.elements.healingMethod.value;
-          const selectedAttr = form.elements.attribute.value;
-          const globalModifier = parseInt(form.elements.globalModifier.value) || 0;
-          
-          const useArmor = form.elements.useArmorPenalty.checked;
-          const useWound = form.elements.useWoundPenalty.checked;
-          
-          const skillBonus = parseInt(form.elements.skillBonus.value) || 0;
-          const attributeBonus = parseInt(form.elements.attributeBonus.value) || 0;
-
-          // PHASE 1: Build wound configs from grouped wounds
-          // Rozpakuj pogrupowane rany do konfiguracji dla każdej rany
-          // Każda konfiguracja zawiera: woundId, difficulty, modifier (trudności), healingModifier (% leczenia)
-          const woundConfigs = [];
-          woundGroups.forEach(group => {
-            // Per-damage-type healing modifier (% do redukcji kary)
-            const healingModifier = parseInt(form.querySelector(`[name="modifier-${group.damageType}"]`)?.value) || 0;
-            // PHASE 1: Per-damage-type difficulty selection
-            const selectedDifficulty = form.querySelector(`[name="difficulty-${group.damageType}"]`)?.value || group.difficulty;
-            // PHASE 2: Calculate total difficulty modifier (global + armor + wounds)
-            const difficultyModifier = globalModifier + 
-              (useArmor ? armorPenalty : 0) + 
-              (useWound ? woundPenalty : 0);
-            
-            // PHASE 1: Create config for each individual wound
-            group.woundList.forEach(wound => {
-              woundConfigs.push({
-                woundId: wound.id,
-                woundName: wound.name,
-                damageType: wound.damageType,
-                difficulty: selectedDifficulty,
-                modifier: difficultyModifier,
-                healingModifier: healingModifier,
-                hadFirstAid: wound.hadFirstAid || false
-              });
-            });
-          });
-          
-          // Save last roll data
-          await medicActor.update({
-            "system.lastRoll": {
-              percentageModifier: globalModifier,
-              healingMethod: healingMethod,
-              currentAttribute: selectedAttr,
-              useArmorPenalty: useArmor,
-              useWoundPenalty: useWound,
-              skillBonus: skillBonus,
-              attributeBonus: attributeBonus
-            }
-          });
-
-          game.neuroshima?.log("Wykonywanie batch rzutu leczenia", {
-            medyk: medicActor.name,
-            metoda: healingMethod,
-            atrybut: selectedAttr,
-            liczbaRan: woundConfigs.length
-          });
-
-          const attrValue = medicActor.system.attributeTotals[selectedAttr];
-
-          await NeuroshimaDice.rollBatchHealingTests({
-            medicActor: medicActor,
-            patientActor: patientActor,
-            healingMethod: healingMethod,
-            woundConfigs: woundConfigs,
-            stat: attrValue,
-            skillBonus: skillBonus,
-            attributeBonus: attributeBonus
-          });
-
-          game.neuroshima?.groupEnd();
-        }
-      },
-      {
-        action: "cancel",
-        label: game.i18n.localize("NEUROSHIMA.Actions.Cancel")
-      }
-    ]
-  });
-
   dialog.render(true);
-
-  // PHASE 1: Add event listeners for dynamic updates when user changes values
-  // Dialog dynamicznie aktualizuje podsumowanie kli kiedy użytkownik zmienia opcje
-  setTimeout(() => {
-    const html = $(dialog.element);
-
-    // PHASE 1: Update summary section with current selections
-    // Przelicza i wyświetla:
-    // - Zmienę umiejętności w zależności od wybranej metody
-    // - Zmianę modyfikatora trudności (global + pancerz + rany)
-    // - Zmianę trudności testu (z uwzględnieniem modyfikatorów)
-    // - Zmianę procentu leczenia (w zależności od metody)
-    const updateSummary = () => {
-      const healingMethod = html.find('[name="healingMethod"]').val();
-      const selectedAttr = html.find('[name="attribute"]').val();
-      const globalModifier = parseInt(html.find('[name="globalModifier"]').val()) || 0;
-      const useArmor = html.find('[name="useArmorPenalty"]').is(':checked');
-      const useWound = html.find('[name="useWoundPenalty"]').is(':checked');
-      
-      const skillBonus = parseInt(html.find('[name="skillBonus"]').val()) || 0;
-      const attributeBonus = parseInt(html.find('[name="attributeBonus"]').val()) || 0;
-      
-      // PHASE 1: Update skill value when healing method changes
-      // Zmienia wyświetlaną wartość umiejętności w zależności od wyboru metody
-      const newSkillName = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
-      const newSkillValue = medicActor.system.skills?.[newSkillName]?.value || 0;
-      html.find('[name="skillValue"]').val(newSkillValue);
-      
-      // PHASE 2: Calculate difficulty modifier (global + armor + wounds)
-      // Suma modyfikatorów trudności testu
-      const difficultyModifierVal = globalModifier + 
-        (useArmor ? armorPenalty : 0) + 
-        (useWound ? woundPenalty : 0);
-      
-      html.find('.difficulty-modifier').text(`${difficultyModifierVal}%`);
-      
-      // PHASE 2: Calculate adjusted difficulties with modifiers
-      // Przelicza zmianę trudności testu w zależności od modyfikatora trudności
-      // Podobnie do normalnego rzutu umiejętności (slider do dostosowania trudności)
-      const difficultyCount = {};
-      const difficultyWithModifier = {};
-      
-      woundGroups.forEach(group => {
-        const selectedDifficulty = html.find(`[name="difficulty-${group.damageType}"]`).val() || group.difficulty;
-        const difficultyData = NEUROSHIMA.difficulties[selectedDifficulty] || NEUROSHIMA.difficulties.average;
-        const diffLabel = game.i18n.localize(difficultyData.label);
-        
-        if (!difficultyCount[selectedDifficulty]) {
-          difficultyCount[selectedDifficulty] = { label: diffLabel, count: 0, baseMod: difficultyData.mod };
-        }
-        difficultyCount[selectedDifficulty].count += group.count;
-        
-        // PHASE 2: Calculate adjusted difficulty based on total penalty (base + modifiers)
-        // Zwraca zmienioną trudność testu (np. Average -> Problematic jeśli modyfikator -20%)
-        const totalPenalty = (difficultyData.min || 0) + difficultyModifierVal;
-        const adjustedDiffData = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
-        const adjustedDiffLabel = game.i18n.localize(adjustedDiffData.label);
-        const diffShift = adjustedDiffData.mod - difficultyData.mod;
-        
-        const modifierKey = `${selectedDifficulty}-${difficultyModifierVal}`;
-        if (!difficultyWithModifier[modifierKey]) {
-          difficultyWithModifier[modifierKey] = {
-            base: diffLabel,
-            adjusted: adjustedDiffLabel,
-            shift: diffShift,
-            count: 0
-          };
-        }
-        difficultyWithModifier[modifierKey].count += group.count;
-      });
-      
-      // PHASE 2: Build difficulty summary text with adjusted difficulties
-      // Wyświetla "4x Average" zamiast "4x Easy" jeśli modyfikator zmienił trudność
-      const diffSummaryParts = Object.entries(difficultyWithModifier).map(([_, data]) => {
-        return `${data.count}x ${data.adjusted}`;
-      });
-      html.find('.final-difficulty').text(diffSummaryParts.join(', '));
-      
-      // Update healing percent for all wound groups
-      woundGroups.forEach(group => {
-        const newPercent = getHealingPercent(healingMethod, group.woundList[0]?.hadFirstAid);
-        const woundRow = html.find(`tr[data-damage-type="${group.damageType}"]`);
-        woundRow.find('.wound-healing-percent')
-          .text(`${newPercent > 0 ? '+' : ''}${newPercent}%`);
-      });
-    };
-
-    // Event listeners
-    html.on('change', '[name="healingMethod"], [name="attribute"], [name="useArmorPenalty"], [name="useWoundPenalty"], .difficulty-select', updateSummary);
-    html.on('input', '[name="globalModifier"], [name="skillBonus"], [name="attributeBonus"], .wound-modifier', updateSummary);
-
-    updateSummary();
-  }, 100);
-
   return dialog;
 }

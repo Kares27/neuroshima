@@ -1,0 +1,35 @@
+<section class="tab home-base-residents {{tabs.residents.cssClass}}" data-group="primary" data-tab="residents" data-application-part="residents">
+
+    <div class="residents-qty">
+        <div class="residents-qty-field">
+            <label>{{localize "NEUROSHIMA.HomeBase.Residents"}}</label>
+            <span class="residents-current">{{residentCount}}</span>
+            <span>/</span>
+            <input type="number" name="system.residents.max" value="{{system.residents.max}}" min="0"/>
+        </div>
+    </div>
+
+    <div class="crew-occupants">
+        {{#each residentMembers as |member|}}
+        <div class="occupant" data-actor-id="{{member.actorId}}">
+
+            <img class="occupant-image" src="{{member.img}}" title="{{member.name}}"/>
+
+            <div class="occupant-name">{{member.name}}</div>
+
+            <div class="occupant-buttons">
+                <a class="button" data-action="editResident" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Actions.Edit'}}">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a class="button crew-remove" data-action="removeResident" data-actor-id="{{member.actorId}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
+                    <i class="fas fa-times"></i>
+                </a>
+            </div>
+
+        </div>
+        {{else}}
+        <p class="crew-empty">{{localize "NEUROSHIMA.HomeBase.NoResidents"}}</p>
+        {{/each}}
+    </div>
+
+</section>

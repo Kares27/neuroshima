@@ -7,7 +7,8 @@
             "character": "Postać",
             "npc": "BN",
             "creature": "Stworzenie",
-            "vehicle": "Pojazd"
+            "vehicle": "Pojazd",
+            "homeBase": "Baza"
         },
         "Item": {
             "weapon": "Broń",
@@ -29,7 +30,8 @@
             "reputation": "Reputacja",
             "disease": "Choroba",
             "weapon-mod": "Modyfikacja Broni",
-            "armor-mod": "Modyfikacja Pancerza"
+            "armor-mod": "Modyfikacja Pancerza",
+            "facilities": "Udogodnienie"
         }
     },
     "NEUROSHIMA": {
@@ -38,6 +40,7 @@
             "ActorNPC": "Arkusz BN",
             "ActorCreature": "Arkusz Stworzenia",
             "ActorVehicle": "Arkusz Pojazdu",
+            "ActorHomeBase": "Arkusz Bazy",
             "Item": "Arkusz Przedmiotu",
             "Effect": "Arkusz Efektu",
             "Edit": "Edytuj",
@@ -1018,7 +1021,10 @@
                 "Reputation": "Reputacja",
                 "Disease": "Choroba",
                 "Weapon-mod": "Modyfikacja Broni",
-                "Armor-mod": "Modyfikacja Pancerza"
+                "WeaponMods": "Modyfikacje Broni",
+                "Armor-mod": "Modyfikacja Pancerza",
+                "ArmorMods": "Modyfikacje Pancerza",
+                "Facilities": "Udogodnienie"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {
@@ -1107,6 +1113,7 @@
             "Detach": "Odmontuj",
             "Detached": "Odmontowana",
             "Remove": "Usuń",
+            "Uninstall": "Odinstaluj (zwróć do ekwipunku)",
             "OpenMod": "Otwórz modyfikację",
             "AlreadyInstalled": "Ta modyfikacja jest już zainstalowana.",
             "ResourceKeyCollision": "Uwaga: modyfikacja na '{item}' dodaje zasoby z kluczami już istniejącymi w przedmiocie: {keys}. Skrypty używające @item.resources.{keys}.value mogą zwracać niejednoznaczne wyniki — użyj @mod.resources.{keys}.value, aby odwołać się do zasobów własnej modyfikacji.",
@@ -1312,7 +1319,9 @@
             "HealingStarted": "{medic} rozpoczął leczenie {patient}",
             "ChoosePatientActor": "Wybierz aktora, który cię reprezentuje:",
             "YourPatientActor": "Twój aktor (pacjent):",
-            "ChooseMedicActor": "Wybierz aktora reprezentującego medyka:"
+            "ChooseMedicActor": "Wybierz aktora reprezentującego medyka:",
+            "Accepted": "Zaakceptowano",
+            "Declined": "Odmówiono"
         },
         "Wounds": {
             "None": "Brak ran"
@@ -1451,6 +1460,31 @@
                     "Durability":   "Wt",
                     "Efficiency":   "Sp"
                 }
+            }
+        },
+        "HomeBase": {
+            "Tabs": {
+                "Residents": "Rezydenci",
+                "Facilities": "Udogodnienia",
+                "Cargo": "Magazyn"
+            },
+            "Residents": "Rezydenci",
+            "NoResidents": "Upuść aktora, aby dodać rezydenta",
+            "NoFacilities": "Upuść udogodnienie, aby dodać moduł",
+            "NoCargo": "Brak zasobów",
+            "SubtypePlaceholder": "Podtyp bazy",
+            "MaxLoad": "Maksymalne Obciążenie",
+            "Cargo": "Zasoby",
+            "FacilityLevel": "Poziom",
+            "FacilityLevelAbbr": "Poz.",
+            "FacilityCapacity": "Pojemność",
+            "FacilityMaintenance": "Utrzymanie",
+            "Facilities": {
+                "Type": "Typ",
+                "Level": "Poziom",
+                "Capacity": "Pojemność",
+                "MaintenanceCost": "Koszt Utrzymania",
+                "IsBuilt": "Zbudowane"
             }
         },
         "Effects": {
@@ -1755,7 +1789,8 @@
                 "Title": "Wybuch Granatu",
                 "ReverseAll": "Cofnij obrażenia wybuchu",
                 "Reversed": "Cofnięto {count} ran po wybuchu granatu"
-            }
+            },
+            "QuantityEmpty": "Skończyły się granaty {name}!"
         }
     }
 }

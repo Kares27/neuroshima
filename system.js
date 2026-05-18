@@ -5,12 +5,13 @@ import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
-import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData } from "./module/data/item-data.js";
+import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData, HomeBaseData } from "./module/data/actor-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
 import { NeuroshimaVehicleSheet } from "./module/sheets/vehicle-sheet.js";
+import { NeuroshimaHomeBaseSheet } from "./module/sheets/home-base-sheet.js";
 import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
@@ -278,6 +279,7 @@ Hooks.once('init', async function() {
     CONFIG.Actor.dataModels.npc      = NeuroshimaNPCData;
     CONFIG.Actor.dataModels.creature = NeuroshimaCreatureData;
     CONFIG.Actor.dataModels.vehicle  = NeuroshimaVehicleData;
+    CONFIG.Actor.dataModels.homeBase = HomeBaseData;
     CONFIG.Item.dataModels.weapon = WeaponData;
     CONFIG.Item.dataModels.armor = ArmorData;
     CONFIG.Item.dataModels.gear = GearData;
@@ -297,9 +299,11 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["disease"]           = DiseaseData;
     CONFIG.Item.dataModels["weapon-mod"]        = WeaponModData;
     CONFIG.Item.dataModels["armor-mod"]         = ArmorModData;
+    CONFIG.Item.dataModels["facilities"]        = FacilitiesData;
 
     CONFIG.Item.defaultIcons = CONFIG.Item.defaultIcons ?? {};
     CONFIG.Item.defaultIcons["weapon-mod"] = "systems/neuroshima/assets/img/modification-weapon.svg";
+    CONFIG.Item.defaultIcons["facilities"] = "systems/neuroshima/assets/img/facilities.svg";
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);
@@ -435,10 +439,15 @@ Hooks.once('init', async function() {
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.ActorVehicle"
     });
+    foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaHomeBaseSheet, {
+        types: ["homeBase"],
+        makeDefault: true,
+        label: "NEUROSHIMA.Sheet.ActorHomeBase"
+    });
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod"],
+        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -1486,10 +1495,9 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     }
 
-    // Obsługa Healing Request Card (UI toggles)
+    // Obsługa Healing Request Card (UI toggles + status sections)
     const healingRequestCard = html.querySelector(".neuroshima.heal-request-card");
     if (healingRequestCard) {
-        // Główny toggle dla wszystkich ran
         const woundsMainToggle = healingRequestCard.querySelector(".wounds-main-toggle");
         if (woundsMainToggle) {
             woundsMainToggle.addEventListener("click", () => {
@@ -1500,7 +1508,6 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             });
         }
 
-        // Toggle dla każdej lokacji
         healingRequestCard.querySelectorAll(".location-toggle").forEach(toggle => {
             toggle.addEventListener("click", () => {
                 const woundsList = toggle.closest(".location-group")?.querySelector(".wounds-list");
@@ -1511,6 +1518,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 }
             });
         });
+
     }
 
     // Obsługa Healing Batch Report - stan wizualny przycisków
@@ -2322,6 +2330,7 @@ function initializeSocketlib() {
     game.neuroshima.socket.register("healingRequestDeclined", async ({ medicName }) => {
         ui.notifications.warn(game.i18n.format("NEUROSHIMA.HealingRequest.RequestDeclined", { medic: medicName }));
     });
+
 }
 
 // Rejestracja socketlib po załadowaniu modułu
@@ -2420,9 +2429,24 @@ Hooks.on("canvasReady", async () => {
     await NeuroshimaAuraManager.refreshAllAuras();
 });
 
+let _worldTimeUpdatePending = false;
 Hooks.on("updateWorldTime", async (worldTime, dt) => {
     if (!game.user.isGM) return;
-    await NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt);
+    _worldTimeUpdatePending = true;
+    try {
+        await NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt);
+    } finally {
+        setTimeout(() => { _worldTimeUpdatePending = false; }, 200);
+    }
+});
+
+Hooks.on("simple-calendar.dateTimeChange", async (data) => {
+    if (!game.user.isGM) return;
+    if (_worldTimeUpdatePending) return;
+    const currentWorldTime = game.time.worldTime;
+    const dt = typeof data?.diff === "number" ? data.diff : 0;
+    if (dt === 0) return;
+    await NeuroshimaScriptRunner.runWorldTimeUpdate(currentWorldTime, dt);
 });
 
 Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {

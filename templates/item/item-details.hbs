@@ -222,6 +222,27 @@
         </div>
     {{/if}}
 
+    {{#if (eq item.type "facilities")}}
+        <div class="item-features facilities-stats secondary-box">
+            <div class="facilities-stats-row">
+                <div class="form-group row-group facilities-type-group">
+                    <label>{{localize "NEUROSHIMA.HomeBase.Facilities.Type"}}</label>
+                    <input type="text" name="system.facilityType" value="{{system.facilityType}}"/>
+                </div>
+                <div class="form-group row-group facilities-level-group">
+                    <label>{{localize "NEUROSHIMA.HomeBase.Facilities.Level"}}</label>
+                    <input type="number" name="system.level" value="{{system.level}}" min="0" data-dtype="Number"/>
+                </div>
+            </div>
+            <div class="facilities-status-row">
+                <div class="form-group checkbox row-group">
+                    <label>{{localize "NEUROSHIMA.HomeBase.Facilities.IsBuilt"}}</label>
+                    <input type="checkbox" name="system.isBuilt" {{checked system.isBuilt}}/>
+                </div>
+            </div>
+        </div>
+    {{/if}}
+
     {{#if (eq item.type "reputation")}}
         <div class="item-features reputation-stats secondary-box">
             <div class="form-group row-group rep-value-row">

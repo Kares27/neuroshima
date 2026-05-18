@@ -60,13 +60,25 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             if (!wound || wound.type !== "wound") continue;
             
             const oldPenalty = wound.system.penalty || 0;
-            const newPenalty = Math.max(0, oldPenalty + penaltyChange);
+            const isSuccess = successCount >= 2;
+            const isFirstAidMethod = healingMethod === "firstAid";
+            let newPenalty = Math.max(0, oldPenalty + penaltyChange);
+
+            if (isSuccess) {
+                const origPenalty = wound.system.originalPenalty ?? oldPenalty;
+                if (isFirstAidMethod) {
+                    const faRemaining = Math.max(0, 5 - (wound.system.firstAidHealingApplied || 0));
+                    newPenalty = Math.max(oldPenalty - faRemaining, newPenalty);
+                }
+                newPenalty = Math.max(origPenalty - 15, newPenalty);
+                newPenalty = Math.max(0, newPenalty);
+            }
             
             game.neuroshima?.log("Healing calculation", {
                 woundName: wound.name,
                 oldPenalty,
                 newPenalty,
-                penaltyChange
+                penaltyChange: newPenalty - oldPenalty
             });
             
             healingResults.push({
@@ -75,7 +87,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 damageType: wound.system.damageType || "D",
                 oldPenalty,
                 newPenalty,
-                penaltyChange
+                penaltyChange: newPenalty - oldPenalty
             });
         }
         

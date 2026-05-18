@@ -264,7 +264,11 @@ export class WoundData extends foundry.abstract.TypeDataModel {
       isHealing: new fields.BooleanField({ initial: false }),
       isActive: new fields.BooleanField({ initial: true }),
       hadFirstAid: new fields.BooleanField({ initial: false }),
-      healingAttempts: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+      healingAttempts: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      failedFirstAidAttempts: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      failedTreatmentAttempts: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      firstAidHealingApplied: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      originalPenalty: new fields.NumberField({ integer: true, initial: null, nullable: true })
     };
   }
 }
@@ -584,6 +588,23 @@ export class ArmorModData extends foundry.abstract.TypeDataModel {
       deltaRequiredBuild: new fields.NumberField({ integer: true, initial: 0 }),
       deltaModifiesCost: new fields.BooleanField({ initial: true }),
       effectText: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
+ * Data model for Facilities items (shelter modules / upgrades).
+ */
+export class FacilitiesData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      facilityType: new fields.StringField({ initial: "" }),
+      level: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      capacity: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      maintenanceCost: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      isBuilt: new fields.BooleanField({ initial: false })
     };
   }
 }

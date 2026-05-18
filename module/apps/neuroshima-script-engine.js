@@ -3430,26 +3430,38 @@ export class NeuroshimaScriptRunner {
   }
 
   /**
-   * Run worldTimeUpdate scripts for all actors with a token on the current scene.
+   * Run worldTimeUpdate scripts for all actors — both those with a token on the
+   * current scene (including unlinked/synthetic tokens) and all world actors
+   * that are not represented by any scene token.
    * Called from the updateWorldTime hook. GM only.
    * @param {number} worldTime - Current world time in seconds.
    * @param {number} dt        - Seconds elapsed since the previous world time.
    */
   static async runWorldTimeUpdate(worldTime, dt) {
-    if (!canvas?.scene) return;
+    const dtMinutes      = dt / 60;
+    const dtHours        = dt / 3600;
+    const dtDays         = dt / 86400;
+    const prevTime       = worldTime - dt;
+    const minutesCrossed = Math.floor(worldTime / 60)    - Math.floor(prevTime / 60);
+    const hoursCrossed   = Math.floor(worldTime / 3600)  - Math.floor(prevTime / 3600);
+    const daysCrossed    = Math.floor(worldTime / 86400) - Math.floor(prevTime / 86400);
+    const args = { worldTime, dt, dtMinutes, dtHours, dtDays, minutesCrossed, hoursCrossed, daysCrossed };
+
     const seen = new Set();
-    for (const tokenDoc of canvas.scene.tokens) {
-      const actor = tokenDoc.actor;
-      if (!actor || seen.has(actor.id)) continue;
+
+    if (canvas?.scene) {
+      for (const tokenDoc of canvas.scene.tokens) {
+        const actor = tokenDoc.actor;
+        if (!actor || seen.has(actor.id)) continue;
+        seen.add(actor.id);
+        await this.execute("worldTimeUpdate", { actor, ...args });
+      }
+    }
+
+    for (const actor of game.actors) {
+      if (seen.has(actor.id)) continue;
       seen.add(actor.id);
-      const dtMinutes     = dt / 60;
-      const dtHours       = dt / 3600;
-      const dtDays        = dt / 86400;
-      const prevTime      = worldTime - dt;
-      const minutesCrossed = Math.floor(worldTime / 60)    - Math.floor(prevTime / 60);
-      const hoursCrossed   = Math.floor(worldTime / 3600)  - Math.floor(prevTime / 3600);
-      const daysCrossed    = Math.floor(worldTime / 86400) - Math.floor(prevTime / 86400);
-      await this.execute("worldTimeUpdate", { actor, worldTime, dt, dtMinutes, dtHours, dtDays, minutesCrossed, hoursCrossed, daysCrossed });
+      await this.execute("worldTimeUpdate", { actor, ...args });
     }
   }
 

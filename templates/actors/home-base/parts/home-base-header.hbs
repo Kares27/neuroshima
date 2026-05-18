@@ -1,0 +1,13 @@
+<header class="sheet-header home-base-sheet-header" data-application-part="header">
+    <div class="home-base-header-top">
+        <img class="profile-img" src="{{actor.img}}" data-action="editImage" data-edit="img" title="{{actor.name}}" height="200" width="200"/>
+        <div class="header-fields home-base-header-fields">
+            <h1 class="charname">
+                <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
+            </h1>
+            <div class="home-base-subtype-field">
+                <input type="text" name="system.subtype" value="{{system.subtype}}" placeholder="{{localize 'NEUROSHIMA.HomeBase.SubtypePlaceholder'}}"/>
+            </div>
+        </div>
+    </div>
+</header>

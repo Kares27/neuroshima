@@ -41,7 +41,8 @@ export class NeuroshimaActor extends Actor {
     }
     const actorIcons = {
       vehicle:   "systems/neuroshima/assets/img/carkey.svg",
-      creature:  "systems/neuroshima/assets/img/animal-skull.svg"
+      creature:  "systems/neuroshima/assets/img/animal-skull.svg",
+      homeBase:  "systems/neuroshima/assets/img/house.svg"
     };
     if (actorIcons[data.type] && (!data.img || data.img === "icons/svg/mystery-man.svg")) {
       updates.img = actorIcons[data.type];

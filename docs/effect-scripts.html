@@ -473,9 +473,11 @@
       <tr><td><code>args.rollingActor</code></td><td>Actor</td><td>Aktor <em>wykonujący</em> rzut — zawsze ten sam co rzucający, niezależnie od Targeted/Defending. Przydatne gdy <code>args.actor</code> to cel a nie rzucający.</td></tr>
       <tr><td><code>args.skill</code></td><td>Object | null</td><td>Obiekt umiejętności: <code>{ name, value, key }</code> lub <code>null</code>.</td></tr>
       <tr><td><code>args.attribute</code></td><td>Object | null</td><td>Obiekt atrybutu: <code>{ name, value, key }</code>.</td></tr>
-      <tr><td><code>args.rollType</code></td><td>string</td><td>Typ rzutu: <code>"skill"</code>, <code>"attribute"</code>, <code>"ranged"</code>, <code>"melee"</code>, <code>"initiative"</code>.</td></tr>
+      <tr><td><code>args.rollType</code></td><td>string</td><td>Typ rzutu: <code>"skill"</code>, <code>"attribute"</code>, <code>"ranged"</code>, <code>"melee"</code>, <code>"initiative"</code>, <code>"healing"</code>.</td></tr>
       <tr><td><code>args.difficulty</code></td><td>string</td><td>Klucz bazowej trudności (np. <code>"average"</code>, <code>"hard"</code>).</td></tr>
       <tr><td><code>args.weapon</code></td><td>Item | null</td><td>Broń (dostępna gdy <code>rollType</code> to <code>"ranged"</code> lub <code>"melee"</code>).</td></tr>
+      <tr><td><code>args.healingMethod</code></td><td>string | undefined</td><td>Metoda leczenia — <code>"firstAid"</code> (Pierwsza Pomoc) lub <code>"woundTreatment"</code> (Leczenie Ran). Dostępne gdy <code>rollType === "healing"</code>.</td></tr>
+      <tr><td><code>args.wounds</code></td><td>Array | undefined</td><td>Lista ran pacjenta otwartych do leczenia: <code>[{ id, name, damageType, hadFirstAid, failedFirstAidAttempts, failedTreatmentAttempts, firstAidHealingApplied, originalPenalty }]</code>. Dostępne gdy <code>rollType === "healing"</code>.</td></tr>
       <tr><td><code>args.flags</code></td><td>Object</td><td>Wolny obiekt do własnego użytku skryptów — zapobiega wielokrotnemu wykonaniu.</td></tr>
       <tr><td><code>args.fields</code></td><td>Object</td><td><strong>Tylko w Dialog Script</strong> — pola edytowalne dialogu (patrz niżej).</td></tr>
       <tr><td><code>args.currentDifficulty</code></td><td>string</td><td>Aktualna trudność dialogu w momencie wywołania skryptu (read-only, np. <code>"average"</code>).</td></tr>
@@ -3884,6 +3886,150 @@ args.fields.mod = (args.fields.mod ?? <span class="num">0</span>) + <span class=
     <pre><code><span class="cmt">// Hide Script — odpowiedni dla tej samej listy</span>
 <span class="kw">const</span> <span class="var">affected</span> = [<span class="str">"spotting"</span>, <span class="str">"vigilance"</span>, <span class="str">"perception"</span>];
 <span class="kw">return</span> !<span class="var">affected</span>.includes(args.skill?.key);</code></pre>
+  </div>
+
+  <h4>Skrypty dialogowe — Dialog Leczenia (<code>rollType === "healing"</code>)</h4>
+  <p>
+    Dialog leczenia obsługuje te same skrypty <code>dialog</code> co inne dialogi rzutów.
+    Dodatkowe pola kontekstu: <code>args.healingMethod</code> (metoda leczenia) i <code>args.wounds</code> (lista ran do leczenia).
+  </p>
+
+  <div class="callout info">
+    <strong>Zasady leczenia Neuroshima 1.5 — mechanika wbudowana w system:</strong><br>
+    System automatycznie egzekwuje poniższe zasady — skrypty <em>nie muszą</em> ich implementować ręcznie, ale mogą z nich korzystać.<br><br>
+    <strong>Trudność bazowa:</strong> Draśnięcie (D) i Lekka (L) → Przeciętny; Ciężka (C) i Krytyczna (K) → Kłopotliwy.<br>
+    <strong>Pierwsza Pomoc (sukces):</strong> −5% kary. <strong>Maksimum:</strong> 5% łącznie na daną ranę.<br>
+    <strong>Leczenie Ran (sukces):</strong> −15% (rana świeża) lub −10% (rana miała już PP). <strong>Maksimum łącznie z PP:</strong> 15% na ranę.<br>
+    <strong>Porażka (obie metody):</strong> +5% kary.<br>
+    <strong>Kolejne próby po porażce:</strong> każda nieudana próba danej metody zwiększa trudność następnego testu tej metody o +1 PT (śledzone oddzielnie dla PP i Leczenia Ran; zeruje się po sukcesie).
+  </div>
+
+  <p><strong>Pola obiektu rany w <code>args.wounds</code>:</strong></p>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>string</td><td>ID itemu rany.</td></tr>
+      <tr><td><code>name</code></td><td>string</td><td>Nazwa rany.</td></tr>
+      <tr><td><code>damageType</code></td><td>string</td><td>Typ rany: <code>"D"</code> (Draśnięcie), <code>"L"</code> (Lekka), <code>"C"</code> (Ciężka), <code>"K"</code> (Krytyczna).</td></tr>
+      <tr><td><code>hadFirstAid</code></td><td>boolean</td><td><code>true</code> jeśli rana była już opatrzona Pierwszą Pomocą.</td></tr>
+      <tr><td><code>failedFirstAidAttempts</code></td><td>number</td><td>Liczba nieudanych prób Pierwszej Pomocy od ostatniego sukcesu. Wpływa na trudność kolejnych testów PP (+1 PT za każdą porażkę).</td></tr>
+      <tr><td><code>failedTreatmentAttempts</code></td><td>number</td><td>Liczba nieudanych prób Leczenia Ran od ostatniego sukcesu. Wpływa na trudność kolejnych testów LR (+1 PT za każdą porażkę).</td></tr>
+      <tr><td><code>firstAidHealingApplied</code></td><td>number</td><td>Ile % kary zostało już usuniętych przez Pierwszą Pomoc. Maksimum 5.</td></tr>
+      <tr><td><code>originalPenalty</code></td><td>number | null</td><td>Kara procentowa rany w momencie pierwszego leczenia (punkt bazowy dla limitu 15%). <code>null</code> jeśli rana nie była jeszcze leczona.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Jak działa <code>difficultyShift</code> w leczeniu?</strong><br>
+    W dialogu leczenia każdy typ rany (D, L, C, K) ma <em>osobno</em> wybraną trudność testu — ale <code>difficultyShift</code> ze skryptów
+    przesuwa <strong>wynikowy poziom trudności globalnie dla wszystkich typów ran</strong> jednocześnie.
+    Np. <code>difficultyShift += 1</code> sprawi, że każda rana będzie o poziom trudniejsza do wyleczenia niż wynikałoby to z jej bazowej trudności i modyfikatorów.
+    Uwaga: kara za <code>failedFirstAidAttempts</code> / <code>failedTreatmentAttempts</code> jest doliczana automatycznie osobno — <code>difficultyShift</code> ze skryptów kumuluje się z tą karą.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Globalny <code>difficultyShift</code> — utrudnienie wszystkich testów leczenia o 1 poziom
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Efekt nakłada ogólne utrudnienie leczenia — przydatne np. jako kara za chorobę zakaźną lub toksyny utrudniające gojenie.
+      Modyfikator przesuwa trudność wszystkich ran (bez względu na typ) o jeden poziom w górę.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script (tylko dialog leczenia):</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script (ukryj we wszystkich innych dialogach):</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      <code>difficultyShift</code> tylko dla konkretnego typu rany (np. tylko rany Krytyczne są trudniejsze)
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Jeśli chcesz zmienić trudność tylko dla wybranego typu rany, sprawdź czy wśród ran leczonych jest taki typ.
+      Przesunięcie nadal działa globalnie — aktywuj skrypt tylko wtedy gdy pacjent ma rany danego typu.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog (trudniejsze leczenie ran Krytycznych K):</strong></p>
+    <pre><code>args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script (aktywuj tylko gdy wśród leczonych ran są rany K):</strong></p>
+    <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"healing"</span>) <span class="kw">return</span> <span class="kw">false</span>;
+<span class="kw">return</span> (args.wounds ?? []).some(w =&gt; w.damageType === <span class="str">"K"</span>);</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"healing"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">return</span> !(args.wounds ?? []).some(w =&gt; w.damageType === <span class="str">"K"</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Bonus do leczenia Pierwszą Pomocą (ułatwienie gdy metoda = firstAid)
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Sztuczka lub efekt ułatwiający pierwszą pomoc — np. specjalistyczny apteczka polowa.
+      Przesuwa trudność testu o 1 poziom w dół tylko gdy wybraną metodą jest Pierwsza Pomoc.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.difficultyShift -= <span class="num">1</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span> &amp;&amp; args.healingMethod === <span class="str">"firstAid"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span> || args.healingMethod !== <span class="str">"firstAid"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Bonus procentowy do rzutu leczenia (modifier) — np. +10% ze środka medycznego
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Zamiast przesuwać poziom trudności, możesz dodać procentowy modyfikator rzutu — działa tak samo jak
+      pole "Modyfikator %" w dialogu, ale nadawany automatycznie przez efekt.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.modifier += <span class="num">10</span>; <span class="cmt">// +10% ułatwienia do rzutu leczenia</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Bonus za specjalistyczny sprzęt gdy rana jest już "trudna do leczenia" (wiele nieudanych prób)
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Efekt na sprzęcie medycznym — aktywuje się i daje ułatwienie gdy leczący ma już co najmniej 2 nieudane próby
+      tej samej metody na którejkolwiek z leczonych ran. Korzysta z pól <code>failedFirstAidAttempts</code> /
+      <code>failedTreatmentAttempts</code>.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.difficultyShift -= <span class="num">1</span>; <span class="cmt">// Zrekompensuj 1 poziom kary za nieudane próby</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"healing"</span>) <span class="kw">return</span> <span class="kw">false</span>;
+<span class="kw">const</span> field = args.healingMethod === <span class="str">"firstAid"</span> ? <span class="str">"failedFirstAidAttempts"</span> : <span class="str">"failedTreatmentAttempts"</span>;
+<span class="kw">return</span> (args.wounds ?? []).some(w =&gt; (w[field] ?? <span class="num">0</span>) &gt;= <span class="num">2</span>);</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      Blokuj ułatwienie gdy rana osiągnęła limit leczenia (5% PP lub 15% łącznie)
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Skrypt informacyjny — ukrywa modyfikator gdy nie może już mieć efektu, bo rana osiągnęła limit leczenia dla danej metody.
+      Przydatne do automatycznego wygaszania bonusów do PP gdy limit 5% jest wyczerpany.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script (ukryj gdy PP nie może już nic wyleczyć):</strong></p>
+    <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"healing"</span> || args.healingMethod !== <span class="str">"firstAid"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="cmt">// Ukryj jeśli wszystkie rany mają już wyczerpany limit PP</span>
+<span class="kw">return</span> (args.wounds ?? []).every(w =&gt; (w.firstAidHealingApplied ?? <span class="num">0</span>) &gt;= <span class="num">5</span>);</code></pre>
   </div>
 
   <h4>Pre-Apply Script</h4>

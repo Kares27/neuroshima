@@ -1,13 +1,14 @@
 {
   "Actor": {
-    "types": ["character", "npc", "creature", "vehicle"],
+    "types": ["character", "npc", "creature", "vehicle", "homeBase"],
     "character": {},
     "npc": {},
     "creature": {},
-    "vehicle": {}
+    "vehicle": {},
+    "homeBase": {}
   },
   "Item": {
-    "types": ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money","reputation","disease","weapon-mod","armor-mod"],
+    "types": ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money","reputation","disease","weapon-mod","armor-mod","facilities"],
     "weapon": {},
     "armor": {},
     "gear": {},
@@ -25,6 +26,7 @@
     "vehicle-mod": {},
     "money": {},
     "weapon-mod": {},
-    "armor-mod": {}
+    "armor-mod": {},
+    "facilities": {}
   }
 }

@@ -10,7 +10,7 @@ import { getConditions } from "../apps/condition-config.js";
 import { TraitChoiceDialog } from "../apps/trait-choice-dialog.js";
 import { NeuroshimaGrenadeRollDialog } from "../apps/grenade-roll-dialog.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { getEffectiveArmorRatings } from "../helpers/mod-helpers.js";
+import { getEffectiveArmorRatings, installMod } from "../helpers/mod-helpers.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -202,7 +202,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           m.contentsReversed = [...(m.system.contents || [])].reverse();
           return m;
       }),
-      money: moneyItems
+      money: moneyItems,
+      weaponMods: items.filter(i => i.type === "weapon-mod"),
+      armorMods:  items.filter(i => i.type === "armor-mod")
     };
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
@@ -287,6 +289,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             isHealing: woundItem.system.isHealing || false,
             hadFirstAid: woundItem.system.hadFirstAid || false,
             healingAttempts: woundItem.system.healingAttempts || 0,
+            failedFirstAidAttempts: woundItem.system.failedFirstAidAttempts || 0,
+            failedTreatmentAttempts: woundItem.system.failedTreatmentAttempts || 0,
+            firstAidHealingApplied: woundItem.system.firstAidHealingApplied || 0,
+            originalPenalty: woundItem.system.originalPenalty ?? null,
             estimatedHealingDays: Math.ceil((woundItem.system.penalty || 0) / 5)
           };
         })
@@ -1363,6 +1369,23 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         return false;
     }
 
+    if (sourceItem.type === "weapon-mod" || sourceItem.type === "armor-mod") {
+        const dropTarget = event.target.closest("[data-item-id]");
+        const dropTargetItem = this.document.items.get(dropTarget?.dataset.itemId);
+        const isValidTarget = dropTargetItem && (
+          (sourceItem.type === "weapon-mod" && dropTargetItem.type === "weapon") ||
+          (sourceItem.type === "armor-mod"  && dropTargetItem.type === "armor")
+        );
+        if (isValidTarget && sourceItem.actor?.id === this.document.id) {
+          await installMod(dropTargetItem, sourceItem);
+          const qty = sourceItem.system.quantity ?? 1;
+          if (qty <= 1) await sourceItem.delete();
+          else await sourceItem.update({ "system.quantity": qty - 1 });
+          return;
+        }
+        return super._onDropItem(event, item);
+    }
+
     if (["specialization", "origin", "profession"].includes(sourceItem.type)) {
       return this._onDropBackgroundItem(event, sourceItem, item);
     }
@@ -2333,6 +2356,11 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     }
 
         if (weapon.system.weaponType === "grenade") {
+            if ((weapon.system.quantity ?? 1) <= 0) {
+                ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: weapon.name }));
+                this._isRolling = false;
+                return;
+            }
             const grenadeDialog = new NeuroshimaGrenadeRollDialog({
                 actor: this.document,
                 weapon: weapon,
@@ -3160,11 +3188,12 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       isSelected: u.id === preselectedUserId
     }));
 
-    const showPatientSelect = !patientActor;
+    const showPatientSelect = !patientActor && game.user.isGM;
     const template = "systems/neuroshima/templates/dialog/healing-request-dialog.hbs";
     const content = await foundry.applications.handlebars.renderTemplate(template, {
       users: usersData,
       showPatientSelect,
+      isGM: game.user.isGM,
       patientImg: patientActor?.img ?? null,
       patientName: patientActor?.name ?? null
     });
@@ -3176,72 +3205,104 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       },
       content,
       render: (event, html) => {
-        const root = (html instanceof HTMLElement ? html : html?.[0] instanceof HTMLElement ? html[0] : null)
-          ?? (event?.element instanceof HTMLElement ? event.element : null);
-        if (!root) return;
-        const userSelect = root.querySelector("#ns-medic-user-select");
-        const gmSection = root.querySelector("#ns-gm-actor-section");
-        const dropZone = root.querySelector("#ns-actor-drop-zone");
-        const preview = root.querySelector("#ns-actor-preview");
-        const patientDropZone = root.querySelector("#ns-patient-drop-zone");
-        const patientPreview = root.querySelector("#ns-patient-preview");
+        let setupDone = false;
 
-        const setActorPreview = (zone, previewEl, actor) => {
-          zone.dataset.actorUuid = actor.uuid;
-          if (previewEl) {
-            previewEl.innerHTML = `
-              <div class="flexcol" style="align-items:center;gap:4px;">
-                <img src="${actor.img}" style="width:52px;height:52px;border-radius:4px;object-fit:cover;" />
-                <span>${actor.name}</span>
-              </div>`;
+        const _resolveRoot = (ev, h) => {
+          if (h instanceof HTMLElement) return h;
+          if (h?.[0] instanceof HTMLElement) return h[0];
+          if (h?.element instanceof HTMLElement) return h.element;
+          if (ev?.element instanceof HTMLElement) return ev.element;
+          if (ev?.currentTarget instanceof HTMLElement) return ev.currentTarget;
+          return document.querySelector(".healing-request-dialog") ?? null;
+        };
+
+        const _setup = (root) => {
+          if (setupDone) return;
+          if (!root) return;
+          const userSelect = root.querySelector("#ns-medic-user-select");
+          if (!userSelect) return;
+          setupDone = true;
+
+          const gmSection = root.querySelector("#ns-gm-actor-section");
+          const dropZone = root.querySelector("#ns-actor-drop-zone");
+          const preview = root.querySelector("#ns-actor-preview");
+          const patientDropZone = root.querySelector("#ns-patient-drop-zone");
+          const patientPreview = root.querySelector("#ns-patient-preview");
+
+          const setActorPreview = (zone, previewEl, actor) => {
+            zone.dataset.actorUuid = actor.uuid;
+            if (previewEl) {
+              previewEl.innerHTML = `
+                <div class="flexcol" style="align-items:center;gap:4px;">
+                  <img src="${actor.img}" style="width:52px;height:52px;border-radius:4px;object-fit:cover;" />
+                  <span>${actor.name}</span>
+                </div>`;
+            }
+          };
+
+          const attachDropZone = (zone, previewEl) => {
+            if (zone.dataset.nsSetup) return;
+            zone.dataset.nsSetup = "1";
+            let dragCounter = 0;
+            zone.addEventListener("dragover", e => e.preventDefault());
+            zone.addEventListener("dragenter", e => { e.preventDefault(); dragCounter++; zone.classList.add("drag-over"); });
+            zone.addEventListener("dragleave", () => { dragCounter = Math.max(0, dragCounter - 1); if (dragCounter === 0) zone.classList.remove("drag-over"); });
+            zone.addEventListener("drop", async e => {
+              e.preventDefault();
+              dragCounter = 0;
+              zone.classList.remove("drag-over");
+              let data;
+              try { data = JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return; }
+              if (data.type !== "Actor" && data.type !== "Token") return;
+              const doc = await fromUuid(data.uuid);
+              const actor = doc?.actor ?? doc;
+              if (actor) setActorPreview(zone, previewEl, actor);
+            });
+          };
+
+          const attachPickToken = (btnId, zone, previewEl) => {
+            root.querySelector(btnId)?.addEventListener("click", () => {
+              const controlled = canvas?.tokens?.controlled ?? [];
+              if (controlled.length !== 1) {
+                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.SelectOneToken"));
+                return;
+              }
+              const actor = controlled[0].actor;
+              if (actor) setActorPreview(zone, previewEl, actor);
+            });
+          };
+
+          const updateGMSection = () => {
+            const uid = userSelect?.value;
+            const u = game.users.get(uid);
+            if (gmSection) gmSection.style.display = u?.isGM ? "" : "none";
+          };
+
+          userSelect.addEventListener("change", updateGMSection);
+          updateGMSection();
+
+          if (dropZone) {
+            attachDropZone(dropZone, preview);
+            attachPickToken("#ns-pick-medic-token", dropZone, preview);
+          }
+          if (patientDropZone) {
+            attachDropZone(patientDropZone, patientPreview);
+            attachPickToken("#ns-pick-patient-token", patientDropZone, patientPreview);
           }
         };
 
-        const attachDropZone = (zone, previewEl) => {
-          zone.addEventListener("dragover", e => e.preventDefault());
-          zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
-          zone.addEventListener("dragenter", () => zone.classList.add("drag-over"));
-          zone.addEventListener("drop", async e => {
-            e.preventDefault();
-            zone.classList.remove("drag-over");
-            let data;
-            try { data = JSON.parse(e.dataTransfer.getData("text/plain")); } catch { return; }
-            if (data.type !== "Actor" && data.type !== "Token") return;
-            const doc = await fromUuid(data.uuid);
-            const actor = doc?.actor ?? doc;
-            if (actor) setActorPreview(zone, previewEl, actor);
-          });
-        };
+        _setup(_resolveRoot(event, html));
 
-        const attachPickToken = (btnId, zone, previewEl) => {
-          root.querySelector(btnId)?.addEventListener("click", () => {
-            const controlled = canvas?.tokens?.controlled ?? [];
-            if (controlled.length !== 1) {
-              ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.SelectOneToken"));
-              return;
+        requestAnimationFrame(() => {
+          if (!setupDone) {
+            _setup(_resolveRoot(event, html));
+            if (!setupDone) {
+              setTimeout(() => {
+                if (!setupDone) _setup(document.querySelector(".healing-request-dialog"));
+              }, 100);
             }
-            const actor = controlled[0].actor;
-            if (actor) setActorPreview(zone, previewEl, actor);
-          });
-        };
-
-        const updateGMSection = () => {
-          const uid = userSelect?.value;
-          const u = game.users.get(uid);
-          if (gmSection) gmSection.style.display = u?.isGM ? "" : "none";
-        };
-
-        userSelect?.addEventListener("change", updateGMSection);
-        updateGMSection();
-
-        if (dropZone) {
-          attachDropZone(dropZone, preview);
-          attachPickToken("#ns-pick-medic-token", dropZone, preview);
-        }
-        if (patientDropZone) {
-          attachDropZone(patientDropZone, patientPreview);
-          attachPickToken("#ns-pick-patient-token", patientDropZone, patientPreview);
-        }
+          }
+        });
       },
       buttons: [
         {
@@ -3306,6 +3367,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         medicActorUuid,
         isPrivate
       });
+
+      const medicActorDoc = medicActorUuid ? await fromUuid(medicActorUuid) : null;
+      const medicActor = medicActorDoc?.actor ?? medicActorDoc ?? null;
+      await game.neuroshima.NeuroshimaChatMessage.renderHealingRequest(
+        resolvedPatientActor,
+        medicActor,
+        game.user.id,
+        { medicUserId, isPrivate }
+      );
 
       ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.RequestSent", {
         medic: medicLabel

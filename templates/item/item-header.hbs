@@ -21,10 +21,12 @@
             {{#unless isNonCountable}}
             {{#if enableEncumbrance}}
             {{#unless isModItem}}
+            {{#unless (eq item.type "facilities")}}
             <div class="form-group row-group">
                 <label>{{localize "NEUROSHIMA.Items.Fields.Weight"}}</label>
                 <input type="number" name="system.weight" value="{{#if isModded}}{{effectiveWeight}}{{else}}{{system.weight}}{{/if}}" data-dtype="Number" step="0.5" {{#if isModded}}disabled title="Bazowo: {{system.weight}}"{{/if}}/>
             </div>
+            {{/unless}}
             {{/unless}}
             {{/if}}
             {{#unless (eq item.type "money")}}

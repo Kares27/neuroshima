@@ -634,4 +634,86 @@
     </section>
     {{/if}}
 
+    {{!-- Weapon Mods --}}
+    {{#if inventory.weaponMods.length}}
+    <section class="inventory-section">
+        <div class="section-header inv-section-header">
+            <span>{{localize "NEUROSHIMA.Items.Type.WeaponMods"}}</span>
+            <div class="item-stat equipped"></div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="weapon-mod" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+        </div>
+        <div class="inventory-list weapon-mod-list">
+            <div class="inventory-items">
+                {{#each inventory.weaponMods as |item|}}
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped"></div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
+                    </div>
+                    <div class="item-summary collapsed">
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </section>
+    {{/if}}
+
+    {{!-- Armor Mods --}}
+    {{#if inventory.armorMods.length}}
+    <section class="inventory-section">
+        <div class="section-header inv-section-header">
+            <span>{{localize "NEUROSHIMA.Items.Type.ArmorMods"}}</span>
+            <div class="item-stat equipped"></div>
+            <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
+            <div class="item-controls">
+                <a class="item-control" data-action="createItem" data-type="armor-mod" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+            </div>
+        </div>
+        <div class="inventory-list armor-mod-list">
+            <div class="inventory-items">
+                {{#each inventory.armorMods as |item|}}
+                <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
+                    <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
+                        <div class="item-name flex3">
+                            <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
+                            <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
+                        </div>
+                        <div class="item-stat equipped"></div>
+                        <div class="item-stat quantity quantity-controls">
+                            <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
+                        </div>
+                        <div class="item-controls">
+                            <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
+                        </div>
+                    </div>
+                    <div class="item-summary collapsed">
+                        <div class="item-description-wrapper">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
+                            <div class="item-description">{{{item.system.description}}}</div>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </section>
+    {{/if}}
+
 </section>

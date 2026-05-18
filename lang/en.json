@@ -4,7 +4,8 @@
             "character": "Character",
             "npc": "NPC",
             "creature": "Creature",
-            "vehicle": "Vehicle"
+            "vehicle": "Vehicle",
+            "homeBase": "Home Base"
         },
         "Item": {
             "weapon": "Weapon",
@@ -26,7 +27,8 @@
             "reputation": "Reputation",
             "disease": "Disease",
             "weapon-mod": "Weapon Modification",
-            "armor-mod": "Armor Modification"
+            "armor-mod": "Armor Modification",
+            "facilities": "Facility"
         }
     },
     "NEUROSHIMA": {
@@ -35,6 +37,7 @@
             "ActorNPC": "NPC Sheet",
             "ActorCreature": "Creature Sheet",
             "ActorVehicle": "Vehicle Sheet",
+            "ActorHomeBase": "Home Base Sheet",
             "Item": "Item Sheet",
             "Effect": "Effect Sheet",
             "Edit": "Edit",
@@ -994,7 +997,10 @@
                 "Reputation": "Reputation",
                 "Disease": "Disease",
                 "Weapon-mod": "Weapon Modification",
-                "Armor-mod": "Armor Modification"
+                "WeaponMods": "Weapon Modifications",
+                "Armor-mod": "Armor Modification",
+                "ArmorMods": "Armor Modifications",
+                "Facilities": "Facility"
             },
             "Empty": "No items.",
             "Fields": {
@@ -1083,6 +1089,7 @@
             "Detach": "Unmount",
             "Detached": "Unmounted",
             "Remove": "Remove",
+            "Uninstall": "Uninstall (return to inventory)",
             "OpenMod": "Open modification",
             "AlreadyInstalled": "This modification is already installed.",
             "ResourceKeyCollision": "Warning: modification on '{item}' adds resources with keys already present in the item: {keys}. Scripts using @item.resources.{keys}.value may return ambiguous results — use @mod.resources.{keys}.value to reference this modification's own resources.",
@@ -1288,7 +1295,9 @@
             "HealingStarted": "{medic} started healing {patient}",
             "ChoosePatientActor": "Choose the actor that represents you:",
             "YourPatientActor": "Your actor (patient):",
-            "ChooseMedicActor": "Choose the actor representing the medic:"
+            "ChooseMedicActor": "Choose the actor representing the medic:",
+            "Accepted": "Accepted",
+            "Declined": "Declined"
         },
         "Wounds": {
             "None": "No wounds"
@@ -1426,6 +1435,31 @@
                     "Durability":   "Dur",
                     "Efficiency":   "Eff"
                 }
+            }
+        },
+        "HomeBase": {
+            "Tabs": {
+                "Residents": "Residents",
+                "Facilities": "Facilities",
+                "Cargo": "Storage"
+            },
+            "Residents": "Residents",
+            "NoResidents": "Drop an actor to add a resident",
+            "NoFacilities": "Drop a facility to add a module",
+            "NoCargo": "No cargo",
+            "SubtypePlaceholder": "Base subtype",
+            "MaxLoad": "Max Load",
+            "Cargo": "Cargo",
+            "FacilityLevel": "Level",
+            "FacilityLevelAbbr": "Lvl.",
+            "FacilityCapacity": "Capacity",
+            "FacilityMaintenance": "Maintenance",
+            "Facilities": {
+                "Type": "Type",
+                "Level": "Level",
+                "Capacity": "Capacity",
+                "MaintenanceCost": "Maintenance Cost",
+                "IsBuilt": "Built"
             }
         },
         "Effects": {
@@ -1722,7 +1756,8 @@
                 "ReverseAll": "Reverse blast damage",
                 "Reversed": "Reversed {count} wounds from grenade blast"
             },
-            "BlastDamageApplied": "Damage applied"
+            "BlastDamageApplied": "Damage applied",
+            "QuantityEmpty": "Out of {name} grenades!"
         }
     },
     "TOKEN": {

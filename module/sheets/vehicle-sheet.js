@@ -364,7 +364,9 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       ammo:           items.filter(i => i.type === "ammo"),
       magazines:      items.filter(i => i.type === "magazine"),
       tricks:         items.filter(i => i.type === "trick"),
-      traits:         items.filter(i => i.type === "trait")
+      traits:         items.filter(i => i.type === "trait"),
+      weaponMods:     items.filter(i => i.type === "weapon-mod"),
+      armorMods:      items.filter(i => i.type === "armor-mod")
     };
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
@@ -747,7 +749,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    if (["weapon", "gear", "armor", "magazine", "ammo", "vehicle-damage", "vehicle-mod", "money", "trick", "trait"].includes(item.type)) {
+    if (["weapon", "gear", "armor", "magazine", "ammo", "vehicle-damage", "vehicle-mod", "money", "trick", "trait", "weapon-mod", "armor-mod"].includes(item.type)) {
       return super._onDropItem(event, data);
     }
   }

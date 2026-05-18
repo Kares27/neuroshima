@@ -406,6 +406,53 @@ export async function removeMod(item, modId) {
 }
 
 /**
+ * Remove a mod from the weapon/armor and return it to the owning actor's inventory.
+ * Reduces quantity of an existing matching item, or creates a new one.
+ * @param {Item}   item
+ * @param {string} modId
+ */
+export async function uninstallMod(item, modId) {
+  const modsRaw = item.system.mods ?? {};
+  const entry   = modsRaw[modId];
+  if (!entry) return;
+
+  await removeMod(item, modId);
+
+  const actor = item.actor;
+  if (!actor) return;
+
+  const modType = item.type === "weapon" ? "weapon-mod" : "armor-mod";
+
+  const existing = actor.items.find(i => i.type === modType && i.name === entry.name);
+  if (existing) {
+    await existing.update({ "system.quantity": (existing.system.quantity ?? 1) + 1 });
+    return;
+  }
+
+  let sourceData = null;
+  try {
+    const sourceItem = await fromUuid(entry.uuid);
+    if (sourceItem) {
+      sourceData = sourceItem.toObject();
+      delete sourceData._id;
+      sourceData.system = sourceData.system ?? {};
+      sourceData.system.quantity = 1;
+    }
+  } catch (_) {}
+
+  if (!sourceData) {
+    sourceData = {
+      name: entry.name,
+      type: modType,
+      img:  entry.img ?? "icons/svg/item-bag.svg",
+      system: { quantity: 1 }
+    };
+  }
+
+  await actor.createEmbeddedDocuments("Item", [sourceData]);
+}
+
+/**
  * Copy / delete AEs from the original mod item onto the parent weapon/armor.
  * Tagged with flags.neuroshima.fromModId so they can be identified and removed later.
  */

@@ -237,6 +237,16 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       scriptModifier:     sf.modifier || 0
     });
 
+    const grenade = this.weapon;
+    if (grenade?.actor) {
+      const qty    = grenade.system.quantity ?? 1;
+      const newQty = Math.max(0, qty - 1);
+      await grenade.update({ "system.quantity": newQty });
+      if (newQty === 0) {
+        ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: grenade.name }));
+      }
+    }
+
     await this.close();
 
     if (result?.message && this.grenadeTargetPoint && canvas?.scene) {

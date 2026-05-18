@@ -18,8 +18,8 @@
 
     <div class="ns-section-divider">
         <div class="form-group flexcol" style="align-items:center;">
-            <label class="flexrow" style="align-items:center;gap:6px;">
-                <input type="checkbox" id="ns-private-healing" name="privateHealing" style="margin:0;" />
+            <label style="display:flex;flex-wrap:nowrap;align-items:center;gap:6px;white-space:nowrap;cursor:pointer;">
+                <input type="checkbox" id="ns-private-healing" name="privateHealing" style="margin:0;flex-shrink:0;" />
                 <span>{{localize "NEUROSHIMA.HealingRequest.PrivateHealing"}}</span>
             </label>
             <small style="text-align:center;margin-top:4px;">{{localize "NEUROSHIMA.HealingRequest.PrivateHealingExplanation"}}</small>
@@ -50,7 +50,7 @@
     </div>
     {{/if}}
 
-    <div id="ns-gm-actor-section" style="display:none;">
+    {{#if isGM}}<div id="ns-gm-actor-section" style="display:none;">
         <p>{{localize "NEUROSHIMA.HealingRequest.ChooseMedicActor"}}</p>
         <div class="ns-section-divider">
             <div class="ns-actor-container" id="ns-actor-drop-zone">
@@ -62,6 +62,6 @@
                 </button>
             </div>
         </div>
-    </div>
+    </div>{{/if}}
 
 </div>

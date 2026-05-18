@@ -373,6 +373,27 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
 }
 
 /**
+ * Data model for HomeBase actors (shelters, bases, hideouts).
+ */
+export class HomeBaseData extends foundry.abstract.TypeDataModel {
+  /** @override */
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      subtype: new fields.StringField({ initial: "" }),
+      residentMembers: new fields.ArrayField(new fields.SchemaField({
+        actorId: new fields.StringField({ initial: "", required: true })
+      }), { initial: [] }),
+      residents: new fields.SchemaField({
+        max: new fields.NumberField({ required: true, integer: true, initial: 10, min: 0 })
+      }),
+      maxLoad: new fields.NumberField({ required: true, initial: 500, min: 0 }),
+      notes: new fields.HTMLField({ initial: "" })
+    };
+  }
+}
+
+/**
  * Data model for Vehicle actors (cars, trucks, bikes, etc.).
  */
 export class NeuroshimaVehicleData extends foundry.abstract.TypeDataModel {

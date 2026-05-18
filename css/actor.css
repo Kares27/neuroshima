@@ -446,9 +446,11 @@
 }
 
 .neuroshima.sheet.actor [data-application-part="notes"].active {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column;
     flex: 1;
-    overflow-y: auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .neuroshima.sheet.actor [data-application-part="effects"].active {
@@ -3662,20 +3664,34 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima.sheet.actor-vehicle [data-application-part="mods"].active,
 .neuroshima.sheet.actor-vehicle [data-application-part="combat"].active,
 .neuroshima.sheet.actor-vehicle [data-application-part="equipment"].active,
-.neuroshima.sheet.actor-vehicle [data-application-part="notes"].active,
 .neuroshima.sheet.actor-vehicle [data-application-part="effects"].active {
     display: block !important;
     flex: 1;
     overflow-y: auto;
 }
 
+.neuroshima.sheet.actor-vehicle [data-application-part="notes"].active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .neuroshima.sheet.actor-creature [data-application-part="effects"].active,
-.neuroshima.sheet.actor-creature [data-application-part="inventory"].active,
-.neuroshima.sheet.actor-creature [data-application-part="notes"].active {
+.neuroshima.sheet.actor-creature [data-application-part="inventory"].active {
     display: block !important;
     flex: 1;
     overflow-y: auto;
     padding: 6px;
+}
+
+.neuroshima.sheet.actor-creature [data-application-part="notes"].active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* --- Crew Tab --- */
@@ -5498,8 +5514,12 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 /* ───────────────────── Notes Tab Layout ───────────────────── */
 
 .neuroshima .sheet-body .tab.notes {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
     padding: 0;
-    overflow-y: auto;
+    overflow: hidden;
     height: 100%;
 }
 
@@ -5545,14 +5565,19 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .neuroshima .notes-editor {
     flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     padding: 0.5rem;
     min-width: 0;
     min-height: 150px;
+    box-sizing: border-box;
 }
 
 .neuroshima .notes-editor prose-mirror {
+    flex: 1;
     min-height: 150px;
+    height: 100%;
 }
 
 .neuroshima .notes-bottom-row {
@@ -6950,4 +6975,150 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima .effects-group-mod-items .effects-group-header {
     background: rgba(59, 130, 246, 0.08);
     border-left: 3px solid rgba(59, 130, 246, 0.5);
+}
+
+/* ── Home Base Sheet ─────────────────────────────────────────────────────── */
+
+.neuroshima.sheet.actor-home-base .profile-img {
+    flex: 0 0 200px;
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+.neuroshima.sheet.actor-home-base .home-base-sheet-header {
+    width: 100%;
+}
+
+.neuroshima.sheet.actor-home-base .home-base-header-top {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-home-base .home-base-header-fields {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-home-base .charname {
+    width: 100%;
+}
+
+.neuroshima.sheet.actor-home-base .charname input {
+    width: 100%;
+    font-size: 0.9em;
+}
+
+.neuroshima.sheet.actor-home-base .home-base-subtype-field {
+    width: 100%;
+}
+
+.neuroshima.sheet.actor-home-base .home-base-subtype-field input {
+    width: 100%;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    color: rgba(255,255,255,0.7);
+}
+
+.neuroshima.sheet.actor-home-base .residents-qty {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    align-items: center;
+}
+
+.neuroshima.sheet.actor-home-base .residents-qty-field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.neuroshima.sheet.actor-home-base .residents-qty-field label {
+    font-size: 0.85em;
+    color: rgba(255,255,255,0.6);
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.actor-home-base .residents-qty-field input,
+.neuroshima.sheet.actor-home-base .residents-current {
+    width: 48px;
+    text-align: center;
+    font-size: 1em;
+}
+
+.neuroshima.sheet.actor-home-base .home-base-effects-column {
+    width: 100%;
+    padding: 8px;
+}
+
+.neuroshima.sheet.actor-home-base .tab {
+    padding: 10px 15px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.neuroshima.sheet.actor-home-base [data-application-part="residents"].active,
+.neuroshima.sheet.actor-home-base [data-application-part="facilities"].active,
+.neuroshima.sheet.actor-home-base [data-application-part="cargo"].active,
+.neuroshima.sheet.actor-home-base [data-application-part="effects"].active {
+    display: block !important;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.neuroshima.sheet.actor-home-base [data-application-part="notes"].active {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.neuroshima.sheet.actor-home-base .tab.notes.active {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    padding: 0;
+}
+
+.neuroshima.sheet.actor-home-base .notes-layout {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+.neuroshima.sheet.actor-home-base .notes-editor-block {
+    flex: 1 1 0;
+    min-height: 0;
+}
+
+.neuroshima.sheet.actor-home-base .notes-editor {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+}
+
+.neuroshima.sheet.actor-home-base .notes-editor prose-mirror {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
 }

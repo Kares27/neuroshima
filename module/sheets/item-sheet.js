@@ -44,7 +44,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       removeBlastZone: NeuroshimaItemSheet.prototype._onRemoveBlastZone,
       attachMod: NeuroshimaItemSheet.prototype._onAttachMod,
       detachMod: NeuroshimaItemSheet.prototype._onDetachMod,
-      removeMod: NeuroshimaItemSheet.prototype._onRemoveMod
+      removeMod: NeuroshimaItemSheet.prototype._onRemoveMod,
+      uninstallMod: NeuroshimaItemSheet.prototype._onUninstallMod
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -89,10 +90,20 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       const sourceItem = await fromUuid(data.uuid);
       if (sourceItem?.type === "weapon-mod" && item.type === "weapon") {
         await installMod(item, sourceItem);
+        if (sourceItem.actor) {
+          const qty = sourceItem.system.quantity ?? 1;
+          if (qty <= 1) await sourceItem.delete();
+          else await sourceItem.update({ "system.quantity": qty - 1 });
+        }
         return;
       }
       if (sourceItem?.type === "armor-mod" && item.type === "armor") {
         await installMod(item, sourceItem);
+        if (sourceItem.actor) {
+          const qty = sourceItem.system.quantity ?? 1;
+          if (qty <= 1) await sourceItem.delete();
+          else await sourceItem.update({ "system.quantity": qty - 1 });
+        }
         return;
       }
     }
@@ -258,13 +269,14 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     // Map owner and editable for templates
     context.owner = item.isOwner;
     context.editable = this.isEditable;
+    context.isActorOwned = !!item.actor;
 
     const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
     context.canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
     context.isJammedWeapon = item.type === "weapon" && item.system.weaponType !== "grenade" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease"];
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
     context.isModItem = item.type === "weapon-mod" || item.type === "armor-mod";
 
@@ -670,7 +682,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
           const btn = ev.target.closest("[data-action]");
           if (!btn) return;
           const action = btn.dataset.action;
-          if (!["attachMod", "detachMod", "removeMod", "toggleModSummary"].includes(action)) return;
+          if (!["attachMod", "detachMod", "removeMod", "uninstallMod", "toggleModSummary"].includes(action)) return;
           ev.preventDefault();
           ev.stopPropagation();
           const modId = btn.dataset.modId ?? btn.closest("[data-mod-id]")?.dataset.modId;
@@ -678,6 +690,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
           if (action === "attachMod") await attachMod(this.document, modId);
           else if (action === "detachMod") await detachMod(this.document, modId);
           else if (action === "removeMod") await removeMod(this.document, modId);
+          else if (action === "uninstallMod") { const { uninstallMod } = await import("../helpers/mod-helpers.js"); await uninstallMod(this.document, modId); }
           else if (action === "toggleModSummary") {
             const wrap = modsPart.querySelector(`.mod-row-wrap[data-mod-id="${modId}"]`);
             wrap?.querySelector(".item-summary")?.classList.toggle("collapsed");
@@ -731,7 +744,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         : ["description", "stats", "resources", "effects", "mods"],
       armor: ["description", "stats", "resources", "effects", "mods"],
       "weapon-mod": ["description", "stats", "resources", "effects"],
-      "armor-mod": ["description", "stats", "resources", "effects"]
+      "armor-mod": ["description", "stats", "resources", "effects"],
+      facilities: ["description", "stats", "resources", "effects"]
     };
 
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
@@ -864,6 +878,13 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const modId = target.dataset.modId ?? target.closest("[data-mod-id]")?.dataset.modId;
     if (!modId) return;
     await removeMod(this.document, modId);
+  }
+
+  async _onUninstallMod(event, target) {
+    const modId = target.dataset.modId ?? target.closest("[data-mod-id]")?.dataset.modId;
+    if (!modId) return;
+    const { uninstallMod } = await import("../helpers/mod-helpers.js");
+    await uninstallMod(this.document, modId);
   }
 
 }

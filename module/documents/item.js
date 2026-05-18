@@ -24,7 +24,8 @@ export class NeuroshimaItem extends Item {
       trait:             "systems/neuroshima/assets/img/brain.svg",
       money:             "systems/neuroshima/assets/img/banknote.svg",
       reputation:        "systems/neuroshima/assets/img/shaking-hands.svg",
-      disease:           "icons/svg/biohazard.svg"
+      disease:           "icons/svg/biohazard.svg",
+      facilities:        "systems/neuroshima/assets/img/facilities.svg"
     };
 
     const updates = {};
@@ -319,6 +320,11 @@ export class NeuroshimaItem extends Item {
       });
     }
 
+    const isBuiltChanged = this.type === "facilities" && foundry.utils.hasProperty(data, "system.isBuilt");
+    if (isBuiltChanged) {
+      actor.syncEquipTransferEffects(this, data.system.isBuilt);
+    }
+
     const specChanged = this.type === "specialization" && foundry.utils.hasProperty(data, "system.skillSpecializations");
     if (specChanged) {
       const updateData = {};
@@ -352,6 +358,13 @@ export class NeuroshimaItem extends Item {
         }
       }
       actor.update(updateData);
+    }
+
+    if (this.type === "facilities") {
+      const toDelete = actor.effects
+        .filter(e => e.origin === this.uuid && e.getFlag("neuroshima", "fromEquipTransfer") === true)
+        .map(e => e.id);
+      if (toDelete.length) actor.deleteEmbeddedDocuments("ActiveEffect", toDelete);
     }
   }
 }

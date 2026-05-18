@@ -1580,7 +1580,17 @@ export class NeuroshimaDice {
       if (!wound || wound.type !== "wound") continue;
 
       const oldPenalty = wound.system.penalty || 0;
-      const newPenalty = Math.max(0, oldPenalty + penaltyChange);
+      let newPenalty = Math.max(0, oldPenalty + penaltyChange);
+
+      if (isSuccess) {
+        const origPenalty = wound.system.originalPenalty ?? oldPenalty;
+        if (isFirstAid) {
+          const faRemaining = Math.max(0, 5 - (wound.system.firstAidHealingApplied || 0));
+          newPenalty = Math.max(oldPenalty - faRemaining, newPenalty);
+        }
+        newPenalty = Math.max(origPenalty - 15, newPenalty);
+        newPenalty = Math.max(0, newPenalty);
+      }
 
       game.neuroshima?.log("Obliczenie kary na ranie", {
         woundName: wound.name,
@@ -1595,7 +1605,7 @@ export class NeuroshimaDice {
         damageType: wound.system.damageType || "D",
         oldPenalty: oldPenalty,
         newPenalty: newPenalty,
-        penaltyChange: penaltyChange,
+        penaltyChange: newPenalty - oldPenalty,
         hadFirstAid: hadFirstAid
       });
     }
@@ -1966,10 +1976,11 @@ export class NeuroshimaDice {
       const totalPenalty = (baseDifficultyData.min || 0) + config.modifier;
       const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
       
-      // PHASE 2: Calculate total shift for difficulty adjustment (skill + dice)
-      // Przesunięcie umiejętności (ze skill points) + przesunięcie kości (1 lub 20)
+      // PHASE 2: Calculate total shift for difficulty adjustment (skill + dice + retry penalty)
+      // Przesunięcie umiejętności (ze skill points) + przesunięcie kości (1 lub 20) + kara za ponowne próby po porażce
       const diceShift = this.getDiceShift(rawResults);
-      const totalShift = -skillShift + diceShift;
+      const failedAttempts = config.failedAttempts || 0;
+      const totalShift = -skillShift + diceShift + failedAttempts;
       const finalDiff = this._getShiftedDifficulty(penaltyDiff, totalShift);
       const testTarget = finalStat + (finalDiff.mod || 0);
       
@@ -2134,9 +2145,10 @@ export class NeuroshimaDice {
     const totalPenalty = (baseDifficultyData.min || 0) + woundConfig.modifier;
     const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
     
-    // Calculate total shift (skill + dice)
+    // Calculate total shift (skill + dice + retry penalty)
     const diceShift = this.getDiceShift(rawResults);
-    const totalShift = -skillShift + diceShift;
+    const failedAttempts = woundConfig.failedAttempts || 0;
+    const totalShift = -skillShift + diceShift + failedAttempts;
     const finalDiff = this._getShiftedDifficulty(penaltyDiff, totalShift);
     const testTarget = finalStat + (finalDiff.mod || 0);
 

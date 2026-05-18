@@ -1546,6 +1546,10 @@ export class CombatHelper {
         healingDays: wound.system.healingDays || 0,
         hadFirstAid: wound.system.hadFirstAid || false,
         healingAttempts: wound.system.healingAttempts || 0,
+        failedFirstAidAttempts: wound.system.failedFirstAidAttempts || 0,
+        failedTreatmentAttempts: wound.system.failedTreatmentAttempts || 0,
+        firstAidHealingApplied: wound.system.firstAidHealingApplied || 0,
+        originalPenalty: wound.system.originalPenalty ?? null,
         estimatedHealingDays: estimatedHealingDays
       });
     }

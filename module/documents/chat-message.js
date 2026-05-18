@@ -801,6 +801,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
     if (!patient) return;
 
     const results = message.getFlag("neuroshima", "results") || [];
+    const healingMethod = message.getFlag("neuroshima", "healingMethod");
+    const extraData = message.getFlag("neuroshima", "extraData") || {};
+    const isFirstAid = healingMethod === "firstAid";
     const updates = [];
     const toDelete = [];
 
@@ -811,25 +814,65 @@ export class NeuroshimaChatMessage extends ChatMessage {
         const hEffect = r.healingEffect;
         if (!hEffect) continue;
 
-        if (hEffect.newPenalty <= 0) {
+        const isSuccess = r.isSuccess;
+        const oldPenalty = wound.system.penalty || 0;
+        const origPenalty = wound.system.originalPenalty ?? oldPenalty;
+        const firstAidApplied = wound.system.firstAidHealingApplied || 0;
+        const hadFirstAid = wound.system.hadFirstAid || false;
+
+        const woundCfg = extraData.woundConfigs?.find(c => c.woundId === r.woundId);
+        const healingModifier = woundCfg?.healingModifier || 0;
+
+        let penaltyChange;
+        if (isSuccess) {
+            penaltyChange = isFirstAid ? -5 : (hadFirstAid ? -10 : -15);
+        } else {
+            penaltyChange = 5;
+        }
+        penaltyChange += healingModifier;
+
+        let newPenalty = Math.max(0, oldPenalty + penaltyChange);
+
+        if (isSuccess) {
+            if (isFirstAid) {
+                const faRemaining = Math.max(0, 5 - firstAidApplied);
+                newPenalty = Math.max(oldPenalty - faRemaining, newPenalty);
+            }
+            newPenalty = Math.max(origPenalty - 15, newPenalty);
+            newPenalty = Math.max(0, newPenalty);
+        }
+
+        const updateData = {
+            _id: r.woundId,
+            "system.healingAttempts": (wound.system.healingAttempts || 0) + 1
+        };
+
+        if (wound.system.originalPenalty === null || wound.system.originalPenalty === undefined) {
+            updateData["system.originalPenalty"] = oldPenalty;
+        }
+
+        if (isSuccess) {
+            updateData["system.isHealing"] = true;
+            if (isFirstAid) {
+                updateData["system.hadFirstAid"] = true;
+                const actualHealed = oldPenalty - newPenalty;
+                updateData["system.firstAidHealingApplied"] = firstAidApplied + actualHealed;
+                updateData["system.failedFirstAidAttempts"] = 0;
+            } else {
+                updateData["system.failedTreatmentAttempts"] = 0;
+            }
+        } else {
+            if (isFirstAid) {
+                updateData["system.failedFirstAidAttempts"] = (wound.system.failedFirstAidAttempts || 0) + 1;
+            } else {
+                updateData["system.failedTreatmentAttempts"] = (wound.system.failedTreatmentAttempts || 0) + 1;
+            }
+        }
+
+        if (newPenalty <= 0) {
             toDelete.push(r.woundId);
         } else {
-            const currentAttempts = wound.system.healingAttempts || 0;
-            const updateData = {
-                _id: r.woundId,
-                "system.penalty": hEffect.newPenalty,
-                "system.healingAttempts": currentAttempts + 1
-            };
-            
-            // Tylko jeśli test był udany, oznaczamy jako "w trakcie leczenia"
-            if (r.isSuccess) {
-                updateData["system.isHealing"] = true;
-                // Jeśli to była Pierwsza Pomoc, oznaczamy to na ranie
-                if (message.getFlag("neuroshima", "healingMethod") === "firstAid") {
-                    updateData["system.hadFirstAid"] = true;
-                }
-            }
-            
+            updateData["system.penalty"] = newPenalty;
             updates.push(updateData);
         }
     }
@@ -1044,7 +1087,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
   /**
    * Renderuje kartę prośby o leczenie.
    */
-  static async renderHealingRequest(patientActor, medicActor, requesterId) {
+  static async renderHealingRequest(patientActor, medicActor, requesterId, options = {}) {
+    const { medicUserId = null, isPrivate = false } = options;
     const template = "systems/neuroshima/templates/chat/healing-request.hbs";
     const patientData = game.neuroshima.CombatHelper.generatePatientCard(patientActor);
     const requester = game.users.get(requesterId);
@@ -1057,18 +1101,21 @@ export class NeuroshimaChatMessage extends ChatMessage {
     };
 
     const content = await this._renderTemplate(template, context);
-    
+
+    const gmUserIds  = game.users.filter(u => u.isGM).map(u => u.id);
+    const whisperIds = [...new Set([medicUserId, ...gmUserIds].filter(Boolean))];
+
     return this.create({
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor: patientActor }),
       content: content,
       style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      whisper: whisperIds,
       flags: {
         neuroshima: {
           messageType: "healingRequest",
           patientUuid: patientActor.uuid,
-          medicUuid: medicActor?.uuid,
-          requesterId: requesterId
+          medicUuid: medicActor?.uuid ?? null
         }
       }
     });
