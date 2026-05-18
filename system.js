@@ -6,7 +6,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData, HomeBaseData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -300,10 +300,12 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["weapon-mod"]        = WeaponModData;
     CONFIG.Item.dataModels["armor-mod"]         = ArmorModData;
     CONFIG.Item.dataModels["facilities"]        = FacilitiesData;
+    CONFIG.Item.dataModels["container"]         = ContainerData;
 
     CONFIG.Item.defaultIcons = CONFIG.Item.defaultIcons ?? {};
     CONFIG.Item.defaultIcons["weapon-mod"] = "systems/neuroshima/assets/img/modification-weapon.svg";
     CONFIG.Item.defaultIcons["facilities"] = "systems/neuroshima/assets/img/facilities.svg";
+    CONFIG.Item.defaultIcons["container"]  = "icons/svg/item-bag.svg";
 
     Handlebars.registerHelper('gt', (a, b) => a > b);
     Handlebars.registerHelper('lt', (a, b) => a < b);

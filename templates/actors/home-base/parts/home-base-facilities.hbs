@@ -1,5 +1,6 @@
 <section class="tab home-base-facilities {{tabs.facilities.cssClass}}" data-group="primary" data-tab="facilities" data-application-part="facilities">
 
+    <div class="ns-home-section-box ns-home-section-table">
     <div class="section-header inv-section-header">
         <span>{{localize "NEUROSHIMA.HomeBase.Tabs.Facilities"}}</span>
         <div class="item-controls">
@@ -13,6 +14,9 @@
             <div class="item-wrap" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}">
                 <div class="item draggable flexrow" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true">
                     <div class="item-name flex3">
+                        <a class="item-control toggle-is-built {{#if item.system.isBuilt}}is-built{{/if}}" data-action="toggleIsBuilt" data-item-id="{{item.id}}" title="{{localize 'NEUROSHIMA.HomeBase.Facilities.IsBuilt'}}">
+                            <i class="fas fa-house"></i>
+                        </a>
                         <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
                         <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
                     </div>
@@ -23,11 +27,6 @@
                     {{/if}}
                     <div class="item-stat text-center clickable" style="flex:0.5;" title="{{localize 'NEUROSHIMA.HomeBase.FacilityLevel'}}" data-action="adjustLevel" data-item-id="{{item.id}}">
                         <span>{{localize "NEUROSHIMA.HomeBase.FacilityLevelAbbr"}} {{item.system.level}}</span>
-                    </div>
-                    <div class="item-stat text-center" style="flex:0.6;" title="{{localize 'NEUROSHIMA.HomeBase.Facilities.IsBuilt'}}">
-                        <a class="item-control toggle-equipped" data-action="toggleIsBuilt" data-item-id="{{item.id}}">
-                            <i class="{{#if item.system.isBuilt}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
-                        </a>
                     </div>
                     <div class="item-controls">
                         <a class="item-control item-ctx-btn" data-action="itemContextMenu" title="{{localize 'NEUROSHIMA.ContextMenu.Options'}}"><i class="fa-solid fa-ellipsis-vertical"></i></a>
@@ -67,6 +66,7 @@
             <p class="crew-empty">{{localize "NEUROSHIMA.HomeBase.NoFacilities"}}</p>
             {{/each}}
         </div>
+    </div>
     </div>
 
 </section>

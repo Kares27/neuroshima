@@ -610,6 +610,22 @@ export class FacilitiesData extends foundry.abstract.TypeDataModel {
 }
 
 /**
+ * Data model for Container items.
+ */
+export class ContainerData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      ...baseSchema(),
+      countWeightToEncumbrance: new fields.BooleanField({ initial: true }),
+      maxItems: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
+      maxWeight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
+      contents: new fields.ArrayField(new fields.ObjectField(), { initial: [] })
+    };
+  }
+}
+
+/**
  * Data model for Vehicle Damage items.
  * Vehicle-specific equivalent of wounds — represents structural damage
  * to specific sections of a vehicle.

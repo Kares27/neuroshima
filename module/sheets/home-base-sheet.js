@@ -304,6 +304,14 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
         item.update({ "system.level": Math.max(0, (item.system.level ?? 0) - 1) });
       });
     });
+
+    html.querySelectorAll('.item-wrap[data-item-id]').forEach(wrap => {
+      wrap.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._showItemContextMenu(event, wrap.dataset.itemId);
+      });
+    });
   }
 
   _showItemContextMenu(event, itemId) {

@@ -8,7 +8,7 @@
     "homeBase": {}
   },
   "Item": {
-    "types": ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money","reputation","disease","weapon-mod","armor-mod","facilities"],
+    "types": ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-maneuver", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money","reputation","disease","weapon-mod","armor-mod","facilities","container"],
     "weapon": {},
     "armor": {},
     "gear": {},
@@ -27,6 +27,7 @@
     "money": {},
     "weapon-mod": {},
     "armor-mod": {},
-    "facilities": {}
+    "facilities": {},
+    "container": {}
   }
 }

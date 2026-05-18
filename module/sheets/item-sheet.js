@@ -240,7 +240,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       weapon: ["description", "stats", "resources", "effects", "mods"],
       armor: ["description", "stats", "resources", "effects", "mods"],
       "weapon-mod": ["description", "stats", "resources", "effects"],
-      "armor-mod": ["description", "stats", "resources", "effects"]
+      "armor-mod": ["description", "stats", "resources", "effects"],
+      container: ["contents", "description", "stats", "effects"]
     };
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
     if (!allowedTabs.includes(this.tabGroups.primary)) {
@@ -593,6 +594,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     mods: {
       template: "systems/neuroshima/templates/item/parts/mods-tab.hbs",
       scrollable: [".mods-list"]
+    },
+    contents: {
+      template: "systems/neuroshima/templates/item/parts/container-contents.hbs",
+      scrollable: [".container-contents-list"]
     }
   };
 

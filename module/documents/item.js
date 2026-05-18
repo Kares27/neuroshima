@@ -25,7 +25,8 @@ export class NeuroshimaItem extends Item {
       money:             "systems/neuroshima/assets/img/banknote.svg",
       reputation:        "systems/neuroshima/assets/img/shaking-hands.svg",
       disease:           "icons/svg/biohazard.svg",
-      facilities:        "systems/neuroshima/assets/img/facilities.svg"
+      facilities:        "systems/neuroshima/assets/img/facilities.svg",
+      container:         "icons/svg/item-bag.svg"
     };
 
     const updates = {};
@@ -144,9 +145,14 @@ export class NeuroshimaItem extends Item {
     
     // Calculate total weight based on quantity
     if ("weight" in system && "quantity" in system) {
-      system.totalWeight = (parseFloat(system.weight) || 0) * (parseInt(system.quantity) || 0);
-      // Round to 2 decimal places to avoid floating point issues
-      system.totalWeight = Math.round(system.totalWeight * 100) / 100;
+      const ownWeight = (parseFloat(system.weight) || 0) * (parseInt(system.quantity) || 0);
+      let contentsWeight = 0;
+      if (this.type === "container" && system.countWeightToEncumbrance) {
+        contentsWeight = (system.contents || []).reduce((sum, entry) => {
+          return sum + (parseFloat(entry.system?.weight || 0) * (parseInt(entry.system?.quantity || 1)));
+        }, 0);
+      }
+      system.totalWeight = Math.round((ownWeight + contentsWeight) * 100) / 100;
     }
   }
 

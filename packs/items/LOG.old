@@ -1,7 +1,5 @@
-2026/05/18-14:18:19.689 42e8 Recovering log #197
-2026/05/18-14:18:19.693 42e8 Delete type=0 #197
-2026/05/18-14:18:19.693 42e8 Delete type=3 #196
-2026/05/18-15:03:27.117 1da8 Level-0 table #201: started
-2026/05/18-15:03:27.117 1da8 Level-0 table #201: 0 bytes OK
-2026/05/18-15:03:27.119 1da8 Delete type=0 #199
-2026/05/18-15:03:27.121 1da8 Manual compaction at level-0 from '!folders!FRynz6MR2XfeY9tZ' @ 72057594037927935 : 1 .. '!items.effects!fKwaJ9PwbVJwrthK.fBmh4NWQTH3DXj22' @ 0 : 0; will stop at (end)
+2026/05/18-17:45:52.341 4068 Log #203: 0 ops saved to Table #204 OK
+2026/05/18-17:45:52.341 4068 Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items/000203.log: OK
+2026/05/18-17:45:52.341 4068 Table #181: 88 entries OK
+2026/05/18-17:45:52.345 4068 Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items/MANIFEST-000202: OK
+2026/05/18-17:45:52.349 4068 **** Repaired leveldb H:\FOUNDRY DATA\Data\systems\neuroshima\packs\items; recovered 1 files; 55375 bytes. Some data may have been lost. ****
