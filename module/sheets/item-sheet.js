@@ -45,7 +45,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       attachMod: NeuroshimaItemSheet.prototype._onAttachMod,
       detachMod: NeuroshimaItemSheet.prototype._onDetachMod,
       removeMod: NeuroshimaItemSheet.prototype._onRemoveMod,
-      uninstallMod: NeuroshimaItemSheet.prototype._onUninstallMod
+      uninstallMod: NeuroshimaItemSheet.prototype._onUninstallMod,
+      removeContainerItem: NeuroshimaItemSheet.prototype._onRemoveContainerItem,
+      editContainerItem: NeuroshimaItemSheet.prototype._onEditContainerItem,
+      deleteContainerItem: NeuroshimaItemSheet.prototype._onDeleteContainerItem,
+      toggleContainerLock: NeuroshimaItemSheet.prototype._onToggleContainerLock
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -82,6 +86,14 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         if (!currentTraits.includes(uuid)) {
           await item.update({ "system.traits": [...currentTraits, uuid] });
         }
+        return;
+      }
+    }
+
+    if (item.type === "container" && data.type === "Item") {
+      const sourceItem = await fromUuid(data.uuid);
+      if (sourceItem) {
+        await this._addItemToContainer(sourceItem);
         return;
       }
     }
@@ -225,6 +237,16 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.fields = item.system.schema.fields;
     context.source = item.system.toObject();
 
+    const LEVELS = CONST.DOCUMENT_OWNERSHIP_LEVELS;
+    const userLevel = item.getUserLevel(game.user);
+    const isGM = game.user.isGM;
+    context.isLimitedView = !isGM && userLevel <= LEVELS.LIMITED;
+    context.isObserverView = !isGM && userLevel === LEVELS.OBSERVER;
+
+    const isContainerLocked = item.type === "container" && item.system.locked && !isGM;
+    context.isContainerLocked = isContainerLocked;
+    context.containerIsLocked = item.type === "container" && item.system.locked;
+
     const tabsByType = {
       disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
@@ -243,12 +265,25 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       "armor-mod": ["description", "stats", "resources", "effects"],
       container: ["contents", "description", "stats", "effects"]
     };
-    const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
+    let allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
+
+    if (context.isLimitedView) {
+      allowedTabs = ["description"];
+    } else if (isContainerLocked) {
+      allowedTabs = ["contents", "description"];
+    }
+
     if (!allowedTabs.includes(this.tabGroups.primary)) {
       this.tabGroups.primary = allowedTabs[0];
     }
 
     context.tabs = this._getTabs();
+    if (context.isLimitedView || isContainerLocked) {
+      const allowed = new Set(allowedTabs);
+      for (const [id, tab] of Object.entries(context.tabs)) {
+        if (!allowed.has(id)) delete context.tabs[id];
+      }
+    }
     context.enableEncumbrance = game.settings.get("neuroshima", "enableEncumbrance");
     context.usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
     context.config = NEUROSHIMA;
@@ -515,6 +550,36 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       context.armorModTypeSuggestions = NEUROSHIMA.armorModTypeSuggestions ?? [];
     }
 
+    if (item.type === "container") {
+      let contents;
+      if (item.actor) {
+        contents = Array.from(item.actor.items)
+          .filter(i => i.getFlag("neuroshima", "containerId") === item.id)
+          .map(c => ({
+            id: c.id,
+            name: c.name,
+            img: c.img,
+            type: c.type,
+            quantity: c.system?.quantity ?? 1,
+            weight: c.system?.weight ?? 0
+          }));
+      } else {
+        contents = Array.from(item.system.contents || []).map((e, idx) => ({
+          id: null,
+          legacyIndex: idx,
+          name: e.name,
+          img: e.img,
+          type: e.type,
+          quantity: e.quantity ?? 1,
+          weight: e.weight ?? 0
+        }));
+      }
+      context.containerContents = contents;
+      context.containerHasActor = !!item.actor;
+      context.containerItemCount = contents.length;
+      context.containerCurrentWeight = contents.reduce((sum, e) => sum + ((e.weight || 0) * (e.quantity || 1)), 0);
+    }
+
     game.neuroshima.log(`Item Sheet Context prepared for ${item.name}`, context);
 
     return context;
@@ -558,6 +623,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   static TABS = {
     primary: {
       tabs: [
+        { id: "contents", group: "primary", label: "NEUROSHIMA.Tabs.Contents" },
         { id: "stats", group: "primary", label: "NEUROSHIMA.Tabs.Stats" },
         { id: "description", group: "primary", label: "NEUROSHIMA.Tabs.Description" },
         { id: "resources", group: "primary", label: "NEUROSHIMA.Tabs.Resources" },
@@ -626,6 +692,41 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   async _onRender(context, options) {
     await super._onRender(context, options);
 
+    const item = this.document;
+
+    if (item.type === "container" && game.user.isGM) {
+      const header = this.element.querySelector(".window-header");
+      if (header) {
+        this.element.querySelectorAll(".container-lock-btn").forEach(el => el.remove());
+        const isLocked = item.system.locked;
+        const lockBtn = document.createElement("button");
+        lockBtn.type = "button";
+        lockBtn.className = "container-lock-btn header-control";
+        lockBtn.title = isLocked
+          ? game.i18n.localize("NEUROSHIMA.Container.Unlock")
+          : game.i18n.localize("NEUROSHIMA.Container.Lock");
+        lockBtn.innerHTML = isLocked
+          ? `<i class="fas fa-lock" style="color:#ef4444;"></i>`
+          : `<i class="fas fa-lock-open" style="color:#22c55e;"></i>`;
+        lockBtn.addEventListener("click", () => this._onToggleContainerLock());
+        const ellipsisBtn = header.querySelector(".fa-ellipsis-vertical, .fa-solid.fa-ellipsis-vertical")?.closest("button, a, .header-control");
+        const closeBtn = header.querySelector("[data-action='close']");
+        const anchor = ellipsisBtn ?? closeBtn;
+        if (anchor) header.insertBefore(lockBtn, anchor);
+        else header.appendChild(lockBtn);
+      }
+    }
+
+    if (context.isObserverView) {
+      this.element.querySelectorAll("input, select, textarea").forEach(el => {
+        el.disabled = true;
+      });
+      this.element.querySelectorAll("[data-action]:not([data-action='editImage']):not([data-action='tab'])").forEach(el => {
+        el.style.pointerEvents = "none";
+        el.style.opacity = "0.5";
+      });
+    }
+
     this.element?.querySelectorAll("details[data-details-id]").forEach(d => {
       const id = d.dataset.detailsId;
       if (id in this._detailsState) d.open = this._detailsState[id];
@@ -663,14 +764,13 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     const activeTab = this.tabGroups?.primary;
     if (activeTab) {
-      for (const partId of ["stats", "description", "resources", "effects", "mods"]) {
+      for (const partId of ["stats", "description", "resources", "effects", "mods", "contents"]) {
         const el = this.element?.querySelector(`[data-application-part="${partId}"]`);
         if (el) el.classList.toggle("active", partId === activeTab);
       }
     }
 
-    const item = this.document;
-    if (["origin", "profession", "weapon", "armor"].includes(item.type)) {
+    if (["origin", "profession", "weapon", "armor", "container"].includes(item.type)) {
       const el = this.element;
       if (el && !el._dropBound) {
         el._dropBound = true;
@@ -731,7 +831,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const item = this.document;
     const rawActiveTab = this.tabGroups.primary;
 
-    // 1. Definicja widocznych tabów dla poszczególnych typów
+    // Tab visibility per item type
     const tabsByType = {
       disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
@@ -750,15 +850,16 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       armor: ["description", "stats", "resources", "effects", "mods"],
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
-      facilities: ["description", "stats", "resources", "effects"]
+      facilities: ["description", "stats", "resources", "effects"],
+      container: ["contents", "description", "stats", "effects"]
     };
 
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
 
-    // Jeśli aktywna zakładka nie należy do dozwolonych (np. "stats" dla trick/trait), użyj pierwszej dozwolonej
+    // Fall back to the first allowed tab if the current one is not valid for this type
     const activeTab = allowedTabs.includes(rawActiveTab) ? rawActiveTab : null;
 
-    // 2. Filtrowanie i mapowanie
+    // Build the active tab map
     const tabs = allowedTabs.reduce((obj, id) => {
       const tabData = this.constructor.TABS.primary.tabs.find(t => t.id === id);
       if (tabData) {
@@ -890,6 +991,105 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     if (!modId) return;
     const { uninstallMod } = await import("../helpers/mod-helpers.js");
     await uninstallMod(this.document, modId);
+  }
+
+  async _addItemToContainer(sourceItem) {
+    const container = this.document;
+    if (container.type !== "container") return;
+    if (sourceItem.uuid === container.uuid) return;
+
+    const actor = container.actor;
+
+    if (!actor) {
+      const maxItems = container.system.maxItems;
+      const contents = Array.from(container.system.contents || []);
+      if (maxItems > 0 && contents.length >= maxItems) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Container.FullWarning"));
+        return;
+      }
+      const snapshot = {
+        name: sourceItem.name,
+        img: sourceItem.img || "systems/neuroshima/assets/img/backpack.svg",
+        type: sourceItem.type,
+        quantity: sourceItem.system?.quantity ?? 1,
+        weight: sourceItem.system?.weight ?? 0,
+        cost: sourceItem.system?.cost ?? 0,
+        sourceUuid: sourceItem.uuid,
+        itemData: sourceItem.toObject()
+      };
+      contents.push(snapshot);
+      await container.update({ "system.contents": contents });
+      return;
+    }
+
+    const maxItems = container.system.maxItems;
+    if (maxItems > 0) {
+      const currentCount = Array.from(actor.items).filter(i => i.getFlag("neuroshima", "containerId") === container.id).length;
+      if (currentCount >= maxItems) {
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Container.FullWarning"));
+        return;
+      }
+    }
+
+    if (sourceItem.actor?.id === actor.id) {
+      await sourceItem.setFlag("neuroshima", "containerId", container.id);
+    } else {
+      const itemData = sourceItem.toObject();
+      foundry.utils.setProperty(itemData, "flags.neuroshima.containerId", container.id);
+      await actor.createEmbeddedDocuments("Item", [itemData]);
+    }
+  }
+
+  async _onRemoveContainerItem(event, target) {
+    const container = this.document;
+    if (container.type !== "container") return;
+    const actor = container.actor;
+
+    if (!actor) {
+      const idx = parseInt(target.dataset.contentIndex ?? target.closest("[data-content-index]")?.dataset.contentIndex ?? "-1");
+      if (idx < 0) return;
+      const contents = Array.from(container.system.contents || []);
+      contents.splice(idx, 1);
+      await container.update({ "system.contents": contents });
+      return;
+    }
+
+    const childItemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+    if (!childItemId) return;
+    const childItem = actor.items.get(childItemId);
+    if (!childItem) return;
+    await childItem.unsetFlag("neuroshima", "containerId");
+  }
+
+  async _onEditContainerItem(event, target) {
+    const container = this.document;
+    if (container.type !== "container") return;
+    const actor = container.actor;
+    if (!actor) return;
+    const childItemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+    if (!childItemId) return;
+    const childItem = actor.items.get(childItemId);
+    if (!childItem) return;
+    childItem.sheet.render(true);
+  }
+
+  async _onDeleteContainerItem(event, target) {
+    const container = this.document;
+    if (container.type !== "container") return;
+    const actor = container.actor;
+    if (!actor) return;
+    const childItemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+    if (!childItemId) return;
+    const childItem = actor.items.get(childItemId);
+    if (!childItem) return;
+    await childItem.deleteDialog();
+  }
+
+  async _onToggleContainerLock() {
+    if (!game.user.isGM) return;
+    const container = this.document;
+    if (container.type !== "container") return;
+    await container.update({ "system.locked": !container.system.locked });
   }
 
 }

@@ -1644,4 +1644,274 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     color: #e2e8f0;
 }
 
+/* ─── Container stats row ─── */
+
+.neuroshima.sheet.item .container-stats-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.neuroshima.sheet.item .container-stats-row .form-group {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* ─── Container item sheet ─── */
+
+.neuroshima.sheet.item .container-header-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    background: var(--ns-bg-secondary, #1e293b);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: var(--ns-text-light);
+    gap: 12px;
+}
+
+.neuroshima.sheet.item .container-count-info,
+.neuroshima.sheet.item .container-weight-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.sheet.item .container-contents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.neuroshima.sheet.item .container-item-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-bottom: 1px solid var(--ns-border-subtle, #334155);
+    min-height: 28px;
+}
+
+.neuroshima.sheet.item .container-item-img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main);
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.item .container-item-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .container-item-name {
+    font-weight: bold;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.item .container-item-type {
+    font-size: 0.75em;
+    color: var(--ns-text-light);
+    text-transform: uppercase;
+}
+
+.neuroshima.sheet.item .container-item-qty,
+.neuroshima.sheet.item .container-item-weight {
+    font-size: 0.85em;
+    color: var(--ns-text-light);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.neuroshima.sheet.item .container-item-controls {
+    flex-shrink: 0;
+    display: flex;
+    gap: 4px;
+}
+
+.neuroshima.sheet.item .container-item-controls .item-control-delete {
+    color: var(--ns-error, #ef4444);
+}
+
+.neuroshima.sheet.item .container-empty-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: var(--ns-text-light);
+    gap: 6px;
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.neuroshima.sheet.item .container-empty-message i {
+    font-size: 1.5em;
+}
+
+.neuroshima.sheet.item .container-drop-zone {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 8px;
+    border: 2px dashed var(--ns-border-main);
+    border-radius: 4px;
+    color: var(--ns-text-light);
+    font-size: 0.85em;
+    opacity: 0.6;
+}
+
+/* ─── Container actor sheet ─── */
+
+.neuroshima.sheet.actor .container-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ns-accent, #3b82f6);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.7em;
+    font-weight: bold;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor .container-contents-preview {
+    padding: 4px 6px;
+    background: var(--ns-bg-secondary, #1e293b);
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.neuroshima.sheet.actor .container-entry-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 0;
+    border-bottom: 1px solid var(--ns-border-subtle, #334155);
+    font-size: 0.85em;
+}
+
+.neuroshima.sheet.actor .container-entry-row:last-child {
+    border-bottom: none;
+}
+
+.neuroshima.sheet.actor .container-entry-img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    border-radius: 2px;
+    border: 1px solid var(--ns-border-main);
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor .container-entry-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.sheet.actor .container-entry-qty {
+    color: var(--ns-text-light);
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.actor .container-empty-preview {
+    font-style: italic;
+    color: var(--ns-text-light);
+    font-size: 0.85em;
+    padding: 4px 0;
+    opacity: 0.7;
+}
+
+/* ─── Container locked view ─── */
+
+.neuroshima.sheet.item .container-locked-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.sheet.item .container-locked-icon {
+    font-size: 3em;
+    color: #ef4444;
+    opacity: 0.85;
+}
+
+.neuroshima.sheet.item .container-locked-label {
+    font-size: 1.05em;
+    font-style: italic;
+    color: var(--ns-text-light);
+    opacity: 0.8;
+}
+
+/* ─── Window header lock button ─── */
+
+.container-lock-btn.header-control {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 0.95em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+}
+
+.container-lock-btn.header-control:hover {
+    opacity: 0.75;
+}
+
+/* ─── Limited access notice (actor header) ─── */
+
+.neuroshima.sheet.actor .limited-view-notice {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    margin-top: 6px;
+    border: 1px solid var(--ns-border-subtle, #334155);
+    border-radius: 4px;
+    background: var(--ns-bg-secondary, #1a2233);
+    color: var(--ns-text-light);
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+.neuroshima.sheet.actor .limited-view-notice i {
+    opacity: 0.7;
+}
+
+.neuroshima.sheet.actor .take-from-container-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+}
 

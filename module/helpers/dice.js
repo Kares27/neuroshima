@@ -7,9 +7,9 @@ import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
  */
 export class NeuroshimaDice {
   /**
-   * Wykonuje rzut na Inicjatywę (Zręczność, Test Otwarty).
+   * Rolls initiative (Dexterity, Open Test).
    * @param {Object} params 
-   * @returns {Promise<Object>} Dane rzutu i wynik SP
+   * @returns {Promise<Object>} Roll data and SP result
    */
   static async rollInitiative(params) {
     const { 
@@ -49,7 +49,7 @@ export class NeuroshimaDice {
         }
     }
 
-    // 1. Pobranie wartości atrybutu i umiejętności
+    // 1. Read attribute and skill values
     const attrValue = Number(actor.system.attributeTotals[attribute]) || 10;
     const isCreatureActor = actor?.type === "creature";
     const skillValue = useSkill
@@ -58,7 +58,7 @@ export class NeuroshimaDice {
             : (Number(actor.system.skills[skill]?.value) || 0))
         : 0;
     
-    // 2. Kalkulacja kar (%)
+    // 2. Compute penalty modifiers (%)
     const basePenalty = NEUROSHIMA.difficulties[difficulty]?.min || 0;
     const armorPenalty = useArmorPenalty ? (actor.system.combat?.totalArmorPenalty || 0) : 0;
     const woundPenalty = useWoundPenalty ? (actor.system.combat?.totalWoundPenalty || 0) : 0;
@@ -67,7 +67,7 @@ export class NeuroshimaDice {
     
     const baseDiffObj = NEUROSHIMA.difficulties[difficulty] || NEUROSHIMA.difficulties.average;
     
-    // 3. Wykonanie rzutu testowego (Otwarty)
+    // 3. Execute the initiative test (Open Test)
     const rollResult = await this.rollTest({
         stat: attrValue + chargeBonus,
         skill: skillValue,
@@ -104,12 +104,12 @@ export class NeuroshimaDice {
     // Add tooltip to rollResult for reuse in duels
     rollResult.tooltip = this._buildOpenTestTooltip(rollResult, "NEUROSHIMA.MeleeOpposed.InitiativeTest");
     
-    // 4. Stworzenie wiadomości na czacie (jeśli nie wyłączono)
+    // 4. Post the roll result to chat (unless disabled)
     if (params.chatMessage !== false) {
         const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
         const rollMessage = await NeuroshimaChatMessage.renderInitiativeRoll(rollResult, actor, rollResult.roll);
         
-        // Integracja Dice So Nice: czekaj na animację przed zwróceniem wyniku
+        // Dice So Nice integration: wait for the animation before returning the result
         if (game.dice3d) {
             await new Promise((resolve) => {
                 const timeout = setTimeout(resolve, 5000); // Fail-safe timeout
@@ -122,7 +122,7 @@ export class NeuroshimaDice {
             });
         }
     } else if (game.dice3d) {
-        // Jeśli nie ma wiadomości (np. rzut w tle), ale chcemy kości 3D
+        // No chat message (e.g. background roll), but still show 3D dice animation
         await game.dice3d.showForRoll(rollResult.roll, game.user, true);
     }
 
@@ -162,7 +162,7 @@ export class NeuroshimaDice {
         options = {}
     } = params;
     
-    // Rozpoczęcie grupy logów dla rzutu bronią
+    // Open log group for this weapon roll
     game.neuroshima.group("Inicjalizacja rzutu bronią");
     game.neuroshima.log("Parametry wejściowe rzutu:", params);
 
@@ -185,7 +185,7 @@ export class NeuroshimaDice {
         }
     }
 
-    // 1. Kalkulacja kar procentowych (trudność bazowa, rany, pancerz, lokacja, choroba)
+    // 1. Compute percentage penalties (base difficulty, wounds, armor, location, disease)
     const basePenalty = NEUROSHIMA.difficulties[effectiveDifficulty]?.min || 0;
     const armorPenalty = applyArmor ? (actor.system.combat?.totalArmorPenalty || 0) : 0;
     const woundPenalty = applyWounds ? (actor.system.combat?.totalWoundPenalty || 0) : 0;
@@ -214,21 +214,21 @@ export class NeuroshimaDice {
         effectiveAttributeBonus
     });
 
-    // 2. Obsługa celowania i liczby kości
-    // Broń dystansowa: 1-3 kości w zależności od poziomu celowania (wybieramy najlepszą).
-    // Walka wręcz: Zawsze 3 kości (zasada testu 3k20).
+    // 2. Aiming level and dice count
+    // Ranged weapons: 1-3 dice depending on aiming level (best die wins).
+    // Melee: always 3 dice (3d20 test rule).
     const diceCount = isMelee ? 3 : (aimingLevel + 1);
     
-    // Obliczamy bazowe obrażenia (zostaną zaktualizowane później dla amunicji dystansowej)
+    // Compute base damage (will be updated later for ranged ammo)
     let damageValue = isMelee 
         ? [weapon.system.damageMelee1, weapon.system.damageMelee2, weapon.system.damageMelee3].filter(d => d).join("/")
         : (weapon.system.damage || "0");
 
-    // Wykonanie rzutu kośćmi
+    // Roll the dice
     const roll = new Roll(`${diceCount}d20`);
     await roll.evaluate();
     
-    // Pobranie wyników i wyznaczenie najlepszej kości (najniższej)
+    // Collect results and find the best die (lowest value)
     const results = roll.terms[0].results.map(r => r.result);
     const rawResults = results.map(v => ({
         value: v,
@@ -237,7 +237,7 @@ export class NeuroshimaDice {
     }));
     const bestResult = Math.min(...results);
 
-    // Finalny stan otwartości testu (melee wymusza test zamknięty 3k20)
+    // Final open/closed state — melee always uses a closed 3d20 test
     let finalIsOpen = isOpen;
     if (isMelee) {
         finalIsOpen = false;
@@ -251,7 +251,7 @@ export class NeuroshimaDice {
         finalIsOpen
     });
 
-    // 3. Obsługa lokacji trafienia (losowanie jeśli wybrano 'random')
+    // 3. Hit location — roll randomly if 'random' was selected
     let finalLocation = hitLocation;
     let locationRoll = null;
     if (hitLocation === "random") {
@@ -264,13 +264,13 @@ export class NeuroshimaDice {
         game.neuroshima.log("Wylosowano lokację trafienia", { rzut: rollVal, lokacja: finalLocation });
     }
 
-    // 4. Obsługa serii (liczba wystrzelonych pocisków)
+    // 4. Burst fire — determine number of bullets fired
     let bulletsFired = this.getBulletsFired(weapon, burstLevel);
     const burstLabel = game.i18n.localize(NEUROSHIMA.burstLabels[burstLevel] || NEUROSHIMA.burstLabels[0]);
 
     game.neuroshima.log("Planowanie serii strzałów", { bulletsFired, typSerii: burstLabel });
 
-    // 4.1. Obsługa magazynka i konsumpcja amunicji (LIFO)
+    // 4.1. Magazine handling and ammo consumption (LIFO)
     let ammoDamage = weapon.system.damage;
     let ammoPiercing = weapon.system.piercing || 0;
     let ammoJamming = weapon.system.jamming || 20;
@@ -281,7 +281,7 @@ export class NeuroshimaDice {
     const isRanged = weapon.system.weaponType === "ranged";
     const isThrown = weapon.system.weaponType === "thrown";
 
-    // Walidacja dostępności amunicji dla broni dystansowej
+    // Validate ammo availability for ranged weapons
     if ((isRanged || isThrown) && !magazine) {
         if (weapon.system.caliber) {
             ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoMagazineSelected"));
@@ -291,7 +291,7 @@ export class NeuroshimaDice {
         }
     }
 
-    // Pobieranie pocisków z magazynka i aktualizacja jego stanu (tylko informacyjnie przed rzutem)
+    // Pull bullets from the magazine and track its new state (informational pass before the roll)
     let magazineUpdateData = null;
     if (magazine && magazine.type === "magazine") {
         game.neuroshima.log("Planowanie pobrania pocisków z magazynka (LIFO)");
@@ -315,12 +315,12 @@ export class NeuroshimaDice {
             if (topStack.quantity <= 0) contents.pop();
         }
         
-        // Aktualizacja liczby faktycznie wystrzelonych pocisków (jeśli magazynek był zbyt pusty)
+        // Adjust bullet count to what was actually available in the magazine
         const actualFired = bulletsFired - remainingToConsume;
         bulletsFired = actualFired;
         magazineUpdateData = contents;
 
-        // Budowanie sekwencji pocisków z uwzględnieniem nadpisań statystyk (amunicja specjalna)
+        // Build bullet sequence with per-bullet stat overrides (special ammo)
         const newSequence = [];
         for (const consumed of consumedAmmo) {
             for (let i = 0; i < consumed.quantity; i++) {
@@ -337,8 +337,8 @@ export class NeuroshimaDice {
         }
         bulletSequence = newSequence;
         
-        // Pierwszy pocisk w serii definiuje bazowe statystyki rzutu, 
-        // ale zacięcie jest brane z najgorszej (najniższej) wartości w serii.
+        // The first bullet in the sequence defines base roll stats;
+        // jam threshold is taken from the worst (lowest) value across the sequence.
         if (bulletSequence.length > 0) {
             const firstBullet = bulletSequence[0];
             ammoDamage = firstBullet.damage;
@@ -354,7 +354,7 @@ export class NeuroshimaDice {
             ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.OutOfAmmoDuringBurst"));
         }
     } else if (weapon.system.weaponType === "thrown" && magazineId) {
-        // Specjalna obsługa łuków/procy (amunicja bezpośrednio z ekwipunku)
+        // Special handling for bows/slings (ammo drawn directly from inventory)
         const ammoItem = actor.items.get(magazineId);
         if (ammoItem && ammoItem.type === "ammo") {
             if (ammoItem.system.quantity > 0) {
@@ -384,7 +384,7 @@ export class NeuroshimaDice {
         }
     }
 
-    // 5. Obliczenie umiejętności i progu sukcesu (musi być przed triggerami jammingu)
+    // 5. Compute skill value and success threshold (must run before jam triggers)
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
 
     let skillValue = 0;
@@ -431,7 +431,7 @@ export class NeuroshimaDice {
         finalStat
     });
 
-    // Wstępna kalkulacja sukcesu na potrzeby wyzwalaczy jammingu
+    // Preliminary success check for jam trigger evaluation
     const _jamModified = Math.max(1, bestResult - skillValue);
     const jamWouldSucceed = !isMelee && bestResult !== 20 && _jamModified <= target;
     game.neuroshima.log("[JamCheck] jamWouldSucceed kalkulacja", {
@@ -443,7 +443,7 @@ export class NeuroshimaDice {
         jamWouldSucceed
     });
 
-    // 5.1 Zacięcie
+    // 5.1 Weapon jam check
     const weaponJammingValue = weapon.system.jamming || 20;
     let jammingThreshold = Math.min(weaponJammingValue, ammoJamming);
 
@@ -453,7 +453,7 @@ export class NeuroshimaDice {
     if (!isMelee) await NeuroshimaScriptRunner.execute("preWeaponShot", preJamArgs);
     jammingThreshold = preJamArgs.jammingThreshold;
 
-    // Zacięcie sprawdzamy na podstawie NAJLEPSZEJ kości (najniższy wynik) przed jakąkolwiek modyfikacją przez umiejętność.
+    // Jam is checked against the BEST die (lowest roll) before any skill modifier is applied.
     let isJamming = isMelee        ? false
                   : preJamArgs.forceNoJam ? false
                   : preJamArgs.forceJam   ? true
@@ -473,7 +473,7 @@ export class NeuroshimaDice {
         }
     }
 
-    // Konsumpcja amunicji: zużyj jeśli broń NIE zacięła się, LUB sztuczka pozwala na strzał mimo zacięcia
+    // Consume ammo: deduct if the weapon did NOT jam, OR a trick allows firing despite the jam
     if (!isJamming || canFireDespiteJam) {
         if (magazine && magazine.type === "magazine" && magazineUpdateData) {
             await magazine.update({ "system.contents": magazineUpdateData });
@@ -498,7 +498,7 @@ export class NeuroshimaDice {
 
     let totalPelletSP = 0;
 
-    // Ewaluacja wyników w zależności od typu broni (Melee = 3k20, Ranged = Najlepsza z X)
+    // Evaluate results by weapon type (Melee = 3d20 closed, Ranged = best of X)
     if (isMelee) {
         game.neuroshima.log("Rozpoczynam ewaluację Walki Wręcz (3k20)");
         const diceObjects = results.map((v, i) => ({
@@ -564,7 +564,7 @@ export class NeuroshimaDice {
             };
         });
 
-        // Punkty Przewagi dla broni dystansowej: Target - (Najlepsza kość - Skill)
+        // Advantage Points for ranged weapons: Target - (Best die - Skill)
         const modifiedBest = Math.max(1, bestResult - skillValue);
         const overflow = target - modifiedBest;
         

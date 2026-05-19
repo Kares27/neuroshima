@@ -211,7 +211,7 @@ export class CombatHelper {
     let piercing = attackData.piercing || 0;
     const spDifference = options.spDifference ?? attackData.successPoints ?? 0;
     
-    // Dla walki wręcz wybieramy odpowiednie pole obrażeń (damageMelee1/2/3) na podstawie spDifference
+    // For melee, select the appropriate damage field (damageMelee1/2/3) based on spDifference
     let damageType = initialDamageType;
     if (isMelee) {
         if (spDifference <= 0 && options.isOpposed) {
@@ -220,13 +220,13 @@ export class CombatHelper {
             return;
         }
         
-        // Próba pobrania bezpośrednich pól z broni lub z zapisanych danych rzutu
+        // Try to read damage fields directly from the weapon or from saved roll data
         const attacker = attackData.actorId ? game.actors.get(attackData.actorId) : null;
         const weapon = attacker && attackData.weaponId ? attacker.items.get(attackData.weaponId) : null;
         
         let damageProfiles = [];
         if (attackData.damageMelee1) {
-            // Używamy danych zapisanych w rzucie (najbezpieczniejsze dla persistence)
+            // Use data saved in the roll (safest for persistence across sessions)
             damageProfiles = [
                 attackData.damageMelee1,
                 attackData.damageMelee2 || "L",
@@ -587,7 +587,7 @@ export class CombatHelper {
 
     game.neuroshima.group("CombatHelper | applyDamage");
     
-    // Jeśli wiadomość to raport wyniku starcia (Opposed Result), pobierz dane z oryginalnego ataku
+    // If the message is an opposed-result report, fetch roll data from the original attack message
     if (!flags && opposedResult && attackMessageId) {
         const attackMessage = game.messages.get(attackMessageId);
         if (attackMessage) {
@@ -636,16 +636,16 @@ export class CombatHelper {
         return;
     }
 
-    // Sprawdź, czy to atak melee oczekujący na obronę
+    // Check whether this is a melee attack waiting for a defense roll
     if (flags.isMelee && flags.targets?.length > 0) {
-        // Jeśli nie ma wyniku opposed, nie pozwól na Apply Damage
+        // No opposed result yet — block damage application
         if (!flags.opposedResult) {
             ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.MeleeNeedsDefense"));
             game.neuroshima.groupEnd();
             return;
         }
 
-        // Jeśli obrona wygrała, nie stosuj obrażeń
+        // Defense won — do not apply damage
         if (flags.opposedResult.winner !== "attacker") {
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Info.DefenseBlockedDamage"));
             game.neuroshima.groupEnd();
@@ -691,7 +691,7 @@ export class CombatHelper {
 
     const isMelee = flags.isMelee;
     
-    // Pobierz wybraną lokację z flag (nadpisuje domyślną z rzutu)
+    // Read the location override from message flags (overrides the default from roll data)
     const selectedLocation = message.getFlag("neuroshima", "selectedLocation");
     const location = selectedLocation || flags.finalLocation || "torso";
     
@@ -720,7 +720,7 @@ export class CombatHelper {
   }
 
   /**
-   * Wykonuje serię testów odporności na ból i przygotowuje dane przedmiotów ran.
+   * Runs pain resistance rolls and prepares wound item data.
    * @param {Actor} actor 
    * @param {Array} rawWounds 
    * @param {string} location
@@ -742,7 +742,7 @@ export class CombatHelper {
         const damageType = wound.damageType;
         const config = NEUROSHIMA.woundConfiguration[damageType];
 
-        // Rany krytyczne (K, sK) mają difficulty: null — pomijamy test, automatycznie 160%
+        // Critical wounds (K, sK) have difficulty: null — skip the roll, auto-apply 160% penalty
         if (!config?.difficulty) {
             const critPenalty = config?.penalties?.[0] ?? 160;
             results.push({
@@ -795,12 +795,12 @@ export class CombatHelper {
             isPassed = true;
             game.neuroshima.log(`processPainResistance: forcePassed dla ${wound.damageType}`);
         } else {
-            // Rzut odporności na ból (test ZAMKNIĘTY zgodnie z zasadami 1.5, ignoruje kary z ran/pancerza)
+            // Pain resistance roll (CLOSED test per 1.5 rules; ignores wound/armor penalties)
             const roll = new Roll("3d20");
             await roll.evaluate();
             diceResults = roll.terms[0].results.map(r => r.result);
             
-            // Nat 1 / Nat 20 zawsze wpływają na trudność; skillShift tylko gdy suwak jest włączony
+            // Nat 1 / Nat 20 always affect difficulty; skill shift only when the setting is enabled
             const allowShift = game.settings.get("neuroshima", "allowPainResistanceShift");
             const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
             if (allowShift) {
@@ -813,7 +813,7 @@ export class CombatHelper {
             shiftedDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);
             target = statValue + shiftedDiff.mod;
             
-            // Ewaluacja testu zamkniętego (min. 2 sukcesy dla udanego testu)
+            // Evaluate the closed test (minimum 2 successes required to pass)
             const diceObjects = diceResults.map((v, i) => ({ 
                 original: v, 
                 index: i, 
@@ -829,7 +829,7 @@ export class CombatHelper {
             isPassed = evalData.success;
         }
 
-        // Penalties: [zdany, niezdany]
+        // Penalties index: [passed, failed]
         const appliedPenalty = isPassed ? (config?.penalties[0] || 0) : (config?.penalties[1] || 0);
         
         results.push({
@@ -897,7 +897,7 @@ export class CombatHelper {
     
     game.neuroshima.group("CombatHelper | reverseDamage");
     
-    // Pobieranie flag w sposób bardziej bezpośredni
+    // Retrieve flags directly from the message
     const actorUuid = message.getFlag("neuroshima", "actorUuid");
     const actorId = message.getFlag("neuroshima", "actorId");
     const woundIds = message.getFlag("neuroshima", "woundIds") || [];
@@ -911,11 +911,11 @@ export class CombatHelper {
         return;
     }
 
-    // Rozwiązywanie aktora (Token lub Library)
+    // Resolve the actor (may be a Token document or a library actor)
     let actor = null;
     if (actorUuid) {
         const doc = await fromUuid(actorUuid);
-        actor = doc?.actor || doc; // fromUuid może zwrócić TokenDocument lub Actor
+        actor = doc?.actor || doc; // fromUuid may return a TokenDocument or an Actor
     } 
     
     if (!actor && actorId) {
@@ -931,8 +931,7 @@ export class CombatHelper {
 
     game.neuroshima.log(`Znaleziono aktora: ${actor.name} (${actor.uuid})`);
 
-    // Pobierz tylko te rany, które wciąż istnieją na aktorze
-    // Sprawdzamy ID rany w kolekcji przedmiotów aktora
+    // Filter to only wounds that still exist on the actor
     const actorItems = actor.items;
     const existingWoundIds = woundIds.filter(id => actorItems.has(id));
     
@@ -953,10 +952,10 @@ export class CombatHelper {
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoWoundsFoundToReverse"));
     }
 
-    // Aktualizacja flagi
+    // Mark the message as reversed
     await message.setFlag("neuroshima", "isReversed", true);
 
-    // Dodanie wizualnego indykatora do wiadomości
+    // Add a visual status indicator to the message
     const html = document.createElement("div");
     html.innerHTML = message.content;
     
@@ -1266,7 +1265,7 @@ export class CombatHelper {
 
     reductionData.totalArmor = totalArmorRating;
 
-    // Uruchomienie skryptów armorCalculation — mogą modyfikować SP lub dodawać bonusSP
+    // Run armorCalculation scripts — they may modify SP or add bonusSP
     const armorArgs = {
       actor, location, damageType, sp: totalArmorRating, piercing, bonusSP: 0,
       pendingResourceUpdates: [],
@@ -1489,7 +1488,7 @@ export class CombatHelper {
   static generatePatientCard(actor) {
     game.neuroshima.group("CombatHelper | generatePatientCard");
     
-    // Sprawdzenie HP - mogą być na różnych ścieżkach
+    // HP may be stored on different paths depending on actor type
     const hpValue = actor.system.hp?.value ?? actor.system.health?.value ?? 0;
     const hpMax = actor.system.hp?.max ?? actor.system.health?.max ?? 27;
     
@@ -1501,12 +1500,12 @@ export class CombatHelper {
       systemHealth: actor.system.health
     });
 
-    // Pobierz wszystkie rany
+    // Retrieve all wounds from the actor
     const wounds = actor.items.filter(item => item.type === "wound");
     
     game.neuroshima.log("Znalezione rany:", { count: wounds.length, wounds: wounds.map(w => ({ name: w.name, location: w.system.location, type: w.system.damageType, penalty: w.system.penalty })) });
 
-    // Zgrupuj rany po lokacjach
+    // Group wounds by location
     const woundsByLocation = {};
     let totalPenalty = 0;
 
@@ -1521,11 +1520,11 @@ export class CombatHelper {
         woundsByLocation[location] = [];
       }
 
-      // Pobierz pełną nazwę typu obrażenia z konfiguracji
+      // Look up the full wound type label from the config
       const woundConfig = NEUROSHIMA.woundConfiguration[damageType] || {};
       const fullWoundName = game.i18n.localize(woundConfig.fullLabel || "NEUROSHIMA.Items.Type.Wound");
 
-      // Usuń "Rana" z nazwy jeśli na końcu
+      // Strip trailing "Rana" (Polish word for "wound") from the display name if present
       let displayName = wound.name;
       if (displayName.endsWith(" Rana")) {
         displayName = displayName.slice(0, -5).trim();

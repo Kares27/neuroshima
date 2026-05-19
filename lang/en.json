@@ -28,7 +28,8 @@
             "disease": "Disease",
             "weapon-mod": "Weapon Modification",
             "armor-mod": "Armor Modification",
-            "facilities": "Facility"
+            "facilities": "Facility",
+            "container": "Container"
         }
     },
     "NEUROSHIMA": {
@@ -42,7 +43,9 @@
             "Effect": "Effect Sheet",
             "Edit": "Edit",
             "Finish": "Finish",
-            "SaveAndFinish": "Save and Finish"
+            "SaveAndFinish": "Save and Finish",
+            "LimitedAccess": "Limited access — only the notes tab is visible.",
+            "ActorTitle": "Actor Sheet"
         },
         "Attributes": {
             "Attributes": "Attributes",
@@ -758,7 +761,8 @@
             "Details": "Details",
             "Changes": "Changes",
             "Scripts": "Scripts",
-            "Duration": "Duration"
+            "Duration": "Duration",
+            "Contents": "Contents"
         },
         "Resources": {
             "Add": "Add Resource",
@@ -1000,7 +1004,8 @@
                 "WeaponMods": "Weapon Modifications",
                 "Armor-mod": "Armor Modification",
                 "ArmorMods": "Armor Modifications",
-                "Facilities": "Facility"
+                "Facilities": "Facility",
+                "Container": "Container"
             },
             "Empty": "No items.",
             "Fields": {
@@ -1538,6 +1543,7 @@
                     "SkillsConstitution": "Skills: Constitution",
                     "Reputation": "Reputation"
                 },
+                "MaxLoad": "Max Load",
                 "HealingRate": "Healing Rate",
                 "ReputationBonus": "Global Reputation Bonus",
                 "FameBonus": "Fame Bonus",
@@ -1758,6 +1764,25 @@
             },
             "BlastDamageApplied": "Damage applied",
             "QuantityEmpty": "Out of {name} grenades!"
+        },
+        "Container": {
+            "Plural": "Containers",
+            "Items": "Items",
+            "ContentsLabel": "Contents",
+            "TakeOut": "Take Out",
+            "Empty": "Container is empty.",
+            "FullWarning": "Container is full.",
+            "ItemAdded": "Added {name} to container.",
+            "RemoveItem": "Remove item",
+            "EditItem": "Edit item",
+            "DeleteItem": "Delete item",
+            "DropHere": "Drop an item here to add it to the container",
+            "MaxItems": "Max Items",
+            "MaxWeight": "Max Weight (kg)",
+            "CountWeightToEncumbrance": "Count weight to encumbrance",
+            "Locked": "Container is locked",
+            "Lock": "Lock container",
+            "Unlock": "Unlock container"
         }
     },
     "TOKEN": {

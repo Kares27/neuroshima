@@ -616,7 +616,13 @@ export class ContainerData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     return {
-      ...baseSchema(),
+      description: new fields.HTMLField({ initial: "" }),
+      weight: new fields.NumberField({ required: true, initial: 0, min: 0 }),
+      cost: new fields.NumberField({ required: true, initial: 0, min: 0 }),
+      availability: new fields.NumberField({ required: true, integer: true, initial: 100, min: 0, max: 100 }),
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+      ...testsSchema(),
+      locked: new fields.BooleanField({ initial: false }),
       countWeightToEncumbrance: new fields.BooleanField({ initial: true }),
       maxItems: new fields.NumberField({ required: true, integer: true, initial: 0, min: 0 }),
       maxWeight: new fields.NumberField({ required: true, initial: 0, min: 0 }),

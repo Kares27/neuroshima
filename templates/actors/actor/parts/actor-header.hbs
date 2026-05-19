@@ -5,6 +5,13 @@
             <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'Name'}}"/>
         </h1>
 
+        {{#if isLimitedView}}
+        <div class="limited-view-notice">
+            <i class="fas fa-eye-slash"></i>
+            <span>{{localize "NEUROSHIMA.Sheet.LimitedAccess"}}</span>
+        </div>
+        {{else}}
+
         <div class="header-details flexrow">
             <div class="header-field bg-holder-field" data-slot-type="specialization">
                 <label>
@@ -99,6 +106,8 @@
                 </div>
             </div>
         </div>
+
+        {{/if}}
     </div>
 
 </header>

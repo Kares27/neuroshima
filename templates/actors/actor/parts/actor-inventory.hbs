@@ -1,20 +1,45 @@
 <section class="tab inventory {{tabs.inventory.cssClass}}" data-group="primary" data-tab="inventory" data-application-part="inventory">
     
-    {{!-- Encumbrance Bar --}}
-    {{#if enableEncumbrance}}
-    <div class="encumbrance-bar-container">
-        <div class="encumbrance-label">
-            <i class="fas fa-weight-hanging" style="color: {{system.encumbrance.color}};"></i>
-            <span>{{localize "NEUROSHIMA.Encumbrance"}}: {{system.encumbrance.value}} / {{system.encumbrance.max}} kg</span>
+    {{!-- Encumbrance + Container Grid --}}
+    <div class="enc-containers-row">
+
+        {{!-- Encumbrance Bar --}}
+        {{#if enableEncumbrance}}
+        <div class="encumbrance-bar-container">
+            <div class="encumbrance-label">
+                <i class="fas fa-weight-hanging" style="color: {{system.encumbrance.color}};"></i>
+                <span>{{localize "NEUROSHIMA.Encumbrance"}}: {{system.encumbrance.value}} / {{system.encumbrance.max}} kg</span>
+            </div>
+            <div class="encumbrance-bar">
+                <div class="encumbrance-fill" style="width: {{system.encumbrance.pct}}%; background: {{system.encumbrance.color}};"></div>
+                <div class="enc-marker enc-marker--yellow" style="left: 50%;" title="50% — żółty"></div>
+                <div class="enc-marker enc-marker--orange" style="left: 75%;" title="75% — pomarańczowy"></div>
+                <div class="enc-marker enc-marker--danger" style="left: 90%;" title="90% — czerwony"></div>
+            </div>
         </div>
-        <div class="encumbrance-bar">
-            <div class="encumbrance-fill" style="width: {{system.encumbrance.pct}}%; background: {{system.encumbrance.color}};"></div>
-            <div class="enc-marker enc-marker--yellow" style="left: 50%;" title="50% — żółty"></div>
-            <div class="enc-marker enc-marker--orange" style="left: 75%;" title="75% — pomarańczowy"></div>
-            <div class="enc-marker enc-marker--danger" style="left: 90%;" title="90% — czerwony"></div>
+        {{/if}}
+
+        {{!-- Container Grid --}}
+        {{#if inventory.containers.length}}
+        <div class="container-grid-panel" data-count="{{inventory.containers.length}}">
+            {{#each inventory.containers as |item|}}
+            <div class="container-grid-cell draggable" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true"
+                 title="{{item.name}}{{#if item.system.maxItems}} ({{item.itemCount}}/{{item.system.maxItems}}){{else}} ({{item.itemCount}}){{/if}}">
+                <div class="container-grid-img" style="background-image: url('{{item.img}}')"
+                     data-action="editItem" data-item-id="{{item.id}}">
+                    {{#if item.system.locked}}
+                    <div class="container-grid-lock-overlay"><i class="fas fa-lock"></i></div>
+                    {{/if}}
+                </div>
+                <div class="container-grid-bar">
+                    <div class="container-grid-fill" style="width: {{item.fillPct}}%;"></div>
+                </div>
+            </div>
+            {{/each}}
         </div>
+        {{/if}}
+
     </div>
-    {{/if}}
 
     {{!-- Money / Waluta --}}
     {{#if inventory.money.length}}

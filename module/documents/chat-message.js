@@ -16,12 +16,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const root = (html instanceof HTMLElement) ? html : html[0];
     if (!root) return;
 
-    // Pobierz wiadomość powiązaną z HTMLem
+    // Resolve the chat message linked to this HTML element
     const messageId = root.closest(".chat-message")?.dataset.messageId;
     const message = game.messages.get(messageId);
     if (!message) return;
 
-    // Delegacja zdarzeń dla przycisków akcji
+    // Delegate click events for action buttons
     root.querySelectorAll("[data-action]").forEach(btn => {
       btn.addEventListener("click", event => {
         event.preventDefault();
@@ -95,8 +95,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
         return;
     }
 
-    // Jeśli jest wielu przeciwników, bierzemy pierwszego jako głównego (standard 1v1)
-    // TODO: Obsługa wielu przeciwników w NeuroshimaMeleeCombat.startDuel
+    // Use the first target as the primary defender (standard 1v1)
+    // TODO: support multiple defenders in NeuroshimaMeleeCombat.startDuel
     const defenderId = targets[0];
 
     const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
@@ -729,7 +729,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     
     if (!patient || !medic) return;
 
-    // Pobierz dane leczenia z flag
+    // Read healing data from message flags
     const flags = message.getFlag("neuroshima");
     const method = flags.healingMethod;
     const extraData = flags.extraData || {};
@@ -753,7 +753,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     );
 
     if (newResult) {
-        // Aktualizacja wyników w wiadomości
+        // Update the results list in the message
         const results = [...(flags.results || [])];
         const idx = results.findIndex(r => r.woundId === woundId);
         if (idx !== -1) {
@@ -1019,7 +1019,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
       : "systems/neuroshima/templates/chat/weapon-roll-card.hbs";
       
-    // Pobranie danych o celach dla walki wręcz
+    // Fetch target actor data for melee roll cards
     let targetsData = [];
     if (rollData.isMelee && rollData.meleeAction === "attack" && rollData.targets?.length > 0) {
         for (const targetId of rollData.targets) {
@@ -1418,7 +1418,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
           default: true,
           callback: (event, button) => {
             const val = button.form.elements.limit.value.trim();
-            return val ? parseInt(val) : null;
+            return val ? parseInt(val) : "unlimited";
           }
         },
         {
@@ -1440,6 +1440,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
     let armorRatings = null;
     let armorBoxStats = null;
     let magazineContents = null;
+    let containerContents = null;
+    let containerLocked = false;
     let weight = null;
     let availability = null;
     let hasWeight = false;
@@ -1548,16 +1550,38 @@ export class NeuroshimaChatMessage extends ChatMessage {
         stats.push({ label: loc("NEUROSHIMA.Reputation.Value"), value: s.value });
         break;
       }
+      case "container": {
+        if (s.locked) {
+          containerLocked = true;
+        } else {
+          let children;
+          if (item.actor) {
+            children = Array.from(item.actor.items).filter(i => i.getFlag("neuroshima", "containerId") === item.id);
+          } else {
+            children = (s.contents || []).map(e => ({ name: e.name, img: e.img, system: { quantity: e.quantity ?? 1 }, type: e.type }));
+          }
+          const cnt = children.length;
+          if (s.maxItems > 0) stats.push({ label: loc("NEUROSHIMA.Container.MaxItems"), value: `${cnt} / ${s.maxItems}` });
+          else stats.push({ label: loc("NEUROSHIMA.Container.Items"), value: cnt });
+          containerContents = children.map(e => ({
+            name: e.name,
+            img: e.img,
+            quantity: e.system?.quantity ?? 1,
+            type: e.type
+          }));
+        }
+        break;
+      }
       default:
         if (s.quantity !== undefined) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Quantity"), value: s.quantity });
         break;
     }
-    return { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight, attachedMods, summaryResources };
+    return { stats, armorRatings, armorBoxStats, magazineContents, containerContents, containerLocked, weight, availability, hasWeight, attachedMods, summaryResources };
   }
 
   static async postItemToChat(item, { actor = null } = {}) {
     const limit = await NeuroshimaChatMessage.showItemCardLimitDialog();
-    if (limit === "cancel" || limit === undefined) return;
+    if (!limit || limit === "cancel") return;
 
     const description = item.system.description || "";
     const enriched = description ? await TextEditor.enrichHTML(description, { async: true }) : "";
@@ -1565,9 +1589,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const typeKey = item.type.charAt(0).toUpperCase() + item.type.slice(1).replace(/-(\w)/g, (_, c) => c.toUpperCase());
     const typeLabel = game.i18n.localize(`NEUROSHIMA.Items.Type.${typeKey}`) || item.type;
 
-    const { stats, armorRatings, armorBoxStats, magazineContents, weight, availability, hasWeight, attachedMods, summaryResources } = NeuroshimaChatMessage.buildItemChatStats(item);
+    const { stats, armorRatings, armorBoxStats, magazineContents, containerContents, containerLocked, weight, availability, hasWeight, attachedMods, summaryResources } = NeuroshimaChatMessage.buildItemChatStats(item);
     const hasStats = stats.length > 0 || !!armorRatings || !!armorBoxStats;
-    const isUnlimited = limit === null;
+    const isUnlimited = limit === "unlimited";
+    const remaining = isUnlimited ? null : limit;
 
     const content = await NeuroshimaChatMessage._renderTemplate(
       "systems/neuroshima/templates/chat/item-card.hbs",
@@ -1575,10 +1600,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
         name: item.name, img: item.img, type: item.type, typeLabel,
         uuid: item.uuid, description: enriched,
         stats, armorRatings, armorBoxStats, hasStats,
-        magazineContents,
+        magazineContents, containerContents, containerLocked,
         attachedMods, summaryResources,
         weight, availability, hasWeight,
-        remaining: limit, isUnlimited, isExhausted: false
+        remaining, isUnlimited, isExhausted: false
       }
     );
 
@@ -1586,7 +1611,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const msgData = {
       speaker: actor ? ChatMessage.getSpeaker({ actor }) : ChatMessage.getSpeaker({}),
       content,
-      flags: { neuroshima: { itemCard: { limit, remaining: limit, sourceActorId: actor?.id ?? null } } }
+      flags: { neuroshima: { itemCard: { limit: remaining, remaining, sourceActorId: actor?.id ?? null } } }
     };
     ChatMessage.applyRollMode(msgData, rollMode);
     await ChatMessage.create(msgData);

@@ -42,6 +42,17 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
 
   async _onRender(context, options) {
     await super._onRender(context, options);
+
+    if (context.isObserverView) {
+      this.element.querySelectorAll("input, select, textarea").forEach(el => {
+        el.disabled = true;
+      });
+      this.element.querySelectorAll("[data-action]:not([data-action='editImage']):not([data-action='tab'])").forEach(el => {
+        el.style.pointerEvents = "none";
+        el.style.opacity = "0.5";
+      });
+    }
+
     if (!Object.keys(this._scrollState).length) return;
     const savedState = { ...this._scrollState };
     setTimeout(() => {
@@ -55,6 +66,27 @@ export class NeuroshimaBaseActorSheet extends HandlebarsApplicationMixin(ActorSh
         if (el) el.scrollTop = top;
       }
     }, 0);
+  }
+
+  /**
+   * Apply permission-level restrictions to the render context.
+   * Must be called AFTER `context.tabs` is set.
+   * - LIMITED: only the "notes" tab is visible; sets context.isLimitedView
+   * - OBSERVER: all tabs visible but no editing; sets context.isObserverView
+   */
+  _applyPermissionRestrictions(context) {
+    const LEVELS = CONST.DOCUMENT_OWNERSHIP_LEVELS;
+    const userLevel = this.document.getUserLevel(game.user);
+    context.isLimitedView = !game.user.isGM && userLevel <= LEVELS.LIMITED;
+    context.isObserverView = !game.user.isGM && userLevel === LEVELS.OBSERVER;
+    if (context.isLimitedView) {
+      const notesTab = "notes";
+      this.tabGroups.primary = notesTab;
+      context.tabs = this._getTabs();
+      for (const id of Object.keys(context.tabs)) {
+        if (id !== notesTab) delete context.tabs[id];
+      }
+    }
   }
 
   /**

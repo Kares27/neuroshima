@@ -4,7 +4,7 @@ export class NeuroshimaItem extends Item {
     const result = await super._preCreate(data, options, user);
     if (result === false) return false;
 
-    // Domyślne ikony dla typów przedmiotów z folderu assets systemu
+    // Default icons per item type
     const icons = {
       ammo: "systems/neuroshima/assets/img/ammo.svg",
       magazine: "systems/neuroshima/assets/img/magazine.svg",
@@ -26,12 +26,12 @@ export class NeuroshimaItem extends Item {
       reputation:        "systems/neuroshima/assets/img/shaking-hands.svg",
       disease:           "icons/svg/biohazard.svg",
       facilities:        "systems/neuroshima/assets/img/facilities.svg",
-      container:         "icons/svg/item-bag.svg"
+      container:         "systems/neuroshima/assets/img/backpack.svg"
     };
 
     const updates = {};
 
-    // Specjalna obsługa ikon broni na podstawie weaponType
+    // Override weapon icon based on weaponType
     if (data.type === "weapon") {
         const wType = foundry.utils.getProperty(data, "system.weaponType");
         if (wType === "ranged") icons.weapon = "systems/neuroshima/assets/img/weapon-ranged.svg";
@@ -39,12 +39,12 @@ export class NeuroshimaItem extends Item {
         else if (wType === "grenade") icons.weapon = "systems/neuroshima/assets/img/grenade.svg";
     }
 
-    // Ustaw domyślną ikonę, jeśli nie została podana lub jest domyślnym bagiem (a nie powinna dla tego typu)
+    // Apply default icon if none is set or the generic bag fallback is used
     if (!data.img || data.img === "icons/svg/item-bag.svg") {
       updates.img = icons[data.type] || "icons/svg/item-bag.svg";
     }
 
-    // Ustaw domyślną nazwę, jeśli nazwa jest generyczna (np. "New Item" lub pusta)
+    // Apply localized type name when the item has a generic or empty name
     const isGenericName = !data.name || data.name.includes("New") || data.name.includes("Item");
     if (isGenericName) {
       updates.name = game.i18n.localize(`NEUROSHIMA.Items.Type.${data.type.charAt(0).toUpperCase() + data.type.slice(1)}`);
@@ -54,14 +54,10 @@ export class NeuroshimaItem extends Item {
       this.updateSource(updates);
     }
 
-    // Pokaż dialog wyboru typu broni tylko przy ręcznym tworzeniu nowej broni, 
-    // jeśli typ nie został już określony i nie jest to operacja kopiowania/dropu z innego źródła
+    // Show weapon-type selection dialog only when manually creating a new weapon;
+    // skip if the type is already set or if this is a copy/compendium drop.
     const isNewWeapon = (data.type === "weapon") && !foundry.utils.hasProperty(data, "system.weaponType");
-    
-    // Sprawdź czy przedmiot ma źródło (co wskazuje na drop/klonowanie)
     const hasSource = !!(data.flags?.core?.sourceId || data._stats?.compendiumSource);
-    
-    // Nie pokazuj dialogu, jeśli przedmiot ma już zdefiniowane źródło lub typ
     if (isNewWeapon && !hasSource && user.id === game.user.id) {
       const weaponType = await foundry.applications.api.DialogV2.wait({
         window: {
@@ -98,7 +94,7 @@ export class NeuroshimaItem extends Item {
       if (weaponType) {
         const weaponUpdates = { "system.weaponType": weaponType };
         
-        // Zaktualizuj ikonę na podstawie wybranego typu, jeśli nadal jest domyślna
+        // Update the icon to match the chosen weapon type if still on the default
         const currentImg = this.img;
         if (!currentImg || currentImg === "icons/svg/item-bag.svg" || currentImg === "systems/neuroshima/assets/img/weapon-melee.svg") {
             if (weaponType === "ranged") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-ranged.svg";
@@ -112,7 +108,7 @@ export class NeuroshimaItem extends Item {
         
         this.updateSource(weaponUpdates);
       } else {
-        return false; // Anuluj tworzenie przedmiotu, jeśli okno zostało zamknięte bez wyboru
+        return false; // Dialog closed without selection — cancel item creation
       }
     }
 
@@ -143,16 +139,33 @@ export class NeuroshimaItem extends Item {
     super.prepareDerivedData();
     const system = this.system;
     
-    // Calculate total weight based on quantity
     if ("weight" in system && "quantity" in system) {
       const ownWeight = (parseFloat(system.weight) || 0) * (parseInt(system.quantity) || 0);
       let contentsWeight = 0;
       if (this.type === "container" && system.countWeightToEncumbrance) {
-        contentsWeight = (system.contents || []).reduce((sum, entry) => {
-          return sum + (parseFloat(entry.system?.weight || 0) * (parseInt(entry.system?.quantity || 1)));
-        }, 0);
+        if (this.actor) {
+          contentsWeight = Array.from(this.actor.items)
+            .filter(i => i.getFlag("neuroshima", "containerId") === this.id)
+            .reduce((sum, i) => sum + (parseFloat(i.system?.weight || 0) * (parseInt(i.system?.quantity || 1))), 0);
+        } else {
+          contentsWeight = (system.contents || []).reduce((sum, entry) => {
+            return sum + (parseFloat(entry.system?.weight || 0) * (parseInt(entry.system?.quantity || 1)));
+          }, 0);
+        }
       }
       system.totalWeight = Math.round((ownWeight + contentsWeight) * 100) / 100;
+    }
+
+    if ("cost" in system) {
+      let effectiveCost = system.cost ?? 0;
+      if ("mods" in system) {
+        for (const [key, snap] of Object.entries(system.mods ?? {})) {
+          if (key.startsWith("__") || !snap.attached) continue;
+          if (snap.deltaModifiesCost === false) continue;
+          effectiveCost += (snap.deltaCost ?? 0);
+        }
+      }
+      system.effectiveCost = Math.max(0, effectiveCost);
     }
   }
 
@@ -282,6 +295,14 @@ export class NeuroshimaItem extends Item {
   async _preUpdate(changed, options, userId) {
     await super._preUpdate(changed, options, userId);
 
+    // Capture the current containerId before any flag change so _onUpdate can
+    // re-render the former parent container on all clients (DnD5e pattern).
+    const nsFlags = foundry.utils.getProperty(changed, "flags.neuroshima");
+    if (nsFlags && ("containerId" in nsFlags || "-=containerId" in nsFlags)) {
+      options._formerContainerId = this.getFlag("neuroshima", "containerId") ?? null;
+    }
+
+    // Protect mod-injected resource rows from being overwritten by form submissions.
     const newResources = foundry.utils.getProperty(changed, "system.resources");
     if (!newResources) return;
 
@@ -309,12 +330,45 @@ export class NeuroshimaItem extends Item {
     foundry.utils.setProperty(changed, "system.resources", merged);
   }
 
+  /**
+   * Re-render all open sheets of the container item identified by `containerId`
+   * on the given actor.  Called from document lifecycle hooks on all clients.
+   * @param {Actor} actor
+   * @param {string} containerId
+   */
+  static _rerenderParentContainerById(actor, containerId) {
+    if (!actor || !containerId) return;
+    const container = actor.items.get(containerId);
+    if (!container) return;
+    for (const app of Object.values(container.apps ?? {})) {
+      if (app.rendered) app.render(false);
+    }
+  }
+
+  /** @override */
+  _onCreate(data, options, userId) {
+    super._onCreate(data, options, userId);
+    const containerId = this.getFlag("neuroshima", "containerId");
+    if (containerId && this.parent?.documentName === "Actor") {
+      NeuroshimaItem._rerenderParentContainerById(this.parent, containerId);
+    }
+  }
+
   /** @override */
   _onUpdate(data, options, userId) {
     super._onUpdate(data, options, userId);
-    if (game.user.id !== userId) return;
 
     const actor = this.parent;
+    if (actor?.documentName === "Actor") {
+      const containerId = this.getFlag("neuroshima", "containerId");
+      if (containerId) NeuroshimaItem._rerenderParentContainerById(actor, containerId);
+      const formerContainerId = options._formerContainerId;
+      if (formerContainerId && formerContainerId !== containerId) {
+        NeuroshimaItem._rerenderParentContainerById(actor, formerContainerId);
+      }
+    }
+
+    if (game.user.id !== userId) return;
     if (!actor || actor.documentName !== "Actor") return;
 
     const equippedChanged = foundry.utils.hasProperty(data, "system.equipped");
@@ -348,9 +402,14 @@ export class NeuroshimaItem extends Item {
 
   _onDelete(options, userId) {
     super._onDelete(options, userId);
-    if (game.user.id !== userId) return;
 
     const actor = this.parent;
+    if (actor?.documentName === "Actor") {
+      const containerId = this.getFlag("neuroshima", "containerId");
+      if (containerId) NeuroshimaItem._rerenderParentContainerById(actor, containerId);
+    }
+
+    if (game.user.id !== userId) return;
     if (!actor || actor.documentName !== "Actor") return;
 
     if (this.type === "specialization") {

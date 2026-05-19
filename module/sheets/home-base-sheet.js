@@ -115,6 +115,15 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
         if (!effect) return;
         const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
         await NeuroshimaScriptRunner.executeManual(this.document, effect, Number(scriptIndex));
+      },
+
+      takeFromContainer: async function(event, target) {
+        const actor = this.document;
+        const childItemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+        if (!childItemId) return;
+        const childItem = actor.items.get(childItemId);
+        if (!childItem || !childItem.getFlag("neuroshima", "containerId")) return;
+        await childItem.unsetFlag("neuroshima", "containerId");
       }
     },
     dragDrop: [{ dragSelector: ".item[data-item-id]", dropSelector: "form" }]
@@ -161,6 +170,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     context.owner    = actor.isOwner;
     context.editable = this.isEditable;
     context.isGM     = game.user.isGM;
+    this._applyPermissionRestrictions(context);
 
     context.residentMembers = (system.residentMembers ?? []).map((m) => {
       const raw = m.toObject?.() ?? m;
@@ -178,21 +188,32 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     context.facilitiesItems = items.filter(i => i.type === "facilities");
     context.itemManualScripts = this._prepareItemManualScripts(actor);
 
-    const moneyItems = items.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
+    const containerChildIds = new Set(
+      items.filter(i => i.getFlag("neuroshima", "containerId")).map(i => i.id)
+    );
+    const topItems = items.filter(i => !containerChildIds.has(i.id));
+    const moneyItems = topItems.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
     context.inventory = {
-      weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
-      weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
-      weaponsThrown:  items.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
-      armor:          items.filter(i => i.type === "armor"),
-      gear:           items.filter(i => i.type === "gear"),
-      ammo:           items.filter(i => i.type === "ammo"),
-      magazines:      items.filter(i => i.type === "magazine").map(m => {
+      containers: items.filter(i => i.type === "container").map(c => {
+        const cnt = items.filter(i => i.getFlag("neuroshima", "containerId") === c.id).length;
+        const max = c.system.maxItems || 0;
+        c.fillPct = max > 0 ? Math.min(100, Math.round(cnt / max * 100)) : 0;
+        c.itemCount = cnt;
+        return c;
+      }),
+      weaponsMelee:   topItems.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
+      weaponsRanged:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      weaponsThrown:  topItems.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
+      armor:          topItems.filter(i => i.type === "armor"),
+      gear:           topItems.filter(i => i.type === "gear"),
+      ammo:           topItems.filter(i => i.type === "ammo"),
+      magazines:      topItems.filter(i => i.type === "magazine").map(m => {
         m.contentsReversed = [...(m.system.contents || [])].reverse();
         return m;
       }),
       money:          moneyItems,
-      weaponMods:     items.filter(i => i.type === "weapon-mod"),
-      armorMods:      items.filter(i => i.type === "armor-mod")
+      weaponMods:     topItems.filter(i => i.type === "weapon-mod"),
+      armorMods:      topItems.filter(i => i.type === "armor-mod")
     };
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
@@ -312,6 +333,43 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
         this._showItemContextMenu(event, wrap.dataset.itemId);
       });
     });
+
+    html.querySelectorAll('.container-grid-cell[data-item-id]').forEach(cell => {
+      cell.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        cell.classList.add('drag-over');
+      });
+      cell.addEventListener('dragleave', () => {
+        cell.classList.remove('drag-over');
+      });
+      cell.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        cell.classList.remove('drag-over');
+        const containerId = cell.dataset.itemId;
+        const container = this.document.items.get(containerId);
+        if (!container || container.type !== "container") return;
+        if (container.system.locked && !game.user.isGM) return;
+        let dragData;
+        try { dragData = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { return; }
+        if (dragData.type !== "Item") return;
+        const sourceItem = await fromUuid(dragData.uuid);
+        if (!sourceItem || sourceItem.uuid === container.uuid) return;
+        const actor = this.document;
+        const maxItems = container.system.maxItems;
+        if (maxItems > 0) {
+          const cnt = actor.items.filter(i => i.getFlag("neuroshima", "containerId") === containerId).length;
+          if (cnt >= maxItems) { ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Container.FullWarning")); return; }
+        }
+        if (sourceItem.actor?.id === actor.id) {
+          await sourceItem.setFlag("neuroshima", "containerId", containerId);
+        } else {
+          const itemData = sourceItem.toObject();
+          foundry.utils.setProperty(itemData, "flags.neuroshima.containerId", containerId);
+          await actor.createEmbeddedDocuments("Item", [itemData]);
+        }
+      });
+    });
   }
 
   _showItemContextMenu(event, itemId) {
@@ -321,12 +379,17 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
 
     document.querySelectorAll('.ns-item-ctx-menu').forEach(el => el.remove());
 
+    const isContainer = item.type === 'container';
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',   label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment', label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
       { action: 'duplicate', icon: 'fas fa-copy',    label: game.i18n.localize('NEUROSHIMA.ContextMenu.Duplicate') },
-      { action: 'delete',    icon: 'fas fa-trash',   label: game.i18n.localize('Delete') }
     ];
+    if (isContainer && game.user.isGM) {
+      const locked = item.system.locked;
+      menuItems.push({ action: 'toggleLock', icon: locked ? 'fas fa-lock-open' : 'fas fa-lock', label: game.i18n.localize(locked ? 'NEUROSHIMA.Container.Unlock' : 'NEUROSHIMA.Container.Lock') });
+    }
+    menuItems.push({ action: 'delete', icon: 'fas fa-trash', label: game.i18n.localize('Delete') });
 
     const menu = document.createElement('nav');
     menu.className = 'ns-item-ctx-menu context-menu themed theme-dark';
@@ -356,6 +419,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
           await NeuroshimaChatMessage.postItemToChat(item, { actor: this.document });
         }
         else if (action === 'duplicate') item.clone({}, { save: true, parent: this.document });
+        else if (action === 'toggleLock') item.update({ "system.locked": !item.system.locked });
         else if (action === 'delete') item.deleteDialog();
         menu.remove();
       });
@@ -390,7 +454,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
   async _onDropItem(event, data) {
     const item = await fromUuid(data.uuid);
     if (!item) return;
-    const cargoTypes = ["weapon", "armor", "gear", "ammo", "magazine", "money", "trick", "trait", "facilities", "weapon-mod", "armor-mod"];
+    const cargoTypes = ["weapon", "armor", "gear", "ammo", "magazine", "money", "trick", "trait", "facilities", "weapon-mod", "armor-mod", "container"];
     if (cargoTypes.includes(item.type)) {
       return super._onDropItem(event, data);
     }

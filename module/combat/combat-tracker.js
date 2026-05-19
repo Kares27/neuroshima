@@ -49,7 +49,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         await super._onRender(context, options);
         this.element.dataset.view = this._view;
 
-        // Oznacz uczestników starć w widoku listy (Encounter)
+        // Mark combatants involved in melee encounters in the encounter list view
         if (this._view === "encounter") {
             const combat = this.viewed;
             if (!combat) return;
@@ -79,7 +79,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     }
 
     /**
-     * Przełącza widok trackera.
+     * Switches the tracker view tab.
      */
     _onSetView(event, target) {
         event.preventDefault();
@@ -88,7 +88,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     }
 
     /**
-     * Akcja otwarcia interfejsu walki.
+     * Opens the melee combat UI for a given encounter.
      */
     async _onOpenMelee(event, target) {
         event.preventDefault();
@@ -98,7 +98,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     }
 
     /**
-     * Akcja dołączenia do starcia (dla obrońcy).
+     * Handles the defender joining a pending melee duel.
      */
     async _onJoinMelee(event, target) {
         event.preventDefault();
@@ -112,10 +112,10 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         const actualActor = doc?.actor || doc;
         
         if (actualActor) {
-            // Otwórz arkusz na zakładce walki, aby gracz mógł rzucić na broń
+            // Open the actor sheet so the player can roll their weapon
             const sheet = actualActor.sheet;
             await sheet.render(true, { focus: true });
-            // Przełącz na zakładkę combat
+            // Switch to the combat tab
             sheet.tabGroups.primary = "combat";
             sheet.render();
             
@@ -124,7 +124,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     }
 
     /**
-     * Akcja odrzucenia starcia.
+     * Handles dismissing a pending melee duel.
      */
     async _onDismissMelee(event, target) {
         event.preventDefault();
@@ -165,7 +165,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         context.currentView = this._view;
         context.showMeleeTab = showMeleeTab;
 
-        // Pobierz wszystkie starcia i oczekujące starcia
+        // Fetch all active encounters and pending duels
         const combat = this.viewed;
         const encounters = combat?.getFlag("neuroshima", "meleeEncounters") || {};
         const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
@@ -181,13 +181,13 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         });
         context.pendingMeleeDuels = Object.values(pendings).filter(p => p.active);
         
-        // Dla widoku mini bierzemy pierwszy aktywny encounter
+        // For the mini view, find the first encounter the current user participates in
         const userActorUuid = game.user.character?.uuid;
         context.activeMeleeEncounter = context.activeMeleeEncounters.find(e => 
             game.user.isGM || Object.values(e.participants).some(p => p.actorUuid === userActorUuid)
         );
 
-        // Oznacz uczestników starć w widoku listy
+        // Mark combatants that are in an active melee encounter or pending duel
         if (context.turns && Array.isArray(context.turns)) {
             context.turns.forEach(turn => {
                 const combatant = combat.combatants.get(turn.id);
@@ -196,12 +196,12 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
                 const actorUuid = combatant.actor?.uuid;
                 if (!actorUuid) return;
 
-                // Sprawdź czy aktor jest w którymkolwiek aktywnym encounterze
+                // Check whether this combatant is in any active melee encounter
                 turn.isMeleeDuelParticipant = context.activeMeleeEncounters.some(e => 
                     Object.values(e.participants).some(p => p.actorUuid === actorUuid)
                 );
 
-                // Sprawdź czy aktor jest w którymkolwiek oczekującym starciu
+                // Check whether this combatant is in any pending melee duel
                 turn.isMeleePendingParticipant = context.pendingMeleeDuels.some(p => 
                     p.attackerId === actorUuid || p.defenderId === actorUuid
                 );

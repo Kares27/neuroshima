@@ -31,7 +31,8 @@
             "disease": "Choroba",
             "weapon-mod": "Modyfikacja Broni",
             "armor-mod": "Modyfikacja Pancerza",
-            "facilities": "Udogodnienie"
+            "facilities": "Udogodnienie",
+            "container": "Pojemnik"
         }
     },
     "NEUROSHIMA": {
@@ -45,7 +46,9 @@
             "Effect": "Arkusz Efektu",
             "Edit": "Edytuj",
             "Finish": "Zakończ",
-            "SaveAndFinish": "Zapisz i zakończ"
+            "SaveAndFinish": "Zapisz i zakończ",
+            "LimitedAccess": "Ograniczony dostęp — widoczna tylko zakładka notatek.",
+            "ActorTitle": "Arkusz Aktora"
         },
         "Attributes": {
             "Attributes": "Współczynniki",
@@ -781,7 +784,8 @@
             "Details": "Szczegóły",
             "Changes": "Zmiany",
             "Scripts": "Skrypty",
-            "Duration": "Czas Trwania"
+            "Duration": "Czas Trwania",
+            "Contents": "Zawartość"
         },
         "Resources": {
             "Add": "Dodaj zasób",
@@ -1024,7 +1028,8 @@
                 "WeaponMods": "Modyfikacje Broni",
                 "Armor-mod": "Modyfikacja Pancerza",
                 "ArmorMods": "Modyfikacje Pancerza",
-                "Facilities": "Udogodnienie"
+                "Facilities": "Udogodnienie",
+                "Container": "Pojemnik"
             },
             "Empty": "Brak przedmiotów.",
             "Fields": {
@@ -1563,6 +1568,7 @@
                     "SkillsConstitution": "Umiejętności: Kondycja",
                     "Reputation": "Reputacja"
                 },
+                "MaxLoad": "Maks. Udźwig",
                 "HealingRate": "Tempo Leczenia",
                 "ReputationBonus": "Globalny Bonus do Reputacji",
                 "FameBonus": "Bonus do Sławy",
@@ -1791,6 +1797,25 @@
                 "Reversed": "Cofnięto {count} ran po wybuchu granatu"
             },
             "QuantityEmpty": "Skończyły się granaty {name}!"
+        },
+        "Container": {
+            "Plural": "Pojemniki",
+            "Items": "Przedmioty",
+            "ContentsLabel": "Zawartość",
+            "TakeOut": "Wyjmij",
+            "Empty": "Pojemnik jest pusty.",
+            "FullWarning": "Pojemnik jest pełny.",
+            "ItemAdded": "Dodano {name} do pojemnika.",
+            "RemoveItem": "Wyjmij przedmiot",
+            "EditItem": "Edytuj przedmiot",
+            "DeleteItem": "Usuń przedmiot",
+            "DropHere": "Upuść przedmiot tutaj, aby dodać do pojemnika",
+            "MaxItems": "Maks. przedmiotów",
+            "MaxWeight": "Maks. waga (kg)",
+            "CountWeightToEncumbrance": "Wlicz wagę do obciążenia",
+            "Locked": "Pojemnik jest zamknięty",
+            "Lock": "Zamknij pojemnik",
+            "Unlock": "Odblokuj pojemnik"
         }
     }
 }

@@ -70,6 +70,38 @@
     </div>
     {{/if}}
 
+    {{#if containerLocked}}
+    <div class="item-card-container-locked">
+        <i class="fas fa-lock"></i>
+        <span>{{localize "NEUROSHIMA.Container.Locked"}}</span>
+    </div>
+    {{else}}
+    {{#if containerContents.length}}
+    <div class="item-card-container-contents item-card-collapsible">
+        <div class="item-card-collapsible-header">
+            <span class="item-card-section-label">{{localize "NEUROSHIMA.Container.ContentsLabel"}}</span>
+            <i class="fas fa-chevron-right item-card-chevron"></i>
+        </div>
+        <div class="item-card-collapsible-content collapsed">
+            <div class="item-card-magazine-contents">
+                <div class="magazine-contents-header">
+                    <span class="mag-col-name">{{localize "Name"}}</span>
+                    <span class="mag-col-qty">×</span>
+                </div>
+                {{#each containerContents}}
+                <div class="magazine-contents-row">
+                    <span class="mag-ammo-name">
+                        <img src="{{this.img}}" alt="{{this.name}}" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:3px;">{{this.name}}
+                    </span>
+                    <span class="mag-ammo-qty">{{this.quantity}}</span>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+    {{/if}}
+    {{/if}}
+
     {{#if summaryResources.length}}
     <div class="item-card-resources item-card-collapsible">
         <div class="item-card-collapsible-header">

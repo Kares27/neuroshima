@@ -122,6 +122,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         rightLeg: new fields.NumberField({ initial: 0 }),
         leftLeg:  new fields.NumberField({ initial: 0 })
       }),
+      maxLoad: new fields.NumberField({ required: true, initial: 0, min: 0 }),
       encumbrance: new fields.SchemaField({
         value: new fields.NumberField({ initial: 0, min: 0 }),
         max: new fields.NumberField({ initial: 0, min: 0 }),
@@ -202,7 +203,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
           this.skillTotals[key] = base + bonus;
       }
 
-      // 3. Combat Stats (Kary i Obrażenia)
+      // 3. Combat Stats (Penalties and Damage)
       const combatUpdates = {
           totalArmorPenalty: items.reduce((total, i) => {
               if (i.type === "armor" && i.system.equipped) return total + (i.system.armor?.penalty || 0);
@@ -262,13 +263,18 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
 
       system.encumbrance.enabled = enableEncumbrance;
       if (enableEncumbrance) {
-          const conValue = (Number(system.attributes.constitution) || 0) + (Number(system.attributeBonuses?.constitution) || 0) + (Number(system.modifiers.constitution) || 0) + (Number(system.bonuses?.constitution) || 0);
-          let maxWeight = baseEnc;
-          if (useConBonus && conValue > threshold && interval > 0) {
-              const bonusSteps = Math.floor((conValue - threshold) / interval);
-              maxWeight += Math.max(0, bonusSteps * bonusValue);
+          const manualMax = Number(system.maxLoad) || 0;
+          if (manualMax > 0) {
+              system.encumbrance.max = parseFloat(manualMax.toFixed(2));
+          } else {
+              const conValue = (Number(system.attributes.constitution) || 0) + (Number(system.attributeBonuses?.constitution) || 0) + (Number(system.modifiers.constitution) || 0) + (Number(system.bonuses?.constitution) || 0);
+              let maxWeight = baseEnc;
+              if (useConBonus && conValue > threshold && interval > 0) {
+                  const bonusSteps = Math.floor((conValue - threshold) / interval);
+                  maxWeight += Math.max(0, bonusSteps * bonusValue);
+              }
+              system.encumbrance.max = parseFloat((maxWeight || 20).toFixed(2));
           }
-          system.encumbrance.max = parseFloat((maxWeight || 20).toFixed(2));
       } else {
           system.encumbrance.max = 999;
       }
@@ -358,6 +364,7 @@ export class NeuroshimaCreatureData extends NeuroshimaActorData {
       combat: new fields.SchemaField({
         meleeInitiative: new fields.NumberField({ integer: true, initial: 0 })
       }),
+      maxLoad: new fields.NumberField({ required: true, initial: 0, min: 0 }),
       notes: new fields.HTMLField({ initial: "" })
     };
   }

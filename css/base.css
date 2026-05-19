@@ -689,6 +689,22 @@ body.theme-dark {
     overflow: hidden;
 }
 
+.neuroshima.item-card .item-card-container-locked {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    margin-top: 4px;
+    border: 1px solid var(--ns-border-light);
+    border-radius: 4px;
+    font-size: 0.88em;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.item-card .item-card-container-locked i {
+    color: #ef4444;
+}
+
 .neuroshima.item-card .magazine-contents-header {
     display: flex;
     justify-content: space-between;

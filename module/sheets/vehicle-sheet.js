@@ -329,6 +329,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     context.owner    = actor.isOwner;
     context.editable = this.isEditable;
     context.isGM     = game.user.isGM;
+    this._applyPermissionRestrictions(context);
 
     context.vehicleAttributeList  = NEUROSHIMA.vehicleAttributes;
     context.vehicleMovementTypes  = NEUROSHIMA.vehicleMovementTypes;

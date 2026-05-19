@@ -1,0 +1,330 @@
+/* ============================================================
+   Neuroshima 1.5 — Item Piles integration styling
+   All --item-piles-* variable overrides use !important so they
+   defeat any JS-applied inline values Item Piles sets on :root.
+   ============================================================ */
+
+/* ===== LIGHT THEME ===== */
+
+body.theme-light .item-piles-app,
+body.theme-light .item-piles-config {
+    --item-piles-app-background:             #ede8d8 !important;
+    --item-piles-app-color:                  #191813 !important;
+    --item-piles-app-border:                 1px solid #7a7971 !important;
+    --item-piles-app-box-shadow:             0 2px 8px rgba(0,0,0,0.25) !important;
+    --item-piles-app-border-image:           none !important;
+
+    --item-piles-app-header-background:      rgba(0,0,0,0.12) !important;
+    --item-piles-app-header-color:           #191813 !important;
+    --item-piles-app-header-border-bottom:   1px solid #7a7971 !important;
+
+    --item-piles-border-dark-primary:        #191813 !important;
+    --item-piles-border-light-primary:       rgba(122,121,113,0.4) !important;
+
+    --item-piles-text-light-highlight:       #191813 !important;
+    --item-piles-text-important:             #a02e2e !important;
+
+    --item-piles-even-color:                 rgba(0,0,0,0.06) !important;
+    --item-piles-odd-color:                  transparent !important;
+
+    --item-piles-input-text-color:           #191813 !important;
+    --item-piles-input-background:           rgba(0,0,0,0.06) !important;
+    --item-piles-input-border:               1px solid rgba(122,121,113,0.5) !important;
+    --item-piles-input-placeholder-color:    #7a7971 !important;
+
+    --item-piles-button-background-color:    rgba(240,232,216,0.9) !important;
+    --item-piles-button-border:              1px solid #7a7971 !important;
+
+    --item-piles-scrollbar-thumb-background: #a02e2e !important;
+    --item-piles-shadow-primary:             rgba(160,46,46,0.8) !important;
+    --item-piles-inactive:                   #7a7971 !important;
+    --item-piles-minor-inactive:             rgba(122,121,113,0.25) !important;
+}
+
+/* ===== DARK THEME ===== */
+
+body.theme-dark .item-piles-app,
+body.theme-dark .item-piles-config {
+    --item-piles-app-background:             #1e1e1e !important;
+    --item-piles-app-color:                  #d8d8c8 !important;
+    --item-piles-app-border:                 1px solid #7a7971 !important;
+    --item-piles-app-box-shadow:             0 2px 12px rgba(0,0,0,0.6) !important;
+    --item-piles-app-border-image:           none !important;
+
+    --item-piles-app-header-background:      rgba(0,0,0,0.5) !important;
+    --item-piles-app-header-color:           #d8d8c8 !important;
+    --item-piles-app-header-border-bottom:   1px solid #7a7971 !important;
+
+    --item-piles-border-dark-primary:        rgba(216,216,200,0.7) !important;
+    --item-piles-border-light-primary:       rgba(255,255,255,0.12) !important;
+
+    --item-piles-text-light-highlight:       #d8d8c8 !important;
+    --item-piles-text-important:             #cf4444 !important;
+
+    --item-piles-even-color:                 rgba(255,255,255,0.06) !important;
+    --item-piles-odd-color:                  transparent !important;
+
+    --item-piles-input-text-color:           #d8d8c8 !important;
+    --item-piles-input-background:           rgba(255,255,255,0.09) !important;
+    --item-piles-input-border:               1px solid rgba(255,255,255,0.2) !important;
+    --item-piles-input-placeholder-color:    #808070 !important;
+
+    --item-piles-button-background-color:    rgba(255,255,255,0.1) !important;
+    --item-piles-button-border:              1px solid #7a7971 !important;
+
+    --item-piles-scrollbar-thumb-background: #a02e2e !important;
+    --item-piles-shadow-primary:             rgba(200,60,60,0.9) !important;
+    --item-piles-inactive:                   #909082 !important;
+    --item-piles-minor-inactive:             rgba(255,255,255,0.14) !important;
+}
+
+/* ===== DARK — direct overrides for Svelte-scoped elements ===== */
+
+body.theme-dark .item-piles-app .window-content,
+body.theme-dark .item-piles-app .tjs-app-content,
+body.theme-dark .item-piles-app .app-shell,
+body.theme-dark .item-piles-app > .application-content,
+body.theme-dark .item-piles-app > section,
+body.theme-dark .item-piles-app > main {
+    background: #1e1e1e !important;
+    color: #d8d8c8 !important;
+}
+
+body.theme-dark .item-piles-app .merchant-left-pane,
+body.theme-dark .item-piles-app .merchant-right-pane,
+body.theme-dark .item-piles-app .item-pile-vault,
+body.theme-dark .item-piles-app .item-piles-config-container {
+    background: #1e1e1e !important;
+    color: #d8d8c8 !important;
+}
+
+body.theme-dark .item-piles-app [style*="rgb(220, 220"],
+body.theme-dark .item-piles-app [style*="rgb(220,220"],
+body.theme-dark .item-piles-app [style*="background: rgb(220"] {
+    background: #1e1e1e !important;
+}
+
+/* --- Text --- */
+
+body.theme-dark .item-piles-app * {
+    color: #d8d8c8 !important;
+}
+
+body.theme-dark .item-piles-app p,
+body.theme-dark .item-piles-app span,
+body.theme-dark .item-piles-app label {
+    color: #b8b8a8 !important;
+}
+
+body.theme-dark .item-piles-app .item-piles-text-important,
+body.theme-dark .item-piles-app .item-piles-highlight,
+body.theme-dark .item-piles-app [class*="item-piles-highlight"] {
+    color: #cf4444 !important;
+}
+
+/* --- Icons --- */
+
+body.theme-dark .item-piles-app i.fa,
+body.theme-dark .item-piles-app i.fas,
+body.theme-dark .item-piles-app i.far,
+body.theme-dark .item-piles-app i.fab,
+body.theme-dark .item-piles-app i.fal,
+body.theme-dark .item-piles-app i.fad {
+    color: #b8b8a8 !important;
+}
+
+body.theme-dark .item-piles-app .item-piles-inactive,
+body.theme-dark .item-piles-app [class*="item-piles-inactive"] {
+    color: #909082 !important;
+    opacity: 0.75;
+}
+
+body.theme-dark .item-piles-app button i,
+body.theme-dark .item-piles-app a i {
+    color: inherit !important;
+}
+
+/* --- Rows --- */
+
+body.theme-dark .item-piles-app .item-piles-item-row {
+    border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+
+body.theme-dark .item-piles-app .item-piles-even-color:nth-child(even),
+body.theme-dark .item-piles-app .item-piles-odd-color:nth-child(odd) {
+    background-color: rgba(255,255,255,0.06) !important;
+}
+
+/* --- Checkboxes --- */
+
+body.theme-dark .item-piles-app input[type="checkbox"] {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    padding: 0 !important;
+    margin: 0 4px !important;
+    background-color: #1e1e1e !important;
+    background-image: none !important;
+    border: 2px solid rgba(255,255,255,0.35) !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    vertical-align: middle !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+body.theme-dark .item-piles-app input[type="checkbox"]:checked {
+    background-color: #c05518 !important;
+    border-color: #c05518 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M3 10l5 5 9-9' stroke='%23fff' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 20px 20px !important;
+}
+
+body.theme-dark .item-piles-app input[type="checkbox"]:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(192,85,24,0.4) !important;
+}
+
+body.theme-light .item-piles-app input[type="checkbox"] {
+    accent-color: #a02e2e;
+}
+
+/* --- Inputs & Selects --- */
+
+body.theme-dark .item-piles-app input,
+body.theme-dark .item-piles-app textarea {
+    background: rgba(255,255,255,0.09) !important;
+    color: #d8d8c8 !important;
+    border-color: rgba(255,255,255,0.2) !important;
+}
+
+body.theme-dark .item-piles-app select {
+    background-color: #2a2a24 !important;
+    color: #d8d8c8 !important;
+    border-color: rgba(255,255,255,0.2) !important;
+    outline: none;
+}
+
+body.theme-dark .item-piles-app select option {
+    background-color: #2a2a24 !important;
+    color: #d8d8c8 !important;
+}
+
+/* --- Buttons --- */
+
+body.theme-dark .item-piles-app button {
+    background: rgba(255,255,255,0.08) !important;
+    color: #d8d8c8 !important;
+    border-color: #7a7971 !important;
+}
+
+body.theme-dark .item-piles-app button:hover {
+    background: rgba(255,255,255,0.14) !important;
+    border-color: #cf4444 !important;
+}
+
+/* --- Headings --- */
+
+body.theme-dark .item-piles-app h1,
+body.theme-dark .item-piles-app h2,
+body.theme-dark .item-piles-app h3,
+body.theme-dark .item-piles-app h4 {
+    color: #cf4444 !important;
+    border-bottom-color: rgba(255,255,255,0.12) !important;
+}
+
+/* --- Price list popup --- */
+
+body.theme-dark .price-list {
+    background: #252520 !important;
+    border-color: rgba(255,255,255,0.15) !important;
+    color: #d8d8c8 !important;
+}
+
+body.theme-dark .price-list * {
+    color: #d8d8c8 !important;
+}
+
+body.theme-dark .price-list .price-group:hover {
+    background: rgba(255,255,255,0.08) !important;
+}
+
+body.theme-dark .price-list .price-group.selected {
+    background: rgba(160,46,46,0.2) !important;
+}
+
+/* ===== LIGHT — specific overrides ===== */
+
+body.theme-light .item-piles-app h3,
+body.theme-light .item-piles-app h4 {
+    color: #a02e2e !important;
+    border-bottom: 1px solid rgba(122,121,113,0.4);
+    font-weight: normal;
+}
+
+body.theme-light .item-piles-app select {
+    background-color: rgba(0,0,0,0.04) !important;
+    color: #191813 !important;
+    border-color: rgba(122,121,113,0.5) !important;
+}
+
+body.theme-light .item-piles-app select option {
+    background-color: #ede8d8 !important;
+    color: #191813 !important;
+}
+
+/* ===== SHARED — font + accent ===== */
+
+.item-piles-app .window-header,
+.item-piles-app h1,
+.item-piles-app h2,
+.item-piles-app h3,
+.item-piles-app h4 {
+    font-family: "SpecialElite", "Special Elite", serif;
+    letter-spacing: 1px;
+}
+
+.item-piles-app button,
+.item-piles-app input,
+.item-piles-app select {
+    font-family: "SpecialElite", "Special Elite", serif;
+    letter-spacing: 0.5px;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+body.theme-light .item-piles-app button:hover {
+    border-color: #a02e2e;
+}
+
+body.theme-light .item-piles-app input:focus,
+body.theme-light .item-piles-app select:focus {
+    border-color: #a02e2e !important;
+    outline: none;
+}
+
+body.theme-dark .item-piles-app input:focus,
+body.theme-dark .item-piles-app select:focus {
+    border-color: #cf4444 !important;
+    outline: none;
+}
+
+/* Scrollbar */
+.item-piles-app ::-webkit-scrollbar-thumb {
+    background: #a02e2e !important;
+    border-image: none !important;
+}
+
+/* Log colours */
+.item-piles-vault-log .item-piles-log-deposit span    { color: #3a8c3a !important; }
+.item-piles-vault-log .item-piles-log-withdrawal span { color: #a02e2e !important; }
+.item-piles-vault-log .item-piles-log-other span      { color: #a0692e !important; }
+
+.item-piles-merchant-log .item-piles-log-bought span    { color: #3a8c3a !important; }
+.item-piles-merchant-log .item-piles-log-sold span      { color: #a02e2e !important; }
+.item-piles-merchant-log .item-piles-log-positive span  { color: #3a8c3a !important; }
+.item-piles-merchant-log .item-piles-log-negative span  { color: #a0692e !important; }
+.item-piles-merchant-log .item-piles-log-other span     { color: #a0a090 !important; }

@@ -5,7 +5,7 @@
     <div class="header-details">
         <div class="item-subtitle">
             <h4 class="item-type">{{localize typeLabel}}</h4>
-            {{#unless isNonCountable}}
+            {{#unless (or isNonCountable (eq item.type "container"))}}
             <div class="item-qty">
                 <input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" title="{{localize 'NEUROSHIMA.Items.Fields.Quantity'}}"/>
                 <div class="qty-x">×</div>
@@ -18,7 +18,7 @@
             </h1>
         </div>
         <div class="item-header-stats">
-            {{#unless isNonCountable}}
+            {{#unless (or isNonCountable isLimitedView isContainerLocked)}}
             {{#if enableEncumbrance}}
             {{#unless isModItem}}
             {{#unless (eq item.type "facilities")}}

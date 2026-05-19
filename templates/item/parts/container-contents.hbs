@@ -1,0 +1,83 @@
+<section class="tab tab-contents {{tabs.contents.cssClass}}" data-group="primary" data-tab="contents" data-application-part="contents">
+
+    {{#if isContainerLocked}}
+    <div class="container-locked-view">
+        <i class="fas fa-lock container-locked-icon"></i>
+        <span class="container-locked-label">{{localize "NEUROSHIMA.Container.Locked"}}</span>
+    </div>
+    {{else}}
+
+    <div class="container-header-bar">
+        <div class="container-count-info">
+            <i class="fas fa-box-open"></i>
+            <span>
+                {{containerItemCount}}{{#if system.maxItems}} / {{system.maxItems}}{{/if}}
+                {{localize "NEUROSHIMA.Container.Items"}}
+            </span>
+        </div>
+        {{#if system.maxWeight}}
+        <div class="container-weight-info">
+            <i class="fas fa-weight-hanging"></i>
+            <span>{{containerCurrentWeight}} / {{system.maxWeight}} kg</span>
+        </div>
+        {{/if}}
+    </div>
+
+    <div class="container-contents-list">
+        {{#each containerContents as |entry|}}
+        <div class="container-item-row" data-item-id="{{entry.id}}" data-content-index="{{entry.legacyIndex}}">
+            <img src="{{entry.img}}" alt="{{entry.name}}" class="container-item-img">
+            <div class="container-item-info">
+                <span class="container-item-name">{{entry.name}}</span>
+                <span class="container-item-type">{{localize (concat "TYPES.Item." entry.type)}}</span>
+            </div>
+            {{#if entry.quantity}}
+            <div class="container-item-qty">x{{entry.quantity}}</div>
+            {{/if}}
+            {{#if entry.weight}}
+            <div class="container-item-weight">
+                <i class="fas fa-weight-hanging"></i> {{entry.weight}}
+            </div>
+            {{/if}}
+            {{#if ../editable}}
+            <div class="container-item-controls">
+                {{#if entry.id}}
+                <a class="item-control" data-action="editContainerItem" data-item-id="{{entry.id}}"
+                   title="{{localize 'NEUROSHIMA.Container.EditItem'}}">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a class="item-control" data-action="removeContainerItem" data-item-id="{{entry.id}}"
+                   title="{{localize 'NEUROSHIMA.Container.RemoveItem'}}">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+                <a class="item-control item-control-delete" data-action="deleteContainerItem" data-item-id="{{entry.id}}"
+                   title="{{localize 'NEUROSHIMA.Container.DeleteItem'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+                {{else}}
+                <a class="item-control" data-action="removeContainerItem" data-content-index="{{entry.legacyIndex}}"
+                   title="{{localize 'NEUROSHIMA.Container.RemoveItem'}}">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+                {{/if}}
+            </div>
+            {{/if}}
+        </div>
+        {{else}}
+        <div class="container-empty-message">
+            <i class="fas fa-inbox"></i>
+            <span>{{localize "NEUROSHIMA.Container.Empty"}}</span>
+        </div>
+        {{/each}}
+    </div>
+
+    {{#if editable}}
+    <div class="container-drop-zone">
+        <i class="fas fa-plus-circle"></i>
+        <span>{{localize "NEUROSHIMA.Container.DropHere"}}</span>
+    </div>
+    {{/if}}
+
+    {{/if}}
+
+</section>

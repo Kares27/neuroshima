@@ -1,5 +1,42 @@
 <section class="tab inventory creature-inventory {{tabs.inventory.cssClass}}" data-group="primary" data-tab="inventory" data-application-part="inventory">
 
+    {{!-- Encumbrance + Container Grid --}}
+    <div class="enc-containers-row">
+
+        {{#if enableEncumbrance}}
+        <div class="encumbrance-bar-container">
+            <div class="encumbrance-label">
+                <i class="fas fa-weight-hanging" style="color: {{system.encumbrance.color}};"></i>
+                <span>{{localize "NEUROSHIMA.Encumbrance"}}: {{system.encumbrance.value}} /</span>
+                <input type="number" name="system.maxLoad" value="{{system.maxLoad}}" min="0" step="1" class="encumbrance-maxload-input" title="{{localize 'NEUROSHIMA.HomeBase.MaxLoad'}}"> kg
+            </div>
+            <div class="encumbrance-bar">
+                <div class="encumbrance-fill" style="width: {{system.encumbrance.pct}}%; background: {{system.encumbrance.color}};"></div>
+                <div class="enc-marker enc-marker--yellow" style="left: 50%;"></div>
+                <div class="enc-marker enc-marker--orange" style="left: 75%;"></div>
+                <div class="enc-marker enc-marker--danger" style="left: 90%;"></div>
+            </div>
+        </div>
+        {{/if}}
+
+        {{#if inventory.containers.length}}
+        <div class="container-grid-panel" data-count="{{inventory.containers.length}}">
+            {{#each inventory.containers as |item|}}
+            <div class="container-grid-cell draggable" data-item-id="{{item.id}}" data-uuid="{{item.uuid}}" draggable="true"
+                 title="{{item.name}}{{#if item.system.maxItems}} ({{item.itemCount}}/{{item.system.maxItems}}){{else}} ({{item.itemCount}}){{/if}}">
+                <div class="container-grid-img" style="background-image: url('{{item.img}}')"
+                     data-action="editItem" data-item-id="{{item.id}}">
+                </div>
+                <div class="container-grid-bar">
+                    <div class="container-grid-fill" style="width: {{item.fillPct}}%;"></div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+        {{/if}}
+
+    </div>
+
     {{!-- Ranged Weapons --}}
     {{#if inventory.weaponsRanged.length}}
     <section class="inventory-section">

@@ -48,7 +48,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       resizable: true,
 
     },
-    // W AppV2 scrollable działa tak samo - tablica selektorów CSS
+    // In AppV2, scrollable works the same way — an array of CSS selectors
     renderConfig: {
       scrollable: [".skill-table",".inventory",".combat"]
     },
@@ -113,7 +113,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       adjustRepValue: this.prototype._onAdjustRepValue,
       sortReputationItems: this.prototype._onSortReputationItems,
       adjustDiseaseState: this.prototype._onAdjustDiseaseState,
-      adjustTransientPenalty: this.prototype._onAdjustTransientPenalty
+      adjustTransientPenalty: this.prototype._onAdjustTransientPenalty,
+      takeFromContainer: this.prototype._onTakeFromContainer
     },
     dragDrop: [
       { dragSelector: ".item[data-item-id]", dropSelector: "form" },
@@ -188,23 +189,36 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     context.isGM = game.user.isGM;
     context.isCharacter = actor.type === "character";
 
+    this._applyPermissionRestrictions(context);
+
     // Organize Items - Sort by 'sort' property to allow manual reordering
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
-    const moneyItems = items.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
+    const containerChildIds = new Set(
+      items.filter(i => i.getFlag("neuroshima", "containerId")).map(i => i.id)
+    );
+    const topItems = items.filter(i => !containerChildIds.has(i.id));
+    const moneyItems = topItems.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
     context.inventory = {
-      weaponsMelee: items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
-      weaponsRanged: items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
-      weaponsThrown: items.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
-      armor: items.filter(i => i.type === "armor"),
-      gear: items.filter(i => i.type === "gear"),
-      ammo: items.filter(i => i.type === "ammo"),
-      magazines: items.filter(i => i.type === "magazine").map(m => {
+      containers: items.filter(i => i.type === "container").map(c => {
+        const cnt = items.filter(i => i.getFlag("neuroshima", "containerId") === c.id).length;
+        const max = c.system.maxItems || 0;
+        c.fillPct = max > 0 ? Math.min(100, Math.round(cnt / max * 100)) : 0;
+        c.itemCount = cnt;
+        return c;
+      }),
+      weaponsMelee: topItems.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
+      weaponsRanged: topItems.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      weaponsThrown: topItems.filter(i => i.type === "weapon" && (i.system.weaponType === "thrown" || i.system.weaponType === "grenade")),
+      armor: topItems.filter(i => i.type === "armor"),
+      gear: topItems.filter(i => i.type === "gear"),
+      ammo: topItems.filter(i => i.type === "ammo"),
+      magazines: topItems.filter(i => i.type === "magazine").map(m => {
           m.contentsReversed = [...(m.system.contents || [])].reverse();
           return m;
       }),
       money: moneyItems,
-      weaponMods: items.filter(i => i.type === "weapon-mod"),
-      armorMods:  items.filter(i => i.type === "armor-mod")
+      weaponMods: topItems.filter(i => i.type === "weapon-mod"),
+      armorMods:  topItems.filter(i => i.type === "armor-mod")
     };
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
@@ -1002,7 +1016,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     await super._onRender(context, options);
     
     const html = this.element;
-    
+
     // Add listeners for custom actions
     html.querySelectorAll('[data-action="adjustFame"]').forEach(el => {
       el.addEventListener('contextmenu', (event) => {
@@ -1112,6 +1126,49 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       });
     });
 
+    // Container grid cells — right-click context menu + drag-and-drop
+    html.querySelectorAll('.container-grid-cell[data-item-id]').forEach(cell => {
+      cell.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this._showItemContextMenu(event, cell.dataset.itemId);
+      });
+      cell.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        cell.classList.add('drag-over');
+      });
+      cell.addEventListener('dragleave', () => {
+        cell.classList.remove('drag-over');
+      });
+      cell.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        cell.classList.remove('drag-over');
+        const containerId = cell.dataset.itemId;
+        const container = this.document.items.get(containerId);
+        if (!container || container.type !== "container") return;
+        if (container.system.locked && !game.user.isGM) return;
+        let dragData;
+        try { dragData = JSON.parse(event.dataTransfer.getData("text/plain")); } catch { return; }
+        if (dragData.type !== "Item") return;
+        const sourceItem = await fromUuid(dragData.uuid);
+        if (!sourceItem || sourceItem.uuid === container.uuid) return;
+        const actor = this.document;
+        const maxItems = container.system.maxItems;
+        if (maxItems > 0) {
+          const cnt = actor.items.filter(i => i.getFlag("neuroshima", "containerId") === containerId).length;
+          if (cnt >= maxItems) { ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Container.FullWarning")); return; }
+        }
+        if (sourceItem.actor?.id === actor.id) {
+          await sourceItem.setFlag("neuroshima", "containerId", containerId);
+        } else {
+          const itemData = sourceItem.toObject();
+          foundry.utils.setProperty(itemData, "flags.neuroshima.containerId", containerId);
+          await actor.createEmbeddedDocuments("Item", [itemData]);
+        }
+      });
+    });
+
     // Add listeners for paper doll in extended healing panel
     // We check for hotspots repeatedly for a short period if not found immediately
     // to account for ApplicationV2 part injection timing
@@ -1157,7 +1214,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       });
     }
 
-    // Przywróć scroll wounds-list-container jeśli był zapisany
+    // Restore wounds list scroll position if previously saved
     if (this._woundsScrollTop != null) {
       const container = html.querySelector(".wounds-list-container");
       if (container) {
@@ -1166,7 +1223,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       this._woundsScrollTop = null;
     }
 
-    // Listenery dla walki wręcz (Neuroshima 1.5)
+    // Melee combat listeners (Neuroshima 1.5)
     html.querySelectorAll('[data-action="ignore-melee"]').forEach(el => {
       el.addEventListener('click', (event) => {
         event.preventDefault();
@@ -1227,7 +1284,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     let onlyWoundsChanged = true;
     let hpChanged = false;
 
-    // Zapisz pozycję scrolla wounds-list-container
+    // Save wounds list scroll position
     this._saveWoundsScroll();
 
     for (const key of changedKeys) {
@@ -1332,6 +1389,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
   /** @override */
   async _onDrop(event) {
+    if (event._nsHandled) return;
+    event._nsHandled = true;
     game.neuroshima.log("_onDrop triggered");
     try {
       const rawData = TextEditor.getDragEventData(event);
@@ -1347,16 +1406,16 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   async _onDropItem(event, item) {
     game.neuroshima.log("_onDropItem triggered", {item});
 
-    // W ApplicationV2 drugim argumentem jest już Document, ale na wszelki wypadek obsługujemy oba przypadki
+    // In ApplicationV2 the second argument is already a Document; handle both cases for safety
     const sourceItem = (item instanceof foundry.abstract.Document) ? item : await NeuroshimaItem.fromDropData(item);
     if ( !sourceItem ) return super._onDropItem(event, item);
 
-    // Sprawdź czy upuszczamy amunicję na magazynek lub broń z magazynkiem
+    // Check if ammo is being dropped onto a magazine or a weapon with a loaded magazine
     const targetEl = event.target.closest(".magazine-container, .magazine-item-row, .equipment-item, .item[data-item-id]");
     const targetId = targetEl?.dataset.itemId;
     let targetItem = this.document.items.get(targetId);
 
-    // Jeśli targetItem to nie magazynek, sprawdź czy upuszczono na broń dystansową, która ma przypisany magazynek
+    // If the target is not a magazine, check if it is a ranged weapon with an assigned magazine
     if (targetItem && targetItem.type !== "magazine") {
         if (targetItem.type === "weapon" && targetItem.system.weaponType === "ranged" && targetItem.system.magazine) {
             targetItem = this.document.items.get(targetItem.system.magazine);
@@ -1590,7 +1649,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
               damage: ammo.system.overrideDamage ? ammo.system.damage : null,
               piercing: ammo.system.overridePiercing ? ammo.system.piercing : null,
               jamming: ammo.system.overrideJamming ? ammo.system.jamming : null,
-              // Kopiowanie parametrów śrutu do nadpisań magazynka (LIFO)
+              // Copy pellet parameters as magazine stack overrides (LIFO order)
               isPellet: ammo.system.isPellet,
               pelletCount: ammo.system.isPellet ? (ammo.system.pelletCount || 1) : 1,
               pelletRanges: ammo.system.isPellet ? ammo.system.pelletRanges : null
@@ -1599,7 +1658,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
       game.neuroshima.log("Przygotowanie danych amunicji do dodania", ammoData);
 
-      // Dodaj nową amunicję do magazynka (na górę stosu) - Sprawdź czy można połączyć z ostatnim
+      // Push new ammo onto the magazine stack — merge with the top entry if identical
       const lastStack = contents[contents.length - 1];
       if (this._isSameAmmo(lastStack, ammoData)) {
           lastStack.quantity += ammoData.quantity;
@@ -1611,7 +1670,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       game.neuroshima.log("Aktualizacja zawartości magazynka", { contents });
       await magazine.update({ "system.contents": contents });
       
-      // Odejmij amunicję z ekwipunku
+      // Deduct the loaded ammo from inventory
       if (ammo.system.quantity <= amount) {
           game.neuroshima.log("Usuwanie pustego stosu amunicji z ekwipunku");
           await ammo.delete();
@@ -1653,9 +1712,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
       const actor = this.document;
 
-      // Zwróć amunicję do ekwipunku
+      // Return ammo to inventory
       for (const stack of groupedContents) {
-          // Szukaj istniejącej amunicji tego samego typu (nazwa, kaliber ORAZ identyczne nadpisania)
+          // Find an existing ammo stack of the same type (name, caliber, and identical overrides)
           let existingAmmo = actor.items.find(i => {
               if (i.type !== "ammo" || i.name !== stack.name || i.system.caliber !== magazine.system.caliber) return false;
               return this._isSameAmmo(i, stack);
@@ -1664,7 +1723,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           if (existingAmmo) {
               await existingAmmo.update({ "system.quantity": existingAmmo.system.quantity + stack.quantity });
           } else {
-              // Stwórz nowy przedmiot amunicji
+              // No matching stack — create a new ammo item
               await NeuroshimaItem.create({
                   name: stack.name,
                   type: "ammo",
@@ -1672,7 +1731,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                   system: {
                       quantity: stack.quantity,
                       caliber: magazine.system.caliber,
-                      // Przywracamy statystyki z zapisanego stacka
+                      // Restore stats from the saved magazine stack entry
                       isOverride: stack.overrides?.enabled || false,
                       overrideDamage: !!stack.overrides?.damage,
                       damage: stack.overrides?.damage || "L",
@@ -2086,7 +2145,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         event.stopImmediatePropagation();
     }
     
-    // Zapobieganie wielokrotnym wywołaniom (np. double click)
+    // Guard against multiple rapid calls (e.g. double-click)
     if (this._isRolling) {
         game.neuroshima.log("_onRollWeapon: Rzut jest już w toku, ignoruję dodatkowe kliknięcie.");
         return;
@@ -2104,7 +2163,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         game.neuroshima.group(`_onRollWeapon: ${weapon.name}`);
         game.neuroshima.log("Inicjalizacja rzutu bronią");
 
-        // Walidacja wyboru magazynka/amunicji przed wyrenderowaniem dialogu
+        // Validate magazine/ammo selection before opening the roll dialog
         const wData = weapon.system;
         const isRanged = wData.weaponType === "ranged";
         const isThrown = wData.weaponType === "thrown";
@@ -2148,7 +2207,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             targetUuids = [];
         }
 
-        // Tryb wyboru na mapie jeśli brak targetów
+        // No targets — enter target-selection mode on the canvas
         if (targetUuids.length === 0) {
             const actorSourceToken = this._getSourceToken();
             if (actorSourceToken) {
@@ -2204,7 +2263,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         game.neuroshima.log("Otwieranie dialogu rzutu z dystansem:", distance);
         game.neuroshima.groupEnd();
 
-    // Jeśli to broń biała i (mamy cel LUB mamy oczekującego atakującego LUB jesteśmy w aktywnym pojedynku), inicjujemy/kontynuujemy
+    // Melee weapon: initiate or continue a combat encounter when there is a target, pending attacker, or active duel
     if (weapon.system.weaponType === "melee") {
 
         // ── Chat-based opposed modes ─────────────────────────────────────────
@@ -2266,13 +2325,12 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const myUuids = [this.document.uuid];
         if (this.document.token) myUuids.push(this.document.token.uuid);
 
-        // Ignoruj cele, które są nami samymy
+        // Exclude self from the target list
         const actualTargets = targetUuids.filter(uuid => !myUuids.includes(uuid));
         let targetUuid = actualTargets[0];
         let existingPending = null;
 
-        // 1. Sprawdź czy ktoś nas atakuje (Pending)
-        // Jeśli mamy cel, który nas atakuje - to on jest priorytetem
+        // 1. If our current target is already attacking us, they take priority as existing pending
         if (targetUuid) {
             existingPending = Object.values(pendings).find(p => {
                 if (!p.active) return false;
@@ -2282,13 +2340,13 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             });
         } 
         
-        // Jeśli nie mamy wybranego atakującego jako celu, ale KTOŚ nas atakuje, odpowiedzmy na pierwszy dostępny atak
+        // If no attacker is targeted yet, but someone is attacking us, respond to the first available attack
         if (!existingPending) {
             existingPending = Object.values(pendings).find(p => p.active && game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, this.document.uuid));
             if (existingPending) targetUuid = existingPending.attackerId;
         }
 
-        // 2. Jeśli mamy na sobie atak - musimy na niego odpowiedzieć
+        // 2. There is an incoming attack pending — respond to it
         if (existingPending) {
             // ── Opposed-chat mode: weapon-roll dialog instead of initiative ──
             if (existingPending.mode) {
@@ -2325,7 +2383,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             return;
         }
 
-        // 3. Jeśli nie ma pendingu, ale jesteśmy w aktywnym starciu - otwórz panel
+        // 3. No pending attack, but we are in an active encounter — open the encounter panel
         const activeEncounterId = this.document.getFlag("neuroshima", "activeMeleeEncounter");
         if (activeEncounterId && !targetUuid) {
             const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
@@ -2334,7 +2392,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             return;
         }
 
-        // 4. Jeśli mamy cel i nie ma na nas pendingu - inicjujemy nowy atak
+        // 4. We have a target and no incoming attack pending — initiate a new attack
         if (targetUuid) {
             if (!game.combat) {
                 ui.notifications.warn("Najpierw utwórz Encounter w Combat Trackerze.");
@@ -2391,30 +2449,30 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Znajduje najlepszy token reprezentujący aktora na aktualnej scenie.
+   * Finds the best token representing this actor on the current scene.
    * @private
    */
   _getSourceToken() {
-    // 1. Jeśli aktor jest powiązany z konkretnym tokenem (unlinked/synthetic)
+    // 1. If the actor is bound to a specific token (unlinked/synthetic)
     if (this.document.token) return this.document.token.object;
 
-    // 2. Pobierz wszystkie tokeny tego aktora na aktualnej scenie
+    // 2. Collect all tokens for this actor on the current scene
     const tokens = canvas.tokens.placeables.filter(t => t.actor?.id === this.document.id);
     if (tokens.length === 0) return null;
     if (tokens.length === 1) return tokens[0];
 
-    // 3. Priorytet dla tokenów kontrolowanych przez aktualnego użytkownika
+    // 3. Prefer tokens currently controlled by the active user
     const controlled = tokens.filter(t => t.controlled);
     if (controlled.length > 0) return controlled[0];
 
-    // 4. Jeśli MG ma otwarty arkusz i nic nie kontroluje, bierzemy pierwszy znaleziony
+    // 4. GM has the sheet open but controls nothing — fall back to the first found token
     return tokens[0];
   }
 
   /**
-   * Oczekuje na kliknięcie na token lub punkt na mapie w celu obliczenia dystansu.
+   * Waits for the user to click a token or a point on the canvas, then computes the distance.
    * @param {object} [options]
-   * @param {number} [options.templateRadius] Jeśli > 0, pokazuje podgląd szablonu granatu podczas celowania.
+   * @param {number} [options.templateRadius] If > 0, shows a grenade template preview while targeting.
    * @private
    */
   async _waitForTarget(options = {}) {
@@ -2971,12 +3029,12 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     if (options.isMelee) {
         return this._onRespondToOpposed(null, { dataset: { pendingId: options.pendingId } });
     }
-    // Domyślny rzut na inicjatywę (nie-melee)
+    // Default initiative roll (non-melee)
     return this._onRollMeleeInitiative(new Event("click"));
   }
 
   /**
-   * Rzut na inicjatywę melee z poziomu arkusza.
+   * Handles melee initiative roll triggered from the actor sheet.
    */
   async _onRollMeleeInitiative(event) {
     event.preventDefault();
@@ -2986,16 +3044,16 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     
     const dialog = new NeuroshimaInitiativeRollDialog({
         actor: actor,
-        skill: "", // Gracz wybierze sam
+        skill: "", // Player selects in dialog
         isMeleeInitiative: true,
         onRoll: async (rollData) => {
             const rollResult = await game.neuroshima.NeuroshimaDice.rollInitiative({
                 ...rollData,
                 actor: actor,
-                chatMessage: true // Ten rzut chcemy widzieć na czacie
+                chatMessage: true // Show this roll in chat
             });
             
-            // Zapisz wynik w systemie aktora
+            // Save the initiative result on the actor
             game.neuroshima.log("Aktualizacja inicjatywy melee:", {
                 successPoints: rollResult.successPoints,
                 actor: actor.name,
@@ -3003,7 +3061,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             });
             await actor.update({ "system.combat.meleeInitiative": rollResult.successPoints });
             
-            // Wymuś odświeżenie UI jeśli rzut był bez DSN (dla pewności)
+            // Force UI refresh if Dice So Nice was not used
             if (!game.dice3d) this.render(false);
             
             return rollResult;
@@ -3156,7 +3214,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     game.neuroshima.log("Wersja rozszerzona: wyświetlanie dialoga wyboru medyka");
 
-    // Filtr analogiczny do Item Piles: aktywni, nie ja, mają postać lub są GM
+    // Filter similar to Item Piles: active users, not self, have a character or are GM
     const possibleMedics = game.users
       .filter(u => u.active && u !== game.user)
       .filter(u => u.character || u.isGM)
@@ -3167,7 +3225,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       return;
     }
 
-    // Fast-path preselection: zaznaczony token na mapie → preselect właściciela
+    // Fast-path preselection: if a single token is selected on the canvas, preselect its owner
     let preselectedUserId = null;
     const controlled = canvas?.tokens?.controlled ?? [];
     if (controlled.length === 1 && patientActor) {
@@ -3640,6 +3698,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     document.querySelectorAll('.ns-item-ctx-menu').forEach(el => el.remove());
 
     const isMagazine = item.type === 'magazine';
+    const isContainer = item.type === 'container';
     const menuItems = [
       { action: 'edit',      icon: 'fas fa-edit',    label: game.i18n.localize('Edit') },
       { action: 'post',      icon: 'fas fa-comment',  label: game.i18n.localize('NEUROSHIMA.ContextMenu.PostToChat') },
@@ -3647,6 +3706,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     ];
     if (isMagazine) {
       menuItems.push({ action: 'unload', icon: 'fas fa-eject', label: game.i18n.localize('NEUROSHIMA.Actions.Unload') });
+    }
+    if (isContainer && game.user.isGM) {
+      const locked = item.system.locked;
+      menuItems.push({ action: 'toggleLock', icon: locked ? 'fas fa-lock-open' : 'fas fa-lock', label: game.i18n.localize(locked ? 'NEUROSHIMA.Container.Unlock' : 'NEUROSHIMA.Container.Lock') });
     }
     menuItems.push({ action: 'delete', icon: 'fas fa-trash', label: game.i18n.localize('Delete') });
 
@@ -3672,10 +3735,11 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       li.addEventListener('click', (e) => {
         e.stopPropagation();
         const action = li.dataset.action;
-        if (action === 'edit')      item.sheet.render(true);
+        if (action === 'edit')           item.sheet.render(true);
         else if (action === 'post')      this._postItemToChat(itemId);
         else if (action === 'duplicate') item.clone({}, { save: true, parent: this.document });
         else if (action === 'unload')    this._onUnloadMagazine(e, itemId);
+        else if (action === 'toggleLock') item.update({ "system.locked": !item.system.locked });
         else if (action === 'delete')    item.deleteDialog();
         menu.remove();
       });
@@ -3896,5 +3960,14 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   async _onPostItemToChat(event, target) {
     const wrap = target.closest(".item-wrap");
     await this._postItemToChat(wrap?.dataset.itemId);
+  }
+
+  async _onTakeFromContainer(event, target) {
+    const actor = this.document;
+    const childItemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+    if (!childItemId) return;
+    const childItem = actor.items.get(childItemId);
+    if (!childItem || !childItem.getFlag("neuroshima", "containerId")) return;
+    await childItem.unsetFlag("neuroshima", "containerId");
   }
 }

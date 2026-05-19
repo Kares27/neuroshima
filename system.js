@@ -36,7 +36,7 @@ import { TraitBrowserApp } from "./module/apps/trait-browser.js";
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 
-// Inicjalizacja systemu Neuroshima 1.5
+// System initialization
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
 
@@ -199,7 +199,7 @@ Hooks.once('init', async function() {
         }
     });
 
-    // Przypisanie niestandardowych klas i stałych (bezpieczne merge, aby nie usunąć socketu)
+    // Assign custom classes and constants (safe merge to preserve socket)
     game.neuroshima = Object.assign(game.neuroshima || {}, {
         NeuroshimaActor,
         NeuroshimaItem,
@@ -263,7 +263,7 @@ Hooks.once('init', async function() {
         return string.charAt(0).toUpperCase() + string.slice(1);
     });
 
-    // Zdefiniowanie niestandardowych klas dokumentów
+    // Register custom document classes
     CONFIG.Actor.documentClass = NeuroshimaActor;
     CONFIG.Combat.documentClass = NeuroshimaCombat;
     CONFIG.Combatant.documentClass = NeuroshimaCombatant;
@@ -271,10 +271,10 @@ Hooks.once('init', async function() {
     CONFIG.ChatMessage.documentClass = NeuroshimaChatMessage;
     CONFIG.ActiveEffect.documentClass = NeuroshimaActiveEffect;
 
-    // Inicjatywa
+    // Initiative
     CONFIG.Combat.initiative.formula = "0";
 
-    // Rejestracja modeli danych
+    // Register data models
     CONFIG.Actor.dataModels.character = NeuroshimaActorData;
     CONFIG.Actor.dataModels.npc      = NeuroshimaNPCData;
     CONFIG.Actor.dataModels.creature = NeuroshimaCreatureData;
@@ -419,7 +419,7 @@ Hooks.once('init', async function() {
         return lines.join('<br>');
     });
 
-    // Rejestracja arkuszy
+    // Register sheets
     foundry.documents.collections.Actors.unregisterSheet("core", foundry.appv1.sheets.ActorSheet);
     foundry.documents.collections.Actors.registerSheet("neuroshima", NeuroshimaActorSheet, {
         types: ["character"],
@@ -449,7 +449,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities"],
+        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });
@@ -460,7 +460,7 @@ Hooks.once('init', async function() {
         label: "NEUROSHIMA.Sheet.Effect"
     });
 
-    // Rejestracja ustawień systemowych
+    // Register system settings
     game.settings.register("neuroshima", "debugMode", {
         name: "NEUROSHIMA.Settings.DebugMode.Name",
         hint: "NEUROSHIMA.Settings.DebugMode.Hint",
@@ -547,7 +547,7 @@ Hooks.once('init', async function() {
         default: false
     });
 
-    // Ustawienie limitujące liczbę śrucin (Buckshot/Birdshot) na podstawie statystyk amunicji
+    // Setting that limits pellet count (Buckshot/Birdshot) based on ammo stats
     game.settings.register("neuroshima", "usePelletCountLimit", {
         name: "NEUROSHIMA.Settings.UsePelletCountLimit.Name",
         hint: "NEUROSHIMA.Settings.UsePelletCountLimit.Hint",
@@ -598,7 +598,7 @@ Hooks.once('init', async function() {
         requiresReload: false
     });
 
-    // Ustawienia widoczności interfejsu walki
+    // Combat UI visibility settings
     game.settings.register("neuroshima", "damageApplicationMinRole", {
         name: "NEUROSHIMA.Settings.DamageApplicationMinRole.Name",
         scope: "world",
@@ -648,7 +648,7 @@ Hooks.once('init', async function() {
         default: DEFAULT_DISTANCE_PENALTIES
     });
 
-    // Rejestracja menu ustawień
+    // Register settings menus
     game.settings.registerMenu("neuroshima", "combatConfig", {
         name: "NEUROSHIMA.Settings.CombatConfig.Label",
         label: "NEUROSHIMA.Settings.CombatConfig.Title",
@@ -824,7 +824,7 @@ Hooks.once('init', async function() {
         default: false
     });
 
-    // Rejestracja ustawień udźwigu (ukryte z głównego menu)
+    // Encumbrance settings (hidden from the main settings menu)
     game.settings.register("neuroshima", "baseEncumbrance", {
         name: "NEUROSHIMA.Settings.BaseEncumbrance.Name",
         hint: "NEUROSHIMA.Settings.BaseEncumbrance.Hint",
@@ -914,10 +914,10 @@ Hooks.once('init', async function() {
         }
     });
 
-    // Nadpisz CONFIG.statusEffects naszymi stanami z ustawień
+    // Override CONFIG.statusEffects with conditions from settings
     applyConditionsToStatusEffects();
 
-    // Wczytanie szablonów (v13 namespaced)
+    // Load templates (v13 namespaced)
     const templates = [
         "systems/neuroshima/templates/actors/actor/parts/actor-header.hbs",
         "systems/neuroshima/templates/actors/creature/parts/creature-header.hbs",
@@ -985,13 +985,13 @@ Hooks.once('init', async function() {
     
     await foundry.applications.handlebars.loadTemplates(templates);
     
-    // Ręczna rejestracja partiali
+    // Register partials manually
     for (const path of templates) {
         if (path.includes("/parts/")) {
             const template = await getTemplate(path);
             Handlebars.registerPartial(path, template);
             
-            // Rejestruj też pod skróconą nazwą (np. MeleeHeader) dla łatwiejszego użycia w HBS
+            // Also register under a short PascalCase name (e.g. MeleeHeader) for easier use in HBS
             const shortName = path.split("/").pop().replace(".hbs", "").split("-").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join("");
             Handlebars.registerPartial(shortName, template);
         }
@@ -1067,6 +1067,51 @@ Hooks.once("ready", async function () {
         return this.effects.addChild(icon);
     };
 
+});
+
+Hooks.once("ready", async () => {
+    if (!game.user.isGM) return;
+    for (const actor of game.actors) {
+        const items = [...actor.items];
+        for (const item of items) {
+            if (item.type !== "container") continue;
+            const contents = item.system.contents;
+            if (!contents?.length) continue;
+            const itemsToCreate = contents.map(entry => {
+                const base = entry.itemData ?? {
+                    name: entry.name,
+                    img: entry.img || "systems/neuroshima/assets/img/backpack.svg",
+                    type: entry.type || "gear",
+                    system: { quantity: entry.quantity ?? 1, weight: entry.weight ?? 0, cost: entry.cost ?? 0 }
+                };
+                foundry.utils.setProperty(base, "flags.neuroshima.containerId", item.id);
+                return base;
+            });
+            await item.update({ "system.contents": [] });
+            await actor.createEmbeddedDocuments("Item", itemsToCreate);
+        }
+    }
+});
+
+
+Hooks.on("createItem", async (item, _options, userId) => {
+    if (item.type !== "container") return;
+    if (!item.actor) return;
+    if (userId !== game.user.id) return;
+    const contents = item.system.contents || [];
+    if (!contents.length) return;
+    await item.update({ "system.contents": [] });
+    const itemsToCreate = contents.map(entry => {
+        const base = foundry.utils.deepClone(entry.itemData ?? {
+            name: entry.name,
+            img: entry.img || "systems/neuroshima/assets/img/backpack.svg",
+            type: entry.type || "gear",
+            system: { quantity: entry.quantity ?? 1, weight: entry.weight ?? 0, cost: entry.cost ?? 0 }
+        });
+        foundry.utils.setProperty(base, "flags.neuroshima.containerId", item.id);
+        return base;
+    });
+    await item.actor.createEmbeddedDocuments("Item", itemsToCreate);
 });
 
 Hooks.once("ready", () => {
@@ -1214,7 +1259,7 @@ Hooks.on("renderTokenHUD", (hud, html) => {
     });
 });
 
-// Dodanie opcji menu kontekstowego do wiadomości czatu
+// Add context menu options for chat messages
 Hooks.on("getChatMessageContextOptions", (html, options) => {
     options.push({
         name: "NEUROSHIMA.Roll.SwitchToOpen",
@@ -1252,7 +1297,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const flags = message?.getFlag("neuroshima", "rollData");
             const alreadyRefunded = message?.getFlag("neuroshima", "ammoRefunded");
             
-            // Refundacja zależna od ustawionej rangi
+            // Refund availability depends on the configured role
             if (!CombatHelper.canPerformCombatAction()) return false;
             
             return flags?.isWeapon && (flags.bulletSequence?.length > 0) && !alreadyRefunded;
@@ -1355,11 +1400,11 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const rollData = message?.getFlag("neuroshima", "rollData");
             const messageType = message?.getFlag("neuroshima", "messageType");
             
-            // Tylko dla skill/attrybut testów i broni
+            // Only for skill/attribute tests and weapon rolls
             if (!rollData) return false;
             if (messageType !== "roll" && messageType !== "weapon") return false;
             
-            // GM lub aktor który wykonał test
+            // Available to the GM or the actor who performed the test
             const actor = game.actors.get(rollData.actorId);
             return game.user.isGM || actor?.isOwner;
         },
@@ -1374,7 +1419,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                 return;
             }
 
-            // Dialog potwierdzenia (DialogV2)
+            // Confirmation dialog
             new Promise(resolve => {
                 const dialog = new foundry.applications.api.DialogV2({
                     window: {
@@ -1421,7 +1466,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                         await CombatHelper.refundAmmunition(message);
                     }
 
-                    // Powtórz test broni
+                    // Re-run the weapon test
                     await game.neuroshima.NeuroshimaDice.rollWeaponTest({
                         weapon: weapon,
                         actor: actor,
@@ -1443,7 +1488,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                         game.neuroshima?.groupEnd();
                     });
                 } else {
-                    // Powtórz test standardowy
+                    // Re-run the standard test
                     await game.neuroshima.NeuroshimaDice.rollTest({
                         actor: actor,
                         label: rollData.label,
@@ -1465,15 +1510,15 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
     });
 });
 
-// Obsługa interakcji na kartach czatu (v13: renderChatMessageHTML)
+// Chat card interactions (v13: renderChatMessageHTML)
 Hooks.on("renderChatMessageHTML", (message, html) => {
-    // Inicjalizacja akcji Neuroshima (Dispatcher)
+    // Initialize Neuroshima chat actions dispatcher
     NeuroshimaChatMessage.onChatAction(html);
 
-    // Obsługa Patient Card (UI toggles)
+    // Patient Card — collapsible UI
     const patientCard = html.querySelector(".neuroshima.patient-card");
     if (patientCard) {
-        // Główny toggle dla wszystkich ran
+        // Main toggle for all wounds
         const woundsMainToggle = patientCard.querySelector(".wounds-main-toggle");
         if (woundsMainToggle) {
             woundsMainToggle.addEventListener("click", () => {
@@ -1484,7 +1529,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             });
         }
 
-        // Toggle dla każdej lokacji
+        // Per-location toggle
         patientCard.querySelectorAll(".location-toggle").forEach(toggle => {
             toggle.addEventListener("click", () => {
                 const woundsList = toggle.closest(".location-group")?.querySelector(".wounds-list");
@@ -1497,7 +1542,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     }
 
-    // Obsługa Healing Request Card (UI toggles + status sections)
+    // Healing Request Card — collapsible UI
     const healingRequestCard = html.querySelector(".neuroshima.heal-request-card");
     if (healingRequestCard) {
         const woundsMainToggle = healingRequestCard.querySelector(".wounds-main-toggle");
@@ -1523,12 +1568,12 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
     }
 
-    // Obsługa Healing Batch Report - stan wizualny przycisków
+    // Healing Batch Report — visual button state
     const healingBatchReport = html.querySelector(".neuroshima.healing-batch-report");
     if (healingBatchReport) {
         const isApplied = message.getFlag("neuroshima", "healingApplied") === true;
         
-        // Przycisk aplikacji leczenia
+        // Apply healing button
         const applyBtn = healingBatchReport.querySelector(".apply-healing-btn");
         if (applyBtn && isApplied) {
             applyBtn.disabled = true;
@@ -1536,7 +1581,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             applyBtn.classList.add("applied");
         }
 
-        // Przycisk przerzutu
+        // Reroll button
         if (isApplied) {
             healingBatchReport.querySelectorAll(".reroll-healing-btn").forEach(btn => {
                 btn.disabled = true;
@@ -1547,7 +1592,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         }
     }
 
-    // Obsługa wyboru lokacji (Melee Opposed Result oraz Ranged Roll)
+    // Location dropdown (Melee Opposed Result and Ranged Roll cards)
     const locationDropdown = html.querySelector(".opposed-location-dropdown");
     if (locationDropdown) {
         locationDropdown.addEventListener("change", async (ev) => {
@@ -1556,7 +1601,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             game.neuroshima?.log("Zmieniono wybraną lokację na karcie", { messageId: message.id, newLocation });
         });
 
-        // Przywróć poprzednio wybraną lokację z flag
+        // Restore previously selected location from message flags
         const savedLocation = message.getFlag("neuroshima", "selectedLocation");
         if (savedLocation) {
             locationDropdown.value = savedLocation;
@@ -1566,7 +1611,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     const card = html.querySelector(".neuroshima.roll-card");
     if (!card) return;
 
-    // Obsługa rozwijanego menu (ogólna dla kart roll-card)
+    // Collapsible sections (all roll cards)
     card.querySelectorAll(".collapsible-toggle").forEach(toggle => {
         toggle.addEventListener("click", (event) => {
             event.preventDefault();
@@ -1581,7 +1626,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                     icon.classList.toggle("fa-chevron-up", isHidden);
                 }
                 
-                // Specyficzne odświeżanie dla taba obrażeń
+                // Refresh damage tab content on expand
                 if (isHidden && content.classList.contains("damage-application-content")) {
                     const activeTab = card.querySelector(".damage-tab-header.active")?.dataset.tab || "targets";
                     updateCardTargets(card, activeTab, message);
@@ -1590,16 +1635,16 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     });
 
-    // Obsługa przełączania tabów obrażeń (tylko jeśli istnieją)
+    // Damage tab switching
     card.querySelectorAll(".damage-tab-header").forEach(tabHeader => {
         tabHeader.addEventListener("click", () => {
             const tab = tabHeader.dataset.tab;
             
-            // Przełącz nagłówki
+            // Switch active header
             card.querySelectorAll(".damage-tab-header").forEach(h => h.classList.remove("active"));
             tabHeader.classList.add("active");
 
-            // Przełącz kontenery
+            // Switch visible container
             card.querySelectorAll(".target-list").forEach(l => {
                 l.style.display = l.dataset.tab === tab ? "block" : "none";
             });
@@ -1608,7 +1653,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     });
 
-    // Przycisk nakładania obrażeń
+    // Apply damage button
     card.querySelectorAll(".apply-damage-button").forEach(btn => {
         btn.addEventListener("click", (event) => {
             event.preventDefault();
@@ -1644,7 +1689,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     });
 
-    // Przycisk Korygowania Ognia
+    // Fire correction button
     card.querySelectorAll(".fire-correction-button").forEach(btn => {
         const isApplied = message.getFlag("neuroshima", "fireCorrectionApplied");
         const isSuccessCorrection = btn.dataset.successCorrection === "true";
@@ -1701,7 +1746,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     });
 
-    // Przycisk wycofywania obrażeń (Reverse Damage)
+    // Reverse Damage button
     card.querySelectorAll(".reverse-damage-button").forEach(btn => {
         btn.addEventListener("click", (event) => {
             event.preventDefault();
@@ -1713,9 +1758,9 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     });
 });
 
-// Hook do dynamicznego ukrywania elementów na kliencie na podstawie uprawnień (v13: renderChatMessageHTML)
+// Dynamically hide elements based on user permissions (v13: renderChatMessageHTML)
 Hooks.on("renderChatMessageHTML", (message, html) => {
-    // Jeśli obrażenia z opposed result zostały już nałożone — zablokuj przycisk
+    // Block the damage button if opposed result damage was already applied
     const opposedResult = message.getFlag("neuroshima", "opposedResult");
     if (opposedResult?.applied) {
         const applyBtn = html.querySelector(".apply-opposed-damage-btn");
@@ -1726,7 +1771,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         }
     }
 
-    // Obsługa stanu po Korygowaniu Ognia
+    // Restore fire correction visual state
     const fireCorrectionApplied = message.getFlag("neuroshima", "fireCorrectionApplied");
     if (fireCorrectionApplied) {
         const correctedHits = message.getFlag("neuroshima", "correctedHits") ?? 0;
@@ -1881,7 +1926,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         }
     }
 
-    // Sprawdzenie uprawnień dla sekcji nakładania obrażeń
+    // Permission check for damage application section
     const damageApplicationMinRole = game.settings.get("neuroshima", "damageApplicationMinRole");
     if (game.user.role < damageApplicationMinRole && !game.user.isGM) {
         const damageSection = html.querySelector(".apply-damage-section");
@@ -1890,7 +1935,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         }
     }
 
-    // Sprawdzenie uprawnień dla szczegółów Odporności na Ból
+    // Permission check for Pain Resistance details
     const painResistanceMinRole = game.settings.get("neuroshima", "painResistanceMinRole");
     if (game.user.role < painResistanceMinRole && !game.user.isGM) {
         const painResistanceDetails = html.querySelector(".pain-resistance-details");
@@ -1899,23 +1944,23 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         }
     }
 
-    // Sprawdzenie uprawnień dla tooltipów w zwykłych rzutach
+    // Permission check for roll tooltips
     const rollTooltipMinRole = game.settings.get("neuroshima", "rollTooltipMinRole");
     const rollTooltipOwnerVisibility = game.settings.get("neuroshima", "rollTooltipOwnerVisibility");
     
-    // Pobranie ID aktora z flagi wiadomości
+    // Get actor ID from message flags
     const actorId = message.flags?.neuroshima?.rollData?.actorId;
     let actor = null;
     if (actorId) {
         actor = game.actors.get(actorId);
     }
     
-    // Sprawdzenie, czy użytkownik ma uprawnienia do widzenia tooltipu
+    // Check if user has permission to view tooltips
     const canShowTooltip = game.user.role >= rollTooltipMinRole || 
                           (rollTooltipOwnerVisibility && (actor?.isOwner || game.user.isGM));
     
     if (!canShowTooltip) {
-        // Ukryj wszystkie data-tooltip w czacie
+        // Remove all tooltip attributes from the chat card
         const tooltipElements = html.querySelectorAll("[data-tooltip]");
         tooltipElements.forEach(el => {
             el.removeAttribute("data-tooltip");
@@ -1925,7 +1970,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 });
 
 /**
- * Aktualizuje listę celów/zaznaczonych tokenów na karcie czatu.
+ * Refresh the targets/selected-tokens list on a chat card.
  */
 function updateCardTargets(card, tab, message) {
     if (!card) return;
@@ -1998,14 +2043,14 @@ function refreshAllCombatCards() {
 }
 
 /**
- * Inicjalizacja socketlib dla systemu.
+ * Register the socketlib socket for the system and attach all socket handlers.
  */
 function initializeSocketlib() {
     if (typeof socketlib === "undefined") return;
     if (!game.neuroshima) {
-        game.neuroshima = {}; // Awaryjna inicjalizacja jeśli system.js init jeszcze nie przeszedł
+        game.neuroshima = {}; // Emergency init if system.js hasn't fired yet
     }
-    if (game.neuroshima.socket) return; // Już zainicjalizowane
+    if (game.neuroshima.socket) return; // Already initialized
 
     game.neuroshima.socket = socketlib.registerSystem("neuroshima");
     if (!game.neuroshima.socket) return;
@@ -2335,17 +2380,17 @@ function initializeSocketlib() {
 
 }
 
-// Rejestracja socketlib po załadowaniu modułu
+// Register socketlib after module load
 Hooks.once("socketlib.ready", () => {
     initializeSocketlib();
 });
 
-// Zapasowa inicjalizacja w setup (na wypadek gdyby hook socketlib.ready już przeszedł)
+// Fallback init in setup (in case the socketlib.ready hook already fired)
 Hooks.once("setup", () => {
     initializeSocketlib();
 });
 
-// Przycisk "Poproś o leczenie" w panelu graczy (analogicznie do Request Trade w Item Piles)
+// "Request Healing" button in the player list (analogous to Item Piles' Request Trade)
 Hooks.on("renderPlayers", (app, html) => {
     if (!game.user.isGM && !game.user.character) return;
 
@@ -2364,7 +2409,7 @@ Hooks.on("renderPlayers", (app, html) => {
     if (list) list.append(btn);
 });
 
-// Rejestracja globalnych hooków dla odświeżania interfejsu
+// Global hooks for UI refresh
 Hooks.on("targetToken", (user) => {
     if (user.id === game.user.id) refreshAllCombatCards();
 });
@@ -2580,5 +2625,73 @@ Hooks.on("renderItemDirectory", (app, html) => {
         delete itemData._id;
         await Item.create(itemData);
         ui.notifications.info(game.i18n.format("NEUROSHIMA.Items.ExportedToSidebar", { name: item.name }));
+    });
+});
+
+Hooks.once("item-piles-ready", () => {
+    const NEUROSHIMA_IP_STYLE_DEFAULTS = {
+        "inactive":              "rgba(144,144,130,1)",
+        "minor-inactive":        "rgba(80,78,70,1)",
+        "shadow-primary":        "rgba(160,46,46,0.8)",
+        "even-color":            "rgba(0,0,0,0.06)",
+        "odd-color":             "rgba(0,0,0,0)",
+        "border-dark-primary":   "rgba(25,24,19,1)",
+        "border-light-primary":  "rgba(181,179,164,1)",
+        "text-light-highlight":  "rgba(216,216,200,1)",
+        "text-important":        "rgba(160,46,46,1)"
+    };
+    try {
+        const saved = game.settings.get("item-piles", "cssVariables") ?? {};
+        const alreadySet = Object.keys(NEUROSHIMA_IP_STYLE_DEFAULTS).every(
+            k => saved[k] === NEUROSHIMA_IP_STYLE_DEFAULTS[k]
+        );
+        if (!alreadySet) {
+            game.settings.set("item-piles", "cssVariables", NEUROSHIMA_IP_STYLE_DEFAULTS);
+        }
+        for (const [key, value] of Object.entries(NEUROSHIMA_IP_STYLE_DEFAULTS)) {
+            document.documentElement.style.setProperty(`--item-piles-${key}`, value);
+        }
+    } catch(e) { }
+
+    game.itempiles.API.addSystemIntegration({
+        VERSION: "1.0.0",
+
+        ACTOR_CLASS_TYPE: "npc",
+
+        ITEM_CLASS_LOOT_TYPE: "gear",
+        ITEM_CLASS_WEAPON_TYPE: "weapon",
+        ITEM_CLASS_EQUIPMENT_TYPE: "gear",
+
+        ITEM_QUANTITY_ATTRIBUTE: "system.quantity",
+        ITEM_PRICE_ATTRIBUTE: "system.effectiveCost",
+
+        ITEM_FILTERS: [
+            { path: "type", filters: "weapon-mod,armor-mod,container,trait,trick,wound,specialization,origin,profession,vehicle-damage,vehicle-mod,reputation,disease,facility" }
+        ],
+
+        ITEM_COST_TRANSFORMER: (item, currencies) => {
+            return Number(foundry.utils.getProperty(item, "system.effectiveCost") ?? foundry.utils.getProperty(item, "system.cost")) || 0;
+        },
+
+        ITEM_SIMILARITIES: ["name", "type"],
+
+        CURRENCIES: [
+            {
+                type: "item",
+                name: "Gamble",
+                img: "systems/neuroshima/assets/img/banknote.svg",
+                abbreviation: "{#}Gamble",
+                data: {
+                    item: {
+                        name: "Gamble",
+                        type: "money",
+                        img: "systems/neuroshima/assets/img/banknote.svg",
+                        system: { coinValue: 1, quantity: 1, weight: 0 }
+                    }
+                },
+                primary: true,
+                exchangeRate: 1
+            }
+        ]
     });
 });

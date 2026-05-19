@@ -7270,3 +7270,127 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .neuroshima.sheet.actor-home-base .toggle-is-built.is-built:hover {
     color: #81c784;
 }
+
+/* ─── Encumbrance + Container Grid row ─── */
+
+.neuroshima.sheet.actor .enc-containers-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.neuroshima.sheet.actor .enc-containers-row .encumbrance-bar-container {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    margin-bottom: 0;
+    align-self: flex-start;
+}
+
+.neuroshima.sheet.actor .container-grid-panel {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    background: var(--ns-bg-secondary, #1a2233);
+    align-items: flex-start;
+    align-content: flex-start;
+    max-width: 45%;
+}
+
+.neuroshima.sheet.actor .container-grid-cell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+}
+
+/* Icon size scales down when many containers */
+.neuroshima.sheet.actor .container-grid-panel[data-count="0"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="1"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="2"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="3"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="4"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="5"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="6"] .container-grid-img {
+    width: 54px;
+    height: 54px;
+}
+
+
+.neuroshima.sheet.actor .container-grid-panel[data-count="7"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="8"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="9"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="10"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="11"] .container-grid-img,
+.neuroshima.sheet.actor .container-grid-panel[data-count="12"] .container-grid-img {
+    width: 42px;
+    height: 42px;
+}
+
+
+.neuroshima.sheet.actor .container-grid-img {
+    width: 32px;
+    height: 32px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    background-color: var(--ns-bg-input, #0f172a);
+    transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.neuroshima.sheet.actor .container-grid-img:hover {
+    border-color: var(--ns-accent, #3b82f6);
+    transform: scale(1.08);
+}
+
+.neuroshima.sheet.actor .container-grid-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--ns-bg-input, #0f172a);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid var(--ns-border-subtle, #334155);
+}
+
+.neuroshima.sheet.actor .container-grid-fill {
+    height: 100%;
+    background: var(--ns-accent, #3b82f6);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.neuroshima.sheet.actor .container-grid-lock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+.neuroshima.sheet.actor .container-grid-lock-overlay i {
+    color: #ef4444;
+    font-size: 14px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.neuroshima.sheet.actor .container-grid-cell.drag-over .container-grid-img,
+.neuroshima.sheet .container-grid-cell.drag-over .container-grid-img {
+    border-color: var(--ns-accent, #3b82f6) !important;
+    box-shadow: 0 0 0 2px var(--ns-accent, #3b82f6);
+    transform: scale(1.12);
+}
+

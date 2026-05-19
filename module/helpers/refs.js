@@ -1,25 +1,25 @@
 /**
- * Helpery do zarządzania referencjami do aktorów i tokenów w systemie Neuroshima 1.5.
- * Umożliwiają spójne operowanie na celach leczenia i walki niezależnie od tego,
- * czy są to unlinked tokeny na scenie, czy aktorzy w bazie danych.
+ * Helpers for managing actor and token references in the Neuroshima 1.5 system.
+ * Provide a consistent way to address healing and combat targets whether they are
+ * unlinked scene tokens or library actors.
  */
 
 /**
- * Buduje obiekt referencji na podstawie tokena lub aktora.
+ * Builds a reference object from a token or an actor.
  * 
  * @param {Object} data
- * @param {Token|TokenDocument} [data.token] - Token lub dokument tokena
- * @param {Actor} [data.actor] - Aktor
- * @returns {Object|null} Obiekt { kind: "token"|"actor", uuid: string }
+ * @param {Token|TokenDocument} [data.token] - Token placeable or document
+ * @param {Actor} [data.actor] - Actor document
+ * @returns {Object|null} Reference object { kind: "token"|"actor", uuid: string }
  */
 export function buildRef({ token = null, actor = null } = {}) {
-    // Obsługa tokena (document lub placeable)
+    // Handle token input (document or placeable)
     const tokenDoc = token?.document || (token instanceof TokenDocument ? token : null);
     if (tokenDoc?.uuid) {
         return { kind: "token", uuid: tokenDoc.uuid };
     }
 
-    // Obsługa aktora
+    // Handle actor input
     if (actor?.uuid) {
         return { kind: "actor", uuid: actor.uuid };
     }
@@ -28,9 +28,9 @@ export function buildRef({ token = null, actor = null } = {}) {
 }
 
 /**
- * Rozwiązuje obiekt referencji do rzeczywistych dokumentów Foundry.
+ * Resolves a reference object to actual Foundry documents.
  * 
- * @param {Object} ref - Obiekt referencji { kind, uuid }
+ * @param {Object} ref - Reference object { kind, uuid }
  * @returns {Promise<{tokenDoc: TokenDocument|null, actor: Actor|null}>}
  */
 export async function resolveRef(ref) {
@@ -39,25 +39,25 @@ export async function resolveRef(ref) {
     try {
         const doc = await fromUuid(ref.uuid);
         if (!doc) {
-            console.error(`Neuroshima | resolveRef: Nie znaleziono dokumentu dla UUID: ${ref.uuid}`);
+            console.error(`Neuroshima | resolveRef: No document found for UUID: ${ref.uuid}`);
             return { tokenDoc: null, actor: null };
         }
 
         if (ref.kind === "token") {
-            // W przypadku tokena, document to TokenDocument, a aktor jest w .actor
+            // For a token reference, doc is a TokenDocument; the actor is in .actor
             return { 
                 tokenDoc: doc, 
                 actor: doc.actor 
             };
         }
 
-        // W przypadku aktora, document to Actor
+        // For an actor reference, doc is the Actor directly
         return { 
             tokenDoc: null, 
             actor: doc 
         };
     } catch (err) {
-        console.error(`Neuroshima | resolveRef: Błąd podczas rozwiązywania UUID: ${ref.uuid}`, err);
+        console.error(`Neuroshima | resolveRef: Error resolving UUID: ${ref.uuid}`, err);
         return { tokenDoc: null, actor: null };
     }
 }
