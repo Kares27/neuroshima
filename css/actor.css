@@ -1158,8 +1158,8 @@
 }
 
 .neuroshima.sheet.actor .item-image {
-    flex: 0 0 24px;
-    height: 24px;
+    flex: 0 0 50px;
+    height: 32px;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
