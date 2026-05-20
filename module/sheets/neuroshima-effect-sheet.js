@@ -17,7 +17,7 @@ const NS_CHANGE_KEYS = [
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.HP", actorTypes: ["character", "npc", "creature"], keys: [
     { key: "system.hp.max",    label: "NEUROSHIMA.HP.Max" },
-    { key: "system.maxLoad",   label: "NEUROSHIMA.Effects.Keys.MaxLoad" }
+    { key: "system.encumbrance.max",   label: "NEUROSHIMA.Effects.Keys.MaxLoad" }
   ]},
   { group: "NEUROSHIMA.Effects.Keys.Group.Combat", actorTypes: ["character", "npc", "creature"], keys: [
     { key: "system.movement",                label: "NEUROSHIMA.Movement.Label" },

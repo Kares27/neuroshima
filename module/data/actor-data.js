@@ -230,29 +230,63 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       }
   }
 
-   _applyPostDerivedActiveEffects(keys = []) {
+  _applyPostDerivedActiveEffectValue(key, baseValue) {
     const actor = this.parent;
-    if (!actor || !keys.length) return;
+    if (!actor) return baseValue;
 
-    const allowed = new Set(keys);
-    const effects = actor.appliedEffects ?? actor.effects?.filter(e => e.active && !e.disabled) ?? [];
+    let value = Number(baseValue) || 0;
+    const effects = actor.appliedEffects ?? Array.from(actor.allApplicableEffects?.() ?? []);
+
+    const modes = CONST.ACTIVE_EFFECT_MODES;
 
     for (const effect of effects) {
       if (!effect?.active || effect.isSuppressed) continue;
 
       for (const change of effect.changes ?? []) {
-        if (!allowed.has(change.key)) continue;
+        if (change.key !== key) continue;
 
-        const current = foundry.utils.getProperty(actor, change.key);
-        if (current === undefined) continue;
+        const raw = change.value;
+        const delta = Number(raw);
 
-        const updates = effect.apply(actor, change);
-        for (const [path, value] of Object.entries(updates ?? {})) {
-          if (!allowed.has(path)) continue;
-          foundry.utils.setProperty(actor, path, value);
+        switch (change.mode) {
+          case modes.ADD:
+            value += Number.isFinite(delta) ? delta : 0;
+            break;
+
+          case modes.MULTIPLY:
+            value *= Number.isFinite(delta) ? delta : 1;
+            break;
+
+          case modes.OVERRIDE:
+            value = Number.isFinite(delta) ? delta : value;
+            break;
+
+          case modes.UPGRADE:
+            if (Number.isFinite(delta)) value = Math.max(value, delta);
+            break;
+
+          case modes.DOWNGRADE:
+            if (Number.isFinite(delta)) value = Math.min(value, delta);
+            break;
+
+          case modes.CUSTOM: {
+            const changes = {};
+            Hooks.callAll("applyActiveEffect", actor, change, value, raw, changes);
+
+            if (Object.hasOwn(changes, key)) {
+              const customValue = Number(changes[key]);
+              if (Number.isFinite(customValue)) value = customValue;
+            }
+            break;
+          }
+
+          default:
+            break;
         }
       }
     }
+
+    return value;
   }
 
   /** @override */
@@ -309,14 +343,14 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
               }
           }
 
-          system.encumbrance.max = parseFloat((maxWeight || 20).toFixed(2));
+          const baseMax = parseFloat((maxWeight || 20).toFixed(2));
+          const finalMax = this._applyPostDerivedActiveEffectValue(
+              "system.encumbrance.max",
+              baseMax
+          );
 
-          
-          this._applyPostDerivedActiveEffects([
-              "system.encumbrance.max"
-          ]);
+          system.encumbrance.max = parseFloat(Math.max(0, finalMax).toFixed(2));
       } else {
-          
           system.encumbrance.max = 999;
       }
 
