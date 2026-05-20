@@ -230,6 +230,31 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       }
   }
 
+   _applyPostDerivedActiveEffects(keys = []) {
+    const actor = this.parent;
+    if (!actor || !keys.length) return;
+
+    const allowed = new Set(keys);
+    const effects = actor.appliedEffects ?? actor.effects?.filter(e => e.active && !e.disabled) ?? [];
+
+    for (const effect of effects) {
+      if (!effect?.active || effect.isSuppressed) continue;
+
+      for (const change of effect.changes ?? []) {
+        if (!allowed.has(change.key)) continue;
+
+        const current = foundry.utils.getProperty(actor, change.key);
+        if (current === undefined) continue;
+
+        const updates = effect.apply(actor, change);
+        for (const [path, value] of Object.entries(updates ?? {})) {
+          if (!allowed.has(path)) continue;
+          foundry.utils.setProperty(actor, path, value);
+        }
+      }
+    }
+  }
+
   /** @override */
   prepareDerivedData() {
     if (!game.settings || !game.settings.settings?.has("neuroshima.enableEncumbrance")) return;
@@ -262,20 +287,36 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       const bonusValue = game.settings.get("neuroshima", "encumbranceBonusValue") ?? 5;
 
       system.encumbrance.enabled = enableEncumbrance;
+
       if (enableEncumbrance) {
           const manualMax = Number(system.maxLoad) || 0;
+          let maxWeight = 0;
+
           if (manualMax > 0) {
-              system.encumbrance.max = parseFloat(manualMax.toFixed(2));
+              maxWeight = manualMax;
           } else {
-              const conValue = (Number(system.attributes.constitution) || 0) + (Number(system.attributeBonuses?.constitution) || 0) + (Number(system.modifiers.constitution) || 0) + (Number(system.bonuses?.constitution) || 0);
-              let maxWeight = baseEnc;
+              const conValue =
+                  (Number(system.attributes.constitution) || 0) +
+                  (Number(system.attributeBonuses?.constitution) || 0) +
+                  (Number(system.modifiers.constitution) || 0) +
+                  (Number(system.bonuses?.constitution) || 0);
+
+              maxWeight = baseEnc;
+
               if (useConBonus && conValue > threshold && interval > 0) {
                   const bonusSteps = Math.floor((conValue - threshold) / interval);
                   maxWeight += Math.max(0, bonusSteps * bonusValue);
               }
-              system.encumbrance.max = parseFloat((maxWeight || 20).toFixed(2));
           }
+
+          system.encumbrance.max = parseFloat((maxWeight || 20).toFixed(2));
+
+          
+          this._applyPostDerivedActiveEffects([
+              "system.encumbrance.max"
+          ]);
       } else {
+          
           system.encumbrance.max = 999;
       }
 

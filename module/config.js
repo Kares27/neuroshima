@@ -40,11 +40,6 @@ const bodyLocations = {
         label: "NEUROSHIMA.Location.LeftLeg", 
         roll: [19, 20], 
         modifiers: { ranged: 40, melee: 40 } 
-    },
-    inne: {
-        label: "NEUROSHIMA.Location.Inne",
-        roll: null,
-        modifiers: null
     }
 };
 
