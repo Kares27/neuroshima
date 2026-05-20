@@ -1326,7 +1326,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Zapisuje aktualną pozycję scrolla listy ran.
+   * Saves the current scroll position of the wounds list.
    * @private
    */
   _saveWoundsScroll() {
@@ -1630,10 +1630,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
    * @private
    */
   async _onLoadAmmoIntoMagazine(ammo, magazine) {
-      game.neuroshima.log("Inicjalizacja ładowania amunicji", { ammo, magazine });
+      game.neuroshima.log("Initializing ammo loading", { ammo, magazine });
       const amount = await AmmunitionLoadingDialog.wait({ ammo, magazine });
       if (!amount || isNaN(amount)) {
-          game.neuroshima.log("Anulowano ładowanie amunicji lub brak ilości");
+          game.neuroshima.log("Ammo loading cancelled or no quantity specified");
           return;
       }
 
@@ -1662,20 +1662,20 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       const lastStack = contents[contents.length - 1];
       if (this._isSameAmmo(lastStack, ammoData)) {
           lastStack.quantity += ammoData.quantity;
-          game.neuroshima.log("Połączono ze stosującym się elementem w magazynku", { lastStack });
+          game.neuroshima.log("Merged with matching stack in magazine", { lastStack });
       } else {
           contents.push(ammoData);
       }
 
-      game.neuroshima.log("Aktualizacja zawartości magazynka", { contents });
+      game.neuroshima.log("Updating magazine contents", { contents });
       await magazine.update({ "system.contents": contents });
       
       // Deduct the loaded ammo from inventory
       if (ammo.system.quantity <= amount) {
-          game.neuroshima.log("Usuwanie pustego stosu amunicji z ekwipunku");
+          game.neuroshima.log("Removing empty ammo stack from inventory");
           await ammo.delete();
       } else {
-          game.neuroshima.log("Aktualizacja ilości amunicji w ekwipunku", { remaining: ammo.system.quantity - amount });
+          game.neuroshima.log("Updating ammo quantity in inventory", { remaining: ammo.system.quantity - amount });
           await ammo.update({ "system.quantity": ammo.system.quantity - amount });
       }
 
@@ -2147,7 +2147,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     
     // Guard against multiple rapid calls (e.g. double-click)
     if (this._isRolling) {
-        game.neuroshima.log("_onRollWeapon: Rzut jest już w toku, ignoruję dodatkowe kliknięcie.");
+        game.neuroshima.log("_onRollWeapon: Roll already in progress, ignoring additional click.");
         return;
     }
     this._isRolling = true;
@@ -2161,7 +2161,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     
     try {
         game.neuroshima.group(`_onRollWeapon: ${weapon.name}`);
-        game.neuroshima.log("Inicjalizacja rzutu bronią");
+        game.neuroshima.log("Initializing weapon roll");
 
         // Validate magazine/ammo selection before opening the roll dialog
         const wData = weapon.system;
@@ -2171,27 +2171,27 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         if ((isRanged || isThrown) && wData.caliber) {
             if (!wData.magazine) {
                 ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoMagazineSelected"));
-                game.neuroshima.log("Błąd: Brak wybranego magazynka");
+                game.neuroshima.log("Error: No magazine selected");
                 throw new Error("No magazine selected");
             }
             
             const magazine = this.document.items.get(wData.magazine);
             if (!magazine || (magazine.type === "magazine" && magazine.system.totalCount <= 0)) {
                 ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.OutOfAmmo"));
-                game.neuroshima.log("Błąd: Brak amunicji w magazynku");
+                game.neuroshima.log("Error: No ammo in magazine");
                 throw new Error("Out of ammo");
             }
 
             if (magazine.type === "ammo" && magazine.system.quantity <= 0) {
                 ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.OutOfAmmo"));
-                game.neuroshima.log("Błąd: Brak amunicji w ekwipunku");
+                game.neuroshima.log("Error: No ammo in inventory");
                 throw new Error("Out of ammo");
             }
         }
 
         if (wData.jammed && wData.weaponType !== "melee") {
             ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.WeaponIsJammed"));
-            game.neuroshima.log("Błąd: Broń jest zacięta, nie można oddać strzału");
+            game.neuroshima.log("Error: Weapon is jammed, cannot fire");
             throw new Error("Weapon is jammed");
         }
 
@@ -2211,7 +2211,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         if (targetUuids.length === 0) {
             const actorSourceToken = this._getSourceToken();
             if (actorSourceToken) {
-                game.neuroshima.log("Brak aktywnych targetów, przechodzę do trybu wyboru na mapie");
+                game.neuroshima.log("No active targets, switching to map selection mode");
                 await this.minimize();
                 const _grenadeBlastZones = weapon.system.blastZones ?? [];
                 const _grenadeRadius = (weapon.system.weaponType === "grenade" && _grenadeBlastZones.length > 0)
@@ -2245,10 +2245,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                     game.neuroshima.groupEnd();
                     return;
                 } else {
-                    game.neuroshima.log("Anulowano wybór celu (PPM) — otwieranie dialogu bez celu");
+                    game.neuroshima.log("Target selection cancelled (RMB) — opening dialog without target");
                 }
             } else {
-                game.neuroshima.log("Brak tokena aktora na scenie — otwieranie dialogu bez celu (tryb narracyjny)");
+                game.neuroshima.log("No actor token on scene — opening dialog without target (narrative mode)");
             }
         }
         // Detect distance for ranged/thrown weapons
@@ -2395,7 +2395,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         // 4. We have a target and no incoming attack pending — initiate a new attack
         if (targetUuid) {
             if (!game.combat) {
-                ui.notifications.warn("Najpierw utwórz Encounter w Combat Trackerze.");
+                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.CreateEncounterFirst"));
                 this._isRolling = false;
                 return;
             }
@@ -2442,7 +2442,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             await dialog.render(true);
         }
     } catch (err) {
-        game.neuroshima.log("Przerwano rzut bronią lub wystąpił błąd:", err.message);
+        game.neuroshima.log("Weapon roll interrupted or an error occurred:", err.message);
         this._isRolling = false;
         game.neuroshima.groupEnd();
     }
@@ -2525,7 +2525,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         }
     };
 
-    game.neuroshima.log("_waitForTarget: Rozpoczynam przechwytywanie kliknięcia (window capture)");
+    game.neuroshima.log("_waitForTarget: Starting click capture (window capture)");
     ui.notifications.info(game.i18n.localize("NEUROSHIMA.Notifications.SelectTargetOrPoint"));
 
     return new Promise((resolve) => {
@@ -2578,7 +2578,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
             if (event.button === 2) {
                 cleanup(true);
-                game.neuroshima.log("_waitForTarget: Wybór anulowany przez użytkownika");
+                game.neuroshima.log("_waitForTarget: Selection cancelled by user");
                 resolve({ cancelled: true });
                 return;
             }
@@ -3023,7 +3023,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Publiczna metoda rzutu na inicjatywę, wywoływana np. z trackera.
+   * Public initiative roll method, called e.g. from the combat tracker.
    */
   async rollInitiative(options = {}) {
     if (options.isMelee) {
@@ -3071,7 +3071,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Reakcja obrońcy na starcie - rzut na inicjatywę i start pojedynku.
+   * Defender's response to a melee challenge — initiative roll and duel start.
    */
   async _onRespondToOpposed(event, target) {
       if (this._isRolling) return;
@@ -3141,7 +3141,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Anuluje oczekujące starcie.
+   * Cancels a pending melee challenge.
    */
   async _onDismissOpposed(event, target) {
       if (event) event.stopPropagation();
@@ -3176,17 +3176,17 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Pokaż kartę pacjenta na czacie.
+   * Shows the patient card in chat.
    */
   async _onShowPatientCard(event) {
     event.preventDefault();
-    game.neuroshima.log("Wyświetlanie karty pacjenta dla:", this.actor.name);
+    game.neuroshima.log("Showing patient card for:", this.actor.name);
     
     await game.neuroshima.NeuroshimaChatMessage.renderPatientCard(this.actor);
   }
 
   /**
-   * Prośba o leczenie dla medyka.
+   * Sends a healing request to a medic.
    */
   async _onRequestHealing(event) {
     event.preventDefault();
@@ -3194,25 +3194,25 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   }
 
   /**
-   * Centralny punkt wejścia do pipeline prośby o leczenie.
-   * Wywoływany zarówno przez przycisk na karcie aktora jak i przez przycisk w panelu graczy.
+   * Central entry point for the healing request pipeline.
+   * Called both from the actor sheet button and from the players panel button.
    *
-   * @param {Actor} patientActor - Aktor pacjenta.
+   * @param {Actor} patientActor - The patient actor.
    */
   static async requestHealingFor(patientActor) {
     if (!patientActor && !game.user.isGM) return;
-    game.neuroshima.log("Prosimy o leczenie dla:", patientActor?.name ?? "(GM wybiera aktora)");
+    game.neuroshima.log("Requesting healing for:", patientActor?.name ?? "(GM selects actor)");
 
     const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
 
     if (patientCardVersion === "simple" && patientActor) {
-      game.neuroshima.log("Wyświetlanie uproszczonej karty pacjenta (bez prośby do medyka)");
+      game.neuroshima.log("Showing simplified patient card (no medic request)");
       await game.neuroshima.NeuroshimaChatMessage.renderPatientCard(patientActor);
       ui.notifications.info(game.i18n.localize("NEUROSHIMA.PatientCard.ShowPatientCard"));
       return;
     }
 
-    game.neuroshima.log("Wersja rozszerzona: wyświetlanie dialoga wyboru medyka");
+    game.neuroshima.log("Extended version: showing medic selection dialog");
 
     // Filter similar to Item Piles: active users, not self, have a character or are GM
     const possibleMedics = game.users
@@ -3410,9 +3410,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     }
     try {
       const medicLabel = medicUser.character?.name ?? medicUser.name;
-      game.neuroshima.log("Wysyłanie prośby o leczenie", {
-        pacjent: resolvedPatientActor.name,
-        medyk: medicLabel,
+      game.neuroshima.log("Sending healing request", {
+        patient: resolvedPatientActor.name,
+        medic: medicLabel,
         isPrivate
       });
 
@@ -3439,7 +3439,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         medic: medicLabel
       }));
     } catch (err) {
-      game.neuroshima.log("Błąd podczas wysyłania prośby:", err);
+      game.neuroshima.log("Error sending healing request:", err);
       ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingFailed"));
     }
   }

@@ -100,8 +100,8 @@ export class CombatConfig extends HandlebarsApplicationMixin(ApplicationV2) {
                 SettingsConfig.reloadConfirm({ world: true });
             }
         } catch (err) {
-            console.error("Neuroshima | Błąd zapisu ustawień walki:", err);
-            ui.notifications.error("Wystąpił błąd podczas zapisu ustawień.");
+            console.error("Neuroshima | Error saving combat settings:", err);
+            ui.notifications.error(game.i18n.localize("NEUROSHIMA.Notifications.SettingsSaveError"));
         }
     }
 }

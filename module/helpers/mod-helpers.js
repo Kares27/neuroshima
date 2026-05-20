@@ -508,7 +508,7 @@ async function _propagateModResources(item, modId, snapshot, attach) {
       game.i18n.format("NEUROSHIMA.Mods.ResourceKeyCollision", { item: item.name, keys: names }),
       { permanent: false }
     );
-    game.neuroshima?.log?.(`[mod-helpers] Kolizja kluczy zasobów przy montowaniu modyfikacji ${modId} na ${item.name}: ${names}`);
+    game.neuroshima?.log?.(`[mod-helpers] Resource key collision when mounting mod ${modId} on ${item.name}: ${names}`);
   }
   const tagged = modResources.map(r => ({ ...r, _fromModId: modId }));
   await item.update({ "system.resources": [...current, ...tagged] });

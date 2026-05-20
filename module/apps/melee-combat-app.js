@@ -500,12 +500,12 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const phase = context.turnState.phase;
     const exchange = context.currentExchange;
 
-    if (!p.isActive) return { label: "Nieaktywny", class: "inactive" };
-    if (!p.pool?.length) return { label: "Czeka na rzut", class: "waiting" };
-    if (p.id === exchange.attackerId) return { label: "Atakujący", class: "attacker" };
-    if (p.id === exchange.defenderId) return { label: "Obrońca", class: "defender" };
-    if (p.isCrowded) return { label: "Osaczony", class: "crowded" };
-    return { label: "Czeka", class: "waiting" };
+    if (!p.isActive) return { label: "Inactive", class: "inactive" };
+    if (!p.pool?.length) return { label: "Waiting for roll", class: "waiting" };
+    if (p.id === exchange.attackerId) return { label: "Attacker", class: "attacker" };
+    if (p.id === exchange.defenderId) return { label: "Defender", class: "defender" };
+    if (p.isCrowded) return { label: "Cornered", class: "crowded" };
+    return { label: "Waiting", class: "waiting" };
   }
 
   /**

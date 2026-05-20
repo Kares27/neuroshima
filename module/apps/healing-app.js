@@ -219,17 +219,17 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         this.patientRef = options.patientRef;
         this.medicRef = options.medicRef;
         
-        // Jeśli nie ma refów w opcjach bezpośrednio, sprawdź w options.options (v13 pattern)
+        // If refs are not in options directly, check in options.options (v13 pattern)
         if (!this.patientRef && options.options) {
             this.patientRef = options.options.patientRef;
             this.medicRef = options.options.medicRef;
             this.sessionId = options.options.sessionId;
         }
         
-        // Stan UI
+        // UI state
         this.selectedLocation = null;
         
-        game.neuroshima?.log("HealingApp konstruktor", {
+        game.neuroshima?.log("HealingApp constructor", {
             sessionId: this.sessionId,
             patientRef: this.patientRef,
             medicRef: this.medicRef
@@ -240,39 +240,39 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async _prepareContext(options) {
         game.neuroshima?.group("HealingApp | _prepareContext");
         
-        // Rozwiąż referencje
+        // Resolve references
         const { actor: patientActor } = await game.neuroshima.resolveRef(this.patientRef);
         const { actor: medicActor } = await game.neuroshima.resolveRef(this.medicRef);
 
         if (!patientActor) {
-            game.neuroshima?.error("Nie znaleziono aktora pacjenta", this.patientRef);
+            game.neuroshima?.error("Patient actor not found", this.patientRef);
             game.neuroshima?.groupEnd();
             return {
                 error: true,
-                errorMessage: `Nie znaleziono aktora pacjenta (UUID: ${this.patientRef?.uuid || 'Brak'})`
+                errorMessage: `Patient actor not found (UUID: ${this.patientRef?.uuid || 'None'})`
             };
         }
 
-        // Uprawnienia: Medyk (Owner medyka lub GM)
+        // Permissions: Medic (owner of medic actor or GM)
         const isGM = game.user.isGM;
         const isMedic = isGM || (medicActor ? medicActor.testUserPermission(game.user, "OWNER") : false);
 
-        // Wygeneruj dane karty pacjenta
+        // Generate patient card data
         const patientData = game.neuroshima.CombatHelper.generatePatientCard(patientActor);
 
-        // Przygotuj mapę lokacji dla szybkiego dostępu
+        // Build location map for fast access
         const locationsMap = {};
         for (const location of patientData.locations) {
             locationsMap[location.key] = location;
         }
 
-        // Przygotuj dane do filtru lokacji
+        // Prepare data for location filter
         let selectedLocationWounds = [];
         if (this.selectedLocation) {
             selectedLocationWounds = locationsMap[this.selectedLocation]?.wounds || [];
         }
 
-        // Oblicz sumy typów obrażeń i kar
+        // Calculate damage type totals and penalties
         const summary = {
             K: 0, C: 0, L: 0, D: 0,
             penalty: 0
@@ -286,7 +286,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             summary.penalty += wound.penalty || 0;
         }
 
-        game.neuroshima?.log("Przygotowanie kontekstu panelu leczenia", {
+        game.neuroshima?.log("Preparing healing panel context", {
             actorName: patientActor.name,
             isMedic: isMedic,
             selectedLocation: this.selectedLocation,
@@ -315,7 +315,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         super._attachPartListeners(partId, htmlElement, options);
 
         if (partId === "main") {
-            // Obsługa kliknięcia na lokacje w paper doll
+            // Handle clicks on paper doll locations
             htmlElement.querySelectorAll(".body-location-hotspot").forEach(hotspot => {
                 hotspot.addEventListener("click", (event) => {
                     event.preventDefault();
@@ -324,31 +324,31 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
             });
 
-            // Obsługa checkboxów ran
+            // Handle wound checkboxes
             htmlElement.querySelectorAll(".wound-checkbox").forEach(checkbox => {
                 checkbox.addEventListener("change", (event) => {
-                    event.stopPropagation(); // Zapobiegaj triggerowaniu kliknięcia na wiersz
+                    event.stopPropagation(); // Prevent triggering the row click event
                     this._updateHealButton(htmlElement);
                 });
             });
 
-            // Obsługa kliknięcia na cały wiersz rany (toggle checkbox)
+            // Handle click on entire wound row (toggle checkbox)
             htmlElement.querySelectorAll(".wound-item").forEach(item => {
                 item.style.cursor = "pointer";
                 item.addEventListener("click", (event) => {
-                    // Jeśli kliknięto bezpośrednio w checkbox, nie rób nic (zostaw naturalny change event)
+                    // If clicked directly on the checkbox, do nothing (let the natural change event fire)
                     if (event.target.classList.contains("wound-checkbox")) return;
                     
                     const checkbox = item.querySelector(".wound-checkbox");
                     if (checkbox) {
                         checkbox.checked = !checkbox.checked;
-                        // Manualnie wywołaj zdarzenie change aby przycisk się zaktualizował
+                        // Manually dispatch change event to update the heal button
                         checkbox.dispatchEvent(new Event("change", { bubbles: true }));
                     }
                 });
             });
 
-            // Obsługa przycisk leczenia zaznaczonych ran
+            // Handle the heal selected wounds button
             const healBtn = htmlElement.querySelector(".heal-selected-wounds");
             if (healBtn) {
                 healBtn.addEventListener("click", (event) => {
@@ -357,10 +357,10 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 });
             }
 
-            // Zainicjuj stan przycisku leczenia i checkboxa "zaznacz wszystko"
+            // Initialize heal button and "select all" checkbox state
             this._updateHealButton(htmlElement);
 
-            // Obsługa checkboxa "zaznacz wszystko"
+            // Handle "select all" checkbox
             const selectAllBtn = htmlElement.querySelector(".select-all-wounds");
             if (selectAllBtn) {
                 selectAllBtn.addEventListener("change", (event) => {
@@ -375,16 +375,16 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Obsługuje wybranie lokacji na paper doll
+     * Handles location selection on the paper doll.
      */
     async _onLocationSelected(locationKey) {
         game.neuroshima?.group("HealingApp | _onLocationSelected");
-        game.neuroshima?.log("Wybrana lokacja", { location: locationKey });
+        game.neuroshima?.log("Location selected", { location: locationKey });
 
         this.selectedLocation = this.selectedLocation === locationKey ? null : locationKey;
         
-        // Manualnie aktualizuj stan paper doll i listę ran bez pełnego renderowania
-        // Używamy partial render aby uniknąć skakania okna i utraty stanu scrolla
+        // Manually update the paper doll and wound list without a full re-render
+        // Using partial render to avoid window jumping and scroll position loss
         this.render({ parts: ["main"] });
         game.neuroshima?.groupEnd();
     }
@@ -393,12 +393,12 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     async _onRender(context, options) {
         await super._onRender(context, options);
         
-        // Zainicjuj paper doll
+        // Initialize paper doll
         this._initializeWoundLocationPanel(this.element);
     }
 
     /**
-     * Inicjalizuje wizualny stan paper doll
+     * Initializes the visual state of the paper doll.
      * @private
      */
     _initializeWoundLocationPanel(html) {
@@ -411,25 +411,25 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Wizualnie zaznacza wybraną lokację na paper doll
+     * Visually highlights the selected location on the paper doll.
      * @private
      */
     _onPaperDollLocationSelect(hotspot) {
-        // Usuń klasę selected ze wszystkich hotspotów
+        // Remove selected class from all hotspots
         this.element.querySelectorAll('.body-location-hotspot').forEach(hs => {
             hs.classList.remove('selected');
         });
         
-        // Dodaj klasę selected do aktualnego
+        // Add selected class to the current one
         hotspot.classList.add('selected');
     }
 
     /**
-     * Obsługuje leczenie rany - wyświetla dialog z opcjami
+     * Handles wound healing — shows an options dialog.
      */
     async _onHealWound(woundId) {
         game.neuroshima?.group("HealingApp | _onHealWound");
-        game.neuroshima?.log("Inicjowanie leczenia rany", { woundId: woundId });
+        game.neuroshima?.log("Initiating wound healing", { woundId: woundId });
 
         const { actor } = await game.neuroshima.resolveRef(this.patientRef);
         if (!actor) {
@@ -445,24 +445,24 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        game.neuroshima?.log("Znaleziona rana:", { name: wound.name, isHealing: wound.system.isHealing });
+        game.neuroshima?.log("Wound found:", { name: wound.name, isHealing: wound.system.isHealing });
 
-        // Wyświetl dialog z opcjami leczenia
+        // Show healing options dialog
         const action = await this._showHealingDialog(wound);
         if (!action) {
-            game.neuroshima?.log("Anulowano leczenie rany");
+            game.neuroshima?.log("Wound healing cancelled");
             game.neuroshima?.groupEnd();
             return;
         }
 
-        game.neuroshima?.log("Wybranie akcji leczenia", { action: action });
+        game.neuroshima?.log("Healing action selected", { action: action });
 
-        // Jeśli user jest GM, aplikuj od razu. Inaczej wyślij socket.
+        // If user is GM, apply immediately; otherwise send via socket.
         if (game.user.isGM) {
             await HealingApp.healWound(actor, woundId, action);
             this.render();
         } else {
-            // Wyślij socket do GM przez socketlib
+            // Send socket to GM via socketlib
             try {
                 game.neuroshima.socket.executeAsGM("applyHealing", {
                     patientRef: this.patientRef,
@@ -472,13 +472,13 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                     sessionId: this.sessionId
                 });
 
-                game.neuroshima?.log("Socket wysłany do GM przez socketlib", { 
+                game.neuroshima?.log("Socket sent to GM via socketlib", { 
                     action: action, 
                     patientRef: this.patientRef,
                     medicRef: this.medicRef
                 });
                 
-                // Odśwież interfejs po leczeniu (tymczasowo lokalnie, GM wyśle raport)
+                // Refresh UI after healing (temporarily local; GM will send the report)
                 setTimeout(() => {
                     this.render();
                 }, 500);
@@ -489,7 +489,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 }));
 
             } catch (err) {
-                game.neuroshima?.log("Błąd przy wysyłaniu socketu:", err);
+                game.neuroshima?.log("Error sending socket:", err);
                 ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingFailed"));
             }
         }
@@ -498,7 +498,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Wyświetla dialog wyboru akcji leczenia
+     * Shows the healing action selection dialog.
      */
     async _showHealingDialog(wound) {
         const woundLabel = wound.system.damageType ? 
@@ -510,7 +510,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
         let buttonOptions = [];
 
-        // Zawsze dostępny: rozpocznij lub kontynuuj leczenie
+        // Always available: start or continue healing
         if (!isHealing) {
             buttonOptions.push({
                 action: "start",
@@ -525,13 +525,13 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             });
         }
 
-        // Zawsze dostępny: ukończ leczenie (usuń ranę)
+        // Always available: complete healing (remove wound)
         buttonOptions.push({
             action: "complete",
             label: game.i18n.localize("NEUROSHIMA.HealingRequest.Action.complete")
         });
 
-        // Przycisk anulowania
+        // Cancel button
         buttonOptions.push({
             action: "cancel",
             label: game.i18n.localize("NEUROSHIMA.Actions.Cancel")
@@ -558,69 +558,69 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Leczy ranę - zmienia jej stan w zależności od wybranej akcji
-     * @param {Actor} actor - Aktor pacjenta
-     * @param {string} woundId - ID rany do leczenia
-     * @param {string} action - Akcja leczenia ("start", "progress", "complete")
+     * Heals a wound — changes its state according to the selected action.
+     * @param {Actor} actor - The patient actor
+     * @param {string} woundId - The wound item ID
+     * @param {string} action - Healing action ("start", "progress", "complete")
      * @returns {Promise<Item>}
      */
     static async healWound(actor, woundId, action = "progress") {
         game.neuroshima?.group("HealingApp | healWound");
-        game.neuroshima?.log("Rozpoczęcie leczenia rany", {
+        game.neuroshima?.log("Starting wound healing", {
             actorName: actor.name,
             woundId: woundId,
             action: action
         });
 
         try {
-            // Pobierz ranę
+            // Retrieve wound
             const wound = actor.items.get(woundId);
             if (!wound || wound.type !== "wound") {
-                game.neuroshima?.log("Błąd: Nie znaleziono rany do leczenia");
+                game.neuroshima?.log("Error: Wound not found for healing");
                 game.neuroshima?.groupEnd();
                 return null;
             }
 
-            game.neuroshima?.log("Znaleziona rana:", {
+            game.neuroshima?.log("Wound found:", {
                 name: wound.name,
                 isHealing: wound.system.isHealing,
                 healingDays: wound.system.healingDays
             });
 
-            // Przygotuj update
+            // Prepare update
             const updateData = {};
 
             if (action === "start") {
-                // Rozpocznij leczenie
+                // Start healing
                 updateData["system.isHealing"] = true;
                 updateData["system.healingDays"] = 1;
-                game.neuroshima?.log("Akcja: Rozpoczęcie leczenia");
+                game.neuroshima?.log("Action: Start healing");
                 
             } else if (action === "progress") {
-                // Kontynuuj leczenie - zwiększ dni
+                // Continue healing — increment days
                 if (!wound.system.isHealing) {
                     updateData["system.isHealing"] = true;
                     updateData["system.healingDays"] = 1;
                 } else {
                     updateData["system.healingDays"] = (wound.system.healingDays || 0) + 1;
                 }
-                game.neuroshima?.log("Akcja: Postęp leczenia");
+                game.neuroshima?.log("Action: Healing progress");
                 
             } else if (action === "complete") {
-                // Ukończ leczenie - usuń ranę
-                game.neuroshima?.log("Akcja: Ukończenie leczenia - usuwanie rany");
+                // Complete healing — remove wound
+                game.neuroshima?.log("Action: Complete healing — removing wound");
                 await actor.deleteEmbeddedDocuments("Item", [woundId]);
                 
-                game.neuroshima?.log("Rana usunięta", { woundId: woundId });
+                game.neuroshima?.log("Wound removed", { woundId: woundId });
                 game.neuroshima?.groupEnd();
                 return wound;
             }
 
-            // Zaktualizuj ranę
+            // Update wound
             if (Object.keys(updateData).length > 0) {
                 await wound.update(updateData);
                 
-                game.neuroshima?.log("Rana zaktualizowana", {
+                game.neuroshima?.log("Wound updated", {
                     updates: updateData
                 });
             }
@@ -629,14 +629,14 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return wound;
 
         } catch (err) {
-            game.neuroshima?.log("Błąd podczas leczenia rany:", err);
+            game.neuroshima?.log("Error during wound healing:", err);
             game.neuroshima?.groupEnd();
             throw err;
         }
     }
 
     /**
-     * Zaktualizuj stan przycisku leczenia na podstawie liczby zaznaczonych ran
+     * Updates the heal button state based on the number of selected wounds.
      */
     _updateHealButton(htmlElement) {
         const allCheckboxes = htmlElement.querySelectorAll(".wound-checkbox");
@@ -653,14 +653,14 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             selectAllBtn.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
         }
 
-        game.neuroshima?.log("Zaktualizowano przycisk leczenia", {
+        game.neuroshima?.log("Heal button updated", {
             checkedWounds: checkedCheckboxes.length,
             totalWounds: allCheckboxes.length
         });
     }
 
     /**
-     * Obsługuje leczenie zaznaczonych ran
+     * Handles healing of selected wounds.
      */
     async _onHealSelectedWounds(htmlElement) {
         game.neuroshima?.group("HealingApp | _onHealSelectedWounds");
@@ -668,7 +668,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const checkboxes = htmlElement.querySelectorAll(".wound-checkbox:checked");
         const selectedWoundIds = Array.from(checkboxes).map(cb => cb.dataset.woundId);
 
-        game.neuroshima?.log("Zaznaczone rany do leczenia", {
+        game.neuroshima?.log("Selected wounds to heal", {
             count: selectedWoundIds.length,
             woundIds: selectedWoundIds
         });
@@ -679,7 +679,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        // Rozwiąż referencje
+        // Resolve references
         const { actor: patientActor } = await game.neuroshima.resolveRef(this.patientRef);
         const { actor: medicActor } = await game.neuroshima.resolveRef(this.medicRef);
         
@@ -689,12 +689,12 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             return;
         }
 
-        game.neuroshima?.log("Aktorzy znalezieni", { 
+        game.neuroshima?.log("Actors found", { 
             patientName: patientActor.name,
             medicName: medicActor.name
         });
 
-        // Pokaż dialog rzutu leczenia z wyborem metody leczenia
+        // Show healing roll dialog with healing method selection
         const woundData = selectedWoundIds.map(woundId => {
             const wound = patientActor.items.get(woundId);
             return {
@@ -705,7 +705,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             };
         });
 
-        game.neuroshima?.log("Otwarcie dialoga rzutu leczenia");
+        game.neuroshima?.log("Opening healing roll dialog");
 
         await game.neuroshima.showHealingRollDialog({
             medicActor: medicActor,
@@ -718,8 +718,8 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Wyświetla dialog wyboru metody leczenia
-     * @param {string[]} woundIds - ID zaznaczonych ran
+     * Shows the healing method selection dialog.
+     * @param {string[]} woundIds - IDs of selected wounds
      * @returns {Promise<{method: string, methodLabel: string}|null>}
      */
     async _showHealingMethodDialog(woundIds) {
@@ -788,7 +788,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
     }
 
     /**
-     * Wykonuje test umiejętności do leczenia i aplikuje rezultaty
+     * Performs the healing skill test and applies results.
      */
     async _performHealingTest(medicActor, healingMethod, selectedWoundIds) {
         game.neuroshima?.group("HealingApp | _performHealingTest");
@@ -798,23 +798,23 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const baseDifficultyKey = isFirstAid ? "average" : "problematic";
         const maxReduction = isFirstAid ? 5 : 15;
         
-        game.neuroshima?.log("Parametry testu leczenia", {
+        game.neuroshima?.log("Healing test parameters", {
             method: healingMethod.method,
             skillKey: skillKey,
             difficulty: baseDifficultyKey,
             maxReduction: maxReduction
         });
 
-        // Pobierz wartości umiejętności i atrybutu
+        // Retrieve skill and attribute values
         const skillValue = medicActor.system.skills[skillKey]?.value || 0;
         const finalStat = Number(medicActor.system.attributeTotals?.cleverness) || 10;
 
-        game.neuroshima?.log("Wartości medyka", {
+        game.neuroshima?.log("Medic values", {
             cleverness: finalStat,
             skill: skillValue
         });
 
-        // Wykonaj test
+        // Execute test
         await NeuroshimaDice.rollTest({
             stat: finalStat,
             skill: skillValue,
@@ -828,7 +828,7 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             actor: medicActor
         });
 
-        game.neuroshima?.log("Test wykonany, czekanie na rezultat");
+        game.neuroshima?.log("Test executed, waiting for result");
         game.neuroshima?.groupEnd();
     }
 }

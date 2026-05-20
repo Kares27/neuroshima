@@ -2,14 +2,14 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
- * Rozszerzona klasa ChatMessage z ujednoliconym API renderowania kart czatu.
- * Zapewnia czysty interfejs do tworzenia i renderowania wszystkich typów wiadomości.
+ * Extended ChatMessage class with a unified API for rendering chat cards.
+ * Provides a clean interface for creating and rendering all message types.
  */
 export class NeuroshimaChatMessage extends ChatMessage {
 
   /**
-   * Główny dispatcher akcji na kartach czatu.
-   * Wywoływany z hooka renderChatMessageHTML w system.js.
+   * Main chat card action dispatcher.
+   * Called from the renderChatMessageHTML hook in system.js.
    */
   static onChatAction(html) {
     // Application V2 compatibility: html can be a HTMLElement or a jQuery object
@@ -81,7 +81,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Rozpoczyna starcie w zwarciu na podstawie rzutu bronią.
+   * Initiates a melee duel based on a weapon roll.
    */
   static async onStartMeleeDuel(event, message) {
     const flags = message.getFlag("neuroshima", "rollData");
@@ -416,7 +416,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     });
 
     if (!templateObj?.shape) {
-      game.neuroshima.log("BŁĄD: brak obiektu PIXI szablonu po opóźnieniu");
+      game.neuroshima.log("ERROR: missing PIXI template object after delay");
       game.neuroshima.groupEnd();
       return;
     }
@@ -503,7 +503,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         "flags.neuroshima.grenadeResults": rawResults,
         "flags.neuroshima.damageApplied": false
       });
-      game.neuroshima.log("Wyniki wybuchu dodane do istniejącej wiadomości");
+      game.neuroshima.log("Explosion results added to existing message");
     } else {
       const grenadeLabel = sourceActor?.name ?? game.i18n.localize("NEUROSHIMA.Items.Type.Weapon");
       const context = {
@@ -531,7 +531,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       });
     }
 
-    game.neuroshima.log("Karta wyników wybuchu opublikowana");
+    game.neuroshima.log("Explosion results card published");
     game.neuroshima.groupEnd();
   }
 
@@ -632,7 +632,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
           const sAttack = {
             damage:         sDmg,
             finalLocation:  sLoc.key,
-            label:          grenadeLabel + " (odłamek)",
+            label:          grenadeLabel + " (fragment)",
             isMelee:        false,
             isGrenade:      true,
             piercing:       0,
@@ -713,7 +713,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Obsługa przerzutu leczenia.
+   * Handle a healing test re-roll.
    */
   static async onRerollHealing(event, message) {
     const btn = event.currentTarget;
@@ -914,7 +914,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Typ wiadomości: 'roll' | 'weapon' | 'painResistance'
+   * Message type constants: 'roll' | 'weapon' | 'painResistance'
    */
   static TYPES = {
     ROLL: 'roll',
@@ -924,7 +924,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   };
 
   /**
-   * Renderuje kartę testu umiejętności/atrybutu.
+   * Renders a skill/attribute test card.
    */
   static async renderRoll(rollData, actor, roll) {
     const template = "systems/neuroshima/templates/chat/roll-card.hbs";
@@ -957,7 +957,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje kartę testu inicjatywy.
+   * Renders an initiative test card.
    */
   static async renderInitiativeRoll(rollData, actor, roll) {
     const template = "systems/neuroshima/templates/chat/initiative-roll-card.hbs";
@@ -1012,7 +1012,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje kartę testu broni.
+   * Renders a weapon test card.
    */
   static async renderWeaponRoll(rollData, actor, roll) {
     const template = rollData.isMelee 
@@ -1085,7 +1085,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje kartę prośby o leczenie.
+   * Renders a healing request card.
    */
   static async renderHealingRequest(patientActor, medicActor, requesterId, options = {}) {
     const { medicUserId = null, isPrivate = false } = options;
@@ -1122,7 +1122,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje Kartę Pacjenta do czatu.
+   * Renders a Patient Card to chat.
    */
   static async renderPatientCard(actor) {
     const template = "systems/neuroshima/templates/chat/patient-card.hbs";
@@ -1151,7 +1151,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje raport Odporności na Ból.
+   * Renders a Pain Resistance report.
    */
   static async renderPainResistance(actor, results, woundIds, reducedCount = 0, reducedDetails = [], options = {}) {
     const template = "systems/neuroshima/templates/chat/pain-resistance-report.hbs";
@@ -1198,7 +1198,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje raport testu Wytrzymałości pojazdu (jeden lub seria trafień).
+   * Renders a Vehicle Durability test report (single or burst hit).
    */
   static async renderVehicleDamage(actor, results, negatedItems, woundIds, sourceLabel = "") {
     const template = "systems/neuroshima/templates/chat/vehicle-damage-report.hbs";
@@ -1243,7 +1243,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje kartę rzutu leczenia.
+   * Renders a healing roll card.
    */
   static async renderHealingRoll(medicActor, rollData) {
     const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
@@ -1328,7 +1328,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Helper do renderowania szablonów Handlebars.
+   * Helper for rendering Handlebars templates.
    */
   static async _renderTemplate(template, context) {
     // v13+ pattern
@@ -1343,9 +1343,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renderuje wiadomość czatu o odcięciu zacięcia broni przez gracza.
-   * @param {Actor} actor   - Aktor który odciął broń
-   * @param {Item}  weapon  - Broń która była zacięta
+   * Renders a chat message when a player clears a weapon jam.
+   * @param {Actor} actor   - The actor who cleared the jam
+   * @param {Item}  weapon  - The weapon that was jammed
    */
   static async renderUnjam(actor, weapon) {
     const text = game.i18n.format("NEUROSHIMA.Weapon.UnjamMessage", { weapon: weapon.name });
@@ -1374,7 +1374,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Sprawdza czy użytkownik może widzieć tooltipy rzutów.
+   * Checks whether the current user can see roll tooltips.
    */
   static _canShowTooltip(actor) {
     const minRole = game.settings.get("neuroshima", "rollTooltipMinRole");
@@ -1384,7 +1384,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Generuje tooltip dla typu obrażeń.
+   * Generates a tooltip label for a damage type.
    */
   static _getDamageTooltip(damageType) {
     if (!damageType) return "";

@@ -256,7 +256,7 @@ export class MeleeTurnService {
 
       const isAttacked = Object.values(primaryTargets).includes(id);
       if (isAttacked) {
-        // "Zaatakowani nie wybierają" — auto-assign them to their primary attacker
+        // "Attacked do not choose" — auto-assign them to their primary attacker
         const attackers = Object.entries(primaryTargets)
           .filter(([, tid]) => tid === id)
           .map(([aid]) => aid);

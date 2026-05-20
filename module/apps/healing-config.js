@@ -5,13 +5,13 @@ const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 /**
  * PHASE 3 - SETTINGS & CONFIGURATION SYSTEM
  * Application V2 for configuring healing-related settings using Foundry V13 API
- * Pozwala na konfigurację:
- * - Domyślne trudności testów leczenia dla każdego typu obrażenia (D/L/C/K)
- * - Wersja karty pacjenta (simple/extended)
+ * Allows configuration of:
+ * - Default healing test difficulties for each damage type (D/L/C/K)
+ * - Patient card version (simple/extended)
  * 
- * Zmiana trudności domyślnej:
- * - Draśnięcia i lekkie rany: Przeciętny (Average)
- * - Rany ciężkie i krytyczne: Problematyczny (Problematic)
+ * Default difficulty values:
+ * - Grazes and light wounds: Average
+ * - Heavy and critical wounds: Problematic
  */
 export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     /** @inheritdoc */
@@ -89,7 +89,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
     async _onSubmit(event, form, formData) {
         const data = formData.object;
         
-        game.neuroshima.log("Próba zapisu ustawień leczenia:", data);
+        game.neuroshima.log("Attempting to save healing settings:", data);
         game.neuroshima.log("Is GM:", game.user.isGM);
         
         try {
@@ -102,7 +102,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             
             const patientCardVersion = String(data.patientCardVersion || "simple");
             
-            game.neuroshima.log("Ustawienia do zapisania:", {
+            game.neuroshima.log("Settings to save:", {
                 healingDifficulties,
                 patientCardVersion
             });
@@ -116,12 +116,12 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             
             const readback = game.settings.get("neuroshima", "healingDifficulties");
             game.neuroshima.log("Readback healingDifficulties:", readback);
-            game.neuroshima.log("Ustawienia leczenia zostały zapisane");
+            game.neuroshima.log("Healing settings saved successfully");
             
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.HealingConfig.Saved"));
         } catch (err) {
-            game.neuroshima.error("Błąd zapisu ustawień leczenia:", err);
-            ui.notifications.error("Wystąpił błąd podczas zapisu ustawień: " + err.message);
+            game.neuroshima.error("Error saving healing settings:", err);
+            ui.notifications.error(game.i18n.localize("NEUROSHIMA.Notifications.SettingsSaveError") + ": " + err.message);
         }
     }
 }

@@ -207,7 +207,7 @@ export class NeuroshimaScript {
    *
    * @example
    * // In a dialog trigger script:
-   * this.addDialogModifier("Bon. za celowanie", 10, "Twój efekt pasywny dodaje premię do ataku.");
+   * this.addDialogModifier("Aim bonus", 10, "Your passive effect adds a bonus to the attack roll.");
    */
   addDialogModifier(label, modifier, description = "") {
     const args = this._currentArgs;
@@ -225,7 +225,7 @@ export class NeuroshimaScript {
    *
    * @example
    * const loc = this.getHitLocation(args);           // e.g. "head", "torso", "leftArm"
-   * const label = this.getLocationLabel(loc);         // e.g. "Głowa"
+   * const label = this.getLocationLabel(loc);         // e.g. "Head"
    */
   getHitLocation(args) {
     return args?.location ?? null;
@@ -494,7 +494,7 @@ export class NeuroshimaScript {
    * @example
    * // Count how many wounds land this hit
    * const count = this.getEffectiveWounds(args).length;
-   * await this.sendMessage(`${count} rana/rany weszły.`);
+   * await this.sendMessage(`${count} wound(s) applied.`);
    */
   getEffectiveWounds(args) {
     return (args?.wounds ?? []).filter(w => !w.forceSkip);
@@ -614,7 +614,7 @@ export class NeuroshimaScript {
    * @example
    * // In preWeaponShot — extra penalty if weapon was already jammed
    * if (this.getWeaponJammedState(args.weapon)) {
-   *   this.notification("Broń była już zacięta!", "warn");
+   *   this.notification("Weapon was already jammed!", "warn");
    * }
    */
   getWeaponJammedState(weapon) {
@@ -647,17 +647,17 @@ export class NeuroshimaScript {
    *                                 Defaults to 1. Pass higher value for bursts.
    *
    * @example
-   * // Sztuczka "Na pewno działa!" — 1 strzał, trafia tylko jeśli rzut był sukcesem
+   * // Trick "It Will Work!" — 1 shot, hits only if the roll would have succeeded
    * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args);
-   *   this.addAnnotation(`Na pewno działa! [${args.weapon.name}] oddaje ostatni strzał.`);
+   *   this.addAnnotation(`It Will Work! [${args.weapon.name}] fires one last shot.`);
    * }
    *
    * @example
-   * // 2 pociski przez zacięcie w serii
+   * // 2 bullets through jam in a burst
    * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args, 2);
-   *   this.addAnnotation(`Seria przez Zacięcie: 2 pociski mimo zacięcia.`);
+   *   this.addAnnotation(`Burst through Jam: 2 bullets despite the jam.`);
    * }
    */
   allowShotDespiteJam(args, count = 1) {
@@ -673,7 +673,7 @@ export class NeuroshimaScript {
    * @param {Object} args - The args object from a weaponJam trigger.
    *
    * @example
-   * // In weaponJam — Szczęśliwa Awaria: jam is ignored entirely
+   * // In weaponJam — Lucky Malfunction: jam is ignored entirely
    * this.clearWeaponJam(args);
    */
   clearWeaponJam(args) {
@@ -687,7 +687,7 @@ export class NeuroshimaScript {
    * @param {Object} args - The args object from a preWeaponShot trigger.
    *
    * @example
-   * // In preWeaponShot — Niezawodna Broń passive: weapon cannot jam
+   * // In preWeaponShot — Reliable Weapon passive: weapon cannot jam
    * this.preventWeaponJam(args);
    */
   preventWeaponJam(args) {
@@ -725,20 +725,20 @@ export class NeuroshimaScript {
    * @returns {boolean}
    *
    * @example
-   * // Zalecane — sprawdza zakres I czy rzut byłby sukcesem
+   * // Recommended — checks range AND whether the roll would have succeeded
    * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args);
-   *   this.addAnnotation(`Na pewno działa! Broń oddaje ostatni strzał.`);
+   *   this.addAnnotation(`It Will Work! Weapon fires one last shot.`);
    * }
    *
    * @example
-   * // Krytyczne zacięcie (19-20), bez sprawdzania sukcesu
+   * // Critical jam (19-20), without success check
    * if (this.isStandardJam(args, 19, 20)) {
-   *   this.notification("Krytyczne zacięcie — sztuczka nie pomaga!", "warn");
+   *   this.notification("Critical jam — the trick does not help!", "warn");
    * }
    *
    * @example
-   * // Dowolne zacięcie (domyślny zakres), bez sprawdzania sukcesu
+   * // Any jam (default range), without success check
    * if (this.isStandardJam(args)) {
    *   this.clearWeaponJam(args);
    * }
@@ -771,7 +771,7 @@ export class NeuroshimaScript {
    * // In weaponJam — inform the player that the trick allowed a shot through
    * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args);
-   *   this.addAnnotation("Na pewno działa! Broń oddaje ostatni strzał mimo zacięcia.");
+   *   this.addAnnotation("It Will Work! Weapon fires one last shot despite the jam.");
    * }
    */
   addAnnotation(text) {
@@ -812,11 +812,11 @@ export class NeuroshimaScript {
    *
    * @example
    * // Evaluate AND post to chat with flavor
-   * const r = await this.roll("1d100", {}, { flavor: "Test Siły", toMessage: true });
+   * const r = await this.roll("1d100", {}, { flavor: "Strength Test", toMessage: true });
    *
    * @example
    * // Post with variable substitution
-   * const r = await this.roll("1d@sides", { sides: 20 }, { flavor: "Kość Testowa" });
+   * const r = await this.roll("1d@sides", { sides: 20 }, { flavor: "Test Die" });
    */
   async roll(formula, data = {}, options = {}) {
     const r = await new Roll(formula, data).evaluate();
@@ -882,12 +882,12 @@ export class NeuroshimaScript {
    *
    * @example
    * // Confirm dialog — returns true/false
-   * const yes = await this.dialog("<p>Użyć przedmiotu?</p>");
+   * const yes = await this.dialog("<p>Use item?</p>");
    * if (!yes) return;
    *
    * @example
    * // Prompt dialog — returns entered string or null
-   * const name = await this.dialog("<p>Podaj nazwę:</p>", "prompt");
+   * const name = await this.dialog("<p>Enter a name:</p>", "prompt");
    */
   dialog(content, type = "confirm", config = {}) {
     return foundry.applications.api.Dialog[type](this.dialogConfig(content, config));
@@ -1288,7 +1288,7 @@ export class NeuroshimaScript {
   }
 
   /**
-   * Deal damage to armor durability (Wytrzymałość).
+   * Deal damage to armor durability (Wytrzymalosc).
    * Clamped to [0, max durability]; the remaining durability never goes below 0.
    * @param {Item}   item
    * @param {number} amount - Durability damage to apply.
@@ -1486,16 +1486,16 @@ export class NeuroshimaScript {
    * const otherEffects = this.getModEffects(this.item, { transferType: "other" });
    *
    * @example
-   * const poisonEffect = this.getModEffects(this.item, { name: "Trucizna" });
+   * const poisonEffect = this.getModEffects(this.item, { name: "Poison" });
    */
   getModEffects(item, { name, transferType, includeDisabled = false } = {}) {
     const modId = this._getModId();
     if (!modId) {
-      ui.notifications?.warn("getModEffects: skrypt nie jest uruchamiany w kontekście modyfikacji (brak fromModId).");
+      ui.notifications?.warn("getModEffects: script is not running in a modification context (missing fromModId).");
       return [];
     }
     if (!item) {
-      ui.notifications?.warn("getModEffects: item jest null — przekaż this.item.");
+      ui.notifications?.warn("getModEffects: item is null — pass this.item.");
       return [];
     }
     return (item.effects?.contents ?? []).filter(e => {
@@ -1528,9 +1528,9 @@ export class NeuroshimaScript {
    * await this.applyModEffectsToTargets(this.item);
    *
    * @example
-   * // Apply only the "Trucizna" effect, 1-hour duration
+   * // Apply only the "Poison" effect, 1-hour duration
    * await this.applyModEffectsToTargets(this.item, {
-   *   name: "Trucizna",
+   *   name: "Poison",
    *   overrides: { "duration.seconds": 3600 }
    * });
    *
@@ -1541,22 +1541,22 @@ export class NeuroshimaScript {
   async applyModEffectsToTargets(item, { name, targets, overrides = {} } = {}) {
     const modId = this._getModId();
     if (!modId) {
-      ui.notifications?.warn("applyModEffectsToTargets: skrypt nie jest uruchamiany w kontekście modyfikacji (brak fromModId).");
+      ui.notifications?.warn("applyModEffectsToTargets: script is not running in a modification context (missing fromModId).");
       return 0;
     }
     if (!item) {
-      ui.notifications?.warn("applyModEffectsToTargets: item jest null — przekaż this.item.");
+      ui.notifications?.warn("applyModEffectsToTargets: item is null — pass this.item.");
       return 0;
     }
     const effects = this.getModEffects(item, { name, transferType: "other" });
     if (!effects.length) {
-      const label = name ? `"${name}"` : "żaden";
-      ui.notifications?.warn(`applyModEffectsToTargets: ${label} efekt 'Other' nie znaleziony na ${item.name} dla tej modyfikacji.`);
+      const label = name ? `"${name}"` : "none";
+      ui.notifications?.warn(`applyModEffectsToTargets: ${label} 'Other' effect not found on ${item.name} for this modification.`);
       return 0;
     }
     const resolved = (targets ?? this.getTargetsOrSelected()).map(t => t.actor ?? t);
     if (!resolved.length) {
-      ui.notifications?.warn("applyModEffectsToTargets: brak celów — wskaż token lub zaznacz cel.");
+      ui.notifications?.warn("applyModEffectsToTargets: no targets — select a token or designate a target.");
       return 0;
     }
     const effectData = effects.map(e => {
@@ -1660,7 +1660,7 @@ export class NeuroshimaScript {
     if (!valid.length) return 0;
     const resolved = (targets ?? this.getTargetsOrSelected()).map(t => t.actor ?? t);
     if (!resolved.length) {
-      ui.notifications?.warn("applyEffects: brak celów — wskaż token lub zaznacz cel.");
+      ui.notifications?.warn("applyEffects: no targets — select a token or designate a target.");
       return 0;
     }
     const effectData = valid.map(e => {
@@ -2003,7 +2003,7 @@ export class NeuroshimaScript {
    *
    * @example
    * // Works in both SYNC and ASYNC triggers:
-   * const result = await this.rollToChat(1, 20, { flavor: "Test wytrzymałości" });
+   * const result = await this.rollToChat(1, 20, { flavor: "Durability test" });
    * // SYNC: result is number[]  →  const [r] = result;
    * // ASYNC: result is Roll     →  r = result.total;
    */
@@ -2067,7 +2067,7 @@ export class NeuroshimaScript {
    *   if (expAP !== null) {
    *     args.sp = expAP;
    *     args.bonusSP = 0;
-   *     const [roll] = this.deferRollToChat(1, 20, { flavor: "Test wytrzymałości tarczy" });
+   *     const [roll] = this.deferRollToChat(1, 20, { flavor: "Shield durability test" });
    *     if (roll >= 15) this.deferResourceDrain(this.item, "ExplosionAP", 1);
    *   }
    * }
@@ -2370,7 +2370,7 @@ export class NeuroshimaScript {
  *                    args: { actor, weapon, bestResult, jammingThreshold, wouldSucceed,
  *                            canFireDespiteJam, clearJam, despiteJamBullets }
  *                    Use: args.canFireDespiteJam = true → consume ammo and fire despite jam
- *                              (weapon stays jammed — needs repair; implements "Na pewno działa!")
+ *                              (weapon stays jammed — needs repair; implements "It Will Work!")
  *                         args.clearJam = true          → jam is cancelled entirely (normal shot,
  *                              also clears pre-existing system.jammed flag on the weapon)
  *                    Helpers: this.allowShotDespiteJam(args, count=1)
@@ -2578,7 +2578,7 @@ export class NeuroshimaScript {
  *                                                    Result usable immediately; chat sent after all calcs.
  *
  * Damage type constants (for use in scripts):
- *   D  sD  L  sL  C  sC  K  sK    (rany postaci, od najlżejszej; s = siniak)
+ *   D  sD  L  sL  C  sC  K  sK    (character wounds, lightest first; s = bruise)
  *   VL  VC  VK                     (vehicle damage)
  */
 export class NeuroshimaScriptRunner {
@@ -3047,14 +3047,14 @@ export class NeuroshimaScriptRunner {
         const equipTransfer = effect.getFlag("neuroshima", "equipTransfer") ?? false;
         const skipped = equipTransfer && isUnequipped && trigger !== "equipToggle";
         if (skipped) {
-          game.neuroshima?.log?.(`[getScripts:${trigger}] POMINIĘTY efekt "${effect.name}" na item "${item.name}" (equipTransfer=true, unequipped)`);
+          game.neuroshima?.log?.(`[getScripts:${trigger}] SKIPPED effect "${effect.name}" on item "${item.name}" (equipTransfer=true, unequipped)`);
           continue;
         }
         collectFromEffect(effect, true, item);
       }
     }
 
-    game.neuroshima?.log?.(`[getScripts:${trigger}] znaleziono ${scripts.length} skryptów`, scripts.map(s => `${s.label} @ ${s.effect?.name}`));
+    game.neuroshima?.log?.(`[getScripts:${trigger}] found ${scripts.length} scripts`, scripts.map(s => `${s.label} @ ${s.effect?.name}`));
 
     return scripts;
   }
@@ -3083,7 +3083,7 @@ export class NeuroshimaScriptRunner {
   static async execute(trigger, args = {}) {
     const actor = args.actor;
     if (!actor) return;
-    game.neuroshima?.log?.(`[${trigger}] odpalił się`, NeuroshimaScriptRunner._triggerArgsForLog(args));
+    game.neuroshima?.log?.(`[${trigger}] fired`, NeuroshimaScriptRunner._triggerArgsForLog(args));
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
       if (trigger === "applyDamage" && Array.isArray(args.wounds)) {
@@ -3115,7 +3115,7 @@ export class NeuroshimaScriptRunner {
   static executeSync(trigger, args = {}) {
     const actor = args.actor;
     if (!actor) return;
-    game.neuroshima?.log?.(`[${trigger}] odpalił się`, NeuroshimaScriptRunner._triggerArgsForLog(args));
+    game.neuroshima?.log?.(`[${trigger}] fired`, NeuroshimaScriptRunner._triggerArgsForLog(args));
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
       script.executeSync(args);
@@ -3144,7 +3144,7 @@ export class NeuroshimaScriptRunner {
     const effectScripts = effect.getFlag("neuroshima", "scripts") || [];
     const scriptData = effectScripts[scriptIndex];
     if (!scriptData || scriptData.trigger !== "manual") return;
-    game.neuroshima?.log?.(`[manual] odpalił się`, { _actor: resolvedActor.name, effect: effect.name, label: scriptData.label ?? "" });
+    game.neuroshima?.log?.(`[manual] fired`, { _actor: resolvedActor.name, effect: effect.name, label: scriptData.label ?? "" });
     const script = new NeuroshimaScript(scriptData, effect);
     await script.execute({ actor: resolvedActor, item: effect.parent?.documentName === "Item" ? effect.parent : null });
   }
@@ -3188,7 +3188,7 @@ export class NeuroshimaScriptRunner {
       scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
-    game.neuroshima?.log?.(`[dialog] odpalił się`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
+    game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
 
     const allScriptEntries = [];
 
@@ -3286,7 +3286,7 @@ export class NeuroshimaScriptRunner {
    */
   static async runDialogScripts(actor, rollContext = {}) {
     if (!actor) return { dialogModifiers: [], totalDialogModifier: 0, fieldTotals: { modifier: 0, attributeBonus: 0, skillBonus: 0 } };
-    game.neuroshima?.log?.(`[dialog] odpalił się`, { _actor: actor.name, ...rollContext });
+    game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext });
     const scripts = this.getScripts(actor, "dialog");
     const dialogModifiers = [];
 

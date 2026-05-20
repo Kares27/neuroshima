@@ -31,7 +31,7 @@ export class NeuroshimaDice {
         rollMode = game.settings.get("core", "rollMode") 
     } = params;
     
-    game.neuroshima.group(`Rzut na Inicjatywę: ${actor.name}`);
+    game.neuroshima.group(`Initiative Roll: ${actor.name}`);
     
     // Check for Charge maneuver bonus
     let chargeBonus = 0;
@@ -163,8 +163,8 @@ export class NeuroshimaDice {
     } = params;
     
     // Open log group for this weapon roll
-    game.neuroshima.group("Inicjalizacja rzutu bronią");
-    game.neuroshima.log("Parametry wejściowe rzutu:", params);
+    game.neuroshima.group("Initializing weapon roll");
+    game.neuroshima.log("Roll input parameters:", params);
 
     let bulletSequence = [];
     
@@ -243,7 +243,7 @@ export class NeuroshimaDice {
         finalIsOpen = false;
     }
 
-    game.neuroshima.log("Wyniki rzutu kośćmi", {
+    game.neuroshima.log("Dice roll results", {
         weaponType: weapon.system.weaponType,
         diceCount,
         results,
@@ -261,14 +261,14 @@ export class NeuroshimaDice {
             return rollVal >= data.roll[0] && rollVal <= data.roll[1];
         });
         finalLocation = entry ? entry[0] : "torso";
-        game.neuroshima.log("Wylosowano lokację trafienia", { rzut: rollVal, lokacja: finalLocation });
+        game.neuroshima.log("Hit location rolled", { roll: rollVal, location: finalLocation });
     }
 
     // 4. Burst fire — determine number of bullets fired
     let bulletsFired = this.getBulletsFired(weapon, burstLevel);
     const burstLabel = game.i18n.localize(NEUROSHIMA.burstLabels[burstLevel] || NEUROSHIMA.burstLabels[0]);
 
-    game.neuroshima.log("Planowanie serii strzałów", { bulletsFired, typSerii: burstLabel });
+    game.neuroshima.log("Planning burst sequence", { bulletsFired, burstType: burstLabel });
 
     // 4.1. Magazine handling and ammo consumption (LIFO)
     let ammoDamage = weapon.system.damage;
@@ -294,7 +294,7 @@ export class NeuroshimaDice {
     // Pull bullets from the magazine and track its new state (informational pass before the roll)
     let magazineUpdateData = null;
     if (magazine && magazine.type === "magazine") {
-        game.neuroshima.log("Planowanie pobrania pocisków z magazynka (LIFO)");
+        game.neuroshima.log("Planning magazine ammo consumption (LIFO)");
         const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
         let remainingToConsume = bulletsFired;
         const consumedAmmo = [];
@@ -422,11 +422,11 @@ export class NeuroshimaDice {
     if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) finalStat += weaponBonus;
     const target = finalStat + finalDiff.mod;
 
-    game.neuroshima.log("Kalkulacja trudności i Suwaka", {
-        bazowaTrudnosc: baseDifficulty.label,
-        przesuniecieSuwaka: totalShift,
-        ostatecznaTrudnosc: finalDiff.label,
-        progSukcesu: target,
+    game.neuroshima.log("Difficulty and Slider calculation", {
+        baseDifficulty: baseDifficulty.label,
+        sliderShift: totalShift,
+        finalDifficulty: finalDiff.label,
+        successThreshold: target,
         skillValue,
         finalStat
     });
@@ -434,7 +434,7 @@ export class NeuroshimaDice {
     // Preliminary success check for jam trigger evaluation
     const _jamModified = Math.max(1, bestResult - skillValue);
     const jamWouldSucceed = !isMelee && bestResult !== 20 && _jamModified <= target;
-    game.neuroshima.log("[JamCheck] jamWouldSucceed kalkulacja", {
+    game.neuroshima.log("[JamCheck] jamWouldSucceed calculation", {
         isMelee,
         bestResult,
         skillValue,
@@ -477,16 +477,16 @@ export class NeuroshimaDice {
     if (!isJamming || canFireDespiteJam) {
         if (magazine && magazine.type === "magazine" && magazineUpdateData) {
             await magazine.update({ "system.contents": magazineUpdateData });
-            game.neuroshima.log("Amunicja zużyta (brak zacięcia)");
+            game.neuroshima.log("Ammo consumed (no jam)");
         } else if (weapon.system.weaponType === "thrown" && magazineId && bulletsFired > 0) {
             const ammoItem = actor.items.get(magazineId);
             if (ammoItem && ammoItem.type === "ammo") {
                 await ammoItem.update({ "system.quantity": ammoItem.system.quantity - 1 });
-                game.neuroshima.log("Amunicja miotana zużyta (brak zacięcia)");
+                game.neuroshima.log("Thrown ammo consumed (no jam)");
             }
         }
     } else {
-        game.neuroshima.log("ZACIĘCIE: Amunicja NIE została zużyta");
+        game.neuroshima.log("JAM: Ammo was NOT consumed");
     }
 
     let modifiedResults = [];
@@ -500,7 +500,7 @@ export class NeuroshimaDice {
 
     // Evaluate results by weapon type (Melee = 3d20 closed, Ranged = best of X)
     if (isMelee) {
-        game.neuroshima.log("Rozpoczynam ewaluację Walki Wręcz (3k20)");
+        game.neuroshima.log("Starting Melee evaluation (3d20)");
         const diceObjects = results.map((v, i) => ({
             original: v,
             index: i,
@@ -549,7 +549,7 @@ export class NeuroshimaDice {
             }];
         }
     } else {
-        game.neuroshima.log("Rozpoczynam ewaluację Broni Dystansowej (Najlepsza kość)");
+        game.neuroshima.log("Starting Ranged evaluation (best die)");
         modifiedResults = results.map((v, i) => {
             const modified = Math.max(1, v - skillValue);
             const succ = finalIsOpen ? (target - modified >= 0) : (modified <= target && v !== 20);
@@ -576,42 +576,42 @@ export class NeuroshimaDice {
             successPoints = isSuccess ? 1 : 0;
         }
 
-        // Liczba sukcesów dla celów serii i śrutu (PP + 1)
+        // Number of successes for burst and pellet purposes (AP + 1)
         const pp = isSuccess ? (overflow + 1) : 0;
 
-        // 5.1 Ewaluacja trafień w serii (Indywidualna dla każdego pocisku)
+        // Evaluate hits in the burst (individually per bullet)
         if (isSuccess && (!isJamming || canFireDespiteJam)) {
             const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
             let totalPelletHits = 0;
 
-            // Jeśli skrypt ustawił limit pocisków mimo zacięcia — ograniczamy pętlę do tej liczby.
-            // Gdy canFireDespiteJam=true bez helpera (despiteJamBullets=null), domyślnie 1 pocisk.
+            // If a script set a bullet limit for despite-jam firing, cap the loop.
+            // When canFireDespiteJam=true with no helper (despiteJamBullets=null), default to 1 bullet.
             const effectiveBullets = canFireDespiteJam
                 ? Math.min(bulletsFired, despiteJamBullets ?? 1)
                 : bulletsFired;
 
-            // Iterujemy po wszystkich wystrzelonych pociskach (łuskach)
+            // Iterate over every fired bullet (casing)
             for (let j = 0; j < effectiveBullets; j++) {
-                // Pocisk j-ty trafia tylko jeśli nasze Punkty Przewagi (pp) są większe od j
+                // Bullet j hits only when our Advantage Points (pp) exceed j
                 if (pp <= j) break; 
 
                 const bullet = bulletSequence[j];
                 if (!bullet) break;
 
                 if (bullet.isPellet) {
-                    // LOGIKA ŚRUTU dla tej konkretnej łuski
+                    // PELLET LOGIC for this specific casing
                     const basePelletDamage = this.getPelletDamageAtDistance(bullet.pelletRanges, distance);
                     
-                    // Każdy kolejny pocisk w serii (j) redukuje maksymalną liczbę śrucin o j.
-                    // pp - j to liczba dostępnych punktów przewagi dla tego konkretnego pocisku.
+                    // Each subsequent burst bullet (j) reduces max pellets per shell by j.
+                    // pp - j is the available Advantage Points for this specific shell.
                     const capacityPenalty = j;
                     const maxPelletsInShell = Math.max(0, (bullet.pelletCount || 1) - capacityPenalty);
                     
-                    // Liczba śrucin to mniejsza z wartości: pozostałe PP lub aktualna pojemność łuski
+                    // Pellet count is the lesser of remaining AP and current shell capacity
                     let pelletsForThisShell = Math.max(0, pp - j);
                     
-                    // Zawsze ograniczamy do fizycznej liczby śrucin w łusce (pomniejszonej o karę serii)
-                    // oraz opcjonalnie stosujemy limit jeśli ustawienie jest włączone.
+                    // Always cap to physical pellets in the shell (reduced by burst penalty);
+                    // optionally apply the pellet count limit setting.
                     if (usePelletCountLimit || pelletsForThisShell > maxPelletsInShell) {
                         pelletsForThisShell = Math.min(pelletsForThisShell, maxPelletsInShell);
                     }
@@ -626,7 +626,7 @@ export class NeuroshimaDice {
                         });
                     }
                 } else {
-                    // LOGIKA STANDARDOWEGO POCISKU
+                    // Standard bullet logic
                     // Ensure damage and piercing are explicitly preserved for different ammo types
                     const bulletDamage = bullet.damage !== undefined ? bullet.damage : ammoDamage;
                     const bulletPiercing = bullet.piercing !== undefined ? bullet.piercing : ammoPiercing;
@@ -649,7 +649,7 @@ export class NeuroshimaDice {
                 }
             }
 
-            // Aktualizacja danych rzutu
+            // Commit hit results
             hitBullets = finalHitSequence.length;
             totalPelletSP = totalPelletHits;
         } else {
@@ -658,7 +658,7 @@ export class NeuroshimaDice {
         }
     }
 
-    game.neuroshima.log("Wynik końcowy testu", { isSuccess, successPoints, isJamming, hitBullets, jammingOnDie: results[0] });
+    game.neuroshima.log("Final test result", { isSuccess, successPoints, isJamming, hitBullets, jammingOnDie: results[0] });
 
     // 6a. Korygowanie Ognia (Fire Correction) — tylko dla nieudanej serii dystansowej
     let fireCorrectionData = null;
@@ -671,7 +671,7 @@ export class NeuroshimaDice {
                 const totalCorrectionCost = failureMargin * 3;
                 const canCorrect = totalCorrectionCost < bulletsFired;
                 fireCorrectionData = { failureMargin, totalCorrectionCost, bulletsFired, canCorrect, isSuccessCorrection: false };
-                game.neuroshima.log("Korygowanie Ognia (porażka)", fireCorrectionData);
+                game.neuroshima.log("Fire Correction (failure)", fireCorrectionData);
             }
         } else {
             const remainingForCorrection = bulletsFired - hitBullets;
@@ -682,7 +682,7 @@ export class NeuroshimaDice {
         }
     }
 
-    // 6. Przygotowanie danych do karty czatu
+    // 6. Build chat card roll data
     const rollData = {
         label: weapon.name,
         actionLabel: burstLabel,
@@ -763,7 +763,7 @@ export class NeuroshimaDice {
         rollData.tooltip = this._buildClosedTestTooltip(rollData, weapon.name);
     }
 
-    // Obsługa różnej amunicji w jednej serii (wyświetlanie wielu statystyk)
+    // Group hits with identical damage/piercing for compact display
     this._groupHitsData(rollData);
 
     // postWeaponShot: scripts can react to the completed shot result (ranged/thrown only)
@@ -785,9 +785,9 @@ export class NeuroshimaDice {
     game.neuroshima.log("Generowanie karty czatu", rollData);
     game.neuroshima.groupEnd();
 
-    // W nowym systemie (v1.5) walka wręcz jest zarządzana przez MeleeDuel i trackera.
-    // Standardowa karta czatu jest renderowana tylko jeśli rzut nie został 
-    // przechwycony przez logikę rzutu puli (chatMessage: false).
+    // In v1.5 melee is managed by MeleeDuel and the combat tracker.
+    // The standard chat card is rendered only when the roll has not been
+    // intercepted by pool-roll logic (chatMessage: false).
     if (!chatMessage) {
         return {
             ...rollData,
@@ -807,7 +807,7 @@ export class NeuroshimaDice {
   }
 
   /**
-   * Grupuje trafienia o tych samych obrażeniach i przebiciu dla lepszej czytelności.
+   * Groups hits with identical damage and piercing for more readable card display.
    * @private
    */
   static _groupHitsData(rollData) {
@@ -815,21 +815,21 @@ export class NeuroshimaDice {
     
     const hits = rollData.hitBulletsData;
     
-    // Grupowanie obrażeń - uwzględniamy liczbę śrucin (successPoints) dla każdego trafienia
+    // Group damage — count pellet successPoints as individual wounds
     const counts = hits.reduce((acc, h) => {
         const amount = h.isPellet ? (h.successPoints || 1) : 1;
         acc[h.damage] = (acc[h.damage] || 0) + amount;
         return acc;
     }, {});
     
-    // Jeśli mamy tylko jeden typ obrażeń i jedną jednostkę, nie pokazujemy "1x"
+    // Omit the "1x" prefix when there is only a single wound
     const totalWounds = Object.values(counts).reduce((a, b) => a + b, 0);
     
     rollData.damage = Object.entries(counts)
         .map(([damage, count]) => totalWounds > 1 ? `${count}x${damage}` : damage)
         .join(", ");
 
-    // Grupowanie przebicia
+    // Group piercing values
     const pCounts = hits.reduce((acc, h) => {
         acc[h.piercing] = (acc[h.piercing] || 0) + 1;
         return acc;
@@ -839,7 +839,7 @@ export class NeuroshimaDice {
         .map(([piercing, count]) => hits.length > 1 ? `${count}x${piercing}` : piercing)
         .join(", ");
     
-    // Aktualizacja flagi isPellet dla całej karty, jeśli choć jedno trafienie to śrut
+    // Mark the card as pellet if at least one hit is a pellet
     rollData.isPellet = hits.some(h => h.isPellet);
   }
 
@@ -908,7 +908,7 @@ export class NeuroshimaDice {
     if (isNaN(stat)) {
         game.neuroshima.warn("rollTest received NaN stat!", { stat, label });
     }
-    // Rozpoczęcie grupy logów dla testu standardowego
+    // Open log group for this standard roll
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
 
     const testAnnotations = [];
@@ -939,12 +939,12 @@ export class NeuroshimaDice {
         penalties = preArgs.penalties ?? penalties;
     }
     
-    // Sprawdzenie czy aktor ma oczekujący test przeciwstawny (Obrona)
+    // Check whether the actor has a pending opposed test (Defense)
     const pendingOpposed = actor?.getFlag("neuroshima", "opposedPending") || {};
     const pendingIds = Object.keys(pendingOpposed);
     const isActuallyDefending = meleeAction === "defense" || pendingIds.length > 0;
     
-    // Obrona wymusza test zamknięty (chyba że to test Inicjatywy)
+    // Defense forces a closed test (except for Initiative rolls)
     let finalIsOpen = isOpen;
     if (isActuallyDefending && !isInitiative) {
         finalIsOpen = false;
@@ -953,18 +953,18 @@ export class NeuroshimaDice {
     const finalSkill = Number(skill || 0) + Number(skillBonus || 0);
     const finalStat = (Number(stat) || 0) + Number(attributeBonus || 0);
 
-    // 1. Obliczanie całkowitej kary i trudności bazowej
+    // 1. Compute total penalty and base difficulty
     const totalPenalty = (Number(penalties.mod) || 0) + (Number(penalties.wounds) || 0) + (Number(penalties.armor) || 0) + (Number(penalties.base) || 0) + (Number(penalties.disease) || 0);
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
     
-    // 2. Wykonanie rzutu 3k20
+    // 2. Roll 3d20
     game.neuroshima.log("rollTest internal values", { stat, attributeBonus, finalStat, finalSkill });
     game.neuroshima.log("Evaluating roll 3d20...");
     const roll = new Roll("3d20");
     await roll.evaluate();
     game.neuroshima.log("Roll evaluated:", roll.total);
 
-    // Obsługa rzutów wymuszonych (do celów debugowania)
+    // Override dice results for debugging (fixedDice)
     if (fixedDice && fixedDice.length === 3) {
         roll.terms[0].results.forEach((r, i) => {
             r.result = fixedDice[i];
@@ -974,7 +974,7 @@ export class NeuroshimaDice {
     
     const rawResults = roll.terms[0].results.map(r => r.result);
     
-    // Przygotowanie obiektów kości do dalszej obróbki
+    // Build dice objects for evaluation
     const dice = rawResults.map((v, i) => ({
         original: v,
         index: i,
@@ -983,11 +983,11 @@ export class NeuroshimaDice {
         ignored: false
     }));
 
-    // 3. Obliczanie przesunięć trudności (Suwak)
+    // 3. Compute difficulty shifts (Slider)
     let totalShift = 0;
     const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
     
-    // Suwak umiejętności i kości (naturalne 1 i 20)
+    // Skill and dice shifts (natural 1s and 20s)
     if (!isCombat || allowCombatShift) {
         totalShift -= this.getSkillShift(finalSkill);
         totalShift += this.getDiceShift(rawResults);
@@ -996,11 +996,11 @@ export class NeuroshimaDice {
     const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
     const ptMod = shiftedDifficulty.mod;
     
-    // Ostateczny próg sukcesu (Atrybut + PT)
+    // Final success threshold (Attribute + PT modifier)
     const target = finalStat + ptMod;
 
-    game.neuroshima.log("Parametry testu", { stat: finalStat, skill: finalSkill, kary: totalPenalty, prog: target, suwak: totalShift });
-    game.neuroshima.log("Surowe wyniki kości", rawResults);
+    game.neuroshima.log("Test parameters", { stat: finalStat, skill: finalSkill, penalties: totalPenalty, threshold: target, slider: totalShift });
+    game.neuroshima.log("Raw dice results", rawResults);
 
     let rollData = {
       label,
@@ -1034,12 +1034,12 @@ export class NeuroshimaDice {
       annotations: testAnnotations.filter(Boolean)
     };
 
-    // 4. Ewaluacja testu w zależności od typu (Otwarty / Zamknięty)
+    // 4. Evaluate the test (Open or Closed)
     if (finalIsOpen) {
       game.neuroshima.log("Ewaluacja: TEST OTWARTY");
       this._evaluateOpenTest(rollData, dice);
     } else if (isActuallyDefending) {
-        // W nowym systemie dla obrony również nie wydawaj punktów automatycznie
+        // For defense, do not spend skill points automatically
         rollData.modifiedResults = dice.map(d => ({
             ...d,
             modified: d.original,
@@ -1051,11 +1051,11 @@ export class NeuroshimaDice {
         rollData.successCount = successes;
         rollData.success = successes >= 2;
     } else {
-      game.neuroshima.log("Ewaluacja: TEST ZAMKNIĘTY");
+      game.neuroshima.log("Evaluation: CLOSED TEST");
       this._evaluateClosedTest(rollData, dice);
     }
 
-    game.neuroshima.log("Wyniki po modyfikacji (użycie umiejętności)", rollData.modifiedResults);
+    game.neuroshima.log("Results after skill modification", rollData.modifiedResults);
     game.neuroshima.groupEnd();
 
     if (actor && !isReroll && !isDebug) {
@@ -1091,13 +1091,13 @@ export class NeuroshimaDice {
   }
 
   /**
-   * Wyznacza przesunięty poziom trudności na podstawie Suwaka.
+   * Returns the shifted difficulty level based on the Slider value.
    * @private
    */
   static _getShiftedDifficulty(base, shift) {
     const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];
     
-    // Zabezpieczenie przed brakiem obiektu trudności
+    // Guard against a missing difficulty object
     if (!base || !base.label) {
         return NEUROSHIMA.difficulties.average;
     }
@@ -1105,24 +1105,24 @@ export class NeuroshimaDice {
     const baseKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key]?.label === base.label);
     let index = order.indexOf(baseKey);
     
-    if (index === -1) index = 1; // Domyślnie przeciętny
+    if (index === -1) index = 1; // Default to average
     
     let shiftedIndex = Math.clamp(index + shift, 0, order.length - 1);
     return NEUROSHIMA.difficulties[order[shiftedIndex]] || NEUROSHIMA.difficulties.average;
   }
 
   /**
-   * Logika Testu Zamkniętego (Standardowego).
-   * Sukces następuje, gdy co najmniej 2 kości są mniejsze lub równe progowi (target)
-   * po optymalnym rozdzieleniu punktów umiejętności.
+   * Closed (Standard) Test evaluation.
+   * Success requires at least 2 dice equal to or below the threshold (target)
+   * after optimally spending skill points.
    */
   static _evaluateClosedTest(data, diceObjects) {
     const { target, skill } = data;
     
-    // Kopia kości posortowana według wyników dla łatwiejszej analizy kosztów
+    // Sort a copy of the dice by result for cheap-first cost analysis
     const sorted = [...diceObjects].sort((a, b) => a.original - b.original);
 
-    // 1. Sukcesy: kupujemy brakujące sukcesy (najtańsze najpierw)
+    // 1. Buy successes: cheapest dice first
     sorted.forEach(d => {
         d.cost = d.original <= target ? 0 : (d.original === 20 ? 999 : d.original - target);
     });
@@ -1130,7 +1130,7 @@ export class NeuroshimaDice {
     
     let tempSkill = skill;
     sorted.forEach(d => {
-        // Naturalna 20 jest zawsze porażką — nie wydajemy na nią żadnych punktów umiejętności.
+        // A natural 20 is always a failure — spend no skill points on it.
         if (d.original === 20) {
             d.modified = 20;
             d.isSuccess = false;
@@ -1138,7 +1138,7 @@ export class NeuroshimaDice {
             d.isNat20 = true;
             return;
         }
-        // Możemy wydać punkty, aby osiągnąć target, ale nie możemy zejść poniżej 1.
+        // Spend points to reach target, but cannot go below 1.
         const maxSpendTo1 = Math.max(0, d.original - 1);
         const spent = tempSkill > 0 ? Math.min(tempSkill, d.cost, maxSpendTo1) : 0;
         tempSkill -= spent;
@@ -1148,8 +1148,8 @@ export class NeuroshimaDice {
         d.isNat20 = d.original === 20;
     });
 
-    // 2. Optymalizacja: jeśli zostały punkty umiejętności, rozdzielamy je na kości sukcesu
-    // aby obniżyć ich wyniki (równomiernie), co pozwala osiągać lepsze rezultaty (np. 3 sukcesy zamiast 2).
+    // 2. Optimization: distribute remaining skill points to further reduce successful dice,
+    // potentially upgrading from 2 to 3 successes.
     if (tempSkill > 0) {
         const successfulDice = sorted.filter(d => d.isSuccess && d.original !== 1);
         while (tempSkill > 0 && successfulDice.some(d => d.modified > 1)) {
@@ -1161,63 +1161,62 @@ export class NeuroshimaDice {
         }
     }
 
-    // Przywrócenie oryginalnej kolejności kości dla karty czatu
+    // Restore original die order for the chat card
     data.modifiedResults = [...diceObjects].sort((a, b) => a.index - b.index);
 
-    // Test jest zdany, jeśli co najmniej 2 kości odniosły sukces
+    // Test passes when at least 2 dice are successes
     const successes = data.modifiedResults.filter(r => r.isSuccess).length;
     data.successCount = successes;
     data.success = successes >= 2;
     data.skillUsed = skill - tempSkill;
     data.remainingSkill = tempSkill;
     
-    // Krytyki (wszystkie kości sukcesem lub brak sukcesów z pechem)
+    // Criticals (all 3 successes, or all failures with at least one natural 20)
     data.isCritSuccess = successes === 3;
     data.isCritFailure = successes === 0 && diceObjects.some(d => d.original === 20);
   }
 
   /**
-   * Logika Testu Otwartego.
-   * Ignorujemy najwyższy (najgorszy) wynik, a punkty umiejętności wydajemy
-   * na zminimalizowanie wyższego z dwóch pozostałych wyników.
+   * Open Test evaluation.
+   * Ignores the highest (worst) die; skill points are spent to minimize
+   * the higher of the remaining two dice.
    */
   static _evaluateOpenTest(data, diceObjects) {
     const { target, skill } = data;
     
-    // Sortowanie kości w celu znalezienia najgorszego wyniku
+    // Sort to find the worst die
     const sorted = [...diceObjects].sort((a, b) => a.original - b.original);
     
-    // Ignorowanie najwyższej kości (najgorszy wynik)
+    // Ignore the highest die (worst result)
     sorted[2].ignored = true;
     sorted[2].isSuccess = false;
-    game.neuroshima.log(`_evaluateOpenTest: Ignoruję kość D${sorted[2].index + 1} (${sorted[2].original}). Pula: ${skill}`);
+    game.neuroshima.log(`_evaluateOpenTest: Ignoring die D${sorted[2].index + 1} (${sorted[2].original}). Pool: ${skill}`);
 
-    // Pobranie dwóch lepszych kości
+    // Take the two better dice
     let d1 = sorted[0];
     let d2 = sorted[1];
     
     let tempSkill = skill;
     
-    // Optymalizacja: chcemy zminimalizować wyższy z dwóch pozostałych wyników.
-    // Krok 1: Zbijamy gorszą kość (d2) do poziomu lepszej kości (d1).
-    // ZGODNIE Z ZASADAMI: naturalna 20 nie może być modyfikowana i jest automatyczną porażką.
+    // Step 1: Bring d2 down to d1's level.
+    // Rule: a natural 20 cannot be modified and is an automatic failure.
     const diff = d2.original - d1.original;
     const maxSpendTo1_d2 = d2.original === 20 ? 0 : Math.max(0, d2.original - 1);
     const spentToMatch = tempSkill > 0 ? Math.min(tempSkill, diff, maxSpendTo1_d2) : 0;
     d2.modified = d2.original - spentToMatch;
     tempSkill -= spentToMatch;
     if (spentToMatch > 0) {
-        game.neuroshima.log(`_evaluateOpenTest: Krok 1 - Wydano ${spentToMatch} pkt na wyrównanie kości D${d2.index + 1} (${d2.original} -> ${d2.modified})`);
+        game.neuroshima.log(`_evaluateOpenTest: Step 1 - Spent ${spentToMatch} pts to equalise die D${d2.index + 1} (${d2.original} -> ${d2.modified})`);
     }
 
-    // Krok 2: Jeśli zostały punkty umiejętności, obniżamy obie kości po równo.
+    // Step 2: If points remain, reduce both dice evenly.
     if (tempSkill > 0) {
-        // Obliczamy ile maksymalnie możemy wydać na każdą kość aby nie spadła poniżej 1
-        // Naturalna 20 nie może być modyfikowana.
+        // Calculate max spend per die without dropping below 1.
+        // A natural 20 cannot be modified.
         const maxSpend_d1 = d1.original === 20 ? 0 : Math.max(0, d1.original - 1);
         const maxSpend_d2 = d2.original === 20 ? 0 : Math.max(0, d2.modified - 1);
         
-        // Obniżamy obie o tyle ile się da, nie przekraczając tempSkill
+        // Reduce both as far as possible without exceeding tempSkill
         let spentOnBoth = 0;
         while (tempSkill > 0 && ((d1.modified > 1 && d1.original !== 20) || (d2.modified > 1 && d2.original !== 20))) {
             if (d1.modified > 1 && d1.original !== 20 && tempSkill > 0) {
@@ -1233,24 +1232,24 @@ export class NeuroshimaDice {
         }
         
         if (spentOnBoth > 0) {
-            game.neuroshima.log(`_evaluateOpenTest: Krok 2 - Wydano ${spentOnBoth} pkt na redukcję obu kości: D${d1.index + 1} (${d1.original} -> ${d1.modified}), D${d2.index + 1} (${d2.original} -> ${d2.modified})`);
+            game.neuroshima.log(`_evaluateOpenTest: Step 2 - Spent ${spentOnBoth} pts to reduce both dice: D${d1.index + 1} (${d1.original} -> ${d1.modified}), D${d2.index + 1} (${d2.original} -> ${d2.modified})`);
         }
     } else if (tempSkill === skill) {
         d1.modified = d1.original;
         d2.modified = d2.original;
     }
 
-    // Sukces na kościach otwartego testu (20 zawsze porażka)
+    // Success on open test dice (natural 20 is always a failure)
     d1.isSuccess = d1.modified <= target && d1.original !== 20;
     d2.isSuccess = d2.modified <= target && d2.original !== 20;
 
-    // Flagi naturalnych wyników
+    // Tag natural results
     diceObjects.forEach(d => {
         d.isNat1 = d.original === 1;
         d.isNat20 = d.original === 20;
     });
 
-    // Punkty Przewagi to różnica między progiem a gorszą z dwóch kości
+    // Advantage Points = threshold minus the higher of the two kept dice
     const finalHigherDie = Math.max(d1.modified, d2.modified);
     const successPoints = target - finalHigherDie;
     
@@ -1258,7 +1257,7 @@ export class NeuroshimaDice {
     data.successCount = successPoints;
     data.success = successPoints >= 0;
     
-    // Przywrócenie kolejności kości
+    // Restore original die order
     data.modifiedResults = [...diceObjects].sort((a, b) => a.index - b.index);
   }
 
@@ -1486,12 +1485,11 @@ export class NeuroshimaDice {
     let pos1 = p1.center || p1;
     let pos2 = p2.center || p2;
 
-    // Obsługa formatu tablicowego [x, y] (częsty w V13 canvas.grid)
+    // Handle array format [x, y] (common in V13 canvas.grid)
     if (Array.isArray(pos1)) pos1 = { x: pos1[0], y: pos1[1] };
     if (Array.isArray(pos2)) pos2 = { x: pos2[0], y: pos2[1] };
     
-    // W Foundry V13 najlepszym sposobem na pomiar zgodny z linijką (Ruler)
-    // jest użycie canvas.grid.measurePath.
+    // In Foundry V13, the most ruler-accurate measurement method is canvas.grid.measurePath
     const path = [{x: pos1.x, y: pos1.y}, {x: pos2.x, y: pos2.y}];
     let distance = 0;
     
@@ -1499,18 +1497,17 @@ export class NeuroshimaDice {
         const measureResult = canvas.grid.measurePath(path);
         distance = measureResult.distance;
 
-        // Logowanie szczegółowe dla debugowania
         if (game.settings.get("neuroshima", "debugMode")) {
             console.group("Neuroshima 1.5 | measureDistance Debug (V13)");
-            console.log("Pozycja 1:", pos1);
-            console.log("Pozycja 2:", pos2);
-            console.log("Wynik measurePath:", measureResult);
-            console.log("Skala sceny (grid):", canvas.grid.size, "px =", canvas.grid.distance, "m");
+            console.log("Position 1:", pos1);
+            console.log("Position 2:", pos2);
+            console.log("measurePath result:", measureResult);
+            console.log("Scene scale (grid):", canvas.grid.size, "px =", canvas.grid.distance, "m");
             console.groupEnd();
         }
     } catch (e) {
-        console.error("Neuroshima 1.5 | Błąd podczas pomiaru dystansu:", e);
-        // Fallback do prostego pomiaru euklidesowego
+        console.error("Neuroshima 1.5 | Error measuring distance:", e);
+        // Fallback to simple Euclidean measurement
         const dx = pos2.x - pos1.x;
         const dy = pos2.y - pos1.y;
         const pixelDist = Math.sqrt(dx*dx + dy*dy);
@@ -1523,18 +1520,18 @@ export class NeuroshimaDice {
   }
 
   /**
-   * Oblicza efekty leczenia BEZ aktualizacji ran (tylko do wyświetlenia)
-   * @param {Actor} patientActor - Pacjent
-   * @param {Array} woundIds - IDs ran do leczenia
-   * @param {string} healingMethod - "firstAid" lub "woundTreatment"
-   * @param {number} successCount - Liczba sukcesów z testu
-   * @param {boolean} hadFirstAid - Czy rana miała First Aid
-   * @param {number} healingModifier - Modyfikator do redukcji % (per-typ rany)
-   * @returns {Object} Informacje o obliczonych zmianach (bez aktualizacji!)
+   * Calculate healing effects WITHOUT updating wounds (preview only).
+   * @param {Actor} patientActor - The patient actor
+   * @param {Array} woundIds - IDs of wounds to heal
+   * @param {string} healingMethod - "firstAid" or "woundTreatment"
+   * @param {number} successCount - Number of successes from the test
+   * @param {boolean} hadFirstAid - Whether the wound already had First Aid applied
+   * @param {number} healingModifier - Additional % modifier per wound type
+   * @returns {Object} Calculated changes (no updates applied)
    */
   static calculateHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0) {
     game.neuroshima?.group("NeuroshimaDice | calculateHealingEffects");
-    game.neuroshima?.log("Obliczanie efektów leczenia", {
+    game.neuroshima?.log("Calculating healing effects", {
       patient: patientActor.name,
       method: healingMethod,
       successCount: successCount,
@@ -1545,26 +1542,25 @@ export class NeuroshimaDice {
     const isFirstAid = healingMethod === "firstAid";
     const isSuccess = successCount >= 2;
     
-    // Ustal zmianę kary na podstawie wyniku i metody
-    // Ujemna = zmniejsza karę (leczenie), dodatnia = zwiększa karę (porażka)
+    // Determine penalty change based on result and method
+    // Negative = reduces penalty (healing), positive = increases penalty (failure)
     let penaltyChange = 0;
     if (isSuccess) {
-      // Sukces: zmniejsza karę
       if (isFirstAid) {
         penaltyChange = -5;
       } else {
-        // Leczenie ran: 15% if fresh, 10% if had First Aid
+        // Treat Wounds: 15% if fresh wound, 10% if had First Aid
         penaltyChange = hadFirstAid ? -10 : -15;
       }
     } else {
-      // Porażka: zawsze zwiększa karę o 5%
+      // Failure always increases penalty by 5%
       penaltyChange = 5;
     }
     
     // Add per-wound healing modifier
     penaltyChange += healingModifier;
 
-    game.neuroshima?.log("Zmiana kary ustalona", {
+    game.neuroshima?.log("Penalty change determined", {
       penaltyChange: penaltyChange,
       baseChange: isSuccess ? (isFirstAid ? -5 : (hadFirstAid ? -10 : -15)) : 5,
       healingModifier: healingModifier,
@@ -1574,7 +1570,7 @@ export class NeuroshimaDice {
 
     const healingResults = [];
 
-    // Oblicz efekty na każdą ranę (bez aktualizacji!)
+    // Calculate effects for each wound (no updates applied)
     for (const woundId of woundIds) {
       const wound = patientActor.items.get(woundId);
       if (!wound || wound.type !== "wound") continue;
@@ -1592,7 +1588,7 @@ export class NeuroshimaDice {
         newPenalty = Math.max(0, newPenalty);
       }
 
-      game.neuroshima?.log("Obliczenie kary na ranie", {
+      game.neuroshima?.log("Penalty calculation for wound", {
         woundName: wound.name,
         oldPenalty: oldPenalty,
         newPenalty: newPenalty,
@@ -1610,7 +1606,7 @@ export class NeuroshimaDice {
       });
     }
 
-    game.neuroshima?.log("Efekty leczenia obliczone", {
+    game.neuroshima?.log("Healing effects calculated", {
       resultsCount: healingResults.length
     });
 
@@ -1625,30 +1621,18 @@ export class NeuroshimaDice {
   }
 
   /**
-   * Aplikuje efekty leczenia na wybrane rany
-   * @param {Actor} patientActor - Pacjent
-   * @param {Array} woundIds - IDs ran do leczenia
-   * @param {string} healingMethod - "firstAid" lub "woundTreatment"
-   * @param {number} successCount - Liczba sukcesów z testu
-   * @param {boolean} hadFirstAid - Czy rana miała First Aid
-   * @param {number} healingModifier - Modyfikator do redukcji % (per-typ rany)
-   * @returns {Promise<Object>} Informacje o zastosowanych zmianach
-   */
-  /**
-   * PHASE 5 - APPLY HEALING FUNCTIONALITY
-   * Calculate and apply healing effects to wounds
-   * Oblicza i aplikuje efekty leczenia do ran na podstawie wyniku testu
-   * 
-   * @param {Actor} patientActor - Postać pacjenta
-   * @param {Array} woundIds - ID ran do leczenia
-   * @param {string} healingMethod - "firstAid" lub "woundTreatment"
-   * @param {number} successCount - Liczba wyników sukcesu (ze zmienionego wyniku - 3 sukcesy = 2+ PT)
-   * @param {boolean} hadFirstAid - Czy rana była już opatrzona
-   * @param {number} healingModifier - Dodatkowy procent modyfikatora leczenia
+   * Apply healing effects to selected wounds.
+   * @param {Actor} patientActor - The patient actor
+   * @param {Array} woundIds - IDs of wounds to heal
+   * @param {string} healingMethod - "firstAid" or "woundTreatment"
+   * @param {number} successCount - Number of successes from the test
+   * @param {boolean} hadFirstAid - Whether the wound already had First Aid applied
+   * @param {number} healingModifier - Additional % modifier per wound type
+   * @returns {Promise<Object>} Information about the applied changes
    */
   static async applyHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0) {
     game.neuroshima?.group("NeuroshimaDice | applyHealingEffects");
-    game.neuroshima?.log("Aplikowanie efektów leczenia", {
+    game.neuroshima?.log("Applying healing effects", {
       patient: patientActor.name,
       method: healingMethod,
       successCount: successCount,
@@ -1656,17 +1640,14 @@ export class NeuroshimaDice {
       hadFirstAid: hadFirstAid
     });
 
-    // PHASE 2: Determine healing reduction based on method and result
     const isFirstAid = healingMethod === "firstAid";
     const isSuccess = successCount >= 2;
     
-    // PHASE 2: Calculate penalty change based on method and result
-    // Ujemna = zmniejsza karę (leczenie), dodatnia = zwiększa karę (porażka)
-    // Pierwsza pomoc: -5% (sukces) / +5% (porażka)
-    // Leczenie ran: -15% fresh / -10% (opatrzona) na sukces, +5% na porażkę
+    // Negative = reduces penalty (healing), positive = increases penalty (failure)
+    // First Aid: -5% (success) / +5% (failure)
+    // Treat Wounds: -15% fresh / -10% (had first aid) on success, +5% on failure
     let penaltyChange = 0;
     if (isSuccess) {
-      // Sukces: zmniejsza karę
       if (isFirstAid) {
         penaltyChange = -5;
       } else {
@@ -1674,14 +1655,14 @@ export class NeuroshimaDice {
         penaltyChange = hadFirstAid ? -10 : -15;
       }
     } else {
-      // Porażka: zawsze zwiększa karę o 5%
+      // Failure always increases penalty by 5%
       penaltyChange = 5;
     }
     
-    // PHASE 1: Add per-wound healing modifier (% to change)
+    // Add per-wound healing modifier
     penaltyChange += healingModifier;
 
-    game.neuroshima?.log("Zmiana kary ustalona", {
+    game.neuroshima?.log("Penalty change determined", {
       penaltyChange: penaltyChange,
       baseChange: isSuccess ? (isFirstAid ? -5 : (hadFirstAid ? -10 : -15)) : 5,
       healingModifier: healingModifier,
@@ -1692,26 +1673,23 @@ export class NeuroshimaDice {
     const healingResults = [];
     const woundsToUpdate = [];
 
-    // PHASE 5: Apply healing effects to each wound
-    // Aktualizuj każdą ranę: zmniejsz karę, oznacz jako w trakcie leczenia, czy dodaj hadFirstAid
+    // Apply healing effects to each wound
     for (const woundId of woundIds) {
       const wound = patientActor.items.get(woundId);
       if (!wound || wound.type !== "wound") continue;
 
-      // PHASE 5: Calculate new wound penalty after healing
-      // Kara nie może być poniżej 0%
+      // Penalty cannot go below 0%
       const oldPenalty = wound.system.penalty || 0;
       const newPenalty = Math.max(0, oldPenalty + penaltyChange);
 
-      game.neuroshima?.log("Zmiana kary na ranie", {
+      game.neuroshima?.log("Penalty change for wound", {
         woundName: wound.name,
         oldPenalty: oldPenalty,
         newPenalty: newPenalty,
         penaltyChange: penaltyChange
       });
 
-      // PHASE 5: Prepare update data for wound
-      // Zmiana: penalty + system.isHealing = true + hadFirstAid jeśli First Aid was successful
+      // Update: penalty + system.isHealing = true + hadFirstAid if First Aid was successful
       const updateData = {
         _id: woundId,
         "system.penalty": newPenalty,
@@ -1733,13 +1711,12 @@ export class NeuroshimaDice {
       });
     }
 
-    // PHASE 5: Update all wounds at once (batch update)
-    // Aktualizuj wszystkie rany jednym calliem do bazy danych
+    // Update all wounds at once (batch update)
     if (woundsToUpdate.length > 0) {
       await patientActor.updateEmbeddedDocuments("Item", woundsToUpdate);
     }
 
-    game.neuroshima?.log("Efekty leczenia zastosowane", {
+    game.neuroshima?.log("Healing effects applied", {
       resultsCount: healingResults.length
     });
 
@@ -1772,7 +1749,7 @@ export class NeuroshimaDice {
     } = params;
 
     game.neuroshima?.group("NeuroshimaDice | rollHealingTest");
-    game.neuroshima?.log("Parametry rzutu leczenia:", {
+    game.neuroshima?.log("Healing roll parameters:", {
       medicName: medicActor?.name,
       patientName: patientActor?.name,
       healingMethod,
@@ -1784,14 +1761,14 @@ export class NeuroshimaDice {
       woundCount: wounds.length
     });
 
-    // 1. Kalkulacja kar procentowych
+    // 1. Calculate percentage penalties
     const basePenalty = NEUROSHIMA.difficulties[baseDifficulty]?.min || 0;
     const modifier = parseInt(penalties.mod) || 0;
     const armorPenalty = parseInt(penalties.armor) || 0;
     const woundPenalty = parseInt(penalties.wounds) || 0;
     const totalPenalty = basePenalty + modifier + armorPenalty + woundPenalty;
 
-    game.neuroshima?.log("Kalkulacja kar (%)", {
+    game.neuroshima?.log("Penalty calculation (%)", {
       basePenalty,
       modifier,
       armorPenalty,
@@ -1799,25 +1776,25 @@ export class NeuroshimaDice {
       totalPenalty
     });
 
-    // 2. Wykonaj rzut kośćmi (3k20)
+    // 2. Roll dice (3d20)
     const roll = new Roll("3d20");
     await roll.evaluate();
     
     const rawResults = roll.terms[0].results.map(r => r.result);
 
-    // 3. Oblicz bonusy do umiejętności
+    // 3. Calculate skill bonuses
     const totalSkill = (skillValue || 0) + skillBonus;
     const skillShift = this.getSkillShift(totalSkill);
 
-    // 4. Oblicz finalny atrybut
+    // 4. Calculate final attribute value
     const finalStat = stat + attributeBonus;
 
-    // 5. Oblicz wynik testu
+    // 5. Calculate test result
     const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
     const finalDiff = this._getShiftedDifficulty(penaltyDiff, -skillShift);
     const testTarget = finalStat + (finalDiff.mod || 0);
 
-    game.neuroshima?.log("Wyniki rzutu kośćmi", {
+    game.neuroshima?.log("Dice roll results", {
       rawResults,
       testTarget,
       skillValue,
@@ -1825,7 +1802,7 @@ export class NeuroshimaDice {
       totalSkill
     });
 
-    // 6. Ewaluuj test (ZAWSZE Closed Test)
+    // 6. Evaluate test (always Closed Test for healing)
     const healingMethodLabel = healingMethod === "firstAid" ? game.i18n.localize("NEUROSHIMA.Items.Fields.Skills.firstAid") : game.i18n.localize("NEUROSHIMA.Items.Fields.Skills.woundTreatment");
     let rollData = {
       medicActor,
@@ -1859,7 +1836,7 @@ export class NeuroshimaDice {
       wounds: wounds
     };
 
-    // Stwórz obiekty kości do ewaluacji
+    // Create dice objects for evaluation
     const diceObjects = rawResults.map((result, idx) => ({
       original: result,
       modified: result,
@@ -1871,17 +1848,17 @@ export class NeuroshimaDice {
       index: idx
     }));
 
-    // Ewaluuj closed test
+    // Evaluate closed test
     this._evaluateClosedTest(rollData, diceObjects);
 
-    game.neuroshima?.log("Rezultat testu leczenia", {
-      metoda: healingMethod,
-      pacjent: patientActor.name,
-      succesCount: rollData.successCount,
+    game.neuroshima?.log("Healing test result", {
+      method: healingMethod,
+      patient: patientActor.name,
+      successCount: rollData.successCount,
       target: testTarget
     });
 
-    // 7. Aplikuj efekty leczenia na wybrane rany
+    // 7. Apply healing effects to selected wounds
     const woundIds = wounds.map(w => w.id).filter(id => id);
     let healingEffects = null;
     if (woundIds.length > 0) {
@@ -1894,29 +1871,20 @@ export class NeuroshimaDice {
       rollData.healingEffects = healingEffects;
     }
 
-    game.neuroshima?.log("Przygotowanie do renderowania karty leczenia", {
+    game.neuroshima?.log("Preparing to render healing card", {
       healingEffectsApplied: !!healingEffects,
       woundCount: woundIds.length
     });
 
-    // 8. Renderuj kartę czatu rzutu leczenia
+    // 8. Render the healing chat card
     await NeuroshimaChatMessage.renderHealingRoll(medicActor, rollData);
 
-    game.neuroshima?.log("Karta leczenia renderowana");
+    game.neuroshima?.log("Healing card rendered");
     game.neuroshima?.groupEnd();
   }
 
   /**
-   * Batch healing rolls - one test per wound
-   */
-  /**
-   * PHASE 2 - CLOSED TEST LOGIC & PHASE 1 - CORE HEALING
-   * Perform individual closed tests for each wound
-   * Wykonuje oddzielne testy (3k20) dla każdej rany z uwzględnieniem:
-   * - Zamkniętych testów (closed test evaluation)
-   * - Przesunięć umiejętności i kości
-   * - Dynamicznego dostosowania trudności testu
-   * - Obliczania efektów leczenia
+   * Batch healing rolls — one closed test (3d20) per wound.
    */
   static async rollBatchHealingTests({
     medicActor,
@@ -1928,67 +1896,60 @@ export class NeuroshimaDice {
     attributeBonus = 0
   }) {
     game.neuroshima?.group("NeuroshimaDice | rollBatchHealingTests");
-    game.neuroshima?.log("Rozpoczęcie batch rzutu leczenia", {
-      medyk: medicActor?.name,
-      pacjent: patientActor?.name,
-      metoda: healingMethod,
-      liczbaRan: woundConfigs.length
+    game.neuroshima?.log("Starting batch healing roll", {
+      medic: medicActor?.name,
+      patient: patientActor?.name,
+      method: healingMethod,
+      woundCount: woundConfigs.length
     });
 
-    // PHASE 2: Prepare base stats for closed test evaluation
-    // Atrybut bazowy (normalnie Zręczność, ale może być wybrany inny)
+    // Base attribute (normally Dexterity, but can be overridden)
     let baseStat = stat;
     if (!baseStat) {
       baseStat = medicActor.system.attributes.dexterity + (medicActor.system.modifiers.dexterity || 0);
     }
     
-    // PHASE 1: Get skill value based on healing method
-    // Pierwsza pomoc vs Leczenie ran
+    // Get skill value based on healing method
     const skillName = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
     const skillValue = medicActor.system.skills?.[skillName]?.value || 0;
     const totalSkill = skillValue + skillBonus;
-    // PHASE 2: Calculate skill shift (from skill points)
     const skillShift = this.getSkillShift(totalSkill);
     const finalStat = baseStat + attributeBonus;
 
     const results = [];
     const healingResults = [];
 
-    // PHASE 1: Roll for each wound individually (separate 3k20 for each)
-    // Każda rana dostaje oddzielny test (nie bulk)
+    // Roll for each wound individually (separate 3d20 for each)
     for (const config of woundConfigs) {
-      game.neuroshima?.log("Rzucanie test dla rany", {
+      game.neuroshima?.log("Rolling test for wound", {
         woundName: config.woundName,
         difficulty: config.difficulty,
         modifier: config.modifier
       });
 
-      // PHASE 2: Step 1 - Roll dice (always 3k20 for healing)
+      // Step 1 - Roll dice (always 3d20 for healing)
       const roll = new Roll("3d20");
       await roll.evaluate();
       
       const rawResults = roll.terms[0].results.map(r => r.result);
 
-      // PHASE 2: Step 2 - Calculate test difficulty with modifiers
-      // Base difficulty (z ustawień) + modyfikator trudności (global + pancerz + rany)
+      // Step 2 - Calculate test difficulty with modifiers
+      // Base difficulty + modifier (global + armor + wounds)
       const baseDifficultyKey = config.difficulty || 'average';
       const baseDifficultyData = NEUROSHIMA.difficulties[baseDifficultyKey] || NEUROSHIMA.difficulties.average;
       const totalPenalty = (baseDifficultyData.min || 0) + config.modifier;
       const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
       
-      // PHASE 2: Calculate total shift for difficulty adjustment (skill + dice + retry penalty)
-      // Przesunięcie umiejętności (ze skill points) + przesunięcie kości (1 lub 20) + kara za ponowne próby po porażce
+      // Total shift = skill shift + dice shift (nat 1s/20s) + retry penalty for failed attempts
       const diceShift = this.getDiceShift(rawResults);
       const failedAttempts = config.failedAttempts || 0;
       const totalShift = -skillShift + diceShift + failedAttempts;
       const finalDiff = this._getShiftedDifficulty(penaltyDiff, totalShift);
       const testTarget = finalStat + (finalDiff.mod || 0);
       
-      // PHASE 2: Get final difficulty label after all shifts
       const difficultyLabel = finalDiff.label;
 
-      // PHASE 2: Step 3 - Create dice objects for closed test evaluation
-      // Każda kość ma: original, modified, success status, nat1/20 status
+      // Step 3 - Create dice objects for closed test evaluation
       const diceObjects = rawResults.map((result, idx) => ({
         original: result,
         modified: result,
@@ -2000,7 +1961,7 @@ export class NeuroshimaDice {
         index: idx
       }));
 
-      // PHASE 2: Step 4 - Evaluate closed test (count successes)
+      // Step 4 - Evaluate closed test (count successes)
       const testRollData = {
         medicActor,
         patientActor,
@@ -2031,13 +1992,13 @@ export class NeuroshimaDice {
       // Evaluate closed test
       this._evaluateClosedTest(testRollData, diceObjects);
 
-      game.neuroshima?.log("Wynik testu na rani", {
+      game.neuroshima?.log("Test result for wound", {
         woundName: config.woundName,
         successCount: testRollData.successCount,
         isSuccess: testRollData.successCount >= 2
       });
 
-      // 5. Calculate healing effects to this wound (don't apply yet!)
+      // 5. Calculate healing effects for this wound (don't apply yet)
       const healingEffectResults = game.neuroshima.HealingApp.calculateHealingResults(
         patientActor,
         [config.woundId],
@@ -2092,7 +2053,7 @@ export class NeuroshimaDice {
     const successCount = results.filter(r => r.isSuccess).length;
     const failureCount = results.length - successCount;
 
-    game.neuroshima?.log("Batch rzut zakończony", {
+    game.neuroshima?.log("Batch roll complete", {
       totalWounds: results.length,
       successes: successCount,
       failures: failureCount
@@ -2117,11 +2078,11 @@ export class NeuroshimaDice {
   }
 
   /**
-   * Przerzut na konkretną ranę w healing (bez tworzenia chat message)
+   * Re-roll a healing test for a specific wound (without creating a new chat message).
    */
   static async rerollHealingTest(medicActor, patientActor, healingMethod, woundConfig, baseStat, skillBonus, attributeBonus) {
     game.neuroshima?.group("NeuroshimaDice | rerollHealingTest");
-    game.neuroshima?.log("Przerzut testu na ranie", {
+    game.neuroshima?.log("Re-rolling test for wound", {
       woundName: woundConfig.woundName,
       damageType: woundConfig.damageType,
       difficulty: woundConfig.difficulty
@@ -2203,7 +2164,7 @@ export class NeuroshimaDice {
     // Evaluate
     this._evaluateClosedTest(testRollData, diceObjects);
 
-    game.neuroshima?.log("Wynik przerzutu na ranie", {
+    game.neuroshima?.log("Re-roll result for wound", {
       woundName: woundConfig.woundName,
       successCount: testRollData.successCount,
       isSuccess: testRollData.successCount >= 2
@@ -2233,10 +2194,6 @@ export class NeuroshimaDice {
     };
   }
 
-  /**
-   * Pomocnicza metoda do budowania tooltipa dla testu otwartego (inicjatywa itp.).
-   * @private
-   */
   /**
    * Universal method to build a calculation detail tooltip for any Neuroshima roll.
    * Can be used as a static JS method or a Handlebars helper.
@@ -2437,7 +2394,7 @@ export class NeuroshimaDice {
       rollMode = game.settings.get("core", "rollMode")
     } = params;
 
-    game.neuroshima.group(`Rzut Granatem: ${weapon.name}`);
+    game.neuroshima.group(`Grenade Throw: ${weapon.name}`);
 
     const wData = weapon.system;
 
@@ -2458,7 +2415,7 @@ export class NeuroshimaDice {
     const skillValue     = (actor.system?.skills?.[skillKey]?.value ?? 0) + skillBonus;
     const target         = attributeValue + (baseDifficulty?.mod ?? 0);
 
-    game.neuroshima.log("Kalkulacja rzutu granatu", {
+    game.neuroshima.log("Grenade throw calculation", {
       distance, distancePenalty, armorPenalty, woundPenalty, diseasePenalty, modifier, scriptModifier, totalPenalty, attributeValue, skillValue, target, baseDifficulty: baseDifficulty?.label
     });
 
@@ -2503,7 +2460,7 @@ export class NeuroshimaDice {
       rollMode
     };
 
-    game.neuroshima.log("Wynik rzutu granatu", chatData);
+    game.neuroshima.log("Grenade throw result", chatData);
 
     const html = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/grenade-roll-card.hbs",

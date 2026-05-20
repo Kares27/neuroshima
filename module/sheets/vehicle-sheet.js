@@ -467,11 +467,11 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     context.modDifficultyLabels = modDifficultyLabels;
 
     const damageItems = items.filter(i => i.type === "vehicle-damage");
-    /** maxHP = efficiency (Sprawność) attribute + modifier */
+    /** maxHP = efficiency (Sprawnosc) attribute + modifier */
     const maxHP = (system.attributes?.efficiency ?? 0) + (system.attributeBonuses?.efficiency ?? 0) + (system.modifiers?.efficiency ?? 0) + (system.bonuses?.efficiency ?? 0);
-    /** totalDamagePoints = sum of Sprawność reductions across all damage items */
+    /** totalDamagePoints = sum of Sprawnosc reductions across all damage items */
     const totalDamagePoints = damageItems.reduce((sum, w) => sum + (w.system.penalty || 0), 0);
-    /** totalAgilityPenalty = sum of Zwrotność penalties across all damage items */
+    /** totalAgilityPenalty = sum of Zwrotnosc penalties across all damage items */
     const totalAgilityPenalty = damageItems.reduce((sum, w) => sum + (w.system.agilityPenalty || 0), 0);
     const totalArmorAP = (NEUROSHIMA.vehicleArmorKeys ?? []).reduce(
       (sum, key) => sum + (system.armor?.[key]?.reduction ?? 0), 0

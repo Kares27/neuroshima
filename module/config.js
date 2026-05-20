@@ -228,7 +228,7 @@ export const NEUROSHIMA = {
             isBruise: true
         }
     },
-    /** Vehicle-specific damage types (Sprawność reduction) */
+    /** Vehicle-specific damage types (Efficiency/Sprawnosc reduction) */
     vehicleDamageTypes: {
         "VL": "NEUROSHIMA.Vehicle.DamageType.Light",
         "VC": "NEUROSHIMA.Vehicle.DamageType.Heavy",
@@ -237,8 +237,8 @@ export const NEUROSHIMA = {
     /**
      * Vehicle damage configuration.
      * Values determined by durability test result:
-     *  - passed:  test Wytrzymałości zdany → połowa wartości
-     *  - failed:  test Wytrzymałości niezdany → pełne wartości
+     *  - passed:  Durability (Wytrzymalosc) test passed → half value
+     *  - failed:  Durability (Wytrzymalosc) test failed → full value
      * VK (Critical) is always full, no agility penalty.
      */
     vehicleDamageConfiguration: {

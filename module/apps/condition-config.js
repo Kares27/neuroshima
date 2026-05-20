@@ -21,9 +21,9 @@ export const DEFAULT_CONDITIONS = [
     scripts: [
       {
         trigger: "startTurn",
-        label: "Krwawienie — rana na początku tury",
+        label: "Bleeding — wound at start of turn",
         runIfDisabled: false,
-        code: `// Krwawienie: zadaje 1 ranę Lekką za każdy poziom krwawienia na początku tury aktora.
+        code: `// Bleeding: deals 1 Light wound per bleeding stack at the start of the actor's turn.
 const stacks = this.actor.getConditionValue("bleeding");
 if (stacks <= 0) return;
 const { NeuroshimaDice } = game.neuroshima;
@@ -41,9 +41,9 @@ await this.sendMessage(\`<strong>Krwawienie (\${stacks}×)</strong>: \${stacks} 
     scripts: [
       {
         trigger: "startTurn",
-        label: "Zatrucie — kara na początku tury",
+        label: "Poisoning — penalty at start of turn",
         runIfDisabled: false,
-        code: `// Zatrucie: nakłada karę -10% do testów na początku tury za każdy poziom.
+        code: `// Poisoning: applies a -10% test penalty at the start of turn per stack.
 const stacks = this.actor.getConditionValue("poisoned");
 if (stacks <= 0) return;
 await this.sendMessage(\`<strong>Zatrucie (\${stacks}×)</strong>: kara \${stacks * 10}% do testów.\`);`

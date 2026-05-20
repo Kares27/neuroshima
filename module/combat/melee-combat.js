@@ -83,7 +83,7 @@ export class NeuroshimaMeleeCombat {
     });
 
     if (!combat) {
-        ui.notifications.warn("Najpierw utwórz lub uruchom Encounter w Combat Trackerze.");
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.CreateEncounterFirst"));
         game.neuroshima?.warn("initiateMeleePending aborted: no active game.combat");
         return;
     }

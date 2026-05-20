@@ -130,7 +130,7 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
   }
 
   /**
-   * Getter zwracający efektywne wartości pancerza (ratings + mod deltas - damage, min 0)
+   * Returns effective armor values (ratings + mod deltas - damage, min 0)
    */
   get effectiveArmor() {
     const effective = {};
@@ -652,9 +652,9 @@ export class VehicleDamageData extends foundry.abstract.TypeDataModel {
         initial: "VL",
         choices: ["VL", "VC", "VK"]
       }),
-      /** Sprawność (efficiency) point reduction */
+      /** Sprawnosc (efficiency) point reduction */
       penalty: new fields.NumberField({ integer: true, initial: 1, min: 0 }),
-      /** Zwrotność (agility) % penalty */
+      /** Zwrotnosc (agility) % penalty */
       agilityPenalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       isActive: new fields.BooleanField({ initial: true })
     };

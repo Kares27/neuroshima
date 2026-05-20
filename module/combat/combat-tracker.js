@@ -134,7 +134,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     }
 
     /**
-     * Akcja usunięcia aktywnego pojedynku (tylko GM).
+     * Action to delete an active duel (GM only).
      */
     async _onDeleteDuel(event, target) {
         event.preventDefault();
@@ -152,7 +152,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         try {
             context = await super._prepareContext(options);
         } catch (e) {
-            game.neuroshima.error("Błąd super._prepareContext w Combat Trackerze:", e);
+            game.neuroshima.error("Error in super._prepareContext in Combat Tracker:", e);
             context = { turns: [] };
         }
 

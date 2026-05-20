@@ -25,19 +25,19 @@ export class CombatHelper {
     });
 
     if (!flags || !flags.isWeapon) {
-      game.neuroshima.log("Błąd: Brak flag lub wiadomość nie dotyczy broni");
+      game.neuroshima.log("Error: No flags or message is not a weapon roll");
       game.neuroshima.groupEnd();
       return false;
     }
     
     const actor = game.actors.get(flags.actorId);
     if (!actor) {
-      game.neuroshima.log("Błąd: Nie znaleziono aktora", { actorId: flags.actorId });
+      game.neuroshima.log("Error: Actor not found", { actorId: flags.actorId });
       game.neuroshima.groupEnd();
       return false;
     }
 
-    game.neuroshima.log("Aktor znaleziony:", {
+    game.neuroshima.log("Actor found:", {
       name: actor.name,
       type: actor.type,
       itemsCount: actor.items.size,
@@ -46,12 +46,12 @@ export class CombatHelper {
 
     const bulletSequence = flags.bulletSequence;
     if (!bulletSequence || bulletSequence.length === 0) {
-      game.neuroshima.log("Błąd: Brak danych o trafionych pociskach (bulletSequence pusty)");
+      game.neuroshima.log("Error: No bullet sequence data (bulletSequence empty)");
       game.neuroshima.groupEnd();
       return false;
     }
 
-    game.neuroshima.log("Sekwencja pocisków do refundu:", bulletSequence);
+    game.neuroshima.log("Bullet sequence to refund:", bulletSequence);
 
     // Refund ammo in reverse order (LIFO)
     const refundSequence = [...bulletSequence].reverse();
@@ -59,11 +59,11 @@ export class CombatHelper {
     const magazineId = flags.magazineId;
     const ammoId = flags.ammoId;
 
-    game.neuroshima.log("Próba refundu:", { magazineId, ammoId });
+    game.neuroshima.log("Refund attempt:", { magazineId, ammoId });
 
     if (magazineId) {
         const magazine = actor.items.get(magazineId);
-        game.neuroshima.log("Szukanie magazynka:", {
+        game.neuroshima.log("Looking for magazine:", {
           magazineId,
           found: !!magazine,
           type: magazine?.type,
@@ -72,13 +72,13 @@ export class CombatHelper {
 
         if (magazine && magazine.type === "magazine") {
             const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
-            game.neuroshima.log("Zawartość przed refundem:", contents);
+            game.neuroshima.log("Contents before refund:", contents);
             
             for (const bullet of refundSequence) {
                 const lastStack = contents[contents.length - 1];
                 const canMerge = this._isSameAmmo(lastStack, bullet);
                 
-                game.neuroshima.log("Refund pocisku:", { 
+                game.neuroshima.log("Refunding bullet:", { 
                   bulletName: bullet.name, 
                   canMerge,
                   lastStackBefore: lastStack ? { name: lastStack.name, quantity: lastStack.quantity } : null
@@ -87,7 +87,7 @@ export class CombatHelper {
                 // Compare with current stack to see if we can merge
                 if (canMerge) {
                     lastStack.quantity += 1;
-                    game.neuroshima.log("Zwiększono quantity:", { 
+                    game.neuroshima.log("Increased quantity:", { 
                       name: lastStack.name, 
                       newQuantity: lastStack.quantity 
                     });
@@ -107,17 +107,17 @@ export class CombatHelper {
                         }
                     };
                     contents.push(newStack);
-                    game.neuroshima.log("Dodano nowy stos:", newStack);
+                    game.neuroshima.log("Added new stack:", newStack);
                 }
             }
             
-            game.neuroshima.log("Zawartość po refundzie:", contents);
+            game.neuroshima.log("Contents after refund:", contents);
             
             try {
                 await magazine.update({ "system.contents": contents });
-                game.neuroshima.log("Magazynek zaktualizowany, nowa zawartość:", magazine.system.contents);
+                game.neuroshima.log("Magazine updated, new contents:", magazine.system.contents);
             } catch (e) {
-                game.neuroshima.error("Błąd podczas aktualizacji magazynka:", e);
+                game.neuroshima.error("Error updating magazine:", e);
                 game.neuroshima.groupEnd();
                 return false;
             }
@@ -134,12 +134,12 @@ export class CombatHelper {
     } else if (ammoId) {
         // Handle thrown weapons (direct ammo consumption)
         const ammo = actor.items.get(ammoId);
-        game.neuroshima.log("Amunicja (thrown):", { found: !!ammo, type: ammo?.type });
+        game.neuroshima.log("Thrown ammo:", { found: !!ammo, type: ammo?.type });
 
         if (ammo && ammo.type === "ammo") {
             const oldQuantity = ammo.system.quantity;
             const newQuantity = oldQuantity + bulletSequence.length;
-            game.neuroshima.log("Aktualizacja ilości amunicji:", { oldQuantity, newQuantity });
+            game.neuroshima.log("Updating ammo quantity:", { oldQuantity, newQuantity });
 
             await ammo.update({ "system.quantity": newQuantity });
             
@@ -154,7 +154,7 @@ export class CombatHelper {
         }
     }
 
-    game.neuroshima.log("Błąd: Nie znaleziono magazynka ani amunicji");
+    game.neuroshima.log("Error: Magazine or ammo not found");
     game.neuroshima.groupEnd();
     return false;
   }
@@ -215,7 +215,7 @@ export class CombatHelper {
     let damageType = initialDamageType;
     if (isMelee) {
         if (spDifference <= 0 && options.isOpposed) {
-            game.neuroshima.log("Walka wręcz: spDifference <= 0, brak obrażeń.");
+            game.neuroshima.log("Melee: spDifference <= 0, no damage.");
             game.neuroshima.groupEnd();
             return;
         }
@@ -232,24 +232,24 @@ export class CombatHelper {
                 attackData.damageMelee2 || "L",
                 attackData.damageMelee3 || "C"
             ];
-            game.neuroshima.log("Walka wręcz: Pobrane profile z danych rzutu", damageProfiles);
+            game.neuroshima.log("Melee: Damage profiles from roll data", damageProfiles);
         } else if (weapon && weapon.system.weaponType === "melee") {
             damageProfiles = [
                 weapon.system.damageMelee1 || "D",
                 weapon.system.damageMelee2 || "L",
                 weapon.system.damageMelee3 || "C"
             ];
-            game.neuroshima.log("Walka wręcz: Pobrane profile bezpośrednio z broni", damageProfiles);
+            game.neuroshima.log("Melee: Damage profiles from weapon directly", damageProfiles);
         } else {
             damageProfiles = initialDamageType.split("/").map(s => s.trim());
         }
 
         const tier = Math.clamp(spDifference, 1, 3);
         damageType = damageProfiles[tier - 1] || damageProfiles[0] || "L";
-        game.neuroshima.log(`Walka wręcz: spDifference=${spDifference}, wybrany profil obrażeń=${damageType} (z ${initialDamageType})`);
+        game.neuroshima.log(`Melee: spDifference=${spDifference}, selected damage profile=${damageType} (from ${initialDamageType})`);
     }
 
-    const sourceInfo = `<p><em>Źródło: ${attackData.label || "Broń"} ${options.attackerMessageId ? `(${options.attackerMessageId})` : ""}</em></p>`;
+    const sourceInfo = `<p><em>Source: ${attackData.label || "Weapon"} ${options.attackerMessageId ? `(${options.attackerMessageId})` : ""}</em></p>`;
     
     const rawWounds = [];
     const reducedDetails = [];
@@ -414,9 +414,9 @@ export class CombatHelper {
    * Apply damage to a vehicle actor according to Neuroshima 1.5 vehicle damage rules.
    * Character damage types are shifted down one step for vehicles:
    *   D/sD/L/sL → negated (vehicle ignores these)
-   *   C/sC      → VL (Lekkie uszkodzenie)
-   *   K/sK      → VC (Ciężkie uszkodzenie)
-   *   beyond K  → VK (Krytyczne uszkodzenie)
+   *   C/sC      → VL (Light damage)
+   *   K/sK      → VC (Heavy damage)
+   *   beyond K  → VK (Critical damage)
    * Then a durability test (3d20, no skill, ≥2 successes) halves the penalties if passed.
    */
   static async applyDamageToVehicle(actor, attackData, options = {}) {
@@ -596,12 +596,12 @@ export class CombatHelper {
                 flags = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
                     opposedResult: opposedResult
                 });
-                game.neuroshima.log("Pobrano dane ataku z powiązanej wiadomości:", { attackMessageId });
+                game.neuroshima.log("Attack data retrieved from linked message:", { attackMessageId });
             }
         }
     }
 
-    // Korygowanie Ognia — inject corrected hits into flags before damage calculation
+    // Fire Correction — inject corrected hits into flags before damage calculation
     const fireCorrectionApplied = message.getFlag("neuroshima", "fireCorrectionApplied");
     const correctedHits = fireCorrectionApplied ? (message.getFlag("neuroshima", "correctedHits") ?? 0) : 0;
     const fireCorrectionIsSuccess = message.getFlag("neuroshima", "fireCorrectionIsSuccess") ?? false;
@@ -625,13 +625,13 @@ export class CombatHelper {
         } else {
             flags.hitBulletsData = [...(flags.hitBulletsData || []), ...correctionBullets];
         }
-        game.neuroshima.log("Korygowanie Ognia | Obrażenia z korektą", { correctedHits, fireCorrectionIsSuccess, hitBulletsData: flags.hitBulletsData });
+        game.neuroshima.log("Fire Correction | Damage with correction", { correctedHits, fireCorrectionIsSuccess, hitBulletsData: flags.hitBulletsData });
     }
 
-    game.neuroshima.log("Parametry wejściowe:", { messageId: message.id, flags, actors: actors.map(a => a.name) });
+    game.neuroshima.log("Input parameters:", { messageId: message.id, flags, actors: actors.map(a => a.name) });
 
     if (!flags || !flags.isWeapon) {
-        game.neuroshima.log("Błąd: Brak flag lub wiadomość nie dotyczy broni.");
+        game.neuroshima.log("Error: No flags or message is not a weapon roll.");
         game.neuroshima.groupEnd();
         return;
     }
@@ -658,7 +658,7 @@ export class CombatHelper {
     const isGM = game.user.isGM;
 
     if (!isSuccess && !isGM) {
-        game.neuroshima.log("Błąd: Test nie był udany, a użytkownik nie jest MG.");
+        game.neuroshima.log("Error: Test was not successful and user is not GM.");
         game.neuroshima.groupEnd();
         return;
     }
@@ -667,14 +667,14 @@ export class CombatHelper {
     
     // If it's a failure but GM is forcing damage, we need bullet data
     if (hitBulletsData.length === 0 && isGM) {
-        game.neuroshima.log("Ostrzeżenie: Brak danych o trafieniach. Używam danych bazowych dla wymuszenia obrażeń przez MG.");
+        game.neuroshima.log("Warning: No hit data. Using base data for GM-forced damage.");
         if (flags.bulletSequence && flags.bulletSequence.length > 0) {
             // For GM force, use ALL bullets from sequence, not just first
             hitBulletsData = flags.bulletSequence.map(bullet => ({
                 ...bullet,
                 successPoints: bullet.successPoints || 1
             }));
-            game.neuroshima.log("Wymuszenie obrażeń: Użycie wszystkich pocisków z serii", {
+            game.neuroshima.log("Forced damage: Using all bullets from sequence", {
               bulletCount: hitBulletsData.length,
               bullets: hitBulletsData.map(b => ({ damage: b.damage, piercing: b.piercing }))
             });
@@ -695,7 +695,7 @@ export class CombatHelper {
     const selectedLocation = message.getFlag("neuroshima", "selectedLocation");
     const location = selectedLocation || flags.finalLocation || "torso";
     
-    game.neuroshima.log("Logika obrażeń:", { 
+    game.neuroshima.log("Damage logic:", { 
       isMelee, 
       location,
       selectedLocation,
@@ -728,7 +728,7 @@ export class CombatHelper {
    * @returns {Promise<Object>} { processedWounds, results }
    */
   static async processPainResistance(actor, rawWounds, location, sourceInfo) {
-    game.neuroshima.group(`Przetwarzanie odporności na ból: ${actor.name}`);
+    game.neuroshima.group(`Processing pain resistance: ${actor.name}`);
     
     const skillKey = "painResistance";
     const skillValue = actor.system.skills?.[skillKey]?.value || 0;
@@ -877,20 +877,20 @@ export class CombatHelper {
   }
 
   /**
-   * Renderuje raport z testów odporności na ból do czatu.
-   * Deleguje do NeuroshimaChatMessage API.
+   * Renders a Pain Resistance test report to chat.
+   * Delegates to the NeuroshimaChatMessage API.
    * @param {Actor} actor
-   * @param {Array} results - Wyniki testów pain-resistance
-   * @param {Array<string>} woundIds - ID ran
-   * @param {number} reducedProjectiles - Liczba zredukowanych pocisków/ran
-   * @param {Array} reducedDetails - Szczegółowe dane o redukcji dla każdego zredukowanego pocisku
+   * @param {Array} results - Pain-resistance test results
+   * @param {Array<string>} woundIds - Wound IDs
+   * @param {number} reducedProjectiles - Number of reduced projectiles/wounds
+   * @param {Array} reducedDetails - Detailed reduction data for each reduced projectile
    */
   static async renderPainResistanceReport(actor, results, woundIds, reducedProjectiles = 0, reducedDetails = []) {
     return NeuroshimaChatMessage.renderPainResistance(actor, results, woundIds, reducedProjectiles, reducedDetails);
   }
 
   /**
-   * Cofa nałożone obrażenia (usuwa powiązane przedmioty typu 'wound').
+   * Reverses applied damage (deletes associated wound items).
    */
   static async reverseDamage(message) {
     if (!game.user.isGM) return;
@@ -906,7 +906,7 @@ export class CombatHelper {
     game.neuroshima.log("Pobrane dane z flag:", { actorUuid, actorId, woundIds, isReversed });
 
     if (isReversed) {
-        game.neuroshima.log("Anulowano: Obrażenia zostały już wycofane.");
+        game.neuroshima.log("Cancelled: Damage has already been reversed.");
         game.neuroshima.groupEnd();
         return;
     }
@@ -923,22 +923,22 @@ export class CombatHelper {
     }
 
     if (!actor) {
-        game.neuroshima.error("Nie znaleziono aktora.", { actorUuid, actorId });
+        game.neuroshima.error("Actor not found.", { actorUuid, actorId });
         ui.notifications.error(game.i18n.localize("NEUROSHIMA.Notifications.ActorNotFound"));
         game.neuroshima.groupEnd();
         return;
     }
 
-    game.neuroshima.log(`Znaleziono aktora: ${actor.name} (${actor.uuid})`);
+    game.neuroshima.log(`Actor found: ${actor.name} (${actor.uuid})`);
 
     // Filter to only wounds that still exist on the actor
     const actorItems = actor.items;
     const existingWoundIds = woundIds.filter(id => actorItems.has(id));
     
-    game.neuroshima.log("Wynik wyszukiwania ran:", { 
-        szukaneIds: woundIds, 
-        znalezioneIds: existingWoundIds,
-        wszystkiePrzedmiotyAktora: actorItems.map(i => i.id)
+    game.neuroshima.log("Wound lookup result:", { 
+        searchedIds: woundIds, 
+        foundIds: existingWoundIds,
+        allActorItems: actorItems.map(i => i.id)
     });
 
     if (existingWoundIds.length > 0) {
@@ -948,7 +948,7 @@ export class CombatHelper {
             name: actor.name 
         }));
     } else {
-        game.neuroshima.log("Ostrzeżenie: Żadna z rzuconych ran nie została znaleziona na aktorze.");
+        game.neuroshima.log("Warning: None of the listed wounds were found on the actor.");
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoWoundsFoundToReverse"));
     }
 
@@ -994,7 +994,7 @@ export class CombatHelper {
     const isReversed = message.getFlag("neuroshima", "isReversed");
 
     if (isReversed) {
-        game.neuroshima.log("Anulowano: Odpoczynek został już wycofany.");
+        game.neuroshima.log("Cancelled: Rest has already been reversed.");
         game.neuroshima.groupEnd();
         return;
     }
@@ -1063,7 +1063,7 @@ export class CombatHelper {
   }
 
   /**
-   * Sprawdza czy użytkownik może zobaczyć szczegóły raportu Odporności na Ból.
+   * Checks whether the current user can see Pain Resistance report details.
    */
   static canShowPainResistanceDetails(actor) {
     const minRole = game.settings.get("neuroshima", "painResistanceMinRole");
@@ -1073,7 +1073,7 @@ export class CombatHelper {
   }
 
   /**
-   * Sprawdza czy użytkownik może wykonywać akcje specjalne (Refundacja, Cofnięcie).
+   * Checks whether the current user can perform special combat actions (Refund, Reverse).
    */
   static canPerformCombatAction() {
     const minRole = game.settings.get("neuroshima", "combatActionsMinRole");
@@ -1235,8 +1235,8 @@ export class CombatHelper {
   }
 
   /**
-   * Zmniejsza obrażenia i zwraca szczegółowe dane redukcji dla tooltipa.
-   * @param {object} [context] - dodatkowy kontekst przekazywany do armorCalculation (np. isGrenade, attackLabel)
+   * Reduces damage through armor and returns detailed reduction data for the tooltip.
+   * @param {object} [context] - Additional context passed to armorCalculation (e.g. isGrenade, attackLabel)
    * @private
    */
   static reduceArmorDamageWithDetails(actor, location, damageType, piercing, context = {}) {
@@ -1371,10 +1371,10 @@ export class CombatHelper {
    * If reduction is not complete (e.g., 2.5 armor, 2 piercing = 0.5), the remainder counts as 1 point.
    * 
    * Damage reduction uses wound reduction points (not HP points):
-   * - Draśnięcie [D]: 1 pkt redukcji
-   * - Lekka Rana [L]: 2 pkt redukcji
-   * - Ciężka Rana [C]: 3 pkt redukcji
-   * - Krytyczna Rana [K]: 4 pkt redukcji
+   * - Graze [D]: 1 reduction point
+   * - Light Wound [L]: 2 reduction points
+   * - Heavy Wound [C]: 3 reduction points
+   * - Critical Wound [K]: 4 reduction points
    * 
    * @param {Actor} actor - Target actor
    * @param {string} location - Hit location (torso, head, etc.)
@@ -1413,7 +1413,7 @@ export class CombatHelper {
       totalArmorRating += effectiveValue;
     }
     
-    game.neuroshima.log("Redukcja obrażeń przez pancerz", {
+    game.neuroshima.log("Armor damage reduction", {
       actor: actor.name,
       location,
       damageType,
@@ -1438,7 +1438,7 @@ export class CombatHelper {
       actualReduction = 1;
     }
     
-    game.neuroshima.log("Kalkulacja redukcji pancerza", {
+    game.neuroshima.log("Armor reduction calculation", {
       rawReduction: reduction,
       actualReduction
     });
@@ -1448,7 +1448,7 @@ export class CombatHelper {
     const baseDamagePoints = woundConfig?.damagePoints || 1;
     const reducedDamagePoints = Math.max(0, baseDamagePoints - actualReduction);
     
-    game.neuroshima.log("Redukcja punktów obrażeń (punkty redukcji)", {
+    game.neuroshima.log("Damage point reduction (reduction points)", {
       baseDamagePoints,
       actualReduction,
       reducedDamagePoints
@@ -1459,7 +1459,7 @@ export class CombatHelper {
     
     if (reducedDamagePoints === 0) {
       // No damage after reduction
-      game.neuroshima.log("Obrażenia całkowicie zneutralizowane przez pancerz");
+      game.neuroshima.log("Damage completely negated by armor");
       reducedDamageType = null;
     } else if (reducedDamagePoints >= 4) {
       reducedDamageType = "K";
@@ -1471,7 +1471,7 @@ export class CombatHelper {
       reducedDamageType = "D";
     }
     
-    game.neuroshima.log("Ostateczny typ obrażeń", {
+    game.neuroshima.log("Final damage type", {
       originalType: damageType,
       reducedType: reducedDamageType
     });
@@ -1601,7 +1601,7 @@ export class CombatHelper {
 
     // Validate data
     if (isNaN(days) || isNaN(regularPenalty) || isNaN(bruisePenalty)) {
-        game.neuroshima.error("CombatHelper | rest | Błędne dane odpoczynku:", restData);
+        game.neuroshima.error("CombatHelper | rest | Invalid rest data:", restData);
         return;
     }
 

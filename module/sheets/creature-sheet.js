@@ -219,7 +219,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
           if (targetUuid) {
             if (!game.combat) {
-              ui.notifications.warn("Najpierw utwórz Encounter w Combat Trackerze.");
+              ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.CreateEncounterFirst"));
               return;
             }
             const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
