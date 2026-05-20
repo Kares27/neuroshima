@@ -1,6 +1,7 @@
 <header class="sheet-header">
     <div class="profile-container">
-        <img class="profile-img" src="{{item.img}}" data-action="editImage" title="{{item.name}}" height="100" width="100"/>
+        <img class="profile-img" src="{{item.img}}" data-action="editImage" title="{{item.name}}" height="100" width="100"
+             data-tooltip-html="{{nsItemPreviewTooltip item.img item.name system.weight system.cost}}" data-tooltip-direction="LEFT"/>
     </div>
     <div class="header-details">
         <div class="item-subtitle">

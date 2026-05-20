@@ -53,6 +53,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         };
         
         const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
+        const allowRepeatedHealing = game.settings.get("neuroshima", "allowRepeatedHealing") ?? false;
         
         const difficultyOptions = Object.entries(NEUROSHIMA.difficulties).reduce((acc, [key, data]) => {
             acc[key] = game.i18n.localize(data.label);
@@ -67,7 +68,8 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         return {
             config: {
                 healingDifficulties: healingDifficulties,
-                patientCardVersion: patientCardVersion
+                patientCardVersion: patientCardVersion,
+                allowRepeatedHealing: allowRepeatedHealing
             },
             damageTypes: [
                 { key: "D", label: game.i18n.localize("NEUROSHIMA.Damage.Full.D"), abbr: "D" },
@@ -101,15 +103,18 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             };
             
             const patientCardVersion = String(data.patientCardVersion || "simple");
+            const allowRepeatedHealing = data.allowRepeatedHealing === true || data.allowRepeatedHealing === "true";
             
             game.neuroshima.log("Settings to save:", {
                 healingDifficulties,
-                patientCardVersion
+                patientCardVersion,
+                allowRepeatedHealing
             });
             
             const updates = [
                 game.settings.set("neuroshima", "healingDifficulties", healingDifficulties),
-                game.settings.set("neuroshima", "patientCardVersion", patientCardVersion)
+                game.settings.set("neuroshima", "patientCardVersion", patientCardVersion),
+                game.settings.set("neuroshima", "allowRepeatedHealing", allowRepeatedHealing)
             ];
             
             await Promise.all(updates);

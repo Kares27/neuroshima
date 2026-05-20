@@ -75,8 +75,7 @@ export class NeuroshimaAuraManager {
    */
   static async _syncRenderTemplates(sourceToken, sourceActor, movedToken, movedTokenNewPos) {
     if (!canvas?.scene) return;
-    const auraEffects = (sourceActor.effects ?? []).filter(e =>
-      e.getFlag("neuroshima", "transferType") === "auraActor" &&
+    const auraEffects = this._getActorAuraEffects(sourceActor).filter(e =>
       !e.disabled &&
       !e.getFlag("neuroshima", "auraTransferred") &&
       e.getFlag("neuroshima", "auraRender")
@@ -175,9 +174,7 @@ export class NeuroshimaAuraManager {
       for (const tokenDoc of canvas.scene.tokens) {
         const actor = tokenDoc.actor;
         if (!actor) continue;
-        const hasAuras = (actor.effects ?? []).some(e =>
-          e.getFlag("neuroshima", "transferType") === "auraActor" && !e.disabled
-        );
+        const hasAuras = this._getActorAuraEffects(actor).some(e => !e.disabled);
         if (!hasAuras) continue;
         if (isLinkedUuid(actor.uuid)) {
           if (!sourceTokenByActorUuid.has(actor.uuid)) {
@@ -207,8 +204,7 @@ export class NeuroshimaAuraManager {
    * @param {{x:number,y:number}|null}   movedTokenNewPos - Pre-computed new pixel position.
    */
   static async _updateActorAuras(sourceToken, sourceActor, movedToken = null, movedTokenNewPos = null) {
-    const auraEffects = (sourceActor.effects ?? []).filter(e =>
-      e.getFlag("neuroshima", "transferType") === "auraActor" &&
+    const auraEffects = this._getActorAuraEffects(sourceActor).filter(e =>
       !e.disabled &&
       !e.getFlag("neuroshima", "auraTransferred")
     );
@@ -315,8 +311,8 @@ export class NeuroshimaAuraManager {
    */
   static async _cleanupStaleAuraCopies(sourceActor, sceneActorTokens, sourceTokenId = null) {
     const activeIds = new Set(
-      (sourceActor.effects ?? [])
-        .filter(e => e.getFlag("neuroshima", "transferType") === "auraActor" && !e.disabled)
+      this._getActorAuraEffects(sourceActor)
+        .filter(e => !e.disabled)
         .map(e => e.id)
     );
     game.neuroshima?.log("Aura | _cleanupStaleAuraCopies", {
@@ -473,6 +469,33 @@ export class NeuroshimaAuraManager {
         jitter:          0.25
       });
     }
+  }
+
+  /**
+   * Collect all auraActor effects for an actor, including effects embedded on
+   * owned items that have transferType = "auraActor".
+   *
+   * Item effects respect equipTransfer: if an effect has equipTransfer=true and
+   * the owning item is unequipped (system.equipped === false), the effect is skipped.
+   *
+   * @param {Actor} actor
+   * @returns {ActiveEffect[]}
+   */
+  static _getActorAuraEffects(actor) {
+    const results = [];
+    for (const e of actor.effects ?? []) {
+      if (e.getFlag("neuroshima", "transferType") === "auraActor") results.push(e);
+    }
+    for (const item of actor.items ?? []) {
+      const isUnequipped = item.system?.equipped === false;
+      for (const e of item.effects ?? []) {
+        if (e.getFlag("neuroshima", "transferType") !== "auraActor") continue;
+        const equipTransfer = e.getFlag("neuroshima", "equipTransfer") ?? false;
+        if (equipTransfer && isUnequipped) continue;
+        results.push(e);
+      }
+    }
+    return results;
   }
 
   /**

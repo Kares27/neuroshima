@@ -33,6 +33,9 @@
             "armor-mod": "Modyfikacja Pancerza",
             "facilities": "Udogodnienie",
             "container": "Pojemnik"
+        },
+        "RegionBehavior": {
+            "dangerZone": "Strefa niebezpieczna"
         }
     },
     "NEUROSHIMA": {
@@ -523,9 +526,13 @@
             },
             "PatientCardVersion": {
                 "Name": "Wersja Karty Pacjenta",
-                "Hint": "Wybierz wersję Karty Pacjenta wyświetlaną na czacie. Uproszczona to szybki przegląd ran, Rozszerzona zawiera panel leczenia.",
+                "Hint": "Kontroluje układ sekcji walki i listy ran na karcie aktora. Obie wersje używają pełnego panelu leczenia (prośba o medyka + rzut).",
                 "Simple": "Uproszczona (przegląd ran)",
                 "Extended": "Rozszerzona (panel leczenia)"
+            },
+            "AllowRepeatedHealing": {
+                "Name": "Zezwól na Wielokrotne Leczenie",
+                "Hint": "Gdy włączone, limit 15% redukcji kary zostaje usunięty — każdy udany rzut leczenia dalej zmniejsza karę rany. Gdy wyłączone (domyślnie), leczenie zatrzymuje się po osiągnięciu maksymalnej redukcji."
             },
             "HealingConfig": {
                 "Title": "Ustawienia Leczenia",
@@ -1216,7 +1223,8 @@
             "LeftArm": "Lewa Ręka",
             "RightArm": "Prawa Ręka",
             "LeftLeg": "Lewa Noga",
-            "RightLeg": "Prawa Noga"
+            "RightLeg": "Prawa Noga",
+            "Inne": "Inne"
         },
         "LocationAbbrev": {
             "Head": "Głowa",
@@ -1224,7 +1232,8 @@
             "LeftArm": "L.Ręka",
             "RightArm": "P.Ręka",
             "LeftLeg": "L.Noga",
-            "RightLeg": "P.Noga"
+            "RightLeg": "P.Noga",
+            "Inne": "Inne"
         },
         "PatientCard": {
             "Title": "Karta Pacjenta",
@@ -1815,7 +1824,47 @@
             "CountWeightToEncumbrance": "Wlicz wagę do obciążenia",
             "Locked": "Pojemnik jest zamknięty",
             "Lock": "Zamknij pojemnik",
-            "Unlock": "Odblokuj pojemnik"
+            "Unlock": "Odblokuj pojemnik",
+            "SourceNotFound": "Nie można edytować: przedmiot źródłowy nie został znaleziony."
+        }
+    },
+    "RadiationWound": {
+        "Light": "Draśnięcie radiacyjne",
+        "Heavy": "Rana radiacyjna"
+    },
+    "RadiationSickness": {
+        "Name": "Choroba popromienna"
+    },
+    "DangerZone": {
+        "WoundApplied": "{actor} otrzymuje {type} ({penalty}%) od promieniowania.",
+        "RadiationLevel": {
+            "light": "Słabo napromieniowana strefa",
+            "heavy": "Silnie napromieniowana strefa"
+        }
+    },
+    "REGION": {
+        "BEHAVIOR": {
+            "DangerZone": {
+                "label": "Strefa niebezpieczna",
+                "FIELDS": {
+                    "radiationLevel": {
+                        "label": "Poziom radiacji",
+                        "hint": "Poziom promieniowania w tej strefie.",
+                        "choices": {
+                            "light": "Słabe (draśnięcie / godzinę)",
+                            "heavy": "Silne (rana lekka / godzinę)"
+                        }
+                    },
+                    "intervalHours": {
+                        "label": "Interwał (godziny)",
+                        "hint": "Co ile godzin przyznawana jest rana tokenom w tej strefie."
+                    },
+                    "createDisease": {
+                        "label": "Twórz chorobę popromienną",
+                        "hint": "Dodatkowo akumuluje chorobę popromienną na postaci."
+                    }
+                }
+            }
         }
     }
 }

@@ -1579,12 +1579,15 @@ export class NeuroshimaDice {
       let newPenalty = Math.max(0, oldPenalty + penaltyChange);
 
       if (isSuccess) {
-        const origPenalty = wound.system.originalPenalty ?? oldPenalty;
-        if (isFirstAid) {
-          const faRemaining = Math.max(0, 5 - (wound.system.firstAidHealingApplied || 0));
-          newPenalty = Math.max(oldPenalty - faRemaining, newPenalty);
+        const allowRepeated = game.settings.get("neuroshima", "allowRepeatedHealing") ?? false;
+        if (!allowRepeated) {
+          const origPenalty = wound.system.originalPenalty ?? oldPenalty;
+          if (isFirstAid) {
+            const faRemaining = Math.max(0, 5 - (wound.system.firstAidHealingApplied || 0));
+            newPenalty = Math.max(oldPenalty - faRemaining, newPenalty);
+          }
+          newPenalty = Math.max(origPenalty - 15, newPenalty);
         }
-        newPenalty = Math.max(origPenalty - 15, newPenalty);
         newPenalty = Math.max(0, newPenalty);
       }
 

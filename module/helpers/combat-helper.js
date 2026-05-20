@@ -1089,6 +1089,7 @@ export class CombatHelper {
    */
   static getShiftedLocation(originalLocation, shift) {
     if (shift === 0) return originalLocation;
+    if (originalLocation === "inne") return "inne";
 
     // Body locations in Neuroshima (1-20 roll range order)
     // 1-2: Head, 3-4: Right Arm, 5-6: Left Arm, 7-16: Torso, 17-18: Right Leg, 19-20: Left Leg

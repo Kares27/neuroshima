@@ -3205,14 +3205,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
 
-    if (patientCardVersion === "simple" && patientActor) {
-      game.neuroshima.log("Showing simplified patient card (no medic request)");
-      await game.neuroshima.NeuroshimaChatMessage.renderPatientCard(patientActor);
-      ui.notifications.info(game.i18n.localize("NEUROSHIMA.PatientCard.ShowPatientCard"));
-      return;
-    }
-
-    game.neuroshima.log("Extended version: showing medic selection dialog");
+    game.neuroshima.log("Showing medic selection dialog");
 
     // Filter similar to Item Piles: active users, not self, have a character or are GM
     const possibleMedics = game.users

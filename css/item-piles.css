@@ -1,7 +1,6 @@
 /* ============================================================
    Neuroshima 1.5 — Item Piles integration styling
    All --item-piles-* variable overrides use !important so they
-   defeat any JS-applied inline values Item Piles sets on :root.
    ============================================================ */
 
 /* ===== LIGHT THEME ===== */

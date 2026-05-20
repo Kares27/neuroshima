@@ -30,6 +30,9 @@
             "armor-mod": "Armor Modification",
             "facilities": "Facility",
             "container": "Container"
+        },
+        "RegionBehavior": {
+            "dangerZone": "Danger Zone"
         }
     },
     "NEUROSHIMA": {
@@ -520,9 +523,13 @@
             },
             "PatientCardVersion": {
                 "Name": "Patient Card Version",
-                "Hint": "Choose which version of Patient Card to display in chat. Simple shows quick wound overview, Extended includes healing panel.",
+                "Hint": "Controls the layout of the combat section and wounds list on the actor sheet. Both versions use the full healing panel (medic request + roll).",
                 "Simple": "Simple (wounds overview)",
                 "Extended": "Extended (healing panel)"
+            },
+            "AllowRepeatedHealing": {
+                "Name": "Allow Repeated Healing",
+                "Hint": "When enabled, the 15% penalty reduction cap is removed — each successful healing roll continues to reduce the wound penalty. When disabled (default), healing stops once the maximum reduction has been reached."
             },
             "HealingConfig": {
                 "Title": "Healing Settings",
@@ -1192,7 +1199,8 @@
             "LeftArm": "Left Arm",
             "RightArm": "Right Arm",
             "LeftLeg": "Left Leg",
-            "RightLeg": "Right Leg"
+            "RightLeg": "Right Leg",
+            "Inne": "Other"
         },
         "LocationAbbrev": {
             "Head": "Head",
@@ -1200,7 +1208,8 @@
             "LeftArm": "L.Arm",
             "RightArm": "R.Arm",
             "LeftLeg": "L.Leg",
-            "RightLeg": "R.Leg"
+            "RightLeg": "R.Leg",
+            "Inne": "Other"
         },
         "PatientCard": {
             "Title": "Patient Card",
@@ -1782,7 +1791,47 @@
             "CountWeightToEncumbrance": "Count weight to encumbrance",
             "Locked": "Container is locked",
             "Lock": "Lock container",
-            "Unlock": "Unlock container"
+            "Unlock": "Unlock container",
+            "SourceNotFound": "Cannot edit: source item not found."
+        }
+    },
+    "RadiationWound": {
+        "Light": "Radiation Graze",
+        "Heavy": "Radiation Wound"
+    },
+    "RadiationSickness": {
+        "Name": "Radiation Sickness"
+    },
+    "DangerZone": {
+        "WoundApplied": "{actor} receives a {type} ({penalty}%) radiation wound.",
+        "RadiationLevel": {
+            "light": "Lightly Irradiated",
+            "heavy": "Heavily Irradiated"
+        }
+    },
+    "REGION": {
+        "BEHAVIOR": {
+            "DangerZone": {
+                "label": "Danger Zone",
+                "FIELDS": {
+                    "radiationLevel": {
+                        "label": "Radiation Level",
+                        "hint": "Level of radiation in this zone.",
+                        "choices": {
+                            "light": "Light (grazing wound / hour)",
+                            "heavy": "Heavy (light wound / hour)"
+                        }
+                    },
+                    "intervalHours": {
+                        "label": "Interval (hours)",
+                        "hint": "How often a wound is applied to tokens in this zone."
+                    },
+                    "createDisease": {
+                        "label": "Create Radiation Sickness",
+                        "hint": "Additionally accumulate radiation sickness disease on the actor."
+                    }
+                }
+            }
         }
     },
     "TOKEN": {

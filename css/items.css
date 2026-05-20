@@ -13,21 +13,23 @@
     border-bottom: 2px solid var(--ns-border-main);
     margin-bottom: 5px;
     padding-bottom: 2px;
-    gap: 15px;
+    gap: 5px;
     align-items: stretch;
 }
 
 .neuroshima.sheet.item .profile-container {
-    flex: 0 0 100px;
-    width: 100px;
+    flex: 0 0 auto;
+    min-width: 60px;
+    max-width: 180px;
     display: flex;
     align-items: stretch;
 }
 
 .neuroshima.sheet.item .profile-img {
-    width: 100%;
-    height: 100%;
-    min-height: 80px;
+    height: 100px;
+    width: auto;
+    min-height: 60px;
+    max-width: 180px;
     object-fit: contain;
     border: 2px solid var(--ns-border-main);
     border-radius: 5px;

@@ -254,7 +254,7 @@ export class WoundData extends foundry.abstract.TypeDataModel {
       location: new fields.StringField({ 
         required: true, 
         initial: "torso",
-        choices: ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"]
+        choices: ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg", "inne"]
       }),
       damageType: new fields.StringField({ 
         required: true, 

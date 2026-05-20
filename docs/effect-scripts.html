@@ -189,10 +189,23 @@
     <li><a href="#post-required-test">postRequiredTest — Wymagany rzut dla graczy</a></li>
     <li><a href="#changes">Zakładka Changes — modyfikacje atrybutów</a></li>
     <li><a href="#details">Zakładka Details — konfiguracja transferu</a></li>
-    <li><a href="#helpers">Helpery i narzędzia</a></li>
+    <li><a href="#helpers">Helpery i narzędzia</a>
+      <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
+        <li><a href="#apply-damage-api"><code>game.neuroshima.applyDamage()</code></a></li>
+      </ul>
+    </li>
     <li><a href="#item-resources">Zasoby itemu</a></li>
     <li><a href="#tips">Dobre praktyki</a></li>
     <li><a href="#weapon-armor-mods">Modyfikacje broni i pancerza (weapon-mod / armor-mod)</a></li>
+    <li><a href="#regions-api">Regions &amp; API — Promieniowanie</a>
+      <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
+        <li><a href="#regions-api-methods">Metody API</a></li>
+        <li><a href="#regions-api-config">Obiekt konfiguracji</a></li>
+        <li><a href="#regions-api-levels">Poziomy radiacji → typy ran</a></li>
+        <li><a href="#regions-api-protection">protectionKeys — ochrona z ekwipunku</a></li>
+        <li><a href="#regions-api-examples">Przykłady</a></li>
+      </ul>
+    </li>
   </ol>
 </nav>
 
@@ -5764,6 +5777,539 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
     <strong>Identyfikacja hosta w skrypcie:</strong> Zawsze sprawdzaj <code>this.item?.type</code>, żeby
     upewnić się że skrypt działa na właściwym typie itemu (np. <code>"weapon"</code> vs <code>"armor"</code>),
     ponieważ technicznie ten sam efekt mógłby (w teorii) trafić na różny typ hosta.
+  </div>
+
+</section>
+
+<!-- SECTION 14 -->
+<section id="regions-api">
+  <h2 class="section-title">14. Regions &amp; API — Promieniowanie</h2>
+
+  <p>
+    System promieniowania w Neuroshima 1.5 <strong>nie używa własnego typu RegionBehavior</strong>.
+    Zamiast tego eksponuje elastyczne API <code>game.neuroshima.radiation</code>, które MG wywołuje
+    z wbudowanego zachowania <strong>Execute Script</strong> na Regionach Foundry VTT.
+  </p>
+  <p>
+    Podejście to daje pełną swobodę konfiguracji per-region: różne poziomy radiacji, własne klucze
+    ochrony z ekwipunku, interwały czasowe, opcjonalna choroba popromienna — wszystko jako parametry
+    w skrypcie, bez edytowania systemu.
+  </p>
+
+  <div class="callout info">
+    <strong>Jak to działa?</strong> Token wchodzący w region dostaje flagę
+    <code>flags.neuroshima.dangerZones</code> z zapisaną konfiguracją i timestampem wejścia.
+    Hak <code>updateWorldTime</code> (GM-only) przetwarza wszystkie tokeny na wszystkich scenach
+    i nakłada rany według upłynniętego czasu.
+  </div>
+
+  <!-- METODY API -->
+  <h3 id="regions-api-methods">Metody <code>game.neuroshima.radiation</code></h3>
+  <table>
+    <thead><tr><th>Metoda</th><th>Parametry</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>radiation.enter(token, regionId, config)</td>
+        <td>TokenDocument, string, object</td>
+        <td>Rozpoczyna śledzenie tokenu w strefie radiacji. Zapisuje timestampy i config w flagach tokenu.</td>
+      </tr>
+      <tr>
+        <td>radiation.exit(token, regionId)</td>
+        <td>TokenDocument, string</td>
+        <td>Usuwa śledzenie tokenu po wyjściu ze strefy. Gdy to ostatnia strefa — usuwa całą flagę.</td>
+      </tr>
+      <tr>
+        <td>radiation.applyWound(actor, config)</td>
+        <td>Actor, object</td>
+        <td>Nakłada ranę radiacyjną bezpośrednio (pomija śledzenie). Przydatne w skryptach ręcznych.</td>
+      </tr>
+      <tr>
+        <td>radiation.getProtection(actor, protectionKeys)</td>
+        <td>Actor, string[]</td>
+        <td>Zwraca maksymalną wartość ochrony znalezioną w wyposażonych przedmiotach aktora dla podanych kluczy.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- OBIEKT KONFIGURACJI -->
+  <h3 id="regions-api-config">Obiekt konfiguracji</h3>
+  <p>Przekazywany jako trzeci argument do <code>radiation.enter()</code> lub do <code>radiation.applyWound()</code>.</p>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>level</td>
+        <td>number</td>
+        <td><code>1</code></td>
+        <td>Numeryczny poziom radiacji (1–20). Decyduje o typie rany (≤10 = draśnięcie <code>D</code>, >10 = lekka <code>L</code>) i porównaniu z ochroną.</td>
+      </tr>
+      <tr>
+        <td>intervalHours</td>
+        <td>number</td>
+        <td><code>1</code></td>
+        <td>Co ile godzin (in-game) nakładana jest kolejna rana. Czas mierzony przez Simple Calendar lub worldTime.</td>
+      </tr>
+      <tr>
+        <td>woundDamageType</td>
+        <td><code>"D"</code> | <code>"L"</code> | <code>null</code></td>
+        <td><code>null</code></td>
+        <td>Ręczne nadpisanie typu rany. Gdy <code>null</code> — wyznaczany automatycznie z <code>level</code>.</td>
+      </tr>
+      <tr>
+        <td>penaltyOverride</td>
+        <td>number | <code>null</code></td>
+        <td><code>null</code></td>
+        <td>Ręczne nadpisanie kary (%). Gdy <code>null</code> — pobierany z konfiguracji systemu dla danego typu rany.</td>
+      </tr>
+      <tr>
+        <td>protectionKeys</td>
+        <td>string[]</td>
+        <td><code>[]</code></td>
+        <td>Tablica kluczy zasobów (resources) w wyposażeniu. Jeśli wartość dowolnego z nich ≥ <code>level</code>, rana nie jest nakładana (czas nadal biegnie).</td>
+      </tr>
+      <tr>
+        <td>createDisease</td>
+        <td>boolean</td>
+        <td><code>false</code></td>
+        <td>Czy każde tknięcie radiacją akumuluje także chorobę popromienną (+5% kary transientPenalty per tick).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- POZIOMY RADIACJI -->
+  <h3 id="regions-api-levels">Poziomy radiacji → typy ran</h3>
+  <p>
+    Gdy <code>woundDamageType</code> nie jest ustawiony, poziom liczbowy jest automatycznie przekładany
+    na typ rany według poniższej skali. Możesz użyć pełnych 20 poziomów lub własnych przedziałów
+    przez ręczne ustawienie <code>woundDamageType</code>.
+  </p>
+  <div class="dmg-table">
+    <div class="dmg-chip light">
+      <span class="dmg-code">D</span>
+      <span class="dmg-label">Draśnięcie</span>
+      <span class="dmg-label" style="color:var(--num)">level 1–10</span>
+      <span class="dmg-label">domyślnie −5%</span>
+    </div>
+    <div class="dmg-chip heavy">
+      <span class="dmg-code">L</span>
+      <span class="dmg-label">Lekka rana</span>
+      <span class="dmg-label" style="color:var(--num)">level 11–20</span>
+      <span class="dmg-label">domyślnie −15%</span>
+    </div>
+  </div>
+  <div class="callout info">
+    Kary pobierane są z <code>NEUROSHIMA.woundConfiguration[damageType].penalties[0]</code>.
+    Jeśli chcesz inną karę dla danej strefy, użyj <code>penaltyOverride</code>.
+  </div>
+
+  <!-- PROTECTION KEYS -->
+  <h3 id="regions-api-protection">protectionKeys — ochrona z ekwipunku</h3>
+  <p>
+    <code>protectionKeys</code> to tablica nazw kluczy zasobów (<em>resources</em>) szukanych
+    w <strong>wyposażonych</strong> przedmiotach aktora. System bierze <strong>maksymalną</strong>
+    wartość ze wszystkich trafionych zasobów i porównuje z <code>level</code> strefy.
+  </p>
+  <div class="callout warning">
+    <strong>Logika:</strong> jeśli <code>max(matchingResources) ≥ level</code>, rana <strong>nie jest</strong>
+    nakładana — ale czas ostatniego przetworzenia (<code>lastProcessed</code>) jest aktualizowany,
+    żeby nie narastały "zaległe" ticki po zdjęciu pancerza.
+  </div>
+  <p>
+    Dzięki tablicy możesz definiować <strong>wiele alternatywnych źródeł ochrony</strong> — każdy
+    z nich wystarczy niezależnie. Przykładowo kombinezon przeciwradiacyjny używa klucza
+    <code>"RadiationProt"</code>, a pancerz nuklearny <code>"NuclearArmor"</code> — posiadanie
+    któregokolwiek (o wystarczającej wartości) chroni postać.
+  </p>
+
+  <h4>Jak dodać zasób ochrony do przedmiotu</h4>
+  <p>
+    W edytorze itemu (pancerz, kombinezon, implant) przejdź do zakładki <strong>Resources</strong>
+    i dodaj zasób:
+  </p>
+  <table>
+    <thead><tr><th>Pole zasobu</th><th>Wartość przykładowa</th><th>Znaczenie</th></tr></thead>
+    <tbody>
+      <tr><td>key</td><td><code>RadiationProt</code></td><td>Identyczny z kluczem w <code>protectionKeys</code> strefy.</td></tr>
+      <tr><td>value</td><td><code>18</code></td><td>Poziom ochrony — chroniony przed strefami o <code>level ≤ 18</code>.</td></tr>
+      <tr><td>label</td><td><code>Ochrona przed radiację</code></td><td>Wyświetlana nazwa w UI.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- PRZYKŁADY -->
+  <h3 id="regions-api-examples">Przykłady</h3>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 1 — prosta strefa radiacji (poziom 5, co godzinę)
+    </div>
+    <h4 class="script-label">Behavior: Execute Script · Event: TOKEN_ENTER</h4>
+    <pre><code><span class="cmt">// Token wchodzi w strefę — zarejestruj go z poziomem radiacji 5</span>
+<span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, {
+  level: <span class="num">5</span>,
+  intervalHours: <span class="num">1</span>
+});</code></pre>
+    <h4 class="script-label">Behavior: Execute Script · Event: TOKEN_EXIT</h4>
+    <pre><code><span class="cmt">// Token wychodzi — usuń śledzenie</span>
+<span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">exit</span>(token, region.id);</code></pre>
+    <p class="example-desc">
+      Co godzinę in-game każdy token z aktorem w tym regionie dostanie ranę draśnięcia (−5%).
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 2 — strefa z ochroną pancerza (poziom 14, dwa klucze ochrony)
+    </div>
+    <h4 class="script-label">Behavior: Execute Script · Event: TOKEN_ENTER</h4>
+    <pre><code><span class="cmt">// Strefa radiacji poziom 14 — lekkie rany co 2 godziny</span>
+<span class="cmt">// Chodzi pancerz posiadający zasób "RadiationProt" ≥ 14 LUB "NuclearArmor" ≥ 14</span>
+<span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, {
+  level: <span class="num">14</span>,
+  intervalHours: <span class="num">2</span>,
+  protectionKeys: [<span class="str">"RadiationProt"</span>, <span class="str">"NuclearArmor"</span>]
+});</code></pre>
+    <p class="example-desc">
+      Poziom 14 → automatycznie rana <code>L</code> (lekka, −15%). Postać z pancerzem mającym zasób
+      <code>RadiationProt: 18</code> jest w pełni chroniona — rana nie zostanie nałożona, czas jednak
+      nadal biegnie. Po zdjęciu pancerza kolejny tick dopiero po upłynięciu pełnego interwału.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 3 — strefa z chorobą popromienną i ręcznym typem rany
+    </div>
+    <h4 class="script-label">Behavior: Execute Script · Event: TOKEN_ENTER</h4>
+    <pre><code><span class="cmt">// Gorąca strefa — zawsze draśnięcie (D) co 30 min, + choroba popromienna</span>
+<span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, {
+  level: <span class="num">8</span>,
+  intervalHours: <span class="num">0.5</span>,
+  woundDamageType: <span class="str">"D"</span>,   <span class="cmt">// zawsze draśnięcie niezależnie od poziomu</span>
+  createDisease: <span class="kw">true</span>      <span class="cmt">// każdy tick +5% transientPenalty choroby</span>
+});</code></pre>
+    <p class="example-desc">
+      Choroba popromienna tworzona jest jako item typu <code>disease</code> z flagą
+      <code>isRadiationSickness: true</code>. Kolejne ticki zwiększają jej karę o +5% zamiast tworzyć
+      nową instancję.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 4 — strefa z nadpisaną karą i informacją w chacie
+    </div>
+    <h4 class="script-label">Behavior: Execute Script · Event: TOKEN_ENTER</h4>
+    <pre><code><span class="cmt">// Strefa z własną karą 10% zamiast standardowych 5% lub 15%</span>
+<span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, {
+  level: <span class="num">7</span>,
+  intervalHours: <span class="num">1</span>,
+  penaltyOverride: <span class="num">10</span>,   <span class="cmt">// zawsze −10% bez względu na typ rany</span>
+  protectionKeys: [<span class="str">"RadiationProt"</span>]
+});</code></pre>
+    <p class="example-desc">
+      Kara <code>penaltyOverride</code> nadpisuje wartość z <code>NEUROSHIMA.woundConfiguration</code>.
+      Przydatne gdy radiacja w tym settingu ma inne wartości niż domyślne reguły systemu.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 5 — wiele stref jednocześnie (token w dwóch regionach)
+    </div>
+    <p class="example-desc" style="padding: 0.6rem 1.25rem 0;">
+      System automatycznie obsługuje tokeny przebywające w kilku strefach jednocześnie — każda strefa
+      śledzona jest pod własnym <code>region.id</code> w flagach tokenu. Wystarczy wstawić
+      analogiczne skrypty TOKEN_ENTER i TOKEN_EXIT w każdym regionie osobno.
+    </p>
+    <pre><code><span class="cmt">// Region A — słaba radiacja tła (level 3)</span>
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, { level: <span class="num">3</span> });
+
+<span class="cmt">// Region B — silna strefa (level 17) — skrypt w osobnym regionie</span>
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, { level: <span class="num">17</span> });</code></pre>
+    <p class="example-desc">
+      Token przebywający w obu regionach dostaje ticki z <strong>każdej</strong> strefy niezależnie.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Manual / immediate</span>
+      Przykład 6 — bezpośrednie nałożenie rany radiacyjnej (poza regionem)
+    </div>
+    <pre><code><span class="cmt">// Trigger: manual lub immediate — nałóż ranę radiacyjną ręcznie na aktora</span>
+<span class="kw">const</span> <span class="var">actor</span> = <span class="kw">this</span>.actor;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">applyWound</span>(actor, {
+  level: <span class="num">12</span>,
+  createDisease: <span class="kw">true</span>
+});</code></pre>
+    <p class="example-desc">
+      Możesz wywołać <code>applyWound</code> z dowolnego skryptu efektu, manualnego przycisku
+      lub z konsoli — nie wymaga obecności w regionie.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 7 — sprawdzenie ochrony przed wejściem + komunikat w chacie
+    </div>
+    <h4 class="script-label">Behavior: Execute Script · Event: TOKEN_ENTER</h4>
+    <pre><code><span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
+<span class="kw">const</span> <span class="var">LEVEL</span> = <span class="num">16</span>;
+
+<span class="kw">if</span> (actor) {
+  <span class="kw">const</span> <span class="var">prot</span> = game.neuroshima.radiation.<span class="fn">getProtection</span>(actor, [<span class="str">"RadiationProt"</span>]);
+  <span class="kw">const</span> <span class="var">shielded</span> = prot >= LEVEL;
+
+  <span class="kw">await</span> ChatMessage.<span class="fn">create</span>({
+    content: shielded
+      ? <span class="str">`&lt;b&gt;${actor.name}&lt;/b&gt; wchodzi w strefę radiacyjną — ochrona pancerza (${prot}) &lt;b&gt;wystarczająca&lt;/b&gt;.`</span>
+      : <span class="str">`&lt;b&gt;${actor.name}&lt;/b&gt; wchodzi w strefę radiacyjną (poz. ${LEVEL}) — &lt;b&gt;BRAK ochrony&lt;/b&gt; (${prot})!`</span>,
+    style: CONST.CHAT_MESSAGE_STYLES.OTHER
+  });
+}
+
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, {
+  level: LEVEL,
+  intervalHours: <span class="num">1</span>,
+  protectionKeys: [<span class="str">"RadiationProt"</span>]
+});</code></pre>
+    <p class="example-desc">
+      Przed zarejestrowaniem tokenu sprawdza ochronę i wysyła informację do chatu. Śledzenie zostaje
+      uruchomione niezależnie od wyniku — system sam pilnuje ochrony przy każdym ticku.
+    </p>
+  </div>
+
+  <div class="callout warning">
+    <strong>Odporność na ból:</strong> Rany nakładane przez API są standardowymi itemami typu
+    <code>wound</code>. Jeśli w systemie jest aktywna mechanika odporności na ból (pain resistance),
+    zadziała ona normalnie na podstawie skumulowanej kary — system promieniowania nie blokuje ani
+    nie pomija tego mechanimu.
+  </div>
+
+  <div class="callout info">
+    <strong>Simple Calendar:</strong> Gdy Simple Calendar jest aktywny, interwały obliczane są
+    na podstawie <code>game.time.worldTime</code> (sekundy). <code>intervalHours: 1</code> oznacza
+    3600 sekund czasu gry. Upewniej się że SC i Foundry są zsynchronizowane (<em>Set World Time</em>
+    w ustawieniach SC powinno być włączone).
+  </div>
+
+</section>
+
+<section id="apply-damage-api">
+  <h2 class="section-title">15. API — <code>game.neuroshima.applyDamage()</code></h2>
+
+  <p>
+    <code>game.neuroshima.applyDamage(actor, config)</code> to prosta funkcja pomocnicza
+    wywoływalna z dowolnego miejsca: skryptu efektu, Execute Script regionu, konsoli przeglądarki
+    lub makra. Opakowuje wewnętrzny pipeline obrażeń systemu i udostępnia go przez jedno wywołanie.
+  </p>
+  <div class="callout info">
+    Funkcja jest dostępna po załadowaniu gry (<code>ready</code> hook). Nie wymaga dostępu
+    do konkretnego aktora atakującego ani danych rzutu — wystarczy referencja do aktora
+    obrońcy i obiekt config.
+  </div>
+
+  <!-- PARAMETRY -->
+  <h3 id="apply-damage-config">Parametry konfiguracji</h3>
+  <p>Drugi argument — obiekt <code>config</code> — wszystkie pola opcjonalne:</p>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>damage</td>
+        <td>string</td>
+        <td><code>"L"</code></td>
+        <td>Typ obrażeń: <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code> lub warianty siniak (<code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>).</td>
+      </tr>
+      <tr>
+        <td>location</td>
+        <td>string</td>
+        <td><code>"torso"</code></td>
+        <td>Lokacja trafienia (<code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, <code>"rightArm"</code>, <code>"leftLeg"</code>, <code>"rightLeg"</code>, <code>"inne"</code>).</td>
+      </tr>
+      <tr>
+        <td>piercing</td>
+        <td>number</td>
+        <td><code>0</code></td>
+        <td>Przebicie pancerza. Działa tylko w trybie pełnego pipelinu (gdy <code>penaltyOverride</code> nie jest ustawiony).</td>
+      </tr>
+      <tr>
+        <td>armorBypass</td>
+        <td>boolean</td>
+        <td><code>false</code></td>
+        <td>Gdy <code>true</code> — całkowite pominięcie redukcji pancerza (ustawia wewnętrznie <code>piercing: 9999</code>). Działa tylko w trybie pełnego pipelinu.</td>
+      </tr>
+      <tr>
+        <td>penaltyOverride</td>
+        <td>number | <code>undefined</code></td>
+        <td><code>undefined</code></td>
+        <td>Gdy ustawiony — <strong>tryb bezpośredni</strong>: rana tworzona z dokładnie tą karą %, pomija pancerz i test odporności na ból.</td>
+      </tr>
+      <tr>
+        <td>label</td>
+        <td>string</td>
+        <td><code>"Script Damage"</code></td>
+        <td>Etykieta źródła widoczna w karcie chatu (tylko w trybie pełnego pipelinu).</td>
+      </tr>
+      <tr>
+        <td>suppressChat</td>
+        <td>boolean</td>
+        <td><code>false</code></td>
+        <td>Gdy <code>true</code> — wycisza raport bólu w chacie. Przydatne przy automatycznych tickach w skryptach. Działa tylko w trybie pełnego pipelinu.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- TRYBY -->
+  <h3 id="apply-damage-modes">Tryby działania</h3>
+  <p>Funkcja działa w jednym z dwóch trybów zależnie od tego, czy podano <code>penaltyOverride</code>:</p>
+
+  <div class="callout info">
+    <strong>Tryb pełnego pipelinu</strong> (domyślny, <code>penaltyOverride</code> nie ustawiony)<br>
+    Wywołuje <code>CombatHelper.applyDamageToActor()</code>. Kolejność:
+    <ol style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
+      <li>Uruchomienie hooka <code>preApplyDamage</code> (skrypty efektów mogą modyfikować typ/przebicie)</li>
+      <li>Redukcja pancerza (<code>reduceArmorDamageWithDetails</code>)</li>
+      <li>Uruchomienie hooka <code>applyDamage</code> (skrypty efektów mogą blokować/modyfikować rany)</li>
+      <li>Test odporności na ból (<code>processPainResistance</code>)</li>
+      <li>Zapis ran na aktora i raport w chacie</li>
+    </ol>
+  </div>
+
+  <div class="callout warning">
+    <strong>Tryb bezpośredni</strong> (<code>penaltyOverride</code> ustawiony na liczbę)<br>
+    Tworzy ranę bezpośrednio przez <code>actor.createEmbeddedDocuments("Item", [...])</code>.
+    Pomija pancerz, pomija test odporności na ból, pomija oba hooki skryptów.
+    Rana ma dokładnie podaną karę. Przydatne do ran środowiskowych (radiacja, trucizna, toksyny)
+    gdzie system nie powinien ingerować w wartość kary.
+  </div>
+
+  <!-- PRZYKŁADY -->
+  <h3 id="apply-damage-examples">Przykłady</h3>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 1 — prosta rana bez pancerza (rana środowiskowa)
+    </div>
+    <pre><code><span class="cmt">// Nakłada lekką ranę (L) bezpośrednio na aktora — pomija pancerz i testy</span>
+<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+  damage:          <span class="str">"L"</span>,
+  location:        <span class="str">"torso"</span>,
+  penaltyOverride: <span class="num">15</span>   <span class="cmt">// dokładnie -15%, żaden pancerz tego nie zmieni</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 2 — pełny pipeline (pancerz + odporność na ból)
+    </div>
+    <pre><code><span class="cmt">// Nakłada ciężką ranę (C) przez pełny pipeline — pancerz może zredukować</span>
+<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+  damage:   <span class="str">"C"</span>,
+  location: <span class="str">"head"</span>,
+  label:    <span class="str">"Eksplozja"</span>
+});</code></pre>
+    <p class="example-desc">
+      Pancerz na lokacji <code>head</code> zostanie sprawdzony i może obniżyć typ rany.
+      Raport odporności na ból pojawi się w chacie.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 3 — pomięcie pancerza (armorBypass)
+    </div>
+    <pre><code><span class="cmt">// Rana draśnięcia (D) — przebija pancerz w całości, pipeline aktywny</span>
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(token.actor, {
+  damage:      <span class="str">"D"</span>,
+  location:    <span class="str">"leftLeg"</span>,
+  armorBypass: <span class="kw">true</span>,
+  label:       <span class="str">"Trucizna nerwowa"</span>
+});</code></pre>
+    <p class="example-desc">
+      <code>armorBypass: true</code> ustawia wewnętrznie przebicie 9999 — pancerz nie redukuje rany.
+      Test odporności na ból nadal działa, a skrypty efektów (<code>preApplyDamage</code> / <code>applyDamage</code>) są uruchamiane.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 4 — wyciszony raport (suppressChat)
+    </div>
+    <pre><code><span class="cmt">// Tick obrażeń z toksyny — bez raportu w chacie, żeby nie zaśmiecać</span>
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+  damage:       <span class="str">"D"</span>,
+  location:     <span class="str">"torso"</span>,
+  suppressChat: <span class="kw">true</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 5 — siniak (bruise) z penaltyOverride
+    </div>
+    <pre><code><span class="cmt">// Siniak zamiast rany — nie zostawia trwałego śladu, ale daje karę</span>
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(token.actor, {
+  damage:          <span class="str">"sD"</span>,   <span class="cmt">// siniak draśnięcie</span>
+  location:        <span class="str">"torso"</span>,
+  penaltyOverride: <span class="num">5</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 6 — obrażenia ze sprawdzeniem warunku przed nałożeniem
+    </div>
+    <pre><code><span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+
+<span class="cmt">// Nałóż ranę tylko gdy postać nie ma odpowiedniego triku</span>
+<span class="kw">const</span> <span class="var">hasToughSkin</span> = actor.items.some(i =>
+  i.type === <span class="str">"trick"</span> && i.name === <span class="str">"Twarda Skóra"</span>
+);
+
+<span class="kw">if</span> (!hasToughSkin) {
+  <span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+    damage:   <span class="str">"D"</span>,
+    location: <span class="str">"torso"</span>,
+    label:    <span class="str">"Kolce Środowiska"</span>
+  });
+}</code></pre>
+  </div>
+
+  <div class="callout info">
+    <strong>Różnica względem radiation.applyWound():</strong> <code>applyDamage()</code> jest ogólną
+    funkcją do dowolnych ran z pełną kontrolą nad pipeline'em. <code>radiation.applyWound()</code>
+    jest specjalizowaną wersją dla ran radiacyjnych — tworzy rane z predefiniowaną nazwą i opcjonalnie
+    dodaje chorobę popromienną. Do radiacji używaj dedykowanego API, do pozostałych ran środowiskowych
+    i skryptowych — <code>applyDamage()</code>.
   </div>
 
 </section>

@@ -17,6 +17,16 @@
     <hr>
 
     <div class="form-group">
+        <label>{{localize "NEUROSHIMA.Settings.AllowRepeatedHealing.Name"}}</label>
+        <div class="form-fields">
+            <input type="checkbox" name="allowRepeatedHealing" {{#if config.allowRepeatedHealing}}checked{{/if}} />
+        </div>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.AllowRepeatedHealing.Hint"}}</p>
+    </div>
+
+    <hr>
+
+    <div class="form-group">
         <h3>{{localize "NEUROSHIMA.Settings.HealingConfig.DamageTypeDifficulties"}}</h3>
         <p class="help-text">{{localize "NEUROSHIMA.Settings.HealingConfig.DifficultyHelp"}}</p>
         

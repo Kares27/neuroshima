@@ -32,6 +32,7 @@ import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-di
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
 import { TraitBrowserApp } from "./module/apps/trait-browser.js";
+import { registerRadiationHooks } from "./module/region-behaviors/danger-zone.js";
 
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
@@ -254,7 +255,52 @@ Hooks.once('init', async function() {
             fixedDice: dice,
             isDebug: true,
             label: "Debug Attribute Roll"
-        })
+        }),
+        applyDamage: async (actor, config = {}) => {
+            const {
+                damage         = "L",
+                location       = "torso",
+                piercing       = 0,
+                armorBypass    = false,
+                penaltyOverride,
+                label,
+                suppressChat   = false
+            } = config;
+
+            if (penaltyOverride !== undefined && penaltyOverride !== null) {
+                const cfg     = NEUROSHIMA.woundConfiguration[damage] ?? {};
+                const penalty = Number(penaltyOverride);
+                await actor.createEmbeddedDocuments("Item", [{
+                    name: game.i18n.localize(cfg.fullLabel ?? "NEUROSHIMA.Items.Type.Wound"),
+                    type: "wound",
+                    system: {
+                        location,
+                        damageType:               damage,
+                        penalty,
+                        originalPenalty:          penalty,
+                        isActive:                 true,
+                        isHealing:                false,
+                        hadFirstAid:              false,
+                        healingAttempts:          0,
+                        failedFirstAidAttempts:   0,
+                        failedTreatmentAttempts:  0,
+                        firstAidHealingApplied:   0
+                    }
+                }]);
+                game.neuroshima?.log(`applyDamage | direct wound (${damage}, -${penalty}%) → ${actor.name} @ ${location}`);
+                return;
+            }
+
+            const attackData = {
+                damage,
+                piercing:   armorBypass ? 9999 : (Number(piercing) || 0),
+                isMelee:    false,
+                weaponType: null,
+                label:      label ?? "Script Damage"
+            };
+            game.neuroshima?.log(`applyDamage | pipeline (${damage}) → ${actor.name} @ ${location}`);
+            return CombatHelper.applyDamageToActor(actor, attackData, { location, suppressChat });
+        }
     });
 
     // Handlebars Helpers
@@ -302,6 +348,8 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["facilities"]        = FacilitiesData;
     CONFIG.Item.dataModels["container"]         = ContainerData;
 
+    registerRadiationHooks();
+
     CONFIG.Item.defaultIcons = CONFIG.Item.defaultIcons ?? {};
     CONFIG.Item.defaultIcons["weapon-mod"] = "systems/neuroshima/assets/img/modification-weapon.svg";
     CONFIG.Item.defaultIcons["facilities"] = "systems/neuroshima/assets/img/facilities.svg";
@@ -326,6 +374,22 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('meleeDieSelected', (list, index) => list?.includes(index));
     Handlebars.registerHelper('neuroshimaRollTooltip', (rollData) => {
         return NeuroshimaDice.buildRollTooltip(rollData);
+    });
+    Handlebars.registerHelper('nsItemPreviewTooltip', (img, name, weight, cost) => {
+        if (!img) return "";
+        const safeName = Handlebars.escapeExpression(name ?? "");
+        const safeImg  = Handlebars.escapeExpression(img);
+        const wNum = typeof weight === "number" ? weight : parseFloat(weight);
+        const cNum = typeof cost   === "number" ? cost   : parseFloat(cost);
+        const hasW = !isNaN(wNum);
+        const hasC = !isNaN(cNum);
+        let statsHtml = "";
+        if (hasW || hasC) {
+            const wChip = hasW ? `<span class='ns-tip-stat'><i class='fas fa-weight-hanging'></i> ${wNum} kg</span>` : "";
+            const cChip = hasC ? `<span class='ns-tip-stat'><i class='fas fa-coins'></i> ${cNum}</span>` : "";
+            statsHtml = `<div class='ns-item-preview-stats'>${wChip}${cChip}</div>`;
+        }
+        return `<div class='ns-item-preview'><div class='ns-item-preview-name'>${safeName}</div><img src='${safeImg}' />${statsHtml}</div>`;
     });
     Handlebars.registerHelper('neuroshimaDiceTooltip', (modifiedResults, target, skill) => {
         if (!modifiedResults?.length) return "";
@@ -912,6 +976,15 @@ Hooks.once('init', async function() {
                 console.log("Neuroshima | healingDifficulties changed:", value);
             }
         }
+    });
+
+    game.settings.register("neuroshima", "allowRepeatedHealing", {
+        name: "NEUROSHIMA.Settings.AllowRepeatedHealing.Name",
+        hint: "NEUROSHIMA.Settings.AllowRepeatedHealing.Hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
     });
 
     // Override CONFIG.statusEffects with conditions from settings
@@ -2695,3 +2768,4 @@ Hooks.once("item-piles-ready", () => {
         ]
     });
 });
+

@@ -25,7 +25,7 @@
 
     <div class="container-contents-list">
         {{#each containerContents as |entry|}}
-        <div class="container-item-row" data-item-id="{{entry.id}}" data-content-index="{{entry.legacyIndex}}">
+        <div class="container-item-row" data-item-id="{{entry.id}}" data-content-index="{{entry.legacyIndex}}" draggable="true">
             <img src="{{entry.img}}" alt="{{entry.name}}" class="container-item-img">
             <div class="container-item-info">
                 <span class="container-item-name">{{entry.name}}</span>

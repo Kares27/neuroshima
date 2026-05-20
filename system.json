@@ -78,6 +78,7 @@
         "weapon-mod",
         "armor-mod"
     ],
+    "documentTypes": {},
     "flags": {
         "hotReload": {
         "paths": ["templates", "styles", "lang", "scripts"]

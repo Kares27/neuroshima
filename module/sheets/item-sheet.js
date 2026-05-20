@@ -93,7 +93,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     if (item.type === "container" && data.type === "Item") {
       const sourceItem = await fromUuid(data.uuid);
       if (sourceItem) {
-        await this._addItemToContainer(sourceItem);
+        await this._addItemToContainer(sourceItem, { move: !event.ctrlKey });
         return;
       }
     }
@@ -565,7 +565,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
           }));
       } else {
         contents = Array.from(item.system.contents || []).map((e, idx) => ({
-          id: null,
+          id: e._id || null,
           legacyIndex: idx,
           name: e.name,
           img: e.img,
@@ -776,6 +776,51 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         el._dropBound = true;
         el.addEventListener("dragover", ev => ev.preventDefault());
         el.addEventListener("drop", ev => this._onDrop(ev));
+      }
+    }
+
+    if (item.type === "container") {
+      const contentsPart = this.element?.querySelector('[data-application-part="contents"]');
+      if (contentsPart && !contentsPart._dragBound) {
+        contentsPart._dragBound = true;
+        contentsPart.addEventListener("dragstart", (ev) => {
+          const row = ev.target.closest(".container-item-row");
+          if (!row) return;
+          const itemId = row.dataset.itemId;
+          let dragData;
+          if (item.actor && itemId) {
+            const actorItem = item.actor.items.get(itemId);
+            if (actorItem) dragData = { type: "Item", uuid: actorItem.uuid };
+          } else if (itemId) {
+            const entry = Array.from(item.system.contents || []).find(e => e._id === itemId);
+            if (entry?.itemData) {
+              const itemData = foundry.utils.deepClone(entry.itemData);
+              delete itemData._id;
+              dragData = { type: "Item", data: itemData };
+            }
+          }
+          if (!dragData) { ev.preventDefault(); return; }
+          ev.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+          this._pendingDrag = { entryId: itemId, ctrl: ev.ctrlKey };
+        });
+        contentsPart.addEventListener("dragend", async (ev) => {
+          const pending = this._pendingDrag;
+          this._pendingDrag = null;
+          if (!pending?.entryId) return;
+          if (ev.dataTransfer.dropEffect === "none") return;
+          if (pending.ctrl) return;
+          if (!item.actor) {
+            const contents = Array.from(item.system.contents || []);
+            const idx = contents.findIndex(e => e._id === pending.entryId);
+            if (idx >= 0) {
+              contents.splice(idx, 1);
+              await item.update({ "system.contents": contents });
+            }
+          } else {
+            const actorItem = item.actor.items.get(pending.entryId);
+            if (actorItem) await actorItem.unsetFlag("neuroshima", "containerId");
+          }
+        });
       }
     }
 
@@ -993,7 +1038,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     await uninstallMod(this.document, modId);
   }
 
-  async _addItemToContainer(sourceItem) {
+  async _addItemToContainer(sourceItem, { move = false } = {}) {
     const container = this.document;
     if (container.type !== "container") return;
     if (sourceItem.uuid === container.uuid) return;
@@ -1008,6 +1053,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         return;
       }
       const snapshot = {
+        _id: foundry.utils.randomID(),
         name: sourceItem.name,
         img: sourceItem.img || "systems/neuroshima/assets/img/backpack.svg",
         type: sourceItem.type,
@@ -1019,6 +1065,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       };
       contents.push(snapshot);
       await container.update({ "system.contents": contents });
+      if (move && !sourceItem.pack && !sourceItem.actor) {
+        await sourceItem.delete();
+      }
       return;
     }
 
@@ -1046,6 +1095,22 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const actor = container.actor;
 
     if (!actor) {
+      const itemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+      if (itemId) {
+        const contents = Array.from(container.system.contents || []);
+        const idx = contents.findIndex(e => e._id === itemId);
+        if (idx >= 0) {
+          const entry = contents[idx];
+          if (entry.itemData) {
+            const itemData = foundry.utils.deepClone(entry.itemData);
+            delete itemData._id;
+            await Item.create(itemData);
+          }
+          contents.splice(idx, 1);
+          await container.update({ "system.contents": contents });
+          return;
+        }
+      }
       const idx = parseInt(target.dataset.contentIndex ?? target.closest("[data-content-index]")?.dataset.contentIndex ?? "-1");
       if (idx < 0) return;
       const contents = Array.from(container.system.contents || []);
@@ -1065,7 +1130,22 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const container = this.document;
     if (container.type !== "container") return;
     const actor = container.actor;
-    if (!actor) return;
+
+    if (!actor) {
+      const entryId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+      if (!entryId) return;
+      const entry = Array.from(container.system.contents || []).find(e => e._id === entryId);
+      if (!entry) return;
+      if (entry.sourceUuid) {
+        try {
+          const sourceItem = await fromUuid(entry.sourceUuid);
+          if (sourceItem) { sourceItem.sheet.render(true); return; }
+        } catch {}
+      }
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Container.SourceNotFound"));
+      return;
+    }
+
     const childItemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
     if (!childItemId) return;
     const childItem = actor.items.get(childItemId);
@@ -1077,7 +1157,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const container = this.document;
     if (container.type !== "container") return;
     const actor = container.actor;
-    if (!actor) return;
+
+    if (!actor) {
+      const entryId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
+      if (!entryId) return;
+      const contents = Array.from(container.system.contents || []);
+      const idx = contents.findIndex(e => e._id === entryId);
+      if (idx < 0) return;
+      contents.splice(idx, 1);
+      await container.update({ "system.contents": contents });
+      return;
+    }
+
     const childItemId = target.dataset.itemId ?? target.closest("[data-item-id]")?.dataset.itemId;
     if (!childItemId) return;
     const childItem = actor.items.get(childItemId);
