@@ -1288,6 +1288,57 @@ export class NeuroshimaScript {
   }
 
   /**
+   * Deal damage to every armor location at once.
+   * Each location's damage is clamped individually so SP never drops below 0.
+   * @param {Item}   item
+   * @param {number} amount - Damage to apply to each location.
+   * @returns {Promise<Record<string,number>>} Map of location → new damage value.
+   *
+   * @example
+   * // Damage all locations by 1 (e.g. acid splash)
+   * await this.damageArmorAllLocations(armor, 1);
+   */
+  async damageArmorAllLocations(item, amount) {
+    if (!item) return {};
+    const updates = {};
+    const result  = {};
+    for (const loc of NeuroshimaScript.#ARMOR_LOCS) {
+      const current = item.system.armor.damage?.[loc] ?? 0;
+      const maxDmg  = item.system.armor.ratings?.[loc] ?? 0;
+      const next    = Math.min(maxDmg, current + Math.max(0, amount));
+      if (next !== current) updates[`system.armor.damage.${loc}`] = next;
+      result[loc] = next;
+    }
+    if (Object.keys(updates).length) await item.update(updates);
+    return result;
+  }
+
+  /**
+   * Repair every armor location at once.
+   * Each location's damage is clamped individually to [0, max].
+   * @param {Item}   item
+   * @param {number} amount - Amount to repair at each location.
+   * @returns {Promise<Record<string,number>>} Map of location → new damage value.
+   *
+   * @example
+   * // Full repair of all locations
+   * await this.repairArmorAllLocations(armor, 999);
+   */
+  async repairArmorAllLocations(item, amount) {
+    if (!item) return {};
+    const updates = {};
+    const result  = {};
+    for (const loc of NeuroshimaScript.#ARMOR_LOCS) {
+      const current = item.system.armor.damage?.[loc] ?? 0;
+      const next    = Math.max(0, current - Math.max(0, amount));
+      if (next !== current) updates[`system.armor.damage.${loc}`] = next;
+      result[loc] = next;
+    }
+    if (Object.keys(updates).length) await item.update(updates);
+    return result;
+  }
+
+  /**
    * Deal damage to armor durability (Wytrzymalosc).
    * Clamped to [0, max durability]; the remaining durability never goes below 0.
    * @param {Item}   item
@@ -2278,7 +2329,7 @@ export class NeuroshimaScript {
 /**
  * Manages and executes Neuroshima scripts stored as flags on ActiveEffects.
  *
- * Scripts are stored in flags.neuroshima.scripts as:
+ * Scripts are stored in system.scriptData as:
  * [{ trigger: string, label: string, code: string }]
  *
  * Available triggers:
@@ -2295,21 +2346,40 @@ export class NeuroshimaScript {
  *                    Use: directly modify actor.system.* values
  *
  * preRollTest      — Pre-Roll Test: runs BEFORE any skill/attribute roll, can cancel or auto-succeed it
- *                    args: { actor, stat, skill, skillBonus, attributeBonus,
- *                            penalties: {mod, wounds, armor, base, disease},
- *                            label, attributeKey, skillKey, autoSuccess, cancelled,
- *                            annotations: string[], options }
- *                    Use: set args.autoSuccess = true             → skip roll, count as success
- *                         set args.cancelled = true              → abort the roll entirely
+ *                    args.test                      — the entire test object
+ *                    args.test.actor                — the rolling actor
+ *                    args.test.attribute            — { key, value, name } or null for attribute-only rolls
+ *                    args.test.skill                — { key, value, name } or null if no skill
+ *                    args.test.item                 — item used (if any, from options.item)
+ *                    args.test.preData.penalties    — { mod, wounds, armor, base, disease } (mutable)
+ *                    args.test.preData.skillBonus   — extra skill bonus (mutable)
+ *                    args.test.preData.attributeBonus — extra attribute bonus (mutable)
+ *                    args.test.preData.autoSuccess  — set true → skip roll, count as success
+ *                    args.test.preData.cancelled    — set true → abort the roll entirely
+ *                    args.test.preData.annotations  — string[] shown in chat
+ *                    args.test.context.attributeKey — raw attribute key string
+ *                    args.test.context.skillKey     — raw skill key string
+ *                    Use: args.test.preData.autoSuccess = true   → skip roll, count as success
+ *                         args.test.preData.cancelled = true     → abort the roll entirely
  *                         this.addAnnotation("text")             → custom annotation shown in chat
- *                         args.penalties.mod -= 20               → reduce total penalty by 20%
- *                         args.stat += 2                         → boost attribute value
+ *                         args.test.preData.penalties.mod -= 20  → reduce total penalty by 20%
+ *                         args.test.attribute.value += 2         → boost attribute value
+ *                         args.test.skill.value += 1             → boost skill rank
  *
  * rollTest         — Roll Test (post-roll): runs AFTER dice have been rolled (not called if cancelled/autoSuccess)
- *                    args: { actor, rollData, isSuccess, successCount, roll,
- *                            label, attributeKey, skillKey, annotations: string[], options }
- *                    rollData — full roll result object (read-only)
- *                    roll     — the Foundry Roll object (read-only)
+ *                    args.test                          — the entire test object
+ *                    args.test.actor                    — the rolling actor
+ *                    args.test.attribute                — { key, value, name } or null
+ *                    args.test.skill                    — { key, value, name } or null
+ *                    args.test.item                     — item used (if any)
+ *                    args.test.result.rollData          — full roll result object (read-only)
+ *                    args.test.result.isSuccess         — boolean (read-only)
+ *                    args.test.result.successCount      — number of successes (read-only)
+ *                    args.test.result.roll              — the Foundry Roll object (read-only)
+ *                    args.test.result.annotations       — string[] (push to add annotations)
+ *                    args.test.context.label            — roll label
+ *                    args.test.context.attributeKey     — raw attribute key string
+ *                    args.test.context.skillKey         — raw skill key string
  *                    Use: react to success/failure, add chat annotations, apply conditions
  *                         this.addAnnotation("text")             → shown under roll result in chat
  *
@@ -3141,7 +3211,7 @@ export class NeuroshimaScriptRunner {
       return;
     }
 
-    const effectScripts = effect.getFlag("neuroshima", "scripts") || [];
+    const effectScripts = effect.system?.scriptData ?? [];
     const scriptData = effectScripts[scriptIndex];
     if (!scriptData || scriptData.trigger !== "manual") return;
     game.neuroshima?.log?.(`[manual] fired`, { _actor: resolvedActor.name, effect: effect.name, label: scriptData.label ?? "" });
@@ -3157,9 +3227,17 @@ export class NeuroshimaScriptRunner {
    */
   static async runPreRollTest(actor, rollArgs) {
     if (!actor) return { autoSuccess: false, cancelled: false };
-    const args = { ...rollArgs, autoSuccess: false, cancelled: false };
-    await this.execute("preRollTest", args);
-    return { autoSuccess: !!args.autoSuccess, cancelled: !!args.cancelled };
+    const { stat, skill, skillBonus = 0, attributeBonus = 0, penalties = {}, label = "", attributeKey = null, skillKey = null, options = {} } = rollArgs;
+    const test = {
+      actor,
+      attribute: attributeKey ? { key: attributeKey, value: stat, name: game.i18n.localize(`NEUROSHIMA.attributes.${attributeKey}`) || attributeKey } : null,
+      skill: skillKey ? { key: skillKey, value: skill, name: game.i18n.localize(`NEUROSHIMA.skills.${skillKey}`) || skillKey } : null,
+      item: options.item ?? null,
+      preData: { penalties: { ...penalties }, skillBonus, attributeBonus, label, autoSuccess: false, cancelled: false, annotations: [] },
+      context: { attributeKey, skillKey, options },
+    };
+    await this.execute("preRollTest", { test });
+    return { autoSuccess: !!test.preData.autoSuccess, cancelled: !!test.preData.cancelled };
   }
 
   static DIFFICULTY_ORDER = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];

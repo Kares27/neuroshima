@@ -403,6 +403,47 @@
                 "Name": "Tryb debugowania",
                 "Hint": "Włącza dodatkowe logi w konsoli deweloperskiej dla celów diagnostycznych."
             },
+            "CustomGearTypes": {
+                "Name": "Własne podtypy ekwipunku",
+                "Hint": "Konfiguruj własne podtypy ekwipunku — trafiają automatycznie do kategorii Item Piles i dropdownu w karcie przedmiotu.",
+                "Label": "Własne podtypy ekwipunku",
+                "Title": "Własne podtypy ekwipunku",
+                "Saved": "Własne podtypy ekwipunku zostały zapisane.",
+                "AddType": "Dodaj podtyp",
+                "TypeName": "Nazwa podtypu",
+                "TypePlaceholder": "np. Tarcze",
+                "Empty": "Brak własnych podtypów. Kliknij \"Dodaj podtyp\" aby dodać."
+            },
+            "CurrencyGearConfig": {
+                "Label": "Waluty i podtypy ekwipunku",
+                "Title": "Waluty i podtypy ekwipunku",
+                "MenuHint": "Konfiguruj waluty twórzone na aktorach oraz niestandardowe podtypy i modyfikatory cen ekwipunku.",
+                "Saved": "Ustawienia walut i podtypów zostały zapisane.",
+                "CurrenciesHeader": "Waluty",
+                "CurrenciesHint": "Waluty dodawane automatycznie każdemu nowemu aktorowi. Pole 'Skrót' używa {#} jako miejsca na kwotę (np. {#}G = 10G).",
+                "AddCurrency": "Dodaj walutę",
+                "CurrencyNameLabel": "Nazwa wyświetlana waluty (nagłówek)",
+                "CurrencyValueLabel": "Nazwa waluty w etykiecie wartości",
+                "CurrenciesEmpty": "Brak walut — zostanie użyta domyślna (Gamble).",
+                "ColName": "Nazwa",
+                "ColAbbr": "Skrót ({#})",
+                "ColImg": "Ikona (ścieżka)",
+                "ColCoinVal": "Wartość",
+                "ColExchRate": "Kurs",
+                "ColPrimary": "Główna",
+                "GearTypesHeader": "Podtypy ekwipunku i modyfikatory cen",
+                "GearTypesHint": "Wbudowane podtypy — ustaw mnożnik ceny kupna (×) i sprzedaży (×). Własne podtypy dodaj poniżej.",
+                "AddGearType": "Dodaj własny podtyp",
+                "ColGearType": "Podtyp",
+                "ColBuy": "Zakup ×",
+                "ColSell": "Sprzedaż ×",
+                "CustomTypePlaceholder": "np. Tarcze",
+                "CustomTypesEmpty": "Brak własnych podtypów. Kliknij powyżej aby dodać."
+            },
+            "GearTypePriceModifiers": {
+                "Name": "Modyfikatory cen według kategorii ekwipunku",
+                "Hint": "JSON: mapowanie kategorii ekwipunku (gearType) na mnożniki ceny kupna/sprzedaży."
+            },
             "RequireBuildOnItems": {
                 "Name": "Wymagaj budowy na broni i pancerzach",
                 "Hint": "Określa czy system ma sprawdzać wymóg budowy dla broni i pancerzy."
@@ -1046,7 +1087,11 @@
                 "Description": "Opis",
                 "Equipped": "Założone",
                 "EquippedAbbr": "Dobycie",
+                "TypeAbbr": "Typ",
+                "Equip": "Załóż",
+                "Unequip": "Zdejmij",
                 "IsEquipable": "Można założyć",
+                "GearType": "Typ ekwipunku",
                 "Damage": "Obrażenia",
                 "Speed": "Prędkość",
                 "Range": "Zasięg",
@@ -1111,8 +1156,11 @@
                 "OverridePiercing": "Nadpisz przebicie",
                 "OverrideJamming": "Nadpisz zacięcie",
                 "Availability": "Dostępność",
-                "AvailabilityAbbr": "Dost.",
-                "CoinValue": "Wartość w Gamblach"
+                "AvailabilityAbbr": "Dostępność",
+                "CoinValue": "Wartość w Gamblach",
+                "CoinValueIn": "Wartość w",
+                "JammedClear": "Usuń zacięcie",
+                "IsWearable": "Można założyć"
             }
         },
         "Mods": {
@@ -1826,6 +1874,23 @@
             "Lock": "Zamknij pojemnik",
             "Unlock": "Odblokuj pojemnik",
             "SourceNotFound": "Nie można edytować: przedmiot źródłowy nie został znaleziony."
+        },
+        "GearType": {
+            "food":          "Jedzenie i woda",
+            "medicine":      "Leki i medycyna",
+            "clothing":      "Ubrania",
+            "tools":         "Narzędzia",
+            "survival":      "Przetrwanie",
+            "camping":       "Obóz i schronienie",
+            "electronics":   "Elektronika",
+            "communication": "Łączność",
+            "documents":     "Dokumenty i informacje",
+            "fuel":          "Paliwo i energia",
+            "materials":     "Materiały i części",
+            "chemicals":     "Chemikalia",
+            "services":      "Usługi",
+            "luxury":        "Towary luksusowe",
+            "misc":          "Inne"
         }
     },
     "RadiationWound": {

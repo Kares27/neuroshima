@@ -913,18 +913,37 @@ export class NeuroshimaDice {
 
     const testAnnotations = [];
     if (actor && !isReroll && !isDebug) {
-        const preArgs = { actor, stat, skill, skillBonus, attributeBonus, penalties: { ...penalties }, label, attributeKey, skillKey, autoSuccess: false, cancelled: false, annotations: testAnnotations, options };
-        await NeuroshimaScriptRunner.execute("preRollTest", preArgs);
-        if (preArgs.cancelled) {
+        const test = {
+            actor,
+            attribute: attributeKey ? { key: attributeKey, value: stat, name: game.i18n.localize(`NEUROSHIMA.attributes.${attributeKey}`) || attributeKey } : null,
+            skill: skillKey ? { key: skillKey, value: skill, name: game.i18n.localize(`NEUROSHIMA.skills.${skillKey}`) || skillKey } : null,
+            item: options.item ?? null,
+            preData: {
+                penalties: { ...penalties },
+                skillBonus,
+                attributeBonus,
+                label,
+                autoSuccess: false,
+                cancelled: false,
+                annotations: testAnnotations,
+            },
+            context: {
+                attributeKey,
+                skillKey,
+                options,
+            },
+        };
+        await NeuroshimaScriptRunner.execute("preRollTest", { test });
+        if (test.preData.cancelled) {
             game.neuroshima.log("rollTest cancelled by preRollTest script");
             game.neuroshima.groupEnd();
             return null;
         }
-        if (preArgs.autoSuccess) {
+        if (test.preData.autoSuccess) {
             game.neuroshima.log("rollTest auto-success by preRollTest script");
             game.neuroshima.groupEnd();
             if (chatMessage) {
-                const autoMsg = preArgs.annotation || game.i18n.localize("NEUROSHIMA.Scripts.AutoSuccess");
+                const autoMsg = test.preData.annotation || game.i18n.localize("NEUROSHIMA.Scripts.AutoSuccess");
                 await ChatMessage.create({
                     content: `<div class="neuroshima roll-result"><strong>${label}</strong>: ${autoMsg}</div>`,
                     speaker: actor ? ChatMessage.getSpeaker({ actor }) : ChatMessage.getSpeaker()
@@ -932,11 +951,11 @@ export class NeuroshimaDice {
             }
             return { autoSuccess: true, successes: 1, cancelled: false };
         }
-        stat = preArgs.stat ?? stat;
-        skill = preArgs.skill ?? skill;
-        skillBonus = preArgs.skillBonus ?? skillBonus;
-        attributeBonus = preArgs.attributeBonus ?? attributeBonus;
-        penalties = preArgs.penalties ?? penalties;
+        stat = test.attribute?.value ?? stat;
+        skill = test.skill?.value ?? skill;
+        skillBonus = test.preData.skillBonus ?? skillBonus;
+        attributeBonus = test.preData.attributeBonus ?? attributeBonus;
+        penalties = test.preData.penalties ?? penalties;
     }
     
     // Check whether the actor has a pending opposed test (Defense)
@@ -1059,19 +1078,26 @@ export class NeuroshimaDice {
     game.neuroshima.groupEnd();
 
     if (actor && !isReroll && !isDebug) {
-        const postArgs = {
+        const test = {
             actor,
-            rollData,
-            isSuccess: rollData.success ?? false,
-            successCount: rollData.successCount ?? 0,
-            roll,
-            label,
-            attributeKey,
-            skillKey,
-            annotations: testAnnotations,
-            options
+            attribute: attributeKey ? { key: attributeKey, value: rollData.stat, name: game.i18n.localize(`NEUROSHIMA.attributes.${attributeKey}`) || attributeKey } : null,
+            skill: skillKey ? { key: skillKey, value: rollData.baseSkill ?? skill, name: game.i18n.localize(`NEUROSHIMA.skills.${skillKey}`) || skillKey } : null,
+            item: options.item ?? null,
+            result: {
+                rollData,
+                isSuccess: rollData.success ?? false,
+                successCount: rollData.successCount ?? 0,
+                roll,
+                annotations: testAnnotations,
+            },
+            context: {
+                label,
+                attributeKey,
+                skillKey,
+                options,
+            },
         };
-        await NeuroshimaScriptRunner.execute("rollTest", postArgs);
+        await NeuroshimaScriptRunner.execute("rollTest", { test });
 
         if (resultCallback) {
             await resultCallback({ isSuccess: rollData.success ?? false, successes: rollData.successCount ?? 0, rollData, actor });
@@ -2484,20 +2510,23 @@ export class NeuroshimaDice {
   /**
    * Apply a wound directly to an actor, bypassing pain resistance tests.
    * Creates a wound item on the actor immediately.
-   * Useful for scripted effects like Bleeding that deal automatic damage.
+   * Useful for scripted effects like Bleeding, radiation, or other automatic damage.
    *
    * @param {Actor}  actor
    * @param {Object} options
-   * @param {string} options.damageType  - Wound type: "D", "L", "C", "K", "sD", "sL", "sC", "sK"
-   * @param {string} [options.location]  - Hit location key (e.g. "torso", "head"). Defaults to "torso".
-   * @param {string} [options.source]    - Description displayed in the wound's description field.
+   * @param {string} options.damageType      - Wound type: "D", "L", "C", "K", "sD", "sL", "sC", "sK"
+   * @param {string} [options.location]      - Hit location key (e.g. "torso", "head", "inne"). Defaults to "torso".
+   * @param {string} [options.source]        - Description displayed in the wound's description field.
+   * @param {string} [options.nameOverride]  - Override the auto-generated wound name.
+   * @param {number} [options.penaltyOverride] - Override the penalty value from config.
+   * @param {Object} [options.additionalSystem] - Extra system fields merged into the wound document.
    * @returns {Promise<Item>}
    */
-  static async applyWound(actor, { damageType = "L", location = "torso", source = "" } = {}) {
+  static async applyWound(actor, { damageType = "L", location = "torso", source = "", nameOverride, penaltyOverride, additionalSystem = {} } = {}) {
     const NEUROSHIMA = game.neuroshima?.config ?? {};
     const woundConfig = NEUROSHIMA.woundConfiguration?.[damageType] ?? {};
-    const penalty = woundConfig?.penalties?.[0] ?? 20;
-    const name = game.i18n.localize(`NEUROSHIMA.DamageType.${damageType}`) || damageType;
+    const penalty = penaltyOverride ?? woundConfig?.penalties?.[0] ?? 20;
+    const name = nameOverride ?? (game.i18n.localize(`NEUROSHIMA.DamageType.${damageType}`) || damageType);
     const [created] = await actor.createEmbeddedDocuments("Item", [{
       name,
       type: "wound",
@@ -2507,7 +2536,8 @@ export class NeuroshimaDice {
         penalty,
         isActive: true,
         isHealing: false,
-        description: source
+        description: source,
+        ...additionalSystem
       }
     }]);
     return created;

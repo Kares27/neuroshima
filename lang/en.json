@@ -400,6 +400,47 @@
                 "Name": "Debug Mode",
                 "Hint": "Enables additional logs in the developer console for diagnostic purposes."
             },
+            "CustomGearTypes": {
+                "Name": "Custom Gear Subtypes",
+                "Hint": "Configure custom gear subtypes — they appear automatically in the Item Piles category dropdown and in the item sheet.",
+                "Label": "Custom Gear Subtypes",
+                "Title": "Custom Gear Subtypes",
+                "Saved": "Custom gear subtypes saved.",
+                "AddType": "Add Subtype",
+                "TypeName": "Subtype Name",
+                "TypePlaceholder": "e.g. Shields",
+                "Empty": "No custom subtypes. Click \"Add Subtype\" to add one."
+            },
+            "CurrencyGearConfig": {
+                "Label": "Currencies & Gear Subtypes",
+                "Title": "Currencies & Gear Subtypes",
+                "MenuHint": "Configure currencies created on new actors, and custom gear subtypes with price modifiers.",
+                "Saved": "Currency and gear subtype settings saved.",
+                "CurrenciesHeader": "Currencies",
+                "CurrenciesHint": "Currencies added automatically to each new actor. The 'Abbreviation' field uses {#} as the amount placeholder (e.g. {#}G = 10G).",
+                "AddCurrency": "Add Currency",
+                "CurrencyNameLabel": "Currency display name (header)",
+                "CurrencyValueLabel": "Currency name in value label",
+                "CurrenciesEmpty": "No currencies — the default (Gamble) will be used.",
+                "ColName": "Name",
+                "ColAbbr": "Abbreviation ({#})",
+                "ColImg": "Icon (path)",
+                "ColCoinVal": "Value",
+                "ColExchRate": "Rate",
+                "ColPrimary": "Primary",
+                "GearTypesHeader": "Gear Subtypes & Price Modifiers",
+                "GearTypesHint": "Built-in subtypes — set buy (×) and sell (×) price multipliers. Add custom subtypes below.",
+                "AddGearType": "Add Custom Subtype",
+                "ColGearType": "Subtype",
+                "ColBuy": "Buy ×",
+                "ColSell": "Sell ×",
+                "CustomTypePlaceholder": "e.g. Shields",
+                "CustomTypesEmpty": "No custom subtypes. Click above to add one."
+            },
+            "GearTypePriceModifiers": {
+                "Name": "Gear Category Price Modifiers",
+                "Hint": "JSON: mapping of gear category (gearType) keys to buy/sell price multipliers."
+            },
             "RequireBuildOnItems": {
                 "Name": "Require build on weapons and armors",
                 "Hint": "Determines if the system should check build requirement for weapons and armors."
@@ -1022,7 +1063,11 @@
                 "Description": "Description",
                 "Equipped": "Equipped",
                 "EquippedAbbr": "Equipped",
+                "TypeAbbr": "Type",
+                "Equip": "Equip",
+                "Unequip": "Unequip",
                 "IsEquipable": "Is Equipable",
+                "GearType": "Gear Type",
                 "Damage": "Damage",
                 "Speed": "Speed",
                 "Range": "Range",
@@ -1088,7 +1133,10 @@
                 "OverrideJamming": "Override jamming",
                 "Availability": "Availability",
                 "AvailabilityAbbr": "Avail.",
-                "CoinValue": "Gamble Value"
+                "CoinValue": "Gamble Value",
+                "CoinValueIn": "Value in",
+                "JammedClear": "Clear jam",
+                "IsWearable": "Wearable"
             }
         },
         "Mods": {
@@ -1793,6 +1841,23 @@
             "Lock": "Lock container",
             "Unlock": "Unlock container",
             "SourceNotFound": "Cannot edit: source item not found."
+        },
+        "GearType": {
+            "food":          "Food and Water",
+            "medicine":      "Medicine",
+            "clothing":      "Clothing",
+            "tools":         "Tools",
+            "survival":      "Survival",
+            "camping":       "Camp and Shelter",
+            "electronics":   "Electronics",
+            "communication": "Communication",
+            "documents":     "Documents and Information",
+            "fuel":          "Fuel and Energy",
+            "materials":     "Materials and Parts",
+            "chemicals":     "Chemicals",
+            "services":      "Services",
+            "luxury":        "Luxury Goods",
+            "misc":          "Miscellaneous"
         }
     },
     "RadiationWound": {

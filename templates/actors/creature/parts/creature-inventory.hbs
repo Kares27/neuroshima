@@ -280,7 +280,8 @@
     <section class="inventory-section">
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.Gear"}}</span>
-            <div class="item-stat equipped"></div>
+            <div class="item-stat gear-type text-center">{{localize "NEUROSHIMA.Items.Fields.TypeAbbr"}}</div>
+            {{#if inventory.hasWearableGear}}<div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>{{/if}}
             <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
             <div class="item-controls">
                 <a class="item-control" data-action="createItem" data-type="gear" title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
@@ -295,7 +296,18 @@
                             <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary"></div>
                             <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
                         </div>
-                        <div class="item-stat equipped"></div>
+                        <div class="item-stat gear-type text-center">
+                            {{#unless (eq item.system.gearType "misc")}}<span class="gear-type-badge">{{nsGearTypeLabel item.system.gearType}}</span>{{/unless}}
+                        </div>
+                        {{#if ../inventory.hasWearableGear}}
+                        <div class="item-stat equipped text-center">
+                            {{#if item.system.isWearable}}
+                            <a class="item-control toggle-equipped" data-action="toggleEquipped" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                                <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
+                            </a>
+                            {{/if}}
+                        </div>
+                        {{/if}}
                         <div class="item-stat quantity quantity-controls">
                             <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
                         </div>
@@ -320,7 +332,8 @@
                     <div class="item-summary collapsed">
                         <div class="item-stats-summary">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
-                            <span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}</span><span class="stat-chip-value">{{item.system.coinValue}}</span></span>
+                            {{#unless (eq item.system.gearType "misc")}}<span class="gear-type-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.GearType"}}</span><span class="stat-chip-value">{{nsGearTypeLabel item.system.gearType}}</span></span>{{/unless}}
+                            {{#if item.system.cost}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Cost"}}</span><span class="stat-chip-value">{{item.system.cost}}</span></span>{{/if}}
                         </div>
                         <div class="item-resources-wrapper">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>

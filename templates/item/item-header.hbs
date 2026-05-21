@@ -5,7 +5,7 @@
     </div>
     <div class="header-details">
         <div class="item-subtitle">
-            <h4 class="item-type">{{localize typeLabel}}</h4>
+            <h4 class="item-type">{{localize typeLabel}}{{#if gearTypeLabel}} — <span class="item-gear-type-label">{{gearTypeLabel}}</span>{{/if}}</h4>
             {{#unless (or isNonCountable (eq item.type "container"))}}
             <div class="item-qty">
                 <input type="number" name="system.quantity" value="{{system.quantity}}" data-dtype="Number" title="{{localize 'NEUROSHIMA.Items.Fields.Quantity'}}"/>
@@ -36,27 +36,16 @@
                 <input type="number" name="system.cost" value="{{#if isModded}}{{effectiveCost}}{{else}}{{system.cost}}{{/if}}" data-dtype="Number" {{#if isModded}}disabled title="Bazowo: {{system.cost}}"{{/if}}/>
             </div>
             {{/unless}}
-            {{#unless (eq system.equipped undefined)}}
-            <div class="form-group checkbox row-group">
-                <label>{{localize "NEUROSHIMA.Items.Fields.Equipped"}}</label>
-                <input type="checkbox" name="system.equipped" {{checked system.equipped}}/>
-            </div>
-            {{/unless}}
+
             {{#unless (eq item.type "money")}}
             <div class="form-group row-group">
                 <label title="{{localize 'NEUROSHIMA.Items.Fields.Availability'}}">{{localize "NEUROSHIMA.Items.Fields.AvailabilityAbbr"}}</label>
-                <input type="number" name="system.availability" value="{{system.availability}}" min="0" max="100" data-dtype="Number"/>
-                <span class="availability-pct">%</span>
+                <div class="availability-input-row">
+                    <input type="number" name="system.availability" value="{{system.availability}}" min="0" max="100" data-dtype="Number"/>
+                    <span class="availability-pct">%</span>
+                </div>
             </div>
             {{/unless}}
-            {{#if canUnjam}}
-            {{#if isJammedWeapon}}
-            <div class="form-group checkbox row-group">
-                <label>{{localize "NEUROSHIMA.Items.Fields.Jammed"}}</label>
-                <input type="checkbox" name="system.jammed" {{checked system.jammed}}/>
-            </div>
-            {{/if}}
-            {{/if}}
             {{/unless}}
             {{#if (eq item.type "wound")}}
             <div class="form-group checkbox row-group">

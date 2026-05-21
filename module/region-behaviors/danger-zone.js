@@ -51,25 +51,24 @@ async function _applyRadiationWound(actor, config) {
     const nameKey      = damageType === "L"
         ? "NEUROSHIMA.RadiationWound.Heavy"
         : "NEUROSHIMA.RadiationWound.Light";
-    const name = game.i18n.localize(nameKey);
+    const nameOverride = game.i18n.localize(nameKey);
 
-    await actor.createEmbeddedDocuments("Item", [{
-        name,
-        type: "wound",
-        system: {
-            location: "inne",
-            damageType,
-            penalty,
+    const { NeuroshimaDice } = game.neuroshima;
+    await NeuroshimaDice.applyWound(actor, {
+        damageType,
+        location: "inne",
+        source: nameOverride,
+        nameOverride,
+        penaltyOverride: penalty,
+        additionalSystem: {
             originalPenalty: penalty,
-            isActive: true,
-            isHealing: false,
             hadFirstAid: false,
             healingAttempts: 0,
             failedFirstAidAttempts: 0,
             failedTreatmentAttempts: 0,
             firstAidHealingApplied: 0
         }
-    }]);
+    });
 
     game.neuroshima?.log(`Radiation | Wound (${damageType}, -${penalty}%) applied to ${actor.name} [level ${config.level ?? "?"}]`);
 

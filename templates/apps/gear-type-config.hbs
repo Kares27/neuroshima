@@ -1,0 +1,34 @@
+<div class="standard-form">
+
+    <div class="gear-type-add-top">
+        <a class="item-control" data-action="addGearTypeRow">
+            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.CustomGearTypes.AddType"}}
+        </a>
+    </div>
+
+    <div class="gear-type-scroll">
+        <div class="gear-type-header">
+            <span>{{localize "NEUROSHIMA.Settings.CustomGearTypes.TypeName"}}</span>
+            <span></span>
+        </div>
+        {{#each entries}}
+        <div class="gear-type-row">
+            <input type="text" name="entry.{{@index}}" value="{{this}}" placeholder="{{localize "NEUROSHIMA.Settings.CustomGearTypes.TypePlaceholder"}}"/>
+            <a class="item-control" data-action="deleteGearTypeRow" data-index="{{@index}}" title="{{localize 'Delete'}}">
+                <i class="fas fa-trash"></i>
+            </a>
+        </div>
+        {{/each}}
+        {{#unless entries.length}}
+        <p class="gear-type-empty">{{localize "NEUROSHIMA.Settings.CustomGearTypes.Empty"}}</p>
+        {{/unless}}
+    </div>
+
+    <footer class="form-footer">
+        <button type="submit">
+            <i class="fas fa-save"></i>
+            <span>{{localize "NEUROSHIMA.Actions.Save"}}</span>
+        </button>
+    </footer>
+
+</div>

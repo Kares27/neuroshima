@@ -17,7 +17,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
   get scripts() {
     if (!this._scripts) {
-      const scriptData = this.getFlag("neuroshima", "scripts") || [];
+      const scriptData = this.system?.scriptData ?? [];
       this._scripts = scriptData.map(s => new NeuroshimaScript(s, this));
     }
     return this._scripts;
@@ -367,5 +367,27 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     if (!uuid) return null;
     const doc = fromUuidSync(uuid);
     return doc ?? null;
+  }
+}
+
+export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      scriptData: new fields.ArrayField(
+        new fields.SchemaField({
+          trigger:          new fields.StringField({ initial: "manual",  blank: true }),
+          label:            new fields.StringField({ initial: "",        blank: true }),
+          code:             new fields.StringField({ initial: "",        blank: true }),
+          hideScript:       new fields.StringField({ initial: "",        blank: true }),
+          activateScript:   new fields.StringField({ initial: "",        blank: true }),
+          submissionScript: new fields.StringField({ initial: "",        blank: true }),
+          runIfDisabled:    new fields.BooleanField({ initial: false }),
+          targeter:         new fields.BooleanField({ initial: false }),
+          defendingAgainst: new fields.BooleanField({ initial: false }),
+        }),
+        { initial: [] }
+      ),
+    };
   }
 }

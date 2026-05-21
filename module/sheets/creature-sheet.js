@@ -711,6 +711,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       weaponsThrown:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       armor:          armorItems,
       gear:           topItems.filter(i => i.type === "gear"),
+      hasWearableGear: topItems.some(i => i.type === "gear" && i.system.isWearable),
       ammo:           topItems.filter(i => i.type === "ammo"),
       magazines:      topItems.filter(i => i.type === "magazine").map(m => {
         m.contentsReversed = [...(m.system.contents || [])].reverse();
@@ -922,7 +923,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       const scripts = [];
       for (const eff of (item.effects ?? [])) {
         if (eff.disabled) continue;
-        const flags = eff.getFlag?.("neuroshima", "scripts") ?? [];
+        const flags = eff.system?.scriptData ?? [];
         flags.forEach((s, idx) => {
           if (s.trigger === "manual") {
             const rawLabel = s.label || eff.name;

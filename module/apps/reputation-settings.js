@@ -96,6 +96,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
 
         this._pendingState = null;
         ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.ReputationConfig.Saved"));
+        SettingsConfig.reloadConfirm();
     }
 
     _extractRelationTable(data) {
@@ -142,16 +143,32 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         };
     }
 
+    async _onRender(context, options) {
+        await super._onRender(context, options);
+        if (this._pendingScrollTop !== undefined) {
+            const pendingTop = this._pendingScrollTop;
+            this._pendingScrollTop = undefined;
+            requestAnimationFrame(() => {
+                const scroll = this.element?.querySelector(".rep-relation-scroll");
+                if (scroll) scroll.scrollTop = pendingTop;
+            });
+        }
+    }
+
     async _onAddGlobalRelationRow(event, target) {
+        const scroll = this.element?.querySelector(".rep-relation-scroll");
         const state = this._captureFormState();
         state.relationTable.push({ minVal: 0, maxVal: 0, name: "", color: "" });
         this._pendingState = state;
+        this._pendingScrollTop = scroll ? scroll.scrollHeight : undefined;
         this.render();
     }
 
     async _onDeleteGlobalRelationRow(event, target) {
         const idx = parseInt(target.dataset.index ?? "-1");
         if (idx < 0) return;
+        const scroll = this.element?.querySelector(".rep-relation-scroll");
+        this._pendingScrollTop = scroll?.scrollTop ?? 0;
         const state = this._captureFormState();
         state.relationTable.splice(idx, 1);
         this._pendingState = state;

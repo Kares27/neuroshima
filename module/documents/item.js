@@ -9,7 +9,7 @@ export class NeuroshimaItem extends Item {
       ammo: "systems/neuroshima/assets/img/ammo.svg",
       magazine: "systems/neuroshima/assets/img/magazine.svg",
       armor: "systems/neuroshima/assets/img/armor.svg",
-      gear: "icons/svg/item-bag.svg",
+      gear: "systems/neuroshima/assets/img/swap-bag.svg",
       trick: "systems/neuroshima/assets/img/trick.svg",
       weapon: "systems/neuroshima/assets/img/weapon-melee.svg",
       wound: "systems/neuroshima/assets/img/wound.svg",
@@ -41,7 +41,7 @@ export class NeuroshimaItem extends Item {
 
     // Apply default icon if none is set or the generic bag fallback is used
     if (!data.img || data.img === "icons/svg/item-bag.svg") {
-      updates.img = icons[data.type] || "icons/svg/item-bag.svg";
+      updates.img = icons[data.type] || "systems/neuroshima/assets/img/swap-bag.svg";
     }
 
     // Apply localized type name when the item has a generic or empty name
@@ -96,7 +96,7 @@ export class NeuroshimaItem extends Item {
         
         // Update the icon to match the chosen weapon type if still on the default
         const currentImg = this.img;
-        if (!currentImg || currentImg === "icons/svg/item-bag.svg" || currentImg === "systems/neuroshima/assets/img/weapon-melee.svg") {
+        if (!currentImg || currentImg === "icons/svg/item-bag.svg" || currentImg === "systems/neuroshima/assets/img/swap-bag.svg" || currentImg === "systems/neuroshima/assets/img/weapon-melee.svg") {
             if (weaponType === "ranged") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-ranged.svg";
             else if (weaponType === "thrown") weaponUpdates.img = "systems/neuroshima/assets/img/weapon-throwable.svg";
             else if (weaponType === "grenade") weaponUpdates.img = "systems/neuroshima/assets/img/grenade.svg";
@@ -137,6 +137,7 @@ export class NeuroshimaItem extends Item {
   /** @override */
   prepareDerivedData() {
     super.prepareDerivedData();
+    this.pileCategory = this.type === "gear" ? ("\uFFFF" + (this.system?.gearType ?? "misc")) : this.type;
     const system = this.system;
     
     if ("weight" in system && "quantity" in system) {

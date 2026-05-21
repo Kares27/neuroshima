@@ -105,9 +105,11 @@ function createSyntheticConditionEffect(condDef, saveCallback) {
     changes:     foundry.utils.deepClone(condDef.changes   ?? []),
     statuses:    [condDef.key],
     duration:    foundry.utils.deepClone(condDef._duration ?? {}),
+    system: {
+      scriptData: foundry.utils.deepClone(condDef.scripts ?? []),
+    },
     flags: {
       neuroshima: {
-        scripts:          foundry.utils.deepClone(condDef.scripts ?? []),
         transferType:     condDef._transferType    ?? "owningDocument",
         documentType:     condDef._documentType    ?? "actor",
         equipTransfer:    condDef._equipTransfer   ?? false,
@@ -144,7 +146,7 @@ function createSyntheticConditionEffect(condDef, saveCallback) {
       description:       src.description       ?? "",
       disabled:          src.disabled          ?? false,
       changes:           src.changes           ?? [],
-      scripts:           src.flags?.neuroshima?.scripts         ?? [],
+      scripts:           src.system?.scriptData                 ?? [],
       _duration:         foundry.utils.deepClone(src.duration   ?? {}),
       _transferType:     src.flags?.neuroshima?.transferType    ?? "owningDocument",
       _documentType:     src.flags?.neuroshima?.documentType    ?? "actor",

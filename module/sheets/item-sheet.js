@@ -49,7 +49,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       removeContainerItem: NeuroshimaItemSheet.prototype._onRemoveContainerItem,
       editContainerItem: NeuroshimaItemSheet.prototype._onEditContainerItem,
       deleteContainerItem: NeuroshimaItemSheet.prototype._onDeleteContainerItem,
-      toggleContainerLock: NeuroshimaItemSheet.prototype._onToggleContainerLock
+      toggleContainerLock: NeuroshimaItemSheet.prototype._onToggleContainerLock,
+      toggleEquip: NeuroshimaItemSheet.prototype._onToggleEquip
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -251,7 +252,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
       trait: ["description", "effects"],
-      gear: ["description", "resources", "effects"],
+      gear: ["description", "stats", "resources", "effects"],
       "vehicle-mod": ["description", "stats", "resources", "effects"],
       "vehicle-damage": ["description", "stats", "effects"],
       specialization: ["description", "stats", "effects"],
@@ -323,6 +324,15 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
     context.typeLabel = `NEUROSHIMA.Items.Type.${typeLabelKey}`;
 
+    if (item.type === "gear" && item.system.gearType && item.system.gearType !== "misc") {
+      const i18nKey = NEUROSHIMA.gearTypes[item.system.gearType];
+      context.gearTypeLabel = i18nKey ? game.i18n.localize(i18nKey) : item.system.gearType;
+    }
+
+    if (item.type === "money") {
+      context.currencyValueLabel = game.settings.get("neuroshima", "currencyValueLabel") || "";
+    }
+
     // Common options
     context.attributes = NEUROSHIMA.attributes;
     context.damageTypes = NEUROSHIMA.damageTypes;
@@ -330,6 +340,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.blastDamageTypesFull = NEUROSHIMA.blastDamageTypesFull;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
     context.grenadeTypes = NEUROSHIMA.grenadeTypes;
+    context.gearTypes = NEUROSHIMA.gearTypes;
     context.locations = NEUROSHIMA.locations;
     context.vehicleLocations    = NEUROSHIMA.vehicleLocations;
     context.vehicleDamageTypes  = NEUROSHIMA.vehicleDamageTypes;
@@ -717,6 +728,54 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       }
     }
 
+    if (context.isJammedWeapon && context.canUnjam && this.isEditable) {
+      const header = this.element.querySelector(".window-header");
+      if (header) {
+        this.element.querySelectorAll(".jam-toggle-btn").forEach(el => el.remove());
+        const isJammed = !!item.system.jammed;
+        const jamBtn = document.createElement("button");
+        jamBtn.type = "button";
+        jamBtn.className = "jam-toggle-btn header-control";
+        jamBtn.title = isJammed
+          ? game.i18n.localize("NEUROSHIMA.Items.Fields.JammedClear")
+          : game.i18n.localize("NEUROSHIMA.Items.Fields.Jammed");
+        jamBtn.innerHTML = isJammed
+          ? `<img src="systems/neuroshima/assets/img/bullet-jam.svg" style="width:1em;height:1em;filter:drop-shadow(0 0 4px #ef4444);vertical-align:middle;">`
+          : `<img src="systems/neuroshima/assets/img/bullet-jam.svg" style="width:1em;height:1em;opacity:0.35;vertical-align:middle;">`;
+        jamBtn.addEventListener("click", async () => {
+          await item.update({ "system.jammed": !item.system.jammed });
+        });
+        const ellipsisBtn = header.querySelector(".fa-ellipsis-vertical, .fa-solid.fa-ellipsis-vertical")?.closest("button, a, .header-control");
+        const closeBtn = header.querySelector("[data-action='close']");
+        const anchor = ellipsisBtn ?? closeBtn;
+        if (anchor) header.insertBefore(jamBtn, anchor);
+        else header.appendChild(jamBtn);
+      }
+    }
+
+    if ("equipped" in (item.system ?? {}) && this.isEditable && (item.type !== "gear" || item.system.isWearable)) {
+      const header = this.element.querySelector(".window-header");
+      if (header) {
+        this.element.querySelectorAll(".equip-toggle-btn").forEach(el => el.remove());
+        const isEquipped = item.system.equipped;
+        const equipBtn = document.createElement("button");
+        equipBtn.type = "button";
+        equipBtn.className = "equip-toggle-btn header-control";
+        equipBtn.title = isEquipped
+          ? game.i18n.localize("NEUROSHIMA.Items.Fields.Unequip")
+          : game.i18n.localize("NEUROSHIMA.Items.Fields.Equip");
+        equipBtn.innerHTML = isEquipped
+          ? `<i class="fas fa-shield" style="color:#22c55e;"></i>`
+          : `<i class="fas fa-shield" style="opacity:0.35;"></i>`;
+        equipBtn.addEventListener("click", () => this._onToggleEquip());
+        const ellipsisBtn = header.querySelector(".fa-ellipsis-vertical, .fa-solid.fa-ellipsis-vertical")?.closest("button, a, .header-control");
+        const closeBtn = header.querySelector("[data-action='close']");
+        const anchor = ellipsisBtn ?? closeBtn;
+        if (anchor) header.insertBefore(equipBtn, anchor);
+        else header.appendChild(equipBtn);
+      }
+    }
+
     if (context.isObserverView) {
       this.element.querySelectorAll("input, select, textarea").forEach(el => {
         el.disabled = true;
@@ -881,7 +940,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
       trait: ["description", "effects"],
-      gear: ["description", "resources", "effects"],
+      gear: ["description", "stats", "resources", "effects"],
       "vehicle-mod": ["description", "stats", "resources", "effects"],
       "vehicle-damage": ["description", "stats", "effects"],
       specialization: ["description", "stats", "effects"],
@@ -1181,6 +1240,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const container = this.document;
     if (container.type !== "container") return;
     await container.update({ "system.locked": !container.system.locked });
+  }
+
+  async _onToggleEquip() {
+    const item = this.document;
+    if (!("equipped" in (item.system ?? {}))) return;
+    await item.update({ "system.equipped": !item.system.equipped });
   }
 
 }

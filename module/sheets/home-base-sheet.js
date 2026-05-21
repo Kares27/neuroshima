@@ -222,6 +222,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
       totalBaseUnitsFormatted: totalBaseUnits.toLocaleString("pl-PL"),
       hasAny: moneyItems.length > 0
     };
+    context.currencyDisplayName = game.settings.get("neuroshima", "currencyNameLabel") || "Gamble";
 
     const encValue = parseFloat(actor.items.reduce((t, i) => t + (parseFloat(i.system?.totalWeight) || 0), 0).toFixed(2));
     const encMax   = Number(system.maxLoad) || 0;
@@ -477,7 +478,7 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
       const scripts = [];
       for (const eff of (item.effects ?? [])) {
         if (eff.disabled) continue;
-        const flags = eff.getFlag?.("neuroshima", "scripts") ?? [];
+        const flags = eff.system?.scriptData ?? [];
         flags.forEach((s, idx) => {
           if (s.trigger === "manual") {
             scripts.push({

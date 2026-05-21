@@ -213,10 +213,27 @@
         </section>
     {{/if}}
 
+    {{#if (eq item.type "gear")}}
+        <div class="item-features gear-stats secondary-box gear-stats-inline">
+            <div class="form-group row-group gear-type-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.GearType"}}</label>
+                <select name="system.gearType">
+                    {{#each gearTypes as |label key|}}
+                    <option value="{{key}}" {{#if (eq ../system.gearType key)}}selected{{/if}}>{{localize label}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            <div class="form-group row-group checkbox gear-wearable-group">
+                <label>{{localize "NEUROSHIMA.Items.Fields.IsWearable"}}</label>
+                <input type="checkbox" name="system.isWearable" {{checked system.isWearable}}/>
+            </div>
+        </div>
+    {{/if}}
+
     {{#if (eq item.type "money")}}
         <div class="item-features money-stats secondary-box">
             <div class="form-group row-group">
-                <label>{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}</label>
+                <label>{{#if currencyValueLabel}}{{localize "NEUROSHIMA.Items.Fields.CoinValueIn"}} {{currencyValueLabel}}{{else}}{{localize "NEUROSHIMA.Items.Fields.CoinValue"}}{{/if}}</label>
                 <input type="number" name="system.coinValue" value="{{system.coinValue}}" min="1" data-dtype="Number"/>
             </div>
         </div>

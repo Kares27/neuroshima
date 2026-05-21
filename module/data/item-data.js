@@ -157,9 +157,12 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
  */
 export class GearData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
+    const fields = foundry.data.fields;
     return {
       ...baseSchema(),
-      ...equipableSchema()
+      ...equipableSchema(),
+      gearType: new fields.StringField({ initial: "misc", blank: false }),
+      isWearable: new fields.BooleanField({ initial: false })
     };
   }
 }

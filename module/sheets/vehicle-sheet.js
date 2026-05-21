@@ -362,6 +362,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       weaponsThrown:  items.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
       armor:          items.filter(i => i.type === "armor"),
       gear:           items.filter(i => i.type === "gear"),
+      hasWearableGear: items.some(i => i.type === "gear" && i.system.isWearable),
       ammo:           items.filter(i => i.type === "ammo"),
       magazines:      items.filter(i => i.type === "magazine"),
       tricks:         items.filter(i => i.type === "trick"),
@@ -384,6 +385,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       denominations: moneyDenominations,
       hasAny: moneyItems.length > 0
     };
+    context.currencyDisplayName = game.settings.get("neuroshima", "currencyNameLabel") || "Gamble";
     context.tricks = context.inventory.tricks;
     context.traits = context.inventory.traits;
 
@@ -584,7 +586,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
       const scripts = [];
       for (const eff of (item.effects ?? [])) {
         if (eff.disabled) continue;
-        const flags = eff.getFlag?.("neuroshima", "scripts") ?? [];
+        const flags = eff.system?.scriptData ?? [];
         flags.forEach((s, idx) => {
           if (s.trigger === "manual") {
             const rawLabel = s.label || eff.name;

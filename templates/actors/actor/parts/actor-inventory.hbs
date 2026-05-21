@@ -49,7 +49,7 @@
                 <button class="money-consolidate-btn" data-action="consolidateMoney" type="button" title="{{localize 'NEUROSHIMA.Money.Consolidate'}}">
                     <i class="fas fa-coins"></i>
                 </button>
-                <span>{{localize "NEUROSHIMA.Items.Type.Money"}} ({{localize "NEUROSHIMA.Money.Total"}}: {{moneyData.totalBaseUnitsFormatted}} Gamble)</span>
+                <span>{{localize "NEUROSHIMA.Items.Type.Money"}} ({{localize "NEUROSHIMA.Money.Total"}}: {{moneyData.totalBaseUnitsFormatted}} {{currencyDisplayName}})</span>
             </div>
             <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
             {{#if enableEncumbrance}}
@@ -460,7 +460,8 @@
     <section class="inventory-section">
         <div class="section-header inv-section-header">
             <span>{{localize "NEUROSHIMA.Items.Type.Gear"}}</span>
-            <div class="item-stat equipped"></div>
+            <div class="item-stat gear-type text-center">{{localize "NEUROSHIMA.Items.Fields.TypeAbbr"}}</div>
+            {{#if inventory.hasWearableGear}}<div class="item-stat equipped text-center">{{localize "NEUROSHIMA.Items.Fields.EquippedAbbr"}}</div>{{/if}}
             <div class="item-stat quantity text-center">{{localize "NEUROSHIMA.Items.Fields.Quantity"}}</div>
             {{#if enableEncumbrance}}
             <div class="item-stat weight text-center">{{localize "NEUROSHIMA.Items.Fields.Weight"}}</div>
@@ -478,7 +479,18 @@
                             <div class="item-image" style="background-image: url('{{item.img}}')" data-action="toggleSummary" data-tooltip-html="{{nsItemPreviewTooltip item.img item.name item.system.weight item.system.cost}}" data-tooltip-direction="RIGHT"></div>
                             <span class="name clickable" data-action="toggleSummary">{{item.name}}</span>
                         </div>
-                        <div class="item-stat equipped"></div>
+                        <div class="item-stat gear-type text-center">
+                            {{#unless (eq item.system.gearType "misc")}}<span class="gear-type-badge">{{nsGearTypeLabel item.system.gearType}}</span>{{/unless}}
+                        </div>
+                        {{#if ../inventory.hasWearableGear}}
+                        <div class="item-stat equipped text-center">
+                            {{#if item.system.isWearable}}
+                            <a class="item-control toggle-equipped" data-action="toggleEquipped" title="{{localize 'NEUROSHIMA.Items.Fields.Equipped'}}">
+                                <i class="{{#if item.system.equipped}}fas fa-check-circle{{else}}far fa-circle{{/if}}"></i>
+                            </a>
+                            {{/if}}
+                        </div>
+                        {{/if}}
                         <div class="item-stat quantity quantity-controls">
                             <span class="quantity-value clickable" data-action="adjustQuantity" data-context-menu title="{{item.system.quantity}}">{{item.system.quantity}}</span>
                         </div>
@@ -506,6 +518,11 @@
                     {{/if}}
                     {{/with}}
                     <div class="item-summary collapsed">
+                        <div class="item-stats-summary">
+                            <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Stats"}}</div>
+                            {{#unless (eq item.system.gearType "misc")}}<span class="gear-type-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.GearType"}}</span><span class="stat-chip-value">{{nsGearTypeLabel item.system.gearType}}</span></span>{{/unless}}
+                            {{#if item.system.cost}}<span class="stat-summary-chip"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Cost"}}</span><span class="stat-chip-value">{{item.system.cost}}</span></span>{{/if}}
+                        </div>
                         <div class="item-resources-wrapper">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
                             <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>

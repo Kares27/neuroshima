@@ -303,6 +303,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       actor: this.actor,
       skillBonus: combinedSkillBonus,
       attributeBonus: combinedAttrBonus,
+      skillKey: this.skillKey || null,
+      attributeKey: currentAttribute || null,
       rollMode,
       options: submissionOptions,
       resultCallback: this.resultCallback ?? null

@@ -192,6 +192,7 @@
     <li><a href="#helpers">Helpery i narzędzia</a>
       <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
         <li><a href="#apply-damage-api"><code>game.neuroshima.applyDamage()</code></a></li>
+        <li><a href="#apply-wound-api"><code>NeuroshimaDice.applyWound()</code></a></li>
       </ul>
     </li>
     <li><a href="#item-resources">Zasoby itemu</a></li>
@@ -316,6 +317,8 @@
     <div class="ctx-row"><span class="ctx-name">this.getArmorDurability(item)</span><span class="ctx-type">{ max, damage, remaining }</span><span class="ctx-desc">Wytrzymałość pancerza: maksymalna, uszkodzona i pozostała</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.damageArmorLocation(item, loc, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Uszkódź SP w lokacji o <code>n</code>. Clamp: damage ≤ base rating. Zwraca nową wartość damage.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.repairArmorLocation(item, loc, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw SP w lokacji o <code>n</code>. Clamp: damage ≥ 0. Zwraca nową wartość damage.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.damageArmorAllLocations(item, n)</span><span class="ctx-type">Promise&lt;Record&gt;</span><span class="ctx-desc">Uszkódź SP we <em>wszystkich</em> lokacjach o <code>n</code> jedną operacją. Zwraca mapę loc → nowa wartość damage.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.repairArmorAllLocations(item, n)</span><span class="ctx-type">Promise&lt;Record&gt;</span><span class="ctx-desc">Napraw SP we <em>wszystkich</em> lokacjach o <code>n</code> jedną operacją. Zwraca mapę loc → nowa wartość damage.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.damageArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Uszkódź Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≤ max. Zwraca nową wartość.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.repairArmorDurability(item, n)</span><span class="ctx-type">Promise&lt;number&gt;</span><span class="ctx-desc">Napraw Wytrzymałość o <code>n</code>. Clamp: durabilityDamage ≥ 0. Zwraca nową wartość.</span></div>
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery zasobów itemu (po kluczu) —</span><span class="ctx-type"></span><span class="ctx-desc">Dynamiczne zasoby z zakładki "Zasoby" karty itemu. Klucz = pole <code>key</code> zasobu. Użyj <code>this.item</code> dla własnego itemu efektu. Zasoby z włączonym <strong>showInSummary</strong> (kliknięcie w <em>badge #</em> w zakładce Zasoby) wyświetlane są jako chipy w podsumowaniu itemu na karcie aktora.</span></div>
@@ -425,8 +428,8 @@
   <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Jego zawartość zależy od wyzwalacza — szczegóły opisane są w sekcji 3.</p>
   <div class="callout warning">
     <strong>Modyfikowanie args:</strong> Większość wyzwalaczy przekazuje <code>args</code> przez referencję.
-    Modyfikując właściwości (np. <code>args.stat = 15</code>), zmieniasz wartości używane przez system.
-    Nie zapomnij, że <code>args.penalties</code> to osobny obiekt — przypisz go bezpośrednio (<code>args.penalties.mod -= 10</code>).
+    Modyfikując właściwości, zmieniasz wartości używane przez system.
+    Dla triggerów <code>preRollTest</code> i <code>rollTest</code> dane są zagnieżdżone w <code>args.test</code> — np. <code>args.test.attribute.value += 5</code> lub <code>args.test.preData.penalties.mod -= 10</code>.
   </div>
 
   <h3>Async vs Sync</h3>
@@ -776,48 +779,54 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
   <!-- preRollTest -->
   <h3 id="trigger-preRollTest">preRollTest — <em>Pre-Roll Test</em></h3>
   <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Obsługuje wszystkie modyfikacje przed rzuceniem kośćmi: anulowanie rzutu, automatyczny sukces, zmianę parametrów (atrybut, umiejętność, kary, bonusy). Jest to główny trigger do mutowania wartości statystyk przed rzutem.</p>
+  <p>Argumenty są dostępne przez obiekt <code>args.test</code> — wzorzec analogiczny do warhammer-lib.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
-    <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
-    <tr><td>args.stat</td><td>number</td><td>Wartość atrybutu — modyfikuj bezpośrednio (<code>args.stat += 5</code>)</td></tr>
-    <tr><td>args.skill</td><td>number</td><td>Poziom umiejętności — modyfikuj bezpośrednio (<code>args.skill += 1</code>)</td></tr>
-    <tr><td>args.skillBonus</td><td>number</td><td>Bonus do umiejętności — modyfikuj bezpośrednio</td></tr>
-    <tr><td>args.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio</td></tr>
-    <tr><td>args.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base, disease }</code> — modyfikuj <code>args.penalties.mod</code> (np. <code>args.penalties.mod -= 20</code>). Pole <code>disease</code> zawiera sumę kar za choroby przejściowe aktora i jest doliczane do całkowitej kary rzutu.</td></tr>
-    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code> (read-only)</td></tr>
-    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code> (read-only)</td></tr>
-    <tr><td>args.label</td><td>string</td><td>Etykieta rzutu (wyświetlana w chacie, read-only)</td></tr>
-    <tr><td>args.options</td><td>object</td><td>Opcje rzutu przekazane z dialogu submission script — tu odczytuj flagi ustawione przez <code>args.options.mojaFlaga = true</code> w submission</td></tr>
-    <tr><td>args.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
-    <tr><td>args.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
-    <tr><td>args.annotation</td><td>string</td><td>Tekst pokazywany w chacie przy auto-sukcesie (zastępuje domyślny)</td></tr>
-    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
+    <tr><td>args.test.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
+    <tr><td>args.test.attribute</td><td>{ key, value, name } | null</td><td>Atrybut rzutu — modyfikuj <code>args.test.attribute.value += 5</code></td></tr>
+    <tr><td>args.test.skill</td><td>{ key, value, name } | null</td><td>Umiejętność rzutu — modyfikuj <code>args.test.skill.value += 1</code>. Null przy rzucie czysto atrybutowym</td></tr>
+    <tr><td>args.test.item</td><td>Item | null</td><td>Item użyty do rzutu (z <code>options.item</code>), jeśli podany</td></tr>
+    <tr><td>args.test.preData.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base, disease }</code> — modyfikuj <code>args.test.preData.penalties.mod -= 20</code></td></tr>
+    <tr><td>args.test.preData.skillBonus</td><td>number</td><td>Bonus do umiejętności — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.test.preData.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio</td></tr>
+    <tr><td>args.test.preData.label</td><td>string</td><td>Etykieta rzutu (read-only)</td></tr>
+    <tr><td>args.test.preData.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
+    <tr><td>args.test.preData.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
+    <tr><td>args.test.preData.annotation</td><td>string</td><td>Tekst pokazywany w chacie przy auto-sukcesie (zastępuje domyślny)</td></tr>
+    <tr><td>args.test.preData.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
+    <tr><td>args.test.context.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code> (read-only)</td></tr>
+    <tr><td>args.test.context.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code> (read-only)</td></tr>
+    <tr><td>args.test.context.options</td><td>object</td><td>Opcje rzutu — tu odczytuj flagi ustawione przez submission script w dialogu</td></tr>
   </tbody></table>
 
   <!-- rollTest -->
   <h3 id="trigger-rollTest">rollTest — <em>Roll Test (post-roll)</em></h3>
   <p>Uruchamiany <em>po</em> rzucie kośćmi — gdy kości zostały już rzucone i wynik znany. Pozwala reagować na wynik rzutu: modyfikować adnotacje, nakładać efekty zależne od sukcesu/porażki, liczyć punkty przewagi. <strong>Nie można już tutaj zmieniać wartości atrybutów ani kar</strong> — do tego służy <code>preRollTest</code>.</p>
   <div class="callout info">
-    <strong>Uwaga:</strong> Trigger <code>rollTest</code> jest wołany tylko gdy rzut doszedł do skutku (nie został anulowany, nie było auto-sukcesu). Sprawdź <code>args.isSuccess</code> aby rozróżnić wynik.
+    <strong>Uwaga:</strong> Trigger <code>rollTest</code> jest wołany tylko gdy rzut doszedł do skutku (nie został anulowany, nie było auto-sukcesu). Sprawdź <code>args.test.result.isSuccess</code> aby rozróżnić wynik.
   </div>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
-    <tr><td>args.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
-    <tr><td>args.isSuccess</td><td>boolean</td><td>Czy rzut był sukcesem</td></tr>
-    <tr><td>args.successCount</td><td>number</td><td>Liczba sukcesów (Punkty Przewagi) — może być ujemna przy porażce</td></tr>
-    <tr><td>args.rollData</td><td>object</td><td>Pełny obiekt danych rzutu (read-only) — zawiera m.in. <code>roll</code>, <code>successPoints</code>, <code>stat</code>, <code>skill</code></td></tr>
-    <tr><td>args.roll</td><td>Roll</td><td>Obiekt Foundry Roll z wynikami kości (read-only)</td></tr>
-    <tr><td>args.attributeKey</td><td>string | null</td><td>Klucz atrybutu (read-only)</td></tr>
-    <tr><td>args.skillKey</td><td>string | null</td><td>Klucz umiejętności (read-only)</td></tr>
-    <tr><td>args.options</td><td>object</td><td>Opcje rzutu — zawiera flagi ustawione przez submission script dialogu</td></tr>
-    <tr><td>args.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
+    <tr><td>args.test.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
+    <tr><td>args.test.attribute</td><td>{ key, value, name } | null</td><td>Atrybut rzutu (read-only)</td></tr>
+    <tr><td>args.test.skill</td><td>{ key, value, name } | null</td><td>Umiejętność rzutu (read-only)</td></tr>
+    <tr><td>args.test.item</td><td>Item | null</td><td>Item użyty do rzutu (jeśli podany)</td></tr>
+    <tr><td>args.test.result.isSuccess</td><td>boolean</td><td>Czy rzut był sukcesem (read-only)</td></tr>
+    <tr><td>args.test.result.successCount</td><td>number</td><td>Liczba sukcesów (Punkty Przewagi) — może być ujemna przy porażce (read-only)</td></tr>
+    <tr><td>args.test.result.rollData</td><td>object</td><td>Pełny obiekt danych rzutu (read-only) — zawiera m.in. <code>successPoints</code>, <code>stat</code>, <code>skill</code></td></tr>
+    <tr><td>args.test.result.roll</td><td>Roll</td><td>Obiekt Foundry Roll z wynikami kości (read-only)</td></tr>
+    <tr><td>args.test.result.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
+    <tr><td>args.test.context.label</td><td>string</td><td>Etykieta rzutu (read-only)</td></tr>
+    <tr><td>args.test.context.attributeKey</td><td>string | null</td><td>Klucz atrybutu (read-only)</td></tr>
+    <tr><td>args.test.context.skillKey</td><td>string | null</td><td>Klucz umiejętności (read-only)</td></tr>
+    <tr><td>args.test.context.options</td><td>object</td><td>Opcje rzutu — zawiera flagi ustawione przez submission script dialogu</td></tr>
   </tbody></table>
 
   <div class="example-block">
     <div class="example-header"><span class="trigger-badge">rollTest</span> Reaguj na wynik rzutu — nakładaj efekt przy porażce</div>
     <pre><code><span class="cmt">// Trigger: rollTest — przy porażce rzutu Kondycji dodaj kondycję "wyczerpanie"</span>
-<span class="kw">if</span> (args.skillKey !== <span class="str">"stamina"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (!args.isSuccess) {
+<span class="kw">if</span> (args.test.context.skillKey !== <span class="str">"stamina"</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (!args.test.result.isSuccess) {
   <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"exhausted"</span>);
   <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Wyczerpanie — porażka testu kondycji!"</span>);
 }</code></pre>
@@ -827,9 +836,9 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <div class="example-header"><span class="trigger-badge">rollTest</span> Odczyt flagi z submission script</div>
     <pre><code><span class="cmt">// Submission script: args.options.useSpecialRule = true;</span>
 <span class="cmt">// Trigger: rollTest — sprawdź flagę ustawioną w dialogu</span>
-<span class="kw">if</span> (!args.options?.useSpecialRule) <span class="kw">return</span>;
-<span class="kw">if</span> (args.isSuccess &amp;&amp; args.successCount &gt;= <span class="num">2</span>) {
-  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"D"</span>, <span class="str">"torso"</span>, args.actor);
+<span class="kw">if</span> (!args.test.context.options?.useSpecialRule) <span class="kw">return</span>;
+<span class="kw">if</span> (args.test.result.isSuccess &amp;&amp; args.test.result.successCount &gt;= <span class="num">2</span>) {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyWound</span>(<span class="str">"D"</span>, <span class="str">"torso"</span>, args.test.actor);
   <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Specjalna reguła: rana tymczasowa przy dużym sukcesie"</span>);
 }</code></pre>
   </div>
@@ -2108,9 +2117,9 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
       <em>"Automatyczny sukces (efekt aktywny)"</em>.
     </p>
     <pre><code><span class="cmt">// Jeśli rzut dotyczy odporności na ból i rana to D — auto-sukces
-// args.skillKey === "painResistance" lub sprawdź label</span>
-<span class="kw">if</span> (args.skillKey === <span class="str">"painResistance"</span> || args.label?.includes(<span class="str">"Ból"</span>)) {
-  args.autoSuccess = <span class="kw">true</span>;
+// args.test.context.skillKey === "painResistance" lub sprawdź label</span>
+<span class="kw">if</span> (args.test.context.skillKey === <span class="str">"painResistance"</span> || args.test.preData.label?.includes(<span class="str">"Ból"</span>)) {
+  args.test.preData.autoSuccess = <span class="kw">true</span>;
 }</code></pre>
   </div>
 
@@ -2124,29 +2133,29 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
       podany przez skrypt tekst, np. nazwa tricku lub efektu.
     </p>
     <pre><code><span class="cmt">// autoSuccess + annotation → własna wiadomość w chacie</span>
-<span class="kw">if</span> (args.skillKey === <span class="str">"painResistance"</span>) {
-  args.autoSuccess = <span class="kw">true</span>;
-  args.annotation  = <span class="str">"Niewrażliwość na lekkie rany — test zbędny"</span>;
+<span class="kw">if</span> (args.test.context.skillKey === <span class="str">"painResistance"</span>) {
+  args.test.preData.autoSuccess = <span class="kw">true</span>;
+  args.test.preData.annotation  = <span class="str">"Niewrażliwość na lekkie rany — test zbędny"</span>;
 }</code></pre>
   </div>
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">rollTest</span>
+      <span class="trigger-badge">preRollTest</span>
       Bonus +2 do Zręczności przy wszystkich testach
     </div>
     <pre><code><span class="cmt">// Modyfikuj atrybut tylko gdy rzut jest na Zręczność</span>
-<span class="kw">if</span> (args.attributeKey === <span class="str">"dexterity"</span>) {
-  args.stat += <span class="num">2</span>;
+<span class="kw">if</span> (args.test.context.attributeKey === <span class="str">"dexterity"</span> &amp;&amp; args.test.attribute) {
+  args.test.attribute.value += <span class="num">2</span>;
 }</code></pre>
   </div>
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">rollTest</span>
+      <span class="trigger-badge">preRollTest</span>
       Kara -20% do wszystkich testów (kontuzja)
     </div>
-    <pre><code>args.penalties.mod = (args.penalties.mod || <span class="num">0</span>) + <span class="num">20</span>;</code></pre>
+    <pre><code>args.test.preData.penalties.mod = (args.test.preData.penalties.mod || <span class="num">0</span>) + <span class="num">20</span>;</code></pre>
   </div>
 
   <div class="example-block">
@@ -2290,9 +2299,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       Bonus do testu gdy aktor ma aktywny inny efekt — <code>hasEffect</code>
     </div>
     <pre><code><span class="cmt">// +10 do Zręczności gdy efekt "Adrenalina" jest aktywny</span>
-<span class="kw">if</span> (args.attributeKey === <span class="str">"dexterity"</span> &amp;&amp; <span class="kw">this</span>.actor.<span class="fn">hasEffect</span>(<span class="str">"Adrenalina"</span>)) {
-  args.stat += <span class="num">10</span>;
-  args.annotation = <span class="str">"Adrenalina: +10 Zr"</span>;
+<span class="kw">if</span> (args.test.context.attributeKey === <span class="str">"dexterity"</span> &amp;&amp; args.test.attribute &amp;&amp; <span class="kw">this</span>.actor.<span class="fn">hasEffect</span>(<span class="str">"Adrenalina"</span>)) {
+  args.test.attribute.value += <span class="num">10</span>;
+  args.test.preData.annotation = <span class="str">"Adrenalina: +10 Zr"</span>;
 }</code></pre>
   </div>
 
@@ -2736,14 +2745,14 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     </p>
     <pre><code><span class="cmt">// Trigger: preRollTest
 // Bonus = floor(spryt / 2), tylko gdy rzucamy na Zręczność</span>
-<span class="kw">if</span> (args.attributeKey !== <span class="str">"dexterity"</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.test.context.attributeKey !== <span class="str">"dexterity"</span> || !args.test.attribute) <span class="kw">return</span>;
 
 <span class="kw">const</span> <span class="var">cleverness</span> = <span class="kw">this</span>.<span class="fn">getAttributeTotal</span>(<span class="str">"cleverness"</span>);
 <span class="kw">const</span> <span class="var">bonus</span>      = Math.<span class="fn">floor</span>(<span class="var">cleverness</span> / <span class="num">2</span>);
 
 <span class="kw">if</span> (<span class="var">bonus</span> &gt; <span class="num">0</span>) {
-  args.stat      += <span class="var">bonus</span>;
-  args.annotation = <span class="str">`Refleks: +${bonus} Zr (½ Sp)`</span>;
+  args.test.attribute.value += <span class="var">bonus</span>;
+  args.test.preData.annotation = <span class="str">`Refleks: +${bonus} Zr (½ Sp)`</span>;
 }</code></pre>
   </div>
 
@@ -2982,9 +2991,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Adrenalinowy strzał! +10% do następnego testu."</span>, <span class="str">"info"</span>);
   <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">`Adrenalinowy Strzał (${args.successPoints} PP) — +10% do następnego testu.`</span>);
 }
-<span class="cmt">// W rollTest / preRollTest sprawdzasz i zeruj flagę:</span>
+<span class="cmt">// W preRollTest sprawdzasz i zerujesz flagę:</span>
 <span class="cmt">// const bonus = this.actor.getFlag("neuroshima","adrenalineBonus") || 0;</span>
-<span class="cmt">// if (bonus) { args.stat += bonus; await this.actor.unsetFlag("neuroshima","adrenalineBonus"); }</span></code></pre>
+<span class="cmt">// if (bonus &amp;&amp; args.test.attribute) { args.test.attribute.value += bonus; await this.actor.unsetFlag("neuroshima","adrenalineBonus"); }</span></code></pre>
   </div>
 
 
@@ -3497,14 +3506,14 @@ onFailure: [
 
     <p style="margin:10px 0 2px; font-size:0.82em; color:var(--accent2);">▶ Skrypt 2 — trigger: <strong>rollTest</strong> (na tym samym efekcie, na aktorze gracza)</p>
     <pre><code>(<span class="kw">async</span> () =&gt; {
-  <span class="kw">if</span> (args.rollData?.skill !== <span class="str">"woundTreatment"</span>) <span class="kw">return</span>;
+  <span class="kw">if</span> (args.test.context.skillKey !== <span class="str">"woundTreatment"</span>) <span class="kw">return</span>;
   <span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">`pendingTreatment_${<span class="kw">this</span>.effect.id}`</span>;
   <span class="kw">const</span> <span class="var">patientUuid</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>);
   <span class="kw">if</span> (!<span class="var">patientUuid</span>) <span class="kw">return</span>;
 
   <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>);
 
-  <span class="kw">if</span> (!args.isSuccess) {
+  <span class="kw">if</span> (!args.test.result.isSuccess) {
     <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"Leczenie nieudane — rany bez zmian."</span>);
     <span class="kw">return</span>;
   }
@@ -3512,7 +3521,7 @@ onFailure: [
   <span class="kw">const</span> <span class="var">patient</span> = <span class="kw">await</span> fromUuid(<span class="var">patientUuid</span>);
   <span class="kw">if</span> (!<span class="var">patient</span>) <span class="kw">return</span>;
 
-  <span class="kw">const</span> <span class="var">successes</span> = args.rollData?.successes ?? <span class="num">1</span>;
+  <span class="kw">const</span> <span class="var">successes</span> = args.test.result.successCount ?? <span class="num">1</span>;
   <span class="kw">let</span> <span class="var">healed</span> = <span class="num">0</span>;
   <span class="kw">for</span> (<span class="kw">let</span> <span class="var">i</span> = <span class="num">0</span>; <span class="var">i</span> &lt; <span class="var">successes</span>; <span class="var">i</span>++) {
     <span class="kw">const</span> <span class="var">ok</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">reduceWorstWound</span>(<span class="var">patient</span>);
@@ -4787,9 +4796,9 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
     <tr><td><code>actor.hasItem(type, name)</code></td><td>Zwraca <code>true</code> jeśli aktor posiada item danego typu o tej nazwie (case-insensitive)</td></tr>
     <tr><td><code>actor.hasTrick(name)</code></td><td>Skrót: czy aktor ma sztuczkę o tej nazwie</td></tr>
   </tbody></table>
-  <pre><code><span class="cmt">// Czy aktor ma sztuczkę "Hartowanie"?</span>
+  <pre><code><span class="cmt">// Czy aktor ma sztuczkę "Hartowanie"? (przykład dla preRollTest)</span>
 <span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">hasTrick</span>(<span class="str">"Hartowanie"</span>)) {
-  args.autoSuccess = <span class="kw">true</span>;
+  args.test.preData.autoSuccess = <span class="kw">true</span>;
 }
 
 <span class="cmt">// Pobierz wszystkie wyposażone pancerze</span>
@@ -4828,6 +4837,8 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
     <tr><td><code>this.getArmorDurability(item)</code></td><td>Obiekt <code>{ max, damage, remaining }</code> — Wytrzymałość</td></tr>
     <tr><td><code>await this.damageArmorLocation(item, loc, n)</code></td><td>Uszkódź SP w lokacji o n. Clamp: nie przekracza base rating. Zwraca nową wartość damage.</td></tr>
     <tr><td><code>await this.repairArmorLocation(item, loc, n)</code></td><td>Napraw SP w lokacji o n. Clamp: min 0. Zwraca nową wartość damage.</td></tr>
+    <tr><td><code>await this.damageArmorAllLocations(item, n)</code></td><td>Uszkódź SP we wszystkich lokacjach o n jedną operacją. Zwraca mapę <code>{ head, torso, … }</code> z nowymi wartościami damage.</td></tr>
+    <tr><td><code>await this.repairArmorAllLocations(item, n)</code></td><td>Napraw SP we wszystkich lokacjach o n jedną operacją. Zwraca mapę <code>{ head, torso, … }</code> z nowymi wartościami damage.</td></tr>
     <tr><td><code>await this.damageArmorDurability(item, n)</code></td><td>Uszkódź Wytrzymałość o n. Clamp: nie przekracza max. Zwraca nową wartość damage.</td></tr>
     <tr><td><code>await this.repairArmorDurability(item, n)</code></td><td>Napraw Wytrzymałość o n. Clamp: min 0. Zwraca nową wartość damage.</td></tr>
   </tbody></table>
@@ -5126,6 +5137,263 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 
 <span class="cmt">// Czy aktor ma daną sztuczkę? — przez helper</span>
 <span class="kw">const</span> <span class="var">hasTrick</span> = <span class="kw">this</span>.actor.<span class="fn">hasTrick</span>(<span class="str">"Hartowanie"</span>);</code></pre>
+
+  <hr>
+
+  <h3 id="apply-damage-api"><code>game.neuroshima.applyDamage(actor, config)</code></h3>
+
+  <p>
+    Prosta funkcja pomocnicza wywoływalna z dowolnego miejsca: skryptu efektu, Execute Script regionu,
+    konsoli przeglądarki lub makra. Opakowuje wewnętrzny pipeline obrażeń systemu i udostępnia go
+    przez jedno wywołanie.
+  </p>
+  <div class="callout info">
+    Funkcja jest dostępna po załadowaniu gry (<code>ready</code> hook). Nie wymaga dostępu
+    do konkretnego aktora atakującego ani danych rzutu — wystarczy referencja do aktora
+    obrońcy i obiekt config.
+  </div>
+
+  <h4 id="apply-damage-config">Parametry konfiguracji</h4>
+  <p>Drugi argument — obiekt <code>config</code> — wszystkie pola opcjonalne:</p>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>damage</td>
+        <td>string</td>
+        <td><code>"L"</code></td>
+        <td>Typ obrażeń: <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code> lub warianty siniak (<code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>).</td>
+      </tr>
+      <tr>
+        <td>location</td>
+        <td>string</td>
+        <td><code>"torso"</code></td>
+        <td>Lokacja trafienia (<code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, <code>"rightArm"</code>, <code>"leftLeg"</code>, <code>"rightLeg"</code>, <code>"inne"</code>).</td>
+      </tr>
+      <tr>
+        <td>piercing</td>
+        <td>number</td>
+        <td><code>0</code></td>
+        <td>Przebicie pancerza. Działa tylko w trybie pełnego pipelinu (gdy <code>penaltyOverride</code> nie jest ustawiony).</td>
+      </tr>
+      <tr>
+        <td>armorBypass</td>
+        <td>boolean</td>
+        <td><code>false</code></td>
+        <td>Gdy <code>true</code> — całkowite pominięcie redukcji pancerza (ustawia wewnętrznie <code>piercing: 9999</code>). Działa tylko w trybie pełnego pipelinu.</td>
+      </tr>
+      <tr>
+        <td>penaltyOverride</td>
+        <td>number | <code>undefined</code></td>
+        <td><code>undefined</code></td>
+        <td>Gdy ustawiony — <strong>tryb bezpośredni</strong>: rana tworzona z dokładnie tą karą %, pomija pancerz i test odporności na ból.</td>
+      </tr>
+      <tr>
+        <td>label</td>
+        <td>string</td>
+        <td><code>"Script Damage"</code></td>
+        <td>Etykieta źródła widoczna w karcie chatu (tylko w trybie pełnego pipelinu).</td>
+      </tr>
+      <tr>
+        <td>suppressChat</td>
+        <td>boolean</td>
+        <td><code>false</code></td>
+        <td>Gdy <code>true</code> — wycisza raport bólu w chacie. Przydatne przy automatycznych tickach w skryptach. Działa tylko w trybie pełnego pipelinu.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h4 id="apply-damage-modes">Tryby działania</h4>
+  <p>Funkcja działa w jednym z dwóch trybów zależnie od tego, czy podano <code>penaltyOverride</code>:</p>
+
+  <div class="callout info">
+    <strong>Tryb pełnego pipelinu</strong> (domyślny, <code>penaltyOverride</code> nie ustawiony)<br>
+    Wywołuje <code>CombatHelper.applyDamageToActor()</code>. Kolejność:
+    <ol style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
+      <li>Uruchomienie hooka <code>preApplyDamage</code> (skrypty efektów mogą modyfikować typ/przebicie)</li>
+      <li>Redukcja pancerza (<code>reduceArmorDamageWithDetails</code>)</li>
+      <li>Uruchomienie hooka <code>applyDamage</code> (skrypty efektów mogą blokować/modyfikować rany)</li>
+      <li>Test odporności na ból (<code>processPainResistance</code>)</li>
+      <li>Zapis ran na aktora i raport w chacie</li>
+    </ol>
+  </div>
+
+  <div class="callout warning">
+    <strong>Tryb bezpośredni</strong> (<code>penaltyOverride</code> ustawiony na liczbę)<br>
+    Deleguje do <code>NeuroshimaDice.applyWound()</code> — tej samej funkcji co system radiacji i krwawienia.
+    Pomija pancerz, pomija test odporności na ból, pomija oba hooki skryptów.
+    Rana ma dokładnie podaną karę i zawiera komplet pól systemowych (<code>originalPenalty</code>, <code>hadFirstAid</code>, <code>healingAttempts</code> itd.).
+    Przydatne do ran środowiskowych (trucizna, toksyny, pola minowe) gdzie system nie powinien ingerować w wartość kary.
+  </div>
+
+  <h4 id="apply-damage-examples">Przykłady</h4>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 1 — prosta rana bez pancerza (rana środowiskowa)
+    </div>
+    <pre><code><span class="cmt">// Nakłada lekką ranę (L) bezpośrednio na aktora — pomija pancerz i testy</span>
+<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+  damage:          <span class="str">"L"</span>,
+  location:        <span class="str">"torso"</span>,
+  penaltyOverride: <span class="num">15</span>   <span class="cmt">// dokładnie -15%, żaden pancerz tego nie zmieni</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 2 — pełny pipeline (pancerz + odporność na ból)
+    </div>
+    <pre><code><span class="cmt">// Nakłada ciężką ranę (C) przez pełny pipeline — pancerz może zredukować</span>
+<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+  damage:   <span class="str">"C"</span>,
+  location: <span class="str">"head"</span>,
+  label:    <span class="str">"Eksplozja"</span>
+});</code></pre>
+    <p class="example-desc">
+      Pancerz na lokacji <code>head</code> zostanie sprawdzony i może obniżyć typ rany.
+      Raport odporności na ból pojawi się w chacie.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 3 — pominięcie pancerza (armorBypass)
+    </div>
+    <pre><code><span class="cmt">// Rana draśnięcia (D) — przebija pancerz w całości, pipeline aktywny</span>
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(token.actor, {
+  damage:      <span class="str">"D"</span>,
+  location:    <span class="str">"leftLeg"</span>,
+  armorBypass: <span class="kw">true</span>,
+  label:       <span class="str">"Trucizna nerwowa"</span>
+});</code></pre>
+    <p class="example-desc">
+      <code>armorBypass: true</code> ustawia wewnętrznie przebicie 9999 — pancerz nie redukuje rany.
+      Test odporności na ból nadal działa, a skrypty efektów (<code>preApplyDamage</code> / <code>applyDamage</code>) są uruchamiane.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 4 — wyciszony raport (suppressChat)
+    </div>
+    <pre><code><span class="cmt">// Tick obrażeń z toksyny — bez raportu w chacie, żeby nie zaśmiecać</span>
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+  damage:       <span class="str">"D"</span>,
+  location:     <span class="str">"torso"</span>,
+  suppressChat: <span class="kw">true</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 5 — siniak (bruise) z penaltyOverride
+    </div>
+    <pre><code><span class="cmt">// Siniak zamiast rany — nie zostawia trwałego śladu, ale daje karę</span>
+<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(token.actor, {
+  damage:          <span class="str">"sD"</span>,   <span class="cmt">// siniak draśnięcie</span>
+  location:        <span class="str">"torso"</span>,
+  penaltyOverride: <span class="num">5</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 6 — obrażenia ze sprawdzeniem warunku przed nałożeniem
+    </div>
+    <pre><code><span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+
+<span class="cmt">// Nałóż ranę tylko gdy postać nie ma odpowiedniego triku</span>
+<span class="kw">const</span> <span class="var">hasToughSkin</span> = actor.items.some(i =>
+  i.type === <span class="str">"trick"</span> && i.name === <span class="str">"Twarda Skóra"</span>
+);
+
+<span class="kw">if</span> (!hasToughSkin) {
+  <span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
+    damage:   <span class="str">"D"</span>,
+    location: <span class="str">"torso"</span>,
+    label:    <span class="str">"Kolce Środowiska"</span>
+  });
+}</code></pre>
+  </div>
+
+  <div class="callout info">
+    <strong>Porównanie metod zadawania ran:</strong>
+    <ul style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
+      <li><code>game.neuroshima.applyDamage(actor, config)</code> — ogólna funkcja skryptowa. Tryb pełny: pełny pipeline z pancerzem i bólem. Tryb bezpośredni (<code>penaltyOverride</code>): deleguje do <code>NeuroshimaDice.applyWound()</code>.</li>
+      <li><code>game.neuroshima.NeuroshimaDice.applyWound(actor, opts)</code> — prymityw zadawania rany: bez pancerza, bez bólu, bez hooków. Używany wewnętrznie przez krwawienie i radiację. Przyjmuje <code>nameOverride</code>, <code>penaltyOverride</code>, <code>additionalSystem</code>.</li>
+      <li><code>game.neuroshima.radiation.applyWound(actor, config)</code> — specjalizowane API radiacyjne: ustala typ rany z poziomu radiacji, opcjonalnie dodaje chorobę popromienną. Pod spodem wywołuje <code>NeuroshimaDice.applyWound()</code>.</li>
+    </ul>
+    Do ran środowiskowych bez pancerza i bólu: użyj <code>applyDamage</code> z <code>penaltyOverride</code> lub bezpośrednio <code>NeuroshimaDice.applyWound</code>. Do radiacji: zawsze <code>radiation.applyWound</code>.
+  </div>
+
+</section>
+
+<section id="apply-wound-api">
+  <h3 id="apply-wound-api"><code>game.neuroshima.NeuroshimaDice.applyWound(actor, opts)</code></h3>
+
+  <p>
+    Prymitywna funkcja zadawania jednej rany. Tworzy ranę bezpośrednio na aktorze
+    — <strong>bez redukcji pancerza, bez testu odporności na ból, bez hooków skryptów</strong>.
+    Jest to funkcja używana wewnętrznie przez system krwawienia, radiacji i tryb bezpośredni
+    <code>game.neuroshima.applyDamage()</code>.
+  </p>
+
+  <h4>Parametry (<code>opts</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td>damageType</td><td>string</td><td><code>"L"</code></td><td>Typ rany: <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code>, <code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>.</td></tr>
+      <tr><td>location</td><td>string</td><td><code>"torso"</code></td><td>Lokacja trafienia (<code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, …, <code>"inne"</code>).</td></tr>
+      <tr><td>source</td><td>string</td><td><code>""</code></td><td>Opis źródła wyświetlany w polu opisu rany.</td></tr>
+      <tr><td>nameOverride</td><td>string</td><td><code>undefined</code></td><td>Nadpisuje automatycznie wygenerowaną nazwę rany.</td></tr>
+      <tr><td>penaltyOverride</td><td>number</td><td><code>undefined</code></td><td>Kara % zamiast wartości z konfiguracji. Gdy nie podana — używa pierwszej wartości z <code>woundConfiguration[damageType].penalties</code>.</td></tr>
+      <tr><td>additionalSystem</td><td>object</td><td><code>{}</code></td><td>Dodatkowe pola systemu rany mergowane do dokumentu. Używaj do ustawiania <code>originalPenalty</code>, <code>hadFirstAid</code>, <code>healingAttempts</code> itp.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład — rana ze źródłem i pełnymi polami systemowymi
+    </div>
+    <pre><code><span class="kw">const</span> { NeuroshimaDice } = game.neuroshima;
+
+<span class="kw">await</span> NeuroshimaDice.<span class="fn">applyWound</span>(actor, {
+  damageType:      <span class="str">"L"</span>,
+  location:        <span class="str">"torso"</span>,
+  source:          <span class="str">"Toksyna środowiskowa"</span>,
+  penaltyOverride: <span class="num">20</span>,
+  additionalSystem: {
+    originalPenalty:         <span class="num">20</span>,
+    hadFirstAid:             <span class="kw">false</span>,
+    healingAttempts:         <span class="num">0</span>,
+    failedFirstAidAttempts:  <span class="num">0</span>,
+    failedTreatmentAttempts: <span class="num">0</span>,
+    firstAidHealingApplied:  <span class="num">0</span>
+  }
+});</code></pre>
+  </div>
+
+  <div class="callout warning">
+    <code>applyWound()</code> nie uruchamia hooków <code>preApplyDamage</code> ani <code>applyDamage</code>
+    — skrypty efektów nie mogą zablokować ani zmodyfikować tej rany.
+    Jeśli zależy ci na hooku — użyj <code>game.neuroshima.applyDamage()</code> bez <code>penaltyOverride</code>.
+  </div>
 </section>
 
 <!-- SECTION 9 -->
@@ -5276,17 +5544,17 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
   <h2 class="section-title">10. Dobre praktyki</h2>
 
   <h3>Sprawdzaj warunki przed modyfikacją</h3>
-  <pre><code><span class="cmt">// Dobry przykład — sprawdzamy czy rzut dotyczy właściwej umiejętności</span>
-<span class="kw">if</span> (args.skillKey !== <span class="str">"stealth"</span>) <span class="kw">return</span>;
-args.penalties.mod -= <span class="num">20</span>; <span class="cmt">// Zmniejsz karę o 20% dla skradania</span></code></pre>
+  <pre><code><span class="cmt">// Dobry przykład (preRollTest) — sprawdzamy czy rzut dotyczy właściwej umiejętności</span>
+<span class="kw">if</span> (args.test.context.skillKey !== <span class="str">"stealth"</span>) <span class="kw">return</span>;
+args.test.preData.penalties.mod -= <span class="num">20</span>; <span class="cmt">// Zmniejsz karę o 20% dla skradania</span></code></pre>
 
   <h3>Nie mutuj args niepotrzebnie</h3>
   <pre><code><span class="cmt">// ŹLE — modyfikujesz penalties.mod zawsze, nie sprawdzając kontekstu</span>
-args.penalties.mod += <span class="num">10</span>;
+args.test.preData.penalties.mod += <span class="num">10</span>;
 
 <span class="cmt">// DOBRZE — modyfikujesz tylko gdy warunek spełniony</span>
-<span class="kw">if</span> (args.label?.includes(<span class="str">"Strzelanie"</span>)) {
-  args.penalties.mod += <span class="num">10</span>;
+<span class="kw">if</span> (args.test.preData.label?.includes(<span class="str">"Strzelanie"</span>)) {
+  args.test.preData.penalties.mod += <span class="num">10</span>;
 }</code></pre>
 
   <h3>Używaj notification zamiast console.log do komunikacji z graczem</h3>
@@ -5851,9 +6119,9 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
       </tr>
       <tr>
         <td>woundDamageType</td>
-        <td><code>"D"</code> | <code>"L"</code> | <code>null</code></td>
+        <td><code>"D"</code> | <code>"L"</code> | <code>"C"</code> | <code>"K"</code> | <code>"sD"</code> | <code>"sL"</code> | <code>"sC"</code> | <code>"sK"</code> | <code>null</code></td>
         <td><code>null</code></td>
-        <td>Ręczne nadpisanie typu rany. Gdy <code>null</code> — wyznaczany automatycznie z <code>level</code>.</td>
+        <td>Ręczne nadpisanie typu rany. Akceptuje dowolny typ rany systemu, w tym siniaki (<code>sD</code>, <code>sL</code>, …). Gdy <code>null</code> — wyznaczany automatycznie z <code>level</code> (≤10 → <code>D</code>, &gt;10 → <code>L</code>).</td>
       </tr>
       <tr>
         <td>penaltyOverride</td>
@@ -5880,7 +6148,7 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
   <h3 id="regions-api-levels">Poziomy radiacji → typy ran</h3>
   <p>
     Gdy <code>woundDamageType</code> nie jest ustawiony, poziom liczbowy jest automatycznie przekładany
-    na typ rany według poniższej skali. Możesz użyć pełnych 20 poziomów lub własnych przedziałów
+    na typ rany według poniższej skali. Możesz użyć pełnych 20 poziomów lub wymusić dowolny typ rany
     przez ręczne ustawienie <code>woundDamageType</code>.
   </p>
   <div class="dmg-table">
@@ -5900,6 +6168,12 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
   <div class="callout info">
     Kary pobierane są z <code>NEUROSHIMA.woundConfiguration[damageType].penalties[0]</code>.
     Jeśli chcesz inną karę dla danej strefy, użyj <code>penaltyOverride</code>.
+  </div>
+  <div class="callout warning">
+    <strong>Ręczny typ rany (<code>woundDamageType</code>)</strong> akceptuje <em>dowolny</em> typ rany systemu —
+    nie tylko <code>"D"</code> i <code>"L"</code>. Możesz ustawić <code>"C"</code> (ciężka), <code>"K"</code> (krytyczna)
+    lub warianty siniaków (<code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>).
+    Automatyczne przeliczanie z <code>level</code> dotyczy tylko przypadku gdy <code>woundDamageType</code> jest <code>null</code>.
   </div>
 
   <!-- PROTECTION KEYS -->
@@ -6105,211 +6379,6 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
     na podstawie <code>game.time.worldTime</code> (sekundy). <code>intervalHours: 1</code> oznacza
     3600 sekund czasu gry. Upewniej się że SC i Foundry są zsynchronizowane (<em>Set World Time</em>
     w ustawieniach SC powinno być włączone).
-  </div>
-
-</section>
-
-<section id="apply-damage-api">
-  <h2 class="section-title">15. API — <code>game.neuroshima.applyDamage()</code></h2>
-
-  <p>
-    <code>game.neuroshima.applyDamage(actor, config)</code> to prosta funkcja pomocnicza
-    wywoływalna z dowolnego miejsca: skryptu efektu, Execute Script regionu, konsoli przeglądarki
-    lub makra. Opakowuje wewnętrzny pipeline obrażeń systemu i udostępnia go przez jedno wywołanie.
-  </p>
-  <div class="callout info">
-    Funkcja jest dostępna po załadowaniu gry (<code>ready</code> hook). Nie wymaga dostępu
-    do konkretnego aktora atakującego ani danych rzutu — wystarczy referencja do aktora
-    obrońcy i obiekt config.
-  </div>
-
-  <!-- PARAMETRY -->
-  <h3 id="apply-damage-config">Parametry konfiguracji</h3>
-  <p>Drugi argument — obiekt <code>config</code> — wszystkie pola opcjonalne:</p>
-  <table>
-    <thead><tr><th>Pole</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
-    <tbody>
-      <tr>
-        <td>damage</td>
-        <td>string</td>
-        <td><code>"L"</code></td>
-        <td>Typ obrażeń: <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code> lub warianty siniak (<code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>).</td>
-      </tr>
-      <tr>
-        <td>location</td>
-        <td>string</td>
-        <td><code>"torso"</code></td>
-        <td>Lokacja trafienia (<code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, <code>"rightArm"</code>, <code>"leftLeg"</code>, <code>"rightLeg"</code>, <code>"inne"</code>).</td>
-      </tr>
-      <tr>
-        <td>piercing</td>
-        <td>number</td>
-        <td><code>0</code></td>
-        <td>Przebicie pancerza. Działa tylko w trybie pełnego pipelinu (gdy <code>penaltyOverride</code> nie jest ustawiony).</td>
-      </tr>
-      <tr>
-        <td>armorBypass</td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Gdy <code>true</code> — całkowite pominięcie redukcji pancerza (ustawia wewnętrznie <code>piercing: 9999</code>). Działa tylko w trybie pełnego pipelinu.</td>
-      </tr>
-      <tr>
-        <td>penaltyOverride</td>
-        <td>number | <code>undefined</code></td>
-        <td><code>undefined</code></td>
-        <td>Gdy ustawiony — <strong>tryb bezpośredni</strong>: rana tworzona z dokładnie tą karą %, pomija pancerz i test odporności na ból.</td>
-      </tr>
-      <tr>
-        <td>label</td>
-        <td>string</td>
-        <td><code>"Script Damage"</code></td>
-        <td>Etykieta źródła widoczna w karcie chatu (tylko w trybie pełnego pipelinu).</td>
-      </tr>
-      <tr>
-        <td>suppressChat</td>
-        <td>boolean</td>
-        <td><code>false</code></td>
-        <td>Gdy <code>true</code> — wycisza raport bólu w chacie. Przydatne przy automatycznych tickach w skryptach. Działa tylko w trybie pełnego pipelinu.</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <!-- TRYBY -->
-  <h3 id="apply-damage-modes">Tryby działania</h3>
-  <p>Funkcja działa w jednym z dwóch trybów zależnie od tego, czy podano <code>penaltyOverride</code>:</p>
-
-  <div class="callout info">
-    <strong>Tryb pełnego pipelinu</strong> (domyślny, <code>penaltyOverride</code> nie ustawiony)<br>
-    Wywołuje <code>CombatHelper.applyDamageToActor()</code>. Kolejność:
-    <ol style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
-      <li>Uruchomienie hooka <code>preApplyDamage</code> (skrypty efektów mogą modyfikować typ/przebicie)</li>
-      <li>Redukcja pancerza (<code>reduceArmorDamageWithDetails</code>)</li>
-      <li>Uruchomienie hooka <code>applyDamage</code> (skrypty efektów mogą blokować/modyfikować rany)</li>
-      <li>Test odporności na ból (<code>processPainResistance</code>)</li>
-      <li>Zapis ran na aktora i raport w chacie</li>
-    </ol>
-  </div>
-
-  <div class="callout warning">
-    <strong>Tryb bezpośredni</strong> (<code>penaltyOverride</code> ustawiony na liczbę)<br>
-    Tworzy ranę bezpośrednio przez <code>actor.createEmbeddedDocuments("Item", [...])</code>.
-    Pomija pancerz, pomija test odporności na ból, pomija oba hooki skryptów.
-    Rana ma dokładnie podaną karę. Przydatne do ran środowiskowych (radiacja, trucizna, toksyny)
-    gdzie system nie powinien ingerować w wartość kary.
-  </div>
-
-  <!-- PRZYKŁADY -->
-  <h3 id="apply-damage-examples">Przykłady</h3>
-
-  <div class="example-block">
-    <div class="example-header">
-      <span class="trigger-badge">Execute Script / Manual</span>
-      Przykład 1 — prosta rana bez pancerza (rana środowiskowa)
-    </div>
-    <pre><code><span class="cmt">// Nakłada lekką ranę (L) bezpośrednio na aktora — pomija pancerz i testy</span>
-<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
-<span class="kw">if</span> (!actor) <span class="kw">return</span>;
-
-<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
-  damage:          <span class="str">"L"</span>,
-  location:        <span class="str">"torso"</span>,
-  penaltyOverride: <span class="num">15</span>   <span class="cmt">// dokładnie -15%, żaden pancerz tego nie zmieni</span>
-});</code></pre>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header">
-      <span class="trigger-badge">Execute Script / Manual</span>
-      Przykład 2 — pełny pipeline (pancerz + odporność na ból)
-    </div>
-    <pre><code><span class="cmt">// Nakłada ciężką ranę (C) przez pełny pipeline — pancerz może zredukować</span>
-<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
-<span class="kw">if</span> (!actor) <span class="kw">return</span>;
-
-<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
-  damage:   <span class="str">"C"</span>,
-  location: <span class="str">"head"</span>,
-  label:    <span class="str">"Eksplozja"</span>
-});</code></pre>
-    <p class="example-desc">
-      Pancerz na lokacji <code>head</code> zostanie sprawdzony i może obniżyć typ rany.
-      Raport odporności na ból pojawi się w chacie.
-    </p>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header">
-      <span class="trigger-badge">Execute Script / Manual</span>
-      Przykład 3 — pomięcie pancerza (armorBypass)
-    </div>
-    <pre><code><span class="cmt">// Rana draśnięcia (D) — przebija pancerz w całości, pipeline aktywny</span>
-<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(token.actor, {
-  damage:      <span class="str">"D"</span>,
-  location:    <span class="str">"leftLeg"</span>,
-  armorBypass: <span class="kw">true</span>,
-  label:       <span class="str">"Trucizna nerwowa"</span>
-});</code></pre>
-    <p class="example-desc">
-      <code>armorBypass: true</code> ustawia wewnętrznie przebicie 9999 — pancerz nie redukuje rany.
-      Test odporności na ból nadal działa, a skrypty efektów (<code>preApplyDamage</code> / <code>applyDamage</code>) są uruchamiane.
-    </p>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header">
-      <span class="trigger-badge">Execute Script / Manual</span>
-      Przykład 4 — wyciszony raport (suppressChat)
-    </div>
-    <pre><code><span class="cmt">// Tick obrażeń z toksyny — bez raportu w chacie, żeby nie zaśmiecać</span>
-<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
-  damage:       <span class="str">"D"</span>,
-  location:     <span class="str">"torso"</span>,
-  suppressChat: <span class="kw">true</span>
-});</code></pre>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header">
-      <span class="trigger-badge">Execute Script / Manual</span>
-      Przykład 5 — siniak (bruise) z penaltyOverride
-    </div>
-    <pre><code><span class="cmt">// Siniak zamiast rany — nie zostawia trwałego śladu, ale daje karę</span>
-<span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(token.actor, {
-  damage:          <span class="str">"sD"</span>,   <span class="cmt">// siniak draśnięcie</span>
-  location:        <span class="str">"torso"</span>,
-  penaltyOverride: <span class="num">5</span>
-});</code></pre>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header">
-      <span class="trigger-badge">Execute Script</span>
-      Przykład 6 — obrażenia ze sprawdzeniem warunku przed nałożeniem
-    </div>
-    <pre><code><span class="kw">if</span> (!event.user.isSelf) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">actor</span> = token?.actor;
-<span class="kw">if</span> (!actor) <span class="kw">return</span>;
-
-<span class="cmt">// Nałóż ranę tylko gdy postać nie ma odpowiedniego triku</span>
-<span class="kw">const</span> <span class="var">hasToughSkin</span> = actor.items.some(i =>
-  i.type === <span class="str">"trick"</span> && i.name === <span class="str">"Twarda Skóra"</span>
-);
-
-<span class="kw">if</span> (!hasToughSkin) {
-  <span class="kw">await</span> game.neuroshima.<span class="fn">applyDamage</span>(actor, {
-    damage:   <span class="str">"D"</span>,
-    location: <span class="str">"torso"</span>,
-    label:    <span class="str">"Kolce Środowiska"</span>
-  });
-}</code></pre>
-  </div>
-
-  <div class="callout info">
-    <strong>Różnica względem radiation.applyWound():</strong> <code>applyDamage()</code> jest ogólną
-    funkcją do dowolnych ran z pełną kontrolą nad pipeline'em. <code>radiation.applyWound()</code>
-    jest specjalizowaną wersją dla ran radiacyjnych — tworzy rane z predefiniowaną nazwą i opcjonalnie
-    dodaje chorobę popromienną. Do radiacji używaj dedykowanego API, do pozostałych ran środowiskowych
-    i skryptowych — <code>applyDamage()</code>.
   </div>
 
 </section>

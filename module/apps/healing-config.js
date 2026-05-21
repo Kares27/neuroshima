@@ -124,6 +124,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             game.neuroshima.log("Healing settings saved successfully");
             
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.HealingConfig.Saved"));
+            SettingsConfig.reloadConfirm();
         } catch (err) {
             game.neuroshima.error("Error saving healing settings:", err);
             ui.notifications.error(game.i18n.localize("NEUROSHIMA.Notifications.SettingsSaveError") + ": " + err.message);

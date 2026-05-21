@@ -1,0 +1,117 @@
+<div class="cgc-form">
+
+    <!-- ══════════════════ SECTION: CURRENCIES ══════════════════ -->
+    <div class="cgc-section-title">
+        <i class="fas fa-coins"></i>
+        <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CurrenciesHeader"}}</span>
+    </div>
+    <p class="cgc-hint">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CurrenciesHint"}}</p>
+
+    <div class="cgc-labels-row">
+        <div class="cgc-label-field">
+            <label>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CurrencyNameLabel"}}</label>
+            <input type="text" name="currencyNameLabel" value="{{currencyNameLabel}}" placeholder="Gamble"/>
+        </div>
+        <div class="cgc-label-field">
+            <label>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CurrencyValueLabel"}}</label>
+            <input type="text" name="currencyValueLabel" value="{{currencyValueLabel}}" placeholder="Gamblach"/>
+        </div>
+    </div>
+
+    <div class="cgc-add-bar">
+        <a class="cgc-add-btn" data-action="addCurrencyRow">
+            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.CurrencyGearConfig.AddCurrency"}}
+        </a>
+    </div>
+
+    <div class="cgc-scroll">
+        <div class="cgc-header cgc-currency-cols">
+            <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColName"}}</span>
+            <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColAbbr"}}</span>
+            <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColImg"}}</span>
+            <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColCoinVal"}}</span>
+            <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColExchRate"}}</span>
+            <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColPrimary"}}</span>
+            <span></span>
+        </div>
+        {{#each currencies}}
+        <div class="cgc-row cgc-currency-cols {{#if primary}}cgc-primary-row{{/if}}">
+            <input type="text" name="curr.{{idx}}.name" value="{{name}}" placeholder="Gamble"/>
+            <input type="text" name="curr.{{idx}}.abbreviation" value="{{abbreviation}}" placeholder="{#}G"/>
+            <div class="cgc-img-cell">
+                <input type="text" name="curr.{{idx}}.img" value="{{img}}" placeholder="systems/neuroshima/assets/img/banknote.svg"/>
+                <button type="button" class="cgc-browse-btn" data-action="browseCurrencyImg" data-index="{{idx}}" title="{{localize 'FILES.BrowseTooltip'}}">
+                    <i class="fas fa-file-image"></i>
+                </button>
+            </div>
+            <input class="cgc-num" type="number" name="curr.{{idx}}.coinValue" value="{{coinValue}}" min="1" step="1"/>
+            <input class="cgc-num" type="number" name="curr.{{idx}}.exchangeRate" value="{{exchangeRate}}" min="0.001" step="0.001"/>
+            <div class="cgc-center">
+                <input type="radio" name="currPrimary" value="{{idx}}" {{#if primary}}checked{{/if}} title="{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColPrimary"}}"/>
+            </div>
+            <a class="cgc-del" data-action="deleteCurrencyRow" data-index="{{idx}}" title="{{localize 'Delete'}}">
+                <i class="fas fa-trash"></i>
+            </a>
+        </div>
+        {{/each}}
+        {{#unless currencies.length}}
+        <p class="cgc-empty">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CurrenciesEmpty"}}</p>
+        {{/unless}}
+    </div>
+
+    <hr class="cgc-divider"/>
+
+    <!-- ══════════════════ SECTION: GEAR SUBTYPES ══════════════════ -->
+    <div class="cgc-section-title">
+        <i class="fas fa-tags"></i>
+        <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.GearTypesHeader"}}</span>
+    </div>
+    <p class="cgc-hint">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.GearTypesHint"}}</p>
+
+    <div class="cgc-add-bar">
+        <a class="cgc-add-btn" data-action="addGearTypeRow">
+            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.CurrencyGearConfig.AddGearType"}}
+        </a>
+    </div>
+
+    <div class="cgc-scroll cgc-geartypes-scroll">
+        <div class="cgc-header cgc-geartype-cols">
+            <span>{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColGearType"}}</span>
+            <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColBuy"}}</span>
+            <span class="cgc-center">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.ColSell"}}</span>
+            <span></span>
+        </div>
+
+        {{#each builtinRows}}
+        <div class="cgc-row cgc-geartype-cols cgc-builtin-row">
+            <span class="cgc-builtin-label">{{label}}</span>
+            <input class="cgc-num" type="number" name="builtin.{{key}}.buy"  value="{{buy}}"  min="0" step="0.01"/>
+            <input class="cgc-num" type="number" name="builtin.{{key}}.sell" value="{{sell}}" min="0" step="0.01"/>
+            <span></span>
+        </div>
+        {{/each}}
+
+        {{#each customRows}}
+        <div class="cgc-row cgc-geartype-cols cgc-custom-row">
+            <input type="text" name="custom.{{idx}}.label" value="{{label}}" placeholder="{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CustomTypePlaceholder"}}"/>
+            <input class="cgc-num" type="number" name="custom.{{idx}}.buy"  value="{{buy}}"  min="0" step="0.01"/>
+            <input class="cgc-num" type="number" name="custom.{{idx}}.sell" value="{{sell}}" min="0" step="0.01"/>
+            <a class="cgc-del" data-action="deleteGearTypeRow" data-index="{{idx}}" title="{{localize 'Delete'}}">
+                <i class="fas fa-trash"></i>
+            </a>
+        </div>
+        {{/each}}
+
+        {{#unless customRows.length}}
+        <p class="cgc-custom-empty">{{localize "NEUROSHIMA.Settings.CurrencyGearConfig.CustomTypesEmpty"}}</p>
+        {{/unless}}
+    </div>
+
+    <footer class="form-footer">
+        <button type="submit">
+            <i class="fas fa-save"></i>
+            <span>{{localize "NEUROSHIMA.Actions.Save"}}</span>
+        </button>
+    </footer>
+
+</div>

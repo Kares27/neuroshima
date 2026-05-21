@@ -280,6 +280,23 @@ export const NEUROSHIMA = {
         offensive: "NEUROSHIMA.Grenade.Type.Offensive",
         defensive: "NEUROSHIMA.Grenade.Type.Defensive"
     },
+    gearTypes: {
+        food:          "NEUROSHIMA.GearType.food",
+        medicine:      "NEUROSHIMA.GearType.medicine",
+        clothing:      "NEUROSHIMA.GearType.clothing",
+        tools:         "NEUROSHIMA.GearType.tools",
+        survival:      "NEUROSHIMA.GearType.survival",
+        camping:       "NEUROSHIMA.GearType.camping",
+        electronics:   "NEUROSHIMA.GearType.electronics",
+        communication: "NEUROSHIMA.GearType.communication",
+        documents:     "NEUROSHIMA.GearType.documents",
+        fuel:          "NEUROSHIMA.GearType.fuel",
+        materials:     "NEUROSHIMA.GearType.materials",
+        chemicals:     "NEUROSHIMA.GearType.chemicals",
+        services:      "NEUROSHIMA.GearType.services",
+        luxury:        "NEUROSHIMA.GearType.luxury",
+        misc:          "NEUROSHIMA.GearType.misc"
+    },
     grenadeConstitutionBonuses: [
         { minBuild: 12, maxBuild: 14, bonus: 10 },
         { minBuild: 15, maxBuild: 16, bonus: 20 },

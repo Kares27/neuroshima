@@ -6354,7 +6354,7 @@ body.theme-dark {
     margin-bottom: 4px;
 }
 
-.item-summary .item-stats-summary:not(:has(.stat-summary-chip)) {
+.item-summary .item-stats-summary:not(:has(.stat-summary-chip, .gear-type-chip)) {
     display: none;
 }
 
@@ -6730,4 +6730,264 @@ body.theme-dark {
     flex: 1 0 100%;
     margin: 0;
 }
+
+/* ── Currency & Gear Subtype Config ─────────────────────────────────────── */
+
+.neuroshima.currency-gear-config .cgc-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 12px 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.neuroshima.currency-gear-config .cgc-section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0 2px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--ns-border-main);
+    font-size: var(--font-size-14, 14px);
+    font-weight: bold;
+    color: var(--ns-text-accent);
+}
+
+.neuroshima.currency-gear-config .cgc-hint {
+    font-size: 0.82em;
+    opacity: 0.7;
+    margin: 0 0 6px;
+    font-style: italic;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.currency-gear-config .cgc-add-bar {
+    margin-bottom: 4px;
+}
+
+.neuroshima.currency-gear-config .cgc-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+    opacity: 0.8;
+    color: var(--ns-text-clickable);
+}
+
+.neuroshima.currency-gear-config .cgc-add-btn:hover {
+    opacity: 1;
+}
+
+.neuroshima.currency-gear-config .cgc-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 170px;
+    padding-right: 4px;
+    margin-bottom: 4px;
+}
+
+.neuroshima.currency-gear-config .cgc-geartypes-scroll {
+    max-height: 240px;
+}
+
+/* Currency row grid: Name | Abbr | Img | CoinVal | ExchRate | Primary | Del */
+.neuroshima.currency-gear-config .cgc-currency-cols {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 2fr 0.65fr 0.7fr 44px 28px;
+    gap: 4px;
+    align-items: center;
+}
+
+/* Gear type row grid: Name/Label | Buy | Sell | Del */
+.neuroshima.currency-gear-config .cgc-geartype-cols {
+    display: grid;
+    grid-template-columns: 2.5fr 1fr 1fr 28px;
+    gap: 4px;
+    align-items: center;
+}
+
+.neuroshima.currency-gear-config .cgc-header {
+    font-size: 0.75em;
+    opacity: 0.65;
+    padding: 2px 0;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.neuroshima.currency-gear-config .cgc-row {
+    padding: 2px 0;
+    border-radius: 3px;
+}
+
+.neuroshima.currency-gear-config .cgc-row:nth-child(even) {
+    background: var(--ns-bg-input);
+}
+
+.neuroshima.currency-gear-config .cgc-primary-row {
+    outline: 1px solid var(--ns-text-accent);
+    outline-offset: -1px;
+    border-radius: 3px;
+}
+
+.neuroshima.currency-gear-config .cgc-builtin-row .cgc-builtin-label {
+    padding: 2px 4px;
+    font-size: 0.9em;
+    color: var(--ns-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.currency-gear-config .cgc-custom-row {
+    background: rgba(160, 46, 46, 0.06);
+}
+
+.neuroshima.currency-gear-config .cgc-num {
+    text-align: center;
+}
+
+.neuroshima.currency-gear-config .cgc-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.neuroshima.currency-gear-config .cgc-del {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    opacity: 0.5;
+    color: var(--ns-text-accent);
+    font-size: 0.85em;
+    line-height: 1;
+}
+
+.neuroshima.currency-gear-config .cgc-del:hover {
+    opacity: 1;
+}
+
+.neuroshima.currency-gear-config .cgc-empty,
+.neuroshima.currency-gear-config .cgc-custom-empty {
+    font-size: 0.85em;
+    opacity: 0.5;
+    font-style: italic;
+    text-align: center;
+    padding: 6px 0;
+}
+
+.neuroshima.currency-gear-config .cgc-divider {
+    border: none;
+    border-top: 2px solid var(--ns-border-main);
+    margin: 8px 0 4px;
+}
+
+.neuroshima.currency-gear-config .form-footer {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid var(--ns-border-light);
+    padding-bottom: 6px;
+}
+
+/* CGC: currency labels row */
+.neuroshima.currency-gear-config .cgc-labels-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+
+.neuroshima.currency-gear-config .cgc-label-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.neuroshima.currency-gear-config .cgc-label-field label {
+    font-size: 0.82em;
+    opacity: 0.75;
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+.neuroshima.currency-gear-config .cgc-label-field input {
+    flex: 1;
+}
+
+/* CGC: img cell with browse button */
+.neuroshima.currency-gear-config .cgc-img-cell {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+}
+
+.neuroshima.currency-gear-config .cgc-img-cell input {
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.currency-gear-config .cgc-browse-btn {
+    flex-shrink: 0;
+    padding: 2px 5px;
+    font-size: 0.8em;
+    line-height: 1;
+    cursor: pointer;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    color: var(--ns-text-light);
+}
+
+.neuroshima.currency-gear-config .cgc-browse-btn:hover {
+    color: var(--ns-text-accent);
+    border-color: var(--ns-text-accent);
+}
+
+/* Gear type label in inventory column — plain text, no chip */
+.gear-type-badge {
+    display: inline;
+    font-size: 0.85em;
+    color: var(--ns-text-light);
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.2;
+    text-align: center;
+}
+
+/* Gear type chip used in item summary */
+.gear-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--ns-bg-tag, rgba(180, 120, 40, 0.15));
+    border: 1px solid var(--ns-border-accent, rgba(180, 120, 40, 0.4));
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.8em;
+    color: var(--ns-text-light);
+}
+
+/* Jam toggle button in item window header */
+button.jam-toggle-btn.header-control {
+    background: none;
+    border: none;
+    padding: 0 4px;
+    cursor: pointer;
+    font-size: 1.3em;
+    line-height: 1;
+}
+
+/* Gear type label in item subtitle */
+.item-type .item-gear-type-label {
+    font-size: 0.85em;
+    opacity: 0.75;
+    font-weight: normal;
+}
+
 

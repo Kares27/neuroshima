@@ -22,13 +22,13 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
   };
 
   get title() {
-    const scripts = this.effect.getFlag("neuroshima", "scripts") || [];
+    const scripts = this.effect.system?.scriptData ?? [];
     const label = scripts[this.scriptIndex]?.label;
     return label || game.i18n.localize("NEUROSHIMA.Scripts.NewScript");
   }
 
   async _prepareContext(options) {
-    const scripts = this.effect.getFlag("neuroshima", "scripts") || [];
+    const scripts = this.effect.system?.scriptData ?? [];
     const scriptData = foundry.utils.deepClone(scripts[this.scriptIndex]) || { trigger: "manual", label: "", code: "" };
     scriptData.code             = (scriptData.code             ?? "").trimEnd();
     scriptData.hideScript       = (scriptData.hideScript       ?? "").trimEnd();
@@ -73,7 +73,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
   }
 
   async _persist(form) {
-    const scripts = foundry.utils.deepClone(this.effect.getFlag("neuroshima", "scripts") || []);
+    const scripts = foundry.utils.deepClone(this.effect.system?.scriptData ?? []);
     if (!scripts[this.scriptIndex]) return;
     const s = scripts[this.scriptIndex];
 
@@ -104,7 +104,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     const submissionScript = this._readCmValue(form, "submissionScript");
     if (submissionScript !== undefined) s.submissionScript = submissionScript;
 
-    await this.effect.setFlag("neuroshima", "scripts", scripts);
+    await this.effect.update({ "system.scriptData": scripts });
   }
 
 }

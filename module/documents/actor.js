@@ -19,9 +19,11 @@ function _condDefToEffectData(condDef, extraFlags = {}) {
     statuses:    [condDef.key],
     changes:     foundry.utils.deepClone(condDef.changes   ?? []),
     duration:    foundry.utils.deepClone(condDef._duration ?? {}),
+    system: {
+      scriptData: foundry.utils.deepClone(condDef.scripts ?? []),
+    },
     flags: {
       neuroshima: {
-        scripts:      foundry.utils.deepClone(condDef.scripts      ?? []),
         transferType: condDef._transferType  ?? "owningDocument",
         documentType: condDef._documentType  ?? "actor",
         equipTransfer:condDef._equipTransfer ?? false,
@@ -517,7 +519,7 @@ export class NeuroshimaActor extends Actor {
       return this.addCondition(effectId);
     }
 
-    // For boolean conditions: handle manually so flags.neuroshima.scripts are copied
+    // For boolean conditions: handle manually so system.scriptData is populated
     // (Foundry's super.toggleStatusEffect may not copy flags from CONFIG.statusEffects).
     if (condDef) {
       game.neuroshima?.log(`[toggleStatusEffect boolean] key="${effectId}" scriptsCount:`, condDef.scripts?.length ?? 0, condDef.scripts);

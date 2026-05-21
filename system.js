@@ -4,7 +4,7 @@ import { NeuroshimaCombat } from "./module/documents/combat.js";
 import { NeuroshimaCombatant } from "./module/documents/combatant.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
-import { NeuroshimaActiveEffect } from "./module/documents/active-effect.js";
+import { NeuroshimaActiveEffect, NeuroshimaActiveEffectData } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData, HomeBaseData } from "./module/data/actor-data.js";
 import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
@@ -25,6 +25,7 @@ import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/distan
 import { HealingConfig } from "./module/apps/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/condition-config.js";
 import { ReputationSettingsApp } from "./module/apps/reputation-settings.js";
+import { CurrencyGearConfig, DEFAULT_CURRENCY } from "./module/apps/currency-gear-config.js";
 import { GrenadeConfig } from "./module/apps/grenade-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
@@ -268,26 +269,21 @@ Hooks.once('init', async function() {
             } = config;
 
             if (penaltyOverride !== undefined && penaltyOverride !== null) {
-                const cfg     = NEUROSHIMA.woundConfiguration[damage] ?? {};
                 const penalty = Number(penaltyOverride);
-                await actor.createEmbeddedDocuments("Item", [{
-                    name: game.i18n.localize(cfg.fullLabel ?? "NEUROSHIMA.Items.Type.Wound"),
-                    type: "wound",
-                    system: {
-                        location,
-                        damageType:               damage,
-                        penalty,
-                        originalPenalty:          penalty,
-                        isActive:                 true,
-                        isHealing:                false,
-                        hadFirstAid:              false,
-                        healingAttempts:          0,
-                        failedFirstAidAttempts:   0,
-                        failedTreatmentAttempts:  0,
-                        firstAidHealingApplied:   0
+                game.neuroshima?.log(`applyDamage | direct wound via applyWound (${damage}, -${penalty}%) → ${actor.name} @ ${location}`);
+                await NeuroshimaDice.applyWound(actor, {
+                    damageType: damage,
+                    location,
+                    penaltyOverride: penalty,
+                    additionalSystem: {
+                        originalPenalty:         penalty,
+                        hadFirstAid:             false,
+                        healingAttempts:         0,
+                        failedFirstAidAttempts:  0,
+                        failedTreatmentAttempts: 0,
+                        firstAidHealingApplied:  0
                     }
-                }]);
-                game.neuroshima?.log(`applyDamage | direct wound (${damage}, -${penalty}%) → ${actor.name} @ ${location}`);
+                });
                 return;
             }
 
@@ -326,6 +322,7 @@ Hooks.once('init', async function() {
     CONFIG.Actor.dataModels.creature = NeuroshimaCreatureData;
     CONFIG.Actor.dataModels.vehicle  = NeuroshimaVehicleData;
     CONFIG.Actor.dataModels.homeBase = HomeBaseData;
+    CONFIG.ActiveEffect.dataModels.base = NeuroshimaActiveEffectData;
     CONFIG.Item.dataModels.weapon = WeaponData;
     CONFIG.Item.dataModels.armor = ArmorData;
     CONFIG.Item.dataModels.gear = GearData;
@@ -386,11 +383,19 @@ Hooks.once('init', async function() {
         let statsHtml = "";
         if (hasW || hasC) {
             const wChip = hasW ? `<span class='ns-tip-stat'><i class='fas fa-weight-hanging'></i> ${wNum} kg</span>` : "";
-            const cChip = hasC ? `<span class='ns-tip-stat'><i class='fas fa-coins'></i> ${cNum}</span>` : "";
+            const cFormatted = Number.isInteger(cNum) ? cNum.toLocaleString("pl-PL") : cNum.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const cChip = hasC ? `<span class='ns-tip-stat'><i class='fas fa-coins'></i> ${cFormatted}</span>` : "";
             statsHtml = `<div class='ns-item-preview-stats'>${wChip}${cChip}</div>`;
         }
         return `<div class='ns-item-preview'><div class='ns-item-preview-name'>${safeName}</div><img src='${safeImg}' />${statsHtml}</div>`;
     });
+    Handlebars.registerHelper('nsGearTypeLabel', (gearType) => {
+        if (!gearType || gearType === "misc") return "";
+        const NEUROSHIMA = game.neuroshima.config;
+        const i18nKey = NEUROSHIMA.gearTypes[gearType];
+        return i18nKey ? game.i18n.localize(i18nKey) : gearType;
+    });
+
     Handlebars.registerHelper('neuroshimaDiceTooltip', (modifiedResults, target, skill) => {
         if (!modifiedResults?.length) return "";
         const dice = modifiedResults.map((d, i) => {
@@ -525,6 +530,41 @@ Hooks.once('init', async function() {
     });
 
     // Register system settings
+    game.settings.register("neuroshima", "customGearTypes", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: "[]"
+    });
+
+    game.settings.register("neuroshima", "currencies", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: "[]"
+    });
+
+    game.settings.register("neuroshima", "currencyNameLabel", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: ""
+    });
+
+    game.settings.register("neuroshima", "currencyValueLabel", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: ""
+    });
+
+    game.settings.register("neuroshima", "gearTypePriceModifiers", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: "{}"
+    });
+
     game.settings.register("neuroshima", "debugMode", {
         name: "NEUROSHIMA.Settings.DebugMode.Name",
         hint: "NEUROSHIMA.Settings.DebugMode.Hint",
@@ -772,6 +812,15 @@ Hooks.once('init', async function() {
         hint: "NEUROSHIMA.Settings.ReputationConfig.Hint",
         icon: "fas fa-handshake",
         type: ReputationSettingsApp,
+        restricted: true
+    });
+
+    game.settings.registerMenu("neuroshima", "currencyGearConfig", {
+        name: "NEUROSHIMA.Settings.CurrencyGearConfig.Label",
+        label: "NEUROSHIMA.Settings.CurrencyGearConfig.Title",
+        hint: "NEUROSHIMA.Settings.CurrencyGearConfig.MenuHint",
+        icon: "fas fa-coins",
+        type: CurrencyGearConfig,
         restricted: true
     });
 
@@ -1023,6 +1072,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/item/parts/magazine-details.hbs",
         "systems/neuroshima/templates/item/parts/ammunition-details.hbs",
         "systems/neuroshima/templates/apps/reputation-settings.hbs",
+        "systems/neuroshima/templates/apps/currency-gear-config.hbs",
         "systems/neuroshima/templates/apps/healing-config.hbs",
         "systems/neuroshima/templates/apps/healing-app-main.hbs",
         "systems/neuroshima/templates/apps/healing-app-header.hbs",
@@ -1073,7 +1123,39 @@ Hooks.once('init', async function() {
     console.log("Neuroshima 1.5 | Szablony wczytane");
 });
 
+Hooks.once("ready", () => {
+    try {
+        const customTypes = JSON.parse(game.settings.get("neuroshima", "customGearTypes") || "[]");
+        for (const label of customTypes) {
+            if (label && typeof label === "string") {
+                NEUROSHIMA.gearTypes[label] = label;
+            }
+        }
+    } catch(e) {}
+});
+
 Hooks.once("ready", async function () {
+    if (game.user.isGM) {
+        const migrateEffect = async (effect) => {
+            const oldScripts = effect.getFlag("neuroshima", "scripts");
+            if (!Array.isArray(oldScripts) || !oldScripts.length) return;
+            if (effect.system?.scriptData?.length) return;
+            await effect.update({
+                "system.scriptData": oldScripts,
+                "flags.neuroshima.-=scripts": null
+            });
+        };
+        for (const actor of game.actors) {
+            for (const effect of actor.effects) await migrateEffect(effect);
+            for (const item of actor.items) {
+                for (const effect of item.effects) await migrateEffect(effect);
+            }
+        }
+        for (const item of game.items) {
+            for (const effect of item.effects) await migrateEffect(effect);
+        }
+    }
+
     game.neuroshima.log("Tryb debugowania jest WŁĄCZONY");
     console.log("Neuroshima 1.5 | System gotowy");
 
@@ -2608,12 +2690,18 @@ Hooks.on("deleteMeasuredTemplate", async (templateDoc, options, userId) => {
 Hooks.on("createActor", async (actor, options, userId) => {
     if (!["character", "npc"].includes(actor.type)) return;
     if (userId !== game.user.id) return;
-    await actor.createEmbeddedDocuments("Item", [{
+    let currencies = [];
+    try {
+        const saved = JSON.parse(game.settings.get("neuroshima", "currencies") || "null");
+        if (Array.isArray(saved) && saved.length) currencies = saved;
+    } catch(e) {}
+    if (!currencies.length) currencies = [DEFAULT_CURRENCY];
+    await actor.createEmbeddedDocuments("Item", currencies.map(c => ({
         type: "money",
-        name: "Gamble",
-        img: "systems/neuroshima/assets/img/banknote.svg",
-        system: { coinValue: 1, quantity: 0, weight: 0 }
-    }]);
+        name: c.name,
+        img:  c.img || DEFAULT_CURRENCY.img,
+        system: { coinValue: c.coinValue ?? 1, quantity: 0, weight: c.weight ?? 0 }
+    })));
 });
 
 Hooks.on("updateItem", async (item, changes, options, userId) => {
@@ -2706,8 +2794,8 @@ Hooks.once("item-piles-ready", () => {
         "inactive":              "rgba(144,144,130,1)",
         "minor-inactive":        "rgba(80,78,70,1)",
         "shadow-primary":        "rgba(160,46,46,0.8)",
-        "even-color":            "rgba(0,0,0,0.06)",
-        "odd-color":             "rgba(0,0,0,0)",
+        "even-color":            "rgba(0,0,0,0.12)",
+        "odd-color":             "rgba(0,0,0,0.04)",
         "border-dark-primary":   "rgba(25,24,19,1)",
         "border-light-primary":  "rgba(181,179,164,1)",
         "text-light-highlight":  "rgba(216,216,200,1)",
@@ -2726,6 +2814,100 @@ Hooks.once("item-piles-ready", () => {
         }
     } catch(e) { }
 
+    const ipStyle = document.createElement("style");
+    ipStyle.id = "neuroshima-itempiles-overrides";
+    document.head.querySelector("#neuroshima-itempiles-overrides")?.remove();
+    ipStyle.textContent = `
+        .item-piles-app .item-piles-item-row .item-piles-img-container {
+            height: 64px;
+            min-height: 64px;
+            max-height: 64px;
+            min-width: 48px;
+            max-width: 128px;
+            width: max-content;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .item-piles-app .item-piles-item-row .item-piles-img-container .item-piles-img {
+            height: 100%;
+            width: auto;
+        }
+        .item-piles-app .item-piles-img-container.not-for-sale {
+            position: relative;
+        }
+        .item-piles-app .item-piles-img-container.not-for-sale::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(220, 38, 38, 0.2);
+            border-radius: 3px;
+            z-index: 1;
+            transform: none;
+            border-top: none;
+        }
+        .item-piles-app .item-piles-img-container.not-for-sale::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image: url("/systems/neuroshima/assets/img/scales.svg");
+            background-size: 60%;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0.85;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+        }
+
+        .item-piles-app .item-piles-item-sublist {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .item-piles-app .item-piles-trading-sheet .item-piles-quantity-text {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: rgba(216, 216, 200, 1);
+        }
+        .item-piles-app .item-piles-trading-sheet .item-piles-quantity-text:hover {
+            background-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .item-piles-chat-card li:nth-child(odd) {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .price-list {
+            background-color: rgba(28, 26, 22, 0.98);
+            color: rgba(216, 216, 200, 1);
+            border: 1px solid rgba(80, 78, 70, 0.7);
+        }
+        .price-list .price-group.selected {
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+        .price-list .price-group:hover {
+            background-color: rgba(255, 255, 255, 0.18);
+        }
+        .price-list .price-group:not(:last-child) {
+            border-bottom-color: rgba(80, 78, 70, 0.5);
+        }
+        .price-list .price-group .price-group-container * {
+            color: rgba(216, 216, 200, 1);
+        }
+    `;
+    document.head.appendChild(ipStyle);
+
+    try {
+        const gearTypeLabels = Object.entries(NEUROSHIMA.gearTypes)
+            .map(([, val]) => "\uFFFF" + game.i18n.localize(val));
+        const existing = game.settings.get("item-piles", "customItemCategories") ?? [];
+        const merged = Array.from(new Set([...existing, ...gearTypeLabels]));
+        if (merged.length !== existing.length || merged.some((v, i) => v !== existing[i])) {
+            game.settings.set("item-piles", "customItemCategories", merged);
+        }
+    } catch(e) { }
+
     game.itempiles.API.addSystemIntegration({
         VERSION: "1.0.0",
 
@@ -2738,6 +2920,8 @@ Hooks.once("item-piles-ready", () => {
         ITEM_QUANTITY_ATTRIBUTE: "system.quantity",
         ITEM_PRICE_ATTRIBUTE: "system.effectiveCost",
 
+        ITEM_TYPE_ATTRIBUTE: "pileCategory",
+
         ITEM_FILTERS: [
             { path: "type", filters: "weapon-mod,armor-mod,container,trait,trick,wound,specialization,origin,profession,vehicle-damage,vehicle-mod,reputation,disease,facility" }
         ],
@@ -2746,26 +2930,68 @@ Hooks.once("item-piles-ready", () => {
             return Number(foundry.utils.getProperty(item, "system.effectiveCost") ?? foundry.utils.getProperty(item, "system.cost")) || 0;
         },
 
+        PRICE_MODIFIER_TRANSFORMER: ({ buyPriceModifier, sellPriceModifier, item }) => {
+            if (item?.type !== "gear") return { buyPriceModifier, sellPriceModifier };
+            const gearType = item?.system?.gearType ?? "misc";
+            let modifiers = {};
+            try {
+                modifiers = JSON.parse(game.settings.get("neuroshima", "gearTypePriceModifiers") || "{}");
+            } catch(e) {}
+            const mod = modifiers[gearType];
+            let buyMult = 1, sellMult = 1;
+            if (typeof mod === "number")             { buyMult = sellMult = mod; }
+            else if (mod && typeof mod === "object") { buyMult = mod.buy ?? 1; sellMult = mod.sell ?? 1; }
+            return {
+                buyPriceModifier:  buyPriceModifier  * buyMult,
+                sellPriceModifier: sellPriceModifier * sellMult
+            };
+        },
+
         ITEM_SIMILARITIES: ["name", "type"],
 
-        CURRENCIES: [
-            {
+        CURRENCIES: (() => {
+            let saved = [];
+            try {
+                const raw = JSON.parse(game.settings.get("neuroshima", "currencies") || "null");
+                if (Array.isArray(raw) && raw.length) saved = raw;
+            } catch(e) {}
+            if (!saved.length) saved = [DEFAULT_CURRENCY];
+            return saved.map(c => ({
                 type: "item",
-                name: "Gamble",
-                img: "systems/neuroshima/assets/img/banknote.svg",
-                abbreviation: "{#}Gamble",
+                name: c.name,
+                img:  c.img || DEFAULT_CURRENCY.img,
+                abbreviation: c.abbreviation || `{#}${c.name}`,
                 data: {
                     item: {
-                        name: "Gamble",
-                        type: "money",
-                        img: "systems/neuroshima/assets/img/banknote.svg",
-                        system: { coinValue: 1, quantity: 1, weight: 0 }
+                        name:   c.name,
+                        type:   "money",
+                        img:    c.img || DEFAULT_CURRENCY.img,
+                        system: { coinValue: c.coinValue ?? 1, quantity: 1, weight: c.weight ?? 0 }
                     }
                 },
-                primary: true,
-                exchangeRate: 1
-            }
-        ]
+                primary:      !!c.primary,
+                exchangeRate: c.exchangeRate ?? 1
+            }));
+        })()
+    });
+
+    Hooks.on("createItem", async (item, _options, userId) => {
+        if (userId !== game.userId) return;
+        if (item.type !== "gear") return;
+        const gearType = item.system?.gearType ?? "misc";
+        const i18nKey = NEUROSHIMA.gearTypes[gearType];
+        const label = "\uFFFF" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
+        await item.setFlag("item-piles", "item.customCategory", label);
+    });
+
+    Hooks.on("updateItem", async (item, changes, _options, userId) => {
+        if (userId !== game.userId) return;
+        if (item.type !== "gear") return;
+        if (!foundry.utils.hasProperty(changes, "system.gearType")) return;
+        const gearType = changes.system?.gearType ?? "misc";
+        const i18nKey = NEUROSHIMA.gearTypes[gearType];
+        const label = "\uFFFF" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
+        await item.setFlag("item-piles", "item.customCategory", label);
     });
 });
 

@@ -124,14 +124,23 @@
 .neuroshima.sheet.item .item-header-stats .form-group.row-group {
     margin: 0;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    gap: 2px;
     border: 1px solid var(--ns-border-main);
-    padding: 2px 8px;
+    padding: 4px 8px;
     border-radius: 3px;
     background: var(--ns-bg-panel);
     min-width: 0;
+}
+
+.neuroshima.sheet.item .item-header-stats .availability-input-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 2px;
 }
 
 .neuroshima.sheet.item .item-header-stats .availability-pct {
@@ -141,7 +150,7 @@
 }
 
 .neuroshima.sheet.item .item-header-stats .form-group.row-group label {
-    font-size: 0.75em;
+    font-size: 0.62em;
     font-weight: bold;
     white-space: nowrap;
     text-transform: uppercase;
@@ -154,7 +163,13 @@
     background: transparent;
     border: none;
     font-weight: bold;
-    align-self: stretch;
+    font-size: 1.05em;
+    padding: 0;
+    height: 20px;
+    line-height: 20px;
+    box-sizing: border-box;
+    display: block;
+    vertical-align: middle;
 }
 
 .neuroshima.sheet.item .item-header-stats input[type="checkbox"] {
@@ -1917,3 +1932,21 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     margin-left: auto;
 }
 
+.neuroshima.sheet.item .gear-stats.secondary-box.gear-stats-inline {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 4px 8px;
+}
+
+.neuroshima.sheet.item .gear-stats.gear-stats-inline .gear-type-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .gear-stats.gear-stats-inline .gear-wearable-group {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}

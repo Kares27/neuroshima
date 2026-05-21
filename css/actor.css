@@ -1075,8 +1075,18 @@
     justify-content: flex-start;
 }
 
+.neuroshima.sheet.actor .item-stat.gear-type {
+    flex: 0 0 130px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .neuroshima.sheet.actor .item-stat.equipped {
-    flex: 0 0 80px;
+    flex: 0 0 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .neuroshima.sheet.actor .item-stat.quantity {
@@ -1088,13 +1098,6 @@
 
 .neuroshima.sheet.actor .item-stat.weight {
     flex: 0 0 70px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.neuroshima.sheet.actor .item-stat.equipped {
-    flex: 0 0 55px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1155,6 +1158,16 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.neuroshima.sheet.actor .item-name .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
 }
 
 .neuroshima.sheet.actor .item-image {
@@ -6412,7 +6425,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex-direction: column;
     gap: 3px;
     padding-right: 4px;
-    max-height: 260px;
+    max-height: 400px;
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -7397,6 +7410,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 #tooltip:has(.ns-item-preview) {
     border: 3px solid var(--ns-border-main) !important;
     border-radius: 3px !important;
+    width: max-content !important;
+    max-width: 280px !important;
 }
 
 .ns-item-preview {

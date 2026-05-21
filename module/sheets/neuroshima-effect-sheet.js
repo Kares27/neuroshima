@@ -327,7 +327,7 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
-    context.scripts      = foundry.utils.deepClone(this.document.getFlag("neuroshima", "scripts") || []);
+    context.scripts      = foundry.utils.deepClone(this.document.system?.scriptData ?? []);
     context.triggers     = NeuroshimaScriptRunner.TRIGGERS;
     context.transferType = this.document.getFlag("neuroshima", "transferType") ?? "owningDocument";
     context.documentType = this.document.getFlag("neuroshima", "documentType") ?? "actor";
@@ -431,19 +431,19 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
   }
 
   async _onAddScript(event, target) {
-    const scripts = foundry.utils.deepClone(this.document.getFlag("neuroshima", "scripts") || []);
+    const scripts = foundry.utils.deepClone(this.document.system?.scriptData ?? []);
     const newIndex = scripts.length;
     scripts.push({ trigger: "manual", label: game.i18n.localize("NEUROSHIMA.Scripts.NewScript"), code: "" });
-    await this.document.setFlag("neuroshima", "scripts", scripts);
+    await this.document.update({ "system.scriptData": scripts });
     const { NeuroshimaScriptEditor } = await import("../apps/neuroshima-script-editor.js");
     new NeuroshimaScriptEditor(this.document, newIndex).render(true);
   }
 
   async _onRemoveScript(event, target) {
     const index = parseInt(target.closest("[data-index]")?.dataset.index ?? target.dataset.index);
-    const scripts = foundry.utils.deepClone(this.document.getFlag("neuroshima", "scripts") || []);
+    const scripts = foundry.utils.deepClone(this.document.system?.scriptData ?? []);
     scripts.splice(index, 1);
-    await this.document.setFlag("neuroshima", "scripts", scripts);
+    await this.document.update({ "system.scriptData": scripts });
   }
 
   async _onEditScript(event, target) {
