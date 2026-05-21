@@ -2709,8 +2709,7 @@ export class NeuroshimaScriptRunner {
       difficulty: initialDifficulty,
       hitLocation: initialHitLocation,
        
-      aimingLevel: rc.aimingLevel ?? 0,
-      burstLevel: rc.burstLevel ?? 0,
+     
 
       rollType: rc.rollType ?? null,
       healingMethod: rc.healingMethod ?? null,
@@ -2723,7 +2722,8 @@ export class NeuroshimaScriptRunner {
       rollingActor: liveContext.rollingActor ?? actor,
       skill: rc.skill ?? null,
       attribute: rc.attribute ?? null,
-
+      aimingLevel: rc.aimingLevel ?? 0,
+      burstLevel: rc.burstLevel ?? 0,
       // Flattened roll context for scripts
       rollType: rc.rollType ?? null,
       healingMethod: rc.healingMethod ?? null,
