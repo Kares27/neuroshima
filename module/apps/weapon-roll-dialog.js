@@ -121,12 +121,23 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
     const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
-      this.actor,
-      { rollType: this.rollType, weapon: this.weapon, skill: weaponSkillObj, attribute: weaponAttrObj, difficulty: baseDifficulty, hitLocation, distance, distanceModifier: distancePenalty },
-      this.selectedModifierIds,
-      this.unselectedModifierIds,
-      targetActors
-    );
+    this.actor,
+    {
+      rollType: this.rollType,
+      weapon: this.weapon,
+      skill: weaponSkillObj,
+      attribute: weaponAttrObj,
+      difficulty: baseDifficulty,
+      hitLocation,
+      distance,
+      distanceModifier: distancePenalty,
+      aimingLevel,
+      burstLevel
+    },
+    this.selectedModifierIds,
+    this.unselectedModifierIds,
+    targetActors
+  );
 
     this._dialogModifiers = dialogModifiers;
     this._scriptFields = scriptFields;

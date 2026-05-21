@@ -2923,7 +2923,7 @@ Hooks.once("item-piles-ready", () => {
         ITEM_TYPE_ATTRIBUTE: "pileCategory",
 
         ITEM_FILTERS: [
-            { path: "type", filters: "weapon-mod,armor-mod,container,trait,trick,wound,specialization,origin,profession,vehicle-damage,vehicle-mod,reputation,disease,facility" }
+            { path: "type", filters: "container,trait,trick,wound,specialization,origin,profession,vehicle-damage,reputation,disease,facility" }
         ],
 
         ITEM_COST_TRANSFORMER: (item, currencies) => {

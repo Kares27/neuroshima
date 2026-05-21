@@ -2707,15 +2707,30 @@ export class NeuroshimaScriptRunner {
       distanceModifier: 0,
       difficultyShift: 0,
       difficulty: initialDifficulty,
-      hitLocation: initialHitLocation
+      hitLocation: initialHitLocation,
+       
+      aimingLevel: rc.aimingLevel ?? 0,
+      burstLevel: rc.burstLevel ?? 0,
+
+      rollType: rc.rollType ?? null,
+      healingMethod: rc.healingMethod ?? null,
+      weapon: rc.weapon ?? null,
+      wounds: rc.wounds ?? [],
+      stat: rc.stat ?? null
     };
     const args = {
       actor,
       rollingActor: liveContext.rollingActor ?? actor,
       skill: rc.skill ?? null,
       attribute: rc.attribute ?? null,
+
+      // Flattened roll context for scripts
       rollType: rc.rollType ?? null,
+      healingMethod: rc.healingMethod ?? null,
       weapon: rc.weapon ?? null,
+      wounds: rc.wounds ?? [],
+      stat: rc.stat ?? null,
+
       flags: {},
       fields,
       currentDifficulty: initialDifficulty,
@@ -3331,14 +3346,17 @@ export class NeuroshimaScriptRunner {
       if (!dm.activated || !dm._script?.code) continue;
       const srcActor = dm._sourceActor || actor;
       const result = await this.execDialogModifier(dm, srcActor, {
-        rollingActor: actor,
-        difficulty: rollContext.difficulty || "average",
-        hitLocation: rollContext.hitLocation || "random",
-        armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
-        woundPenalty: actor.system.combat?.totalWoundPenalty || 0,
-        distance: rollContext.distance || 0,
-        distanceModifier: rollContext.distanceModifier || 0,
-      });
+      rollingActor: actor,
+      rollType: rollContext.rollType ?? null,
+      healingMethod: rollContext.healingMethod ?? null,
+      difficulty: rollContext.difficulty || "average",
+      hitLocation: rollContext.hitLocation || "random",
+      armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
+      woundPenalty: actor.system.combat?.totalWoundPenalty || 0,
+      distance: rollContext.distance || 0,
+      distanceModifier: rollContext.distanceModifier || 0,
+      
+    });
       scriptFields.modifier += result.modifier || 0;
       scriptFields.attributeBonus += result.attributeBonus || 0;
       scriptFields.skillBonus += result.skillBonus || 0;

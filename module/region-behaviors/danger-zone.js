@@ -56,7 +56,7 @@ async function _applyRadiationWound(actor, config) {
     const { NeuroshimaDice } = game.neuroshima;
     await NeuroshimaDice.applyWound(actor, {
         damageType,
-        location: "inne",
+        location: "Torso",
         source: nameOverride,
         nameOverride,
         penaltyOverride: penalty,
