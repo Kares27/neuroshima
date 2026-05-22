@@ -542,6 +542,11 @@
                     "AllowNegativeHint": "Zezwól na wartości ujemne (tylko dla typu Liczba)"
                 },
                 "EditTemplate": "Edytuj Szablon Efektu",
+                "EditCheckScript": "Edytuj Skrypt Auto-Sprawdzania",
+                "CheckEditorTitle": "Skrypt Auto-Sprawdzania",
+                "CheckEditorLabel": "Skrypt — uruchamiany przy każdej zmianie aktora/przedmiotu. Pusty = brak auto-sprawdzania.",
+                "CheckEditorApplyHint": "dodaj ten stan jeśli nie ma",
+                "CheckEditorRemoveHint": "usuń ten stan jeśli jest",
                 "NoKeyWarning": "Ustaw Klucz/ID dla tego stanu przed edycją jego szablonu.",
                 "OpeningTemplate": "Otwieranie edytora szablonu efektu stanu..."
             },
@@ -602,6 +607,23 @@
                 "ThrowParams": "Parametry Rzutu",
                 "BaseRange": "Zasięg Bazowy (m)",
                 "DistanceMultiplier": "Mnożnik Odległości"
+            },
+            "DamageCategoryConfig": {
+                "Label": "Typy Obrażeń",
+                "Title": "Konfiguracja Typów Obrażeń",
+                "MenuHint": "Dodaj własne typy obrażeń dla odporności pancerza.",
+                "Saved": "Typy obrażeń zapisane.",
+                "BuiltinHeader": "Wbudowane Typy",
+                "BuiltinHint": "Te typy są wbudowane w system i nie mogą być usunięte.",
+                "CustomHeader": "Własne Typy",
+                "CustomHint": "Zdefiniuj dodatkowe typy obrażeń. Klucz musi być unikalny i zawierać tylko litery, cyfry i podkreślniki.",
+                "CustomEmpty": "Brak zdefiniowanych własnych typów.",
+                "AddCategory": "Dodaj Typ",
+                "DeleteCategory": "Usuń",
+                "Save": "Zapisz",
+                "ColKey": "Klucz",
+                "ColLabel": "Nazwa",
+                "ColColor": "Kolor"
             }
         },
         "Errors": {
@@ -1105,6 +1127,11 @@
                 "DefenseBonusAbbr": "OBR",
                 "WeaponModifier": "Modyfikator Broni",
                 "WeaponModifierAbbr": "Modyfikator",
+                "DamageCategory": "Kategoria obrażeń",
+                "DamageCategoryAbbr": "Typ",
+                "Resistances": "Odporności",
+                "AddResistance": "Dodaj wiersz odporności",
+                "RemoveResistance": "Usuń wiersz odporności",
                 "MeleeDamageTypes": "Rodzaj obrażeń",
                 "WeaponSubtype": "Typ broni",
                 "Magazine": "Magazynek",
@@ -1153,6 +1180,7 @@
                 "MagazineContents": "Zawartość magazynka",
                 "IsOverride": "Nadpisz statystyki broni",
                 "OverrideDamage": "Nadpisz obrażenia",
+                "OverrideDamageCategory": "Nadpisz kategorię obrażeń",
                 "OverridePiercing": "Nadpisz przebicie",
                 "OverrideJamming": "Nadpisz zacięcie",
                 "Availability": "Dostępność",
@@ -1182,6 +1210,7 @@
             "ModType": "Typ",
             "ModTypePlaceholder": "np. lufa, celownik...",
             "OverrideDamage": "Nadpisz obrażenia",
+            "OverrideDamageCategory": "Nadpisz kategorię obrażeń",
             "OverrideCaliber": "Nadpisz kaliber",
             "OverrideMode": "Zaznaczone = nadpisuje wartość bazową; odznaczone = dodaje/odejmuje od wartości bazowej",
             "ModifiesCost": "Modyfikuje koszt itemu",
@@ -1874,6 +1903,11 @@
             "Lock": "Zamknij pojemnik",
             "Unlock": "Odblokuj pojemnik",
             "SourceNotFound": "Nie można edytować: przedmiot źródłowy nie został znaleziony."
+        },
+        "DamageCategory": {
+            "physical": "Fizyczne",
+            "explosive": "Wybuchowe",
+            "radiation": "Promieniowanie"
         },
         "GearType": {
             "food":          "Jedzenie i woda",

@@ -61,6 +61,54 @@
                 </div>
             </div>
         </div>
+
+        {{!-- Resistance rows (non-physical damage categories) --}}
+        <div class="secondary-box armor-resistances-section" style="margin-top: 8px;">
+            <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.Resistances"}}</label>
+            <div class="resistance-table">
+                <div class="resistance-table-header flexrow">
+                    <span class="resistance-col-label" title="{{localize 'NEUROSHIMA.Items.Fields.DamageCategory'}}">{{localize "NEUROSHIMA.Items.Fields.DamageCategoryAbbr"}}</span>
+                    <span class="resistance-col-loc" title="{{localize 'NEUROSHIMA.Items.Fields.Head'}}">{{localize "NEUROSHIMA.Items.Fields.HeadAbbr"}}</span>
+                    <span class="resistance-col-loc" title="{{localize 'NEUROSHIMA.Items.Fields.Torso'}}">{{localize "NEUROSHIMA.Items.Fields.TorsoAbbr"}}</span>
+                    <span class="resistance-col-loc" title="{{localize 'NEUROSHIMA.Items.Fields.LeftArm'}}">{{localize "NEUROSHIMA.Items.Fields.LeftArmAbbr"}}</span>
+                    <span class="resistance-col-loc" title="{{localize 'NEUROSHIMA.Items.Fields.RightArm'}}">{{localize "NEUROSHIMA.Items.Fields.RightArmAbbr"}}</span>
+                    <span class="resistance-col-loc" title="{{localize 'NEUROSHIMA.Items.Fields.LeftLeg'}}">{{localize "NEUROSHIMA.Items.Fields.LeftLegAbbr"}}</span>
+                    <span class="resistance-col-loc" title="{{localize 'NEUROSHIMA.Items.Fields.RightLeg'}}">{{localize "NEUROSHIMA.Items.Fields.RightLegAbbr"}}</span>
+                    {{#unless isModded}}<a class="item-control resistance-col-action" data-action="addResistanceRow" title="{{localize 'NEUROSHIMA.Items.Fields.AddResistance'}}"><i class="fas fa-plus"></i></a>{{/unless}}
+                </div>
+                {{#if isModded}}
+                {{#each effectiveArmorResistanceRows as |row|}}
+                <div class="resistance-row flexrow">
+                    <span class="resistance-col-label">{{row.categoryLabel}}</span>
+                    <span class="resistance-col-loc">{{row.head}}</span>
+                    <span class="resistance-col-loc">{{row.torso}}</span>
+                    <span class="resistance-col-loc">{{row.leftArm}}</span>
+                    <span class="resistance-col-loc">{{row.rightArm}}</span>
+                    <span class="resistance-col-loc">{{row.leftLeg}}</span>
+                    <span class="resistance-col-loc">{{row.rightLeg}}</span>
+                    <span class="resistance-col-action"></span>
+                </div>
+                {{/each}}
+                {{else}}
+                {{#each system.armor.resistances as |row idx|}}
+                <div class="resistance-row flexrow" data-resistance-index="{{idx}}">
+                    <select class="resistance-col-label" name="system.armor.resistances.{{idx}}.category">
+                        {{#each ../resistanceCategories as |cat key|}}
+                        <option value="{{key}}" {{#if (eq ../category key)}}selected{{/if}}>{{localize cat.label}}</option>
+                        {{/each}}
+                    </select>
+                    <input class="resistance-col-loc" type="number" name="system.armor.resistances.{{idx}}.head"     value="{{row.head}}"     data-dtype="Number"/>
+                    <input class="resistance-col-loc" type="number" name="system.armor.resistances.{{idx}}.torso"    value="{{row.torso}}"    data-dtype="Number"/>
+                    <input class="resistance-col-loc" type="number" name="system.armor.resistances.{{idx}}.leftArm"  value="{{row.leftArm}}"  data-dtype="Number"/>
+                    <input class="resistance-col-loc" type="number" name="system.armor.resistances.{{idx}}.rightArm" value="{{row.rightArm}}" data-dtype="Number"/>
+                    <input class="resistance-col-loc" type="number" name="system.armor.resistances.{{idx}}.leftLeg"  value="{{row.leftLeg}}"  data-dtype="Number"/>
+                    <input class="resistance-col-loc" type="number" name="system.armor.resistances.{{idx}}.rightLeg" value="{{row.rightLeg}}" data-dtype="Number"/>
+                    <a class="item-control resistance-col-action" data-action="removeResistanceRow" data-resistance-index="{{idx}}" title="{{localize 'NEUROSHIMA.Items.Fields.RemoveResistance'}}"><i class="fas fa-trash"></i></a>
+                </div>
+                {{/each}}
+                {{/if}}
+            </div>
+        </div>
     {{/if}}
 
     {{#if (eq item.type "weapon")}}

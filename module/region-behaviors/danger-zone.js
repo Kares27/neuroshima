@@ -54,12 +54,15 @@ async function _applyRadiationWound(actor, config) {
     const nameOverride = game.i18n.localize(nameKey);
 
     const { NeuroshimaDice } = game.neuroshima;
-    await NeuroshimaDice.applyWound(actor, {
-        damageType,
-        location: "Torso",
+    const result = await NeuroshimaDice.applyDamage(actor, {
+        // damageCategory: "radiation" is kept as an internal wound tag for identification
+        // purposes (e.g. first-aid scripts, hooks). It is NOT part of the damage-reduction
+        // resistance system and is not displayed in damageCategories config.
+        wounds: [{ name: nameOverride, damageType, damageCategory: "radiation", isRadiation: true }],
+        location: "torso",
         source: nameOverride,
-        nameOverride,
         penaltyOverride: penalty,
+        withHooks: true,
         additionalSystem: {
             originalPenalty: penalty,
             hadFirstAid: false,
@@ -69,6 +72,11 @@ async function _applyRadiationWound(actor, config) {
             firstAidHealingApplied: 0
         }
     });
+
+    if (!result.wounds.length) {
+        game.neuroshima?.log(`Radiation | Wound blocked by effect script for ${actor.name} [level ${config.level ?? "?"}]`);
+        return;
+    }
 
     game.neuroshima?.log(`Radiation | Wound (${damageType}, -${penalty}%) applied to ${actor.name} [level ${config.level ?? "?"}]`);
 

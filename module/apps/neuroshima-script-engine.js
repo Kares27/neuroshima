@@ -963,7 +963,8 @@ export class NeuroshimaScript {
   applyWound(damageType, location = "torso", actor) {
     const target = actor ?? this.actor;
     const { NeuroshimaDice } = game.neuroshima ?? {};
-    return NeuroshimaDice.applyWound(target, { damageType, location, source: this.effect?.name ?? "" });
+    return NeuroshimaDice.applyDamage(target, { damageType, location, source: this.effect?.name ?? "" })
+      .then(r => r.wounds[0]);
   }
 
   // ── Disease helpers ───────────────────────────────────────────────────────

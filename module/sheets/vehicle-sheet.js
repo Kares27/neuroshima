@@ -354,21 +354,25 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
     });
 
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
-    const moneyItems = items.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
+    const modChildIds = new Set(
+      items.filter(i => i.getFlag("neuroshima", "modParentId")).map(i => i.id)
+    );
+    const topItems = items.filter(i => !modChildIds.has(i.id));
+    const moneyItems = topItems.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
     context.inventory = {
       money:          moneyItems,
-      weaponsMelee:   items.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
-      weaponsRanged:  items.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
-      weaponsThrown:  items.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
-      armor:          items.filter(i => i.type === "armor"),
-      gear:           items.filter(i => i.type === "gear"),
-      hasWearableGear: items.some(i => i.type === "gear" && i.system.isWearable),
-      ammo:           items.filter(i => i.type === "ammo"),
-      magazines:      items.filter(i => i.type === "magazine"),
-      tricks:         items.filter(i => i.type === "trick"),
-      traits:         items.filter(i => i.type === "trait"),
-      weaponMods:     items.filter(i => i.type === "weapon-mod"),
-      armorMods:      items.filter(i => i.type === "armor-mod")
+      weaponsMelee:   topItems.filter(i => i.type === "weapon" && i.system.weaponType === "melee"),
+      weaponsRanged:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "ranged"),
+      weaponsThrown:  topItems.filter(i => i.type === "weapon" && i.system.weaponType === "thrown"),
+      armor:          topItems.filter(i => i.type === "armor"),
+      gear:           topItems.filter(i => i.type === "gear"),
+      hasWearableGear: topItems.some(i => i.type === "gear" && i.system.isWearable),
+      ammo:           topItems.filter(i => i.type === "ammo"),
+      magazines:      topItems.filter(i => i.type === "magazine"),
+      tricks:         topItems.filter(i => i.type === "trick"),
+      traits:         topItems.filter(i => i.type === "trait"),
+      weaponMods:     topItems.filter(i => i.type === "weapon-mod"),
+      armorMods:      topItems.filter(i => i.type === "armor-mod")
     };
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);

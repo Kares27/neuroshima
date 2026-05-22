@@ -68,6 +68,7 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
       jammed: new fields.BooleanField({ initial: false }),
       weaponModifier: new fields.NumberField({ integer: true, initial: 0 }),
+      damageCategory: new fields.StringField({ initial: "physical" }),
 
       // Grenade specific
       freeThrowDistance: new fields.NumberField({ integer: true, initial: 10, min: 1 }),
@@ -111,7 +112,15 @@ function armorSchema() {
       leftLeg: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       rightLeg: new fields.NumberField({ integer: true, initial: 0, min: 0 })
     }),
-    penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 })
+    penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+    resistances: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+
+    // Radiation protection level of this armor piece (0 = no protection, 1–20 scale).
+    // This is NOT a damage-reduction resistance — it does not go through the resistance system.
+    // Instead it is compared against the incoming radiation zone level to determine whether
+    // the actor receives a radiation wound. Higher value means better protection against
+    // higher radiation levels. Evaluated by the radiation API (game.neuroshima.radiation).
+    radiationProtection: new fields.NumberField({ integer: true, initial: 0, min: 0, max: 20 })
   };
 }
 
@@ -179,6 +188,8 @@ export class AmmoData extends foundry.abstract.TypeDataModel {
       isOverride: new fields.BooleanField({ initial: false }),
       overrideDamage: new fields.BooleanField({ initial: false }),
       damage: new fields.StringField({ initial: "L" }),
+      overrideDamageCategory: new fields.BooleanField({ initial: false }),
+      damageCategory: new fields.StringField({ initial: "physical" }),
       overridePiercing: new fields.BooleanField({ initial: false }),
       piercing: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       overrideJamming: new fields.BooleanField({ initial: false }),
@@ -263,6 +274,7 @@ export class WoundData extends foundry.abstract.TypeDataModel {
         required: true, 
         initial: "D"
       }),
+      damageCategory: new fields.StringField({ initial: "physical" }),
       penalty: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       isHealing: new fields.BooleanField({ initial: false }),
       isActive: new fields.BooleanField({ initial: true }),
@@ -542,6 +554,8 @@ export class WeaponModData extends foundry.abstract.TypeDataModel {
       overrideRequiredBuild: new fields.BooleanField({ initial: false }),
       overrideDamage: new fields.BooleanField({ initial: false }),
       damage: new fields.StringField({ initial: "L" }),
+      overrideDamageCategory: new fields.BooleanField({ initial: false }),
+      damageCategory: new fields.StringField({ initial: "physical" }),
       overrideCaliber: new fields.BooleanField({ initial: false }),
       modCaliber: new fields.StringField({ initial: "" }),
       deltaFireRate: new fields.NumberField({ integer: true, initial: 0 }),
@@ -590,6 +604,12 @@ export class ArmorModData extends foundry.abstract.TypeDataModel {
       deltaPenalty: new fields.NumberField({ integer: true, initial: 0 }),
       deltaRequiredBuild: new fields.NumberField({ integer: true, initial: 0 }),
       deltaModifiesCost: new fields.BooleanField({ initial: true }),
+      resistanceDeltas: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
+
+      // Delta radiation protection granted by this armor mod (added to parent armor's
+      // radiationProtection value). Not a damage resistance — see armorSchema for semantics.
+      deltaRadiationProtection: new fields.NumberField({ integer: true, initial: 0 }),
+
       effectText: new fields.HTMLField({ initial: "" })
     };
   }

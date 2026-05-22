@@ -25,9 +25,11 @@ export function buildWeaponModSnapshot(mod) {
     overridePiercing:     s.overridePiercing ?? false,
     deltaRequiredBuild:   s.deltaRequiredBuild ?? 0,
     overrideRequiredBuild: s.overrideRequiredBuild ?? false,
-    overrideDamage:       s.overrideDamage ?? false,
-    damage:               s.damage ?? "L",
-    overrideCaliber:      s.overrideCaliber ?? false,
+    overrideDamage:           s.overrideDamage ?? false,
+    damage:                   s.damage ?? "L",
+    overrideDamageCategory:   s.overrideDamageCategory ?? false,
+    damageCategory:           s.damageCategory ?? "physical",
+    overrideCaliber:          s.overrideCaliber ?? false,
     modCaliber:           s.modCaliber ?? "",
     deltaFireRate:        s.deltaFireRate ?? 0,
     overrideFireRate:     s.overrideFireRate ?? false,
@@ -73,6 +75,7 @@ export function buildArmorModSnapshot(mod) {
     deltaPenalty:      s.deltaPenalty ?? 0,
     deltaRequiredBuild: s.deltaRequiredBuild ?? 0,
     deltaModifiesCost:  s.deltaModifiesCost ?? true,
+    resistanceDeltas:  (s.resistanceDeltas ?? []),
     resources:         (s.resources ?? []).filter(r => r.showInSummary)
   };
 }
@@ -134,8 +137,9 @@ export function computeWeaponEffective(baseStats, installedMap) {
     else                          eff.piercing     += (mod.deltaPiercing     ?? 0);
     if (mod.overrideRequiredBuild) eff.requiredBuild = mod.deltaRequiredBuild;
     else                           eff.requiredBuild += (mod.deltaRequiredBuild ?? 0);
-    if (mod.overrideDamage)       eff.damage    = mod.damage;
-    if (mod.overrideCaliber)      eff.caliber   = mod.modCaliber;
+    if (mod.overrideDamage)           eff.damage         = mod.damage;
+    if (mod.overrideDamageCategory)   eff.damageCategory = mod.damageCategory;
+    if (mod.overrideCaliber)          eff.caliber        = mod.modCaliber;
     if (mod.overrideFireRate)     eff.fireRate   = mod.deltaFireRate;
     else                          eff.fireRate  += (mod.deltaFireRate  ?? 0);
     if (mod.overrideCapacity)     eff.capacity   = mod.deltaCapacity;
@@ -191,7 +195,8 @@ export function buildWeaponWriteback(effective) {
     "system.defenseBonus":   effective.defenseBonus,
     "system.caliber":        effective.caliber,
     "system.requiredBuild":  effective.requiredBuild,
-    "system.weaponModifier": effective.weaponModifier
+    "system.weaponModifier": effective.weaponModifier,
+    "system.damageCategory": effective.damageCategory ?? "physical"
   };
 }
 
@@ -221,7 +226,7 @@ export function buildArmorWriteback(effective) {
  */
 export function getEffectiveArmorRatings(armorItem) {
   const base = armorItem.system?.armor?.ratings ?? {};
-  const mods = armorItem.system?.mods ?? {};
+  const mods = buildInstalledMap(armorItem);
   const result = {
     head:     base.head     ?? 0,
     torso:    base.torso    ?? 0,
@@ -243,6 +248,34 @@ export function getEffectiveArmorRatings(armorItem) {
 }
 
 /**
+ * Compute effective non-physical armor resistances for an armor item by merging
+ * base armor.resistances[] rows with attached mod resistanceDeltas[] rows.
+ * Same-category rows are merged (summed per location).
+ * @param {Item} armorItem
+ * @returns {Object.<string, {head,torso,leftArm,rightArm,leftLeg,rightLeg}>}
+ */
+export function getEffectiveArmorResistances(armorItem) {
+  const locs = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
+  const merged = {};
+
+  const addRow = (category, row) => {
+    if (!category) return;
+    if (!merged[category]) merged[category] = { head: 0, torso: 0, leftArm: 0, rightArm: 0, leftLeg: 0, rightLeg: 0 };
+    for (const loc of locs) merged[category][loc] += (Number(row[loc]) || 0);
+  };
+
+  for (const row of (armorItem.system?.armor?.resistances ?? [])) addRow(row.category, row);
+
+  const mods = buildInstalledMap(armorItem);
+  for (const [key, snap] of Object.entries(mods)) {
+    if (key.startsWith("__") || !snap.attached) continue;
+    for (const row of (snap.resistanceDeltas ?? [])) addRow(row.category, row);
+  }
+
+  return merged;
+}
+
+/**
  * Compute effective weight for any item with mods.
  * For weapons this equals system.weight (writeback already applied).
  * For armor this computes base + sum of attached deltaWeights.
@@ -250,7 +283,7 @@ export function getEffectiveArmorRatings(armorItem) {
  * @returns {number}
  */
 export function getEffectiveWeight(item) {
-  const mods = item.system?.mods ?? {};
+  const mods = buildInstalledMap(item);
   let base = item.system?.weight ?? 0;
   if (item.type === "armor") {
     for (const [key, snap] of Object.entries(mods)) {
@@ -267,7 +300,7 @@ export function getEffectiveWeight(item) {
  * @returns {number}
  */
 export function getEffectiveCost(item) {
-  const mods = item.system?.mods ?? {};
+  const mods = buildInstalledMap(item);
   let base = item.system?.cost ?? 0;
   for (const [key, snap] of Object.entries(mods)) {
     if (key.startsWith("__") || !snap.attached) continue;
@@ -285,7 +318,92 @@ function hasAttachedMod(modsObj) {
 }
 
 /**
- * Install a mod snapshot onto a weapon or armor item (no attach yet).
+ * Build a "snapshot-compatible" map from the item's installed mods.
+ * When the parent item is in an actor, reads live data from actor.items.
+ * When the parent item is not in an actor, falls through to the stored snapshots.
+ * Always returns the same shape as the old snapshot map so callers are unaffected.
+ * @param {Item} item
+ * @returns {Object}
+ */
+export function buildInstalledMap(item, overrideMods = null) {
+  const actor  = item.actor;
+  const modsRaw = overrideMods ?? item.system.mods ?? {};
+
+  const map = {};
+  if (modsRaw.__baseStats) map.__baseStats = modsRaw.__baseStats;
+  if (modsRaw.__modded   !== undefined) map.__modded = modsRaw.__modded;
+
+  for (const [modId, modState] of Object.entries(modsRaw)) {
+    if (modId.startsWith("__")) continue;
+
+    if (actor && !modState.name) {
+      const modDoc = actor.items.get(modId);
+      if (!modDoc) continue;
+      const s = modDoc.system;
+      map[modId] = {
+        id:                   modId,
+        uuid:                 modDoc.uuid,
+        name:                 modDoc.name,
+        img:                  modDoc.img,
+        modType:              s.modType              ?? "",
+        category:             s.category             ?? "modification",
+        attached:             modState.attached      ?? false,
+        effectText:           s.effectText           ?? "",
+        deltaWeight:          s.deltaWeight          ?? 0,
+        deltaCost:            s.deltaCost            ?? 0,
+        deltaModifiesCost:    s.deltaModifiesCost    ?? true,
+        deltaAttackBonus:     s.deltaAttackBonus     ?? 0,
+        overrideAttackBonus:  s.overrideAttackBonus  ?? false,
+        deltaDefenseBonus:    s.deltaDefenseBonus    ?? 0,
+        overrideDefenseBonus: s.overrideDefenseBonus ?? false,
+        deltaPiercing:        s.deltaPiercing        ?? 0,
+        overridePiercing:     s.overridePiercing     ?? false,
+        deltaRequiredBuild:   s.deltaRequiredBuild   ?? 0,
+        overrideRequiredBuild: s.overrideRequiredBuild ?? false,
+        overrideDamage:        s.overrideDamage       ?? false,
+        damage:                s.damage               ?? "L",
+        overrideDamageCategory: s.overrideDamageCategory ?? false,
+        damageCategory:        s.damageCategory       ?? "physical",
+        overrideCaliber:       s.overrideCaliber      ?? false,
+        modCaliber:            s.modCaliber           ?? "",
+        deltaFireRate:         s.deltaFireRate        ?? 0,
+        overrideFireRate:      s.overrideFireRate     ?? false,
+        deltaCapacity:         s.deltaCapacity        ?? 0,
+        overrideCapacity:      s.overrideCapacity     ?? false,
+        deltaJamming:          s.deltaJamming         ?? 0,
+        overrideJamming:       s.overrideJamming      ?? false,
+        overrideDamageMelee1:  s.overrideDamageMelee1 ?? false,
+        damageMelee1:          s.damageMelee1         ?? "D",
+        overrideDamageMelee2:  s.overrideDamageMelee2 ?? false,
+        damageMelee2:          s.damageMelee2         ?? "L",
+        overrideDamageMelee3:  s.overrideDamageMelee3 ?? false,
+        damageMelee3:          s.damageMelee3         ?? "C",
+        deltaWeaponModifier:   s.deltaWeaponModifier  ?? 0,
+        deltaHead:             s.deltaHead            ?? 0,
+        deltaTorso:            s.deltaTorso           ?? 0,
+        deltaLeftArm:          s.deltaLeftArm         ?? 0,
+        deltaRightArm:         s.deltaRightArm        ?? 0,
+        deltaLeftLeg:          s.deltaLeftLeg         ?? 0,
+        deltaRightLeg:         s.deltaRightLeg        ?? 0,
+        deltaDurability:       s.deltaDurability      ?? 0,
+        deltaPenalty:          s.deltaPenalty         ?? 0,
+        resistanceDeltas:      s.resistanceDeltas     ?? [],
+        resources:             (s.resources ?? []).filter(r => r.showInSummary)
+      };
+    } else {
+      map[modId] = modState;
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Install a mod onto a weapon or armor item (no attach yet).
+ * When the parent item lives in an actor: the mod item stays in the actor and is
+ * tagged with flags.neuroshima.modParentId; only a lightweight entry is stored in
+ * system.mods so the actor item is the single source of truth.
+ * When the parent item has no actor: falls back to the old full-snapshot approach.
  * @param {Item} item   - weapon or armor Item document
  * @param {Item} mod    - weapon-mod or armor-mod Item document
  */
@@ -294,18 +412,43 @@ export async function installMod(item, mod) {
   const isArmor  = item.type === "armor";
   if (!isWeapon && !isArmor) return;
 
-  const snapshot = isWeapon
-    ? buildWeaponModSnapshot(mod)
-    : buildArmorModSnapshot(mod);
+  const actor = item.actor;
 
-  const currentMods = foundry.utils.deepClone(item.system.mods ?? {});
-  if (currentMods[mod.id]) {
-    ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Mods.AlreadyInstalled"));
-    return;
+  if (actor) {
+    let modActorItem = (mod.actor === actor) ? mod : null;
+
+    if (!modActorItem) {
+      const modData = mod.toObject();
+      delete modData._id;
+      const [created] = await actor.createEmbeddedDocuments("Item", [modData]);
+      modActorItem = created;
+    }
+
+    const newModId = modActorItem.id;
+    const currentMods = foundry.utils.deepClone(item.system.mods ?? {});
+    if (currentMods[newModId]) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Mods.AlreadyInstalled"));
+      return;
+    }
+
+    await modActorItem.setFlag("neuroshima", "modParentId", item.id);
+
+    currentMods[newModId] = { attached: false };
+    await item.update({ "system.mods": currentMods });
+  } else {
+    const snapshot = isWeapon
+      ? buildWeaponModSnapshot(mod)
+      : buildArmorModSnapshot(mod);
+
+    const currentMods = foundry.utils.deepClone(item.system.mods ?? {});
+    if (currentMods[mod.id]) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Mods.AlreadyInstalled"));
+      return;
+    }
+
+    currentMods[mod.id] = snapshot;
+    await item.update({ "system.mods": currentMods });
   }
-
-  currentMods[mod.id] = snapshot;
-  await item.update({ "system.mods": currentMods });
 }
 
 /**
@@ -323,7 +466,6 @@ export async function attachMod(item, modId) {
 
   const isWeapon = item.type === "weapon";
 
-  // Snapshot base stats on first attach
   if (!modsRaw.__baseStats) {
     modsRaw.__baseStats = isWeapon
       ? snapshotWeaponBaseStats(item)
@@ -336,14 +478,16 @@ export async function attachMod(item, modId) {
 
   const updateData = { "system.mods": modsRaw };
   if (isWeapon) {
-    const effective = computeWeaponEffective(modsRaw.__baseStats, modsRaw);
+    const installedMap = buildInstalledMap(item, modsRaw);
+    const effective = computeWeaponEffective(modsRaw.__baseStats, installedMap);
     Object.assign(updateData, buildWeaponWriteback(effective));
   }
 
   await item.update(updateData);
 
-  await _propagateModEffects(item, modId, entry, true);
-  await _propagateModResources(item, modId, entry, true);
+  const snapshot = buildInstalledMap(item)[modId] ?? entry;
+  await _propagateModEffects(item, modId, snapshot, true);
+  await _propagateModResources(item, modId, snapshot, true);
 }
 
 /**
@@ -367,7 +511,8 @@ export async function detachMod(item, modId) {
   const updateData = { "system.mods": modsRaw };
   if (isWeapon) {
     const base = modsRaw.__baseStats ?? snapshotWeaponBaseStats(item);
-    const effective = computeWeaponEffective(base, modsRaw);
+    const installedMap = buildInstalledMap(item, modsRaw);
+    const effective = computeWeaponEffective(base, installedMap);
     Object.assign(updateData, buildWeaponWriteback(effective));
   }
 
@@ -403,11 +548,20 @@ export async function removeMod(item, modId) {
   }
 
   await item.update(updateData);
+
+  if (item.actor) {
+    const modActorItem = item.actor.items.get(modId);
+    if (modActorItem) {
+      await modActorItem.unsetFlag("neuroshima", "modParentId");
+    }
+  }
 }
 
 /**
  * Remove a mod from the weapon/armor and return it to the owning actor's inventory.
- * Reduces quantity of an existing matching item, or creates a new one.
+ * For actor-owned items the mod already lives in the actor — removeMod just unsets the
+ * modParentId flag so it reappears in the normal inventory.
+ * For world items the old snapshot-restore path is used.
  * @param {Item}   item
  * @param {string} modId
  */
@@ -415,6 +569,11 @@ export async function uninstallMod(item, modId) {
   const modsRaw = item.system.mods ?? {};
   const entry   = modsRaw[modId];
   if (!entry) return;
+
+  if (item.actor && !entry.name) {
+    await removeMod(item, modId);
+    return;
+  }
 
   await removeMod(item, modId);
 
@@ -458,8 +617,10 @@ export async function uninstallMod(item, modId) {
  */
 async function _propagateModEffects(item, modId, snapshot, attach) {
   if (attach) {
-    let modItem = null;
-    try { modItem = await fromUuid(snapshot.uuid); } catch (_) {}
+    let modItem = item.actor?.items.get(modId) ?? null;
+    if (!modItem && snapshot?.uuid) {
+      try { modItem = await fromUuid(snapshot.uuid); } catch (_) {}
+    }
     if (!modItem) modItem = game.items?.get(modId);
     if (!modItem || !modItem.effects?.size) return;
 
@@ -491,8 +652,10 @@ async function _propagateModResources(item, modId, snapshot, attach) {
     return;
   }
 
-  let modItem = null;
-  try { modItem = await fromUuid(snapshot.uuid); } catch (_) {}
+  let modItem = item.actor?.items.get(modId) ?? null;
+  if (!modItem && snapshot?.uuid) {
+    try { modItem = await fromUuid(snapshot.uuid); } catch (_) {}
+  }
   if (!modItem) modItem = game.items?.get(modId);
   if (!modItem) return;
 

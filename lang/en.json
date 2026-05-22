@@ -539,6 +539,11 @@
                     "AllowNegativeHint": "Allow negative values (only for Integer type)"
                 },
                 "EditTemplate": "Edit Effect Template",
+                "EditCheckScript": "Edit Auto-Check Script",
+                "CheckEditorTitle": "Auto-Check Script",
+                "CheckEditorLabel": "Script — runs on every actor/item update. Empty = no auto-check.",
+                "CheckEditorApplyHint": "add this condition if not present",
+                "CheckEditorRemoveHint": "remove this condition if present",
                 "NoKeyWarning": "Please set a Key/ID for this condition before editing its template.",
                 "OpeningTemplate": "Opening condition effect template editor..."
             },
@@ -599,6 +604,23 @@
                 "ThrowParams": "Throw Parameters",
                 "BaseRange": "Base Range (m)",
                 "DistanceMultiplier": "Distance Multiplier"
+            },
+            "DamageCategoryConfig": {
+                "Label": "Damage Categories",
+                "Title": "Damage Category Configuration",
+                "MenuHint": "Add custom damage categories for armor resistances.",
+                "Saved": "Damage categories saved.",
+                "BuiltinHeader": "Built-in Categories",
+                "BuiltinHint": "These categories are built into the system and cannot be removed.",
+                "CustomHeader": "Custom Categories",
+                "CustomHint": "Define additional damage categories. Key must be unique and contain only letters, digits and underscores.",
+                "CustomEmpty": "No custom categories defined.",
+                "AddCategory": "Add Category",
+                "DeleteCategory": "Delete",
+                "Save": "Save",
+                "ColKey": "Key",
+                "ColLabel": "Label",
+                "ColColor": "Color"
             }
         },
         "Errors": {
@@ -1081,6 +1103,11 @@
                 "DefenseBonusAbbr": "DEF",
                 "WeaponModifier": "Weapon Modifier",
                 "WeaponModifierAbbr": "Modifier",
+                "DamageCategory": "Damage Category",
+                "DamageCategoryAbbr": "Type",
+                "Resistances": "Resistances",
+                "AddResistance": "Add resistance row",
+                "RemoveResistance": "Remove resistance row",
                 "MeleeDamageTypes": "Damage Types",
                 "WeaponSubtype": "Weapon Subtype",
                 "Magazine": "Magazine",
@@ -1129,6 +1156,7 @@
                 "MagazineContents": "Magazine contents",
                 "IsOverride": "Override stats",
                 "OverrideDamage": "Override damage",
+                "OverrideDamageCategory": "Override damage category",
                 "OverridePiercing": "Override piercing",
                 "OverrideJamming": "Override jamming",
                 "Availability": "Availability",
@@ -1158,6 +1186,7 @@
             "ModType": "Type",
             "ModTypePlaceholder": "e.g. barrel, scope...",
             "OverrideDamage": "Override damage",
+            "OverrideDamageCategory": "Override damage category",
             "OverrideCaliber": "Override caliber",
             "OverrideMode": "Checked = overrides base value; unchecked = adds/subtracts from base value",
             "ModifiesCost": "Modifies item cost",
@@ -1841,6 +1870,11 @@
             "Lock": "Lock container",
             "Unlock": "Unlock container",
             "SourceNotFound": "Cannot edit: source item not found."
+        },
+        "DamageCategory": {
+            "physical": "Physical",
+            "explosive": "Explosive",
+            "radiation": "Radiation"
         },
         "GearType": {
             "food":          "Food and Water",

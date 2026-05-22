@@ -4327,6 +4327,66 @@ body.theme-dark {
     padding-right: 4px;
 }
 
+/* Damage Category Config */
+.neuroshima.damage-category-config .config-section {
+    margin-bottom: 16px;
+}
+
+.neuroshima.damage-category-config .dcc-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.neuroshima.damage-category-config .dcc-section-header h3 {
+    margin: 0;
+}
+
+.neuroshima.damage-category-config .dcc-header {
+    font-size: 0.8em;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--ns-border-main);
+    padding-bottom: 3px;
+    margin-bottom: 4px;
+    gap: 6px;
+}
+
+.neuroshima.damage-category-config .dcc-row {
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.neuroshima.damage-category-config .dcc-col-key   { flex: 1; min-width: 0; }
+.neuroshima.damage-category-config .dcc-col-label { flex: 2; min-width: 0; }
+.neuroshima.damage-category-config .dcc-col-color { flex: 0 0 60px; display: flex; align-items: center; gap: 4px; }
+.neuroshima.damage-category-config .dcc-col-action { flex: 0 0 22px; text-align: center; }
+
+.neuroshima.damage-category-config .dcc-muted { opacity: 0.6; font-size: 0.9em; }
+
+.neuroshima.damage-category-config .dcc-color-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    border: 1px solid var(--ns-border-main);
+    flex: 0 0 14px;
+}
+
+.neuroshima.damage-category-config .cgc-hint {
+    font-size: 0.8em;
+    opacity: 0.7;
+    margin: 0 0 8px 0;
+}
+
+.neuroshima.damage-category-config .cgc-empty {
+    font-size: 0.85em;
+    opacity: 0.6;
+    font-style: italic;
+}
+
 /* Roll Tags */
 .neuroshima.roll-card .roll-header .reroll-tag {
     color: #f57c00;
@@ -6278,6 +6338,40 @@ body.theme-dark {
     box-shadow: 0 0 3px rgba(139,0,0,0.3);
 }
 
+.condition-row-builtin {
+    background: rgba(0,0,0,0.04);
+}
+
+.condition-field-label {
+    display: block;
+    width: 100%;
+    font-size: 0.85em;
+    padding: 2px 4px;
+    color: var(--ns-text-muted, #777);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.condition-key-label {
+    font-family: monospace;
+    font-size: 0.8em;
+}
+
+.condition-row select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.theme-dark .condition-row-builtin {
+    background: rgba(255,255,255,0.03);
+}
+
+.theme-dark .condition-field-label {
+    color: #777;
+}
+
 .theme-dark .condition-config .hint {
     color: #aaa;
 }
@@ -6990,4 +7084,42 @@ button.jam-toggle-btn.header-control {
     font-weight: normal;
 }
 
+.condition-check-editor .window-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.condition-check-editor-wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.condition-check-editor-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.condition-check-editor-body code-mirror {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: block;
+}
+
+.condition-check-editor-body code-mirror .cm-editor {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.condition-check-editor-body code-mirror .cm-scroller {
+    overflow-y: auto;
+    height: 100%;
+}
 

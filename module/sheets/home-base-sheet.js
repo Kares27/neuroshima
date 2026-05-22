@@ -191,7 +191,10 @@ export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {
     const containerChildIds = new Set(
       items.filter(i => i.getFlag("neuroshima", "containerId")).map(i => i.id)
     );
-    const topItems = items.filter(i => !containerChildIds.has(i.id));
+    const modChildIds = new Set(
+      items.filter(i => i.getFlag("neuroshima", "modParentId")).map(i => i.id)
+    );
+    const topItems = items.filter(i => !containerChildIds.has(i.id) && !modChildIds.has(i.id));
     const moneyItems = topItems.filter(i => i.type === "money").sort((a, b) => b.system.coinValue - a.system.coinValue);
     context.inventory = {
       containers: items.filter(i => i.type === "container").map(c => {

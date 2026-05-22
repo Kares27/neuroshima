@@ -321,6 +321,10 @@ export const NEUROSHIMA = {
         modification: "NEUROSHIMA.Vehicle.Mod.Category.Modification",
         armor: "NEUROSHIMA.Vehicle.Mod.Category.Armor"
     },
+    damageCategories: {
+        physical:  { label: "NEUROSHIMA.DamageCategory.physical",  color: "#888888" },
+        explosive: { label: "NEUROSHIMA.DamageCategory.explosive", color: "#ff8800" }
+    },
     scriptTriggers: {
         manual: "NEUROSHIMA.Scripts.Trigger.Manual",
         prepareData: "NEUROSHIMA.Scripts.Trigger.PrepareData",

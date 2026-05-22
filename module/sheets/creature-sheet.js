@@ -697,7 +697,10 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     const containerChildIds = new Set(
       items.filter(i => i.getFlag("neuroshima", "containerId")).map(i => i.id)
     );
-    const topItems = items.filter(i => !containerChildIds.has(i.id));
+    const modChildIds = new Set(
+      items.filter(i => i.getFlag("neuroshima", "modParentId")).map(i => i.id)
+    );
+    const topItems = items.filter(i => !containerChildIds.has(i.id) && !modChildIds.has(i.id));
     context.inventory = {
       containers: items.filter(i => i.type === "container").map(c => {
         const cnt = items.filter(i => i.getFlag("neuroshima", "containerId") === c.id).length;

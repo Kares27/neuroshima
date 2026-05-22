@@ -26,6 +26,7 @@ import { HealingConfig } from "./module/apps/healing-config.js";
 import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/condition-config.js";
 import { ReputationSettingsApp } from "./module/apps/reputation-settings.js";
 import { CurrencyGearConfig, DEFAULT_CURRENCY } from "./module/apps/currency-gear-config.js";
+import { DamageCategoryConfig, _applyCustomDamageCategories } from "./module/apps/damage-category-config.js";
 import { GrenadeConfig } from "./module/apps/grenade-config.js";
 import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
@@ -270,8 +271,8 @@ Hooks.once('init', async function() {
 
             if (penaltyOverride !== undefined && penaltyOverride !== null) {
                 const penalty = Number(penaltyOverride);
-                game.neuroshima?.log(`applyDamage | direct wound via applyWound (${damage}, -${penalty}%) → ${actor.name} @ ${location}`);
-                await NeuroshimaDice.applyWound(actor, {
+                game.neuroshima?.log(`applyDamage | direct wound (${damage}, -${penalty}%) → ${actor.name} @ ${location}`);
+                await NeuroshimaDice.applyDamage(actor, {
                     damageType: damage,
                     location,
                     penaltyOverride: penalty,
@@ -466,6 +467,12 @@ Hooks.once('init', async function() {
         return Object.entries(mods)
             .filter(([k, v]) => !k.startsWith('__') && v?.attached)
             .map(([, v]) => v);
+    });
+
+    Handlebars.registerHelper('nsDamageCategoryLabel', (category) => {
+        const cat = NEUROSHIMA.damageCategories?.[category];
+        if (!cat) return category ?? "";
+        return game.i18n.localize(cat.label);
     });
 
     Handlebars.registerHelper('nsModTooltip', (mods, deltaKey, overrideKey) => {
@@ -833,6 +840,22 @@ Hooks.once('init', async function() {
         restricted: true
     });
 
+    game.settings.registerMenu("neuroshima", "damageCategoryConfig", {
+        name: "NEUROSHIMA.Settings.DamageCategoryConfig.Label",
+        label: "NEUROSHIMA.Settings.DamageCategoryConfig.Title",
+        hint: "NEUROSHIMA.Settings.DamageCategoryConfig.MenuHint",
+        icon: "fas fa-burst",
+        type: DamageCategoryConfig,
+        restricted: true
+    });
+
+    game.settings.register("neuroshima", "customDamageCategories", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: "[]"
+    });
+
     game.settings.register("neuroshima", "grenadeConstitutionBonuses", {
         scope: "world",
         config: false,
@@ -1103,6 +1126,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/dialog/hp-config.hbs",
         "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs",
         "systems/neuroshima/templates/apps/script-editor.hbs",
+        "systems/neuroshima/templates/apps/condition-check-editor.hbs",
         "systems/neuroshima/templates/prosemirror/text-colour.hbs"
     ];
     
@@ -1131,6 +1155,13 @@ Hooks.once("ready", () => {
                 NEUROSHIMA.gearTypes[label] = label;
             }
         }
+    } catch(e) {}
+});
+
+Hooks.once("ready", () => {
+    try {
+        const custom = JSON.parse(game.settings.get("neuroshima", "customDamageCategories") || "[]");
+        _applyCustomDamageCategories(custom);
     } catch(e) {}
 });
 
@@ -1810,7 +1841,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
     // Apply damage button
     card.querySelectorAll(".apply-damage-button").forEach(btn => {
-        btn.addEventListener("click", (event) => {
+        btn.addEventListener("click", async (event) => {
             event.preventDefault();
             
             game.neuroshima.group("Interfejs Obrażeń | Kliknięcie przycisku");
@@ -1821,7 +1852,14 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             if (activeTab === "targets") {
                 const snapshotTargets = message.getFlag("neuroshima", "rollData")?.snapshotTargets ?? [];
                 if (snapshotTargets.length > 0) {
-                    actors = snapshotTargets.map(t => game.actors.get(t.id)).filter(a => a);
+                    const resolved = await Promise.all(snapshotTargets.map(async t => {
+                        if (t.uuid) {
+                            const doc = await fromUuid(t.uuid);
+                            return doc?.actor ?? (doc instanceof Actor ? doc : null);
+                        }
+                        return game.actors.get(t.id) ?? null;
+                    }));
+                    actors = resolved.filter(a => a);
                     game.neuroshima.log("Pobieranie aktorów z zachowanych celów (snapshot):", actors.map(a => a.name));
                 } else {
                     actors = Array.from(game.user.targets).map(t => t.actor).filter(a => a);
@@ -2899,13 +2937,18 @@ Hooks.once("item-piles-ready", () => {
     document.head.appendChild(ipStyle);
 
     try {
-        const gearTypeLabels = Object.entries(NEUROSHIMA.gearTypes)
-            .map(([, val]) => "\uFFFF" + game.i18n.localize(val));
+        const rawLabels = Object.values(NEUROSHIMA.gearTypes).map(v => game.i18n.localize(v));
+        const stale = new Set([
+            ...rawLabels,
+            ...rawLabels.map(l => "\uFFFF" + l),
+            ...rawLabels.map(l => "\u200A" + l)
+        ]);
+        const freshLabels = rawLabels.map(l => "\u200A" + l);
         const existing = game.settings.get("item-piles", "customItemCategories") ?? [];
-        const merged = Array.from(new Set([...existing, ...gearTypeLabels]));
-        if (merged.length !== existing.length || merged.some((v, i) => v !== existing[i])) {
-            game.settings.set("item-piles", "customItemCategories", merged);
-        }
+        const userDefined = existing.filter(l => !stale.has(l));
+        const merged = [...userDefined, ...freshLabels];
+        const changed = merged.length !== existing.length || merged.some((v, i) => v !== existing[i]);
+        if (changed) game.settings.set("item-piles", "customItemCategories", merged);
     } catch(e) { }
 
     game.itempiles.API.addSystemIntegration({
@@ -2977,21 +3020,42 @@ Hooks.once("item-piles-ready", () => {
 
     Hooks.on("createItem", async (item, _options, userId) => {
         if (userId !== game.userId) return;
-        if (item.type !== "gear") return;
-        const gearType = item.system?.gearType ?? "misc";
-        const i18nKey = NEUROSHIMA.gearTypes[gearType];
-        const label = "\uFFFF" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
-        await item.setFlag("item-piles", "item.customCategory", label);
+
+        if (item.type === "gear") {
+            const gearType = item.system?.gearType ?? "misc";
+            const i18nKey = NEUROSHIMA.gearTypes[gearType];
+            const label = "\u200A" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
+            await item.setFlag("item-piles", "item.customCategory", label);
+        }
+
+        const actor = item.parent;
+        if (actor instanceof Actor && game.user.isGM) {
+            await actor._checkAutoConditions?.();
+        }
     });
 
     Hooks.on("updateItem", async (item, changes, _options, userId) => {
         if (userId !== game.userId) return;
-        if (item.type !== "gear") return;
-        if (!foundry.utils.hasProperty(changes, "system.gearType")) return;
-        const gearType = changes.system?.gearType ?? "misc";
-        const i18nKey = NEUROSHIMA.gearTypes[gearType];
-        const label = "\uFFFF" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
-        await item.setFlag("item-piles", "item.customCategory", label);
+
+        if (item.type === "gear" && foundry.utils.hasProperty(changes, "system.gearType")) {
+            const gearType = changes.system?.gearType ?? "misc";
+            const i18nKey = NEUROSHIMA.gearTypes[gearType];
+            const label = "\u200A" + (i18nKey ? game.i18n.localize(i18nKey) : game.i18n.localize("NEUROSHIMA.GearType.misc"));
+            await item.setFlag("item-piles", "item.customCategory", label);
+        }
+
+        const actor = item.parent;
+        if (actor instanceof Actor && game.user.isGM) {
+            await actor._checkAutoConditions?.();
+        }
+    });
+
+    Hooks.on("deleteItem", async (item, _options, userId) => {
+        if (userId !== game.userId) return;
+        const actor = item.parent;
+        if (actor instanceof Actor && game.user.isGM) {
+            await actor._checkAutoConditions?.();
+        }
     });
 });
 

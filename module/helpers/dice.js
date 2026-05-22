@@ -274,6 +274,7 @@ export class NeuroshimaDice {
     let ammoDamage = weapon.system.damage;
     let ammoPiercing = weapon.system.piercing || 0;
     let ammoJamming = weapon.system.jamming || 20;
+    let ammoDamageCategory = weapon.system.damageCategory ?? "physical";
     
     const magazineId = weapon.system.magazine;
     const magazine = magazineId ? actor.items.get(magazineId) : null;
@@ -365,6 +366,7 @@ export class NeuroshimaDice {
                     }
                     if (ammoItem.system.overridePiercing) ammoPiercing = ammoItem.system.piercing;
                     if (ammoItem.system.overrideJamming) ammoJamming = ammoItem.system.jamming;
+                    if (ammoItem.system.overrideDamageCategory) ammoDamageCategory = ammoItem.system.damageCategory ?? "physical";
                 }
                 
                 bulletSequence = [{
@@ -753,7 +755,8 @@ export class NeuroshimaDice {
         },
         bulletSequence: bulletSequence || [],
         hitBulletsData: finalHitSequence,
-        fireCorrectionData
+        fireCorrectionData,
+        damageCategory: ammoDamageCategory
     };
 
     // Generate rich tooltip for weapon test
@@ -2508,38 +2511,237 @@ export class NeuroshimaDice {
   }
 
   /**
-   * Apply a wound directly to an actor, bypassing pain resistance tests.
-   * Creates a wound item on the actor immediately.
-   * Useful for scripted effects like Bleeding, radiation, or other automatic damage.
+   * Runs pain resistance rolls and prepares wound item data.
+   * Moved from CombatHelper; all callers should use this version.
    *
    * @param {Actor}  actor
-   * @param {Object} options
-   * @param {string} options.damageType      - Wound type: "D", "L", "C", "K", "sD", "sL", "sC", "sK"
-   * @param {string} [options.location]      - Hit location key (e.g. "torso", "head", "inne"). Defaults to "torso".
-   * @param {string} [options.source]        - Description displayed in the wound's description field.
-   * @param {string} [options.nameOverride]  - Override the auto-generated wound name.
-   * @param {number} [options.penaltyOverride] - Override the penalty value from config.
-   * @param {Object} [options.additionalSystem] - Extra system fields merged into the wound document.
-   * @returns {Promise<Item>}
+   * @param {Array}  rawWounds   - Array of `{ name, damageType, forcePassed?, annotation? }`
+   * @param {string} location    - Hit location key
+   * @param {string} sourceInfo  - Source description placed in wound's description field
+   * @returns {Promise<{ processedWounds: Array, results: Array }>}
    */
-  static async applyWound(actor, { damageType = "L", location = "torso", source = "", nameOverride, penaltyOverride, additionalSystem = {} } = {}) {
+  static async processPainResistance(actor, rawWounds, location, sourceInfo) {
+    game.neuroshima.group(`Processing pain resistance: ${actor.name}`);
+
     const NEUROSHIMA = game.neuroshima?.config ?? {};
-    const woundConfig = NEUROSHIMA.woundConfiguration?.[damageType] ?? {};
-    const penalty = penaltyOverride ?? woundConfig?.penalties?.[0] ?? 20;
-    const name = nameOverride ?? (game.i18n.localize(`NEUROSHIMA.DamageType.${damageType}`) || damageType);
-    const [created] = await actor.createEmbeddedDocuments("Item", [{
-      name,
-      type: "wound",
-      system: {
-        location,
-        damageType,
-        penalty,
-        isActive: true,
-        isHealing: false,
-        description: source,
-        ...additionalSystem
+    const skillKey = "painResistance";
+    const skillValue = actor.system.skills?.[skillKey]?.value || 0;
+    const statKey = "charisma";
+    const statValue = actor.system.attributeTotals?.[statKey] ?? actor.system.attributes?.[statKey] ?? 10;
+
+    const results = [];
+    const processedWounds = [];
+
+    for (const wound of rawWounds) {
+      const damageType = wound.damageType;
+      const config = NEUROSHIMA.woundConfiguration?.[damageType];
+
+      if (!config?.difficulty) {
+        const critPenalty = config?.penalties?.[0] ?? 160;
+        results.push({
+          name: wound.name,
+          damageType,
+          baseDifficulty: null,
+          totalShift: 0,
+          difficulty: null,
+          isPassed: false,
+          forcePassed: false,
+          penalty: critPenalty,
+          dice: null,
+          modifiedResults: [],
+          successPoints: 0,
+          target: null,
+          skill: skillValue,
+          isCritical: true,
+          isCritSuccess: false,
+          isCritFailure: false,
+          annotation: wound.annotation || null,
+          tooltip: game.i18n.localize("NEUROSHIMA.PainResistance.CriticalAutomatic"),
+          tooltipHtml: ""
+        });
+        processedWounds.push({
+          name: wound.name,
+          type: "wound",
+          system: { location, damageType, damageCategory: wound.damageCategory ?? "physical", penalty: critPenalty, description: sourceInfo }
+        });
+        continue;
       }
-    }]);
-    return created;
+
+      const baseDifficulty = config.difficulty;
+      let isPassed;
+      let diceResults;
+      let totalShift = 0;
+      let shiftedDiff;
+      let target;
+      let evalData;
+
+      if (wound.forcePassed === true) {
+        diceResults = [20, 20, 20];
+        shiftedDiff = baseDifficulty;
+        target = statValue + (baseDifficulty.mod || 0);
+        evalData = { success: true, successCount: 3, modifiedResults: diceResults.map(v => ({ original: v, modified: v, isSuccess: true, ignored: false, isNat1: false, isNat20: true })), isCritSuccess: false, isCritFailure: false, difficultyLabel: baseDifficulty.label };
+        isPassed = true;
+        game.neuroshima.log(`processPainResistance: forcePassed dla ${wound.damageType}`);
+      } else {
+        const roll = new Roll("3d20");
+        await roll.evaluate();
+        diceResults = roll.terms[0].results.map(r => r.result);
+
+        const allowShift = game.settings.get("neuroshima", "allowPainResistanceShift");
+        const diceShift = NeuroshimaDice.getDiceShift(diceResults);
+        if (allowShift) {
+          const skillShift = NeuroshimaDice.getSkillShift(skillValue);
+          totalShift = -skillShift + diceShift;
+        } else {
+          totalShift = diceShift;
+        }
+
+        shiftedDiff = NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);
+        target = statValue + shiftedDiff.mod;
+
+        const diceObjects = diceResults.map((v, i) => ({
+          original: v, index: i, modified: v, isSuccess: false, ignored: false,
+          isNat1: v === 1, isNat20: v === 20
+        }));
+
+        evalData = { target, stat: statValue, skill: skillValue, difficultyLabel: shiftedDiff.label };
+        NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
+        isPassed = evalData.success;
+      }
+
+      const appliedPenalty = isPassed ? (config?.penalties[0] || 0) : (config?.penalties[1] || 0);
+
+      results.push({
+        name: wound.name,
+        damageType,
+        baseDifficulty: baseDifficulty.label,
+        totalShift,
+        difficulty: shiftedDiff?.label ?? baseDifficulty.label,
+        isPassed,
+        forcePassed: wound.forcePassed === true,
+        penalty: appliedPenalty,
+        dice: diceResults.join(", "),
+        modifiedResults: evalData?.modifiedResults ?? [],
+        successPoints: evalData?.successCount ?? 3,
+        target,
+        skill: skillValue,
+        isCritSuccess: evalData?.isCritSuccess ?? false,
+        isCritFailure: evalData?.isCritFailure ?? false,
+        annotation: wound.annotation || null,
+        tooltip: wound.forcePassed
+          ? (wound.annotation || wound.effectName || game.i18n.localize("NEUROSHIMA.Scripts.ForcePassed"))
+          : NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance"),
+        tooltipHtml: wound.forcePassed ? "" : NeuroshimaDice.buildDiceTooltipHtml({
+          modifiedResults: evalData?.modifiedResults ?? [],
+          target,
+          skill: skillValue,
+          successCount: evalData?.successCount ?? 0,
+          difficultyLabel: shiftedDiff?.label ?? baseDifficulty.label,
+          isOpen: false
+        })
+      });
+
+      processedWounds.push({
+        name: wound.name,
+        type: "wound",
+        system: { location, damageType, damageCategory: wound.damageCategory ?? "physical", penalty: appliedPenalty, description: sourceInfo }
+      });
+    }
+
+    game.neuroshima.groupEnd();
+    return { processedWounds, results };
+  }
+
+  /**
+   * Unified entry point for all wound application — scripted effects, conditions, full combat pipeline.
+   *
+   * Modes (controlled by flags):
+   *   - Default (no flags): bypass — direct wound creation, no armor, no hooks, no pain test.
+   *   - withPainResistance: runs 3d20 Odporność na Ból test, chat report (unless suppressChat).
+   *   - withHooks: fires the "applyDamage" script hook before wound creation (can set forceSkip).
+   *   - penaltyOverride: forces an exact penalty value, skips pain resistance regardless of flag.
+   *   - wounds[]: batch input for multiple pre-built wounds (used by the combat pipeline).
+   *
+   * @param {Actor}  actor
+   * @param {Object} opts
+   * @param {string}   [opts.damageType="L"]         - Single wound type when `wounds` is not provided.
+   * @param {Array}    [opts.wounds]                  - Pre-built array: [{name?, damageType, forcePassed?, annotation?}]
+   * @param {string}   [opts.location="torso"]        - Hit location key.
+   * @param {string}   [opts.source=""]               - Source description placed in wound description field.
+   * @param {string}   [opts.nameOverride]            - Override auto-generated wound name (single wound only).
+   * @param {number}   [opts.penaltyOverride]         - Exact penalty %; skips pain resistance.
+   * @param {Object}   [opts.additionalSystem={}]     - Extra system fields merged into every wound document.
+   * @param {boolean}  [opts.withPainResistance=false]- Run 3d20 pain resistance test.
+   * @param {boolean}  [opts.withHooks=false]         - Fire "applyDamage" script hook (wounds can be skipped).
+   * @param {boolean}  [opts.forcePassed=false]       - Auto-pass pain resistance (no roll, min penalty).
+   * @param {string}   [opts.annotation=null]         - Annotation shown in the pain resistance chat report.
+   * @param {boolean}  [opts.suppressChat=false]      - Suppress the pain resistance chat report.
+   * @returns {Promise<{wounds: Item[], results: Array, woundIds: string[]}>}
+   */
+  static async applyDamage(actor, {
+    damageType = "L",
+    wounds,
+    location = "torso",
+    source = "",
+    nameOverride,
+    penaltyOverride,
+    additionalSystem = {},
+    withPainResistance = false,
+    withHooks = false,
+    forcePassed = false,
+    annotation = null,
+    suppressChat = false
+  } = {}) {
+    const NEUROSHIMA = game.neuroshima?.config ?? {};
+
+    let rawWounds = wounds
+      ? [...wounds]
+      : [{ name: nameOverride ?? (game.i18n.localize(`NEUROSHIMA.DamageType.${damageType}`) || damageType), damageType, forcePassed, annotation }];
+
+    if (withHooks) {
+      const scriptArgs = { actor, wounds: rawWounds, location };
+      await NeuroshimaScriptRunner.execute("applyDamage", scriptArgs);
+      rawWounds = rawWounds.filter(w => !w.forceSkip);
+    }
+
+    if (!rawWounds.length) return { wounds: [], results: [], woundIds: [] };
+
+    let processedWounds;
+    let results = [];
+
+    if (penaltyOverride !== undefined && penaltyOverride !== null) {
+      const penalty = Number(penaltyOverride);
+      processedWounds = rawWounds.map(w => ({
+        name: w.name ?? nameOverride ?? (game.i18n.localize(`NEUROSHIMA.DamageType.${w.damageType}`) || w.damageType),
+        type: "wound",
+        system: { location, damageType: w.damageType, damageCategory: w.damageCategory ?? "physical", penalty, isActive: true, isHealing: false, description: source, ...additionalSystem }
+      }));
+    } else if (withPainResistance) {
+      const painData = await NeuroshimaDice.processPainResistance(actor, rawWounds, location, source);
+      processedWounds = painData.processedWounds.map(w => ({
+        ...w,
+        system: { damageCategory: w.system?.damageCategory ?? "physical", isActive: true, isHealing: false, ...w.system, ...additionalSystem }
+      }));
+      results = painData.results;
+    } else {
+      processedWounds = rawWounds.map(w => {
+        const woundConfig = NEUROSHIMA.woundConfiguration?.[w.damageType] ?? {};
+        const penalty = woundConfig?.penalties?.[0] ?? 20;
+        return {
+          name: w.name ?? nameOverride ?? (game.i18n.localize(`NEUROSHIMA.DamageType.${w.damageType}`) || w.damageType),
+          type: "wound",
+          system: { location, damageType: w.damageType, damageCategory: w.damageCategory ?? "physical", penalty, isActive: true, isHealing: false, description: source, ...additionalSystem }
+        };
+      });
+    }
+
+    const createdWounds = await actor.createEmbeddedDocuments("Item", processedWounds);
+    const woundIds = createdWounds.map(w => w.id);
+
+    if (!suppressChat && withPainResistance && results.length > 0) {
+      await NeuroshimaChatMessage.renderPainResistance(actor, results, woundIds, 0, []);
+    }
+
+    return { wounds: createdWounds, results, woundIds };
   }
 }

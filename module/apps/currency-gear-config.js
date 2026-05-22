@@ -66,8 +66,8 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         try { modifiers = JSON.parse(game.settings.get("neuroshima", "gearTypePriceModifiers") || "{}"); } catch(e) {}
         const NEUROSHIMA = game.neuroshima.config;
         const builtinMods = {};
-        for (const [key] of Object.entries(NEUROSHIMA.gearTypes)) {
-            if (key === "misc") continue;
+        for (const [key, val] of Object.entries(NEUROSHIMA.gearTypes)) {
+            if (key === "misc" || key === val) continue;
             const mod = modifiers[key];
             if (typeof mod === "number")               builtinMods[key] = { buy: mod,       sell: mod };
             else if (mod && typeof mod === "object")   builtinMods[key] = { buy: mod.buy ?? 1, sell: mod.sell ?? 1 };
@@ -95,7 +95,7 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
         const state = this._pendingState ?? this._loadState();
         const NEUROSHIMA = game.neuroshima.config;
         const builtinRows = Object.entries(NEUROSHIMA.gearTypes)
-            .filter(([key]) => key !== "misc")
+            .filter(([key, val]) => key !== "misc" && key !== val)
             .map(([key, i18nKey]) => ({
                 key,
                 label: game.i18n.localize(i18nKey),
@@ -143,8 +143,8 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
 
         const NEUROSHIMA = game.neuroshima.config;
         const builtinMods = {};
-        for (const [key] of Object.entries(NEUROSHIMA.gearTypes)) {
-            if (key === "misc") continue;
+        for (const [key, val] of Object.entries(NEUROSHIMA.gearTypes)) {
+            if (key === "misc" || key === val) continue;
             builtinMods[key] = {
                 buy:  Math.max(0, parseFloat(data[`builtin.${key}.buy`])  || 1),
                 sell: Math.max(0, parseFloat(data[`builtin.${key}.sell`]) || 1)
@@ -271,12 +271,16 @@ export class CurrencyGearConfig extends HandlebarsApplicationMixin(ApplicationV2
 
         if (game.modules.get("item-piles")?.active) {
             try {
-                const gearTypeLabels = Object.entries(NEUROSHIMA.gearTypes)
-                    .filter(([key]) => key !== "misc")
-                    .map(([, val]) => game.i18n.localize(val));
+                const rawLabels = Object.values(NEUROSHIMA.gearTypes).map(v => game.i18n.localize(v));
+                const stale = new Set([
+                    ...rawLabels,
+                    ...rawLabels.map(l => "\uFFFF" + l),
+                    ...rawLabels.map(l => "\u200A" + l)
+                ]);
+                const freshLabels = rawLabels.map(l => "\u200A" + l);
                 const existing = game.settings.get("item-piles", "customItemCategories") ?? [];
-                const merged = Array.from(new Set([...existing, ...gearTypeLabels]));
-                await game.settings.set("item-piles", "customItemCategories", merged);
+                const userDefined = existing.filter(l => !stale.has(l));
+                await game.settings.set("item-piles", "customItemCategories", [...userDefined, ...freshLabels]);
             } catch(e) {}
 
             try {

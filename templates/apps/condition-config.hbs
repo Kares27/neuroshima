@@ -22,7 +22,7 @@
         </div>
 
         {{#each conditions}}
-        <div class="condition-row" data-index="{{@index}}">
+        <div class="condition-row{{#if this.builtin}} condition-row-builtin{{/if}}" data-index="{{@index}}">
             <input type="hidden" name="condition-{{@index}}-id" value="{{this.id}}">
             <input type="hidden" name="condition-{{@index}}-img" value="{{this.img}}" class="condition-img-input">
 
@@ -34,24 +34,35 @@
             </span>
 
             <span class="col-name">
+                {{#if this.builtin}}
+                <input type="hidden" name="condition-{{@index}}-name" value="{{this.name}}">
+                <span class="condition-field-label">{{this.name}}</span>
+                {{else}}
                 <input type="text"
                        name="condition-{{@index}}-name"
                        value="{{this.name}}"
                        placeholder="{{localize 'NEUROSHIMA.Settings.ConditionConfig.NamePlaceholder'}}"
                        required>
+                {{/if}}
             </span>
 
             <span class="col-key">
+                {{#if this.builtin}}
+                <input type="hidden" name="condition-{{@index}}-key" value="{{this.key}}">
+                <span class="condition-field-label condition-key-label">{{this.key}}</span>
+                {{else}}
                 <input type="text"
                        name="condition-{{@index}}-key"
                        value="{{this.key}}"
                        placeholder="{{localize 'NEUROSHIMA.Settings.ConditionConfig.KeyPlaceholder'}}"
                        class="condition-key-input"
                        required>
+                {{/if}}
             </span>
 
             <span class="col-type">
-                <select name="condition-{{@index}}-type" class="condition-type-select">
+                <select name="condition-{{@index}}-type" class="condition-type-select"
+                        {{#if this.typeFixed}}disabled{{/if}}>
                     <option value="boolean" {{#if (eq this.type "boolean")}}selected{{/if}}>
                         {{localize "NEUROSHIMA.Settings.ConditionConfig.TypeBoolean"}}
                     </option>
@@ -62,11 +73,13 @@
             </span>
 
             <span class="col-neg">
+                {{#unless this.builtin}}
                 <input type="checkbox"
                        name="condition-{{@index}}-allowNegative"
                        {{#if this.allowNegative}}checked{{/if}}
                        class="condition-neg-checkbox"
                        {{#if (ne this.type "int")}}disabled{{/if}}>
+                {{/unless}}
             </span>
 
             <span class="col-actions">
@@ -74,10 +87,16 @@
                    title="{{localize 'NEUROSHIMA.Settings.ConditionConfig.EditTemplate'}}">
                     <i class="fas fa-scroll"></i>
                 </a>
+                <a class="condition-check-btn" data-action="editConditionCheck" data-index="{{@index}}"
+                   title="{{localize 'NEUROSHIMA.Settings.ConditionConfig.EditCheckScript'}}">
+                    <i class="fas fa-code"></i>
+                </a>
+                {{#unless this.builtin}}
                 <a class="condition-delete-btn" data-action="deleteCondition" data-index="{{@index}}"
                    title="{{localize 'NEUROSHIMA.Settings.ConditionConfig.Delete'}}">
                     <i class="fas fa-trash"></i>
                 </a>
+                {{/unless}}
             </span>
         </div>
         {{else}}

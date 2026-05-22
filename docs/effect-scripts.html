@@ -207,6 +207,13 @@
         <li><a href="#regions-api-examples">Przykłady</a></li>
       </ul>
     </li>
+    <li><a href="#condition-check">Skrypty Auto-Sprawdzania Stanów (<code>conditionCheckCode</code>)</a>
+      <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
+        <li><a href="#condition-check-context">Kontekst wykonania</a></li>
+        <li><a href="#condition-check-defaults">Domyślne skrypty wbudowane</a></li>
+        <li><a href="#condition-check-examples">Przykłady</a></li>
+      </ul>
+    </li>
   </ol>
 </nav>
 
@@ -299,7 +306,7 @@
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery ran —</span><span class="ctx-type"></span><span class="ctx-desc">wszystkie przyjmują opcjonalny argument <code>actor</code>; domyślnie <code>this.actor</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getWounds(filter?, actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Rany z filtrem: <code>{ active, location, damageType, bruise }</code> — identyczny jak <code>actor.getWounds()</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getWoundCount(actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba aktywnych ran na aktorze</span></div>
-    <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?, actor?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę bezpośrednio na aktorze z pominięciem odporności na ból. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?, actor?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę bezpośrednio (bypass). Wrapper dla <code>NeuroshimaDice.applyDamage</code> — zwraca <code>Item</code> pierwszej rany. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery kondycji —</span><span class="ctx-type"></span><span class="ctx-desc">operacje na status efektach (krwawienie, trucizna, itp.)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getConditionValue(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Aktualny poziom kondycji int (0 = nieaktywna)</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustaw poziom kondycji int bezpośrednio. <code>0</code> usuwa efekt kondycji.</span></div>
@@ -902,6 +909,8 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td>wound.forcePassed</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana automatycznie zdaje test odporności na ból</td></tr>
     <tr><td>wound.forceSkip</td><td>boolean</td><td><strong>Ustaw na true</strong> → rana jest całkowicie ignorowana (nie tworzy itemu rany)</td></tr>
     <tr><td>wound.annotation</td><td>string</td><td>Tekst wyświetlany w chacie przy ranie (akumuluje się gdy wiele skryptów ustawia)</td></tr>
+    <tr><td>wound.isRadiation</td><td>boolean</td><td><code>true</code> gdy rana pochodzi z systemu radiacji (strefa niebezpieczna). Używaj do warunkowej ochrony, np. aplikanty/eliksiry dające odporność na radiację.</td></tr>
+    <tr><td>wound.damageCategory</td><td>string</td><td>Kategoria obrażeń: <code>"physical"</code>, <code>"explosive"</code>, <code>"radiation"</code> lub klucz kategorii niestandardowej. Wypełniane przez system na podstawie broni / amunicji. Używaj do warunkowego pomijania ran (<code>wound.forceSkip = true</code>) lub modyfikacji ochrony per kategorię.</td></tr>
   </tbody></table>
 
   <!-- armorCalculation -->
@@ -2105,6 +2114,25 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
   <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
     <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
     <span class="var">wound</span>.annotation  = <span class="str">"Niewrażliwość na lekkie rany"</span>;
+  }
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">applyDamage</span>
+      Ochrona przed radiacją — aplikant/eliksir blokuje ranę radiacyjną
+    </div>
+    <p class="example-desc">
+      Skrypt na efekcie aplikantu lub tricku — blokuje ranę gdy pochodzi z radiacji.
+      Wystarczy ustawić <code>wound.forceSkip = true</code>; rana nie zostanie stworzona
+      i wiadomość czatu nie pojawi się.
+    </p>
+    <pre><code><span class="cmt">// Trigger: applyDamage — efekt na aplikancie "Preparat Antyradiacyjny"
+// Blokuje rany radiacyjne dopóki efekt jest aktywny</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="kw">if</span> (<span class="var">wound</span>.isRadiation) {
+    <span class="var">wound</span>.forceSkip = <span class="kw">true</span>;
   }
 }</code></pre>
   </div>
@@ -4825,11 +4853,11 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 
   <h4>Helpery ran i pancerza</h4>
   <div class="callout danger" style="margin-bottom:0.75rem; font-size:0.86em;">
-    W Neuroshima 1.5 <strong>nie modyfikuje się PŻ bezpośrednio</strong>. Obrażenia = nałożenie rany (<code>applyWound</code>), leczenie = redukcja lub usunięcie rany (<code>reduceLevel</code>, <code>healAllWounds</code>).
+    W Neuroshima 1.5 <strong>nie modyfikuje się PŻ bezpośrednio</strong>. Obrażenia = nałożenie rany (<code>NeuroshimaDice.applyDamage</code>), leczenie = redukcja lub usunięcie rany (<code>reduceLevel</code>, <code>healAllWounds</code>).
   </div>
   <table>
     <tbody><tr><th>Metoda</th><th>Opis</th></tr>
-    <tr><td><code>await this.applyWound(type, loc?, actor?)</code></td><td>Nałóż ranę bezpośrednio z pominięciem odporności na ból. Typy: D, L, C, K, sD, sL, sC, sK.</td></tr>
+    <tr><td><code>await this.applyWound(type, loc?, actor?)</code></td><td>Wrapper (bypass) dla <code>NeuroshimaDice.applyDamage</code>. Nakłada ranę bez odporności na ból; zwraca <code>Item</code>. Do pełnej kontroli użyj <code>NeuroshimaDice.applyDamage</code> bezpośrednio.</td></tr>
     <tr><td><code>await this.reduceWorstWound(actor?)</code></td><td>Obniż najcięższą aktywną ranę o 1 poziom. Zwraca <code>true</code> jeśli coś zredukowano.</td></tr>
     <tr><td><code>actor.getArmorAt(location)</code></td><td>Zwraca <code>{ totalSP, details, weakPoint }</code> dla danej lokalizacji (pancerz + efekty)</td></tr>
     <tr><td colspan="2" style="background:var(--bg2); color:var(--accent3); font-weight:bold; padding:4px 8px;">Helpery pancerza (item = Item armor)</td></tr>
@@ -5334,48 +5362,67 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
   </div>
 
   <div class="callout info">
-    <strong>Porównanie metod zadawania ran:</strong>
+    <strong>Jeden punkt wejścia — <code>NeuroshimaDice.applyDamage</code>:</strong>
     <ul style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
-      <li><code>game.neuroshima.applyDamage(actor, config)</code> — ogólna funkcja skryptowa. Tryb pełny: pełny pipeline z pancerzem i bólem. Tryb bezpośredni (<code>penaltyOverride</code>): deleguje do <code>NeuroshimaDice.applyWound()</code>.</li>
-      <li><code>game.neuroshima.NeuroshimaDice.applyWound(actor, opts)</code> — prymityw zadawania rany: bez pancerza, bez bólu, bez hooków. Używany wewnętrznie przez krwawienie i radiację. Przyjmuje <code>nameOverride</code>, <code>penaltyOverride</code>, <code>additionalSystem</code>.</li>
-      <li><code>game.neuroshima.radiation.applyWound(actor, config)</code> — specjalizowane API radiacyjne: ustala typ rany z poziomu radiacji, opcjonalnie dodaje chorobę popromienną. Pod spodem wywołuje <code>NeuroshimaDice.applyWound()</code>.</li>
+      <li><code>game.neuroshima.NeuroshimaDice.applyDamage(actor, opts)</code> — <strong>jedyna funkcja zadawania ran</strong>. Obsługuje wszystkie tryby przez flagi: bypass (domyślny), test bólu (<code>withPainResistance</code>), hooki skryptów (<code>withHooks</code>), dokładna kara (<code>penaltyOverride</code>), batch (<code>wounds[]</code>). Używana wewnętrznie przez cały pipeline walki.</li>
+      <li><code>game.neuroshima.applyDamage(actor, config)</code> — wrapper skryptowy: tryb pełny (z pancerzem) deleguje do <code>CombatHelper.applyDamageToActor</code>; tryb bezpośredni (<code>penaltyOverride</code>) deleguje do <code>NeuroshimaDice.applyDamage</code>.</li>
+      <li><code>game.neuroshima.radiation.applyWound(actor, config)</code> — specjalizowane API radiacyjne; pod spodem wywołuje <code>NeuroshimaDice.applyDamage</code>.</li>
     </ul>
-    Do ran środowiskowych bez pancerza i bólu: użyj <code>applyDamage</code> z <code>penaltyOverride</code> lub bezpośrednio <code>NeuroshimaDice.applyWound</code>. Do radiacji: zawsze <code>radiation.applyWound</code>.
   </div>
 
 </section>
 
 <section id="apply-wound-api">
-  <h3 id="apply-wound-api"><code>game.neuroshima.NeuroshimaDice.applyWound(actor, opts)</code></h3>
+  <h3 id="apply-wound-api"><code>game.neuroshima.NeuroshimaDice.applyDamage(actor, opts)</code></h3>
 
   <p>
-    Prymitywna funkcja zadawania jednej rany. Tworzy ranę bezpośrednio na aktorze
-    — <strong>bez redukcji pancerza, bez testu odporności na ból, bez hooków skryptów</strong>.
-    Jest to funkcja używana wewnętrznie przez system krwawienia, radiacji i tryb bezpośredni
-    <code>game.neuroshima.applyDamage()</code>.
+    Jedyny punkt wejścia do zadawania ran — dla skryptów efektów, kondycji, środowisk i wewnętrznie
+    dla pełnego pipeline walki. Zachowanie sterowane flagami:
   </p>
+  <ul style="margin: 0.3rem 0 0.8rem 1.4rem;">
+    <li><strong>Bypass</strong> (domyślny) — bezpośrednio tworzy ranę z karą z konfiguracji. Bez pancerza, bez testu bólu, bez hooków.</li>
+    <li><code>penaltyOverride</code> — jak bypass, ale z dokładną podaną karą %.</li>
+    <li><code>withPainResistance: true</code> — przeprowadza test 3k20, tworzy ranę z karą zależną od wyniku, raport w chacie. K/sK = automatyczna kara 160%.</li>
+    <li><code>withHooks: true</code> — odpala hook <code>"applyDamage"</code> przed tworzeniem ran; skrypty mogą ustawić <code>wound.forceSkip = true</code>.</li>
+    <li><code>wounds[]</code> — batch: wiele ran naraz (używane przez <code>applyDamageToActor</code>).</li>
+  </ul>
 
   <h4>Parametry (<code>opts</code>)</h4>
   <table>
     <thead><tr><th>Pole</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
     <tbody>
-      <tr><td>damageType</td><td>string</td><td><code>"L"</code></td><td>Typ rany: <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code>, <code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>.</td></tr>
+      <tr><td>damageType</td><td>string</td><td><code>"L"</code></td><td>Typ rany (gdy <code>wounds</code> nie podane): <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code>, <code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>.</td></tr>
+      <tr><td>wounds</td><td>Array</td><td><code>undefined</code></td><td>Batch: tablica <code>[{name?, damageType, forcePassed?, annotation?}]</code>. Gdy podane — ignoruje <code>damageType</code>.</td></tr>
       <tr><td>location</td><td>string</td><td><code>"torso"</code></td><td>Lokacja trafienia (<code>"head"</code>, <code>"torso"</code>, <code>"leftArm"</code>, …, <code>"inne"</code>).</td></tr>
       <tr><td>source</td><td>string</td><td><code>""</code></td><td>Opis źródła wyświetlany w polu opisu rany.</td></tr>
-      <tr><td>nameOverride</td><td>string</td><td><code>undefined</code></td><td>Nadpisuje automatycznie wygenerowaną nazwę rany.</td></tr>
-      <tr><td>penaltyOverride</td><td>number</td><td><code>undefined</code></td><td>Kara % zamiast wartości z konfiguracji. Gdy nie podana — używa pierwszej wartości z <code>woundConfiguration[damageType].penalties</code>.</td></tr>
-      <tr><td>additionalSystem</td><td>object</td><td><code>{}</code></td><td>Dodatkowe pola systemu rany mergowane do dokumentu. Używaj do ustawiania <code>originalPenalty</code>, <code>hadFirstAid</code>, <code>healingAttempts</code> itp.</td></tr>
+      <tr><td>nameOverride</td><td>string</td><td><code>undefined</code></td><td>Nadpisuje automatycznie wygenerowaną nazwę rany (tylko tryb single).</td></tr>
+      <tr><td>penaltyOverride</td><td>number</td><td><code>undefined</code></td><td>Dokładna kara %; pomija test bólu nawet gdy <code>withPainResistance: true</code>.</td></tr>
+      <tr><td>additionalSystem</td><td>object</td><td><code>{}</code></td><td>Dodatkowe pola systemu mergowane do każdego dokumentu rany (np. <code>originalPenalty</code>, <code>hadFirstAid</code>).</td></tr>
+      <tr style="background:var(--bg3)"><td colspan="4" style="font-size:0.82rem; color:var(--accent3); text-transform:uppercase; letter-spacing:0.06em; padding:0.35rem 0.6rem;">Flagi trybów</td></tr>
+      <tr><td>withPainResistance</td><td>boolean</td><td><code>false</code></td><td>Przeprowadza test 3k20 Odporności na Ból i generuje raport w chacie.</td></tr>
+      <tr><td>withHooks</td><td>boolean</td><td><code>false</code></td><td>Odpala hook <code>"applyDamage"</code> przed tworzeniem ran. Skrypty mogą ustawić <code>wound.forceSkip = true</code> aby pominąć ranę.</td></tr>
+      <tr><td>forcePassed</td><td>boolean</td><td><code>false</code></td><td>Auto-zdany test bólu (3× 20, min kara). Wymaga <code>withPainResistance: true</code>.</td></tr>
+      <tr><td>annotation</td><td>string</td><td><code>null</code></td><td>Adnotacja w tooltipie raportu bólu.</td></tr>
+      <tr><td>suppressChat</td><td>boolean</td><td><code>false</code></td><td>Pomija raport w chacie (niezależnie od <code>withPainResistance</code>).</td></tr>
     </tbody>
   </table>
+
+  <h4>Wartość zwracana</h4>
+  <p>Zawsze: <code>{ wounds: Item[], results: Array, woundIds: string[] }</code></p>
+  <ul style="margin: 0.2rem 0 0.8rem 1.4rem;">
+    <li><code>wounds</code> — lista stworzonych dokumentów ran</li>
+    <li><code>results</code> — wyniki testu bólu (puste przy bypass)</li>
+    <li><code>woundIds</code> — identyfikatory ran (do flag wiadomości chatu)</li>
+  </ul>
 
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">Execute Script / Manual</span>
-      Przykład — rana ze źródłem i pełnymi polami systemowymi
+      Przykład 1 — bypass: rana ze źródłem i dokładną karą
     </div>
     <pre><code><span class="kw">const</span> { NeuroshimaDice } = game.neuroshima;
 
-<span class="kw">await</span> NeuroshimaDice.<span class="fn">applyWound</span>(actor, {
+<span class="kw">await</span> NeuroshimaDice.<span class="fn">applyDamage</span>(actor, {
   damageType:      <span class="str">"L"</span>,
   location:        <span class="str">"torso"</span>,
   source:          <span class="str">"Toksyna środowiskowa"</span>,
@@ -5391,10 +5438,45 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 });</code></pre>
   </div>
 
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 2 — z testem bólu i raportem w chacie
+    </div>
+    <pre><code><span class="kw">const</span> { NeuroshimaDice } = game.neuroshima;
+
+<span class="cmt">// Test 3k20 Odporności na Ból. C: zdany → 30%, niezdany → 60%. Raport trafia do chatu.</span>
+<span class="kw">const</span> { wounds, results } = <span class="kw">await</span> NeuroshimaDice.<span class="fn">applyDamage</span>(actor, {
+  damageType:         <span class="str">"C"</span>,
+  location:           <span class="str">"head"</span>,
+  source:             <span class="str">"Eksplozja miny"</span>,
+  withPainResistance: <span class="kw">true</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script / Manual</span>
+      Przykład 3 — forcePassed + withHooks (tarcza może zablokować)
+    </div>
+    <pre><code><span class="kw">const</span> { NeuroshimaDice } = game.neuroshima;
+
+<span class="cmt">// Hook "applyDamage" odpalony — skrypt tarczy może ustawić wound.forceSkip = true.</span>
+<span class="cmt">// Jeśli rana przejdzie, test bólu jest auto-zdany (min kara).</span>
+<span class="kw">await</span> NeuroshimaDice.<span class="fn">applyDamage</span>(actor, {
+  damageType:         <span class="str">"L"</span>,
+  withHooks:          <span class="kw">true</span>,
+  withPainResistance: <span class="kw">true</span>,
+  forcePassed:        <span class="kw">true</span>,
+  annotation:         <span class="str">"Automatyczny efekt — magiczne obrażenia"</span>
+});</code></pre>
+  </div>
+
   <div class="callout warning">
-    <code>applyWound()</code> nie uruchamia hooków <code>preApplyDamage</code> ani <code>applyDamage</code>
-    — skrypty efektów nie mogą zablokować ani zmodyfikować tej rany.
-    Jeśli zależy ci na hooku — użyj <code>game.neuroshima.applyDamage()</code> bez <code>penaltyOverride</code>.
+    <code>applyDamage()</code> nigdy nie stosuje redukcji pancerza (SP). Jeśli pancerz ma mieć wpływ
+    — użyj <code>game.neuroshima.applyDamage(actor, config)</code> bez <code>penaltyOverride</code>,
+    który wywołuje pełny pipeline <code>CombatHelper.applyDamageToActor</code> z redukcją SP, hookami
+    <code>preApplyDamage</code>/<code>applyDamage</code> i testem bólu.
   </div>
 </section>
 
@@ -6381,6 +6463,176 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
     na podstawie <code>game.time.worldTime</code> (sekundy). <code>intervalHours: 1</code> oznacza
     3600 sekund czasu gry. Upewniej się że SC i Foundry są zsynchronizowane (<em>Set World Time</em>
     w ustawieniach SC powinno być włączone).
+  </div>
+
+</section>
+
+<!-- SECTION 15 -->
+<section id="condition-check">
+  <h2 class="section-title">15. Skrypty Auto-Sprawdzania Stanów (<code>conditionCheckCode</code>)</h2>
+
+  <p>
+    Każdy stan (kondycja) może posiadać pole <code>conditionCheckCode</code> — fragment kodu JavaScript
+    uruchamiany automatycznie przez metodę <code>_checkAutoConditions()</code> aktora za każdym razem,
+    gdy dane aktora lub jego przedmiotów ulegną zmianie. Logika jest konfigurowana per-stan i
+    wykonywana bezpośrednio wewnątrz aktora, bez zewnętrznego API.
+  </p>
+
+  <div class="callout info">
+    <strong>Gdzie edytować:</strong> Ustawienia → <em>Zarządzanie stanami</em> → kliknij ikonę
+    <strong><code>&lt;/&gt;</code></strong> przy wybranym stanie. Otwiera się edytor kodu z podświetlaniem
+    składni (CodeMirror). Puste pole = stan nie jest auto-sprawdzany.
+  </div>
+
+  <div class="callout warning">
+    <strong>Kiedy jest wywoływany:</strong> Hook <code>updateActor</code>, a także <code>createItem</code>,
+    <code>updateItem</code> i <code>deleteItem</code> dla przedmiotów na aktorze. Skrypt działa tylko dla
+    GM-a (<code>game.user.isGM</code>). Wbudowana flaga <code>_checkingAutoConditions</code> zapobiega
+    rekurencji — każda zmiana stanu z poziomu skryptu nie uruchamia ponownie sprawdzania.
+  </div>
+
+  <h3 id="condition-check-context">Kontekst wykonania</h3>
+  <p>
+    Skrypt wykonywany jest z <code>this</code> ustawionym na instancję <code>NeuroshimaConditionCheckContext</code>.
+    Kontekst jest tworzony osobno dla każdego stanu z kodem.
+  </p>
+
+  <div class="context-box">
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Identyfikacja aktora —</span><span class="ctx-type"></span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.actor</span><span class="ctx-type">NeuroshimaActor</span><span class="ctx-desc">Aktor, na którym wykonywane jest sprawdzanie</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.conditionKey</span><span class="ctx-type">string</span><span class="ctx-desc">Klucz stanu, dla którego uruchomiony jest ten skrypt (np. <code>"dead"</code>, <code>"bleeding"</code>)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isNPC</span><span class="ctx-type">boolean</span><span class="ctx-desc"><code>actor.type === "npc"</code></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isCreature</span><span class="ctx-type">boolean</span><span class="ctx-desc"><code>actor.type === "creature"</code></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isPC</span><span class="ctx-type">boolean</span><span class="ctx-desc"><code>actor.type === "character"</code></span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Pochodne statystyki —</span><span class="ctx-type"></span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.totalDamagePoints</span><span class="ctx-type">number</span><span class="ctx-desc">Skumulowane punkty obrażeń (<code>system.combat.totalDamagePoints</code>). 0 jeśli brak.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.totalWoundPenalty</span><span class="ctx-type">number</span><span class="ctx-desc">Suma kar za rany ze wszystkich aktywnych ran (<code>system.combat.totalWoundPenalty</code>).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.maxHP</span><span class="ctx-type">number</span><span class="ctx-desc">Efektywne maksymalne HP — uwzględnia flagę <code>creatureMaxHP</code> dla Stworzeń. Domyślnie 27.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hp</span><span class="ctx-type">{ value, max } | null</span><span class="ctx-desc">Obiekt <code>system.hp</code>. <code>null</code> dla typów bez HP (np. pojazd).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.encumbrance</span><span class="ctx-type">{ value, max, enabled } | undefined</span><span class="ctx-desc">Obiekt <code>system.encumbrance</code>. <code>undefined</code> jeśli typ aktora nie ma przeciążenia.</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Rany —</span><span class="ctx-type"></span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getWounds(filter?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Filtrowane rany. <code>filter</code>: <code>{ active, location, damageType, bruise }</code>. Bez filtra — wszystkie.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getActiveWounds()</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Wszystkie aktywne rany posortowane od najcięższej do najlżejszej.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getWorstWounds()</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Aktywne rany na najwyższym poziomie (obie ścieżki, sK &gt; K &gt; sC &gt; C …).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getWorstRegularWounds()</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Najcięższe rany na ścieżce regularnej (D→L→C→K).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getWorstBruiseWounds()</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Najcięższe rany na ścieżce stłuczeń (sD→sL→sC→sK).</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę na aktorze, omijając odporność na ból. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Stany (kondycje) —</span><span class="ctx-type"></span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasCondition(key)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Sprawdza czy aktor ma aktywny stan (bool: obecność efektu; int: wartość &gt; 0).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getConditionValue(key)</span><span class="ctx-type">number</span><span class="ctx-desc">Aktualna wartość stanu int-type. Zwraca 0 jeśli nieaktywny.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.addCondition(key, value?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Dodaje lub inkrementuje stan. <code>value</code> domyślnie 1.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.removeCondition(key)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Usuwa lub dekrementuje stan o 1.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustawia wartość stanu int-type bezpośrednio. Usuwa efekt gdy <code>value ≤ 0</code>. Tworzy jeśli nie istnieje.</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Skróty dla bieżącego stanu —</span><span class="ctx-type"></span><span class="ctx-desc">operują na stanie <code>this.conditionKey</code></span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.apply()</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Dodaje <em>ten</em> stan jeśli nie jest jeszcze aktywny. No-op jeśli już jest.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.remove()</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Usuwa <em>ten</em> stan jeśli jest aktywny. No-op jeśli go nie ma.</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Statystyki aktora —</span><span class="ctx-type"></span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getAttribute(key)</span><span class="ctx-type">number</span><span class="ctx-desc">Bazowa wartość atrybutu (np. <code>"dexterity"</code>, <code>"constitution"</code>). 0 jeśli brak.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getAttributeTotal(key)</span><span class="ctx-type">number</span><span class="ctx-desc">Wartość atrybutu z modyfikatorem (baza + bonus z efektów).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getSkill(key)</span><span class="ctx-type">number</span><span class="ctx-desc">Wartość umiejętności (np. <code>"painResistance"</code>, <code>"pistols"</code>). 0 jeśli brak.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasItem(type, name)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Sprawdza czy aktor posiada przedmiot danego typu i nazwy (case-insensitive).</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasTrick(name)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Skrót dla <code>hasItem("trick", name)</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasEffect(nameOrId)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Sprawdza czy aktor ma aktywny (niewyłączony) efekt o podanej nazwie lub ID.</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Output / pomocnicze —</span><span class="ctx-type"></span><span class="ctx-desc"></span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora. <code>content</code> to HTML.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Wyświetla powiadomienie UI. <code>type</code>: <code>"info"</code> (domyślnie), <code>"warn"</code>, <code>"error"</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzuca kośćmi. Przykład: <code>await this.roll("1d20")</code>. Zwraca obiekt <code>Roll</code>.</span></div>
+  </div>
+
+  <h3 id="condition-check-defaults">Domyślne skrypty wbudowane</h3>
+  <p>
+    Trzy wbudowane stany posiadają domyślne skrypty auto-sprawdzania. Można je nadpisać przez edytor.
+  </p>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">dead</span> &amp; <span class="trigger-badge">prone</span> — Martwy i Leżący</div>
+    <pre><code><span class="cmt">// Oba stany używają identycznego kodu — aktywowane razem gdy totalDamagePoints ≥ maxHP.</span>
+<span class="cmt">// Działa wyłącznie na aktorach typu NPC i Stworzenie.</span>
+<span class="kw">if</span> (!<span class="fn">Array.from</span>([<span class="str">"npc"</span>, <span class="str">"creature"</span>]).<span class="fn">includes</span>(<span class="var">this</span>.actor.type)) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">maxHP</span> = <span class="var">this</span>.actor.type === <span class="str">"creature"</span>
+  ? (<span class="var">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"creatureMaxHP"</span>) || <span class="var">this</span>.actor.system.combat?.maxHP || <span class="num">27</span>)
+  : (<span class="var">this</span>.actor.system.hp?.max ?? <span class="num">27</span>);
+<span class="kw">if</span> (<span class="var">maxHP</span> &gt; <span class="num">0</span> &amp;&amp; <span class="var">this</span>.totalDamagePoints &gt;= <span class="var">maxHP</span>) <span class="kw">await</span> <span class="var">this</span>.<span class="fn">apply</span>();</code></pre>
+    <p class="example-desc">
+      Stan nigdy nie jest auto-usuwany — śmierć jest trwała. Ręczne usunięcie z karty aktora jest zawsze możliwe.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">overweight</span> — Przeciążony</div>
+    <pre><code><span class="cmt">// Dodaje stan gdy obciążenie ≥ limit; usuwa gdy spada poniżej.</span>
+<span class="cmt">// Działa na wszystkich typach aktorów z włączonym systemem obciążenia.</span>
+<span class="kw">const</span> <span class="var">enc</span> = <span class="var">this</span>.encumbrance;
+<span class="kw">if</span> (!<span class="var">enc</span> || <span class="var">enc</span>.enabled === <span class="kw">false</span> || <span class="var">enc</span>.max &lt;= <span class="num">0</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (<span class="var">enc</span>.value &gt;= <span class="var">enc</span>.max) <span class="kw">await</span> <span class="var">this</span>.<span class="fn">apply</span>();
+<span class="kw">else</span> <span class="kw">await</span> <span class="var">this</span>.<span class="fn">remove</span>();</code></pre>
+    <p class="example-desc">
+      Ten stan jest dwukierunkowy — jest automatycznie dodawany i usuwany na bieżąco.
+    </p>
+  </div>
+
+  <h3 id="condition-check-examples">Przykłady niestandardowych skryptów</h3>
+
+  <div class="example-block">
+    <div class="example-header">Przykład — stan <span class="trigger-badge">Wyczerpany</span> przy małej liczbie HP (Postać gracza)</div>
+    <pre><code><span class="cmt">// Aktywuje stan "exhausted" gdy postać ma ≤ 25% HP.</span>
+<span class="cmt">// Wymagany własny stan z kluczem "exhausted" dodany w Zarządzaniu stanami.</span>
+<span class="kw">if</span> (!<span class="var">this</span>.isPC) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">hp</span>    = <span class="var">this</span>.actor.system.hp;
+<span class="kw">const</span> <span class="var">ratio</span> = (hp?.max ?? <span class="num">0</span>) &gt; <span class="num">0</span> ? hp.value / hp.max : <span class="num">0</span>;
+<span class="kw">if</span> (<span class="var">ratio</span> &lt;= <span class="num">0.25</span>) <span class="kw">await</span> <span class="var">this</span>.<span class="fn">apply</span>();
+<span class="kw">else</span>              <span class="kw">await</span> <span class="var">this</span>.<span class="fn">remove</span>();</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Przykład — dodanie dodatkowego stanu obok bieżącego</div>
+    <pre><code><span class="cmt">// Skrypt na stanie "paralyzed": gdy aktor jest sparaliżowany, automatycznie też go kładziesz.</span>
+<span class="kw">if</span> (<span class="var">this</span>.<span class="fn">hasCondition</span>(<span class="str">"paralyzed"</span>) &amp;&amp; !<span class="var">this</span>.<span class="fn">hasCondition</span>(<span class="str">"prone"</span>)) {
+  <span class="kw">await</span> <span class="var">this</span>.<span class="fn">addCondition</span>(<span class="str">"prone"</span>);
+}
+<span class="cmt">// Uwaga: auto-usuwanie "prone" po zniknięciu "paralyzed" wymaga oddzielnego skryptu na stanie "prone".</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Przykład — próg krwawienia wyzwalający nieprzytomność</div>
+    <pre><code><span class="cmt">// Jeśli krwawienie osiągnie poziom 3+, aktor traci przytomność.</span>
+<span class="kw">const</span> <span class="var">stacks</span> = <span class="var">this</span>.actor.<span class="fn">getConditionValue</span>(<span class="str">"bleeding"</span>);
+<span class="kw">if</span> (<span class="var">stacks</span> &gt;= <span class="num">3</span>) <span class="kw">await</span> <span class="var">this</span>.<span class="fn">apply</span>();
+<span class="kw">else</span>            <span class="kw">await</span> <span class="var">this</span>.<span class="fn">remove</span>();</code></pre>
+    <p class="example-desc">
+      Skrypt przypisany do stanu <code>unconscious</code>. Działa dwukierunkowo — budzi aktora gdy krwawienie zejdzie poniżej 3.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Przykład — <span class="trigger-badge">Krwawienie</span> automatycznie po ranach C lub K</div>
+    <p class="example-desc">
+      Każde nowe aktywne obrażenie Ciężkie (C) lub Krytyczne (K) dodaje 1 stak krwawienia.
+      Działa też przy redukcji pancerzem — np. 3×K zredukowane do 3×C = +3 krwawienie.
+      Skrypt porównuje bieżącą liczbę ran C/K z poprzednią zapamiętaną w fladze, więc
+      dodaje krwawienie tylko za przyrost, nie przy każdej aktualizacji aktora.
+    </p>
+    <pre><code><span class="cmt">// Przypisany do stanu "bleeding" (conditionCheckCode).</span>
+<span class="kw">if</span> (!<span class="fn">Array</span>.<span class="fn">from</span>([<span class="str">"npc"</span>, <span class="str">"creature"</span>, <span class="str">"character"</span>]).<span class="fn">includes</span>(<span class="var">this</span>.actor.type)) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">current</span> = <span class="var">this</span>.actor.<span class="fn">getWounds</span>({ active: <span class="kw">true</span> })
+  .<span class="fn">filter</span>(<span class="var">w</span> =&gt; [<span class="str">"C"</span>, <span class="str">"K"</span>].<span class="fn">includes</span>(<span class="var">w</span>.system.damageType)).<span class="var">length</span>;
+<span class="kw">const</span> <span class="var">prev</span> = <span class="var">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_bleedingWoundCount"</span>) ?? <span class="num">0</span>;
+<span class="kw">if</span> (<span class="var">current</span> !== <span class="var">prev</span>) {
+  <span class="kw">if</span> (<span class="var">current</span> &gt; <span class="var">prev</span>) <span class="kw">await</span> <span class="var">this</span>.<span class="fn">addCondition</span>(<span class="str">"bleeding"</span>, <span class="var">current</span> - <span class="var">prev</span>);
+  <span class="kw">await</span> <span class="var">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_bleedingWoundCount"</span>, <span class="var">current</span>);
+}</code></pre>
+    <p class="example-desc">
+      Flaga <code>_bleedingWoundCount</code> jest aktualizowana tylko gdy wartość się zmienia —
+      zapobiega to pętli nieskończonej wywoływanej przez własne <code>setFlag</code>.
+      Zmniejszenie liczby ran C/K (np. po wyleczeniu) aktualizuje licznik bez odejmowania krwawienia.
+    </p>
+  </div>
+
+  <div class="callout danger">
+    <strong>Ważne:</strong> Skrypt <code>conditionCheckCode</code> nie posiada dostępu do kontekstu
+    efektu (<code>this.effect</code>, <code>this.item</code>, <code>this.sendMessage</code> itp.) —
+    jest to celowe uproszczenie. Do bardziej zaawansowanej logiki turowej (np. nakładanie ran co turę)
+    używaj zakładki <strong>Skrypty</strong> z wyzwalaczem <code>startTurn</code> na samym efekcie stanu.
   </div>
 
 </section>

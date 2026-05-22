@@ -319,6 +319,78 @@
 .neuroshima .flex2 { flex: 2; }
 .neuroshima .flex1 { flex: 1; }
 
+/* Resistance Table */
+.neuroshima.sheet.item .armor-resistances-section .resistance-table {
+    width: 100%;
+}
+
+.neuroshima.sheet.item .armor-resistances-section .resistance-table-header,
+.neuroshima.sheet.item .armor-resistances-section .resistance-row {
+    display: grid;
+    grid-template-columns: 1.4fr repeat(6, 1fr) 20px;
+    align-items: center;
+    gap: 3px;
+}
+
+.neuroshima.sheet.item .armor-resistances-section .resistance-table-header {
+    margin-bottom: 3px;
+    border-bottom: 1px solid var(--ns-border-main);
+    padding-bottom: 3px;
+}
+
+.neuroshima.sheet.item .armor-resistances-section .resistance-col-label {
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .armor-resistances-section select.resistance-col-label {
+    font-size: 0.72em;
+    padding: 1px 2px;
+    min-width: 0;
+    width: 100%;
+}
+
+.neuroshima.sheet.item .armor-resistances-section .resistance-col-loc {
+    text-align: center;
+    font-size: 0.75em;
+    font-weight: bold;
+    text-transform: uppercase;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .armor-resistances-section input.resistance-col-loc {
+    width: 100%;
+    font-size: 0.78em;
+    font-weight: normal;
+    text-align: center;
+    padding: 1px 2px;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .armor-resistances-section span.resistance-col-loc {
+    font-weight: normal;
+}
+
+.neuroshima.sheet.item .armor-resistances-section .resistance-col-action {
+    text-align: center;
+    justify-self: center;
+}
+
+.neuroshima.sheet.item .armor-resistances-section .resistance-row {
+    padding: 2px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ns-border-main) 40%, transparent);
+}
+
+.neuroshima.sheet.item .armor-resistances-section .resistance-row:last-child {
+    border-bottom: none;
+}
+
 /* Weapon Stats Layout */
 .neuroshima.sheet.item .weapon-stats-container.flexrow {
     align-items: stretch;

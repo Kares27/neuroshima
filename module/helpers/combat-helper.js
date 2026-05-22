@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { getEffectiveArmorResistances } from "./mod-helpers.js";
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -209,6 +210,7 @@ export class CombatHelper {
     const isMelee = attackData.isMelee;
     const initialDamageType = attackData.damage || "L";
     let piercing = attackData.piercing || 0;
+    const damageCategory = attackData.damageCategory ?? "physical";
     const spDifference = options.spDifference ?? attackData.successPoints ?? 0;
     
     // For melee, select the appropriate damage field (damageMelee1/2/3) based on spDifference
@@ -278,14 +280,15 @@ export class CombatHelper {
         totalProjectiles = 1;
         
         // Apply armor reduction
-        const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing, attackContext);
+        const reductionData = this.reduceArmorDamageWithDetails(actor, location, damageType, piercing, attackContext, damageCategory);
         if (reductionData.pendingResourceUpdates?.length) allPendingResourceUpdates.push(...reductionData.pendingResourceUpdates);
         if (reductionData.pendingChatRolls?.length) allPendingChatRolls.push(...reductionData.pendingChatRolls);
         
         if (reductionData.reducedDamageType) {
             rawWounds.push({
                 name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
-                damageType: reductionData.reducedDamageType
+                damageType: reductionData.reducedDamageType,
+                damageCategory
             });
         } else {
             reducedProjectiles++;
@@ -303,13 +306,14 @@ export class CombatHelper {
             const count = bullet.isPellet ? (bullet.successPoints || 1) : 1;
             for (let i = 0; i < count; i++) {
                 totalProjectiles++;
-                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bullet.damage || damageType, bullet.piercing ?? piercing, attackContext);
+                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bullet.damage || damageType, bullet.piercing ?? piercing, attackContext, damageCategory);
                 if (reductionData.pendingResourceUpdates?.length) allPendingResourceUpdates.push(...reductionData.pendingResourceUpdates);
                 if (reductionData.pendingChatRolls?.length) allPendingChatRolls.push(...reductionData.pendingChatRolls);
                 if (reductionData.reducedDamageType) {
                     rawWounds.push({
                         name: game.i18n.localize(NEUROSHIMA.woundConfiguration[reductionData.reducedDamageType]?.fullLabel || "NEUROSHIMA.Items.Type.Wound"),
-                        damageType: reductionData.reducedDamageType
+                        damageType: reductionData.reducedDamageType,
+                        damageCategory
                     });
                 } else {
                     reducedProjectiles++;
@@ -383,16 +387,23 @@ export class CombatHelper {
             const scriptArgs = { actor, wounds: rawWounds, location };
             await NeuroshimaScriptRunner.execute("applyDamage", scriptArgs);
             const filteredWounds = rawWounds.filter(w => !w.forceSkip);
-            const painResistanceData = await this.processPainResistance(actor, filteredWounds, location, sourceInfo);
-            results = painResistanceData.results;
-            const createdWounds = await actor.createEmbeddedDocuments("Item", painResistanceData.processedWounds);
-            woundIds = createdWounds.map(w => w.id);
+
+            const damageResult = await game.neuroshima.NeuroshimaDice.applyDamage(actor, {
+                wounds: filteredWounds,
+                location,
+                source: sourceInfo,
+                withPainResistance: true,
+                suppressChat: true,
+                additionalSystem: { damageCategory }
+            });
+            results = damageResult.results;
+            woundIds = damageResult.woundIds;
 
             await this._applyDamageTypeEffects(actor, attackData);
 
             if (!suppressChat) {
                 ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", { 
-                    count: painResistanceData.processedWounds.length, 
+                    count: filteredWounds.length, 
                     name: actor.name 
                 }));
             }
@@ -720,160 +731,10 @@ export class CombatHelper {
   }
 
   /**
-   * Runs pain resistance rolls and prepares wound item data.
-   * @param {Actor} actor 
-   * @param {Array} rawWounds 
-   * @param {string} location
-   * @param {string} sourceInfo
-   * @returns {Promise<Object>} { processedWounds, results }
+   * @deprecated Use `NeuroshimaDice.processPainResistance` directly.
    */
   static async processPainResistance(actor, rawWounds, location, sourceInfo) {
-    game.neuroshima.group(`Processing pain resistance: ${actor.name}`);
-    
-    const skillKey = "painResistance";
-    const skillValue = actor.system.skills?.[skillKey]?.value || 0;
-    const statKey = "charisma";
-    const statValue = actor.system.attributeTotals?.[statKey] ?? actor.system.attributes?.[statKey] ?? 10;
-    
-    const results = [];
-    const processedWounds = [];
-    
-    for (const wound of rawWounds) {
-        const damageType = wound.damageType;
-        const config = NEUROSHIMA.woundConfiguration[damageType];
-
-        // Critical wounds (K, sK) have difficulty: null — skip the roll, auto-apply 160% penalty
-        if (!config?.difficulty) {
-            const critPenalty = config?.penalties?.[0] ?? 160;
-            results.push({
-                name: wound.name,
-                damageType,
-                baseDifficulty: null,
-                totalShift: 0,
-                difficulty: null,
-                isPassed: false,
-                forcePassed: false,
-                penalty: critPenalty,
-                dice: null,
-                modifiedResults: [],
-                successPoints: 0,
-                target: null,
-                skill: skillValue,
-                isCritical: true,
-                isCritSuccess: false,
-                isCritFailure: false,
-                annotation: wound.annotation || null,
-                tooltip: game.i18n.localize("NEUROSHIMA.PainResistance.CriticalAutomatic"),
-                tooltipHtml: ""
-            });
-            processedWounds.push({
-                name: wound.name,
-                type: "wound",
-                system: {
-                    location: location,
-                    damageType: damageType,
-                    penalty: critPenalty,
-                    description: sourceInfo
-                }
-            });
-            continue;
-        }
-
-        const baseDifficulty = config.difficulty;
-        let isPassed;
-        let diceResults;
-        let totalShift = 0;
-        let shiftedDiff;
-        let target;
-        let evalData;
-
-        if (wound.forcePassed === true) {
-            diceResults = [20, 20, 20];
-            shiftedDiff = baseDifficulty;
-            target = statValue + (baseDifficulty.mod || 0);
-            evalData = { success: true, successCount: 3, modifiedResults: diceResults.map(v => ({ original: v, modified: v, isSuccess: true, ignored: false, isNat1: false, isNat20: true })), isCritSuccess: false, isCritFailure: false, difficultyLabel: baseDifficulty.label };
-            isPassed = true;
-            game.neuroshima.log(`processPainResistance: forcePassed dla ${wound.damageType}`);
-        } else {
-            // Pain resistance roll (CLOSED test per 1.5 rules; ignores wound/armor penalties)
-            const roll = new Roll("3d20");
-            await roll.evaluate();
-            diceResults = roll.terms[0].results.map(r => r.result);
-            
-            // Nat 1 / Nat 20 always affect difficulty; skill shift only when the setting is enabled
-            const allowShift = game.settings.get("neuroshima", "allowPainResistanceShift");
-            const diceShift = game.neuroshima.NeuroshimaDice.getDiceShift(diceResults);
-            if (allowShift) {
-                const skillShift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
-                totalShift = -skillShift + diceShift;
-            } else {
-                totalShift = diceShift;
-            }
-            
-            shiftedDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(baseDifficulty, totalShift);
-            target = statValue + shiftedDiff.mod;
-            
-            // Evaluate the closed test (minimum 2 successes required to pass)
-            const diceObjects = diceResults.map((v, i) => ({ 
-                original: v, 
-                index: i, 
-                modified: v, 
-                isSuccess: false, 
-                ignored: false,
-                isNat1: v === 1,
-                isNat20: v === 20
-            }));
-            
-            evalData = { target, stat: statValue, skill: skillValue, difficultyLabel: shiftedDiff.label };
-            game.neuroshima.NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
-            isPassed = evalData.success;
-        }
-
-        // Penalties index: [passed, failed]
-        const appliedPenalty = isPassed ? (config?.penalties[0] || 0) : (config?.penalties[1] || 0);
-        
-        results.push({
-            name: wound.name,
-            damageType,
-            baseDifficulty: baseDifficulty.label,
-            totalShift: totalShift,
-            difficulty: shiftedDiff?.label ?? baseDifficulty.label,
-            isPassed,
-            forcePassed: wound.forcePassed === true,
-            penalty: appliedPenalty,
-            dice: diceResults.join(", "),
-            modifiedResults: evalData?.modifiedResults ?? [],
-            successPoints: evalData?.successCount ?? 3,
-            target: target,
-            skill: skillValue,
-            isCritSuccess: evalData?.isCritSuccess ?? false,
-            isCritFailure: evalData?.isCritFailure ?? false,
-            annotation: wound.annotation || null,
-            tooltip: wound.forcePassed ? (wound.annotation || wound.effectName || game.i18n.localize("NEUROSHIMA.Scripts.ForcePassed")) : game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(evalData, "NEUROSHIMA.Skills.painResistance"),
-            tooltipHtml: wound.forcePassed ? "" : game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
-                modifiedResults: evalData?.modifiedResults ?? [],
-                target: target,
-                skill: skillValue,
-                successCount: evalData?.successCount ?? 0,
-                difficultyLabel: shiftedDiff?.label ?? baseDifficulty.label,
-                isOpen: false
-            })
-        });
-
-        processedWounds.push({
-            name: wound.name,
-            type: "wound",
-            system: {
-                location: location,
-                damageType: damageType,
-                penalty: appliedPenalty,
-                description: sourceInfo
-            }
-        });
-    }
-
-    game.neuroshima.groupEnd();
-    return { processedWounds, results };
+    return game.neuroshima.NeuroshimaDice.processPainResistance(actor, rawWounds, location, sourceInfo);
   }
 
   /**
@@ -1163,13 +1024,14 @@ export class CombatHelper {
   /**
    * Returns total armor SP at a given location for any actor type, plus structured detail entries.
    * Handles: character/npc (items only), creature (naturalArmor + items), vehicle (built-in plate + items).
-   * Also applies system.armorBonus.all and system.armorBonus.[location] from Active Effects.
+   * Also applies system.armorBonus.all and system.armorBonus.[location] from Active Effects (physical only).
    *
    * @param {Actor} actor
    * @param {string} location - Body/vehicle location key
+   * @param {string} [damageCategory="physical"] - Damage category key
    * @returns {{ totalSP: number, details: Array<{name,ratings,damage,effective}>, weakPoint: boolean }}
    */
-  static getArmorRating(actor, location) {
+  static getArmorRating(actor, location, damageCategory = "physical") {
     let totalSP = 0;
     const details = [];
     let weakPoint = false;
@@ -1209,27 +1071,41 @@ export class CombatHelper {
     const equippedArmor = actor.items.filter(item =>
       item.type === "armor" && item.system.equipped === true
     );
-    for (const armor of equippedArmor) {
-      const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
-      const ratings = armor.system.armor?.ratings?.[location] ?? armor.system.currentRating ?? armor.system.rating ?? 0;
-      const damage  = armor.system.armor?.damage?.[location]  || 0;
-      if (effectiveValue > 0 || ratings > 0) {
-        totalSP += effectiveValue;
-        details.push({ name: armor.name, ratings, damage, effective: effectiveValue });
-      }
-    }
 
-    const bonusAll = Number(actor.system.armorBonus?.all)      || 0;
-    const bonusLoc = Number(actor.system.armorBonus?.[location]) || 0;
-    const totalBonus = bonusAll + bonusLoc;
-    if (totalBonus !== 0) {
-      totalSP += totalBonus;
-      details.push({
-        name: game.i18n.localize("NEUROSHIMA.Effects.ArmorBonus"),
-        ratings: totalBonus,
-        damage: 0,
-        effective: totalBonus
-      });
+    if (damageCategory === "physical") {
+      for (const armor of equippedArmor) {
+        const effectiveValue = armor.system.effectiveArmor?.[location] || 0;
+        const ratings = armor.system.armor?.ratings?.[location] ?? armor.system.currentRating ?? armor.system.rating ?? 0;
+        const damage  = armor.system.armor?.damage?.[location]  || 0;
+        if (effectiveValue > 0 || ratings > 0) {
+          totalSP += effectiveValue;
+          details.push({ name: armor.name, ratings, damage, effective: effectiveValue });
+        }
+      }
+
+      const bonusAll = Number(actor.system.armorBonus?.all)      || 0;
+      const bonusLoc = Number(actor.system.armorBonus?.[location]) || 0;
+      const totalBonus = bonusAll + bonusLoc;
+      if (totalBonus !== 0) {
+        totalSP += totalBonus;
+        details.push({
+          name: game.i18n.localize("NEUROSHIMA.Effects.ArmorBonus"),
+          ratings: totalBonus,
+          damage: 0,
+          effective: totalBonus
+        });
+      }
+    } else {
+      for (const armor of equippedArmor) {
+        const resistances = getEffectiveArmorResistances(armor);
+        const row = resistances[damageCategory];
+        if (!row) continue;
+        const sp = Number(row[location]) || 0;
+        if (sp > 0) {
+          totalSP += sp;
+          details.push({ name: armor.name, ratings: sp, damage: 0, effective: sp });
+        }
+      }
     }
 
     return { totalSP, details, weakPoint };
@@ -1238,20 +1114,22 @@ export class CombatHelper {
   /**
    * Reduces damage through armor and returns detailed reduction data for the tooltip.
    * @param {object} [context] - Additional context passed to armorCalculation (e.g. isGrenade, attackLabel)
+   * @param {string} [damageCategory="physical"] - Damage category key
    * @private
    */
-  static reduceArmorDamageWithDetails(actor, location, damageType, piercing, context = {}) {
+  static reduceArmorDamageWithDetails(actor, location, damageType, piercing, context = {}, damageCategory = "physical") {
     const reductionData = {
       originalDamage: damageType,
       piercing: piercing,
       location: location,
+      damageCategory,
       armorDetails: [],
       totalArmor: 0,
       reduction: 0,
       reducedDamageType: null
     };
 
-    const { totalSP, details, weakPoint } = this.getArmorRating(actor, location);
+    const { totalSP, details, weakPoint } = this.getArmorRating(actor, location, damageCategory);
     let totalArmorRating = totalSP;
     reductionData.armorDetails = details;
 
@@ -1269,6 +1147,7 @@ export class CombatHelper {
     // Run armorCalculation scripts — they may modify SP or add bonusSP
     const armorArgs = {
       actor, location, damageType, sp: totalArmorRating, piercing, bonusSP: 0,
+      damageCategory,
       pendingResourceUpdates: [],
       pendingChatRolls: [],
       ...context
@@ -1277,8 +1156,11 @@ export class CombatHelper {
     totalArmorRating = (armorArgs.sp ?? totalArmorRating) + (armorArgs.bonusSP ?? 0);
     reductionData.totalArmor = totalArmorRating;
 
+    // Piercing only applies to physical armor
+    const effectivePiercing = damageCategory === "physical" ? piercing : 0;
+
     // Calculate reduction: Armor - Piercing (unified formula)
-    const actualReduction = this.computeActualReduction(totalArmorRating, piercing);
+    const actualReduction = this.computeActualReduction(totalArmorRating, effectivePiercing);
     reductionData.reduction = actualReduction;
 
     // Resolve pendingResourceUpdates: items with useReduction:true get delta = -actualReduction
@@ -1343,7 +1225,7 @@ export class CombatHelper {
                     <strong>${game.i18n.localize("NEUROSHIMA.Chat.OriginalDamage")}:</strong> ${origWoundLabel} (${baseDamagePoints} pkt)
                 </div>
                 <div class="detail-row">
-                    <strong>${game.i18n.localize("NEUROSHIMA.Combat.PiercingAbbr")}:</strong> ${piercing}
+                    <strong>${game.i18n.localize("NEUROSHIMA.Combat.PiercingAbbr")}:</strong> ${effectivePiercing}
                 </div>
                 <div class="detail-row">
                     <strong>${game.i18n.localize("NEUROSHIMA.Chat.EffectiveReduction")}:</strong> ${actualReduction} pkt

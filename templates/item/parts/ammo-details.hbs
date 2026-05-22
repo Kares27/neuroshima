@@ -32,6 +32,18 @@
                 </div>
 
                 <div class="form-group override-row">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.DamageCategory"}}</label>
+                    <input type="checkbox" name="system.overrideDamageCategory" {{checked system.overrideDamageCategory}}/>
+                    {{#if system.overrideDamageCategory}}
+                    <select name="system.damageCategory">
+                        {{#each damageCategories as |cat key|}}
+                        <option value="{{key}}" {{#if (eq ../system.damageCategory key)}}selected{{/if}}>{{localize cat.label}}</option>
+                        {{/each}}
+                    </select>
+                    {{/if}}
+                </div>
+
+                <div class="form-group override-row">
                     <label>{{localize "NEUROSHIMA.Items.Fields.Piercing"}}</label>
                     <input type="checkbox" name="system.overridePiercing" {{checked system.overridePiercing}}/>
                     {{#if system.overridePiercing}}

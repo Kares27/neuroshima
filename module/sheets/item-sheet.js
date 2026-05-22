@@ -1,6 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
-import { installMod, attachMod, detachMod, removeMod, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveWeight, getEffectiveCost } from "../helpers/mod-helpers.js";
+import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -42,6 +42,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       deleteRelationRow: NeuroshimaItemSheet.prototype._onDeleteRelationRow,
       addBlastZone: NeuroshimaItemSheet.prototype._onAddBlastZone,
       removeBlastZone: NeuroshimaItemSheet.prototype._onRemoveBlastZone,
+      addResistanceRow: NeuroshimaItemSheet.prototype._onAddResistanceRow,
+      removeResistanceRow: NeuroshimaItemSheet.prototype._onRemoveResistanceRow,
+      addResistanceDeltaRow: NeuroshimaItemSheet.prototype._onAddResistanceDeltaRow,
+      removeResistanceDeltaRow: NeuroshimaItemSheet.prototype._onRemoveResistanceDeltaRow,
       attachMod: NeuroshimaItemSheet.prototype._onAttachMod,
       detachMod: NeuroshimaItemSheet.prototype._onDetachMod,
       removeMod: NeuroshimaItemSheet.prototype._onRemoveMod,
@@ -50,7 +54,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       editContainerItem: NeuroshimaItemSheet.prototype._onEditContainerItem,
       deleteContainerItem: NeuroshimaItemSheet.prototype._onDeleteContainerItem,
       toggleContainerLock: NeuroshimaItemSheet.prototype._onToggleContainerLock,
-      toggleEquip: NeuroshimaItemSheet.prototype._onToggleEquip
+      toggleEquip: NeuroshimaItemSheet.prototype._onToggleEquip,
+      toggleState: NeuroshimaItemSheet.prototype._onToggleState
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -103,7 +108,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       const sourceItem = await fromUuid(data.uuid);
       if (sourceItem?.type === "weapon-mod" && item.type === "weapon") {
         await installMod(item, sourceItem);
-        if (sourceItem.actor) {
+        if (sourceItem.actor && sourceItem.actor !== item.actor) {
           const qty = sourceItem.system.quantity ?? 1;
           if (qty <= 1) await sourceItem.delete();
           else await sourceItem.update({ "system.quantity": qty - 1 });
@@ -112,7 +117,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       }
       if (sourceItem?.type === "armor-mod" && item.type === "armor") {
         await installMod(item, sourceItem);
-        if (sourceItem.actor) {
+        if (sourceItem.actor && sourceItem.actor !== item.actor) {
           const qty = sourceItem.system.quantity ?? 1;
           if (qty <= 1) await sourceItem.delete();
           else await sourceItem.update({ "system.quantity": qty - 1 });
@@ -336,6 +341,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     // Common options
     context.attributes = NEUROSHIMA.attributes;
     context.damageTypes = NEUROSHIMA.damageTypes;
+    context.damageCategories = NEUROSHIMA.damageCategories;
     context.blastDamageTypes = NEUROSHIMA.blastDamageTypes;
     context.blastDamageTypesFull = NEUROSHIMA.blastDamageTypesFull;
     context.weaponSubtypes = NEUROSHIMA.weaponSubtypes;
@@ -516,7 +522,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       const hasEnableScript = !!(e.getFlag?.("neuroshima", "enableScript"));
       const fromModId = e.getFlag?.("neuroshima", "fromModId") ?? null;
       const sourceName = fromModId
-        ? (item.system?.mods?.[fromModId]?.name ?? fromModId)
+        ? (buildInstalledMap(item)[fromModId]?.name ?? fromModId)
         : null;
       return {
         id: e.id,
@@ -534,10 +540,12 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     if (item.type === "weapon" || item.type === "armor") {
       const modsRaw = item.system.mods ?? {};
       context.isModded = !!(modsRaw.__modded);
-      context.installedMods = Object.entries(modsRaw)
+      const installedMap = buildInstalledMap(item);
+      context.installedMods = Object.entries(installedMap)
         .filter(([k]) => !k.startsWith("__"))
         .map(([id, snap]) => ({
           ...snap,
+          id,
           deltaSummary: buildModDeltaSummary(snap, item.type),
           categoryLabel: game.i18n.localize(`NEUROSHIMA.Mods.Category.${snap.category ?? "modification"}`)
         }));
@@ -546,6 +554,25 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
         context.effectiveArmorRatings = getEffectiveArmorRatings(item);
         context.effectiveWeight = getEffectiveWeight(item);
         context.effectiveCost   = getEffectiveCost(item);
+      }
+      if (item.type === "armor") {
+        const effRes = getEffectiveArmorResistances(item);
+        context.effectiveArmorResistances = effRes;
+        context.effectiveArmorResistanceRows = Object.entries(effRes).map(([category, locs]) => ({
+          category,
+          categoryLabel: game.i18n.localize(NEUROSHIMA.damageCategories[category]?.label ?? category),
+          head:     locs.head     ?? 0,
+          torso:    locs.torso    ?? 0,
+          leftArm:  locs.leftArm  ?? 0,
+          rightArm: locs.rightArm ?? 0,
+          leftLeg:  locs.leftLeg  ?? 0,
+          rightLeg: locs.rightLeg ?? 0
+        }));
+      }
+      if (item.type === "armor" || item.type === "armor-mod") {
+        context.resistanceCategories = Object.fromEntries(
+          Object.entries(NEUROSHIMA.damageCategories).filter(([k]) => k !== "physical")
+        );
       }
 
       if (item.type === "weapon-mod") {
@@ -559,6 +586,11 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       context.weaponModTypeSuggestions = NEUROSHIMA.weaponModTypeSuggestions ?? [];
     } else if (item.type === "armor-mod") {
       context.armorModTypeSuggestions = NEUROSHIMA.armorModTypeSuggestions ?? [];
+      if (!context.resistanceCategories) {
+        context.resistanceCategories = Object.fromEntries(
+          Object.entries(NEUROSHIMA.damageCategories).filter(([k]) => k !== "physical")
+        );
+      }
     }
 
     if (item.type === "container") {
@@ -681,6 +713,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
   /** @override */
   _detailsState = {};
   _scrollState = {};
+  _isUpdating = false;
+  _headerToggles = {};
 
   static _SCROLL_SELECTORS = [
     '[data-application-part="stats"]',
@@ -690,6 +724,48 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     ".weapon-mod-details",
     ".armor-mod-details"
   ];
+
+  async _renderFrame(options) {
+    const html = await super._renderFrame(options);
+    if (!this.isEditable) return html;
+    const item = this.document;
+    const ellipsisBtn = html.querySelector(".fa-ellipsis-vertical, .fa-solid.fa-ellipsis-vertical")?.closest("button, a, .header-control");
+    const sibling = ellipsisBtn ?? html.querySelector("[data-action='close']");
+    const unjamMinRole = game.settings.get("neuroshima", "unjamMinRole") ?? 4;
+    const canUnjam = game.user.isGM || game.user.role >= unjamMinRole;
+
+    if (item.type === "container" && game.user.isGM) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "header-control container-lock-btn";
+      Object.assign(btn.dataset, { action: "toggleState", property: "system.locked" });
+      btn.addEventListener("mousedown", (ev) => ev.preventDefault());
+      sibling?.before(btn);
+      this._headerToggles.locked = btn;
+    }
+
+    if (item.type === "weapon" && item.system.weaponType !== "grenade" && "jammed" in item.system && canUnjam) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "header-control jam-toggle-btn";
+      Object.assign(btn.dataset, { action: "toggleState", property: "system.jammed" });
+      btn.addEventListener("mousedown", (ev) => ev.preventDefault());
+      sibling?.before(btn);
+      this._headerToggles.jammed = btn;
+    }
+
+    if ("equipped" in (item.system ?? {}) && (item.type !== "gear" || item.system.isWearable)) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "header-control equip-toggle-btn";
+      Object.assign(btn.dataset, { action: "toggleState", property: "system.equipped" });
+      btn.addEventListener("mousedown", (ev) => ev.preventDefault());
+      sibling?.before(btn);
+      this._headerToggles.equipped = btn;
+    }
+
+    return html;
+  }
 
   async _preRender(context, options) {
     await super._preRender(context, options);
@@ -705,75 +781,35 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
     const item = this.document;
 
-    if (item.type === "container" && game.user.isGM) {
-      const header = this.element.querySelector(".window-header");
-      if (header) {
-        this.element.querySelectorAll(".container-lock-btn").forEach(el => el.remove());
-        const isLocked = item.system.locked;
-        const lockBtn = document.createElement("button");
-        lockBtn.type = "button";
-        lockBtn.className = "container-lock-btn header-control";
-        lockBtn.title = isLocked
-          ? game.i18n.localize("NEUROSHIMA.Container.Unlock")
-          : game.i18n.localize("NEUROSHIMA.Container.Lock");
-        lockBtn.innerHTML = isLocked
-          ? `<i class="fas fa-lock" style="color:#ef4444;"></i>`
-          : `<i class="fas fa-lock-open" style="color:#22c55e;"></i>`;
-        lockBtn.addEventListener("click", () => this._onToggleContainerLock());
-        const ellipsisBtn = header.querySelector(".fa-ellipsis-vertical, .fa-solid.fa-ellipsis-vertical")?.closest("button, a, .header-control");
-        const closeBtn = header.querySelector("[data-action='close']");
-        const anchor = ellipsisBtn ?? closeBtn;
-        if (anchor) header.insertBefore(lockBtn, anchor);
-        else header.appendChild(lockBtn);
-      }
+    if (this._headerToggles.locked) {
+      const isLocked = item.system.locked;
+      this._headerToggles.locked.title = isLocked
+        ? game.i18n.localize("NEUROSHIMA.Container.Unlock")
+        : game.i18n.localize("NEUROSHIMA.Container.Lock");
+      this._headerToggles.locked.innerHTML = isLocked
+        ? `<i class="fas fa-lock" style="color:#ef4444;"></i>`
+        : `<i class="fas fa-lock-open" style="color:#22c55e;"></i>`;
     }
 
-    if (context.isJammedWeapon && context.canUnjam && this.isEditable) {
-      const header = this.element.querySelector(".window-header");
-      if (header) {
-        this.element.querySelectorAll(".jam-toggle-btn").forEach(el => el.remove());
-        const isJammed = !!item.system.jammed;
-        const jamBtn = document.createElement("button");
-        jamBtn.type = "button";
-        jamBtn.className = "jam-toggle-btn header-control";
-        jamBtn.title = isJammed
-          ? game.i18n.localize("NEUROSHIMA.Items.Fields.JammedClear")
-          : game.i18n.localize("NEUROSHIMA.Items.Fields.Jammed");
-        jamBtn.innerHTML = isJammed
-          ? `<img src="systems/neuroshima/assets/img/bullet-jam.svg" style="width:1em;height:1em;filter:drop-shadow(0 0 4px #ef4444);vertical-align:middle;">`
-          : `<img src="systems/neuroshima/assets/img/bullet-jam.svg" style="width:1em;height:1em;opacity:0.35;vertical-align:middle;">`;
-        jamBtn.addEventListener("click", async () => {
-          await item.update({ "system.jammed": !item.system.jammed });
-        });
-        const ellipsisBtn = header.querySelector(".fa-ellipsis-vertical, .fa-solid.fa-ellipsis-vertical")?.closest("button, a, .header-control");
-        const closeBtn = header.querySelector("[data-action='close']");
-        const anchor = ellipsisBtn ?? closeBtn;
-        if (anchor) header.insertBefore(jamBtn, anchor);
-        else header.appendChild(jamBtn);
-      }
+    if (this._headerToggles.jammed) {
+      const isJammed = !!item.system.jammed;
+      this._headerToggles.jammed.title = isJammed
+        ? game.i18n.localize("NEUROSHIMA.Items.Fields.JammedClear")
+        : game.i18n.localize("NEUROSHIMA.Items.Fields.Jammed");
+      this._headerToggles.jammed.innerHTML = isJammed
+        ? `<img src="systems/neuroshima/assets/img/bullet-jam.svg" style="width:1em;height:1em;filter:drop-shadow(0 0 4px #ef4444);vertical-align:middle;">`
+        : `<img src="systems/neuroshima/assets/img/bullet-jam.svg" style="width:1em;height:1em;opacity:0.35;vertical-align:middle;">`;
     }
 
-    if ("equipped" in (item.system ?? {}) && this.isEditable && (item.type !== "gear" || item.system.isWearable)) {
-      const header = this.element.querySelector(".window-header");
-      if (header) {
-        this.element.querySelectorAll(".equip-toggle-btn").forEach(el => el.remove());
-        const isEquipped = item.system.equipped;
-        const equipBtn = document.createElement("button");
-        equipBtn.type = "button";
-        equipBtn.className = "equip-toggle-btn header-control";
-        equipBtn.title = isEquipped
-          ? game.i18n.localize("NEUROSHIMA.Items.Fields.Unequip")
-          : game.i18n.localize("NEUROSHIMA.Items.Fields.Equip");
-        equipBtn.innerHTML = isEquipped
-          ? `<i class="fas fa-shield" style="color:#22c55e;"></i>`
-          : `<i class="fas fa-shield" style="opacity:0.35;"></i>`;
-        equipBtn.addEventListener("click", () => this._onToggleEquip());
-        const ellipsisBtn = header.querySelector(".fa-ellipsis-vertical, .fa-solid.fa-ellipsis-vertical")?.closest("button, a, .header-control");
-        const closeBtn = header.querySelector("[data-action='close']");
-        const anchor = ellipsisBtn ?? closeBtn;
-        if (anchor) header.insertBefore(equipBtn, anchor);
-        else header.appendChild(equipBtn);
-      }
+    if (this._headerToggles.equipped) {
+      const isEquipped = item.system.equipped;
+      this._headerToggles.equipped.hidden = item.type === "gear" && !item.system.isWearable;
+      this._headerToggles.equipped.title = isEquipped
+        ? game.i18n.localize("NEUROSHIMA.Items.Fields.Unequip")
+        : game.i18n.localize("NEUROSHIMA.Items.Fields.Equip");
+      this._headerToggles.equipped.innerHTML = isEquipped
+        ? `<i class="fas fa-shield" style="color:#22c55e;"></i>`
+        : `<i class="fas fa-shield" style="opacity:0.35;"></i>`;
     }
 
     if (context.isObserverView) {
@@ -891,7 +927,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
           const btn = ev.target.closest("[data-action]");
           if (!btn) return;
           const action = btn.dataset.action;
-          if (!["attachMod", "detachMod", "removeMod", "uninstallMod", "toggleModSummary"].includes(action)) return;
+          if (!["attachMod", "detachMod", "removeMod", "uninstallMod", "toggleModSummary", "openModSheet"].includes(action)) return;
           ev.preventDefault();
           ev.stopPropagation();
           const modId = btn.dataset.modId ?? btn.closest("[data-mod-id]")?.dataset.modId;
@@ -900,6 +936,18 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
           else if (action === "detachMod") await detachMod(this.document, modId);
           else if (action === "removeMod") await removeMod(this.document, modId);
           else if (action === "uninstallMod") { const { uninstallMod } = await import("../helpers/mod-helpers.js"); await uninstallMod(this.document, modId); }
+          else if (action === "openModSheet") {
+            const modItem = this.document.actor?.items.get(modId);
+            if (modItem) {
+              modItem.sheet.render(true);
+            } else {
+              const snap = (this.document.system.mods ?? {})[modId];
+              if (snap?.uuid) {
+                const doc = await fromUuid(snap.uuid);
+                if (doc) doc.sheet.render(true);
+              }
+            }
+          }
           else if (action === "toggleModSummary") {
             const wrap = modsPart.querySelector(`.mod-row-wrap[data-mod-id="${modId}"]`);
             wrap?.querySelector(".item-summary")?.classList.toggle("collapsed");
@@ -924,6 +972,32 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       });
     }
 
+    if (["weapon", "armor"].includes(item.type) && !this._modUpdateHookId) {
+      this._modUpdateHookId = Hooks.on("updateItem", async (updatedItem, _change, _options, _userId) => {
+        const parentId = updatedItem.getFlag("neuroshima", "modParentId");
+        if (!parentId || parentId !== item.id) return;
+        const modEntry = (item.system.mods ?? {})[updatedItem.id];
+        if (modEntry?.attached && item.type === "weapon") {
+          const modsRaw = foundry.utils.deepClone(item.system.mods ?? {});
+          const installedMap = buildInstalledMap(item, modsRaw);
+          const base = modsRaw.__baseStats;
+          if (base) {
+            const effective = computeWeaponEffective(base, installedMap);
+            await item.update(buildWeaponWriteback(effective));
+          }
+        }
+        this.render();
+      });
+    }
+
+  }
+
+  async close(options = {}) {
+    if (this._modUpdateHookId) {
+      Hooks.off("updateItem", this._modUpdateHookId);
+      this._modUpdateHookId = null;
+    }
+    return super.close(options);
   }
 
   /**
@@ -1053,6 +1127,42 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const zones = foundry.utils.deepClone(item.system.blastZones ?? []);
     zones.splice(idx, 1);
     await item.update({ "system.blastZones": zones });
+  }
+
+  async _onAddResistanceDeltaRow(event, target) {
+    const item = this.document;
+    if (item.type !== "armor-mod") return;
+    const deltas = foundry.utils.deepClone(item.system.resistanceDeltas ?? []);
+    deltas.push({ category: "explosive", head: 0, torso: 0, leftArm: 0, rightArm: 0, leftLeg: 0, rightLeg: 0 });
+    await item.update({ "system.resistanceDeltas": deltas });
+  }
+
+  async _onRemoveResistanceDeltaRow(event, target) {
+    const item = this.document;
+    if (item.type !== "armor-mod") return;
+    const idx = parseInt(target.dataset.resistanceIndex ?? "-1");
+    if (idx < 0) return;
+    const deltas = foundry.utils.deepClone(item.system.resistanceDeltas ?? []);
+    deltas.splice(idx, 1);
+    await item.update({ "system.resistanceDeltas": deltas });
+  }
+
+  async _onAddResistanceRow(event, target) {
+    const item = this.document;
+    if (item.type !== "armor") return;
+    const resistances = foundry.utils.deepClone(item.system.armor?.resistances ?? []);
+    resistances.push({ category: "explosive", head: 0, torso: 0, leftArm: 0, rightArm: 0, leftLeg: 0, rightLeg: 0 });
+    await item.update({ "system.armor.resistances": resistances });
+  }
+
+  async _onRemoveResistanceRow(event, target) {
+    const item = this.document;
+    if (item.type !== "armor") return;
+    const idx = parseInt(target.dataset.resistanceIndex ?? "-1");
+    if (idx < 0) return;
+    const resistances = foundry.utils.deepClone(item.system.armor?.resistances ?? []);
+    resistances.splice(idx, 1);
+    await item.update({ "system.armor.resistances": resistances });
   }
 
   /**
@@ -1235,17 +1345,29 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     await childItem.deleteDialog();
   }
 
+  async _onToggleState(event, target) {
+    if (this._isUpdating) return;
+    this._isUpdating = true;
+    try {
+      const property = target.dataset.property;
+      const current = foundry.utils.getProperty(this.document, property);
+      await this.submit({ updateData: { [property]: !current } });
+    } finally {
+      this._isUpdating = false;
+    }
+  }
+
   async _onToggleContainerLock() {
     if (!game.user.isGM) return;
     const container = this.document;
     if (container.type !== "container") return;
-    await container.update({ "system.locked": !container.system.locked });
+    await this.submit({ updateData: { "system.locked": !container.system.locked } });
   }
 
   async _onToggleEquip() {
     const item = this.document;
     if (!("equipped" in (item.system ?? {}))) return;
-    await item.update({ "system.equipped": !item.system.equipped });
+    await this.submit({ updateData: { "system.equipped": !item.system.equipped } });
   }
 
 }

@@ -137,7 +137,7 @@ export class NeuroshimaItem extends Item {
   /** @override */
   prepareDerivedData() {
     super.prepareDerivedData();
-    this.pileCategory = this.type === "gear" ? ("\uFFFF" + (this.system?.gearType ?? "misc")) : this.type;
+    this.pileCategory = this.type === "gear" ? ("\u200A" + (this.system?.gearType ?? "misc")) : this.type;
     const system = this.system;
     
     if ("weight" in system && "quantity" in system) {

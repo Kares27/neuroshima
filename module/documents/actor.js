@@ -33,6 +33,116 @@ function _condDefToEffectData(condDef, extraFlags = {}) {
   };
 }
 
+/**
+ * Execution context for condition auto-check scripts.
+ * Bound as `this` when running a condition's conditionCheckCode inside _checkAutoConditions.
+ */
+class NeuroshimaConditionCheckContext {
+  constructor(actor, condDef) {
+    this._actor   = actor;
+    this._condDef = condDef;
+  }
+
+  // ── Actor identity ────────────────────────────────────────────────────────
+  get actor()             { return this._actor; }
+  get conditionKey()      { return this._condDef.key; }
+  get isNPC()             { return this._actor.type === "npc"; }
+  get isCreature()        { return this._actor.type === "creature"; }
+  get isPC()              { return this._actor.type === "character"; }
+
+  // ── Derived stats ─────────────────────────────────────────────────────────
+  get totalDamagePoints() { return this._actor.system.combat?.totalDamagePoints ?? 0; }
+  get totalWoundPenalty() { return this._actor.system.combat?.totalWoundPenalty ?? 0; }
+  get encumbrance()       { return this._actor.system.encumbrance; }
+  get hp()                { return this._actor.system.hp ?? null; }
+
+  get maxHP() {
+    if (this._actor.type === "creature") {
+      return this._actor.getFlag("neuroshima", "creatureMaxHP") || this._actor.system.combat?.maxHP || 27;
+    }
+    return this._actor.system.hp?.max ?? 27;
+  }
+
+  // ── Wound helpers ─────────────────────────────────────────────────────────
+  getWounds(filter = {})     { return this._actor.getWounds(filter); }
+  getActiveWounds()          { return this._actor.getActiveWounds(); }
+  getWorstWounds()           { return this._actor.getWorstWounds(); }
+  getWorstRegularWounds()    { return this._actor.getWorstRegularWounds(); }
+  getWorstBruiseWounds()     { return this._actor.getWorstBruiseWounds(); }
+
+  async applyWound(damageType, location = "torso") {
+    const { NeuroshimaDice } = game.neuroshima ?? {};
+    const result = await NeuroshimaDice?.applyDamage(this._actor, { damageType, location, source: this._condDef.name ?? "" });
+    return result?.wounds?.[0];
+  }
+
+  // ── Condition helpers ─────────────────────────────────────────────────────
+  hasCondition(key)              { return this._actor.hasCondition(key); }
+  getConditionValue(key)         { return this._actor.getConditionValue(key); }
+  async addCondition(key, value) { return this._actor.addCondition(key, value); }
+  async removeCondition(key)     { return this._actor.removeCondition(key); }
+
+  async setConditionValue(key, value) {
+    const existing = this._actor.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    if (value <= 0) {
+      if (existing) await existing.delete();
+      return;
+    }
+    if (existing) {
+      await existing.setFlag("neuroshima", "conditionValue", value);
+      this._actor._refreshTokenHUD?.();
+    } else {
+      await this._actor.addCondition(key);
+      const created = this._actor.effects.find(
+        e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+      );
+      if (created && value !== 1) {
+        await created.setFlag("neuroshima", "conditionValue", value);
+        this._actor._refreshTokenHUD?.();
+      }
+    }
+  }
+
+  async apply() {
+    if (!this._actor.hasCondition(this._condDef.key)) {
+      return this._actor.addCondition(this._condDef.key);
+    }
+  }
+
+  async remove() {
+    if (this._actor.hasCondition(this._condDef.key)) {
+      return this._actor.removeCondition(this._condDef.key);
+    }
+  }
+
+  // ── Actor stat helpers ────────────────────────────────────────────────────
+  getAttribute(key)      { return this._actor.getAttribute(key); }
+  getAttributeTotal(key) { return this._actor.getAttributeTotal(key); }
+  getSkill(key)          { return this._actor.getSkill(key); }
+  hasItem(type, name)    { return this._actor.hasItem(type, name); }
+  hasTrick(name)         { return this._actor.hasTrick(name); }
+  hasEffect(nameOrId)    { return this._actor.hasEffect(nameOrId); }
+
+  // ── Output helpers ────────────────────────────────────────────────────────
+  async sendMessage(content, chatData = {}) {
+    return ChatMessage.create(foundry.utils.mergeObject({
+      content,
+      speaker: ChatMessage.getSpeaker({ actor: this._actor })
+    }, chatData));
+  }
+
+  notification(msg, type = "info") {
+    ui.notifications?.[type]?.(msg);
+  }
+
+  // ── Dice helper ───────────────────────────────────────────────────────────
+  async roll(formula, data = {}) {
+    return new Roll(formula, data).evaluate();
+  }
+}
+
 export class NeuroshimaActor extends Actor {
   /** @override */
   async _preCreate(data, options, user) {
@@ -541,6 +651,42 @@ export class NeuroshimaActor extends Actor {
   async _preUpdate(changed, options, user) {
     const result = await super._preUpdate(changed, options, user);
     if (result === false) return false;
+  }
+
+  /** @override */
+  async _onUpdate(changed, options, userId) {
+    await super._onUpdate(changed, options, userId);
+    if (userId === game.userId && game.user.isGM) {
+      await this._checkAutoConditions();
+    }
+  }
+
+  /**
+   * Check and auto-apply conditions based on derived actor state.
+   * Each condition's conditionCheckCode is executed with a NeuroshimaConditionCheckContext
+   * as `this`, giving scripts access to actor shortcuts and apply/remove helpers.
+   * Called from _onUpdate (actor changes) and item hooks (item changes).
+   * @returns {Promise<void>}
+   */
+  async _checkAutoConditions() {
+    if (this._checkingAutoConditions) return;
+    this._checkingAutoConditions = true;
+    try {
+      const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
+      const conditions = getConditions();
+      for (const condDef of conditions) {
+        const code = condDef.conditionCheckCode?.trim();
+        if (!code) continue;
+        try {
+          const ctx = new NeuroshimaConditionCheckContext(this, condDef);
+          await new AsyncFunction(code).call(ctx);
+        } catch (err) {
+          console.error(`[Neuroshima] conditionCheckCode error for "${condDef.key}":`, err);
+        }
+      }
+    } finally {
+      this._checkingAutoConditions = false;
+    }
   }
 
   /**

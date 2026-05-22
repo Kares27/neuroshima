@@ -39,6 +39,11 @@
                         <i class="fas fa-link"></i>
                     </a>
                     {{/if}}
+                    {{#unless mod.attached}}
+                    <a class="item-control" data-action="openModSheet" data-mod-id="{{mod.id}}" data-tooltip="{{localize 'NEUROSHIMA.Mods.OpenMod'}}">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    {{/unless}}
                     {{#if @root.isActorOwned}}
                     <a class="item-control" data-action="uninstallMod" data-mod-id="{{mod.id}}" data-tooltip="{{localize 'NEUROSHIMA.Mods.Uninstall'}}">
                         <i class="fas fa-box-open"></i>
