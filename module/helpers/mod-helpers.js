@@ -1,7 +1,7 @@
 const WEAPON_LOCS = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
 
 /**
- * Build a plain-object snapshot of a weapon-mod item's deltas.
+ * Builds a plain-object snapshot of a weapon-mod item's deltas.
  * Stored inside system.mods.installed[modId] on the parent weapon.
  */
 export function buildWeaponModSnapshot(mod) {
@@ -71,12 +71,13 @@ export function buildArmorModSnapshot(mod) {
     deltaRightArm:     s.deltaRightArm ?? 0,
     deltaLeftLeg:      s.deltaLeftLeg ?? 0,
     deltaRightLeg:     s.deltaRightLeg ?? 0,
-    deltaDurability:   s.deltaDurability ?? 0,
-    deltaPenalty:      s.deltaPenalty ?? 0,
-    deltaRequiredBuild: s.deltaRequiredBuild ?? 0,
-    deltaModifiesCost:  s.deltaModifiesCost ?? true,
-    resistanceDeltas:  (s.resistanceDeltas ?? []),
-    resources:         (s.resources ?? []).filter(r => r.showInSummary)
+    deltaDurability:        s.deltaDurability ?? 0,
+    deltaPenalty:           s.deltaPenalty ?? 0,
+    deltaRequiredBuild:     s.deltaRequiredBuild ?? 0,
+    deltaRadiationProtection: s.deltaRadiationProtection ?? 0,
+    deltaModifiesCost:      s.deltaModifiesCost ?? true,
+    resistanceDeltas:       (s.resistanceDeltas ?? []),
+    resources:              (s.resources ?? []).filter(r => r.showInSummary)
   };
 }
 
@@ -95,8 +96,9 @@ export function snapshotWeaponBaseStats(weapon) {
     fireRate:     s.fireRate ?? 0,
     capacity:     s.capacity ?? 0,
     jamming:      s.jamming ?? 20,
-    attackBonus:   s.attackBonus ?? 0,
-    defenseBonus:  s.defenseBonus ?? 0,
+    attackBonus:    s.attackBonus ?? 0,
+    defenseBonus:   s.defenseBonus ?? 0,
+    requiredBuild:  s.requiredBuild ?? 0,
     weaponModifier: s.weaponModifier ?? 0
   };
 }
@@ -107,16 +109,17 @@ export function snapshotWeaponBaseStats(weapon) {
 export function snapshotArmorBaseStats(armor) {
   const s = armor.system;
   return {
-    weight:        s.weight ?? 0,
-    head:          s.armor.ratings.head ?? 0,
-    torso:         s.armor.ratings.torso ?? 0,
-    leftArm:       s.armor.ratings.leftArm ?? 0,
-    rightArm:      s.armor.ratings.rightArm ?? 0,
-    leftLeg:       s.armor.ratings.leftLeg ?? 0,
-    rightLeg:      s.armor.ratings.rightLeg ?? 0,
-    durability:    s.armor.durability ?? 0,
-    penalty:       s.armor.penalty ?? 0,
-    requiredBuild: s.armor.requiredBuild ?? 0
+    weight:              s.weight ?? 0,
+    head:                s.armor.ratings.head ?? 0,
+    torso:               s.armor.ratings.torso ?? 0,
+    leftArm:             s.armor.ratings.leftArm ?? 0,
+    rightArm:            s.armor.ratings.rightArm ?? 0,
+    leftLeg:             s.armor.ratings.leftLeg ?? 0,
+    rightLeg:            s.armor.ratings.rightLeg ?? 0,
+    durability:          s.armor.durability ?? 0,
+    penalty:             s.armor.penalty ?? 0,
+    requiredBuild:       s.armor.requiredBuild ?? 0,
+    radiationProtection: s.armor.radiationProtection ?? 0
   };
 }
 
@@ -125,6 +128,7 @@ export function snapshotArmorBaseStats(armor) {
  */
 export function computeWeaponEffective(baseStats, installedMap) {
   const eff = { ...baseStats };
+  eff.requiredBuild = eff.requiredBuild ?? 0;
   for (const mod of Object.values(installedMap || {})) {
     if (!mod.attached) continue;
     eff.weight        += (mod.deltaWeight ?? 0);
@@ -169,9 +173,10 @@ export function computeArmorEffective(baseStats, installedMap) {
     eff.rightArm      += (mod.deltaRightArm     ?? 0);
     eff.leftLeg       += (mod.deltaLeftLeg      ?? 0);
     eff.rightLeg      += (mod.deltaRightLeg     ?? 0);
-    eff.durability    += (mod.deltaDurability   ?? 0);
-    eff.penalty       += (mod.deltaPenalty      ?? 0);
-    eff.requiredBuild += (mod.deltaRequiredBuild ?? 0);
+    eff.durability          += (mod.deltaDurability          ?? 0);
+    eff.penalty             += (mod.deltaPenalty             ?? 0);
+    eff.requiredBuild       += (mod.deltaRequiredBuild       ?? 0);
+    eff.radiationProtection += (mod.deltaRadiationProtection ?? 0);
   }
   return eff;
 }
@@ -205,16 +210,17 @@ export function buildWeaponWriteback(effective) {
  */
 export function buildArmorWriteback(effective) {
   return {
-    "system.weight":                 effective.weight,
-    "system.armor.ratings.head":     effective.head,
-    "system.armor.ratings.torso":    effective.torso,
-    "system.armor.ratings.leftArm":  effective.leftArm,
-    "system.armor.ratings.rightArm": effective.rightArm,
-    "system.armor.ratings.leftLeg":  effective.leftLeg,
-    "system.armor.ratings.rightLeg": effective.rightLeg,
-    "system.armor.durability":       effective.durability,
-    "system.armor.penalty":          effective.penalty,
-    "system.armor.requiredBuild":    effective.requiredBuild
+    "system.weight":                      effective.weight,
+    "system.armor.ratings.head":          effective.head,
+    "system.armor.ratings.torso":         effective.torso,
+    "system.armor.ratings.leftArm":       effective.leftArm,
+    "system.armor.ratings.rightArm":      effective.rightArm,
+    "system.armor.ratings.leftLeg":       effective.leftLeg,
+    "system.armor.ratings.rightLeg":      effective.rightLeg,
+    "system.armor.durability":            effective.durability,
+    "system.armor.penalty":               effective.penalty,
+    "system.armor.requiredBuild":         effective.requiredBuild,
+    "system.armor.radiationProtection":   effective.radiationProtection
   };
 }
 
@@ -266,10 +272,23 @@ export function getEffectiveArmorResistances(armorItem) {
 
   for (const row of (armorItem.system?.armor?.resistances ?? [])) addRow(row.category, row);
 
-  const mods = buildInstalledMap(armorItem);
-  for (const [key, snap] of Object.entries(mods)) {
-    if (key.startsWith("__") || !snap.attached) continue;
-    for (const row of (snap.resistanceDeltas ?? [])) addRow(row.category, row);
+  const actor = armorItem.actor;
+  const modsRaw = armorItem.system?.mods ?? {};
+
+  if (actor) {
+    for (const modItem of actor.items) {
+      if (modItem.type !== "armor-mod") continue;
+      const parentId = modItem.getFlag?.("neuroshima", "modParentId");
+      if (parentId !== armorItem.id) continue;
+      const modState = modsRaw[modItem.id];
+      if (!modState?.attached) continue;
+      for (const row of (modItem.system?.resistanceDeltas ?? [])) addRow(row.category, row);
+    }
+  } else {
+    for (const [modId, modState] of Object.entries(modsRaw)) {
+      if (modId.startsWith("__") || !modState?.attached) continue;
+      for (const row of (modState.resistanceDeltas ?? [])) addRow(row.category, row);
+    }
   }
 
   return merged;
@@ -385,10 +404,11 @@ export function buildInstalledMap(item, overrideMods = null) {
         deltaRightArm:         s.deltaRightArm        ?? 0,
         deltaLeftLeg:          s.deltaLeftLeg         ?? 0,
         deltaRightLeg:         s.deltaRightLeg        ?? 0,
-        deltaDurability:       s.deltaDurability      ?? 0,
-        deltaPenalty:          s.deltaPenalty         ?? 0,
-        resistanceDeltas:      s.resistanceDeltas     ?? [],
-        resources:             (s.resources ?? []).filter(r => r.showInSummary)
+        deltaDurability:          s.deltaDurability          ?? 0,
+        deltaPenalty:             s.deltaPenalty             ?? 0,
+        deltaRadiationProtection: s.deltaRadiationProtection ?? 0,
+        resistanceDeltas:         s.resistanceDeltas         ?? [],
+        resources:                (s.resources ?? []).filter(r => r.showInSummary)
       };
     } else {
       map[modId] = modState;
@@ -481,6 +501,10 @@ export async function attachMod(item, modId) {
     const installedMap = buildInstalledMap(item, modsRaw);
     const effective = computeWeaponEffective(modsRaw.__baseStats, installedMap);
     Object.assign(updateData, buildWeaponWriteback(effective));
+  } else {
+    const installedMap = buildInstalledMap(item, modsRaw);
+    const effective = computeArmorEffective(modsRaw.__baseStats, installedMap);
+    Object.assign(updateData, buildArmorWriteback(effective));
   }
 
   await item.update(updateData);
@@ -514,6 +538,11 @@ export async function detachMod(item, modId) {
     const installedMap = buildInstalledMap(item, modsRaw);
     const effective = computeWeaponEffective(base, installedMap);
     Object.assign(updateData, buildWeaponWriteback(effective));
+  } else {
+    const base = modsRaw.__baseStats ?? snapshotArmorBaseStats(item);
+    const installedMap = buildInstalledMap(item, modsRaw);
+    const effective = computeArmorEffective(base, installedMap);
+    Object.assign(updateData, buildArmorWriteback(effective));
   }
 
   await item.update(updateData);
@@ -681,6 +710,75 @@ async function _propagateModResources(item, modId, snapshot, attach) {
  * Build a human-readable delta summary string for display in the mods list.
  * Returns null when there are no non-zero deltas (e.g. trait category mods).
  */
+/**
+ * Compute the effective radiation resistance for an actor.
+ * Equals actor base radiationResistance + sum of effective radiationProtection
+ * from all equipped armor items (accounting for attached armor-mod deltas).
+ * @param {Actor} actor
+ * @returns {number}
+ */
+export function getEffectiveRadiationResistance(actor) {
+  let total = actor.system?.radiationResistance ?? 0;
+  for (const armorItem of actor.items) {
+    if (armorItem.type !== "armor") continue;
+    if (armorItem.system.equipped === false) continue;
+    total += armorItem.system.armor?.radiationProtection ?? 0;
+  }
+  return total;
+}
+
+/**
+ * Build a list of all sources contributing to radiation resistance for an actor.
+ * Returns an array of { name, value } objects for tooltip display.
+ * @param {Actor} actor
+ * @returns {{ name: string, value: number }[]}
+ */
+export function getRadiationResistanceSources(actor) {
+  const sources = [];
+
+  const baseRad = actor.system?.radiationResistance ?? 0;
+  if (baseRad !== 0) {
+    sources.push({ name: game.i18n.localize("NEUROSHIMA.RadiationResistanceBase"), value: baseRad });
+  }
+
+  for (const armorItem of actor.items) {
+    if (armorItem.type !== "armor") continue;
+    if (armorItem.system.equipped === false) continue;
+
+    const modsRaw = armorItem.system.mods ?? {};
+    const baseStats = modsRaw.__baseStats;
+    const baseArmorRad = baseStats
+      ? (baseStats.radiationProtection ?? 0)
+      : (armorItem.system.armor?.radiationProtection ?? 0);
+
+    if (baseArmorRad !== 0) {
+      sources.push({ name: armorItem.name, value: baseArmorRad });
+    }
+
+    for (const [modId, modState] of Object.entries(modsRaw)) {
+      if (modId.startsWith("__") || !modState.attached) continue;
+      const modItem = actor.items.get(modId);
+      if (!modItem) continue;
+      const delta = modItem.system.deltaRadiationProtection ?? 0;
+      if (delta !== 0) {
+        sources.push({ name: modItem.name, value: delta });
+      }
+    }
+  }
+
+  for (const effect of (actor.effects ?? [])) {
+    if (effect.disabled) continue;
+    for (const change of (effect.changes ?? [])) {
+      if (change.key === "system.radiationResistance") {
+        const v = Number(change.value) || 0;
+        if (v !== 0) sources.push({ name: effect.name, value: v });
+      }
+    }
+  }
+
+  return sources;
+}
+
 export function buildModDeltaSummary(snapshot, itemType) {
   const d = (v) => (v > 0 ? `+${v}` : `${v}`);
   const parts = [];

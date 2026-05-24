@@ -709,15 +709,9 @@
     gap: 20px;
 }
 
-.neuroshima.sheet.actor .combat-top-row {
-    display: flex;
-    flex-direction: row;
-    gap: 15px;
-}
-
-.neuroshima.sheet.actor .combat-top-row .combat-section {
-    flex: 1;
-    min-width: 0; /* Prevent flex items from overflowing */
+.neuroshima.sheet.actor .combat-grid > .combat-section {
+    width: 100%;
+    min-width: 0;
 }
 
 .neuroshima.sheet.actor .combat-section {
@@ -1445,6 +1439,8 @@
     display: flex;
     flex-direction: column;
     min-height: 100px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .neuroshima.sheet.actor .armor-location-box.empty {
@@ -1492,7 +1488,8 @@
 .neuroshima.sheet.actor .armor-header-icon { flex: 0 0 20px; }
 .neuroshima.sheet.actor .armor-header-name { flex: 2; }
 .neuroshima.sheet.actor .armor-header-dur { flex: 1; text-align: center; }
-.neuroshima.sheet.actor .armor-header-ap { flex: 1; text-align: center; }
+.neuroshima.sheet.actor .armor-header-ap  { flex: 1; text-align: center; }
+.neuroshima.sheet.actor .armor-header-rad { flex: 0 0 28px; text-align: center; }
 
 .neuroshima.sheet.actor .location-armor-list {
     display: flex;
@@ -1531,6 +1528,18 @@
     flex: 1;
     text-align: center;
     font-size: 16px;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor .armor-rad-value {
+    flex: 0 0 28px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--ns-text-muted, #888);
+}
+
+.neuroshima.sheet.actor .armor-rad-value.has-rad {
+    color: #7ec87e;
     font-weight: bold;
 }
 
@@ -1603,26 +1612,37 @@
     box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
+.wounds-section-extended .rad-resist-sum,
 .wounds-section-extended .hp-sum,
 .wounds-section-extended .penalty-sum,
 .wounds-section-extended .healing-days-sum {
     flex: 0 0 auto !important;
     text-align: center;
     display: flex;
-    align-items: center;
+    align-items: end;
     gap: 8px;
     white-space: nowrap;
     font-size: 1.1em;
 }
 
+.wounds-section-extended .rad-resist-sum { color: rgba(255, 191, 0, 1); }
 .wounds-section-extended .hp-sum { color: #ff4444; }
 .wounds-section-extended .penalty-sum { color: #ff9800; }
 .wounds-section-extended .healing-days-sum { color: #4caf50; }
 
+.wounds-section-extended .rad-resist-sum i,
 .wounds-section-extended .hp-sum i,
 .wounds-section-extended .penalty-sum i,
 .wounds-section-extended .healing-days-sum i {
-    font-size: 0.9em;
+    font-size: 1.2em;
+    line-height: 1;
+}
+
+.wounds-section-extended .rad-resist-sum span,
+.wounds-section-extended .hp-sum span,
+.wounds-section-extended .penalty-sum span,
+.wounds-section-extended .healing-days-sum span {
+    line-height: 1;
 }
 
 .wounds-section-extended .header-title {
@@ -1806,10 +1826,32 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     display: flex;
 }
 
+.neuroshima.sheet.actor .wounds-section .rad-resist-sum,
 .neuroshima.sheet.actor .wounds-section .hp-sum,
 .neuroshima.sheet.actor .wounds-section .penalty-sum {
     flex: 1;
     text-align: center;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+}
+
+.neuroshima.sheet.actor .wounds-section .rad-resist-sum { color: rgba(255, 191, 0, 1); }
+
+.neuroshima.sheet.actor .wounds-section .rad-resist-sum i,
+.neuroshima.sheet.actor .wounds-section .hp-sum i,
+.neuroshima.sheet.actor .wounds-section .penalty-sum i,
+.neuroshima.sheet.actor .wounds-section .healing-days-sum i {
+    font-size: 1.2em;
+    line-height: 1;
+}
+
+.neuroshima.sheet.actor .wounds-section .rad-resist-sum span,
+.neuroshima.sheet.actor .wounds-section .hp-sum span,
+.neuroshima.sheet.actor .wounds-section .penalty-sum span,
+.neuroshima.sheet.actor .wounds-section .healing-days-sum span {
+    line-height: 1;
 }
 
 .neuroshima.sheet.actor .wounds-section .healing-days-sum {
@@ -1818,7 +1860,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     color: #4caf50;
     font-weight: bold;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
     gap: 4px;
 }
@@ -2174,6 +2216,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .section-title {
+  font-family: 'SpecialElite', serif;
   font-size: 0.95em;
   font-weight: 600;
   margin: 0 0 8px 0;
@@ -2193,20 +2236,54 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 
 .paper-doll-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 4px 10px;
+  flex-direction: row;
+  align-items: stretch;
+  padding: 4px 6px;
   background: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 4px;
+}
+
+.inne-button-svg {
   flex-shrink: 0;
-  height: 100px;
+  width: 26px;
+  height: 100%;
+  cursor: pointer;
+  overflow: visible;
 }
 
 .body-diagram {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   width: 100%;
-  height: auto;
   max-width: 180px;
   filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.3));
+}
+
+.selected-location-info {
+  font-family: 'SpecialElite', serif;
+  font-size: 0.85em;
+  text-align: center;
+  padding: 2px 4px;
+  flex-shrink: 0;
+  min-height: 18px;
+}
+
+.selected-location-info .no-selection,
+.selected-location-info .location-name {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.inne-vertical-text {
+  font-family: 'SpecialElite', serif;
+  font-size: 9px;
+  fill: var(--ns-text-main, #ccc);
+  pointer-events: none;
 }
 
 .body-location-hotspot {
@@ -2237,6 +2314,24 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   pointer-events: none;
 }
 
+.inne-hotspot {
+  stroke-dasharray: 4 3;
+  fill: rgba(180, 120, 200, 0.2);
+  stroke: rgba(180, 120, 200, 0.6);
+}
+
+.inne-hotspot:hover {
+  fill: rgba(180, 120, 200, 0.4);
+  stroke: rgba(180, 120, 200, 0.9);
+}
+
+.inne-label-text {
+  font-size: 10px;
+  fill: rgba(220, 180, 240, 0.9);
+  pointer-events: none;
+  font-family: 'SpecialElite', serif;
+}
+
 .wounds-list-container {
   display: flex;
   flex-direction: column;
@@ -2250,6 +2345,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   display: none;
   flex-direction: column;
   gap: 6px;
+  padding: 0;
 }
 
 .location-wounds-group.active {
@@ -2257,6 +2353,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .location-wounds-title {
+  font-family: 'SpecialElite', serif;
   font-size: 0.85em;
   font-weight: 600;
   margin: 6px 0 4px 0;
@@ -2282,6 +2379,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   background: rgba(76, 175, 80, 0.3);
 }
 
+.wound-item.is-inactive {
+  opacity: 0.45;
+}
+
 .wound-item-content {
   display: flex;
   align-items: center;
@@ -2302,9 +2403,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .wound-item-name {
-  flex: 0 1 auto;
-  min-width: 60px;
-  max-width: 120px;
+  flex: 1;
+  min-width: 40px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2532,10 +2632,12 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     min-height: 0;
     background: rgba(0, 0, 0, 0.1);
     border-top: 1px solid var(--ns-border-main);
-    padding: 10px;
+    padding: 6px;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 4px;
+    overflow: hidden;
 }
 
 .healing-app .wounds-summary-bar {
@@ -2581,8 +2683,11 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 }
 
 .healing-app .body-diagram {
-    max-width: 100%;
+    flex: 1;
+    min-width: 0;
     height: 100%;
+    width: 100%;
+    max-width: 220px;
     filter: drop-shadow(0 0 5px rgba(0,0,0,0.2));
 }
 
@@ -5580,7 +5685,7 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     flex: 1 1 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-y: auto;
     padding: 0.5rem;
     min-width: 0;
     min-height: 150px;
@@ -7465,3 +7570,541 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     background: transparent;
 }
 
+/* ============================================================
+   GM Toolkit
+   ============================================================ */
+
+.gm-toolkit .gm-toolkit-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+}
+
+.gm-toolkit-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(100, 120, 160, 0.2);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    color: var(--ns-text-main, #ccc);
+    font-family: 'SpecialElite', serif;
+    font-size: 0.95em;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.gm-toolkit-btn:hover {
+    background: rgba(100, 120, 160, 0.4);
+}
+
+.gm-toolkit-btn i {
+    font-size: 1.1em;
+    width: 18px;
+    text-align: center;
+}
+
+.gm-toolkit-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    color: var(--ns-text-dim, #999);
+    font-style: italic;
+}
+
+/* XP App */
+
+.gm-xp-app .xp-config {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--ns-border-main);
+    margin-bottom: 6px;
+}
+
+.gm-xp-app .actor-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    gap: 4px;
+}
+
+.gm-xp-app .actor-list-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.xp-ctrl-btn {
+    font-size: 0.78em;
+    padding: 2px 6px;
+    background: rgba(80, 100, 140, 0.25);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    color: var(--ns-text-main, #ccc);
+    cursor: pointer;
+}
+
+.xp-ctrl-btn:hover {
+    background: rgba(80, 100, 140, 0.5);
+}
+
+.gm-xp-app .actor-list {
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.actor-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.actor-row:hover {
+    background: rgba(100, 120, 160, 0.2);
+}
+
+.actor-row.selected {
+    background: rgba(80, 160, 80, 0.2);
+    border-color: rgba(80, 160, 80, 0.5);
+}
+
+.actor-portrait {
+    width: 32px;
+    height: 32px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid var(--ns-border-main);
+    flex-shrink: 0;
+}
+
+.actor-name {
+    flex: 1;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+}
+
+.actor-xp {
+    font-size: 0.78em;
+    opacity: 0.7;
+    white-space: nowrap;
+}
+
+.actor-checkbox {
+    font-size: 1em;
+    color: var(--ns-text-dim, #888);
+    flex-shrink: 0;
+}
+
+.actor-row.selected .actor-checkbox {
+    color: rgba(80, 200, 80, 0.9);
+}
+
+/* Damage App */
+
+.gm-damage-app {
+    padding: 8px;
+}
+
+.gm-damage-layout {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.damage-settings-col {
+    flex: 0 0 260px;
+    min-width: 0;
+}
+
+.damage-actors-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.damage-actors-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 0 4px;
+}
+
+.damage-actors-label {
+    font-size: 0.82em;
+    font-family: 'SpecialElite', serif;
+    color: var(--ns-text-dim, #999);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.damage-actors-controls {
+    display: flex;
+    gap: 3px;
+}
+
+.damage-type-qty-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.damage-type-subgroup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.damage-type-subgroup label,
+.damage-qty-subgroup label {
+    font-size: 0.8em;
+    color: var(--ns-text-dim, #999);
+    margin: 0;
+}
+
+.damage-qty-subgroup {
+    flex: 0 0 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.damage-qty-subgroup .quantity-input {
+    width: 100%;
+    text-align: center;
+}
+
+.damage-actor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 2px 2px;
+}
+
+.damage-actor-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.03);
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.damage-actor-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.damage-actor-row.selected {
+    background: rgba(160, 80, 80, 0.22);
+    border-color: rgba(160, 80, 80, 0.55);
+}
+
+.damage-actor-row .actor-portrait {
+    width: 30px;
+    height: 30px;
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+.damage-actor-row .actor-name {
+    flex: 1;
+    font-size: 0.88em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.damage-selected-icon {
+    color: rgba(200, 120, 120, 0.9);
+    font-size: 0.8em;
+    flex-shrink: 0;
+}
+
+.gm-toolkit-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 6px 4px;
+    border-top: 1px solid var(--ns-border-main);
+    margin-top: 6px;
+}
+
+.gm-apply-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: rgba(160, 80, 80, 0.3);
+    border: 1px solid rgba(160, 80, 80, 0.6);
+    border-radius: 4px;
+    color: var(--ns-text-main, #ccc);
+    font-family: 'SpecialElite', serif;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.gm-apply-btn:hover:not(:disabled) {
+    background: rgba(160, 80, 80, 0.5);
+}
+
+.gm-apply-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.gm-xp-app .gm-toolkit-footer {
+    padding: 8px 6px 4px;
+}
+
+/* Session bar */
+
+.gm-toolkit-session-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--ns-border-main);
+    background: rgba(60, 80, 120, 0.15);
+    font-size: 0.85em;
+}
+
+.session-display {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'SpecialElite', serif;
+    color: var(--ns-text-main, #ccc);
+}
+
+.session-controls {
+    display: flex;
+    gap: 4px;
+}
+
+/* XP App session bar */
+
+.gm-xp-app .xp-session-bar {
+    display: flex;
+    align-items: center;
+    padding: 4px 0 6px;
+    font-size: 0.82em;
+    color: var(--ns-text-dim, #999);
+    font-family: 'SpecialElite', serif;
+}
+
+/* XP mode controls */
+
+.xp-mode-row .form-fields {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.xp-mode-toggle-btn {
+    white-space: nowrap;
+}
+
+/* Individual XP input inside actor row */
+
+.xp-individual-input {
+    width: 70px;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    color: var(--ns-text-main, #ccc);
+    font-size: 0.85em;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.xp-individual-input:disabled {
+    opacity: 0.3;
+}
+
+/* Group Check App */
+
+.gm-group-check-app .actor-list {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+/* Group Check Chat Card */
+
+.neuroshima.group-check-card {
+    padding: 10px 12px;
+    font-size: 0.9em;
+}
+
+.neuroshima.group-check-card .roll-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    font-size: 1.05em;
+    border-bottom: 2px solid #7a7971;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.group-check-card hr.dotted-hr {
+    border: none;
+    border-top: 1px dotted var(--ns-border-main);
+    margin: 5px 0;
+    width: 100%;
+}
+
+.group-check-title {
+    flex: 1;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+.group-check-session {
+    font-size: 0.78em;
+    opacity: 0.7;
+    text-transform: none;
+    font-weight: normal;
+}
+
+.group-check-info {
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.group-check-skill,
+.group-check-difficulty {
+    display: flex;
+    gap: 5px;
+    font-size: 0.88em;
+}
+
+.info-label {
+    opacity: 0.7;
+}
+
+.group-check-note {
+    font-size: 0.82em;
+    opacity: 0.8;
+    padding-top: 2px;
+}
+
+.group-check-actors {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.group-check-actions {
+    display: flex;
+    justify-content: center;
+    padding: 4px 0 2px;
+}
+
+.group-check-actions .group-check-roll-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.group-check-actor-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 4px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.group-check-actor-row .actor-portrait {
+    width: 28px;
+    height: 28px;
+}
+
+.group-check-actor-row .actor-name {
+    flex: 1;
+    font-size: 0.88em;
+}
+
+.group-check-roll-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(80, 140, 80, 0.3);
+    border: 1px solid rgba(80, 160, 80, 0.5);
+    border-radius: 3px;
+    color: var(--ns-text-main, #ccc);
+    font-size: 0.82em;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+}
+
+.group-check-roll-btn:hover {
+    background: rgba(80, 160, 80, 0.5);
+}
+
+/* Group Check Card — dark theme */
+
+.theme-dark .chat-message:has(.neuroshima.group-check-card) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .chat-message:has(.neuroshima.group-check-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.group-check-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.group-check-card) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.group-check-card .roll-header {
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+
+.theme-dark .neuroshima.group-check-card hr.dotted-hr {
+    border-top-color: #5a5a54;
+}
+
+.theme-dark .neuroshima.group-check-card .group-check-actor-row {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* XP amount hint */
+
+.xp-amount-hint {
+    font-size: 0.78em;
+    opacity: 0.6;
+    font-style: italic;
+    align-self: center;
+}

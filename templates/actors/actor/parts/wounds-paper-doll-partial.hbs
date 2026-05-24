@@ -47,6 +47,13 @@
                 <rect x="125" y="290" width="40" height="135" class="body-location-hotspot" data-location="rightLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.RightLeg'}}" />
                 <text x="145" y="357" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.rightLeg.wounds.length}}</text>
             </g>
+
+            {{!-- Inne/Efekty --}}
+            <g data-location="inne">
+                <rect x="65" y="445" width="110" height="52" rx="6" class="body-location-hotspot inne-hotspot" data-location="inne" data-tooltip="{{localize 'NEUROSHIMA.Location.Inne'}}" />
+                <text x="120" y="466" class="inne-label-text" text-anchor="middle" dominant-baseline="middle">{{localize "NEUROSHIMA.Location.Inne"}}</text>
+                <text x="120" y="484" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.inne.wounds.length}}</text>
+            </g>
         </svg>
         </div>
     </div>

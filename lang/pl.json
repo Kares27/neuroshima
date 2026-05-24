@@ -298,7 +298,9 @@
             "Ignore": "Ignoruj",
             "ReverseDamage": "Cofnij obrażenia",
             "Rest": "Odpocznij",
-            "Refresh": "Odśwież"
+            "Refresh": "Odśwież",
+            "Healing": "Leczenie",
+            "ToggleActive": "Przełącz aktywność"
         },
         "Rest": {
             "Title": "Odpoczynek",
@@ -1153,6 +1155,8 @@
                 "DurabilityAbbr": "Wytrz.",
                 "ArmorDamage": "Obrażenia Pancerza",
                 "ArmorPenalty": "Kara",
+                "RadiationProtection": "Ochrona Radiacyjna",
+                "RadiationProtectionAbbr": "Rad.",
                 "RequiredBuild": "Budowa",
                 "IsPellet": "Amunicja Śrutowa",
                 "PelletCount": "Liczba śrucin",
@@ -1925,20 +1929,134 @@
             "services":      "Usługi",
             "luxury":        "Towary luksusowe",
             "misc":          "Inne"
-        }
-    },
-    "RadiationWound": {
-        "Light": "Draśnięcie radiacyjne",
-        "Heavy": "Rana radiacyjna"
-    },
-    "RadiationSickness": {
-        "Name": "Choroba popromienna"
-    },
-    "DangerZone": {
-        "WoundApplied": "{actor} otrzymuje {type} ({penalty}%) od promieniowania.",
-        "RadiationLevel": {
-            "light": "Słabo napromieniowana strefa",
-            "heavy": "Silnie napromieniowana strefa"
+        },
+        "RadiationResistance": "Odporność na Promieniowanie",
+        "RadiationResistanceBase": "Bazowa odporność na promieniowanie (bez pancerza)",
+        "RadiationWound": {
+            "Light": "Draśnięcie radiacyjne",
+            "Heavy": "Rana radiacyjna"
+        },
+        "RadiationSickness": {
+            "Name": "Choroba popromienna"
+        },
+        "RegionBehavior": {
+            "RadiationZone": {
+                "label": "Strefa Radiacji",
+                "hint": "Automatycznie śledzi wejście/wyjście tokenów i nakłada rany radiacyjne przez hook updateWorldTime.",
+                "FIELDS": {
+                    "level": {
+                        "label": "Poziom radiacji",
+                        "hint": "Poziom promieniowania (0–1000). Służy do porównania z odpornością na radiację tokenu."
+                    },
+                    "intervalHours": {
+                        "label": "Godziny",
+                        "hint": "Liczba godzin gry między kolejnymi tickami ran."
+                    },
+                    "intervalMinutes": {
+                        "label": "Minuty",
+                        "hint": "Dodatkowe minuty ponad godziny (0–59)."
+                    },
+                    "intervalSeconds": {
+                        "label": "Sekundy",
+                        "hint": "Dodatkowe sekundy ponad godziny i minuty (0–59)."
+                    },
+                    "woundDamageType": {
+                        "label": "Typ rany",
+                        "hint": "Typ rany nakładanej podczas każdego ticka."
+                    },
+                    "woundCount": {
+                        "label": "Liczba ran",
+                        "hint": "Liczba ran nakładanych na tick."
+                    },
+                    "penaltyOverrideEnabled": {
+                        "label": "Kara (%)",
+                        "hint": "Włącz, aby ręcznie ustawić procentową karę rany zamiast używać domyślnej wartości systemu dla danego typu rany."
+                    },
+                    "penaltyOverride": {
+                        "label": "Kara (%)",
+                        "hint": "Ręczne nadpisanie kary procentowej. Aktywne tylko gdy powyższy checkbox jest zaznaczony."
+                    },
+                    "createDisease": {
+                        "label": "Twórz Chorobę",
+                        "hint": "Każdy tick radiacji akumuluje dodatkowo chorobę popromienną, zwiększając karę transientPenalty tokenu o wartość poniżej."
+                    },
+                    "diseaseIncrement": {
+                        "label": "Przyrost choroby (%)",
+                        "hint": "O ile procent rośnie choroba popromienna na każdy tick. Aktywne tylko gdy Twórz Chorobę jest zaznaczone."
+                    }
+                }
+            }
+        },
+        "DangerZone": {
+            "WoundApplied": "{actor} otrzymuje {type} ({penalty}%) od promieniowania.",
+            "RadiationLevel": {
+                "light": "Słabo napromieniowana strefa",
+                "heavy": "Silnie napromieniowana strefa"
+            }
+        },
+        "GMToolkit": {
+            "Title": "Zestaw MG",
+            "GMOnly": "Tylko Mistrz Gry może korzystać z zestawu MG.",
+            "OpenXP": "Przyznaj Doświadczenie",
+            "OpenDamage": "Zastosuj Obrażenia",
+            "OpenGroupCheck": "Rzut Grupowy",
+            "Session": {
+                "Label": "Sesja",
+                "SettingName": "ID Sesji",
+                "SettingHint": "Numer bieżącej sesji używany w dzienniku PD.",
+                "Increment": "Następna sesja",
+                "Reset": "Resetuj sesję (do 1)"
+            },
+            "AddXP": {
+                "Title": "Przyznaj PD",
+                "NoActors": "Wybierz przynajmniej jedną postać.",
+                "InvalidAmount": "Podaj prawidłową liczbę punktów doświadczenia.",
+                "DefaultReason": "Nagroda od MG",
+                "AmountLabel": "Ilość PD (domyślnie)",
+                "DefaultHint": "domyślna kwota dla nowo zaznaczonych postaci",
+                "ReasonLabel": "Powód",
+                "ReasonPlaceholder": "np. Ukończenie misji...",
+                "SelectAll": "Zaznacz wszystkich",
+                "DeselectAll": "Odznacz wszystkich",
+                "Apply": "Przyznaj PD",
+                "Success": "Przyznano PD dla {count} postaci.",
+                "CurrentXP": "Obecne PD",
+                "Actors": "Postacie",
+                "ModeLabel": "Tryb",
+                "ModeGlobal": "Jednakowa kwota",
+                "ModeIndividual": "Różne kwoty",
+                "SessionPrefix": "Sesja {session}"
+            },
+            "ApplyDamage": {
+                "Title": "Zastosuj Obrażenia",
+                "NoActor": "Wybierz postać docelową.",
+                "ActorNotFound": "Nie znaleziono postaci.",
+                "TargetActor": "Postać",
+                "SelectActor": "-- Wybierz postać --",
+                "WoundName": "Nazwa rany (opcjonalne)",
+                "WoundNamePlaceholder": "np. Postrzelenie, Rana cięta...",
+                "DamageType": "Typ obrażeń",
+                "Location": "Lokalizacja",
+                "Penalty": "Kara (%)",
+                "Quantity": "Ilość",
+                "Apply": "Zadaj ranę",
+                "Success": "Dodano {count}× \"{name}\" dla {actor} postaci."
+            },
+            "GroupCheck": {
+                "Title": "Rzut Grupowy",
+                "SkillLabel": "Umiejętność",
+                "DifficultyLabel": "Trudność",
+                "NoteLabel": "Uwaga (opcjonalne)",
+                "NotePlaceholder": "np. Sprawdzenie czujności...",
+                "SelectSkill": "Wybierz umiejętność",
+                "Actors": "Postacie",
+                "Post": "Wyślij do czatu",
+                "Posted": "Rzut grupowy wysłany do czatu.",
+                "NoSelection": "Wybierz umiejętność i przynajmniej jedną postać.",
+                "NotOwner": "Nie masz tej postaci.",
+                "CardTitle": "Rzut Grupowy",
+                "Roll": "Rzuć"
+            }
         }
     },
     "REGION": {

@@ -64,178 +64,177 @@
     {{/each}}
 
     <div class="combat-grid {{#if combat.woundsFirst}}wounds-first{{/if}}">
-        
 
-        {{!-- Top Row: Armor and Weapons --}}
-        <div class="combat-top-row">
-            {{!-- Anatomical Armor Section --}}
-            <section class="combat-section armor-section-anatomical">
-                <div class="section-header">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>{{localize "NEUROSHIMA.Items.Type.Armor"}}</span>
-                    <div class="armor-penalty-total">
-                        <span>{{localize "NEUROSHIMA.Armor.TotalPenalty"}}: <strong>{{combat.totalArmorPenalty}}%</strong></span>
+        {{!-- Weapons Section --}}
+        <section class="combat-section weapons-section">
+            <div class="weapons-group all-weapons">
+                <div class="section-header melee-header">
+                    <div class="header-left-controls">
+                        <i class="fas fa-fist-raised"></i>
+                        <input type="number" name="system.combat.meleeInitiative" value="{{combat.meleeInitiative}}" class="melee-initiative-input" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}" />
+                        <a class="roll-melee-initiative" data-action="rollMeleeInitiative" title="{{localize 'NEUROSHIMA.MeleeOpposed.RollInitiative'}}">
+                            <i class="fas fa-dice"></i>
+                        </a>
                     </div>
+                    <span class="header-label">{{localize "NEUROSHIMA.Items.Fields.Weapons"}}</span>
                 </div>
-                
-                <div class="armor-anatomical-grid">
-                    {{#each combat.anatomicalArmor as |location key|}}
-                    <div class="armor-location-box armor-{{key}} {{#if location.items.length}}has-items{{else}}empty{{/if}}">
-                        <div class="location-header">
-                            <span class="location-name">{{localize location.label}}</span>
-                            {{#if (gt location.totalAP 0)}}
-                            <span class="location-ap-sum" data-tooltip="{{location.tooltip}}">{{location.totalAP}}</span>
-                            {{/if}}
-                        </div>
-                        {{#if location.items.length}}
-                        <div class="armor-column-headers">
-                            <span class="armor-header-icon"></span>
-                            <span class="armor-header-name">{{localize "Name"}}</span>
-                            <span class="armor-header-dur">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span>
-                            <span class="armor-header-ap">AP</span>
-                        </div>
-                        <div class="location-armor-list">
-                            {{#each location.items as |armor|}}
-                            <div class="armor-item-row item" data-item-id="{{armor.id}}" data-uuid="{{armor.uuid}}" draggable="true">
-                                <img src="{{armor.img}}" class="armor-icon-tiny" alt="{{armor.name}}">
-                                <span class="armor-name-tiny clickable" data-action="editItem">{{armor.name}}</span>
-                                <span class="armor-durability clickable {{#if (lt armor.currentDurability armor.durability)}}is-damaged{{/if}}" 
-                                      data-action="modifyDurability" 
-                                      data-item-id="{{armor.id}}" 
-                                      title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
-                                    {{armor.currentDurability}}
+                <div class="combat-weapons-list">
+                    {{#each combat.weapons as |weapon|}}
+                    <div class="equipment-item weapon-item-clickable item" data-item-id="{{weapon.id}}" data-uuid="{{weapon.uuid}}" draggable="true">
+                        {{#if weapon.jammed}}
+                        {{#if ../combat.canUnjam}}
+                        <a class="weapon-jam-indicator is-jammed" data-action="toggleJammed" title="{{localize 'NEUROSHIMA.Weapon.Jammed'}}">
+                            <i class="fas fa-ban"></i>
+                        </a>
+                        {{else}}
+                        <span class="weapon-jam-indicator is-jammed" title="{{localize 'NEUROSHIMA.Weapon.Jammed'}}">
+                            <i class="fas fa-ban"></i>
+                        </span>
+                        {{/if}}
+                        {{/if}}
+                        <img src="{{weapon.img}}" class="weapon-icon" alt="{{weapon.name}}">
+                        <div class="weapon-info-column">
+                            <div class="weapon-name-rollable clickable" data-action="rollWeapon">{{weapon.name}}</div>
+                            {{#if weapon.isGrenade}}
+                            <div class="weapon-stats-row">
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Grenade.FreeThrowDistance"}}">{{localize "NEUROSHIMA.Grenade.FreeRange"}}:</span>
+                                    <span class="stat-value">{{weapon.freeThrowDistance}}m</span>
                                 </span>
-                                <span class="armor-ap-value clickable {{#if (lt armor.currentRating armor.rating)}}is-damaged{{/if}}" 
-                                      data-action="modifyAP" 
-                                      data-item-id="{{armor.id}}" 
-                                      data-location="{{key}}"
-                                      title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
-                                    {{armor.currentRating}}
+                                <span class="stat-separator">|</span>
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Grenade.MaxRange"}}">{{localize "NEUROSHIMA.Grenade.Radius"}}:</span>
+                                    <span class="stat-value">{{weapon.maxRange}}m</span>
                                 </span>
                             </div>
-                            {{/each}}
+                            {{else if (eq weapon.type "melee")}}
+                            <div class="weapon-stats-row">
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Damage"}}">Obr.:</span>
+                                    <span class="stat-value">{{weapon.damage}}</span>
+                                </span>
+                                <span class="stat-separator">|</span>
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.AttackBonus"}}">Atak:</span>
+                                    <span class="stat-value">{{weapon.attack}}</span>
+                                </span>
+                                <span class="stat-separator">|</span>
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.DefenseBonus"}}">Obrona:</span>
+                                    <span class="stat-value">{{weapon.defense}}</span>
+                                </span>
+                            </div>
+                            {{else}}
+                            <div class="weapon-stats-row">
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Damage"}}">Obr.:</span>
+                                    <span class="stat-value">{{weapon.damage}}</span>
+                                </span>
+                                <span class="stat-separator">|</span>
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Piercing"}}">PP:</span>
+                                    <span class="stat-value">{{weapon.piercing}}</span>
+                                </span>
+                                <span class="stat-separator">|</span>
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.FireRate"}}">RoF:</span>
+                                    <span class="stat-value">{{weapon.fireRate}}</span>
+                                </span>
+                                <span class="stat-separator">|</span>
+                                <span class="stat-item">
+                                    <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Jamming"}}">Zac.:</span>
+                                    <span class="stat-value">{{weapon.jamming}}</span>
+                                </span>
+                            </div>
+                            {{#if weapon.magazine}}
+                            <div class="weapon-magazine-row">
+                                <span class="stat-label">{{localize "NEUROSHIMA.Items.Fields.Magazine"}}:</span>
+                                <div class="magazine-info-container" title="{{weapon.magazine.tooltip}}">
+                                    <div class="magazine-capacity-bar">
+                                        {{weapon.magazine.count}} / {{weapon.magazine.max}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{else if (and (eq weapon.type "thrown") weapon.ammoName)}}
+                            <div class="weapon-magazine-row">
+                                <span class="stat-label">{{localize "NEUROSHIMA.Items.Fields.Ammo"}}:</span>
+                                <div class="magazine-info-container">
+                                    <span class="ammo-name">{{weapon.ammoName}} ({{weapon.ammoCount}})</span>
+                                </div>
+                            </div>
+                            {{/if}}
+                            {{/if}}
                         </div>
-                        {{else}}
-                        <div class="location-empty">{{localize "NEUROSHIMA.Armor.None"}}</div>
-                        {{/if}}
+                        <div class="weapon-edit-column">
+                            <a class="item-control" data-action="editItem" title="{{localize "NEUROSHIMA.Sheet.Edit"}}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </div>
                     </div>
                     {{/each}}
                 </div>
-            </section>
+            </div>
+        </section>
 
-            {{!-- Unified Weapons Section --}}
-            <section class="combat-section weapons-section">
-                <div class="weapons-group all-weapons">
-                    <div class="section-header melee-header">
-                        <div class="header-left-controls">
-                            <i class="fas fa-fist-raised"></i>
-                            <input type="number" name="system.combat.meleeInitiative" value="{{combat.meleeInitiative}}" class="melee-initiative-input" title="{{localize 'NEUROSHIMA.MeleeOpposed.Initiative'}}" />
-                            <a class="roll-melee-initiative" data-action="rollMeleeInitiative" title="{{localize 'NEUROSHIMA.MeleeOpposed.RollInitiative'}}">
-                                <i class="fas fa-dice"></i>
-                            </a>
-                        </div>
-                        <span class="header-label">{{localize "NEUROSHIMA.Items.Fields.Weapons"}}</span>
+        {{!-- Anatomical Armor Section --}}
+        <section class="combat-section armor-section-anatomical">
+            <div class="section-header">
+                <i class="fas fa-shield-alt"></i>
+                <span>{{localize "NEUROSHIMA.Items.Type.Armor"}}</span>
+                <div class="armor-penalty-total">
+                    <span>{{localize "NEUROSHIMA.Armor.TotalPenalty"}}: <strong>{{combat.totalArmorPenalty}}%</strong></span>
+                </div>
+            </div>
+            <div class="armor-anatomical-grid">
+                {{#each combat.anatomicalArmor as |location key|}}
+                <div class="armor-location-box armor-{{key}} {{#if location.items.length}}has-items{{else}}empty{{/if}}">
+                    <div class="location-header">
+                        <span class="location-name">{{localize location.label}}</span>
+                        {{#if (gt location.totalAP 0)}}
+                        <span class="location-ap-sum" data-tooltip="{{location.tooltip}}">{{location.totalAP}}</span>
+                        {{/if}}
                     </div>
-                    <div class="combat-weapons-list">
-                        {{#each combat.weapons as |weapon|}}
-                        <div class="equipment-item weapon-item-clickable item" data-item-id="{{weapon.id}}" data-uuid="{{weapon.uuid}}" draggable="true">
-                            {{#if weapon.jammed}}
-                            {{#if ../combat.canUnjam}}
-                            <a class="weapon-jam-indicator is-jammed" data-action="toggleJammed" title="{{localize 'NEUROSHIMA.Weapon.Jammed'}}">
-                                <i class="fas fa-ban"></i>
-                            </a>
-                            {{else}}
-                            <span class="weapon-jam-indicator is-jammed" title="{{localize 'NEUROSHIMA.Weapon.Jammed'}}">
-                                <i class="fas fa-ban"></i>
+                    {{#if location.items.length}}
+                    <div class="armor-column-headers">
+                        <span class="armor-header-icon"></span>
+                        <span class="armor-header-name">{{localize "Name"}}</span>
+                        <span class="armor-header-dur">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span>
+                        <span class="armor-header-ap">AP</span>
+                        <span class="armor-header-rad" title="{{localize 'NEUROSHIMA.RadiationResistance'}}"><i class="fas fa-radiation-alt"></i></span>
+                    </div>
+                    <div class="location-armor-list">
+                        {{#each location.items as |armor|}}
+                        <div class="armor-item-row item" data-item-id="{{armor.id}}" data-uuid="{{armor.uuid}}" draggable="true">
+                            <img src="{{armor.img}}" class="armor-icon-tiny" alt="{{armor.name}}">
+                            <span class="armor-name-tiny clickable" data-action="editItem">{{armor.name}}</span>
+                            <span class="armor-durability clickable {{#if (lt armor.currentDurability armor.durability)}}is-damaged{{/if}}" 
+                                  data-action="modifyDurability" 
+                                  data-item-id="{{armor.id}}" 
+                                  title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
+                                {{armor.currentDurability}}
                             </span>
-                            {{/if}}
-                            {{/if}}
-                            <img src="{{weapon.img}}" class="weapon-icon" alt="{{weapon.name}}">
-                            <div class="weapon-info-column">
-                                <div class="weapon-name-rollable clickable" data-action="rollWeapon">{{weapon.name}}</div>
-                                {{#if weapon.isGrenade}}
-                                <div class="weapon-stats-row">
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Grenade.FreeThrowDistance"}}">{{localize "NEUROSHIMA.Grenade.FreeRange"}}:</span>
-                                        <span class="stat-value">{{weapon.freeThrowDistance}}m</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Grenade.MaxRange"}}">{{localize "NEUROSHIMA.Grenade.Radius"}}:</span>
-                                        <span class="stat-value">{{weapon.maxRange}}m</span>
-                                    </span>
-                                </div>
-                                {{else if (eq weapon.type "melee")}}
-                                <div class="weapon-stats-row">
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Damage"}}">Obr.:</span>
-                                        <span class="stat-value">{{weapon.damage}}</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.AttackBonus"}}">Atak:</span>
-                                        <span class="stat-value">{{weapon.attack}}</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.DefenseBonus"}}">Obrona:</span>
-                                        <span class="stat-value">{{weapon.defense}}</span>
-                                    </span>
-                                </div>
-                                {{else}}
-                                <div class="weapon-stats-row">
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Damage"}}">Obr.:</span>
-                                        <span class="stat-value">{{weapon.damage}}</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Piercing"}}">PP:</span>
-                                        <span class="stat-value">{{weapon.piercing}}</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.FireRate"}}">RoF:</span>
-                                        <span class="stat-value">{{weapon.fireRate}}</span>
-                                    </span>
-                                    <span class="stat-separator">|</span>
-                                    <span class="stat-item">
-                                        <span class="stat-label" title="{{localize "NEUROSHIMA.Items.Fields.Jamming"}}">Zac.:</span>
-                                        <span class="stat-value">{{weapon.jamming}}</span>
-                                    </span>
-                                </div>
-                                {{#if weapon.magazine}}
-                                <div class="weapon-magazine-row">
-                                    <span class="stat-label">{{localize "NEUROSHIMA.Items.Fields.Magazine"}}:</span>
-                                    <div class="magazine-info-container" title="{{weapon.magazine.tooltip}}">
-                                        <div class="magazine-capacity-bar">
-                                            {{weapon.magazine.count}} / {{weapon.magazine.max}}
-                                        </div>
-                                    </div>
-                                </div>
-                                {{else if (and (eq weapon.type "thrown") weapon.ammoName)}}
-                                <div class="weapon-magazine-row">
-                                    <span class="stat-label">{{localize "NEUROSHIMA.Items.Fields.Ammo"}}:</span>
-                                    <div class="magazine-info-container">
-                                        <span class="ammo-name">{{weapon.ammoName}} ({{weapon.ammoCount}})</span>
-                                    </div>
-                                </div>
-                                {{/if}}
-                                {{/if}}
-                            </div>
-                            <div class="weapon-edit-column">
-                                <a class="item-control" data-action="editItem" title="{{localize "NEUROSHIMA.Sheet.Edit"}}">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            </div>
+                            <span class="armor-ap-value clickable {{#if (lt armor.currentRating armor.rating)}}is-damaged{{/if}}" 
+                                  data-action="modifyAP" 
+                                  data-item-id="{{armor.id}}" 
+                                  data-location="{{key}}"
+                                  title="LPM: {{localize "NEUROSHIMA.Actions.Repair"}} | PPM: {{localize "NEUROSHIMA.Actions.Damage"}}">
+                                {{armor.currentRating}}
+                            </span>
+                            <span class="armor-rad-value {{#if armor.radiationProtection}}has-rad{{/if}}">
+                                {{#if armor.radiationProtection}}{{armor.radiationProtection}}{{else}}-{{/if}}
+                            </span>
                         </div>
                         {{/each}}
                     </div>
+                    {{else}}
+                    <div class="location-empty">{{localize "NEUROSHIMA.Armor.None"}}</div>
+                    {{/if}}
                 </div>
-            </section>
-        </div>
+                {{/each}}
+            </div>
+        </section>
 
-        {{!-- Bottom Row: Wounds --}}
+        {{!-- Wounds Section --}}
         {{#if (eq combat.patientCardVersion "extended")}}
             {{!-- Extended Wounds Section --}}
             <section class="combat-section wounds-section wounds-section-extended">
@@ -246,14 +245,15 @@
                     </div>
                     
                     <div class="wound-stats-total">
+                        <span class="rad-resist-sum" title="{{localize 'NEUROSHIMA.RadiationResistance'}}"{{#if radResistTooltip}} data-tooltip="{{radResistTooltip}}" data-tooltip-direction="UP"{{/if}}><i class="fas fa-radiation-alt"></i><span>{{effectiveRadiationResistance}}</span></span>
                         <span class="hp-sum" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
-                            <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                            <i class="fas fa-heart"></i><span>{{combat.totalDamagePoints}} / {{combat.maxHP}}</span>
                         </span>
                         <span class="penalty-sum" title="{{localize "NEUROSHIMA.Wound.TotalPenalty"}}">
-                            <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                            <i class="fas fa-exclamation-triangle"></i><span>{{combat.totalWoundPenalty}}%</span>
                         </span>
                         <span class="healing-days-sum" title="Dni do wyleczenia (5% dziennie)">
-                            <i class="fas fa-calendar"></i> {{combat.healingDaysRequired}}d
+                            <i class="fas fa-calendar"></i><span>{{combat.healingDaysRequired}}d</span>
                             <div class="healing-rate-input-wrapper">
                                 <input type="number" name="system.healingRate" value="{{combat.healingRate}}" min="1" max="100" class="healing-rate-input" title="Procent leczenia na dzień" />%
                             </div>
@@ -293,11 +293,12 @@
                     </div>
                     
                     <div class="wound-stats-total">
+                        <span class="rad-resist-sum" title="{{localize 'NEUROSHIMA.RadiationResistance'}}"{{#if radResistTooltip}} data-tooltip="{{radResistTooltip}}" data-tooltip-direction="UP"{{/if}}><i class="fas fa-radiation-alt"></i><span>{{effectiveRadiationResistance}}</span></span>
                         <span class="hp-sum" title="{{localize "NEUROSHIMA.Wound.TotalDamage"}}">
-                            <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                            <i class="fas fa-heart"></i><span>{{combat.totalDamagePoints}} / {{combat.maxHP}}</span>
                         </span>
                         <span class="penalty-sum" title="{{localize "NEUROSHIMA.Wound.TotalPenalty"}}">
-                            <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                            <i class="fas fa-exclamation-triangle"></i><span>{{combat.totalWoundPenalty}}%</span>
                         </span>
                     </div>
 

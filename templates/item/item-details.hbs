@@ -47,7 +47,7 @@
                     <div class="grid grid-1col">
                         <div class="form-group row-group">
                             <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
-                            <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
+                            <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="-100" max="100" {{#if isModded}}disabled{{/if}}/>
                         </div>
                         <div class="form-group row-group">
                             <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
@@ -56,6 +56,10 @@
                         <div class="form-group row-group">
                             <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
                             <input type="number" name="system.armor.penalty" value="{{system.armor.penalty}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
+                        </div>
+                        <div class="form-group row-group">
+                            <label title="{{localize 'NEUROSHIMA.Items.Fields.RadiationProtection'}}">{{localize "NEUROSHIMA.Items.Fields.RadiationProtectionAbbr"}}</label>
+                            <input type="number" name="system.armor.radiationProtection" value="{{system.armor.radiationProtection}}" data-dtype="Number" {{#if isModded}}disabled{{/if}}/>
                         </div>
                     </div>
                 </div>

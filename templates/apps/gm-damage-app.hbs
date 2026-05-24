@@ -1,0 +1,71 @@
+<div class="gm-damage-app-root">
+
+    <section class="gm-damage-layout">
+
+        <div class="damage-settings-col">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.GMToolkit.ApplyDamage.WoundName"}}</label>
+                <div class="form-fields">
+                    <input type="text" class="wound-name-input" value="{{woundName}}" placeholder="{{localize 'NEUROSHIMA.GMToolkit.ApplyDamage.WoundNamePlaceholder'}}">
+                </div>
+            </div>
+
+            <div class="form-group damage-type-qty-row">
+                <div class="damage-type-subgroup">
+                    <label>{{localize "NEUROSHIMA.GMToolkit.ApplyDamage.DamageType"}}</label>
+                    <select class="damage-type-select">
+                        {{#each damageTypes}}
+                        <option value="{{key}}" {{#if (eq key ../damageType)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </select>
+                </div>
+                <div class="damage-qty-subgroup">
+                    <label>{{localize "NEUROSHIMA.GMToolkit.ApplyDamage.Quantity"}}</label>
+                    <input type="number" class="quantity-input" value="{{quantity}}" min="1" max="20" step="1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.GMToolkit.ApplyDamage.Location"}}</label>
+                <div class="form-fields">
+                    <select class="location-select">
+                        {{#each bodyLocations}}
+                        <option value="{{key}}" {{#if (eq key ../location)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="damage-actors-col">
+            <div class="damage-actors-header">
+                <span class="damage-actors-label">{{localize "NEUROSHIMA.GMToolkit.ApplyDamage.TargetActor"}} ({{selectedCount}})</span>
+                <div class="damage-actors-controls">
+                    <button type="button" data-action="selectAll" class="xp-ctrl-btn">
+                        <i class="fas fa-check-double"></i>
+                    </button>
+                    <button type="button" data-action="deselectAll" class="xp-ctrl-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="damage-actor-list">
+                {{#each actors}}
+                <div class="damage-actor-row {{#if selected}}selected{{/if}}" data-actor-id="{{id}}" data-action="selectActor">
+                    <img class="actor-portrait" src="{{img}}" alt="{{name}}">
+                    <span class="actor-name">{{name}}</span>
+                    <i class="fas {{#if selected}}fa-check-square{{else}}fa-square{{/if}} damage-selected-icon"></i>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+
+    </section>
+
+    <footer class="gm-toolkit-footer">
+        <button type="button" data-action="applyDamage" class="gm-apply-btn" {{#unless hasSelection}}disabled{{/unless}}>
+            <i class="fas fa-skull-crossbones"></i> {{localize "NEUROSHIMA.GMToolkit.ApplyDamage.Apply"}}
+        </button>
+    </footer>
+
+</div>

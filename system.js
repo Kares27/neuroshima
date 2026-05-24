@@ -35,6 +35,9 @@ import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
 import { TraitBrowserApp } from "./module/apps/trait-browser.js";
 import { registerRadiationHooks } from "./module/region-behaviors/danger-zone.js";
+import { RadiationZoneBehaviorType } from "./module/region-behaviors/radiation-zone.js";
+import { GMToolkitApp } from "./module/apps/gm-toolkit.js";
+import { registerGroupCheckChatListeners } from "./module/apps/gm-group-check-app.js";
 
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
@@ -240,6 +243,7 @@ Hooks.once('init', async function() {
         error: (...args) => {
             console.error("Neuroshima 1.5 |", ...args);
         },
+        openGMToolkit: () => GMToolkitApp.open(),
         openDebugRoll: () => new DebugRollDialog().render(true),
         debugSkillRoll: (skillValue, statValue, penalty, isOpen, dice) => NeuroshimaDice.rollTest({
             skill: skillValue,
@@ -347,6 +351,11 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels["container"]         = ContainerData;
 
     registerRadiationHooks();
+    registerGroupCheckChatListeners();
+
+    CONFIG.RegionBehavior.dataModels["radiationZone"] = RadiationZoneBehaviorType;
+    CONFIG.RegionBehavior.typeLabels["radiationZone"] = "NEUROSHIMA.RegionBehavior.RadiationZone.label";
+    CONFIG.RegionBehavior.typeIcons["radiationZone"]  = "fa-solid fa-radiation";
 
     CONFIG.Item.defaultIcons = CONFIG.Item.defaultIcons ?? {};
     CONFIG.Item.defaultIcons["weapon-mod"] = "systems/neuroshima/assets/img/modification-weapon.svg";
@@ -667,6 +676,16 @@ Hooks.once('init', async function() {
         type: Boolean,
         default: true,
         requiresReload: true
+    });
+
+    game.settings.register("neuroshima", "sessionID", {
+        name: "NEUROSHIMA.GMToolkit.Session.SettingName",
+        hint: "NEUROSHIMA.GMToolkit.Session.SettingHint",
+        scope: "world",
+        config: false,
+        type: Number,
+        default: 1,
+        requiresReload: false
     });
 
     game.settings.register("neuroshima", "meleeBonusMode", {
@@ -1145,6 +1164,10 @@ Hooks.once('init', async function() {
     }
 
     console.log("Neuroshima 1.5 | Szablony wczytane");
+});
+
+Hooks.once("i18nInit", () => {
+    foundry.helpers.Localization.localizeDataModel(RadiationZoneBehaviorType);
 });
 
 Hooks.once("ready", () => {

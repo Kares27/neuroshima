@@ -974,6 +974,7 @@ export class CombatHelper {
   static getShiftedLocationByRoll(originalRoll, shift) {
     const newRoll = Math.clamp(originalRoll + shift, 1, 20);
     const entry = Object.entries(NEUROSHIMA.bodyLocations).find(([key, data]) => {
+        if (!data.roll) return false;
         return newRoll >= data.roll[0] && newRoll <= data.roll[1];
     });
     return entry ? entry[0] : "torso";
@@ -1420,10 +1421,12 @@ export class CombatHelper {
       
       woundsByLocation[location].push({
         id: wound.id,
+        uuid: wound.uuid,
         name: displayName,
         damageType: damageType,
         fullWoundName: fullWoundName,
         penalty: penalty,
+        isActive: wound.system.isActive ?? true,
         isHealing: wound.system.isHealing || false,
         healingDays: wound.system.healingDays || 0,
         hadFirstAid: wound.system.hadFirstAid || false,

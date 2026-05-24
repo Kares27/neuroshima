@@ -1,0 +1,36 @@
+<div class="neuroshima group-check-card">
+    <header class="roll-header">
+        <i class="fas fa-users"></i>
+        <span class="group-check-title">{{localize "NEUROSHIMA.GMToolkit.GroupCheck.CardTitle"}}</span>
+    </header>
+
+    <hr class="dotted-hr">
+
+    <div class="group-check-info">
+        <div class="group-check-skill">
+            <span class="info-label">{{localize "NEUROSHIMA.GMToolkit.GroupCheck.SkillLabel"}}:</span>
+            <strong>{{skillLabel}}</strong>
+        </div>
+        <div class="group-check-difficulty">
+            <span class="info-label">{{localize "NEUROSHIMA.GMToolkit.GroupCheck.DifficultyLabel"}}:</span>
+            <strong>{{diffLabel}}</strong>
+        </div>
+        {{#if note}}
+        <div class="group-check-note">
+            <em>{{note}}</em>
+        </div>
+        {{/if}}
+    </div>
+
+    <hr class="dotted-hr">
+
+    <div class="group-check-actions">
+        <button type="button" class="btn btn-primary group-check-roll-btn"
+            data-actor-id="{{actorId}}"
+            data-skill-key="{{skillKey}}"
+            data-attr-key="{{attributeKey}}"
+            data-difficulty="{{difficulty}}">
+            <i class="fas fa-dice"></i> {{actorName}} — {{localize "NEUROSHIMA.GMToolkit.GroupCheck.Roll"}}
+        </button>
+    </div>
+</div>

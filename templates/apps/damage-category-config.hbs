@@ -1,48 +1,65 @@
-<div class="config-section">
-    <h3>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.BuiltinHeader"}}</h3>
-    <p class="cgc-hint">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.BuiltinHint"}}</p>
-    <div class="dcc-header flexrow">
-        <span class="dcc-col-key">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</span>
-        <span class="dcc-col-label">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</span>
-        <span class="dcc-col-color">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</span>
-    </div>
-    {{#each builtinRows as |row|}}
-    <div class="dcc-row flexrow dcc-builtin-row">
-        <span class="dcc-col-key dcc-muted">{{row.key}}</span>
-        <span class="dcc-col-label dcc-muted">{{row.label}}</span>
-        <span class="dcc-col-color"><span class="dcc-color-swatch" style="background:{{row.color}};"></span>{{row.color}}</span>
-    </div>
-    {{/each}}
-</div>
+<div class="damage-category-config-form">
 
-<div class="config-section">
-    <div class="dcc-section-header flexrow">
-        <h3>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomHeader"}}</h3>
-        <a class="item-control" data-action="addCategoryRow" title="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.AddCategory'}}">
-            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.AddCategory"}}
-        </a>
-    </div>
-    <p class="cgc-hint">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomHint"}}</p>
-    {{#if customRows.length}}
-    <div class="dcc-header flexrow">
-        <span class="dcc-col-key">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</span>
-        <span class="dcc-col-label">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</span>
-        <span class="dcc-col-color">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</span>
-        <span class="dcc-col-action"></span>
-    </div>
-    {{#each customRows as |row|}}
-    <div class="dcc-row flexrow">
-        <input class="dcc-col-key"   type="text"  name="custom.{{row.idx}}.key"   value="{{row.key}}"   placeholder="my_type"/>
-        <input class="dcc-col-label" type="text"  name="custom.{{row.idx}}.label" value="{{row.label}}" placeholder="My Type"/>
-        <input class="dcc-col-color" type="color" name="custom.{{row.idx}}.color" value="{{row.color}}"/>
-        <a class="item-control dcc-col-action" data-action="deleteCategoryRow" data-idx="{{row.idx}}" title="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.DeleteCategory'}}"><i class="fas fa-trash"></i></a>
-    </div>
-    {{/each}}
-    {{else}}
-    <p class="cgc-empty">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomEmpty"}}</p>
-    {{/if}}
-</div>
+    <section class="dcc-section">
+        <div class="dcc-section-head">
+            <h3>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.BuiltinHeader"}}</h3>
+        </div>
+        <p class="dcc-hint">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.BuiltinHint"}}</p>
+        <div class="dcc-list dcc-list-builtin">
+            <div class="dcc-list-header">
+                <span class="dcc-col-key">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</span>
+                <span class="dcc-col-label">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</span>
+                <span class="dcc-col-color">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</span>
+            </div>
+            {{#each builtinRows as |row|}}
+            <div class="dcc-list-row">
+                <span class="dcc-col-key dcc-muted">{{row.key}}</span>
+                <span class="dcc-col-label dcc-muted">{{row.label}}</span>
+                <span class="dcc-col-color">
+                    <span class="dcc-color-swatch" style="background:{{row.color}};"></span>
+                    <span class="dcc-muted">{{row.color}}</span>
+                </span>
+            </div>
+            {{/each}}
+        </div>
+    </section>
 
-<div class="form-footer">
-    <button type="submit"><i class="fas fa-save"></i> {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.Save"}}</button>
+    <section class="dcc-section">
+        <div class="dcc-section-head">
+            <h3>{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomHeader"}}</h3>
+            <button type="button" class="dcc-add-btn" data-action="addCategoryRow">
+                <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.AddCategory"}}
+            </button>
+        </div>
+        <p class="dcc-hint">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomHint"}}</p>
+        <div class="dcc-list dcc-list-custom">
+            <div class="dcc-list-header">
+                <span class="dcc-col-key">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColKey"}}</span>
+                <span class="dcc-col-label">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColLabel"}}</span>
+                <span class="dcc-col-color">{{localize "NEUROSHIMA.Settings.DamageCategoryConfig.ColColor"}}</span>
+                <span class="dcc-col-action"></span>
+            </div>
+            {{#if customRows.length}}
+            {{#each customRows as |row|}}
+            <div class="dcc-list-row">
+                <input class="dcc-col-key" type="text" name="custom.{{row.idx}}.key" value="{{row.key}}" placeholder="my_type"/>
+                <input class="dcc-col-label" type="text" name="custom.{{row.idx}}.label" value="{{row.label}}" placeholder="My Type"/>
+                <input class="dcc-col-color dcc-color-input" type="color" name="custom.{{row.idx}}.color" value="{{row.color}}"/>
+                <a class="dcc-col-action dcc-delete-btn" data-action="deleteCategoryRow" data-idx="{{row.idx}}" title="{{localize 'NEUROSHIMA.Settings.DamageCategoryConfig.DeleteCategory'}}">
+                    <i class="fas fa-trash"></i>
+                </a>
+            </div>
+            {{/each}}
+            {{else}}
+            <div class="dcc-list-row dcc-row-empty">
+                {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.CustomEmpty"}}
+            </div>
+            {{/if}}
+        </div>
+    </section>
+
+    <footer class="dcc-footer">
+        <button type="submit"><i class="fas fa-save"></i> {{localize "NEUROSHIMA.Settings.DamageCategoryConfig.Save"}}</button>
+    </footer>
+
 </div>

@@ -166,11 +166,11 @@
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
                             <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
                         </div>
-                        {{#if (hasAttachedMods item.system.mods)}}
+                        {{#if (lookup ../attachedModsByItemId item.id)}}
                         <div class="item-mods-wrapper">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Mods"}}</div>
                             <div class="item-mods-summary">
-                                {{#each (attachedMods item.system.mods) as |mod|}}
+                                {{#each (lookup ../attachedModsByItemId item.id) as |mod|}}
                                 <span class="mod-name-chip" data-tooltip="{{mod.effectText}}">{{mod.name}}</span>
                                 {{/each}}
                             </div>
@@ -254,11 +254,11 @@
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
                             <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
                         </div>
-                        {{#if (hasAttachedMods item.system.mods)}}
+                        {{#if (lookup ../attachedModsByItemId item.id)}}
                         <div class="item-mods-wrapper">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Mods"}}</div>
                             <div class="item-mods-summary">
-                                {{#each (attachedMods item.system.mods) as |mod|}}
+                                {{#each (lookup ../attachedModsByItemId item.id) as |mod|}}
                                 <span class="mod-name-chip" data-tooltip="{{mod.effectText}}">{{mod.name}}</span>
                                 {{/each}}
                             </div>
@@ -342,11 +342,11 @@
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
                             <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
                         </div>
-                        {{#if (hasAttachedMods item.system.mods)}}
+                        {{#if (lookup ../attachedModsByItemId item.id)}}
                         <div class="item-mods-wrapper">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Mods"}}</div>
                             <div class="item-mods-summary">
-                                {{#each (attachedMods item.system.mods) as |mod|}}
+                                {{#each (lookup ../attachedModsByItemId item.id) as |mod|}}
                                 <span class="mod-name-chip" data-tooltip="{{mod.effectText}}">{{mod.name}}</span>
                                 {{/each}}
                             </div>
@@ -430,12 +430,12 @@
                             {{#if item.system.armor.penalty}}<span class="stat-summary-chip stat-chip-warning{{#if (nsModTooltip item.system.mods 'deltaPenalty' null)}} stat-chip-modified{{/if}}" data-tooltip="{{nsModTooltip item.system.mods 'deltaPenalty' null}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.Penalty"}}</span><span class="stat-chip-value">{{item.system.armor.penalty}}</span></span>{{/if}}
                             {{#if item.system.armor.durability}}<span class="stat-summary-chip{{#if (nsModTooltip item.system.mods 'deltaDurability' null)}} stat-chip-modified{{/if}}" data-tooltip="{{nsModTooltip item.system.mods 'deltaDurability' null}}"><span class="stat-chip-label">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</span><span class="stat-chip-value">{{item.system.armor.durability}}</span></span>{{/if}}
                         </div>
-                        {{#if item.system.armor.resistances.length}}
+                        {{#if (lookup ../armorEffectiveResistances item.id)}}
                         <div class="item-resistances-wrapper">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Items.Fields.Resistances"}}</div>
                             <div class="item-resistances-summary">
-                                {{#each item.system.armor.resistances as |row|}}
-                                <span class="stat-summary-chip"><span class="stat-chip-label">{{nsDamageCategoryLabel row.category}}</span><span class="stat-chip-value">{{row.head}}/{{row.torso}}/{{row.leftArm}}/{{row.rightArm}}/{{row.leftLeg}}/{{row.rightLeg}}</span></span>
+                                {{#each (lookup ../armorEffectiveResistances item.id) as |row|}}
+                                <span class="stat-summary-chip"><span class="stat-chip-label">{{row.categoryLabel}}</span><span class="stat-chip-value">{{row.head}}/{{row.torso}}/{{row.leftArm}}/{{row.rightArm}}/{{row.leftLeg}}/{{row.rightLeg}}</span></span>
                                 {{/each}}
                             </div>
                         </div>
@@ -444,11 +444,11 @@
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Resources"}}</div>
                             <div class="item-resources-summary">{{#each item.system.resources}}{{#if this.showInSummary}}<span class="resource-summary-chip"><span class="resource-chip-label">{{this.label}}</span><span class="resource-chip-value">{{this.value}}{{#if this.max}} / {{this.max}}{{/if}}</span></span>{{/if}}{{/each}}</div>
                         </div>
-                        {{#if (hasAttachedMods item.system.mods)}}
+                        {{#if (lookup ../attachedModsByItemId item.id)}}
                         <div class="item-mods-wrapper">
                             <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Mods"}}</div>
                             <div class="item-mods-summary">
-                                {{#each (attachedMods item.system.mods) as |mod|}}
+                                {{#each (lookup ../attachedModsByItemId item.id) as |mod|}}
                                 <span class="mod-name-chip" data-tooltip="{{mod.effectText}}">{{mod.name}}</span>
                                 {{/each}}
                             </div>

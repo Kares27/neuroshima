@@ -10,7 +10,7 @@ import { getConditions } from "../apps/condition-config.js";
 import { TraitChoiceDialog } from "../apps/trait-choice-dialog.js";
 import { NeuroshimaGrenadeRollDialog } from "../apps/grenade-roll-dialog.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { getEffectiveArmorRatings, installMod } from "../helpers/mod-helpers.js";
+import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance, getRadiationResistanceSources, installMod } from "../helpers/mod-helpers.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -82,6 +82,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       modifyDurability: this.prototype._onModifyDurability,
       modifyAP: this.prototype._onModifyAP,
       toggleHealing: this.prototype._onToggleHealing,
+      toggleActive: this.prototype._onToggleActive,
       configureHP: this.prototype._onConfigureHP,
       rollWeapon: this.prototype._onRollWeapon,
       rollMeleeInitiative: this.prototype._onRollMeleeInitiative,
@@ -224,6 +225,42 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       weaponMods: topItems.filter(i => i.type === "weapon-mod"),
       armorMods:  topItems.filter(i => i.type === "armor-mod")
     };
+
+    const armorEffectiveResistances = {};
+    for (const armorItem of context.inventory.armor) {
+      const effRes = getEffectiveArmorResistances(armorItem);
+      const rows = Object.entries(effRes).map(([category, locs]) => ({
+        category,
+        categoryLabel: game.i18n.localize(NEUROSHIMA.damageCategories[category]?.label ?? category),
+        head:     locs.head     ?? 0,
+        torso:    locs.torso    ?? 0,
+        leftArm:  locs.leftArm  ?? 0,
+        rightArm: locs.rightArm ?? 0,
+        leftLeg:  locs.leftLeg  ?? 0,
+        rightLeg: locs.rightLeg ?? 0
+      }));
+      armorEffectiveResistances[armorItem.id] = rows.length > 0 ? rows : null;
+    }
+    context.armorEffectiveResistances = armorEffectiveResistances;
+
+    const attachedModsByItemId = {};
+    for (const modItem of actor.items) {
+      if (!["weapon-mod", "armor-mod"].includes(modItem.type)) continue;
+      const parentId = modItem.getFlag("neuroshima", "modParentId");
+      if (!parentId) continue;
+      const parentItem = actor.items.get(parentId);
+      if (!parentItem) continue;
+      const modState = parentItem.system?.mods?.[modItem.id];
+      if (!modState?.attached) continue;
+      if (!attachedModsByItemId[parentId]) attachedModsByItemId[parentId] = [];
+      attachedModsByItemId[parentId].push({ name: modItem.name, effectText: modItem.system?.effectText ?? "" });
+    }
+    context.attachedModsByItemId = attachedModsByItemId;
+    context.effectiveRadiationResistance = getEffectiveRadiationResistance(actor);
+    const radSources = getRadiationResistanceSources(actor);
+    context.radResistTooltip = radSources.length
+      ? radSources.map(s => `${foundry.utils.escapeHTML(s.name)}: <strong>${s.value > 0 ? "+" : ""}${s.value}</strong>`).join("<br>")
+      : null;
 
     const totalBaseUnits = moneyItems.reduce((sum, i) => sum + (i.system.quantity * i.system.coinValue), 0);
     const moneyDenominations = [];
@@ -2026,6 +2063,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
   _prepareAnatomicalArmor(equippedArmor, actor = null) {
     const locations = {};
     for (const [key, data] of Object.entries(NEUROSHIMA.bodyLocations)) {
+      if (data.paperDollOnly) continue;
       locations[key] = { label: data.label, items: [], totalAP: 0, bonusAP: 0 };
     }
 
@@ -2052,7 +2090,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             currentDurability: currentDur,
             rating: rating,
             damage: locDamage,
-            currentRating: currentAP
+            currentRating: currentAP,
+            radiationProtection: armor.radiationProtection ?? 0
           });
         }
       }
@@ -2138,6 +2177,15 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     this._saveWoundsScroll();
     // _onUpdate hook will handle selective rendering of combat part only
     return item.update({ "system.isHealing": !item.system.isHealing });
+  }
+
+  async _onToggleActive(event, target) {
+    const li = target.closest(".item");
+    const item = this.document.items.get(li.dataset.itemId);
+    if (!item || item.type !== "wound") return;
+
+    this._saveWoundsScroll();
+    return item.update({ "system.isActive": !(item.system.isActive ?? true) });
   }
 
   /**

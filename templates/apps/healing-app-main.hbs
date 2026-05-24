@@ -20,7 +20,18 @@
             </div>
             
             <div class="paper-doll-container">
-                <svg class="body-diagram" viewBox="0 0 240 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <!-- Boczny przycisk Inne -->
+                <svg class="inne-button-svg" viewBox="0 0 26 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                    <rect x="1" y="1" width="24" height="198" rx="4"
+                        class="body-location-hotspot inne-hotspot {{#if (eq selectedLocation 'inne')}}selected{{/if}}"
+                        data-location="inne"
+                        data-tooltip="{{localize 'NEUROSHIMA.Location.Inne'}}" />
+                    <text x="13" y="100" text-anchor="middle" dominant-baseline="middle"
+                        class="inne-vertical-text"
+                        transform="rotate(-90 13 100)">{{localize "NEUROSHIMA.Location.Inne"}} ({{locationsMap.inne.wounds.length}})</text>
+                </svg>
+                <!-- Sylwetka ciała -->
+                <svg class="body-diagram" viewBox="0 0 240 450" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
                     <!-- Głowa -->
                     <g data-location="head">
                         <circle cx="120" cy="55" r="48" class="body-location-hotspot {{#if (eq selectedLocation 'head')}}selected{{/if}}" data-location="head" data-tooltip="{{localize 'NEUROSHIMA.Location.Head'}}" />

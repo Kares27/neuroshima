@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
 
 /**
  * Derives wound damage type from a numeric radiation level.
@@ -205,6 +206,76 @@ const radiationAPI = {
      */
     getProtection(actor, protectionKeys) {
         return _getActorRadiationProtection(actor, protectionKeys);
+    },
+
+    /**
+     * Returns the effective radiation resistance for an actor.
+     * Equals actor base radiationResistance + sum of effective radiationProtection
+     * from all equipped armor items (including mod deltas).
+     * @param {Actor} actor
+     * @returns {number}
+     */
+    getEffectiveResistance(actor) {
+        return getEffectiveRadiationResistance(actor);
+    },
+
+    /**
+     * Register an actor-level radiation source (e.g. a carried/equipped radioactive item).
+     * The source is stored in actor flags keyed by sourceId (typically the item's id).
+     * The updateWorldTime hook will process these sources identically to token zone sources.
+     *
+     * @param {Actor}  actor
+     * @param {string} sourceId   Unique key — use item.id for item-based sources.
+     * @param {object} [config={}]
+     *   level         {number}   Radiation level (1–20). Default 1.
+     *   intervalHours {number}   Hours between wound ticks. Default 1.
+     *   woundDamageType {string|null}  "D"|"L" override. Default auto from level.
+     *   penaltyOverride {number|null}  % override. Default auto from damage type.
+     *   createDisease {boolean}  Also accumulate radiation sickness. Default false.
+     */
+    async exposeActor(actor, sourceId, config = {}) {
+        if (!actor) return;
+        const sources = foundry.utils.deepClone(actor.flags?.neuroshima?.radiationSources ?? {});
+        sources[sourceId] = {
+            enteredAt:     game.time.worldTime,
+            lastProcessed: game.time.worldTime,
+            config: {
+                level:           config.level           ?? 1,
+                intervalHours:   config.intervalHours   ?? 1,
+                woundDamageType: config.woundDamageType ?? null,
+                penaltyOverride: config.penaltyOverride ?? null,
+                createDisease:   config.createDisease   ?? false
+            }
+        };
+        await actor.setFlag("neuroshima", "radiationSources", sources);
+        game.neuroshima?.log(`Radiation | Actor "${actor.name}" exposed to source "${sourceId}"`, sources[sourceId].config);
+    },
+
+    /**
+     * Remove an actor-level radiation source (e.g. item dropped or unequipped).
+     * @param {Actor}  actor
+     * @param {string} sourceId
+     */
+    async unexposeActor(actor, sourceId) {
+        if (!actor) return;
+        const sources = foundry.utils.deepClone(actor.flags?.neuroshima?.radiationSources ?? {});
+        delete sources[sourceId];
+        if (Object.keys(sources).length > 0) {
+            await actor.setFlag("neuroshima", "radiationSources", sources);
+        } else {
+            await actor.unsetFlag("neuroshima", "radiationSources");
+        }
+        game.neuroshima?.log(`Radiation | Actor "${actor.name}" unexposed from source "${sourceId}"`);
+    },
+
+    /**
+     * Return all active actor-level radiation sources as { [sourceId]: { enteredAt, lastProcessed, config } }.
+     * Returns an empty object when no sources are active.
+     * @param {Actor} actor
+     * @returns {object}
+     */
+    getActorSources(actor) {
+        return foundry.utils.deepClone(actor?.flags?.neuroshima?.radiationSources ?? {});
     }
 };
 
@@ -271,6 +342,15 @@ export function registerRadiationHooks() {
                             changed = true;
                             continue;
                         }
+                    } else {
+                        const resistance = getEffectiveRadiationResistance(actor);
+                        game.neuroshima?.log(`Radiation | Actor "${actor.name}" effective radiation resistance: ${resistance} vs level ${cfg.level ?? 1}`);
+                        if (resistance >= (cfg.level ?? 1)) {
+                            game.neuroshima?.log(`Radiation | Actor "${actor.name}" is fully protected — no wound applied`);
+                            updatedZones[regionId].lastProcessed = lastProcessed + ticks * intervalSeconds;
+                            changed = true;
+                            continue;
+                        }
                     }
 
                     game.neuroshima?.log(`Radiation | Applying ${ticks} wound(s) [level ${cfg.level ?? 1}] to "${actor.name}"`);
@@ -293,6 +373,61 @@ export function registerRadiationHooks() {
                     await token.unsetFlag("neuroshima", "dangerZones");
                     game.neuroshima?.log(`Radiation | All zones cleared for token "${token.name}"`);
                 }
+            }
+        }
+
+        for (const actor of game.actors) {
+            const sources = actor.flags?.neuroshima?.radiationSources;
+            if (!sources || typeof sources !== "object" || foundry.utils.isEmpty(sources)) continue;
+
+            game.neuroshima?.log(`Radiation | Checking actor "${actor.name}" — ${Object.keys(sources).length} item source(s)`);
+
+            const updatedSources = foundry.utils.deepClone(sources);
+            let changed = false;
+
+            for (const [sourceId, sourceData] of Object.entries(updatedSources)) {
+                const cfg = sourceData.config ?? {};
+                const intervalSeconds = (cfg.intervalHours ?? 1) * 3600;
+                const lastProcessed   = sourceData.lastProcessed ?? sourceData.enteredAt ?? worldTime;
+                const elapsed         = worldTime - lastProcessed;
+                const ticks           = Math.floor(elapsed / intervalSeconds);
+
+                game.neuroshima?.log(
+                    `Radiation | Source "${sourceId}" | actor "${actor.name}" | ` +
+                    `level: ${cfg.level ?? "?"} | interval: ${intervalSeconds}s | ` +
+                    `elapsed: ${elapsed}s | ticks due: ${ticks}`
+                );
+
+                if (ticks <= 0) continue;
+
+                const resistance = getEffectiveRadiationResistance(actor);
+                game.neuroshima?.log(`Radiation | Actor "${actor.name}" effective radiation resistance: ${resistance} vs level ${cfg.level ?? 1}`);
+                if (resistance >= (cfg.level ?? 1)) {
+                    game.neuroshima?.log(`Radiation | Actor "${actor.name}" is fully protected — no wound applied`);
+                    updatedSources[sourceId].lastProcessed = lastProcessed + ticks * intervalSeconds;
+                    changed = true;
+                    continue;
+                }
+
+                game.neuroshima?.log(`Radiation | Applying ${ticks} wound(s) [level ${cfg.level ?? 1}] to "${actor.name}" from source "${sourceId}"`);
+
+                for (let t = 0; t < ticks; t++) {
+                    await _applyRadiationWound(actor, cfg);
+                    if (cfg.createDisease) await _applyRadiationDisease(actor);
+                }
+
+                updatedSources[sourceId].lastProcessed = lastProcessed + ticks * intervalSeconds;
+                game.neuroshima?.log(`Radiation | Updated lastProcessed for source "${sourceId}" → ${updatedSources[sourceId].lastProcessed}s`);
+                changed = true;
+            }
+
+            if (!changed) continue;
+
+            if (Object.keys(updatedSources).length > 0) {
+                await actor.setFlag("neuroshima", "radiationSources", updatedSources);
+            } else {
+                await actor.unsetFlag("neuroshima", "radiationSources");
+                game.neuroshima?.log(`Radiation | All sources cleared for actor "${actor.name}"`);
             }
         }
     });

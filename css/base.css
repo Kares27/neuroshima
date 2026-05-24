@@ -4328,43 +4328,129 @@ body.theme-dark {
 }
 
 /* Damage Category Config */
-.neuroshima.damage-category-config .config-section {
-    margin-bottom: 16px;
+.neuroshima.damage-category-config .damage-category-config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 8px;
 }
 
-.neuroshima.damage-category-config .dcc-section-header {
+.neuroshima.damage-category-config .dcc-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.neuroshima.damage-category-config .dcc-section-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 6px;
+    gap: 8px;
 }
 
-.neuroshima.damage-category-config .dcc-section-header h3 {
+.neuroshima.damage-category-config .dcc-section-head h3 {
+    margin: 0;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+.neuroshima.damage-category-config .dcc-hint {
+    font-size: 0.82em;
+    color: var(--ns-text-muted, #888);
     margin: 0;
 }
 
-.neuroshima.damage-category-config .dcc-header {
-    font-size: 0.8em;
+.neuroshima.damage-category-config .dcc-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    background: var(--ns-accent, #8b0000);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.82em;
+    flex-shrink: 0;
+}
+
+.neuroshima.damage-category-config .dcc-add-btn:hover {
+    background: var(--ns-accent-hover, #a00000);
+}
+
+.neuroshima.damage-category-config .dcc-list {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.neuroshima.damage-category-config .dcc-list-custom {
+    overflow-y: auto;
+    max-height: 220px;
+}
+
+.neuroshima.damage-category-config .dcc-list-header,
+.neuroshima.damage-category-config .dcc-list-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr 90px 28px;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+}
+
+.neuroshima.damage-category-config .dcc-list-builtin .dcc-list-header,
+.neuroshima.damage-category-config .dcc-list-builtin .dcc-list-row {
+    grid-template-columns: 1fr 2fr 90px;
+}
+
+.neuroshima.damage-category-config .dcc-list-header {
+    background: var(--ns-bg-header, rgba(0,0,0,0.15));
+    font-size: 0.76em;
     font-weight: bold;
     text-transform: uppercase;
-    border-bottom: 1px solid var(--ns-border-main);
-    padding-bottom: 3px;
-    margin-bottom: 4px;
-    gap: 6px;
+    letter-spacing: 0.04em;
+    color: var(--ns-text-muted, #888);
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-.neuroshima.damage-category-config .dcc-row {
-    gap: 6px;
+.neuroshima.damage-category-config .dcc-list-row {
+    border-top: 1px solid var(--ns-border-main);
+    min-height: 30px;
+}
+
+.neuroshima.damage-category-config .dcc-list-row:hover {
+    background: var(--ns-bg-hover, rgba(255,255,255,0.03));
+}
+
+.neuroshima.damage-category-config .dcc-row-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 0.85em;
+    font-style: italic;
+    color: var(--ns-text-muted, #888);
+    padding: 10px;
+}
+
+.neuroshima.damage-category-config .dcc-col-key   { min-width: 0; }
+.neuroshima.damage-category-config .dcc-col-label { min-width: 0; }
+.neuroshima.damage-category-config .dcc-col-color {
+    display: flex;
     align-items: center;
-    margin-bottom: 4px;
+    gap: 5px;
+    min-width: 0;
+}
+.neuroshima.damage-category-config .dcc-col-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.neuroshima.damage-category-config .dcc-col-key   { flex: 1; min-width: 0; }
-.neuroshima.damage-category-config .dcc-col-label { flex: 2; min-width: 0; }
-.neuroshima.damage-category-config .dcc-col-color { flex: 0 0 60px; display: flex; align-items: center; gap: 4px; }
-.neuroshima.damage-category-config .dcc-col-action { flex: 0 0 22px; text-align: center; }
-
-.neuroshima.damage-category-config .dcc-muted { opacity: 0.6; font-size: 0.9em; }
+.neuroshima.damage-category-config .dcc-muted {
+    opacity: 0.6;
+    font-size: 0.9em;
+}
 
 .neuroshima.damage-category-config .dcc-color-swatch {
     display: inline-block;
@@ -4375,16 +4461,30 @@ body.theme-dark {
     flex: 0 0 14px;
 }
 
-.neuroshima.damage-category-config .cgc-hint {
-    font-size: 0.8em;
-    opacity: 0.7;
-    margin: 0 0 8px 0;
+.neuroshima.damage-category-config .dcc-color-input {
+    width: 36px;
+    height: 22px;
+    padding: 1px 2px;
+    border-radius: 3px;
+    cursor: pointer;
 }
 
-.neuroshima.damage-category-config .cgc-empty {
-    font-size: 0.85em;
-    opacity: 0.6;
-    font-style: italic;
+.neuroshima.damage-category-config .dcc-delete-btn {
+    color: var(--ns-text-muted, #888);
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: color 0.15s;
+}
+
+.neuroshima.damage-category-config .dcc-delete-btn:hover {
+    color: #e05050;
+}
+
+.neuroshima.damage-category-config .dcc-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 4px;
+    border-top: 1px solid var(--ns-border-main);
 }
 
 /* Roll Tags */

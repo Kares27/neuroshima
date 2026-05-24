@@ -6178,7 +6178,27 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
       <tr>
         <td>radiation.getProtection(actor, protectionKeys)</td>
         <td>Actor, string[]</td>
-        <td>Zwraca maksymalną wartość ochrony znalezioną w wyposażonych przedmiotach aktora dla podanych kluczy.</td>
+        <td>Zwraca maksymalną wartość ochrony znalezioną w wyposażonych przedmiotach aktora dla podanych kluczy. (Mechanizm legacy — <code>protectionKeys</code>).</td>
+      </tr>
+      <tr>
+        <td>radiation.getEffectiveResistance(actor)</td>
+        <td>Actor</td>
+        <td>Zwraca efektywną odporność na promieniowanie aktora: bazowe <code>system.radiationResistance</code> + suma <code>radiationProtection</code> ze wszystkich założonych pancerzy (z uwzględnieniem modów <code>deltaRadiationProtection</code>). Odpowiednik <code>getEffectiveRadiationResistance()</code> z <code>mod-helpers.js</code>. Preferowany mechanizm w nowych strefach (bez <code>protectionKeys</code>).</td>
+      </tr>
+      <tr>
+        <td>radiation.exposeActor(actor, sourceId, config)</td>
+        <td>Actor, string, object</td>
+        <td>Rejestruje aktora jako wystawionego na promieniowanie z danego źródła (np. trzymany radioaktywny przedmiot). Przechowuje dane w flagach aktora (<code>neuroshima.radiationSources[sourceId]</code>). Hook <code>updateWorldTime</code> przetwarza te źródła identycznie jak strefy tokenów. Użyj <code>item.id</code> jako <code>sourceId</code>.</td>
+      </tr>
+      <tr>
+        <td>radiation.unexposeActor(actor, sourceId)</td>
+        <td>Actor, string</td>
+        <td>Usuwa źródło promieniowania z aktora (np. przedmiot upuszczony lub zdjęty). Gdy to ostatnie źródło — usuwa całą flagę.</td>
+      </tr>
+      <tr>
+        <td>radiation.getActorSources(actor)</td>
+        <td>Actor</td>
+        <td>Zwraca kopię wszystkich aktywnych źródeł promieniowania aktora jako <code>{ [sourceId]: { enteredAt, lastProcessed, config } }</code>. Zwraca pusty obiekt gdy brak aktywnych źródeł.</td>
       </tr>
     </tbody>
   </table>
@@ -6448,6 +6468,98 @@ args.sp += <span class="num">2</span>; <span class="cmt">// Dodaj 2 SP do tułow
     <p class="example-desc">
       Przed zarejestrowaniem tokenu sprawdza ochronę i wysyła informację do chatu. Śledzenie zostaje
       uruchomione niezależnie od wyniku — system sam pilnuje ochrony przy każdym ticku.
+    </p>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">Execute Script</span>
+      Przykład 8 — nowy mechanizm: <code>getEffectiveResistance</code> (bez <code>protectionKeys</code>)
+    </div>
+    <p class="example-desc">
+      Gdy strefa <strong>nie</strong> definiuje <code>protectionKeys</code>, system sprawdza
+      <code>actor.system.radiationResistance</code> (pole bazowe na karcie postaci) + sumę
+      <code>radiationProtection</code> ze wszystkich założonych pancerzy (z modami <code>deltaRadiationProtection</code>).
+      Odporność ≥ level strefy → rana nie jest nakładana.
+    </p>
+    <h4 class="script-label">Behavior: Execute Script · Event: TOKEN_ENTER</h4>
+    <pre><code><span class="cmt">// Strefa bez protectionKeys → system używa radiationResistance aktora</span>
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">enter</span>(token, region.id, {
+  level: <span class="num">12</span>,
+  intervalHours: <span class="num">2</span>
+});</code></pre>
+    <h4 class="script-label">Sprawdzenie ręczne (konsola / inny skrypt)</h4>
+    <pre><code><span class="kw">const</span> <span class="var">actor</span> = game.actors.getName(<span class="str">"Jan Kowalski"</span>);
+<span class="kw">const</span> <span class="var">res</span>   = game.neuroshima.radiation.<span class="fn">getEffectiveResistance</span>(actor);
+<span class="cmt">// res = radiationResistance + suma radiationProtection założonych pancerzy (+ delty z modów)</span>
+console.<span class="fn">log</span>(<span class="str">`Efektywna odporność: ${res}`</span>);</code></pre>
+    <p class="example-desc">
+      Odporność bazową ustawia się na karcie postaci (zakładka Walka → pole Odp. Rad.).
+      Wartości ze standardowych pancerzy oraz modów pancerza (<code>deltaRadiationProtection</code>)
+      sumowane są automatycznie.
+    </p>
+    <h4 class="script-label">Poziomy dostępu do wartości</h4>
+    <table>
+      <thead><tr><th>Ścieżka / API</th><th>Co zwraca</th><th>Dostępne w</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>actor.system.radiationResistance</code></td>
+          <td>Bazowa odporność ustawiona ręcznie na karcie postaci (bez pancerzy i modów).</td>
+          <td>Skrypty efektów, konsola, Active Effect → Change: <code>system.radiationResistance</code></td>
+        </tr>
+        <tr>
+          <td><code>game.neuroshima.radiation.getEffectiveResistance(actor)</code></td>
+          <td>Efektywna odporność = baza + pancerze + mody pancerzy.</td>
+          <td>Skrypty efektów, skrypty stref, konsola</td>
+        </tr>
+        <tr>
+          <td><code>context.effectiveRadiationResistance</code></td>
+          <td>Ta sama wartość, gotowa do wyświetlenia w szablonach HBS.</td>
+          <td>Szablony Handlebars kart aktora / stworzenia</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="example-desc" style="margin-top:0.5rem">
+      Aby przyznać postaci dodatkową odporność przez Active Effect, użyj w zakładce <strong>Change</strong>:<br>
+      Attribute Key: <code>system.radiationResistance</code> · Mode: <strong>Add</strong> · Value: <em>liczba</em>
+    </p>
+  </div>
+
+  <!-- PRZYKŁAD 9 -->
+  <div class="example-block">
+    <div class="example-header">
+      Przykład 9 — przedmiot jako źródło radiacji: <code>exposeActor</code> / <code>unexposeActor</code>
+    </div>
+    <p class="example-desc">
+      Radioaktywny przedmiot (np. puszka z izotopem) trzymany przez postać może być zarejestrowany
+      jako źródło promieniowania bezpośrednio na aktorze — niezależnie od stref na mapie.
+      Hook <code>updateWorldTime</code> przetwarza te źródła identycznie jak strefy tokenów,
+      korzystając z efektywnej odporności aktora (<code>getEffectiveResistance</code>).
+    </p>
+    <h4 class="script-label">Skrypt przedmiotu — OnEquip / OnPickup</h4>
+    <pre><code><span class="cmt">// Wywołaj gdy postać podniesie/założy radioaktywny przedmiot</span>
+<span class="kw">const</span> <span class="var">actor</span> = item.parent;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">exposeActor</span>(actor, item.id, {
+  level: <span class="num">8</span>,           <span class="cmt">// poziom radiacji izotopu</span>
+  intervalHours: <span class="num">4</span>,  <span class="cmt">// rana co 4 godziny</span>
+  createDisease: <span class="kw">true</span>
+});</code></pre>
+    <h4 class="script-label">Skrypt przedmiotu — OnUnequip / OnDrop</h4>
+    <pre><code><span class="cmt">// Wywołaj gdy postać upuści/zdejmie przedmiot</span>
+<span class="kw">const</span> <span class="var">actor</span> = item.parent;
+<span class="kw">if</span> (!actor) <span class="kw">return</span>;
+<span class="kw">await</span> game.neuroshima.radiation.<span class="fn">unexposeActor</span>(actor, item.id);</code></pre>
+    <h4 class="script-label">Sprawdzenie aktywnych źródeł (konsola)</h4>
+    <pre><code><span class="kw">const</span> <span class="var">actor</span> = game.actors.getName(<span class="str">"Jan Kowalski"</span>);
+<span class="kw">const</span> <span class="var">sources</span> = game.neuroshima.radiation.<span class="fn">getActorSources</span>(actor);
+<span class="cmt">// { "itemId123": { enteredAt: 3600, lastProcessed: 3600, config: { level: 8, ... } } }</span>
+console.<span class="fn">log</span>(sources);</code></pre>
+    <p class="example-desc">
+      Źródła przechowywane są w <code>actor.flags.neuroshima.radiationSources</code>.
+      Klucz <code>sourceId</code> to zwykle <code>item.id</code>, co gwarantuje unikalność
+      i pozwala łatwo usunąć konkretne źródło. Odporność sprawdzana jest identycznie jak
+      w strefach — przez <code>getEffectiveResistance(actor)</code>.
     </p>
   </div>
 

@@ -295,7 +295,9 @@
             "Ignore": "Ignore",
             "ReverseDamage": "Reverse Damage",
             "Rest": "Rest",
-            "Refresh": "Refresh"
+            "Refresh": "Refresh",
+            "Healing": "Healing",
+            "ToggleActive": "Toggle Active"
         },
         "Rest": {
             "Title": "Rest",
@@ -1129,6 +1131,8 @@
                 "DurabilityAbbr": "Dur.",
                 "ArmorDamage": "Armor Damage",
                 "ArmorPenalty": "Penalty",
+                "RadiationProtection": "Radiation Protection",
+                "RadiationProtectionAbbr": "Rad.",
                 "RequiredBuild": "Required Build",
                 "IsPellet": "Pellet Ammunition",
                 "PelletCount": "Pellet Count",
@@ -1892,20 +1896,134 @@
             "services":      "Services",
             "luxury":        "Luxury Goods",
             "misc":          "Miscellaneous"
-        }
-    },
-    "RadiationWound": {
-        "Light": "Radiation Graze",
-        "Heavy": "Radiation Wound"
-    },
-    "RadiationSickness": {
-        "Name": "Radiation Sickness"
-    },
-    "DangerZone": {
-        "WoundApplied": "{actor} receives a {type} ({penalty}%) radiation wound.",
-        "RadiationLevel": {
-            "light": "Lightly Irradiated",
-            "heavy": "Heavily Irradiated"
+        },
+        "RadiationResistance": "Radiation Resistance",
+        "RadiationResistanceBase": "Base radiation resistance (without armor)",
+        "RadiationWound": {
+            "Light": "Radiation Graze",
+            "Heavy": "Radiation Wound"
+        },
+        "RadiationSickness": {
+            "Name": "Radiation Sickness"
+        },
+        "RegionBehavior": {
+            "RadiationZone": {
+                "label": "Radiation Zone",
+                "hint": "Automatically tracks token entry/exit and applies radiation wounds via the updateWorldTime hook.",
+                "FIELDS": {
+                    "level": {
+                        "label": "Radiation Level",
+                        "hint": "Radiation level (0–1000). Used for comparison against the token's radiation resistance."
+                    },
+                    "intervalHours": {
+                        "label": "Hours",
+                        "hint": "Number of in-game hours between wound ticks."
+                    },
+                    "intervalMinutes": {
+                        "label": "Minutes",
+                        "hint": "Additional minutes on top of hours (0–59)."
+                    },
+                    "intervalSeconds": {
+                        "label": "Seconds",
+                        "hint": "Additional seconds on top of hours and minutes (0–59)."
+                    },
+                    "woundDamageType": {
+                        "label": "Wound Type",
+                        "hint": "Type of wound applied each tick."
+                    },
+                    "woundCount": {
+                        "label": "Wound Count",
+                        "hint": "Number of wounds applied per tick."
+                    },
+                    "penaltyOverrideEnabled": {
+                        "label": "Penalty (%)",
+                        "hint": "Enable to manually set the wound penalty percentage instead of using the system default for the wound type."
+                    },
+                    "penaltyOverride": {
+                        "label": "Penalty (%)",
+                        "hint": "Manual override for the wound penalty percentage. Active only when the checkbox above is enabled."
+                    },
+                    "createDisease": {
+                        "label": "Create Disease",
+                        "hint": "Each radiation tick also accumulates radiation sickness, increasing the token's transient penalty by the amount below."
+                    },
+                    "diseaseIncrement": {
+                        "label": "Disease Increment (%)",
+                        "hint": "How much the radiation sickness transient penalty grows per tick (in %). Active only when Create Disease is enabled."
+                    }
+                }
+            }
+        },
+        "DangerZone": {
+            "WoundApplied": "{actor} receives a {type} ({penalty}%) radiation wound.",
+            "RadiationLevel": {
+                "light": "Lightly Irradiated",
+                "heavy": "Heavily Irradiated"
+            }
+        },
+        "GMToolkit": {
+            "Title": "GM Toolkit",
+            "GMOnly": "Only the Game Master can use the GM Toolkit.",
+            "OpenXP": "Award Experience",
+            "OpenDamage": "Apply Damage",
+            "OpenGroupCheck": "Group Check",
+            "Session": {
+                "Label": "Session",
+                "SettingName": "Session ID",
+                "SettingHint": "Current session number used in XP log entries.",
+                "Increment": "Next session",
+                "Reset": "Reset session (to 1)"
+            },
+            "AddXP": {
+                "Title": "Award XP",
+                "NoActors": "Select at least one actor.",
+                "InvalidAmount": "Enter a valid XP amount.",
+                "DefaultReason": "GM Award",
+                "AmountLabel": "XP Amount (default)",
+                "DefaultHint": "default amount for newly selected actors",
+                "ReasonLabel": "Reason",
+                "ReasonPlaceholder": "e.g. Completed mission...",
+                "SelectAll": "Select All",
+                "DeselectAll": "Deselect All",
+                "Apply": "Award XP",
+                "Success": "Awarded XP to {count} actors.",
+                "CurrentXP": "Current XP",
+                "Actors": "Actors",
+                "ModeLabel": "Mode",
+                "ModeGlobal": "Equal amounts",
+                "ModeIndividual": "Individual amounts",
+                "SessionPrefix": "Session {session}"
+            },
+            "ApplyDamage": {
+                "Title": "Apply Damage",
+                "NoActor": "Select a target actor.",
+                "ActorNotFound": "Actor not found.",
+                "TargetActor": "Actor",
+                "SelectActor": "-- Select Actor --",
+                "WoundName": "Wound Name (optional)",
+                "WoundNamePlaceholder": "e.g. Gunshot wound, Slash...",
+                "DamageType": "Damage Type",
+                "Location": "Location",
+                "Penalty": "Penalty (%)",
+                "Quantity": "Quantity",
+                "Apply": "Apply Wound",
+                "Success": "Applied {count}× \"{name}\" to {actor} actor(s)."
+            },
+            "GroupCheck": {
+                "Title": "Group Check",
+                "SkillLabel": "Skill",
+                "DifficultyLabel": "Difficulty",
+                "NoteLabel": "Note (optional)",
+                "NotePlaceholder": "e.g. Alertness check...",
+                "SelectSkill": "Select a skill",
+                "Actors": "Actors",
+                "Post": "Post to Chat",
+                "Posted": "Group check posted to chat.",
+                "NoSelection": "Select a skill and at least one actor.",
+                "NotOwner": "You do not own this character.",
+                "CardTitle": "Group Check",
+                "Roll": "Roll"
+            }
         }
     },
     "REGION": {

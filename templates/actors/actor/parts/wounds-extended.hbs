@@ -7,11 +7,12 @@
         </div>
         
         <div class="wound-stats-total">
+            <span class="rad-resist-sum" title="{{localize 'NEUROSHIMA.RadiationResistance'}}"{{#if radResistTooltip}} data-tooltip="{{radResistTooltip}}" data-tooltip-direction="UP"{{/if}}><i class="fas fa-radiation-alt"></i><span>{{effectiveRadiationResistance}}</span></span>
             <span class="hp-sum" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
-                <i class="fas fa-heart"></i> {{combat.totalDamagePoints}} / {{combat.maxHP}}
+                <i class="fas fa-heart"></i><span>{{combat.totalDamagePoints}} / {{combat.maxHP}}</span>
             </span>
             <span class="penalty-sum" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}">
-                <i class="fas fa-exclamation-triangle"></i> {{combat.totalWoundPenalty}}%
+                <i class="fas fa-exclamation-triangle"></i><span>{{combat.totalWoundPenalty}}%</span>
             </span>
         </div>
 
@@ -39,7 +40,18 @@
             </div>
             
             <div class="paper-doll-container">
-                <svg class="body-diagram" viewBox="0 0 240 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                {{!-- Boczny przycisk Inne --}}
+                <svg class="inne-button-svg" viewBox="0 0 26 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                    <rect x="1" y="1" width="24" height="198" rx="4"
+                        class="body-location-hotspot inne-hotspot {{#if (eq combat.selectedWoundLocation 'inne')}}selected{{/if}}"
+                        data-location="inne"
+                        data-tooltip="{{localize 'NEUROSHIMA.Location.Inne'}}" />
+                    <text x="13" y="100" text-anchor="middle" dominant-baseline="middle"
+                        class="inne-vertical-text"
+                        transform="rotate(-90 13 100)">{{localize "NEUROSHIMA.Location.Inne"}} ({{combat.locationsMap.inne.wounds.length}})</text>
+                </svg>
+                {{!-- Sylwetka ciała --}}
+                <svg class="body-diagram" viewBox="0 0 240 445" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
                     {{!-- Głowa --}}
                     <g data-location="head">
                         <circle cx="120" cy="55" r="42" class="body-location-hotspot" data-location="head" data-tooltip="{{localize 'NEUROSHIMA.Location.Head'}}" />
@@ -101,9 +113,10 @@
                     <div class="location-wounds-group {{#if (eq location.key @root.combat.selectedWoundLocation)}}active{{/if}}" data-location="{{location.key}}">
                         {{#if (gt locationWounds.length 0)}}
                             {{#each locationWounds as |wound|}}
-                            <div class="wound-item wound-item-inline item" data-item-id="{{wound.id}}" data-uuid="{{wound.uuid}}" draggable="true">
-                                {{!-- Type, Name, and Inline Editing --}}
+                            <div class="wound-item wound-item-inline item {{#if wound.isHealing}}is-healing{{/if}} {{#unless wound.isActive}}is-inactive{{/unless}}" data-item-id="{{wound.id}}" data-uuid="{{wound.uuid}}" draggable="true">
                                 <div class="wound-item-content">
+                                    <span class="wound-item-name">{{wound.name}}</span>
+                                    
                                     {{#if ../../owner}}
                                     <select name="items.{{wound.id}}.system.damageType" class="wound-type-select" title="{{localize 'NEUROSHIMA.Items.Fields.DamageType'}}">
                                         {{selectOptions @root.config.damageTypes selected=wound.damageType localize=true}}
@@ -111,28 +124,23 @@
                                     {{else}}
                                     <span class="wound-type">{{wound.damageType}}</span>
                                     {{/if}}
-                                    <span class="wound-item-name">{{wound.name}}</span>
                                     
-                                    {{!-- Penalty (inline, editable) --}}
                                     {{#if ../../owner}}
                                     <input type="number" name="items.{{wound.id}}.system.penalty" value="{{wound.penalty}}" class="wound-penalty-input" data-dtype="Number" min="0" max="100" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}" />
                                     {{else}}
                                     <span class="wound-penalty" title="{{localize 'NEUROSHIMA.Wound.TotalPenalty'}}">{{wound.penalty}}%</span>
                                     {{/if}}
                                     
-                                    {{!-- Healing Days --}}
-                                    <span class="wound-days" title="{{localize 'NEUROSHIMA.Wound.Days'}}">{{#if wound.estimatedHealingDays}}{{wound.estimatedHealingDays}}d{{else}}-{{/if}}</span>
-                                    
-                                    {{!-- Status Icons --}}
                                     <div class="wound-status-icons">
                                         {{#if wound.hadFirstAid}}<i class="fas fa-syringe" title="{{localize 'NEUROSHIMA.Skills.firstAid'}}"></i>{{/if}}
-                                        {{#if wound.isHealing}}<i class="fas fa-medkit active" title="{{localize 'NEUROSHIMA.Actions.Healing'}}"></i>{{/if}}
                                         {{#if (gt wound.healingAttempts 0)}}<span class="attempts-badge" title="{{localize 'NEUROSHIMA.Wound.AttemptCount'}}">{{wound.healingAttempts}}×</span>{{/if}}
                                     </div>
                                     
-                                    {{!-- Controls --}}
                                     {{#if ../../owner}}
                                     <div class="wound-inline-controls">
+                                        <a class="item-control {{#unless wound.isActive}}active{{/unless}}" data-action="toggleActive" title="{{localize 'NEUROSHIMA.Actions.ToggleActive'}}">
+                                            <i class="fas {{#if wound.isActive}}fa-eye{{else}}fa-eye-slash{{/if}}"></i>
+                                        </a>
                                         <a class="item-control {{#if wound.isHealing}}active{{/if}}" data-action="toggleHealing" title="{{localize 'NEUROSHIMA.Actions.Healing'}}">
                                             <i class="fas fa-medkit"></i>
                                         </a>

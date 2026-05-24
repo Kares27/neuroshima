@@ -35,8 +35,18 @@
             "PLAYER": "OBSERVER",
             "ASSISTANT": "OWNER"
       }
+    },
+    {
+        "name": "Neuroshima 1.5 Makra",
+        "label": "Przydatne Makra",
+        "system": "neuroshima",
+        "path": "packs/macros",
+        "type": "Macro",
+        "flags": {},
+        "ownership": {
+            "ASSISTANT": "OWNER"
+      }
     }
-
     ],
     "languages": [
         {
@@ -50,35 +60,11 @@
             "path": "lang/pl.json"
         }
     ],
-    "actorTypes": [
-        "character",
-        "npc",
-        "creature",
-        "vehicle"
-    ],
-    "itemTypes": [
-        "weapon",
-        "armor",
-        "gear",
-        "trick",
-        "trait",
-        "ammo",
-        "magazine",
-        "wound",
-        "beast-action",
-        "specialization",
-        "origin",
-        "profession",
-        "vehicle-damage",
-        "vehicle-mod",
-        "reputation",
-        "money",
-        "reputation",
-        "disease",
-        "weapon-mod",
-        "armor-mod"
-    ],
-    "documentTypes": {},
+    "documentTypes": {
+        "RegionBehavior": {
+            "radiationZone": {}
+        }
+    },
     "flags": {
         "hotReload": {
         "paths": ["templates", "styles", "lang", "scripts"]

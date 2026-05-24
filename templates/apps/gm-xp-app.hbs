@@ -1,0 +1,56 @@
+<section class="standard-form">
+    <div class="xp-config">
+        <div class="xp-session-bar">
+            <span class="xp-session-label">{{localize "NEUROSHIMA.GMToolkit.Session.Label"}}: <strong>{{sessionID}}</strong></span>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.GMToolkit.AddXP.ReasonLabel"}}</label>
+            <div class="form-fields">
+                <input type="text" class="xp-reason-input" value="{{reason}}" placeholder="{{localize 'NEUROSHIMA.GMToolkit.AddXP.ReasonPlaceholder'}}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>{{localize "NEUROSHIMA.GMToolkit.AddXP.AmountLabel"}}</label>
+            <div class="form-fields">
+                <input type="number" class="xp-amount-input" value="{{defaultAmount}}" min="0" step="10" style="width:80px;">
+                <span class="xp-amount-hint">{{localize "NEUROSHIMA.GMToolkit.AddXP.DefaultHint"}}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="actor-list-header">
+        <span class="actor-list-title">{{localize "NEUROSHIMA.GMToolkit.AddXP.Actors"}} ({{selectedCount}})</span>
+        <div class="actor-list-controls">
+            <button type="button" data-action="selectAll" class="xp-ctrl-btn">
+                <i class="fas fa-check-double"></i> {{localize "NEUROSHIMA.GMToolkit.AddXP.SelectAll"}}
+            </button>
+            <button type="button" data-action="deselectAll" class="xp-ctrl-btn">
+                <i class="fas fa-times"></i> {{localize "NEUROSHIMA.GMToolkit.AddXP.DeselectAll"}}
+            </button>
+        </div>
+    </div>
+
+    <div class="actor-list">
+        {{#each actors}}
+        <div class="actor-row {{#if selected}}selected{{/if}}" data-actor-id="{{id}}" data-action="toggleActor">
+            <img class="actor-portrait" src="{{img}}" alt="{{name}}">
+            <span class="actor-name">{{name}}</span>
+            <input type="number" class="xp-individual-input" data-actor-id="{{id}}"
+                value="{{#if selected}}{{individualAmount}}{{else}}0{{/if}}"
+                min="0" step="10"
+                {{#unless selected}}disabled{{/unless}}>
+            <i class="fas {{#if selected}}fa-check-square{{else}}fa-square{{/if}} actor-checkbox"></i>
+        </div>
+        {{else}}
+        <p class="no-actors">—</p>
+        {{/each}}
+    </div>
+
+    <footer class="gm-toolkit-footer">
+        <button type="button" data-action="applyXP" class="gm-apply-btn" {{#unless hasSelection}}disabled{{/unless}}>
+            <i class="fas fa-star"></i> {{localize "NEUROSHIMA.GMToolkit.AddXP.Apply"}}
+        </button>
+    </footer>
+</section>

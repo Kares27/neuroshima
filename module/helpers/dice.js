@@ -258,6 +258,7 @@ export class NeuroshimaDice {
         locationRoll = await new Roll("1d20").evaluate();
         const rollVal = locationRoll.total;
         const entry = Object.entries(NEUROSHIMA.bodyLocations).find(([key, data]) => {
+            if (!data.roll) return false;
             return rollVal >= data.roll[0] && rollVal <= data.roll[1];
         });
         finalLocation = entry ? entry[0] : "torso";

@@ -24,7 +24,10 @@ export class DamageCategoryConfig extends HandlebarsApplicationMixin(Application
     };
 
     static PARTS = {
-        form: { template: "systems/neuroshima/templates/apps/damage-category-config.hbs" }
+        form: {
+            template: "systems/neuroshima/templates/apps/damage-category-config.hbs",
+            scrollable: [".dcc-list-custom"]
+        }
     };
 
     _loadCustomCategories() {
@@ -74,6 +77,7 @@ export class DamageCategoryConfig extends HandlebarsApplicationMixin(Application
         await game.settings.set("neuroshima", "customDamageCategories", JSON.stringify(custom));
         _applyCustomDamageCategories(custom);
         ui.notifications.info(game.i18n.localize("NEUROSHIMA.Settings.DamageCategoryConfig.Saved"));
+        SettingsConfig.reloadConfirm({ world: true });
     }
 
     async _onAddRow(event, target) {

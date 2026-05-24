@@ -3,7 +3,7 @@ import { NeuroshimaDice } from "../helpers/dice.js";
 import { RestDialog } from "../apps/rest-dialog.js";
 import { getConditions } from "../apps/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
-import { getEffectiveArmorRatings } from "../helpers/mod-helpers.js";
+import { getEffectiveArmorRatings, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
 
 function _collectCreatureArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -730,7 +730,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
     const bonusAll      = Number(system.armorBonus?.all) || 0;
     const natArmorLabel = game.i18n.localize("NEUROSHIMA.Creature.NaturalArmor");
     const effectBonus   = _collectCreatureArmorBonusByEffect(actor);
-    context.armorLocations = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => {
+    context.armorLocations = Object.entries(NEUROSHIMA.bodyLocations).filter(([key, data]) => !data.paperDollOnly).map(([key, data]) => {
       const reduction  = system.naturalArmor?.[key]?.reduction ?? 0;
       const locItems   = anatomicalArmor[key]?.items ?? [];
       const itemsAP    = anatomicalArmor[key]?.totalAP ?? 0;
@@ -814,6 +814,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       wounds:             items.filter(i => i.type === "wound"),
       meleePendings:      meleePendingsFromCombat
     };
+    context.effectiveRadiationResistance = getEffectiveRadiationResistance(actor);
 
     context.beastActionTypes = {
       attack:   game.i18n.localize("NEUROSHIMA.BeastAction.Type.Attack"),
@@ -1023,6 +1024,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   _prepareAnatomicalArmor(equippedArmor) {
     const locations = {};
     for (const [key, data] of Object.entries(NEUROSHIMA.bodyLocations)) {
+      if (data.paperDollOnly) continue;
       locations[key] = { label: data.label, items: [], totalAP: 0 };
     }
     for (const item of equippedArmor) {

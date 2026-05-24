@@ -16,6 +16,11 @@ const bodyLocations = {
         roll: [1, 2], 
         modifiers: { ranged: 80, melee: 80 } 
     },
+    torso: { 
+        label: "NEUROSHIMA.Location.Torso", 
+        roll: [7, 16], 
+        modifiers: { ranged: 20, melee: 60 } 
+    },
     rightArm: { 
         label: "NEUROSHIMA.Location.RightArm", 
         roll: [3, 4], 
@@ -26,11 +31,6 @@ const bodyLocations = {
         roll: [5, 6], 
         modifiers: { ranged: 60, melee: 40 } 
     },
-    torso: { 
-        label: "NEUROSHIMA.Location.Torso", 
-        roll: [7, 16], 
-        modifiers: { ranged: 20, melee: 60 } 
-    },
     rightLeg: { 
         label: "NEUROSHIMA.Location.RightLeg", 
         roll: [17, 18], 
@@ -40,6 +40,12 @@ const bodyLocations = {
         label: "NEUROSHIMA.Location.LeftLeg", 
         roll: [19, 20], 
         modifiers: { ranged: 40, melee: 40 } 
+    },
+    inne: {
+        label: "NEUROSHIMA.Location.Inne",
+        roll: null,
+        paperDollOnly: true,
+        modifiers: { ranged: 0, melee: 0 }
     }
 };
 

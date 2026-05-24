@@ -68,6 +68,7 @@ export class WeaponData extends foundry.abstract.TypeDataModel {
       jamming: new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
       jammed: new fields.BooleanField({ initial: false }),
       weaponModifier: new fields.NumberField({ integer: true, initial: 0 }),
+      requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       damageCategory: new fields.StringField({ initial: "physical" }),
 
       // Grenade specific
@@ -103,7 +104,7 @@ function armorSchema() {
     }),
     durability: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
     durabilityDamage: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-    requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+    requiredBuild: new fields.NumberField({ integer: true, initial: 0, min: -100, max: 100 }),
     damage: new fields.SchemaField({
       head: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
       torso: new fields.NumberField({ integer: true, initial: 0, min: 0 }),
@@ -120,7 +121,7 @@ function armorSchema() {
     // Instead it is compared against the incoming radiation zone level to determine whether
     // the actor receives a radiation wound. Higher value means better protection against
     // higher radiation levels. Evaluated by the radiation API (game.neuroshima.radiation).
-    radiationProtection: new fields.NumberField({ integer: true, initial: 0, min: 0, max: 20 })
+    radiationProtection: new fields.NumberField({ integer: true, initial: 0 })
   };
 }
 

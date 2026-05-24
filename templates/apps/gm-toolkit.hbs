@@ -1,0 +1,39 @@
+<section class="standard-form">
+    {{#if error}}
+    <div class="gm-toolkit-error">
+        <i class="fas fa-lock"></i>
+        <p>{{localize "NEUROSHIMA.GMToolkit.GMOnly"}}</p>
+    </div>
+    {{else}}
+
+    <div class="gm-toolkit-session-bar">
+        <span class="session-display">
+            <i class="fas fa-history"></i>
+            {{localize "NEUROSHIMA.GMToolkit.Session.Label"}}: <strong>{{sessionID}}</strong>
+        </span>
+        <div class="session-controls">
+            <button type="button" data-action="incrementSession" class="xp-ctrl-btn" title="{{localize 'NEUROSHIMA.GMToolkit.Session.Increment'}}">
+                <i class="fas fa-plus"></i>
+            </button>
+            <button type="button" data-action="resetSession" class="xp-ctrl-btn" title="{{localize 'NEUROSHIMA.GMToolkit.Session.Reset'}}">
+                <i class="fas fa-undo"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="gm-toolkit-buttons">
+        <button type="button" data-action="openXP" class="gm-toolkit-btn">
+            <i class="fas fa-star"></i>
+            <span>{{localize "NEUROSHIMA.GMToolkit.OpenXP"}}</span>
+        </button>
+        <button type="button" data-action="openDamage" class="gm-toolkit-btn">
+            <i class="fas fa-skull-crossbones"></i>
+            <span>{{localize "NEUROSHIMA.GMToolkit.OpenDamage"}}</span>
+        </button>
+        <button type="button" data-action="openGroupCheck" class="gm-toolkit-btn">
+            <i class="fas fa-users"></i>
+            <span>{{localize "NEUROSHIMA.GMToolkit.OpenGroupCheck"}}</span>
+        </button>
+    </div>
+    {{/if}}
+</section>

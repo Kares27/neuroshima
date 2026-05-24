@@ -1,0 +1,63 @@
+<section class="standard-form">
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.GMToolkit.GroupCheck.SkillLabel"}}</label>
+        <div class="form-fields">
+            <select class="group-skill-select">
+                <option value="">— {{localize "NEUROSHIMA.GMToolkit.GroupCheck.SelectSkill"}} —</option>
+                {{#each skills}}
+                <option value="{{key}}" data-attr-key="{{attrKey}}" {{#if (eq key ../skillKey)}}selected{{/if}}>
+                    {{label}} ({{attrLabel}})
+                </option>
+                {{/each}}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.GMToolkit.GroupCheck.DifficultyLabel"}}</label>
+        <div class="form-fields">
+            <select class="group-difficulty-select">
+                {{#each difficulties}}
+                <option value="{{key}}" {{#if (eq key ../difficulty)}}selected{{/if}}>{{label}}</option>
+                {{/each}}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>{{localize "NEUROSHIMA.GMToolkit.GroupCheck.NoteLabel"}}</label>
+        <div class="form-fields">
+            <input type="text" class="group-note-input" value="{{note}}" placeholder="{{localize 'NEUROSHIMA.GMToolkit.GroupCheck.NotePlaceholder'}}">
+        </div>
+    </div>
+
+    <div class="actor-list-header">
+        <span class="actor-list-title">{{localize "NEUROSHIMA.GMToolkit.GroupCheck.Actors"}} ({{selectedCount}})</span>
+        <div class="actor-list-controls">
+            <button type="button" data-action="selectAll" class="xp-ctrl-btn">
+                <i class="fas fa-check-double"></i> {{localize "NEUROSHIMA.GMToolkit.AddXP.SelectAll"}}
+            </button>
+            <button type="button" data-action="deselectAll" class="xp-ctrl-btn">
+                <i class="fas fa-times"></i> {{localize "NEUROSHIMA.GMToolkit.AddXP.DeselectAll"}}
+            </button>
+        </div>
+    </div>
+
+    <div class="actor-list">
+        {{#each actors}}
+        <div class="actor-row {{#if selected}}selected{{/if}}" data-actor-id="{{id}}" data-action="toggleActor">
+            <img class="actor-portrait" src="{{img}}" alt="{{name}}">
+            <span class="actor-name">{{name}}</span>
+            <i class="fas {{#if selected}}fa-check-square{{else}}fa-square{{/if}} actor-checkbox"></i>
+        </div>
+        {{else}}
+        <p class="no-actors">—</p>
+        {{/each}}
+    </div>
+
+    <footer class="gm-toolkit-footer">
+        <button type="button" data-action="postCheck" class="gm-apply-btn" {{#unless hasSelection}}disabled{{/unless}}>
+            <i class="fas fa-users"></i> {{localize "NEUROSHIMA.GMToolkit.GroupCheck.Post"}}
+        </button>
+    </footer>
+</section>

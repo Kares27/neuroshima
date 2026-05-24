@@ -122,6 +122,7 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
         rightLeg: new fields.NumberField({ initial: 0 }),
         leftLeg:  new fields.NumberField({ initial: 0 })
       }),
+      radiationResistance: new fields.NumberField({ integer: true, initial: 0 }),
       maxLoad: new fields.NumberField({ required: true, initial: 0, min: 0 }),
       encumbrance: new fields.SchemaField({
         value: new fields.NumberField({ initial: 0, min: 0 }),

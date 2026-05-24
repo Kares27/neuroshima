@@ -431,7 +431,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const resolveLocation = async () => {
       const roll = await new Roll("1d20").evaluate();
       const val  = roll.total;
-      const entry = Object.entries(bodyLocs).find(([, d]) => val >= d.roll[0] && val <= d.roll[1]);
+      const entry = Object.entries(bodyLocs).find(([, d]) => d.roll && val >= d.roll[0] && val <= d.roll[1]);
       return entry ? { key: entry[0], label: entry[1].label } : { key: "torso", label: "NEUROSHIMA.Location.Torso" };
     };
 
@@ -570,7 +570,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const resolveLocation = async () => {
       const roll  = await new Roll("1d20").evaluate();
       const val   = roll.total;
-      const entry = Object.entries(bodyLocs).find(([, d]) => val >= d.roll[0] && val <= d.roll[1]);
+      const entry = Object.entries(bodyLocs).find(([, d]) => d.roll && val >= d.roll[0] && val <= d.roll[1]);
       return entry ? { key: entry[0], label: entry[1].label } : { key: "torso", label: "NEUROSHIMA.Location.Torso" };
     };
 
@@ -1446,12 +1446,30 @@ export class NeuroshimaChatMessage extends ChatMessage {
     let availability = null;
     let hasWeight = false;
     const dash = "—";
-    const attachedMods = Object.entries(s.mods || {})
-      .filter(([k, v]) => !k.startsWith('__') && v?.attached)
-      .map(([modId, v]) => ({
-        ...v,
-        effectText: NeuroshimaScriptRunner._resolveItemRef(v.effectText ?? "", item, null, v, modId)
-      }));
+    const actor = item.actor;
+    let attachedMods;
+    if (actor) {
+      attachedMods = [];
+      for (const modItem of actor.items) {
+        if (!["weapon-mod", "armor-mod"].includes(modItem.type)) continue;
+        const parentId = modItem.getFlag?.("neuroshima", "modParentId");
+        if (parentId !== item.id) continue;
+        const modState = s.mods?.[modItem.id];
+        if (!modState?.attached) continue;
+        attachedMods.push({
+          name: modItem.name,
+          img: modItem.img,
+          effectText: NeuroshimaScriptRunner._resolveItemRef(modItem.system?.effectText ?? "", item, null, modItem.system, modItem.id)
+        });
+      }
+    } else {
+      attachedMods = Object.entries(s.mods || {})
+        .filter(([k, v]) => !k.startsWith('__') && v?.attached)
+        .map(([modId, v]) => ({
+          ...v,
+          effectText: NeuroshimaScriptRunner._resolveItemRef(v.effectText ?? "", item, null, v, modId)
+        }));
+    }
     const summaryResources = (s.resources ?? []).filter(r => r.showInSummary).map(r => {
       const modId = r._fromModId ?? null;
       const modSnap = modId ? (s.mods?.[modId] ?? null) : null;

@@ -158,7 +158,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (isVehicleTarget) {
       context.hitLocations = Object.entries(NEUROSHIMA.vehicleLocations).map(([key, label]) => ({ key, label, modifier: 0 }));
     } else {
-      context.hitLocations = Object.entries(NEUROSHIMA.bodyLocations).map(([key, data]) => ({ key, label: data.label, modifier: data.modifiers[weaponTypeKey] }));
+      context.hitLocations = Object.entries(NEUROSHIMA.bodyLocations).filter(([key, data]) => !data.paperDollOnly).map(([key, data]) => ({ key, label: data.label, modifier: data.modifiers[weaponTypeKey] }));
     }
 
     context.modifier      = userModifier + scriptFields.modifier;
