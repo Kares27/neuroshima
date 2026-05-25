@@ -158,6 +158,17 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               await MeleeOpposedChat.initiateAttack(this.document, item, chatTargets[0].document.uuid, combatTypeSetting);
               return;
             }
+            const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+            const dialog = new NeuroshimaWeaponRollDialog({
+              actor: this.document,
+              weapon: item,
+              rollType: "melee",
+              meleeAction: "attack",
+              targets: [],
+              isPoolRoll: true
+            });
+            await dialog.render(true);
+            return;
           }
           // ── End chat-based opposed branch ─────────────────────────────────
 
@@ -574,6 +585,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
         const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
         await NeuroshimaMeleeCombat.dismissMeleePending(pendingId);
+
+        this.render(false);
       },
 
       respondToOpposed: async function(event, target) {

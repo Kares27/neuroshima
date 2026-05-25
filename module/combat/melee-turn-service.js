@@ -120,7 +120,7 @@ export class MeleeTurnService {
    * @param {string}   meleeAction    "attack" or "defense" — determines which weapon bonus was used in the roll
    * @param {{isSuccess:boolean,isNat20:boolean}[]|null} dieResults  Per-die success flags pre-computed by rollWeaponTest
    */
-  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0, rollTarget = null, meleeAction = "attack", dieResults = null) {
+  static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0, rollTarget = null, meleeAction = "attack", dieResults = null, damageShift = 0) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
 
@@ -184,6 +184,7 @@ export class MeleeTurnService {
     p.pool = results;
     p.maneuver = maneuver;
     p.tempoLevel = tempoLevel;
+    p.damageShift = damageShift || 0;
     p.usedDice = [];
     p.skillSpent = 0;
     // Store per-die success flags from the roll (canonical source of truth matching chat card).

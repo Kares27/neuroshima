@@ -731,6 +731,8 @@
             "Attacker": "Attacker",
             "Defender": "Defender",
             "StartDuel": "Start Duel",
+            "StartDuelFromTarget": "Start Fight with Target",
+            "NoTargetForDuel": "No token targeted. Select a target on the canvas before using this option.",
             "RollPool": "Roll Pool",
             "WaitingForPool": "Waiting for pool roll...",
             "ResolveSegment": "Resolve Segment",

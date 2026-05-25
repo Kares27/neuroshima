@@ -510,14 +510,25 @@ export class MeleeResolution {
    * @param {number} diceCount   Number of dice spent (1–3)
    * @param {object} attacker    Participant data (for weapon damage tier labels)
    */
+  static _shiftDamageType(type, steps) {
+    if (!steps) return type;
+    const REGULAR = ["D", "L", "C", "K"];
+    const BRUISE  = ["sD", "sL", "sC", "sK"];
+    const track   = type?.startsWith("s") ? BRUISE : REGULAR;
+    const idx     = track.indexOf(type);
+    if (idx < 0) return type;
+    return track[Math.min(Math.max(0, idx + steps), track.length - 1)];
+  }
+
   static _computeDamageOptions(diceCount, attacker) {
     // Read damage tier labels directly from weapon (damageMeleePreview is a UI-only enrichment)
     const doc = fromUuidSync(attacker.actorUuid);
     const actor = doc?.actor || doc;
     const weapon = actor?.items.get(attacker.weaponId);
-    const d1 = weapon?.system.damageMelee1 || "D";
-    const d2 = weapon?.system.damageMelee2 || "L";
-    const d3 = weapon?.system.damageMelee3 || "C";
+    const shift = attacker.damageShift || 0;
+    const d1 = this._shiftDamageType(weapon?.system.damageMelee1 || "D", shift);
+    const d2 = this._shiftDamageType(weapon?.system.damageMelee2 || "L", shift);
+    const d3 = this._shiftDamageType(weapon?.system.damageMelee3 || "C", shift);
 
     const tiers = [
       { cost: 1, tier: 1, label: d1 },
@@ -587,6 +598,7 @@ export class MeleeResolution {
     const allReducedDetails = [];
 
     for (const hit of hits) {
+      const _dmgShift = attacker.damageShift || 0;
       const attackData = {
         isMelee: true,
         actorId: attackerActor.id,
@@ -594,9 +606,9 @@ export class MeleeResolution {
         label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
         successPoints: hit.cost,
         finalLocation: location,
-        damageMelee1: weapon?.system.damageMelee1,
-        damageMelee2: weapon?.system.damageMelee2,
-        damageMelee3: weapon?.system.damageMelee3
+        damageMelee1: this._shiftDamageType(weapon?.system.damageMelee1, _dmgShift),
+        damageMelee2: this._shiftDamageType(weapon?.system.damageMelee2, _dmgShift),
+        damageMelee3: this._shiftDamageType(weapon?.system.damageMelee3, _dmgShift)
       };
       const batchResult = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
         isOpposed: true, spDifference: hit.cost, location, suppressChat: true

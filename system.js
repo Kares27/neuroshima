@@ -65,7 +65,8 @@ Hooks.once('init', async function() {
 
     // Hook to re-render actor sheets when combat updates (for melee pendings)
     Hooks.on("updateCombat", async (combat, updates, options, userId) => {
-        Object.values(ui.windows).forEach(app => {
+        const appInstances = Object.values(foundry.applications?.instances ?? ui.windows ?? {});
+        appInstances.forEach(app => {
             if (_isActorSheet(app)) app.render(false);
         });
         if (game.user.isGM) await NeuroshimaScriptRunner.runUpdateCombat(combat, updates);
@@ -1778,6 +1779,56 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             });
         }
     });
+
+    options.push({
+        name: game.i18n.localize("NEUROSHIMA.MeleeDuel.StartDuelFromTarget"),
+        icon: '<i class="fas fa-swords"></i>',
+        condition: li => {
+            if (!game.user.isGM) return false;
+            const message = game.messages.get(li.dataset.messageId);
+            const rollData = message?.getFlag("neuroshima", "rollData");
+            return !!(rollData?.isMelee && rollData?.meleeAction === "attack");
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const rollData = message?.getFlag("neuroshima", "rollData");
+            if (!rollData?.isMelee) return;
+
+            let defenderUuid = null;
+            const gmTargeted = [...game.user.targets];
+            if (gmTargeted.length > 0) {
+                defenderUuid = gmTargeted[0].actor?.uuid ?? null;
+            }
+            if (!defenderUuid && rollData.targets?.length > 0) {
+                defenderUuid = rollData.targets[0];
+            }
+            if (!defenderUuid) {
+                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NoTargetForDuel"));
+                return;
+            }
+
+            const attackerActor = game.actors.get(rollData.actorId);
+            if (!attackerActor) return;
+            const weapon = attackerActor.items.get(rollData.weaponId);
+            if (!weapon) return;
+
+            const mode = (() => {
+                const s = game.settings.get("neuroshima", "meleeCombatType") || "default";
+                return (s === "opposedPips" || s === "opposedSuccesses") ? s : "opposedPips";
+            })();
+
+            const rawResult = {
+                modifiedResults: rollData.modifiedResults || [],
+                successPoints: rollData.successPoints ?? 0,
+                target: rollData.target,
+                skill: rollData.skill ?? 0,
+                rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
+            };
+
+            const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
+            await MeleeOpposedChat._createHandlerCard(rawResult, attackerActor, weapon, defenderUuid, mode);
+        }
+    });
 });
 
 // Chat card interactions (v13: renderChatMessageHTML)
@@ -2245,6 +2296,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         });
     }
 });
+
 
 /**
  * Refresh the targets/selected-tokens list on a chat card.

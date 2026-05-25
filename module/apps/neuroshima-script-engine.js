@@ -2690,7 +2690,7 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
+    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0 };
     const rc = dm._rollContext || {};
     const initialDifficulty = liveContext.difficulty ?? rc.difficulty ?? "average";
     const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
@@ -2707,6 +2707,7 @@ export class NeuroshimaScriptRunner {
       distance: 0,
       distanceModifier: 0,
       difficultyShift: 0,
+      damageShift: 0,
       difficulty: initialDifficulty,
       hitLocation: initialHitLocation,
        
@@ -2753,6 +2754,7 @@ export class NeuroshimaScriptRunner {
       distanceDelta: fields.distance,
       distanceModifierDelta: fields.distanceModifier,
       difficultyShift: fields.difficultyShift || 0,
+      damageShift: fields.damageShift || 0,
       difficulty: fields.difficulty !== initialDifficulty ? fields.difficulty : null,
       hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null
     };
@@ -3279,7 +3281,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -3340,7 +3342,7 @@ export class NeuroshimaScriptRunner {
       });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -3366,6 +3368,7 @@ export class NeuroshimaScriptRunner {
       scriptFields.diseasePenalty += result.diseasePenalty || 0;
       scriptFields.weaponModifier += result.weaponModifier || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
+      scriptFields.damageShift += result.damageShift || 0;
       if (result.difficulty) scriptFields.difficulty = result.difficulty;
       if (result.hitLocation) scriptFields.hitLocation = result.hitLocation;
       const label = dm.label || "—";

@@ -157,6 +157,7 @@ export class NeuroshimaDice {
         maneuver = "none",
         tempoLevel = 0,
         meleeDiceCount = 3,
+        damageShift = 0,
         isReroll = false, 
         chatMessage = true, 
         rollMode = game.settings.get("core", "rollMode"),
@@ -221,8 +222,20 @@ export class NeuroshimaDice {
     const diceCount = isMelee ? Math.min(3, Math.max(1, meleeDiceCount || 3)) : (aimingLevel + 1);
     
     // Compute base damage (will be updated later for ranged ammo)
-    let damageValue = isMelee 
-        ? [weapon.system.damageMelee1, weapon.system.damageMelee2, weapon.system.damageMelee3].filter(d => d).join("/")
+    const _shiftDamageType = (type, steps) => {
+        if (!steps) return type;
+        const REGULAR = ["D", "L", "C", "K"];
+        const BRUISE  = ["sD", "sL", "sC", "sK"];
+        const track   = type?.startsWith("s") ? BRUISE : REGULAR;
+        const idx     = track.indexOf(type);
+        if (idx < 0) return type;
+        return track[Math.min(Math.max(0, idx + steps), track.length - 1)];
+    };
+    let damageValue = isMelee
+        ? [weapon.system.damageMelee1, weapon.system.damageMelee2, weapon.system.damageMelee3]
+            .filter(d => d)
+            .map(d => _shiftDamageType(d, damageShift))
+            .join("/")
         : (weapon.system.damage || "0");
 
     // Roll the dice
@@ -696,6 +709,7 @@ export class NeuroshimaDice {
         damageMelee1: isMelee ? weapon.system.damageMelee1 : null,
         damageMelee2: isMelee ? weapon.system.damageMelee2 : null,
         damageMelee3: isMelee ? weapon.system.damageMelee3 : null,
+        damageShift: isMelee ? (damageShift || 0) : 0,
         targets: isMelee ? (params.targets ?? []) : [],
         weaponId: weapon.id,
         actorId: actor.id,

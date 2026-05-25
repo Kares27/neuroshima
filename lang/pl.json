@@ -741,6 +741,8 @@
             "Attacker": "Atakujący",
             "Defender": "Obrońca",
             "StartDuel": "Rozpocznij starcie",
+            "StartDuelFromTarget": "Rozpocznij Walkę z Celem",
+            "NoTargetForDuel": "Brak stargetowanego tokena. Zaznacz cel na planszy przed użyciem tej opcji.",
             "RollPool": "Rzuć Pulę",
             "WaitingForPool": "Oczekiwanie na rzut puli...",
             "ResolveSegment": "Rozstrzygnij Segment",

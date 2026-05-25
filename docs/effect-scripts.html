@@ -529,6 +529,7 @@
       <tr><td><code>args.fields.distanceModifier</code></td><td>number</td><td>Modyfikator kary za dystans.</td></tr>
       <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
       <tr><td><code>args.fields.difficultyShift</code></td><td>number</td><td>Przesuwa poziom trudności o podaną liczbę stopni (np. <code>+1</code> = poziom wyżej, <code>-1</code> = poziom niżej). Kumuluje się z innymi modyfikatorami.</td></tr>
+      <tr><td><code>args.fields.damageShift</code></td><td>number</td><td>Przesuwa typ obrażeń broni białej o podaną liczbę stopni (np. <code>+1</code> = D→L, L→C, C→K; <code>-1</code> = odwrotnie). Działa na wszystkie trzy poziomy obrażeń (damageMelee1/2/3) i obsługuje zarówno obrażenia regularne (<code>D/L/C/K</code>), jak i stłuczeniowe (<code>sD/sL/sC/sK</code>). Stosowane wyłącznie w testach broni białej.</td></tr>
     </tbody>
   </table>
 

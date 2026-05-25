@@ -104,12 +104,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
         return;
     }
 
-    // Use the first target as the primary defender (standard 1v1)
-    // TODO: support multiple defenders in NeuroshimaMeleeCombat.startDuel
     const defenderId = targets[0];
 
     const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-    await NeuroshimaMeleeCombat.startDuel(attackerId, defenderId);
+    await NeuroshimaMeleeCombat.startDuel(attackerId, defenderId, flags);
   }
 
   /**

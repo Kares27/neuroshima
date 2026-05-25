@@ -187,6 +187,80 @@ export class NeuroshimaMeleeCombat {
   }
 
   /**
+   * Creates a melee encounter directly from attacker/defender data and opens the app.
+   * Bypasses the pending handshake flow — used by the chat card button and context menu.
+   *
+   * @param {string} attackerActorIdOrUuid  Actor ID or UUID of the attacker.
+   * @param {string} defenderActorIdOrUuid  Actor ID or UUID of the defender.
+   * @param {object} [rollData]             Optional roll data from the chat card (weaponId, maneuver, chargeLevel).
+   */
+  static async startDuel(attackerActorIdOrUuid, defenderActorIdOrUuid, rollData = {}) {
+    if (!game.combat) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.CreateEncounterFirst"));
+      return;
+    }
+
+    const _resolveActor = (idOrUuid) => {
+      const byId = game.actors.get(idOrUuid);
+      if (byId) return byId;
+      const doc = fromUuidSync(idOrUuid);
+      return doc?.actor || (doc instanceof Actor ? doc : null);
+    };
+
+    const attackerActor = _resolveActor(attackerActorIdOrUuid);
+    const defenderActor = _resolveActor(defenderActorIdOrUuid);
+
+    if (!attackerActor || !defenderActor) {
+      game.neuroshima?.warn("startDuel: could not resolve actors", { attackerActorIdOrUuid, defenderActorIdOrUuid });
+      return;
+    }
+
+    const _getToken = (actor) =>
+      canvas.tokens?.placeables.find(t => t.actor?.id === actor.id) ?? null;
+
+    const _getInitiative = (actor) => {
+      const combatant = game.combat.combatants.find(c => c.actorId === actor.id);
+      if (combatant?.initiative != null) return combatant.initiative;
+      return actor.system.attributeTotals?.dexterity ?? 10;
+    };
+
+    const attackerToken = _getToken(attackerActor);
+    const defenderToken = _getToken(defenderActor);
+
+    const attackerData = {
+      id:         attackerToken?.document.uuid || attackerActor.uuid,
+      actorUuid:  attackerActor.uuid,
+      tokenUuid:  attackerToken?.document.uuid || null,
+      actorId:    attackerActor.id,
+      name:       attackerToken?.document.name || attackerActor.name,
+      img:        attackerToken?.document.texture?.src || attackerActor.img,
+      weaponId:   rollData.weaponId ?? null,
+      initiative: _getInitiative(attackerActor),
+      chargeLevel: rollData.chargeLevel ?? 0
+    };
+
+    const defenderData = {
+      id:         defenderToken?.document.uuid || defenderActor.uuid,
+      actorUuid:  defenderActor.uuid,
+      tokenUuid:  defenderToken?.document.uuid || null,
+      actorId:    defenderActor.id,
+      name:       defenderToken?.document.name || defenderActor.name,
+      img:        defenderToken?.document.texture?.src || defenderActor.img,
+      weaponId:   null,
+      initiative: _getInitiative(defenderActor),
+      chargeLevel: 0
+    };
+
+    const encounterId = await MeleeEncounter.create(attackerData, defenderData);
+    game.neuroshima?.log("startDuel: encounter created", {
+      encounterId,
+      attacker: attackerData.name,
+      defender: defenderData.name
+    });
+    this.openMeleeApp(encounterId);
+  }
+
+  /**
    * Opens the MeleeCombatApp for a specific encounter.
    */
   static openMeleeApp(id) {

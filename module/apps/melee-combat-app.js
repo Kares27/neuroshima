@@ -561,7 +561,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const attributeBonus = rollResult.attributeBonus || 0;
         const rollTarget = typeof rollResult.target === "number" ? rollResult.target : null;
         const meleeAction = rollResult.meleeAction || "attack";
-        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget, rollTarget, meleeAction, dieResults);
+        const damageShift = rollResult.damageShift || 0;
+        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget, rollTarget, meleeAction, dieResults, damageShift);
       }
     });
     this._openPoolDialogs.set(participantId, dialog);

@@ -181,6 +181,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       effectDifficulty = NeuroshimaScriptRunner.shiftDifficultyKey(effectDifficulty, scriptFields.difficultyShift);
     }
     context.baseDifficulty = effectDifficulty;
+    context.damageShift = scriptFields.damageShift || 0;
     context.hitLocation    = (scriptFields.hitLocation && this.userEntry.hitLocation === undefined)
       ? scriptFields.hitLocation : hitLocation;
 
@@ -495,6 +496,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       attributeBonus:  totalAttrBonus - (this.crowdingDexPenalty || 0),
       distance:        parseFloat(formData.distance) || 0,
       distancePenalty: parseInt(formData.distancePenalty) || 0,
+      damageShift:     sf?.damageShift || 0,
       rollMode:        formData.rollMode
     };
 
