@@ -1,0 +1,151 @@
+<div class="neuroshima chat-card melee-skill-allocation">
+
+  <div class="mode-label">{{localize "NEUROSHIMA.SkillAlloc.Title"}}</div>
+
+  <header class="melee-card-header">
+    <div class="participant attacker">
+      <img src="{{attackerImg}}" width="32" height="32" alt="{{attackerName}}">
+      <span class="name">{{attackerName}}</span>
+    </div>
+    <div class="vs-badge">⚔</div>
+    <div class="participant defender">
+      <img src="{{defenderImg}}" width="32" height="32" alt="{{defenderName}}">
+      <span class="name">{{defenderName}}</span>
+    </div>
+  </header>
+
+  <hr class="dotted-hr">
+
+  {{#if attackerConfirmed}}{{#unless defenderConfirmed}}
+  <div class="alloc-status-banner" data-alloc-visible="defender gm">
+    <i class="fas fa-check-circle"></i> {{localize "NEUROSHIMA.SkillAlloc.AttackerConfirmed"}}
+  </div>
+  {{/unless}}{{/if}}
+  {{#if defenderConfirmed}}{{#unless attackerConfirmed}}
+  <div class="alloc-status-banner" data-alloc-visible="attacker gm">
+    <i class="fas fa-check-circle"></i> {{localize "NEUROSHIMA.SkillAlloc.DefenderConfirmed"}}
+  </div>
+  {{/unless}}{{/if}}
+
+  <div class="dice-duel-grid">
+
+    {{!-- Reset row --}}
+    <div class="dice-duel-row alloc-ctrl-row">
+      <span class="alloc-label"></span>
+      <div class="alloc-ctrl-center alloc-atk-ctrl" data-alloc-visible="attacker gm">
+        {{#if attackerConfirmed}}
+        <span class="alloc-side-confirmed"><i class="fas fa-check-circle"></i></span>
+        {{else}}
+        <button type="button" class="alloc-icon-btn alloc-reset-btn"
+          data-action="skillAllocReset" data-side="attacker"
+          data-tooltip="{{localize 'NEUROSHIMA.SkillAlloc.Reset'}}">
+          <i class="fas fa-undo"></i>
+        </button>
+        <span class="alloc-budget-badge" data-tooltip="{{localize 'NEUROSHIMA.SkillAlloc.BudgetLabel'}}">{{attackerBudgetRemaining}}</span>
+        {{/if}}
+      </div>
+      <span class="alloc-vs"></span>
+      <div class="alloc-ctrl-center alloc-def-ctrl" data-alloc-visible="defender gm">
+        {{#if defenderConfirmed}}
+        <span class="alloc-side-confirmed"><i class="fas fa-check-circle"></i></span>
+        {{else}}
+        <button type="button" class="alloc-icon-btn alloc-reset-btn"
+          data-action="skillAllocReset" data-side="defender"
+          data-tooltip="{{localize 'NEUROSHIMA.SkillAlloc.Reset'}}">
+          <i class="fas fa-undo"></i>
+        </button>
+        <span class="alloc-budget-badge" data-tooltip="{{localize 'NEUROSHIMA.SkillAlloc.BudgetLabel'}}">{{defenderBudgetRemaining}}</span>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- Dice rows --}}
+    {{#each pairedDice}}
+    <div class="dice-duel-row">
+
+      <span class="die-slot-label alloc-label">{{label}}</span>
+
+      {{#if effectiveAttack}}
+        {{#unless ../attackerConfirmed}}
+        <button type="button"
+          class="die-alloc-btn die-alloc-btn--down alloc-atk-left-btn"
+          data-action="skillAllocAdjust" data-alloc-visible="attacker gm"
+          data-spender="attacker" data-target="self"
+          data-die-index="{{@index}}" data-delta="1"
+          {{#unless attackCanSelfSpend}}disabled{{/unless}}>−</button>
+        {{/unless}}
+        <span class="die-slot alloc-atk-die">
+          <span class="die-square {{#if effectiveAttack.isSuccess}}success{{else}}failure{{/if}}{{#if effectiveAttack.isNat1}} nat-1{{/if}}{{#if effectiveAttack.isNat20}} nat-20{{/if}}{{#if attackModified}} alloc-modified{{/if}}">{{effectiveAttack.value}}</span>
+        </span>
+        {{#unless ../defenderConfirmed}}
+        <button type="button"
+          class="die-alloc-btn die-alloc-btn--spoil alloc-atk-right-btn"
+          data-action="skillAllocAdjust" data-alloc-visible="defender gm"
+          data-spender="defender" data-target="opponent"
+          data-die-index="{{@index}}" data-delta="1"
+          {{#unless defenderCanOpponentSpend}}disabled{{/unless}}>+</button>
+        {{/unless}}
+      {{else}}
+        <span class="die-slot alloc-atk-die"><span class="die-square no-die">—</span></span>
+      {{/if}}
+
+      <span class="duel-vs alloc-vs">vs</span>
+
+      {{#if effectiveDefense}}
+        {{#unless ../attackerConfirmed}}
+        <button type="button"
+          class="die-alloc-btn die-alloc-btn--spoil alloc-def-left-btn"
+          data-action="skillAllocAdjust" data-alloc-visible="attacker gm"
+          data-spender="attacker" data-target="opponent"
+          data-die-index="{{@index}}" data-delta="1"
+          {{#unless attackerCanOpponentSpend}}disabled{{/unless}}>+</button>
+        {{/unless}}
+        <span class="die-slot alloc-def-die">
+          <span class="die-square {{#if effectiveDefense.isSuccess}}success{{else}}failure{{/if}}{{#if effectiveDefense.isNat1}} nat-1{{/if}}{{#if effectiveDefense.isNat20}} nat-20{{/if}}{{#if defenseModified}} alloc-modified{{/if}}">{{effectiveDefense.value}}</span>
+        </span>
+        {{#unless ../defenderConfirmed}}
+        <button type="button"
+          class="die-alloc-btn die-alloc-btn--down alloc-def-right-btn"
+          data-action="skillAllocAdjust" data-alloc-visible="defender gm"
+          data-spender="defender" data-target="self"
+          data-die-index="{{@index}}" data-delta="1"
+          {{#unless defenderCanSelfSpend}}disabled{{/unless}}>−</button>
+        {{/unless}}
+      {{else}}
+        <span class="die-slot alloc-def-die"><span class="die-square no-die">—</span></span>
+      {{/if}}
+
+    </div>
+    {{/each}}
+
+    {{!-- Confirm row --}}
+    <div class="dice-duel-row alloc-ctrl-row">
+      <span class="alloc-label"></span>
+      <div class="alloc-ctrl-center alloc-atk-ctrl" data-alloc-visible="attacker gm">
+        {{#if attackerConfirmed}}
+        <span class="alloc-side-confirmed"><i class="fas fa-check-circle"></i></span>
+        {{else}}
+        <button type="button" class="alloc-icon-btn alloc-confirm-btn"
+          data-action="skillAllocConfirm" data-side="attacker"
+          data-tooltip="{{localize 'NEUROSHIMA.SkillAlloc.Confirm'}}">
+          <i class="fas fa-check"></i>
+        </button>
+        {{/if}}
+      </div>
+      <span class="alloc-vs"></span>
+      <div class="alloc-ctrl-center alloc-def-ctrl" data-alloc-visible="defender gm">
+        {{#if defenderConfirmed}}
+        <span class="alloc-side-confirmed"><i class="fas fa-check-circle"></i></span>
+        {{else}}
+        <button type="button" class="alloc-icon-btn alloc-confirm-btn"
+          data-action="skillAllocConfirm" data-side="defender"
+          data-tooltip="{{localize 'NEUROSHIMA.SkillAlloc.Confirm'}}">
+          <i class="fas fa-check"></i>
+        </button>
+        {{/if}}
+      </div>
+    </div>
+
+  </div>
+
+</div>

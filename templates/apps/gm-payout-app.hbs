@@ -1,0 +1,68 @@
+<section class="standard-form gm-payout-form">
+
+    <div class="gm-payout-columns">
+
+        <!-- LEFT: Actor list -->
+        <div class="payout-actors-col">
+            <div class="actor-list-header">
+                <span class="actor-list-title">{{localize "NEUROSHIMA.GMToolkit.Payout.Actors"}} ({{selectedCount}})</span>
+                <div class="actor-list-controls">
+                    <button type="button" data-action="selectAll" class="xp-ctrl-btn" title="{{localize 'NEUROSHIMA.GMToolkit.AddXP.SelectAll'}}">
+                        <i class="fas fa-check-double"></i>
+                    </button>
+                    <button type="button" data-action="deselectAll" class="xp-ctrl-btn" title="{{localize 'NEUROSHIMA.GMToolkit.AddXP.DeselectAll'}}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            {{#each actors}}
+            <div class="actor-row {{#if selected}}selected{{/if}}" data-actor-id="{{id}}" data-action="toggleActor">
+                <img class="actor-portrait" src="{{img}}" alt="{{name}}">
+                <span class="actor-name">{{name}}</span>
+                <i class="fas {{#if selected}}fa-check-square{{else}}fa-square{{/if}} actor-checkbox"></i>
+            </div>
+            {{else}}
+            <p class="no-actors">—</p>
+            {{/each}}
+        </div>
+
+        <!-- RIGHT: Currencies + options -->
+        <div class="payout-currency-col">
+            <div class="payout-currency-header">{{localize "NEUROSHIMA.GMToolkit.Payout.CurrencyHeader"}}</div>
+            {{#each currencies}}
+            <div class="payout-currency-row {{#if primary}}payout-currency-primary{{/if}}">
+                <img class="payout-currency-img" src="{{img}}" alt="{{name}}" width="20" height="20">
+                <span class="payout-currency-name">{{name}}</span>
+                <input type="number" class="currency-amount-input" data-idx="{{idx}}" value="{{amount}}" min="0" step="1" placeholder="0">
+                {{#if splitPreview}}
+                <span class="payout-split-preview" title="{{localize 'NEUROSHIMA.GMToolkit.Payout.SplitPreviewTitle'}}">
+                    → {{splitPreview}}
+                </span>
+                {{/if}}
+            </div>
+            {{/each}}
+
+            <hr class="payout-options-hr">
+
+            <div class="payout-options">
+                <label class="payout-option-row">
+                    <input type="checkbox" class="payout-notify-input" {{#if notifyPlayers}}checked{{/if}}>
+                    <span>{{localize "NEUROSHIMA.GMToolkit.Payout.NotifyPlayers"}}</span>
+                </label>
+                <label class="payout-option-row">
+                    <input type="checkbox" class="payout-split-input" {{#if split}}checked{{/if}}>
+                    <span>{{localize "NEUROSHIMA.GMToolkit.Payout.SplitEvenly"}}</span>
+                    {{#if split}}<span class="payout-split-hint">(÷ {{selectedCount}})</span>{{/if}}
+                </label>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="gm-toolkit-footer">
+        <button type="button" data-action="applyPayout" class="gm-apply-btn" {{#unless hasSelection}}disabled{{/unless}}>
+            <i class="fas fa-coins"></i> {{localize "NEUROSHIMA.GMToolkit.Payout.Apply"}}
+        </button>
+    </footer>
+
+</section>

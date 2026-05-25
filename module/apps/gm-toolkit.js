@@ -1,6 +1,8 @@
 import { GMAddXPApp } from "./gm-xp-app.js";
 import { GMApplyDamageApp } from "./gm-damage-app.js";
 import { GMGroupCheckApp } from "./gm-group-check-app.js";
+import { GMPayoutApp } from "./gm-payout-app.js";
+import { GMReputationApp } from "./gm-reputation-app.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -24,6 +26,8 @@ export class GMToolkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
             openXP:           this._onOpenXP,
             openDamage:       this._onOpenDamage,
             openGroupCheck:   this._onOpenGroupCheck,
+            openPayout:       this._onOpenPayout,
+            openReputation:   this._onOpenReputation,
             incrementSession: this._onIncrementSession,
             resetSession:     this._onResetSession
         }
@@ -64,6 +68,14 @@ export class GMToolkitApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static _onOpenGroupCheck(event, target) {
         GMGroupCheckApp.open();
+    }
+
+    static _onOpenPayout(event, target) {
+        GMPayoutApp.open();
+    }
+
+    static _onOpenReputation(event, target) {
+        GMReputationApp.open();
     }
 
     static async _onIncrementSession(event, target) {

@@ -6073,6 +6073,225 @@ body.theme-dark {
     margin-top: 2px;
 }
 
+/* ── Skill Allocation Card ────────────────────────────────────────────── */
+.chat-message:has(.neuroshima.melee-skill-allocation) {
+    background: #f0f0e0;
+    border: 1px solid #7a7971;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-skill-allocation) {
+    background: #0b0a13e6;
+    border-color: #5a5a54;
+    color: #e0e0d0;
+}
+.theme-dark .chat-message:has(.neuroshima.melee-skill-allocation) .message-header,
+.theme-dark .chat-message:has(.neuroshima.melee-skill-allocation) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.melee-skill-allocation) .message-header .message-metadata {
+    color: #e0e0d0;
+}
+.neuroshima.melee-skill-allocation .melee-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 1em;
+    border-bottom: 2px solid var(--ns-text-accent, #a02e2e);
+    padding-bottom: 4px;
+}
+.neuroshima.melee-skill-allocation .melee-card-header .participant {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+}
+.neuroshima.melee-skill-allocation .melee-card-header .participant img {
+    border-radius: 3px;
+    border: 1px solid var(--ns-border-main, #7a7971);
+}
+.neuroshima.melee-skill-allocation .melee-card-header .vs-badge {
+    font-size: 1.1em;
+    color: var(--ns-text-accent, #a02e2e);
+    flex-shrink: 0;
+}
+.neuroshima.melee-skill-allocation .dice-duel-row {
+    display: grid;
+    grid-template-columns: 28px 20px 28px 20px auto 20px 28px 20px;
+    align-items: center;
+    gap: 2px;
+}
+.neuroshima.melee-skill-allocation .alloc-label     { grid-column: 1; }
+.neuroshima.melee-skill-allocation .alloc-atk-left-btn  { grid-column: 2; }
+.neuroshima.melee-skill-allocation .alloc-atk-die   { grid-column: 3; }
+.neuroshima.melee-skill-allocation .alloc-atk-right-btn { grid-column: 4; }
+.neuroshima.melee-skill-allocation .alloc-vs        { grid-column: 5; text-align: center; }
+.neuroshima.melee-skill-allocation .alloc-def-left-btn  { grid-column: 6; }
+.neuroshima.melee-skill-allocation .alloc-def-die   { grid-column: 7; }
+.neuroshima.melee-skill-allocation .alloc-def-right-btn { grid-column: 8; }
+.neuroshima.melee-skill-allocation .alloc-atk-ctrl  { grid-column: 2 / span 3; }
+.neuroshima.melee-skill-allocation .alloc-def-ctrl  { grid-column: 6 / span 3; }
+.neuroshima.melee-skill-allocation .die-slot {
+    display: flex;
+    justify-content: center;
+}
+.neuroshima.melee-skill-allocation .die-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.95em;
+    border: 1px solid #ccc;
+    background: #f5f5ec;
+}
+.neuroshima.melee-skill-allocation .die-square.success {
+    background: #e8f5e9;
+    border-color: #4caf50;
+    color: #1b5e20;
+}
+.neuroshima.melee-skill-allocation .die-square.failure {
+    background: #fdecea;
+    border-color: #ef5350;
+    color: #c62828;
+}
+.neuroshima.melee-skill-allocation .die-square.nat-1 {
+    background: #fff9c4;
+    border-color: #fbc02d;
+    color: #e65100;
+}
+.neuroshima.melee-skill-allocation .die-square.nat-20 {
+    background: #fdecea;
+    border-color: #d32f2f;
+    color: #b71c1c;
+}
+.neuroshima.melee-skill-allocation .die-square.no-die {
+    background: transparent;
+    border-color: rgba(0,0,0,0.12);
+    color: rgba(0,0,0,0.25);
+}
+.neuroshima.melee-skill-allocation .die-square.alloc-modified {
+    outline: 2px solid rgba(243, 156, 18, 0.8);
+    box-shadow: 0 0 5px rgba(243, 156, 18, 0.4);
+}
+.theme-dark .neuroshima.melee-skill-allocation .die-square {
+    background: #1a1a14;
+    border-color: #5a5a54;
+    color: #d0d0c0;
+}
+.theme-dark .neuroshima.melee-skill-allocation .die-square.success {
+    background: #1b301b;
+    border-color: #4caf50;
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-skill-allocation .die-square.failure {
+    background: #2d1414;
+    border-color: #ef5350;
+    color: #ef9a9a;
+}
+.theme-dark .neuroshima.melee-skill-allocation .die-square.no-die {
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.2);
+}
+.neuroshima.melee-skill-allocation .die-alloc-btn {
+    font-size: 1.5em;
+    width: 20px;
+    height: 20px;
+}
+.neuroshima.melee-skill-allocation .alloc-ctrl-row {
+    min-height: 28px;
+}
+.neuroshima.melee-skill-allocation .alloc-ctrl-center {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+.neuroshima.melee-skill-allocation .alloc-budget-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 0.95em;
+    border: 1px solid #e65100;
+    background: rgba(230, 81, 0, 0.1);
+    color: #bf360c;
+}
+.theme-dark .neuroshima.melee-skill-allocation .alloc-budget-badge {
+    border-color: #ff8f00;
+    background: rgba(255, 111, 0, 0.14);
+    color: #ffb300;
+}
+.neuroshima.melee-skill-allocation .alloc-side-confirmed {
+    font-size: 0.85em;
+    color: #4caf50;
+    display: flex;
+    align-items: center;
+}
+.theme-dark .neuroshima.melee-skill-allocation .alloc-side-confirmed {
+    color: #a5d6a7;
+}
+.neuroshima.melee-skill-allocation .alloc-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.25);
+    background: rgba(0,0,0,0.05);
+    cursor: pointer;
+    font-size: 0.65em;
+    color: inherit;
+    padding: 0;
+    transition: background 0.1s, border-color 0.1s;
+    flex-shrink: 0;
+}
+.neuroshima.melee-skill-allocation .alloc-icon-btn:hover {
+    background: rgba(0,0,0,0.12);
+}
+.neuroshima.melee-skill-allocation .alloc-confirm-btn {
+    border-color: rgba(76,175,80,0.7);
+    background: rgba(76,175,80,0.1);
+    color: #2e7d32;
+}
+.neuroshima.melee-skill-allocation .alloc-confirm-btn:hover {
+    background: rgba(76,175,80,0.25);
+}
+.neuroshima.melee-skill-allocation .alloc-reset-btn {
+    border-color: rgba(0,0,0,0.2);
+    color: rgba(0,0,0,0.55);
+}
+.theme-dark .neuroshima.melee-skill-allocation .alloc-icon-btn {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.7);
+}
+.theme-dark .neuroshima.melee-skill-allocation .alloc-icon-btn:hover {
+    background: rgba(255,255,255,0.14);
+}
+.theme-dark .neuroshima.melee-skill-allocation .alloc-confirm-btn {
+    border-color: rgba(76,175,80,0.6);
+    background: rgba(76,175,80,0.12);
+    color: #a5d6a7;
+}
+.theme-dark .neuroshima.melee-skill-allocation .alloc-confirm-btn:hover {
+    background: rgba(76,175,80,0.28);
+}
+
+.neuroshima.melee-skill-allocation .alloc-status-banner {
+    font-size: 0.78em;
+    color: #2e7d32;
+    text-align: center;
+    padding: 2px 0 4px;
+}
+.theme-dark .neuroshima.melee-skill-allocation .alloc-status-banner {
+    color: #a5d6a7;
+}
+
 /* ── Beast Action Spending UI ─────────────────────────────────────────── */
 .beast-action-spending {
     margin-top: 6px;
@@ -7221,5 +7440,643 @@ button.jam-toggle-btn.header-control {
 .condition-check-editor-body code-mirror .cm-scroller {
     overflow-y: auto;
     height: 100%;
+}
+
+/* ─── XP Grant Chat Card ───────────────────────────────────────────────────── */
+.xp-grant-report .report-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 0.9em;
+}
+
+.xp-grant-report .summary-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.xp-grant-report .summary-divider {
+    color: var(--ns-border-light);
+}
+
+.xp-grant-report .xp-grant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.xp-grant-report .xp-grant-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+}
+
+.xp-grant-report .xp-grant-portrait {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.xp-grant-report .xp-grant-name {
+    flex: 1;
+    font-weight: bold;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.xp-grant-report .xp-grant-path {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    flex-shrink: 0;
+}
+
+.xp-grant-report .xp-before,
+.xp-grant-report .xp-after {
+    min-width: 28px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.xp-grant-report .xp-arrow-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+}
+
+.xp-grant-report .xp-delta {
+    font-size: 0.75em;
+    color: var(--ns-color-green, #3a8c3a);
+    font-weight: bold;
+}
+
+.xp-grant-report .xp-arrow {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+/* ─── Payout Chat Card ─────────────────────────────────────────────────────── */
+.payout-report .payout-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 0.9em;
+}
+
+.payout-report .payout-summary-img {
+    border-radius: 3px;
+}
+
+.payout-report .payout-summary-amount {
+    font-weight: bold;
+    color: var(--ns-color-green, #3a8c3a);
+}
+
+/* ─── Reputation Chat Card ─────────────────────────────────────────────────── */
+.reputation-report .rep-report-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    flex-wrap: wrap;
+}
+
+.reputation-report .rep-report-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.reputation-report .rep-stat-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    padding-top: 10px;
+}
+
+.reputation-report .rep-icon {
+    color: #7986cb;
+    font-size: 0.85em;
+    width: 14px;
+    text-align: center;
+}
+
+.reputation-report .fame-icon {
+    color: #ffb300;
+    font-size: 0.85em;
+    width: 14px;
+    text-align: center;
+}
+
+.reputation-report .xp-delta-pos {
+    color: var(--ns-color-green, #3a8c3a);
+    font-weight: bold;
+    font-size: 0.75em;
+}
+
+.reputation-report .xp-delta-neg {
+    color: #e57373;
+    font-weight: bold;
+    font-size: 0.75em;
+}
+
+.reputation-report .xp-arrow-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.reputation-report .xp-delta {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    line-height: 1;
+    margin-bottom: 1px;
+}
+
+.reputation-report .xp-arrow {
+    font-size: 0.85em;
+    opacity: 0.7;
+}
+
+/* ─── GMReputation App — chips ─────────────────────────────────────────────── */
+.gm-reputation-app .rep-current-values {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    margin-right: 6px;
+}
+
+.gm-reputation-app .rep-chip {
+    font-size: 0.8em;
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+/* ─── GMToolkit Common Actor List ──────────────────────────────────────────── */
+.actor-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--ns-border-light, #ccc);
+    margin-bottom: 2px;
+    flex-shrink: 0;
+}
+
+.actor-list-title {
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.actor-list-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.xp-ctrl-btn {
+    background: none;
+    border: 1px solid var(--ns-border-light, #ccc);
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 0.8em;
+    line-height: 1.4;
+}
+
+.xp-ctrl-btn:hover {
+    background: var(--ns-hover-bg, rgba(0,0,0,0.08));
+}
+
+.actor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.actor-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+}
+
+.actor-row:hover {
+    background: var(--ns-hover-bg, rgba(0,0,0,0.06));
+}
+
+.actor-row.selected {
+    background: var(--ns-selected-bg, rgba(80,120,200,0.12));
+}
+
+.actor-portrait {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.actor-name {
+    flex: 1;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.actor-checkbox {
+    font-size: 0.9em;
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.actor-row.selected .actor-checkbox {
+    opacity: 1;
+    color: var(--ns-color-blue, #5078c8);
+}
+
+.no-actors {
+    padding: 8px;
+    text-align: center;
+    opacity: 0.5;
+    font-size: 0.9em;
+}
+
+.gm-toolkit-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 6px 4px;
+    border-top: 1px solid var(--ns-border-light, #ccc);
+    flex-shrink: 0;
+}
+
+.gm-apply-btn {
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.gm-apply-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ─── GMPayout App Layout ──────────────────────────────────────────────────── */
+.gm-payout-app .window-content {
+    padding: 0;
+    overflow: hidden;
+}
+
+.gm-payout-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.gm-payout-columns {
+    display: flex;
+    flex: 1;
+    gap: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.payout-actors-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--ns-border-light, #ccc);
+    overflow: hidden;
+    padding-bottom: 4px;
+}
+
+.payout-currency-col {
+    flex: 0 0 260px;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+    overflow-y: auto;
+    gap: 4px;
+}
+
+.payout-currency-header {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.payout-currency-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+}
+
+.payout-currency-primary .payout-currency-name {
+    font-weight: bold;
+}
+
+.payout-currency-img {
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.payout-currency-name {
+    flex: 1;
+    font-size: 0.88em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.currency-amount-input {
+    width: 60px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.payout-split-preview {
+    font-size: 0.8em;
+    color: var(--ns-color-green, #3a8c3a);
+    font-weight: bold;
+    flex-shrink: 0;
+    min-width: 32px;
+}
+
+.payout-options-hr {
+    margin: 6px 0;
+}
+
+.payout-options {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.payout-option-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.88em;
+    cursor: pointer;
+}
+
+.payout-split-hint {
+    font-size: 0.85em;
+    opacity: 0.7;
+    margin-left: 2px;
+}
+
+/* ─── Payout Chat Card (list) ──────────────────────────────────────────────── */
+.payout-report .payout-report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.payout-report .payout-report-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.payout-report .payout-report-portrait {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.payout-report .payout-report-name {
+    font-weight: bold;
+    font-size: 0.88em;
+    min-width: 60px;
+    line-height: 28px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.payout-report .payout-report-currencies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    flex: 1;
+    padding-top: 4px;
+}
+
+.payout-report .payout-report-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 0.8em;
+}
+
+.payout-report .payout-chip-amount {
+    font-weight: bold;
+    color: var(--ns-color-green, #3a8c3a);
+}
+
+.payout-report .payout-chip-name {
+    opacity: 0.8;
+}
+
+/* ─── GMReputation App Layout ──────────────────────────────────────────────── */
+.gm-reputation-app .window-content {
+    padding: 0;
+    overflow: hidden;
+}
+
+.gm-rep-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.gm-rep-columns {
+    display: flex;
+    flex: 1;
+    gap: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.rep-actors-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--ns-border-light, #ccc);
+    overflow: hidden;
+    padding-bottom: 4px;
+}
+
+.rep-options-col {
+    flex: 0 0 260px;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 8px;
+    overflow-y: auto;
+    gap: 4px;
+}
+
+.rep-options-header {
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.rep-global-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rep-global-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.rep-global-label {
+    flex: 1;
+    font-size: 0.88em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rep-number-input {
+    width: 60px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.rep-options-hr {
+    margin: 6px 0;
+}
+
+.rep-items-header {
+    font-size: 0.85em;
+    font-weight: bold;
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+.rep-item-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.rep-item-img {
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.rep-item-name {
+    flex: 1;
+    font-size: 0.88em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ─── Reputation Chat Card (report) ───────────────────────────────────────── */
+.reputation-report .rep-report-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.reputation-report .rep-report-portrait {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.reputation-report .rep-report-name {
+    font-weight: bold;
+    font-size: 0.88em;
+    line-height: 28px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 60px;
+}
+
+.reputation-report .rep-item-stat-img {
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.reputation-report .rep-item-stat-name {
+    font-size: 0.8em;
+    opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+/* ─── GMReputation App — icon colors in options col ───────────────────────── */
+.gm-reputation-app .rep-global-row .rep-icon {
+    color: #7986cb;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.gm-reputation-app .rep-global-row .fame-icon {
+    color: #ffb300;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
 }
 

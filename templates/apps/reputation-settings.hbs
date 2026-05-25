@@ -1,90 +1,123 @@
-<div class="neuroshima reputation-settings-form standard-form">
+<div class="reputation-settings-form">
 
-    <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationTestMode.Name"}}</h3>
-    <div class="form-group">
-        <select name="testMode">
-            {{#each testModeChoices}}
-            <option value="{{@key}}" {{#if (eq @key ../config.testMode)}}selected{{/if}}>{{this}}</option>
+    <div class="rep-settings-scroll">
+
+        <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationTestMode.Name"}}</h3>
+        <div class="form-group">
+            <select name="testMode">
+                {{#each testModeChoices}}
+                <option value="{{@key}}" {{#if (eq @key ../config.testMode)}}selected{{/if}}>{{this}}</option>
+                {{/each}}
+            </select>
+            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationTestMode.Hint"}}</p>
+        </div>
+
+        <div class="rep-settings-minmax">
+            <div class="rep-settings-minmax-block">
+                <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationMin.Name"}}</h3>
+                <input type="number" name="repMin" value="{{config.repMin}}" data-dtype="Number"/>
+            </div>
+            <div class="rep-settings-minmax-block">
+                <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationMax.Name"}}</h3>
+                <input type="number" name="repMax" value="{{config.repMax}}" data-dtype="Number"/>
+            </div>
+        </div>
+
+        <div class="rep-settings-minmax">
+            <div class="rep-settings-minmax-block">
+                <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Name"}}</h3>
+                <input type="number" name="fameThreshold" value="{{config.fameThreshold}}" data-dtype="Number" min="0"/>
+                <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Hint"}}</p>
+            </div>
+            <div class="rep-settings-minmax-block">
+                <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Name"}}</h3>
+                <input type="number" name="famePoints" value="{{config.famePoints}}" data-dtype="Number" min="0"/>
+                <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Hint"}}</p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox-wrapper">
+                <input type="checkbox" name="useColors" {{checked config.useColors}}/>
+                <label>{{localize "NEUROSHIMA.Settings.ReputationUseColors.Name"}}</label>
+            </div>
+            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationUseColors.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox-wrapper">
+                <input type="checkbox" name="colorNames" {{checked config.colorNames}}/>
+                <label>{{localize "NEUROSHIMA.Settings.ReputationColorNames.Name"}}</label>
+            </div>
+            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationColorNames.Hint"}}</p>
+        </div>
+
+        <div class="form-group">
+            <div class="checkbox-wrapper">
+                <input type="checkbox" name="showAsProgressBar" {{checked config.showAsProgressBar}}/>
+                <label>{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Name"}}</label>
+            </div>
+            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Hint"}}</p>
+        </div>
+
+        <hr/>
+
+        <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.DefaultReputationItems.Name"}}</h3>
+        <p class="hint">{{localize "NEUROSHIMA.Settings.DefaultReputationItems.Hint"}}</p>
+
+        <div class="rep-relation-add-top">
+            <a class="item-control" data-action="addDefaultRepItem">
+                <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Settings.DefaultReputationItems.Add"}}
+            </a>
+        </div>
+
+        <div class="rep-default-items-scroll">
+            {{#if config.hasDefaultRepItems}}
+            <div class="rep-default-items-header">
+                <span></span>
+                <span>{{localize "NEUROSHIMA.Settings.DefaultReputationItems.ColName"}}</span>
+                <span></span>
+            </div>
+            {{/if}}
+            {{#each config.defaultRepItems}}
+            <div class="rep-default-item-row">
+                <img class="rep-default-item-preview" src="{{imgDisplay}}" alt="" data-index="{{@index}}" data-action="browseRepItemImg" title="{{localize 'NEUROSHIMA.Actions.Browse'}}">
+                <input type="hidden" name="defaultRepItems.{{@index}}.img" value="{{img}}"/>
+                <input type="text" name="defaultRepItems.{{@index}}.name" value="{{name}}" placeholder="{{localize 'NEUROSHIMA.Settings.DefaultReputationItems.NamePlaceholder'}}"/>
+                <a class="item-control" data-action="deleteDefaultRepItem" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+            </div>
             {{/each}}
-        </select>
-        <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationTestMode.Hint"}}</p>
-    </div>
-
-    <div class="rep-settings-minmax">
-        <div class="rep-settings-minmax-block">
-            <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationMin.Name"}}</h3>
-            <input type="number" name="repMin" value="{{config.repMin}}" data-dtype="Number"/>
         </div>
-        <div class="rep-settings-minmax-block">
-            <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationMax.Name"}}</h3>
-            <input type="number" name="repMax" value="{{config.repMax}}" data-dtype="Number"/>
-        </div>
-    </div>
 
-    <div class="rep-settings-minmax">
-        <div class="rep-settings-minmax-block">
-            <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Name"}}</h3>
-            <input type="number" name="fameThreshold" value="{{config.fameThreshold}}" data-dtype="Number" min="0"/>
-            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Hint"}}</p>
-        </div>
-        <div class="rep-settings-minmax-block">
-            <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Name"}}</h3>
-            <input type="number" name="famePoints" value="{{config.famePoints}}" data-dtype="Number" min="0"/>
-            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Hint"}}</p>
-        </div>
-    </div>
+        <hr/>
 
-    <div class="form-group">
-        <div class="checkbox-wrapper">
-            <input type="checkbox" name="useColors" {{checked config.useColors}}/>
-            <label>{{localize "NEUROSHIMA.Settings.ReputationUseColors.Name"}}</label>
+        <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Reputation.GlobalRelationTable"}}</h3>
+
+        <div class="rep-relation-add-top">
+            <a class="item-control" data-action="addGlobalRelationRow">
+                <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Reputation.AddRelation"}}
+            </a>
         </div>
-        <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationUseColors.Hint"}}</p>
-    </div>
 
-    <div class="form-group">
-        <div class="checkbox-wrapper">
-            <input type="checkbox" name="colorNames" {{checked config.colorNames}}/>
-            <label>{{localize "NEUROSHIMA.Settings.ReputationColorNames.Name"}}</label>
+        <div class="rep-relation-scroll">
+            <div class="rep-relation-header">
+                <span>{{localize "NEUROSHIMA.Reputation.RelationMin"}}</span>
+                <span>{{localize "NEUROSHIMA.Reputation.RelationMax"}}</span>
+                <span>{{localize "NEUROSHIMA.Reputation.RelationName"}}</span>
+                <span>{{localize "NEUROSHIMA.Reputation.RelationColor"}}</span>
+                <span></span>
+            </div>
+            {{#each config.relationTable}}
+            <div class="rep-relation-row">
+                <input type="number" name="relationTable.{{@index}}.minVal" value="{{minVal}}" data-dtype="Number"/>
+                <input type="number" name="relationTable.{{@index}}.maxVal" value="{{maxVal}}" data-dtype="Number"/>
+                <input type="text" name="relationTable.{{@index}}.name" value="{{name}}"/>
+                <input type="color" class="rep-color-input" name="relationTable.{{@index}}.color" value="{{#if color}}{{color}}{{else}}#888888{{/if}}">
+                <a class="item-control" data-action="deleteGlobalRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
+            </div>
+            {{/each}}
         </div>
-        <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationColorNames.Hint"}}</p>
-    </div>
 
-    <div class="form-group">
-        <div class="checkbox-wrapper">
-            <input type="checkbox" name="showAsProgressBar" {{checked config.showAsProgressBar}}/>
-            <label>{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Name"}}</label>
-        </div>
-        <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Hint"}}</p>
-    </div>
-
-    <hr/>
-
-    <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Reputation.GlobalRelationTable"}}</h3>
-
-    <div class="rep-relation-add-top">
-        <a class="item-control" data-action="addGlobalRelationRow">
-            <i class="fas fa-plus"></i> {{localize "NEUROSHIMA.Reputation.AddRelation"}}
-        </a>
-    </div>
-
-    <div class="rep-relation-scroll">
-        <div class="rep-relation-header">
-            <span>{{localize "NEUROSHIMA.Reputation.RelationMin"}}</span>
-            <span>{{localize "NEUROSHIMA.Reputation.RelationMax"}}</span>
-            <span>{{localize "NEUROSHIMA.Reputation.RelationName"}}</span>
-            <span>{{localize "NEUROSHIMA.Reputation.RelationColor"}}</span>
-            <span></span>
-        </div>
-        {{#each config.relationTable}}
-        <div class="rep-relation-row">
-            <input type="number" name="relationTable.{{@index}}.minVal" value="{{minVal}}" data-dtype="Number"/>
-            <input type="number" name="relationTable.{{@index}}.maxVal" value="{{maxVal}}" data-dtype="Number"/>
-            <input type="text" name="relationTable.{{@index}}.name" value="{{name}}"/>
-            <input type="color" class="rep-color-input" name="relationTable.{{@index}}.color" value="{{#if color}}{{color}}{{else}}#888888{{/if}}">
-            <a class="item-control" data-action="deleteGlobalRelationRow" data-index="{{@index}}" title="{{localize 'Delete'}}"><i class="fas fa-trash"></i></a>
-        </div>
-        {{/each}}
     </div>
 
     <footer class="form-footer">

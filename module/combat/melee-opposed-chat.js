@@ -226,6 +226,26 @@ export class MeleeOpposedChat {
     const attackerName = attackerActor?.name ?? "Attacker";
     const defenderName = defenderActor.name;
 
+    // ── Double-skill allocation branch ────────────────────────────────────
+    const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
+    const attackerSkillBudget = data.attackerSkillBudget ?? 0;
+    const defenderSkillBudget = defenseResult.skill ?? 0;
+
+    if (doubleSkill && (attackerSkillBudget > 0 || defenderSkillBudget > 0)) {
+      await MeleeOpposedChat._createAllocationCard({
+        data, attackerActor, defenderActor,
+        attackDice, defenseDice, attackTarget, defenseTarget,
+        attackSuccesses, defenseSuccesses,
+        attackerSkillBudget, defenderSkillBudget
+      });
+      await MeleeOpposedChat._updateHandlerToResolved(message, data, attackerActor, defenderActor);
+      await MeleeOpposedChat._removePending(pending.id ?? data.defenderUuid);
+      await MeleeOpposedChat._unsetDefenderFlag(data.defenderUuid);
+      defenderActor?.sheet?.render();
+      attackerActor?.sheet?.render();
+      return;
+    }
+
     // ── Resolution logic ──────────────────────────────────────────────────
     let hits = [];
     let resultType = "block";
@@ -286,7 +306,7 @@ export class MeleeOpposedChat {
 
     const pairWinners = {};
     if (mode === "opposedPips") {
-      for (let i = 0; i < Math.max(attackDice.length, defenseDice.length); i++) {
+      for (let i = 0; i < 3; i++) {
         const aDie = attackDice[i];
         const dDie = defenseDice[i];
         const aWins = aDie?.isSuccess && (!dDie?.isSuccess || aDie.modified < (dDie?.modified ?? Infinity));
@@ -295,13 +315,12 @@ export class MeleeOpposedChat {
       }
     }
 
-    const pairedDice = Array.from({ length: Math.max(attackDiceDisplay.length, defenseDiceDisplay.length) }, (_, i) => {
+    const pairedDice = Array.from({ length: 3 }, (_, i) => {
       const aDie = attackDiceDisplay[i] ?? null;
       const dDie = defenseDiceDisplay[i] ?? null;
-      if (!aDie && !dDie) return null;
       const pw = pairWinners[i] ?? {};
       return { label: `D${i + 1}`, attack: aDie, defense: dDie, attackWon: pw.attackWon ?? false, defenseWon: pw.defenseWon ?? false };
-    }).filter(Boolean);
+    });
 
     // ── Beast action spending (creature attackers only) ───────────────────
     // Sort hits ascending by tier so fallback always applies lowest-tier first,
@@ -436,6 +455,481 @@ export class MeleeOpposedChat {
   // ── Private helpers ─────────────────────────────────────────────────────
 
   /**
+   * Update the handler card to "resolved" state.
+   * @private
+   */
+  static async _updateHandlerToResolved(message, data, attackerActor, defenderActor) {
+    const mode = data.mode;
+    const attackerName = attackerActor?.name ?? "Attacker";
+    const defenderName = defenderActor?.name ?? "Defender";
+    const weaponName = attackerActor?.items?.get(data.weaponId)?.name ?? "";
+    const modeLabel = game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${mode}`);
+    const updatedTemplateData = {
+      mode,
+      modeLabel,
+      attackerName,
+      attackerImg: attackerActor?.img,
+      weaponName,
+      damage1: data.damage1,
+      damage2: data.damage2,
+      damage3: data.damage3,
+      defenderName,
+      defenderImg: defenderActor?.img,
+      defenderWeapons: [],
+      status: "resolved"
+    };
+    const updatedContent = await renderTemplate(
+      "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
+      updatedTemplateData
+    );
+    await message.update({ content: updatedContent });
+  }
+
+  /**
+   * Create the skill-allocation card when doubleSkillAction is ON and either side has a budget.
+   * @private
+   */
+  static async _createAllocationCard({ data, attackerActor, defenderActor,
+      attackDice, defenseDice, attackTarget, defenseTarget,
+      attackSuccesses, defenseSuccesses, attackerSkillBudget, defenderSkillBudget }) {
+    const allocData = {
+      status: "pending",
+      mode: data.mode,
+      attackerUuid: data.attackerUuid,
+      defenderUuid: data.defenderUuid,
+      weaponId: data.weaponId,
+      attackDice,
+      defenseDice,
+      attackTarget,
+      defenseTarget,
+      attackSuccesses,
+      defenseSuccesses,
+      damage1: data.damage1,
+      damage2: data.damage2,
+      damage3: data.damage3,
+      attackerSkillBudget,
+      defenderSkillBudget,
+      attackerSelfReductions: [0, 0, 0],
+      attackerOpponentGains: [0, 0, 0],
+      defenderSelfReductions: [0, 0, 0],
+      defenderOpponentGains: [0, 0, 0],
+      attackerConfirmed: false,
+      defenderConfirmed: false
+    };
+
+    const context = MeleeOpposedChat._buildAllocationContext(allocData, attackerActor, defenderActor);
+    const content = await renderTemplate(
+      "systems/neuroshima/templates/chat/melee-skill-allocation.hbs",
+      context
+    );
+
+    const rollMode = game.settings.get("core", "rollMode");
+    await ChatMessage.create({
+      content,
+      flags: { neuroshima: { skillAlloc: allocData } },
+      speaker: { alias: "⚔" },
+      rollMode
+    });
+  }
+
+  /**
+   * Build context for the skill-allocation template from stored allocData.
+   * @private
+   */
+  static _buildAllocationContext(allocData, attackerActor, defenderActor) {
+    const {
+      attackDice, defenseDice,
+      attackerSelfReductions, attackerOpponentGains,
+      defenderSelfReductions, defenderOpponentGains,
+      attackerSkillBudget, defenderSkillBudget,
+      attackTarget, defenseTarget,
+      attackerConfirmed, defenderConfirmed
+    } = allocData;
+
+    const attackerBudgetUsed = (attackerSelfReductions || []).reduce((a, b) => a + b, 0)
+      + (attackerOpponentGains || []).reduce((a, b) => a + b, 0);
+    const defenderBudgetUsed = (defenderSelfReductions || []).reduce((a, b) => a + b, 0)
+      + (defenderOpponentGains || []).reduce((a, b) => a + b, 0);
+    const attackerBudgetRemaining = (attackerSkillBudget || 0) - attackerBudgetUsed;
+    const defenderBudgetRemaining = (defenderSkillBudget || 0) - defenderBudgetUsed;
+
+    const pairedDice = Array.from({ length: 3 }, (_, i) => {
+      const aDie = (attackDice || [])[i] ?? null;
+      const dDie = (defenseDice || [])[i] ?? null;
+
+      const atkSelf = (attackerSelfReductions || [])[i] || 0;
+      const atkOpp  = (attackerOpponentGains  || [])[i] || 0;
+      const defSelf = (defenderSelfReductions || [])[i] || 0;
+      const defOpp  = (defenderOpponentGains  || [])[i] || 0;
+
+      const rawAtkVal = aDie?.modified ?? aDie?.original ?? null;
+      const rawDefVal = dDie?.modified ?? dDie?.original ?? null;
+
+      const effAtkVal = rawAtkVal !== null ? Math.min(20, Math.max(1, rawAtkVal - atkSelf + defOpp)) : null;
+      const effDefVal = rawDefVal !== null ? Math.min(20, Math.max(1, rawDefVal - defSelf + atkOpp)) : null;
+
+      const effectiveAttack = effAtkVal !== null ? {
+        value: effAtkVal,
+        isSuccess: effAtkVal <= (attackTarget || 0) && effAtkVal !== 20,
+        isNat1: effAtkVal === 1,
+        isNat20: effAtkVal === 20
+      } : null;
+
+      const effectiveDefense = effDefVal !== null ? {
+        value: effDefVal,
+        isSuccess: effDefVal <= (defenseTarget || 0) && effDefVal !== 20,
+        isNat1: effDefVal === 1,
+        isNat20: effDefVal === 20
+      } : null;
+
+      const attackDelta = (effAtkVal !== null && rawAtkVal !== null) ? effAtkVal - rawAtkVal : 0;
+      const defenseDelta = (effDefVal !== null && rawDefVal !== null) ? effDefVal - rawDefVal : 0;
+
+      const attackCanSelfSpend = !!aDie && !attackerConfirmed && attackerBudgetRemaining > 0 && (effAtkVal ?? 0) > 1;
+      const defenderCanSelfSpend = !!dDie && !defenderConfirmed && defenderBudgetRemaining > 0 && (effDefVal ?? 0) > 1;
+      const attackerCanOpponentSpend = !!dDie && !attackerConfirmed && attackerBudgetRemaining > 0 && (effDefVal ?? 20) < 20;
+      const defenderCanOpponentSpend = !!aDie && !defenderConfirmed && defenderBudgetRemaining > 0 && (effAtkVal ?? 20) < 20;
+
+      return {
+        label: `D${i + 1}`,
+        effectiveAttack,
+        effectiveDefense,
+        attackModified: attackDelta !== 0,
+        defenseModified: defenseDelta !== 0,
+        attackDeltaDisplay: attackDelta > 0 ? `+${attackDelta}` : `${attackDelta}`,
+        defenseDeltaDisplay: defenseDelta > 0 ? `+${defenseDelta}` : `${defenseDelta}`,
+        attackCanSelfSpend,
+        defenderCanSelfSpend,
+        attackerCanOpponentSpend,
+        defenderCanOpponentSpend,
+        attackSelfAlloc: atkSelf > 0,
+        defSelfAlloc: defSelf > 0,
+        atkOppAllocDefense: atkOpp > 0,
+        defOppAllocAttack: defOpp > 0
+      };
+    });
+
+    return {
+      mode: allocData.mode,
+      modeLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${allocData.mode}`),
+      attackerName: attackerActor?.name ?? allocData.attackerUuid,
+      attackerImg: attackerActor?.img,
+      defenderName: defenderActor?.name ?? allocData.defenderUuid,
+      defenderImg: defenderActor?.img,
+      attackerBudgetRemaining,
+      defenderBudgetRemaining,
+      attackerConfirmed,
+      defenderConfirmed,
+      pairedDice
+    };
+  }
+
+  /**
+   * Apply a skill allocation adjustment patch to the allocation card.
+   * Called from the socket handler so the GM can safely update the message flag.
+   */
+  static async applyAllocPatch(messageId, patch) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const allocData = message.getFlag("neuroshima", "skillAlloc");
+    if (!allocData || allocData.status !== "pending") return;
+
+    const updated = foundry.utils.deepClone(allocData);
+
+    if (patch.type === "adjust") {
+      const { spender, target, dieIndex, delta } = patch;
+      const arr = spender === "attacker"
+        ? (target === "self" ? updated.attackerSelfReductions : updated.attackerOpponentGains)
+        : (target === "self" ? updated.defenderSelfReductions : updated.defenderOpponentGains);
+
+      const attackerBudgetUsed = (updated.attackerSelfReductions || []).reduce((a, b) => a + b, 0)
+        + (updated.attackerOpponentGains || []).reduce((a, b) => a + b, 0);
+      const defenderBudgetUsed = (updated.defenderSelfReductions || []).reduce((a, b) => a + b, 0)
+        + (updated.defenderOpponentGains || []).reduce((a, b) => a + b, 0);
+      const attackerRemaining = (updated.attackerSkillBudget || 0) - attackerBudgetUsed;
+      const defenderRemaining = (updated.defenderSkillBudget || 0) - defenderBudgetUsed;
+      const remaining = spender === "attacker" ? attackerRemaining : defenderRemaining;
+
+      const attackDie = (updated.attackDice || [])[dieIndex];
+      const defenseDie = (updated.defenseDice || [])[dieIndex];
+
+      if (delta > 0 && remaining <= 0) return;
+
+      if (spender === "attacker" && target === "self") {
+        const atkSelf = arr[dieIndex] || 0;
+        const defOpp  = (updated.defenderOpponentGains || [])[dieIndex] || 0;
+        const rawVal  = attackDie?.modified ?? attackDie?.original ?? 0;
+        const effVal  = rawVal - atkSelf + defOpp;
+        if (delta > 0 && effVal <= 1) return;
+        if (delta < 0 && atkSelf <= 0) return;
+      } else if (spender === "defender" && target === "self") {
+        const defSelf = arr[dieIndex] || 0;
+        const atkOpp  = (updated.attackerOpponentGains || [])[dieIndex] || 0;
+        const rawVal  = defenseDie?.modified ?? defenseDie?.original ?? 0;
+        const effVal  = rawVal - defSelf + atkOpp;
+        if (delta > 0 && effVal <= 1) return;
+        if (delta < 0 && defSelf <= 0) return;
+      } else if (spender === "attacker" && target === "opponent") {
+        const atkOpp  = arr[dieIndex] || 0;
+        const defSelf = (updated.defenderSelfReductions || [])[dieIndex] || 0;
+        const rawVal  = defenseDie?.modified ?? defenseDie?.original ?? 0;
+        const effVal  = rawVal - defSelf + atkOpp;
+        if (delta > 0 && effVal >= 20) return;
+        if (delta < 0 && atkOpp <= 0) return;
+      } else if (spender === "defender" && target === "opponent") {
+        const defOpp  = arr[dieIndex] || 0;
+        const atkSelf = (updated.attackerSelfReductions || [])[dieIndex] || 0;
+        const rawVal  = attackDie?.modified ?? attackDie?.original ?? 0;
+        const effVal  = rawVal - atkSelf + defOpp;
+        if (delta > 0 && effVal >= 20) return;
+        if (delta < 0 && defOpp <= 0) return;
+      }
+
+      arr[dieIndex] = (arr[dieIndex] || 0) + delta;
+
+    } else if (patch.type === "reset") {
+      if (patch.side === "attacker") {
+        updated.attackerSelfReductions = [0, 0, 0];
+        updated.attackerOpponentGains  = [0, 0, 0];
+      } else {
+        updated.defenderSelfReductions = [0, 0, 0];
+        updated.defenderOpponentGains  = [0, 0, 0];
+      }
+    } else if (patch.type === "confirm") {
+      if (patch.side === "attacker") updated.attackerConfirmed = true;
+      else updated.defenderConfirmed = true;
+    }
+
+    await message.setFlag("neuroshima", "skillAlloc", updated);
+
+    // Re-render the card HTML
+    const attackerDoc = fromUuidSync(updated.attackerUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    const defenderDoc = fromUuidSync(updated.defenderUuid);
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+
+    const context = MeleeOpposedChat._buildAllocationContext(updated, attackerActor, defenderActor);
+    const newContent = await renderTemplate(
+      "systems/neuroshima/templates/chat/melee-skill-allocation.hbs",
+      context
+    );
+    await message.update({ content: newContent });
+
+    if (updated.attackerConfirmed && updated.defenderConfirmed) {
+      await MeleeOpposedChat.resolveFromAllocation(messageId);
+    }
+  }
+
+  /**
+   * Resolve the opposed test from a confirmed allocation card.
+   */
+  static async resolveFromAllocation(messageId) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const allocData = message.getFlag("neuroshima", "skillAlloc");
+    if (!allocData || allocData.status !== "pending") return;
+    if (!allocData.attackerConfirmed || !allocData.defenderConfirmed) return;
+
+    await message.setFlag("neuroshima", "skillAlloc", { ...allocData, status: "resolved" });
+
+    const attackerDoc = fromUuidSync(allocData.attackerUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    const defenderDoc = fromUuidSync(allocData.defenderUuid);
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+
+    const mode = allocData.mode;
+    const {
+      attackDice, defenseDice,
+      attackerSelfReductions, attackerOpponentGains,
+      defenderSelfReductions, defenderOpponentGains,
+      attackTarget, defenseTarget,
+      damage1, damage2, damage3
+    } = allocData;
+
+    // Compute effective dice after allocation
+    const effectiveAttackDice = (attackDice || []).map((d, i) => {
+      if (!d) return null;
+      const atkSelf = (attackerSelfReductions || [])[i] || 0;
+      const defOpp  = (defenderOpponentGains  || [])[i] || 0;
+      const rawVal  = d.modified ?? d.original;
+      const effVal  = Math.min(20, Math.max(1, rawVal - atkSelf + defOpp));
+      return {
+        original: d.original,
+        modified: effVal,
+        isSuccess: effVal <= (attackTarget || 0) && effVal !== 20,
+        isNat1: effVal === 1,
+        isNat20: effVal === 20
+      };
+    }).filter(Boolean);
+
+    const effectiveDefenseDice = (defenseDice || []).map((d, i) => {
+      if (!d) return null;
+      const defSelf = (defenderSelfReductions || [])[i] || 0;
+      const atkOpp  = (attackerOpponentGains  || [])[i] || 0;
+      const rawVal  = d.modified ?? d.original;
+      const effVal  = Math.min(20, Math.max(1, rawVal - defSelf + atkOpp));
+      return {
+        original: d.original,
+        modified: effVal,
+        isSuccess: effVal <= (defenseTarget || 0) && effVal !== 20,
+        isNat1: effVal === 1,
+        isNat20: effVal === 20
+      };
+    }).filter(Boolean);
+
+    const attackSuccesses = effectiveAttackDice.filter(d => d.isSuccess).length;
+    const defenseSuccesses = effectiveDefenseDice.filter(d => d.isSuccess).length;
+
+    const attackerName = attackerActor?.name ?? "Attacker";
+    const defenderName = defenderActor?.name ?? "Defender";
+
+    // Resolution logic (same as resolveOpposed)
+    let hits = [];
+    let resultType = "block";
+    let resultText = "";
+
+    if (mode === "opposedPips") {
+      for (let i = 0; i < 3; i++) {
+        const aDie = effectiveAttackDice[i];
+        const dDie = effectiveDefenseDice[i];
+        if (!aDie) continue;
+        const aWins = aDie.isSuccess && (!dDie?.isSuccess || aDie.modified < (dDie?.modified ?? Infinity));
+        if (aWins) {
+          const tier = i + 1;
+          hits.push({ tier, damageType: allocData[`damage${tier}`] });
+        }
+      }
+      if (hits.length > 0) {
+        resultType = "hit";
+        resultText = game.i18n.format("NEUROSHIMA.MeleeOpposedChat.LogPipsHit", {
+          attacker: attackerName, defender: defenderName,
+          tiers: hits.map(h => `D${h.tier}(${h.damageType})`).join(", ")
+        });
+      } else {
+        resultText = game.i18n.format("NEUROSHIMA.MeleeOpposedChat.LogBlock", {
+          attacker: attackerName, defender: defenderName
+        });
+      }
+    } else {
+      const net = attackSuccesses - defenseSuccesses;
+      if (net > 0) {
+        resultType = "hit";
+        const tier = Math.min(3, net);
+        hits.push({ tier, damageType: allocData[`damage${tier}`] });
+        resultText = game.i18n.format("NEUROSHIMA.MeleeOpposedChat.LogSuccessesHit", {
+          attacker: attackerName, defender: defenderName,
+          net, tier, damage: allocData[`damage${tier}`]
+        });
+      } else {
+        resultText = game.i18n.format("NEUROSHIMA.MeleeOpposedChat.LogBlock", {
+          attacker: attackerName, defender: defenderName
+        });
+      }
+    }
+
+    const attackDiceDisplay = effectiveAttackDice.map((d, i) => ({
+      label: `D${i + 1}`, ...d, isNat1: d.original === 1, isNat20: d.original === 20
+    }));
+    const defenseDiceDisplay = effectiveDefenseDice.map((d, i) => ({
+      label: `D${i + 1}`, ...d, isNat1: d.original === 1, isNat20: d.original === 20
+    }));
+
+    const pairWinners = {};
+    if (mode === "opposedPips") {
+      for (let i = 0; i < 3; i++) {
+        const aDie = effectiveAttackDice[i];
+        const dDie = effectiveDefenseDice[i];
+        const aWins = aDie?.isSuccess && (!dDie?.isSuccess || aDie.modified < (dDie?.modified ?? Infinity));
+        const dWins = dDie?.isSuccess && (!aDie?.isSuccess || dDie.modified < (aDie?.modified ?? Infinity));
+        pairWinners[i] = { attackWon: aWins ?? false, defenseWon: dWins ?? false };
+      }
+    }
+
+    const pairedDice = Array.from({ length: 3 }, (_, i) => {
+      const aDie = attackDiceDisplay[i] ?? null;
+      const dDie = defenseDiceDisplay[i] ?? null;
+      const pw = pairWinners[i] ?? {};
+      return { label: `D${i + 1}`, attack: aDie, defense: dDie, attackWon: pw.attackWon ?? false, defenseWon: pw.defenseWon ?? false };
+    });
+
+    hits.sort((a, b) => a.tier - b.tier);
+
+    const isCreatureAttacker = attackerActor?.type === "creature";
+    let netSuccesses = 0;
+    if (mode === "opposedSuccesses") {
+      netSuccesses = Math.max(0, attackSuccesses - defenseSuccesses);
+    } else {
+      netSuccesses = hits.length;
+    }
+
+    const affordableBeastActions = [];
+    if (isCreatureAttacker && netSuccesses > 0) {
+      const beastActions = attackerActor.items.filter(
+        i => i.type === "beast-action" && i.system.costType === "success"
+      );
+      for (const action of beastActions) {
+        const cost = action.system.successCost ?? 1;
+        if (cost <= netSuccesses) {
+          affordableBeastActions.push({
+            id: action.id, name: action.name, img: action.img, cost,
+            damage: action.system.damage || null,
+            hasEffects: action.effects?.size > 0,
+            actionType: action.system.actionType || ""
+          });
+        }
+      }
+      affordableBeastActions.sort((a, b) => b.cost - a.cost);
+    }
+
+    const weaponName = attackerActor?.items?.get(allocData.weaponId)?.name ?? "";
+
+    const resolutionData = {
+      mode, modeLabel: game.i18n.localize(`NEUROSHIMA.MeleeOpposedChat.Mode.${mode}`),
+      attackerName, attackerImg: attackerActor?.img,
+      defenderName, defenderImg: defenderActor?.img,
+      weaponName,
+      attackDice: attackDiceDisplay, defenseDice: defenseDiceDisplay,
+      pairedDice, attackTarget, defenseTarget,
+      attackSuccesses, defenseSuccesses,
+      resultType, resultText, hits,
+      isHit: resultType === "hit",
+      damage1, damage2, damage3,
+      isCreatureAttacker, netSuccesses,
+      affordableBeastActions, hasBeastActions: affordableBeastActions.length > 0
+    };
+
+    const resContent = await renderTemplate(
+      "systems/neuroshima/templates/chat/melee-opposed-result.hbs",
+      resolutionData
+    );
+
+    const locationRoll = (allocData.attackDice?.[0]?.original) ?? 10;
+    const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
+
+    const rollMode = game.settings.get("core", "rollMode");
+    await ChatMessage.create({
+      content: resContent,
+      flags: {
+        neuroshima: {
+          opposedResult: {
+            attackerUuid: allocData.attackerUuid,
+            defenderUuid: allocData.defenderUuid,
+            weaponId: allocData.weaponId,
+            hits, location,
+            damage1, damage2, damage3,
+            netSuccesses, affordableBeastActions,
+            applied: false, beastActionsApplied: false
+          }
+        }
+      },
+      speaker: { alias: "⚔" },
+      rollMode
+    });
+  }
+
+  /**
    * Create the handler chat card and set the actor flag on the defender.
    * @private
    */
@@ -510,6 +1004,7 @@ export class MeleeOpposedChat {
             })),
             attackTarget: rawResult.target,
             attackSuccesses: attackerSuccesses,
+            attackerSkillBudget: rawResult.skill ?? 0,
             damage1: weapon.system.damageMelee1,
             damage2: weapon.system.damageMelee2,
             damage3: weapon.system.damageMelee3

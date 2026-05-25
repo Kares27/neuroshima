@@ -1,0 +1,54 @@
+<div class="neuroshima roll-card reputation-report">
+    <header class="roll-header">
+        <div class="weapon-title">
+            <i class="fas fa-award"></i> {{localize "NEUROSHIMA.GMToolkit.Reputation.ChatTitle"}}
+        </div>
+    </header>
+
+    <hr class="dotted-hr">
+
+    <div class="rep-report-list">
+        {{#each entries}}
+        <div class="rep-report-row">
+            <img class="rep-report-portrait" src="{{img}}" alt="{{name}}">
+            <span class="rep-report-name">{{name}}</span>
+            <div class="rep-report-stats">
+                {{#if repChange}}
+                <div class="rep-stat-row">
+                    <i class="fas fa-handshake rep-icon"></i>
+                    <span class="xp-before">{{repChange.before}}</span>
+                    <div class="xp-arrow-wrap">
+                        <span class="xp-delta {{#if (gt repChange.delta 0)}}xp-delta-pos{{else}}xp-delta-neg{{/if}}">{{#if (gt repChange.delta 0)}}+{{/if}}{{repChange.delta}}</span>
+                        <i class="fas fa-long-arrow-alt-right xp-arrow"></i>
+                    </div>
+                    <span class="xp-after">{{repChange.after}}</span>
+                </div>
+                {{/if}}
+                {{#if fameChange}}
+                <div class="rep-stat-row">
+                    <i class="fas fa-star fame-icon"></i>
+                    <span class="xp-before">{{fameChange.before}}</span>
+                    <div class="xp-arrow-wrap">
+                        <span class="xp-delta {{#if (gt fameChange.delta 0)}}xp-delta-pos{{else}}xp-delta-neg{{/if}}">{{#if (gt fameChange.delta 0)}}+{{/if}}{{fameChange.delta}}</span>
+                        <i class="fas fa-long-arrow-alt-right xp-arrow"></i>
+                    </div>
+                    <span class="xp-after">{{fameChange.after}}</span>
+                </div>
+                {{/if}}
+                {{#each itemChanges}}
+                <div class="rep-stat-row">
+                    <img src="{{img}}" alt="{{name}}" width="13" height="13" class="rep-item-stat-img">
+                    <span class="rep-item-stat-name">{{name}}</span>
+                    <span class="xp-before">{{before}}</span>
+                    <div class="xp-arrow-wrap">
+                        <span class="xp-delta {{#if (gt delta 0)}}xp-delta-pos{{else}}xp-delta-neg{{/if}}">{{#if (gt delta 0)}}+{{/if}}{{delta}}</span>
+                        <i class="fas fa-long-arrow-alt-right xp-arrow"></i>
+                    </div>
+                    <span class="xp-after">{{after}}</span>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</div>

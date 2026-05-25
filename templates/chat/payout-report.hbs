@@ -1,0 +1,27 @@
+<div class="neuroshima roll-card payout-report">
+    <header class="roll-header">
+        <div class="weapon-title">
+            <i class="fas fa-coins"></i> {{localize "NEUROSHIMA.GMToolkit.Payout.ChatTitle"}}
+        </div>
+    </header>
+
+    <hr class="dotted-hr">
+
+    <div class="payout-report-list">
+        {{#each entries}}
+        <div class="payout-report-row">
+            <img class="payout-report-portrait" src="{{img}}" alt="{{name}}">
+            <span class="payout-report-name">{{name}}</span>
+            <div class="payout-report-currencies">
+                {{#each payouts}}
+                <span class="payout-report-chip">
+                    <img src="{{currencyImg}}" alt="{{currencyName}}" width="13" height="13">
+                    <span class="payout-chip-amount">+{{amount}}</span>
+                    <span class="payout-chip-name">{{currencyName}}</span>
+                </span>
+                {{/each}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</div>

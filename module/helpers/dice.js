@@ -156,6 +156,7 @@ export class NeuroshimaDice {
         meleeAction = "attack", 
         maneuver = "none",
         tempoLevel = 0,
+        meleeDiceCount = 3,
         isReroll = false, 
         chatMessage = true, 
         rollMode = game.settings.get("core", "rollMode"),
@@ -216,8 +217,8 @@ export class NeuroshimaDice {
 
     // 2. Aiming level and dice count
     // Ranged weapons: 1-3 dice depending on aiming level (best die wins).
-    // Melee: always 3 dice (3d20 test rule).
-    const diceCount = isMelee ? 3 : (aimingLevel + 1);
+    // Melee: 1-3 dice depending on meleeDiceCount (default 3).
+    const diceCount = isMelee ? Math.min(3, Math.max(1, meleeDiceCount || 3)) : (aimingLevel + 1);
     
     // Compute base damage (will be updated later for ranged ammo)
     let damageValue = isMelee 

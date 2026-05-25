@@ -59,15 +59,9 @@ export class MeleeResolution {
     const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
     const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
 
-    // 2. Calculate successes — prefer stored per-die flags (exact match to chat card).
-    // Nat20 is always a failure regardless of target or skill spent.
-    const _dieSuccess = (participant, idx, target) => {
-      if (participant.dieResults) return participant.dieResults[idx]?.isSuccess ?? false;
-      const val = participant.modifiedPool?.[idx] ?? participant.pool[idx];
-      return participant.pool[idx] !== 20 && val <= target;
-    };
-    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => _dieSuccess(attacker, idx, attackerTarget)).length;
-    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => _dieSuccess(defender, idx, defenderTarget)).length;
+    // 2. Calculate successes — use shared helper that accounts for doubleSkill allocations.
+    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => this._isDieSuccess(attacker, idx, attackerTarget)).length;
+    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => this._isDieSuccess(defender, idx, defenderTarget)).length;
 
     let resultType = "miss";
     let logText = "";
@@ -212,6 +206,32 @@ export class MeleeResolution {
   }
 
   /**
+   * Returns the effective (post-allocation) pip value for a die.
+   * When doubleSkillAction is ON, applies selfReductions and opponentGains.
+   * Falls back to modifiedPool (doubleSkill OFF auto-applied skill), then raw pool.
+   */
+  static _getEffectiveDieVal(participant, idx) {
+    if (participant.modifiedPool?.[idx] !== undefined) return participant.modifiedPool[idx];
+    const raw = participant.pool[idx];
+    return raw - (participant.selfReductions?.[idx] || 0) + (participant.opponentGains?.[idx] || 0);
+  }
+
+  /**
+   * Returns whether a die is a success after applying allocations.
+   * When doubleSkillAction is OFF and dieResults are present, defers to the
+   * pre-computed flags from the roll dialog (exact match to the chat card).
+   * When doubleSkillAction is ON, always recomputes from effective value so
+   * that selfReductions and opponentGains affect the outcome.
+   */
+  static _isDieSuccess(participant, idx, target) {
+    if (!game.settings.get("neuroshima", "doubleSkillAction") && participant.dieResults) {
+      return participant.dieResults[idx]?.isSuccess ?? false;
+    }
+    const val = this._getEffectiveDieVal(participant, idx);
+    return participant.pool[idx] !== 20 && val <= target;
+  }
+
+  /**
    * Calculates effective target considering tempo and crowding penalty.
    */
   static getEffectiveTarget(participant, tempoLevel, dexPenalty, mode = "attack") {
@@ -343,22 +363,16 @@ export class MeleeResolution {
     const dDice = exchange.defenderSelectedDice;
     const slots = Math.min(aDice.length, dDice.length, 3);
 
-    const _dieVal = (participant, idx) => participant.modifiedPool?.[idx] ?? participant.pool[idx];
-    const _dieSuccess = (participant, idx, target) => {
-      if (participant.dieResults) return participant.dieResults[idx]?.isSuccess ?? false;
-      return participant.pool[idx] !== 20 && _dieVal(participant, idx) <= target;
-    };
-
     const hits = [];
     const slotResults = [];
 
     for (let pos = 0; pos < slots; pos++) {
       const aIdx = aDice[pos];
       const dIdx = dDice[pos];
-      const aSuccess = _dieSuccess(attacker, aIdx, attackerTarget);
-      const dSuccess = _dieSuccess(defender, dIdx, defenderTarget);
-      const aVal = _dieVal(attacker, aIdx);
-      const dVal = _dieVal(defender, dIdx);
+      const aSuccess = this._isDieSuccess(attacker, aIdx, attackerTarget);
+      const dSuccess = this._isDieSuccess(defender, dIdx, defenderTarget);
+      const aVal = this._getEffectiveDieVal(attacker, aIdx);
+      const dVal = this._getEffectiveDieVal(defender, dIdx);
       const attackerWins = aSuccess && (!dSuccess || aVal < dVal);
       const tier = pos + 1;
       slotResults.push({ pos, tier, aVal, dVal, aSuccess, dSuccess, attackerWins });
@@ -433,14 +447,8 @@ export class MeleeResolution {
     const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
     const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
 
-    const _dieSuccess = (participant, idx, target) => {
-      if (participant.dieResults) return participant.dieResults[idx]?.isSuccess ?? false;
-      const val = participant.modifiedPool?.[idx] ?? participant.pool[idx];
-      return participant.pool[idx] !== 20 && val <= target;
-    };
-
-    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => _dieSuccess(attacker, idx, attackerTarget)).length;
-    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => _dieSuccess(defender, idx, defenderTarget)).length;
+    const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => this._isDieSuccess(attacker, idx, attackerTarget)).length;
+    const defenderSuccesses = exchange.defenderSelectedDice.filter(idx => this._isDieSuccess(defender, idx, defenderTarget)).length;
     const netSuccesses = attackerSuccesses - defenderSuccesses;
 
     game.neuroshima?.log("Resolving opposedSuccesses exchange", {

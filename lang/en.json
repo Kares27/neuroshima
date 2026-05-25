@@ -205,6 +205,7 @@
             "HitLocation": "Hit Location",
             "RandomLocation": "Random Location",
             "DiceCount": "Dice Count",
+            "MeleeDiceCount": "Dice per Segment",
             "BulletsFired": "Bullets Fired",
             "BulletsHit": "Bullets Hit",
             "ApplyDamage": "Apply Damage",
@@ -297,7 +298,8 @@
             "Rest": "Rest",
             "Refresh": "Refresh",
             "Healing": "Healing",
-            "ToggleActive": "Toggle Active"
+            "ToggleActive": "Toggle Active",
+            "Browse": "Browse"
         },
         "Rest": {
             "Title": "Rest",
@@ -372,6 +374,15 @@
             "ReputationShowAsProgressBar": {
                 "Name": "Show relation as progress bar",
                 "Hint": "Instead of the relation name, displays an animated progress bar colored by the relation with the name shown inside."
+            },
+            "DefaultReputationItems": {
+                "Name": "Default Reputation Items",
+                "Hint": "List of reputation items automatically created when a new character or NPC actor is made.",
+                "Add": "Add reputation",
+                "ColName": "Name",
+                "ColImg": "Icon (path)",
+                "NamePlaceholder": "e.g. Headquarters",
+                "ImgPlaceholder": "systems/neuroshima/assets/img/..."
             },
             "EncumbranceConfig": {
                 "Title": "Encumbrance Settings",
@@ -701,6 +712,16 @@
             "AlreadyApplied": "Damage has already been applied.",
             "DamageApplied": "Applied",
             "NoHits": "No hits to apply."
+        },
+        "SkillAlloc": {
+            "Title": "Double Combat Skill Action",
+            "BudgetLabel": "Combat Skill remaining",
+            "Reset": "Reset",
+            "Confirm": "Confirm",
+            "Confirmed": "Confirmed",
+            "AwaitingOpponent": "Waiting for opponent…",
+            "AttackerConfirmed": "Attacker confirmed — waiting for defender…",
+            "DefenderConfirmed": "Defender confirmed — waiting for attacker…"
         },
         "MeleeDuel": {
             "Title": "Melee Duel",
@@ -1967,6 +1988,8 @@
             "OpenXP": "Award Experience",
             "OpenDamage": "Apply Damage",
             "OpenGroupCheck": "Group Check",
+            "OpenPayout": "Currency Payout",
+            "OpenReputation": "Reputation & Fame",
             "Session": {
                 "Label": "Session",
                 "SettingName": "Session ID",
@@ -1992,7 +2015,44 @@
                 "ModeLabel": "Mode",
                 "ModeGlobal": "Equal amounts",
                 "ModeIndividual": "Individual amounts",
-                "SessionPrefix": "Session {session}"
+                "SessionPrefix": "Session {session}",
+                "ChatTitle": "XP Awarded"
+            },
+            "Payout": {
+                "Title": "Currency Payout",
+                "MoneyItem": "Currency",
+                "Amount": "Amount",
+                "AmountHint": "units per actor",
+                "Actors": "Actors",
+                "Apply": "Pay Out",
+                "NoActors": "Select at least one actor.",
+                "NoMoneyItem": "Select a valid money item.",
+                "NoMoneyItemsInWorld": "No money items found in the world. Add an item of type 'money' to the item list.",
+                "Success": "Paid out currency to {count} actors.",
+                "ChatTitle": "Currency Payout",
+                "CurrencyHeader": "Currency Amounts",
+                "SplitPreviewTitle": "Amount after split",
+                "NotifyPlayers": "Notify players",
+                "SplitEvenly": "Split evenly",
+                "NoAmount": "Enter at least one amount."
+            },
+            "Reputation": {
+                "Title": "Reputation & Fame",
+                "ModeLabel": "Mode",
+                "ModeDelta": "Add / Subtract",
+                "ModeSet": "Set Value",
+                "RepDelta": "Δ Reputation",
+                "FameDelta": "Δ Fame",
+                "RepSet": "Set Reputation",
+                "FameSet": "Set Fame",
+                "Actors": "Actors",
+                "Apply": "Apply",
+                "NoActors": "Select at least one actor.",
+                "NoChanges": "No changes to apply.",
+                "Success": "Updated reputation/fame for {count} actors.",
+                "ChatTitle": "Reputation / Fame Change",
+                "OptionsHeader": "Changes",
+                "FactionHeader": "Faction Reputations"
             },
             "ApplyDamage": {
                 "Title": "Apply Damage",
@@ -2049,6 +2109,11 @@
                     }
                 }
             }
+        },
+        "Migration": {
+            "Starting": "Neuroshima | Migrating world data to schema version {version}…",
+            "Done": "Neuroshima | Data migration completed successfully.",
+            "Failed": "Neuroshima | Data migration failed. Check the console and contact the system author."
         }
     },
     "TOKEN": {

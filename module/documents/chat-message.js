@@ -55,6 +55,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "applyGrenadeDamage":
             this.onApplyGrenadeDamage(event, message);
             break;
+          case "skillAllocAdjust":
+            this.onSkillAllocAdjust(event, btn, message);
+            break;
+          case "skillAllocReset":
+            this.onSkillAllocReset(event, btn, message);
+            break;
+          case "skillAllocConfirm":
+            this.onSkillAllocConfirm(event, btn, message);
+            break;
         }
       });
     });
@@ -122,6 +131,64 @@ export class NeuroshimaChatMessage extends ChatMessage {
       btn.disabled = true;
       btn.classList.add("applied");
       btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+    }
+  }
+
+  static async onSkillAllocAdjust(event, btn, message) {
+    const spender   = btn.dataset.spender;
+    const target    = btn.dataset.target;
+    const dieIndex  = parseInt(btn.dataset.dieIndex ?? "0", 10);
+    const delta     = parseInt(btn.dataset.delta ?? "1", 10);
+
+    const allocData = message.getFlag("neuroshima", "skillAlloc");
+    if (!allocData || allocData.status !== "pending") return;
+
+    const sideConfirmed = spender === "attacker" ? allocData.attackerConfirmed : allocData.defenderConfirmed;
+    if (sideConfirmed) return;
+
+    const patch = { type: "adjust", spender, target, dieIndex, delta };
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+
+    if (game.user.isGM) {
+      await MeleeOpposedChat.applyAllocPatch(message.id, patch);
+    } else if (game.neuroshima?.socket) {
+      await game.neuroshima.socket.executeAsGM("applySkillAlloc", message.id, patch);
+    }
+  }
+
+  static async onSkillAllocReset(event, btn, message) {
+    const side = btn.dataset.side;
+    const allocData = message.getFlag("neuroshima", "skillAlloc");
+    if (!allocData || allocData.status !== "pending") return;
+
+    const sideConfirmed = side === "attacker" ? allocData.attackerConfirmed : allocData.defenderConfirmed;
+    if (sideConfirmed) return;
+
+    const patch = { type: "reset", side };
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+
+    if (game.user.isGM) {
+      await MeleeOpposedChat.applyAllocPatch(message.id, patch);
+    } else if (game.neuroshima?.socket) {
+      await game.neuroshima.socket.executeAsGM("applySkillAlloc", message.id, patch);
+    }
+  }
+
+  static async onSkillAllocConfirm(event, btn, message) {
+    const side = btn.dataset.side;
+    const allocData = message.getFlag("neuroshima", "skillAlloc");
+    if (!allocData || allocData.status !== "pending") return;
+
+    const sideConfirmed = side === "attacker" ? allocData.attackerConfirmed : allocData.defenderConfirmed;
+    if (sideConfirmed) return;
+
+    const patch = { type: "confirm", side };
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+
+    if (game.user.isGM) {
+      await MeleeOpposedChat.applyAllocPatch(message.id, patch);
+    } else if (game.neuroshima?.socket) {
+      await game.neuroshima.socket.executeAsGM("applySkillAlloc", message.id, patch);
     }
   }
 

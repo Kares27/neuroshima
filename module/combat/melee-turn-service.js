@@ -654,7 +654,8 @@ export class MeleeTurnService {
   static async allocateSkill(id, spenderId, targetId, dieIndex, delta) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter) return;
-    if (encounter.turnState.phase !== "awaiting-pool-rolls") return;
+    const _allocAllowedPhases = ["awaiting-pool-rolls", "primary-attack-selection", "primary-defense-selection"];
+    if (!_allocAllowedPhases.includes(encounter.turnState.phase)) return;
 
     const updated = foundry.utils.deepClone(encounter);
     const spender = updated.participants[spenderId];

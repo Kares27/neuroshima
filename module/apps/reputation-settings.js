@@ -1,5 +1,7 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
+const DEFAULT_REP_IMG = "systems/neuroshima/assets/img/shaking-hands.svg";
+
 /**
  * Application V2 for configuring reputation-related settings.
  */
@@ -14,7 +16,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         },
         position: {
             width: 540,
-            height: 620
+            height: 680
         },
         form: {
             handler: async function(event, form, formData) {
@@ -24,14 +26,18 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             closeOnSubmit: true
         },
         actions: {
-            addGlobalRelationRow: ReputationSettingsApp.prototype._onAddGlobalRelationRow,
-            deleteGlobalRelationRow: ReputationSettingsApp.prototype._onDeleteGlobalRelationRow
+            addGlobalRelationRow:    ReputationSettingsApp.prototype._onAddGlobalRelationRow,
+            deleteGlobalRelationRow: ReputationSettingsApp.prototype._onDeleteGlobalRelationRow,
+            addDefaultRepItem:       ReputationSettingsApp.prototype._onAddDefaultRepItem,
+            deleteDefaultRepItem:    ReputationSettingsApp.prototype._onDeleteDefaultRepItem,
+            browseRepItemImg:        ReputationSettingsApp.prototype._onBrowseRepItemImg
         }
     };
 
     static PARTS = {
         form: {
-            template: "systems/neuroshima/templates/apps/reputation-settings.hbs"
+            template: "systems/neuroshima/templates/apps/reputation-settings.hbs",
+            scrollable: [".rep-settings-scroll"]
         }
     };
 
@@ -46,6 +52,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         const fameThreshold = s?.fameThreshold !== undefined ? s.fameThreshold : (game.settings.get("neuroshima", "reputationFameThreshold") ?? 20);
         const famePoints = s?.famePoints !== undefined ? s.famePoints : (game.settings.get("neuroshima", "reputationFamePoints") ?? 1);
         const relationTable = s?.relationTable ?? game.settings.get("neuroshima", "reputationRelationTable") ?? [];
+        const defaultRepItems = s?.defaultRepItems ?? game.settings.get("neuroshima", "defaultReputationItems") ?? [];
 
         return {
             config: {
@@ -57,7 +64,13 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
                 showAsProgressBar,
                 relationTable,
                 fameThreshold,
-                famePoints
+                famePoints,
+                defaultRepItems: defaultRepItems.map(r => ({
+                    name: r.name,
+                    img: r.img || DEFAULT_REP_IMG,
+                    imgDisplay: r.img || DEFAULT_REP_IMG
+                })),
+                hasDefaultRepItems: defaultRepItems.length > 0
             },
             testModeChoices: {
                 skill: game.i18n.localize("NEUROSHIMA.Settings.ReputationTestMode.Skill"),
@@ -78,6 +91,7 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         }
 
         const relationTable = this._extractRelationTable(data);
+        const defaultRepItems = this._extractDefaultRepItems(data);
 
         const fameThreshold = Math.max(0, Number(data.fameThreshold ?? 0));
         const famePoints = Math.max(0, Number(data.famePoints ?? 0));
@@ -91,7 +105,8 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             game.settings.set("neuroshima", "reputationShowAsProgressBar", !!data.showAsProgressBar),
             game.settings.set("neuroshima", "reputationRelationTable", relationTable),
             game.settings.set("neuroshima", "reputationFameThreshold", fameThreshold),
-            game.settings.set("neuroshima", "reputationFamePoints", famePoints)
+            game.settings.set("neuroshima", "reputationFamePoints", famePoints),
+            game.settings.set("neuroshima", "defaultReputationItems", defaultRepItems)
         ]);
 
         this._pendingState = null;
@@ -127,6 +142,29 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
         return table;
     }
 
+    _extractDefaultRepItems(data) {
+        const items = [];
+        const nested = Array.isArray(data.defaultRepItems) ? data.defaultRepItems : null;
+        if (nested) {
+            for (const row of nested) {
+                if (row == null) continue;
+                const name = String(row.name ?? "").trim();
+                if (!name) continue;
+                items.push({ name, img: String(row.img ?? "").trim() });
+            }
+            return items;
+        }
+        let idx = 0;
+        while (data[`defaultRepItems.${idx}.name`] !== undefined) {
+            const name = String(data[`defaultRepItems.${idx}.name`] ?? "").trim();
+            if (name) {
+                items.push({ name, img: String(data[`defaultRepItems.${idx}.img`] ?? "").trim() });
+            }
+            idx++;
+        }
+        return items;
+    }
+
     _captureFormState() {
         const fd = new FormDataExtended(this.element);
         const data = fd.object;
@@ -139,39 +177,56 @@ export class ReputationSettingsApp extends HandlebarsApplicationMixin(Applicatio
             showAsProgressBar: !!data.showAsProgressBar,
             fameThreshold: data.fameThreshold !== undefined ? Number(data.fameThreshold) : 0,
             famePoints: data.famePoints !== undefined ? Number(data.famePoints) : 0,
-            relationTable: this._extractRelationTable(data)
+            relationTable: this._extractRelationTable(data),
+            defaultRepItems: this._extractDefaultRepItems(data)
         };
     }
 
-    async _onRender(context, options) {
-        await super._onRender(context, options);
-        if (this._pendingScrollTop !== undefined) {
-            const pendingTop = this._pendingScrollTop;
-            this._pendingScrollTop = undefined;
-            requestAnimationFrame(() => {
-                const scroll = this.element?.querySelector(".rep-relation-scroll");
-                if (scroll) scroll.scrollTop = pendingTop;
-            });
-        }
-    }
-
     async _onAddGlobalRelationRow(event, target) {
-        const scroll = this.element?.querySelector(".rep-relation-scroll");
         const state = this._captureFormState();
         state.relationTable.push({ minVal: 0, maxVal: 0, name: "", color: "" });
         this._pendingState = state;
-        this._pendingScrollTop = scroll ? scroll.scrollHeight : undefined;
         this.render();
     }
 
     async _onDeleteGlobalRelationRow(event, target) {
         const idx = parseInt(target.dataset.index ?? "-1");
         if (idx < 0) return;
-        const scroll = this.element?.querySelector(".rep-relation-scroll");
-        this._pendingScrollTop = scroll?.scrollTop ?? 0;
         const state = this._captureFormState();
         state.relationTable.splice(idx, 1);
         this._pendingState = state;
         this.render();
+    }
+
+    async _onAddDefaultRepItem(event, target) {
+        const state = this._captureFormState();
+        state.defaultRepItems.push({ name: "", img: "" });
+        this._pendingState = state;
+        this.render();
+    }
+
+    async _onDeleteDefaultRepItem(event, target) {
+        const idx = parseInt(target.dataset.index ?? "-1");
+        if (idx < 0) return;
+        const state = this._captureFormState();
+        state.defaultRepItems.splice(idx, 1);
+        this._pendingState = state;
+        this.render();
+    }
+
+    async _onBrowseRepItemImg(event, target) {
+        const idx = parseInt(target.dataset.index ?? "-1");
+        if (idx < 0) return;
+        const current = this.element.querySelector(`input[name="defaultRepItems.${idx}.img"]`)?.value ?? DEFAULT_REP_IMG;
+        new FilePicker({
+            type: "imagevideo",
+            current,
+            callback: (path) => {
+                const input = this.element.querySelector(`input[name="defaultRepItems.${idx}.img"]`);
+                if (input) input.value = path;
+                const preview = this.element.querySelector(`.rep-default-item-preview[data-index="${idx}"]`);
+                if (preview) preview.src = path;
+            }
+        }).render(true);
     }
 }

@@ -87,6 +87,8 @@ export class GMAddXPApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
 
         el.querySelectorAll(".xp-individual-input").forEach(input => {
+            input.addEventListener("click",  (e) => e.stopPropagation());
+            input.addEventListener("pointerdown", (e) => e.stopPropagation());
             input.addEventListener("change", (e) => {
                 const actorId = e.target.dataset.actorId;
                 this._individualAmounts[actorId] = parseInt(e.target.value) || 0;
@@ -136,7 +138,8 @@ export class GMAddXPApp extends HandlebarsApplicationMixin(ApplicationV2) {
         const sessionPrefix = game.i18n.format("NEUROSHIMA.GMToolkit.AddXP.SessionPrefix", { session: sessionID });
         const description = `${sessionPrefix}: ${baseReason}`;
 
-        const updates = [];
+        const updates   = [];
+        const chatRows  = [];
 
         for (const actorId of this._selectedActors) {
             const actor = game.actors.get(actorId);
@@ -145,14 +148,15 @@ export class GMAddXPApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const amount = this._individualAmounts[actorId] ?? this._defaultAmount;
             if (!amount || amount <= 0) continue;
 
-            const currentTotal = actor.system.xp?.total ?? 0;
-            const newTotal = currentTotal + amount;
+            const before   = actor.system.xp?.total ?? 0;
+            const after    = before + amount;
 
             const changed = {};
-            foundry.utils.setProperty(changed, "system.xp.total", newTotal);
+            foundry.utils.setProperty(changed, "system.xp.total", after);
             applyXpGrantEntry(actor, changed, amount, description);
 
             updates.push(actor.update(changed));
+            chatRows.push({ name: actor.name, img: actor.img, before, after, amount });
         }
 
         if (!updates.length) {
@@ -161,6 +165,31 @@ export class GMAddXPApp extends HandlebarsApplicationMixin(ApplicationV2) {
         }
 
         await Promise.all(updates);
+
+        const affectedActors = [...this._selectedActors]
+            .map(id => game.actors.get(id))
+            .filter(Boolean);
+        const ownerLevel = CONST.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? 3;
+        const playerUserIds = game.users
+            .filter(u => !u.isGM && affectedActors.some(a =>
+                (a.ownership[u.id] ?? a.ownership.default ?? 0) >= ownerLevel
+            ))
+            .map(u => u.id);
+        const gmUserIds = game.users.filter(u => u.isGM).map(u => u.id);
+        const whisper = [...new Set([...gmUserIds, ...playerUserIds])];
+
+        const { NeuroshimaChatMessage } = game.neuroshima;
+        const content = await NeuroshimaChatMessage._renderTemplate(
+            "systems/neuroshima/templates/chat/xp-grant-report.hbs",
+            { entries: chatRows, sessionID, reason: baseReason }
+        );
+        await NeuroshimaChatMessage.create({
+            user: game.user.id,
+            speaker: ChatMessage.getSpeaker({}),
+            content,
+            style: CONST.CHAT_MESSAGE_STYLES?.OTHER ?? 0,
+            whisper
+        });
 
         ui.notifications.info(
             game.i18n.format("NEUROSHIMA.GMToolkit.AddXP.Success", { count: updates.length })

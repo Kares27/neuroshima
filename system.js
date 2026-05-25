@@ -35,9 +35,14 @@ import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
 import { TraitBrowserApp } from "./module/apps/trait-browser.js";
 import { registerRadiationHooks } from "./module/region-behaviors/danger-zone.js";
+import { registerMigrationHook, normalizeAll, normalizeActor } from "./module/helpers/migration.js";
 import { RadiationZoneBehaviorType } from "./module/region-behaviors/radiation-zone.js";
 import { GMToolkitApp } from "./module/apps/gm-toolkit.js";
-import { registerGroupCheckChatListeners } from "./module/apps/gm-group-check-app.js";
+import { GMAddXPApp } from "./module/apps/gm-xp-app.js";
+import { GMApplyDamageApp } from "./module/apps/gm-damage-app.js";
+import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/gm-group-check-app.js";
+import { GMPayoutApp } from "./module/apps/gm-payout-app.js";
+import { GMReputationApp } from "./module/apps/gm-reputation-app.js";
 
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
@@ -70,6 +75,31 @@ Hooks.once('init', async function() {
     Hooks.on("renderChatMessageHTML", (message, html) => {
         const root = html instanceof HTMLElement ? html : html?.[0];
         if (!root) return;
+
+        // Skill allocation card visibility — runs for all users
+        const allocCard = root.querySelector(".melee-skill-allocation");
+        if (allocCard) {
+            const allocData = message.getFlag("neuroshima", "skillAlloc");
+            if (allocData) {
+                const attackerDoc = fromUuidSync(allocData.attackerUuid);
+                const attackerActor = attackerDoc?.actor ?? attackerDoc;
+                const defenderDoc = fromUuidSync(allocData.defenderUuid);
+                const defenderActor = defenderDoc?.actor ?? defenderDoc;
+                const isAttacker = game.user.isGM || (attackerActor && attackerActor.isOwner);
+                const isDefender = game.user.isGM || (defenderActor && defenderActor.isOwner);
+
+                root.querySelectorAll("[data-alloc-visible]").forEach(el => {
+                    const sides = (el.dataset.allocVisible || "").split(" ");
+                    const show = sides.some(s => {
+                        if (s === "gm") return game.user.isGM;
+                        if (s === "attacker") return isAttacker;
+                        if (s === "defender") return isDefender;
+                        return false;
+                    });
+                    if (!show) el.style.display = "none";
+                });
+            }
+        }
 
         if (!game.user.isGM) {
             root.querySelectorAll("[data-gm-only]").forEach(el => { el.style.display = "none"; });
@@ -244,6 +274,11 @@ Hooks.once('init', async function() {
             console.error("Neuroshima 1.5 |", ...args);
         },
         openGMToolkit: () => GMToolkitApp.open(),
+        openXPApp: () => GMAddXPApp.open(),
+        openDamageApp: () => GMApplyDamageApp.open(),
+        openGroupCheckApp: () => GMGroupCheckApp.open(),
+        openPayoutApp: () => GMPayoutApp.open(),
+        openReputationApp: () => GMReputationApp.open(),
         openDebugRoll: () => new DebugRollDialog().render(true),
         debugSkillRoll: (skillValue, statValue, penalty, isOpen, dice) => NeuroshimaDice.rollTest({
             skill: skillValue,
@@ -262,6 +297,7 @@ Hooks.once('init', async function() {
             isDebug: true,
             label: "Debug Attribute Roll"
         }),
+        migration: { normalizeAll, normalizeActor },
         applyDamage: async (actor, config = {}) => {
             const {
                 damage         = "L",
@@ -543,6 +579,15 @@ Hooks.once('init', async function() {
     foundry.applications.apps.DocumentSheetConfig.registerSheet(ActiveEffect, "neuroshima", NeuroshimaEffectSheet, {
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Effect"
+    });
+
+    // Internal schema version — used by the migration system to track which
+    // migration steps have already been applied to this world's data.
+    game.settings.register("neuroshima", "schemaVersion", {
+        scope: "world",
+        config: false,
+        type: String,
+        default: "0.0"
     });
 
     // Register system settings
@@ -979,6 +1024,15 @@ Hooks.once('init', async function() {
         default: false
     });
 
+    game.settings.register("neuroshima", "defaultReputationItems", {
+        name: "NEUROSHIMA.Settings.DefaultReputationItems.Name",
+        hint: "NEUROSHIMA.Settings.DefaultReputationItems.Hint",
+        scope: "world",
+        config: false,
+        type: Array,
+        default: []
+    });
+
     // Encumbrance settings (hidden from the main settings menu)
     game.settings.register("neuroshima", "baseEncumbrance", {
         name: "NEUROSHIMA.Settings.BaseEncumbrance.Name",
@@ -1138,6 +1192,11 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/patient-card.hbs",
         "systems/neuroshima/templates/chat/pain-resistance-report.hbs",
         "systems/neuroshima/templates/chat/rest-report.hbs",
+        "systems/neuroshima/templates/chat/xp-grant-report.hbs",
+        "systems/neuroshima/templates/chat/payout-report.hbs",
+        "systems/neuroshima/templates/chat/reputation-report.hbs",
+        "systems/neuroshima/templates/apps/gm-payout-app.hbs",
+        "systems/neuroshima/templates/apps/gm-reputation-app.hbs",
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
         "systems/neuroshima/templates/chat/required-test-card.hbs",
@@ -1187,6 +1246,8 @@ Hooks.once("ready", () => {
         _applyCustomDamageCategories(custom);
     } catch(e) {}
 });
+
+registerMigrationHook();
 
 Hooks.once("ready", async function () {
     if (game.user.isGM) {
@@ -2398,6 +2459,12 @@ function initializeSocketlib() {
         return created?.[0]?.id ?? null;
     });
 
+    // Skill allocation patch — executed as GM so the message flag can be written
+    game.neuroshima.socket.register("applySkillAlloc", async (messageId, patch) => {
+        const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
+        await MeleeOpposedChat.applyAllocPatch(messageId, patch);
+    });
+
     game.neuroshima.socket.register("healingRequestPrompt", async ({ patientUuid, patientName, patientPortrait, requesterUserId, medicActorUuid, isPrivate }) => {
         const gmNeedsActorPick = game.user.isGM && !medicActorUuid;
 
@@ -2751,18 +2818,38 @@ Hooks.on("deleteMeasuredTemplate", async (templateDoc, options, userId) => {
 Hooks.on("createActor", async (actor, options, userId) => {
     if (!["character", "npc"].includes(actor.type)) return;
     if (userId !== game.user.id) return;
+
+    const itemsToCreate = [];
+
     let currencies = [];
     try {
         const saved = JSON.parse(game.settings.get("neuroshima", "currencies") || "null");
         if (Array.isArray(saved) && saved.length) currencies = saved;
     } catch(e) {}
     if (!currencies.length) currencies = [DEFAULT_CURRENCY];
-    await actor.createEmbeddedDocuments("Item", currencies.map(c => ({
-        type: "money",
-        name: c.name,
-        img:  c.img || DEFAULT_CURRENCY.img,
-        system: { coinValue: c.coinValue ?? 1, quantity: 0, weight: c.weight ?? 0 }
-    })));
+    for (const c of currencies) {
+        itemsToCreate.push({
+            type: "money",
+            name: c.name,
+            img:  c.img || DEFAULT_CURRENCY.img,
+            system: { coinValue: c.coinValue ?? 1, quantity: 0, weight: c.weight ?? 0 }
+        });
+    }
+
+    const defaultRepItems = game.settings.get("neuroshima", "defaultReputationItems") ?? [];
+    for (const r of defaultRepItems) {
+        if (!r.name) continue;
+        itemsToCreate.push({
+            type: "reputation",
+            name: r.name,
+            img:  r.img || "systems/neuroshima/assets/img/shaking-hands.svg",
+            system: { value: 0 }
+        });
+    }
+
+    if (itemsToCreate.length) {
+        await actor.createEmbeddedDocuments("Item", itemsToCreate);
+    }
 });
 
 Hooks.on("updateItem", async (item, changes, options, userId) => {

@@ -234,7 +234,8 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
       // Effective pool display (uses modifiedPool when doubleSkill OFF, raw pool when ON)
       const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
-      if (doubleSkill && phase === "awaiting-pool-rolls" && p.pool.length > 0) {
+      const _allocPhases = ["awaiting-pool-rolls", "primary-attack-selection", "primary-defense-selection"];
+      if (doubleSkill && _allocPhases.includes(phase) && p.pool.length > 0) {
         p.effectivePool = p.pool.map((v, i) => {
           const reduction = (p.selfReductions || [])[i] || 0;
           const gain = (p.opponentGains || [])[i] || 0;

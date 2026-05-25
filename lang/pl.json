@@ -208,6 +208,7 @@
             "HitLocation": "Lokacja Trafienia",
             "RandomLocation": "Losuj lokację",
             "DiceCount": "Rzucane kości",
+            "MeleeDiceCount": "Kości na segment",
             "BulletsFired": "Wystrzelone pociski",
             "BulletsHit": "Trafione pociski",
             "ApplyDamage": "Nałóż Obrażenia",
@@ -300,7 +301,8 @@
             "Rest": "Odpocznij",
             "Refresh": "Odśwież",
             "Healing": "Leczenie",
-            "ToggleActive": "Przełącz aktywność"
+            "ToggleActive": "Przełącz aktywność",
+            "Browse": "Przeglądaj"
         },
         "Rest": {
             "Title": "Odpoczynek",
@@ -375,6 +377,15 @@
             "ReputationShowAsProgressBar": {
                 "Name": "Pokaż relację jako pasek postępu",
                 "Hint": "Zamiast nazwy relacji wyświetla animowany pasek postępu w kolorze relacji z nazwą wewnątrz."
+            },
+            "DefaultReputationItems": {
+                "Name": "Domyślne przedmioty reputacji",
+                "Hint": "Lista reputacji tworzonych automatycznie przy tworzeniu nowej postaci lub BN.",
+                "Add": "Dodaj reputację",
+                "ColName": "Nazwa",
+                "ColImg": "Ikona (ścieżka)",
+                "NamePlaceholder": "np. Sztab",
+                "ImgPlaceholder": "systems/neuroshima/assets/img/..."
             },
             "EncumbranceConfig": {
                 "Title": "Ustawienia Udźwigu",
@@ -704,6 +715,16 @@
             "AlreadyApplied": "Obrażenia zostały już zastosowane.",
             "DamageApplied": "Nałożono",
             "NoHits": "Brak trafień do zastosowania."
+        },
+        "SkillAlloc": {
+            "Title": "Podwójne działanie Umiejętności walki",
+            "BudgetLabel": "Pozostałe punkty umiejętności",
+            "Reset": "Resetuj",
+            "Confirm": "Potwierdź",
+            "Confirmed": "Potwierdzono",
+            "AwaitingOpponent": "Oczekiwanie na przeciwnika…",
+            "AttackerConfirmed": "Atakujący potwierdził — oczekiwanie na obrońcę…",
+            "DefenderConfirmed": "Obrońca potwierdził — oczekiwanie na atakującego…"
         },
         "MeleeDuel": {
             "Title": "Starcie w zwarciu",
@@ -2000,6 +2021,8 @@
             "OpenXP": "Przyznaj Doświadczenie",
             "OpenDamage": "Zastosuj Obrażenia",
             "OpenGroupCheck": "Rzut Grupowy",
+            "OpenPayout": "Wypłata Waluty",
+            "OpenReputation": "Reputacja i Sława",
             "Session": {
                 "Label": "Sesja",
                 "SettingName": "ID Sesji",
@@ -2025,7 +2048,44 @@
                 "ModeLabel": "Tryb",
                 "ModeGlobal": "Jednakowa kwota",
                 "ModeIndividual": "Różne kwoty",
-                "SessionPrefix": "Sesja {session}"
+                "SessionPrefix": "Sesja {session}",
+                "ChatTitle": "Przyznano PD"
+            },
+            "Payout": {
+                "Title": "Wypłata Waluty",
+                "MoneyItem": "Waluta",
+                "Amount": "Ilość",
+                "AmountHint": "liczba sztuk dla każdego",
+                "Actors": "Postacie",
+                "Apply": "Wypłać",
+                "NoActors": "Wybierz przynajmniej jedną postać.",
+                "NoMoneyItem": "Wybierz prawidłowy przedmiot waluty.",
+                "NoMoneyItemsInWorld": "Brak przedmiotów waluty w świecie. Dodaj przedmiot typu 'money' do listy przedmiotów.",
+                "Success": "Wypłacono walutę dla {count} postaci.",
+                "ChatTitle": "Wypłata Waluty",
+                "CurrencyHeader": "Ilość Waluty",
+                "SplitPreviewTitle": "Kwota po podziale",
+                "NotifyPlayers": "Powiadom graczy",
+                "SplitEvenly": "Podziel równo",
+                "NoAmount": "Wprowadź przynajmniej jedną kwotę."
+            },
+            "Reputation": {
+                "Title": "Reputacja i Sława",
+                "ModeLabel": "Tryb",
+                "ModeDelta": "Dodaj / Odejmij",
+                "ModeSet": "Ustaw wartość",
+                "RepDelta": "Δ Reputacja",
+                "FameDelta": "Δ Sława",
+                "RepSet": "Ustaw Reputację",
+                "FameSet": "Ustaw Sławę",
+                "Actors": "Postacie",
+                "Apply": "Zastosuj",
+                "NoActors": "Wybierz przynajmniej jedną postać.",
+                "NoChanges": "Brak zmian do zastosowania.",
+                "Success": "Zaktualizowano reputację/sławę dla {count} postaci.",
+                "ChatTitle": "Zmiana Reputacji / Sławy",
+                "OptionsHeader": "Zmiany",
+                "FactionHeader": "Reputacje Frakcji"
             },
             "ApplyDamage": {
                 "Title": "Zastosuj Obrażenia",
@@ -2082,6 +2142,11 @@
                     }
                 }
             }
+        },
+        "Migration": {
+            "Starting": "Neuroshima | Migrowanie danych świata do wersji schematu {version}…",
+            "Done": "Neuroshima | Migracja danych zakończona pomyślnie.",
+            "Failed": "Neuroshima | Migracja danych nie powiodła się. Sprawdź konsolę i skontaktuj się z autorem systemu."
         }
     }
 }

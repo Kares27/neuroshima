@@ -91,6 +91,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const meleeAction     = this.userEntry.meleeAction     ?? this.rollOptions.meleeAction ?? "attack";
     const maneuver        = this.userEntry.maneuver        ?? this.rollOptions.maneuver ?? "none";
     const tempoLevel      = this.userEntry.tempoLevel      ?? this.rollOptions.tempoLevel ?? 1;
+    const meleeDiceCount  = this.userEntry.meleeDiceCount  ?? 3;
     const aimingLevel     = this.userEntry.aimingLevel     ?? this.rollOptions.aimingLevel ?? 0;
     const burstLevel      = this.userEntry.burstLevel      ?? this.rollOptions.burstLevel ?? 0;
     const useArmorPenalty   = this.userEntry.useArmorPenalty   ?? this.rollOptions.useArmorPenalty   ?? true;
@@ -183,10 +184,12 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.hitLocation    = (scriptFields.hitLocation && this.userEntry.hitLocation === undefined)
       ? scriptFields.hitLocation : hitLocation;
 
+    context.isPoolRoll      = this.isPoolRoll;
     context.isOpen          = isOpen;
     context.meleeAction     = meleeAction;
     context.maneuver        = maneuver;
     context.tempoLevel      = tempoLevel;
+    context.meleeDiceCount  = meleeDiceCount;
     context.aimingLevel     = aimingLevel;
     context.burstLevel      = burstLevel;
     context.applyArmorPenalty = useArmorPenalty;
@@ -295,6 +298,12 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (name === 'tempoLevel') {
       if (tempoDisplay) tempoDisplay.innerText = value;
       if (tempoShiftDisplay) tempoShiftDisplay.innerText = value;
+    }
+    const meleeDiceCountDisplay = html.querySelector('.melee-dice-count-display');
+    const meleeDiceCountHint = html.querySelector('.melee-dice-count-hint');
+    if (name === 'meleeDiceCount') {
+      if (meleeDiceCountDisplay) meleeDiceCountDisplay.innerText = value;
+      if (meleeDiceCountHint) meleeDiceCountHint.innerText = value;
     }
     this._updatePreview(html);
   }
@@ -435,12 +444,13 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const sf = this._scriptFields;
     const ue = this.userEntry;
 
-    const totalModifier    = parseInt(formData.modifier)       || 0;
-    const totalAttrBonus   = parseInt(formData.attributeBonus) || 0;
-    const totalSkillBonus  = parseInt(formData.skillBonus)     || 0;
+    const totalModifier    = parseInt(formData.modifier)         || 0;
+    const totalAttrBonus   = parseInt(formData.attributeBonus)   || 0;
+    const totalSkillBonus  = parseInt(formData.skillBonus)       || 0;
     const burstLevel       = formData.burstLevel  !== undefined ? parseInt(formData.burstLevel)  : 0;
     const aimingLevel      = formData.aimingLevel !== undefined ? parseInt(formData.aimingLevel) : (ue.aimingLevel ?? this.rollOptions.aimingLevel ?? 0);
-    const tempoLevel       = parseInt(formData.tempoLevel)     || 1;
+    const tempoLevel       = parseInt(formData.tempoLevel)       || 1;
+    const meleeDiceCount   = formData.meleeDiceCount !== undefined ? Math.min(3, Math.max(1, parseInt(formData.meleeDiceCount) || 3)) : 3;
 
     const _userBaseDiff = ue.baseDifficulty ?? this.rollOptions.difficulty ?? "average";
     let _effectiveDiff  = (sf?.difficulty && ue.baseDifficulty === undefined) ? sf.difficulty : _userBaseDiff;
@@ -470,6 +480,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       meleeAction:     formData.meleeAction,
       maneuver:        formData.maneuver,
       tempoLevel:      tempoLevel,
+      meleeDiceCount:  meleeDiceCount,
       aimingLevel:     aimingLevel,
       burstLevel:      burstLevel,
       difficulty:      _effectiveDiff,

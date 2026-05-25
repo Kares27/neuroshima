@@ -1,0 +1,40 @@
+<div class="neuroshima roll-card xp-grant-report">
+    <header class="roll-header">
+        <div class="weapon-title">
+            <i class="fas fa-star"></i> {{localize "NEUROSHIMA.GMToolkit.AddXP.ChatTitle"}}
+        </div>
+    </header>
+
+    <div class="report-summary">
+        <div class="summary-item">
+            <span class="label">{{localize "NEUROSHIMA.GMToolkit.Session.Label"}}:</span>
+            <span class="value"><strong>{{sessionID}}</strong></span>
+        </div>
+        {{#if reason}}
+        <div class="summary-divider">|</div>
+        <div class="summary-item">
+            <span class="label">{{localize "NEUROSHIMA.GMToolkit.AddXP.ReasonLabel"}}:</span>
+            <span class="value">{{reason}}</span>
+        </div>
+        {{/if}}
+    </div>
+
+    <hr class="dotted-hr">
+
+    <div class="xp-grant-list">
+        {{#each entries}}
+        <div class="xp-grant-row">
+            <img class="xp-grant-portrait" src="{{img}}" alt="{{name}}">
+            <span class="xp-grant-name">{{name}}</span>
+            <div class="xp-grant-path">
+                <span class="xp-before">{{before}}</span>
+                <div class="xp-arrow-wrap">
+                    <span class="xp-delta">+{{amount}}</span>
+                    <i class="fas fa-long-arrow-alt-right xp-arrow"></i>
+                </div>
+                <span class="xp-after">{{after}}</span>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</div>

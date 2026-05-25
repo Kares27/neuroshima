@@ -6474,10 +6474,9 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
 .reputation-settings-form {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    overflow-y: auto;
-    max-height: 80vh;
-    padding: 0 4px;
+    height: 100%;
+    overflow: hidden;
+    padding: 0;
 }
 
 .reputation-settings-form h3.rep-settings-header {
@@ -6531,8 +6530,81 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 3px;
     padding-right: 4px;
     max-height: 400px;
+}
+
+.rep-settings-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     overflow-y: auto;
-    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+    padding: 6px 8px;
+}
+
+.rep-default-items-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-right: 4px;
+}
+
+.rep-default-items-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 4px;
+    align-items: center;
+    font-size: 0.75em;
+    opacity: 0.65;
+    padding: 2px 0;
+}
+
+.rep-default-item-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 4px;
+    align-items: center;
+}
+
+.rep-default-item-img-cell {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.rep-default-item-img-cell input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+
+.rep-default-item-preview {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 3px;
+    cursor: pointer;
+    flex-shrink: 0;
+    border: 1px solid var(--ns-border-light, #ccc);
+    transition: border-color 0.15s;
+}
+
+.rep-default-item-preview:hover {
+    border-color: var(--ns-color-blue, #5078c8);
+}
+
+.rep-default-browse-btn {
+    background: none;
+    border: 1px solid var(--ns-border-light, #ccc);
+    border-radius: 3px;
+    padding: 2px 5px;
+    cursor: pointer;
+    font-size: 0.8em;
+    line-height: 1.4;
+    flex-shrink: 0;
+}
+
+.rep-default-browse-btn:hover {
+    background: var(--ns-hover-bg, rgba(0,0,0,0.08));
 }
 
 .rep-relation-header,

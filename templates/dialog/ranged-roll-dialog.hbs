@@ -158,6 +158,19 @@
             </div>
         </div>
     </div>
+    {{#if isPoolRoll}}
+    <div class="dialog-columns">
+        <div class="column left">
+            <div class="form-group vertical slider-group">
+                <label>{{localize 'NEUROSHIMA.Roll.MeleeDiceCount'}}: <span class="melee-dice-count-display">{{meleeDiceCount}}</span></label>
+                <input type="range" name="meleeDiceCount" min="1" max="3" value="{{meleeDiceCount}}" step="1">
+                <div class="slider-hint">
+                    <span class="melee-dice-count-hint">{{meleeDiceCount}}</span>k20
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/if}}
     {{/if}}
 
     {{#if (eq rollType "ranged")}}
