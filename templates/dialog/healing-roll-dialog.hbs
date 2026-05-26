@@ -94,6 +94,20 @@
                 </tr>
             </thead>
             <tbody>
+                {{#if (gt woundGroupCount 1)}}
+                <tr class="wound-all-row">
+                    <td class="wound-type-cell"><em>{{localize "NEUROSHIMA.HealingRequest.AllTypes"}}</em></td>
+                    <td class="wound-difficulty-select">—</td>
+                    <td class="wound-healing-percent">—</td>
+                    <td>
+                        <input type="number"
+                               class="wound-modifier wound-modifier-all"
+                               placeholder="0"
+                               min="-100"
+                               max="100"/>
+                    </td>
+                </tr>
+                {{/if}}
                 {{#each woundGroups}}
                 <tr data-damage-type="{{this.damageType}}" class="wound-group-row">
                     <td class="wound-type-cell" title="{{localize (concat 'NEUROSHIMA.Damage.Full.' this.damageType)}}">
@@ -111,7 +125,7 @@
                     <td class="wound-healing-percent" data-damage-type="{{this.damageType}}">
                         {{#if (gte this.healingPercent 0)}}+{{/if}}{{this.healingPercent}}%
                     </td>
-                    <td>
+                    <td class="wound-modifier-cell" {{#if this.healingTooltip}}data-tooltip="{{this.healingTooltip}}"{{/if}}>
                         <input type="number"
                                name="woundModifier-{{this.damageType}}"
                                class="wound-modifier"

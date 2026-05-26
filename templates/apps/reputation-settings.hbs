@@ -9,7 +9,7 @@
                 <option value="{{@key}}" {{#if (eq @key ../config.testMode)}}selected{{/if}}>{{this}}</option>
                 {{/each}}
             </select>
-            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationTestMode.Hint"}}</p>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.ReputationTestMode.Hint"}}</p>
         </div>
 
         <div class="rep-settings-minmax">
@@ -27,12 +27,12 @@
             <div class="rep-settings-minmax-block">
                 <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Name"}}</h3>
                 <input type="number" name="fameThreshold" value="{{config.fameThreshold}}" data-dtype="Number" min="0"/>
-                <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Hint"}}</p>
+                <p class="notes">{{localize "NEUROSHIMA.Settings.ReputationFameThreshold.Hint"}}</p>
             </div>
             <div class="rep-settings-minmax-block">
                 <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Name"}}</h3>
                 <input type="number" name="famePoints" value="{{config.famePoints}}" data-dtype="Number" min="0"/>
-                <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Hint"}}</p>
+                <p class="notes">{{localize "NEUROSHIMA.Settings.ReputationFamePoints.Hint"}}</p>
             </div>
         </div>
 
@@ -41,7 +41,7 @@
                 <input type="checkbox" name="useColors" {{checked config.useColors}}/>
                 <label>{{localize "NEUROSHIMA.Settings.ReputationUseColors.Name"}}</label>
             </div>
-            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationUseColors.Hint"}}</p>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.ReputationUseColors.Hint"}}</p>
         </div>
 
         <div class="form-group">
@@ -49,7 +49,7 @@
                 <input type="checkbox" name="colorNames" {{checked config.colorNames}}/>
                 <label>{{localize "NEUROSHIMA.Settings.ReputationColorNames.Name"}}</label>
             </div>
-            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationColorNames.Hint"}}</p>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.ReputationColorNames.Hint"}}</p>
         </div>
 
         <div class="form-group">
@@ -57,13 +57,13 @@
                 <input type="checkbox" name="showAsProgressBar" {{checked config.showAsProgressBar}}/>
                 <label>{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Name"}}</label>
             </div>
-            <p class="hint">{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Hint"}}</p>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.ReputationShowAsProgressBar.Hint"}}</p>
         </div>
 
         <hr/>
 
         <h3 class="rep-settings-header">{{localize "NEUROSHIMA.Settings.DefaultReputationItems.Name"}}</h3>
-        <p class="hint">{{localize "NEUROSHIMA.Settings.DefaultReputationItems.Hint"}}</p>
+        <p class="notes">{{localize "NEUROSHIMA.Settings.DefaultReputationItems.Hint"}}</p>
 
         <div class="rep-relation-add-top">
             <a class="item-control" data-action="addDefaultRepItem">

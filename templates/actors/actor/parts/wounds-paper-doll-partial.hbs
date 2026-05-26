@@ -9,9 +9,17 @@
                 <p class="no-selection">{{localize "NEUROSHIMA.HealingRequest.SelectLocation"}}</p>
             {{/if}}
         </div>
-        
+
+        <button type="button"
+            class="inne-location-btn body-location-hotspot {{#if (eq combat.selectedWoundLocation 'inne')}}selected{{/if}}"
+            data-location="inne"
+            data-tooltip="{{localize 'NEUROSHIMA.Location.Inne'}}">
+            {{localize "NEUROSHIMA.Location.Inne"}}
+            <span class="inne-count-badge">{{combat.locationsMap.inne.wounds.length}}</span>
+        </button>
+
         <div class="paper-doll-container">
-        <svg class="body-diagram" viewBox="0 0 240 560" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+        <svg class="body-diagram" viewBox="0 0 240 435" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
             {{!-- Głowa --}}
             <g data-location="head">
                 <circle cx="120" cy="55" r="42" class="body-location-hotspot" data-location="head" data-tooltip="{{localize 'NEUROSHIMA.Location.Head'}}" />
@@ -46,13 +54,6 @@
             <g data-location="rightLeg">
                 <rect x="125" y="290" width="40" height="135" class="body-location-hotspot" data-location="rightLeg" data-tooltip="{{localize 'NEUROSHIMA.Location.RightLeg'}}" />
                 <text x="145" y="357" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.rightLeg.wounds.length}}</text>
-            </g>
-
-            {{!-- Inne/Efekty --}}
-            <g data-location="inne">
-                <rect x="65" y="445" width="110" height="52" rx="6" class="body-location-hotspot inne-hotspot" data-location="inne" data-tooltip="{{localize 'NEUROSHIMA.Location.Inne'}}" />
-                <text x="120" y="466" class="inne-label-text" text-anchor="middle" dominant-baseline="middle">{{localize "NEUROSHIMA.Location.Inne"}}</text>
-                <text x="120" y="484" class="wound-count-badge" text-anchor="middle" dominant-baseline="middle">{{combat.locationsMap.inne.wounds.length}}</text>
             </g>
         </svg>
         </div>

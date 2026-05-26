@@ -160,7 +160,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     super(options);
     this._difficultiesCollapsed = true;
     this._isRolling = false;
-    this._selectedWoundLocation = null;
+    this._selectedWoundLocation = undefined;
   }
 
   /** @override */
@@ -313,8 +313,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     
     // Load saved wound location from actor flags, default to torso
     // Only load from flags on first init or if explicitly unset (allows renderPartial to preserve state)
-    if (this._selectedWoundLocation === null || this._selectedWoundLocation === undefined) {
-      this._selectedWoundLocation = actor.getFlag("neuroshima", "selectedWoundLocation") || "torso";
+    if (this._selectedWoundLocation === undefined) {
+      this._selectedWoundLocation = actor.getFlag("neuroshima", "selectedWoundLocation") || null;
     }
     
     game.neuroshima?.log("_prepareContext selectedWoundLocation", { 
@@ -1224,15 +1224,22 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           
           hotspot.addEventListener('click', (event) => {
             event.preventDefault();
-            // Save selected location to actor flags
             const locationKey = event.currentTarget.dataset.location;
-            this._selectedWoundLocation = locationKey;
-            this.document.setFlag("neuroshima", "selectedWoundLocation", locationKey);
-            // Render wounds list to show selected location BEFORE updating visual state
-            this.render({ parts: ["combatWoundsList"] }).then(() => {
-              // Update visual state after render completes
-              this._onPaperDollLocationSelect(event, event.currentTarget);
-            });
+            if (this._selectedWoundLocation === locationKey) {
+              this._selectedWoundLocation = null;
+              this.document.unsetFlag("neuroshima", "selectedWoundLocation");
+              this.render({ parts: ["combatWoundsList"] }).then(() => {
+                this.element.querySelectorAll('.body-location-hotspot').forEach(hs => {
+                  hs.classList.remove('selected');
+                });
+              });
+            } else {
+              this._selectedWoundLocation = locationKey;
+              this.document.setFlag("neuroshima", "selectedWoundLocation", locationKey);
+              this.render({ parts: ["combatWoundsList"] }).then(() => {
+                this._onPaperDollLocationSelect(event, event.currentTarget);
+              });
+            }
           });
         });
         
@@ -1306,16 +1313,8 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     
     if (targetHotspot) {
       this._onPaperDollLocationSelect(null, targetHotspot);
-    } else if (hotspots.length > 0) {
-      // Fallback: if saved location not found, use first available (torso)
-      const torsoHotspot = Array.from(hotspots).find(h => h.dataset.location === "torso") || hotspots[0];
-      this._selectedWoundLocation = torsoHotspot.dataset.location;
-      game.neuroshima?.log("_initializeWoundLocationPanel fallback", {
-        usedLocation: this._selectedWoundLocation
-      });
-      this._onPaperDollLocationSelect(null, torsoHotspot);
     } else {
-      game.neuroshima?.log("_initializeWoundLocationPanel ERROR: No hotspots found!");
+      game.neuroshima?.log("_initializeWoundLocationPanel: no location selected, showing all wounds");
     }
   }
 

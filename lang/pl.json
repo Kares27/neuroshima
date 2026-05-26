@@ -593,6 +593,10 @@
                 "Name": "Zezwól na Wielokrotne Leczenie",
                 "Hint": "Gdy włączone, limit 15% redukcji kary zostaje usunięty — każdy udany rzut leczenia dalej zmniejsza karę rany. Gdy wyłączone (domyślnie), leczenie zatrzymuje się po osiągnięciu maksymalnej redukcji."
             },
+            "HealingScriptModifierOnFailure": {
+                "Name": "Uwzględniaj modyfikator w nieudanych testach",
+                "Hint": "Gdy włączone, modyfikator leczenia wynikający ze skryptów efektów (np. zdolności, przedmiotów) jest doliczany również przy nieudanym teście. Gdy wyłączone (domyślnie), nieudany test leczenia zawsze skutkuje wyłącznie karą +5% — modyfikator skryptowy jest ignorowany."
+            },
             "HealingConfig": {
                 "Title": "Ustawienia Leczenia",
                 "Label": "Skonfiguruj Leczenie",
@@ -1405,6 +1409,8 @@
             "NewPenalty": "Nowa Kara",
             "Reduction": "Redukcja Kary",
             "HealingPercent": "Redukcja %",
+            "AllTypes": "Wszystkie typy",
+            "ScriptHealingModTooltip": "Modyfikator leczenia z efektów/skryptów",
             "HealingModifier": "Modyfikator Leczenia",
             "DifficultyModifier": "Modyfikator Trudności",
             "AdjustedPerWound": "Dostosowana dla każdej rany",

@@ -2681,6 +2681,28 @@ export class NeuroshimaScriptRunner {
     worldTimeUpdate:  "World Time Update"
   };
 
+  static _makeHealingModifierProxy() {
+    const data = {};
+    return new Proxy(data, {
+      get(target, prop) {
+        if (prop === "_raw") return target;
+        if (typeof prop !== "string") return target[prop];
+        if (prop.includes(",")) return 0;
+        return target[prop] ?? 0;
+      },
+      set(target, prop, value) {
+        if (typeof prop === "string" && prop.includes(",")) {
+          for (const key of prop.split(",").map(k => k.trim())) {
+            target[key] = (target[key] ?? 0) + value;
+          }
+        } else {
+          target[prop] = value;
+        }
+        return true;
+      }
+    });
+  }
+
   /**
    * Execute a single dialog modifier script and return the populated fields object.
    * Call this when the user toggles a modifier ON in the roll dialog.
@@ -2690,7 +2712,7 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0 };
+    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, healingModifierAll: 0, healingModifier: {} };
     const rc = dm._rollContext || {};
     const initialDifficulty = liveContext.difficulty ?? rc.difficulty ?? "average";
     const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
@@ -2710,8 +2732,8 @@ export class NeuroshimaScriptRunner {
       damageShift: 0,
       difficulty: initialDifficulty,
       hitLocation: initialHitLocation,
-       
-     
+      healingModifierAll: 0,
+      healingModifier: NeuroshimaScriptRunner._makeHealingModifierProxy(),
 
       rollType: rc.rollType ?? null,
       healingMethod: rc.healingMethod ?? null,
@@ -2756,7 +2778,9 @@ export class NeuroshimaScriptRunner {
       difficultyShift: fields.difficultyShift || 0,
       damageShift: fields.damageShift || 0,
       difficulty: fields.difficulty !== initialDifficulty ? fields.difficulty : null,
-      hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null
+      hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null,
+      healingModifierAll: fields.healingModifierAll || 0,
+      healingModifier: fields.healingModifier?._raw ?? fields.healingModifier ?? {}
     };
   }
 
@@ -3281,7 +3305,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, healingModifierAll: 0, healingModifier: {}, healingModBreakdown: [] },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -3342,7 +3366,7 @@ export class NeuroshimaScriptRunner {
       });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, healingModifierAll: 0, healingModifier: {}, healingModBreakdown: [] };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -3369,12 +3393,19 @@ export class NeuroshimaScriptRunner {
       scriptFields.weaponModifier += result.weaponModifier || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
       scriptFields.damageShift += result.damageShift || 0;
+      scriptFields.healingModifierAll += result.healingModifierAll || 0;
+      for (const [dt, val] of Object.entries(result.healingModifier || {})) {
+        scriptFields.healingModifier[dt] = (scriptFields.healingModifier[dt] || 0) + (val || 0);
+      }
       if (result.difficulty) scriptFields.difficulty = result.difficulty;
       if (result.hitLocation) scriptFields.hitLocation = result.hitLocation;
       const label = dm.label || "—";
       if (result.modifier) modBreakdown.push({ label, value: result.modifier });
       if (result.attributeBonus) attrBreakdown.push({ label, value: result.attributeBonus });
       if (result.skillBonus) skillBreakdown.push({ label, value: result.skillBonus });
+      if (result.healingModifierAll || Object.keys(result.healingModifier || {}).length > 0) {
+        scriptFields.healingModBreakdown.push({ label, healingModifierAll: result.healingModifierAll || 0, healingModifier: result.healingModifier || {} });
+      }
     }
 
     return { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown };

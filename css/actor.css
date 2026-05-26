@@ -2332,6 +2332,63 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
   font-family: 'SpecialElite', serif;
 }
 
+.inne-location-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 10px;
+  margin-bottom: 6px;
+  font-family: 'SpecialElite', serif;
+  font-size: 0.85em;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px dashed rgba(180, 120, 200, 0.6);
+  background: rgba(180, 120, 200, 0.1);
+  color: var(--ns-text-main);
+  transition: all 0.2s ease;
+}
+
+.inne-location-btn:hover {
+  background: rgba(180, 120, 200, 0.25);
+  border-color: rgba(180, 120, 200, 0.9);
+}
+
+.inne-location-btn.selected {
+  background: rgba(255, 100, 100, 0.2);
+  border-color: rgba(255, 100, 100, 0.8);
+  border-style: solid;
+  color: var(--ns-text-accent);
+}
+
+.inne-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 10px;
+  font-size: 0.85em;
+  font-weight: bold;
+  background: rgba(180, 120, 200, 0.4);
+  color: white;
+}
+
+.inne-location-btn.selected .inne-count-badge {
+  background: rgba(255, 100, 100, 0.6);
+}
+
+.wounds-list-section:not(:has(.location-wounds-group.active)) .location-wounds-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.wounds-list-section:not(:has(.location-wounds-header.active)) .location-wounds-header {
+  display: flex !important;
+}
+
 .wounds-list-container {
   display: flex;
   flex-direction: column;

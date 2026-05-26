@@ -25,7 +25,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         },
         position: {
             width: 500,
-            height: "auto"
+            height: 600
         },
         form: {
             handler: async function(event, form, formData) {
@@ -54,6 +54,7 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
         
         const patientCardVersion = game.settings.get("neuroshima", "patientCardVersion");
         const allowRepeatedHealing = game.settings.get("neuroshima", "allowRepeatedHealing") ?? false;
+        const healingScriptModifierOnFailure = game.settings.get("neuroshima", "healingScriptModifierOnFailure") ?? false;
         
         const difficultyOptions = Object.entries(NEUROSHIMA.difficulties).reduce((acc, [key, data]) => {
             acc[key] = game.i18n.localize(data.label);
@@ -69,7 +70,8 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             config: {
                 healingDifficulties: healingDifficulties,
                 patientCardVersion: patientCardVersion,
-                allowRepeatedHealing: allowRepeatedHealing
+                allowRepeatedHealing: allowRepeatedHealing,
+                healingScriptModifierOnFailure: healingScriptModifierOnFailure
             },
             damageTypes: [
                 { key: "D", label: game.i18n.localize("NEUROSHIMA.Damage.Full.D"), abbr: "D" },
@@ -104,17 +106,20 @@ export class HealingConfig extends HandlebarsApplicationMixin(ApplicationV2) {
             
             const patientCardVersion = String(data.patientCardVersion || "simple");
             const allowRepeatedHealing = data.allowRepeatedHealing === true || data.allowRepeatedHealing === "true";
+            const healingScriptModifierOnFailure = data.healingScriptModifierOnFailure === true || data.healingScriptModifierOnFailure === "true";
             
             game.neuroshima.log("Settings to save:", {
                 healingDifficulties,
                 patientCardVersion,
-                allowRepeatedHealing
+                allowRepeatedHealing,
+                healingScriptModifierOnFailure
             });
             
             const updates = [
                 game.settings.set("neuroshima", "healingDifficulties", healingDifficulties),
                 game.settings.set("neuroshima", "patientCardVersion", patientCardVersion),
-                game.settings.set("neuroshima", "allowRepeatedHealing", allowRepeatedHealing)
+                game.settings.set("neuroshima", "allowRepeatedHealing", allowRepeatedHealing),
+                game.settings.set("neuroshima", "healingScriptModifierOnFailure", healingScriptModifierOnFailure)
             ];
             
             await Promise.all(updates);

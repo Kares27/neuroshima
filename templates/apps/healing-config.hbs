@@ -1,59 +1,71 @@
-<section class="neuroshima healing-config">
-    <h2>{{localize "NEUROSHIMA.Settings.HealingConfig.Title"}}</h2>
-    <p class="hint">{{localize "NEUROSHIMA.Settings.HealingConfig.Description"}}</p>
+<section class="neuroshima-config">
+    <div class="config-body">
 
-    <div class="form-group">
-        <label>{{localize "NEUROSHIMA.Settings.PatientCardVersion.Name"}}</label>
-        <div class="form-fields">
-            <select name="patientCardVersion" required>
-                {{#each patientCardOptions as |label key|}}
-                <option value="{{key}}" {{#if (eq key @root.config.patientCardVersion)}}selected{{/if}}>{{label}}</option>
-                {{/each}}
-            </select>
+        <div class="config-section">
+            <h3>{{localize "NEUROSHIMA.Settings.HealingConfig.Title"}}</h3>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.HealingConfig.Description"}}</p>
+
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Settings.PatientCardVersion.Name"}}</label>
+                <div class="form-fields">
+                    <select name="patientCardVersion" required>
+                        {{#each patientCardOptions as |label key|}}
+                        <option value="{{key}}" {{#if (eq key @root.config.patientCardVersion)}}selected{{/if}}>{{label}}</option>
+                        {{/each}}
+                    </select>
+                </div>
+                <p class="notes">{{localize "NEUROSHIMA.Settings.PatientCardVersion.Hint"}}</p>
+            </div>
         </div>
-        <p class="notes">{{localize "NEUROSHIMA.Settings.PatientCardVersion.Hint"}}</p>
-    </div>
 
-    <hr>
+        <div class="config-section">
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Settings.AllowRepeatedHealing.Name"}}</label>
+                <div class="form-fields">
+                    <input type="checkbox" name="allowRepeatedHealing" {{#if config.allowRepeatedHealing}}checked{{/if}} />
+                </div>
+                <p class="notes">{{localize "NEUROSHIMA.Settings.AllowRepeatedHealing.Hint"}}</p>
+            </div>
 
-    <div class="form-group">
-        <label>{{localize "NEUROSHIMA.Settings.AllowRepeatedHealing.Name"}}</label>
-        <div class="form-fields">
-            <input type="checkbox" name="allowRepeatedHealing" {{#if config.allowRepeatedHealing}}checked{{/if}} />
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Settings.HealingScriptModifierOnFailure.Name"}}</label>
+                <div class="form-fields">
+                    <input type="checkbox" name="healingScriptModifierOnFailure" {{#if config.healingScriptModifierOnFailure}}checked{{/if}} />
+                </div>
+                <p class="notes">{{localize "NEUROSHIMA.Settings.HealingScriptModifierOnFailure.Hint"}}</p>
+            </div>
         </div>
-        <p class="notes">{{localize "NEUROSHIMA.Settings.AllowRepeatedHealing.Hint"}}</p>
-    </div>
 
-    <hr>
+        <div class="config-section">
+            <h3>{{localize "NEUROSHIMA.Settings.HealingConfig.DamageTypeDifficulties"}}</h3>
+            <p class="notes">{{localize "NEUROSHIMA.Settings.HealingConfig.DifficultyHelp"}}</p>
 
-    <div class="form-group">
-        <h3>{{localize "NEUROSHIMA.Settings.HealingConfig.DamageTypeDifficulties"}}</h3>
-        <p class="help-text">{{localize "NEUROSHIMA.Settings.HealingConfig.DifficultyHelp"}}</p>
-        
-        <table class="healing-difficulties-table">
-            <thead>
-                <tr>
-                    <th>{{localize "NEUROSHIMA.Damage.Type"}}</th>
-                    <th>{{localize "NEUROSHIMA.Roll.BaseDifficulty"}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{#each damageTypes as |damageType|}}
-                <tr>
-                    <td>
-                        <strong>{{damageType.abbr}}</strong> - {{damageType.label}}
-                    </td>
-                    <td>
-                        <select name="difficulty-{{damageType.key}}" required>
-                            {{#each @root.difficultyOptions as |label key|}}
-                            <option value="{{key}}" {{#if (eq key (lookup @root.config.healingDifficulties damageType.key))}}selected{{/if}}>{{label}}</option>
-                            {{/each}}
-                        </select>
-                    </td>
-                </tr>
-                {{/each}}
-            </tbody>
-        </table>
+            <table class="healing-difficulties-table">
+                <thead>
+                    <tr>
+                        <th>{{localize "NEUROSHIMA.Damage.Type"}}</th>
+                        <th>{{localize "NEUROSHIMA.Roll.BaseDifficulty"}}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each damageTypes as |damageType|}}
+                    <tr>
+                        <td>
+                            <strong>{{damageType.abbr}}</strong> - {{damageType.label}}
+                        </td>
+                        <td>
+                            <select name="difficulty-{{damageType.key}}" required>
+                                {{#each @root.difficultyOptions as |label key|}}
+                                <option value="{{key}}" {{#if (eq key (lookup @root.config.healingDifficulties damageType.key))}}selected{{/if}}>{{label}}</option>
+                                {{/each}}
+                            </select>
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+
     </div>
 
     <footer class="sheet-footer flexrow">

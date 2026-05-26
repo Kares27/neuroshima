@@ -1381,6 +1381,8 @@
             "NewPenalty": "New Penalty",
             "Reduction": "Penalty Reduction",
             "HealingPercent": "Healing %",
+            "AllTypes": "All types",
+            "ScriptHealingModTooltip": "Healing modifier from effects/scripts",
             "HealingModifier": "Healing Modifier",
             "DifficultyModifier": "Difficulty Modifier",
             "AdjustedPerWound": "Adjusted per wound",

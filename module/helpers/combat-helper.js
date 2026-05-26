@@ -1409,11 +1409,14 @@ export class CombatHelper {
       const fullWoundName = game.i18n.localize(woundConfig.fullLabel || "NEUROSHIMA.Items.Type.Wound");
 
       // Strip trailing "Rana" (Polish word for "wound") from the display name if present
+      // Only strip if there is something remaining after removing it
       let displayName = wound.name;
       if (displayName.endsWith(" Rana")) {
-        displayName = displayName.slice(0, -5).trim();
-      } else if (displayName.endsWith("Rana")) {
-        displayName = displayName.slice(0, -4).trim();
+        const stripped = displayName.slice(0, -5).trim();
+        if (stripped.length > 0) displayName = stripped;
+      } else if (displayName.endsWith("Rana") && displayName.length > 4) {
+        const stripped = displayName.slice(0, -4).trim();
+        if (stripped.length > 0) displayName = stripped;
       }
 
       // Estimate healing days: 1 day = 5% reduction

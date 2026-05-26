@@ -1574,7 +1574,7 @@ export class NeuroshimaDice {
    * @param {number} healingModifier - Additional % modifier per wound type
    * @returns {Object} Calculated changes (no updates applied)
    */
-  static calculateHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0) {
+  static calculateHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
     game.neuroshima?.group("NeuroshimaDice | calculateHealingEffects");
     game.neuroshima?.log("Calculating healing effects", {
       patient: patientActor.name,
@@ -1602,8 +1602,12 @@ export class NeuroshimaDice {
       penaltyChange = 5;
     }
     
-    // Add per-wound healing modifier
     penaltyChange += healingModifier;
+
+    const _applyScriptOnFailure1 = game.settings.get("neuroshima", "healingScriptModifierOnFailure") ?? false;
+    if (isSuccess || _applyScriptOnFailure1) {
+      penaltyChange += scriptHealingModifier;
+    }
 
     game.neuroshima?.log("Penalty change determined", {
       penaltyChange: penaltyChange,
@@ -1678,7 +1682,7 @@ export class NeuroshimaDice {
    * @param {number} healingModifier - Additional % modifier per wound type
    * @returns {Promise<Object>} Information about the applied changes
    */
-  static async applyHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0) {
+  static async applyHealingEffects(patientActor, woundIds, healingMethod, successCount, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
     game.neuroshima?.group("NeuroshimaDice | applyHealingEffects");
     game.neuroshima?.log("Applying healing effects", {
       patient: patientActor.name,
@@ -1707,8 +1711,12 @@ export class NeuroshimaDice {
       penaltyChange = 5;
     }
     
-    // Add per-wound healing modifier
     penaltyChange += healingModifier;
+
+    const _applyScriptOnFailure2 = game.settings.get("neuroshima", "healingScriptModifierOnFailure") ?? false;
+    if (isSuccess || _applyScriptOnFailure2) {
+      penaltyChange += scriptHealingModifier;
+    }
 
     game.neuroshima?.log("Penalty change determined", {
       penaltyChange: penaltyChange,
@@ -2053,7 +2061,8 @@ export class NeuroshimaDice {
         testRollData.successCount,
         healingMethod,
         config.hadFirstAid,
-        config.healingModifier
+        config.healingModifier,
+        config.scriptHealingModifier ?? 0
       );
 
       // Collect result for reporting
@@ -2226,7 +2235,8 @@ export class NeuroshimaDice {
       healingMethod,
       testRollData.successCount,
       woundConfig.hadFirstAid,
-      woundConfig.healingModifier
+      woundConfig.healingModifier,
+      woundConfig.scriptHealingModifier ?? 0
     );
 
     game.neuroshima?.groupEnd();

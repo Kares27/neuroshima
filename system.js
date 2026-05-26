@@ -1133,6 +1133,15 @@ Hooks.once('init', async function() {
         default: false
     });
 
+    game.settings.register("neuroshima", "healingScriptModifierOnFailure", {
+        name: "NEUROSHIMA.Settings.HealingScriptModifierOnFailure.Name",
+        hint: "NEUROSHIMA.Settings.HealingScriptModifierOnFailure.Hint",
+        scope: "world",
+        config: false,
+        type: Boolean,
+        default: false
+    });
+
     // Override CONFIG.statusEffects with conditions from settings
     applyConditionsToStatusEffects();
 

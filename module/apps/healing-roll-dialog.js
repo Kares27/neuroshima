@@ -72,6 +72,26 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     };
   }
 
+  _buildWoundGroupMap(wounds, lastRoll) {
+    const map = {};
+    const method = lastRoll.healingMethod || "firstAid";
+    wounds.forEach(wound => {
+      const dt = wound.damageType;
+      if (!map[dt]) {
+        map[dt] = {
+          damageType: dt,
+          count: 0,
+          difficulty: getHealingDifficulty(dt),
+          healingPercent: getHealingPercent(method, wound.hadFirstAid),
+          woundList: []
+        };
+      }
+      map[dt].count++;
+      map[dt].woundList.push(wound);
+    });
+    return map;
+  }
+
   static DEFAULT_OPTIONS = {
     tag: "form",
     classes: ["neuroshima", "dialog", "standard-form", "roll-dialog-window", "roll-dialog", "healing-roll-dialog"],
@@ -95,26 +115,6 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
   get title() {
     const patientName = this.patientActor?.name ?? "";
     return `${game.i18n.localize("NEUROSHIMA.HealingRequest.Title")}${patientName ? " - " + patientName : ""}`;
-  }
-
-  _buildWoundGroupMap(wounds, lastRoll) {
-    const map = {};
-    const method = lastRoll.healingMethod || "firstAid";
-    wounds.forEach(wound => {
-      const dt = wound.damageType;
-      if (!map[dt]) {
-        map[dt] = {
-          damageType: dt,
-          count: 0,
-          difficulty: getHealingDifficulty(dt),
-          healingPercent: getHealingPercent(method, wound.hadFirstAid),
-          woundList: []
-        };
-      }
-      map[dt].count++;
-      map[dt].woundList.push(wound);
-    });
-    return map;
   }
 
   async _prepareContext(options) {
@@ -161,12 +161,24 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     this._breakdown       = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown };
     this._userValues      = { modifier: userModifier, attributeBonus: userAttrBonus, skillBonus: userSkillBonus };
 
+    const sfHealAll   = scriptFields.healingModifierAll  || 0;
+    const sfHealDt    = scriptFields.healingModifier     || {};
+    const sfBreakdown = scriptFields.healingModBreakdown || [];
+
     const woundGroups = Object.values(this._woundGroupMap).map(group => {
-      const dt         = group.damageType;
-      const selDiff    = this.userEntry[`difficulty-${dt}`] ?? group.difficulty;
-      const selWoundMod = this.userEntry[`woundModifier-${dt}`] ?? 0;
-      const healPct    = getHealingPercent(healingMethod, group.woundList[0]?.hadFirstAid);
-      return { ...group, difficulty: selDiff, healingPercent: healPct, woundModifier: selWoundMod };
+      const dt               = group.damageType;
+      const selDiff          = this.userEntry[`difficulty-${dt}`] ?? group.difficulty;
+      const selWoundMod      = this.userEntry[`woundModifier-${dt}`] ?? 0;
+      const healPct          = getHealingPercent(healingMethod, group.woundList[0]?.hadFirstAid);
+      const scriptHealingMod = sfHealAll + (sfHealDt[dt] || 0);
+      const tooltipLines = sfBreakdown
+        .map(b => {
+          const val = (b.healingModifierAll || 0) + (b.healingModifier[dt] || 0);
+          return val !== 0 ? `${b.label}: ${val > 0 ? "+" : ""}${val}%` : null;
+        })
+        .filter(Boolean);
+      const healingTooltip = tooltipLines.length > 0 ? tooltipLines.join("\n") : null;
+      return { ...group, difficulty: selDiff, healingPercent: healPct, woundModifier: selWoundMod + scriptHealingMod, scriptHealingMod, healingTooltip };
     });
 
     context.actor             = medicActor;
@@ -228,6 +240,20 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       cancelBtn.addEventListener('click', ev => {
         ev.preventDefault();
         this.close();
+      });
+    }
+
+    const allModInput = html.querySelector('.wound-modifier-all');
+    if (allModInput) {
+      allModInput.addEventListener('input', () => {
+        const val = allModInput.value;
+        const numVal = parseInt(val) || 0;
+        html.querySelectorAll('.wound-modifier:not(.wound-modifier-all)').forEach(input => {
+          input.value = val;
+          const dt = input.dataset.damageType;
+          if (dt) this.userEntry[`woundModifier-${dt}`] = numVal;
+        });
+        this._updateSummary(html);
       });
     }
   }
@@ -294,26 +320,32 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const armorPenalty = medicActor.system.combat?.totalArmorPenalty || 0;
     const woundPenalty = medicActor.system.combat?.totalWoundPenalty || 0;
 
+    const sf = this._scriptFields || {};
+    const sfHealAll = sf.healingModifierAll || 0;
+    const sfHealDt  = sf.healingModifier    || {};
+
     const woundGroups = Object.values(this._woundGroupMap);
     const woundConfigs = [];
     woundGroups.forEach(group => {
-      const dt              = group.damageType;
-      const healingModifier = parseInt(formData[`woundModifier-${dt}`]) || 0;
-      const selDifficulty   = formData[`difficulty-${dt}`] || group.difficulty;
-      const difficultyMod   = globalModifier + (useArmor ? armorPenalty : 0) + (useWound ? woundPenalty : 0);
+      const dt                   = group.damageType;
+      const scriptHealingModifier = sfHealAll + (sfHealDt[dt] || 0);
+      const userHealingMod       = (parseInt(formData[`woundModifier-${dt}`]) || 0) - scriptHealingModifier;
+      const selDifficulty        = formData[`difficulty-${dt}`] || group.difficulty;
+      const difficultyMod        = globalModifier + (useArmor ? armorPenalty : 0) + (useWound ? woundPenalty : 0);
 
       group.woundList.forEach(wound => {
         const failedAttempts = healingMethod === "firstAid"
           ? (wound.failedFirstAidAttempts || 0)
           : (wound.failedTreatmentAttempts || 0);
         woundConfigs.push({
-          woundId:        wound.id,
-          woundName:      wound.name,
-          damageType:     wound.damageType,
-          difficulty:     selDifficulty,
-          modifier:       difficultyMod,
-          healingModifier: healingModifier,
-          hadFirstAid:    wound.hadFirstAid || false,
+          woundId:              wound.id,
+          woundName:            wound.name,
+          damageType:           wound.damageType,
+          difficulty:           selDifficulty,
+          modifier:             difficultyMod,
+          healingModifier:      userHealingMod,
+          scriptHealingModifier,
+          hadFirstAid:          wound.hadFirstAid || false,
           failedAttempts
         });
       });

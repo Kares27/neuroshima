@@ -530,6 +530,8 @@
       <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
       <tr><td><code>args.fields.difficultyShift</code></td><td>number</td><td>Przesuwa poziom trudności o podaną liczbę stopni (np. <code>+1</code> = poziom wyżej, <code>-1</code> = poziom niżej). Kumuluje się z innymi modyfikatorami.</td></tr>
       <tr><td><code>args.fields.damageShift</code></td><td>number</td><td>Przesuwa typ obrażeń broni białej o podaną liczbę stopni (np. <code>+1</code> = D→L, L→C, C→K; <code>-1</code> = odwrotnie). Działa na wszystkie trzy poziomy obrażeń (damageMelee1/2/3) i obsługuje zarówno obrażenia regularne (<code>D/L/C/K</code>), jak i stłuczeniowe (<code>sD/sL/sC/sK</code>). Stosowane wyłącznie w testach broni białej.</td></tr>
+      <tr><td><code>args.fields.healingModifierAll</code></td><td>number</td><td>Dodatkowa redukcja procentowa kary rany doliczana do wyniku leczenia dla <strong>wszystkich</strong> typów ran (D/L/C/K). Kumuluje się z modyfikatorem ustawionym ręcznie w dialogu. Stosowane wyłącznie w testach leczenia (<code>rollType === "healing"</code>).</td></tr>
+      <tr><td><code>args.fields.healingModifier</code></td><td>Proxy (object)</td><td>Obiekt indeksowany typem rany (<code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code>) z dodatkową redukcją procentową kary leczenia <strong>tylko dla danego typu</strong>. Obsługuje <code>+=</code> bez inicjalizacji: <code>args.fields.healingModifier["K"] += 10</code>. Obsługuje też multi-klucze: <code>args.fields.healingModifier["K,C"] = 10</code> lub <code>args.fields.healingModifier[["K","C"]] = 10</code> dodaje wartość do każdego z wymienionych typów. Kumuluje się z <code>healingModifierAll</code> i modyfikatorem z dialogu. Stosowane wyłącznie w testach leczenia.</td></tr>
     </tbody>
   </table>
 
@@ -4044,6 +4046,102 @@ args.fields.mod = (args.fields.mod ?? <span class="num">0</span>) + <span class=
     </p>
     <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
     <pre><code>args.fields.modifier += <span class="num">10</span>; <span class="cmt">// +10% ułatwienia do rzutu leczenia</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      <code>healingModifierAll</code> — dodatkowa redukcja kary leczenia dla wszystkich typów ran
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      <code>args.fields.healingModifierAll</code> to dodatkowy bonus procentowy redukcji kary, doliczany do wybranych przez użytkownika modyfikatorów leczenia
+      i stosowany do <strong>wszystkich</strong> typów ran przy sukcesie testu.
+      Przykład: apteczka polowa z +5% efektywności leczenia — każde wyleczone obrażenie traci o 5% więcej kary niż normalnie.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.healingModifierAll += <span class="num">5</span>; <span class="cmt">// +5% do redukcji kary dla wszystkich typów ran</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      <code>healingModifier</code> — składnia i sposoby użycia
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      <code>args.fields.healingModifier</code> to specjalny obiekt (Proxy) indeksowany typem rany (<code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code>).
+      Nieistniejące klucze zwracają <code>0</code>, więc <code>+=</code> działa bez wcześniejszej inicjalizacji.
+      Klucz może być pojedynczym typem, stringiem z przecinkiem (<code>"K,C"</code>), tablicą typów lub zmienną tablicową —
+      we wszystkich przypadkach wartość jest dystrybuowana do każdego wymienionego typu osobno.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Pojedynczy typ — operator +=:</strong></p>
+    <pre><code>args.fields.healingModifier[<span class="str">"K"</span>] += <span class="num">10</span>; <span class="cmt">// +10% redukcji tylko dla ran Krytycznych</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Kilka typów — string z przecinkiem:</strong></p>
+    <pre><code>args.fields.healingModifier[<span class="str">"K,C"</span>] += <span class="num">10</span>; <span class="cmt">// +10% do K i C jednocześnie</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Kilka typów — tablica literalna (JS konwertuje ją do <code>"K,C"</code>):</strong></p>
+    <pre><code>args.fields.healingModifier[[<span class="str">"K"</span>, <span class="str">"C"</span>]] += <span class="num">10</span>; <span class="cmt">// identyczny efekt</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Zmienna tablicowa jako klucz:</strong></p>
+    <pre><code><span class="kw">const</span> woundTypes = [<span class="str">"C"</span>, <span class="str">"K"</span>, <span class="str">"L"</span>];
+args.fields.healingModifier[woundTypes] += <span class="num">10</span>; <span class="cmt">// +10% do C, K i L</span></code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Dynamicznie — wszystkie typy ran faktycznie leczonych w tym dialogu:</strong></p>
+    <pre><code><span class="kw">const</span> types = [...<span class="kw">new</span> Set((args.wounds ?? []).map(w =&gt; w.damageType))];
+args.fields.healingModifier[types] += <span class="num">10</span>; <span class="cmt">// +10% do każdego obecnego typu rany</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      <code>healingModifier</code> — +10% do ran Krytycznych (K), aktywny tylko gdy są w dialogu
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Efekt na sprzęcie lub umiejętności specjalizującej się w leczeniu ran krytycznych.
+      Aktywuje się tylko gdy wśród leczonych ran jest przynajmniej jedna rana Krytyczna.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.healingModifier[<span class="str">"K"</span>] += <span class="num">10</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span> &amp;&amp; (args.wounds ?? []).some(w =&gt; w.damageType === <span class="str">"K"</span>);</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span> || !(args.wounds ?? []).some(w =&gt; w.damageType === <span class="str">"K"</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      <code>healingModifier</code> — +15% do Ciężkich i Krytycznych, tylko Leczeniem Ran
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Efekt zaawansowanego zestawu chirurgicznego — zwiększa skuteczność Leczenia Ran dla poważniejszych obrażeń.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.healingModifier[<span class="str">"K,C"</span>] += <span class="num">15</span>;</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span> &amp;&amp; args.healingMethod === <span class="str">"woundTreatment"</span>
+  &amp;&amp; (args.wounds ?? []).some(w =&gt; [<span class="str">"C"</span>, <span class="str">"K"</span>].includes(w.damageType));</code></pre>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>
+    <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"healing"</span> || args.healingMethod !== <span class="str">"woundTreatment"</span>
+  || !(args.wounds ?? []).some(w =&gt; [<span class="str">"C"</span>, <span class="str">"K"</span>].includes(w.damageType));</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">dialog</span>
+      <code>healingModifier</code> + <code>healingModifierAll</code> — różnicowanie bonusu per typ
+    </div>
+    <p style="margin:4px 1rem 6px; font-size:0.88em; color:#888;">
+      Można łączyć oba pola: globalny bonus dla wszystkich ran i dodatkowy tylko dla wybranych typów.
+      Np. apteczka polowa daje +5% do wszystkich ran, ale +10% do lekkich (D i L) jako że lepiej sobie radzi z drobnymi urazami.
+    </p>
+    <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Skrypt dialog:</strong></p>
+    <pre><code>args.fields.healingModifierAll += <span class="num">5</span>;        <span class="cmt">// +5% do wszystkich</span>
+args.fields.healingModifier[<span class="str">"D,L"</span>] += <span class="num">5</span>;    <span class="cmt">// dodatkowe +5% tylko do D i L (łącznie +10%)</span></code></pre>
     <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Activate Script:</strong></p>
     <pre><code><span class="kw">return</span> args.rollType === <span class="str">"healing"</span>;</code></pre>
     <p style="margin:4px 1rem 2px; font-size:0.88em;"><strong>Hide Script:</strong></p>

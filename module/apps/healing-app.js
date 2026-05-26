@@ -15,26 +15,27 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {number} healingModifier - Per-wound modifier (%)
      * @returns {number} Penalty change (negative=healing, positive=damage)
      */
-    static calculatePenaltyChange(successCount, healingMethod, hadFirstAid = false, healingModifier = 0) {
+    static calculatePenaltyChange(successCount, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
         const isSuccess = successCount >= 2;
         const isFirstAid = healingMethod === "firstAid";
         
         let penaltyChange = 0;
         if (isSuccess) {
-            // Success: reduces penalty
             if (isFirstAid) {
                 penaltyChange = -5;
             } else {
-                // Treat Wounds: 15% if fresh, 10% if had First Aid
                 penaltyChange = hadFirstAid ? -10 : -15;
             }
         } else {
-            // Failure: always increases penalty by 5%
             penaltyChange = 5;
         }
         
-        // Add per-wound healing modifier
         penaltyChange += healingModifier;
+        
+        const applyScriptOnFailure = game.settings.get("neuroshima", "healingScriptModifierOnFailure") ?? false;
+        if (isSuccess || applyScriptOnFailure) {
+            penaltyChange += scriptHealingModifier;
+        }
         
         return penaltyChange;
     }
@@ -49,10 +50,10 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {number} healingModifier - Per-wound modifier (%)
      * @returns {Array} Array of healing results with oldPenalty, newPenalty, penaltyChange
      */
-    static calculateHealingResults(patientActor, woundIds, successCount, healingMethod, hadFirstAid = false, healingModifier = 0) {
+    static calculateHealingResults(patientActor, woundIds, successCount, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
         game.neuroshima?.group("HealingApp | calculateHealingResults");
         
-        const penaltyChange = this.calculatePenaltyChange(successCount, healingMethod, hadFirstAid, healingModifier);
+        const penaltyChange = this.calculatePenaltyChange(successCount, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
         const healingResults = [];
         
         for (const woundId of woundIds) {
@@ -108,10 +109,10 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
      * @param {number} healingModifier - Per-wound modifier (%)
      * @returns {Promise<Array>} Array of applied healing results
      */
-    static async applyHealingToWounds(patientActor, woundIds, successCount, healingMethod, hadFirstAid = false, healingModifier = 0) {
+    static async applyHealingToWounds(patientActor, woundIds, successCount, healingMethod, hadFirstAid = false, healingModifier = 0, scriptHealingModifier = 0) {
         game.neuroshima?.group("HealingApp | applyHealingToWounds");
         
-        const penaltyChange = this.calculatePenaltyChange(successCount, healingMethod, hadFirstAid, healingModifier);
+        const penaltyChange = this.calculatePenaltyChange(successCount, healingMethod, hadFirstAid, healingModifier, scriptHealingModifier);
         const isSuccess = successCount >= 2;
         const isFirstAid = healingMethod === "firstAid";
         const woundsToUpdate = [];
