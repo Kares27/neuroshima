@@ -1370,6 +1370,7 @@
             "ChooseMedic": "Wybierz medyka z listy",
             "SendRequest": "Wyślij Prośbę",
             "NoMedicsAvailable": "Nie ma dostępnych medyków",
+            "Self": "Ja",
             "MedicNotFound": "Nie znaleziono wybranego medyka",
             "RequestSent": "Prośba o leczenie wysłana do {medic}",
             "OnlyMedicCanOpen": "Tylko wyznaczony medyk może otworzyć panel leczenia",

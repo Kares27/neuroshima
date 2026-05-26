@@ -1,6 +1,6 @@
-import { NEUROSHIMA } from "../config.js";
-import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
-import { NeuroshimaDice } from "../helpers/dice.js";
+import { NEUROSHIMA } from "../../config.js";
+import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
+import { NeuroshimaDice } from "../../helpers/dice.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
 /**

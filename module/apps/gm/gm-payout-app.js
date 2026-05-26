@@ -1,4 +1,4 @@
-import { DEFAULT_CURRENCY } from "./currency-gear-config.js";
+import { DEFAULT_CURRENCY } from "../config/currency-gear-config.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 

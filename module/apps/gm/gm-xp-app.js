@@ -1,4 +1,4 @@
-import { applyXpGrantEntry } from "../helpers/xp.js";
+import { applyXpGrantEntry } from "../../helpers/xp.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 

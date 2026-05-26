@@ -462,7 +462,7 @@ export class ConditionConfig extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const tempEffect = createSyntheticConditionEffect(condDef, saveCallback);
 
-    const { NeuroshimaEffectSheet } = await import("../sheets/neuroshima-effect-sheet.js");
+    const { NeuroshimaEffectSheet } = await import("../../sheets/neuroshima-effect-sheet.js");
     const sheet = new NeuroshimaEffectSheet({ document: tempEffect });
     tempEffect._openSheet = sheet;
     sheet.render(true);

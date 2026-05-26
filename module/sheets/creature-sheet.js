@@ -1,7 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
-import { RestDialog } from "../apps/rest-dialog.js";
-import { getConditions } from "../apps/condition-config.js";
+import { RestDialog } from "../apps/dialogs/minor-dialogs.js";
+import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
 
@@ -97,7 +97,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       },
 
       rollMeleeInitiative: async function() {
-        const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+        const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
         const dialog = new NeuroshimaInitiativeRollDialog({ actor: this.document });
         const result = await dialog.render(true);
         if (!result) return;
@@ -158,7 +158,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               await MeleeOpposedChat.initiateAttack(this.document, item, chatTargets[0].document.uuid, combatTypeSetting);
               return;
             }
-            const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+            const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
             const dialog = new NeuroshimaWeaponRollDialog({
               actor: this.document,
               weapon: item,
@@ -202,7 +202,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               return;
             }
             // ── Standard melee pending ────────────────────────────────────────
-            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
             const initiativeDialog = new NeuroshimaInitiativeRollDialog({
               actor: this.document,
               isMelee: true,
@@ -233,7 +233,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.CreateEncounterFirst"));
               return;
             }
-            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
             const initiativeDialog = new NeuroshimaInitiativeRollDialog({
               actor: this.document,
               isMelee: true,
@@ -246,7 +246,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           }
         }
 
-        const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+        const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
         const dialog = new NeuroshimaWeaponRollDialog({ actor: this.document, weapon: item, rollType: item.system.weaponType });
         dialog.render(true);
       },
@@ -327,7 +327,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           }
         }
 
-        const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+        const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
         const dialog = new NeuroshimaWeaponRollDialog({ actor, weapon: syntheticWeapon, rollType: "melee" });
         dialog.render(true);
       },

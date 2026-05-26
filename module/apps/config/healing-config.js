@@ -1,4 +1,4 @@
-import { NEUROSHIMA } from "../config.js";
+import { NEUROSHIMA } from "../../config.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 

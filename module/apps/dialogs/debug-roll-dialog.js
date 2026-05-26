@@ -1,5 +1,5 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
-import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaDice } from "../../helpers/dice.js";
 
 /**
  * Dialog for testing roll logic with manual parameters and dice results.

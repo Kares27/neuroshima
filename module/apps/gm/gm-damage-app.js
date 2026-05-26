@@ -1,5 +1,5 @@
 
-import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaDice } from "../../helpers/dice.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 

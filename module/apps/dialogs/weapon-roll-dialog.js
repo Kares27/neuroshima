@@ -1,7 +1,7 @@
 
-import { NEUROSHIMA } from "../config.js";
-import { getDistancePenalty } from "./distance-config.js";
-import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
+import { NEUROSHIMA } from "../../config.js";
+import { getDistancePenalty } from "../config/distance-config.js";
+import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
 /**
@@ -506,7 +506,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (this.isPoolRoll && this.onPoolRoll) {
       const rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
       if (rawResult) {
-        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
         await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
       }
       return this.onPoolRoll(rawResult);

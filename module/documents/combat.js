@@ -1,4 +1,25 @@
 /**
+ * Custom Combatant class for Neuroshima 1.5.
+ */
+export class NeuroshimaCombatant extends Combatant {
+  /** @override */
+  async rollInitiative(formula) {
+    if (!this.actor) return this;
+    await this.actor.rollInitiative({
+        combatant: this,
+        formula: formula
+    });
+    return this;
+  }
+
+  /** @override */
+  getInitiativeRoll(formula) {
+    formula = formula || "0";
+    return new Roll(formula);
+  }
+}
+
+/**
  * Custom Combat class for Neuroshima 1.5.
  */
 export class NeuroshimaCombat extends Combat {

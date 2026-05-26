@@ -1,4 +1,4 @@
-import { NeuroshimaSkillRollDialog } from "../apps/skill-roll-dialog.js";
+import { NeuroshimaSkillRollDialog } from "../apps/dialogs/skill-roll-dialog.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;

@@ -1,4 +1,4 @@
-import { NEUROSHIMA } from "../config.js";
+import { NEUROSHIMA } from "../../config.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -213,7 +213,7 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         result.repFame = fame;
         result.repBonus = repBonus;
 
-        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
         await NeuroshimaChatMessage.renderRoll(result, this.actor, result.roll);
     }
 

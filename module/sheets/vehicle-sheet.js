@@ -1,5 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
-import { getConditions } from "../apps/condition-config.js";
+import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 
 function _collectVehicleArmorBonusByEffect(actor) {
@@ -43,12 +43,12 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
         if (!item) return;
         const vehicle = this.document;
 
-        const { VehicleCrewSelectDialog } = await import("../apps/vehicle-crew-select-dialog.js");
+        const { VehicleCrewSelectDialog } = await import("../apps/dialogs/vehicle-crew-select-dialog.js");
         const crewDialog = new VehicleCrewSelectDialog({
           vehicle,
           weapon: item,
           onSelect: async (crewActor) => {
-            const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+            const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
             const rollDialog = new NeuroshimaWeaponRollDialog({
               actor:    crewActor,
               weapon:   item,

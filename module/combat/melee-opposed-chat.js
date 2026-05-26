@@ -43,7 +43,7 @@ export class MeleeOpposedChat {
    * @param {string} mode        "opposedPips" | "opposedSuccesses"
    */
   static async initiateAttack(attacker, weapon, targetUuid, mode) {
-    const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+    const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
 
     const lastRoll = attacker.system.lastWeaponRoll ?? {};
     const dialog = new NeuroshimaWeaponRollDialog({
@@ -165,7 +165,7 @@ export class MeleeOpposedChat {
       };
     }
 
-    const { NeuroshimaWeaponRollDialog } = await import("../apps/weapon-roll-dialog.js");
+    const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
     const lastRoll = defenderActor.system.lastWeaponRoll ?? {};
 
     const dialog = new NeuroshimaWeaponRollDialog({
@@ -386,7 +386,7 @@ export class MeleeOpposedChat {
       hasBeastActions: affordableBeastActions.length > 0
     };
 
-    const resContent = await renderTemplate(
+    const resContent = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-opposed-result.hbs",
       resolutionData
     );
@@ -434,7 +434,7 @@ export class MeleeOpposedChat {
       defenderWeapons: [],
       status: "resolved"
     };
-    const updatedContent = await renderTemplate(
+    const updatedContent = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
       updatedTemplateData
     );
@@ -478,7 +478,7 @@ export class MeleeOpposedChat {
       defenderWeapons: [],
       status: "resolved"
     };
-    const updatedContent = await renderTemplate(
+    const updatedContent = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
       updatedTemplateData
     );
@@ -518,7 +518,7 @@ export class MeleeOpposedChat {
     };
 
     const context = MeleeOpposedChat._buildAllocationContext(allocData, attackerActor, defenderActor);
-    const content = await renderTemplate(
+    const content = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-skill-allocation.hbs",
       context
     );
@@ -710,7 +710,7 @@ export class MeleeOpposedChat {
     const defenderActor = defenderDoc?.actor ?? defenderDoc;
 
     const context = MeleeOpposedChat._buildAllocationContext(updated, attackerActor, defenderActor);
-    const newContent = await renderTemplate(
+    const newContent = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-skill-allocation.hbs",
       context
     );
@@ -900,7 +900,7 @@ export class MeleeOpposedChat {
       affordableBeastActions, hasBeastActions: affordableBeastActions.length > 0
     };
 
-    const resContent = await renderTemplate(
+    const resContent = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-opposed-result.hbs",
       resolutionData
     );
@@ -978,7 +978,7 @@ export class MeleeOpposedChat {
       status: "pending"
     };
 
-    const content = await renderTemplate(
+    const content = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
       templateData
     );

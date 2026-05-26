@@ -1,5 +1,5 @@
-import { NEUROSHIMA } from "../config.js";
-import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
+import { NEUROSHIMA } from "../../config.js";
+import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
 /**
@@ -349,8 +349,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
         let targetDoc = typeof rawTarget === "string" ? fromUuidSync(rawTarget) : rawTarget;
         const targetActor = targetDoc?.actor || targetDoc;
         if (targetActor?.getFlag) {
-          const { MeleeEncounter } = await import("../combat/melee-encounter.js");
-          const { MeleeStore } = await import("../combat/melee-store.js");
+          const { MeleeEncounter } = await import("../../combat/melee-encounter.js");
+          const { MeleeStore } = await import("../../combat/melee-store.js");
           const activeEncounterId = targetActor.getFlag("neuroshima", "activeMeleeEncounter");
           const activeEncounter = activeEncounterId ? MeleeStore.getEncounter(activeEncounterId) : null;
           if (activeEncounter) {

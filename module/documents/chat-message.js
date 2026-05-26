@@ -230,7 +230,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       };
     }
 
-    const { NeuroshimaSkillRollDialog } = await import("../apps/skill-roll-dialog.js");
+    const { NeuroshimaSkillRollDialog } = await import("../apps/dialogs/skill-roll-dialog.js");
     const lastRoll = { ...(actor.system?.lastRoll ?? {}), isOpen: data.isOpen };
 
     if (data.testType === "skill") {
@@ -1402,7 +1402,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
     // Fallback for v12/v11
     if (typeof renderTemplate === "function") {
-        return await renderTemplate(template, context);
+        return await foundry.applications.handlebars.renderTemplate(template, context);
     }
     return "";
   }

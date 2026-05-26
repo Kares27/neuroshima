@@ -809,3 +809,41 @@ export function buildModDeltaSummary(snapshot, itemType) {
   }
   return parts.length ? parts.join(" | ") : null;
 }
+
+export function buildRef({ token = null, actor = null } = {}) {
+    const tokenDoc = token?.document || (token instanceof TokenDocument ? token : null);
+    if (tokenDoc?.uuid) {
+        return { kind: "token", uuid: tokenDoc.uuid };
+    }
+    if (actor?.uuid) {
+        return { kind: "actor", uuid: actor.uuid };
+    }
+    return null;
+}
+
+export async function resolveRef(ref) {
+    if (!ref || !ref.uuid) return { tokenDoc: null, actor: null };
+
+    try {
+        const doc = await fromUuid(ref.uuid);
+        if (!doc) {
+            console.error(`Neuroshima | resolveRef: No document found for UUID: ${ref.uuid}`);
+            return { tokenDoc: null, actor: null };
+        }
+
+        if (ref.kind === "token") {
+            return { 
+                tokenDoc: doc, 
+                actor: doc.actor 
+            };
+        }
+
+        return { 
+            tokenDoc: null, 
+            actor: doc 
+        };
+    } catch (err) {
+        console.error(`Neuroshima | resolveRef: Error resolving UUID: ${ref.uuid}`, err);
+        return { tokenDoc: null, actor: null };
+    }
+}

@@ -1,14 +1,13 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaItem } from "../documents/item.js";
-import { NeuroshimaWeaponRollDialog } from "../apps/weapon-roll-dialog.js";
-import { AmmunitionLoadingDialog } from "../apps/ammo-loading-dialog.js";
-import { RestDialog } from "../apps/rest-dialog.js";
+import { NeuroshimaWeaponRollDialog } from "../apps/dialogs/weapon-roll-dialog.js";
+import { AmmunitionLoadingDialog, RestDialog } from "../apps/dialogs/minor-dialogs.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { CombatHelper } from "../helpers/combat-helper.js";
-import { getConditions } from "../apps/condition-config.js";
-import { TraitChoiceDialog } from "../apps/trait-choice-dialog.js";
-import { NeuroshimaGrenadeRollDialog } from "../apps/grenade-roll-dialog.js";
+import { getConditions } from "../apps/config/condition-config.js";
+import { TraitChoiceDialog } from "../apps/dialogs/trait-choice-dialog.js";
+import { NeuroshimaGrenadeRollDialog } from "../apps/dialogs/grenade-roll-dialog.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance, getRadiationResistanceSources, installMod } from "../helpers/mod-helpers.js";
 
@@ -2420,7 +2419,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                 return;
             }
             // ── Standard melee pending ────────────────────────────────────────
-            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
             const initiativeDialog = new NeuroshimaInitiativeRollDialog({
                 actor: this.document,
                 isMelee: true,
@@ -2463,7 +2462,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                 this._isRolling = false;
                 return;
             }
-            const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+            const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
             const initiativeDialog = new NeuroshimaInitiativeRollDialog({
                 actor: this.document,
                 isMelee: true,
@@ -2763,7 +2762,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         scratch: 0
     };
 
-    const content = await renderTemplate("systems/neuroshima/templates/dialog/hp-config.hbs", hpConfig);
+    const content = await foundry.applications.handlebars.renderTemplate("systems/neuroshima/templates/dialog/hp-config.hbs", hpConfig);
 
     const result = await foundry.applications.api.DialogV2.wait({
       window: { 
@@ -2885,7 +2884,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
   async _onRollReputation(event, target) {
     event.preventDefault();
-    const { ReputationRollDialog } = await import("../apps/reputation-roll-dialog.js");
+    const { ReputationRollDialog } = await import("../apps/dialogs/reputation-roll-dialog.js");
     const dialog = new ReputationRollDialog({ actor: this.document });
     dialog.render(true);
   }
@@ -2896,7 +2895,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const itemId = li?.dataset.itemId ?? target.dataset.itemId;
     const item = this.document.items.get(itemId);
     if (!item || item.type !== "reputation") return;
-    const { ReputationRollDialog } = await import("../apps/reputation-roll-dialog.js");
+    const { ReputationRollDialog } = await import("../apps/dialogs/reputation-roll-dialog.js");
     const dialog = new ReputationRollDialog({ actor: this.document, reputationItem: item });
     dialog.render(true);
   }
@@ -3104,7 +3103,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     event.preventDefault();
     const actor = this.document;
 
-    const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+    const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
     
     const dialog = new NeuroshimaInitiativeRollDialog({
         actor: actor,
@@ -3180,7 +3179,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       // ── End opposed-chat branch ──────────────────────────────────────────
 
       this._isRolling = true;
-      const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+      const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
       const dialog = new NeuroshimaInitiativeRollDialog({
           actor: this.document,
           isMelee: true,
@@ -3273,11 +3272,16 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     game.neuroshima.log("Showing medic selection dialog");
 
-    // Filter similar to Item Piles: active users, not self, have a character or are GM
-    const possibleMedics = game.users
+    // Other active users with a character or GM status
+    const otherMedics = game.users
       .filter(u => u.active && u !== game.user)
       .filter(u => u.character || u.isGM)
       .filter(u => !patientActor || !u.character || u.character.id !== patientActor.id);
+
+    // Include the current user if they have a character (self-healing)
+    const selfEntry = (game.user.character) ? [game.user] : [];
+
+    const possibleMedics = [...selfEntry, ...otherMedics];
 
     if (possibleMedics.length === 0) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.HealingRequest.NoMedicsAvailable"));
@@ -3290,7 +3294,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     if (controlled.length === 1 && patientActor) {
       const tokenActor = controlled[0].actor;
       if (tokenActor && tokenActor.id !== patientActor.id) {
-        const tokenOwner = possibleMedics.find(u => u.character?.id === tokenActor.id);
+        const tokenOwner = otherMedics.find(u => u.character?.id === tokenActor.id);
         if (tokenOwner) {
           preselectedUserId = tokenOwner.id;
           game.neuroshima.log("Fast-path preselect: token medyka", tokenActor.name);
@@ -3300,7 +3304,9 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     const usersData = possibleMedics.map(u => ({
       id: u.id,
-      label: u.character ? `${u.character.name} (${u.name})` : u.name,
+      label: u === game.user
+        ? `${u.character.name} (${game.i18n.localize("NEUROSHIMA.HealingRequest.Self")})`
+        : u.character ? `${u.character.name} (${u.name})` : u.name,
       isGM: u.isGM,
       isSelected: u.id === preselectedUserId
     }));
@@ -3475,28 +3481,29 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         isPrivate
       });
 
-      const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
-      NeuroshimaSocket.executeAsUser("healingRequestPrompt", medicUserId, {
-        patientUuid: resolvedPatientActor.uuid,
-        patientName: resolvedPatientActor.name,
-        patientPortrait: resolvedPatientActor.img,
-        requesterUserId: game.user.id,
-        medicActorUuid,
-        isPrivate
-      });
+      if (medicUserId === game.user.id) {
+        const { HealingApp } = await import("../apps/healing-app.js");
+        const app = new HealingApp({
+          patientRef: { uuid: resolvedPatientActor.uuid },
+          medicRef: { uuid: medicActorUuid ?? game.user.character?.uuid },
+          isPrivate: isPrivate ?? false
+        });
+        app.render(true);
+      } else {
+        const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+        NeuroshimaSocket.executeAsUser("healingRequestPrompt", medicUserId, {
+          patientUuid: resolvedPatientActor.uuid,
+          patientName: resolvedPatientActor.name,
+          patientPortrait: resolvedPatientActor.img,
+          requesterUserId: game.user.id,
+          medicActorUuid,
+          isPrivate
+        });
 
-      const medicActorDoc = medicActorUuid ? await fromUuid(medicActorUuid) : null;
-      const medicActor = medicActorDoc?.actor ?? medicActorDoc ?? null;
-      await game.neuroshima.NeuroshimaChatMessage.renderHealingRequest(
-        resolvedPatientActor,
-        medicActor,
-        game.user.id,
-        { medicUserId, isPrivate }
-      );
-
-      ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.RequestSent", {
-        medic: medicLabel
-      }));
+        ui.notifications.info(game.i18n.format("NEUROSHIMA.HealingRequest.RequestSent", {
+          medic: medicLabel
+        }));
+      }
     } catch (err) {
       game.neuroshima.log("Error sending healing request:", err);
       ui.notifications.error(game.i18n.localize("NEUROSHIMA.HealingRequest.HealingFailed"));

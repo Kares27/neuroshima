@@ -1,6 +1,6 @@
-import { NEUROSHIMA } from "../config.js";
-import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
-import { NeuroshimaDice } from "../helpers/dice.js";
+import { NEUROSHIMA } from "../../config.js";
+import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
+import { NeuroshimaDice } from "../../helpers/dice.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
 export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
@@ -250,7 +250,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     await this.close();
 
     if (result?.message && this.grenadeTargetPoint && canvas?.scene) {
-      const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+      const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
       await NeuroshimaChatMessage.placeGrenadeTemplateAt(result.message, this.grenadeTargetPoint);
     }
   }

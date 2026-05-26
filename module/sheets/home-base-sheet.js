@@ -1,4 +1,4 @@
-import { getConditions } from "../apps/condition-config.js";
+import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 
 export class NeuroshimaHomeBaseSheet extends NeuroshimaBaseActorSheet {

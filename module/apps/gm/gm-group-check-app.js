@@ -1,4 +1,4 @@
-import { NEUROSHIMA } from "../config.js";
+import { NEUROSHIMA } from "../../config.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -214,7 +214,7 @@ export function registerGroupCheckChatListeners() {
                     return;
                 }
 
-                const { NeuroshimaSkillRollDialog } = await import("./skill-roll-dialog.js");
+                const { NeuroshimaSkillRollDialog } = await import("../dialogs/skill-roll-dialog.js");
 
                 const attrValue  = actor.system.attributeTotals?.[attrKey] ?? actor.system.attributes?.[attrKey] ?? 0;
                 const skillValue = actor.system.skills?.[skillKey]?.value ?? 0;

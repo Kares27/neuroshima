@@ -1342,6 +1342,7 @@
             "ChooseMedic": "Choose a medic from the list",
             "SendRequest": "Send Request",
             "NoMedicsAvailable": "No medics available",
+            "Self": "Me",
             "MedicNotFound": "Selected medic not found",
             "RequestSent": "Healing request sent to {medic}",
             "OnlyMedicCanOpen": "Only the designated medic can open the healing panel",

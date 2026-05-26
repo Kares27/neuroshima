@@ -1,6 +1,6 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
-import { getConditions } from "../apps/condition-config.js";
+import { getConditions } from "../apps/config/condition-config.js";
 
 /**
  * Build ActiveEffect create-data from a condition definition.
@@ -175,7 +175,7 @@ export class NeuroshimaActor extends Actor {
    * @returns {Promise<Object>} The roll result.
    */
   async rollInitiativeDialog(rollOptions = {}) {
-    const { NeuroshimaInitiativeRollDialog } = await import("../apps/initiative-roll-dialog.js");
+    const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
     const { NeuroshimaDice } = await import("../helpers/dice.js");
 
     return new Promise((resolve) => {

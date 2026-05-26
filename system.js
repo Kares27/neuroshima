@@ -1,7 +1,6 @@
 import { NEUROSHIMA } from "./module/config.js";
 import { NeuroshimaActor } from "./module/documents/actor.js";
-import { NeuroshimaCombat } from "./module/documents/combat.js";
-import { NeuroshimaCombatant } from "./module/documents/combatant.js";
+import { NeuroshimaCombat, NeuroshimaCombatant } from "./module/documents/combat.js";
 import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect, NeuroshimaActiveEffectData } from "./module/documents/active-effect.js";
@@ -18,31 +17,31 @@ import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.j
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { NeuroshimaMeleeCombat } from "./module/combat/melee-combat.js";
-import { buildRef, resolveRef } from "./module/helpers/refs.js";
-import { EncumbranceConfig } from "./module/apps/encumbrance-config.js";
-import { CombatConfig } from "./module/apps/combat-config.js";
-import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/distance-config.js";
-import { HealingConfig } from "./module/apps/healing-config.js";
-import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/condition-config.js";
-import { ReputationSettingsApp } from "./module/apps/reputation-settings.js";
-import { CurrencyGearConfig, DEFAULT_CURRENCY } from "./module/apps/currency-gear-config.js";
-import { DamageCategoryConfig, _applyCustomDamageCategories } from "./module/apps/damage-category-config.js";
-import { GrenadeConfig } from "./module/apps/grenade-config.js";
-import { DebugRollDialog } from "./module/apps/debug-roll-dialog.js";
-import { EditRollDialog } from "./module/apps/edit-roll-dialog.js";
-import { NeuroshimaInitiativeRollDialog } from "./module/apps/initiative-roll-dialog.js";
+import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
+import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
+import { CombatConfig } from "./module/apps/config/combat-config.js";
+import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
+import { HealingConfig } from "./module/apps/config/healing-config.js";
+import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/config/condition-config.js";
+import { ReputationSettingsApp } from "./module/apps/config/reputation-settings.js";
+import { CurrencyGearConfig, DEFAULT_CURRENCY } from "./module/apps/config/currency-gear-config.js";
+import { DamageCategoryConfig, _applyCustomDamageCategories } from "./module/apps/config/damage-category-config.js";
+import { GrenadeConfig } from "./module/apps/config/grenade-config.js";
+import { DebugRollDialog } from "./module/apps/dialogs/debug-roll-dialog.js";
+import { EditRollDialog } from "./module/apps/dialogs/minor-dialogs.js";
+import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
-import { showHealingRollDialog } from "./module/apps/healing-roll-dialog.js";
+import { showHealingRollDialog } from "./module/apps/dialogs/healing-roll-dialog.js";
 import { TraitBrowserApp } from "./module/apps/trait-browser.js";
 import { registerRadiationHooks } from "./module/region-behaviors/danger-zone.js";
 import { registerMigrationHook, normalizeAll, normalizeActor } from "./module/helpers/migration.js";
 import { RadiationZoneBehaviorType } from "./module/region-behaviors/radiation-zone.js";
-import { GMToolkitApp } from "./module/apps/gm-toolkit.js";
-import { GMAddXPApp } from "./module/apps/gm-xp-app.js";
-import { GMApplyDamageApp } from "./module/apps/gm-damage-app.js";
-import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/gm-group-check-app.js";
-import { GMPayoutApp } from "./module/apps/gm-payout-app.js";
-import { GMReputationApp } from "./module/apps/gm-reputation-app.js";
+import { GMToolkitApp } from "./module/apps/gm/gm-toolkit.js";
+import { GMAddXPApp } from "./module/apps/gm/gm-xp-app.js";
+import { GMApplyDamageApp } from "./module/apps/gm/gm-damage-app.js";
+import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/gm/gm-group-check-app.js";
+import { GMPayoutApp } from "./module/apps/gm/gm-payout-app.js";
+import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
@@ -1223,7 +1222,7 @@ Hooks.once('init', async function() {
     // Register partials manually
     for (const path of templates) {
         if (path.includes("/parts/")) {
-            const template = await getTemplate(path);
+            const template = await foundry.applications.handlebars.getTemplate(path);
             Handlebars.registerPartial(path, template);
             
             // Also register under a short PascalCase name (e.g. MeleeHeader) for easier use in HBS
