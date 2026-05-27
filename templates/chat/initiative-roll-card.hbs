@@ -17,7 +17,7 @@
 
     <div class="dice-results-grid">
         {{#each modifiedResults}}
-            <div class="die-result {{#if this.ignored}}ignored{{/if}}">
+            <div class="die-result {{#if this.ignored}}ignored{{/if}}" data-die-index="{{@index}}">
                 <span class="die-label">D{{add @index 1}} = </span>
                 <div class="die-square-container">
                     <span class="die-square original {{#if this.isNat1}}nat-1{{/if}} {{#if this.isNat20}}nat-20{{/if}}">

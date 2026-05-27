@@ -1673,6 +1673,24 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
     });
 
     options.push({
+        name: "NEUROSHIMA.Roll.ResetDieReduction",
+        icon: '<i class="fas fa-rotate-left"></i>',
+        condition: li => {
+            if (!game.user.isGM) return false;
+            const message = game.messages.get(li.dataset.messageId);
+            const msgType = message?.getFlag("neuroshima", "messageType");
+            const trickUsed = message?.getFlag("neuroshima", "trickBonusUsed");
+            return (msgType === "roll" || msgType === "initiative") && trickUsed === true;
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const { NeuroshimaDice } = await import("./module/helpers/dice.js");
+            await NeuroshimaDice.resetTrickDieBonus(message);
+            if (window._nsTrickState) delete window._nsTrickState[message.id];
+        }
+    });
+
+    options.push({
         name: "NEUROSHIMA.Actions.Reroll",
         icon: '<i class="fas fa-arrow-rotate-left"></i>',
         condition: li => {
@@ -1680,15 +1698,16 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const rollData = message?.getFlag("neuroshima", "rollData");
             const messageType = message?.getFlag("neuroshima", "messageType");
             
-            // Only for skill/attribute tests and weapon rolls
             if (!rollData) return false;
-            if (messageType !== "roll" && messageType !== "weapon") return false;
+            if (messageType !== "roll" && messageType !== "weapon" && messageType !== "initiative") return false;
+
+            const isRerolled = message?.getFlag("neuroshima", "rerolled");
+            if (isRerolled && !game.user.isGM) return false;
             
-            // Available to the GM or the actor who performed the test
             const actor = game.actors.get(rollData.actorId);
             return game.user.isGM || actor?.isOwner;
         },
-        callback: li => {
+        callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
             const rollData = message?.getFlag("neuroshima", "rollData");
             const messageType = message?.getFlag("neuroshima", "messageType");
@@ -1699,8 +1718,10 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                 return;
             }
 
-            // Confirmation dialog
-            new Promise(resolve => {
+            const selected = window._nsRerollSelectedMap?.get(message.id);
+            const hasSelected = selected?.size > 0;
+
+            const confirmed = await new Promise(resolve => {
                 const dialog = new foundry.applications.api.DialogV2({
                     window: {
                         title: game.i18n.localize("NEUROSHIMA.Dialogs.ConfirmReroll"),
@@ -1722,31 +1743,31 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                     ]
                 });
                 dialog.render(true);
-            }).then(async confirmed => {
-                if (!confirmed) return;
+            });
+            if (!confirmed) return;
 
-                game.neuroshima?.group("Reroll Test");
-                game.neuroshima?.log("Przerzucanie testu", {
-                    actor: actor.name,
-                    label: rollData.label,
-                    type: messageType
-                });
+            if (hasSelected) {
+                const { NeuroshimaDice } = await import("./module/helpers/dice.js");
+                await NeuroshimaDice.partialRerollTest(message, [...selected]);
+                return;
+            }
 
-                if (messageType === "weapon") {
-                    const weapon = actor.items.get(rollData.weaponId);
-                    if (!weapon) {
-                        ui.notifications.error("Nie można znaleźć broni do przerzutu");
-                        game.neuroshima?.groupEnd();
-                        return;
-                    }
+            game.neuroshima?.group("Reroll Test");
+            game.neuroshima?.log("Przerzucanie testu", { actor: actor.name, label: rollData.label, type: messageType });
 
-                    // Refund ammunition before rerolling to avoid double consumption
-                    // Only refund if the previous roll actually consumed ammunition (no jamming)
-                    if (!rollData.isJamming) {
-                        await CombatHelper.refundAmmunition(message);
-                    }
+            if (messageType === "weapon") {
+                const weapon = actor.items.get(rollData.weaponId);
+                if (!weapon) {
+                    ui.notifications.error("Nie można znaleźć broni do przerzutu");
+                    game.neuroshima?.groupEnd();
+                    return;
+                }
 
-                    // Re-run the weapon test
+                if (!rollData.isJamming) {
+                    await CombatHelper.refundAmmunition(message);
+                }
+
+                try {
                     await game.neuroshima.NeuroshimaDice.rollWeaponTest({
                         weapon: weapon,
                         actor: actor,
@@ -1764,11 +1785,26 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                         meleeAction: rollData.meleeAction || "attack",
                         isReroll: true,
                         rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
-                    }).finally(() => {
-                        game.neuroshima?.groupEnd();
                     });
-                } else {
-                    // Re-run the standard test
+                    await message.setFlag("neuroshima", "rerolled", true);
+                } finally { game.neuroshima?.groupEnd(); }
+            } else if (messageType === "initiative") {
+                try {
+                    await game.neuroshima.NeuroshimaDice.rollInitiative({
+                        actor: actor,
+                        attribute: rollData.attributeKey || "dexterity",
+                        skill: rollData.skillKey || "",
+                        useSkill: !!(rollData.skillKey),
+                        modifier: rollData.penalties?.mod || 0,
+                        skillBonus: rollData.skillBonus || 0,
+                        attributeBonus: rollData.attributeBonus || 0,
+                        rollMode: rollData.rollMode || game.settings.get("core", "rollMode"),
+                        isReroll: true
+                    });
+                    await message.setFlag("neuroshima", "rerolled", true);
+                } finally { game.neuroshima?.groupEnd(); }
+            } else {
+                try {
                     await game.neuroshima.NeuroshimaDice.rollTest({
                         actor: actor,
                         label: rollData.label,
@@ -1781,11 +1817,10 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                         isCombat: rollData.isCombat || false,
                         isReroll: true,
                         rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
-                    }).finally(() => {
-                        game.neuroshima?.groupEnd();
                     });
-                }
-            });
+                    await message.setFlag("neuroshima", "rerolled", true);
+                } finally { game.neuroshima?.groupEnd(); }
+            }
         }
     });
 
@@ -1919,6 +1954,184 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 btn.style.cursor = "not-allowed";
                 btn.title = game.i18n.localize("NEUROSHIMA.Warnings.HealingAlreadyApplied");
             });
+        }
+    }
+
+    // Selective dice reroll — click die-square.original to mark; context menu reroll uses selection
+    const rollCard = html.querySelector(".neuroshima.roll-card, .neuroshima.weapon-roll-card, .neuroshima.melee-roll-card");
+    if (rollCard) {
+        const messageType = message?.getFlag("neuroshima", "messageType");
+        const rollData = message?.getFlag("neuroshima", "rollData");
+        if ((messageType === "roll" || messageType === "weapon" || messageType === "initiative") && rollData) {
+            const actor = game.actors.get(rollData.actorId);
+            const canReroll = game.user.isGM || actor?.isOwner;
+            if (canReroll) {
+                const isRerolled = message?.getFlag("neuroshima", "rerolled");
+                const rerolledIndices = message?.getFlag("neuroshima", "rerolledIndices") ?? [];
+
+                const dieElements = rollCard.querySelectorAll(".dice-results-grid .die-result");
+
+                if (isRerolled && !game.user.isGM) {
+                    rerolledIndices.forEach(idx => {
+                        const dieEl = rollCard.querySelector(`.die-result[data-die-index="${idx}"]`);
+                        dieEl?.querySelector(".die-square.original")?.classList.add("ns-selected-for-reroll");
+                    });
+                } else {
+                    const trickPending = (messageType === "roll" || messageType === "initiative")
+                        && (rollData?.dieManualBonus || 0) > 0
+                        && !message?.getFlag("neuroshima", "trickBonusUsed");
+
+                    window._nsRerollSelectedMap ??= new Map();
+                    const selected = new Set();
+                    window._nsRerollSelectedMap.set(message.id, selected);
+
+                    if (!trickPending) {
+                        dieElements.forEach(dieEl => {
+                            if (dieEl.classList.contains("ignored")) return;
+                            const square = dieEl.querySelector(".die-square.original");
+                            if (!square) return;
+                            square.classList.add("ns-rerollable");
+                            square.addEventListener("click", () => {
+                                const idx = parseInt(dieEl.dataset.dieIndex);
+                                if (selected.has(idx)) {
+                                    selected.delete(idx);
+                                    square.classList.remove("ns-selected-for-reroll");
+                                } else {
+                                    selected.add(idx);
+                                    square.classList.add("ns-selected-for-reroll");
+                                }
+                            });
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Trick die bonus — select whole die-result rows to distribute reduction points, then apply
+    const trickRollCard = html.querySelector(".neuroshima.roll-card");
+    if (trickRollCard) {
+        const trickMsgType = message?.getFlag("neuroshima", "messageType");
+        const trickRollData = message?.getFlag("neuroshima", "rollData");
+        if ((trickMsgType === "roll" || trickMsgType === "initiative") && trickRollData) {
+            const trickBonus = trickRollData.dieManualBonus || 0;
+            const trickUsed  = message?.getFlag("neuroshima", "trickBonusUsed");
+            const trickActor = game.actors.get(trickRollData.actorId);
+            const canUseTrick = game.user.isGM || trickActor?.isOwner;
+
+            if (trickBonus > 0 && !trickUsed && canUseTrick) {
+                if (!window._nsTrickState) window._nsTrickState = {};
+                if (!window._nsTrickState[message.id]) {
+                    window._nsTrickState[message.id] = { reductions: {}, remaining: trickBonus };
+                }
+                const state = window._nsTrickState[message.id];
+
+                const updateDiePreview = (dieEl, idx) => {
+                    const dieMod = (trickRollData.modifiedResults || [])[idx];
+                    if (!dieMod) return;
+                    const reduction = state.reductions[idx] || 0;
+                    const trickModified = Math.max(1, dieMod.modified - reduction);
+                    const isSucc = trickModified <= (trickRollData.target || 0) && dieMod.original !== 20;
+                    const container = dieEl.querySelector(".die-square-container");
+
+                    dieEl.querySelectorAll(".ns-trick-injected").forEach(e => e.remove());
+
+                    const modSq = dieEl.querySelector(".die-square.modified");
+                    if (modSq?.dataset.trickOrig !== undefined) {
+                        modSq.textContent = modSq.dataset.trickOrig;
+                        modSq.className = `die-square modified ${dieMod.isSuccess ? "success" : "failure"}`;
+                        delete modSq.dataset.trickOrig;
+                    }
+
+                    if (reduction > 0) {
+                        const existingMod = dieEl.querySelector(".die-square.modified");
+                        if (existingMod) {
+                            if (existingMod.dataset.trickOrig === undefined) {
+                                existingMod.dataset.trickOrig = existingMod.textContent.trim();
+                            }
+                            existingMod.textContent = trickModified;
+                            existingMod.className = `die-square modified ${isSucc ? "success" : "failure"}`;
+                        } else {
+                            const arrow = document.createElement("i");
+                            arrow.className = "fas fa-long-arrow-alt-right ns-trick-injected";
+                            const sq = document.createElement("span");
+                            sq.className = `die-square modified ns-trick-injected ${isSucc ? "success" : "failure"}`;
+                            sq.textContent = trickModified;
+                            container.appendChild(arrow);
+                            container.appendChild(sq);
+                        }
+                    }
+                };
+
+                const refreshAll = () => {
+                    trickRollCard.querySelectorAll(".dice-results-grid .die-result:not(.ignored)").forEach(el => {
+                        const i = parseInt(el.dataset.dieIndex);
+                        const cur = state.reductions[i] || 0;
+                        const dieMod = (trickRollData.modifiedResults || [])[i];
+                        const canReduce = dieMod && (dieMod.modified - cur) > 1;
+                        el.querySelector(".ns-trick-minus")?.toggleAttribute("disabled", cur <= 0);
+                        el.querySelector(".ns-trick-plus")?.toggleAttribute("disabled", state.remaining <= 0 || !canReduce);
+                    });
+                    const counter = trickRollCard.querySelector(".ns-trick-counter");
+                    if (counter) counter.textContent = `${game.i18n.localize("NEUROSHIMA.Roll.DieReductionCounter")} ${state.remaining} / ${trickBonus}`;
+                };
+
+                if (!trickRollCard.querySelector(".ns-trick-counter")) {
+                    const counter = document.createElement("div");
+                    counter.className = "ns-trick-counter";
+                    counter.textContent = `${game.i18n.localize("NEUROSHIMA.Roll.DieReductionCounter")} ${state.remaining} / ${trickBonus}`;
+                    const firstHr = trickRollCard.querySelector("hr.dotted-hr");
+                    firstHr?.insertAdjacentElement("beforebegin", counter);
+                }
+
+                trickRollCard.querySelectorAll(".dice-results-grid .die-result").forEach(dieEl => {
+                    if (dieEl.classList.contains("ignored")) return;
+                    const idx = parseInt(dieEl.dataset.dieIndex);
+                    const dieMod = (trickRollData.modifiedResults || [])[idx];
+
+                    if (!dieMod || dieMod.original === 20 || dieMod.modified <= 1) return;
+
+                    if (!dieEl.querySelector(".ns-trick-btns")) {
+                        const btns = document.createElement("div");
+                        btns.className = "ns-trick-btns";
+                        btns.innerHTML = `
+                            <button class="ns-trick-plus" type="button">+</button>
+                            <button class="ns-trick-minus" type="button" disabled>−</button>
+                        `;
+                        dieEl.appendChild(btns);
+
+                        btns.querySelector(".ns-trick-plus").addEventListener("click", async (ev) => {
+                            ev.stopPropagation();
+                            if (state.remaining > 0) {
+                                state.reductions[idx] = (state.reductions[idx] || 0) + 1;
+                                state.remaining--;
+                                updateDiePreview(dieEl, idx);
+                                refreshAll();
+                                if (state.remaining === 0) {
+                                    const { NeuroshimaSocket } = await import("./module/helpers/socket-helper.js");
+                                    await NeuroshimaSocket.gmExecute("applyTrickDieBonus", message.id, { ...state.reductions });
+                                    delete window._nsTrickState[message.id];
+                                }
+                            }
+                        });
+
+                        btns.querySelector(".ns-trick-minus").addEventListener("click", (ev) => {
+                            ev.stopPropagation();
+                            const cur = state.reductions[idx] || 0;
+                            if (cur > 0) {
+                                state.reductions[idx] = cur - 1;
+                                state.remaining++;
+                                updateDiePreview(dieEl, idx);
+                                refreshAll();
+                            }
+                        });
+                    }
+
+                    updateDiePreview(dieEl, idx);
+                });
+
+                refreshAll();
+            }
         }
     }
 
@@ -2525,6 +2738,21 @@ function initializeSocketlib() {
         const message = game.messages.get(messageId);
         if (!message) return;
         return message.setFlag(scope, key, value);
+    });
+
+    // Trick die bonus — applied as GM so the message can always be updated
+    game.neuroshima.socket.register("applyTrickDieBonus", async (messageId, reductions) => {
+        const { NeuroshimaDice } = await import("./module/helpers/dice.js");
+        const message = game.messages.get(messageId);
+        if (!message) return;
+        await NeuroshimaDice.applyTrickDieBonus(message, reductions);
+    });
+
+    game.neuroshima.socket.register("resetTrickDieBonus", async (messageId) => {
+        const { NeuroshimaDice } = await import("./module/helpers/dice.js");
+        const message = game.messages.get(messageId);
+        if (!message) return;
+        await NeuroshimaDice.resetTrickDieBonus(message);
     });
 
     // Skill allocation patch — executed as GM so the message flag can be written

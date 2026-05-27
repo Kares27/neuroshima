@@ -193,6 +193,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     context.modifier          = userModifier + scriptFields.modifier;
     context.attributeBonus    = userAttrBonus + scriptFields.attributeBonus;
     context.skillBonus        = userSkillBonus + scriptFields.skillBonus;
+    context.dieManualBonus     = this.userEntry.dieManualBonus ?? 0;
+    context.dieReductionBonus = this.userEntry.dieReductionBonus ?? 0;
     context.armorPenalty      = actorArmorPenalty + scriptFields.armorDelta;
     context.woundPenalty      = actorWoundPenalty + scriptFields.woundDelta;
     context.diseasePenalty    = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
@@ -372,7 +374,9 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       woundConfigs,
       stat: attrValue,
       skillBonus,
-      attributeBonus
+      attributeBonus,
+      dieManualBonus: Number(this.userEntry.dieManualBonus ?? 0) || 0,
+      dieReductionBonus: Number(this.userEntry.dieReductionBonus ?? 0) || 0
     });
 
     await this.close();

@@ -189,6 +189,45 @@ export async function showXpDeductDialog(amount) {
 }
 
 /**
+ * Show a dialog confirming XP refund when a skill or attribute is decreased.
+ * @param {number} refundAmount  - positive amount being refunded
+ * @param {string} description
+ * @param {number} currentXp    - current available XP (for display)
+ * @returns {Promise<{free: boolean, cost: number}|null>}
+ */
+export async function showXpRefundDialog(refundAmount, description, currentXp) {
+  const i18n = game.i18n;
+  const content = `
+    <div class="neuroshima xp-dialog" style="padding: 8px;">
+      <p><strong>${description}</strong></p>
+      <p style="margin-bottom:6px;">${i18n.localize("NEUROSHIMA.XP.Dialog.Available")}: <strong>${currentXp}</strong> PD</p>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label for="xp-refund-input" style="white-space:nowrap;"><strong>${i18n.localize("NEUROSHIMA.XP.Refund.Label")}</strong></label>
+        <input id="xp-refund-input" type="number" max="0" value="${-refundAmount}" style="width:90px;text-align:center;"/>
+        <span>PD</span>
+      </div>
+    </div>
+  `;
+  return foundry.applications.api.DialogV2.wait({
+    window: { title: i18n.localize("NEUROSHIMA.XP.Refund.DialogTitle") },
+    content,
+    buttons: [
+      {
+        action: "refund",
+        label: i18n.localize("NEUROSHIMA.XP.Refund.Apply"),
+        default: true,
+        callback: (event, button, dialog) => {
+          const val = Number(dialog.element.querySelector("#xp-refund-input")?.value) || 0;
+          return { free: false, cost: val };
+        }
+      },
+    ],
+    classes: ["neuroshima", "dialog-vertical"],
+    rejectClose: false
+  });
+}
+
+/**
  * Mutate the `changed` update object in-place to include the XP log entry
  * and (if not free) the XP deduction via system.xp.spent.
  * NOTE: system.xp.current is computed as (total - spent) in prepareDerivedData — do NOT set it here.
@@ -223,6 +262,8 @@ export function applyXpEntry(actor, changed, costXp, description, previousValue,
 
   if (costXp > 0) {
     foundry.utils.setProperty(changed, "system.xp.spent", spent + costXp);
+  } else if (costXp < 0) {
+    foundry.utils.setProperty(changed, "system.xp.spent", Math.max(0, spent + costXp));
   }
 }
 
@@ -291,9 +332,11 @@ export async function revertXpEntry(actor, entryId) {
   }
 
   const cost = entry.cost ?? 0;
+  const spentXp = sys.xp?.spent ?? 0;
   if (cost > 0) {
-    const spentXp = sys.xp?.spent ?? 0;
     updateData["system.xp.spent"] = Math.max(0, spentXp - cost);
+  } else if (cost < 0) {
+    updateData["system.xp.spent"] = spentXp + (-cost);
   }
 
   log.splice(idx, 1);

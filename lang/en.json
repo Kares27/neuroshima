@@ -88,7 +88,7 @@
                 "CostLine": "Cost: {cost} XP | Available: {current} XP",
                 "Available": "Available",
                 "CostLabel": "Cost",
-                "NotEnough": "Not enough XP! You can mark it as free.",
+                "NotEnough": "Not enough XP!",
                 "Spend": "Spend XP",
                 "Free": "Free (0 XP)",
                 "TrickDescription": "Trick: {name}"
@@ -109,6 +109,14 @@
                 "Confirm": "Confirm",
                 "DefaultReason": "XP Deducted",
                 "ExceedsTotal": "Spent XP cannot exceed total XP pool!"
+            },
+            "Refund": {
+                "Skill": "XP Refund: {skill} ({from} → {to})",
+                "Attribute": "XP Refund: {attribute} ({from} → {to})",
+                "DialogTitle": "Experience Refund",
+                "Label": "Refund",
+                "Apply": "Refund XP",
+                "NoRefund": "No Refund (0 XP)"
             },
             "Log": {
                 "Title": "XP Log",
@@ -184,6 +192,14 @@
             "FinalDifficulty": "Final Difficulty",
             "SkillBonus": "Skill Bonus",
             "SkillBonusAbbr": "Skill Bon.",
+            "TrickDieBonus": "Die Reduction",
+            "TrickDieBonusAbbr": "Die Red.",
+            "TrickDieBonusHint": "Use +/− to assign die reduction",
+            "TrickApply": "Confirm Reduction",
+            "TrickBonus": "REDUCTION",
+            "DieReduction": "Die Reduction",
+            "DieReductionCounter": "Points",
+            "ResetDieReduction": "Reset Die Reduction",
             "AttributeBonus": "Attribute Bonus",
             "AttributeBonusAbbr": "Attr. Bon.",
             "CrowdingPenalty": "Crowding Penalty (Dex)",
@@ -298,6 +314,7 @@
             "Rest": "Rest",
             "Refresh": "Refresh",
             "Healing": "Healing",
+            "RerollSelected": "Reroll selected",
             "ToggleActive": "Toggle Active",
             "Browse": "Browse"
         },

@@ -141,6 +141,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     context.useSkill = useSkill;
     context.useArmorPenalty = useArmorPenalty;
     context.useWoundPenalty = useWoundPenalty;
+    context.dieManualBonus     = this.userEntry.dieManualBonus ?? 0;
+    context.dieReductionBonus = this.userEntry.dieReductionBonus ?? 0;
     context.rollMode = rollMode;
     context.rollModes = CONFIG.Dice.rollModes;
     context.dialogModifiers = dialogModifiers;
@@ -320,6 +322,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       attributeBonus: combinedAttrBonus,
       maneuver: formData.maneuver || "none",
       chargeLevel: parseInt(formData.chargeLevel) || 0,
+      dieManualBonus: Number(this.userEntry.dieManualBonus ?? 0) || 0,
+      dieReductionBonus: Number(this.userEntry.dieReductionBonus ?? 0) || 0,
       rollMode: this.userEntry.rollMode ?? this.rollOptions.rollMode
     };
 

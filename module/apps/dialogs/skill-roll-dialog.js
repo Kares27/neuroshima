@@ -103,6 +103,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     context.modifier       = userModifier + scriptFields.modifier;
     context.attributeBonus = userAttrBonus + scriptFields.attributeBonus;
     context.skillBonus     = userSkillBonus + scriptFields.skillBonus;
+    context.dieManualBonus      = this.userEntry.dieManualBonus ?? 0;
+    context.dieReductionBonus  = this.userEntry.dieReductionBonus ?? 0;
     context.armorPenalty   = actorArmorPenalty + scriptFields.armorDelta;
     context.woundPenalty   = actorWoundPenalty + scriptFields.woundDelta;
     context.diseasePenalty  = actorDiseasePenalty + (scriptFields.diseasePenalty || 0);
@@ -306,6 +308,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       skillKey: this.skillKey || null,
       attributeKey: currentAttribute || null,
       rollMode,
+      dieManualBonus: Number(this.userEntry.dieManualBonus ?? 0) || 0,
+      dieReductionBonus: Number(this.userEntry.dieReductionBonus ?? 0) || 0,
       options: submissionOptions,
       resultCallback: this.resultCallback ?? null
     });

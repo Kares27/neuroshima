@@ -955,6 +955,29 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, attrPath);
         await this.document.update(updateData, { ns_skip_xp: true });
         return;
+      } else if (isCharacter && newVal < oldVal) {
+        const { getAttrTotalCost, showXpRefundDialog, applyXpEntry } = await import("../helpers/xp.js");
+        const refund     = getAttrTotalCost(newVal, oldVal);
+        const currentXp  = (Number(this.document.system.xp?.total) || 0) - (Number(this.document.system.xp?.spent) || 0);
+        const attrLabel  = game.i18n.localize(NEUROSHIMA.attributes[key]?.label ?? key);
+        const desc       = game.i18n.format("NEUROSHIMA.XP.Refund.Attribute", { attribute: attrLabel, from: oldVal, to: newVal });
+        const choice     = await showXpRefundDialog(refund, desc, currentXp);
+        if (choice === null) { input.value = oldVal; return; }
+        const attrPath = `system.attributes.${key}`;
+        let attrAeBonus = 0;
+        for (const effect of (this.document.appliedEffects ?? [])) {
+          for (const change of (effect.changes ?? [])) {
+            if (change.key === attrPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+              attrAeBonus += Number(change.value) || 0;
+            }
+          }
+        }
+        const storedAttr = Math.max(0, newVal - attrAeBonus);
+        const updateData = {};
+        foundry.utils.setProperty(updateData, attrPath, storedAttr);
+        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, attrPath);
+        await this.document.update(updateData, { ns_skip_xp: true });
+        return;
       }
       return super._onChangeForm(formConfig, event);
     }
@@ -971,6 +994,29 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         const skillLabel = game.i18n.localize(`NEUROSHIMA.Skills.${key}`) || key;
         const desc       = game.i18n.format("NEUROSHIMA.XP.Log.SkillRaise", { skill: skillLabel, from: oldVal, to: newVal });
         const choice     = await showXpDialog(cost, desc, currentXp);
+        if (choice === null) { input.value = oldVal; return; }
+        const skillPath = `system.skills.${key}.value`;
+        let valueAeBonus = 0;
+        for (const effect of (this.document.appliedEffects ?? [])) {
+          for (const change of (effect.changes ?? [])) {
+            if (change.key === skillPath && Number(change.mode) === CONST.ACTIVE_EFFECT_MODES.ADD) {
+              valueAeBonus += Number(change.value) || 0;
+            }
+          }
+        }
+        const storedVal  = Math.max(0, newVal - valueAeBonus);
+        const updateData = {};
+        foundry.utils.setProperty(updateData, skillPath, storedVal);
+        applyXpEntry(this.document, updateData, choice.free ? 0 : choice.cost, desc, oldVal, skillPath);
+        await this.document.update(updateData, { ns_skip_xp: true });
+        return;
+      } else if (isCharacter && newVal < oldVal) {
+        const { getSkillTotalCost, showXpRefundDialog, applyXpEntry } = await import("../helpers/xp.js");
+        const refund     = getSkillTotalCost(key, newVal, oldVal, this.document);
+        const currentXp  = (Number(this.document.system.xp?.total) || 0) - (Number(this.document.system.xp?.spent) || 0);
+        const skillLabel = game.i18n.localize(`NEUROSHIMA.Skills.${key}`) || key;
+        const desc       = game.i18n.format("NEUROSHIMA.XP.Refund.Skill", { skill: skillLabel, from: oldVal, to: newVal });
+        const choice     = await showXpRefundDialog(refund, desc, currentXp);
         if (choice === null) { input.value = oldVal; return; }
         const skillPath = `system.skills.${key}.value`;
         let valueAeBonus = 0;

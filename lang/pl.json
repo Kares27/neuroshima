@@ -91,7 +91,7 @@
                 "CostLine": "Koszt: {cost} PD | Dostępne: {current} PD",
                 "Available": "Dostępne",
                 "CostLabel": "Koszt",
-                "NotEnough": "Niewystarczająca ilość PD! Możesz oznaczyć jako za darmo.",
+                "NotEnough": "Niewystarczająca ilość PD!",
                 "Spend": "Wydaj PD",
                 "Free": "Za Darmo (0 PD)",
                 "TrickDescription": "Sztuczka: {name}"
@@ -112,6 +112,14 @@
                 "Confirm": "Zatwierdź",
                 "DefaultReason": "Odejmowane PD",
                 "ExceedsTotal": "Wydane PD nie mogą przekroczyć łącznej puli PD!"
+            },
+            "Refund": {
+                "Skill": "Zwrot PD: {skill} ({from} → {to})",
+                "Attribute": "Zwrot PD: {attribute} ({from} → {to})",
+                "DialogTitle": "Zwrot Doświadczenia",
+                "Label": "Zwrot",
+                "Apply": "Zwróć PD",
+                "NoRefund": "Bez zwrotu (0 PD)"
             },
             "Log": {
                 "Title": "Dziennik PD",
@@ -187,6 +195,14 @@
             "FinalDifficulty": "Ostateczna Trudność",
             "SkillBonus": "Bonus do Umiejętności",
             "SkillBonusAbbr": "Bon Umiej.",
+            "TrickDieBonus": "Redukcja oczek",
+            "TrickDieBonusAbbr": "Red. oczek",
+            "TrickDieBonusHint": "Kliknij +/− aby przydzielić redukcję oczek",
+            "TrickApply": "Zatwierdź redukcję",
+            "TrickBonus": "REDUKCJA",
+            "DieReduction": "Redukcja oczek",
+            "DieReductionCounter": "Oczka",
+            "ResetDieReduction": "Zresetuj redukcję oczek",
             "AttributeBonus": "Bonus do Atrybutu",
             "AttributeBonusAbbr": "Bon Atr.",
             "CrowdingPenalty": "Kara za osaczenie (Zr)",
@@ -301,6 +317,7 @@
             "Rest": "Odpocznij",
             "Refresh": "Odśwież",
             "Healing": "Leczenie",
+            "RerollSelected": "Przerzuć wybrane",
             "ToggleActive": "Przełącz aktywność",
             "Browse": "Przeglądaj"
         },
