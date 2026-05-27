@@ -3223,18 +3223,19 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         messageId = defActor?.getFlag("neuroshima", "oppose")?.messageId;
       }
 
+      const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+
       if (messageId) {
         const msg = game.messages.get(messageId);
         const chatData = msg?.getFlag("neuroshima", "opposedChat");
         if (chatData?.status === "pending") {
-          await msg.setFlag("neuroshima", "opposedChat", { ...chatData, status: "cancelled" });
+          await MeleeOpposedChat._setChatFlag(msg, "opposedChat", { ...chatData, status: "cancelled" });
         }
       }
 
       const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
       await NeuroshimaMeleeCombat.dismissMeleePending(pendingId);
 
-      const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
       await MeleeOpposedChat._unsetDefenderFlag(pendingId);
 
       this.render(false);

@@ -189,7 +189,8 @@ Hooks.once('init', async function() {
         const opposedData = message.getFlag("neuroshima", "opposedChat");
         if (!opposedData) return;
         if (opposedData.status !== "resolved" && opposedData.status !== "cancelled") return;
-        Object.values(ui.windows).forEach(app => {
+        const appInstances = Object.values(foundry.applications?.instances ?? ui.windows ?? {});
+        appInstances.forEach(app => {
             if (_isActorSheet(app)) app.render(false);
         });
     });
@@ -2517,6 +2518,13 @@ function initializeSocketlib() {
         if (!canvas?.scene) return null;
         const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [templateData]);
         return created?.[0]?.id ?? null;
+    });
+
+    // Chat message flag proxy — lets non-GM clients update message flags via GM
+    game.neuroshima.socket.register("setChatMessageFlag", async (messageId, scope, key, value) => {
+        const message = game.messages.get(messageId);
+        if (!message) return;
+        return message.setFlag(scope, key, value);
     });
 
     // Skill allocation patch — executed as GM so the message flag can be written

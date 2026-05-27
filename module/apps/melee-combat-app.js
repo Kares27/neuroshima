@@ -58,7 +58,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(encounterId, options = {}) {
     super(options);
     this.encounterId = encounterId;
-    /** @type {Map<string, import("./weapon-roll-dialog.js").NeuroshimaWeaponRollDialog>} */
+    /** @type {Map<string, import("./dialogs/weapon-roll-dialog.js").NeuroshimaWeaponRollDialog>} */
     this._openPoolDialogs = new Map();
   }
 
@@ -528,7 +528,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const crowd = encounter?.crowding?.[participantId];
     const crowdingDexPenalty = crowd?.dexPenalty || 0;
 
-    const { NeuroshimaWeaponRollDialog } = await import("./weapon-roll-dialog.js");
+    const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
     const dialog = new NeuroshimaWeaponRollDialog({
       actor,
       weapon,

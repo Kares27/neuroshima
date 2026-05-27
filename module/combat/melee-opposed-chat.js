@@ -202,7 +202,7 @@ export class MeleeOpposedChat {
     if (!data || data.status !== "pending") return;
 
     // Mark as resolved immediately (prevents double-click / double-response)
-    await message.setFlag("neuroshima", "opposedChat", { ...data, status: "resolved" });
+    await MeleeOpposedChat._setChatFlag(message, "opposedChat", { ...data, status: "resolved" });
 
     const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
     const attackerActor = attackerDoc?.actor ?? attackerDoc;
@@ -1094,7 +1094,7 @@ export class MeleeOpposedChat {
         const msg = game.messages.get(pending.opposedChatMessageId);
         const chatData = msg?.getFlag("neuroshima", "opposedChat");
         if (chatData?.status === "pending") {
-          await msg.setFlag("neuroshima", "opposedChat", { ...chatData, status: "cancelled" });
+          await MeleeOpposedChat._setChatFlag(msg, "opposedChat", { ...chatData, status: "cancelled" });
         }
       }
       // Unset defender actor flag
@@ -1108,6 +1108,15 @@ export class MeleeOpposedChat {
     }
 
     if (stalePendings.length > 0) ui.combat?.render(true);
+  }
+
+  /** Update a chat message flag via socket if the caller is not the GM. @private */
+  static async _setChatFlag(message, key, value) {
+    if (!message) return;
+    if (game.user.isGM || !game.neuroshima?.socket) {
+      return message.setFlag("neuroshima", key, value);
+    }
+    return game.neuroshima.socket.executeAsGM("setChatMessageFlag", message.id, "neuroshima", key, value);
   }
 
   /** Set flags.neuroshima.oppose on the defender's actor via socket if needed. @private */

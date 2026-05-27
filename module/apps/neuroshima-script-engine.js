@@ -3641,7 +3641,7 @@ export class NeuroshimaScriptRunner {
     const successConsequence = _normalizeConsequence(onSuccess);
     const failureConsequence = _normalizeConsequence(onFailure);
 
-    const { getConditions } = await import("./condition-config.js");
+    const { getConditions } = await import("./config/condition-config.js");
     const validKeys = new Set(getConditions().map(c => c.key));
     for (const consequence of [...(successConsequence ?? []), ...(failureConsequence ?? [])]) {
       if (consequence.addCondition && !validKeys.has(consequence.addCondition)) {

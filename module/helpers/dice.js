@@ -299,12 +299,10 @@ export class NeuroshimaDice {
 
     // Validate ammo availability for ranged weapons
     if ((isRanged || isThrown) && !magazine) {
-        if (weapon.system.caliber) {
-            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoMagazineSelected"));
-            game.neuroshima.log("Rzut przerwany: brak wybranego magazynka");
-            game.neuroshima.groupEnd();
-            return;
-        }
+        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoMagazineSelected"));
+        game.neuroshima.log("Rzut przerwany: brak wybranego magazynka");
+        game.neuroshima.groupEnd();
+        return;
     }
 
     // Pull bullets from the magazine and track its new state (informational pass before the roll)

@@ -572,15 +572,16 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           messageId = defActor?.getFlag("neuroshima", "oppose")?.messageId;
         }
 
+        const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+
         if (messageId) {
           const msg = game.messages.get(messageId);
           const chatData = msg?.getFlag("neuroshima", "opposedChat");
           if (chatData?.status === "pending") {
-            await msg.setFlag("neuroshima", "opposedChat", { ...chatData, status: "cancelled" });
+            await MeleeOpposedChat._setChatFlag(msg, "opposedChat", { ...chatData, status: "cancelled" });
           }
         }
 
-        const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
         await MeleeOpposedChat._unsetDefenderFlag(pendingId);
 
         const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");

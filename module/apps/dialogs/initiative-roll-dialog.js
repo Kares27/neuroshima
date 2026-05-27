@@ -361,7 +361,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
             }, "A");
           } else {
             if (activeEncounterId) await targetActor.unsetFlag("neuroshima", "activeMeleeEncounter");
-            const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+            const { NeuroshimaMeleeCombat } = await import("../../combat/melee-combat.js");
             await NeuroshimaMeleeCombat.initiateMeleePending(
               this.actor.uuid, targetActor.uuid, result.successPoints,
               this.weaponId, rollData.maneuver, rollData.chargeLevel
