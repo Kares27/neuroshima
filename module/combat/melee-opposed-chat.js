@@ -383,7 +383,8 @@ export class MeleeOpposedChat {
       isCreatureAttacker,
       netSuccesses,
       affordableBeastActions,
-      hasBeastActions: affordableBeastActions.length > 0
+      hasBeastActions: affordableBeastActions.length > 0,
+      isBeastAttack: isCreatureAttacker && !data.weaponId
     };
 
     const resContent = await foundry.applications.handlebars.renderTemplate(
@@ -410,6 +411,7 @@ export class MeleeOpposedChat {
             damage3: data.damage3,
             netSuccesses,
             affordableBeastActions,
+            isBeastAttack: isCreatureAttacker && !data.weaponId,
             applied: false,
             beastActionsApplied: false
           }
@@ -438,7 +440,7 @@ export class MeleeOpposedChat {
       "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
       updatedTemplateData
     );
-    await message.update({ content: updatedContent });
+    await MeleeOpposedChat._updateChatContent(message, updatedContent);
 
     // Remove from meleePendings FIRST so when unsetFlag triggers a sheet re-render
     // (via updateActor hook) the combat entry is already gone.
@@ -482,7 +484,7 @@ export class MeleeOpposedChat {
       "systems/neuroshima/templates/chat/melee-opposed-pending.hbs",
       updatedTemplateData
     );
-    await message.update({ content: updatedContent });
+    await MeleeOpposedChat._updateChatContent(message, updatedContent);
   }
 
   /**
@@ -585,8 +587,8 @@ export class MeleeOpposedChat {
       const attackDelta = (effAtkVal !== null && rawAtkVal !== null) ? effAtkVal - rawAtkVal : 0;
       const defenseDelta = (effDefVal !== null && rawDefVal !== null) ? effDefVal - rawDefVal : 0;
 
-      const attackCanSelfSpend = !!aDie && !attackerConfirmed && attackerBudgetRemaining > 0 && (effAtkVal ?? 0) > 1;
-      const defenderCanSelfSpend = !!dDie && !defenderConfirmed && defenderBudgetRemaining > 0 && (effDefVal ?? 0) > 1;
+      const attackCanSelfSpend = !!aDie && !attackerConfirmed && attackerBudgetRemaining > 0 && (effAtkVal ?? 0) > 1 && (aDie?.original ?? rawAtkVal) !== 20;
+      const defenderCanSelfSpend = !!dDie && !defenderConfirmed && defenderBudgetRemaining > 0 && (effDefVal ?? 0) > 1 && (dDie?.original ?? rawDefVal) !== 20;
       const attackerCanOpponentSpend = !!dDie && !attackerConfirmed && attackerBudgetRemaining > 0 && (effDefVal ?? 20) < 20;
       const defenderCanOpponentSpend = !!aDie && !defenderConfirmed && defenderBudgetRemaining > 0 && (effAtkVal ?? 20) < 20;
 
@@ -661,6 +663,7 @@ export class MeleeOpposedChat {
         const defOpp  = (updated.defenderOpponentGains || [])[dieIndex] || 0;
         const rawVal  = attackDie?.modified ?? attackDie?.original ?? 0;
         const effVal  = rawVal - atkSelf + defOpp;
+        if (delta > 0 && (attackDie?.original ?? rawVal) === 20) return;
         if (delta > 0 && effVal <= 1) return;
         if (delta < 0 && atkSelf <= 0) return;
       } else if (spender === "defender" && target === "self") {
@@ -668,6 +671,7 @@ export class MeleeOpposedChat {
         const atkOpp  = (updated.attackerOpponentGains || [])[dieIndex] || 0;
         const rawVal  = defenseDie?.modified ?? defenseDie?.original ?? 0;
         const effVal  = rawVal - defSelf + atkOpp;
+        if (delta > 0 && (defenseDie?.original ?? rawVal) === 20) return;
         if (delta > 0 && effVal <= 1) return;
         if (delta < 0 && defSelf <= 0) return;
       } else if (spender === "attacker" && target === "opponent") {
@@ -897,7 +901,8 @@ export class MeleeOpposedChat {
       isHit: resultType === "hit",
       damage1, damage2, damage3,
       isCreatureAttacker, netSuccesses,
-      affordableBeastActions, hasBeastActions: affordableBeastActions.length > 0
+      affordableBeastActions, hasBeastActions: affordableBeastActions.length > 0,
+      isBeastAttack: isCreatureAttacker && !allocData.weaponId
     };
 
     const resContent = await foundry.applications.handlebars.renderTemplate(
@@ -920,6 +925,7 @@ export class MeleeOpposedChat {
             hits, location,
             damage1, damage2, damage3,
             netSuccesses, affordableBeastActions,
+            isBeastAttack: isCreatureAttacker && !allocData.weaponId,
             applied: false, beastActionsApplied: false
           }
         }
@@ -1117,6 +1123,15 @@ export class MeleeOpposedChat {
       return message.setFlag("neuroshima", key, value);
     }
     return game.neuroshima.socket.executeAsGM("setChatMessageFlag", message.id, "neuroshima", key, value);
+  }
+
+  /** Update chat message content via socket if the caller is not the GM. @private */
+  static async _updateChatContent(message, content) {
+    if (!message) return;
+    if (game.user.isGM || !game.neuroshima?.socket) {
+      return message.update({ content });
+    }
+    return game.neuroshima.socket.executeAsGM("updateChatMessageContent", message.id, content);
   }
 
   /** Set flags.neuroshima.oppose on the defender's actor via socket if needed. @private */
@@ -1327,9 +1342,11 @@ export class MeleeOpposedChat {
       }
     }
 
-    // Apply remaining pip-wins or success-points as normal weapon damage
+    // Apply remaining pip-wins or success-points as normal weapon damage.
+    // For beast attacks (synthetic weapon, no real weaponId) remaining successes are wasted —
+    // all damage must be chosen explicitly through beast action spending.
     const remaining = rd.netSuccesses - totalSpent;
-    if (remaining > 0) {
+    if (remaining > 0 && !rd.isBeastAttack) {
       if (rd.mode === "opposedPips") {
         // opposedPips: hits are sorted ascending by tier (done in resolveOpposed).
         // Beast actions consumed the first `totalSpent` pips (lowest tiers).

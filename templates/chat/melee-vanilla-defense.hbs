@@ -1,0 +1,96 @@
+<div class="neuroshima-roll-card mvc-card mvc-defense-card" data-needed-count="{{diceCount}}">
+
+  <div class="mvc-header">
+    <div class="mvc-header-left">
+      <span class="mvc-turn-label">{{localize "NEUROSHIMA.Combat.Turn"}} {{turn}}</span>
+      <div class="mvc-segments">
+        {{#each segmentDots}}
+          <div class="seg-dot seg-dot--{{state}}">
+            {{#if (eq state "done")}}<i class="fas fa-check"></i>{{else}}{{number}}{{/if}}
+          </div>
+        {{/each}}
+      </div>
+    </div>
+    <span class="mvc-phase-tag mvc-phase-tag--defense">
+      <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.MeleeDuel.Phase.DefenseSelection"}}
+    </span>
+  </div>
+
+  <div class="mvc-duel-row">
+
+    <div class="mvc-attacker-section mvc-attacker-section--locked">
+      <div class="mvc-participant-header">
+        <img src="{{attackerImg}}" class="mvc-participant-avatar" alt="{{attackerName}}">
+        <span class="mvc-participant-name">{{attackerName}}</span>
+      </div>
+      <div class="mvc-attack-committed">
+        <span class="mvc-committed-label"><i class="fas fa-fist-raised"></i> {{attackerSelectedDiceCount}}s</span>
+        <div class="mvc-dice-pool mvc-dice-pool--locked">
+          {{#each attackerDiceDisplay}}
+            <span class="die-chip die-chip--sm
+              {{#if this.isSuccess}}is-success{{else}}is-failure{{/if}}
+              {{#if this.isNat20}}is-nat20{{/if}}"
+              title="{{#if this.isNat20}}Nat 20{{else if this.isSuccess}}Sukces{{else}}Porażka{{/if}}">
+              {{this.effective}}
+            </span>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <div class="mvc-vs-divider"><i class="fas fa-swords"></i></div>
+
+    <div class="mvc-defender-section" data-melee-owner="{{defenderActorUuid}}">
+      <div class="mvc-participant-header">
+        <img src="{{defenderImg}}" class="mvc-participant-avatar" alt="{{defenderName}}">
+        <div class="mvc-participant-info">
+          <span class="mvc-participant-name">{{defenderName}}</span>
+          <span class="mvc-participant-sub">{{defenderWeapon}} · ≤ {{defenderTarget}}</span>
+          {{#if isCrowded}}<span class="mvc-crowded-note">Tłok -{{dexPenalty}}</span>{{/if}}
+        </div>
+      </div>
+
+      <div class="mvc-dice-pool">
+        {{#each defenderPool}}
+          {{#unless this.isUsed}}
+            <button type="button"
+              class="die-chip die-chip-mvc
+                {{#if this.isSuccess}}is-success{{else}}is-failure{{/if}}
+                {{#if this.isNat20}}is-nat20{{/if}}"
+              data-index="{{this.index}}"
+              title="{{#if this.isNat20}}Nat 20{{else if this.isSuccess}}Sukces (≤{{../defenderTarget}}){{else}}Porażka{{/if}}">
+              {{this.effective}}
+            </button>
+          {{else}}
+            <span class="die-chip die-chip--sm is-used" title="Użyto">{{this.effective}}</span>
+          {{/unless}}
+        {{/each}}
+      </div>
+
+      <div class="mvc-defense-counter">
+        {{localize "NEUROSHIMA.MeleeDuel.SelectedCount"}}:
+        <strong class="mvc-selected-count">0</strong> / <strong>{{diceCount}}</strong>
+      </div>
+
+      <div class="mvc-defense-actions">
+        <button type="button"
+          class="action-btn action-btn--defense is-disabled"
+          data-mvc-action="confirmDefense"
+          data-participant-id="{{defenderId}}"
+          data-needed-count="{{diceCount}}"
+          data-melee-owner="{{defenderActorUuid}}"
+          disabled>
+          <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.MeleeDuel.ConfirmDefense"}}
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mvc-gm-controls" data-gm-only="true">
+    <button type="button" class="mtc-ctrl-btn mtc-ctrl-btn--danger" data-mvc-action="endEncounter" title="{{localize 'NEUROSHIMA.MeleeDuel.EndEncounter'}}">
+      <i class="fas fa-times-circle"></i>
+    </button>
+  </div>
+
+</div>

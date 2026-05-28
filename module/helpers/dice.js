@@ -2312,10 +2312,10 @@ export class NeuroshimaDice {
       const totalPenalty = (baseDifficultyData.min || 0) + config.modifier;
       const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
       
-      // Total shift = skill shift + dice shift (nat 1s/20s) + retry penalty for failed attempts
+      // Total shift = skill shift + dice shift (nat 1s/20s) + retry penalty + script difficulty shift
       const diceShift = this.getDiceShift(rawResults);
       const failedAttempts = config.failedAttempts || 0;
-      const totalShift = -skillShift + diceShift + failedAttempts;
+      const totalShift = -skillShift + diceShift + failedAttempts + (config.difficultyShift || 0);
       const finalDiff = this._getShiftedDifficulty(penaltyDiff, totalShift);
       const testTarget = finalStat + (finalDiff.mod || 0);
       
@@ -2481,10 +2481,10 @@ export class NeuroshimaDice {
     const totalPenalty = (baseDifficultyData.min || 0) + woundConfig.modifier;
     const penaltyDiff = this.getDifficultyFromPercent(totalPenalty);
     
-    // Calculate total shift (skill + dice + retry penalty)
+    // Calculate total shift (skill + dice + retry penalty + script difficulty shift)
     const diceShift = this.getDiceShift(rawResults);
     const failedAttempts = woundConfig.failedAttempts || 0;
-    const totalShift = -skillShift + diceShift + failedAttempts;
+    const totalShift = -skillShift + diceShift + failedAttempts + (woundConfig.difficultyShift || 0);
     const finalDiff = this._getShiftedDifficulty(penaltyDiff, totalShift);
     const testTarget = finalStat + (finalDiff.mod || 0);
 

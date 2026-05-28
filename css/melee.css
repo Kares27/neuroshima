@@ -824,3 +824,1018 @@
     background: rgba(255,255,255,0.12);
     margin: 0 2px;
 }
+
+/* ── Melee Turn Card (Chat-based vanilla mode) ────────────────── */
+
+.melee-turn-card {
+    font-family: 'SpecialElite', sans-serif;
+    color: var(--ns-text-main);
+    background: var(--ns-bg-sheet);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.mtc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+    flex-wrap: wrap;
+}
+
+.mtc-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mtc-turn-label {
+    font-weight: bold;
+    color: var(--ns-text-accent);
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+
+.mtc-segments {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.mtc-initiative-badge {
+    font-size: 0.78em;
+    color: #f39c12;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mtc-phase-label {
+    font-size: 0.72em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    white-space: nowrap;
+}
+
+.mtc-arena {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 8px 6px;
+}
+
+.mtc-team {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mtc-vs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    color: rgba(255,255,255,0.3);
+    font-size: 1em;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.mtc-fighter {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 5px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mtc-fighter--initiative {
+    border-color: rgba(243,156,18,0.5);
+    background: rgba(243,156,18,0.06);
+}
+
+.mtc-fighter-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.mtc-fighter-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.mtc-fighter-avatar {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.mtc-fighter-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mtc-fighter-name {
+    font-weight: bold;
+    font-size: 0.88em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mtc-init-star {
+    color: #f39c12;
+    font-size: 0.75em;
+}
+
+.mtc-fighter-sub {
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.55);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mtc-maneuver {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.95em;
+    color: #e74c3c;
+}
+
+.mtc-fighter-weapon {
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.45);
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mtc-weapon-select {
+    width: 100%;
+    font-size: 0.72em;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--ns-text-main);
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+
+.mtc-fighter-dice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-items: center;
+    min-height: 28px;
+}
+
+.die-chip--sm {
+    width: 26px;
+    height: 26px;
+    font-size: 0.78em;
+    border-radius: 4px;
+    border: 2px solid rgba(255,255,255,0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    background: rgba(255,255,255,0.05);
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.die-chip--sm:hover {
+    transform: scale(1.1);
+    background: rgba(255,255,255,0.12);
+}
+
+.die-chip--sm.is-selected {
+    border-color: #f39c12;
+    background: rgba(243,156,18,0.2);
+    color: #f39c12;
+    box-shadow: 0 0 6px rgba(243,156,18,0.4);
+}
+
+.die-chip--sm.is-success {
+    color: #27ae60;
+    border-color: rgba(39,174,96,0.5);
+}
+
+.die-chip--sm.is-failure {
+    color: rgba(255,255,255,0.4);
+}
+
+.die-chip--sm.is-nat20 {
+    color: #e74c3c;
+    border-color: rgba(231,76,60,0.6);
+    background: rgba(231,76,60,0.1);
+}
+
+.die-chip--sm.is-used {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.mtc-roll-btn {
+    font-size: 0.78em;
+    padding: 3px 8px;
+    height: auto;
+}
+
+.mtc-dice-empty {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.25);
+}
+
+.mtc-skill-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.65);
+    padding: 2px 0;
+}
+
+.mtc-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 2px;
+}
+
+.mtc-hint {
+    font-size: 0.75em;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+    padding: 2px 0;
+}
+
+.mtc-defense-count {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.6);
+}
+
+.mtc-damage-select {
+    padding: 6px 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.mtc-label {
+    font-size: 0.82em;
+    color: rgba(255,255,255,0.65);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mtc-damage-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.mtc-log {
+    padding: 5px 10px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mtc-log-entry {
+    font-size: 0.75em;
+    color: rgba(255,255,255,0.5);
+    padding: 1px 0;
+}
+
+.mtc-log-entry--damage { color: #e74c3c; }
+.mtc-log-entry--hit    { color: #27ae60; }
+.mtc-log-entry--miss   { color: rgba(255,255,255,0.35); }
+.mtc-log-entry--info   { color: rgba(255,255,255,0.5); }
+.mtc-log-entry--fury   { color: #e74c3c; font-weight: bold; }
+
+.mtc-gm-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 5px 8px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.15);
+}
+
+.mtc-ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.65);
+    font-size: 0.8em;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.mtc-ctrl-btn:hover {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+}
+
+.mtc-ctrl-btn--danger {
+    border-color: rgba(231,76,60,0.4);
+    color: #e74c3c;
+}
+
+.mtc-ctrl-btn--danger:hover {
+    background: rgba(231,76,60,0.15);
+    color: #e74c3c;
+}
+
+.fc-crowded-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #e74c3c;
+    color: #fff;
+    font-size: 0.6em;
+    font-weight: bold;
+    padding: 1px 3px;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+/* ── Melee Tracker Panel — Chat Mode ──────────────────────────── */
+
+.melee-panel--chat-mode {
+    cursor: default;
+}
+
+.melee-phase-badge {
+    font-size: 0.68em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255,255,255,0.45);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.melee-seg-label {
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.4);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.melee-chat-hint {
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.35);
+    font-style: italic;
+    padding: 3px 8px 5px;
+    text-align: center;
+}
+
+/* ── Fight panel header ───────────────────────────────────────── */
+
+.melee-fight-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.8em;
+    color: var(--ns-text-accent);
+}
+
+.melee-fight-header-title {
+    flex: 1;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Fight block (collapsed) ──────────────────────────────────── */
+
+.melee-fight-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    cursor: pointer;
+    gap: 6px;
+}
+
+.melee-fight-block:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.melee-fight-names {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--ns-text-main);
+    flex: 1;
+    overflow: hidden;
+}
+
+.melee-fight-names span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.melee-fight-vs-icon {
+    color: var(--ns-text-accent);
+    font-size: 0.75em;
+    flex-shrink: 0;
+}
+
+.melee-fight-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.melee-seg-badge {
+    font-size: 0.68em;
+    color: rgba(255,255,255,0.4);
+    white-space: nowrap;
+}
+
+.melee-expand-icon {
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.35);
+}
+
+/* ── Fight block (expanded — combatant list) ──────────────────── */
+
+.melee-expanded-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.8em;
+    color: var(--ns-text-accent);
+}
+
+.melee-expanded-header:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.melee-expanded-title {
+    flex: 1;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.melee-delete-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.melee-combatant-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.melee-combatant {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.melee-combatant:last-child {
+    border-bottom: none;
+}
+
+.melee-combatant--init {
+    background: rgba(255, 200, 50, 0.06);
+}
+
+.melee-combatant-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+}
+
+.melee-combatant-name {
+    flex: 1;
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--ns-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.melee-combatant-init-icon {
+    color: #f0c040;
+    font-size: 0.75em;
+    flex-shrink: 0;
+}
+
+.melee-combatant-initiative {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.8em;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    flex-shrink: 0;
+    min-width: 28px;
+    justify-content: flex-end;
+}
+
+.melee-combatant--init .melee-combatant-initiative {
+    color: #f0c040;
+}
+
+.melee-combatant--init .melee-combatant-initiative .fa-bolt {
+    font-size: 0.85em;
+}
+
+/* ── MeleeVanillaChat cards (.mvc-*) ──────────────────────────── */
+
+.mvc-card {
+    font-family: 'SpecialElite', sans-serif;
+    color: var(--ns-text-main);
+    background: var(--ns-bg-sheet);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.mvc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    background: var(--ns-bg-header);
+    border-bottom: 2px solid var(--ns-border-main);
+    flex-wrap: wrap;
+}
+
+.mvc-header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+}
+
+.mvc-turn-label {
+    font-weight: bold;
+    font-size: 0.82em;
+    color: var(--ns-text-accent);
+    white-space: nowrap;
+}
+
+.mvc-segments {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.mvc-phase-tag {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+.mvc-phase-tag--pool    { background: rgba(52,152,219,0.18); color: #3498db; }
+.mvc-phase-tag--attack  { background: rgba(231,76,60,0.18);  color: #e74c3c; }
+.mvc-phase-tag--defense { background: rgba(39,174,96,0.18);  color: #27ae60; }
+
+.mvc-initiative-badge {
+    font-size: 0.75em;
+    color: #f39c12;
+    white-space: nowrap;
+}
+
+.mvc-target-banner {
+    padding: 5px 10px;
+    background: rgba(52,152,219,0.1);
+    border-bottom: 1px solid rgba(52,152,219,0.2);
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.7);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mvc-arena {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 8px 6px;
+}
+
+.mvc-team {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mvc-vs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    color: rgba(255,255,255,0.3);
+    align-self: center;
+}
+
+.mvc-fighter {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 5px;
+    padding: 5px 7px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mvc-fighter--initiative {
+    border-color: rgba(243,156,18,0.5);
+    background: rgba(243,156,18,0.06);
+}
+
+.mvc-fighter-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.mvc-fighter-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.mvc-fighter-avatar {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.mvc-fighter-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.mvc-fighter-name {
+    font-weight: bold;
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mvc-init-icon { color: #f39c12; font-size: 0.7em; }
+
+.mvc-fighter-sub {
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.5);
+}
+
+.mvc-fighter-weapon {
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+}
+
+.mvc-dice-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    align-items: center;
+    min-height: 26px;
+}
+
+.mvc-waiting {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.25);
+}
+
+/* Duel layout */
+
+.mvc-duel-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 8px 8px;
+}
+
+.mvc-attacker-section,
+.mvc-defender-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mvc-attacker-section--locked {
+    opacity: 0.85;
+}
+
+.mvc-vs-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    color: rgba(255,255,255,0.3);
+    font-size: 1em;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.mvc-participant-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+}
+
+.mvc-participant-avatar {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+}
+
+.mvc-participant-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.mvc-participant-name {
+    font-weight: bold;
+    font-size: 0.85em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.mvc-participant-sub {
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.5);
+}
+
+.mvc-target-badge {
+    display: inline-block;
+    font-size: 0.72em;
+    background: rgba(52,152,219,0.2);
+    color: #3498db;
+    border-radius: 3px;
+    padding: 1px 5px;
+    width: fit-content;
+}
+
+.mvc-dice-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    min-height: 28px;
+    align-items: center;
+}
+
+.mvc-dice-pool--locked {
+    pointer-events: none;
+}
+
+/* Toggleable die chip */
+
+.die-chip-mvc {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8em;
+    border-radius: 4px;
+    border: 2px solid rgba(255,255,255,0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    background: rgba(255,255,255,0.05);
+    transition: all 0.12s;
+    padding: 0;
+    user-select: none;
+}
+
+.die-chip-mvc:hover {
+    transform: scale(1.1);
+    background: rgba(255,255,255,0.12);
+}
+
+.die-chip-mvc.mvc-die-selected {
+    border-color: #f39c12;
+    background: rgba(243,156,18,0.22);
+    color: #f39c12;
+    box-shadow: 0 0 6px rgba(243,156,18,0.4);
+}
+
+.die-chip-mvc.is-success  { color: #27ae60; border-color: rgba(39,174,96,0.45); }
+.die-chip-mvc.is-failure  { color: rgba(255,255,255,0.38); }
+.die-chip-mvc.is-nat20    { color: #e74c3c; border-color: rgba(231,76,60,0.55); background: rgba(231,76,60,0.1); }
+.die-chip-mvc.is-used     { opacity: 0.3; pointer-events: none; cursor: default; }
+
+.die-chip-mvc.mvc-die-selected.is-success { color: #f39c12; }
+
+/* Attack card specifics */
+
+.mvc-attack-hint {
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.4);
+    font-style: italic;
+}
+
+.mvc-attack-actions,
+.mvc-defense-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 2px;
+}
+
+.mvc-defender-section--waiting {
+    align-items: center;
+    justify-content: center;
+    padding: 8px 4px;
+    gap: 4px;
+}
+
+.mvc-waiting-label {
+    font-size: 0.75em;
+    color: rgba(255,255,255,0.35);
+    font-style: italic;
+    text-align: center;
+}
+
+/* Defense card specifics */
+
+.mvc-attack-committed {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.mvc-committed-label {
+    font-size: 0.8em;
+    color: #e74c3c;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.mvc-defense-counter {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.55);
+}
+
+.mvc-crowded-note {
+    font-size: 0.7em;
+    color: #e74c3c;
+}
+
+/* Result card */
+
+.mvc-result-card {
+    border-width: 2px;
+}
+
+.mvc-result--hit      { border-color: rgba(231,76,60,0.6); }
+.mvc-result--block    { border-color: rgba(39,174,96,0.4); }
+.mvc-result--takeover { border-color: rgba(243,156,18,0.5); }
+
+.mvc-result-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--ns-bg-header);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.mvc-result-icon { font-size: 1.1em; }
+.mvc-result-icon--hit      { color: #e74c3c; }
+.mvc-result-icon--block    { color: #27ae60; }
+.mvc-result-icon--takeover { color: #f39c12; }
+
+.mvc-result-label {
+    font-weight: bold;
+    font-size: 0.9em;
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.mvc-result-label--hit      { color: #e74c3c; }
+.mvc-result-label--block    { color: #27ae60; }
+.mvc-result-label--takeover { color: #f39c12; }
+
+.mvc-turn-mini {
+    font-size: 0.7em;
+    color: rgba(255,255,255,0.4);
+    white-space: nowrap;
+}
+
+.mvc-result-text {
+    padding: 7px 12px;
+    font-size: 0.82em;
+    color: rgba(255,255,255,0.75);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.mvc-damage-select {
+    padding: 7px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.mvc-damage-label {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.6);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.mvc-damage-options {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+/* GM controls strip (reuse existing mtc-ctrl-btn) */
+
+.mvc-gm-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 4px 8px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.12);
+}

@@ -54,11 +54,15 @@
 
   <div class="result-section {{resultType}}">
     {{#if isHit}}
-      <div class="hits-detail">
-        {{#each hits}}
-          <span class="hit-badge">D{{tier}}: {{damageType}}</span>
-        {{/each}}
-      </div>
+      {{#if isBeastAttack}}
+        <div class="result-text"><strong>{{localize "NEUROSHIMA.MeleeOpposedChat.BeastHit"}} ({{netSuccesses}}s)</strong></div>
+      {{else}}
+        <div class="hits-detail">
+          {{#each hits}}
+            <span class="hit-badge">D{{tier}}: {{damageType}}</span>
+          {{/each}}
+        </div>
+      {{/if}}
     {{else}}
       <div class="result-text"><strong>{{resultText}}</strong></div>
     {{/if}}

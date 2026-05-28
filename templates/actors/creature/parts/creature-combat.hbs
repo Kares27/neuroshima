@@ -126,18 +126,19 @@
         {{!-- RIGHT: Beast Actions + Beast Maneuvers stacked --}}
         <div class="creature-combat-col">
 
-            {{!-- Beast Actions --}}
+            {{!-- Beast Actions (success-based) --}}
             <div class="section-header">
                 <i class="fas fa-paw"></i>
                 <span class="header-label">{{localize "NEUROSHIMA.BeastAction.Label"}}</span>
                 <div class="header-controls">
-                    <a class="item-control" data-action="createItem" data-type="beast-action"
+                    <a class="item-control" data-action="rollBeastAttack" title="{{localize 'NEUROSHIMA.BeastAction.RollAttack'}}"><i class="fas fa-dice"></i></a>
+                    <a class="item-control" data-action="createItem" data-type="beast-action" data-cost-type="success"
                         title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
                 </div>
             </div>
 
             <ul class="item-list creature-actions-list">
-                {{#each inventory.beastActions}}
+                {{#each inventory.beastActionsSuccess}}
                 {{#if this.system.weaponType}}
                 <li class="item item-weapon-action" data-item-id="{{this.id}}">
                     <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
@@ -158,8 +159,40 @@
                     <span class="item-name">{{this.name}}</span>
                     <span class="beast-action-meta">
                         <span class="action-type-badge">{{this.system.actionType}}</span>
-                        <span class="action-cost" title="{{#if (eq this.system.costType 'success')}}{{localize 'NEUROSHIMA.BeastAction.SuccessCost'}}{{else}}{{localize 'NEUROSHIMA.BeastAction.SegmentCost'}}{{/if}}">
-                            {{#if (eq this.system.costType "success")}}{{this.system.successCost}}s+{{else}}{{this.system.segmentCost}}s{{/if}}
+                        <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastAction.SuccessCost'}}">
+                            {{this.system.successCost}}s+
+                        </span>
+                    </span>
+                    <span class="item-controls">
+                        <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
+                        <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
+                    </span>
+                </li>
+                {{/if}}
+                {{else}}
+                <li class="item-list-empty">{{localize "NEUROSHIMA.BeastAction.None"}}</li>
+                {{/each}}
+            </ul>
+
+            {{!-- Beast Segments (segment-based) --}}
+            <div class="section-header" style="margin-top: 8px;">
+                <i class="fas fa-hourglass-half"></i>
+                <span class="header-label">{{localize "NEUROSHIMA.BeastSegment.Label"}}</span>
+                <div class="header-controls">
+                    <a class="item-control" data-action="createItem" data-type="beast-action" data-cost-type="segment"
+                        title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
+                </div>
+            </div>
+
+            <ul class="item-list creature-actions-list">
+                {{#each inventory.beastActionsSegment}}
+                <li class="item" data-item-id="{{this.id}}">
+                    <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
+                    <span class="item-name">{{this.name}}</span>
+                    <span class="beast-action-meta">
+                        <span class="action-type-badge">{{this.system.actionType}}</span>
+                        <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastAction.SegmentCost'}}">
+                            {{this.system.segmentCost}}seg
                         </span>
                     </span>
                     <span class="item-controls">
@@ -168,9 +201,8 @@
                         <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
                     </span>
                 </li>
-                {{/if}}
                 {{else}}
-                <li class="item-list-empty">{{localize "NEUROSHIMA.BeastAction.None"}}</li>
+                <li class="item-list-empty">{{localize "NEUROSHIMA.BeastSegment.None"}}</li>
                 {{/each}}
             </ul>
 

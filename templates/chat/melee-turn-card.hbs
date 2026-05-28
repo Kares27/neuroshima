@@ -1,0 +1,196 @@
+<div class="neuroshima melee-turn-card" data-encounter-id="{{id}}">
+
+  <div class="mtc-header">
+    <div class="mtc-header-left">
+      <span class="mtc-turn-label">{{localize "NEUROSHIMA.Combat.Turn"}} {{turnState.turn}}</span>
+      <div class="mtc-segments">
+        {{#each segmentDots}}
+          <div class="seg-dot seg-dot--{{state}}" title="Segment {{number}}">
+            {{#if (eq state "done")}}<i class="fas fa-check"></i>{{else}}{{number}}{{/if}}
+          </div>
+        {{/each}}
+      </div>
+    </div>
+    <div class="mtc-initiative-badge" title="{{localize 'NEUROSHIMA.MeleeDuel.InitiativeOwner'}}">
+      <i class="fas fa-bolt"></i> {{initiativeOwnerName}}
+    </div>
+    <div class="mtc-phase-label">{{phaseLabel}}</div>
+  </div>
+
+  <div class="mtc-arena">
+
+    <div class="mtc-team mtc-team--a">
+      {{#each teamsData.A}}
+        {{> mtcFighterCard}}
+      {{/each}}
+    </div>
+
+    <div class="mtc-vs"><i class="fas fa-swords"></i></div>
+
+    <div class="mtc-team mtc-team--b">
+      {{#each teamsData.B}}
+        {{> mtcFighterCard}}
+      {{/each}}
+    </div>
+
+  </div>
+
+  {{#if pendingDamage}}
+  <div class="mtc-damage-select" data-melee-owner="{{pendingDamage.attackerId}}">
+    <span class="mtc-label"><i class="fas fa-skull-crossbones"></i> {{localize "NEUROSHIMA.MeleeDuel.ChooseDamageDistribution"}}:</span>
+    <div class="mtc-damage-options">
+      {{#each pendingDamage.options}}
+      <button type="button" class="action-btn action-btn--damage-opt pulse"
+              data-melee-action="confirmDamage"
+              data-option-index="{{@index}}"
+              data-melee-owner="{{../pendingDamage.attackerId}}">
+        {{this.label}}
+      </button>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+  {{#if recentLog.length}}
+  <div class="mtc-log">
+    {{#each recentLog}}
+      <div class="mtc-log-entry mtc-log-entry--{{type}}">{{text}}</div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <div class="mtc-gm-controls" data-gm-only="true">
+    <button type="button" class="mtc-ctrl-btn" data-melee-action="prevTurn" title="{{localize 'NEUROSHIMA.MeleeDuel.PrevTurn'}}">
+      <i class="fas fa-step-backward"></i>
+    </button>
+    <button type="button" class="mtc-ctrl-btn" data-melee-action="prevSegment" title="{{localize 'NEUROSHIMA.MeleeDuel.PrevSegment'}}">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <button type="button" class="mtc-ctrl-btn" data-melee-action="nextSegment" title="{{localize 'NEUROSHIMA.MeleeDuel.NextSegment'}}">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+    <button type="button" class="mtc-ctrl-btn" data-melee-action="nextTurn" title="{{localize 'NEUROSHIMA.MeleeDuel.NextTurn'}}">
+      <i class="fas fa-step-forward"></i>
+    </button>
+    <button type="button" class="mtc-ctrl-btn mtc-ctrl-btn--danger" data-melee-action="endEncounter" title="{{localize 'NEUROSHIMA.MeleeDuel.EndEncounter'}}">
+      <i class="fas fa-times-circle"></i>
+    </button>
+  </div>
+
+</div>
+
+{{#*inline "mtcFighterCard"}}
+<div class="mtc-fighter {{#if isInitiativeOwner}}mtc-fighter--initiative{{/if}}">
+
+  <div class="mtc-fighter-header">
+    <div class="mtc-fighter-avatar-wrap">
+      <img src="{{img}}" class="mtc-fighter-avatar" alt="{{name}}">
+      {{#if isCrowded}}
+        <span class="fc-crowded-badge" title="{{localize 'NEUROSHIMA.MeleeDuel.Crowded'}}">-{{dexPenalty}}</span>
+      {{/if}}
+    </div>
+    <div class="mtc-fighter-info">
+      <div class="mtc-fighter-name">
+        {{name}}
+        {{#if isInitiativeOwner}}<i class="fas fa-bolt mtc-init-star"></i>{{/if}}
+      </div>
+      <div class="mtc-fighter-sub">
+        <span><i class="fas fa-bolt"></i>{{initiative}}</span>
+        {{#if (ne maneuver "none")}}<span class="mtc-maneuver">{{maneuver}}</span>{{/if}}
+      </div>
+      {{#if (gt pool.length 0)}}
+        <div class="mtc-fighter-weapon">{{weaponName}}</div>
+      {{else}}
+        <select class="mtc-weapon-select" data-participant-id="{{id}}" data-melee-owner="{{actorUuid}}">
+          {{#each meleeWeapons}}
+            <option value="{{id}}" {{#if isCurrent}}selected{{/if}}>{{name}}</option>
+          {{/each}}
+        </select>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="mtc-fighter-dice">
+    {{#if needsPool}}
+      <button type="button" class="action-btn action-btn--roll pulse mtc-roll-btn"
+              data-melee-action="rollPool"
+              data-participant-id="{{id}}"
+              data-melee-owner="{{actorUuid}}">
+        <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+      </button>
+    {{else if (gt effectivePool.length 0)}}
+      {{#each effectivePool}}
+        <button type="button"
+          class="die-chip die-chip--sm
+            {{#if (meleeDieSelected ../selectedDiceIndices this.index)}}is-selected{{/if}}
+            {{#if (meleeDieUsed ../usedDice this.index)}}is-used{{/if}}
+            {{#if this.isSuccess}}is-success{{else}}is-failure{{/if}}
+            {{#if this.isNat20}}is-nat20{{/if}}"
+          data-melee-action="selectDie"
+          data-participant-id="{{../id}}"
+          data-index="{{this.index}}"
+          data-melee-owner="{{../actorUuid}}"
+          title="{{#if this.isNat20}}{{localize 'NEUROSHIMA.MeleeDuel.DieNat20'}}{{else if this.isSuccess}}{{localize 'NEUROSHIMA.MeleeDuel.DieSuccess'}}{{else}}{{localize 'NEUROSHIMA.MeleeDuel.DieFailure'}}{{/if}}">
+          {{this.effective}}
+        </button>
+      {{/each}}
+    {{else}}
+      <span class="mtc-dice-empty"><i class="fas fa-hourglass-half"></i></span>
+    {{/if}}
+  </div>
+
+  {{#if isAllocationPhase}}
+    {{#if (gt skillRemaining 0)}}
+    <div class="mtc-skill-row" data-melee-owner="{{actorUuid}}">
+      <i class="fas fa-star-of-david"></i>
+      <span>{{localize "NEUROSHIMA.MeleeDuel.SkillRemaining"}}: <strong>{{skillRemaining}}</strong></span>
+      <button type="button" class="mtc-ctrl-btn" data-melee-action="resetSkill"
+              data-participant-id="{{id}}" data-melee-owner="{{actorUuid}}"
+              title="{{localize 'NEUROSHIMA.MeleeDuel.ResetAllocation'}}">
+        <i class="fas fa-undo"></i>
+      </button>
+    </div>
+    {{/if}}
+  {{/if}}
+
+  {{#if isAttacking}}
+  <div class="mtc-actions" data-melee-owner="{{actorUuid}}">
+    {{#if (gt pendingDiceCount 0)}}
+      <button type="button" class="action-btn action-btn--attack pulse"
+              data-melee-action="confirmAttack"
+              data-participant-id="{{id}}"
+              data-melee-owner="{{actorUuid}}">
+        <i class="fas fa-fist-raised"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.ConfirmAttack"}} ({{pendingDiceCount}}s)
+      </button>
+      <button type="button" class="action-btn action-btn--action"
+              data-melee-action="performAction"
+              data-participant-id="{{id}}"
+              data-melee-owner="{{actorUuid}}">
+        <i class="fas fa-running"></i>
+        {{localize "NEUROSHIMA.MeleeDuel.PerformAction"}}
+      </button>
+    {{else}}
+      <div class="mtc-hint"><i class="fas fa-hand-pointer"></i> {{localize "NEUROSHIMA.MeleeDuel.Hint.SelectDice"}}</div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  {{#if isDefending}}
+  <div class="mtc-actions" data-melee-owner="{{actorUuid}}">
+    <div class="mtc-defense-count">
+      {{localize "NEUROSHIMA.MeleeDuel.ConfirmDefense"}}: <strong>{{selectedDefenseCount}}/{{declaredCount}}</strong>
+    </div>
+    <button type="button"
+      class="action-btn action-btn--defense {{#if (eq selectedDefenseCount declaredCount)}}pulse{{else}}is-disabled{{/if}}"
+      data-melee-action="confirmDefense"
+      data-participant-id="{{id}}"
+      data-melee-owner="{{actorUuid}}"
+      {{#unless (eq selectedDefenseCount declaredCount)}}disabled{{/unless}}>
+      <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.MeleeDuel.ConfirmDefense"}}
+    </button>
+  </div>
+  {{/if}}
+
+</div>
+{{/inline}}

@@ -45,6 +45,7 @@ import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
+import { MeleeVanillaChat } from "./module/combat/melee-vanilla-chat.js";
 
 // System initialization
 Hooks.once('init', async function() {
@@ -59,6 +60,7 @@ Hooks.once('init', async function() {
 
     CONFIG.ui.combat = NeuroshimaCombatTracker;
     MeleeCombatApp.registerHooks();
+    MeleeVanillaChat.registerHooks();
 
     const _isActorSheet = (app) => app instanceof NeuroshimaActorSheet || app instanceof NeuroshimaCreatureSheet;
 
@@ -1195,6 +1197,11 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/melee/parts/combat-log.hbs",
         "systems/neuroshima/templates/apps/melee/parts/footer-danger.hbs",
         "systems/neuroshima/templates/apps/melee/parts/melee-gm-controls.hbs",
+        "systems/neuroshima/templates/chat/melee-turn-card.hbs",
+        "systems/neuroshima/templates/chat/melee-vanilla-pool.hbs",
+        "systems/neuroshima/templates/chat/melee-vanilla-attack.hbs",
+        "systems/neuroshima/templates/chat/melee-vanilla-defense.hbs",
+        "systems/neuroshima/templates/chat/melee-vanilla-result.hbs",
         "systems/neuroshima/templates/chat/weapon-roll-card.hbs",
         "systems/neuroshima/templates/chat/grenade-blast-result.hbs",
         "systems/neuroshima/templates/chat/grenade-blast-pain-report.hbs",
@@ -1879,6 +1886,9 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 Hooks.on("renderChatMessageHTML", (message, html) => {
     // Initialize Neuroshima chat actions dispatcher
     NeuroshimaChatMessage.onChatAction(html);
+
+    // Melee Vanilla Chat (vanilla mode)
+    MeleeVanillaChat.onRender(html, message);
 
     // Patient Card — collapsible UI
     const patientCard = html.querySelector(".neuroshima.patient-card");
@@ -2738,6 +2748,23 @@ function initializeSocketlib() {
         const message = game.messages.get(messageId);
         if (!message) return;
         return message.setFlag(scope, key, value);
+    });
+
+    game.neuroshima.socket.register("updateChatMessageContent", async (messageId, content) => {
+        const message = game.messages.get(messageId);
+        if (!message) return;
+        return message.update({ content });
+    });
+
+    game.neuroshima.socket.register("postVanillaCard", async (cardType, encounterId) => {
+        const { MeleeVanillaChat } = await import("./module/combat/melee-vanilla-chat.js");
+        if (cardType === "start") {
+            await MeleeVanillaChat._syncEncounter(encounterId);
+        } else if (cardType === "result") {
+            const { MeleeStore } = await import("./module/combat/melee-store.js");
+            const enc = MeleeStore.getEncounter(encounterId);
+            if (enc) await MeleeVanillaChat._postResultCard(encounterId, enc, null);
+        }
     });
 
     // Trick die bonus — applied as GM so the message can always be updated

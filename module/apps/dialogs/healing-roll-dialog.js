@@ -163,6 +163,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
 
     const sfHealAll   = scriptFields.healingModifierAll  || 0;
     const sfHealDt    = scriptFields.healingModifier     || {};
+    const sfHealDiff  = scriptFields.healingDifficulty   || {};
+    const sfDiffShift = scriptFields.difficultyShift     || 0;
     const sfBreakdown = scriptFields.healingModBreakdown || [];
 
     const woundGroups = Object.values(this._woundGroupMap).map(group => {
@@ -171,6 +173,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       const selWoundMod      = this.userEntry[`woundModifier-${dt}`] ?? 0;
       const healPct          = getHealingPercent(healingMethod, group.woundList[0]?.hadFirstAid);
       const scriptHealingMod = sfHealAll + (sfHealDt[dt] || 0);
+      const scriptDiffShift  = sfDiffShift + (sfHealDiff[dt] || 0);
       const tooltipLines = sfBreakdown
         .map(b => {
           const val = (b.healingModifierAll || 0) + (b.healingModifier[dt] || 0);
@@ -178,7 +181,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
         })
         .filter(Boolean);
       const healingTooltip = tooltipLines.length > 0 ? tooltipLines.join("\n") : null;
-      return { ...group, difficulty: selDiff, healingPercent: healPct, woundModifier: selWoundMod + scriptHealingMod, scriptHealingMod, healingTooltip };
+      return { ...group, difficulty: selDiff, healingPercent: healPct, woundModifier: selWoundMod + scriptHealingMod, scriptHealingMod, scriptDiffShift, healingTooltip };
     });
 
     context.actor             = medicActor;
@@ -281,7 +284,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const diffModEl = html.querySelector('.difficulty-modifier');
     if (diffModEl) diffModEl.innerText = `${diffModifier >= 0 ? '+' : ''}${diffModifier}%`;
 
-    const diffShift = sf.difficultyShift || 0;
+    const sfDiffShift  = sf.difficultyShift   || 0;
+    const sfHealDiff   = sf.healingDifficulty || {};
 
     const woundGroups = Object.values(this._woundGroupMap);
     const diffParts = [];
@@ -292,7 +296,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       const totalPct   = (diffData.min || 0) + diffModifier;
       const adjusted   = NeuroshimaDice.getDifficultyFromPercent(totalPct);
       const adjustedKey = Object.entries(NEUROSHIMA.difficulties).find(([, v]) => v === adjusted)?.[0] ?? selDiffKey;
-      const shiftedKey  = diffShift ? NeuroshimaScriptRunner.shiftDifficultyKey(adjustedKey, diffShift) : adjustedKey;
+      const totalShift  = sfDiffShift + (sfHealDiff[dt] || 0);
+      const shiftedKey  = totalShift ? NeuroshimaScriptRunner.shiftDifficultyKey(adjustedKey, totalShift) : adjustedKey;
       const finalDiff   = NEUROSHIMA.difficulties[shiftedKey] || adjusted;
       diffParts.push(`${group.count}x ${game.i18n.localize(finalDiff.label)}`);
 
@@ -323,8 +328,10 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
     const woundPenalty = medicActor.system.combat?.totalWoundPenalty || 0;
 
     const sf = this._scriptFields || {};
-    const sfHealAll = sf.healingModifierAll || 0;
-    const sfHealDt  = sf.healingModifier    || {};
+    const sfHealAll  = sf.healingModifierAll  || 0;
+    const sfHealDt   = sf.healingModifier     || {};
+    const sfHealDiff = sf.healingDifficulty   || {};
+    const sfDiffShift = sf.difficultyShift    || 0;
 
     const woundGroups = Object.values(this._woundGroupMap);
     const woundConfigs = [];
@@ -334,6 +341,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       const userHealingMod       = (parseInt(formData[`woundModifier-${dt}`]) || 0) - scriptHealingModifier;
       const selDifficulty        = formData[`difficulty-${dt}`] || group.difficulty;
       const difficultyMod        = globalModifier + (useArmor ? armorPenalty : 0) + (useWound ? woundPenalty : 0);
+      const difficultyShift      = sfDiffShift + (sfHealDiff[dt] || 0);
 
       group.woundList.forEach(wound => {
         const failedAttempts = healingMethod === "firstAid"
@@ -345,6 +353,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
           damageType:           wound.damageType,
           difficulty:           selDifficulty,
           modifier:             difficultyMod,
+          difficultyShift,
           healingModifier:      userHealingMod,
           scriptHealingModifier,
           hadFirstAid:          wound.hadFirstAid || false,

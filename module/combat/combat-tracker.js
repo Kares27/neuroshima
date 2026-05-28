@@ -6,7 +6,8 @@
 export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.CombatTracker {
     constructor(options) {
         super(options);
-        this._view = "encounter"; // "encounter" lub "melee"
+        this._view = "encounter";
+        this._expandedEncounterId = null;
     }
 
     get _meleeCombatType() {
@@ -21,7 +22,8 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             "set-view": NeuroshimaCombatTracker.prototype._onSetView,
             "join-melee": NeuroshimaCombatTracker.prototype._onJoinMelee,
             "dismiss-melee": NeuroshimaCombatTracker.prototype._onDismissMelee,
-            "delete-duel": NeuroshimaCombatTracker.prototype._onDeleteDuel
+            "delete-duel": NeuroshimaCombatTracker.prototype._onDeleteDuel,
+            "expand-fight": NeuroshimaCombatTracker.prototype._onExpandFight
         }
     });
 
@@ -134,6 +136,16 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     }
 
     /**
+     * Toggles expanded view for a fight block in vanilla melee mode.
+     */
+    _onExpandFight(event, target) {
+        event.preventDefault();
+        const duelId = target.dataset.duelId;
+        this._expandedEncounterId = this._expandedEncounterId === duelId ? null : duelId;
+        this.render();
+    }
+
+    /**
      * Action to delete an active duel (GM only).
      */
     async _onDeleteDuel(event, target) {
@@ -164,6 +176,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         context.user = game.user;
         context.currentView = this._view;
         context.showMeleeTab = showMeleeTab;
+        context.isVanillaMeleeMode = this._meleeCombatType === "default";
 
         // Fetch all active encounters and pending duels
         const combat = this.viewed;
@@ -172,11 +185,29 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         
         context.activeMeleeEncounters = Object.values(encounters).map(e => {
             const enriched = foundry.utils.deepClone(e);
-            // Enrich participants and teams for template
+            const initiativeOwnerId = e.turnState?.initiativeOwnerId;
             enriched.teamsData = {
-                A: e.teams.A.map(id => e.participants[id]).filter(Boolean),
-                B: e.teams.B.map(id => e.participants[id]).filter(Boolean)
+                A: e.teams.A.map(id => {
+                    const p = e.participants[id];
+                    if (!p) return null;
+                    return { ...p, isInitiativeOwner: id === initiativeOwnerId };
+                }).filter(Boolean),
+                B: e.teams.B.map(id => {
+                    const p = e.participants[id];
+                    if (!p) return null;
+                    return { ...p, isInitiativeOwner: id === initiativeOwnerId };
+                }).filter(Boolean)
             };
+            enriched.isExpanded = e.id === this._expandedEncounterId;
+            const ts = e.turnState || {};
+            enriched.initiativeOwnerName = e.participants[ts.initiativeOwnerId]?.name || "---";
+            const queue = ts.segmentQueue || [];
+            const qIdx = ts.queueIndex ?? 0;
+            const currentAttackerId = queue[qIdx] || ts.selectionTurn || null;
+            enriched.currentAttackerName = currentAttackerId ? (e.participants[currentAttackerId]?.name || null) : null;
+            const currentDefenderId = currentAttackerId ? (e.primaryTargets?.[currentAttackerId] || null) : null;
+            enriched.currentDefenderName = currentDefenderId ? (e.participants[currentDefenderId]?.name || null) : null;
+            enriched.phaseLabel = ts.phase || "";
             return enriched;
         });
         context.pendingMeleeDuels = Object.values(pendings).filter(p => p.active);

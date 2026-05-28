@@ -2,6 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { MeleeEncounter } from "./melee-encounter.js";
 import { MeleeStore } from "./melee-store.js";
 import { MeleeCombatApp } from "../apps/melee-combat-app.js";
+import { MeleeVanillaChat } from "./melee-vanilla-chat.js";
 
 /**
  * Compatibility layer for Melee Combat.
@@ -183,7 +184,7 @@ export class NeuroshimaMeleeCombat {
 
     const encounterId = await MeleeEncounter.create(attackerData, defenderData);
     game.neuroshima?.log("Encounter created from pending response", { encounterId, attacker: attackerData.name, defender: defenderData.name });
-    this.openMeleeApp(encounterId);
+    this.startMeleeUI(encounterId);
   }
 
   /**
@@ -257,11 +258,26 @@ export class NeuroshimaMeleeCombat {
       attacker: attackerData.name,
       defender: defenderData.name
     });
-    this.openMeleeApp(encounterId);
+    this.startMeleeUI(encounterId);
   }
 
   /**
-   * Opens the MeleeCombatApp for a specific encounter.
+   * Starts the appropriate melee UI for an encounter.
+   * In vanilla (default) mode: posts chat cards via MeleeVanillaChat pipeline.
+   * In app mode (modes 2/3): opens MeleeCombatApp.
+   */
+  static async startMeleeUI(id) {
+    const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
+    if (combatTypeSetting === "default") {
+      await MeleeVanillaChat.startTurn(id);
+    } else {
+      this.openMeleeApp(id);
+    }
+  }
+
+  /**
+   * Opens the MeleeCombatApp for a specific encounter (direct, bypasses chat).
+   * Kept for backward compatibility and GM emergency access.
    */
   static openMeleeApp(id) {
     const app = new MeleeCombatApp(id);

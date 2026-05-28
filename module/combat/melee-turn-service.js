@@ -506,7 +506,12 @@ export class MeleeTurnService {
     const exchange = updated.currentExchange;
 
     if (participantId !== exchange.defenderId) return;
-    if (exchange.defenderSelectedDice.length !== exchange.declaredDiceCount) return;
+    const defender = updated.participants[exchange.defenderId];
+    const defenderPoolSize = (defender?.pool || []).length;
+    const usedCount = (defender?.usedDice || []).length;
+    const availableDefenderDice = defenderPoolSize - usedCount;
+    const requiredDiceCount = Math.min(exchange.declaredDiceCount, availableDefenderDice);
+    if (exchange.defenderSelectedDice.length !== requiredDiceCount) return;
 
     await MeleeStore.updateEncounter(id, updated);
 

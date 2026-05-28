@@ -1,0 +1,48 @@
+<div class="neuroshima-roll-card mvc-card mvc-result-card mvc-result--{{resultType}}">
+
+  <div class="mvc-result-header">
+    {{#if isHit}}
+      <i class="fas fa-bolt mvc-result-icon mvc-result-icon--hit"></i>
+      <span class="mvc-result-label mvc-result-label--hit">{{localize "NEUROSHIMA.MeleeDuel.Result.Hit"}}</span>
+    {{else if isTakeover}}
+      <i class="fas fa-exchange-alt mvc-result-icon mvc-result-icon--takeover"></i>
+      <span class="mvc-result-label mvc-result-label--takeover">{{localize "NEUROSHIMA.MeleeDuel.Result.Takeover"}}</span>
+    {{else}}
+      <i class="fas fa-shield-alt mvc-result-icon mvc-result-icon--block"></i>
+      <span class="mvc-result-label mvc-result-label--block">{{localize "NEUROSHIMA.MeleeDuel.Result.Block"}}</span>
+    {{/if}}
+    <span class="mvc-turn-mini">T{{turn}} S{{segment}}</span>
+  </div>
+
+  <div class="mvc-result-text">{{resultText}}</div>
+
+  {{#if pendingDamage}}
+  <div class="mvc-damage-select" data-melee-owner="{{pendingDamage.attackerId}}">
+    <div class="mvc-damage-label">
+      <i class="fas fa-skull-crossbones"></i>
+      {{localize "NEUROSHIMA.MeleeDuel.ChooseDamageDistribution"}}
+    </div>
+    <div class="mvc-damage-options">
+      {{#each pendingDamage.options}}
+        <button type="button"
+          class="action-btn action-btn--damage-opt pulse"
+          data-mvc-action="confirmDamage"
+          data-option-index="{{@index}}"
+          data-melee-owner="{{../pendingDamage.attackerId}}">
+          {{this.label}}
+        </button>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+  <div class="mvc-gm-controls" data-gm-only="true">
+    <button type="button" class="mtc-ctrl-btn" data-mvc-action="nextTurn" title="{{localize 'NEUROSHIMA.MeleeDuel.NextTurn'}}">
+      <i class="fas fa-step-forward"></i>
+    </button>
+    <button type="button" class="mtc-ctrl-btn mtc-ctrl-btn--danger" data-mvc-action="endEncounter" title="{{localize 'NEUROSHIMA.MeleeDuel.EndEncounter'}}">
+      <i class="fas fa-times-circle"></i>
+    </button>
+  </div>
+
+</div>

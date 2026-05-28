@@ -692,6 +692,7 @@
         "Combat": {
             "Combatants": "Uczestnicy",
             "Turn": "Tura",
+            "Segment": "Seg.",
             "MeleeInitiative": "Inicjatywa Wręcz",
             "ArmorPenalty": "Kara od Pancerza",
             "GeneralPenalty": "Ogólna Kara",
@@ -735,7 +736,8 @@
             "ApplyDamage": "Zastosuj Obrażenia",
             "AlreadyApplied": "Obrażenia zostały już zastosowane.",
             "DamageApplied": "Nałożono",
-            "NoHits": "Brak trafień do zastosowania."
+            "NoHits": "Brak trafień do zastosowania.",
+            "BeastHit": "Trafienie Bestii"
         },
         "SkillAlloc": {
             "Title": "Podwójne działanie Umiejętności walki",
@@ -794,6 +796,9 @@
             "Active": "Aktywny Pojedynek",
             "Pending": "Oczekiwanie na Obrońcę",
             "ClickToOpen": "Kliknij, aby otworzyć panel walki",
+            "ChatModeHint": "Walka toczy się na czacie — patrz karta powyżej.",
+            "FightInProgress": "Starcie w Zwarciu",
+            "OpenApp": "Otwórz aplikację walki (GM override)",
             "WaitingForDefender": "Oczekiwanie na reakcję obrońcy...",
             "CombatLog": "Dziennik Walki",
             "LogEmpty": "Brak wpisów w dzienniku.",
@@ -864,6 +869,25 @@
             "ResultBlock": "Obrona",
             "ResetTurn": "Resetuj turę",
             "EndEncounter": "Zakończ starcie",
+            "InitiativeOwner": "Właściciel inicjatywy",
+            "NotYourFighter": "Nie kontrolujesz tej postaci.",
+            "Phase": {
+                "AwaitingPoolRolls": "Oczekiwanie na rzuty puli",
+                "TargetSelection": "Wybór celu",
+                "AttackSelection": "Deklaracja ataku",
+                "DefenseSelection": "Deklaracja obrony",
+                "DamageSelection": "Wybór obrażeń",
+                "SegmentEnd": "Koniec segmentu"
+            },
+            "AwaitingAttack": "Czeka na atak",
+            "SelectDiceFirst": "Najpierw wybierz kości do ataku.",
+            "SelectedCount": "Wybrano",
+            "DefenseWrongCount": "Wybierz dokładnie {needed} kości (zaznaczono: {selected}).",
+            "Result": {
+                "Hit": "Trafienie",
+                "Block": "Obrona",
+                "Takeover": "Przejęcie inicjatywy"
+            },
             "PrevSegment": "Poprzedni segment",
             "NextSegment": "Następny segment",
             "PrevTurn": "Poprzednia tura",
@@ -1503,6 +1527,7 @@
         "BeastAction": {
             "Label": "Akcje Bestii",
             "None": "Brak akcji bestii.",
+            "RollAttack": "Rzut atakiem bestii",
             "TypeLabel": "Typ akcji",
             "CostTypeLabel": "Typ kosztu",
             "CostType": {
@@ -1521,6 +1546,10 @@
             "Apply": "Zastosuj Akcje Bestii",
             "AlreadyApplied": "Akcje bestii zostały już zastosowane.",
             "HasEffects": "Nakłada aktywne efekty"
+        },
+        "BeastSegment": {
+            "Label": "Segmenty Bestii",
+            "None": "Brak akcji segmentowych."
         },
         "Vehicle": {
             "Type": "Typ Pojazdu",

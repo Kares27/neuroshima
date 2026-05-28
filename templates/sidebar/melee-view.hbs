@@ -1,5 +1,43 @@
 <div class="melee-view-container">
     {{#each activeMeleeEncounters as |encounter|}}
+    {{#if @root.isVanillaMeleeMode}}
+
+    <div class="active-melee-panel full-view melee-panel--chat-mode">
+        <div class="melee-fight-header">
+            <i class="fas fa-swords"></i>
+            <span class="melee-fight-header-title">{{localize "NEUROSHIMA.MeleeDuel.FightInProgress"}}</span>
+            <span class="melee-seg-badge">T{{encounter.turnState.turn}} S{{encounter.turnState.segment}}</span>
+            {{#if @root.user.isGM}}
+            <a class="action-btn delete melee-delete-btn" data-action="delete-duel" data-duel-id="{{encounter.id}}" title="{{localize 'NEUROSHIMA.Actions.Delete'}}">
+                <i class="fas fa-trash"></i>
+            </a>
+            {{/if}}
+        </div>
+        <ol class="melee-combatant-list">
+            {{#each encounter.teamsData.A}}
+            <li class="melee-combatant {{#if this.isInitiativeOwner}}melee-combatant--init{{/if}}">
+                <img src="{{this.img}}" class="melee-combatant-img" title="{{this.name}}">
+                <span class="melee-combatant-name">{{this.name}}</span>
+                <span class="melee-combatant-initiative" title="{{localize 'NEUROSHIMA.MeleeDuel.Initiative'}}">
+                    {{#if this.isInitiativeOwner}}<i class="fas fa-bolt"></i>{{/if}}
+                    {{this.initiative}}
+                </span>
+            </li>
+            {{/each}}
+            {{#each encounter.teamsData.B}}
+            <li class="melee-combatant {{#if this.isInitiativeOwner}}melee-combatant--init{{/if}}">
+                <img src="{{this.img}}" class="melee-combatant-img" title="{{this.name}}">
+                <span class="melee-combatant-name">{{this.name}}</span>
+                <span class="melee-combatant-initiative" title="{{localize 'NEUROSHIMA.MeleeDuel.Initiative'}}">
+                    {{#if this.isInitiativeOwner}}<i class="fas fa-bolt"></i>{{/if}}
+                    {{this.initiative}}
+                </span>
+            </li>
+            {{/each}}
+        </ol>
+    </div>
+
+    {{else}}
     <div class="active-melee-panel full-view" data-action="open-melee" data-duel-id="{{encounter.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.ClickToOpen'}}">
         <div class="melee-header">
             <i class="fas fa-swords"></i>
@@ -31,6 +69,8 @@
             </div>
         </div>
     </div>
+    {{/if}}
+
     {{/each}}
 
     {{#each pendingMeleeDuels as |pending|}}

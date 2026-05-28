@@ -1,0 +1,94 @@
+<div class="neuroshima-roll-card mvc-card mvc-pool-card">
+
+  <div class="mvc-header">
+    <div class="mvc-header-left">
+      <span class="mvc-turn-label">{{localize "NEUROSHIMA.Combat.Turn"}} {{turn}}</span>
+      <div class="mvc-segments">
+        {{#each segmentDots}}
+          <div class="seg-dot seg-dot--{{state}}">
+            {{#if (eq state "done")}}<i class="fas fa-check"></i>{{else}}{{number}}{{/if}}
+          </div>
+        {{/each}}
+      </div>
+    </div>
+    <span class="mvc-phase-tag mvc-phase-tag--pool">
+      <i class="fas fa-dice-d20"></i>
+      {{#if isTargetSelection}}
+        {{localize "NEUROSHIMA.MeleeDuel.Phase.TargetSelection"}}
+      {{else}}
+        {{localize "NEUROSHIMA.MeleeDuel.Phase.AwaitingPoolRolls"}}
+      {{/if}}
+    </span>
+    <span class="mvc-initiative-badge"><i class="fas fa-bolt"></i> {{initiativeOwnerName}}</span>
+  </div>
+
+  {{#if isTargetSelection}}
+  <div class="mvc-target-banner">
+    <i class="fas fa-crosshairs"></i>
+    {{selectionOwnerName}} — {{localize "NEUROSHIMA.MeleeDuel.Phase.TargetSelection"}}
+  </div>
+  {{/if}}
+
+  <div class="mvc-arena">
+    <div class="mvc-team mvc-team--a">
+      {{#each teamsA}}
+        {{> mvcFighterPool}}
+      {{/each}}
+    </div>
+    <div class="mvc-vs"><i class="fas fa-swords"></i></div>
+    <div class="mvc-team mvc-team--b">
+      {{#each teamsB}}
+        {{> mvcFighterPool}}
+      {{/each}}
+    </div>
+  </div>
+
+</div>
+
+{{#*inline "mvcFighterPool"}}
+<div class="mvc-fighter {{#if isInitiativeOwner}}mvc-fighter--initiative{{/if}}">
+  <div class="mvc-fighter-header">
+    <div class="mvc-fighter-avatar-wrap">
+      <img src="{{img}}" class="mvc-fighter-avatar" alt="{{name}}">
+      {{#if isCrowded}}<span class="fc-crowded-badge">-{{dexPenalty}}</span>{{/if}}
+    </div>
+    <div class="mvc-fighter-info">
+      <span class="mvc-fighter-name">
+        {{name}}{{#if isInitiativeOwner}} <i class="fas fa-bolt mvc-init-icon"></i>{{/if}}
+      </span>
+      <span class="mvc-fighter-sub"><i class="fas fa-bolt"></i>{{initiative}}{{#if (ne maneuver "none")}} · {{maneuver}}{{/if}}</span>
+      {{#if hasPool}}
+        <span class="mvc-fighter-weapon">{{weaponName}}</span>
+      {{else}}
+        <select class="mtc-weapon-select" data-participant-id="{{id}}" data-melee-owner="{{actorUuid}}">
+          {{#each meleeWeapons}}
+            <option value="{{id}}" {{#if isCurrent}}selected{{/if}}>{{name}}</option>
+          {{/each}}
+        </select>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="mvc-dice-row">
+    {{#if needsPool}}
+      <button type="button" class="action-btn action-btn--roll pulse"
+              data-mvc-action="rollPool"
+              data-participant-id="{{id}}"
+              data-melee-owner="{{actorUuid}}">
+        <i class="fas fa-dice-d20"></i> {{localize "NEUROSHIMA.MeleeDuel.RollPool"}}
+      </button>
+    {{else if hasPool}}
+      {{#each effectivePool}}
+        <span class="die-chip die-chip--sm
+          {{#if this.isSuccess}}is-success{{else}}is-failure{{/if}}
+          {{#if this.isNat20}}is-nat20{{/if}}"
+          title="{{#if this.isNat20}}Nat 20{{else if this.isSuccess}}Sukces{{else}}Porażka{{/if}}">
+          {{this.effective}}
+        </span>
+      {{/each}}
+    {{else}}
+      <span class="mvc-waiting"><i class="fas fa-hourglass-half"></i></span>
+    {{/if}}
+  </div>
+</div>
+{{/inline}}

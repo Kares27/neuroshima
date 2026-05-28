@@ -685,6 +685,7 @@
         "Combat": {
             "Combatants": "Combatants",
             "Turn": "Turn",
+            "Segment": "Seg.",
             "MeleeInitiative": "Melee Initiative",
             "ArmorPenalty": "Armor Penalty",
             "GeneralPenalty": "General Penalty",
@@ -728,7 +729,8 @@
             "ApplyDamage": "Apply Damage",
             "AlreadyApplied": "Damage has already been applied.",
             "DamageApplied": "Applied",
-            "NoHits": "No hits to apply."
+            "NoHits": "No hits to apply.",
+            "BeastHit": "Beast Hit"
         },
         "SkillAlloc": {
             "Title": "Double Combat Skill Action",
@@ -787,6 +789,25 @@
         "ResultMiss": "Miss.",
         "ResetTurn": "Reset Turn",
         "EndEncounter": "End Encounter",
+        "InitiativeOwner": "Initiative Owner",
+        "NotYourFighter": "You don't control this fighter.",
+        "Phase": {
+            "AwaitingPoolRolls": "Awaiting Pool Rolls",
+            "TargetSelection": "Target Selection",
+            "AttackSelection": "Attack Selection",
+            "DefenseSelection": "Defense Selection",
+            "DamageSelection": "Damage Selection",
+            "SegmentEnd": "Segment End"
+        },
+        "AwaitingAttack": "Awaiting attack",
+        "SelectDiceFirst": "Select at least one die for your attack first.",
+        "SelectedCount": "Selected",
+        "DefenseWrongCount": "Select exactly {needed} dice (selected: {selected}).",
+        "Result": {
+            "Hit": "Hit",
+            "Block": "Blocked",
+            "Takeover": "Initiative Taken"
+        },
         "PrevSegment": "Previous Segment",
         "NextSegment": "Next Segment",
         "PrevTurn": "Previous Turn",
@@ -809,6 +830,9 @@
         "Active": "Active Duel",
         "Pending": "Waiting for Defender",
         "ClickToOpen": "Click to open combat panel",
+        "ChatModeHint": "Combat runs in chat — see the card above.",
+        "FightInProgress": "Melee Fight",
+        "OpenApp": "Open combat app (GM override)",
         "WaitingForDefender": "Waiting for defender to join...",
         "CombatLog": "Combat Log",
         "LogEmpty": "No entries in log.",
@@ -1474,6 +1498,7 @@
         "BeastAction": {
             "Label": "Beast Actions",
             "None": "No beast actions.",
+            "RollAttack": "Roll Beast Attack",
             "TypeLabel": "Action Type",
             "CostTypeLabel": "Cost Type",
             "CostType": {
@@ -1492,6 +1517,10 @@
             "Apply": "Apply Beast Actions",
             "AlreadyApplied": "Beast actions have already been applied.",
             "HasEffects": "Applies active effects"
+        },
+        "BeastSegment": {
+            "Label": "Beast Segments",
+            "None": "No segment actions."
         },
         "Vehicle": {
             "Type": "Vehicle Type",

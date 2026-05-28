@@ -193,7 +193,12 @@ export class MeleeEncounter {
     for (const p of Object.values(encounter.participants)) {
       const doc = fromUuidSync(p.actorUuid);
       const actor = doc?.actor || doc;
-      if (actor) await actor.setFlag("neuroshima", "activeMeleeEncounter", encounter.id);
+      if (!actor) continue;
+      if (game.user.isGM || actor.isOwner) {
+        await actor.setFlag("neuroshima", "activeMeleeEncounter", encounter.id);
+      } else if (game.neuroshima?.socket) {
+        await game.neuroshima.socket.executeAsGM("setActorFlag", p.actorUuid, "neuroshima", "activeMeleeEncounter", encounter.id);
+      }
     }
   }
 

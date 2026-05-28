@@ -437,12 +437,14 @@
 
             <hr class="dotted-hr" style="margin: 6px 0;">
             <div class="flexrow" style="gap: 12px; align-items: flex-end; justify-content: center;">
+                {{#if (eq system.costType "segment")}}
                 <div class="form-group row-group" style="flex: 1;">
                     <label>{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
                     <select name="system.attribute">
                         {{selectOptions attributes selected=system.attribute labelAttr="label" localize=true}}
                     </select>
                 </div>
+                {{/if}}
                 <div class="form-group row-group" style="flex: 0 0 60px; text-align: center;">
                     <label title="Punkty Przebicia">PP</label>
                     <input type="number" name="system.piercing" value="{{system.piercing}}" min="0" max="10" style="text-align: center;"/>
