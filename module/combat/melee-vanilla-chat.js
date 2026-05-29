@@ -17,7 +17,7 @@ export class MeleeVanillaChat {
     MeleeVanillaChat._debouncedSync = foundry.utils.debounce(async () => {
       if (!game.user.isGM) return;
       const mode = game.settings.get("neuroshima", "meleeCombatType") || "default";
-      if (mode === "default") return;
+      if (mode !== "default") return;
       if (game.combat) await MeleeVanillaChat._syncAll(game.combat);
     }, 300);
 

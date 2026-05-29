@@ -46,6 +46,7 @@ import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 import { MeleeVanillaChat } from "./module/combat/melee-vanilla-chat.js";
+import { MeleeOpposedChat } from "./module/combat/melee-opposed-chat.js";
 
 // System initialization
 Hooks.once('init', async function() {
@@ -1894,9 +1895,14 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     // Initialize Neuroshima chat actions dispatcher
     NeuroshimaChatMessage.onChatAction(html);
 
-    // Melee Vanilla Chat (non-default modes only)
-    if ((game.settings.get("neuroshima", "meleeCombatType") || "default") !== "default") {
+    // Melee Vanilla Chat (default mode only)
+    if ((game.settings.get("neuroshima", "meleeCombatType") || "default") === "default") {
         MeleeVanillaChat.onRender(html, message);
+    }
+
+    // Duel card (opposedPips / opposedSuccesses modes)
+    if (message.getFlag("neuroshima", "duelCard")) {
+        MeleeOpposedChat.onRenderDuelCard(html, message);
     }
 
     // Patient Card — collapsible UI
@@ -2798,8 +2804,11 @@ function initializeSocketlib() {
     });
 
     game.neuroshima.socket.register("applyDuelPick", async (messageId, side, dieIdx) => {
-        const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
-        await MeleeOpposedChat.applyDuelPick(messageId, side, dieIdx);
+        await MeleeOpposedChat.applyDuelBatch(messageId, side, [dieIdx]);
+    });
+
+    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices) => {
+        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices);
     });
 
     game.neuroshima.socket.register("healingRequestPrompt", async ({ patientUuid, patientName, patientPortrait, requesterUserId, medicActorUuid, isPrivate }) => {

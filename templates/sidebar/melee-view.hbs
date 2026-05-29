@@ -1,68 +1,110 @@
 <div class="melee-view-root">
 
-<div class="melee-tab-header">
-    <span class="melee-tab-title">{{localize "NEUROSHIMA.MeleeDuel.MeleeInitiativeTitle"}}</span>
-    {{#if isGM}}
-    <a class="melee-header-btn" data-action="add-melee-group" title="{{localize 'NEUROSHIMA.MeleeDuel.AddGroup'}}">
-        <i class="fas fa-folder-plus"></i>
-    </a>
-    {{/if}}
+<div class="melee-group-nav">
+  {{#each meleeGroups}}
+  <button type="button"
+          class="melee-group-nav-btn{{#if this.isActive}} is-active{{/if}}"
+          data-action="select-melee-group"
+          data-group-id="{{this.id}}"
+          title="{{this.name}}">
+    {{this.number}}
+  </button>
+  {{/each}}
+  {{#if isGM}}
+  <button type="button"
+          class="melee-group-nav-btn melee-group-nav-btn--add"
+          data-action="add-melee-group"
+          title="{{localize 'NEUROSHIMA.MeleeDuel.AddGroup'}}">
+    <i class="fas fa-plus"></i>
+  </button>
+  {{/if}}
 </div>
 
 {{#each meleeGroups}}
+{{#if this.isActive}}
 <div class="melee-group" data-group-id="{{this.id}}">
-    <div class="melee-group-header">
-        <span class="melee-group-name">{{this.name}}</span>
-        {{#if ../isGM}}
-        <a class="melee-header-btn" data-action="add-melee-fighter" title="{{localize 'NEUROSHIMA.MeleeDuel.AddFighters'}}">
-            <i class="fas fa-user-plus"></i>
-        </a>
-        <a class="melee-header-btn" data-action="roll-npc-init-group" title="{{localize 'NEUROSHIMA.MeleeDuel.RollGroupNPCInit'}}">
-            <i class="fas fa-dice-d20"></i>
-        </a>
-        <a class="melee-header-btn melee-clear-btn" data-action="remove-melee-group" title="{{localize 'NEUROSHIMA.MeleeDuel.RemoveGroup'}}">
-            <i class="fas fa-trash"></i>
+
+  <div class="melee-group-header">
+    {{#if ../isGM}}
+    <a class="melee-header-btn" data-action="add-melee-fighter" title="{{localize 'NEUROSHIMA.MeleeDuel.AddFighters'}}">
+      <i class="fas fa-user-plus"></i>
+    </a>
+    {{/if}}
+    <h3 class="melee-group-name">{{this.name}}</h3>
+    <span class="melee-segment-counter">T{{this.currentRound}} · S{{this.currentSegment}}/3</span>
+    {{#if ../isGM}}
+    <a class="melee-header-btn" data-action="roll-npc-init-group" title="{{localize 'NEUROSHIMA.MeleeDuel.RollGroupNPCInit'}}">
+      <i class="fas fa-dice-d20"></i>
+    </a>
+    {{/if}}
+  </div>
+
+  {{#if this.fighters.length}}
+  <ol class="melee-group-fighters">
+    {{#each this.fighters}}
+    <li class="combatant {{#if this.isInitiativeOwner}}is-active{{/if}}" data-uuid="{{this.uuid}}">
+      <img class="token-image" src="{{this.img}}" title="{{this.name}}"/>
+      <div class="token-name">
+        <h4>{{this.name}}</h4>
+      </div>
+      {{#if this.isInitiativeOwner}}
+      <i class="fas fa-bolt melee-init-holder" title="{{localize 'NEUROSHIMA.MeleeDuel.InitiativeOwner'}}"></i>
+      {{/if}}
+      <div class="token-initiative">
+        {{#if this.hasInitiative}}
+        <span class="initiative">{{this.meleeInitiative}}</span>
+        {{else if this.isOwner}}
+        <a class="combatant-control roll" data-action="roll-melee-init" title="{{localize 'NEUROSHIMA.MeleeDuel.RollMeleeInitiative'}}">
+          <i class="fas fa-dice-d20"></i>
         </a>
         {{/if}}
-    </div>
-    {{#if this.fighters.length}}
-    <ol class="melee-group-fighters">
-        {{#each this.fighters}}
-        <li class="combatant" data-uuid="{{this.uuid}}">
-            <img class="token-image" src="{{this.img}}" title="{{this.name}}"/>
-            <div class="token-name">
-                <h4>{{this.name}}</h4>
-                {{#if ../../isGM}}
-                <div class="combatant-controls">
-                    <a class="combatant-control" data-action="remove-melee-fighter" title="{{localize 'NEUROSHIMA.MeleeDuel.RemoveFighter'}}">
-                        <i class="fas fa-times"></i>
-                    </a>
-                </div>
-                {{/if}}
-            </div>
-            <div class="token-initiative">
-                {{#if this.hasInitiative}}
-                <span class="initiative">{{this.meleeInitiative}}</span>
-                {{else if this.isOwner}}
-                <a class="combatant-control roll" data-action="roll-melee-init" title="{{localize 'NEUROSHIMA.MeleeDuel.RollMeleeInitiative'}}">
-                    <i class="fas fa-dice-d20"></i>
-                </a>
-                {{/if}}
-            </div>
-        </li>
-        {{/each}}
-    </ol>
-    {{else}}
-    <div class="melee-group-empty">
-        <p>{{localize "NEUROSHIMA.MeleeDuel.EmptyGroup"}}</p>
-    </div>
-    {{/if}}
+      </div>
+      {{#if ../../isGM}}
+      <div class="combatant-controls">
+        <a class="combatant-control" data-action="set-initiative-owner" title="{{localize 'NEUROSHIMA.MeleeDuel.SetInitiativeOwner'}}">
+          <i class="fas fa-bolt"></i>
+        </a>
+        <a class="combatant-control" data-action="remove-melee-fighter" title="{{localize 'NEUROSHIMA.MeleeDuel.RemoveFighter'}}">
+          <i class="fas fa-times"></i>
+        </a>
+      </div>
+      {{/if}}
+    </li>
+    {{/each}}
+  </ol>
+  {{else}}
+  <div class="melee-group-empty">
+    <p>{{localize "NEUROSHIMA.MeleeDuel.EmptyGroup"}}</p>
+  </div>
+  {{/if}}
+
+  {{#if ../isGM}}
+  <div class="melee-group-footer">
+    <button type="button" class="melee-nav-btn" data-action="first-melee-segment" data-group-id="{{this.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.FirstSegment'}}">
+      <i class="fas fa-step-backward"></i>
+    </button>
+    <button type="button" class="melee-nav-btn" data-action="prev-melee-segment" data-group-id="{{this.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.PrevSegment'}}">
+      <i class="fas fa-arrow-left"></i>
+    </button>
+    <button type="button" class="melee-nav-btn melee-nav-btn--end" data-action="remove-melee-group" data-group-id="{{this.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.RemoveGroup'}}">
+      <i class="fas fa-times-circle"></i> {{localize "NEUROSHIMA.MeleeDuel.RemoveGroup"}}
+    </button>
+    <button type="button" class="melee-nav-btn" data-action="next-melee-segment" data-group-id="{{this.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.NextSegment'}}">
+      <i class="fas fa-arrow-right"></i>
+    </button>
+    <button type="button" class="melee-nav-btn" data-action="next-melee-round" data-group-id="{{this.id}}" title="{{localize 'NEUROSHIMA.MeleeDuel.NextRound'}}">
+      <i class="fas fa-step-forward"></i>
+    </button>
+  </div>
+  {{/if}}
+
 </div>
+{{/if}}
 {{/each}}
 
 {{#unless meleeGroups.length}}
 <div class="melee-empty-state">
-    <p>{{localize "NEUROSHIMA.MeleeDuel.EmptyMeleeTab"}}</p>
+  <p>{{localize "NEUROSHIMA.MeleeDuel.EmptyMeleeTab"}}</p>
 </div>
 {{/unless}}
 

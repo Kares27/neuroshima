@@ -750,7 +750,7 @@
             "DefenderConfirmed": "Obrońca potwierdził — oczekiwanie na atakującego…"
         },
         "MeleeDuel": {
-            "Title": "Starcie w zwarciu",
+            "Title": "Pojedynki",
             "Phase": {
                 "awaiting-pool-rolls": "Rzuty puli",
                 "target-selection": "Wybór celów",
@@ -919,6 +919,8 @@
             "DuelSegment": "Segment",
             "DuelWaitingAttacker": "wybiera kość do ataku",
             "DuelWaitingDefender": "odpowiada kością",
+            "DuelWaitingOwner": "wybiera kości (1–3)",
+            "DuelWaitingResponder": "odpowiada ({n} kości)",
             "DuelSegResult": {
                 "hit": "Trafienie!",
                 "draw": "Remis",
@@ -930,7 +932,10 @@
             "DuelConfirmAttack": "Zatwierdź wybór ({n})",
             "DuelConfirmDefense": "Potwierdź odpowiedź",
             "DuelPickMore": "Wybierz jeszcze: {n}",
-            "RollGroupNPCInit": "Rzuć inicjatywę dla BN"
+            "RollGroupNPCInit": "Rzuć inicjatywę dla BN",
+            "SetInitiativeOwner": "Ustaw jako właściciela inicjatywy (kliknij ponownie, aby cofnąć)",
+            "FirstSegment": "Wróć do Tury 1, Segmentu 1",
+            "NextRound": "Następna tura (Segment 1)"
         },
         "Tabs": {
             "Attributes": "Współczynniki",

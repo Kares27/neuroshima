@@ -436,7 +436,8 @@ body.theme-dark {
 /* Chat Message Styling */
 .chat-message:has(.neuroshima.roll-card),
 .chat-message:has(.neuroshima.patient-card),
-.chat-message:has(.neuroshima.item-card) {
+.chat-message:has(.neuroshima.item-card),
+.chat-message:has(.neuroshima.melee-duel-card) {
     background: #f0f0e0;
     border: 1px solid #7a7971;
 }
@@ -1052,7 +1053,8 @@ body.theme-dark {
 .theme-dark .chat-message:has(.neuroshima.roll-card),
 .theme-dark .chat-message:has(.neuroshima.patient-card),
 .theme-dark .chat-message:has(.neuroshima.heal-request-card),
-.theme-dark .chat-message:has(.neuroshima.required-test-card) {
+.theme-dark .chat-message:has(.neuroshima.required-test-card),
+.theme-dark .chat-message:has(.neuroshima.melee-duel-card) {
     background: #0b0a13e6;
     border-color: #5a5a54;
     color: #e0e0d0;
@@ -5006,6 +5008,21 @@ body.theme-dark {
 .neuroshima.combat-tracker[data-view="melee"] [data-application-part="tracker"],
 .neuroshima.combat-tracker[data-view="melee"] [data-application-part="footer"] {
     display: none !important;
+}
+
+.neuroshima.combat-tracker[data-view="melee"] [data-application-part="melee"] {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.neuroshima.combat-tracker .melee-view-root {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 /* Combat Tracker Tabs */

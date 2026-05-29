@@ -6,6 +6,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     constructor(options) {
         super(options);
         this._view = "encounter";
+        this._activeGroupId = null;
     }
 
     get _meleeCombatType() {
@@ -15,13 +16,19 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     static DEFAULT_OPTIONS = foundry.utils.mergeObject(super.DEFAULT_OPTIONS, {
         classes: ["neuroshima", "combat-tracker"],
         actions: {
-            "set-view":             NeuroshimaCombatTracker.prototype._onSetView,
-            "add-melee-group":      NeuroshimaCombatTracker.prototype._onAddMeleeGroup,
-            "remove-melee-group":   NeuroshimaCombatTracker.prototype._onRemoveMeleeGroup,
-            "add-melee-fighter":    NeuroshimaCombatTracker.prototype._onAddMeleeFighter,
-            "remove-melee-fighter": NeuroshimaCombatTracker.prototype._onRemoveMeleeFighter,
-            "roll-melee-init":        NeuroshimaCombatTracker.prototype._onRollMeleeInit,
-            "roll-npc-init-group":    NeuroshimaCombatTracker.prototype._onRollNpcInitGroup
+            "set-view":              NeuroshimaCombatTracker.prototype._onSetView,
+            "add-melee-group":       NeuroshimaCombatTracker.prototype._onAddMeleeGroup,
+            "remove-melee-group":    NeuroshimaCombatTracker.prototype._onRemoveMeleeGroup,
+            "add-melee-fighter":     NeuroshimaCombatTracker.prototype._onAddMeleeFighter,
+            "remove-melee-fighter":  NeuroshimaCombatTracker.prototype._onRemoveMeleeFighter,
+            "roll-melee-init":       NeuroshimaCombatTracker.prototype._onRollMeleeInit,
+            "roll-npc-init-group":   NeuroshimaCombatTracker.prototype._onRollNpcInitGroup,
+            "first-melee-segment":   NeuroshimaCombatTracker.prototype._onFirstMeleeSegment,
+            "prev-melee-segment":    NeuroshimaCombatTracker.prototype._onPrevMeleeSegment,
+            "next-melee-segment":    NeuroshimaCombatTracker.prototype._onNextMeleeSegment,
+            "next-melee-round":      NeuroshimaCombatTracker.prototype._onNextMeleeRound,
+            "set-initiative-owner":  NeuroshimaCombatTracker.prototype._onSetInitiativeOwner,
+            "select-melee-group":    NeuroshimaCombatTracker.prototype._onSelectMeleeGroup
         }
     });
 
@@ -61,7 +68,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
 
     _buildMeleeGroups() {
         const groups = game.combat?.getFlag("neuroshima", "meleeGroups") || [];
-        return groups.map(group => {
+        const mapped = groups.map((group, idx) => {
             const fighters = (group.fighters || []).map(f => {
                 let actor = null;
                 try {
@@ -84,7 +91,8 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
                     img:             f.img,
                     meleeInitiative: initValue,
                     hasInitiative:   hasRolled,
-                    isOwner:         actor?.isOwner ?? game.user.isGM
+                    isOwner:         actor?.isOwner ?? game.user.isGM,
+                    isInitiativeOwner: false
                 };
             });
 
@@ -95,8 +103,34 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
                 return b.meleeInitiative - a.meleeInitiative;
             });
 
-            return { id: group.id, name: group.name, fighters };
+            let initiativeOwnerId = group.initiativeOwnerId ?? null;
+            if (!initiativeOwnerId) {
+                const top = fighters.find(f => f.hasInitiative);
+                if (top) initiativeOwnerId = top.uuid;
+            }
+            for (const f of fighters) {
+                f.isInitiativeOwner = f.uuid === initiativeOwnerId;
+            }
+
+            return {
+                id:             group.id,
+                name:           group.name,
+                number:         idx + 1,
+                fighters,
+                currentRound:   group.currentRound ?? 1,
+                currentSegment: group.currentSegment ?? 1,
+                initiativeOwnerId,
+                isActive:       false
+            };
         });
+
+        const ids = mapped.map(g => g.id);
+        if (!this._activeGroupId || !ids.includes(this._activeGroupId)) {
+            this._activeGroupId = ids[0] ?? null;
+        }
+        for (const g of mapped) g.isActive = g.id === this._activeGroupId;
+
+        return mapped;
     }
 
     _getActorForFighter(fighter) {
@@ -111,6 +145,21 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         }
     }
 
+    _getGroupId(target) {
+        return target.closest(".melee-group")?.dataset.groupId
+            ?? target.dataset.groupId
+            ?? null;
+    }
+
+    async _updateGroup(groupId, mutate) {
+        if (!game.combat) return;
+        const groups = foundry.utils.deepClone(game.combat.getFlag("neuroshima", "meleeGroups") || []);
+        const idx = groups.findIndex(g => g.id === groupId);
+        if (idx === -1) return;
+        mutate(groups[idx]);
+        await game.combat.setFlag("neuroshima", "meleeGroups", groups);
+    }
+
     _onSetView(event, target) {
         event.preventDefault();
         this._view = target.dataset.tab;
@@ -119,17 +168,25 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
 
     async _onAddMeleeGroup(event, target) {
         event.preventDefault();
-        if (!game.user.isGM || !game.combat) return;
+        if (!game.user.isGM) return;
+        if (!game.combat) {
+            ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NoCombat"));
+            return;
+        }
         const groups = game.combat.getFlag("neuroshima", "meleeGroups") || [];
         const id = foundry.utils.randomID(8);
         const name = game.i18n.format("NEUROSHIMA.MeleeDuel.GroupName", { n: groups.length + 1 });
-        await game.combat.setFlag("neuroshima", "meleeGroups", [...groups, { id, name, fighters: [] }]);
+        this._activeGroupId = id;
+        await game.combat.setFlag("neuroshima", "meleeGroups", [
+            ...groups,
+            { id, name, fighters: [], currentRound: 1, currentSegment: 1, initiativeOwnerId: null }
+        ]);
     }
 
     async _onRemoveMeleeGroup(event, target) {
         event.preventDefault();
         if (!game.user.isGM || !game.combat) return;
-        const groupId = target.closest(".melee-group")?.dataset.groupId;
+        const groupId = this._getGroupId(target);
         if (!groupId) return;
         const groups = game.combat.getFlag("neuroshima", "meleeGroups") || [];
         const group = groups.find(g => g.id === groupId);
@@ -138,6 +195,10 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
                 const actor = this._getActorForFighter(f);
                 if (actor) await actor.unsetFlag("neuroshima", "meleeDuelInit").catch(() => {});
             }
+        }
+        if (this._activeGroupId === groupId) {
+            const remaining = groups.filter(g => g.id !== groupId);
+            this._activeGroupId = remaining[0]?.id ?? null;
         }
         await game.combat.setFlag("neuroshima", "meleeGroups", groups.filter(g => g.id !== groupId));
     }
@@ -148,7 +209,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         if (!game.combat) {
             return ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NoCombat"));
         }
-        const groupId = target.closest(".melee-group")?.dataset.groupId;
+        const groupId = this._getGroupId(target);
         if (!groupId) return;
 
         const selected = canvas.tokens?.controlled ?? [];
@@ -184,7 +245,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
         event.preventDefault();
         if (!game.user.isGM) return;
         const uuid = target.closest("[data-uuid]")?.dataset.uuid;
-        const groupId = target.closest(".melee-group")?.dataset.groupId;
+        const groupId = this._getGroupId(target);
         if (!uuid || !groupId || !game.combat) return;
 
         const groups = game.combat.getFlag("neuroshima", "meleeGroups") || [];
@@ -242,7 +303,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
     async _onRollNpcInitGroup(event, target) {
         event.preventDefault();
         if (!game.user.isGM || !game.combat) return;
-        const groupId = target.closest(".melee-group")?.dataset.groupId;
+        const groupId = this._getGroupId(target);
         if (!groupId) return;
 
         const groups = game.combat.getFlag("neuroshima", "meleeGroups") || [];
@@ -268,6 +329,81 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             } catch (err) {
                 console.warn(`Neuroshima | Failed to roll initiative for ${actor.name}:`, err);
             }
+        }
+    }
+
+    async _onFirstMeleeSegment(event, target) {
+        event.preventDefault();
+        if (!game.user.isGM || !game.combat) return;
+        const groupId = this._getGroupId(target);
+        if (!groupId) return;
+        await this._updateGroup(groupId, g => {
+            g.currentRound = 1;
+            g.currentSegment = 1;
+        });
+    }
+
+    async _onPrevMeleeSegment(event, target) {
+        event.preventDefault();
+        if (!game.user.isGM || !game.combat) return;
+        const groupId = this._getGroupId(target);
+        if (!groupId) return;
+        await this._updateGroup(groupId, g => {
+            const round = g.currentRound ?? 1;
+            const seg   = g.currentSegment ?? 1;
+            if (seg > 1) {
+                g.currentSegment = seg - 1;
+            } else if (round > 1) {
+                g.currentRound = round - 1;
+                g.currentSegment = 3;
+            }
+        });
+    }
+
+    async _onNextMeleeSegment(event, target) {
+        event.preventDefault();
+        if (!game.user.isGM || !game.combat) return;
+        const groupId = this._getGroupId(target);
+        if (!groupId) return;
+        await this._updateGroup(groupId, g => {
+            const seg = g.currentSegment ?? 1;
+            if (seg < 3) {
+                g.currentSegment = seg + 1;
+            } else {
+                g.currentRound = (g.currentRound ?? 1) + 1;
+                g.currentSegment = 1;
+            }
+        });
+    }
+
+    async _onNextMeleeRound(event, target) {
+        event.preventDefault();
+        if (!game.user.isGM || !game.combat) return;
+        const groupId = this._getGroupId(target);
+        if (!groupId) return;
+        await this._updateGroup(groupId, g => {
+            g.currentRound = (g.currentRound ?? 1) + 1;
+            g.currentSegment = 1;
+        });
+    }
+
+    async _onSetInitiativeOwner(event, target) {
+        event.preventDefault();
+        if (!game.user.isGM || !game.combat) return;
+        const uuid    = target.closest("[data-uuid]")?.dataset.uuid;
+        const groupId = this._getGroupId(target);
+        if (!uuid || !groupId) return;
+        await this._updateGroup(groupId, g => {
+            g.initiativeOwnerId = g.initiativeOwnerId === uuid ? null : uuid;
+        });
+    }
+
+    _onSelectMeleeGroup(event, target) {
+        event.preventDefault();
+        const groupId = target.dataset.groupId;
+        if (groupId) {
+            this._activeGroupId = groupId;
+            this.render();
         }
     }
 }

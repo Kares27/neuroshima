@@ -1,16 +1,18 @@
-<div class="neuroshima melee-duel-card">
+<div class="melee-duel-card neuroshima">
 
-  <header class="melee-card-header">
-    <div class="participant attacker">
+  <div class="mdc-header">
+    <div class="mdc-fighter{{#if isOwnerAttacker}} mdc-fighter--init{{/if}}">
       <img src="{{attackerImg}}" width="32" height="32" alt="{{attackerName}}">
-      <span class="name">{{attackerName}}</span>
+      <span class="mdc-name">{{attackerName}}</span>
+      {{#if isOwnerAttacker}}<i class="fas fa-bolt mdc-init-icon" title="{{localize 'NEUROSHIMA.MeleeDuel.InitiativeOwner'}}"></i>{{/if}}
     </div>
-    <div class="vs-badge">⚔</div>
-    <div class="participant defender">
+    <div class="mdc-vs"><i class="fas fa-swords"></i></div>
+    <div class="mdc-fighter mdc-fighter--right{{#unless isOwnerAttacker}} mdc-fighter--init{{/unless}}">
+      {{#unless isOwnerAttacker}}<i class="fas fa-bolt mdc-init-icon" title="{{localize 'NEUROSHIMA.MeleeDuel.InitiativeOwner'}}"></i>{{/unless}}
+      <span class="mdc-name">{{defenderName}}</span>
       <img src="{{defenderImg}}" width="32" height="32" alt="{{defenderName}}">
-      <span class="name">{{defenderName}}</span>
     </div>
-  </header>
+  </div>
 
   <div class="duel-segments-row">
     {{#each segmentDots}}
@@ -18,7 +20,7 @@
     {{/each}}
   </div>
 
-  <div class="duel-phase-banner">{{phaseBanner}}</div>
+  <div class="mdc-phase-banner">{{phaseBanner}}</div>
 
   <div class="duel-pools">
     <div class="duel-pool">
@@ -26,13 +28,16 @@
       <div class="duel-pool-chips">
         {{#each attackDiceChips}}
           {{#if isUsed}}
-            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}} is-used">{{value}}</span>
-          {{else if isPending}}
-            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}} is-pending">{{value}}</span>
+            <span class="die-chip die-chip-mvc is-used {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}">{{value}}</span>
+          {{else if isCommitted}}
+            <span class="die-chip die-chip-mvc mvc-die-selected {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}">{{value}}</span>
           {{else if isClickable}}
-            <button type="button" class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}" data-action="duelPick" data-side="attacker" data-die-idx="{{idx}}">{{value}}</button>
+            <button type="button"
+              class="die-chip die-chip-mvc {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}"
+              data-pool="attacker"
+              data-die-idx="{{idx}}">{{value}}</button>
           {{else}}
-            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}">{{value}}</span>
+            <span class="die-chip die-chip-mvc {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}" style="opacity:0.4">{{value}}</span>
           {{/if}}
         {{/each}}
       </div>
@@ -42,16 +47,55 @@
       <div class="duel-pool-chips">
         {{#each defenseDiceChips}}
           {{#if isUsed}}
-            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}} is-used">{{value}}</span>
+            <span class="die-chip die-chip-mvc is-used {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}">{{value}}</span>
+          {{else if isCommitted}}
+            <span class="die-chip die-chip-mvc mvc-die-selected {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}">{{value}}</span>
           {{else if isClickable}}
-            <button type="button" class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}" data-action="duelPick" data-side="defender" data-die-idx="{{idx}}">{{value}}</button>
+            <button type="button"
+              class="die-chip die-chip-mvc {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}"
+              data-pool="defender"
+              data-die-idx="{{idx}}">{{value}}</button>
           {{else}}
-            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}">{{value}}</span>
+            <span class="die-chip die-chip-mvc {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}" style="opacity:0.4">{{value}}</span>
           {{/if}}
         {{/each}}
       </div>
     </div>
   </div>
+
+  {{#if isOwnerTurn}}
+  <div class="mdc-controls" data-melee-owner="{{ownerActorUuid}}">
+    <div class="mdc-hint">
+      <i class="fas fa-hand-pointer"></i>
+      {{localize "NEUROSHIMA.MeleeDuel.SelectedCount"}}: <strong class="mdc-selected-count">0</strong>
+      {{#if damageTiers}}&nbsp;|&nbsp; 1→{{damageTiers.d}} 2→{{damageTiers.l}} 3→{{damageTiers.k}}{{/if}}
+    </div>
+    <button type="button"
+      class="action-btn action-btn--attack is-disabled"
+      data-duel-action="confirmBatch"
+      data-pool="{{ownerPool}}"
+      disabled>
+      <i class="fas fa-check"></i> <span class="mdc-confirm-label">{{confirmOwnerLabel}}</span>
+    </button>
+  </div>
+  {{/if}}
+
+  {{#if isResponderTurn}}
+  <div class="mdc-controls" data-melee-owner="{{responderActorUuid}}">
+    <div class="mdc-hint">
+      {{localize "NEUROSHIMA.MeleeDuel.SelectedCount"}}:
+      <strong class="mdc-selected-count">0</strong> / <strong>{{committedOwnerCount}}</strong>
+    </div>
+    <button type="button"
+      class="action-btn action-btn--defense is-disabled"
+      data-duel-action="confirmBatch"
+      data-pool="{{responderPool}}"
+      data-needed="{{committedOwnerCount}}"
+      disabled>
+      <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.MeleeDuel.DuelConfirmDefense"}}
+    </button>
+  </div>
+  {{/if}}
 
   {{#if resolvedSegs.length}}
   <div class="duel-resolved-segments">
@@ -70,7 +114,7 @@
   <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
     <div class="hits-detail">
       {{#each hits}}
-      <span class="hit-badge">D{{tier}}: {{damageType}}</span>
+      <span class="hit-badge">{{tier}}k: {{damageType}}</span>
       {{/each}}
     </div>
     <button type="button" class="apply-damage-button apply-opposed-damage-btn" data-action="applyOpposedDamage">

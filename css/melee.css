@@ -2115,10 +2115,68 @@
     text-overflow: ellipsis;
 }
 
+/* ── Melee group nav bar ─────────────────────────────────────────── */
+
+.melee-group-nav {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 6px;
+    background: rgba(0,0,0,0.25);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+}
+
+.melee-group-nav-btn {
+    min-width: 26px;
+    height: 22px;
+    padding: 0 7px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 3px;
+    font-size: 0.78em;
+    font-weight: 700;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.55;
+    transition: opacity 0.12s, background 0.12s, border-color 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.melee-group-nav-btn:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.1);
+}
+
+.melee-group-nav-btn.is-active {
+    opacity: 1;
+    background: rgba(255,180,30,0.15);
+    border-color: rgba(255,180,30,0.5);
+    color: rgba(255,210,50,1);
+}
+
+.melee-group-nav-btn--add {
+    margin-left: auto;
+    opacity: 0.35;
+    border-style: dashed;
+}
+
+.melee-group-nav-btn--add:hover {
+    opacity: 0.85;
+    border-style: solid;
+}
+
 /* ── Melee group sections (multiple encounters) ─────────────────── */
 
 .melee-group {
     border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 .melee-group-header {
@@ -2128,22 +2186,96 @@
     padding: 3px 8px;
     background: rgba(255,255,255,0.04);
     border-bottom: 1px solid rgba(255,255,255,0.05);
+    min-height: 30px;
 }
 
 .melee-group-name {
     flex: 1;
-    font-size: 0.76em;
+    font-size: 0.8em;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    opacity: 0.65;
+    opacity: 0.75;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.melee-segment-counter {
+    font-size: 0.72em;
+    font-weight: 600;
+    color: rgba(255,200,50,0.85);
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.melee-group-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 3px 6px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.15);
+}
+
+.melee-nav-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 0.78em;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.12s, background 0.12s;
+    color: inherit;
+    line-height: 1.4;
+}
+
+.melee-nav-btn:hover {
+    opacity: 1;
+    background: rgba(255,255,255,0.07);
+}
+
+.melee-nav-btn--end {
+    flex: 1;
+    opacity: 0.5;
+    color: rgba(220,80,80,0.9);
+    border-color: rgba(220,80,80,0.2);
+    font-size: 0.72em;
+}
+
+.melee-nav-btn--end:hover {
+    background: rgba(220,80,80,0.1);
+    color: rgba(240,100,100,1);
+    border-color: rgba(220,80,80,0.5);
+}
+
+.melee-init-holder {
+    color: rgba(255,200,50,0.9);
+    font-size: 0.72em;
+    flex-shrink: 0;
+    margin-right: 2px;
+}
+
+.melee-group-fighters .combatant.is-active {
+    background: rgba(255,200,50,0.06);
+    border-left: 2px solid rgba(255,200,50,0.5);
+}
+
+.melee-group-fighters .combatant.is-active .token-name h4 {
+    color: rgba(255,220,80,1);
 }
 
 .melee-group-fighters {
     list-style: none;
     margin: 0;
     padding: 0;
+    flex: 1;
+    overflow-y: auto;
 }
+
+
 
 .melee-group-fighters .combatant {
     display: flex;
@@ -2207,6 +2339,7 @@
 }
 
 .melee-group-empty {
+    flex: 1;
     padding: 5px 12px;
     font-size: 0.75em;
     opacity: 0.35;
@@ -2220,20 +2353,70 @@
 /* ── Melee duel card (interactive dice picking) ─────────────────── */
 
 .melee-duel-card {
-    padding: 6px 8px;
+    padding: 8px 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    font-family: 'SpecialElite', serif;
 }
 
-.melee-duel-card .duel-phase-banner {
-    text-align: center;
-    font-size: 0.82em;
+.melee-duel-card .mdc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.melee-duel-card .mdc-fighter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.melee-duel-card .mdc-fighter--right {
+    justify-content: flex-end;
+}
+
+.melee-duel-card .mdc-fighter img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--ns-border-main);
+    flex-shrink: 0;
+    object-fit: cover;
+}
+
+.melee-duel-card .mdc-name {
+    font-size: 0.88em;
     font-weight: 600;
-    padding: 4px 8px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 4px;
-    opacity: 0.85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.melee-duel-card .mdc-vs {
+    flex-shrink: 0;
+    font-size: 1.1em;
+    opacity: 0.7;
+}
+
+.melee-duel-card .mdc-dice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.melee-duel-card .mdc-pool {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+}
+
+.melee-duel-card .mdc-pool .duel-die-chip {
+    width: 100%;
+    max-width: 52px;
 }
 
 .duel-segments-row {
@@ -2424,3 +2607,41 @@ span.duel-die-chip.is-pending {
 .duel-seg-line .seg-outcome.draw { color: rgba(200,200,80,0.9); }
 .duel-seg-line .seg-outcome.takeover { color: rgba(120,140,255,1); }
 .duel-seg-line .seg-outcome.nothing { color: rgba(180,180,180,0.6); }
+
+.melee-duel-card .mdc-fighter--init .mdc-name {
+    color: rgba(255,220,60,1);
+}
+
+.mdc-init-icon {
+    color: rgba(255,200,50,0.9);
+    font-size: 0.8em;
+    flex-shrink: 0;
+}
+
+.mdc-phase-banner {
+    font-size: 0.78em;
+    text-align: center;
+    color: rgba(255,255,255,0.55);
+    font-style: italic;
+    padding: 2px 0;
+}
+
+.mdc-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0 0;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.mdc-hint {
+    font-size: 0.72em;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+}
+
+.melee-duel-card .duel-pool-chips {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+}
