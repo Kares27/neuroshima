@@ -1,0 +1,83 @@
+<div class="neuroshima melee-duel-card">
+
+  <header class="melee-card-header">
+    <div class="participant attacker">
+      <img src="{{attackerImg}}" width="32" height="32" alt="{{attackerName}}">
+      <span class="name">{{attackerName}}</span>
+    </div>
+    <div class="vs-badge">⚔</div>
+    <div class="participant defender">
+      <img src="{{defenderImg}}" width="32" height="32" alt="{{defenderName}}">
+      <span class="name">{{defenderName}}</span>
+    </div>
+  </header>
+
+  <div class="duel-segments-row">
+    {{#each segmentDots}}
+    <div class="duel-seg-dot {{dotClass}}">{{segNum}}</div>
+    {{/each}}
+  </div>
+
+  <div class="duel-phase-banner">{{phaseBanner}}</div>
+
+  <div class="duel-pools">
+    <div class="duel-pool">
+      <div class="duel-pool-label">{{attackerName}}</div>
+      <div class="duel-pool-chips">
+        {{#each attackDiceChips}}
+          {{#if isUsed}}
+            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}} is-used">{{value}}</span>
+          {{else if isPending}}
+            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}} is-pending">{{value}}</span>
+          {{else if isClickable}}
+            <button type="button" class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}" data-action="duelPick" data-side="attacker" data-die-idx="{{idx}}">{{value}}</button>
+          {{else}}
+            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}">{{value}}</span>
+          {{/if}}
+        {{/each}}
+      </div>
+    </div>
+    <div class="duel-pool">
+      <div class="duel-pool-label">{{defenderName}}</div>
+      <div class="duel-pool-chips">
+        {{#each defenseDiceChips}}
+          {{#if isUsed}}
+            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}} is-used">{{value}}</span>
+          {{else if isClickable}}
+            <button type="button" class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}" data-action="duelPick" data-side="defender" data-die-idx="{{idx}}">{{value}}</button>
+          {{else}}
+            <span class="duel-die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}">{{value}}</span>
+          {{/if}}
+        {{/each}}
+      </div>
+    </div>
+  </div>
+
+  {{#if resolvedSegs.length}}
+  <div class="duel-resolved-segments">
+    {{#each resolvedSegs}}
+    <div class="duel-seg-line">
+      <span class="seg-num">S{{segNum}}</span>
+      <span class="die-vals">{{attackVal}} vs {{defenseVal}}</span>
+      <span class="seg-outcome {{outcome}}">{{outcomeLabel}}</span>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  {{#if isDone}}
+  {{#if hasHits}}
+  <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
+    <div class="hits-detail">
+      {{#each hits}}
+      <span class="hit-badge">D{{tier}}: {{damageType}}</span>
+      {{/each}}
+    </div>
+    <button type="button" class="apply-damage-button apply-opposed-damage-btn" data-action="applyOpposedDamage">
+      <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.MeleeDuel.DuelApplyDamage"}}
+    </button>
+  </div>
+  {{/if}}
+  {{/if}}
+
+</div>

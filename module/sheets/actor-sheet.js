@@ -2363,9 +2363,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     // Melee weapon: initiate or continue a combat encounter when there is a target, pending attacker, or active duel
     if (weapon.system.weaponType === "melee") {
 
-        // ── Chat-based opposed modes ─────────────────────────────────────────
+        // ── Chat-based melee (all modes) ─────────────────────────────────────
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
-        if (combatTypeSetting === "opposedPips" || combatTypeSetting === "opposedSuccesses") {
+        const effectiveMode = combatTypeSetting === "default" ? "opposedPips" : combatTypeSetting;
+        {
             const myUuidsCheck = [this.document.uuid];
             if (this.document.token) myUuidsCheck.push(this.document.token.uuid);
 
@@ -2409,7 +2410,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
             const chatTargets = targetUuids.filter(uuid => !myUuidsCheck.includes(uuid));
             if (chatTargets.length > 0) {
                 const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
-                await MeleeOpposedChat.initiateAttack(this.document, weapon, chatTargets[0], combatTypeSetting);
+                await MeleeOpposedChat.initiateAttack(this.document, weapon, chatTargets[0], effectiveMode);
                 this._isRolling = false;
                 return;
             }
@@ -2424,100 +2425,6 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                 onClose: () => { this._isRolling = false; }
             });
             await dialog.render(true);
-            return;
-        }
-        // ── End chat-based opposed branch ────────────────────────────────────
-
-        const combat = game.combat;
-        const pendings = combat?.getFlag("neuroshima", "meleePendings") || {};
-        
-        const myUuids = [this.document.uuid];
-        if (this.document.token) myUuids.push(this.document.token.uuid);
-
-        // Exclude self from the target list
-        const actualTargets = targetUuids.filter(uuid => !myUuids.includes(uuid));
-        let targetUuid = actualTargets[0];
-        let existingPending = null;
-
-        // 1. If our current target is already attacking us, they take priority as existing pending
-        if (targetUuid) {
-            existingPending = Object.values(pendings).find(p => {
-                if (!p.active) return false;
-                const amIDefender = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, this.document.uuid);
-                const isHeAttacker = game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.attackerId, targetUuid);
-                return amIDefender && isHeAttacker;
-            });
-        } 
-        
-        // If no attacker is targeted yet, but someone is attacking us, respond to the first available attack
-        if (!existingPending) {
-            existingPending = Object.values(pendings).find(p => p.active && game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, this.document.uuid));
-            if (existingPending) targetUuid = existingPending.attackerId;
-        }
-
-        // 2. There is an incoming attack pending — respond to it
-        if (existingPending) {
-            // ── Opposed-chat mode: weapon-roll dialog instead of initiative ──
-            if (existingPending.mode) {
-                const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
-                await MeleeOpposedChat.openDefenseDialog(this.document, existingPending, weapon.id);
-                this._isRolling = false;
-                return;
-            }
-            // ── Standard melee pending ────────────────────────────────────────
-            const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
-            const initiativeDialog = new NeuroshimaInitiativeRollDialog({
-                actor: this.document,
-                isMelee: true,
-                meleeMode: "respond",
-                pendingId: existingPending.id,
-                weaponId: weapon.id,
-                targets: [targetUuid],
-                onRoll: async (rollData) => {
-                    const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
-                        ...rollData,
-                        actor: this.document,
-                        isMeleeInitiative: true
-                    });
-                    
-                    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-                    await NeuroshimaMeleeCombat.respondToMeleePending(existingPending.id, result.successPoints, weapon.id);
-                    
-                    this._isRolling = false;
-                    return result;
-                },
-                onClose: () => { this._isRolling = false; }
-            });
-            await initiativeDialog.render(true);
-            return;
-        }
-
-        // 3. No pending attack, but we are in an active encounter — open the encounter panel
-        const activeEncounterId = this.document.getFlag("neuroshima", "activeMeleeEncounter");
-        if (activeEncounterId && !targetUuid) {
-            const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
-            NeuroshimaMeleeCombat.openMeleeApp(activeEncounterId);
-            this._isRolling = false;
-            return;
-        }
-
-        // 4. We have a target and no incoming attack pending — initiate a new attack
-        if (targetUuid) {
-            if (!game.combat) {
-                ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.CreateEncounterFirst"));
-                this._isRolling = false;
-                return;
-            }
-            const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
-            const initiativeDialog = new NeuroshimaInitiativeRollDialog({
-                actor: this.document,
-                isMelee: true,
-                meleeMode: "initiate",
-                weaponId: weapon.id,
-                targets: targets,
-                onClose: () => { this._isRolling = false; }
-            });
-            await initiativeDialog.render(true);
             return;
         }
     }

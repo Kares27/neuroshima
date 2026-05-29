@@ -64,6 +64,12 @@ Hooks.once('init', async function() {
 
     const _isActorSheet = (app) => app instanceof NeuroshimaActorSheet || app instanceof NeuroshimaCreatureSheet;
 
+    Hooks.on("updateActor", (actor, changes) => {
+        if (foundry.utils.hasProperty(changes, "flags.neuroshima.meleeDuelInit")) {
+            ui.combat?.render(false);
+        }
+    });
+
     // Hook to re-render actor sheets when combat updates (for melee pendings)
     Hooks.on("updateCombat", async (combat, updates, options, userId) => {
         const appInstances = Object.values(foundry.applications?.instances ?? ui.windows ?? {});
@@ -1222,7 +1228,8 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs",
         "systems/neuroshima/templates/apps/script-editor.hbs",
         "systems/neuroshima/templates/apps/condition-check-editor.hbs",
-        "systems/neuroshima/templates/prosemirror/text-colour.hbs"
+        "systems/neuroshima/templates/prosemirror/text-colour.hbs",
+        "systems/neuroshima/templates/chat/melee-duel-card.hbs"
     ];
     
     await foundry.applications.handlebars.loadTemplates(templates);
@@ -1887,8 +1894,10 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     // Initialize Neuroshima chat actions dispatcher
     NeuroshimaChatMessage.onChatAction(html);
 
-    // Melee Vanilla Chat (vanilla mode)
-    MeleeVanillaChat.onRender(html, message);
+    // Melee Vanilla Chat (non-default modes only)
+    if ((game.settings.get("neuroshima", "meleeCombatType") || "default") !== "default") {
+        MeleeVanillaChat.onRender(html, message);
+    }
 
     // Patient Card — collapsible UI
     const patientCard = html.querySelector(".neuroshima.patient-card");
@@ -2786,6 +2795,11 @@ function initializeSocketlib() {
     game.neuroshima.socket.register("applySkillAlloc", async (messageId, patch) => {
         const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
         await MeleeOpposedChat.applyAllocPatch(messageId, patch);
+    });
+
+    game.neuroshima.socket.register("applyDuelPick", async (messageId, side, dieIdx) => {
+        const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
+        await MeleeOpposedChat.applyDuelPick(messageId, side, dieIdx);
     });
 
     game.neuroshima.socket.register("healingRequestPrompt", async ({ patientUuid, patientName, patientPortrait, requesterUserId, medicActorUuid, isPrivate }) => {

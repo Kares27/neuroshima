@@ -903,7 +903,34 @@
                 "defend": "Obrona",
                 "counter": "Kontratak",
                 "disengage": "Wyjście ze zwarcia"
-            }
+            },
+            "MeleeInitiativeTitle": "Inicjatywa w Zwarciu",
+            "AddFighters": "Dodaj zaznaczone tokeny do zwarcia",
+            "ClearFighters": "Wyczyść listę uczestników",
+            "RemoveFighter": "Usuń z listy",
+            "RollMeleeInitiative": "Rzuć inicjatywę w zwarciu",
+            "EmptyMeleeTab": "Brak zwarć. MG: kliknij + aby utworzyć nowe zwarcie.",
+            "NoCombat": "Brak aktywnej sceny walki.",
+            "SelectTokensFirst": "Zaznacz tokeny na planszy przed dodaniem.",
+            "AddGroup": "Nowe zwarcie",
+            "RemoveGroup": "Usuń zwarcie",
+            "GroupName": "Zwarcie {n}",
+            "EmptyGroup": "Brak uczestników — zaznacz tokeny i kliknij ⊕",
+            "DuelSegment": "Segment",
+            "DuelWaitingAttacker": "wybiera kość do ataku",
+            "DuelWaitingDefender": "odpowiada kością",
+            "DuelSegResult": {
+                "hit": "Trafienie!",
+                "draw": "Remis",
+                "takeover": "Przejęcie inicjatywy!",
+                "nothing": "Pudło"
+            },
+            "DuelDone": "Zakończono",
+            "DuelApplyDamage": "Zadaj obrażenia",
+            "DuelConfirmAttack": "Zatwierdź wybór ({n})",
+            "DuelConfirmDefense": "Potwierdź odpowiedź",
+            "DuelPickMore": "Wybierz jeszcze: {n}",
+            "RollGroupNPCInit": "Rzuć inicjatywę dla BN"
         },
         "Tabs": {
             "Attributes": "Współczynniki",

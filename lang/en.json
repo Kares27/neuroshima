@@ -781,7 +781,34 @@
             "LogOpposedSuccessesHit": "{attacker} hits {defender} with {net} net success(es) → tier {tier} damage!",
             "OpposedPips": {
                 "MustSelectAll": "Opposed on Pips mode: you must select all 3 dice to attack."
-            }
+            },
+            "MeleeInitiativeTitle": "Melee Initiative",
+            "AddFighters": "Add selected tokens to melee",
+            "ClearFighters": "Clear participant list",
+            "RemoveFighter": "Remove from list",
+            "RollMeleeInitiative": "Roll melee initiative",
+            "EmptyMeleeTab": "No melees. GM: click + to create a new melee group.",
+            "NoCombat": "No active combat encounter.",
+            "SelectTokensFirst": "Select tokens on the canvas before adding.",
+            "AddGroup": "New melee group",
+            "RemoveGroup": "Remove group",
+            "GroupName": "Melee {n}",
+            "EmptyGroup": "No participants — select tokens and click ⊕",
+            "DuelSegment": "Segment",
+            "DuelWaitingAttacker": "picks attack die",
+            "DuelWaitingDefender": "responds with die",
+            "DuelSegResult": {
+                "hit": "Hit!",
+                "draw": "Draw",
+                "takeover": "Initiative takeover!",
+                "nothing": "Miss"
+            },
+            "DuelDone": "Resolved",
+            "DuelApplyDamage": "Apply Damage",
+            "DuelConfirmAttack": "Confirm Selection ({n})",
+            "DuelConfirmDefense": "Confirm Response",
+            "DuelPickMore": "Pick {n} more",
+            "RollGroupNPCInit": "Roll NPC Initiative"
         },
         "ResultHit": "Hit!",
         "ResultBlock": "Blocked",

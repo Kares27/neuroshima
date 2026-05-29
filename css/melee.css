@@ -1839,3 +1839,588 @@
     border-top: 1px solid rgba(255,255,255,0.06);
     background: rgba(0,0,0,0.12);
 }
+
+/* ── Melee tab header ────────────────────────────────────────────── */
+
+.melee-tab-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: var(--color-bg-sidebar, #1a1a1a);
+    z-index: 1;
+}
+
+.melee-tab-title {
+    flex: 1;
+    font-size: 0.75em;
+    font-weight: 600;
+    text-transform: uppercase;
+    opacity: 0.45;
+    letter-spacing: 0.06em;
+}
+
+.melee-header-btn {
+    font-size: 0.82em;
+    opacity: 0.45;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 3px;
+    transition: opacity 0.12s;
+    flex-shrink: 0;
+}
+
+.melee-header-btn:hover {
+    opacity: 1;
+}
+
+.melee-clear-btn {
+    color: rgba(255,80,80,0.9);
+}
+
+.melee-empty-state {
+    padding: 20px 12px;
+    text-align: center;
+    font-size: 0.8em;
+    opacity: 0.45;
+    font-style: italic;
+    line-height: 1.5;
+}
+
+/* ── Melee roster combatant rows ────────────────────────────────── */
+
+#melee-roster-tracker {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+}
+
+#melee-roster-tracker .combatant {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    min-height: 36px;
+}
+
+#melee-roster-tracker .combatant:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+#melee-roster-tracker .combatant.active {
+    background: rgba(255,200,50,0.08);
+}
+
+#melee-roster-tracker .combatant.melee-active {
+    border-left: 3px solid rgba(255,120,50,0.7);
+}
+
+#melee-roster-tracker .token-image {
+    width: 32px;
+    height: 32px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+#melee-roster-tracker .token-name {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    min-width: 0;
+}
+
+#melee-roster-tracker .token-name h4 {
+    margin: 0;
+    font-size: 0.82em;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+#melee-roster-tracker .combatant-controls {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+}
+
+#melee-roster-tracker .combatant-control {
+    font-size: 0.72em;
+    opacity: 0.4;
+    cursor: pointer;
+    padding: 1px 2px;
+    transition: opacity 0.12s;
+}
+
+#melee-roster-tracker .combatant-control:hover,
+#melee-roster-tracker .combatant-control.active {
+    opacity: 1;
+}
+
+#melee-roster-tracker .token-resource {
+    flex-shrink: 0;
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.6);
+}
+
+#melee-roster-tracker .token-initiative {
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: right;
+}
+
+#melee-roster-tracker .initiative {
+    font-size: 0.9em;
+    font-weight: 700;
+    color: rgba(255,200,50,0.9);
+}
+
+#melee-roster-tracker .combatant-control.roll {
+    font-size: 0.85em;
+    opacity: 0.5;
+}
+
+#melee-roster-tracker .combatant-control.roll:hover {
+    opacity: 1;
+}
+
+/* ── Melee blocks section (below encounter footer) ───────────────── */
+
+.melee-blocks-section {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin-top: 2px;
+    padding-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+/* Fight block name styles */
+.fight-name {
+    font-size: 0.85em;
+}
+
+.fight-name--a { color: #80b8ff; }
+.fight-name--b { color: #ff9090; }
+
+/* Pending variant */
+.melee-fight-block--pending {
+    opacity: 0.7;
+    cursor: default;
+}
+
+.melee-fight-block--pending:hover {
+    background: rgba(255,255,255,0.03);
+}
+
+/* Hint text */
+.melee-blocks-hint {
+    font-size: 0.78em;
+    color: rgba(255,255,255,0.3);
+    text-align: center;
+    padding: 4px;
+    margin: 0;
+    font-style: italic;
+}
+
+/* Team badge in drill-down participant list */
+.melee-combatant-team-badge {
+    font-size: 0.68em;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.melee-combatant.team-a .melee-combatant-team-badge {
+    background: rgba(80,160,255,0.25);
+    color: #80b8ff;
+}
+
+.melee-combatant.team-b .melee-combatant-team-badge {
+    background: rgba(255,80,80,0.2);
+    color: #ff9090;
+}
+
+/* ── Melee Detail View ──────────────────────────────────────────── */
+
+.melee-encounters-nav {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.2);
+    flex-wrap: nowrap;
+}
+
+.melee-nav-tab {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    font-size: 0.82em;
+    font-weight: 600;
+    border-radius: 3px;
+}
+
+.melee-nav-tab.active {
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+}
+
+.melee-detail-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 0.8em;
+}
+
+.melee-detail-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+}
+
+.melee-detail-phase {
+    font-size: 0.88em;
+    font-weight: 600;
+    color: var(--ns-text-accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.melee-detail-initiative {
+    font-size: 0.78em;
+    color: rgba(255,200,50,0.8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Melee group sections (multiple encounters) ─────────────────── */
+
+.melee-group {
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.melee-group-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.melee-group-name {
+    flex: 1;
+    font-size: 0.76em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.65;
+}
+
+.melee-group-fighters {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.melee-group-fighters .combatant {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    min-height: 34px;
+}
+
+.melee-group-fighters .combatant:hover {
+    background: rgba(255,255,255,0.04);
+}
+
+.melee-group-fighters .token-image {
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+.melee-group-fighters .token-name {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    min-width: 0;
+    gap: 4px;
+}
+
+.melee-group-fighters .token-name h4 {
+    margin: 0;
+    font-size: 0.82em;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.melee-group-fighters .combatant-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.melee-group-fighters .token-initiative {
+    flex-shrink: 0;
+    min-width: 30px;
+    text-align: right;
+}
+
+.melee-group-fighters .initiative {
+    font-weight: 700;
+    font-size: 0.9em;
+    color: rgba(255,200,50,0.9);
+}
+
+.melee-group-empty {
+    padding: 5px 12px;
+    font-size: 0.75em;
+    opacity: 0.35;
+    font-style: italic;
+}
+
+.melee-group-empty p {
+    margin: 0;
+}
+
+/* ── Melee duel card (interactive dice picking) ─────────────────── */
+
+.melee-duel-card {
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.melee-duel-card .duel-phase-banner {
+    text-align: center;
+    font-size: 0.82em;
+    font-weight: 600;
+    padding: 4px 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    opacity: 0.85;
+}
+
+.duel-segments-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.duel-seg-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75em;
+    font-weight: 700;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+}
+
+.duel-seg-dot.is-done {
+    border-color: rgba(80,200,80,0.6);
+    background: rgba(80,200,80,0.12);
+    color: rgba(80,220,80,0.9);
+}
+
+.duel-seg-dot.is-active {
+    border-color: rgba(255,200,50,0.7);
+    background: rgba(255,200,50,0.1);
+    color: rgba(255,220,60,1);
+    box-shadow: 0 0 6px rgba(255,200,50,0.25);
+}
+
+.duel-seg-dot.is-hit {
+    border-color: rgba(255,80,60,0.6);
+    background: rgba(255,80,60,0.1);
+    color: rgba(255,100,80,0.9);
+}
+
+.duel-seg-dot.is-takeover {
+    border-color: rgba(120,120,255,0.6);
+    background: rgba(120,120,255,0.1);
+    color: rgba(140,140,255,0.9);
+}
+
+.duel-pools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.duel-pool {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.duel-pool-label {
+    font-size: 0.72em;
+    font-weight: 600;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+}
+
+.duel-pool-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: center;
+}
+
+.duel-die-chip {
+    width: 30px;
+    height: 30px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85em;
+    font-weight: 700;
+    border: 2px solid transparent;
+    cursor: default;
+    transition: transform 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+
+button.duel-die-chip {
+    cursor: pointer;
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.15);
+}
+
+button.duel-die-chip:hover {
+    transform: scale(1.1);
+    border-color: rgba(255,255,255,0.5);
+    box-shadow: 0 0 8px rgba(255,255,255,0.2);
+}
+
+button.duel-die-chip.is-success {
+    background: rgba(60,160,60,0.2);
+    border-color: rgba(80,200,80,0.4);
+    color: rgba(100,220,100,1);
+}
+
+button.duel-die-chip.is-success:hover {
+    border-color: rgba(80,200,80,0.9);
+    box-shadow: 0 0 8px rgba(80,200,80,0.35);
+}
+
+button.duel-die-chip.is-failure {
+    background: rgba(160,60,60,0.15);
+    border-color: rgba(200,80,80,0.3);
+    color: rgba(220,100,100,1);
+}
+
+span.duel-die-chip.is-success {
+    background: rgba(60,160,60,0.12);
+    border-color: rgba(80,200,80,0.25);
+    color: rgba(100,220,100,0.8);
+}
+
+span.duel-die-chip.is-failure {
+    background: rgba(160,60,60,0.08);
+    border-color: rgba(200,80,80,0.2);
+    color: rgba(220,100,100,0.7);
+}
+
+span.duel-die-chip.is-used {
+    opacity: 0.3;
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.4);
+    text-decoration: line-through;
+}
+
+span.duel-die-chip.is-nat20 {
+    color: rgba(255,80,60,0.8);
+}
+
+span.duel-die-chip.is-pending {
+    background: rgba(255,200,50,0.18);
+    border-color: rgba(255,200,50,0.7);
+    color: rgba(255,220,60,1);
+    box-shadow: 0 0 8px rgba(255,200,50,0.3);
+    animation: duel-pending-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes duel-pending-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(255,200,50,0.2); }
+    50%       { box-shadow: 0 0 12px rgba(255,200,50,0.55); }
+}
+
+.duel-resolved-segments {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.82em;
+}
+
+.duel-seg-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.03);
+}
+
+.duel-seg-line .seg-num {
+    font-weight: 700;
+    opacity: 0.5;
+    min-width: 16px;
+}
+
+.duel-seg-line .die-vals {
+    flex: 1;
+    opacity: 0.8;
+}
+
+.duel-seg-line .seg-outcome {
+    font-weight: 700;
+    font-size: 0.88em;
+}
+
+.duel-seg-line .seg-outcome.hit { color: rgba(255,100,80,1); }
+.duel-seg-line .seg-outcome.draw { color: rgba(200,200,80,0.9); }
+.duel-seg-line .seg-outcome.takeover { color: rgba(120,140,255,1); }
+.duel-seg-line .seg-outcome.nothing { color: rgba(180,180,180,0.6); }

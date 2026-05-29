@@ -64,6 +64,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "skillAllocConfirm":
             this.onSkillAllocConfirm(event, btn, message);
             break;
+          case "duelPick":
+            this.onDuelPick(event, btn, message);
+            break;
         }
       });
     });
@@ -129,6 +132,30 @@ export class NeuroshimaChatMessage extends ChatMessage {
       btn.disabled = true;
       btn.classList.add("applied");
       btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+    }
+  }
+
+  static async onDuelPick(event, btn, message) {
+    const side = btn.dataset.side;
+    const dieIdx = parseInt(btn.dataset.dieIdx, 10);
+    if (!side || isNaN(dieIdx)) return;
+
+    if (!game.user.isGM) {
+      const state = message.getFlag("neuroshima", "duelCard");
+      if (!state) return;
+      const attackerDoc = fromUuidSync(state.attackerTokenUuid || state.attackerUuid);
+      const attackerActor = attackerDoc?.actor ?? attackerDoc;
+      const defenderDoc = fromUuidSync(state.defenderUuid);
+      const defenderActor = defenderDoc?.actor ?? defenderDoc;
+      if (side === "attacker" && !attackerActor?.isOwner) return;
+      if (side === "defender" && !defenderActor?.isOwner) return;
+    }
+
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    if (game.user.isGM) {
+      await MeleeOpposedChat.applyDuelPick(message.id, side, dieIdx);
+    } else if (game.neuroshima?.socket) {
+      await game.neuroshima.socket.executeAsGM("applyDuelPick", message.id, side, dieIdx);
     }
   }
 
@@ -1051,7 +1078,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       meleeTargets: targetsData,
       config: NEUROSHIMA,
       showTooltip: this._canShowTooltip(actor),
-      isVanillaMelee: (game.settings.get("neuroshima", "meleeCombatType") || "default") === "default"
+      isVanillaMelee: false
     });
 
     const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");
@@ -1123,7 +1150,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       meleeTargets: targetsData,
       config: NEUROSHIMA,
       showTooltip: this._canShowTooltip(actor),
-      isVanillaMelee: (game.settings.get("neuroshima", "meleeCombatType") || "default") === "default"
+      isVanillaMelee: false
     });
 
     const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");

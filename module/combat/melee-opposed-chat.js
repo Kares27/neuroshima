@@ -246,6 +246,17 @@ export class MeleeOpposedChat {
       return;
     }
 
+    // ── Interactive duel card (default meleeCombatType setting) ──────────
+    if ((game.settings.get("neuroshima", "meleeCombatType") || "default") === "default") {
+      await MeleeOpposedChat._createDuelCard(message, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget);
+      await MeleeOpposedChat._updateHandlerToResolved(message, data, attackerActor, defenderActor);
+      await MeleeOpposedChat._removePending(pending.id ?? data.defenderUuid);
+      await MeleeOpposedChat._unsetDefenderFlag(data.defenderUuid);
+      defenderActor?.sheet?.render();
+      attackerActor?.sheet?.render();
+      return;
+    }
+
     // ── Resolution logic ──────────────────────────────────────────────────
     let hits = [];
     let resultType = "block";
@@ -485,6 +496,212 @@ export class MeleeOpposedChat {
       updatedTemplateData
     );
     await MeleeOpposedChat._updateChatContent(message, updatedContent);
+  }
+
+  static async _createDuelCard(handlerMessage, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget) {
+    const state = {
+      status: "picking",
+      phase: "attacker-select",
+      attackerUuid: data.attackerUuid,
+      attackerTokenUuid: data.attackerTokenUuid ?? null,
+      defenderUuid: data.defenderUuid,
+      weaponId: data.weaponId,
+      attackDice,
+      defenseDice,
+      attackTarget,
+      defenseTarget,
+      damage1: data.damage1,
+      damage2: data.damage2,
+      damage3: data.damage3,
+      pendingAttackBatch: [],
+      pendingDefenseBatch: [],
+      batchTarget: 0,
+      usedAttackDice: [],
+      usedDefenseDice: [],
+      segments: [],
+      hits: [],
+      applied: false
+    };
+
+    const context = MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/melee-duel-card.hbs",
+      context
+    );
+    const rollMode = game.settings.get("core", "rollMode");
+    await ChatMessage.create({
+      content,
+      flags: { neuroshima: { duelCard: state } },
+      speaker: { alias: "⚔" },
+      rollMode
+    });
+  }
+
+  static _buildDuelContext(state, attackerActor, defenderActor) {
+    const { attackDice, defenseDice, usedAttackDice, usedDefenseDice, waitingFor, pendingAttackIdx, segments, currentSegment, status, hits } = state;
+
+    const attackDiceChips = (attackDice || []).map((d, idx) => {
+      const isUsed = (usedAttackDice || []).includes(idx);
+      const isPending = pendingAttackIdx === idx;
+      const isClickable = !isUsed && !isPending && status === "picking" && waitingFor === "attacker";
+      return {
+        idx,
+        value: d.modified ?? d.original,
+        isSuccess: d.isSuccess,
+        isNat1: d.isNat1 ?? (d.original === 1),
+        isNat20: d.isNat20 ?? (d.original === 20),
+        isUsed,
+        isPending,
+        isClickable
+      };
+    });
+
+    const defenseDiceChips = (defenseDice || []).map((d, idx) => {
+      const isUsed = (usedDefenseDice || []).includes(idx);
+      const isClickable = !isUsed && status === "picking" && waitingFor === "defender";
+      return {
+        idx,
+        value: d.modified ?? d.original,
+        isSuccess: d.isSuccess,
+        isNat1: d.isNat1 ?? (d.original === 1),
+        isNat20: d.isNat20 ?? (d.original === 20),
+        isUsed,
+        isClickable
+      };
+    });
+
+    const resolvedSegs = (segments || []).filter(s => s.outcome !== null).map(s => ({
+      segNum: s.segNum,
+      attackVal: s.attackVal,
+      defenseVal: s.defenseVal,
+      outcome: s.outcome,
+      outcomeLabel: game.i18n.localize(`NEUROSHIMA.MeleeDuel.DuelSegResult.${s.outcome}`)
+    }));
+
+    const segmentDots = (segments || []).map((s, i) => {
+      let dotClass = "";
+      if (s.outcome !== null) dotClass = `is-done is-${s.outcome}`;
+      else if (status === "picking" && i === currentSegment) dotClass = "is-active";
+      return { segNum: s.segNum, dotClass };
+    });
+
+    let phaseBanner = "";
+    if (status === "picking") {
+      const segLabel = `${game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelSegment")} ${currentSegment + 1}`;
+      if (waitingFor === "attacker") {
+        phaseBanner = `${segLabel}: ${attackerActor?.name ?? ""} ${game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelWaitingAttacker")}`;
+      } else {
+        phaseBanner = `${segLabel}: ${defenderActor?.name ?? ""} ${game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelWaitingDefender")}`;
+      }
+    } else {
+      phaseBanner = game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelDone");
+    }
+
+    return {
+      status,
+      attackerName: attackerActor?.name ?? "Attacker",
+      attackerImg: attackerActor?.img ?? "",
+      defenderName: defenderActor?.name ?? "Defender",
+      defenderImg: defenderActor?.img ?? "",
+      phaseBanner,
+      segmentDots,
+      attackDiceChips,
+      defenseDiceChips,
+      resolvedSegs,
+      hits: hits || [],
+      hasHits: (hits || []).length > 0,
+      isDone: status === "done"
+    };
+  }
+
+  static async _renderDuelCard(message, state) {
+    const attackerDoc = fromUuidSync(state.attackerTokenUuid || state.attackerUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc ?? null;
+    const defenderDoc = fromUuidSync(state.defenderUuid);
+    const defenderActor = defenderDoc?.actor ?? defenderDoc ?? null;
+
+    const context = MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/melee-duel-card.hbs",
+      context
+    );
+    await message.setFlag("neuroshima", "duelCard", state);
+    await message.update({ content });
+  }
+
+  static async applyDuelPick(messageId, side, dieIdx) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
+    if (!state || state.status !== "picking") return;
+    if (state.waitingFor !== side) return;
+
+    if (side === "attacker") {
+      if ((state.usedAttackDice || []).includes(dieIdx)) return;
+      state.pendingAttackIdx = dieIdx;
+      state.waitingFor = "defender";
+      await MeleeOpposedChat._renderDuelCard(message, state);
+      return;
+    }
+
+    if (side === "defender") {
+      if ((state.usedDefenseDice || []).includes(dieIdx)) return;
+      if (state.pendingAttackIdx === null || state.pendingAttackIdx === undefined) return;
+
+      const aDie = state.attackDice[state.pendingAttackIdx];
+      const dDie = state.defenseDice[dieIdx];
+      const aSucc = aDie?.isSuccess ?? false;
+      const dSucc = dDie?.isSuccess ?? false;
+
+      let outcome;
+      if (aSucc && !dSucc) outcome = "hit";
+      else if (!aSucc && dSucc) outcome = "takeover";
+      else if (aSucc && dSucc) outcome = "draw";
+      else outcome = "nothing";
+
+      const seg = state.segments[state.currentSegment];
+      seg.attackDieIdx = state.pendingAttackIdx;
+      seg.defenseDieIdx = dieIdx;
+      seg.attackVal = aDie?.modified ?? aDie?.original ?? null;
+      seg.defenseVal = dDie?.modified ?? dDie?.original ?? null;
+      seg.outcome = outcome;
+
+      if (outcome === "hit") {
+        state.hits.push({ tier: seg.segNum, damageType: state[`damage${seg.segNum}`] });
+      }
+
+      state.usedAttackDice.push(state.pendingAttackIdx);
+      state.usedDefenseDice.push(dieIdx);
+      state.pendingAttackIdx = null;
+
+      if (state.currentSegment < 2) {
+        state.currentSegment++;
+        state.waitingFor = "attacker";
+      } else {
+        state.status = "done";
+        state.waitingFor = null;
+        const locationRoll = (state.attackDice[0]?.original) ?? 10;
+        const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
+        await message.setFlag("neuroshima", "opposedResult", {
+          attackerUuid: state.attackerUuid,
+          defenderUuid: state.defenderUuid,
+          weaponId: state.weaponId,
+          hits: state.hits,
+          location,
+          damage1: state.damage1,
+          damage2: state.damage2,
+          damage3: state.damage3,
+          netSuccesses: state.hits.length,
+          affordableBeastActions: [],
+          isBeastAttack: false,
+          applied: false,
+          beastActionsApplied: false
+        });
+      }
+
+      await MeleeOpposedChat._renderDuelCard(message, state);
+    }
   }
 
   /**
