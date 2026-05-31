@@ -13,6 +13,7 @@ import { MeleeStore } from "./melee-store.js";
  * - After all exchanges, the segment pointer advances by `declaredDiceCount` (NS 1.5 cost rule).
  *   If the new segment > 3, the turn ends automatically.
  */
+import { MeleeStore } from "./melee-store.js";
 import { MeleeTurnService } from "./melee-turn-service.js";
 
 /**

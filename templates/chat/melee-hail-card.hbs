@@ -1,0 +1,67 @@
+<div class="melee-hail-card neuroshima{{#if isMiss}} mhc-miss{{/if}}">
+
+{{#if isMiss}}
+  <i class="fas fa-times-circle mhc-miss-icon"></i>
+  <strong>{{attackerName}}</strong> — {{localize "NEUROSHIMA.GradCios.Miss"}}
+{{else}}
+
+  <div class="mhc-header">
+    <div class="mhc-fighter">
+      <img src="{{attackerImg}}" width="28" height="28" alt="{{attackerName}}">
+      <span class="mhc-name">{{attackerName}}</span>
+    </div>
+    <div class="mhc-title">
+      <i class="fas fa-tornado"></i>
+      {{localize "NEUROSHIMA.GradCios.Title"}}
+    </div>
+    <div class="mhc-fighter mhc-fighter--right">
+      <span class="mhc-name">{{defenderName}}</span>
+      <img src="{{defenderImg}}" width="28" height="28" alt="{{defenderName}}">
+    </div>
+  </div>
+
+  <div class="mhc-attack-pool">
+    <span class="mhc-pool-label">{{localize "NEUROSHIMA.GradCios.AttackDice"}}</span>
+    <div class="mhc-dice-row">
+      {{#each attackDiceChips}}
+      <span class="die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}">{{value}}</span>
+      {{/each}}
+    </div>
+    <div class="mhc-success-count">
+      {{attackSuccesses}} {{localize "NEUROSHIMA.GradCios.Successes"}}
+    </div>
+  </div>
+
+  {{#if isPending}}
+  <div class="mhc-defend-section" data-melee-owner="{{defenderActorUuid}}">
+    <p class="mhc-defend-hint">{{defenseRequiredLabel}}</p>
+    <button type="button" class="action-btn mhc-defend-btn" data-action="hailDefend">
+      <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.GradCios.Defend"}}
+    </button>
+  </div>
+  {{/if}}
+
+  {{#if isDone}}
+  <div class="mhc-defense-pool">
+    <span class="mhc-pool-label">{{localize "NEUROSHIMA.GradCios.DefenseDice"}}</span>
+    <div class="mhc-dice-row">
+      {{#each defenseDiceChips}}
+      <span class="die-chip {{#if isSuccess}}is-success{{else}}is-failure{{/if}}{{#if isNat20}} is-nat20{{/if}}">{{value}}</span>
+      {{/each}}
+    </div>
+  </div>
+  <div class="mhc-outcome {{#if isBlocked}}mhc-outcome--blocked{{else}}mhc-outcome--hit{{/if}}">
+    <i class="fas {{#if isBlocked}}fa-shield-alt{{else}}fa-crosshairs{{/if}}"></i>
+    {{outcomeLabel}}
+  </div>
+  {{#if hasHit}}
+  <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
+    <button type="button" class="apply-damage-button apply-opposed-damage-btn" data-action="applyHailDamage">
+      <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.MeleeDuel.DuelApplyDamage"}}
+    </button>
+  </div>
+  {{/if}}
+  {{/if}}
+
+{{/if}}
+</div>

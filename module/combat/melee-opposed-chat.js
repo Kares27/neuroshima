@@ -248,12 +248,17 @@ export class MeleeOpposedChat {
 
     // ── Interactive duel card (default meleeCombatType setting) ──────────
     if ((game.settings.get("neuroshima", "meleeCombatType") || "default") === "default") {
-      await MeleeOpposedChat._createDuelCard(message, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget);
-      await MeleeOpposedChat._updateHandlerToResolved(message, data, attackerActor, defenderActor);
-      await MeleeOpposedChat._removePending(pending.id ?? data.defenderUuid);
-      await MeleeOpposedChat._unsetDefenderFlag(data.defenderUuid);
-      defenderActor?.sheet?.render();
-      attackerActor?.sheet?.render();
+      try {
+        await MeleeOpposedChat._createDuelCard(message, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget);
+        await MeleeOpposedChat._updateHandlerToResolved(message, data, attackerActor, defenderActor);
+      } catch (err) {
+        console.error("Neuroshima | resolveOpposed: failed to create duel card", err);
+      } finally {
+        await MeleeOpposedChat._removePending(pending.id ?? data.defenderUuid);
+        await MeleeOpposedChat._unsetDefenderFlag(data.defenderUuid);
+        defenderActor?.sheet?.render();
+        attackerActor?.sheet?.render();
+      }
       return;
     }
 
@@ -499,20 +504,110 @@ export class MeleeOpposedChat {
   }
 
   static async _createDuelCard(handlerMessage, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget) {
+    if (data.isGradCios) {
+      const atkSuccessCount = attackDice.filter(d => d.isSuccess).length;
+      const defSuccessCount = defenseDice.filter(d => d.isSuccess).length;
+      const rollMode = data.rollMode ?? game.settings.get("core", "rollMode");
+      const toChip = d => ({ value: d.modified ?? d.original ?? d.value, isSuccess: d.isSuccess, isNat20: d.isNat20 ?? false });
+      const netSuccesses = atkSuccessCount - defSuccessCount;
+
+      if (netSuccesses > 0) {
+        const tier = Math.min(netSuccesses, 3);
+        const damage = data[`damage${tier}`] ?? data.damage1 ?? "?";
+        const locationRoll = data.attackRaw?.[0] ?? 10;
+        const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
+        const outcomeLabel = game.i18n.format("NEUROSHIMA.GradCios.Hit", { n: tier, dmg: damage });
+        const hitContent = await foundry.applications.handlebars.renderTemplate(
+          "systems/neuroshima/templates/chat/melee-hail-card.hbs",
+          {
+            attackerName:    attackerActor?.name ?? "",
+            attackerImg:     attackerActor?.img  ?? "",
+            defenderName:    defenderActor?.name ?? "",
+            defenderImg:     defenderActor?.img  ?? "",
+            attackDiceChips: attackDice.map(toChip),
+            attackSuccesses: atkSuccessCount,
+            isPending:       false,
+            isDone:          true,
+            defenseDiceChips: defenseDice.map(toChip),
+            isBlocked: false,
+            hasHit:    true,
+            outcomeLabel
+          }
+        );
+        await ChatMessage.create({
+          content: hitContent,
+          flags: {
+            neuroshima: {
+              hailResult: {
+                attackerUuid: data.attackerUuid,
+                defenderUuid: data.defenderUuid,
+                weaponId:     data.weaponId,
+                tier,
+                damage1:  data.damage1,
+                damage2:  data.damage2,
+                damage3:  data.damage3,
+                location
+              }
+            }
+          },
+          speaker: { alias: "⚔" },
+          rollMode
+        });
+      } else {
+        const outcomeLabel = netSuccesses === 0
+          ? game.i18n.localize("NEUROSHIMA.GradCios.EqualSuccessesBlock")
+          : game.i18n.localize("NEUROSHIMA.GradCios.Blocked");
+        const blockContent = await foundry.applications.handlebars.renderTemplate(
+          "systems/neuroshima/templates/chat/melee-hail-card.hbs",
+          {
+            attackerName:    attackerActor?.name ?? "",
+            attackerImg:     attackerActor?.img  ?? "",
+            defenderName:    defenderActor?.name ?? "",
+            defenderImg:     defenderActor?.img  ?? "",
+            attackDiceChips: attackDice.map(toChip),
+            attackSuccesses: atkSuccessCount,
+            isPending:       false,
+            isDone:          true,
+            defenseDiceChips: defenseDice.map(toChip),
+            isBlocked: true,
+            hasHit:    false,
+            outcomeLabel
+          }
+        );
+        await ChatMessage.create({ content: blockContent, speaker: { alias: "⚔" }, rollMode });
+      }
+      return;
+    }
+
     const segCount = Math.min(3, attackDice.length, defenseDice.length || 1);
-    const atkInitRaw = attackerActor?.getFlag("neuroshima", "meleeDuelInit");
-    const defInitRaw = defenderActor?.getFlag("neuroshima", "meleeDuelInit");
+
     let initiativeOwnerSide;
-    if (atkInitRaw != null && defInitRaw != null) {
-      initiativeOwnerSide = Number(atkInitRaw) >= Number(defInitRaw) ? "attacker" : "defender";
+    if (data.isGradCios) {
+      initiativeOwnerSide = "attacker";
     } else {
-      const attackSuccesses  = attackDice.filter(d => d.isSuccess).length;
-      const defenseSuccesses = defenseDice.filter(d => d.isSuccess).length;
-      initiativeOwnerSide = attackSuccesses >= defenseSuccesses ? "attacker" : "defender";
+      const meleeGroups = game.combat?.getFlag("neuroshima", "meleeGroups") || [];
+      const existingGroup = meleeGroups.find(g =>
+        (g.fighters || []).some(f => f.uuid === data.attackerUuid) &&
+        (g.fighters || []).some(f => f.uuid === data.defenderUuid)
+      );
+      if (existingGroup?.initiativeOwnerId) {
+        initiativeOwnerSide = existingGroup.initiativeOwnerId === data.attackerUuid ? "attacker" : "defender";
+      } else {
+        const atkFighter = existingGroup?.fighters?.find(f => f.uuid === data.attackerUuid);
+        const defFighter = existingGroup?.fighters?.find(f => f.uuid === data.defenderUuid);
+        if (atkFighter?.initiative != null && defFighter?.initiative != null) {
+          initiativeOwnerSide = Number(atkFighter.initiative) >= Number(defFighter.initiative) ? "attacker" : "defender";
+        } else {
+          const attackSuccesses  = attackDice.filter(d => d.isSuccess).length;
+          const defenseSuccesses = defenseDice.filter(d => d.isSuccess).length;
+          initiativeOwnerSide = attackSuccesses >= defenseSuccesses ? "attacker" : "defender";
+        }
+      }
     }
     const state = {
       status: "picking",
       initiativeOwnerSide,
+      isGradCios: data.isGradCios || false,
       waitingFor: "initiativeOwner",
       committedOwnerIndices: null,
       currentSegment: 0,
@@ -558,8 +653,10 @@ export class MeleeOpposedChat {
     const {
       attackDice, defenseDice, usedAttackDice, usedDefenseDice,
       waitingFor, initiativeOwnerSide, committedOwnerIndices,
-      currentSegment, status, hits, segments
+      currentSegment, status, hits, segments, isGradCios
     } = state;
+
+    const declaredAction = state.declaredAction || null;
 
     const isOwnerAttacker  = initiativeOwnerSide === "attacker";
     const isOwnerTurn      = status === "picking" && waitingFor === "initiativeOwner";
@@ -568,39 +665,83 @@ export class MeleeOpposedChat {
     const responderPool    = isOwnerAttacker ? "defender" : "attacker";
     const committedIndices = committedOwnerIndices || [];
 
+    const gradCiosVisibleAttackSet = (isGradCios && ownerPool === "attacker")
+      ? isOwnerTurn
+        ? new Set(
+            (attackDice || [])
+              .map((d, i) => d.isSuccess ? i : -1)
+              .filter(i => i >= 0)
+          )
+        : new Set(committedIndices)
+      : null;
+
     const attackDiceChips = (attackDice || []).map((d, idx) => {
       const isUsed      = (usedAttackDice || []).includes(idx);
       const isCommitted = !isUsed && ownerPool === "attacker" && committedIndices.includes(idx);
       let isClickable = false;
+      let isHidden = false;
       if (!isUsed && !isCommitted) {
         if (isOwnerTurn    && ownerPool    === "attacker") isClickable = true;
         if (isResponderTurn && responderPool === "attacker") isClickable = true;
+        if (isGradCios && !d.isSuccess) isClickable = false;
+      }
+      if (gradCiosVisibleAttackSet !== null && !isUsed) {
+        isHidden = !gradCiosVisibleAttackSet.has(idx);
+        if (isHidden) isClickable = false;
       }
       return {
         idx, value: d.modified ?? d.original,
         isSuccess: d.isSuccess,
         isNat1: d.isNat1 ?? (d.original === 1),
         isNat20: d.isNat20 ?? (d.original === 20),
-        isUsed, isCommitted, isClickable
+        isUsed, isCommitted, isClickable, isHidden
       };
     });
+
+    const gradCiosAtkSuccessCount = (attackDice || []).filter(d => d.isSuccess).length;
+    const gradCiosVisibleDefenseSet = (isGradCios && ownerPool === "attacker")
+      ? isResponderTurn
+        ? new Set(
+            (defenseDice || [])
+              .map((d, i) => d.isSuccess ? i : -1)
+              .filter(i => i >= 0)
+              .slice(0, committedIndices.length)
+          )
+        : new Set(
+            (defenseDice || [])
+              .map((d, i) => ({ v: d.modified ?? d.original ?? 0, i }))
+              .sort((a, b) => a.v - b.v)
+              .slice(0, gradCiosAtkSuccessCount)
+              .map(({ i }) => i)
+          )
+      : null;
 
     const defenseDiceChips = (defenseDice || []).map((d, idx) => {
       const isUsed      = (usedDefenseDice || []).includes(idx);
       const isCommitted = !isUsed && ownerPool === "defender" && committedIndices.includes(idx);
       let isClickable = false;
+      let isHidden = false;
       if (!isUsed && !isCommitted) {
         if (isOwnerTurn    && ownerPool    === "defender") isClickable = true;
         if (isResponderTurn && responderPool === "defender") isClickable = true;
+        if (isGradCios && !d.isSuccess) isClickable = false;
+      }
+      if (gradCiosVisibleDefenseSet !== null && !isUsed) {
+        isHidden = !gradCiosVisibleDefenseSet.has(idx);
+        if (isHidden) isClickable = false;
       }
       return {
         idx, value: d.modified ?? d.original,
         isSuccess: d.isSuccess,
         isNat1: d.isNat1 ?? (d.original === 1),
         isNat20: d.isNat20 ?? (d.original === 20),
-        isUsed, isCommitted, isClickable
+        isUsed, isCommitted, isClickable, isHidden
       };
     });
+
+    const responderExactDice = gradCiosVisibleDefenseSet !== null
+      ? gradCiosVisibleDefenseSet.size
+      : committedIndices.length;
 
     const segmentDots = (segments || []).map((s, i) => {
       let dotClass = "";
@@ -611,6 +752,21 @@ export class MeleeOpposedChat {
 
     const ownerName     = isOwnerAttacker ? (attackerActor?.name ?? "") : (defenderActor?.name ?? "");
     const responderName = isOwnerAttacker ? (defenderActor?.name ?? "") : (attackerActor?.name ?? "");
+    const effectiveDeclared      = declaredAction || (isResponderTurn ? "attack" : null);
+    const ownerDeclaredAttack    = isResponderTurn && effectiveDeclared === "attack";
+    const ownerDeclaredExit      = isResponderTurn && effectiveDeclared === "exit";
+    const ownerDeclaredNonCombat = isResponderTurn && effectiveDeclared === "nonCombat";
+
+    let responderConfirmActionType = "defend";
+    let responderConfirmLabel      = game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelConfirmDefense");
+    if (declaredAction === "exit") {
+      responderConfirmActionType = "blockExit";
+      responderConfirmLabel      = game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelBlockExit");
+    } else if (declaredAction === "nonCombat") {
+      responderConfirmActionType = "interrupt";
+      responderConfirmLabel      = game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelInterrupt");
+    }
+
     let phaseBanner = "";
     if (status === "picking") {
       const segLabel = `${game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelSegment")} ${currentSegment + 1}`;
@@ -618,7 +774,13 @@ export class MeleeOpposedChat {
         phaseBanner = `${segLabel}: ${ownerName} ${game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelWaitingOwner")}`;
       } else {
         const n = committedIndices.length;
-        phaseBanner = `${segLabel}: ${responderName} ${game.i18n.format("NEUROSHIMA.MeleeDuel.DuelWaitingResponder", { n })}`;
+        const actionTextMap = {
+          attack:    game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelOwnerAttacks"),
+          exit:      game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelOwnerExits"),
+          nonCombat: game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelOwnerNonCombat"),
+        };
+        const actionText = actionTextMap[declaredAction] || actionTextMap.attack;
+        phaseBanner = `${segLabel}: ${ownerName} ${actionText}. ${responderName} ${game.i18n.format("NEUROSHIMA.MeleeDuel.DuelWaitingResponder", { n })}`;
       }
     } else {
       phaseBanner = game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelDone");
@@ -642,6 +804,7 @@ export class MeleeOpposedChat {
     }));
 
     const confirmOwnerLabel = game.i18n.format("NEUROSHIMA.MeleeDuel.DuelConfirmAttack", { n: 0 });
+    const canSwapInit = game.user.isGM && status === "picking" && !isGradCios;
 
     return {
       status,
@@ -654,7 +817,9 @@ export class MeleeOpposedChat {
       isOwnerAttacker, isOwnerTurn, isResponderTurn,
       ownerPool, responderPool, ownerActorUuid, responderActorUuid,
       committedOwnerCount: committedIndices.length,
-      damageTiers, confirmOwnerLabel
+      damageTiers, confirmOwnerLabel, canSwapInit, isGradCios: isGradCios || false,
+      ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat,
+      responderConfirmActionType, responderConfirmLabel, responderExactDice
     };
   }
 
@@ -689,36 +854,37 @@ export class MeleeOpposedChat {
       if (!canAct) {
         el.style.opacity       = "0.4";
         el.style.pointerEvents = "none";
-        if (el.tagName === "BUTTON") {
-          el.disabled = true;
-          el.classList.add("is-disabled");
-        }
       }
     });
 
-    const isResponderTurn = state.waitingFor === "responder";
-    const neededCount = isResponderTurn ? (state.committedOwnerIndices?.length ?? 1) : null;
+    const updateActionButtons = () => {
+      const selectedChips = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
+      const count      = selectedChips.length;
+      const hasSuccess = selectedChips.some(chip => chip.classList.contains("is-success"));
 
-    const confirmBtn = root.querySelector("[data-duel-action='confirmBatch']");
-    const countEl    = root.querySelector(".mdc-selected-count");
-    const labelEl    = root.querySelector(".mdc-confirm-label");
+      root.querySelectorAll(".mdc-action-choice").forEach(btn => {
+        const noDice     = btn.dataset.noDice === "true";
+        const exactDice  = btn.dataset.exactDice  !== undefined ? parseInt(btn.dataset.exactDice,  10) : null;
+        const minDice    = btn.dataset.minDice     !== undefined ? parseInt(btn.dataset.minDice,    10) : null;
+        const maxDice    = btn.dataset.maxDice     !== undefined ? parseInt(btn.dataset.maxDice,    10) : null;
+        const needSuccess = btn.dataset.needSuccess === "true";
 
-    const updateConfirm = () => {
-      const selected = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
-      const count = selected.length;
-      if (countEl) countEl.textContent = count;
-
-      if (confirmBtn) {
-        const ok = isResponderTurn
-          ? (neededCount !== null && count === neededCount)
-          : (count >= 1 && count <= 3);
-        confirmBtn.disabled = !ok;
-        confirmBtn.classList.toggle("is-disabled", !ok);
-        confirmBtn.classList.toggle("pulse", ok);
-        if (labelEl && !isResponderTurn) {
-          labelEl.textContent = game.i18n.format("NEUROSHIMA.MeleeDuel.DuelConfirmAttack", { n: count });
+        let ok;
+        if (noDice) {
+          ok = true;
+        } else if (exactDice !== null) {
+          ok = count === exactDice;
+        } else {
+          const min = minDice ?? 1;
+          const max = maxDice ?? 3;
+          ok = count >= min && count <= max;
         }
-      }
+        if (ok && needSuccess && !hasSuccess) ok = false;
+
+        btn.disabled = !ok;
+        btn.classList.toggle("is-disabled", !ok);
+        btn.classList.toggle("is-ready",    ok);
+      });
     };
 
     root.querySelectorAll("button.die-chip-mvc").forEach(chip => {
@@ -726,31 +892,33 @@ export class MeleeOpposedChat {
         e.preventDefault();
         e.stopPropagation();
         chip.classList.toggle("mvc-die-selected");
-        updateConfirm();
+        updateActionButtons();
       });
     });
 
-    if (confirmBtn) {
-      confirmBtn.addEventListener("click", async e => {
+    root.querySelectorAll(".mdc-action-choice").forEach(btn => {
+      btn.addEventListener("click", async e => {
         e.preventDefault();
         e.stopPropagation();
-        const selected = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
-        const indices  = selected.map(c => parseInt(c.dataset.dieIdx, 10)).filter(n => !isNaN(n));
-        const pool     = confirmBtn.dataset.pool;
-        if (!indices.length) return;
+        if (btn.disabled) return;
+
+        const actionType = btn.dataset.actionType;
+        const pool       = btn.dataset.pool;
+        const selected   = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
+        const indices    = selected.map(c => parseInt(c.dataset.dieIdx, 10)).filter(n => !isNaN(n));
 
         if (game.user.isGM) {
-          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices);
+          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, actionType);
         } else if (game.neuroshima?.socket) {
-          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices);
+          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, actionType);
         }
       });
-    }
+    });
 
-    updateConfirm();
+    updateActionButtons();
   }
 
-  static async applyDuelBatch(messageId, pool, diceIndices) {
+  static async applyDuelBatch(messageId, pool, diceIndices, action = null) {
     const message = game.messages.get(messageId);
     if (!message) return;
 
@@ -763,63 +931,151 @@ export class MeleeOpposedChat {
 
     if (state.waitingFor === "initiativeOwner") {
       if (pool !== ownerPool) return;
-      if (!diceIndices.length || diceIndices.length > 3) return;
+      const declaredAction = action || "attack";
+      const ownerDicePool  = isOwnerAttacker ? state.attackDice : state.defenseDice;
+      if (declaredAction === "exit") {
+        if (diceIndices.length !== 1) return;
+      } else if (declaredAction === "nonCombat") {
+        if (!diceIndices.length || diceIndices.length > 3) return;
+        const hasSuccess = diceIndices.some(i => ownerDicePool[i]?.isSuccess);
+        if (!hasSuccess) {
+          ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelNonCombatNeedSuccess"));
+          return;
+        }
+      } else {
+        if (!diceIndices.length || diceIndices.length > 3) return;
+      }
+      state.declaredAction        = declaredAction;
       state.committedOwnerIndices = diceIndices;
-      state.waitingFor = "responder";
+      state.waitingFor            = "responder";
       await MeleeOpposedChat._renderDuelCard(message, state);
       return;
     }
 
     if (state.waitingFor === "responder") {
-      if (pool !== responderPool) return;
-      const N = (state.committedOwnerIndices || []).length;
-      if (diceIndices.length !== N) return;
+      const declaredAction  = state.declaredAction || "attack";
+      const responderAction = action || (
+        declaredAction === "exit"      ? "blockExit" :
+        declaredAction === "nonCombat" ? "interrupt" : "defend"
+      );
 
       const ownerDice     = isOwnerAttacker ? state.attackDice  : state.defenseDice;
       const responderDice = isOwnerAttacker ? state.defenseDice : state.attackDice;
-      const ownerIndices  = state.committedOwnerIndices;
-
-      const ownerHasSuccess    = ownerIndices.some(i => ownerDice[i]?.isSuccess);
-      const responderHasSuccess = diceIndices.some(i => responderDice[i]?.isSuccess);
+      const ownerIndices  = state.committedOwnerIndices || [];
+      const N             = ownerIndices.length;
 
       let outcome;
-      if      ( ownerHasSuccess && !responderHasSuccess) outcome = "hit";
-      else if (!ownerHasSuccess &&  responderHasSuccess) outcome = "takeover";
-      else if ( ownerHasSuccess &&  responderHasSuccess) outcome = "draw";
-      else                                               outcome = "nothing";
+      let segAttackVal  = 0;
+      let segDefenseVal = 0;
+
+      // ── attack / flee ──────────────────────────────────────────────────
+      if (declaredAction === "attack" && responderAction === "flee") {
+        const escapeeUuid = isOwnerAttacker ? state.defenderUuid : state.attackerUuid;
+        state.hits.push({ tier: 1, damageType: state.damage1 ?? "d", isBackHit: true, escapeeUuid });
+        state._escapeeUuid = escapeeUuid;
+        if (isOwnerAttacker) {
+          state.usedAttackDice = [...(state.usedAttackDice || []), ...ownerIndices];
+        } else {
+          state.usedDefenseDice = [...(state.usedDefenseDice || []), ...ownerIndices];
+        }
+        outcome = "flee";
+
+      // ── exit / allowExit ───────────────────────────────────────────────
+      } else if (declaredAction === "exit" && responderAction === "allowExit") {
+        if (isOwnerAttacker) {
+          state.usedAttackDice = [...(state.usedAttackDice || []), ...ownerIndices];
+        } else {
+          state.usedDefenseDice = [...(state.usedDefenseDice || []), ...ownerIndices];
+        }
+        outcome = "exit";
+
+      // ── nonCombat / seizeInit ──────────────────────────────────────────
+      } else if (declaredAction === "nonCombat" && responderAction === "seizeInit") {
+        if (pool !== responderPool) return;
+        if (diceIndices.length !== N) return;
+        state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
+        if (isOwnerAttacker) {
+          state.usedAttackDice  = [...(state.usedAttackDice  || []), ...ownerIndices];
+          state.usedDefenseDice = [...(state.usedDefenseDice || []), ...diceIndices];
+        } else {
+          state.usedDefenseDice = [...(state.usedDefenseDice || []), ...ownerIndices];
+          state.usedAttackDice  = [...(state.usedAttackDice  || []), ...diceIndices];
+        }
+        outcome = "seizeInit";
+
+      // ── default dice comparison ────────────────────────────────────────
+      } else {
+        if (pool !== responderPool) return;
+
+        if (declaredAction === "exit") {
+          if (diceIndices.length !== 1) return;
+        } else if (declaredAction === "nonCombat") {
+          if (!diceIndices.length) return;
+        } else {
+          if (diceIndices.length !== N) return;
+        }
+
+        const ownerHasSuccess     = ownerIndices.some(i => ownerDice[i]?.isSuccess);
+        const responderHasSuccess  = diceIndices.some(i => responderDice[i]?.isSuccess);
+
+        if (declaredAction === "attack") {
+          if      ( ownerHasSuccess && !responderHasSuccess) outcome = "hit";
+          else if (!ownerHasSuccess &&  responderHasSuccess) outcome = "takeover";
+          else if ( ownerHasSuccess &&  responderHasSuccess) outcome = "draw";
+          else                                               outcome = "nothing";
+
+          if (outcome === "hit") state.hits.push({ tier: N, damageType: state[`damage${N}`] ?? "?" });
+
+          segAttackVal  = isOwnerAttacker ? (ownerHasSuccess ? 1 : 0)    : (responderHasSuccess ? 1 : 0);
+          segDefenseVal = isOwnerAttacker ? (responderHasSuccess ? 1 : 0) : (ownerHasSuccess ? 1 : 0);
+
+          if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
+
+        } else if (declaredAction === "exit") {
+          outcome = (ownerHasSuccess && !responderHasSuccess) ? "exit" : "blocked";
+
+        } else {
+          const ownerSuccesses     = ownerIndices.filter(i => ownerDice[i]?.isSuccess).length;
+          const responderSuccesses = diceIndices.filter(i => responderDice[i]?.isSuccess).length;
+          outcome = responderSuccesses >= ownerSuccesses ? "interrupted" : "nonCombat";
+        }
+
+        if (isOwnerAttacker) {
+          state.usedAttackDice  = [...(state.usedAttackDice  || []), ...ownerIndices];
+          state.usedDefenseDice = [...(state.usedDefenseDice || []), ...diceIndices];
+        } else {
+          state.usedDefenseDice = [...(state.usedDefenseDice || []), ...ownerIndices];
+          state.usedAttackDice  = [...(state.usedAttackDice  || []), ...diceIndices];
+        }
+      }
 
       const seg = state.segments[state.currentSegment];
-      seg.attackVal  = isOwnerAttacker ? (ownerHasSuccess ? 1 : 0)    : (responderHasSuccess ? 1 : 0);
-      seg.defenseVal = isOwnerAttacker ? (responderHasSuccess ? 1 : 0) : (ownerHasSuccess ? 1 : 0);
+      seg.attackVal  = segAttackVal;
+      seg.defenseVal = segDefenseVal;
       seg.outcome    = outcome;
       seg.tier       = N;
 
-      if (outcome === "hit") {
-        const damageType = state[`damage${N}`] ?? "?";
-        state.hits.push({ tier: N, damageType });
+      for (let i = state.currentSegment + 1; i < state.currentSegment + N; i++) {
+        if (i < state.segments.length) {
+          state.segments[i].outcome = "spent";
+          state.segments[i].tier    = 0;
+        }
       }
 
-      if (isOwnerAttacker) {
-        state.usedAttackDice  = [...(state.usedAttackDice  || []), ...ownerIndices];
-        state.usedDefenseDice = [...(state.usedDefenseDice || []), ...diceIndices];
-      } else {
-        state.usedDefenseDice = [...(state.usedDefenseDice || []), ...ownerIndices];
-        state.usedAttackDice  = [...(state.usedAttackDice  || []), ...diceIndices];
-      }
       state.committedOwnerIndices = null;
-
-      if (outcome === "takeover") {
-        state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
-      }
+      state.declaredAction        = null;
 
       await MeleeOpposedChat._syncInitiativeToTracker(state);
 
-      const atkLeft = state.attackDice.length  - (state.usedAttackDice  || []).length;
-      const defLeft = state.defenseDice.length - (state.usedDefenseDice || []).length;
-      const hasNext = state.currentSegment < state.segments.length - 1 && atkLeft > 0 && defLeft > 0;
+      const endingOutcomes = ["flee", "exit"];
+      const isEnded     = endingOutcomes.includes(outcome);
+      const nextSegment = state.currentSegment + N;
+      const atkLeft     = state.attackDice.length  - (state.usedAttackDice  || []).length;
+      const defLeft     = state.defenseDice.length - (state.usedDefenseDice || []).length;
+      const hasNext     = !isEnded && nextSegment < state.segments.length && atkLeft > 0 && defLeft > 0;
 
       if (hasNext) {
-        state.currentSegment++;
+        state.currentSegment = nextSegment;
         state.waitingFor = "initiativeOwner";
       } else {
         state.status     = "done";
@@ -835,6 +1091,7 @@ export class MeleeOpposedChat {
           weaponId: state.weaponId,
           hits: state.hits,
           location,
+          escapeeUuid: state._escapeeUuid ?? null,
           damage1: state.damage1,
           damage2: state.damage2,
           damage3: state.damage3,
@@ -852,6 +1109,22 @@ export class MeleeOpposedChat {
 
   static async applyDuelPick(messageId, side, dieIdx) {
     await MeleeOpposedChat.applyDuelBatch(messageId, side, [dieIdx]);
+  }
+
+  static async swapDuelInitiative(messageId) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
+    if (!state || state.status !== "picking") return;
+    if (state.isGradCios) return;
+
+    state.initiativeOwnerSide = state.initiativeOwnerSide === "attacker" ? "defender" : "attacker";
+    state.committedOwnerIndices = null;
+    state.waitingFor = "initiativeOwner";
+
+    await MeleeOpposedChat._syncInitiativeToTracker(state);
+    await MeleeOpposedChat._renderDuelCard(message, state);
   }
 
   static async _syncInitiativeToTracker(state) {
@@ -1344,6 +1617,16 @@ export class MeleeOpposedChat {
     const attackerSuccesses = rawResult.successPoints
       ?? attackDice.filter(d => d.isSuccess).length;
 
+    if (rawResult.isGradCios && attackerSuccesses === 0) {
+      const rollMode = rawResult.rollMode ?? game.settings.get("core", "rollMode");
+      const missContent = await foundry.applications.handlebars.renderTemplate(
+        "systems/neuroshima/templates/chat/melee-hail-card.hbs",
+        { isMiss: true, attackerName: attacker.name }
+      );
+      await ChatMessage.create({ content: missContent, speaker: { alias: "⚔" }, rollMode });
+      return;
+    }
+
     // Collect defender's melee weapons for the chat buttons (WFRP style)
     const defenderWeapons = targetActor.items
       .filter(i => i.type === "weapon" && i.system.weaponType === "melee")
@@ -1396,7 +1679,8 @@ export class MeleeOpposedChat {
             attackerSkillBudget: rawResult.skill ?? 0,
             damage1: weapon.system.damageMelee1,
             damage2: weapon.system.damageMelee2,
-            damage3: weapon.system.damageMelee3
+            damage3: weapon.system.damageMelee3,
+            isGradCios: rawResult.isGradCios || false
           }
         }
       },
@@ -1601,6 +1885,12 @@ export class MeleeOpposedChat {
     const allReducedDetails = [];
 
     for (const hit of rd.hits) {
+      let targetActor = defenderActor;
+      if (hit.isBackHit && rd.escapeeUuid) {
+        const escapeeDoc = await fromUuid(rd.escapeeUuid);
+        const escapeeActor = escapeeDoc?.actor ?? escapeeDoc;
+        if (escapeeActor) targetActor = escapeeActor;
+      }
       const attackData = {
         isMelee: true,
         actorId: attackerActor?.id,
@@ -1612,7 +1902,7 @@ export class MeleeOpposedChat {
         finalLocation: rd.location,
         successPoints: hit.tier
       };
-      const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+      const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
         isOpposed: true,
         spDifference: hit.tier,
         location: rd.location,
@@ -1638,6 +1928,303 @@ export class MeleeOpposedChat {
     }
 
     await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
+  }
+
+  static async _createPendingHailCard(rawResult, attacker, weapon, targetActor, targetDoc, attackDice, attackerSuccesses) {
+    const toChip = d => ({ value: d.modified ?? d.value, isSuccess: d.isSuccess, isNat20: d.isNat20 ?? false });
+    const rollMode = rawResult.rollMode ?? game.settings.get("core", "rollMode");
+
+    const content = await foundry.applications.handlebars.renderTemplate(
+      "systems/neuroshima/templates/chat/melee-hail-card.hbs",
+      {
+        attackerName: attacker.name,
+        attackerImg:  attacker.img,
+        defenderName: targetActor.name,
+        defenderImg:  targetActor.img,
+        attackDiceChips: attackDice.map(toChip),
+        attackSuccesses,
+        isPending: true,
+        isDone:    false,
+        defenderActorUuid: targetActor.uuid,
+        defenseRequiredLabel: game.i18n.format("NEUROSHIMA.GradCios.DefenseRequired", { n: attackerSuccesses })
+      }
+    );
+
+    const chatMsg = await ChatMessage.create({
+      content,
+      flags: {
+        neuroshima: {
+          hailCard: {
+            status:    "pending",
+            attackerUuid: attacker.uuid,
+            defenderUuid: targetActor.uuid,
+            weaponId:     weapon.id,
+            attackModified: attackDice.map(d => ({
+              original:  d.value,
+              modified:  d.modified,
+              isSuccess: d.isSuccess,
+              isNat20:   d.isNat20 ?? false
+            })),
+            attackerSuccesses,
+            damage1: weapon.system.damageMelee1,
+            damage2: weapon.system.damageMelee2,
+            damage3: weapon.system.damageMelee3
+          }
+        }
+      },
+      speaker: { alias: "⚔" },
+      rollMode
+    });
+
+    if (!chatMsg) return;
+
+    const combat = game.combat;
+    if (combat) {
+      const defenderUuid = targetActor.uuid;
+      const pendingKey   = defenderUuid.replace(/\./g, "-");
+      const pendingData  = {
+        id:               defenderUuid,
+        attackerId:       attacker.uuid,
+        attackerTokenUuid: attacker.token?.uuid ?? null,
+        defenderId:       defenderUuid,
+        defenderTokenUuid: targetDoc?.uuid ?? null,
+        attackerName:     attacker.name,
+        defenderName:     targetActor.name,
+        mode:             "hail",
+        opposedChatMessageId: chatMsg.id,
+        attackerInitiative:   attackerSuccesses,
+        weaponId:         weapon.id,
+        active:           true,
+        timestamp:        Date.now()
+      };
+      const pendings = foundry.utils.deepClone(combat.getFlag("neuroshima", "meleePendings") || {});
+      pendings[pendingKey] = pendingData;
+      if (game.user.isGM || !game.neuroshima?.socket) {
+        await combat.setFlag("neuroshima", "meleePendings", pendings);
+      } else {
+        await game.neuroshima.socket.executeAsGM("updateCombatFlag", "meleePendings", pendings);
+      }
+      ui.combat?.render(true);
+    }
+
+    await MeleeOpposedChat._setDefenderFlag(targetActor.uuid, chatMsg.id);
+  }
+
+  static async hailDefendFromChat(messageId) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const hailCard = message.getFlag("neuroshima", "hailCard");
+    if (!hailCard || hailCard.status !== "pending") {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyResolved"));
+      return;
+    }
+
+    const defenderDoc   = fromUuidSync(hailCard.defenderUuid);
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+    if (!defenderActor) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DefenderNotFound"));
+      return;
+    }
+
+    if (!defenderActor.isOwner && !game.user.isGM) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.NotYourTurn"));
+      return;
+    }
+
+    let defWeapon = defenderActor.items.find(
+      i => i.type === "weapon" && i.system.weaponType === "melee" && i.system.equipped
+    ) ?? defenderActor.items.find(i => i.type === "weapon" && i.system.weaponType === "melee");
+
+    if (!defWeapon) {
+      defWeapon = {
+        id: null,
+        name: game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.Unarmed"),
+        img:  "systems/neuroshima/assets/img/weapon-melee.svg",
+        type: "weapon",
+        system: {
+          weaponType: "melee", attribute: "dexterity", skill: "brawl",
+          attackBonus: 0, defenseBonus: 0,
+          damageMelee1: "D", damageMelee2: "L", damageMelee3: "C",
+          requiredBuild: 0, piercing: 0, magazine: null, jamming: 20
+        }
+      };
+    }
+
+    const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
+    const lastRoll = defenderActor.system.lastWeaponRoll ?? {};
+
+    const dialog = new NeuroshimaWeaponRollDialog({
+      actor:       defenderActor,
+      weapon:      defWeapon,
+      rollType:    "melee",
+      meleeAction: "defense",
+      targets:     [hailCard.attackerUuid],
+      lastRoll,
+      isPoolRoll:  true,
+      onRoll: async (defenseResult) => {
+        if (!defenseResult) return;
+        await MeleeOpposedChat._resolveHailCard(message, hailCard, defenderActor, defenseResult);
+      },
+      onClose: () => {}
+    });
+
+    await dialog.render(true);
+  }
+
+  static async _resolveHailCard(message, hailCard, defenderActor, defenseResult) {
+    await MeleeOpposedChat._setChatFlag(message, "hailCard", { ...hailCard, status: "resolved" });
+
+    const attackDice  = hailCard.attackModified;
+    const defenseDice = (defenseResult.modifiedResults || []).map(r => ({
+      original:  r.original,
+      modified:  r.modified,
+      isSuccess: r.isSuccess,
+      isNat20:   r.isNat20 ?? false
+    }));
+
+    const atkSuccessCount = attackDice.filter(d => d.isSuccess).length;
+    const defSuccessCount = defenseDice.filter(d => d.isSuccess).length;
+    const netSuccesses    = atkSuccessCount - defSuccessCount;
+
+    const toChip = d => ({ value: d.modified ?? d.original, isSuccess: d.isSuccess, isNat20: d.isNat20 ?? false });
+
+    const attackerDoc   = fromUuidSync(hailCard.attackerUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+
+    let updatedContent;
+    let hailResult = null;
+
+    if (netSuccesses > 0) {
+      const tier     = Math.min(netSuccesses, 3);
+      const damage   = hailCard[`damage${tier}`] ?? hailCard.damage1 ?? "?";
+      const locationRoll = attackDice[0]?.original ?? 10;
+      const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
+      const outcomeLabel = game.i18n.format("NEUROSHIMA.GradCios.Hit", { n: tier, dmg: damage });
+
+      hailResult = {
+        attackerUuid: hailCard.attackerUuid,
+        defenderUuid: hailCard.defenderUuid,
+        weaponId:     hailCard.weaponId,
+        tier,
+        damage1:  hailCard.damage1,
+        damage2:  hailCard.damage2,
+        damage3:  hailCard.damage3,
+        location,
+        applied:  false
+      };
+
+      updatedContent = await foundry.applications.handlebars.renderTemplate(
+        "systems/neuroshima/templates/chat/melee-hail-card.hbs",
+        {
+          attackerName:    attackerActor?.name ?? "",
+          attackerImg:     attackerActor?.img  ?? "",
+          defenderName:    defenderActor.name,
+          defenderImg:     defenderActor.img,
+          attackDiceChips: attackDice.map(toChip),
+          attackSuccesses: atkSuccessCount,
+          isPending:       false,
+          isDone:          true,
+          defenseDiceChips: defenseDice.map(toChip),
+          isBlocked:       false,
+          hasHit:          true,
+          outcomeLabel
+        }
+      );
+    } else {
+      const outcomeLabel = netSuccesses === 0
+        ? game.i18n.localize("NEUROSHIMA.GradCios.EqualSuccessesBlock")
+        : game.i18n.localize("NEUROSHIMA.GradCios.Blocked");
+
+      updatedContent = await foundry.applications.handlebars.renderTemplate(
+        "systems/neuroshima/templates/chat/melee-hail-card.hbs",
+        {
+          attackerName:    attackerActor?.name ?? "",
+          attackerImg:     attackerActor?.img  ?? "",
+          defenderName:    defenderActor.name,
+          defenderImg:     defenderActor.img,
+          attackDiceChips: attackDice.map(toChip),
+          attackSuccesses: atkSuccessCount,
+          isPending:       false,
+          isDone:          true,
+          defenseDiceChips: defenseDice.map(toChip),
+          isBlocked:       true,
+          hasHit:          false,
+          outcomeLabel
+        }
+      );
+    }
+
+    if (hailResult) {
+      await MeleeOpposedChat._setChatFlag(message, "hailResult", hailResult);
+    }
+    await MeleeOpposedChat._updateChatContent(message, updatedContent);
+
+    await MeleeOpposedChat._removePending(hailCard.defenderUuid);
+    await MeleeOpposedChat._unsetDefenderFlag(hailCard.defenderUuid);
+    defenderActor?.sheet?.render();
+    attackerActor?.sheet?.render();
+  }
+
+  static async applyHailDamage(messageId) {
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const hr = message.getFlag("neuroshima", "hailResult");
+    if (!hr) return;
+    if (hr.applied) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
+      return;
+    }
+
+    const defenderDoc = await fromUuid(hr.defenderUuid);
+    const defenderActor = defenderDoc?.actor ?? defenderDoc;
+    const attackerDoc  = await fromUuid(hr.attackerUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    if (!defenderActor) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DefenderNotFound"));
+      return;
+    }
+
+    const { CombatHelper } = await import("../helpers/combat-helper.js");
+    const weaponItem = attackerActor?.items?.get(hr.weaponId);
+
+    const attackData = {
+      isMelee:      true,
+      actorId:      attackerActor?.id,
+      weaponId:     hr.weaponId,
+      label:        weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+      damageMelee1: hr.damage1,
+      damageMelee2: hr.damage2,
+      damageMelee3: hr.damage3,
+      finalLocation: hr.location,
+      successPoints: hr.tier
+    };
+    const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+      isOpposed:    true,
+      spDifference: hr.tier,
+      location:     hr.location,
+      suppressChat: true
+    });
+
+    if (batch) {
+      const woundIds = batch.woundIds ?? [];
+      if (woundIds.length > 0) {
+        ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", {
+          count: woundIds.length, name: defenderActor.name
+        }));
+      }
+      const allResults = batch.results ?? [];
+      const totalReduced = batch.reducedProjectiles ?? 0;
+      const allReducedDetails = batch.reducedDetails ?? [];
+      if (allResults.length > 0 || totalReduced > 0 || woundIds.length > 0) {
+        await CombatHelper.renderPainResistanceReport(
+          defenderActor, allResults, woundIds, totalReduced, allReducedDetails
+        );
+      }
+    }
+
+    await message.setFlag("neuroshima", "hailResult", { ...hr, applied: true });
   }
 
   /**

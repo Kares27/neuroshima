@@ -46,6 +46,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "applyOpposedDamage":
             this.onApplyOpposedDamage(event, message);
             break;
+          case "applyHailDamage":
+            this.onApplyHailDamage(event, message);
+            break;
+          case "hailDefend":
+            this.onHailDefend(event, message);
+            break;
           case "executeRequiredTest":
             this.onExecuteRequiredTest(event, message);
             break;
@@ -66,6 +72,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
             break;
           case "duelPick":
             this.onDuelPick(event, btn, message);
+            break;
+          case "duelSwapInit":
+            this.onDuelSwapInit(event, message);
             break;
         }
       });
@@ -127,12 +136,27 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const btn = event.currentTarget;
     const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
     await MeleeOpposedChat.applyOpposedDamage(message.id);
-    // Immediately disable the button in the DOM for the clicking user
     if (btn) {
       btn.disabled = true;
       btn.classList.add("applied");
       btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
     }
+  }
+
+  static async onApplyHailDamage(event, message) {
+    const btn = event.currentTarget;
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    await MeleeOpposedChat.applyHailDamage(message.id);
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add("applied");
+      btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DamageApplied")}`;
+    }
+  }
+
+  static async onHailDefend(event, message) {
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    await MeleeOpposedChat.hailDefendFromChat(message.id);
   }
 
   static async onDuelPick(event, btn, message) {
@@ -157,6 +181,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
     } else if (game.neuroshima?.socket) {
       await game.neuroshima.socket.executeAsGM("applyDuelPick", message.id, side, dieIdx);
     }
+  }
+
+  static async onDuelSwapInit(event, message) {
+    if (!game.user.isGM) return;
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    await MeleeOpposedChat.swapDuelInitiative(message.id);
   }
 
   static async onSkillAllocAdjust(event, btn, message) {

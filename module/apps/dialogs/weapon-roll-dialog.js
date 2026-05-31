@@ -40,6 +40,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.isPoolRoll = options.isPoolRoll || false;
     this.onPoolRoll = options.onRoll;
     this.crowdingDexPenalty = options.crowdingDexPenalty || 0;
+    this.rollOptions.gradCios = options.gradCios ?? false;
   }
 
   static DEFAULT_OPTIONS = {
@@ -188,6 +189,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.dieManualBonus      = this.userEntry.dieManualBonus ?? 0;
     context.dieReductionBonus  = this.userEntry.dieReductionBonus ?? 0;
     context.isPoolRoll      = this.isPoolRoll;
+    context.gradCios        = this.isPoolRoll && this.rollType === "melee"
+      ? (this.userEntry.gradCios ?? this.rollOptions.gradCios ?? false)
+      : false;
     context.isOpen          = isOpen;
     context.meleeAction     = meleeAction;
     context.maneuver        = maneuver;
@@ -510,6 +514,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (this.isPoolRoll && this.onPoolRoll) {
       const rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
       if (rawResult) {
+        rawResult.isGradCios = !!(formData.gradCios);
         const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
         await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
       }

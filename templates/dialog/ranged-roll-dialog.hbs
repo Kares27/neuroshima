@@ -137,8 +137,14 @@
     </div>
     {{/if}}
 
-    <div class="rd-fullwidth-row">
-        <div class="form-group">
+    <div class="rd-fullwidth-row rd-location-block">
+        {{#if isMelee}}{{#if isPoolRoll}}
+        <div class="form-group rd-gradcios-row">
+            <label>{{localize "NEUROSHIMA.GradCios.CheckboxLabel"}}</label>
+            <input type="checkbox" name="gradCios" {{checked gradCios}}/>
+        </div>
+        {{/if}}{{/if}}
+        <div class="form-group rd-hitlocation-row">
             <label>{{localize "NEUROSHIMA.Roll.HitLocation"}}</label>
             <select name="hitLocation" data-user-hit-location="{{hitLocation}}">
                 {{#unless isVehicleTarget}}

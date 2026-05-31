@@ -437,7 +437,8 @@ body.theme-dark {
 .chat-message:has(.neuroshima.roll-card),
 .chat-message:has(.neuroshima.patient-card),
 .chat-message:has(.neuroshima.item-card),
-.chat-message:has(.neuroshima.melee-duel-card) {
+.chat-message:has(.neuroshima.melee-duel-card),
+.chat-message:has(.neuroshima.melee-hail-card) {
     background: #f0f0e0;
     border: 1px solid #7a7971;
 }
@@ -1054,7 +1055,8 @@ body.theme-dark {
 .theme-dark .chat-message:has(.neuroshima.patient-card),
 .theme-dark .chat-message:has(.neuroshima.heal-request-card),
 .theme-dark .chat-message:has(.neuroshima.required-test-card),
-.theme-dark .chat-message:has(.neuroshima.melee-duel-card) {
+.theme-dark .chat-message:has(.neuroshima.melee-duel-card),
+.theme-dark .chat-message:has(.neuroshima.melee-hail-card) {
     background: #0b0a13e6;
     border-color: #5a5a54;
     color: #e0e0d0;
@@ -2480,6 +2482,42 @@ body.theme-dark {
     height: 24px !important;
     max-height: 24px;
     flex: 0 0 24px;
+}
+
+.neuroshima.roll-dialog .rd-location-block {
+    flex-direction: column;
+    gap: 4px;
+}
+
+.neuroshima.roll-dialog .rd-location-block .form-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex: unset;
+    width: 100%;
+}
+
+.neuroshima.roll-dialog .rd-location-block .form-group label {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 120px;
+    text-align: left;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin: 0;
+}
+
+.neuroshima.roll-dialog .rd-location-block .rd-hitlocation-row select {
+    flex: 1;
+    height: 24px !important;
+    max-height: 24px;
+}
+
+.neuroshima.roll-dialog .rd-location-block .rd-gradcios-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    cursor: pointer;
 }
 
 .neuroshima.roll-dialog .slider-hint {

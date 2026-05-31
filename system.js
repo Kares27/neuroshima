@@ -66,7 +66,7 @@ Hooks.once('init', async function() {
     const _isActorSheet = (app) => app instanceof NeuroshimaActorSheet || app instanceof NeuroshimaCreatureSheet;
 
     Hooks.on("updateActor", (actor, changes) => {
-        if (foundry.utils.hasProperty(changes, "flags.neuroshima.meleeDuelInit")) {
+        if (foundry.utils.hasProperty(changes, "system.combat.meleeInitiative")) {
             ui.combat?.render(false);
         }
     });
@@ -1554,6 +1554,45 @@ Hooks.on("renderTokenHUD", (hud, html) => {
     });
 });
 
+Hooks.on("renderTokenHUD", (hud, html) => {
+    const meleeCombatType = (() => {
+        try { return game.settings.get("neuroshima", "meleeCombatType"); } catch { return "default"; }
+    })();
+    if (meleeCombatType !== "default") return;
+    if (!game.user.isGM) return;
+
+    const root = html instanceof HTMLElement ? html : html?.[0];
+    if (!root) return;
+
+    const combatBtn = root.querySelector('.control-icon[data-action="combat"]');
+    if (!combatBtn) return;
+
+    const tokenDoc = hud.object?.document;
+    if (!tokenDoc) return;
+
+    const activeId   = ui.combat?._activeGroupId;
+    const isInActive = NeuroshimaCombatTracker.inMeleeGroup(tokenDoc, activeId || undefined);
+
+    const fistBtn = document.createElement("button");
+    fistBtn.type = "button";
+    fistBtn.className = "control-icon" + (isInActive ? " active" : "");
+    fistBtn.dataset.action = "toggleMelee";
+    fistBtn.dataset.tooltip = game.i18n.localize("NEUROSHIMA.MeleeDuel.AddToMelee");
+    fistBtn.setAttribute("aria-label", game.i18n.localize("NEUROSHIMA.MeleeDuel.AddToMelee"));
+    fistBtn.innerHTML = `<i class="fa-solid fa-hand-fist"></i>`;
+    combatBtn.after(fistBtn);
+
+    fistBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const selected  = canvas.tokens?.controlled ?? [];
+        const tokenDocs = selected.length > 0
+            ? selected.map(t => t.document).filter(Boolean)
+            : [tokenDoc];
+        await NeuroshimaCombatTracker.toggleMeleeGroupToken(tokenDocs);
+    });
+});
+
 // Add context menu options for chat messages
 Hooks.on("getChatMessageContextOptions", (html, options) => {
     options.push({
@@ -2807,8 +2846,8 @@ function initializeSocketlib() {
         await MeleeOpposedChat.applyDuelBatch(messageId, side, [dieIdx]);
     });
 
-    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices) => {
-        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices);
+    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices, action) => {
+        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null);
     });
 
     game.neuroshima.socket.register("healingRequestPrompt", async ({ patientUuid, patientName, patientPortrait, requesterUserId, medicActorUuid, isPrivate }) => {
