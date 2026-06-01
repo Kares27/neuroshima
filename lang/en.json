@@ -938,6 +938,8 @@
         "PerformAction": "Perform Action",
         "ChooseDamageDistribution": "Choose damage",
         "ConfirmDefense": "Confirm Defense",
+        "AcceptHit": "Accept Hit (Berserker)",
+        "BeastActions": "Beast Actions",
         "Target": "Target",
         "PrimaryOpponent": "Primary Opponent",
         "Crowded": "Outnumbered",
@@ -1568,7 +1570,7 @@
             "Kondycja": "Stamina",
             "KondycjaHint": "General physical endurance of the creature",
             "NaturalArmor": {
-            "Title": "Natural Armor",
+            "Title": "Armor",
             "Location": "Location",
             "Reduction": "Damage Reduction",
             "ReductionAbbr": "Red.",

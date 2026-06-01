@@ -309,7 +309,7 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
       segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
       successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
       attribute: new fields.StringField({ initial: "dexterity" }),
-      damage: new fields.StringField({ initial: "D" }),
+      damage: new fields.StringField({ initial: "D", nullable: true, blank: true }),
       piercing: new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 })
     };
   }

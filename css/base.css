@@ -2367,6 +2367,9 @@ body.theme-dark {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 5px;
 }
 
 .neuroshima.roll-dialog .rd-modifiers-col {
@@ -2401,6 +2404,9 @@ body.theme-dark {
 .neuroshima.roll-dialog .rd-dropdowns-row {
     display: flex;
     gap: 8px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 5px;
 }
 
 .neuroshima.roll-dialog .rd-dropdowns-row .form-group {
@@ -2429,9 +2435,9 @@ body.theme-dark {
 
 /* --- Roll mode row --- */
 .neuroshima.roll-dialog .rd-rollmode-row {
-    border-top: 1px solid var(--ns-border-main, #7a7971);
-    padding-top: 6px;
-    margin-top: 2px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 5px;
 }
 
 .neuroshima.roll-dialog .rd-rollmode-row .form-group {
@@ -2487,6 +2493,9 @@ body.theme-dark {
 .neuroshima.roll-dialog .rd-location-block {
     flex-direction: column;
     gap: 4px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 5px;
 }
 
 .neuroshima.roll-dialog .rd-location-block .form-group {
@@ -2513,10 +2522,24 @@ body.theme-dark {
     max-height: 24px;
 }
 
+.neuroshima.roll-dialog .rd-location-block .rd-gradcios-row {
+    cursor: pointer;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ns-border-main);
+    padding-bottom: 5px;
+}
+
+.neuroshima.roll-dialog .rd-location-block .rd-gradcios-row:hover {
+    text-shadow: 0 0 6px var(--ns-text-light, #ccc);
+}
+
 .neuroshima.roll-dialog .rd-location-block .rd-gradcios-row input[type="checkbox"] {
     width: 16px;
     height: 16px;
     flex: 0 0 auto;
+    align-self: center;
+    margin: 0;
     cursor: pointer;
 }
 
@@ -2564,6 +2587,8 @@ body.theme-dark {
 
 .neuroshima.roll-dialog .rd-inputs-col .checkbox-wrapper input[type="checkbox"] {
     margin: 0;
+    align-self: center;
+    vertical-align: middle;
 }
 
 /* --- Legacy form-group (kept for compatibility) --- */
@@ -2617,8 +2642,9 @@ body.theme-dark {
 }
 
 .neuroshima.roll-dialog .summary-section {
-    border-top: 1px solid #7a7971;
-    padding-top: 5px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 5px;
 }
 
 .neuroshima.roll-dialog .summary-section h3 {

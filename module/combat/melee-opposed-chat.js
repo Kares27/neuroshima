@@ -580,30 +580,7 @@ export class MeleeOpposedChat {
     }
 
     const segCount = Math.min(3, attackDice.length, defenseDice.length || 1);
-
-    let initiativeOwnerSide;
-    if (data.isGradCios) {
-      initiativeOwnerSide = "attacker";
-    } else {
-      const meleeGroups = game.combat?.getFlag("neuroshima", "meleeGroups") || [];
-      const existingGroup = meleeGroups.find(g =>
-        (g.fighters || []).some(f => f.uuid === data.attackerUuid) &&
-        (g.fighters || []).some(f => f.uuid === data.defenderUuid)
-      );
-      if (existingGroup?.initiativeOwnerId) {
-        initiativeOwnerSide = existingGroup.initiativeOwnerId === data.attackerUuid ? "attacker" : "defender";
-      } else {
-        const atkFighter = existingGroup?.fighters?.find(f => f.uuid === data.attackerUuid);
-        const defFighter = existingGroup?.fighters?.find(f => f.uuid === data.defenderUuid);
-        if (atkFighter?.initiative != null && defFighter?.initiative != null) {
-          initiativeOwnerSide = Number(atkFighter.initiative) >= Number(defFighter.initiative) ? "attacker" : "defender";
-        } else {
-          const attackSuccesses  = attackDice.filter(d => d.isSuccess).length;
-          const defenseSuccesses = defenseDice.filter(d => d.isSuccess).length;
-          initiativeOwnerSide = attackSuccesses >= defenseSuccesses ? "attacker" : "defender";
-        }
-      }
-    }
+    const initiativeOwnerSide = "attacker";
     const state = {
       status: "picking",
       initiativeOwnerSide,
@@ -789,6 +766,33 @@ export class MeleeOpposedChat {
     const ownerActorUuid     = isOwnerAttacker ? state.attackerUuid : state.defenderUuid;
     const responderActorUuid = isOwnerAttacker ? state.defenderUuid : state.attackerUuid;
 
+    const ownerActorDoc = fromUuidSync(isOwnerAttacker ? (state.attackerTokenUuid || state.attackerUuid) : state.defenderUuid);
+    const ownerActor    = ownerActorDoc?.actor ?? ownerActorDoc;
+    const ownerIsCreature = ownerActor?.type === "creature";
+
+    const ownerDiceArr = isOwnerAttacker ? (attackDice || []) : (defenseDice || []);
+    const committedSuccessCount = committedIndices.filter(i => ownerDiceArr[i]?.isSuccess).length;
+
+    let ownerBeastActions = null;
+    if (ownerIsCreature) {
+      const beastItems = ownerActor.items.filter(
+        i => i.type === "beast-action" && i.system.costType === "success"
+      );
+      if (beastItems.length > 0) {
+        ownerBeastActions = beastItems
+          .slice()
+          .sort((a, b) => (a.system.successCost ?? 1) - (b.system.successCost ?? 1))
+          .map(a => ({
+            id: a.id,
+            name: a.name,
+            img: a.img,
+            successCost: a.system.successCost ?? 1,
+            damage: a.system.damage || null,
+            isAffordable: committedSuccessCount >= (a.system.successCost ?? 1)
+          }));
+      }
+    }
+
     const damageTiers = (state.damage1 || state.damage2 || state.damage3) ? {
       d: state.damage1 ?? "?",
       l: state.damage2 ?? "?",
@@ -819,7 +823,8 @@ export class MeleeOpposedChat {
       committedOwnerCount: committedIndices.length,
       damageTiers, confirmOwnerLabel, canSwapInit, isGradCios: isGradCios || false,
       ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat,
-      responderConfirmActionType, responderConfirmLabel, responderExactDice
+      responderConfirmActionType, responderConfirmLabel, responderExactDice,
+      ownerIsCreature, ownerBeastActions, committedSuccessCount
     };
   }
 
@@ -859,15 +864,17 @@ export class MeleeOpposedChat {
 
     const updateActionButtons = () => {
       const selectedChips = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
-      const count      = selectedChips.length;
-      const hasSuccess = selectedChips.some(chip => chip.classList.contains("is-success"));
+      const count        = selectedChips.length;
+      const hasSuccess   = selectedChips.some(chip => chip.classList.contains("is-success"));
+      const successCount = selectedChips.filter(chip => chip.classList.contains("is-success")).length;
 
       root.querySelectorAll(".mdc-action-choice").forEach(btn => {
-        const noDice     = btn.dataset.noDice === "true";
-        const exactDice  = btn.dataset.exactDice  !== undefined ? parseInt(btn.dataset.exactDice,  10) : null;
-        const minDice    = btn.dataset.minDice     !== undefined ? parseInt(btn.dataset.minDice,    10) : null;
-        const maxDice    = btn.dataset.maxDice     !== undefined ? parseInt(btn.dataset.maxDice,    10) : null;
+        const noDice      = btn.dataset.noDice === "true";
+        const exactDice   = btn.dataset.exactDice  !== undefined ? parseInt(btn.dataset.exactDice,  10) : null;
+        const minDice     = btn.dataset.minDice     !== undefined ? parseInt(btn.dataset.minDice,    10) : null;
+        const maxDice     = btn.dataset.maxDice     !== undefined ? parseInt(btn.dataset.maxDice,    10) : null;
         const needSuccess = btn.dataset.needSuccess === "true";
+        const minSuccess  = btn.dataset.minSuccess  !== undefined ? parseInt(btn.dataset.minSuccess, 10) : null;
 
         let ok;
         if (noDice) {
@@ -876,10 +883,11 @@ export class MeleeOpposedChat {
           ok = count === exactDice;
         } else {
           const min = minDice ?? 1;
-          const max = maxDice ?? 3;
+          const max = maxDice ?? Infinity;
           ok = count >= min && count <= max;
         }
         if (ok && needSuccess && !hasSuccess) ok = false;
+        if (ok && minSuccess !== null && successCount < minSuccess) ok = false;
 
         btn.disabled = !ok;
         btn.classList.toggle("is-disabled", !ok);
@@ -893,6 +901,7 @@ export class MeleeOpposedChat {
         e.stopPropagation();
         chip.classList.toggle("mvc-die-selected");
         updateActionButtons();
+        updateBeastQueue();
       });
     });
 
@@ -915,7 +924,98 @@ export class MeleeOpposedChat {
       });
     });
 
+    const beastQueueSection = root.querySelector(".mdc-beast-queue-section");
+    const updateBeastQueue = () => {
+      if (!beastQueueSection) return;
+      const budgetRemainingEl = beastQueueSection.querySelector(".mdc-beast-budget-remaining");
+      const budgetTotalEl     = beastQueueSection.querySelector(".mdc-beast-budget-total");
+      const confirmBtn        = beastQueueSection.querySelector(".mdc-beast-confirm-btn");
+
+      const budget = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected").length;
+
+      let spent = 0;
+      beastQueueSection.querySelectorAll(".mdc-beast-qty-val").forEach(el => {
+        const qty  = parseInt(el.textContent, 10) || 0;
+        const cost = parseInt(el.closest(".mdc-beast-action-entry")?.dataset.cost, 10) || 1;
+        spent += qty * cost;
+      });
+
+      const remaining = budget - spent;
+      if (budgetRemainingEl) budgetRemainingEl.textContent = remaining;
+      if (budgetTotalEl)     budgetTotalEl.textContent     = budget;
+
+      beastQueueSection.querySelectorAll(".mdc-beast-pick-btn").forEach(btn => {
+        const cost = parseInt(btn.dataset.cost, 10) || 1;
+        btn.disabled = remaining < cost;
+        btn.classList.toggle("is-disabled", remaining < cost);
+        btn.classList.toggle("is-ready",    remaining >= cost);
+      });
+
+      if (confirmBtn) {
+        const ok = spent > 0 && remaining >= 0;
+        confirmBtn.disabled = !ok;
+        confirmBtn.classList.toggle("is-disabled", !ok);
+        confirmBtn.classList.toggle("is-ready",    ok);
+      }
+    };
+
+    if (beastQueueSection) {
+      beastQueueSection.querySelectorAll(".mdc-beast-pick-btn").forEach(pickBtn => {
+        pickBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id   = pickBtn.dataset.actionId;
+          const cost = parseInt(pickBtn.dataset.cost, 10) || 1;
+          const budget  = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected").length;
+          let spent = 0;
+          beastQueueSection.querySelectorAll(".mdc-beast-qty-val").forEach(el => {
+            spent += (parseInt(el.textContent, 10) || 0) * (parseInt(el.closest(".mdc-beast-action-entry")?.dataset.cost, 10) || 1);
+          });
+          if (spent + cost > budget) return;
+          const qtyEl   = beastQueueSection.querySelector(`.mdc-beast-qty-val[data-action-id="${id}"]`);
+          const badgeEl = beastQueueSection.querySelector(`.mdc-beast-qty-badge[data-action-id="${id}"]`);
+          if (!qtyEl) return;
+          qtyEl.textContent = (parseInt(qtyEl.textContent, 10) || 0) + 1;
+          if (badgeEl) badgeEl.style.display = "";
+          updateBeastQueue();
+        });
+      });
+
+      beastQueueSection.querySelectorAll(".mdc-beast-undo-btn").forEach(undoBtn => {
+        undoBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id      = undoBtn.dataset.actionId;
+          const qtyEl   = beastQueueSection.querySelector(`.mdc-beast-qty-val[data-action-id="${id}"]`);
+          const badgeEl = beastQueueSection.querySelector(`.mdc-beast-qty-badge[data-action-id="${id}"]`);
+          if (!qtyEl) return;
+          const cur = parseInt(qtyEl.textContent, 10) || 0;
+          if (cur > 0) qtyEl.textContent = cur - 1;
+          if (badgeEl && parseInt(qtyEl.textContent, 10) === 0) badgeEl.style.display = "none";
+          updateBeastQueue();
+        });
+      });
+
+      const confirmBtn = beastQueueSection.querySelector(".mdc-beast-confirm-btn");
+      if (confirmBtn) {
+        confirmBtn.addEventListener("click", async e => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (confirmBtn.disabled) return;
+          const pool    = confirmBtn.dataset.pool;
+          const selected = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
+          const indices  = selected.map(c => parseInt(c.dataset.dieIdx, 10)).filter(n => !isNaN(n));
+          if (game.user.isGM) {
+            await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, "attack");
+          } else if (game.neuroshima?.socket) {
+            await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, "attack");
+          }
+        });
+      }
+    }
+
     updateActionButtons();
+    updateBeastQueue();
   }
 
   static async applyDuelBatch(messageId, pool, diceIndices, action = null) {

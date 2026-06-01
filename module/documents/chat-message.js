@@ -23,7 +23,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     // Delegate click events for action buttons
     root.querySelectorAll("[data-action]").forEach(btn => {
-      btn.addEventListener("click", event => {
+      btn.addEventListener("click", async event => {
         event.preventDefault();
         const action = btn.dataset.action;
         
@@ -76,10 +76,27 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "duelSwapInit":
             this.onDuelSwapInit(event, message);
             break;
+          case "applyBeastActions": {
+            const section = root.querySelector(".beast-action-spending");
+            if (!section) break;
+            const selectedActionIds = [];
+            section.querySelectorAll(".beast-qty-value").forEach(el => {
+              const qty = parseInt(el.textContent, 10) || 0;
+              const id = el.dataset.actionId;
+              for (let i = 0; i < qty; i++) selectedActionIds.push(id);
+            });
+            const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+            await MeleeOpposedChat.applyBeastActions(message.id, selectedActionIds);
+            btn.disabled = true;
+            btn.classList.add("applied");
+            btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.BeastAction.Applied")}`;
+            break;
+          }
         }
       });
     });
 
+    this._bindBeastActionSpending(root);
     this._bindResultCardCollapsibles(root);
 
     root.querySelectorAll(".item-card-draggable[data-uuid]").forEach(el => {
@@ -245,6 +262,63 @@ export class NeuroshimaChatMessage extends ChatMessage {
     } else if (game.neuroshima?.socket) {
       await game.neuroshima.socket.executeAsGM("applySkillAlloc", message.id, patch);
     }
+  }
+
+  static _bindBeastActionSpending(root) {
+    const section = root.querySelector(".beast-action-spending");
+    if (!section) return;
+
+    const netSuccesses = parseInt(section.dataset.netSuccesses, 10) || 0;
+    const remainingEl = section.querySelector(".beast-remaining");
+    const applyBtn    = section.querySelector("[data-action='applyBeastActions']");
+
+    const getSpent = () => {
+      let total = 0;
+      section.querySelectorAll(".beast-qty-value").forEach(el => {
+        const qty  = parseInt(el.textContent, 10) || 0;
+        const cost = parseInt(el.closest(".beast-action-row")?.dataset.actionCost, 10) || 1;
+        total += qty * cost;
+      });
+      return total;
+    };
+
+    const updateUI = () => {
+      const remaining = netSuccesses - getSpent();
+      if (remainingEl) remainingEl.textContent = remaining;
+      if (applyBtn) applyBtn.disabled = remaining === netSuccesses;
+      section.querySelectorAll(".beast-action-pick-btn").forEach(btn => {
+        btn.disabled = remaining < (parseInt(btn.dataset.cost, 10) || 1);
+      });
+    };
+
+    section.querySelectorAll(".beast-action-pick-btn").forEach(pickBtn => {
+      pickBtn.addEventListener("click", () => {
+        const id   = pickBtn.dataset.actionId;
+        const cost = parseInt(pickBtn.dataset.cost, 10) || 1;
+        if (getSpent() + cost > netSuccesses) return;
+        const qtyEl   = section.querySelector(`.beast-qty-value[data-action-id="${id}"]`);
+        const badgeEl = section.querySelector(`.beast-qty-badge[data-action-id="${id}"]`);
+        if (!qtyEl) return;
+        qtyEl.textContent = (parseInt(qtyEl.textContent, 10) || 0) + 1;
+        if (badgeEl) badgeEl.style.display = "";
+        updateUI();
+      });
+    });
+
+    section.querySelectorAll(".beast-qty-undo").forEach(undoBtn => {
+      undoBtn.addEventListener("click", () => {
+        const id    = undoBtn.dataset.actionId;
+        const qtyEl   = section.querySelector(`.beast-qty-value[data-action-id="${id}"]`);
+        const badgeEl = section.querySelector(`.beast-qty-badge[data-action-id="${id}"]`);
+        if (!qtyEl) return;
+        const cur = parseInt(qtyEl.textContent, 10) || 0;
+        if (cur > 0) qtyEl.textContent = cur - 1;
+        if (badgeEl && parseInt(qtyEl.textContent, 10) === 0) badgeEl.style.display = "none";
+        updateUI();
+      });
+    });
+
+    updateUI();
   }
 
   static _bindResultCardCollapsibles(root) {

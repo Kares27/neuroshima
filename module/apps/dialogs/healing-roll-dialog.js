@@ -374,7 +374,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       }
     });
 
-    const attrValue = medicActor.system.attributeTotals[selectedAttr];
+    const attrValue = medicActor.system.attributeTotals?.[selectedAttr];
 
     await NeuroshimaDice.rollBatchHealingTests({
       medicActor,

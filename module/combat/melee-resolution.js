@@ -527,9 +527,17 @@ export class MeleeResolution {
     const actor = doc?.actor || doc;
     const weapon = actor?.items.get(attacker.weaponId);
     const shift = attacker.damageShift || 0;
-    const d1 = this._shiftDamageType(weapon?.system.damageMelee1 || "D", shift);
-    const d2 = this._shiftDamageType(weapon?.system.damageMelee2 || "L", shift);
-    const d3 = this._shiftDamageType(weapon?.system.damageMelee3 || "C", shift);
+    let d1, d2, d3;
+    if (weapon?.type === "beast-action") {
+      const beastDmg = weapon.system.damage || null;
+      d1 = this._shiftDamageType(beastDmg ?? "D", shift);
+      d2 = this._shiftDamageType(beastDmg ?? "D", shift);
+      d3 = this._shiftDamageType(beastDmg ?? "D", shift);
+    } else {
+      d1 = this._shiftDamageType(weapon?.system.damageMelee1 || "D", shift);
+      d2 = this._shiftDamageType(weapon?.system.damageMelee2 || "L", shift);
+      d3 = this._shiftDamageType(weapon?.system.damageMelee3 || "C", shift);
+    }
 
     const tiers = [
       { cost: 1, tier: 1, label: d1 },
@@ -587,6 +595,8 @@ export class MeleeResolution {
     if (!attackerActor || !defenderActor) return;
 
     const weapon = attackerActor.items.get(attacker.weaponId);
+    const isBeastActionWeapon = weapon?.type === "beast-action";
+    const beastActionDamage = isBeastActionWeapon ? (weapon.system.damage || null) : undefined;
     const { CombatHelper } = await import("../helpers/combat-helper.js");
 
     const rawValue = attacker.pool[locationDieIndex];
@@ -600,6 +610,17 @@ export class MeleeResolution {
 
     for (const hit of hits) {
       const _dmgShift = attacker.damageShift || 0;
+      if (isBeastActionWeapon && !beastActionDamage) continue;
+      let dmg1, dmg2, dmg3;
+      if (isBeastActionWeapon) {
+        dmg1 = this._shiftDamageType(beastActionDamage, _dmgShift);
+        dmg2 = dmg1;
+        dmg3 = dmg1;
+      } else {
+        dmg1 = this._shiftDamageType(weapon?.system.damageMelee1, _dmgShift);
+        dmg2 = this._shiftDamageType(weapon?.system.damageMelee2, _dmgShift);
+        dmg3 = this._shiftDamageType(weapon?.system.damageMelee3, _dmgShift);
+      }
       const attackData = {
         isMelee: true,
         actorId: attackerActor.id,
@@ -607,9 +628,9 @@ export class MeleeResolution {
         label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
         successPoints: hit.cost,
         finalLocation: location,
-        damageMelee1: this._shiftDamageType(weapon?.system.damageMelee1, _dmgShift),
-        damageMelee2: this._shiftDamageType(weapon?.system.damageMelee2, _dmgShift),
-        damageMelee3: this._shiftDamageType(weapon?.system.damageMelee3, _dmgShift)
+        damageMelee1: dmg1,
+        damageMelee2: dmg2,
+        damageMelee3: dmg3
       };
       const batchResult = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
         isOpposed: true, spDifference: hit.cost, location, suppressChat: true

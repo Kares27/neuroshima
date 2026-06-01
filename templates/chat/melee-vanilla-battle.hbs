@@ -72,6 +72,16 @@
 
       {{#if isAttackerTurn}}
       <div class="mvc-battle-controls" data-melee-owner="{{attacker.actorUuid}}">
+        {{#if attacker.isCreature}}
+        {{#if attacker.beastActions.length}}
+        <div class="mvc-beast-actions">
+          <span class="mvc-beast-actions-label"><i class="fas fa-paw"></i> {{localize "NEUROSHIMA.MeleeDuel.BeastActions"}}:</span>
+          {{#each attacker.beastActions}}
+          <span class="mvc-beast-action-chip">{{this.name}}</span>
+          {{/each}}
+        </div>
+        {{/if}}
+        {{else}}
         <div class="mvc-attack-hint">
           <i class="fas fa-hand-pointer"></i>
           {{localize "NEUROSHIMA.MeleeDuel.SelectedCount"}}: <strong class="mvc-selected-count">0</strong>
@@ -79,6 +89,7 @@
             &nbsp;|&nbsp; 1k→{{attacker.damageTiers.s1}} 2k→{{attacker.damageTiers.s2}} 3k→{{attacker.damageTiers.s3}}
           {{/if}}
         </div>
+        {{/if}}
         <div class="mvc-battle-btn-row">
           <button type="button"
             class="action-btn action-btn--attack is-disabled"
@@ -157,6 +168,15 @@
             disabled>
             <i class="fas fa-shield-alt"></i> {{localize "NEUROSHIMA.MeleeDuel.ConfirmDefense"}}
           </button>
+          {{#if defender.isBerserker}}
+          <button type="button"
+            class="action-btn action-btn--berserker"
+            data-mvc-action="acceptHit"
+            data-participant-id="{{defender.id}}"
+            data-melee-owner="{{defender.actorUuid}}">
+            <i class="fas fa-meteor"></i> {{localize "NEUROSHIMA.MeleeDuel.AcceptHit"}}
+          </button>
+          {{/if}}
         </div>
       </div>
       {{else if isAttackerTurn}}

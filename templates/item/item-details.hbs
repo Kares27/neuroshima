@@ -452,6 +452,7 @@
                 <div class="form-group row-group" style="flex: 0 0 80px; text-align: center;">
                     <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
                     <select name="system.damage" style="text-align: center;">
+                        <option value="" {{#unless system.damage}}selected{{/unless}}>—</option>
                         {{selectOptions damageTypes selected=system.damage localize=true}}
                     </select>
                 </div>

@@ -52,7 +52,7 @@ export class NeuroshimaDice {
     }
 
     // 1. Read attribute and skill values
-    const attrValue = Number(actor.system.attributeTotals[attribute]) || 10;
+    const attrValue = Number(actor.system.attributeTotals?.[attribute]) || 10;
     const isCreatureActor = actor?.type === "creature";
     const skillValue = useSkill
         ? (skill === "experience" && isCreatureActor
@@ -438,7 +438,7 @@ export class NeuroshimaDice {
     const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
     const finalDiff = shiftedDifficulty;
 
-    const baseAttr = Number(actor.system.attributeTotals[weapon.system.attribute]) || 10;
+    const baseAttr = Number(actor.system.attributeTotals?.[weapon.system.attribute]) || 10;
     let finalStat = baseAttr + effectiveAttributeBonus;
     if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) finalStat += weaponBonus;
     const target = finalStat + finalDiff.mod;

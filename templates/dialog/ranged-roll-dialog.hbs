@@ -129,9 +129,6 @@
         <div class="form-group vertical slider-group">
             <label>{{localize 'NEUROSHIMA.Roll.MeleeDiceCount'}}: <span class="melee-dice-count-display">{{meleeDiceCount}}</span></label>
             <input type="range" name="meleeDiceCount" min="1" max="3" value="{{meleeDiceCount}}" step="1">
-            <div class="slider-hint">
-                <span class="melee-dice-count-hint">{{meleeDiceCount}}</span>k20
-            </div>
         </div>
         {{/if}}
     </div>
@@ -139,10 +136,10 @@
 
     <div class="rd-fullwidth-row rd-location-block">
         {{#if isMelee}}{{#if isPoolRoll}}
-        <div class="form-group rd-gradcios-row">
-            <label>{{localize "NEUROSHIMA.GradCios.CheckboxLabel"}}</label>
-            <input type="checkbox" name="gradCios" {{checked gradCios}}/>
-        </div>
+        <label class="form-group rd-gradcios-row" for="rd-gradcios-checkbox">
+            {{localize "NEUROSHIMA.GradCios.CheckboxLabel"}}
+            <input type="checkbox" id="rd-gradcios-checkbox" name="gradCios" {{checked gradCios}}/>
+        </label>
         {{/if}}{{/if}}
         <div class="form-group rd-hitlocation-row">
             <label>{{localize "NEUROSHIMA.Roll.HitLocation"}}</label>

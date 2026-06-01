@@ -519,6 +519,18 @@ export class MeleeTurnService {
     await MeleeResolution.resolvePrimaryExchange(id);
   }
 
+  static async berserkerAcceptHit(id, participantId) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (!encounter || encounter.turnState.phase !== "primary-defense-selection") return;
+    const updated = foundry.utils.deepClone(encounter);
+    const exchange = updated.currentExchange;
+    if (participantId !== exchange.defenderId) return;
+    exchange.defenderSelectedDice = [];
+    await MeleeStore.updateEncounter(id, updated);
+    const { MeleeResolution } = await import("./melee-resolution.js");
+    await MeleeResolution.resolvePrimaryExchange(id);
+  }
+
   /**
    * Goes back one turn (GM control). Never goes below turn 1.
    * Resets pools and targets the same way startNewTurn does.

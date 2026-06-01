@@ -69,6 +69,7 @@ await this.sendMessage(\`<strong>Zatrucie (\${stacks}×)</strong>: kara \${stack
     ]
   },
   { id: "invisible",   name: "Niewidzialny",  key: "invisible",   img: "icons/svg/invisible.svg",   type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
+  { id: "berserker",   name: "Berserker",     key: "berserker",   img: "systems/neuroshima/assets/img/berserker.svg", type: "boolean", allowNegative: false, builtin: true, booleanOnly: true,  scripts: [], conditionCheckCode: "" },
   {
     id: "overweight", name: "Przeciążony", key: "overweight",
     img: "systems/neuroshima/assets/effects/weight.svg",

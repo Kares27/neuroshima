@@ -2,22 +2,21 @@
 
   <div class="mdc-header">
     <div class="mdc-fighter{{#if isOwnerAttacker}} mdc-fighter--init{{/if}}">
-      <img src="{{attackerImg}}" width="32" height="32" alt="{{attackerName}}">
+      <img src="{{attackerImg}}" width="40" height="40" alt="{{attackerName}}">
       <span class="mdc-name">{{attackerName}}</span>
-      {{#if isOwnerAttacker}}<i class="fas fa-bolt mdc-init-icon" title="{{localize 'NEUROSHIMA.MeleeDuel.InitiativeOwner'}}"></i>{{/if}}
     </div>
     <div class="mdc-vs">
-      <i class="fas fa-swords"></i>
       {{#if canSwapInit}}
-      <button type="button" class="mdc-swap-init-btn" data-action="duelSwapInit" title="{{localize 'NEUROSHIMA.MeleeDuel.DuelSwapInitiative'}}">
-        <i class="fas fa-exchange-alt"></i>
+      <button type="button" class="mdc-vs-swords" data-action="duelSwapInit" title="{{localize 'NEUROSHIMA.MeleeDuel.DuelSwapInitiative'}}">
+        <i class="fas fa-swords"></i>
       </button>
+      {{else}}
+      <i class="fas fa-swords"></i>
       {{/if}}
     </div>
-    <div class="mdc-fighter mdc-fighter--right{{#unless isOwnerAttacker}} mdc-fighter--init{{/unless}}">
-      {{#unless isOwnerAttacker}}<i class="fas fa-bolt mdc-init-icon" title="{{localize 'NEUROSHIMA.MeleeDuel.InitiativeOwner'}}"></i>{{/unless}}
+    <div class="mdc-fighter{{#unless isOwnerAttacker}} mdc-fighter--init{{/unless}}">
+      <img src="{{defenderImg}}" width="40" height="40" alt="{{defenderName}}">
       <span class="mdc-name">{{defenderName}}</span>
-      <img src="{{defenderImg}}" width="32" height="32" alt="{{defenderName}}">
     </div>
   </div>
 
@@ -84,6 +83,53 @@
     </div>
     {{/if}}
     <div class="mdc-action-list">
+      {{#if ownerBeastActions}}
+        <div class="mdc-beast-queue-section">
+          <div class="mdc-beast-budget-row">
+            <i class="fas fa-paw"></i>
+            <span class="mdc-beast-budget-remaining">0</span>/<span class="mdc-beast-budget-total">0</span>✦
+          </div>
+          {{#each ownerBeastActions}}
+          <div class="mdc-beast-action-entry" data-action-id="{{id}}" data-cost="{{successCost}}">
+            <button type="button" class="mdc-beast-pick-btn" data-action-id="{{id}}" data-cost="{{successCost}}" disabled>
+              <span class="mac-icon"><img src="{{img}}" style="width:22px;height:22px;border-radius:3px;object-fit:cover" alt=""></span>
+              <span class="mac-body">
+                <span class="mac-label">{{name}}</span>
+                <span class="mac-hint"><span class="mbc-cost-badge">{{successCost}}✦</span>{{#if damage}}<span class="mbc-dmg-badge"> → {{damage}}</span>{{/if}}</span>
+              </span>
+            </button>
+            <span class="mdc-beast-qty-badge" data-action-id="{{id}}" style="display:none">
+              <span class="mdc-beast-qty-val" data-action-id="{{id}}">0</span>×
+              <button type="button" class="mdc-beast-undo-btn" data-action-id="{{id}}">↩</button>
+            </span>
+          </div>
+          {{/each}}
+          <button type="button" class="mdc-beast-confirm-btn is-disabled" data-pool="{{ownerPool}}" disabled>
+            <span class="mac-icon"><i class="fas fa-check"></i></span>
+            <span class="mac-body">
+              <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionAttack"}}</span>
+            </span>
+          </button>
+        </div>
+        <button type="button" class="mdc-action-choice is-disabled"
+            data-action-type="exit" data-pool="{{ownerPool}}"
+            data-exact-dice="1" disabled>
+          <span class="mac-icon"><i class="fas fa-door-open"></i></span>
+          <span class="mac-body">
+            <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionExit"}}</span>
+            <span class="mac-hint">{{localize "NEUROSHIMA.MeleeDuel.DuelHintExit"}}</span>
+          </span>
+        </button>
+        <button type="button" class="mdc-action-choice is-disabled"
+            data-action-type="nonCombat" data-pool="{{ownerPool}}"
+            data-min-dice="1" data-max-dice="3" data-need-success="true" disabled>
+          <span class="mac-icon"><i class="fas fa-comment-alt"></i></span>
+          <span class="mac-body">
+            <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionNonCombat"}}</span>
+            <span class="mac-hint">{{localize "NEUROSHIMA.MeleeDuel.DuelHintNonCombat"}}</span>
+          </span>
+        </button>
+      {{else}}
       <button type="button" class="mdc-action-choice is-disabled"
           data-action-type="attack" data-pool="{{ownerPool}}"
           data-min-dice="1" data-max-dice="3" disabled>
@@ -111,6 +157,7 @@
           <span class="mac-hint">{{localize "NEUROSHIMA.MeleeDuel.DuelHintNonCombat"}}</span>
         </span>
       </button>
+      {{/if}}
     </div>
   </div>
   {{/if}}

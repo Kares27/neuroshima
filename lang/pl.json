@@ -843,6 +843,8 @@
             "PerformAction": "Wykonaj akcję",
             "ChooseDamageDistribution": "Wybierz obrażenia",
             "ConfirmDefense": "Potwierdź obronę",
+            "AcceptHit": "Przyjmij cios (Berserker)",
+            "BeastActions": "Akcje bestii",
             "Target": "Cel",
             "PrimaryOpponent": "Główny przeciwnik",
             "Crowded": "Osaczony",
@@ -1597,7 +1599,7 @@
             "KondycjaHint": "Ogólna wytrzymałość fizyczna stworzenia",
             "NaturalArmor":
             {
-            "Title": "Naturalne Opancerzenie",
+            "Title": "Pancerz",
             "Location": "Część ciała",
             "Reduction": "Redukcja",
             "ReductionAbbr": "Red.",

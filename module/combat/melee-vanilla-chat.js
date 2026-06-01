@@ -65,6 +65,14 @@ export class MeleeVanillaChat {
       });
     });
 
+    root.querySelectorAll("[data-mvc-action='acceptHit']").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        await MeleeVanillaChat._doAcceptHit(btn, encounterId);
+      });
+    });
+
     root.querySelectorAll("[data-mvc-action='performAction']").forEach(btn => {
       btn.addEventListener("click", async e => {
         e.preventDefault();
@@ -415,6 +423,15 @@ export class MeleeVanillaChat {
     const defActor = defDoc?.actor || defDoc;
     const defWeapon = defActor?.items.get(defender.weaponId);
 
+    const atkIsCreature = atkActor?.type === "creature";
+    const atkBeastActions = atkIsCreature
+      ? (atkActor.items || [])
+          .filter(i => i.type === "beast-action")
+          .map(i => ({ id: i.id, name: i.name, cost: i.system?.cost ?? 1, costType: i.system?.costType ?? "success" }))
+      : [];
+
+    const defIsBerserker = defActor?.statuses?.has("berserker") ?? false;
+
     const availableDefenderDice = defenderPool.filter(d => !d.isUsed).length;
     const neededDiceCount = Math.min(exchange.declaredDiceCount || 0, availableDefenderDice);
 
@@ -437,15 +454,26 @@ export class MeleeVanillaChat {
         maneuver: attacker.maneuver,
         isInitiativeOwner: attackerId === encounter.turnState.initiativeOwnerId,
         attackTarget: atkTarget,
-        weaponName: atkWeapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+        weaponName: atkIsCreature
+          ? game.i18n.localize("NEUROSHIMA.MeleeDuel.BeastActions")
+          : (atkWeapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed")),
         effectivePool: attackerPool,
         isCrowded: (atkCrowd.opponentCount || 0) > 1,
         dexPenalty: atkDexPenalty,
-        damageTiers: atkWeapon ? {
-          s1: atkWeapon.system?.damageMelee1 || "D",
-          s2: atkWeapon.system?.damageMelee2 || "L",
-          s3: atkWeapon.system?.damageMelee3 || "C"
-        } : null
+        isCreature: atkIsCreature,
+        beastActions: atkBeastActions,
+        damageTiers: (() => {
+          if (!atkWeapon) return null;
+          if (atkWeapon.type === "beast-action") {
+            const dmg = atkWeapon.system?.damage || null;
+            return dmg ? { s1: dmg, s2: dmg, s3: dmg } : null;
+          }
+          return {
+            s1: atkWeapon.system?.damageMelee1 || "D",
+            s2: atkWeapon.system?.damageMelee2 || "L",
+            s3: atkWeapon.system?.damageMelee3 || "C"
+          };
+        })()
       },
       defender: {
         id: defenderId,
@@ -459,6 +487,7 @@ export class MeleeVanillaChat {
         effectivePool: defenderPool,
         isCrowded: (defCrowd.opponentCount || 0) > 1,
         dexPenalty: defDexPenalty,
+        isBerserker: defIsBerserker,
         neededDiceCount
       }
     };
@@ -537,6 +566,43 @@ export class MeleeVanillaChat {
       await MeleeTurnService.selectDie(encounterId, participantId, idx);
     }
     await MeleeTurnService.confirmAttack(encounterId, participantId);
+  }
+
+  static async _doAcceptHit(btn, encounterId) {
+    const participantId = btn.dataset.participantId;
+    const doc = fromUuidSync(btn.dataset.meleeOwner);
+    const actor = doc?.actor || doc;
+    if (!actor?.isOwner && !game.user.isGM) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.NotYourFighter"));
+      return;
+    }
+    btn.disabled = true;
+
+    const encBefore = MeleeStore.getEncounter(encounterId);
+    if (!encBefore) return;
+    const turn     = encBefore.turnState.turn || 1;
+    const segment  = encBefore.turnState.segment || 1;
+    const queueIdx = encBefore.turnState.queueIndex ?? 0;
+    const exchangeId = `${turn}-${segment}-${queueIdx}`;
+
+    await MeleeTurnService.berserkerAcceptHit(encounterId, participantId);
+
+    const encAfter = MeleeStore.getEncounter(encounterId);
+    if (!encAfter) return;
+
+    if (!game.user.isGM) {
+      if (game.neuroshima?.socket) {
+        await game.neuroshima.socket.executeAsGM("postVanillaCard", "result", encounterId);
+      }
+    } else {
+      await MeleeVanillaChat._postResultCard(encounterId, encAfter, null);
+      const t = MeleeVanillaChat._getTracking(encounterId);
+      await MeleeVanillaChat._setTracking(encounterId, {
+        ...t,
+        lastPostedPhase: "result",
+        lastPostedExchangeId: exchangeId
+      });
+    }
   }
 
   static async _doConfirmDefense(btn, encounterId, root) {

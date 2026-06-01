@@ -25,6 +25,12 @@
                 <label>{{localize "NEUROSHIMA.Wound.TotalPenaltyAbbr"}}</label>
                 <div class="stat-value">{{combat.totalCombatPenalty}}%</div>
             </div>
+            <div class="stat-box creature-aggression-stat">
+                <label>{{localize "NEUROSHIMA.Creature.AggressionAbbr"}}</label>
+                <div class="stat-value stat-value-input">
+                    <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
+                </div>
+            </div>
             <div class="stat-box hp-summary" title="{{localize 'NEUROSHIMA.Wound.TotalDamage'}}">
                 {{#if isGM}}
                 <a class="hp-config-btn" data-action="configureHP" title="{{localize 'NEUROSHIMA.Actions.ConfigureHP'}}">
@@ -34,25 +40,15 @@
                 <label>HP</label>
                 <div class="stat-value">{{combat.totalDamagePoints}} / {{combat.maxHP}}</div>
             </div>
-            <div class="stat-box berserker-summary" title="{{localize 'NEUROSHIMA.Creature.BerserkerMode'}}">
-                <label>{{localize "NEUROSHIMA.Creature.BerserkerAbbr"}}</label>
-                <div class="stat-value">
-                    <input type="checkbox" name="system.isBerserker" {{checked system.isBerserker}} class="berserker-checkbox"/>
-                </div>
-            </div>
         </div>
 
         <div class="header-stats-row creature-movement-row">
-            <div class="stat-box creature-movement-stat">
-                <label>{{localize "NEUROSHIMA.Creature.MovementAbbr"}}</label>
-                <div class="stat-value stat-value-input">
-                    <input type="number" name="system.movement" value="{{system.movement}}" min="0"/>
-                </div>
-            </div>
-            <div class="stat-box creature-aggression-stat">
-                <label>{{localize "NEUROSHIMA.Creature.AggressionAbbr"}}</label>
-                <div class="stat-value stat-value-input">
-                    <input type="number" name="system.aggression" value="{{system.aggression}}" min="0"/>
+            <div class="stat-box movement-summary">
+                <label>{{localize "NEUROSHIMA.Movement.Label"}}</label>
+                <div class="movement-fields">
+                    <input type="number" name="system.movement" value="{{system.movement}}" min="0" class="movement-base" title="{{localize 'NEUROSHIMA.Movement.PerSegment'}}"/>
+                    <input type="number" value="{{combat.movement2}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg2'}}"/>
+                    <input type="number" value="{{combat.movement3}}" disabled class="movement-seg" title="{{localize 'NEUROSHIMA.Movement.Seg3'}}"/>
                 </div>
             </div>
         </div>

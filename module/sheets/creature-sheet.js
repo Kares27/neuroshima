@@ -285,48 +285,48 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         };
 
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
-        if (combatTypeSetting === "opposedPips" || combatTypeSetting === "opposedSuccesses") {
-          const myUuidsCheck = [actor.uuid];
-          if (actor.token) myUuidsCheck.push(actor.token.uuid);
+        const effectiveMode = combatTypeSetting === "default" ? "opposedPips" : combatTypeSetting;
 
-          const opposeFlag = actor.getFlag("neuroshima", "oppose");
-          if (opposeFlag?.messageId) {
-            const pendingMsg = game.messages.get(opposeFlag.messageId);
-            const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
-            if (opposeData?.status === "pending") {
-              const syntheticPending = {
-                id: opposeData.defenderUuid,
-                attackerId: opposeData.attackerUuid,
-                attackerTokenUuid: opposeData.attackerTokenUuid,
-                defenderId: opposeData.defenderUuid,
-                mode: opposeData.mode,
-                opposedChatMessageId: opposeFlag.messageId
-              };
-              const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
-              await MeleeOpposedChat.openDefenseDialog(actor, syntheticPending, null, syntheticWeapon);
-              return;
-            }
-            await actor.unsetFlag("neuroshima", "oppose");
-          }
+        const myUuidsCheck = [actor.uuid];
+        if (actor.token) myUuidsCheck.push(actor.token.uuid);
 
-          const combatPendings = game.combat?.getFlag("neuroshima", "meleePendings") || {};
-          const opposedPending = Object.values(combatPendings).find(p => {
-            if (!p.active || !p.mode) return false;
-            return myUuidsCheck.some(u => game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, u));
-          });
-          if (opposedPending) {
+        const opposeFlag = actor.getFlag("neuroshima", "oppose");
+        if (opposeFlag?.messageId) {
+          const pendingMsg = game.messages.get(opposeFlag.messageId);
+          const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
+          if (opposeData?.status === "pending") {
+            const syntheticPending = {
+              id: opposeData.defenderUuid,
+              attackerId: opposeData.attackerUuid,
+              attackerTokenUuid: opposeData.attackerTokenUuid,
+              defenderId: opposeData.defenderUuid,
+              mode: opposeData.mode,
+              opposedChatMessageId: opposeFlag.messageId
+            };
             const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
-            await MeleeOpposedChat.openDefenseDialog(actor, opposedPending, null, syntheticWeapon);
+            await MeleeOpposedChat.openDefenseDialog(actor, syntheticPending, null, syntheticWeapon);
             return;
           }
+          await actor.unsetFlag("neuroshima", "oppose");
+        }
 
-          const rawTargets = Array.from(game.user.targets ?? []);
-          const chatTargets = rawTargets.filter(t => !myUuidsCheck.includes(t.document.uuid));
-          if (chatTargets.length > 0) {
-            const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
-            await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, chatTargets[0].document.uuid, combatTypeSetting);
-            return;
-          }
+        const combatPendings = game.combat?.getFlag("neuroshima", "meleePendings") || {};
+        const opposedPending = Object.values(combatPendings).find(p => {
+          if (!p.active || !p.mode) return false;
+          return myUuidsCheck.some(u => game.neuroshima.NeuroshimaMeleeCombat.isSameActor(p.defenderId, u));
+        });
+        if (opposedPending) {
+          const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+          await MeleeOpposedChat.openDefenseDialog(actor, opposedPending, null, syntheticWeapon);
+          return;
+        }
+
+        const rawTargets = Array.from(game.user.targets ?? []);
+        const chatTargets = rawTargets.filter(t => !myUuidsCheck.includes(t.document.uuid));
+        if (chatTargets.length > 0) {
+          const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+          await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, chatTargets[0].document.uuid, effectiveMode);
+          return;
         }
 
         const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
@@ -911,6 +911,8 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       totalArmorAP,
       maxHP,
       meleeInitiative:    system.combat?.meleeInitiative || 0,
+      movement2:          (system.movement ?? 0) * 2,
+      movement3:          (system.movement ?? 0) * 3,
       wounds:             items.filter(i => i.type === "wound"),
       meleePendings:      meleePendingsFromCombat
     };

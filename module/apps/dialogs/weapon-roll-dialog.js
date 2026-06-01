@@ -388,7 +388,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (finalLevelElement) finalLevelElement.innerText = previewLevelLabel;
 
     const attrKey   = this.weapon.system.attribute;
-    const attrTotal = Number(this.actor.system.attributeTotals[attrKey]) || 0;
+    const attrTotal = Number(this.actor.system.attributeTotals?.[attrKey]) || 0;
     let activeDiff  = actualDiff;
 
     if (isMelee && maneuver === 'increasedTempo') {
@@ -512,11 +512,20 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.close();
 
     if (this.isPoolRoll && this.onPoolRoll) {
-      const rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
+      let rawResult;
+      try {
+        rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
+      } catch (err) {
+        console.error("Neuroshima | Pool roll: rollWeaponTest failed:", err);
+      }
       if (rawResult) {
         rawResult.isGradCios = !!(formData.gradCios);
-        const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-        await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
+        try {
+          const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
+          await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
+        } catch (err) {
+          console.error("Neuroshima | Pool roll: failed to render weapon roll card:", err);
+        }
       }
       return this.onPoolRoll(rawResult);
     }
