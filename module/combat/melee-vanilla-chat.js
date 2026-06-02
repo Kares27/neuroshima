@@ -427,7 +427,14 @@ export class MeleeVanillaChat {
     const atkBeastActions = atkIsCreature
       ? (atkActor.items || [])
           .filter(i => i.type === "beast-action")
-          .map(i => ({ id: i.id, name: i.name, cost: i.system?.cost ?? 1, costType: i.system?.costType ?? "success" }))
+          .flatMap(i => (i.system?.activities ?? []).map(act => ({
+            id: `${i.id}::${act.id}`,
+            itemId: i.id,
+            activityId: act.id,
+            name: act.name || i.name,
+            cost: act.costType === "success" ? (act.successCost ?? 1) : (act.segmentCost ?? 1),
+            costType: act.costType ?? "success"
+          })))
       : [];
 
     const defIsBerserker = defActor?.statuses?.has("berserker") ?? false;
@@ -465,7 +472,8 @@ export class MeleeVanillaChat {
         damageTiers: (() => {
           if (!atkWeapon) return null;
           if (atkWeapon.type === "beast-action") {
-            const dmg = atkWeapon.system?.damage || null;
+            const firstAct = (atkWeapon.system?.activities ?? [])[0];
+            const dmg = firstAct?.damage || null;
             return dmg ? { s1: dmg, s2: dmg, s3: dmg } : null;
           }
           return {

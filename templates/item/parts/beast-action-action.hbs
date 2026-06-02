@@ -1,0 +1,17 @@
+<div class="beast-action-fields">
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.BeastAction.SuccessCost"}}</label>
+        <input type="number" name="system.successCost" value="{{system.successCost}}" min="0" max="3" data-dtype="Number" {{#unless editable}}disabled{{/unless}}/>
+    </div>
+    <div class="form-group row-group">
+        <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+        <select name="system.damage" {{#unless editable}}disabled{{/unless}}>
+            <option value="">—</option>
+            {{selectOptions damageTypes selected=system.damage localize=true}}
+        </select>
+    </div>
+    <div class="form-group row-group">
+        <label title="{{localize 'NEUROSHIMA.Items.Fields.Piercing'}}">{{localize "NEUROSHIMA.Items.Fields.PiercingAbbr"}}</label>
+        <input type="number" name="system.piercing" value="{{system.piercing}}" min="0" max="10" data-dtype="Number" {{#unless editable}}disabled{{/unless}}/>
+    </div>
+</div>

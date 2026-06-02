@@ -410,53 +410,47 @@
 
     {{#if (eq item.type "beast-action")}}
         <div class="item-features beast-action-stats secondary-box">
-            <div class="grid grid-3col">
-                <div class="form-group row-group">
-                    <label>{{localize "NEUROSHIMA.BeastAction.TypeLabel"}}</label>
-                    <input type="text" name="system.actionType" value="{{system.actionType}}"/>
-                </div>
-                <div class="form-group row-group">
-                    <label>{{localize "NEUROSHIMA.BeastAction.CostTypeLabel"}}</label>
-                    <select name="system.costType">
-                        <option value="segment" {{#if (eq system.costType "segment")}}selected{{/if}}>{{localize "NEUROSHIMA.BeastAction.CostType.Segment"}}</option>
-                        <option value="success" {{#if (eq system.costType "success")}}selected{{/if}}>{{localize "NEUROSHIMA.BeastAction.CostType.Success"}}</option>
-                    </select>
-                </div>
-                {{#if (eq system.costType "segment")}}
-                <div class="form-group row-group">
-                    <label>{{localize "NEUROSHIMA.BeastAction.SegmentCost"}}</label>
-                    <input type="number" name="system.segmentCost" value="{{system.segmentCost}}" min="1" max="3"/>
-                </div>
-                {{else}}
-                <div class="form-group row-group">
-                    <label>{{localize "NEUROSHIMA.BeastAction.SuccessCost"}}</label>
-                    <input type="number" name="system.successCost" value="{{system.successCost}}" min="0" max="3"/>
-                </div>
+            <div class="beast-action-header">
+                <span class="beast-action-section-label">{{localize "NEUROSHIMA.BeastAction.Activities"}}</span>
+                {{#if editable}}
+                <a class="item-control" data-action="addBeastActivity" title="{{localize 'NEUROSHIMA.BeastAction.AddActivity'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
                 {{/if}}
             </div>
-
-            <hr class="dotted-hr" style="margin: 6px 0;">
-            <div class="flexrow" style="gap: 12px; align-items: flex-end; justify-content: center;">
-                {{#if (eq system.costType "segment")}}
-                <div class="form-group row-group" style="flex: 1;">
-                    <label>{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
-                    <select name="system.attribute">
-                        {{selectOptions attributes selected=system.attribute labelAttr="label" localize=true}}
-                    </select>
-                </div>
-                {{/if}}
-                <div class="form-group row-group" style="flex: 0 0 60px; text-align: center;">
-                    <label title="Punkty Przebicia">PP</label>
-                    <input type="number" name="system.piercing" value="{{system.piercing}}" min="0" max="10" style="text-align: center;"/>
-                </div>
-                <div class="form-group row-group" style="flex: 0 0 80px; text-align: center;">
-                    <label>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
-                    <select name="system.damage" style="text-align: center;">
-                        <option value="" {{#unless system.damage}}selected{{/unless}}>—</option>
-                        {{selectOptions damageTypes selected=system.damage localize=true}}
-                    </select>
-                </div>
+            {{#each system.activities}}
+            <div class="beast-activity-row" data-activity-id="{{this.id}}">
+                <img class="beast-act-img" src="{{#if this.img}}{{this.img}}{{else}}icons/svg/combat.svg{{/if}}" alt="" width="28" height="28"/>
+                <span class="beast-act-name-label">
+                    {{#if this.name}}{{this.name}}{{else}}<em>{{localize "NEUROSHIMA.BeastAction.ActivityName"}}</em>{{/if}}
+                </span>
+                <span class="beast-act-badges">
+                    {{#if (eq this.costType "segment")}}
+                    <span class="beast-act-badge badge-segment">{{this.segmentCost}}seg</span>
+                    {{else}}
+                    <span class="beast-act-badge badge-success">{{this.successCost}}✦</span>
+                    {{/if}}
+                    {{#if this.damage}}
+                    <span class="beast-act-badge badge-damage">{{this.damage}}</span>
+                    {{/if}}
+                    {{#if this.effectIds.length}}
+                    <span class="beast-act-badge badge-effects"><i class="fas fa-star"></i></span>
+                    {{/if}}
+                </span>
+                <span class="beast-act-controls">
+                    <a class="item-control" data-action="editBeastActivity" data-activity-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                        <i class="fas fa-pen"></i>
+                    </a>
+                    {{#if @root.editable}}
+                    <a class="item-control beast-act-delete" data-action="removeBeastActivity" data-activity-id="{{this.id}}" title="{{localize 'NEUROSHIMA.BeastAction.RemoveActivity'}}">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                    {{/if}}
+                </span>
             </div>
+            {{else}}
+            <p class="beast-action-empty">{{localize "NEUROSHIMA.BeastAction.NoActivities"}}</p>
+            {{/each}}
         </div>
     {{/if}}
 

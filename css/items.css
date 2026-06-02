@@ -2022,3 +2022,516 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     flex: 0 0 auto;
     white-space: nowrap;
 }
+
+.neuroshima.sheet.item .beast-action-stats .beast-activities-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.neuroshima.sheet.item .beast-action-stats .beast-activities-header .section-label {
+    font-size: 0.75em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-light-secondary, #888);
+}
+
+.neuroshima.sheet.item .beast-action-stats .beast-activity-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.03);
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-img {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-name-label {
+    flex: 1;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--color-text-light-heading, #ccc);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-name-label em {
+    color: var(--color-text-light-secondary, #888);
+    font-style: italic;
+    font-weight: 400;
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-badges {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.item .beast-act-badge {
+    font-size: 0.76em;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.neuroshima.sheet.item .beast-act-badge.badge-success {
+    background: rgba(255, 190, 50, 0.18);
+    color: #f0c060;
+    border: 1px solid rgba(255, 190, 50, 0.3);
+}
+
+.neuroshima.sheet.item .beast-act-badge.badge-segment {
+    background: rgba(100, 160, 255, 0.15);
+    color: #88aaff;
+    border: 1px solid rgba(100, 160, 255, 0.3);
+}
+
+.neuroshima.sheet.item .beast-act-badge.badge-damage {
+    background: rgba(220, 80, 80, 0.15);
+    color: #e08080;
+    border: 1px solid rgba(220, 80, 80, 0.25);
+}
+
+.neuroshima.sheet.item .beast-act-badge.badge-effects {
+    background: rgba(150, 100, 220, 0.15);
+    color: #b088ee;
+    border: 1px solid rgba(150, 100, 220, 0.3);
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-controls {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-controls .item-control {
+    color: var(--color-text-dark-secondary, #666);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-controls .item-control:hover {
+    color: var(--color-text-light-heading, #ccc);
+}
+
+.neuroshima.sheet.item .beast-activity-row .beast-act-controls .beast-act-delete:hover {
+    color: var(--color-danger, #e44);
+}
+
+.neuroshima.sheet.item .beast-activities-empty {
+    font-size: 0.8em;
+    color: var(--color-text-light-secondary, #888);
+    text-align: center;
+    margin: 6px 0;
+}
+
+/* ===== BeastActivitySheet popup ===== */
+
+.beast-activity-sheet .bas-content {
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Tab bar --- */
+.beast-activity-sheet .bas-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 6px 10px 0;
+    border-bottom: 2px solid var(--ns-border-main);
+    margin-bottom: 0;
+}
+
+.beast-activity-sheet .bas-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px 6px;
+    font-size: 0.74em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ns-text-main);
+    opacity: 0.55;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: opacity 0.12s, border-color 0.12s;
+}
+
+.beast-activity-sheet .bas-tab-btn i {
+    font-size: 0.9em;
+}
+
+.beast-activity-sheet .bas-tab-btn.active {
+    opacity: 1;
+    border-bottom-color: var(--ns-text-accent);
+}
+
+.beast-activity-sheet .bas-tab-btn:hover:not(.active) {
+    opacity: 0.8;
+}
+
+.beast-activity-sheet .bas-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ns-text-accent);
+    color: #fff;
+    font-size: 0.8em;
+    font-style: normal;
+    font-weight: 700;
+    border-radius: 8px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    margin-left: 2px;
+}
+
+/* --- Tab panels --- */
+.beast-activity-sheet .bas-tab {
+    display: none;
+    padding: 8px 10px 10px;
+}
+
+.beast-activity-sheet .bas-tab.active {
+    display: block;
+}
+
+/* --- Identity hero row (icon + name) --- */
+.beast-activity-sheet .bas-identity-hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 2px;
+}
+
+.beast-activity-sheet .bas-icon-wrap {
+    position: relative;
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 4px;
+    border: 2px solid var(--ns-border-main);
+    overflow: hidden;
+}
+
+.beast-activity-sheet .bas-icon-wrap.bas-icon-editable {
+    cursor: pointer;
+}
+
+.beast-activity-sheet .bas-activity-icon {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.beast-activity-sheet .bas-icon-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.55);
+    opacity: 0;
+    transition: opacity 0.15s;
+    color: #fff;
+    font-size: 1.1em;
+}
+
+.beast-activity-sheet .bas-icon-wrap.bas-icon-editable:hover .bas-icon-overlay {
+    opacity: 1;
+}
+
+.beast-activity-sheet .bas-hero-fields {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.beast-activity-sheet .bas-name-input {
+    width: 100%;
+    font-size: 1.15em;
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--ns-border-main);
+    border-radius: 0;
+    color: var(--ns-text-main);
+    padding: 2px 2px 4px;
+    line-height: 1.2;
+}
+
+.beast-activity-sheet .bas-name-input:focus {
+    outline: none;
+    border-bottom-color: var(--ns-text-accent);
+}
+
+.beast-activity-sheet .bas-name-input::placeholder {
+    opacity: 0.4;
+    font-weight: 400;
+}
+
+/* --- Fieldsets --- */
+.beast-activity-sheet .bas-fieldset {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 4px;
+    padding: 0 10px 10px;
+    margin: 0 0 8px;
+}
+
+.beast-activity-sheet .bas-fieldset:last-child {
+    margin-bottom: 0;
+}
+
+.beast-activity-sheet .bas-fieldset legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 4px;
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ns-text-accent);
+    margin-bottom: 4px;
+}
+
+.beast-activity-sheet .bas-fieldset.bas-fieldset-secondary {
+    border-color: color-mix(in srgb, var(--ns-border-main) 50%, transparent);
+}
+
+.beast-activity-sheet .bas-fieldset.bas-fieldset-secondary legend {
+    color: var(--ns-text-main);
+    opacity: 0.5;
+}
+
+/* --- Field group: label above input --- */
+.beast-activity-sheet .bas-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.beast-activity-sheet .bas-field-group.bas-field-narrow {
+    flex: 0 0 64px;
+}
+
+.beast-activity-sheet .bas-label {
+    font-size: 0.68em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ns-text-main);
+    opacity: 0.6;
+}
+
+.beast-activity-sheet .bas-field-group input,
+.beast-activity-sheet .bas-field-group select {
+    width: 100%;
+    height: 26px;
+    font-size: 0.82em;
+    padding: 2px 6px;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    color: var(--ns-text-main);
+}
+
+.beast-activity-sheet .bas-field-group select option {
+    background-color: var(--ns-bg-sheet) !important;
+    color: var(--ns-text-main) !important;
+}
+
+.beast-activity-sheet .bas-field-group input:focus,
+.beast-activity-sheet .bas-field-group select:focus {
+    border-color: var(--ns-text-accent);
+    outline: none;
+}
+
+/* --- Two-column row --- */
+.beast-activity-sheet .bas-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* --- Add effect button (inside legend) --- */
+.beast-activity-sheet .bas-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 1em;
+    color: var(--ns-text-main);
+    opacity: 0.5;
+    cursor: pointer;
+    margin-left: auto;
+    padding: 1px 4px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    transition: opacity 0.1s;
+}
+
+.beast-activity-sheet .bas-add-btn:hover {
+    opacity: 1;
+}
+
+/* --- Effect rows --- */
+.beast-activity-sheet .bas-effect-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px;
+    border-radius: 3px;
+    margin-bottom: 2px;
+    background: var(--ns-bg-panel);
+    border: 1px solid transparent;
+    transition: border-color 0.1s;
+}
+
+.beast-activity-sheet .bas-effect-row:hover {
+    border-color: var(--ns-border-main);
+}
+
+.beast-activity-sheet .bas-effect-icon {
+    flex-shrink: 0;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.beast-activity-sheet .bas-effect-icon-placeholder {
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+    font-size: 0.78em;
+    color: var(--ns-text-main);
+    opacity: 0.4;
+}
+
+.beast-activity-sheet .bas-effect-name {
+    flex: 1;
+    font-size: 0.82em;
+    color: var(--ns-text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.beast-activity-sheet .bas-effect-name.bas-disabled {
+    opacity: 0.35;
+    text-decoration: line-through;
+}
+
+.beast-activity-sheet .bas-effect-duration {
+    font-size: 0.7em;
+    color: var(--ns-text-main);
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+
+.beast-activity-sheet .bas-effect-controls {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.beast-activity-sheet .bas-effect-controls a,
+.beast-activity-sheet .bas-link-btn {
+    font-size: 0.78em;
+    color: var(--ns-text-main);
+    opacity: 0.45;
+    cursor: pointer;
+    transition: opacity 0.1s;
+}
+
+.beast-activity-sheet .bas-effect-controls a:hover,
+.beast-activity-sheet .bas-link-btn:hover {
+    opacity: 1;
+}
+
+.beast-activity-sheet .bas-unlinked-row {
+    opacity: 0.6;
+}
+
+.beast-activity-sheet .bas-link-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.beast-activity-sheet .bas-empty-hint {
+    font-size: 0.76em;
+    color: var(--ns-text-main);
+    opacity: 0.45;
+    text-align: center;
+    margin: 8px 0;
+    font-style: italic;
+}
+
+.beast-activity-sheet .bas-link-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.beast-activity-sheet .bas-link-row .bas-link-select {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.82em;
+    padding: 3px 6px;
+    background: var(--ns-bg-input, rgba(0,0,0,0.25));
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    color: var(--ns-text-main);
+}
+
+.beast-activity-sheet .bas-link-row .bas-link-btn {
+    flex-shrink: 0;
+    margin-left: 0;
+    padding: 4px 8px;
+    background: rgba(100,160,255,0.15);
+    border: 1px solid rgba(100,160,255,0.3);
+    border-radius: 4px;
+    color: #88aaff;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.beast-activity-sheet .bas-link-row .bas-link-btn:hover {
+    background: rgba(100,160,255,0.28);
+    color: #aaccff;
+}
+
+.beast-activity-sheet .bas-cost-hint {
+    font-size: 0.76em;
+    color: var(--ns-text-main);
+    opacity: 0.6;
+    margin: 8px 0 0;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.beast-activity-sheet .bas-cost-hint i {
+    margin-right: 3px;
+    opacity: 0.8;
+}

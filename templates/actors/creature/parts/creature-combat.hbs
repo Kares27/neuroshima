@@ -132,7 +132,7 @@
                 <span class="header-label">{{localize "NEUROSHIMA.BeastAction.Label"}}</span>
                 <div class="header-controls">
                     <a class="item-control" data-action="rollBeastAttack" title="{{localize 'NEUROSHIMA.BeastAction.RollAttack'}}"><i class="fas fa-dice"></i></a>
-                    <a class="item-control" data-action="createItem" data-type="beast-action" data-cost-type="success"
+                    <a class="item-control" data-action="createItem" data-type="beast-action"
                         title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
                 </div>
             </div>
@@ -154,18 +154,18 @@
                     </span>
                 </li>
                 {{else}}
-                <li class="item" data-item-id="{{this.id}}">
-                    <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
+                <li class="item" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}">
+                    <img class="item-img" src="{{this.img}}" title="{{this.itemName}}" width="16" height="16"/>
                     <span class="item-name">{{this.name}}</span>
                     <span class="beast-action-meta">
-                        <span class="action-type-badge">{{this.system.actionType}}</span>
+                        <span class="action-type-badge">{{this.actionType}}</span>
                         <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastAction.SuccessCost'}}">
-                            {{this.system.successCost}}s+
+                            {{this.successCost}}s+
                         </span>
                     </span>
                     <span class="item-controls">
-                        <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
-                        <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
+                        <a data-action="editItem"   data-item-id="{{this.itemId}}"><i class="fas fa-edit"></i></a>
+                        <a data-action="deleteItem" data-item-id="{{this.itemId}}"><i class="fas fa-trash"></i></a>
                     </span>
                 </li>
                 {{/if}}
@@ -178,27 +178,23 @@
             <div class="section-header" style="margin-top: 8px;">
                 <i class="fas fa-hourglass-half"></i>
                 <span class="header-label">{{localize "NEUROSHIMA.BeastSegment.Label"}}</span>
-                <div class="header-controls">
-                    <a class="item-control" data-action="createItem" data-type="beast-action" data-cost-type="segment"
-                        title="{{localize 'DOCUMENT.Create'}}"><i class="fas fa-plus"></i></a>
-                </div>
             </div>
 
             <ul class="item-list creature-actions-list">
                 {{#each inventory.beastActionsSegment}}
-                <li class="item" data-item-id="{{this.id}}">
-                    <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="16" height="16"/>
+                <li class="item" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}">
+                    <img class="item-img" src="{{this.img}}" title="{{this.itemName}}" width="16" height="16"/>
                     <span class="item-name">{{this.name}}</span>
                     <span class="beast-action-meta">
-                        <span class="action-type-badge">{{this.system.actionType}}</span>
+                        <span class="action-type-badge">{{this.actionType}}</span>
                         <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastAction.SegmentCost'}}">
-                            {{this.system.segmentCost}}seg
+                            {{this.segmentCost}}seg
                         </span>
                     </span>
                     <span class="item-controls">
-                        <a data-action="rollBeastAction" data-item-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Actions.Roll'}}"><i class="fas fa-dice"></i></a>
-                        <a data-action="editItem"   data-item-id="{{this.id}}"><i class="fas fa-edit"></i></a>
-                        <a data-action="deleteItem" data-item-id="{{this.id}}"><i class="fas fa-trash"></i></a>
+                        <a data-action="rollBeastAction" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}" title="{{localize 'NEUROSHIMA.Actions.Roll'}}"><i class="fas fa-dice"></i></a>
+                        <a data-action="editItem"   data-item-id="{{this.itemId}}"><i class="fas fa-edit"></i></a>
+                        <a data-action="deleteItem" data-item-id="{{this.itemId}}"><i class="fas fa-trash"></i></a>
                     </span>
                 </li>
                 {{else}}

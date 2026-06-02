@@ -297,20 +297,24 @@ export class WoundData extends foundry.abstract.TypeDataModel {
 export class BeastActionData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
+    const activitySchema = new fields.SchemaField({
+      id:          new fields.StringField({ initial: () => foundry.utils.randomID() }),
+      name:        new fields.StringField({ initial: "" }),
+      img:         new fields.StringField({ initial: "" }),
+      actionType:  new fields.StringField({ initial: "" }),
+      costType:    new fields.StringField({ initial: "success", choices: ["success", "segment"] }),
+      successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
+      segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
+      attribute:   new fields.StringField({ initial: "dexterity" }),
+      damage:      new fields.StringField({ initial: "", nullable: true, blank: true }),
+      piercing:    new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
+      effectIds:   new fields.ArrayField(new fields.StringField(), { initial: [] })
+    });
     return {
       description: new fields.HTMLField({ initial: "" }),
       resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema(),
-      actionType: new fields.StringField({ initial: "Atak" }),
-      costType: new fields.StringField({
-        initial: "segment",
-        choices: ["segment", "success"]
-      }),
-      segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
-      successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
-      attribute: new fields.StringField({ initial: "dexterity" }),
-      damage: new fields.StringField({ initial: "D", nullable: true, blank: true }),
-      piercing: new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 })
+      activities: new fields.ArrayField(activitySchema, { initial: [] })
     };
   }
 }

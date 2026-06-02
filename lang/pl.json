@@ -1621,6 +1621,11 @@
             },
             "SegmentCost": "Koszt segmentów",
             "SuccessCost": "Koszt sukcesów",
+            "Activities": "Aktywności",
+            "AddActivity": "Dodaj aktywność",
+            "RemoveActivity": "Usuń aktywność",
+            "ActivityName": "Nazwa aktywności",
+            "NoActivities": "Brak zdefiniowanych aktywności.",
             "Type": {
                 "Attack": "Atak",
                 "Special": "Specjalna",
@@ -1630,7 +1635,27 @@
             "Spent": "Wydano",
             "Apply": "Zastosuj Akcje Bestii",
             "AlreadyApplied": "Akcje bestii zostały już zastosowane.",
-            "HasEffects": "Nakłada aktywne efekty"
+            "HasEffects": "Nakłada aktywne efekty",
+            "Sheet": {
+                "Title": "Aktywność Bestii",
+                "PickIcon": "Wybierz ikonę aktywności",
+                "TabIdentity": "Tożsamość",
+                "TabActivation": "Aktywacja",
+                "ActivityNotFound": "Nie znaleziono aktywności.",
+                "LinkedEffects": "Powiązane efekty",
+                "ItemEffects": "Efekty itemu (niepowiązane)",
+                "NoEffects": "Brak powiązanych efektów.",
+                "AddEffect": "Utwórz i powiąż nowy efekt",
+                "LinkEffect": "Powiąż z tą aktywnością",
+                "RemoveEffect": "Usuń powiązanie",
+                "RemoveEffectTitle": "Usuń efekt",
+                "RemoveEffectConfirm": "Czy usunąć efekt z itemu? Wybierz TAK aby usunąć efekt całkowicie, NIE aby tylko odpiąć go od aktywności.",
+                "RemoveEffectDelete": "Tak — usuń efekt z itemu",
+                "RemoveEffectUnlink": "Nie — tylko odepnij od aktywności",
+                "SelectEffect": "— Powiąż istniejący efekt —",
+                "HintSuccess": "Ta aktywność pojawia się w oknie wydawania sukcesów po wygraniu wymiany.",
+                "HintSegment": "Ta aktywność jest dostępna podczas tury bestii — nie pojawia się w wydawaniu sukcesów."
+            }
         },
         "BeastSegment": {
             "Label": "Segmenty Bestii",

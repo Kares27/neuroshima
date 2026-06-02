@@ -4003,15 +4003,19 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       }
       case "beastAction":
       case "beast-action": {
-        if (s.actionType) stats.push({ label: loc("NEUROSHIMA.BeastAction.TypeLabel"), value: s.actionType });
-        if (s.costType === "success") {
-          stats.push({ label: loc("NEUROSHIMA.BeastAction.SuccessCost"), value: `${s.successCost} SP` });
+        const activities = s.activities ?? [];
+        if (activities.length === 0) {
+          stats.push({ label: loc("NEUROSHIMA.BeastAction.Activities"), value: "—" });
         } else {
-          stats.push({ label: loc("NEUROSHIMA.BeastAction.SegmentCost"), value: `${s.segmentCost} seg.` });
+          for (const act of activities) {
+            const actName = act.name || "?";
+            if (act.costType === "success") {
+              stats.push({ label: actName, value: `${act.successCost}s` + (act.damage ? ` → ${act.damage}` : "") });
+            } else {
+              stats.push({ label: actName, value: `${act.segmentCost}seg` + (act.damage ? ` → ${act.damage}` : "") });
+            }
+          }
         }
-        if (s.attribute) stats.push({ label: loc("NEUROSHIMA.Items.Fields.Attribute"), value: attrLabel(s.attribute) });
-        stats.push({ label: loc("NEUROSHIMA.Items.Fields.Damage"), value: s.damage || dash });
-        stats.push({ label: loc("NEUROSHIMA.Items.Fields.PiercingAbbr"), value: s.piercing ?? 0 });
         break;
       }
       case "vehicleMod":

@@ -1592,6 +1592,11 @@
             },
             "SegmentCost": "Segment Cost",
             "SuccessCost": "Success Cost",
+            "Activities": "Activities",
+            "AddActivity": "Add activity",
+            "RemoveActivity": "Remove activity",
+            "ActivityName": "Activity name",
+            "NoActivities": "No activities defined.",
             "Type": {
                 "Attack": "Attack",
                 "Special": "Special",
@@ -1601,7 +1606,27 @@
             "Spent": "Spent",
             "Apply": "Apply Beast Actions",
             "AlreadyApplied": "Beast actions have already been applied.",
-            "HasEffects": "Applies active effects"
+            "HasEffects": "Applies active effects",
+            "Sheet": {
+                "Title": "Beast Activity",
+                "PickIcon": "Pick activity icon",
+                "TabIdentity": "Identity",
+                "TabActivation": "Activation",
+                "ActivityNotFound": "Activity not found.",
+                "LinkedEffects": "Linked Effects",
+                "ItemEffects": "Item Effects (unlinked)",
+                "NoEffects": "No linked effects.",
+                "AddEffect": "Create and link new effect",
+                "LinkEffect": "Link to this activity",
+                "RemoveEffect": "Remove link",
+                "RemoveEffectTitle": "Remove Effect",
+                "RemoveEffectConfirm": "Delete the effect from the item? Choose YES to delete it entirely, NO to only unlink it from this activity.",
+                "RemoveEffectDelete": "Yes — delete effect from item",
+                "RemoveEffectUnlink": "No — only unlink from activity",
+                "SelectEffect": "— Link an existing effect —",
+                "HintSuccess": "This activity appears in the success-spending panel when the beast wins an exchange.",
+                "HintSegment": "This activity is available on the beast's turn — it does not appear in success spending."
+            }
         },
         "BeastSegment": {
             "Label": "Beast Segments",

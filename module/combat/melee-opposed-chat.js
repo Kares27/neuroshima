@@ -353,22 +353,21 @@ export class MeleeOpposedChat {
 
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
-      const beastActions = attackerActor.items.filter(
-        i => i.type === "beast-action" && i.system.costType === "success"
-      );
-      for (const action of beastActions) {
-        const cost = action.system.successCost ?? 1;
-        if (cost <= netSuccesses) {
-          const hasEffects = action.effects?.size > 0;
-          affordableBeastActions.push({
-            id: action.id,
-            name: action.name,
-            img: action.img,
-            cost,
-            damage: action.system.damage || null,
-            hasEffects,
-            actionType: action.system.actionType || ""
-          });
+      for (const item of attackerActor.items.filter(i => i.type === "beast-action")) {
+        for (const act of (item.system.activities ?? [])) {
+          if (act.costType !== "success") continue;
+          const cost = act.successCost ?? 1;
+          if (cost <= netSuccesses) {
+            affordableBeastActions.push({
+              id: `${item.id}::${act.id}`,
+              itemId: item.id,
+              name: act.name || item.name,
+              img: act.img || item.img,
+              cost,
+              damage: act.damage || null,
+              hasEffects: (act.effectIds?.length ?? 0) > 0
+            });
+          }
         }
       }
       affordableBeastActions.sort((a, b) => b.cost - a.cost);
@@ -775,21 +774,23 @@ export class MeleeOpposedChat {
 
     let ownerBeastActions = null;
     if (ownerIsCreature) {
-      const beastItems = ownerActor.items.filter(
-        i => i.type === "beast-action" && i.system.costType === "success"
-      );
-      if (beastItems.length > 0) {
-        ownerBeastActions = beastItems
-          .slice()
-          .sort((a, b) => (a.system.successCost ?? 1) - (b.system.successCost ?? 1))
-          .map(a => ({
-            id: a.id,
-            name: a.name,
-            img: a.img,
-            successCost: a.system.successCost ?? 1,
-            damage: a.system.damage || null,
-            isAffordable: committedSuccessCount >= (a.system.successCost ?? 1)
-          }));
+      const flat = [];
+      for (const item of ownerActor.items.filter(i => i.type === "beast-action")) {
+        for (const act of (item.system.activities ?? [])) {
+          if (act.costType !== "success") continue;
+          flat.push({
+            id: `${item.id}::${act.id}`,
+            itemId: item.id,
+            name: act.name || item.name,
+            img: act.img || item.img,
+            successCost: act.successCost ?? 1,
+            damage: act.damage || null,
+            isAffordable: committedSuccessCount >= (act.successCost ?? 1)
+          });
+        }
+      }
+      if (flat.length > 0) {
+        ownerBeastActions = flat.sort((a, b) => a.successCost - b.successCost);
       }
     }
 
@@ -1626,18 +1627,21 @@ export class MeleeOpposedChat {
 
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
-      const beastActions = attackerActor.items.filter(
-        i => i.type === "beast-action" && i.system.costType === "success"
-      );
-      for (const action of beastActions) {
-        const cost = action.system.successCost ?? 1;
-        if (cost <= netSuccesses) {
-          affordableBeastActions.push({
-            id: action.id, name: action.name, img: action.img, cost,
-            damage: action.system.damage || null,
-            hasEffects: action.effects?.size > 0,
-            actionType: action.system.actionType || ""
-          });
+      for (const item of attackerActor.items.filter(i => i.type === "beast-action")) {
+        for (const act of (item.system.activities ?? [])) {
+          if (act.costType !== "success") continue;
+          const cost = act.successCost ?? 1;
+          if (cost <= netSuccesses) {
+            affordableBeastActions.push({
+              id: `${item.id}::${act.id}`,
+              itemId: item.id,
+              name: act.name || item.name,
+              img: act.img || item.img,
+              cost,
+              damage: act.damage || null,
+              hasEffects: (act.effectIds?.length ?? 0) > 0
+            });
+          }
         }
       }
       affordableBeastActions.sort((a, b) => b.cost - a.cost);
@@ -2369,22 +2373,25 @@ export class MeleeOpposedChat {
     const allReducedDetails = [];
     const appliedNames = [];
 
-    for (const [actionId, count] of Object.entries(spentPerAction)) {
-      const actionItem = attackerActor.items.get(actionId);
+    for (const [compositeId, count] of Object.entries(spentPerAction)) {
+      const [itemId, activityId] = compositeId.split("::");
+      const actionItem = attackerActor.items.get(itemId);
       if (!actionItem) continue;
-      const cost   = actionItem.system.successCost ?? 1;
-      const damage = actionItem.system.damage || null;
+      const activity = (actionItem.system.activities ?? []).find(a => a.id === activityId);
+      if (!activity) continue;
+      const cost   = activity.successCost ?? 1;
+      const damage = activity.damage || null;
+      const label  = activity.name || actionItem.name;
 
       totalSpent += cost * count;
-      appliedNames.push(...Array(count).fill(actionItem.name));
+      appliedNames.push(...Array(count).fill(label));
 
       for (let n = 0; n < count; n++) {
-        // Apply damage wound if action deals one
         if (damage) {
           const attackData = {
             isMelee: true,
             actorId: attackerActor.id,
-            label: actionItem.name,
+            label,
             damageMelee1: damage,
             damageMelee2: damage,
             damageMelee3: damage,
@@ -2402,9 +2409,10 @@ export class MeleeOpposedChat {
           }
         }
 
-        // Apply embedded active effects from the beast action
-        if (actionItem.effects?.size > 0) {
+        const linkedEffectIds = new Set(activity.effectIds ?? []);
+        if (linkedEffectIds.size > 0) {
           for (const effect of actionItem.effects) {
+            if (!linkedEffectIds.has(effect.id)) continue;
             const effectData = effect.convertToApplied ? effect.convertToApplied() : effect.toObject();
             await defenderActor.applyEffect({ effectData: [effectData] });
           }

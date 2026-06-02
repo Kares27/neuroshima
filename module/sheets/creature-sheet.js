@@ -254,13 +254,13 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       rollBeastAttack: async function(event, target) {
         const actor = this.document;
 
-        const successActions = actor.items.filter(
-          i => i.type === "beast-action" && i.system.costType === "success"
-        );
         const byTier = {};
-        for (const a of successActions) {
-          const t = Math.min(3, Math.max(1, a.system.successCost ?? 1));
-          if (!byTier[t]) byTier[t] = a.system.damage || "D";
+        for (const item of actor.items.filter(i => i.type === "beast-action")) {
+          for (const act of (item.system.activities ?? [])) {
+            if (act.costType !== "success") continue;
+            const t = Math.min(3, Math.max(1, act.successCost ?? 1));
+            if (!byTier[t]) byTier[t] = act.damage || "D";
+          }
         }
 
         const syntheticWeapon = {
@@ -335,18 +335,21 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       },
 
       rollBeastAction: async function(event, target) {
-        const li   = target.closest("[data-item-id]");
-        const item = this.document.items.get(li?.dataset.itemId ?? target.dataset.itemId);
-        if (!item || item.type !== "beast-action" || item.system.costType !== "segment") return;
+        const li         = target.closest("[data-item-id]");
+        const itemId     = li?.dataset.itemId ?? target.dataset.itemId;
+        const activityId = li?.dataset.activityId ?? target.dataset.activityId;
+        const item       = this.document.items.get(itemId);
+        if (!item || item.type !== "beast-action") return;
 
-        const actor = this.document;
-        const attrKey = item.system.attribute || "dexterity";
-        const attrValue = actor.system.attributeTotals?.[attrKey] ?? (actor.system.attributes?.[attrKey] || 0);
-        const exp = actor.system.experience ?? 0;
+        const activity = (item.system.activities ?? []).find(a => a.id === activityId);
+        if (!activity || activity.costType !== "segment") return;
+
+        const actor   = this.document;
+        const attrKey = activity.attribute || "dexterity";
 
         const syntheticWeapon = {
           id: item.id,
-          name: item.name,
+          name: activity.name || item.name,
           img: item.img,
           type: "weapon",
           system: {
@@ -355,11 +358,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             skill: "experience",
             attackBonus: 0,
             defenseBonus: 0,
-            damageMelee1: item.system.damage || "D",
-            damageMelee2: item.system.damage || "D",
-            damageMelee3: item.system.damage || "D",
+            damageMelee1: activity.damage || "D",
+            damageMelee2: activity.damage || "D",
+            damageMelee3: activity.damage || "D",
             requiredBuild: 0,
-            piercing: item.system.piercing ?? 0,
+            piercing: activity.piercing ?? 0,
             magazine: null,
             jamming: 20
           }
@@ -418,9 +421,27 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       createItem: async function(event, target) {
         const type = target.dataset.type || "weapon";
         const name = `${game.i18n.localize("DOCUMENT.New")} ${game.i18n.localize(`TYPES.Item.${type}`) || type}`;
-        const system = {};
-        if (target.dataset.costType) system.costType = target.dataset.costType;
-        return this.document.createEmbeddedDocuments("Item", [{ name, type, system }]);
+        const itemData = { name, type };
+        if (type === "beast-action") {
+          itemData.system = {
+            activities: [{
+              id: foundry.utils.randomID(),
+              name: "",
+              img: "",
+              actionType: "",
+              costType: "success",
+              successCost: 1,
+              segmentCost: 1,
+              attribute: "dexterity",
+              damage: "",
+              piercing: 0,
+              effectIds: []
+            }]
+          };
+        }
+        const [created] = await this.document.createEmbeddedDocuments("Item", [itemData]);
+        if (created && type === "beast-action") created.sheet.render(true);
+        return created;
       },
 
       editItem: async function(event, target) {
@@ -819,8 +840,42 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         m.contentsReversed = [...(m.system.contents || [])].reverse();
         return m;
       }),
-      beastActionsSuccess: [...topItems.filter(i => i.type === "beast-action" && i.system.costType === "success"), ...equippedWeapons],
-      beastActionsSegment: topItems.filter(i => i.type === "beast-action" && i.system.costType === "segment"),
+      beastActionsSuccess: [
+        ...topItems.filter(i => i.type === "beast-action").flatMap(item =>
+          (item.system.activities ?? [])
+            .filter(act => act.costType === "success")
+            .map(act => ({
+              compositeId: `${item.id}::${act.id}`,
+              itemId: item.id,
+              activityId: act.id,
+              itemName: item.name,
+              name: act.name || item.name,
+              img: item.img,
+              successCost: act.successCost ?? 1,
+              damage: act.damage || null,
+              actionType: act.actionType || "",
+              hasEffects: (act.effectIds ?? []).length > 0
+            }))
+        ),
+        ...equippedWeapons
+      ],
+      beastActionsSegment: topItems.filter(i => i.type === "beast-action").flatMap(item =>
+        (item.system.activities ?? [])
+          .filter(act => act.costType === "segment")
+          .map(act => ({
+            compositeId: `${item.id}::${act.id}`,
+            itemId: item.id,
+            activityId: act.id,
+            itemName: item.name,
+            name: act.name || item.name,
+            img: item.img,
+            segmentCost: act.segmentCost ?? 1,
+            attribute: act.attribute || "dexterity",
+            damage: act.damage || null,
+            actionType: act.actionType || "",
+            hasEffects: (act.effectIds ?? []).length > 0
+          }))
+      ),
 
       wounds:         topItems.filter(i => i.type === "wound")
     };

@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
+import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -55,7 +56,10 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       deleteContainerItem: NeuroshimaItemSheet.prototype._onDeleteContainerItem,
       toggleContainerLock: NeuroshimaItemSheet.prototype._onToggleContainerLock,
       toggleEquip: NeuroshimaItemSheet.prototype._onToggleEquip,
-      toggleState: NeuroshimaItemSheet.prototype._onToggleState
+      toggleState: NeuroshimaItemSheet.prototype._onToggleState,
+      addBeastActivity: NeuroshimaItemSheet.prototype._onAddBeastActivity,
+      removeBeastActivity: NeuroshimaItemSheet.prototype._onRemoveBeastActivity,
+      editBeastActivity: NeuroshimaItemSheet.prototype._onEditBeastActivity
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -284,6 +288,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
 
     context.tabs = this._getTabs();
+    if (item.type === "beast-action" && context.tabs.stats) {
+      context.tabs.stats.label = "NEUROSHIMA.BeastAction.Activities";
+    }
     if (context.isLimitedView || isContainerLocked) {
       const allowed = new Set(allowedTabs);
       for (const [id, tab] of Object.entries(context.tabs)) {
@@ -1029,7 +1036,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
       facilities: ["description", "stats", "resources", "effects"],
-      container: ["contents", "description", "stats", "effects"]
+      container: ["contents", "description", "stats", "effects"],
+      "beast-action": ["stats", "description", "effects"]
     };
 
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
@@ -1164,6 +1172,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     resistances.splice(idx, 1);
     await item.update({ "system.armor.resistances": resistances });
   }
+
 
   /**
    * Handle changing the item profile image.
@@ -1368,6 +1377,43 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const item = this.document;
     if (!("equipped" in (item.system ?? {}))) return;
     await this.submit({ updateData: { "system.equipped": !item.system.equipped } });
+  }
+
+  async _onAddBeastActivity() {
+    const item = this.document;
+    if (item.type !== "beast-action") return;
+    const activities = foundry.utils.deepClone(item.system.activities ?? []);
+    activities.push({
+      id: foundry.utils.randomID(),
+      name: "",
+      img: "",
+      actionType: "",
+      costType: "success",
+      successCost: 1,
+      segmentCost: 1,
+      attribute: "dexterity",
+      damage: "",
+      piercing: 0,
+      effectIds: []
+    });
+    await item.update({ "system.activities": activities });
+  }
+
+  async _onRemoveBeastActivity(event, target) {
+    const item = this.document;
+    if (item.type !== "beast-action") return;
+    const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
+    if (!activityId) return;
+    const activities = (item.system.activities ?? []).filter(a => a.id !== activityId);
+    await item.update({ "system.activities": activities });
+  }
+
+  async _onEditBeastActivity(event, target) {
+    const item = this.document;
+    if (item.type !== "beast-action") return;
+    const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
+    if (!activityId) return;
+    BeastActivitySheet.open(item, activityId);
   }
 
 }
