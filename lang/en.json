@@ -1638,6 +1638,46 @@
             "Activities": "Segment Activities",
             "NoActivities": "No segment activities defined."
         },
+        "BeastActivity": {
+            "Summary": "Summary",
+            "SummaryPlaceholder": "Brief description shown in the combat card…",
+            "Targeting": "Targeting",
+            "TargetModeLabel": "Target Mode",
+            "DefensePolicyLabel": "Defense Policy",
+            "RequiresHit": "Requires hit",
+            "EffectPolicy": "Effect Application",
+            "EffectTargetLabel": "Apply effects to",
+            "EffectTimingLabel": "Apply effects",
+            "ApplyEffectsAutomatically": "Apply automatically",
+            "TargetMode": {
+                "Primary": "Primary target",
+                "Selected": "Selected targets",
+                "MultipleMelee": "All adjacent targets",
+                "Cone": "Cone",
+                "Self": "Self",
+                "Manual": "Manual (GM)"
+            },
+            "DefensePolicy": {
+                "NoExtraDefense": "No extra defense",
+                "EachTargetDefends": "Each target defends separately",
+                "PrimaryResultApplies": "Primary roll result applies to all",
+                "GmManual": "Manual (GM decision)"
+            },
+            "EffectTarget": {
+                "Self": "Self (beast)",
+                "PrimaryTarget": "Primary target",
+                "SelectedTargets": "Selected targets",
+                "AllTargets": "All targets",
+                "Manual": "Manual (GM)"
+            },
+            "EffectTiming": {
+                "OnUse": "On use (immediately)",
+                "OnHit": "On hit",
+                "OnSuccessSpend": "On success spend",
+                "AfterDamage": "After damage applied",
+                "OnFailedResistance": "On failed resistance test"
+            }
+        },
         "Vehicle": {
             "Type": "Vehicle Type",
             "Cost": "Cost",

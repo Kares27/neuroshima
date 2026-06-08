@@ -298,17 +298,24 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     const activitySchema = new fields.SchemaField({
-      id:          new fields.StringField({ initial: () => foundry.utils.randomID() }),
-      name:        new fields.StringField({ initial: "" }),
-      img:         new fields.StringField({ initial: "" }),
-      actionType:  new fields.StringField({ initial: "" }),
-      costType:    new fields.StringField({ initial: "success", choices: ["success", "segment"] }),
-      successCost: new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
-      segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
-      attribute:   new fields.StringField({ initial: "dexterity" }),
-      damage:      new fields.StringField({ initial: "", nullable: true, blank: true }),
-      piercing:    new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
-      effectIds:   new fields.ArrayField(new fields.StringField(), { initial: [] })
+      id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
+      name:                    new fields.StringField({ initial: "" }),
+      img:                     new fields.StringField({ initial: "" }),
+      summary:                 new fields.StringField({ initial: "", blank: true }),
+      actionType:              new fields.StringField({ initial: "" }),
+      costType:                new fields.StringField({ initial: "success", choices: ["success", "segment"] }),
+      successCost:             new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
+      segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
+      attribute:               new fields.StringField({ initial: "dexterity" }),
+      damage:                  new fields.StringField({ initial: "", nullable: true, blank: true }),
+      piercing:                new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
+      effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      targetMode:              new fields.StringField({ initial: "primary", choices: ["primary", "selected", "multipleMelee", "cone", "self", "manual"] }),
+      defensePolicy:           new fields.StringField({ initial: "primaryResultApplies", choices: ["noExtraDefense", "eachTargetDefends", "primaryResultApplies", "gmManual"] }),
+      requiresHit:             new fields.BooleanField({ initial: true }),
+      effectTarget:            new fields.StringField({ initial: "primaryTarget", choices: ["self", "primaryTarget", "selectedTargets", "allTargets", "manual"] }),
+      effectTiming:            new fields.StringField({ initial: "onSuccessSpend", choices: ["onUse", "onHit", "onSuccessSpend", "afterDamage", "onFailedResistance"] }),
+      applyEffectsAutomatically: new fields.BooleanField({ initial: false })
     });
     return {
       description: new fields.HTMLField({ initial: "" }),
@@ -327,21 +334,28 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
     const fields = foundry.data.fields;
     const activitySchema = new fields.SchemaField({
-      id:          new fields.StringField({ initial: () => foundry.utils.randomID() }),
-      name:        new fields.StringField({ initial: "" }),
-      img:         new fields.StringField({ initial: "" }),
-      actionType:  new fields.StringField({ initial: "" }),
-      costType:    new fields.StringField({ initial: "segment" }),
-      segmentCost: new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
-      weaponType:  new fields.StringField({ initial: "melee", choices: ["melee", "ranged", "thrown", "grenade"] }),
-      attribute:   new fields.StringField({ initial: "dexterity" }),
-      damage1:     new fields.StringField({ initial: "D", nullable: true, blank: true }),
-      damage2:     new fields.StringField({ initial: "L", nullable: true, blank: true }),
-      damage3:     new fields.StringField({ initial: "C", nullable: true, blank: true }),
-      damage:      new fields.StringField({ initial: "", nullable: true, blank: true }),
-      piercing:    new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
-      range:       new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      effectIds:   new fields.ArrayField(new fields.StringField(), { initial: [] })
+      id:                      new fields.StringField({ initial: () => foundry.utils.randomID() }),
+      name:                    new fields.StringField({ initial: "" }),
+      img:                     new fields.StringField({ initial: "" }),
+      summary:                 new fields.StringField({ initial: "", blank: true }),
+      actionType:              new fields.StringField({ initial: "" }),
+      costType:                new fields.StringField({ initial: "segment" }),
+      segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
+      weaponType:              new fields.StringField({ initial: "melee", choices: ["melee", "ranged", "thrown", "grenade"] }),
+      attribute:               new fields.StringField({ initial: "dexterity" }),
+      damage1:                 new fields.StringField({ initial: "D", nullable: true, blank: true }),
+      damage2:                 new fields.StringField({ initial: "L", nullable: true, blank: true }),
+      damage3:                 new fields.StringField({ initial: "C", nullable: true, blank: true }),
+      damage:                  new fields.StringField({ initial: "", nullable: true, blank: true }),
+      piercing:                new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
+      range:                   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      targetMode:              new fields.StringField({ initial: "primary", choices: ["primary", "selected", "multipleMelee", "cone", "self", "manual"] }),
+      defensePolicy:           new fields.StringField({ initial: "eachTargetDefends", choices: ["noExtraDefense", "eachTargetDefends", "primaryResultApplies", "gmManual"] }),
+      requiresHit:             new fields.BooleanField({ initial: true }),
+      effectTarget:            new fields.StringField({ initial: "primaryTarget", choices: ["self", "primaryTarget", "selectedTargets", "allTargets", "manual"] }),
+      effectTiming:            new fields.StringField({ initial: "afterDamage", choices: ["onUse", "onHit", "onSuccessSpend", "afterDamage", "onFailedResistance"] }),
+      applyEffectsAutomatically: new fields.BooleanField({ initial: false })
     });
     return {
       description: new fields.HTMLField({ initial: "" }),

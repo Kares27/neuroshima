@@ -295,7 +295,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         };
 
         const combatTypeSetting = game.settings.get("neuroshima", "meleeCombatType") || "default";
-        const effectiveMode = combatTypeSetting === "default" ? "opposedPips" : combatTypeSetting;
+        const effectiveMode = combatTypeSetting;
 
         const myUuidsCheck = [actor.uuid];
         if (actor.token) myUuidsCheck.push(actor.token.uuid);
@@ -441,22 +441,54 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const itemData = { name, type };
         if (type === "beast-action") {
           itemData.system = {
-            actionType: "",
-            successCost: 1,
-            attribute: "dexterity",
-            damage: "",
-            piercing: 0
+            activities: [{
+              id: foundry.utils.randomID(),
+              name: "",
+              img: "",
+              summary: "",
+              actionType: "",
+              costType: "success",
+              successCost: 1,
+              segmentCost: 1,
+              attribute: "dexterity",
+              damage: "",
+              piercing: 0,
+              effectIds: [],
+              targetMode: "primary",
+              defensePolicy: "primaryResultApplies",
+              requiresHit: true,
+              effectTarget: "primaryTarget",
+              effectTiming: "onSuccessSpend",
+              applyEffectsAutomatically: false
+            }]
           };
         }
         if (type === "beast-segment") {
           itemData.system = {
-            actionType: "",
-            segmentCost: 1,
-            weaponType: "melee",
-            attribute: "dexterity",
-            damage: "",
-            piercing: 0,
-            range: 0
+            activities: [{
+              id: foundry.utils.randomID(),
+              name: "",
+              img: "",
+              summary: "",
+              actionType: "",
+              costType: "segment",
+              segmentCost: 1,
+              weaponType: "melee",
+              attribute: "dexterity",
+              damage1: "D",
+              damage2: "L",
+              damage3: "C",
+              damage: "",
+              piercing: 0,
+              range: 0,
+              effectIds: [],
+              targetMode: "primary",
+              defensePolicy: "eachTargetDefends",
+              requiresHit: true,
+              effectTarget: "primaryTarget",
+              effectTiming: "afterDamage",
+              applyEffectsAutomatically: false
+            }]
           };
         }
         const [created] = await this.document.createEmbeddedDocuments("Item", [itemData]);

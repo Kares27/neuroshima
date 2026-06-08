@@ -1390,20 +1390,32 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       id: foundry.utils.randomID(),
       name: "",
       img: "",
+      summary: "",
       actionType: "",
       attribute: "dexterity",
       damage: "",
       piercing: 0,
-      effectIds: []
+      effectIds: [],
+      targetMode: "primary",
+      requiresHit: true,
+      effectTarget: "primaryTarget",
+      applyEffectsAutomatically: false
     };
     if (item.type === "beast-segment") {
       base.costType = "segment";
       base.segmentCost = 1;
       base.weaponType = "melee";
+      base.damage1 = "D";
+      base.damage2 = "L";
+      base.damage3 = "C";
       base.range = 0;
+      base.defensePolicy = "eachTargetDefends";
+      base.effectTiming = "afterDamage";
     } else {
       base.costType = "success";
       base.successCost = 1;
+      base.defensePolicy = "primaryResultApplies";
+      base.effectTiming = "onSuccessSpend";
     }
     activities.push(base);
     const updated = await item.update({ "system.activities": activities });

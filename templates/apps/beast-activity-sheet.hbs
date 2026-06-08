@@ -46,6 +46,13 @@
             </div>
         </div>
 
+        <div class="bas-field-group bas-summary-group">
+            <label class="bas-label">{{localize "NEUROSHIMA.BeastActivity.Summary"}}</label>
+            <input type="text" name="summary" value="{{activity.summary}}"
+                   placeholder="{{localize 'NEUROSHIMA.BeastActivity.SummaryPlaceholder'}}"
+                   {{#unless editable}}disabled{{/unless}}/>
+        </div>
+
     </section>
 
     {{!-- ===== Activation ===== --}}
@@ -250,6 +257,31 @@
         </fieldset>
         {{/unless}}
 
+        {{!-- ===== Targeting ===== --}}
+        <fieldset class="bas-fieldset">
+            <legend>{{localize "NEUROSHIMA.BeastActivity.Targeting"}}</legend>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastActivity.TargetModeLabel"}}</label>
+                    <select name="targetMode" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions targetModes selected=activity.targetMode localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastActivity.DefensePolicyLabel"}}</label>
+                    <select name="defensePolicy" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions defensePolicies selected=activity.defensePolicy localize=true}}
+                    </select>
+                </div>
+            </div>
+            <div class="bas-row">
+                <div class="bas-field-group bas-field-checkbox">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastActivity.RequiresHit"}}</label>
+                    <input type="checkbox" name="requiresHit" {{#if activity.requiresHit}}checked{{/if}} {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+        </fieldset>
+
     </section>
 
     {{!-- ===== Effects ===== --}}
@@ -294,6 +326,31 @@
                 </a>
             </div>
             {{/if}}{{/if}}
+        </fieldset>
+
+        {{!-- ===== Effect Application Policy ===== --}}
+        <fieldset class="bas-fieldset">
+            <legend>{{localize "NEUROSHIMA.BeastActivity.EffectPolicy"}}</legend>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastActivity.EffectTargetLabel"}}</label>
+                    <select name="effectTarget" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions effectTargets selected=activity.effectTarget localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastActivity.EffectTimingLabel"}}</label>
+                    <select name="effectTiming" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions effectTimings selected=activity.effectTiming localize=true}}
+                    </select>
+                </div>
+            </div>
+            <div class="bas-row">
+                <div class="bas-field-group bas-field-checkbox">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastActivity.ApplyEffectsAutomatically"}}</label>
+                    <input type="checkbox" name="applyEffectsAutomatically" {{#if activity.applyEffectsAutomatically}}checked{{/if}} {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
         </fieldset>
 
     </section>
