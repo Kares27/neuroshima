@@ -353,7 +353,8 @@ export class MeleeOpposedChat {
 
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
-      for (const item of attackerActor.items.filter(i => i.type === "beast-action")) {
+      const beastItemFilter = data.beastItemId ?? null;
+      for (const item of attackerActor.items.filter(i => i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter))) {
         for (const act of (item.system.activities ?? [])) {
           if (act.costType !== "success") continue;
           const cost = act.successCost ?? 1;
@@ -370,7 +371,7 @@ export class MeleeOpposedChat {
           }
         }
       }
-      affordableBeastActions.sort((a, b) => b.cost - a.cost);
+      affordableBeastActions.sort((a, b) => a.cost - b.cost);
     }
 
     const resolutionData = {
@@ -591,6 +592,7 @@ export class MeleeOpposedChat {
       attackerTokenUuid: data.attackerTokenUuid ?? null,
       defenderUuid: data.defenderUuid,
       weaponId: data.weaponId,
+      beastItemId: data.beastItemId ?? null,
       attackDice,
       defenseDice,
       attackTarget,
@@ -775,7 +777,8 @@ export class MeleeOpposedChat {
     let ownerBeastActions = null;
     if (ownerIsCreature) {
       const flat = [];
-      for (const item of ownerActor.items.filter(i => i.type === "beast-action")) {
+      const ownerBeastItemFilter = state.beastItemId ?? null;
+      for (const item of ownerActor.items.filter(i => i.type === "beast-action" && (!ownerBeastItemFilter || i.id === ownerBeastItemFilter))) {
         for (const act of (item.system.activities ?? [])) {
           if (act.costType !== "success") continue;
           flat.push({
@@ -1257,6 +1260,7 @@ export class MeleeOpposedChat {
       attackerUuid: data.attackerUuid,
       defenderUuid: data.defenderUuid,
       weaponId: data.weaponId,
+      beastItemId: data.beastItemId ?? null,
       attackDice,
       defenseDice,
       attackTarget,
@@ -1627,7 +1631,8 @@ export class MeleeOpposedChat {
 
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
-      for (const item of attackerActor.items.filter(i => i.type === "beast-action")) {
+      const beastItemFilter = allocData.beastItemId ?? null;
+      for (const item of attackerActor.items.filter(i => i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter))) {
         for (const act of (item.system.activities ?? [])) {
           if (act.costType !== "success") continue;
           const cost = act.successCost ?? 1;
@@ -1644,7 +1649,7 @@ export class MeleeOpposedChat {
           }
         }
       }
-      affordableBeastActions.sort((a, b) => b.cost - a.cost);
+      affordableBeastActions.sort((a, b) => a.cost - b.cost);
     }
 
     const weaponName = attackerActor?.items?.get(allocData.weaponId)?.name ?? "";
@@ -1772,6 +1777,7 @@ export class MeleeOpposedChat {
             defenderUuid: targetActor.uuid,
             defenderTokenUuid: targetDoc?.uuid ?? null,
             weaponId: weapon.id,
+            beastItemId: weapon.beastItemId ?? null,
             attackRaw: rawResult.results,
             attackModified: attackDice.map(d => ({
               original: d.value,

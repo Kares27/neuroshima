@@ -1240,7 +1240,7 @@
                 "Magazines": "Magazynki",
                 "Wound": "Rana",
                 "Beast-action": "Akcja Bestii",
-                "Beast-maneuver": "Manewr Bestii",
+                "Beast-segment": "Segment Bestii",
                 "Specialization": "Specjalizacja",
                 "Origin": "Pochodzenie",
                 "Profession": "Profesja",
@@ -1614,6 +1614,7 @@
             "None": "Brak akcji bestii.",
             "RollAttack": "Rzut atakiem bestii",
             "TypeLabel": "Typ akcji",
+            "SuccessCost": "Koszt sukcesów",
             "CostTypeLabel": "Typ kosztu",
             "CostType": {
                 "Segment": "Segmenty",
@@ -1659,7 +1660,13 @@
         },
         "BeastSegment": {
             "Label": "Segmenty Bestii",
-            "None": "Brak akcji segmentowych."
+            "None": "Brak akcji segmentowych.",
+            "RollAction": "Rzut akcją segmentową bestii",
+            "SegmentCost": "Koszt segmentów",
+            "WeaponType": "Typ ataku",
+            "Range": "Zasięg (m)",
+            "Activities": "Aktywności segmentowe",
+            "NoActivities": "Brak zdefiniowanych aktywności segmentowych."
         },
         "Vehicle": {
             "Type": "Typ Pojazdu",

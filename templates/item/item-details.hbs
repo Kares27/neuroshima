@@ -425,11 +425,7 @@
                     {{#if this.name}}{{this.name}}{{else}}<em>{{localize "NEUROSHIMA.BeastAction.ActivityName"}}</em>{{/if}}
                 </span>
                 <span class="beast-act-badges">
-                    {{#if (eq this.costType "segment")}}
-                    <span class="beast-act-badge badge-segment">{{this.segmentCost}}seg</span>
-                    {{else}}
                     <span class="beast-act-badge badge-success">{{this.successCost}}✦</span>
-                    {{/if}}
                     {{#if this.damage}}
                     <span class="beast-act-badge badge-damage">{{this.damage}}</span>
                     {{/if}}
@@ -450,6 +446,51 @@
             </div>
             {{else}}
             <p class="beast-action-empty">{{localize "NEUROSHIMA.BeastAction.NoActivities"}}</p>
+            {{/each}}
+        </div>
+    {{/if}}
+
+    {{#if (eq item.type "beast-segment")}}
+        <div class="item-features beast-action-stats secondary-box">
+            <div class="beast-action-header">
+                <span class="beast-action-section-label">{{localize "NEUROSHIMA.BeastSegment.Activities"}}</span>
+                {{#if editable}}
+                <a class="item-control" data-action="addBeastActivity" title="{{localize 'NEUROSHIMA.BeastAction.AddActivity'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
+                {{/if}}
+            </div>
+            {{#each system.activities}}
+            <div class="beast-activity-row" data-activity-id="{{this.id}}">
+                <img class="beast-act-img" src="{{#if this.img}}{{this.img}}{{else}}icons/svg/combat.svg{{/if}}" alt="" width="28" height="28"/>
+                <span class="beast-act-name-label">
+                    {{#if this.name}}{{this.name}}{{else}}<em>{{localize "NEUROSHIMA.BeastAction.ActivityName"}}</em>{{/if}}
+                </span>
+                <span class="beast-act-badges">
+                    <span class="beast-act-badge badge-segment">{{this.segmentCost}}seg</span>
+                    {{#if (eq this.weaponType "ranged")}}<i class="fas fa-crosshairs beast-act-wtype" title="{{localize 'NEUROSHIMA.Items.Type.WeaponRanged'}}"></i>{{/if}}
+                    {{#if (eq this.weaponType "thrown")}}<i class="fas fa-hand-holding beast-act-wtype" title="{{localize 'NEUROSHIMA.Items.Type.WeaponThrown'}}"></i>{{/if}}
+                    {{#if (eq this.weaponType "grenade")}}<i class="fas fa-bomb beast-act-wtype" title="{{localize 'NEUROSHIMA.Items.Type.WeaponGrenade'}}"></i>{{/if}}
+                    {{#if this.damage}}
+                    <span class="beast-act-badge badge-damage">{{this.damage}}</span>
+                    {{/if}}
+                    {{#if this.effectIds.length}}
+                    <span class="beast-act-badge badge-effects"><i class="fas fa-star"></i></span>
+                    {{/if}}
+                </span>
+                <span class="beast-act-controls">
+                    <a class="item-control" data-action="editBeastActivity" data-activity-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}">
+                        <i class="fas fa-pen"></i>
+                    </a>
+                    {{#if @root.editable}}
+                    <a class="item-control beast-act-delete" data-action="removeBeastActivity" data-activity-id="{{this.id}}" title="{{localize 'NEUROSHIMA.BeastAction.RemoveActivity'}}">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                    {{/if}}
+                </span>
+            </div>
+            {{else}}
+            <p class="beast-action-empty">{{localize "NEUROSHIMA.BeastSegment.NoActivities"}}</p>
             {{/each}}
         </div>
     {{/if}}

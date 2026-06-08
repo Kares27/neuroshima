@@ -53,19 +53,10 @@
 
         <fieldset class="bas-fieldset">
             <legend>{{localize "NEUROSHIMA.BeastAction.CostTypeLabel"}}</legend>
+
+            {{!-- Cost --}}
             <div class="bas-row">
-                <div class="bas-field-group">
-                    <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.CostTypeLabel"}}</label>
-                    <select name="costType" {{#unless editable}}disabled{{/unless}}>
-                        <option value="success" {{#if (eq activity.costType "success")}}selected{{/if}}>
-                            {{localize "NEUROSHIMA.BeastAction.CostType.Success"}}
-                        </option>
-                        <option value="segment" {{#if (eq activity.costType "segment")}}selected{{/if}}>
-                            {{localize "NEUROSHIMA.BeastAction.CostType.Segment"}}
-                        </option>
-                    </select>
-                </div>
-                {{#if isSegment}}
+                {{#if isSegmentItem}}
                 <div class="bas-field-group">
                     <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.SegmentCost"}}</label>
                     <input type="number" name="segmentCost" value="{{activity.segmentCost}}"
@@ -79,16 +70,27 @@
                 </div>
                 {{/if}}
             </div>
-            {{#if isSegment}}
-            <div class="bas-field-group">
-                <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
-                <select name="attribute" {{#unless editable}}disabled{{/unless}}>
-                    {{selectOptions attributes selected=activity.attribute labelAttr="label" localize=true}}
-                </select>
+
+            {{!-- Weapon Type + Attribute (segment only) --}}
+            {{#if isSegmentItem}}
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastSegment.WeaponType"}}</label>
+                    <select name="weaponType" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions weaponTypes selected=activity.weaponType localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Attribute"}}</label>
+                    <select name="attribute" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions attributes selected=activity.attribute labelAttr="label" localize=true}}
+                    </select>
+                </div>
             </div>
             {{/if}}
+
             <p class="bas-cost-hint">
-                {{#if isSegment}}
+                {{#if isSegmentItem}}
                     <i class="fas fa-info-circle"></i> {{localize "NEUROSHIMA.BeastAction.Sheet.HintSegment"}}
                 {{else}}
                     <i class="fas fa-info-circle"></i> {{localize "NEUROSHIMA.BeastAction.Sheet.HintSuccess"}}
@@ -96,6 +98,139 @@
             </p>
         </fieldset>
 
+        {{!-- ===== Damage: Melee (3 tiers) ===== --}}
+        {{#if isMelee}}
+        <fieldset class="bas-fieldset">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</legend>
+            <div class="bas-row bas-damage-tiers">
+                <div class="bas-field-group bas-tier-col">
+                    <label class="bas-label bas-tier-label">1</label>
+                    <select name="damage1" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions damageTypes selected=activity.damage1 localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group bas-tier-col">
+                    <label class="bas-label bas-tier-label">2</label>
+                    <select name="damage2" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions damageTypes selected=activity.damage2 localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group bas-tier-col">
+                    <label class="bas-label bas-tier-label">3</label>
+                    <select name="damage3" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions damageTypes selected=activity.damage3 localize=true}}
+                    </select>
+                </div>
+            </div>
+            <div class="bas-row">
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">PP</label>
+                    <input type="number" name="piercing" value="{{activity.piercing}}"
+                           min="0" max="10" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+        </fieldset>
+        {{/if}}
+
+        {{!-- ===== Damage: Ranged / Thrown / Grenade (single + range + jamming) ===== --}}
+        {{#if isRanged}}
+        <fieldset class="bas-fieldset">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</legend>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+                    <select name="damage" {{#unless editable}}disabled{{/unless}}>
+                        <option value="">—</option>
+                        {{selectOptions damageTypes selected=activity.damage localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">PP</label>
+                    <input type="number" name="piercing" value="{{activity.piercing}}"
+                           min="0" max="10" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastSegment.Range"}}</label>
+                    <input type="number" name="range" value="{{activity.range}}"
+                           min="0" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Jamming"}}</label>
+                    <input type="number" name="jamming" value="{{activity.jamming}}"
+                           min="1" max="20" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+        </fieldset>
+        {{/if}}
+
+        {{#if isThrown}}
+        <fieldset class="bas-fieldset">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</legend>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+                    <select name="damage" {{#unless editable}}disabled{{/unless}}>
+                        <option value="">—</option>
+                        {{selectOptions damageTypes selected=activity.damage localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">PP</label>
+                    <input type="number" name="piercing" value="{{activity.piercing}}"
+                           min="0" max="10" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastSegment.Range"}}</label>
+                    <input type="number" name="range" value="{{activity.range}}"
+                           min="0" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Jamming"}}</label>
+                    <input type="number" name="jamming" value="{{activity.jamming}}"
+                           min="1" max="20" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+        </fieldset>
+        {{/if}}
+
+        {{#if isGrenade}}
+        <fieldset class="bas-fieldset">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</legend>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Damage"}}</label>
+                    <select name="damage" {{#unless editable}}disabled{{/unless}}>
+                        <option value="">—</option>
+                        {{selectOptions damageTypes selected=activity.damage localize=true}}
+                    </select>
+                </div>
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">PP</label>
+                    <input type="number" name="piercing" value="{{activity.piercing}}"
+                           min="0" max="10" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastSegment.Range"}}</label>
+                    <input type="number" name="range" value="{{activity.range}}"
+                           min="0" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">{{localize "NEUROSHIMA.Items.Fields.Jamming"}}</label>
+                    <input type="number" name="jamming" value="{{activity.jamming}}"
+                           min="1" max="20" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+        </fieldset>
+        {{/if}}
+
+        {{!-- ===== Damage: beast-action (success-based, single damage) ===== --}}
+        {{#unless isSegmentItem}}
         <fieldset class="bas-fieldset">
             <legend>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</legend>
             <div class="bas-row">
@@ -113,6 +248,7 @@
                 </div>
             </div>
         </fieldset>
+        {{/unless}}
 
     </section>
 

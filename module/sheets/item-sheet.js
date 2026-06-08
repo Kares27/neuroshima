@@ -59,7 +59,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       toggleState: NeuroshimaItemSheet.prototype._onToggleState,
       addBeastActivity: NeuroshimaItemSheet.prototype._onAddBeastActivity,
       removeBeastActivity: NeuroshimaItemSheet.prototype._onRemoveBeastActivity,
-      editBeastActivity: NeuroshimaItemSheet.prototype._onEditBeastActivity
+      editBeastActivity: NeuroshimaItemSheet.prototype._onEditBeastActivity,
     },
     dragDrop: [{ dragSelector: ".item", dropSelector: "form" }],
     forms: {
@@ -273,7 +273,9 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       armor: ["description", "stats", "resources", "effects", "mods"],
       "weapon-mod": ["description", "stats", "resources", "effects"],
       "armor-mod": ["description", "stats", "resources", "effects"],
-      container: ["contents", "description", "stats", "effects"]
+      container: ["contents", "description", "stats", "effects"],
+      "beast-action": ["stats", "description", "effects"],
+      "beast-segment": ["stats", "description", "effects"]
     };
     let allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
 
@@ -288,8 +290,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
 
     context.tabs = this._getTabs();
-    if (item.type === "beast-action" && context.tabs.stats) {
-      context.tabs.stats.label = "NEUROSHIMA.BeastAction.Activities";
+    if ((item.type === "beast-action" || item.type === "beast-segment") && context.tabs.stats) {
+      context.tabs.stats.label = "NEUROSHIMA.Tabs.Stats";
     }
     if (context.isLimitedView || isContainerLocked) {
       const allowed = new Set(allowedTabs);
@@ -325,7 +327,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     context.isJammedWeapon = item.type === "weapon" && item.system.weaponType !== "grenade" && "jammed" in item.system;
 
     // Non-countable item types have no quantity, cost, or weight
-    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
+    const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "beast-segment", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
     context.isModItem = item.type === "weapon-mod" || item.type === "armor-mod";
 
@@ -1037,7 +1039,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
       "armor-mod": ["description", "stats", "resources", "effects"],
       facilities: ["description", "stats", "resources", "effects"],
       container: ["contents", "description", "stats", "effects"],
-      "beast-action": ["stats", "description", "effects"]
+      "beast-action": ["stats", "description", "effects"],
+      "beast-segment": ["stats", "description", "effects"]
     };
 
     const allowedTabs = tabsByType[item.type] || ["description", "stats", "resources", "effects"];
@@ -1381,27 +1384,35 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onAddBeastActivity() {
     const item = this.document;
-    if (item.type !== "beast-action") return;
+    if (item.type !== "beast-action" && item.type !== "beast-segment") return;
     const activities = foundry.utils.deepClone(item.system.activities ?? []);
-    activities.push({
+    const base = {
       id: foundry.utils.randomID(),
       name: "",
       img: "",
       actionType: "",
-      costType: "success",
-      successCost: 1,
-      segmentCost: 1,
       attribute: "dexterity",
       damage: "",
       piercing: 0,
       effectIds: []
-    });
-    await item.update({ "system.activities": activities });
+    };
+    if (item.type === "beast-segment") {
+      base.costType = "segment";
+      base.segmentCost = 1;
+      base.weaponType = "melee";
+      base.range = 0;
+    } else {
+      base.costType = "success";
+      base.successCost = 1;
+    }
+    activities.push(base);
+    const updated = await item.update({ "system.activities": activities });
+    if (updated) BeastActivitySheet.open(updated, base.id);
   }
 
   async _onRemoveBeastActivity(event, target) {
     const item = this.document;
-    if (item.type !== "beast-action") return;
+    if (item.type !== "beast-action" && item.type !== "beast-segment") return;
     const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
     if (!activityId) return;
     const activities = (item.system.activities ?? []).filter(a => a.id !== activityId);
@@ -1410,7 +1421,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onEditBeastActivity(event, target) {
     const item = this.document;
-    if (item.type !== "beast-action") return;
+    if (item.type !== "beast-action" && item.type !== "beast-segment") return;
     const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
     if (!activityId) return;
     BeastActivitySheet.open(item, activityId);

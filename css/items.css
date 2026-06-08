@@ -2335,6 +2335,22 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     flex: 0 0 64px;
 }
 
+.beast-activity-sheet .bas-damage-tiers {
+    display: flex;
+    gap: 6px;
+}
+
+.beast-activity-sheet .bas-tier-col {
+    flex: 1;
+    min-width: 0;
+}
+
+.beast-activity-sheet .bas-tier-label {
+    text-align: center;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
 .beast-activity-sheet .bas-label {
     font-size: 0.68em;
     font-weight: 600;

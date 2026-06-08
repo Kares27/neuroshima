@@ -193,7 +193,6 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.damage3     !== undefined) act.damage3     = raw.damage3;
     if (raw.damage      !== undefined) act.damage      = raw.damage;
     if (raw.piercing    !== undefined) act.piercing    = raw.piercing;
-    if (raw.jamming     !== undefined) act.jamming     = raw.jamming;
 
     this._selfUpdating = true;
     try {
@@ -215,7 +214,9 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
         const idx = activities.findIndex(a => a.id === this.activityId);
         if (idx < 0) return;
         activities[idx].img = path;
-        await this.item.update({ "system.activities": activities });
+        this._selfUpdating = true;
+        try { await this.item.update({ "system.activities": activities }); }
+        finally { this._selfUpdating = false; }
       }
     }).browse();
   }

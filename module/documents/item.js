@@ -18,6 +18,7 @@ export class NeuroshimaItem extends Item {
       "weapon-mod":      "systems/neuroshima/assets/img/modification.svg",
       "armor-mod":       "systems/neuroshima/assets/img/modification.svg",
       "beast-action":    "systems/neuroshima/assets/img/paw.svg",
+      "beast-segment":   "systems/neuroshima/assets/img/paw.svg",
       profession:        "systems/neuroshima/assets/img/profession.svg",
       specialization:    "systems/neuroshima/assets/img/specialization.svg",
       origin:            "systems/neuroshima/assets/img/passport.svg",

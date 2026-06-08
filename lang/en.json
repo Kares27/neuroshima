@@ -17,7 +17,7 @@
             "magazine": "Magazine",
             "wound": "Wound",
             "beast-action": "Beast Action",
-            "beast-maneuver": "Beast Maneuver",
+            "beast-segment": "Beast Segment",
             "specialization": "Specialization",
             "origin": "Origin",
             "profession": "Profession",
@@ -1212,7 +1212,7 @@
                 "Magazines": "Magazines",
                 "Wound": "Wound",
                 "Beast-action": "Beast Action",
-                "Beast-maneuver": "Beast Maneuver",
+                "Beast-segment": "Beast Segment",
                 "Specialization": "Specialization",
                 "Origin": "Origin",
                 "Profession": "Profession",
@@ -1630,7 +1630,13 @@
         },
         "BeastSegment": {
             "Label": "Beast Segments",
-            "None": "No segment actions."
+            "None": "No segment actions.",
+            "RollAction": "Roll Beast Segment Action",
+            "SegmentCost": "Segment Cost",
+            "WeaponType": "Attack Type",
+            "Range": "Range (m)",
+            "Activities": "Segment Activities",
+            "NoActivities": "No segment activities defined."
         },
         "Vehicle": {
             "Type": "Vehicle Type",

@@ -4350,6 +4350,125 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-size: 0.85em;
 }
 
+.neuroshima.sheet.actor-creature .action-damage {
+    color: rgba(220,120,80,0.9);
+    font-size: 0.82em;
+    font-weight: bold;
+}
+
+.neuroshima.sheet.actor-creature .action-wtype-icon {
+    color: rgba(160,200,255,0.75);
+    font-size: 0.82em;
+}
+
+.neuroshima.sheet.actor-creature .creature-actions-list .beast-parent-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.neuroshima.sheet.actor-creature .beast-parent-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    font-size: 1em;
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.actor-creature .beast-parent-row .item-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+}
+
+.neuroshima.sheet.actor-creature .beast-collapse-toggle {
+    cursor: pointer;
+    opacity: 0.5;
+    font-size: 0.72em;
+    width: 12px;
+    text-align: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.neuroshima.sheet.actor-creature .beast-collapse-toggle:hover {
+    opacity: 1;
+}
+
+.neuroshima.sheet.actor-creature .beast-parent-item.collapsed .beast-children-wrap {
+    display: none;
+}
+
+.neuroshima.sheet.actor-creature .beast-children-wrap {
+    padding: 0 0 3px 24px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.neuroshima.sheet.actor-creature .beast-child-row {
+    height: 26px;
+    line-height: 26px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.92em;
+    border-left: 2px solid rgba(255,255,255,0.15);
+    margin-left: 5px;
+    padding-left: 5px;
+    position: relative;
+}
+
+.neuroshima.sheet.actor-creature .beast-child-row::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    bottom: 0;
+    width: 8px;
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+}
+
+.neuroshima.sheet.actor-creature .beast-child-row .item-name {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.8;
+}
+
+.neuroshima.sheet.actor-creature .beast-roll-name {
+    cursor: pointer;
+}
+
+.neuroshima.sheet.actor-creature .beast-roll-name:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.neuroshima.sheet.actor-creature .beast-child-empty {
+    height: 26px;
+    line-height: 26px;
+    font-size: 0.88em;
+    opacity: 0.35;
+    font-style: italic;
+    border-left: 2px solid rgba(255,255,255,0.1);
+    margin-left: 5px;
+    padding-left: 5px;
+}
+
 .neuroshima.sheet.actor-creature .creature-wounds-section {
     margin-top: 12px;
 }

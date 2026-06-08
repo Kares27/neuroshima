@@ -5,7 +5,7 @@ import { NeuroshimaItem } from "./module/documents/item.js";
 import { NeuroshimaChatMessage } from "./module/documents/chat-message.js";
 import { NeuroshimaActiveEffect, NeuroshimaActiveEffectData } from "./module/documents/active-effect.js";
 import { NeuroshimaActorData, NeuroshimaNPCData, NeuroshimaCreatureData, NeuroshimaVehicleData, HomeBaseData } from "./module/data/actor-data.js";
-import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
+import { WeaponData, ArmorData, GearData, AmmoData, MagazineData, TrickData, TraitData, WoundData, BeastActionData, BeastSegmentData, SpecializationData, OriginData, ProfessionData, VehicleDamageData, VehicleModData, MoneyData, ReputationData, DiseaseData, WeaponModData, ArmorModData, FacilitiesData, ContainerData } from "./module/data/item-data.js";
 import { NeuroshimaActorSheet } from "./module/sheets/actor-sheet.js";
 import { NeuroshimaNPCSheet } from "./module/sheets/npc-sheet.js";
 import { NeuroshimaCreatureSheet } from "./module/sheets/creature-sheet.js";
@@ -314,6 +314,7 @@ Hooks.once('init', async function() {
     CONFIG.Item.dataModels.trait = TraitData;
     CONFIG.Item.dataModels.wound = WoundData;
     CONFIG.Item.dataModels["beast-action"]      = BeastActionData;
+    CONFIG.Item.dataModels["beast-segment"]     = BeastSegmentData;
     CONFIG.Item.dataModels["specialization"]    = SpecializationData;
     CONFIG.Item.dataModels["origin"]            = OriginData;
     CONFIG.Item.dataModels["profession"]        = ProfessionData;
@@ -511,7 +512,7 @@ Hooks.once('init', async function() {
 
     foundry.documents.collections.Items.unregisterSheet("core", foundry.appv1.sheets.ItemSheet);
     foundry.documents.collections.Items.registerSheet("neuroshima", NeuroshimaItemSheet, {
-        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
+        types: ["weapon", "armor", "gear", "trick", "trait", "ammo", "magazine", "wound", "beast-action", "beast-segment", "specialization", "origin", "profession", "vehicle-damage", "vehicle-mod", "money", "reputation", "disease", "weapon-mod", "armor-mod", "facilities", "container"],
         makeDefault: true,
         label: "NEUROSHIMA.Sheet.Item"
     });

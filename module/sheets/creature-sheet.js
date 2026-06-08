@@ -4,6 +4,7 @@ import { RestDialog } from "../apps/dialogs/minor-dialogs.js";
 import { getConditions } from "../apps/config/condition-config.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
+import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 
 function _collectCreatureArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -253,24 +254,33 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
       rollBeastAttack: async function(event, target) {
         const actor = this.document;
+        const itemId = target.dataset.itemId;
+
+        const sourceItems = itemId
+          ? actor.items.filter(i => i.id === itemId && i.type === "beast-action")
+          : actor.items.filter(i => i.type === "beast-action");
 
         const byTier = {};
-        for (const item of actor.items.filter(i => i.type === "beast-action")) {
+        for (const item of sourceItems) {
           for (const act of (item.system.activities ?? [])) {
-            if (act.costType !== "success") continue;
             const t = Math.min(3, Math.max(1, act.successCost ?? 1));
             if (!byTier[t]) byTier[t] = act.damage || "D";
           }
         }
 
+        if (Object.keys(byTier).length === 0) return;
+
+        const sourceItem = sourceItems[0];
+
         const syntheticWeapon = {
           id: null,
-          name: actor.name,
-          img: actor.img,
+          beastItemId: sourceItem?.id ?? null,
+          name: sourceItem?.name ?? actor.name,
+          img: sourceItem?.img ?? actor.img,
           type: "weapon",
           system: {
             weaponType: "melee",
-            attribute: "dexterity",
+            attribute: sourceItem?.system?.attribute || "dexterity",
             skill: "experience",
             attackBonus: 0,
             defenseBonus: 0,
@@ -335,36 +345,42 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       },
 
       rollBeastAction: async function(event, target) {
-        const li         = target.closest("[data-item-id]");
-        const itemId     = li?.dataset.itemId ?? target.dataset.itemId;
-        const activityId = li?.dataset.activityId ?? target.dataset.activityId;
+        const itemId     = target.dataset.itemId;
+        const activityId = target.dataset.activityId;
         const item       = this.document.items.get(itemId);
-        if (!item || item.type !== "beast-action") return;
+        if (!item || (item.type !== "beast-segment" && item.type !== "beast-action")) return;
 
-        const activity = (item.system.activities ?? []).find(a => a.id === activityId);
-        if (!activity || activity.costType !== "segment") return;
+        const act = activityId
+          ? (item.system.activities ?? []).find(a => a.id === activityId)
+          : (item.system.activities ?? [])[0];
+        if (!act) return;
 
-        const actor   = this.document;
-        const attrKey = activity.attribute || "dexterity";
+        const actor      = this.document;
+        const attrKey    = act.attribute || item.system?.attribute || "dexterity";
+        const weaponType = act.weaponType || "melee";
 
+        const isMeleeAct = weaponType === "melee";
+        const fallbackDmg = act.damage || "D";
         const syntheticWeapon = {
           id: item.id,
-          name: activity.name || item.name,
-          img: item.img,
+          name: act.name || item.name,
+          img: act.img || item.img,
           type: "weapon",
           system: {
-            weaponType: "melee",
+            weaponType,
             attribute: attrKey,
             skill: "experience",
             attackBonus: 0,
             defenseBonus: 0,
-            damageMelee1: activity.damage || "D",
-            damageMelee2: activity.damage || "D",
-            damageMelee3: activity.damage || "D",
+            damageMelee1: isMeleeAct ? (act.damage1 || fallbackDmg) : fallbackDmg,
+            damageMelee2: isMeleeAct ? (act.damage2 || fallbackDmg) : fallbackDmg,
+            damageMelee3: isMeleeAct ? (act.damage3 || fallbackDmg) : fallbackDmg,
+            damageRanged: fallbackDmg,
+            damage:       fallbackDmg,
             requiredBuild: 0,
-            piercing: activity.piercing ?? 0,
+            piercing: act.piercing ?? 0,
             magazine: null,
-            jamming: 20
+            jamming: act.jamming ?? 20
           }
         };
 
@@ -413,8 +429,9 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           }
         }
 
+        const rollType = (weaponType === "ranged" || weaponType === "thrown" || weaponType === "grenade") ? weaponType : "melee";
         const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
-        const dialog = new NeuroshimaWeaponRollDialog({ actor, weapon: syntheticWeapon, rollType: "melee" });
+        const dialog = new NeuroshimaWeaponRollDialog({ actor, weapon: syntheticWeapon, rollType });
         dialog.render(true);
       },
 
@@ -424,29 +441,59 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const itemData = { name, type };
         if (type === "beast-action") {
           itemData.system = {
-            activities: [{
-              id: foundry.utils.randomID(),
-              name: "",
-              img: "",
-              actionType: "",
-              costType: "success",
-              successCost: 1,
-              segmentCost: 1,
-              attribute: "dexterity",
-              damage: "",
-              piercing: 0,
-              effectIds: []
-            }]
+            actionType: "",
+            successCost: 1,
+            attribute: "dexterity",
+            damage: "",
+            piercing: 0
+          };
+        }
+        if (type === "beast-segment") {
+          itemData.system = {
+            actionType: "",
+            segmentCost: 1,
+            weaponType: "melee",
+            attribute: "dexterity",
+            damage: "",
+            piercing: 0,
+            range: 0
           };
         }
         const [created] = await this.document.createEmbeddedDocuments("Item", [itemData]);
-        if (created && type === "beast-action") created.sheet.render(true);
+        if (created && (type === "beast-action" || type === "beast-segment")) created.sheet.render(true);
         return created;
       },
 
       editItem: async function(event, target) {
         const li = target.closest("[data-item-id]");
         this.document.items.get(li.dataset.itemId)?.sheet.render(true);
+      },
+
+      editBeastActivity: async function(event, target) {
+        const itemId     = target.closest("[data-item-id]")?.dataset.itemId ?? target.dataset.itemId;
+        const activityId = target.closest("[data-activity-id]")?.dataset.activityId ?? target.dataset.activityId;
+        const item       = this.document.items.get(itemId);
+        if (!item || !activityId) return;
+        BeastActivitySheet.open(item, activityId);
+      },
+
+      toggleBeastCollapse: function(event, target) {
+        const itemId = target.dataset.itemId;
+        if (!this._collapsedBeastItems) this._collapsedBeastItems = new Set();
+        const li = target.closest(".beast-parent-item");
+        if (!li) return;
+        const isCollapsed = this._collapsedBeastItems.has(itemId);
+        if (isCollapsed) {
+          this._collapsedBeastItems.delete(itemId);
+          li.classList.remove("collapsed");
+          const icon = target.querySelector("i");
+          if (icon) { icon.classList.remove("fa-chevron-right"); icon.classList.add("fa-chevron-down"); }
+        } else {
+          this._collapsedBeastItems.add(itemId);
+          li.classList.add("collapsed");
+          const icon = target.querySelector("i");
+          if (icon) { icon.classList.remove("fa-chevron-down"); icon.classList.add("fa-chevron-right"); }
+        }
       },
 
       deleteItem: async function(event, target) {
@@ -840,42 +887,41 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         m.contentsReversed = [...(m.system.contents || [])].reverse();
         return m;
       }),
-      beastActionsSuccess: [
-        ...topItems.filter(i => i.type === "beast-action").flatMap(item =>
-          (item.system.activities ?? [])
-            .filter(act => act.costType === "success")
-            .map(act => ({
-              compositeId: `${item.id}::${act.id}`,
-              itemId: item.id,
-              activityId: act.id,
-              itemName: item.name,
-              name: act.name || item.name,
-              img: item.img,
-              successCost: act.successCost ?? 1,
-              damage: act.damage || null,
-              actionType: act.actionType || "",
-              hasEffects: (act.effectIds ?? []).length > 0
-            }))
-        ),
-        ...equippedWeapons
-      ],
-      beastActionsSegment: topItems.filter(i => i.type === "beast-action").flatMap(item =>
-        (item.system.activities ?? [])
-          .filter(act => act.costType === "segment")
-          .map(act => ({
-            compositeId: `${item.id}::${act.id}`,
-            itemId: item.id,
-            activityId: act.id,
-            itemName: item.name,
-            name: act.name || item.name,
-            img: item.img,
-            segmentCost: act.segmentCost ?? 1,
-            attribute: act.attribute || "dexterity",
-            damage: act.damage || null,
-            actionType: act.actionType || "",
-            hasEffects: (act.effectIds ?? []).length > 0
-          }))
-      ),
+      beastActions:      equippedWeapons,
+      beastActionItems:  topItems.filter(i => i.type === "beast-action").sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
+        id:         item.id,
+        name:       item.name,
+        img:        item.img,
+        activities: (item.system.activities ?? []).map(act => ({
+          itemId:      item.id,
+          activityId:  act.id,
+          name:        act.name || item.name,
+          img:         act.img || item.img,
+          successCost: act.successCost ?? 1,
+          damage:      act.damage || null,
+          actionType:  act.actionType || "",
+          hasEffects:  (act.effectIds ?? []).length > 0
+        }))
+      })),
+      beastSegmentItems: topItems.filter(i => i.type === "beast-segment").sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).map(item => ({
+        id:         item.id,
+        name:       item.name,
+        img:        item.img,
+        activities: (item.system.activities ?? []).map(act => ({
+          itemId:      item.id,
+          activityId:  act.id,
+          name:        act.name || item.name,
+          img:         act.img || item.img,
+          segmentCost: act.segmentCost ?? 1,
+          weaponType:  act.weaponType || "melee",
+          damage:      act.damage || null,
+          damage1:     act.damage1 || null,
+          damage2:     act.damage2 || null,
+          damage3:     act.damage3 || null,
+          actionType:  act.actionType || "",
+          hasEffects:  (act.effectIds ?? []).length > 0
+        }))
+      })),
 
       wounds:         topItems.filter(i => i.type === "wound")
     };
@@ -1217,6 +1263,16 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
   async _onRender(context, options) {
     await super._onRender(context, options);
     const html = this.element;
+
+    if (this._collapsedBeastItems?.size) {
+      for (const itemId of this._collapsedBeastItems) {
+        const li = html.querySelector(`.beast-parent-item[data-item-id="${itemId}"]`);
+        if (!li) continue;
+        li.classList.add("collapsed");
+        const icon = li.querySelector(".beast-collapse-toggle i");
+        if (icon) { icon.classList.remove("fa-chevron-down"); icon.classList.add("fa-chevron-right"); }
+      }
+    }
 
     html.querySelectorAll('[data-action="modifyDurability"]').forEach(el => {
       el.addEventListener('contextmenu', async (event) => {
