@@ -179,6 +179,7 @@
                         <span class="item-controls">
                             <a data-action="editBeastActivity" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}"><i class="fas fa-pen"></i></a>
                         </span>
+                        {{#if this.gmNote}}<div class="beast-child-gmnote">{{this.gmNote}}</div>{{/if}}
                     </div>
                     {{else}}
                     <div class="beast-child-empty">
@@ -232,6 +233,7 @@
                         <span class="item-controls">
                             <a data-action="editBeastActivity" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}"><i class="fas fa-pen"></i></a>
                         </span>
+                        {{#if this.gmNote}}<div class="beast-child-gmnote">{{this.gmNote}}</div>{{/if}}
                     </div>
                     {{else}}
                     <div class="beast-child-empty">

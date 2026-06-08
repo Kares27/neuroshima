@@ -446,6 +446,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               name: "",
               img: "",
               summary: "",
+              gmNote: "",
               actionType: "",
               costType: "success",
               successCost: 1,
@@ -453,13 +454,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               attribute: "dexterity",
               damage: "",
               piercing: 0,
-              effectIds: [],
-              targetMode: "primary",
-              defensePolicy: "primaryResultApplies",
-              requiresHit: true,
-              effectTarget: "primaryTarget",
-              effectTiming: "onSuccessSpend",
-              applyEffectsAutomatically: false
+              effectIds: []
             }]
           };
         }
@@ -470,9 +465,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               name: "",
               img: "",
               summary: "",
+              gmNote: "",
               actionType: "",
               costType: "segment",
               segmentCost: 1,
+              skillMode: "experience",
               weaponType: "melee",
               attribute: "dexterity",
               damage1: "D",
@@ -481,13 +478,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               damage: "",
               piercing: 0,
               range: 0,
-              effectIds: [],
-              targetMode: "primary",
-              defensePolicy: "eachTargetDefends",
-              requiresHit: true,
-              effectTarget: "primaryTarget",
-              effectTiming: "afterDamage",
-              applyEffectsAutomatically: false
+              effectIds: []
             }]
           };
         }
@@ -932,6 +923,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           successCost: act.successCost ?? 1,
           damage:      act.damage || null,
           actionType:  act.actionType || "",
+          gmNote:      act.gmNote || "",
           hasEffects:  (act.effectIds ?? []).length > 0
         }))
       })),
@@ -945,12 +937,14 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           name:        act.name || item.name,
           img:         act.img || item.img,
           segmentCost: act.segmentCost ?? 1,
+          skillMode:   act.skillMode || "experience",
           weaponType:  act.weaponType || "melee",
           damage:      act.damage || null,
           damage1:     act.damage1 || null,
           damage2:     act.damage2 || null,
           damage3:     act.damage3 || null,
           actionType:  act.actionType || "",
+          gmNote:      act.gmNote || "",
           hasEffects:  (act.effectIds ?? []).length > 0
         }))
       })),

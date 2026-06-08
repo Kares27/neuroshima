@@ -79,11 +79,14 @@
       {{#each affordableBeastActions}}
       <div class="beast-action-row" data-action-id="{{id}}" data-action-cost="{{cost}}">
         <button type="button" class="beast-action-pick-btn" data-action-id="{{id}}" data-cost="{{cost}}">
-          <img src="{{img}}" width="18" height="18" alt="">
-          <span class="beast-action-name">{{name}}</span>
-          <span class="beast-action-cost-badge">{{cost}}s</span>
-          {{#if damage}}<span class="beast-action-damage-badge">→ {{damage}}</span>{{/if}}
-          {{#if hasEffects}}<i class="fas fa-magic" title="{{localize 'NEUROSHIMA.BeastAction.HasEffects'}}"></i>{{/if}}
+          <span class="beast-action-pick-main">
+            <img src="{{img}}" width="18" height="18" alt="">
+            <span class="beast-action-name">{{name}}</span>
+            <span class="beast-action-cost-badge">{{cost}}s</span>
+            {{#if damage}}<span class="beast-action-damage-badge">→ {{damage}}</span>{{/if}}
+            {{#if hasEffects}}<i class="fas fa-magic" title="{{localize 'NEUROSHIMA.BeastAction.HasEffects'}}"></i>{{/if}}
+          </span>
+          {{#if gmNote}}<span class="beast-action-gmnote">{{gmNote}}</span>{{/if}}
         </button>
         <span class="beast-qty-badge" data-action-id="{{id}}" style="display:none">
           <span class="beast-qty-value" data-action-id="{{id}}">0</span>×
@@ -102,11 +105,13 @@
 
   {{#if isHit}}
   {{#unless hasBeastActions}}
+  {{#unless isCreatureAttacker}}
   <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
     <button type="button" class="apply-damage-button apply-opposed-damage-btn" data-action="applyOpposedDamage">
       <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.Actions.Damage"}}
     </button>
   </div>
+  {{/unless}}
   {{/unless}}
   {{/if}}
 

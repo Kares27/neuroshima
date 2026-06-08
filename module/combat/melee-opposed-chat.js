@@ -354,7 +354,8 @@ export class MeleeOpposedChat {
     const affordableBeastActions = [];
     if (isCreatureAttacker && netSuccesses > 0) {
       const beastItemFilter = data.beastItemId ?? null;
-      for (const item of attackerActor.items.filter(i => i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter))) {
+      const beastItems = attackerActor.items.filter(i => i.type === "beast-action");
+      for (const item of beastItems.filter(i => !beastItemFilter || i.id === beastItemFilter)) {
         for (const act of (item.system.activities ?? [])) {
           if (act.costType !== "success") continue;
           const cost = act.successCost ?? 1;
@@ -366,6 +367,7 @@ export class MeleeOpposedChat {
               img: act.img || item.img,
               cost,
               damage: act.damage || null,
+              gmNote: act.gmNote || "",
               hasEffects: (act.effectIds?.length ?? 0) > 0
             });
           }
@@ -412,7 +414,7 @@ export class MeleeOpposedChat {
     const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
 
     const rollMode = game.settings.get("core", "rollMode");
-    await ChatMessage.create({
+    const resultMsg = await ChatMessage.create({
       content: resContent,
       flags: {
         neuroshima: {
@@ -420,6 +422,7 @@ export class MeleeOpposedChat {
             attackerUuid: data.attackerUuid,
             defenderUuid: data.defenderUuid,
             weaponId: data.weaponId,
+            beastItemId: data.beastItemId ?? null,
             hits,
             location,
             damage1: data.damage1,
@@ -436,6 +439,10 @@ export class MeleeOpposedChat {
       speaker: { alias: "⚔" },
       rollMode
     });
+
+    if (resultType === "hit" && isCreatureAttacker && !resolutionData.hasBeastActions && resultMsg) {
+      await MeleeOpposedChat.applyOpposedDamage(resultMsg.id);
+    }
 
     // Update handler card to "resolved" state (no dice needed — shown in resolution card)
     const updatedTemplateData = {
@@ -1644,6 +1651,7 @@ export class MeleeOpposedChat {
               img: act.img || item.img,
               cost,
               damage: act.damage || null,
+              gmNote: act.gmNote || "",
               hasEffects: (act.effectIds?.length ?? 0) > 0
             });
           }
@@ -1679,7 +1687,7 @@ export class MeleeOpposedChat {
     const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
 
     const rollMode = game.settings.get("core", "rollMode");
-    await ChatMessage.create({
+    const resultMsg2 = await ChatMessage.create({
       content: resContent,
       flags: {
         neuroshima: {
@@ -1687,6 +1695,7 @@ export class MeleeOpposedChat {
             attackerUuid: allocData.attackerUuid,
             defenderUuid: allocData.defenderUuid,
             weaponId: allocData.weaponId,
+            beastItemId: allocData.beastItemId ?? null,
             hits, location,
             damage1, damage2, damage3,
             netSuccesses, affordableBeastActions,
@@ -1698,6 +1707,10 @@ export class MeleeOpposedChat {
       speaker: { alias: "⚔" },
       rollMode
     });
+
+    if (resultType === "hit" && isCreatureAttacker && !resolutionData.hasBeastActions && resultMsg2) {
+      await MeleeOpposedChat.applyOpposedDamage(resultMsg2.id);
+    }
   }
 
   /**
@@ -2037,6 +2050,30 @@ export class MeleeOpposedChat {
       );
     }
 
+    if (attackerActor?.type === "creature") {
+      const beastItemFilter = rd.beastItemId ?? null;
+      const beastItems = attackerActor.items.filter(i =>
+        i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
+      );
+      for (const beastItem of beastItems) {
+        for (const activity of (beastItem.system.activities ?? [])) {
+          const linkedEffectIds = new Set(activity.effectIds ?? []);
+          for (const effect of beastItem.effects) {
+            if (!linkedEffectIds.has(effect.id)) continue;
+            try {
+              const { _id, ...rest } = effect.toObject();
+              await ActiveEffect.implementation.create(
+                { ...rest, disabled: false, transfer: false, origin: beastItem.uuid },
+                { parent: defenderActor }
+              );
+            } catch (err) {
+              console.error("Neuroshima | Failed to auto-apply beast effect:", err);
+            }
+          }
+        }
+      }
+    }
+
     await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
   }
 
@@ -2367,6 +2404,28 @@ export class MeleeOpposedChat {
     const { CombatHelper } = await import("../helpers/combat-helper.js");
     const location = rd.location ?? "torso";
 
+    const beastItemFilter = rd.beastItemId ?? null;
+    const beastItemsForEffects = attackerActor.items.filter(i =>
+      i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
+    );
+    for (const beastItem of beastItemsForEffects) {
+      for (const activity of (beastItem.system.activities ?? [])) {
+        const linkedEffectIds = new Set(activity.effectIds ?? []);
+        for (const effect of beastItem.effects) {
+          if (!linkedEffectIds.has(effect.id)) continue;
+          try {
+            const { _id, ...rest } = effect.toObject();
+            await ActiveEffect.implementation.create(
+              { ...rest, disabled: false, transfer: false, origin: beastItem.uuid },
+              { parent: defenderActor }
+            );
+          } catch (err) {
+            console.error("Neuroshima | Failed to auto-apply beast effect:", err);
+          }
+        }
+      }
+    }
+
     const spentPerAction = {};
     let totalSpent = 0;
     for (const actionId of selectedActionIds) {
@@ -2415,14 +2474,6 @@ export class MeleeOpposedChat {
           }
         }
 
-        const linkedEffectIds = new Set(activity.effectIds ?? []);
-        if (linkedEffectIds.size > 0) {
-          for (const effect of actionItem.effects) {
-            if (!linkedEffectIds.has(effect.id)) continue;
-            const effectData = effect.convertToApplied ? effect.convertToApplied() : effect.toObject();
-            await defenderActor.applyEffect({ effectData: [effectData] });
-          }
-        }
       }
     }
 

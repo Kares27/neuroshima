@@ -6643,6 +6643,66 @@ body.theme-dark {
     border-color: rgba(180, 120, 30, 0.3);
 }
 
+.beast-action-pick-btn {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    background: none;
+    border: none;
+    padding: 3px 4px;
+    cursor: pointer;
+    color: inherit;
+    text-align: left;
+    border-radius: 3px;
+}
+
+.beast-action-pick-btn:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.beast-action-pick-main {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+
+.beast-action-gmnote {
+    font-size: 0.76em;
+    font-style: italic;
+    opacity: 0.55;
+    line-height: 1.35;
+    padding: 0 2px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: left;
+}
+
+.beast-action-row.selected .beast-action-gmnote {
+    opacity: 0.7;
+}
+
+.beast-qty-badge {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.beast-qty-undo {
+    background: none;
+    border: 1px solid rgba(200, 100, 10, 0.4);
+    border-radius: 3px;
+    color: #c8860a;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 1px 4px;
+    line-height: 1;
+}
+
 /* ===== Condition Config ===== */
 .condition-config {
     padding: 8px;

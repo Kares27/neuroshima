@@ -132,36 +132,10 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
 
     const actWeaponType = activity.weaponType || "melee";
 
-    const targetModes = {
-      primary:       "NEUROSHIMA.BeastActivity.TargetMode.Primary",
-      selected:      "NEUROSHIMA.BeastActivity.TargetMode.Selected",
-      multipleMelee: "NEUROSHIMA.BeastActivity.TargetMode.MultipleMelee",
-      cone:          "NEUROSHIMA.BeastActivity.TargetMode.Cone",
-      self:          "NEUROSHIMA.BeastActivity.TargetMode.Self",
-      manual:        "NEUROSHIMA.BeastActivity.TargetMode.Manual"
-    };
-
-    const defensePolicies = {
-      noExtraDefense:       "NEUROSHIMA.BeastActivity.DefensePolicy.NoExtraDefense",
-      eachTargetDefends:    "NEUROSHIMA.BeastActivity.DefensePolicy.EachTargetDefends",
-      primaryResultApplies: "NEUROSHIMA.BeastActivity.DefensePolicy.PrimaryResultApplies",
-      gmManual:             "NEUROSHIMA.BeastActivity.DefensePolicy.GmManual"
-    };
-
-    const effectTargets = {
-      self:           "NEUROSHIMA.BeastActivity.EffectTarget.Self",
-      primaryTarget:  "NEUROSHIMA.BeastActivity.EffectTarget.PrimaryTarget",
-      selectedTargets:"NEUROSHIMA.BeastActivity.EffectTarget.SelectedTargets",
-      allTargets:     "NEUROSHIMA.BeastActivity.EffectTarget.AllTargets",
-      manual:         "NEUROSHIMA.BeastActivity.EffectTarget.Manual"
-    };
-
-    const effectTimings = {
-      onUse:               "NEUROSHIMA.BeastActivity.EffectTiming.OnUse",
-      onHit:               "NEUROSHIMA.BeastActivity.EffectTiming.OnHit",
-      onSuccessSpend:      "NEUROSHIMA.BeastActivity.EffectTiming.OnSuccessSpend",
-      afterDamage:         "NEUROSHIMA.BeastActivity.EffectTiming.AfterDamage",
-      onFailedResistance:  "NEUROSHIMA.BeastActivity.EffectTiming.OnFailedResistance"
+    const skillModes = {
+      experience: "NEUROSHIMA.BeastActivity.SkillMode.Experience",
+      skill:      "NEUROSHIMA.BeastActivity.SkillMode.Skill",
+      none:       "NEUROSHIMA.BeastActivity.SkillMode.None"
     };
 
     return {
@@ -179,10 +153,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       isRanged:         isSegmentItem && actWeaponType === "ranged",
       isThrown:         isSegmentItem && actWeaponType === "thrown",
       isGrenade:        isSegmentItem && actWeaponType === "grenade",
-      targetModes,
-      defensePolicies,
-      effectTargets,
-      effectTimings,
+      skillModes,
       editable:         this.item.isOwner
     };
   }
@@ -218,10 +189,12 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.name                    !== undefined) act.name                    = raw.name;
     if (raw.img                     !== undefined) act.img                     = raw.img;
     if (raw.summary                 !== undefined) act.summary                 = raw.summary;
+    if (raw.gmNote                  !== undefined) act.gmNote                  = raw.gmNote;
     if (raw.actionType              !== undefined) act.actionType              = raw.actionType;
     if (raw.costType                !== undefined) act.costType                = raw.costType;
     if (raw.segmentCost             !== undefined) act.segmentCost             = raw.segmentCost;
     if (raw.successCost             !== undefined) act.successCost             = raw.successCost;
+    if (raw.skillMode               !== undefined) act.skillMode               = raw.skillMode;
     if (raw.weaponType              !== undefined) act.weaponType              = raw.weaponType;
     if (raw.range                   !== undefined) act.range                   = raw.range;
     if (raw.attribute               !== undefined) act.attribute               = raw.attribute;
@@ -231,12 +204,6 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.damage                  !== undefined) act.damage                  = raw.damage;
     if (raw.piercing                !== undefined) act.piercing                = raw.piercing;
     if (raw.jamming                 !== undefined) act.jamming                 = raw.jamming;
-    if (raw.targetMode              !== undefined) act.targetMode              = raw.targetMode;
-    if (raw.defensePolicy           !== undefined) act.defensePolicy           = raw.defensePolicy;
-    if (raw.requiresHit             !== undefined) act.requiresHit             = raw.requiresHit;
-    if (raw.effectTarget            !== undefined) act.effectTarget            = raw.effectTarget;
-    if (raw.effectTiming            !== undefined) act.effectTiming            = raw.effectTiming;
-    if (raw.applyEffectsAutomatically !== undefined) act.applyEffectsAutomatically = raw.applyEffectsAutomatically;
 
     this._selfUpdating = true;
     try {
@@ -272,7 +239,8 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     } else {
       const [created] = await this.item.createEmbeddedDocuments("ActiveEffect", [{
         name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
-        img: "icons/svg/aura.svg"
+        img: "icons/svg/aura.svg",
+        transfer: false
       }]);
       if (!created) return;
       effectId = created.id;

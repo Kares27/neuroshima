@@ -1671,41 +1671,13 @@
         "BeastActivity": {
             "Summary": "Opis skrócony",
             "SummaryPlaceholder": "Krótki opis widoczny na karcie walki…",
-            "Targeting": "Celowanie",
-            "TargetModeLabel": "Tryb celu",
-            "DefensePolicyLabel": "Polityka obrony",
-            "RequiresHit": "Wymaga trafienia",
-            "EffectPolicy": "Aplikowanie efektów",
-            "EffectTargetLabel": "Zastosuj efekty na",
-            "EffectTimingLabel": "Kiedy zastosować",
-            "ApplyEffectsAutomatically": "Zastosuj automatycznie",
-            "TargetMode": {
-                "Primary": "Cel główny",
-                "Selected": "Wybrane cele",
-                "MultipleMelee": "Wszystkie sąsiednie cele",
-                "Cone": "Stożek",
-                "Self": "Własny",
-                "Manual": "Ręcznie (MG)"
-            },
-            "DefensePolicy": {
-                "NoExtraDefense": "Bez dodatkowej obrony",
-                "EachTargetDefends": "Każdy cel broni się osobno",
-                "PrimaryResultApplies": "Wynik główny stosuje się do wszystkich",
-                "GmManual": "Ręcznie (decyzja MG)"
-            },
-            "EffectTarget": {
-                "Self": "Własny (bestia)",
-                "PrimaryTarget": "Cel główny",
-                "SelectedTargets": "Wybrane cele",
-                "AllTargets": "Wszystkie cele",
-                "Manual": "Ręcznie (MG)"
-            },
-            "EffectTiming": {
-                "OnUse": "Przy użyciu (od razu)",
-                "OnHit": "Przy trafieniu",
-                "OnSuccessSpend": "Przy wydaniu sukcesów",
-                "AfterDamage": "Po zastosowaniu obrażeń",
-                "OnFailedResistance": "Przy nieudanym teście oporu"
+            "GmNote": "Notatka MG (opis efektu)",
+            "GmNotePlaceholder": "Pełny opis efektu/reguły widoczny przy wyborze akcji…",
+            "SkillModeLabel": "Tryb rzutu",
+            "SkillMode": {
+                "Experience": "Doświadczenie",
+                "Skill": "Umiejętność",
+                "None": "Bez rzutu (auto)"
             }
         },
         "Vehicle": {
