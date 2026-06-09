@@ -414,7 +414,7 @@ export class MeleeOpposedChat {
     const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
 
     const rollMode = game.settings.get("core", "rollMode");
-    const resultMsg = await ChatMessage.create({
+    await ChatMessage.create({
       content: resContent,
       flags: {
         neuroshima: {
@@ -439,10 +439,6 @@ export class MeleeOpposedChat {
       speaker: { alias: "⚔" },
       rollMode
     });
-
-    if (resultType === "hit" && isCreatureAttacker && !resolutionData.hasBeastActions && resultMsg) {
-      await MeleeOpposedChat.applyOpposedDamage(resultMsg.id);
-    }
 
     // Update handler card to "resolved" state (no dice needed — shown in resolution card)
     const updatedTemplateData = {
@@ -1126,19 +1122,21 @@ export class MeleeOpposedChat {
           if (diceIndices.length !== N) return;
         }
 
-        const ownerHasSuccess     = ownerIndices.some(i => ownerDice[i]?.isSuccess);
-        const responderHasSuccess  = diceIndices.some(i => responderDice[i]?.isSuccess);
+        const ownerSuccessCount    = ownerIndices.filter(i => ownerDice[i]?.isSuccess).length;
+        const responderSuccessCount = diceIndices.filter(i => responderDice[i]?.isSuccess).length;
+        const ownerHasSuccess     = ownerSuccessCount > 0;
+        const responderHasSuccess  = responderSuccessCount > 0;
 
         if (declaredAction === "attack") {
-          if      ( ownerHasSuccess && !responderHasSuccess) outcome = "hit";
-          else if (!ownerHasSuccess &&  responderHasSuccess) outcome = "takeover";
-          else if ( ownerHasSuccess &&  responderHasSuccess) outcome = "draw";
-          else                                               outcome = "nothing";
+          if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
+          else if (ownerSuccessCount < responderSuccessCount)  outcome = "takeover";
+          else if (ownerSuccessCount > 0)                      outcome = "draw";
+          else                                                  outcome = "nothing";
 
           if (outcome === "hit") state.hits.push({ tier: N, damageType: state[`damage${N}`] ?? "?" });
 
-          segAttackVal  = isOwnerAttacker ? (ownerHasSuccess ? 1 : 0)    : (responderHasSuccess ? 1 : 0);
-          segDefenseVal = isOwnerAttacker ? (responderHasSuccess ? 1 : 0) : (ownerHasSuccess ? 1 : 0);
+          segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
+          segDefenseVal = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
 
           if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
 
@@ -1687,7 +1685,7 @@ export class MeleeOpposedChat {
     const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
 
     const rollMode = game.settings.get("core", "rollMode");
-    const resultMsg2 = await ChatMessage.create({
+    await ChatMessage.create({
       content: resContent,
       flags: {
         neuroshima: {
@@ -1707,10 +1705,6 @@ export class MeleeOpposedChat {
       speaker: { alias: "⚔" },
       rollMode
     });
-
-    if (resultType === "hit" && isCreatureAttacker && !resolutionData.hasBeastActions && resultMsg2) {
-      await MeleeOpposedChat.applyOpposedDamage(resultMsg2.id);
-    }
   }
 
   /**

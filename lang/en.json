@@ -1625,7 +1625,20 @@
                 "RemoveEffectUnlink": "No — only unlink from activity",
                 "SelectEffect": "— Link an existing effect —",
                 "HintSuccess": "This activity appears in the success-spending panel when the beast wins an exchange.",
-                "HintSegment": "This activity is available on the beast's turn — it does not appear in success spending."
+                "HintSegment": "This activity is available on the beast's turn — it does not appear in success spending.",
+                "RequiredTest": "Required test",
+                "TestRequired": "Require a roll from the target",
+                "TestType": "Test type",
+                "TestTypeAttribute": "Attribute",
+                "TestTypeSkill": "Skill",
+                "TestKey": "Key (attribute / skill)",
+                "TestIsOpen": "Open test",
+                "TestAttributeOverride": "Roll attribute (override)",
+                "TestAttributeOverrideNone": "— default skill attribute —",
+                "TestSuccesses": "Required SP",
+                "SuccessEffects": "Effects on success",
+                "FailureEffects": "Effects on failure",
+                "AddFailureEffect": "Create effect (failure)"
             }
         },
         "BeastSegment": {

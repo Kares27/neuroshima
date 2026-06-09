@@ -280,9 +280,88 @@
     {{!-- ===== Effects ===== --}}
     <section class="tab bas-tab {{tabs.effects.cssClass}}" data-group="sheet" data-tab="effects">
 
+        {{!-- Required test fieldset --}}
+        <fieldset class="bas-fieldset">
+            <legend>{{localize "NEUROSHIMA.BeastAction.Sheet.RequiredTest"}}</legend>
+
+            <div class="bas-row bas-row-check">
+                <label class="bas-label bas-label-check">
+                    <input type="checkbox" name="testRequired" {{#if activity.testRequired}}checked{{/if}}
+                           {{#unless editable}}disabled{{/unless}}/>
+                    {{localize "NEUROSHIMA.BeastAction.Sheet.TestRequired"}}
+                </label>
+            </div>
+
+            {{#if activity.testRequired}}
+            <div class="bas-row">
+                <div class="bas-field-group">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestType"}}</label>
+                    <select name="testType" {{#unless editable}}disabled{{/unless}}>
+                        <option value="attribute" {{#if (eq activity.testType "attribute")}}selected{{/if}}>
+                            {{localize "NEUROSHIMA.BeastAction.Sheet.TestTypeAttribute"}}
+                        </option>
+                        <option value="skill" {{#if (eq activity.testType "skill")}}selected{{/if}}>
+                            {{localize "NEUROSHIMA.BeastAction.Sheet.TestTypeSkill"}}
+                        </option>
+                    </select>
+                </div>
+                <div class="bas-field-group bas-field-narrow">
+                    <label class="bas-label">SP</label>
+                    <input type="number" name="testSuccesses" value="{{activity.testSuccesses}}"
+                           min="1" max="10" {{#unless editable}}disabled{{/unless}}/>
+                </div>
+            </div>
+            <div class="bas-row bas-row-check">
+                <label class="bas-label bas-label-check">
+                    <input type="checkbox" name="testIsOpen" {{#if activity.testIsOpen}}checked{{/if}}
+                           {{#unless editable}}disabled{{/unless}}/>
+                    {{localize "NEUROSHIMA.BeastAction.Sheet.TestIsOpen"}}
+                </label>
+            </div>
+            <div class="bas-row">
+                <div class="bas-field-group bas-field-full">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestKey"}}</label>
+                    {{#if (eq activity.testType "attribute")}}
+                    <select name="testKey" {{#unless editable}}disabled{{/unless}}>
+                        {{selectOptions testAttributes selected=activity.testKey localize=true}}
+                    </select>
+                    {{else}}
+                    <select name="testKey" {{#unless editable}}disabled{{/unless}}>
+                        {{#each testSkillGroups}}
+                        <optgroup label="{{this.attrLabel}}">
+                            {{#each this.skills}}
+                            <option value="{{this.key}}" {{#if (eq this.key ../../../activity.testKey)}}selected{{/if}}>{{this.label}}</option>
+                            {{/each}}
+                        </optgroup>
+                        {{/each}}
+                    </select>
+                    {{/if}}
+                </div>
+            </div>
+            {{#if (eq activity.testType "skill")}}
+            <div class="bas-row">
+                <div class="bas-field-group bas-field-full">
+                    <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestAttributeOverride"}}</label>
+                    <select name="testAttributeOverride" {{#unless editable}}disabled{{/unless}}>
+                        <option value="" {{#unless activity.testAttributeOverride}}selected{{/unless}}>
+                            {{localize "NEUROSHIMA.BeastAction.Sheet.TestAttributeOverrideNone"}}
+                        </option>
+                        {{selectOptions testAttributes selected=activity.testAttributeOverride localize=true}}
+                    </select>
+                </div>
+            </div>
+            {{/if}}
+            {{/if}}
+        </fieldset>
+
+        {{!-- Success effects (always shown; label changes when test is enabled) --}}
         <fieldset class="bas-fieldset">
             <legend>
-                {{localize "NEUROSHIMA.BeastAction.Sheet.LinkedEffects"}}
+                {{#if activity.testRequired}}
+                    {{localize "NEUROSHIMA.BeastAction.Sheet.SuccessEffects"}}
+                {{else}}
+                    {{localize "NEUROSHIMA.BeastAction.Sheet.LinkedEffects"}}
+                {{/if}}
                 {{#if editable}}
                 <a class="bas-add-btn" data-action="addEffect" title="{{localize 'NEUROSHIMA.BeastAction.Sheet.AddEffect'}}">
                     <i class="fas fa-plus"></i>
@@ -320,6 +399,50 @@
             </div>
             {{/if}}{{/if}}
         </fieldset>
+
+        {{!-- Failure effects (only shown when test is required) --}}
+        {{#if activity.testRequired}}
+        <fieldset class="bas-fieldset bas-fieldset-failure">
+            <legend>
+                {{localize "NEUROSHIMA.BeastAction.Sheet.FailureEffects"}}
+                {{#if editable}}
+                <a class="bas-add-btn" data-action="addFailureEffect" title="{{localize 'NEUROSHIMA.BeastAction.Sheet.AddFailureEffect'}}">
+                    <i class="fas fa-plus"></i>
+                </a>
+                {{/if}}
+            </legend>
+
+            {{#each linkedFailureEffects}}
+            <div class="bas-effect-row" data-effect-id="{{this.id}}">
+                <img class="bas-effect-icon" src="{{this.icon}}" alt="" width="18" height="18"/>
+                <span class="bas-effect-name{{#if this.disabled}} bas-disabled{{/if}}">{{this.name}}</span>
+                <span class="bas-effect-duration">{{this.durationLabel}}</span>
+                <span class="bas-effect-controls">
+                    <a data-action="editEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.Sheet.Edit'}}"><i class="fas fa-pen"></i></a>
+                    {{#if @root.editable}}
+                    <a data-action="removeFailureEffect" data-effect-id="{{this.id}}" title="{{localize 'NEUROSHIMA.BeastAction.Sheet.RemoveEffect'}}"><i class="fas fa-unlink"></i></a>
+                    {{/if}}
+                </span>
+            </div>
+            {{else}}
+            <p class="bas-empty-hint">{{localize "NEUROSHIMA.BeastAction.Sheet.NoEffects"}}</p>
+            {{/each}}
+
+            {{#if editable}}{{#if unlinkedEffects.length}}
+            <div class="bas-link-row">
+                <select class="bas-link-select" data-failure-link-select>
+                    <option value="">{{localize "NEUROSHIMA.BeastAction.Sheet.SelectEffect"}}</option>
+                    {{#each unlinkedEffects}}
+                    <option value="{{this.id}}">{{this.name}}</option>
+                    {{/each}}
+                </select>
+                <a class="bas-link-btn" data-action="linkSelectedFailureEffect" title="{{localize 'NEUROSHIMA.BeastAction.Sheet.LinkEffect'}}">
+                    <i class="fas fa-link"></i>
+                </a>
+            </div>
+            {{/if}}{{/if}}
+        </fieldset>
+        {{/if}}
 
     </section>
 </div>

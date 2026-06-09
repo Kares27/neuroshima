@@ -40,11 +40,14 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       closeOnSubmit: false
     },
     actions: {
-      pickIcon:           BeastActivitySheet._onPickIcon,
-      addEffect:          BeastActivitySheet._onAddEffect,
-      linkSelectedEffect: BeastActivitySheet._onLinkSelectedEffect,
-      editEffect:         BeastActivitySheet._onEditEffect,
-      removeEffect:       BeastActivitySheet._onRemoveEffect
+      pickIcon:                  BeastActivitySheet._onPickIcon,
+      addEffect:                 BeastActivitySheet._onAddEffect,
+      linkSelectedEffect:        BeastActivitySheet._onLinkSelectedEffect,
+      editEffect:                BeastActivitySheet._onEditEffect,
+      removeEffect:              BeastActivitySheet._onRemoveEffect,
+      addFailureEffect:          BeastActivitySheet._onAddFailureEffect,
+      linkSelectedFailureEffect: BeastActivitySheet._onLinkSelectedFailureEffect,
+      removeFailureEffect:       BeastActivitySheet._onRemoveFailureEffect
     }
   };
 
@@ -95,31 +98,37 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     const rawEffectIds   = activity.effectIds ?? [];
     const cleanEffectIds = rawEffectIds.filter(id => validEffectIds.has(id));
 
-    if (cleanEffectIds.length < rawEffectIds.length) {
+    const rawFailureIds   = activity.onFailureEffectIds ?? [];
+    const cleanFailureIds = rawFailureIds.filter(id => validEffectIds.has(id));
+
+    if (cleanEffectIds.length < rawEffectIds.length || cleanFailureIds.length < rawFailureIds.length) {
       const activities = foundry.utils.deepClone(this.item.system.activities ?? []);
       const idx = activities.findIndex(a => a.id === this.activityId);
       if (idx >= 0) {
-        activities[idx].effectIds = cleanEffectIds;
+        activities[idx].effectIds         = cleanEffectIds;
+        activities[idx].onFailureEffectIds = cleanFailureIds;
         this.item.update({ "system.activities": activities });
       }
     }
 
-    const effectIds = new Set(cleanEffectIds);
+    const effectIds        = new Set(cleanEffectIds);
+    const failureEffectIds = new Set(cleanFailureIds);
 
-    const linkedEffects = this.item.effects
-      .filter(e => effectIds.has(e.id))
-      .map(e => ({
-        id: e.id,
-        name: e.name,
-        icon: e.img || "icons/svg/aura.svg",
-        disabled: e.disabled,
-        durationLabel: e.duration?.rounds
-          ? `${e.duration.rounds}r`
-          : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
-      }));
+    const toEffectRow = e => ({
+      id: e.id,
+      name: e.name,
+      icon: e.img || "icons/svg/aura.svg",
+      disabled: e.disabled,
+      durationLabel: e.duration?.rounds
+        ? `${e.duration.rounds}r`
+        : (e.duration?.seconds ? `${e.duration.seconds}s` : "—")
+    });
+
+    const linkedEffects        = this.item.effects.filter(e => effectIds.has(e.id)).map(toEffectRow);
+    const linkedFailureEffects = this.item.effects.filter(e => failureEffectIds.has(e.id)).map(toEffectRow);
 
     const unlinkedEffects = this.item.effects
-      .filter(e => !effectIds.has(e.id))
+      .filter(e => !effectIds.has(e.id) && !failureEffectIds.has(e.id))
       .map(e => ({ id: e.id, name: e.name }));
 
     const isSegmentItem = this.item.type === "beast-segment";
@@ -138,23 +147,44 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       none:       "NEUROSHIMA.BeastActivity.SkillMode.None"
     };
 
+    const testAttributes = {
+      constitution: "NEUROSHIMA.Attributes.Constitution",
+      dexterity:    "NEUROSHIMA.Attributes.Dexterity",
+      perception:   "NEUROSHIMA.Attributes.Perception",
+      charisma:     "NEUROSHIMA.Attributes.Charisma",
+      cleverness:   "NEUROSHIMA.Attributes.Cleverness"
+    };
+
+    const skillConfig = NEUROSHIMA.skillConfiguration ?? {};
+    const testSkillGroups = Object.entries(skillConfig).map(([attrKey, groups]) => {
+      const cap = attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
+      const skills = Object.values(groups).flat().map(skill => ({
+        key: skill,
+        label: game.i18n.localize(`NEUROSHIMA.Skills.${skill}`)
+      })).sort((a, b) => a.label.localeCompare(b.label));
+      return { attrKey, attrLabel: game.i18n.localize(`NEUROSHIMA.Attributes.${cap}`), skills };
+    });
+
     return {
-      tabs:             this._getTabs(),
+      tabs:                this._getTabs(),
       activity,
-      item:             this.item,
+      item:                this.item,
       linkedEffects,
+      linkedFailureEffects,
       unlinkedEffects,
-      attributes:       NEUROSHIMA.attributes,
-      damageTypes:      NEUROSHIMA.damageTypes,
-      isSegment:        activity.costType === "segment",
+      attributes:          NEUROSHIMA.attributes,
+      damageTypes:         NEUROSHIMA.damageTypes,
+      testAttributes,
+      testSkillGroups,
+      isSegment:           activity.costType === "segment",
       isSegmentItem,
       weaponTypes,
-      isMelee:          isSegmentItem && actWeaponType === "melee",
-      isRanged:         isSegmentItem && actWeaponType === "ranged",
-      isThrown:         isSegmentItem && actWeaponType === "thrown",
-      isGrenade:        isSegmentItem && actWeaponType === "grenade",
+      isMelee:             isSegmentItem && actWeaponType === "melee",
+      isRanged:            isSegmentItem && actWeaponType === "ranged",
+      isThrown:            isSegmentItem && actWeaponType === "thrown",
+      isGrenade:           isSegmentItem && actWeaponType === "grenade",
       skillModes,
-      editable:         this.item.isOwner
+      editable:            this.item.isOwner
     };
   }
 
@@ -204,6 +234,12 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.damage                  !== undefined) act.damage                  = raw.damage;
     if (raw.piercing                !== undefined) act.piercing                = raw.piercing;
     if (raw.jamming                 !== undefined) act.jamming                 = raw.jamming;
+    act.testRequired  = raw.testRequired === true || raw.testRequired === "true" || raw.testRequired === "on";
+    act.testIsOpen    = raw.testIsOpen   === true || raw.testIsOpen   === "true" || raw.testIsOpen   === "on";
+    if (raw.testType                !== undefined) act.testType                = raw.testType;
+    if (raw.testKey                 !== undefined) act.testKey                 = raw.testKey;
+    if (raw.testAttributeOverride   !== undefined) act.testAttributeOverride   = raw.testAttributeOverride;
+    if (raw.testSuccesses           !== undefined) act.testSuccesses           = Number(raw.testSuccesses) || 1;
 
     this._selfUpdating = true;
     try {
@@ -291,6 +327,62 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     const idx = activities.findIndex(a => a.id === this.activityId);
     if (idx >= 0) {
       activities[idx].effectIds = (activities[idx].effectIds ?? []).filter(id => id !== effectId);
+      await this.item.update({ "system.activities": activities });
+    }
+
+    if (deleteAlso === true) {
+      await this.item.effects.get(effectId)?.delete();
+    }
+  }
+
+  static async _onAddFailureEffect(event, target) {
+    const [created] = await this.item.createEmbeddedDocuments("ActiveEffect", [{
+      name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
+      img: "icons/svg/aura.svg",
+      transfer: false
+    }]);
+    if (!created) return;
+    created.sheet.render(true);
+
+    const activities = foundry.utils.deepClone(this.item.system.activities ?? []);
+    const idx = activities.findIndex(a => a.id === this.activityId);
+    if (idx < 0) return;
+    const ids = activities[idx].onFailureEffectIds ?? [];
+    if (!ids.includes(created.id)) ids.push(created.id);
+    activities[idx].onFailureEffectIds = ids;
+    await this.item.update({ "system.activities": activities });
+  }
+
+  static async _onLinkSelectedFailureEffect(event, target) {
+    const select = this.element?.querySelector("[data-failure-link-select]");
+    const effectId = select?.value;
+    if (!effectId) return;
+
+    const activities = foundry.utils.deepClone(this.item.system.activities ?? []);
+    const idx = activities.findIndex(a => a.id === this.activityId);
+    if (idx < 0) return;
+    const ids = activities[idx].onFailureEffectIds ?? [];
+    if (!ids.includes(effectId)) ids.push(effectId);
+    activities[idx].onFailureEffectIds = ids;
+    await this.item.update({ "system.activities": activities });
+  }
+
+  static async _onRemoveFailureEffect(event, target) {
+    const effectId = target.closest("[data-effect-id]")?.dataset.effectId ?? target.dataset.effectId;
+    if (!effectId) return;
+
+    const deleteAlso = await foundry.applications.api.DialogV2.confirm({
+      window: { title: game.i18n.localize("NEUROSHIMA.BeastAction.Sheet.RemoveEffectTitle") },
+      content: `<p>${game.i18n.localize("NEUROSHIMA.BeastAction.Sheet.RemoveEffectConfirm")}</p>`,
+      yes: { label: game.i18n.localize("NEUROSHIMA.BeastAction.Sheet.RemoveEffectDelete"), icon: "fas fa-trash" },
+      no:  { label: game.i18n.localize("NEUROSHIMA.BeastAction.Sheet.RemoveEffectUnlink"), icon: "fas fa-unlink" },
+      rejectClose: false
+    });
+
+    const activities = foundry.utils.deepClone(this.item.system.activities ?? []);
+    const idx = activities.findIndex(a => a.id === this.activityId);
+    if (idx >= 0) {
+      activities[idx].onFailureEffectIds = (activities[idx].onFailureEffectIds ?? []).filter(id => id !== effectId);
       await this.item.update({ "system.activities": activities });
     }
 

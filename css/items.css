@@ -2322,6 +2322,27 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     opacity: 0.5;
 }
 
+.beast-activity-sheet .bas-fieldset.bas-fieldset-failure {
+    border-color: #8b1a1a;
+}
+
+.beast-activity-sheet .bas-fieldset.bas-fieldset-failure legend {
+    color: #c0392b;
+}
+
+.beast-activity-sheet .bas-row-check {
+    padding: 4px 0;
+}
+
+.beast-activity-sheet .bas-label-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-direction: row;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
 /* --- Field group: label above input --- */
 .beast-activity-sheet .bas-field-group {
     display: flex;

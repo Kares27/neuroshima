@@ -310,7 +310,14 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
       attribute:               new fields.StringField({ initial: "dexterity" }),
       damage:                  new fields.StringField({ initial: "", nullable: true, blank: true }),
       piercing:                new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
-      effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] })
+      effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      testRequired:            new fields.BooleanField({ initial: false }),
+      testType:                new fields.StringField({ initial: "attribute", choices: ["attribute", "skill"] }),
+      testKey:                 new fields.StringField({ initial: "constitution", blank: true }),
+      testAttributeOverride:   new fields.StringField({ initial: "", blank: true }),
+      testIsOpen:              new fields.BooleanField({ initial: false }),
+      testSuccesses:           new fields.NumberField({ integer: true, initial: 1, min: 1, max: 10 }),
+      onFailureEffectIds:      new fields.ArrayField(new fields.StringField(), { initial: [] })
     });
     return {
       description: new fields.HTMLField({ initial: "" }),
@@ -346,7 +353,14 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
       damage:                  new fields.StringField({ initial: "", nullable: true, blank: true }),
       piercing:                new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
       range:                   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
-      effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] })
+      effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      testRequired:            new fields.BooleanField({ initial: false }),
+      testType:                new fields.StringField({ initial: "attribute", choices: ["attribute", "skill"] }),
+      testKey:                 new fields.StringField({ initial: "constitution", blank: true }),
+      testAttributeOverride:   new fields.StringField({ initial: "", blank: true }),
+      testIsOpen:              new fields.BooleanField({ initial: false }),
+      testSuccesses:           new fields.NumberField({ integer: true, initial: 1, min: 1, max: 10 }),
+      onFailureEffectIds:      new fields.ArrayField(new fields.StringField(), { initial: [] })
     });
     return {
       description: new fields.HTMLField({ initial: "" }),

@@ -1655,7 +1655,20 @@
                 "RemoveEffectUnlink": "Nie — tylko odepnij od aktywności",
                 "SelectEffect": "— Powiąż istniejący efekt —",
                 "HintSuccess": "Ta aktywność pojawia się w oknie wydawania sukcesów po wygraniu wymiany.",
-                "HintSegment": "Ta aktywność jest dostępna podczas tury bestii — nie pojawia się w wydawaniu sukcesów."
+                "HintSegment": "Ta aktywność jest dostępna podczas tury bestii — nie pojawia się w wydawaniu sukcesów.",
+                "RequiredTest": "Wymóg testu",
+                "TestRequired": "Wymagaj rzutu od celu",
+                "TestType": "Typ testu",
+                "TestTypeAttribute": "Atrybut",
+                "TestTypeSkill": "Umiejętność",
+                "TestKey": "Klucz (atrybut/umiejętność)",
+                "TestIsOpen": "Rzut otwarty",
+                "TestAttributeOverride": "Atrybut rzutu (nadpisanie)",
+                "TestAttributeOverrideNone": "— domyślny atrybut umiejętności —",
+                "TestSuccesses": "Wymagane SP",
+                "SuccessEffects": "Efekty przy sukcesie",
+                "FailureEffects": "Efekty przy porażce",
+                "AddFailureEffect": "Utwórz efekt (porażka)"
             }
         },
         "BeastSegment": {
