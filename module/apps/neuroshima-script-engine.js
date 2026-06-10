@@ -3642,22 +3642,30 @@ export class NeuroshimaScriptRunner {
    * @param {string}       [params.description=""]   - Optional description shown below the title.
    * @param {string}       params.testType           - "skill" or "attribute".
    * @param {string}       params.testKey            - Skill key (e.g. "spotting") or attribute key (e.g. "intelligence").
+   * @param {string}       [params.testAttributeOverride=""] - Override the attribute used for a skill test.
    * @param {number}       [params.requiredSuccesses=1] - Number of successes needed.
    * @param {boolean}      [params.isOpen=false]     - If true, open test; if false, closed test.
    * @param {string}       [params.rollMode]         - Foundry roll mode override.
    * @param {Object|Array|string|null} [params.onSuccess=null] - Consequence(s) applied on success.
    * @param {Object|Array|string|null} [params.onFailure=null] - Consequence(s) applied on failure.
+   * @param {string}       [params.defenderActorUuid=""]     - UUID of the actor receiving effect UUIDs.
+   * @param {string[]}     [params.onSuccessEffectUuids=[]]  - ActiveEffect UUIDs to apply on success.
+   * @param {string[]}     [params.onFailureEffectUuids=[]]  - ActiveEffect UUIDs to apply on failure.
    */
   static async postRequiredTest({
     title = "",
     description = "",
     testType = "skill",
     testKey = "",
+    testAttributeOverride = "",
     requiredSuccesses = 1,
     isOpen = false,
     rollMode = null,
     onSuccess = null,
-    onFailure = null
+    onFailure = null,
+    defenderActorUuid = "",
+    onSuccessEffectUuids = [],
+    onFailureEffectUuids = []
   } = {}) {
     const _normalizeConsequence = (c) => {
       if (!c) return null;
@@ -3709,13 +3717,20 @@ export class NeuroshimaScriptRunner {
       flags: {
         neuroshima: {
           type: "requiredTest",
-          requiredTestData: { title, description, testType, testKey, requiredSuccesses, isOpen, rollMode, onSuccess: successConsequence, onFailure: failureConsequence }
+          requiredTestData: {
+            title, description, testType, testKey, testAttributeOverride,
+            requiredSuccesses, isOpen, rollMode,
+            onSuccess: successConsequence, onFailure: failureConsequence,
+            defenderActorUuid,
+            onSuccessEffectUuids: onSuccessEffectUuids.length ? onSuccessEffectUuids : undefined,
+            onFailureEffectUuids: onFailureEffectUuids.length ? onFailureEffectUuids : undefined
+          }
         }
       }
     }, effectiveRollMode);
 
     await ChatMessage.create(msgData);
-    game.neuroshima?.log("postRequiredTest | posted", { title, testType, testKey, requiredSuccesses, isOpen, onSuccess: successConsequence, onFailure: failureConsequence });
+    game.neuroshima?.log("postRequiredTest | posted", { title, testType, testKey, requiredSuccesses, isOpen, onSuccess: successConsequence, onFailure: failureConsequence, defenderActorUuid, onSuccessEffectUuids, onFailureEffectUuids });
   }
 
   /**

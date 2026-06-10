@@ -1,5 +1,28 @@
+/**
+ * Extended Item document class for Neuroshima 1.5.
+ *
+ * Responsibilities beyond the Foundry base:
+ * - Assigns system-specific default icons per item type at creation time.
+ * - Presents a weapon-type selection dialog for new weapons (melee / ranged / thrown / grenade).
+ * - Deducts XP (with dialog confirmation) when a trick is added to a character or NPC.
+ * - Derives `totalWeight` (own weight × quantity + container contents) and `effectiveCost`
+ *   (base cost + mod deltas) during `prepareDerivedData`.
+ * - Protects mod-injected resource rows from being overwritten by form submissions.
+ * - Propagates equip-transfer effects and specialization flags when items are equipped /
+ *   toggled or specialization items are added / removed.
+ * - Re-renders open container sheets on all clients when a contained item changes its
+ *   `containerId` flag (DnD5e-style container pattern).
+ */
 export class NeuroshimaItem extends Item {
-  /** @override */
+  /**
+   * Set default icons, localise the item name, and — for weapons — prompt for weapon type.
+   * For tricks added to characters / NPCs: deduct XP via the XP dialog (cancellable).
+   *
+   * Returning `false` from this hook aborts item creation entirely (used when the GM
+   * closes the weapon-type dialog without picking).
+   *
+   * @override
+   */
   async _preCreate(data, options, user) {
     const result = await super._preCreate(data, options, user);
     if (result === false) return false;
@@ -135,7 +158,16 @@ export class NeuroshimaItem extends Item {
     }
   }
 
-  /** @override */
+  /**
+   * Compute derived fields not stored in the database:
+   * - `pileCategory` — used by item-pile integration; prefixes gear type with a thin-space so
+   *   gear sorts after weapon/armor but before misc in the pile UI.
+   * - `system.totalWeight` — own weight × quantity, plus container contents weight when this
+   *   item is a container with `countWeightToEncumbrance = true`.
+   * - `system.effectiveCost` — base cost adjusted by the sum of all attached mod `deltaCost`
+   *   values (mods with `deltaModifiesCost = false` are excluded).
+   * @override
+   */
   prepareDerivedData() {
     super.prepareDerivedData();
     this.pileCategory = this.type === "gear" ? ("\u200A" + (this.system?.gearType ?? "misc")) : this.type;
@@ -293,7 +325,16 @@ export class NeuroshimaItem extends Item {
     await this.update({ "system.quantity": next });
   }
 
-  /** @override */
+  /**
+   * Capture the current `containerId` flag before any flag change so that `_onUpdate` can
+   * locate and re-render the former parent container sheet on all clients.
+   *
+   * Also guards mod-injected resource rows: if the item currently has any resources that were
+   * injected by a weapon mod (`_fromModId` present), the submitted `system.resources` array is
+   * merged rather than replaced so those rows are never silently overwritten by form data.
+   *
+   * @override
+   */
   async _preUpdate(changed, options, userId) {
     await super._preUpdate(changed, options, userId);
 
@@ -347,7 +388,11 @@ export class NeuroshimaItem extends Item {
     }
   }
 
-  /** @override */
+  /**
+   * Trigger a re-render of the parent container sheet (on all clients) when this item is
+   * created inside a container (i.e. it already has a `containerId` flag at creation time).
+   * @override
+   */
   _onCreate(data, options, userId) {
     super._onCreate(data, options, userId);
     const containerId = this.getFlag("neuroshima", "containerId");
@@ -356,7 +401,17 @@ export class NeuroshimaItem extends Item {
     }
   }
 
-  /** @override */
+  /**
+   * React to item updates on the owning client.
+   *
+   * - Always: re-renders open sheets of the current and (if changed) former container.
+   * - Owning client only:
+   *   - `system.equipped` change → sync equip-transfer effects and fire `equipToggle` scripts.
+   *   - `system.isBuilt` change on facilities → sync equip-transfer effects.
+   *   - `system.skillSpecializations` change on specialization → rebuild actor's specializations map.
+   *
+   * @override
+   */
   _onUpdate(data, options, userId) {
     super._onUpdate(data, options, userId);
 
@@ -402,6 +457,16 @@ export class NeuroshimaItem extends Item {
     }
   }
 
+  /**
+   * Clean up after item deletion on the owning client.
+   *
+   * - Always: re-renders open sheets of the parent container (if any).
+   * - Owning client only:
+   *   - Specialization items → rebuilds the actor's specializations map.
+   *   - Facilities items → removes equip-transfer effect copies from the actor.
+   *
+   * @override
+   */
   _onDelete(options, userId) {
     super._onDelete(options, userId);
 

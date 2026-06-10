@@ -1,8 +1,15 @@
 /**
- * Custom Combatant class for Neuroshima 1.5.
+ * Custom Combatant document for Neuroshima 1.5.
+ *
+ * Delegates initiative rolling to the actor, which is responsible for
+ * presenting the appropriate dialog and computing the final value.
  */
 export class NeuroshimaCombatant extends Combatant {
-  /** @override */
+  /**
+   * Delegate to the actor's `rollInitiative` method so that the system-specific
+   * dialog and formula logic are centralised on the actor side.
+   * @override
+   */
   async rollInitiative(formula) {
     if (!this.actor) return this;
     await this.actor.rollInitiative({
@@ -12,7 +19,12 @@ export class NeuroshimaCombatant extends Combatant {
     return this;
   }
 
-  /** @override */
+  /**
+   * Returns a zero-value Roll as a stub — actual initiative values are written
+   * directly to the combatant document by the actor's roll handler, not
+   * computed here.
+   * @override
+   */
   getInitiativeRoll(formula) {
     formula = formula || "0";
     return new Roll(formula);
@@ -20,61 +32,58 @@ export class NeuroshimaCombatant extends Combatant {
 }
 
 /**
- * Custom Combat class for Neuroshima 1.5.
+ * Custom Combat document for Neuroshima 1.5.
+ *
+ * Overrides `rollInitiative` to route through the actor's roll handler rather
+ * than Foundry's default formula-based path, giving the actor full control over
+ * the dialog, modifiers, and the final written value.
  */
 export class NeuroshimaCombat extends Combat {
-  /** @override */
+  /**
+   * Roll initiative for one or more combatants.
+   *
+   * Each affected combatant is resolved to its actor; the actor's
+   * `rollInitiative` method is called and expected to return the numeric
+   * initiative value (or `null`/`undefined` to abort that combatant).
+   * Collected updates are written in a single `updateEmbeddedDocuments` call.
+   *
+   * Note: when `ids` contains more than one entry (Roll All / Roll NPCs), a
+   * dialog is still shown per combatant — this is intentional for Neuroshima
+   * because initiative choices are meaningful.  If that becomes unwieldy the
+   * batch path can be separated later.
+   *
+   * @param {string|string[]} ids             - Combatant id(s) to roll for.
+   * @param {object}          [options]
+   * @param {string}          [options.formula]      - Optional override formula (passed through to the actor).
+   * @param {boolean}         [options.updateTurn=true] - Whether to re-sync the current turn index after writing.
+   * @param {object}          [options.messageOptions] - Reserved for future chat-message customisation.
+   * @returns {Promise<NeuroshimaCombat>}
+   * @override
+   */
   async rollInitiative(ids, {formula, updateTurn=true, messageOptions={}}={}) {
-    // Structure of ids can be a single string or an array of strings
     const combatantIds = typeof ids === "string" ? [ids] : ids;
 
-    // For Neuroshima, we want to show a dialog for each combatant if it's a manual roll.
-    // However, rolling "All" or "NPCs" should probably be handled differently to avoid dialog spam.
-    // For now, we'll focus on the single-combatant roll which is the most common use case for the button.
-    
     const updates = [];
-    const messages = [];
 
     for (const id of combatantIds) {
       const combatant = this.combatants.get(id);
       if (!combatant?.actor) continue;
 
-      // If it's a single roll, or if the user is the owner, show the dialog.
-      // If we're rolling for multiple (like Roll All), and it's not the GM, 
-      // we might want to skip the dialog or use defaults, but Neuroshima rules 
-      // usually involve choices.
-      
-      let initiativeValue;
-      
-      // If this is a single roll (typical for the button click), use the dialog.
-      if (combatantIds.length === 1) {
-        initiativeValue = await combatant.actor.rollInitiative({ combatant, formula });
-      } else {
-        // For multiple rolls (Roll All / Roll NPCs), we might want to automate it 
-        // to avoid 20 dialogs popping up. Let's use a default roll for NPCs 
-        // and only show dialogs for PCs if the user owns them?
-        // Actually, let's just use the dialog for now and see how it feels.
-        initiativeValue = await combatant.actor.rollInitiative({ combatant, formula });
-      }
+      const initiativeValue = await combatant.actor.rollInitiative({ combatant, formula });
 
       game.neuroshima.log(`Initiative roll for ${combatant.name}:`, initiativeValue);
 
       if (initiativeValue === null || initiativeValue === undefined) continue;
 
-      updates.push({
-        _id: id,
-        initiative: initiativeValue
-      });
+      updates.push({ _id: id, initiative: initiativeValue });
     }
 
-    // Update combatants
     if (updates.length > 0) {
-        await this.updateEmbeddedDocuments("Combatant", updates);
+      await this.updateEmbeddedDocuments("Combatant", updates);
     }
 
-    // Ensure the turn order is updated if requested
     if (updateTurn) {
-        await this.update({ turn: this.turn });
+      await this.update({ turn: this.turn });
     }
 
     return this;

@@ -143,8 +143,30 @@ class NeuroshimaConditionCheckContext {
   }
 }
 
+/**
+ * Extended Actor document for Neuroshima 1.5.
+ *
+ * Provides the following on top of the Foundry base:
+ * - Default token sight and type-specific icons at creation time.
+ * - System-level initiative roll dialog that writes directly to the combatant document.
+ * - Script-facing helpers (wound queries, condition add/remove/check, effect helpers,
+ *   HP and armor access) intended for use from effect scripts and macro code.
+ * - Automatic condition application via `_checkAutoConditions` (runs after every actor update
+ *   on the GM client).
+ * - `syncEquipTransferEffects` — creates / removes actor copies of item effects when items
+ *   are equipped or un-equipped (equip-transfer pattern).
+ * - `applyEffect` / `applyEffectByUuid` — unified API for applying effects by UUID or raw data.
+ */
 export class NeuroshimaActor extends Actor {
-  /** @override */
+  /**
+   * Apply default token settings and system-specific icons before the actor is created.
+   *
+   * Sets `prototypeToken.sight.enabled = true` for all actor types and
+   * `actorLink = true` for player characters.  Assigns a type-specific default icon
+   * when none is set (vehicles, creatures, home bases).
+   *
+   * @override
+   */
   async _preCreate(data, options, user) {
     await super._preCreate(data, options, user);
     const updates = { "prototypeToken.sight.enabled": true };
@@ -162,7 +184,15 @@ export class NeuroshimaActor extends Actor {
     this.updateSource(updates);
   }
 
-  /** @override */
+  /**
+   * Finalize derived data after Active Effects have been applied.
+   *
+   * Calls `system._preparePostEffects()` (defined per actor type on the data model) and
+   * then fires the synchronous `prepareData` script trigger so that effect scripts
+   * can patch derived values after the normal data preparation pipeline.
+   *
+   * @override
+   */
   prepareDerivedData() {
     super.prepareDerivedData();
     this.system._preparePostEffects?.();
@@ -200,28 +230,35 @@ export class NeuroshimaActor extends Actor {
     });
   }
 
-  /** @override */
+  /**
+   * Roll initiative for this actor, writing the result to the combat tracker combatant.
+   *
+   * Resolves the current combatant from options, the linked token, or the active combat,
+   * then delegates to `rollInitiativeDialog` which opens the system-specific dialog.
+   * The dialog's `successPoints` value is used as the numeric initiative score.
+   *
+   * @override
+   * @param {object}     [options={}]
+   * @param {Combatant}  [options.combatant]  - Explicit combatant to update; auto-resolved if omitted.
+   * @returns {Promise<number|null>}  The written initiative value, or null if the dialog was cancelled.
+   */
   async rollInitiative(options = {}) {
-    // If we're already in combat, get the combatant
     const combatant = options.combatant || this.token?.combatant || game.combat?.getCombatantByActor(this.id);
-    
-    // Open the dialog
+
     const result = await this.rollInitiativeDialog({
         combatant: combatant,
         ...options
     });
-    
+
     if (!result) return null;
 
-    // Success Points are used as initiative value
     const initiativeValue = Number(result.successPoints);
-    
-    // If we have a combatant, update their initiative in the tracker
+
     if (combatant) {
         game.neuroshima.log(`Updating combatant ${combatant.id} initiative to ${initiativeValue}`);
         await combatant.update({ initiative: initiativeValue });
     }
-    
+
     return initiativeValue;
   }
 
@@ -647,13 +684,22 @@ export class NeuroshimaActor extends Actor {
     return super.toggleStatusEffect(effectId, { active, overlay });
   }
 
-  /** @override */
+  /**
+   * Pre-update hook — reserved for future validation or sanitisation logic.
+   * Returns `false` if the parent hook aborts the update.
+   * @override
+   */
   async _preUpdate(changed, options, user) {
     const result = await super._preUpdate(changed, options, user);
     if (result === false) return false;
   }
 
-  /** @override */
+  /**
+   * Trigger automatic condition evaluation after every actor update.
+   * `_checkAutoConditions` is only called on the GM client to avoid redundant
+   * concurrent executions across multiple connected players.
+   * @override
+   */
   async _onUpdate(changed, options, userId) {
     await super._onUpdate(changed, options, userId);
     if (userId === game.userId && game.user.isGM) {

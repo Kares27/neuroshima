@@ -149,6 +149,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
     await MeleeOpposedChat.defendFromChat(message.id, weaponId);
   }
 
+  /**
+   * Apply the opposed damage from the result card and visually disable the button.
+   * Delegates to `MeleeOpposedChat.applyOpposedDamage`.
+   *
+   * @param {PointerEvent}  event
+   * @param {ChatMessage}   message
+   */
   static async onApplyOpposedDamage(event, message) {
     const btn = event.currentTarget;
     const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
@@ -160,6 +167,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /**
+   * Apply the Grad Ciosów (hail of blows) damage from the result card and visually disable the button.
+   * Delegates to `MeleeOpposedChat.applyHailDamage`.
+   *
+   * @param {PointerEvent}  event
+   * @param {ChatMessage}   message
+   */
   static async onApplyHailDamage(event, message) {
     const btn = event.currentTarget;
     const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
@@ -171,11 +185,29 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /**
+   * Defender clicks the defend button on a Grad Ciosów handler card.
+   * Delegates to `MeleeOpposedChat.hailDefendFromChat`.
+   *
+   * @param {PointerEvent}  event
+   * @param {ChatMessage}   message
+   */
   static async onHailDefend(event, message) {
     const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
     await MeleeOpposedChat.hailDefendFromChat(message.id);
   }
 
+  /**
+   * Handle a die-pick click in the Grad Ciosów duel card.
+   *
+   * Permission check: non-GM players may only pick dice for the side they own.
+   * GMs execute the mutation directly; players route through the socket helper so
+   * that `applyDuelPick` always runs on the GM client.
+   *
+   * @param {PointerEvent}  event
+   * @param {HTMLElement}   btn   - The clicked button (`data-side`, `data-die-idx`).
+   * @param {ChatMessage}   message
+   */
   static async onDuelPick(event, btn, message) {
     const side = btn.dataset.side;
     const dieIdx = parseInt(btn.dataset.dieIdx, 10);
@@ -200,12 +232,30 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /**
+   * Swap the initiative / first-strike advantage between attacker and defender in
+   * the active Grad Ciosów duel card.  GM-only action.
+   *
+   * @param {PointerEvent}  event
+   * @param {ChatMessage}   message
+   */
   static async onDuelSwapInit(event, message) {
     if (!game.user.isGM) return;
     const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
     await MeleeOpposedChat.swapDuelInitiative(message.id);
   }
 
+  /**
+   * Adjust a skill-allocation die value by `delta` for the given spender and target side.
+   *
+   * Reads `data-spender`, `data-target`, `data-die-index`, and `data-delta` from `btn`.
+   * Aborts if the card is no longer in `pending` status or the side has already confirmed.
+   * GMs apply directly; players route through the socket helper.
+   *
+   * @param {PointerEvent}  event
+   * @param {HTMLElement}   btn
+   * @param {ChatMessage}   message
+   */
   static async onSkillAllocAdjust(event, btn, message) {
     const spender   = btn.dataset.spender;
     const target    = btn.dataset.target;
@@ -228,6 +278,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /**
+   * Reset all die allocations for one side back to zero.
+   * Aborts if the side has already confirmed or the card is not `pending`.
+   * GMs apply directly; players route through the socket helper.
+   *
+   * @param {PointerEvent}  event
+   * @param {HTMLElement}   btn   - Must carry `data-side` ("attacker" | "defender").
+   * @param {ChatMessage}   message
+   */
   static async onSkillAllocReset(event, btn, message) {
     const side = btn.dataset.side;
     const allocData = message.getFlag("neuroshima", "skillAlloc");
@@ -246,6 +305,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /**
+   * Confirm (lock in) a side's die allocation.
+   * When both sides confirm, `MeleeOpposedChat` resolves the allocation and proceeds.
+   * GMs apply directly; players route through the socket helper.
+   *
+   * @param {PointerEvent}  event
+   * @param {HTMLElement}   btn   - Must carry `data-side` ("attacker" | "defender").
+   * @param {ChatMessage}   message
+   */
   static async onSkillAllocConfirm(event, btn, message) {
     const side = btn.dataset.side;
     const allocData = message.getFlag("neuroshima", "skillAlloc");
@@ -264,6 +332,20 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /**
+   * Wire up the interactive beast-action spending UI inside a result card.
+   *
+   * Reads `data-net-successes` from the `.beast-action-spending` section and manages:
+   * - Pick buttons (`.beast-action-pick-btn`) — increment a specific action's counter,
+   *   disabled when the remaining budget is insufficient for that action's cost.
+   * - Undo buttons (`.beast-qty-undo`) — decrement the counter for an action.
+   * - `.beast-remaining` display — live remaining success-point budget.
+   * - Apply button — disabled until at least one success point has been allocated.
+   *
+   * This is a pure DOM mutation; no data is written until the GM clicks Apply.
+   *
+   * @param {HTMLElement} root - Root element of the rendered chat card.
+   */
   static _bindBeastActionSpending(root) {
     const section = root.querySelector(".beast-action-spending");
     if (!section) return;
@@ -321,6 +403,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
     updateUI();
   }
 
+  /**
+   * Bind collapsible section toggles inside item-card chat messages.
+   * Clicking a `.item-card-collapsible-header` toggles the `collapsed` class on the
+   * next sibling and rotates the chevron icon.
+   *
+   * @param {HTMLElement} root
+   */
   static _bindResultCardCollapsibles(root) {
     root.querySelectorAll(".neuroshima.item-card .item-card-collapsible-header").forEach(header => {
       header.addEventListener("click", () => {
@@ -332,6 +421,23 @@ export class NeuroshimaChatMessage extends ChatMessage {
     });
   }
 
+  /**
+   * Execute the required test embedded in a `requiredTest` chat card.
+   *
+   * Flow:
+   * 1. Read `requiredTestData` from message flags.
+   * 2. Resolve the rolling actor from the current user (controlled token → assigned character).
+   * 3. Build a `resultCallback` that, after the roll resolves:
+   *    - Applies condition consequences (`onSuccess` / `onFailure` arrays).
+   *    - Applies ActiveEffect UUIDs (`onSuccessEffectUuids` / `onFailureEffectUuids`) to
+   *      the defender actor identified by `defenderActorUuid`.
+   * 4. For skill tests: use `testAttributeOverride` if set, otherwise auto-detect from
+   *    `NEUROSHIMA.skillConfiguration`.
+   * 5. Open `NeuroshimaSkillRollDialog` with the resolved stats and callback.
+   *
+   * @param {PointerEvent}  event
+   * @param {ChatMessage}   message
+   */
   static async onExecuteRequiredTest(event, message) {
     const data = message.getFlag("neuroshima", "requiredTestData");
     if (!data) return;
@@ -344,20 +450,45 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     const actorUuid = actor.uuid;
 
+    const _applyEffectUuids = async (effectUuids, defenderUuid) => {
+      if (!effectUuids?.length) return;
+      const defenderDoc = defenderUuid ? await fromUuid(defenderUuid) : null;
+      const defenderActor = defenderDoc?.actor ?? defenderDoc ?? null;
+      if (!defenderActor) return;
+      for (const uuid of effectUuids) {
+        try {
+          const effectDoc = await fromUuid(uuid);
+          if (!effectDoc) continue;
+          const { _id, ...rest } = effectDoc.toObject();
+          await ActiveEffect.implementation.create(
+            { ...rest, disabled: false, transfer: false, origin: effectDoc.parent?.uuid ?? uuid },
+            { parent: defenderActor }
+          );
+        } catch (err) {
+          console.error("Neuroshima | onExecuteRequiredTest | failed to apply effect uuid:", uuid, err);
+        }
+      }
+      game.neuroshima?.log("onExecuteRequiredTest | effects applied", { defenderUuid, effectUuids });
+    };
+
     let resultCallback = null;
-    if (data.onSuccess || data.onFailure) {
+    if (data.onSuccess || data.onFailure || data.onSuccessEffectUuids?.length || data.onFailureEffectUuids?.length) {
       const successConsequence = data.onSuccess ?? null;
       const failureConsequence = data.onFailure ?? null;
       resultCallback = async ({ isSuccess }) => {
         const target = await fromUuid(actorUuid);
-        if (!target) return;
-        const consequence = isSuccess ? successConsequence : failureConsequence;
-        if (!consequence) return;
-        const actions = Array.isArray(consequence) ? consequence : [consequence];
-        for (const action of actions) {
-          if (action.addCondition) await target.addCondition(action.addCondition, action.value ?? 1);
+        if (target) {
+          const consequence = isSuccess ? successConsequence : failureConsequence;
+          if (consequence) {
+            const actions = Array.isArray(consequence) ? consequence : [consequence];
+            for (const action of actions) {
+              if (action.addCondition) await target.addCondition(action.addCondition, action.value ?? 1);
+            }
+          }
         }
-        game.neuroshima?.log("onExecuteRequiredTest | consequence applied", { actorUuid, isSuccess, consequence });
+        const effectUuids = isSuccess ? (data.onSuccessEffectUuids ?? []) : (data.onFailureEffectUuids ?? []);
+        await _applyEffectUuids(effectUuids, data.defenderActorUuid || actorUuid);
+        game.neuroshima?.log("onExecuteRequiredTest | consequence applied", { actorUuid, isSuccess });
       };
     }
 
@@ -365,12 +496,14 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const lastRoll = { ...(actor.system?.lastRoll ?? {}), isOpen: data.isOpen };
 
     if (data.testType === "skill") {
-      let attrKey = "";
-      for (const [aKey, specs] of Object.entries(NEUROSHIMA.skillConfiguration ?? {})) {
-        for (const skills of Object.values(specs)) {
-          if (skills.includes(data.testKey)) { attrKey = aKey; break; }
+      let attrKey = data.testAttributeOverride || "";
+      if (!attrKey) {
+        for (const [aKey, specs] of Object.entries(NEUROSHIMA.skillConfiguration ?? {})) {
+          for (const skills of Object.values(specs)) {
+            if (skills.includes(data.testKey)) { attrKey = aKey; break; }
+          }
+          if (attrKey) break;
         }
-        if (attrKey) break;
       }
       const stat = actor.system?.attributeTotals?.[attrKey] ?? 0;
       const skill = actor.system?.skillTotals?.[data.testKey] ?? actor.system?.skills?.[data.testKey]?.value ?? 0;
@@ -390,6 +523,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /**
+   * Reconcile the current user's token targets with the given list of token IDs.
+   * Tokens not in `tokenIds` are un-targeted; tokens in `tokenIds` but not yet
+   * targeted are set as targets.  Uses `groupSelection` to avoid clearing unrelated targets.
+   *
+   * @param {string[]} tokenIds
+   */
   static _setTokenTargets(tokenIds) {
     const currentIds = new Set(Array.from(game.user.targets).map(t => t.id));
     for (const t of Array.from(game.user.targets)) {
@@ -404,6 +544,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
   }
 
+  /** Remove all current token targets for the current user. */
   static _clearTokenTargets() {
     for (const t of Array.from(game.user.targets)) {
       t.setTarget(false, { user: game.user, releaseOthers: false, groupSelection: true });
@@ -418,12 +559,27 @@ export class NeuroshimaChatMessage extends ChatMessage {
     return this.startGrenadeTemplatePlacement(message);
   }
 
+  /**
+   * Delete all existing grenade blast templates linked to `messageId` from the scene.
+   * Delegates to the GM socket helper so the operation always runs with GM permissions.
+   *
+   * @param {string} messageId
+   */
   static async _deleteExistingGrenadeTemplates(messageId) {
     if (!canvas?.scene || !messageId) return;
     const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
     await NeuroshimaSocket.gmExecute("deleteGrenadeTemplates", messageId);
   }
 
+  /**
+   * Place a grenade blast-circle template at a specific canvas point.
+   *
+   * Clears any pre-existing templates for the same message, snaps the point to grid
+   * centre (when possible), then delegates template creation to the GM socket helper.
+   *
+   * @param {ChatMessage}       message
+   * @param {{ x: number, y: number }} point - Canvas coordinates.
+   */
   static async placeGrenadeTemplateAt(message, point) {
     if (!canvas?.scene) return;
 
@@ -466,6 +622,15 @@ export class NeuroshimaChatMessage extends ChatMessage {
     await NeuroshimaSocket.gmExecute("createGrenadeTemplate", templateData);
   }
 
+  /**
+   * Enter grenade-template placement mode.
+   *
+   * Validates that there is an active scene and that the grenade roll has a non-zero blast radius,
+   * then attaches a one-shot `click` listener to the canvas that resolves the drop point and
+   * calls `placeGrenadeTemplateAt`.
+   *
+   * @param {ChatMessage} message
+   */
   static async startGrenadeTemplatePlacement(message) {
     if (!canvas?.scene) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Warnings.NoScene"));

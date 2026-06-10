@@ -2,10 +2,40 @@ import { NEUROSHIMA } from "../config.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 
+/**
+ * Editing window for a single activity embedded inside a beast-action or beast-segment item.
+ *
+ * Activities are stored as plain schema objects in `item.system.activities[]`.
+ * This sheet edits exactly one of them, identified by `activityId`.
+ *
+ * Architecture notes:
+ * - One sheet instance per (item UUID, activity ID) pair.  The `#instances` map prevents
+ *   duplicate windows for the same activity.
+ * - `submitOnChange: true` — every form change auto-saves; the sheet never closes on submit.
+ * - A `updateItem` hook is registered while the sheet is open so it re-renders whenever the
+ *   backing item changes from any code path (e.g. another client or a script).
+ * - `_selfUpdating` flag suppresses the full force-render that would normally follow a hook
+ *   update triggered by this sheet's own submit — avoids a visible flicker.
+ *
+ * Effect linking model:
+ * - `effectIds`        — ActiveEffect IDs on the parent item applied on success (or unconditionally
+ *                        when `testRequired = false`).
+ * - `onFailureEffectIds` — ActiveEffect IDs applied when the required test is failed.
+ * - Stale IDs (effects that no longer exist on the item) are pruned at context-prepare time.
+ */
 export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
 
+  /** @type {Map<string, BeastActivitySheet>} One open sheet per (itemUuid::activityId) key. */
   static #instances = new Map();
 
+  /**
+   * Open (or focus) the sheet for a specific activity.
+   * Returns the existing instance if the sheet is already open.
+   *
+   * @param {Item}   item       - The beast-action or beast-segment item that owns the activity.
+   * @param {string} activityId - The `id` field of the target activity schema object.
+   * @returns {BeastActivitySheet}
+   */
   static open(item, activityId) {
     const key = `${item.uuid}::${activityId}`;
     const existing = BeastActivitySheet.#instances.get(key);
@@ -19,6 +49,12 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     return sheet;
   }
 
+  /**
+   * @param {object} params
+   * @param {Item}   params.item       - Owner item document.
+   * @param {string} params.activityId - ID of the activity schema object being edited.
+   * @param {object} [options]         - ApplicationV2 constructor options.
+   */
   constructor({ item, activityId }, options = {}) {
     super(options);
     this.item       = item;
@@ -57,18 +93,34 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     }
   };
 
+  /** @type {{ sheet: string }} Current active tab group state. */
   tabGroups = { sheet: "identity" };
 
+  /**
+   * Resolve the live activity schema object from the parent item.
+   * Returns `null` if the activity no longer exists (e.g. was deleted while the sheet was open).
+   * @type {object|null}
+   */
   get activity() {
     return (this.item.system.activities ?? []).find(a => a.id === this.activityId) ?? null;
   }
 
+  /**
+   * Window title shown in the ApplicationV2 header.
+   * Falls back to the item name when the activity has no name of its own.
+   * @type {string}
+   */
   get title() {
     const act = this.activity;
     const base = act?.name || this.item.name;
     return `${game.i18n.localize("NEUROSHIMA.BeastAction.Sheet.Title")}: ${base}`;
   }
 
+  /**
+   * Build the tab descriptor objects consumed by the Handlebars template.
+   * Marks the currently active tab with `cssClass: "active"`.
+   * @returns {{ identity: object, activation: object, effects: object }}
+   */
   _getTabs() {
     const current = this.tabGroups.sheet ?? "identity";
     return {
@@ -90,6 +142,19 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     };
   }
 
+  /**
+   * Build the full template context for the Handlebars form.
+   *
+   * Key responsibilities:
+   * - Prunes stale effect IDs (effects deleted from the item since last save).
+   * - Splits item effects into linked-success, linked-failure, and unlinked pools.
+   * - Builds `testSkillGroups` — `{ attrKey, attrLabel, skills[] }` entries grouped by
+   *   attribute for the skill `<select>` with `<optgroup>` headers.
+   * - Derives boolean flags (`isMelee`, `isRanged`, etc.) for conditional template blocks.
+   *
+   * @override
+   * @returns {Promise<object>}
+   */
   async _prepareContext(options) {
     const activity = this.activity;
     if (!activity) return { missing: true };
@@ -188,6 +253,12 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     };
   }
 
+  /**
+   * Register an `updateItem` hook on first render so the sheet reacts to external item changes.
+   * Distinguishes self-initiated updates (via `_selfUpdating`) to avoid the forced full-render
+   * that would otherwise cause a visible flicker every time the user changes a field.
+   * @override
+   */
   _onRender(context, options) {
     super._onRender(context, options);
     if (this._itemHookId !== undefined) Hooks.off("updateItem", this._itemHookId);
@@ -203,12 +274,29 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     this.changeTab(this.tabGroups.sheet ?? "identity", "sheet");
   }
 
+  /**
+   * Deregister the `updateItem` hook and remove the instance from the singleton map.
+   * @override
+   */
   _onClose(options) {
     if (this._itemHookId !== undefined) Hooks.off("updateItem", this._itemHookId);
     BeastActivitySheet.#instances.delete(this._instanceKey);
     super._onClose(options);
   }
 
+  /**
+   * Form submit handler — persists all editable activity fields to `item.system.activities`.
+   *
+   * Uses `_selfUpdating` to suppress the redundant force-render that the `updateItem` hook
+   * would otherwise trigger immediately after the save.
+   *
+   * Checkbox fields (`testRequired`, `testIsOpen`) are normalised from the possible truthy
+   * values emitted by form serialisation (`true`, `"true"`, `"on"`) to a plain boolean.
+   *
+   * @param {SubmitEvent} event
+   * @param {HTMLFormElement} form
+   * @param {FormDataExtended} formData
+   */
   static async _onSubmit(event, form, formData) {
     const raw = foundry.utils.expandObject(formData.object);
     const activities = foundry.utils.deepClone(this.item.system.activities ?? []);
@@ -249,6 +337,13 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     }
   }
 
+  /**
+   * Open the FilePicker to select a new icon for this activity.
+   * Writes the chosen path back to `activities[idx].img`.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onPickIcon(event, target) {
     if (!this.item.isOwner) return;
     const activity = this.activity;
@@ -266,6 +361,14 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     }).browse();
   }
 
+  /**
+   * Create a new ActiveEffect on the parent item and link it to this activity's `effectIds`.
+   * If `target.dataset.effectId` is set the effect already exists and is just linked (no creation).
+   * Opens the effect sheet after creation so the GM can configure it immediately.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onAddEffect(event, target) {
     const linkExisting = target.dataset.effectId;
 
@@ -292,11 +395,25 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     await this.item.update({ "system.activities": activities });
   }
 
+  /**
+   * Open the sheet for an existing linked effect.
+   * The effect ID is read from the nearest `[data-effect-id]` ancestor element.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onEditEffect(event, target) {
     const effectId = target.closest("[data-effect-id]")?.dataset.effectId ?? target.dataset.effectId;
     this.item.effects.get(effectId)?.sheet.render(true);
   }
 
+  /**
+   * Link an already-existing item effect (chosen from the dropdown) to this activity's `effectIds`.
+   * The dropdown is identified by `[data-link-select]` on the success-effects fieldset.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onLinkSelectedEffect(event, target) {
     const select = this.element?.querySelector("[data-link-select]");
     const effectId = select?.value;
@@ -311,6 +428,14 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     await this.item.update({ "system.activities": activities });
   }
 
+  /**
+   * Unlink (and optionally delete) a linked success effect.
+   * A `DialogV2.confirm` asks the GM whether to also delete the underlying effect
+   * document or only remove the ID reference.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onRemoveEffect(event, target) {
     const effectId = target.closest("[data-effect-id]")?.dataset.effectId ?? target.dataset.effectId;
     if (!effectId) return;
@@ -335,6 +460,14 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     }
   }
 
+  /**
+   * Create a new ActiveEffect on the parent item and link it to this activity's `onFailureEffectIds`.
+   * Always creates a fresh effect (no link-existing path — use the dropdown for that).
+   * Opens the effect sheet immediately after creation.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onAddFailureEffect(event, target) {
     const [created] = await this.item.createEmbeddedDocuments("ActiveEffect", [{
       name: game.i18n.localize("NEUROSHIMA.Effects.NewEffect"),
@@ -353,6 +486,13 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     await this.item.update({ "system.activities": activities });
   }
 
+  /**
+   * Link an already-existing item effect to this activity's `onFailureEffectIds`.
+   * The dropdown is identified by `[data-failure-link-select]`.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onLinkSelectedFailureEffect(event, target) {
     const select = this.element?.querySelector("[data-failure-link-select]");
     const effectId = select?.value;
@@ -367,6 +507,13 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     await this.item.update({ "system.activities": activities });
   }
 
+  /**
+   * Unlink (and optionally delete) a linked failure effect.
+   * Shares the same confirm-dialog pattern as `_onRemoveEffect`.
+   *
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
   static async _onRemoveFailureEffect(event, target) {
     const effectId = target.closest("[data-effect-id]")?.dataset.effectId ?? target.dataset.effectId;
     if (!effectId) return;

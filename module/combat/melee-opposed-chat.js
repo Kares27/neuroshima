@@ -2402,8 +2402,13 @@ export class MeleeOpposedChat {
     const beastItemsForEffects = attackerActor.items.filter(i =>
       i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
     );
+    const testRequiredActivities = [];
     for (const beastItem of beastItemsForEffects) {
       for (const activity of (beastItem.system.activities ?? [])) {
+        if (activity.testRequired) {
+          testRequiredActivities.push({ beastItem, activity });
+          continue;
+        }
         const linkedEffectIds = new Set(activity.effectIds ?? []);
         for (const effect of beastItem.effects) {
           if (!linkedEffectIds.has(effect.id)) continue;
@@ -2542,6 +2547,32 @@ export class MeleeOpposedChat {
       await CombatHelper.renderPainResistanceReport(
         defenderActor, allResults, allWoundIds, totalReduced, allReducedDetails
       );
+    }
+
+    if (testRequiredActivities.length > 0) {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      const defenderUuid = defenderActor.uuid;
+      for (const { beastItem, activity } of testRequiredActivities) {
+        const onSuccessEffectUuids = (activity.effectIds ?? [])
+          .map(id => beastItem.effects.get(id))
+          .filter(Boolean)
+          .map(e => e.uuid);
+        const onFailureEffectUuids = (activity.onFailureEffectIds ?? [])
+          .map(id => beastItem.effects.get(id))
+          .filter(Boolean)
+          .map(e => e.uuid);
+        await NeuroshimaScriptRunner.postRequiredTest({
+          title: activity.name || beastItem.name,
+          testType: activity.testType || "attribute",
+          testKey: activity.testKey || "constitution",
+          testAttributeOverride: activity.testAttributeOverride || "",
+          requiredSuccesses: activity.testSuccesses ?? 1,
+          isOpen: activity.testIsOpen ?? false,
+          defenderActorUuid: defenderUuid,
+          onSuccessEffectUuids,
+          onFailureEffectUuids
+        });
+      }
     }
 
     await message.setFlag("neuroshima", "opposedResult", { ...rd, beastActionsApplied: true });

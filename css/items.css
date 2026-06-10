@@ -2343,6 +2343,51 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     font-size: 0.85em;
 }
 
+.beast-activity-sheet .bas-open-test-row {
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.beast-activity-sheet .bas-open-test-label {
+    flex: 1;
+    font-size: 0.85em;
+    opacity: 0.85;
+}
+
+.beast-activity-sheet .bas-open-test-right {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.beast-activity-sheet .bas-open-test-sp-label {
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+.beast-activity-sheet .bas-open-test-right input[type="number"] {
+    width: 48px;
+    height: 26px;
+    font-size: 0.82em;
+    padding: 2px 4px;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    color: var(--ns-text-main);
+    text-align: center;
+}
+
+.beast-activity-sheet .bas-open-test-right input[type="number"]:focus {
+    border-color: var(--ns-text-accent);
+    outline: none;
+}
+
+.beast-activity-sheet .bas-open-test-right input[type="number"]:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
 /* --- Field group: label above input --- */
 .beast-activity-sheet .bas-field-group {
     display: flex;

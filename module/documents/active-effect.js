@@ -15,6 +15,12 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     return null;
   }
 
+  /**
+   * Lazily-instantiated list of `NeuroshimaScript` objects backed by `system.scriptData`.
+   * The cache is invalidated in `prepareData` and `_onUpdate` so it is always in sync
+   * with the stored data after any update cycle.
+   * @type {NeuroshimaScript[]}
+   */
   get scripts() {
     if (!this._scripts) {
       const scriptData = this.system?.scriptData ?? [];
@@ -114,6 +120,11 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     }
   }
 
+  /**
+   * Invalidate the `scripts` cache and re-derive the `transfer` flag from flags
+   * every prepare cycle so any flag change is reflected immediately.
+   * @override
+   */
   prepareData() {
     super.prepareData();
     this._scripts = null;
@@ -122,6 +133,13 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     }
   }
 
+  /**
+   * Invalidate the scripts cache after any update.
+   * When the effect is an equip-transfer copy on an item, syncs the same changes
+   * to the mirror copy that lives on the owning actor (equip-transfer pattern).
+   * Only the owning client (`game.user.id === user`) performs the sync to avoid races.
+   * @override
+   */
   _onUpdate(data, options, user) {
     super._onUpdate(data, options, user);
     this._scripts = null;
@@ -141,6 +159,14 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     copy.update(syncData).catch(err => console.error("NS | equipTransfer sync failed:", err));
   }
 
+  /**
+   * Execute `applyEffect` and `immediate` trigger scripts when this effect is created on an actor.
+   *
+   * Also handles scrolling-text feedback for aura / area copies and, when the GM is the
+   * creating user, delegates aura propagation to `NeuroshimaAuraManager`.
+   *
+   * @override
+   */
   async _onCreate(data, options, user) {
     await super._onCreate(data, options, user);
     const isAuraCopyOnCreate = !!this.getFlag("neuroshima", "fromAura");
@@ -181,6 +207,19 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     }
   }
 
+  /**
+   * Execute `deleteEffect` trigger scripts and clean up associated resources when this
+   * effect is removed from an actor.
+   *
+   * Responsibilities (owning client only):
+   * - Show scrolling-text feedback on tokens for aura / area copies.
+   * - Delete items that were created by scripts belonging to this effect
+   *   (unless `options.skipDeletingItems` is set).
+   * - Remove all aura / area mirror copies via `NeuroshimaAuraManager`.
+   * - Run any `deleteEffect` scripts.
+   *
+   * @override
+   */
   async _onDelete(options, user) {
     await super._onDelete(options, user);
     const isAuraCopy = !!this.getFlag("neuroshima", "fromAura");

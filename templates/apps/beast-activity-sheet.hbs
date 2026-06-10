@@ -305,18 +305,17 @@
                         </option>
                     </select>
                 </div>
-                <div class="bas-field-group bas-field-narrow">
-                    <label class="bas-label">SP</label>
-                    <input type="number" name="testSuccesses" value="{{activity.testSuccesses}}"
-                           min="1" max="10" {{#unless editable}}disabled{{/unless}}/>
-                </div>
             </div>
-            <div class="bas-row bas-row-check">
-                <label class="bas-label bas-label-check">
+            <div class="bas-row bas-open-test-row">
+                <span class="bas-open-test-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestIsOpen"}}</span>
+                <div class="bas-open-test-right">
                     <input type="checkbox" name="testIsOpen" {{#if activity.testIsOpen}}checked{{/if}}
                            {{#unless editable}}disabled{{/unless}}/>
-                    {{localize "NEUROSHIMA.BeastAction.Sheet.TestIsOpen"}}
-                </label>
+                    <span class="bas-open-test-sp-label">SP</span>
+                    <input type="number" name="testSuccesses" value="{{activity.testSuccesses}}"
+                           min="1" max="10"
+                           {{#unless editable}}disabled{{else}}{{#unless activity.testIsOpen}}disabled{{/unless}}{{/unless}}/>
+                </div>
             </div>
             <div class="bas-row">
                 <div class="bas-field-group bas-field-full">
