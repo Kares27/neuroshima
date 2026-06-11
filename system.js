@@ -1156,6 +1156,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/healing-roll-card.hbs",
         "systems/neuroshima/templates/chat/healing-request.hbs",
         "systems/neuroshima/templates/chat/required-test-card.hbs",
+        "systems/neuroshima/templates/chat/beast-engage-target-card.hbs",
         "systems/neuroshima/templates/dialog/rest-dialog.hbs",
         "systems/neuroshima/templates/dialog/hp-config.hbs",
         "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs",
@@ -1674,6 +1675,80 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const { NeuroshimaDice } = await import("./module/helpers/dice.js");
             await NeuroshimaDice.resetTrickDieBonus(message);
             if (window._nsTrickState) delete window._nsTrickState[message.id];
+        }
+    });
+
+    options.push({
+        name: "NEUROSHIMA.BeastAction.EngageTarget.Button",
+        icon: '<i class="fas fa-crosshairs"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const rollData = message?.getFlag("neuroshima", "rollData");
+            if (!rollData) return false;
+            const actor = (() => {
+                if (message.speaker?.token) {
+                    const scene = game.scenes.get(message.speaker.scene);
+                    const tok = scene?.tokens.get(message.speaker.token);
+                    if (tok?.actor) return tok.actor;
+                }
+                return game.actors.get(rollData.actorId);
+            })();
+            if (!actor || actor.type !== "creature") return false;
+            if (!actor.items.some(i => i.type === "beast-action")) return false;
+            const myUuids = [actor.uuid, actor.token?.uuid].filter(Boolean);
+            const targets = Array.from(game.user.targets ?? []).filter(t => !myUuids.includes(t.document.uuid));
+            return targets.length > 0;
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const rollData = message?.getFlag("neuroshima", "rollData");
+            if (!rollData) return;
+            const actor = (() => {
+                if (message.speaker?.token) {
+                    const scene = game.scenes.get(message.speaker.scene);
+                    const tok = scene?.tokens.get(message.speaker.token);
+                    if (tok?.actor) return tok.actor;
+                }
+                return game.actors.get(rollData.actorId);
+            })();
+            if (!actor) return;
+            const sourceItems = actor.items.filter(i => i.type === "beast-action");
+            if (!sourceItems.length) return;
+            const byTier = {};
+            for (const item of sourceItems) {
+                for (const act of (item.system.activities ?? [])) {
+                    const t = Math.min(3, Math.max(1, act.successCost ?? 1));
+                    if (!byTier[t]) byTier[t] = act.damage || "D";
+                }
+            }
+            if (!Object.keys(byTier).length) return;
+            const sourceItem = sourceItems[0];
+            const syntheticWeapon = {
+                id: null,
+                beastItemId: sourceItem?.id ?? null,
+                name: sourceItem?.name ?? actor.name,
+                img: sourceItem?.img ?? actor.img,
+                type: "weapon",
+                system: {
+                    weaponType: "melee",
+                    attribute: sourceItem?.system?.attribute || "dexterity",
+                    skill: "experience",
+                    attackBonus: 0,
+                    defenseBonus: 0,
+                    damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
+                    damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
+                    damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
+                    requiredBuild: 0,
+                    piercing: 0,
+                    magazine: null,
+                    jamming: 20
+                }
+            };
+            const myUuids = [actor.uuid, actor.token?.uuid].filter(Boolean);
+            const targets = Array.from(game.user.targets ?? []).filter(t => !myUuids.includes(t.document.uuid));
+            if (!targets.length) return;
+            const mode = game.settings.get("neuroshima", "meleeCombatType") || "default";
+            await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, targets[0].document.uuid, mode);
         }
     });
 

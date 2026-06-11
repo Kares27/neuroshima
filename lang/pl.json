@@ -1636,7 +1636,15 @@
             "Spent": "Wydano",
             "Apply": "Zastosuj Akcje Bestii",
             "AlreadyApplied": "Akcje bestii zostały już zastosowane.",
+            "Applied": "Zastosowano",
             "HasEffects": "Nakłada aktywne efekty",
+            "EngageTarget": {
+                "Title": "Atak bestii",
+                "Hint": "GM: zaznacz token celu, a następnie kliknij przycisk poniżej, aby rozpocząć walkę.",
+                "Button": "Rozpocznij walkę z celem",
+                "NoTarget": "Zaznacz token celu przed użyciem tego przycisku.",
+                "NoAttacker": "Nie udało się odnaleźć atakującej bestii."
+            },
             "Sheet": {
                 "Title": "Aktywność Bestii",
                 "PickIcon": "Wybierz ikonę aktywności",

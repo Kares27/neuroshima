@@ -170,7 +170,7 @@
                     {{#each this.activities}}
                     <div class="beast-child-row" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}">
                         <img class="item-img" src="{{this.img}}" title="{{this.name}}" width="14" height="14"/>
-                        <span class="item-name beast-child-name beast-roll-name" data-action="rollBeastAction" data-item-id="{{this.itemId}}" data-activity-id="{{this.activityId}}" title="{{localize 'NEUROSHIMA.Actions.Attack'}}">{{this.name}}</span>
+                        <span class="item-name beast-child-name">{{this.name}}</span>
                         <span class="beast-action-meta">
                             {{#if this.actionType}}<span class="action-type-badge">{{this.actionType}}</span>{{/if}}
                             <span class="action-cost" title="{{localize 'NEUROSHIMA.BeastAction.SuccessCost'}}">{{this.successCost}}✦</span>

@@ -96,7 +96,7 @@
       {{/each}}
     </div>
     <div class="beast-spending-footer">
-      <button type="button" class="apply-beast-actions-btn" data-action="applyBeastActions" disabled>
+      <button type="button" class="btn btn-primary apply-beast-actions-btn" data-action="applyBeastActions" disabled>
         <i class="fas fa-check"></i> {{localize "NEUROSHIMA.BeastAction.Apply"}}
       </button>
     </div>
@@ -106,7 +106,7 @@
   {{#if isHit}}
   {{#unless hasBeastActions}}
   <div class="opposed-apply-row" data-gm-only="true">
-    <button type="button" class="apply-opposed-damage-btn" data-action="applyOpposedDamage">
+    <button type="button" class="btn btn-primary apply-opposed-damage-btn" data-action="applyOpposedDamage">
       <i class="fas fa-hand-holding-medical"></i> {{localize "NEUROSHIMA.Actions.Damage"}}
     </button>
   </div>

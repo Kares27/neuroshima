@@ -2452,6 +2452,9 @@ export class MeleeOpposedChat {
 
       for (let n = 0; n < count; n++) {
         if (damage) {
+          const freshDefDoc = await fromUuid(rd.defenderUuid);
+          const freshDefender = freshDefDoc?.actor ?? freshDefDoc;
+          if (!freshDefender) continue;
           const attackData = {
             isMelee: true,
             actorId: attackerActor.id,
@@ -2462,7 +2465,7 @@ export class MeleeOpposedChat {
             finalLocation: location,
             successPoints: 1
           };
-          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
+          const batch = await CombatHelper.applyDamageToActor(freshDefender, attackData, {
             isOpposed: true, spDifference: 1, location, suppressChat: true
           });
           if (batch) {
@@ -2472,7 +2475,6 @@ export class MeleeOpposedChat {
             allReducedDetails.push(...(batch.reducedDetails ?? []));
           }
         }
-
       }
     }
 

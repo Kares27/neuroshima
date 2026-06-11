@@ -92,6 +92,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
             btn.innerHTML = `<i class="fas fa-check"></i> ${game.i18n.localize("NEUROSHIMA.BeastAction.Applied")}`;
             break;
           }
+          case "engageBeastTarget":
+            await this.onEngageBeastTarget(event, message);
+            break;
         }
       });
     });
@@ -521,6 +524,81 @@ export class NeuroshimaChatMessage extends ChatMessage {
       const dialog = new NeuroshimaSkillRollDialog({ actor, stat, skill: 0, label, isSkill: false, currentAttribute: data.testKey, lastRoll, resultCallback });
       dialog.render(true);
     }
+  }
+
+  /**
+   * Handle click on "Rozpocznij walkę z celem" in a beast-engage-target chat card.
+   * Reconstructs the synthetic weapon from the beast item stored in message flags,
+   * then calls MeleeOpposedChat.initiateAttack against the current GM-selected target.
+   *
+   * @param {PointerEvent} event
+   * @param {ChatMessage}  message
+   */
+  static async onEngageBeastTarget(event, message) {
+    const data = message.getFlag("neuroshima", "beastEngageData");
+    if (!data) return;
+
+    const rawTargets = Array.from(game.user.targets ?? []);
+    if (rawTargets.length === 0) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.EngageTarget.NoTarget"));
+      return;
+    }
+
+    const attackerDoc = await fromUuid(data.attackerUuid);
+    const attackerActor = attackerDoc?.actor ?? attackerDoc;
+    if (!attackerActor) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.EngageTarget.NoAttacker"));
+      return;
+    }
+
+    const myUuidsCheck = [attackerActor.uuid];
+    if (attackerActor.token) myUuidsCheck.push(attackerActor.token.uuid);
+
+    const sourceItems = data.beastItemId
+      ? attackerActor.items.filter(i => i.id === data.beastItemId && i.type === "beast-action")
+      : attackerActor.items.filter(i => i.type === "beast-action");
+
+    const byTier = {};
+    for (const item of sourceItems) {
+      for (const act of (item.system.activities ?? [])) {
+        const t = Math.min(3, Math.max(1, act.successCost ?? 1));
+        if (!byTier[t]) byTier[t] = act.damage || "D";
+      }
+    }
+
+    if (Object.keys(byTier).length === 0) return;
+
+    const sourceItem = sourceItems[0];
+    const syntheticWeapon = {
+      id: null,
+      beastItemId: sourceItem?.id ?? null,
+      name: sourceItem?.name ?? attackerActor.name,
+      img: sourceItem?.img ?? attackerActor.img,
+      type: "weapon",
+      system: {
+        weaponType: "melee",
+        attribute: sourceItem?.system?.attribute || "dexterity",
+        skill: "experience",
+        attackBonus: 0,
+        defenseBonus: 0,
+        damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
+        damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
+        damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
+        requiredBuild: 0,
+        piercing: 0,
+        magazine: null,
+        jamming: 20
+      }
+    };
+
+    const chatTargets = rawTargets.filter(t => !myUuidsCheck.includes(t.document.uuid));
+    if (chatTargets.length === 0) {
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.BeastAction.EngageTarget.NoTarget"));
+      return;
+    }
+
+    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    await MeleeOpposedChat.initiateAttack(attackerActor, syntheticWeapon, chatTargets[0].document.uuid, data.mode);
   }
 
   /**

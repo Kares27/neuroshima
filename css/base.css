@@ -1056,7 +1056,8 @@ body.theme-dark {
 .theme-dark .chat-message:has(.neuroshima.heal-request-card),
 .theme-dark .chat-message:has(.neuroshima.required-test-card),
 .theme-dark .chat-message:has(.neuroshima.melee-duel-card),
-.theme-dark .chat-message:has(.neuroshima.melee-hail-card) {
+.theme-dark .chat-message:has(.neuroshima.melee-hail-card),
+.theme-dark .chat-message:has(.neuroshima.beast-engage-target-card) {
     background: #0b0a13e6;
     border-color: #5a5a54;
     color: #e0e0d0;
@@ -1073,7 +1074,10 @@ body.theme-dark {
 .theme-dark .chat-message:has(.neuroshima.heal-request-card) .message-header .message-metadata,
 .theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header,
 .theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header .message-sender,
-.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header .message-metadata {
+.theme-dark .chat-message:has(.neuroshima.required-test-card) .message-header .message-metadata,
+.theme-dark .chat-message:has(.neuroshima.beast-engage-target-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.beast-engage-target-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.beast-engage-target-card) .message-header .message-metadata {
     color: #e0e0d0;
 }
 
@@ -5988,50 +5992,29 @@ body.theme-dark {
     font-weight: bold;
 }
 
-.neuroshima.melee-opposed-result .apply-opposed-damage-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+.opposed-apply-row .btn.btn-primary {
     width: 100%;
-    padding: 7px 0;
-    border: none;
-    border-radius: 3px;
-    background: #8b1a1a;
+    justify-content: center;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+    background-color: #8b1a1a;
+    border-color: #8b1a1a;
     color: #f5e8d0;
-    font-size: 0.85em;
-    font-weight: bold;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: background 0.15s;
 }
 
-.neuroshima.melee-opposed-result .apply-opposed-damage-btn:hover {
-    background: #a82828;
+.opposed-apply-row .btn.btn-primary:hover:not(.applied):not(:disabled) {
+    background-color: #a82828;
+    border-color: #a82828;
 }
 
-.neuroshima.melee-opposed-result .apply-opposed-damage-btn.applied,
-.neuroshima.melee-opposed-result .apply-opposed-damage-btn:disabled {
+.opposed-apply-row .btn.btn-primary.applied,
+.opposed-apply-row .btn.btn-primary:disabled {
     opacity: 0.5;
     cursor: default;
     pointer-events: none;
-    background: #4a5058;
-    color: #ccc;
-}
-
-.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn {
-    background: #6b1212;
-    color: #f0ddc0;
-}
-
-.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn:hover {
-    background: #8b1a1a;
-}
-
-.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn.applied,
-.theme-dark .neuroshima.melee-opposed-result .apply-opposed-damage-btn:disabled {
-    background: #2e3338;
-    color: #888;
+    background-color: #4a5058;
+    border-color: #4a5058;
+    color: #b0b0b0;
 }
 
 /* === Chat message wrapper for result card === */
@@ -6604,32 +6587,31 @@ body.theme-dark {
 .beast-spending-footer {
     padding: 5px 8px;
     border-top: 1px solid rgba(120, 80, 20, 0.3);
-    display: flex;
-    justify-content: flex-end;
 }
 
-.apply-beast-actions-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 12px;
-    border: 1px solid rgba(120, 80, 20, 0.6);
-    border-radius: 3px;
-    background: rgba(100, 60, 10, 0.3);
-    color: inherit;
-    font-size: 11px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.15s;
+.beast-spending-footer .btn.btn-primary {
+    width: 100%;
+    justify-content: center;
+    border-radius: 6px;
+    letter-spacing: 0.04em;
+    background-color: #8b1a1a;
+    border-color: #8b1a1a;
+    color: #f5e8d0;
 }
 
-.apply-beast-actions-btn:hover:not(:disabled) {
-    background: rgba(140, 90, 10, 0.5);
+.beast-spending-footer .btn.btn-primary:hover:not(.applied):not(:disabled) {
+    background-color: #a82828;
+    border-color: #a82828;
 }
 
-.apply-beast-actions-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+.beast-spending-footer .btn.btn-primary.applied,
+.beast-spending-footer .btn.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+    pointer-events: none;
+    background-color: #4a5058;
+    border-color: #4a5058;
+    color: #b0b0b0;
 }
 
 .theme-dark .beast-action-spending {
@@ -6700,6 +6682,61 @@ body.theme-dark {
     font-size: 11px;
     padding: 1px 4px;
     line-height: 1;
+}
+
+/* ===== Beast Engage Target Card ===== */
+.neuroshima.beast-engage-target-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'SpecialElite', serif;
+}
+
+.engage-target-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.engage-target-header img {
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.engage-target-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.engage-target-title .attacker-name {
+    font-weight: bold;
+    font-size: 0.95em;
+}
+
+.engage-target-title .engage-label {
+    font-size: 0.78em;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.engage-target-hint {
+    font-size: 0.82em;
+    font-style: italic;
+    opacity: 0.75;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.engage-target-actions .btn.btn-primary {
+    width: 100%;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 1em;
+    letter-spacing: 0.04em;
 }
 
 /* ===== Condition Config ===== */
