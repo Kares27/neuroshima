@@ -1679,80 +1679,6 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
     });
 
     options.push({
-        name: "NEUROSHIMA.BeastAction.EngageTarget.Button",
-        icon: '<i class="fas fa-crosshairs"></i>',
-        condition: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "rollData");
-            if (!rollData) return false;
-            const actor = (() => {
-                if (message.speaker?.token) {
-                    const scene = game.scenes.get(message.speaker.scene);
-                    const tok = scene?.tokens.get(message.speaker.token);
-                    if (tok?.actor) return tok.actor;
-                }
-                return game.actors.get(rollData.actorId);
-            })();
-            if (!actor || actor.type !== "creature") return false;
-            if (!actor.items.some(i => i.type === "beast-action")) return false;
-            const myUuids = [actor.uuid, actor.token?.uuid].filter(Boolean);
-            const targets = Array.from(game.user.targets ?? []).filter(t => !myUuids.includes(t.document.uuid));
-            return targets.length > 0;
-        },
-        callback: async li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "rollData");
-            if (!rollData) return;
-            const actor = (() => {
-                if (message.speaker?.token) {
-                    const scene = game.scenes.get(message.speaker.scene);
-                    const tok = scene?.tokens.get(message.speaker.token);
-                    if (tok?.actor) return tok.actor;
-                }
-                return game.actors.get(rollData.actorId);
-            })();
-            if (!actor) return;
-            const sourceItems = actor.items.filter(i => i.type === "beast-action");
-            if (!sourceItems.length) return;
-            const byTier = {};
-            for (const item of sourceItems) {
-                for (const act of (item.system.activities ?? [])) {
-                    const t = Math.min(3, Math.max(1, act.successCost ?? 1));
-                    if (!byTier[t]) byTier[t] = act.damage || "D";
-                }
-            }
-            if (!Object.keys(byTier).length) return;
-            const sourceItem = sourceItems[0];
-            const syntheticWeapon = {
-                id: null,
-                beastItemId: sourceItem?.id ?? null,
-                name: sourceItem?.name ?? actor.name,
-                img: sourceItem?.img ?? actor.img,
-                type: "weapon",
-                system: {
-                    weaponType: "melee",
-                    attribute: sourceItem?.system?.attribute || "dexterity",
-                    skill: "experience",
-                    attackBonus: 0,
-                    defenseBonus: 0,
-                    damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
-                    damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
-                    damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
-                    requiredBuild: 0,
-                    piercing: 0,
-                    magazine: null,
-                    jamming: 20
-                }
-            };
-            const myUuids = [actor.uuid, actor.token?.uuid].filter(Boolean);
-            const targets = Array.from(game.user.targets ?? []).filter(t => !myUuids.includes(t.document.uuid));
-            if (!targets.length) return;
-            const mode = game.settings.get("neuroshima", "meleeCombatType") || "default";
-            await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, targets[0].document.uuid, mode);
-        }
-    });
-
-    options.push({
         name: "NEUROSHIMA.Actions.Reroll",
         icon: '<i class="fas fa-arrow-rotate-left"></i>',
         condition: li => {
@@ -1903,7 +1829,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             let defenderUuid = null;
             const gmTargeted = [...game.user.targets];
             if (gmTargeted.length > 0) {
-                defenderUuid = gmTargeted[0].actor?.uuid ?? null;
+                defenderUuid = gmTargeted[0].document?.uuid ?? gmTargeted[0].actor?.uuid ?? null;
             }
             if (!defenderUuid && rollData.targets?.length > 0) {
                 defenderUuid = rollData.targets[0];
@@ -1913,15 +1839,88 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                 return;
             }
 
-            const attackerActor = game.actors.get(rollData.actorId);
+            const attackerActor = (() => {
+                if (message.speaker?.token) {
+                    const scene = game.scenes.get(message.speaker.scene);
+                    const tok = scene?.tokens.get(message.speaker.token);
+                    if (tok?.actor) return tok.actor;
+                }
+                return game.actors.get(rollData.actorId);
+            })();
             if (!attackerActor) return;
-            const weapon = attackerActor.items.get(rollData.weaponId);
+
+            let weapon = rollData.weaponId ? attackerActor.items.get(rollData.weaponId) : null;
+
+            if (!weapon && rollData.beastItemId) {
+                const beastItem = attackerActor.items.get(rollData.beastItemId);
+                if (beastItem) {
+                    const byTier = {};
+                    for (const act of (beastItem.system.activities ?? [])) {
+                        const t = Math.min(3, Math.max(1, act.successCost ?? 1));
+                        if (!byTier[t]) byTier[t] = act.damage || "D";
+                    }
+                    weapon = {
+                        id: null,
+                        beastItemId: beastItem.id,
+                        name: beastItem.name,
+                        img: beastItem.img,
+                        type: "weapon",
+                        system: {
+                            weaponType: "melee",
+                            attribute: beastItem.system?.attribute || "dexterity",
+                            skill: "experience",
+                            attackBonus: 0,
+                            defenseBonus: 0,
+                            damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
+                            damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
+                            damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
+                            requiredBuild: 0,
+                            piercing: 0,
+                            magazine: null,
+                            jamming: 20
+                        }
+                    };
+                }
+            }
+
+            if (!weapon && attackerActor.type === "creature") {
+                const sourceItems = attackerActor.items.filter(i => i.type === "beast-action");
+                if (sourceItems.length) {
+                    const sourceItem = sourceItems[0];
+                    const byTier = {};
+                    for (const item of sourceItems) {
+                        for (const act of (item.system.activities ?? [])) {
+                            const t = Math.min(3, Math.max(1, act.successCost ?? 1));
+                            if (!byTier[t]) byTier[t] = act.damage || "D";
+                        }
+                    }
+                    weapon = {
+                        id: null,
+                        beastItemId: sourceItem.id,
+                        name: sourceItem.name,
+                        img: sourceItem.img,
+                        type: "weapon",
+                        system: {
+                            weaponType: "melee",
+                            attribute: sourceItem.system?.attribute || "dexterity",
+                            skill: "experience",
+                            attackBonus: 0,
+                            defenseBonus: 0,
+                            damageMelee1: byTier[1] ?? byTier[2] ?? byTier[3] ?? "D",
+                            damageMelee2: byTier[2] ?? byTier[1] ?? byTier[3] ?? "D",
+                            damageMelee3: byTier[3] ?? byTier[2] ?? byTier[1] ?? "D",
+                            requiredBuild: 0,
+                            piercing: 0,
+                            magazine: null,
+                            jamming: 20
+                        }
+                    };
+                }
+            }
+
             if (!weapon) return;
 
-            const mode = (() => {
-                const s = game.settings.get("neuroshima", "meleeCombatType") || "default";
-                return (s === "opposedPips" || s === "opposedSuccesses") ? s : "opposedPips";
-            })();
+            const mode = game.settings.get("neuroshima", "meleeCombatType") || "opposedPips";
 
             const rawResult = {
                 modifiedResults: rollData.modifiedResults || [],
@@ -2854,8 +2853,8 @@ function initializeSocketlib() {
         await MeleeOpposedChat.applyDuelBatch(messageId, side, [dieIdx]);
     });
 
-    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices, action) => {
-        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null);
+    game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices, action, beastQueue) => {
+        await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null, beastQueue ?? null);
     });
 
     game.neuroshima.socket.register("healingRequestPrompt", async ({ patientUuid, patientName, patientPortrait, requesterUserId, medicActorUuid, isPrivate }) => {

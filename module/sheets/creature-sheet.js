@@ -332,7 +332,24 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         }
 
         const rawTargets = Array.from(game.user.targets ?? []);
-        const chatTargets = rawTargets.filter(t => !myUuidsCheck.includes(t.document.uuid));
+        let chatTargets = rawTargets.filter(t => !myUuidsCheck.includes(t.document.uuid));
+
+        if (chatTargets.length === 0) {
+          const actorSourceToken = this._getSourceToken();
+          if (actorSourceToken) {
+            await this.minimize();
+            const targetData = await this._waitForTarget();
+            await this.maximize();
+
+            if (!targetData) {
+              return;
+            } else if (!targetData.cancelled && targetData.token) {
+              targetData.token.setTarget(true, { releaseOthers: true });
+              chatTargets = [targetData.token];
+            }
+          }
+        }
+
         if (chatTargets.length > 0) {
           const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
           await MeleeOpposedChat.initiateAttack(actor, syntheticWeapon, chatTargets[0].document.uuid, effectiveMode);

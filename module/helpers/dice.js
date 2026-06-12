@@ -716,6 +716,7 @@ export class NeuroshimaDice {
         damageShift: isMelee ? (damageShift || 0) : 0,
         targets: isMelee ? (params.targets ?? []) : [],
         weaponId: weapon.id,
+        beastItemId: weapon.beastItemId ?? null,
         actorId: actor.id,
         actorImg: actor.img,
         damage: damageValue,

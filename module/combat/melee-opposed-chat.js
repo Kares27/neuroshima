@@ -1012,10 +1012,18 @@ export class MeleeOpposedChat {
           const pool    = confirmBtn.dataset.pool;
           const selected = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
           const indices  = selected.map(c => parseInt(c.dataset.dieIdx, 10)).filter(n => !isNaN(n));
+          const beastQueue = [];
+          beastQueueSection.querySelectorAll(".mdc-beast-qty-val").forEach(el => {
+            const qty = parseInt(el.textContent, 10) || 0;
+            const actionId = el.dataset.actionId;
+            if (qty > 0 && actionId) {
+              for (let i = 0; i < qty; i++) beastQueue.push(actionId);
+            }
+          });
           if (game.user.isGM) {
-            await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, "attack");
+            await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, "attack", beastQueue.length ? beastQueue : null);
           } else if (game.neuroshima?.socket) {
-            await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, "attack");
+            await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, "attack", beastQueue.length ? beastQueue : null);
           }
         });
       }
@@ -1025,7 +1033,7 @@ export class MeleeOpposedChat {
     updateBeastQueue();
   }
 
-  static async applyDuelBatch(messageId, pool, diceIndices, action = null) {
+  static async applyDuelBatch(messageId, pool, diceIndices, action = null, beastQueue = null) {
     const message = game.messages.get(messageId);
     if (!message) return;
 
@@ -1054,6 +1062,7 @@ export class MeleeOpposedChat {
       }
       state.declaredAction        = declaredAction;
       state.committedOwnerIndices = diceIndices;
+      state.committedBeastQueue   = (Array.isArray(beastQueue) && beastQueue.length > 0) ? beastQueue : null;
       state.waitingFor            = "responder";
       await MeleeOpposedChat._renderDuelCard(message, state);
       return;
@@ -1194,19 +1203,52 @@ export class MeleeOpposedChat {
       if (state.status === "done") {
         const locationRoll = (state.attackDice[0]?.original) ?? 10;
         const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
+
+        const atkDoc = fromUuidSync(state.attackerTokenUuid || state.attackerUuid);
+        const atkActor = atkDoc?.actor ?? atkDoc;
+        const isCreatureAttacker = atkActor?.type === "creature";
+        const isBeastAttack = isCreatureAttacker && !state.weaponId;
+        const netSuccesses = state.hits.length;
+
+        const affordableBeastActions = [];
+        if (isBeastAttack && netSuccesses > 0 && atkActor) {
+          const beastItemFilter = state.beastItemId ?? null;
+          for (const item of atkActor.items.filter(i => i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter))) {
+            for (const act of (item.system.activities ?? [])) {
+              if (act.costType !== "success") continue;
+              const cost = act.successCost ?? 1;
+              if (cost <= netSuccesses) {
+                affordableBeastActions.push({
+                  id: `${item.id}::${act.id}`,
+                  itemId: item.id,
+                  name: act.name || item.name,
+                  img: act.img || item.img,
+                  cost,
+                  damage: act.damage || null,
+                  gmNote: act.gmNote || "",
+                  hasEffects: (act.effectIds?.length ?? 0) > 0
+                });
+              }
+            }
+          }
+          affordableBeastActions.sort((a, b) => a.cost - b.cost);
+        }
+
         await message.setFlag("neuroshima", "opposedResult", {
           attackerUuid: state.attackerUuid,
           defenderUuid: state.defenderUuid,
           weaponId: state.weaponId,
+          beastItemId: state.beastItemId ?? null,
           hits: state.hits,
           location,
           escapeeUuid: state._escapeeUuid ?? null,
           damage1: state.damage1,
           damage2: state.damage2,
           damage3: state.damage3,
-          netSuccesses: state.hits.length,
-          affordableBeastActions: [],
-          isBeastAttack: false,
+          netSuccesses,
+          affordableBeastActions,
+          isBeastAttack,
+          pendingBeastQueue: state.committedBeastQueue ?? null,
           applied: false,
           beastActionsApplied: false
         });
@@ -1981,6 +2023,18 @@ export class MeleeOpposedChat {
     }
     if (!rd.hits || rd.hits.length === 0) {
       ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.NoHits"));
+      return;
+    }
+
+    if (rd.isBeastAttack) {
+      const queue = rd.pendingBeastQueue ?? [];
+      if (queue.length > 0) {
+        await MeleeOpposedChat.applyBeastActions(messageId, queue);
+        const refreshed = message.getFlag("neuroshima", "opposedResult");
+        await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
+      } else {
+        await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
+      }
       return;
     }
 
