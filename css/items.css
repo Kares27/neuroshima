@@ -257,15 +257,33 @@
 }
 
 .neuroshima.sheet.item .item-features.secondary-box,
-.neuroshima.sheet.item .secondary-box,
-.neuroshima.sheet.item .armor-ratings-table {
+.neuroshima.sheet.item .secondary-box {
     background: transparent;
     border: 1px solid var(--ns-border-main);
     border-radius: 5px;
     padding: 10px;
 }
 
-.neuroshima.sheet.item .armor-ratings-table {
+.neuroshima.sheet.item:not(.beast-activity-sheet) fieldset {
+    background: transparent;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 5px;
+    padding: 6px 10px 10px;
+    margin: 0;
+}
+
+.neuroshima.sheet.item:not(.beast-activity-sheet) fieldset > legend {
+    padding: 0 6px;
+    font-family: 'SpecialElite', serif;
+    font-size: 0.95em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ns-text-main);
+    margin: 0 auto;
+}
+
+.neuroshima.sheet.item fieldset.armor-ratings-table {
     flex: 2;
 }
 
@@ -299,15 +317,12 @@
     text-align: center;
 }
 
-.neuroshima.sheet.item .armor-secondary-stats {
-    gap: 10px;
+.neuroshima.sheet.item fieldset.armor-secondary-stats {
     flex: 1;
-    display: flex;
-    flex-direction: column;
 }
 
-.neuroshima.sheet.item .armor-secondary-stats .item-features.secondary-box {
-    flex: 1;
+.neuroshima.sheet.item fieldset.armor-resistances-section {
+    margin-top: 8px;
 }
 
 .neuroshima.sheet.item .armor-secondary-stats .grid-1col {
@@ -1427,11 +1442,6 @@ input[type="color"].rep-color-input::-moz-color-swatch {
 
 /* ─── weapon-mod-bazowe: bordered "Bazowe" box ─── */
 
-.neuroshima.sheet.item .weapon-mod-bazowe {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
 
 .neuroshima.sheet.item .weapon-mod-bazowe .bazowe-inline {
     display: flex;
@@ -2401,6 +2411,10 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     flex: 0 0 64px;
 }
 
+.beast-activity-sheet .bas-field-group.bas-field-cost {
+    flex: 0 0 92px;
+}
+
 .beast-activity-sheet .bas-damage-tiers {
     display: flex;
     gap: 6px;
@@ -2666,4 +2680,74 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     font-style: italic;
 }
 
+/* ===== BeastActivitySheet — item-sheet layout overrides ===== */
+
+.neuroshima.beast-activity-sheet.sheet.item [data-application-part="form"] {
+    display: flex !important;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .bas-root {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .sheet-header {
+    flex-shrink: 0;
+    padding: 8px 10px 6px;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .profile-img {
+    height: 72px;
+    width: 72px;
+    min-height: 48px;
+    max-width: 72px;
+    object-fit: contain;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .profile-img.bas-icon-editable {
+    cursor: pointer;
+}
+
+
+.neuroshima.beast-activity-sheet.sheet.item nav.sheet-tabs.tabs {
+    flex-shrink: 0;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .sheet-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
+    position: relative;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .sheet-body .bas-tab {
+    padding: 8px 10px 10px;
+    box-sizing: border-box;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .sheet-body .bas-tab[data-tab="activation"] {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item .sheet-body .bas-tab[data-tab="activation"].active {
+    display: flex;
+}
+
+.neuroshima.beast-activity-sheet.sheet.item nav.tabs .item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
 

@@ -145,15 +145,9 @@ export class ArmorData extends foundry.abstract.TypeDataModel {
   get effectiveArmor() {
     const effective = {};
     const locations = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"];
-    const mods = this.mods ?? {};
 
     for (const loc of locations) {
-      let rating = this.armor.ratings?.[loc] || 0;
-      const capKey = loc.charAt(0).toUpperCase() + loc.slice(1);
-      for (const [key, snap] of Object.entries(mods)) {
-        if (key.startsWith("__") || !snap.attached) continue;
-        rating += (snap[`delta${capKey}`] ?? 0);
-      }
+      const rating = this.armor.ratings?.[loc] || 0;
       const damageVal = this.armor.damage?.[loc] || 0;
       effective[loc] = Math.max(0, rating - damageVal);
     }
@@ -303,7 +297,7 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
       img:                     new fields.StringField({ initial: "" }),
       summary:                 new fields.StringField({ initial: "", blank: true }),
       gmNote:                  new fields.StringField({ initial: "", blank: true }),
-      actionType:              new fields.StringField({ initial: "" }),
+      actionType:              new fields.StringField({ initial: "attack" }),
       costType:                new fields.StringField({ initial: "success", choices: ["success", "segment"] }),
       successCost:             new fields.NumberField({ integer: true, initial: 1, min: 0, max: 3 }),
       segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
@@ -341,18 +335,37 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
       img:                     new fields.StringField({ initial: "" }),
       summary:                 new fields.StringField({ initial: "", blank: true }),
       gmNote:                  new fields.StringField({ initial: "", blank: true }),
-      actionType:              new fields.StringField({ initial: "" }),
+      actionType:              new fields.StringField({ initial: "attack" }),
       costType:                new fields.StringField({ initial: "segment" }),
       segmentCost:             new fields.NumberField({ integer: true, initial: 1, min: 1, max: 3 }),
-      skillMode:               new fields.StringField({ initial: "experience", choices: ["experience", "skill", "none"] }),
-      weaponType:              new fields.StringField({ initial: "melee", choices: ["melee", "ranged", "thrown", "grenade"] }),
+      skillMode:               new fields.StringField({ initial: "experience", choices: ["experience", "none"] }),
+      weaponType:              new fields.StringField({ initial: "melee", choices: ["none", "melee", "ranged", "thrown", "grenade"] }),
       attribute:               new fields.StringField({ initial: "dexterity" }),
+      attackBonus:             new fields.NumberField({ integer: true, initial: 0 }),
+      defenseBonus:            new fields.NumberField({ integer: true, initial: 0 }),
+      weaponModifier:          new fields.NumberField({ integer: true, initial: 0 }),
+      requiredBuild:           new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      damageCategory:          new fields.StringField({ initial: "physical" }),
+      fireRate:                new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      rangedSubtype:           new fields.StringField({ initial: "pistols" }),
+      jamming:                 new fields.NumberField({ integer: true, initial: 20, min: 0, max: 20 }),
       damage1:                 new fields.StringField({ initial: "D", nullable: true, blank: true }),
       damage2:                 new fields.StringField({ initial: "L", nullable: true, blank: true }),
       damage3:                 new fields.StringField({ initial: "C", nullable: true, blank: true }),
       damage:                  new fields.StringField({ initial: "", nullable: true, blank: true }),
       piercing:                new fields.NumberField({ integer: true, initial: 0, min: 0, max: 10 }),
       range:                   new fields.NumberField({ integer: true, initial: 0, min: 0 }),
+      freeThrowDistance:       new fields.NumberField({ integer: true, initial: 10, min: 1 }),
+      useBuildBonus:           new fields.BooleanField({ initial: true }),
+      blastZones:              new fields.ArrayField(
+        new fields.SchemaField({
+          radius:    new fields.NumberField({ integer: true, initial: 1, min: 1 }),
+          damage:    new fields.StringField({ initial: "L", choices: ["none","D","L","C","K","sD","sL","sC","sK"] }),
+          knockdown: new fields.BooleanField({ initial: false }),
+          shrapnel:  new fields.NumberField({ integer: true, initial: 0, min: 0 })
+        }),
+        { initial: [] }
+      ),
       effectIds:               new fields.ArrayField(new fields.StringField(), { initial: [] }),
       testRequired:            new fields.BooleanField({ initial: false }),
       testType:                new fields.StringField({ initial: "attribute", choices: ["attribute", "skill"] }),

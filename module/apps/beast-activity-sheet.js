@@ -64,12 +64,12 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
 
   static DEFAULT_OPTIONS = {
     tag: "form",
-    classes: ["neuroshima", "beast-activity-sheet"],
+    classes: ["neuroshima", "beast-activity-sheet", "sheet", "item"],
     window: {
-      resizable: false,
+      resizable: true,
       contentClasses: []
     },
-    position: { width: 400, height: "auto" },
+    position: { width: 530, height: 560 },
     form: {
       handler: BeastActivitySheet._onSubmit,
       submitOnChange: true,
@@ -83,18 +83,42 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       removeEffect:              BeastActivitySheet._onRemoveEffect,
       addFailureEffect:          BeastActivitySheet._onAddFailureEffect,
       linkSelectedFailureEffect: BeastActivitySheet._onLinkSelectedFailureEffect,
-      removeFailureEffect:       BeastActivitySheet._onRemoveFailureEffect
+      removeFailureEffect:       BeastActivitySheet._onRemoveFailureEffect,
+      addBlastZone:              BeastActivitySheet._onAddBlastZone,
+      removeBlastZone:           BeastActivitySheet._onRemoveBlastZone
     }
   };
 
   static PARTS = {
     form: {
-      template: "systems/neuroshima/templates/apps/beast-activity-sheet.hbs"
+      template: "systems/neuroshima/templates/apps/beast-activity-sheet.hbs",
+      // scrollable: lista selektorów, których scrollTop Foundry zachowuje między re-renderami CZĘŚCI
+      // (działa tylko gdy re-renderuje się konkretna część, nie cała aplikacja).
+      // Tutaj aplikacja ma jedną część "form" — Foundry zapisze scrollTop tych elementów.
+      scrollable: [".sheet-body"]
     }
   };
 
   /** @type {{ sheet: string }} Current active tab group state. */
-  tabGroups = { sheet: "identity" };
+  tabGroups = { sheet: "activation" };
+
+  /**
+   * WZORZEC SCROLL PRESERVATION — stosowany identycznie w actor-sheet-base.js i item-sheet.js.
+   *
+   * Problem: Foundry ApplicationV2 przy każdym re-renderze (np. po submitOnChange)
+   * niszczy i odtwarza DOM części. Scrollbar wraca na pozycję 0.
+   *
+   * Rozwiązanie: zapisać scrollTop PRZED renderem (_preRender), przywrócić PO (_onRender).
+   * Przywracanie musi być w setTimeout(0) — DOM musi się "ustabilizować" zanim
+   * przeglądarka zastosuje scrollTop.
+   *
+   * Wystarczy śledzić .sheet-body — to jedyny kontener scroll w tym oknie.
+   * Jeśli w przyszłości dojdą nowe kontenery scroll (np. lista stref), dodaj ich
+   * selektory do _SCROLL_SELECTORS poniżej.
+   */
+  _scrollState = {};
+
+  static _SCROLL_SELECTORS = [".sheet-body"];
 
   /**
    * Resolve the live activity schema object from the parent item.
@@ -122,17 +146,17 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
    * @returns {{ identity: object, activation: object, effects: object }}
    */
   _getTabs() {
-    const current = this.tabGroups.sheet ?? "identity";
+    const current = this.tabGroups.sheet ?? "activation";
     return {
-      identity: {
-        id: "identity", group: "sheet",
-        label: "NEUROSHIMA.BeastAction.Sheet.TabIdentity",
-        cssClass: current === "identity" ? "active" : ""
-      },
       activation: {
         id: "activation", group: "sheet",
         label: "NEUROSHIMA.BeastAction.Sheet.TabActivation",
         cssClass: current === "activation" ? "active" : ""
+      },
+      description: {
+        id: "description", group: "sheet",
+        label: "NEUROSHIMA.BeastAction.Sheet.TabDescription",
+        cssClass: current === "description" ? "active" : ""
       },
       effects: {
         id: "effects", group: "sheet",
@@ -197,20 +221,23 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       .map(e => ({ id: e.id, name: e.name }));
 
     const isSegmentItem = this.item.type === "beast-segment";
+
+    const actionTypes = {
+      action: "NEUROSHIMA.BeastActivity.ActionType.Action",
+      attack: "NEUROSHIMA.BeastActivity.ActionType.Attack"
+    };
+
     const weaponTypes = {
+      none:    "NEUROSHIMA.BeastSegment.WeaponTypeNone",
       melee:   "NEUROSHIMA.Items.Type.WeaponMelee",
       ranged:  "NEUROSHIMA.Items.Type.WeaponRanged",
       thrown:  "NEUROSHIMA.Items.Type.WeaponThrown",
       grenade: "NEUROSHIMA.Items.Type.WeaponGrenade"
     };
 
+    const actActionType = activity.actionType || "attack";
+    const isAttack = isSegmentItem && actActionType === "attack";
     const actWeaponType = activity.weaponType || "melee";
-
-    const skillModes = {
-      experience: "NEUROSHIMA.BeastActivity.SkillMode.Experience",
-      skill:      "NEUROSHIMA.BeastActivity.SkillMode.Skill",
-      none:       "NEUROSHIMA.BeastActivity.SkillMode.None"
-    };
 
     const testAttributes = {
       constitution: "NEUROSHIMA.Attributes.Constitution",
@@ -230,37 +257,77 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       return { attrKey, attrLabel: game.i18n.localize(`NEUROSHIMA.Attributes.${cap}`), skills };
     });
 
+    const enrichedGmNote = await TextEditor.enrichHTML(activity.gmNote ?? "", { relativeTo: this.item });
+
     return {
-      tabs:                this._getTabs(),
+      tabs:                   this._getTabs(),
       activity,
-      item:                this.item,
+      item:                   this.item,
+      enrichedGmNote,
       linkedEffects,
       linkedFailureEffects,
       unlinkedEffects,
-      attributes:          NEUROSHIMA.attributes,
-      damageTypes:         NEUROSHIMA.damageTypes,
+      attributes:             NEUROSHIMA.attributes,
+      damageTypes:            NEUROSHIMA.damageTypes,
+      damageCategories:       NEUROSHIMA.damageCategories,
+      weaponSubtypesRanged:   NEUROSHIMA.weaponSubtypes?.ranged ?? {},
+      blastDamageTypes:       NEUROSHIMA.blastDamageTypesFull,
       testAttributes,
       testSkillGroups,
-      isSegment:           activity.costType === "segment",
+      isSegment:              activity.costType === "segment",
       isSegmentItem,
+      actionTypes,
       weaponTypes,
-      isMelee:             isSegmentItem && actWeaponType === "melee",
-      isRanged:            isSegmentItem && actWeaponType === "ranged",
-      isThrown:            isSegmentItem && actWeaponType === "thrown",
-      isGrenade:           isSegmentItem && actWeaponType === "grenade",
-      skillModes,
-      editable:            this.item.isOwner
+      isAttack,
+      isMelee:                isAttack && actWeaponType === "melee",
+      isRanged:               isAttack && actWeaponType === "ranged",
+      isThrown:               isAttack && actWeaponType === "thrown",
+      isGrenade:              isAttack && actWeaponType === "grenade",
+      editable:               this.item.isOwner
     };
   }
 
   /**
-   * Register an `updateItem` hook on first render so the sheet reacts to external item changes.
-   * Distinguishes self-initiated updates (via `_selfUpdating`) to avoid the forced full-render
-   * that would otherwise cause a visible flicker every time the user changes a field.
+   * KROK 1/2 wzorca scroll preservation — wykonuje się PRZED zniszczeniem DOM.
+   * Odczytuje bieżący scrollTop każdego kontenera z _SCROLL_SELECTORS i zapamiętuje go.
+   * Jeśli element nie istnieje lub jest na pozycji 0, jest pomijany (nie ma co przywracać).
+   * @override
+   */
+  async _preRender(context, options) {
+    await super._preRender(context, options);
+    this._scrollState = {};
+    for (const sel of this.constructor._SCROLL_SELECTORS) {
+      const el = this.element?.querySelector(sel);
+      if (el && el.scrollTop > 0) this._scrollState[sel] = el.scrollTop;
+    }
+  }
+
+  /**
+   * KROK 2/2 wzorca scroll preservation + rejestracja hooka updateItem.
+   *
+   * Przywraca scrollTop ze stanu zapisanego w _preRender.
+   * setTimeout(0) jest KONIECZNY — przeglądarka musi zakończyć layout po wyrenderowaniu
+   * DOM zanim scrollTop zostanie zastosowany. Bez tego scroll resetuje się do 0.
+   *
+   * Hook updateItem reaguje na zewnętrzne zmiany itemu (np. z GM toolkitu) i wymusza
+   * pełny re-render. Własne zapisy (np. submitOnChange) oznaczamy _selfUpdating,
+   * żeby nie powodować podwójnego rendera.
    * @override
    */
   _onRender(context, options) {
     super._onRender(context, options);
+
+    // Przywróć pozycję scrolla po re-renderze (setTimeout konieczny — patrz komentarz wyżej)
+    if (Object.keys(this._scrollState).length) {
+      const saved = { ...this._scrollState };
+      setTimeout(() => {
+        for (const [sel, top] of Object.entries(saved)) {
+          const el = this.element?.querySelector(sel);
+          if (el) el.scrollTop = top;
+        }
+      }, 0);
+    }
+
     if (this._itemHookId !== undefined) Hooks.off("updateItem", this._itemHookId);
     this._itemHookId = Hooks.on("updateItem", (item) => {
       if (item.uuid !== this.item.uuid) return;
@@ -271,7 +338,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
         this.render({ force: true });
       }
     });
-    this.changeTab(this.tabGroups.sheet ?? "identity", "sheet");
+    this.changeTab(this.tabGroups.sheet ?? "activation", "sheet");
   }
 
   /**
@@ -314,14 +381,21 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.successCost             !== undefined) act.successCost             = raw.successCost;
     if (raw.skillMode               !== undefined) act.skillMode               = raw.skillMode;
     if (raw.weaponType              !== undefined) act.weaponType              = raw.weaponType;
-    if (raw.range                   !== undefined) act.range                   = raw.range;
     if (raw.attribute               !== undefined) act.attribute               = raw.attribute;
+    if (raw.attackBonus             !== undefined) act.attackBonus             = Number(raw.attackBonus)    || 0;
+    if (raw.defenseBonus            !== undefined) act.defenseBonus            = Number(raw.defenseBonus)   || 0;
+    if (raw.weaponModifier          !== undefined) act.weaponModifier          = Number(raw.weaponModifier) || 0;
+    if (raw.requiredBuild           !== undefined) act.requiredBuild           = Number(raw.requiredBuild)  || 0;
+    if (raw.damageCategory          !== undefined) act.damageCategory          = raw.damageCategory;
+    if (raw.fireRate                !== undefined) act.fireRate                = Number(raw.fireRate)       || 0;
+    if (raw.rangedSubtype           !== undefined) act.rangedSubtype           = raw.rangedSubtype;
+    if (raw.jamming                 !== undefined) act.jamming                 = Number(raw.jamming)        || 20;
+    if (raw.range                   !== undefined) act.range                   = raw.range;
     if (raw.damage1                 !== undefined) act.damage1                 = raw.damage1;
     if (raw.damage2                 !== undefined) act.damage2                 = raw.damage2;
     if (raw.damage3                 !== undefined) act.damage3                 = raw.damage3;
     if (raw.damage                  !== undefined) act.damage                  = raw.damage;
     if (raw.piercing                !== undefined) act.piercing                = raw.piercing;
-    if (raw.jamming                 !== undefined) act.jamming                 = raw.jamming;
     act.testRequired  = raw.testRequired === true || raw.testRequired === "true" || raw.testRequired === "on";
     act.testIsOpen    = raw.testIsOpen   === true || raw.testIsOpen   === "true" || raw.testIsOpen   === "on";
     if (raw.testType                !== undefined) act.testType                = raw.testType;
@@ -536,5 +610,27 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (deleteAlso === true) {
       await this.item.effects.get(effectId)?.delete();
     }
+  }
+
+  static async _onAddBlastZone(event, target) {
+    const activities = foundry.utils.deepClone(this.item.system.activities ?? []);
+    const idx = activities.findIndex(a => a.id === this.activityId);
+    if (idx < 0) return;
+    const zones = activities[idx].blastZones ?? [];
+    zones.push({ radius: 1, damage: "L", knockdown: false, shrapnel: 0 });
+    activities[idx].blastZones = zones;
+    await this.item.update({ "system.activities": activities });
+  }
+
+  static async _onRemoveBlastZone(event, target) {
+    const zoneIndex = parseInt(target.closest("[data-zone-index]")?.dataset.zoneIndex ?? target.dataset.zoneIndex);
+    if (isNaN(zoneIndex)) return;
+    const activities = foundry.utils.deepClone(this.item.system.activities ?? []);
+    const idx = activities.findIndex(a => a.id === this.activityId);
+    if (idx < 0) return;
+    const zones = activities[idx].blastZones ?? [];
+    zones.splice(zoneIndex, 1);
+    activities[idx].blastZones = zones;
+    await this.item.update({ "system.activities": activities });
   }
 }

@@ -1620,7 +1620,7 @@
                 "Segment": "Segmenty",
                 "Success": "Sukcesy"
             },
-            "SegmentCost": "Koszt segmentów",
+            "SegmentCost": "Koszt",
             "SuccessCost": "Koszt sukcesów",
             "Activities": "Aktywności",
             "AddActivity": "Dodaj aktywność",
@@ -1650,6 +1650,7 @@
                 "PickIcon": "Wybierz ikonę aktywności",
                 "TabIdentity": "Tożsamość",
                 "TabActivation": "Aktywacja",
+                "TabDescription": "Opis efektu",
                 "ActivityNotFound": "Nie znaleziono aktywności.",
                 "LinkedEffects": "Powiązane efekty",
                 "ItemEffects": "Efekty itemu (niepowiązane)",
@@ -1664,6 +1665,7 @@
                 "SelectEffect": "— Powiąż istniejący efekt —",
                 "HintSuccess": "Ta aktywność pojawia się w oknie wydawania sukcesów po wygraniu wymiany.",
                 "HintSegment": "Ta aktywność jest dostępna podczas tury bestii — nie pojawia się w wydawaniu sukcesów.",
+                "HintAction": "Typ Akcja — wydanie segmentów postuje kartę na chat bez rzutu na atak.",
                 "RequiredTest": "Wymóg testu",
                 "TestRequired": "Wymagaj rzutu od celu",
                 "TestType": "Typ testu",
@@ -1683,8 +1685,13 @@
             "Label": "Segmenty Bestii",
             "None": "Brak akcji segmentowych.",
             "RollAction": "Rzut akcją segmentową bestii",
-            "SegmentCost": "Koszt segmentów",
+            "SegmentCost": "Koszt",
             "WeaponType": "Typ ataku",
+            "WeaponTypeNone": "Brak (bez ataku)",
+            "CombatStats": "Statystyki walki",
+            "ActionCard": {
+                "Uses": "używa akcji segmentowej"
+            },
             "Range": "Zasięg (m)",
             "Activities": "Aktywności segmentowe",
             "NoActivities": "Brak zdefiniowanych aktywności segmentowych."
@@ -1692,13 +1699,17 @@
         "BeastActivity": {
             "Summary": "Opis skrócony",
             "SummaryPlaceholder": "Krótki opis widoczny na karcie walki…",
-            "GmNote": "Notatka MG (opis efektu)",
+            "GmNote": "Opis efektu",
             "GmNotePlaceholder": "Pełny opis efektu/reguły widoczny przy wyborze akcji…",
             "SkillModeLabel": "Tryb rzutu",
             "SkillMode": {
                 "Experience": "Doświadczenie",
                 "Skill": "Umiejętność",
                 "None": "Bez rzutu (auto)"
+            },
+            "ActionType": {
+                "Action": "Akcja",
+                "Attack": "Atak"
             }
         },
         "Vehicle": {

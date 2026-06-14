@@ -1,9 +1,9 @@
 <div class="armor-mod-details">
 
     {{!-- Bazowe: left = Kategoria/Typ, right = Waga/Koszt --}}
-    <div class="secondary-box weapon-mod-bazowe" style="margin-bottom: 8px;">
-        <label class="section-label">{{localize "NEUROSHIMA.Mods.Sections.Basic"}}</label>
-        <div class="flexrow" style="gap: 12px; align-items: flex-start; margin-top: 4px;">
+    <fieldset class="weapon-mod-bazowe" style="margin-bottom: 8px;">
+        <legend>{{localize "NEUROSHIMA.Mods.Sections.Basic"}}</legend>
+        <div class="flexrow" style="gap: 12px; align-items: flex-start;">
 
             {{!-- Left: Kategoria, Typ --}}
             <div class="flexcol" style="flex: 1; gap: 4px;">
@@ -42,13 +42,13 @@
             </div>
 
         </div>
-    </div>
+    </fieldset>
 
     {{#if (eq system.category "modification")}}
     <div class="stats-grid flexrow">
 
-        <div class="armor-ratings-table flex2">
-            <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.Rating"}}</label>
+        <fieldset class="armor-ratings-table flex2">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.Rating"}}</legend>
             <div class="grid grid-2col">
                 <div class="form-group row-group">
                     <label>{{localize "NEUROSHIMA.Items.Fields.Head"}}</label>
@@ -75,37 +75,35 @@
                     <input type="number" name="system.deltaRightLeg" value="{{system.deltaRightLeg}}" data-dtype="Number" step="0.5"/>
                 </div>
             </div>
-        </div>
+        </fieldset>
 
-        <div class="armor-secondary-stats flex1 flexcol">
-            <div class="item-features secondary-box" style="border: 1px solid var(--ns-border-main); border-radius: 5px; padding: 10px;">
-                <label class="section-label">{{localize "NEUROSHIMA.Tabs.Stats"}}</label>
-                <div class="grid grid-1col">
-                    <div class="form-group row-group">
-                        <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
-                        <input type="number" name="system.deltaRequiredBuild" value="{{system.deltaRequiredBuild}}" data-dtype="Number"/>
-                    </div>
-                    <div class="form-group row-group">
-                        <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
-                        <input type="number" name="system.deltaDurability" value="{{system.deltaDurability}}" data-dtype="Number"/>
-                    </div>
-                    <div class="form-group row-group">
-                        <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
-                        <input type="number" name="system.deltaPenalty" value="{{system.deltaPenalty}}" data-dtype="Number"/>
-                    </div>
-                    <div class="form-group row-group">
-                        <label title="{{localize 'NEUROSHIMA.Items.Fields.RadiationProtection'}}">{{localize "NEUROSHIMA.Items.Fields.RadiationProtectionAbbr"}}</label>
-                        <input type="number" name="system.deltaRadiationProtection" value="{{system.deltaRadiationProtection}}" data-dtype="Number"/>
-                    </div>
+        <fieldset class="armor-secondary-stats flex1">
+            <legend>{{localize "NEUROSHIMA.Tabs.Stats"}}</legend>
+            <div class="grid grid-1col">
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
+                    <input type="number" name="system.deltaRequiredBuild" value="{{system.deltaRequiredBuild}}" data-dtype="Number"/>
+                </div>
+                <div class="form-group row-group">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
+                    <input type="number" name="system.deltaDurability" value="{{system.deltaDurability}}" data-dtype="Number"/>
+                </div>
+                <div class="form-group row-group">
+                    <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
+                    <input type="number" name="system.deltaPenalty" value="{{system.deltaPenalty}}" data-dtype="Number"/>
+                </div>
+                <div class="form-group row-group">
+                    <label title="{{localize 'NEUROSHIMA.Items.Fields.RadiationProtection'}}">{{localize "NEUROSHIMA.Items.Fields.RadiationProtectionAbbr"}}</label>
+                    <input type="number" name="system.deltaRadiationProtection" value="{{system.deltaRadiationProtection}}" data-dtype="Number"/>
                 </div>
             </div>
-        </div>
+        </fieldset>
 
     </div>
 
     {{!-- Resistance deltas (non-physical damage categories) --}}
-    <div class="secondary-box armor-resistances-section" style="margin-top: 8px;">
-        <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.Resistances"}}</label>
+    <fieldset class="armor-resistances-section">
+        <legend>{{localize "NEUROSHIMA.Items.Fields.Resistances"}}</legend>
         <div class="resistance-table">
             <div class="resistance-table-header flexrow">
                 <span class="resistance-col-label" title="{{localize 'NEUROSHIMA.Items.Fields.DamageCategory'}}">{{localize "NEUROSHIMA.Items.Fields.DamageCategoryAbbr"}}</span>
@@ -134,7 +132,7 @@
             </div>
             {{/each}}
         </div>
-    </div>
+    </fieldset>
     {{/if}}
 
 </div>

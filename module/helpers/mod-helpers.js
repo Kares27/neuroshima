@@ -232,8 +232,7 @@ export function buildArmorWriteback(effective) {
  */
 export function getEffectiveArmorRatings(armorItem) {
   const base = armorItem.system?.armor?.ratings ?? {};
-  const mods = buildInstalledMap(armorItem);
-  const result = {
+  return {
     head:     base.head     ?? 0,
     torso:    base.torso    ?? 0,
     leftArm:  base.leftArm  ?? 0,
@@ -241,16 +240,6 @@ export function getEffectiveArmorRatings(armorItem) {
     leftLeg:  base.leftLeg  ?? 0,
     rightLeg: base.rightLeg ?? 0
   };
-  for (const [key, snap] of Object.entries(mods)) {
-    if (key.startsWith("__") || !snap.attached) continue;
-    result.head     += (snap.deltaHead     ?? 0);
-    result.torso    += (snap.deltaTorso    ?? 0);
-    result.leftArm  += (snap.deltaLeftArm  ?? 0);
-    result.rightArm += (snap.deltaRightArm ?? 0);
-    result.leftLeg  += (snap.deltaLeftLeg  ?? 0);
-    result.rightLeg += (snap.deltaRightLeg ?? 0);
-  }
-  return result;
 }
 
 /**
@@ -302,15 +291,7 @@ export function getEffectiveArmorResistances(armorItem) {
  * @returns {number}
  */
 export function getEffectiveWeight(item) {
-  const mods = buildInstalledMap(item);
-  let base = item.system?.weight ?? 0;
-  if (item.type === "armor") {
-    for (const [key, snap] of Object.entries(mods)) {
-      if (key.startsWith("__") || !snap.attached) continue;
-      base += (snap.deltaWeight ?? 0);
-    }
-  }
-  return base;
+  return item.system?.weight ?? 0;
 }
 
 /**

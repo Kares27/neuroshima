@@ -70,7 +70,8 @@
             </div>
 
             {{#if system.isPellet}}
-            <div class="pellet-section secondary-box">
+            <fieldset class="pellet-section">
+                <legend>{{localize "NEUROSHIMA.Items.Fields.PelletRanges"}}</legend>
                 {{#if usePelletCountLimit}}
                 <div class="form-group pellet-count-row">
                     <label>{{localize "NEUROSHIMA.Items.Fields.PelletCount"}}</label>
@@ -78,7 +79,6 @@
                 </div>
                 <hr>
                 {{/if}}
-                <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.PelletRanges"}}</label>
                 <div class="pellet-ranges-table">
                     <div class="pellet-header flexrow">
                         <span class="range-col">{{localize "NEUROSHIMA.Items.Fields.Distance"}} (m)</span>
@@ -109,7 +109,7 @@
                         </select>
                     </div>
                 </div>
-            </div>
+            </fieldset>
             {{/if}}
         </div>
     </div>

@@ -8,67 +8,65 @@
         {{/if}}
         <div class="stats-grid flexrow">
             {{!-- Left: Armor Ratings (2 cols, 3 rows) --}}
-            <div class="armor-ratings-table flex2">
-                <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.Rating"}}</label>
+            <fieldset class="armor-ratings-table flex2">
+                <legend>{{localize "NEUROSHIMA.Items.Fields.Rating"}}</legend>
                 <div class="grid grid-2col">
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.Head"}}</label>
-                        <input type="number" name="system.armor.ratings.head" value="{{#if isModded}}{{effectiveArmorRatings.head}}{{else}}{{system.armor.ratings.head}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.head}}"{{/if}}/>
+                        <input type="number" name="system.armor.ratings.head" value="{{#if isModded}}{{effectiveArmorRatings.head}}{{else}}{{system.armor.ratings.head}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{baseArmorRatings.head}}"{{/if}}/>
                     </div>
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.Torso"}}</label>
-                        <input type="number" name="system.armor.ratings.torso" value="{{#if isModded}}{{effectiveArmorRatings.torso}}{{else}}{{system.armor.ratings.torso}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.torso}}"{{/if}}/>
+                        <input type="number" name="system.armor.ratings.torso" value="{{#if isModded}}{{effectiveArmorRatings.torso}}{{else}}{{system.armor.ratings.torso}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{baseArmorRatings.torso}}"{{/if}}/>
                     </div>
                     
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.LeftArm"}}</label>
-                        <input type="number" name="system.armor.ratings.leftArm" value="{{#if isModded}}{{effectiveArmorRatings.leftArm}}{{else}}{{system.armor.ratings.leftArm}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.leftArm}}"{{/if}}/>
+                        <input type="number" name="system.armor.ratings.leftArm" value="{{#if isModded}}{{effectiveArmorRatings.leftArm}}{{else}}{{system.armor.ratings.leftArm}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{baseArmorRatings.leftArm}}"{{/if}}/>
                     </div>
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.RightArm"}}</label>
-                        <input type="number" name="system.armor.ratings.rightArm" value="{{#if isModded}}{{effectiveArmorRatings.rightArm}}{{else}}{{system.armor.ratings.rightArm}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.rightArm}}"{{/if}}/>
+                        <input type="number" name="system.armor.ratings.rightArm" value="{{#if isModded}}{{effectiveArmorRatings.rightArm}}{{else}}{{system.armor.ratings.rightArm}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{baseArmorRatings.rightArm}}"{{/if}}/>
                     </div>
 
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.LeftLeg"}}</label>
-                        <input type="number" name="system.armor.ratings.leftLeg" value="{{#if isModded}}{{effectiveArmorRatings.leftLeg}}{{else}}{{system.armor.ratings.leftLeg}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.leftLeg}}"{{/if}}/>
+                        <input type="number" name="system.armor.ratings.leftLeg" value="{{#if isModded}}{{effectiveArmorRatings.leftLeg}}{{else}}{{system.armor.ratings.leftLeg}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{baseArmorRatings.leftLeg}}"{{/if}}/>
                     </div>
                     <div class="form-group row-group">
                         <label>{{localize "NEUROSHIMA.Items.Fields.RightLeg"}}</label>
-                        <input type="number" name="system.armor.ratings.rightLeg" value="{{#if isModded}}{{effectiveArmorRatings.rightLeg}}{{else}}{{system.armor.ratings.rightLeg}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{system.armor.ratings.rightLeg}}"{{/if}}/>
+                        <input type="number" name="system.armor.ratings.rightLeg" value="{{#if isModded}}{{effectiveArmorRatings.rightLeg}}{{else}}{{system.armor.ratings.rightLeg}}{{/if}}" data-dtype="Number" min="0" {{#if isModded}}disabled title="Bazowo: {{baseArmorRatings.rightLeg}}"{{/if}}/>
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
-            {{!-- Right: Durability and Penalty (Single Box) --}}
-            <div class="armor-secondary-stats flex1 flexcol">
-                <div class="item-features secondary-box">
-                    <label class="section-label">{{localize "NEUROSHIMA.Tabs.Stats"}}</label>
-                    <div class="grid grid-1col">
-                        <div class="form-group row-group">
-                            <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
-                            <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="-100" max="100" {{#if isModded}}disabled{{/if}}/>
-                        </div>
-                        <div class="form-group row-group">
-                            <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
-                            <input type="number" name="system.armor.durability" value="{{system.armor.durability}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
-                        </div>
-                        <div class="form-group row-group">
-                            <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
-                            <input type="number" name="system.armor.penalty" value="{{system.armor.penalty}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
-                        </div>
-                        <div class="form-group row-group">
-                            <label title="{{localize 'NEUROSHIMA.Items.Fields.RadiationProtection'}}">{{localize "NEUROSHIMA.Items.Fields.RadiationProtectionAbbr"}}</label>
-                            <input type="number" name="system.armor.radiationProtection" value="{{system.armor.radiationProtection}}" data-dtype="Number" {{#if isModded}}disabled{{/if}}/>
-                        </div>
+            {{!-- Right: Durability and Penalty --}}
+            <fieldset class="armor-secondary-stats flex1">
+                <legend>{{localize "NEUROSHIMA.Tabs.Stats"}}</legend>
+                <div class="grid grid-1col">
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.RequiredBuild"}}</label>
+                        <input type="number" name="system.armor.requiredBuild" value="{{system.armor.requiredBuild}}" data-dtype="Number" min="-100" max="100" {{#if isModded}}disabled{{/if}}/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label title="{{localize 'NEUROSHIMA.Items.Fields.Durability'}}">{{localize "NEUROSHIMA.Items.Fields.DurabilityAbbr"}}</label>
+                        <input type="number" name="system.armor.durability" value="{{system.armor.durability}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label>{{localize "NEUROSHIMA.Items.Fields.ArmorPenalty"}}</label>
+                        <input type="number" name="system.armor.penalty" value="{{system.armor.penalty}}" data-dtype="Number" min="0" {{#if isModded}}disabled{{/if}}/>
+                    </div>
+                    <div class="form-group row-group">
+                        <label title="{{localize 'NEUROSHIMA.Items.Fields.RadiationProtection'}}">{{localize "NEUROSHIMA.Items.Fields.RadiationProtectionAbbr"}}</label>
+                        <input type="number" name="system.armor.radiationProtection" value="{{system.armor.radiationProtection}}" data-dtype="Number" {{#if isModded}}disabled{{/if}}/>
                     </div>
                 </div>
-            </div>
+            </fieldset>
         </div>
 
         {{!-- Resistance rows (non-physical damage categories) --}}
-        <div class="secondary-box armor-resistances-section" style="margin-top: 8px;">
-            <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.Resistances"}}</label>
+        <fieldset class="armor-resistances-section">
+            <legend>{{localize "NEUROSHIMA.Items.Fields.Resistances"}}</legend>
             <div class="resistance-table">
                 <div class="resistance-table-header flexrow">
                     <span class="resistance-col-label" title="{{localize 'NEUROSHIMA.Items.Fields.DamageCategory'}}">{{localize "NEUROSHIMA.Items.Fields.DamageCategoryAbbr"}}</span>
@@ -112,7 +110,7 @@
                 {{/each}}
                 {{/if}}
             </div>
-        </div>
+        </fieldset>
     {{/if}}
 
     {{#if (eq item.type "weapon")}}

@@ -372,7 +372,34 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           : (item.system.activities ?? [])[0];
         if (!act) return;
 
-        const actor      = this.document;
+        const actor = this.document;
+
+        if ((act.actionType ?? "attack") === "action") {
+          const effects = (act.effectIds ?? [])
+            .map(id => item.effects.get(id))
+            .filter(Boolean)
+            .map(e => ({ name: e.name, img: e.img || "icons/svg/aura.svg" }));
+          const content = await foundry.applications.handlebars.renderTemplate(
+            "systems/neuroshima/templates/chat/beast-segment-action-card.hbs",
+            {
+              actorName:    actor.name,
+              actorImg:     actor.img,
+              activityName: act.name || item.name,
+              activityImg:  act.img || item.img || "icons/svg/combat.svg",
+              summary:      act.summary || "",
+              gmNote:       act.gmNote  || "",
+              effects
+            }
+          );
+          const rollMode = game.settings.get("core", "rollMode");
+          await ChatMessage.create({
+            content,
+            speaker: ChatMessage.getSpeaker({ actor }),
+            rollMode
+          });
+          return;
+        }
+
         const attrKey    = act.attribute || item.system?.attribute || "dexterity";
         const weaponType = act.weaponType || "melee";
 
@@ -387,17 +414,22 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
             weaponType,
             attribute: attrKey,
             skill: "experience",
-            attackBonus: 0,
-            defenseBonus: 0,
+            attackBonus:    act.attackBonus    ?? 0,
+            defenseBonus:   act.defenseBonus   ?? 0,
+            weaponModifier: act.weaponModifier  ?? 0,
+            requiredBuild:  act.requiredBuild   ?? 0,
+            damageCategory: act.damageCategory || "physical",
             damageMelee1: isMeleeAct ? (act.damage1 || fallbackDmg) : fallbackDmg,
             damageMelee2: isMeleeAct ? (act.damage2 || fallbackDmg) : fallbackDmg,
             damageMelee3: isMeleeAct ? (act.damage3 || fallbackDmg) : fallbackDmg,
             damageRanged: fallbackDmg,
             damage:       fallbackDmg,
-            requiredBuild: 0,
-            piercing: act.piercing ?? 0,
+            rangedSubtype: act.rangedSubtype || "pistols",
+            fireRate:      act.fireRate      ?? 0,
+            piercing:      act.piercing      ?? 0,
             magazine: null,
-            jamming: act.jamming ?? 20
+            jamming:  act.jamming ?? 20,
+            skipMagazineCheck: true
           }
         };
 
@@ -446,7 +478,31 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
           }
         }
 
-        const rollType = (weaponType === "ranged" || weaponType === "thrown" || weaponType === "grenade") ? weaponType : "melee";
+        if (weaponType === "grenade") {
+          const grenadeWeapon = {
+            id:     item.id,
+            name:   act.name || item.name,
+            img:    act.img  || item.img,
+            type:   "weapon",
+            actor:  null,
+            system: {
+              weaponType:        "grenade",
+              attribute:         attrKey,
+              skill:             "throwing",
+              damageCategory:    act.damageCategory || "physical",
+              freeThrowDistance: act.freeThrowDistance ?? 10,
+              useBuildBonus:     act.useBuildBonus !== false,
+              blastZones:        act.blastZones ?? [],
+              skipMagazineCheck: true
+            }
+          };
+          const { NeuroshimaGrenadeRollDialog } = await import("../apps/dialogs/grenade-roll-dialog.js");
+          const grenadeDialog = new NeuroshimaGrenadeRollDialog({ actor, weapon: grenadeWeapon });
+          grenadeDialog.render(true);
+          return;
+        }
+
+        const rollType = (weaponType === "ranged" || weaponType === "thrown") ? weaponType : "melee";
         const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
         const dialog = new NeuroshimaWeaponRollDialog({ actor, weapon: syntheticWeapon, rollType });
         dialog.render(true);

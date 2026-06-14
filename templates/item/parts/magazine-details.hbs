@@ -17,9 +17,8 @@
     </div>
 
     {{#if system.contents.length}}
-    <hr>
-    <div class="magazine-contents-section">
-        <label class="section-label">{{localize "NEUROSHIMA.Items.Fields.MagazineContents"}}</label>
+    <fieldset class="magazine-contents-section">
+        <legend>{{localize "NEUROSHIMA.Items.Fields.MagazineContents"}}</legend>
         <div class="contents-list-items ammo-stack">
             {{#each displayContents as |stack|}}
             <div class="content-stack flexrow" title="{{stack.tooltip}}">
@@ -28,6 +27,6 @@
             </div>
             {{/each}}
         </div>
-    </div>
+    </fieldset>
     {{/if}}
 </div>

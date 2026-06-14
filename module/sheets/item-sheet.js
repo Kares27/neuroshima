@@ -561,6 +561,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
       if (context.isModded) {
         context.effectiveArmorRatings = getEffectiveArmorRatings(item);
+        context.baseArmorRatings = modsRaw.__baseStats ?? {};
         context.effectiveWeight = getEffectiveWeight(item);
         context.effectiveCost   = getEffectiveCost(item);
       }

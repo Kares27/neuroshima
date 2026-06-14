@@ -304,7 +304,7 @@ export class NeuroshimaDice {
     const isThrown = weapon.system.weaponType === "thrown";
 
     // Validate ammo availability for ranged weapons
-    if ((isRanged || isThrown) && !magazine) {
+    if ((isRanged || isThrown) && !magazine && !weapon.system.skipMagazineCheck) {
         ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoMagazineSelected"));
         game.neuroshima.log("Rzut przerwany: brak wybranego magazynka");
         game.neuroshima.groupEnd();
@@ -403,6 +403,19 @@ export class NeuroshimaDice {
                 bulletsFired = 0;
             }
         }
+    }
+
+    if (bulletSequence.length === 0 && bulletsFired > 0 && weapon.system.skipMagazineCheck) {
+        const beastBullet = {
+            name: weapon.name,
+            damage: weapon.system.damage || "D",
+            piercing: weapon.system.piercing || 0,
+            jamming: weapon.system.jamming || 20,
+            isPellet: false,
+            pelletCount: 1,
+            pelletRanges: null
+        };
+        bulletSequence = Array.from({ length: bulletsFired }, () => ({ ...beastBullet }));
     }
 
     // 5. Compute skill value and success threshold (must run before jam triggers)

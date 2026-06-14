@@ -1,10 +1,10 @@
 <div class="weapon-mod-details">
 
     {{!-- Bazowe: Row1 = 3col (Kategoria/Typ/Modyfikator), Row2 = 2col (ATK/OBR), Row3 = 2col (Waga/Koszt), Row4 = 2col (PP/Budowa) --}}
-    <div class="secondary-box weapon-mod-bazowe">
-        <label class="section-label">{{localize "NEUROSHIMA.Mods.Sections.Basic"}}</label>
+    <fieldset class="weapon-mod-bazowe">
+        <legend>{{localize "NEUROSHIMA.Mods.Sections.Basic"}}</legend>
 
-        <div class="flexcol" style="gap: 4px; margin-top: 4px;">
+        <div class="flexcol" style="gap: 4px;">
 
             {{!-- Row 1: Kategoria | Typ | Modyfikator --}}
             <div class="grid grid-3col">
@@ -97,7 +97,7 @@
             {{/if}}
 
         </div>
-    </div>
+    </fieldset>
 
     {{#if (eq system.category "modification")}}
 

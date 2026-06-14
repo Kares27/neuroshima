@@ -1,0 +1,30 @@
+<div class="neuroshima beast-segment-action-card">
+
+  <header class="bsac-header">
+    <img class="bsac-actor-img" src="{{actorImg}}" width="36" height="36" alt="{{actorName}}"/>
+    <div class="bsac-header-center">
+      <span class="bsac-actor-name">{{actorName}}</span>
+      <span class="bsac-uses-label">{{localize "NEUROSHIMA.BeastSegment.ActionCard.Uses"}}</span>
+      <span class="bsac-activity-name">{{activityName}}</span>
+    </div>
+    <img class="bsac-activity-img" src="{{activityImg}}" width="36" height="36" alt="{{activityName}}"/>
+  </header>
+
+  {{#if gmNote}}
+  <hr class="dotted-hr">
+  <div class="bsac-gmnote">{{{gmNote}}}</div>
+  {{/if}}
+
+  {{#if effects.length}}
+  <hr class="dotted-hr">
+  <div class="bsac-effects">
+    {{#each effects}}
+    <div class="bsac-effect-row">
+      <img src="{{this.img}}" width="14" height="14" alt="{{this.name}}"/>
+      <span class="bsac-effect-name">{{this.name}}</span>
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+</div>
