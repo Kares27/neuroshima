@@ -211,10 +211,11 @@ export class MeleeEncounter {
   static async end(id) {
     const encounter = MeleeStore.getEncounter(id);
     if (encounter) {
+      const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+      game.neuroshima?.log("[MeleeEncounter.end] clearing maneuver conditions for all participants", { id });
       for (const p of Object.values(encounter.participants)) {
-        const doc = fromUuidSync(p.actorUuid);
-        const actor = doc?.actor || doc;
-        if (actor) await MeleeTurnService._clearManeuverConditions(actor);
+        game.neuroshima?.log("[MeleeEncounter.end] clearing", { name: p.name, uuid: p.tokenUuid ?? p.actorUuid });
+        await NeuroshimaSocket.gmExecute("clearActorManeuverConditions", p.tokenUuid ?? p.actorUuid);
       }
     }
     await MeleeStore.removeEncounter(id);

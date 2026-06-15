@@ -529,6 +529,7 @@ export class MeleeVanillaChat {
       crowdingDexPenalty,
       onClose: () => {},
       onRoll: async (rollResult) => {
+        game.neuroshima?.log("[melee-vanilla-chat.onRoll] callback fired", { encounterId, participantId, maneuver: rollResult?.maneuver, tempoLevel: rollResult?.tempoLevel });
         if (!rollResult) return;
         const toNum = r => typeof r === "object"
           ? (r.value ?? r.result ?? r.original ?? Number(r))

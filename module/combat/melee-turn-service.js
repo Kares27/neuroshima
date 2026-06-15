@@ -54,8 +54,13 @@ export class MeleeTurnService {
   static async _clearManeuverConditions(actor) {
     if (!actor) return;
     if (!game.user.isGM && !actor.isOwner) return;
-    for (const key of this._MANEUVER_CONDITION_KEYS) {
-      try { await actor.removeCondition(key); } catch { /* noop */ }
+    const keysToRemove = new Set(this._MANEUVER_CONDITION_KEYS);
+    const toDelete = actor.effects
+      .filter(e => [...(e.statuses || [])].some(s => keysToRemove.has(s)))
+      .map(e => e.id);
+    game.neuroshima?.log("[MeleeTurnService._clearManeuverConditions]", { name: actor.name, effectsFound: toDelete.length, toDelete });
+    if (toDelete.length > 0) {
+      try { await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete); } catch { /* noop */ }
     }
   }
 
@@ -96,36 +101,52 @@ export class MeleeTurnService {
     const p = encounter.participants[participantId];
     if (!p) return;
 
-    const doc = fromUuidSync(p.actorUuid);
-    const actor = doc?.actor || doc;
-
     // Tempo is a shared effect — always take the max across all active participants.
     const effectiveTempo = Math.max(
       0, ...Object.values(encounter.participants).map(q => q.tempoLevel ?? 0)
     );
 
-    const _syncOne = async (participant, participantActor) => {
-      if (!participantActor) return;
-      if (!game.user.isGM && !participantActor.isOwner) return;
-      await this._clearManeuverConditions(participantActor);
-      const condKey = this._MANEUVER_TO_CONDITION[participant.maneuver];
-      if (condKey) await participantActor.addCondition(condKey).catch(() => {});
-      // Szarża condition: show as long as chargeLevel > 0 (turn 1 only).
-      if ((participant.chargeLevel ?? 0) > 0) await participantActor.addCondition("maneuver-charge").catch(() => {});
-      // Tempo condition: int value = effective level (for display and potential script use).
-      if (effectiveTempo > 0) await participantActor.addCondition("maneuver-pace", effectiveTempo).catch(() => {});
+    game.neuroshima?.log("[MeleeTurnService._applyParticipantManeuverConditions] start", {
+      participantId, name: p.name, maneuver: p.maneuver, tempoLevel: p.tempoLevel,
+      chargeLevel: p.chargeLevel, effectiveTempo, tokenUuid: p.tokenUuid, actorUuid: p.actorUuid
+    });
+
+    // Always route through GM socket so conditions are applied regardless of which
+    // client triggered setPool (player may not own the opponent actor).
+    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+
+    const _syncOne = async (participant) => {
+      const condKey = this._MANEUVER_TO_CONDITION[participant.maneuver] || null;
+      const hasCharge = (participant.chargeLevel ?? 0) > 0;
+      const resolveUuid = participant.tokenUuid ?? participant.actorUuid;
+      game.neuroshima?.log("[MeleeTurnService._syncOne] dispatching socket", {
+        name: participant.name, resolveUuid, condKey, hasCharge, effectiveTempo
+      });
+      await NeuroshimaSocket.gmExecute(
+        "syncActorManeuverConditions",
+        resolveUuid, condKey, hasCharge, effectiveTempo
+      );
     };
 
-    await _syncOne(p, actor);
+    await _syncOne(p);
 
-    // Push tempo condition to the opponent as well (they share the raised PT).
-    const opponentId = encounter.primaryTargets?.[participantId];
-    const opponent = opponentId ? encounter.participants[opponentId] : null;
-    if (opponent) {
-      const opDoc = fromUuidSync(opponent.actorUuid);
-      const opActor = opDoc?.actor || opDoc;
-      await _syncOne(opponent, opActor);
+    // Push conditions to the primary opponent as well — tempo raises PT for BOTH.
+    // primaryTargets may be null at the start of turn 2+ (reset by startNewTurn before
+    // allRolled re-fills them), so fall back to the teams structure for 1v1 encounters.
+    let opponentId = encounter.primaryTargets?.[participantId] ?? null;
+    if (!opponentId) {
+      const myParticipant = encounter.participants[participantId];
+      if (myParticipant) {
+        const opposingTeam = myParticipant.team === "A" ? "B" : "A";
+        const opponents = (encounter.teams[opposingTeam] || []).filter(id => encounter.participants[id]?.isActive);
+        if (opponents.length === 1) opponentId = opponents[0];
+      }
     }
+    const opponent = opponentId ? encounter.participants[opponentId] : null;
+    game.neuroshima?.log("[MeleeTurnService._applyParticipantManeuverConditions] opponent", {
+      opponentId, opponentName: opponent?.name ?? null
+    });
+    if (opponent) await _syncOne(opponent);
   }
 
   /**
@@ -212,11 +233,13 @@ export class MeleeTurnService {
     // we strip them from every active participant so the token HUD always reflects the
     // current (not previous) turn's maneuver choice.
     // NOTE: chargeLevel is also reset to 0 above — Szarża only applies to the first turn.
+    // Routing through GM socket so non-GM players can clear conditions on actors they don't own.
+    const { NeuroshimaSocket: _NS1 } = await import("../helpers/socket-helper.js");
+    game.neuroshima?.log("[MeleeTurnService.startNewTurn] clearing maneuver conditions for all active participants");
     for (const p of Object.values(updated.participants)) {
       if (!p.isActive) continue;
-      const doc = fromUuidSync(p.actorUuid);
-      const actor = doc?.actor || doc;
-      if (actor) await this._clearManeuverConditions(actor);
+      game.neuroshima?.log("[MeleeTurnService.startNewTurn] clearing", { name: p.name, uuid: p.tokenUuid ?? p.actorUuid });
+      await _NS1.gmExecute("clearActorManeuverConditions", p.tokenUuid ?? p.actorUuid);
     }
   }
 
@@ -236,12 +259,19 @@ export class MeleeTurnService {
    * @param {{isSuccess:boolean,isNat20:boolean}[]|null} dieResults  Per-die success flags pre-computed by rollWeaponTest
    */
   static async setPool(id, participantId, results, maneuver = "none", tempoLevel = 0, attributeBonus = 0, modifiedPool = null, skillBudget = 0, rollTarget = null, meleeAction = "attack", dieResults = null, damageShift = 0) {
+    game.neuroshima?.log("[MeleeTurnService.setPool] called", { id, participantId, maneuver, tempoLevel, meleeAction, results });
     const encounter = MeleeStore.getEncounter(id);
-    if (!encounter) return;
+    if (!encounter) {
+      game.neuroshima?.log("[MeleeTurnService.setPool] encounter not found, aborting", { id });
+      return;
+    }
 
     const updated = foundry.utils.deepClone(encounter);
     const p = updated.participants[participantId];
-    if (!p) return;
+    if (!p) {
+      game.neuroshima?.log("[MeleeTurnService.setPool] participant not found, aborting", { participantId, available: Object.keys(updated.participants) });
+      return;
+    }
 
     // Fetch actor to read weapon bonuses for snapshot
     const doc = fromUuidSync(p.actorUuid);
@@ -273,13 +303,22 @@ export class MeleeTurnService {
         // Use the exact target that rollWeaponTest computed (correctly converts
         // % armor/wound penalties → difficulty mod, adds weapon bonus, etc.)
         // The roll was made for one action (attack or defense); derive the other
-        // by swapping the weapon bonus component.
+        // by swapping the weapon bonus component AND correcting for the maneuver
+        // bonus that only applies to one action direction:
+        //   fury      → +2 on attack only  (subtract 2 when deriving defense from attack roll,
+        //                                   add 2 when deriving attack from defense roll)
+        //   fullDefense → +2 on defense only (subtract 2 when deriving attack from defense roll,
+        //                                     add 2 when deriving defense from attack roll)
         if (meleeAction === "defense") {
           p.defenseTargetSnapshot = rollTarget;
-          p.attackTargetSnapshot = rollTarget - p.defenseBonusSnapshot + p.attackBonusSnapshot;
+          const maneuverCorrection = (maneuver === "fullDefense") ? -2
+            : (maneuver === "fury" || maneuver === "furia") ? 2 : 0;
+          p.attackTargetSnapshot = rollTarget - p.defenseBonusSnapshot + p.attackBonusSnapshot + maneuverCorrection;
         } else {
           p.attackTargetSnapshot = rollTarget;
-          p.defenseTargetSnapshot = rollTarget - p.attackBonusSnapshot + p.defenseBonusSnapshot;
+          const maneuverCorrection = (maneuver === "fury" || maneuver === "furia") ? -2
+            : (maneuver === "fullDefense") ? 2 : 0;
+          p.defenseTargetSnapshot = rollTarget - p.attackBonusSnapshot + p.defenseBonusSnapshot + maneuverCorrection;
         }
       } else {
         // ── Fallback (no target passed, or increasedTempo) ─────────────────
@@ -730,11 +769,12 @@ export class MeleeTurnService {
     // MANEUVER — Trash collector (prevTurn / GM rewind):
     // Same cleanup as startNewTurn — maneuver conditions are reset so the rewound
     // turn starts with a clean slate.
+    const { NeuroshimaSocket: _NS2 } = await import("../helpers/socket-helper.js");
+    game.neuroshima?.log("[MeleeTurnService.prevTurn] clearing maneuver conditions for all active participants");
     for (const p of Object.values(updated.participants)) {
       if (!p.isActive) continue;
-      const doc = fromUuidSync(p.actorUuid);
-      const actor = doc?.actor || doc;
-      if (actor) await this._clearManeuverConditions(actor);
+      game.neuroshima?.log("[MeleeTurnService.prevTurn] clearing", { name: p.name, uuid: p.tokenUuid ?? p.actorUuid });
+      await _NS2.gmExecute("clearActorManeuverConditions", p.tokenUuid ?? p.actorUuid);
     }
   }
 

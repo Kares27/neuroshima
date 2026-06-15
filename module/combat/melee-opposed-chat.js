@@ -56,6 +56,17 @@ export class MeleeOpposedChat {
       isPoolRoll: true,
       onRoll: async (rawResult) => {
         if (!rawResult) return;
+        const { NeuroshimaSocket: _NSAtk } = await import("../helpers/socket-helper.js");
+        const { MeleeTurnService: _MTSAtk } = await import("./melee-turn-service.js");
+        const attackerUuid = attacker.token?.uuid ?? attacker.uuid;
+        const condKey = _MTSAtk._MANEUVER_TO_CONDITION[rawResult.maneuver] || null;
+        const hasCharge = (rawResult.chargeLevel ?? 0) > 0;
+        const tempoLevel = rawResult.tempoLevel || 0;
+        game.neuroshima?.log("[melee-opposed-chat.initiateAttack.onRoll] applying conditions", { attackerUuid, condKey, hasCharge, tempoLevel, targetUuid });
+        await _NSAtk.gmExecute("syncActorManeuverConditions", attackerUuid, condKey, hasCharge, tempoLevel);
+        if (tempoLevel > 0) {
+          await _NSAtk.gmExecute("syncActorManeuverConditions", targetUuid, null, false, tempoLevel);
+        }
         await MeleeOpposedChat._createHandlerCard(rawResult, attacker, weapon, targetUuid, mode);
       },
       onClose: () => {}
@@ -178,6 +189,17 @@ export class MeleeOpposedChat {
       isPoolRoll: true,
       onRoll: async (rawResult) => {
         if (!rawResult) return;
+        const { NeuroshimaSocket: _NSDef } = await import("../helpers/socket-helper.js");
+        const { MeleeTurnService: _MTSDef } = await import("./melee-turn-service.js");
+        const defenderUuid = defenderActor.token?.uuid ?? defenderActor.uuid;
+        const condKey = _MTSDef._MANEUVER_TO_CONDITION[rawResult.maneuver] || null;
+        const tempoLevel = rawResult.tempoLevel || 0;
+        game.neuroshima?.log("[melee-opposed-chat.openDefenseDialog.onRoll] applying conditions", { defenderUuid, condKey, tempoLevel });
+        await _NSDef.gmExecute("syncActorManeuverConditions", defenderUuid, condKey, false, tempoLevel);
+        if (tempoLevel > 0) {
+          const atkUuid = data.attackerTokenUuid || data.attackerUuid;
+          await _NSDef.gmExecute("syncActorManeuverConditions", atkUuid, null, false, tempoLevel);
+        }
         await MeleeOpposedChat.resolveOpposed(messageId, pending, defenderActor, rawResult);
       },
       onClose: () => {}
@@ -203,6 +225,12 @@ export class MeleeOpposedChat {
 
     // Mark as resolved immediately (prevents double-click / double-response)
     await MeleeOpposedChat._setChatFlag(message, "opposedChat", { ...data, status: "resolved" });
+
+    // Clear maneuver conditions from both combatants now that the exchange is resolved.
+    const { NeuroshimaSocket: _NSResolve } = await import("../helpers/socket-helper.js");
+    game.neuroshima?.log("[melee-opposed-chat.resolveOpposed] clearing maneuver conditions", { attacker: data.attackerTokenUuid || data.attackerUuid, defender: data.defenderTokenUuid || data.defenderUuid });
+    await _NSResolve.gmExecute("clearActorManeuverConditions", data.attackerTokenUuid || data.attackerUuid);
+    await _NSResolve.gmExecute("clearActorManeuverConditions", data.defenderTokenUuid || data.defenderUuid);
 
     const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
     const attackerActor = attackerDoc?.actor ?? attackerDoc;
@@ -2259,6 +2287,16 @@ export class MeleeOpposedChat {
       isPoolRoll:  true,
       onRoll: async (defenseResult) => {
         if (!defenseResult) return;
+        const { NeuroshimaSocket: _NSHailDef } = await import("../helpers/socket-helper.js");
+        const { MeleeTurnService: _MTSHailDef } = await import("./melee-turn-service.js");
+        const defenderUuid = defenderActor.token?.uuid ?? defenderActor.uuid;
+        const condKey = _MTSHailDef._MANEUVER_TO_CONDITION[defenseResult.maneuver] || null;
+        const tempoLevel = defenseResult.tempoLevel || 0;
+        game.neuroshima?.log("[melee-opposed-chat.hailCard.onRoll] applying conditions", { defenderUuid, condKey, tempoLevel, attackerUuid: hailCard.attackerUuid });
+        await _NSHailDef.gmExecute("syncActorManeuverConditions", defenderUuid, condKey, false, tempoLevel);
+        if (tempoLevel > 0) {
+          await _NSHailDef.gmExecute("syncActorManeuverConditions", hailCard.attackerUuid, null, false, tempoLevel);
+        }
         await MeleeOpposedChat._resolveHailCard(message, hailCard, defenderActor, defenseResult);
       },
       onClose: () => {}
@@ -2269,6 +2307,12 @@ export class MeleeOpposedChat {
 
   static async _resolveHailCard(message, hailCard, defenderActor, defenseResult) {
     await MeleeOpposedChat._setChatFlag(message, "hailCard", { ...hailCard, status: "resolved" });
+
+    const { NeuroshimaSocket: _NSHailResolve } = await import("../helpers/socket-helper.js");
+    const defenderUuid = defenderActor.token?.uuid ?? defenderActor.uuid;
+    game.neuroshima?.log("[melee-opposed-chat._resolveHailCard] clearing maneuver conditions", { attacker: hailCard.attackerUuid, defender: defenderUuid });
+    await _NSHailResolve.gmExecute("clearActorManeuverConditions", hailCard.attackerUuid);
+    await _NSHailResolve.gmExecute("clearActorManeuverConditions", defenderUuid);
 
     const attackDice  = hailCard.attackModified;
     const defenseDice = (defenseResult.modifiedResults || []).map(r => ({

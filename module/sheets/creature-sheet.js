@@ -751,7 +751,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         const type = target.dataset.conditionType;
         if (!key) return;
         if (type === "boolean") {
-          await this.document.toggleStatusEffect(key);
+          await this.document.toggleStatusEffect(key, { active: !this.document.hasCondition(key) });
         } else {
           if (event.button === 2 || event.type === "contextmenu") {
             await this.document.removeCondition(key);
@@ -1197,7 +1197,11 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
 
     context.effects = { temporary, passive, disabled, statusEffects };
 
-    context.conditionStates = condDefs.map(c => {
+    // Split conditions into two groups rendered in separate panels:
+    //   conditionStates       → general status effects (Stany)
+    //   combatConditionStates → maneuver / berserker states shown in "Stany w Walce"
+    const COMBAT_CONDITION_KEYS = new Set(["berserker", "maneuver-charge", "maneuver-fury", "maneuver-full-defense", "maneuver-pace"]);
+    const allConditionStates = condDefs.map(c => {
       const isInt = c.type === "int";
       let active, value;
       if (isInt) {
@@ -1216,7 +1220,13 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         active,
         value
       };
-    }).sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
+    });
+    context.conditionStates = allConditionStates
+      .filter(c => !COMBAT_CONDITION_KEYS.has(c.key))
+      .sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
+    context.combatConditionStates = allConditionStates
+      .filter(c => COMBAT_CONDITION_KEYS.has(c.key))
+      .sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
 
     context.itemManualScripts = this._prepareItemManualScripts(actor);
 
@@ -1400,6 +1410,36 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
       });
     });
 
+    // Condition value spans (int-type): LMB +1/+10, RMB -1/-10.
+    // These listeners are required here because creature-sheet ACTIONS.adjustConditionValue
+    // reads target.value (designed for <input> elements), whereas the template renders <span>
+    // elements with data-value. We update the span state manually then call _onAdjustConditionValue.
+    html.querySelectorAll('.condition-int-span').forEach(el => {
+      el.addEventListener('click', (event) => {
+        event.preventDefault();
+        const delta = event.ctrlKey ? 10 : 1;
+        const allowNeg = el.dataset.allowNegative === "true";
+        let val = parseInt(el.dataset.value, 10) || 0;
+        val += delta;
+        if (!allowNeg) val = Math.max(0, val);
+        el.dataset.value = val;
+        el.textContent = val;
+        this._onAdjustConditionValue(event, el);
+      });
+      el.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.ctrlKey ? 10 : 1;
+        const allowNeg = el.dataset.allowNegative === "true";
+        let val = parseInt(el.dataset.value, 10) || 0;
+        val -= delta;
+        if (!allowNeg) val = Math.max(0, val);
+        el.dataset.value = val;
+        el.textContent = val;
+        this._onAdjustConditionValue(event, el);
+      });
+    });
+
     html.querySelectorAll('.container-grid-cell[data-item-id]').forEach(cell => {
       cell.addEventListener('dragover', (event) => {
         event.preventDefault();
@@ -1436,6 +1476,56 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
         }
       });
     });
+  }
+
+  /**
+   * Persist a changed int-condition value to the backing ActiveEffect.
+   * Mirrors NeuroshimaActorSheet._onAdjustConditionValue — duplicated here because
+   * creature-sheet does not extend NeuroshimaActorSheet.
+   * Called from the .condition-int-span click/contextmenu listeners in _onRender.
+   */
+  async _onAdjustConditionValue(event, target) {
+    const key = target.dataset.conditionKey;
+    const allowNegative = target.dataset.allowNegative === "true";
+    if (!key) return;
+    const actor = this.document;
+    let val = parseInt(target.dataset.value ?? target.textContent, 10);
+    if (isNaN(val)) val = 0;
+    if (!allowNegative) val = Math.max(0, val);
+
+    const existing = actor.effects.find(
+      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+    );
+    if (val === 0 && !allowNegative) {
+      if (existing) await existing.delete();
+      return;
+    }
+    if (existing) {
+      await existing.setFlag("neuroshima", "conditionValue", val);
+    } else if (val !== 0) {
+      const condDef = getConditions().find(c => c.key === key);
+      if (!condDef) return;
+      await actor.createEmbeddedDocuments("ActiveEffect", [{
+        name:        condDef.name,
+        img:         condDef.img          ?? "icons/svg/aura.svg",
+        tint:        condDef._tint        ?? null,
+        description: condDef._description ?? "",
+        disabled:    condDef._disabled    ?? false,
+        statuses:    [key],
+        changes:     foundry.utils.deepClone(condDef.changes   ?? []),
+        duration:    foundry.utils.deepClone(condDef._duration ?? {}),
+        flags: {
+          neuroshima: {
+            conditionNumbered: true,
+            conditionValue:    val,
+            scripts:           foundry.utils.deepClone(condDef.scripts      ?? []),
+            transferType:      condDef._transferType  ?? "owningDocument",
+            documentType:      condDef._documentType  ?? "actor",
+            equipTransfer:     condDef._equipTransfer ?? false
+          }
+        }
+      }]);
+    }
   }
 
   _showItemContextMenu(event, itemId) {

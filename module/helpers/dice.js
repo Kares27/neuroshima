@@ -183,7 +183,9 @@ export class NeuroshimaDice {
     const isMelee = weapon.system.weaponType === "melee";
     
     if (isMelee) {
-        if (maneuver === "fury" || maneuver === "fullDefense") {
+        if (maneuver === "fury" && meleeAction === "attack") {
+            effectiveAttributeBonus += 2;
+        } else if (maneuver === "fullDefense" && meleeAction === "defense") {
             effectiveAttributeBonus += 2;
         } else if (maneuver === "increasedTempo") {
             const baseDiffObj = NEUROSHIMA.difficulties[difficulty] || NEUROSHIMA.difficulties.average;

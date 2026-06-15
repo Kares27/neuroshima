@@ -39,6 +39,42 @@
                 </div>
                 {{/each}}
             </div>
+
+            <div class="conditions-column-header conditions-combat-header">
+                <span>{{localize "NEUROSHIMA.Effects.CombatConditions"}}</span>
+            </div>
+            <div class="conditions-state-list">
+                {{#each combatConditionStates}}
+                <div class="condition-state-row {{#if this.active}}active{{/if}}" data-condition-key="{{this.key}}">
+                    <div class="condition-state-left">
+                        <img src="{{this.img}}"
+                             class="condition-state-icon {{#if this.active}}condition-active{{/if}} clickable"
+                             data-action="toggleCondition"
+                             data-condition-key="{{this.key}}"
+                             data-condition-type="{{this.type}}"
+                             data-allow-negative="{{this.allowNegative}}"
+                             title="{{this.name}}"
+                             width="24" height="24">
+                        <span class="condition-state-name">{{this.name}}</span>
+                    </div>
+                    <div class="condition-state-right">
+                        {{#if (eq this.type "boolean")}}
+                        <span class="condition-bool-checkbox {{#if this.active}}checked{{/if}}"
+                              data-action="toggleCondition"
+                              data-condition-key="{{this.key}}"
+                              data-condition-type="boolean"
+                              title="{{#if this.active}}{{localize 'NEUROSHIMA.Effects.Disable'}}{{else}}{{localize 'NEUROSHIMA.Effects.Enable'}}{{/if}}"></span>
+                        {{else}}
+                        <span class="condition-int-span"
+                              data-condition-key="{{this.key}}"
+                              data-allow-negative="{{this.allowNegative}}"
+                              data-value="{{this.value}}"
+                              title="{{localize 'NEUROSHIMA.Effects.ConditionClickHint'}}">{{this.value}}</span>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
         </div>
 
         {{!-- ── RIGHT: Active Effects ───────────────────────────────────────── --}}

@@ -188,7 +188,7 @@ export class NeuroshimaVehicleSheet extends NeuroshimaBaseActorSheet {
         const type = target.dataset.conditionType;
         if (!key) return;
         if (type === "boolean") {
-          await this.document.toggleStatusEffect(key);
+          await this.document.toggleStatusEffect(key, { active: !this.document.hasCondition(key) });
         } else {
           if (event.button === 2 || event.type === "contextmenu") {
             await this.document.removeCondition(key);

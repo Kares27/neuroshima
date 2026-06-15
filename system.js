@@ -22,7 +22,7 @@ import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/config/combat-config.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
 import { HealingConfig } from "./module/apps/config/healing-config.js";
-import { ConditionConfig, applyConditionsToStatusEffects } from "./module/apps/config/condition-config.js";
+import { ConditionConfig, applyConditionsToStatusEffects, getConditions } from "./module/apps/config/condition-config.js";
 import { ReputationSettingsApp } from "./module/apps/config/reputation-settings.js";
 import { CurrencyGearConfig, DEFAULT_CURRENCY } from "./module/apps/config/currency-gear-config.js";
 import { DamageCategoryConfig, _applyCustomDamageCategories } from "./module/apps/config/damage-category-config.js";
@@ -1287,10 +1287,10 @@ Hooks.once("ready", async function () {
             style.fontSize = 16;
             style.strokeThickness = 2;
             const text = new foundry.canvas.containers.PreciseText(String(value), style);
-            text.scale.x = 12;
-            text.scale.y = 12;
-            text.x = icon.width * 0.58;
-            text.y = icon.height * 0.55;
+            text.anchor.set(1, 1);
+            text.scale.set(12);
+            text.x = tex.width;
+            text.y = tex.height;
             icon.addChild(text);
         }
         return this.effects.addChild(icon);
@@ -1460,8 +1460,10 @@ Hooks.on("renderTokenHUD", (hud, html) => {
     const actor = hud.object?.actor;
     if (!actor) return;
 
+    // Use getConditions() instead of the raw setting so that conditions added after the user
+    // last saved the config (e.g. maneuver-pace) are always present via DEFAULT_CONDITIONS fallback.
     const condDefs = (() => {
-        try { return game.settings.get("neuroshima", "conditions"); } catch { return []; }
+        try { return getConditions(); } catch { return []; }
     })();
     const intConditions = new Map(
         condDefs.filter(c => c.type === "int").map(c => [c.key, c])
@@ -2855,6 +2857,37 @@ function initializeSocketlib() {
 
     game.neuroshima.socket.register("applyDuelBatch", async (messageId, pool, diceIndices, action, beastQueue) => {
         await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null, beastQueue ?? null);
+    });
+
+    game.neuroshima.socket.register("syncActorManeuverConditions", async (actorUuid, condKey, hasCharge, tempoLevel) => {
+        game.neuroshima?.log("[socket:syncActorManeuverConditions] received", { actorUuid, condKey, hasCharge, tempoLevel });
+        const { MeleeTurnService } = await import("./module/combat/melee-turn-service.js");
+        const doc = fromUuidSync(actorUuid);
+        const actor = doc?.actor || doc;
+        if (!actor) {
+            game.neuroshima?.log("[socket:syncActorManeuverConditions] actor not found for uuid", actorUuid);
+            return;
+        }
+        game.neuroshima?.log("[socket:syncActorManeuverConditions] applying to actor", { name: actor.name, type: actor.type, id: actor.id });
+        await MeleeTurnService._clearManeuverConditions(actor);
+        if (condKey) await actor.addCondition(condKey).catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed", condKey, err));
+        if (hasCharge) await actor.addCondition("maneuver-charge").catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed maneuver-charge", err));
+        if (tempoLevel > 0) await actor.addCondition("maneuver-pace", tempoLevel).catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed maneuver-pace", err));
+        game.neuroshima?.log("[socket:syncActorManeuverConditions] done", { name: actor.name });
+    });
+
+    game.neuroshima.socket.register("clearActorManeuverConditions", async (actorUuid) => {
+        game.neuroshima?.log("[socket:clearActorManeuverConditions] received", { actorUuid });
+        const { MeleeTurnService } = await import("./module/combat/melee-turn-service.js");
+        const doc = fromUuidSync(actorUuid);
+        const actor = doc?.actor || doc;
+        if (!actor) {
+            game.neuroshima?.log("[socket:clearActorManeuverConditions] actor not found for uuid", actorUuid);
+            return;
+        }
+        game.neuroshima?.log("[socket:clearActorManeuverConditions] clearing from actor", { name: actor.name, type: actor.type });
+        await MeleeTurnService._clearManeuverConditions(actor);
+        game.neuroshima?.log("[socket:clearActorManeuverConditions] done", { name: actor.name });
     });
 
     game.neuroshima.socket.register("healingRequestPrompt", async ({ patientUuid, patientName, patientPortrait, requesterUserId, medicActorUuid, isPrivate }) => {

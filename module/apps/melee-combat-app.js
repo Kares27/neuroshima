@@ -528,6 +528,11 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const crowd = encounter?.crowding?.[participantId];
     const crowdingDexPenalty = crowd?.dexPenalty || 0;
 
+    const isFirstTurn = (encounter?.turnState?.turn ?? 1) === 1;
+    const hasInitiative = encounter?.turnState?.initiativeOwnerId === participantId;
+    const chargeDexPenalty = (isFirstTurn && !hasInitiative && (p.chargeLevel ?? 0) > 0)
+      ? (p.chargeLevel ?? 0) : 0;
+
     const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
     const dialog = new NeuroshimaWeaponRollDialog({
       actor,
@@ -535,6 +540,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       rollType: "melee",
       isPoolRoll: true,
       crowdingDexPenalty,
+      chargeDexPenalty,
       onClose: () => {
         if (this._openPoolDialogs.get(participantId) === dialog) {
           this._openPoolDialogs.delete(participantId);

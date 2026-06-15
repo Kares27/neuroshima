@@ -740,8 +740,11 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     context.showDiseaseSection    = true;
     context.effectsAny = temporary.length > 0 || passive.length > 0 || disabled.length > 0 || statusEffects.length > 0 || diseaseEffects.length > 0 || diseaseItems.length > 0;
 
-    // Conditions panel — WFRP-style: int conditions stored as ActiveEffects
-    context.conditionStates = condDefs.map(c => {
+    // Split conditions into two groups rendered in separate panels:
+    //   conditionStates       → general status effects (Stany)
+    //   combatConditionStates → maneuver / berserker states shown in "Stany w Walce"
+    const COMBAT_CONDITION_KEYS = new Set(["berserker", "maneuver-charge", "maneuver-fury", "maneuver-full-defense", "maneuver-pace"]);
+    const allConditionStates = condDefs.map(c => {
       const isInt = c.type === "int";
       let active, value;
       if (isInt) {
@@ -760,7 +763,13 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         active,
         value
       };
-    }).sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
+    });
+    context.conditionStates = allConditionStates
+      .filter(c => !COMBAT_CONDITION_KEYS.has(c.key))
+      .sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
+    context.combatConditionStates = allConditionStates
+      .filter(c => COMBAT_CONDITION_KEYS.has(c.key))
+      .sort((a, b) => (a.type === "int" ? 1 : 0) - (b.type === "int" ? 1 : 0));
 
     return context;
   }
@@ -3466,7 +3475,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     const actor = this.document;
 
     if (type === "boolean") {
-      await actor.toggleStatusEffect(key);
+      await actor.toggleStatusEffect(key, { active: !actor.hasCondition(key) });
     } else {
       if (event.button === 2 || event.type === "contextmenu") {
         await actor.removeCondition(key);

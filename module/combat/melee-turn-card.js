@@ -481,6 +481,11 @@ export class MeleeTurnCard {
     const crowd = encounter?.crowding?.[participantId];
     const crowdingDexPenalty = crowd?.dexPenalty || 0;
 
+    const isFirstTurn = (encounter?.turnState?.turn ?? 1) === 1;
+    const hasInitiative = encounter?.turnState?.initiativeOwnerId === participantId;
+    const chargeDexPenalty = (isFirstTurn && !hasInitiative && (p.chargeLevel ?? 0) > 0)
+      ? (p.chargeLevel ?? 0) : 0;
+
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
 
     const dialog = new NeuroshimaWeaponRollDialog({
@@ -489,8 +494,10 @@ export class MeleeTurnCard {
       rollType: "melee",
       isPoolRoll: true,
       crowdingDexPenalty,
+      chargeDexPenalty,
       onClose: () => {},
       onRoll: async (rollResult) => {
+        game.neuroshima?.log("[melee-turn-card.onRoll] callback fired", { encounterId, participantId, maneuver: rollResult?.maneuver, tempoLevel: rollResult?.tempoLevel });
         if (!rollResult) return;
         const toNum = r => typeof r === "object"
           ? (r.value ?? r.result ?? r.original ?? Number(r))
