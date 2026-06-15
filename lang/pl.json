@@ -1673,9 +1673,13 @@
                 "TestTypeSkill": "Umiejętność",
                 "TestKey": "Klucz (atrybut/umiejętność)",
                 "TestIsOpen": "Rzut otwarty",
+                "RollType": "Typ rzutu",
+                "RollTypeClosed": "Zamknięty",
+                "RollTypeOpen": "Otwarty",
                 "TestAttributeOverride": "Atrybut rzutu (nadpisanie)",
                 "TestAttributeOverrideNone": "— domyślny atrybut umiejętności —",
                 "TestSuccesses": "Wymagane SP",
+                "TestDifficulty": "Bazowa trudność",
                 "SuccessEffects": "Efekty przy sukcesie",
                 "FailureEffects": "Efekty przy porażce",
                 "AddFailureEffect": "Utwórz efekt (porażka)"

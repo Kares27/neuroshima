@@ -54,6 +54,15 @@ export class MeleeResolution {
     if (!attacker || !defender) return;
 
     // 1. Calculate Tempo Shift
+    // MANEUVER — Zwiększone tempo (Increased Pace):
+    // Rule: "Podnosi PT własnych testów akcji, a jego przeciwnik będzie musiał zdawać testy
+    //        na tym samym, podwyższonym PT." — NS 1.5 p.XX
+    // We take the MAX of both participants' declared tempoLevel so that whichever combatant
+    // chose the maneuver raises the difficulty for BOTH sides equally.
+    // The actual difficulty shift is applied in getEffectiveTarget() via _getShiftedDifficulty().
+    // NOTE: setPool intentionally stores the base snapshot WITHOUT the tempo shift (for the
+    // increasedTempo player) so that getEffectiveTarget() is the single canonical place where
+    // the shift is applied — avoiding double-counting.
     const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
     game.neuroshima?.log("Resolving primary melee exchange", { id, attacker: attacker.name, defender: defender.name, diceCount });
 
@@ -88,6 +97,10 @@ export class MeleeResolution {
         };
       }
     } else if (defenderSuccesses > attackerSuccesses) {
+      // MANEUVER — Pełna obrona (Full Defense):
+      // Rule: "aby przejąć Inicjatywę, musi poświęcić na to aż dwa sukcesy"
+      // A defender using fullDefense requires a 2-success ADVANTAGE to take over initiative;
+      // otherwise the exchange is treated as a block even if they have more successes.
       const takeoverSuccessesRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
       const actualAdvantage = defenderSuccesses - attackerSuccesses;
 
@@ -96,6 +109,10 @@ export class MeleeResolution {
         logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogTakeover", { attacker: defender.name, oldAttacker: attacker.name });
         updated.turnState.initiativeOwnerId = defenderId;
 
+        // MANEUVER — Furia (Fury):
+        // Rule: "każde przejęcie Inicjatywy przez przeciwnika jest jednocześnie celnym ciosem"
+        // When the fury-user loses initiative (takeover), they automatically take a 1-die hit.
+        // applyDamage(encounter, newAttackerId=defenderId, victimId=attackerId, 1 die, locationDie)
         if (attacker.maneuver === "fury") {
           logText += " " + game.i18n.format("NEUROSHIMA.MeleeDuel.LogFuryHit", { name: defender.name });
           await this.applyDamage(updated, defenderId, attackerId, 1, exchange.defenderSelectedDice[0]);
@@ -234,6 +251,16 @@ export class MeleeResolution {
 
   /**
    * Calculates effective target considering tempo and crowding penalty.
+   *
+   * MANEUVER — Zwiększone tempo (Increased Pace):
+   * The tempo shift is applied here (and ONLY here) so that BOTH participants in the
+   * exchange pay the same raised PT regardless of which one declared the maneuver.
+   * Participants with increasedTempo store a CLEAN (no-tempo) snapshot in setPool so
+   * that this function is the single point of application — see setPool for details.
+   *
+   * The shift is computed from the "average" difficulty (0 %) as a baseline, then
+   * shifted `tempoLevel` steps harder via _getShiftedDifficulty().  The resulting
+   * `mod` (always ≤ 0) is added to the target, lowering it and making successes rarer.
    */
   static getEffectiveTarget(participant, tempoLevel, dexPenalty, mode = "attack") {
     const { NeuroshimaDice } = game.neuroshima;
@@ -352,6 +379,7 @@ export class MeleeResolution {
 
     if (!attacker || !defender) return;
 
+    // MANEUVER — Zwiększone tempo: same dual-participant rule as normal mode (see above).
     const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
     const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
     const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
@@ -397,6 +425,7 @@ export class MeleeResolution {
       await this.applyDamageDistributed(updated, attackerId, defenderId, hits, locationDieIndex);
     } else {
       // Check if defender can take over (defender had more winning slots)
+      // MANEUVER — Pełna obrona: needs 2 winning slots to take over (vs 1 normally).
       const defenderWonSlots = slotResults.filter(s => !s.attackerWins && s.dSuccess).length;
       const takeoverRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
 
@@ -405,6 +434,7 @@ export class MeleeResolution {
         logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogTakeover", { attacker: defender.name, oldAttacker: attacker.name });
         updated.turnState.initiativeOwnerId = defenderId;
 
+        // MANEUVER — Furia: fury-user auto-takes a hit when they lose initiative.
         if (attacker.maneuver === "fury") {
           logText += " " + game.i18n.format("NEUROSHIMA.MeleeDuel.LogFuryHit", { name: defender.name });
           await this.applyDamage(updated, defenderId, attackerId, 1, dDice[0]);
@@ -444,6 +474,7 @@ export class MeleeResolution {
 
     if (!attacker || !defender) return;
 
+    // MANEUVER — Zwiększone tempo: same dual-participant rule as normal mode (see above).
     const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
     const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
     const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
@@ -472,6 +503,7 @@ export class MeleeResolution {
       await this.applyDamageDistributed(updated, attackerId, defenderId, [{ cost: tier, tier }], locationDieIndex);
     } else if (netSuccesses < 0) {
       const defenderAdvantage = Math.abs(netSuccesses);
+      // MANEUVER — Pełna obrona: defender needs a net advantage of ≥2 successes to take over.
       const takeoverRequired = (defender.maneuver === "fullDefense") ? 2 : 1;
 
       if (defenderAdvantage >= takeoverRequired) {
@@ -479,6 +511,7 @@ export class MeleeResolution {
         logText = game.i18n.format("NEUROSHIMA.MeleeDuel.LogTakeover", { attacker: defender.name, oldAttacker: attacker.name });
         updated.turnState.initiativeOwnerId = defenderId;
 
+        // MANEUVER — Furia: fury-user auto-takes a hit when they lose initiative.
         if (attacker.maneuver === "fury") {
           logText += " " + game.i18n.format("NEUROSHIMA.MeleeDuel.LogFuryHit", { name: defender.name });
           await this.applyDamage(updated, defenderId, attackerId, 1, exchange.defenderSelectedDice[0]);
@@ -529,10 +562,11 @@ export class MeleeResolution {
     const shift = attacker.damageShift || 0;
     let d1, d2, d3;
     if (weapon?.type === "beast-action") {
-      const beastDmg = weapon.system.damage || null;
-      d1 = this._shiftDamageType(beastDmg ?? "D", shift);
-      d2 = this._shiftDamageType(beastDmg ?? "D", shift);
-      d3 = this._shiftDamageType(beastDmg ?? "D", shift);
+      const acts = weapon.system.activities ?? [];
+      const getActDmg = (cost) => acts.find(a => a.successCost === cost && a.damage)?.damage ?? null;
+      d1 = this._shiftDamageType(getActDmg(1) ?? "D", shift);
+      d2 = this._shiftDamageType(getActDmg(2) ?? "D", shift);
+      d3 = this._shiftDamageType(getActDmg(3) ?? "D", shift);
     } else {
       d1 = this._shiftDamageType(weapon?.system.damageMelee1 || "D", shift);
       d2 = this._shiftDamageType(weapon?.system.damageMelee2 || "L", shift);
@@ -652,6 +686,79 @@ export class MeleeResolution {
     }
     if (allResults.length > 0 || totalReducedProjectiles > 0 || allWoundIds.length > 0) {
       await CombatHelper.renderPainResistanceReport(defenderActor, allResults, allWoundIds, totalReducedProjectiles, allReducedDetails);
+    }
+
+    const diceCount = hits.reduce((s, h) => s + (h.cost ?? 0), 0);
+    await this._applyBeastActivityEffects(attackerActor, defenderActor, weapon, diceCount);
+  }
+
+  /**
+   * Applies ActiveEffects linked to beast-action / beast-segment activities after a hit in mode 1.
+   *
+   * Matching rule:
+   *  - beast-action  → activity.successCost === diceCount
+   *  - beast-segment → activity.segmentCost  === diceCount
+   *
+   * Required-test branch (`activity.testRequired === true`):
+   *   Does NOT apply effects directly. Instead posts a Required Test chat card. Success /
+   *   failure effects are resolved from `effectIds` / `onFailureEffectIds` (item-local IDs →
+   *   full UUIDs) and stored in the card flags. Whoever clicks "Roll" rolls for their own actor
+   *   and receives the appropriate effects — no `defenderActorUuid` is locked in the card.
+   *
+   * Direct-apply branch (`testRequired` absent / false):
+   *   All effects in `effectIds` are created on the defender immediately. Effects that need
+   *   a follow-up test should carry an `immediate` script calling `this.postRequiredTest({…})`.
+   *
+   * @param {Actor}  attackerActor
+   * @param {Actor}  defenderActor
+   * @param {Item}   weapon         The beast-action or beast-segment item used as weapon.
+   * @param {number} diceCount      Total dice declared for the attack (= damage tier).
+   * @private
+   */
+  static async _applyBeastActivityEffects(attackerActor, defenderActor, weapon, diceCount) {
+    const wType = weapon?.type;
+    if (wType !== "beast-action" && wType !== "beast-segment") return;
+    if (!defenderActor) return;
+
+    const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+
+    for (const activity of (weapon.system.activities ?? [])) {
+      const actCost = wType === "beast-action"
+        ? (activity.successCost ?? 1)
+        : (activity.segmentCost  ?? 1);
+      if (actCost !== diceCount) continue;
+
+      if (activity.testRequired) {
+        const resolveUuids = (ids = []) =>
+          ids.map(id => weapon.effects.get(id)).filter(Boolean).map(e => e.uuid);
+
+        await NeuroshimaScriptRunner.postRequiredTest({
+          title:                 activity.name || weapon.name,
+          testType:              activity.testType             || "attribute",
+          testKey:               activity.testKey              || "constitution",
+          testAttributeOverride: activity.testAttributeOverride || "",
+          requiredSuccesses:     activity.testSuccesses        ?? 1,
+          isOpen:                activity.testIsOpen           ?? false,
+          baseDifficulty:        activity.testDifficulty       || "average",
+          onSuccessEffectUuids:  resolveUuids(activity.effectIds),
+          onFailureEffectUuids:  resolveUuids(activity.onFailureEffectIds)
+        });
+        continue;
+      }
+
+      for (const effectId of (activity.effectIds ?? [])) {
+        const effect = weapon.effects.get(effectId);
+        if (!effect) continue;
+        try {
+          const { _id, ...rest } = effect.toObject();
+          await ActiveEffect.implementation.create(
+            { ...rest, disabled: false, transfer: false, origin: weapon.uuid },
+            { parent: defenderActor }
+          );
+        } catch (err) {
+          console.error("Neuroshima | mode1 beast activity effect apply failed:", err);
+        }
+      }
     }
   }
 

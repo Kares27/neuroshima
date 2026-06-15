@@ -1635,9 +1635,13 @@
                 "TestTypeSkill": "Skill",
                 "TestKey": "Key (attribute / skill)",
                 "TestIsOpen": "Open test",
+                "RollType": "Roll type",
+                "RollTypeClosed": "Closed",
+                "RollTypeOpen": "Open",
                 "TestAttributeOverride": "Roll attribute (override)",
                 "TestAttributeOverrideNone": "— default skill attribute —",
                 "TestSuccesses": "Required SP",
+                "TestDifficulty": "Base difficulty",
                 "SuccessEffects": "Effects on success",
                 "FailureEffects": "Effects on failure",
                 "AddFailureEffect": "Create effect (failure)"

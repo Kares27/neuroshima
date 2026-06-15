@@ -453,11 +453,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     const actorUuid = actor.uuid;
 
-    const _applyEffectUuids = async (effectUuids, defenderUuid) => {
-      if (!effectUuids?.length) return;
-      const defenderDoc = defenderUuid ? await fromUuid(defenderUuid) : null;
-      const defenderActor = defenderDoc?.actor ?? defenderDoc ?? null;
-      if (!defenderActor) return;
+    const _applyEffectUuids = async (effectUuids, targetActor) => {
+      if (!effectUuids?.length || !targetActor) return;
       for (const uuid of effectUuids) {
         try {
           const effectDoc = await fromUuid(uuid);
@@ -465,13 +462,13 @@ export class NeuroshimaChatMessage extends ChatMessage {
           const { _id, ...rest } = effectDoc.toObject();
           await ActiveEffect.implementation.create(
             { ...rest, disabled: false, transfer: false, origin: effectDoc.parent?.uuid ?? uuid },
-            { parent: defenderActor }
+            { parent: targetActor }
           );
         } catch (err) {
           console.error("Neuroshima | onExecuteRequiredTest | failed to apply effect uuid:", uuid, err);
         }
       }
-      game.neuroshima?.log("onExecuteRequiredTest | effects applied", { defenderUuid, effectUuids });
+      game.neuroshima?.log("onExecuteRequiredTest | effects applied", { actorUuid: targetActor.uuid, effectUuids });
     };
 
     let resultCallback = null;
@@ -479,24 +476,27 @@ export class NeuroshimaChatMessage extends ChatMessage {
       const successConsequence = data.onSuccess ?? null;
       const failureConsequence = data.onFailure ?? null;
       resultCallback = async ({ isSuccess }) => {
-        const target = await fromUuid(actorUuid);
-        if (target) {
+        if (successConsequence || failureConsequence) {
           const consequence = isSuccess ? successConsequence : failureConsequence;
           if (consequence) {
             const actions = Array.isArray(consequence) ? consequence : [consequence];
             for (const action of actions) {
-              if (action.addCondition) await target.addCondition(action.addCondition, action.value ?? 1);
+              if (action.addCondition) await actor.addCondition(action.addCondition, action.value ?? 1);
             }
           }
         }
         const effectUuids = isSuccess ? (data.onSuccessEffectUuids ?? []) : (data.onFailureEffectUuids ?? []);
-        await _applyEffectUuids(effectUuids, data.defenderActorUuid || actorUuid);
+        await _applyEffectUuids(effectUuids, actor);
         game.neuroshima?.log("onExecuteRequiredTest | consequence applied", { actorUuid, isSuccess });
       };
     }
 
     const { NeuroshimaSkillRollDialog } = await import("../apps/dialogs/skill-roll-dialog.js");
-    const lastRoll = { ...(actor.system?.lastRoll ?? {}), isOpen: data.isOpen };
+    const lastRoll = {
+      ...(actor.system?.lastRoll ?? {}),
+      isOpen: data.isOpen,
+      baseDifficulty: data.baseDifficulty || actor.system?.lastRoll?.baseDifficulty || "average"
+    };
 
     if (data.testType === "skill") {
       let attrKey = data.testAttributeOverride || "";

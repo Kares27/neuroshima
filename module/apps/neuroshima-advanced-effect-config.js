@@ -46,6 +46,38 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
     const isArea = transferType === "areaActor";
     const isDocument = transferType === "owningDocument";
 
+    const rt = ns.requiredTestTrigger ?? {};
+
+    const onSuccessEffectIds = Array.isArray(rt.onSuccessEffectIds) ? rt.onSuccessEffectIds : [];
+    const onFailureEffectIds = Array.isArray(rt.onFailureEffectIds) ? rt.onFailureEffectIds : [];
+
+    const parentItem = this.effect.parent?.documentName === "Item" ? this.effect.parent : null;
+    const siblingEffects = parentItem
+      ? parentItem.effects
+          .filter(e => e.id !== this.effect.id)
+          .map(e => ({
+            id:        e.id,
+            name:      e.name,
+            isSuccess: onSuccessEffectIds.includes(e.id),
+            isFailure: onFailureEffectIds.includes(e.id)
+          }))
+      : [];
+
+    const nsConfig = game.neuroshima?.config ?? {};
+    const testAttributes = Object.fromEntries(
+      Object.entries(nsConfig.attributes ?? {}).map(([k, v]) => [k, v.label ?? k])
+    );
+
+    const skillConfig = NEUROSHIMA?.skillConfiguration ?? {};
+    const testSkillGroups = Object.entries(skillConfig).map(([attrKey, groups]) => {
+      const cap = attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
+      const skills = Object.values(groups).flat().map(skill => ({
+        key: skill,
+        label: game.i18n.localize(`NEUROSHIMA.Skills.${skill}`)
+      })).sort((a, b) => a.label.localeCompare(b.label));
+      return { attrKey, attrLabel: game.i18n.localize(`NEUROSHIMA.Attributes.${cap}`), skills };
+    });
+
     return {
       transferType,
       isAura,
@@ -68,6 +100,24 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
       auraRadius:      ns.auraRadius      ?? "",
 
       areaDuration:    ns.areaDuration    ?? "sustained",
+
+      requiredTestTrigger: {
+        enabled:               rt.enabled              ?? false,
+        title:                 rt.title                ?? "",
+        description:           rt.description          ?? "",
+        testType:              rt.testType             ?? "attribute",
+        testKey:               rt.testKey              ?? "constitution",
+        testAttributeOverride: rt.testAttributeOverride ?? "",
+        requiredSuccesses:     rt.requiredSuccesses    ?? 1,
+        isOpen:                rt.isOpen               ?? false,
+        baseDifficulty:        rt.baseDifficulty       ?? "average",
+        onSuccessEffectIds,
+        onFailureEffectIds
+      },
+      difficulties:      NEUROSHIMA.difficulties ?? {},
+      siblingEffects,
+      testAttributes,
+      testSkillGroups
     };
   }
 
@@ -80,6 +130,9 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
         this._cmSaveTimer = setTimeout(() => this._saveFromCodeMirror(form), 400);
       });
     });
+    form.querySelectorAll("input[data-rt-role]").forEach(cb => {
+      cb.addEventListener("change", () => form.requestSubmit());
+    });
   }
 
   async _saveFromCodeMirror(form) {
@@ -88,6 +141,12 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
     form.querySelectorAll("code-mirror[name]").forEach(cm => {
       foundry.utils.setProperty(update, cm.getAttribute("name"), cm.value ?? "");
     });
+    const successIds = [...form.querySelectorAll("input[data-rt-role='success']:checked")]
+      .map(el => el.value).filter(Boolean);
+    const failureIds = [...form.querySelectorAll("input[data-rt-role='failure']:checked")]
+      .map(el => el.value).filter(Boolean);
+    foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onSuccessEffectIds", successIds);
+    foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onFailureEffectIds", failureIds);
     await this.effect.update(update);
     this.render({ force: true });
   }
@@ -97,6 +156,14 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
     form.querySelectorAll("code-mirror[name]").forEach(cm => {
       foundry.utils.setProperty(update, cm.getAttribute("name"), cm.value ?? "");
     });
+
+    const successIds = [...form.querySelectorAll("input[data-rt-role='success']:checked")]
+      .map(el => el.value).filter(Boolean);
+    const failureIds = [...form.querySelectorAll("input[data-rt-role='failure']:checked")]
+      .map(el => el.value).filter(Boolean);
+    foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onSuccessEffectIds", successIds);
+    foundry.utils.setProperty(update, "flags.neuroshima.requiredTestTrigger.onFailureEffectIds", failureIds);
+
     await this.effect.update(update);
     this.render({ force: true });
   }

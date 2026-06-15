@@ -28,6 +28,107 @@ import { MeleeStore } from "./melee-store.js";
  */
 export class MeleeTurnService {
   /**
+   * Maps maneuver string values (from pool-roll dialog) to their condition key.
+   * Tempo and Szarża are tracked separately via tempoLevel / chargeLevel.
+   */
+  static _MANEUVER_TO_CONDITION = {
+    fury:         "maneuver-fury",
+    furia:        "maneuver-fury",
+    fullDefense:  "maneuver-full-defense",
+    pelnaObrona:  "maneuver-full-defense"
+  };
+
+  /** All 4 maneuver condition keys — used for bulk-removal. */
+  static _MANEUVER_CONDITION_KEYS = [
+    "maneuver-pace",
+    "maneuver-charge",
+    "maneuver-fury",
+    "maneuver-full-defense"
+  ];
+
+  /**
+   * Removes all 4 maneuver conditions from an actor.
+   * Silently skips actors the caller does not own (cosmetic conditions only).
+   * @param {Actor} actor
+   */
+  static async _clearManeuverConditions(actor) {
+    if (!actor) return;
+    if (!game.user.isGM && !actor.isOwner) return;
+    for (const key of this._MANEUVER_CONDITION_KEYS) {
+      try { await actor.removeCondition(key); } catch { /* noop */ }
+    }
+  }
+
+  /**
+   * Syncs all maneuver conditions for one participant after setPool.
+   *
+   * MANEUVER condition rules:
+   *
+   * • Furia / Fury (maneuver-fury):
+   *   Boolean condition.  Applied to the participant who declared "fury" in the pool dialog.
+   *   Rule effect (+2 Zręczność in attack) is already baked into attackTargetSnapshot via
+   *   rollWeaponTest.  The condition is cosmetic/informational for the token HUD and scripts.
+   *
+   * • Pełna obrona / Full Defense (maneuver-full-defense):
+   *   Boolean condition.  Applied to the participant who declared "fullDefense".
+   *   Rule effect (+2 Zręczność in defense, 2-success takeover requirement) is enforced in
+   *   defenseTargetSnapshot (via rollWeaponTest) and in getEffectiveTarget / resolution code.
+   *
+   * • Szarża / Charge (maneuver-charge):
+   *   Boolean condition.  Applied when `participant.chargeLevel > 0` (set during initiative roll).
+   *   NOTE — chargeLevel tracks the bonus declared at initiative time (+1..+3 to Zręczność on
+   *   the initiative test).  Rule: the SAME value becomes a PENALTY on the first pool roll if the
+   *   charge user LOSES the initiative test.  Enforcement of that penalty and the restriction
+   *   "cannot use defensive maneuvers on the first turn" is currently left to the pool-roll dialog
+   *   and is NOT automatically enforced by this code.
+   *   chargeLevel is reset to 0 at startNewTurn so the condition only appears on turn 1.
+   *
+   * • Zwiększone tempo / Increased Pace (maneuver-pace):
+   *   Int condition (stores the effective tempo level, 1–3).  Applied to BOTH the participant
+   *   AND their primary opponent because the rule raises the PT for both combatants equally.
+   *   `effectiveTempo = Math.max(all participants' tempoLevel)` ensures consistency even if
+   *   both sides declare the maneuver.
+   *
+   * @param {object} encounter     Full (updated) encounter data from MeleeStore.
+   * @param {string} participantId ID of the participant who just called setPool.
+   */
+  static async _applyParticipantManeuverConditions(encounter, participantId) {
+    const p = encounter.participants[participantId];
+    if (!p) return;
+
+    const doc = fromUuidSync(p.actorUuid);
+    const actor = doc?.actor || doc;
+
+    // Tempo is a shared effect — always take the max across all active participants.
+    const effectiveTempo = Math.max(
+      0, ...Object.values(encounter.participants).map(q => q.tempoLevel ?? 0)
+    );
+
+    const _syncOne = async (participant, participantActor) => {
+      if (!participantActor) return;
+      if (!game.user.isGM && !participantActor.isOwner) return;
+      await this._clearManeuverConditions(participantActor);
+      const condKey = this._MANEUVER_TO_CONDITION[participant.maneuver];
+      if (condKey) await participantActor.addCondition(condKey).catch(() => {});
+      // Szarża condition: show as long as chargeLevel > 0 (turn 1 only).
+      if ((participant.chargeLevel ?? 0) > 0) await participantActor.addCondition("maneuver-charge").catch(() => {});
+      // Tempo condition: int value = effective level (for display and potential script use).
+      if (effectiveTempo > 0) await participantActor.addCondition("maneuver-pace", effectiveTempo).catch(() => {});
+    };
+
+    await _syncOne(p, actor);
+
+    // Push tempo condition to the opponent as well (they share the raised PT).
+    const opponentId = encounter.primaryTargets?.[participantId];
+    const opponent = opponentId ? encounter.participants[opponentId] : null;
+    if (opponent) {
+      const opDoc = fromUuidSync(opponent.actorUuid);
+      const opActor = opDoc?.actor || opDoc;
+      await _syncOne(opponent, opActor);
+    }
+  }
+
+  /**
    * Returns whether the encounter needs manual target selection (multi-fight).
    * @private
    */
@@ -63,6 +164,7 @@ export class MeleeTurnService {
       p.skillSpent = 0;
       p.maneuver = "none";
       p.tempoLevel = 0;
+      p.chargeLevel = 0;
       p.attackTargetSnapshot = null;
       p.defenseTargetSnapshot = null;
     }
@@ -103,6 +205,19 @@ export class MeleeTurnService {
 
     game.neuroshima?.log("Starting new turn for melee encounter", { id, turn: updated.turnState.turn });
     await MeleeStore.updateEncounter(id, updated);
+
+    // MANEUVER — Trash collector (new turn):
+    // All 4 maneuver conditions (maneuver-pace, maneuver-charge, maneuver-fury,
+    // maneuver-full-defense) are purely turn-scoped.  At the start of each new turn
+    // we strip them from every active participant so the token HUD always reflects the
+    // current (not previous) turn's maneuver choice.
+    // NOTE: chargeLevel is also reset to 0 above — Szarża only applies to the first turn.
+    for (const p of Object.values(updated.participants)) {
+      if (!p.isActive) continue;
+      const doc = fromUuidSync(p.actorUuid);
+      const actor = doc?.actor || doc;
+      if (actor) await this._clearManeuverConditions(actor);
+    }
   }
 
   /**
@@ -141,7 +256,19 @@ export class MeleeTurnService {
       p.attackBonusSnapshot = weapon?.system.attackBonus || 0;
       p.defenseBonusSnapshot = weapon?.system.defenseBonus || 0;
 
-      if (rollTarget !== null && rollTarget !== undefined) {
+      // ── increasedTempo guard ────────────────────────────────────────────
+      // rollWeaponTest bakes the tempo difficulty-shift into its returned
+      // target value (via effectiveDifficulty → basePenalty → totalPenalty →
+      // getDifficultyFromPercent → finalDiff.mod).  getEffectiveTarget() then
+      // re-applies the shift a second time.  To avoid this double-count we
+      // deliberately fall through to the approximate fallback when the roll was
+      // made with increasedTempo.  The fallback snapshot contains NO tempo
+      // shift, so getEffectiveTarget() applies it exactly once — which is the
+      // correct behaviour (both participants pay the same raised PT).
+      const _usePreferred = rollTarget !== null && rollTarget !== undefined
+        && maneuver !== "increasedTempo";
+
+      if (_usePreferred) {
         // ── Preferred path ─────────────────────────────────────────────────
         // Use the exact target that rollWeaponTest computed (correctly converts
         // % armor/wound penalties → difficulty mod, adds weapon bonus, etc.)
@@ -155,10 +282,13 @@ export class MeleeTurnService {
           p.defenseTargetSnapshot = rollTarget - p.attackBonusSnapshot + p.defenseBonusSnapshot;
         }
       } else {
-        // ── Fallback (no target passed) ─────────────────────────────────────
+        // ── Fallback (no target passed, or increasedTempo) ─────────────────
         // Approximate from actor state. NOTE: this can be inaccurate when armor/
         // wound penalties are present because totalArmorPenalty is a percentage
         // that must be converted via getDifficultyFromPercent, not subtracted directly.
+        // For increasedTempo: tempo is intentionally NOT included here — it will
+        // be applied by getEffectiveTarget() during exchange resolution so that
+        // BOTH participants (attacker AND defender) pay the raised PT equally.
         const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
         const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
         const totalPct = armorPenalty + woundPenalty;
@@ -238,6 +368,7 @@ export class MeleeTurnService {
 
     game.neuroshima?.log("Setting pool for participant", { id, participantId, results, maneuver, attributeBonus });
     await MeleeStore.updateEncounter(id, updated);
+    await this._applyParticipantManeuverConditions(updated, participantId);
   }
 
   /**
@@ -557,6 +688,7 @@ export class MeleeTurnService {
       p.skillSpent = 0;
       p.maneuver = "none";
       p.tempoLevel = 0;
+      p.chargeLevel = 0;
       p.attackTargetSnapshot = null;
       p.defenseTargetSnapshot = null;
     }
@@ -594,6 +726,16 @@ export class MeleeTurnService {
 
     game.neuroshima?.log("GM: prevTurn", { id, turn: updated.turnState.turn });
     await MeleeStore.updateEncounter(id, updated);
+
+    // MANEUVER — Trash collector (prevTurn / GM rewind):
+    // Same cleanup as startNewTurn — maneuver conditions are reset so the rewound
+    // turn starts with a clean slate.
+    for (const p of Object.values(updated.participants)) {
+      if (!p.isActive) continue;
+      const doc = fromUuidSync(p.actorUuid);
+      const actor = doc?.actor || doc;
+      if (actor) await this._clearManeuverConditions(actor);
+    }
   }
 
   /**

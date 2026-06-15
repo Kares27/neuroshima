@@ -661,6 +661,7 @@ export class NeuroshimaActor extends Actor {
    */
   async toggleStatusEffect(effectId, { active, overlay = false } = {}) {
     const condDef = getConditions().find(c => c.key === effectId);
+    if (condDef?.key?.startsWith("maneuver-") && active === undefined) return;
     if (condDef?.type === "int") {
       if (overlay) return this.removeCondition(effectId);
       return this.addCondition(effectId);

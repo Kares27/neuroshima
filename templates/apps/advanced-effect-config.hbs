@@ -146,4 +146,170 @@
   </div>
   {{/unless}}
 
+  {{!-- ── Required Test Trigger (no-script path) ── --}}
+  <fieldset>
+    <legend>Required Test Trigger</legend>
+
+    <div class="form-group">
+      <label>Enable</label>
+      <div class="form-fields">
+        <input type="checkbox" name="flags.neuroshima.requiredTestTrigger.enabled"
+               {{#if requiredTestTrigger.enabled}}checked{{/if}}>
+      </div>
+      <p class="notes">
+        When checked, applying this effect to an actor automatically posts a Required Test chat card.
+        No script needed — configure the test below. For complex branching logic use an
+        <strong>immediate</strong> script with <code>this.postRequiredTest({…})</code> instead.
+      </p>
+    </div>
+
+    {{#if requiredTestTrigger.enabled}}
+
+    <div class="form-group">
+      <label>Card Title</label>
+      <div class="form-fields">
+        <input type="text" name="flags.neuroshima.requiredTestTrigger.title"
+               value="{{requiredTestTrigger.title}}" placeholder="(uses effect name)">
+      </div>
+    </div>
+
+    <div class="form-group stacked">
+      <label>Description</label>
+      <textarea name="flags.neuroshima.requiredTestTrigger.description"
+                rows="2">{{requiredTestTrigger.description}}</textarea>
+      <p class="notes">Flavour text shown on the chat card below the title.</p>
+    </div>
+
+    <div class="form-group">
+      <label>Test Type</label>
+      <div class="form-fields">
+        <select name="flags.neuroshima.requiredTestTrigger.testType">
+          <option value="attribute" {{#if (eq requiredTestTrigger.testType "attribute")}}selected{{/if}}>Attribute</option>
+          <option value="skill"     {{#if (eq requiredTestTrigger.testType "skill")}}selected{{/if}}>Skill</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Test Key</label>
+      <div class="form-fields">
+        {{#if (eq requiredTestTrigger.testType "attribute")}}
+        <select name="flags.neuroshima.requiredTestTrigger.testKey">
+          {{#each testAttributes}}
+          <option value="{{@key}}" {{#if (eq @key ../requiredTestTrigger.testKey)}}selected{{/if}}>
+            {{localize this}}
+          </option>
+          {{/each}}
+        </select>
+        {{else}}
+        <select name="flags.neuroshima.requiredTestTrigger.testKey">
+          {{#each testSkillGroups}}
+          <optgroup label="{{this.attrLabel}}">
+            {{#each this.skills}}
+            <option value="{{this.key}}" {{#if (eq this.key ../../requiredTestTrigger.testKey)}}selected{{/if}}>
+              {{this.label}}
+            </option>
+            {{/each}}
+          </optgroup>
+          {{/each}}
+        </select>
+        {{/if}}
+      </div>
+      <p class="notes">Attribute or skill key rolled against.</p>
+    </div>
+
+    {{#if (eq requiredTestTrigger.testType "skill")}}
+    <div class="form-group">
+      <label>Attribute Override</label>
+      <div class="form-fields">
+        <select name="flags.neuroshima.requiredTestTrigger.testAttributeOverride">
+          <option value="" {{#unless requiredTestTrigger.testAttributeOverride}}selected{{/unless}}>(auto-detect)</option>
+          {{#each testAttributes}}
+          <option value="{{@key}}" {{#if (eq @key ../requiredTestTrigger.testAttributeOverride)}}selected{{/if}}>
+            {{localize this}}
+          </option>
+          {{/each}}
+        </select>
+      </div>
+      <p class="notes">Override the attribute used for a skill test (leave blank for auto-detection).</p>
+    </div>
+    {{/if}}
+
+    <div class="form-group">
+      <label>Required Successes</label>
+      <div class="form-fields">
+        <input type="number" name="flags.neuroshima.requiredTestTrigger.requiredSuccesses"
+               value="{{requiredTestTrigger.requiredSuccesses}}" min="1" max="20" step="1" style="width:60px;">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Open Test</label>
+      <div class="form-fields">
+        <input type="checkbox" name="flags.neuroshima.requiredTestTrigger.isOpen"
+               {{#if requiredTestTrigger.isOpen}}checked{{/if}}>
+      </div>
+      <p class="notes">If checked the player rolls an open test; otherwise a closed test.</p>
+    </div>
+
+    <div class="form-group">
+      <label>Base Difficulty</label>
+      <div class="form-fields">
+        <select name="flags.neuroshima.requiredTestTrigger.baseDifficulty">
+          {{#each difficulties}}
+          <option value="{{@key}}" {{#if (eq @key ../requiredTestTrigger.baseDifficulty)}}selected{{/if}}>
+            {{localize this.label}}
+          </option>
+          {{/each}}
+        </select>
+      </div>
+      <p class="notes">Starting difficulty modifier applied to the roll dialog.</p>
+    </div>
+
+    {{#if siblingEffects.length}}
+    <fieldset style="margin-top:0.5rem;">
+      <legend>Effects on Resolution</legend>
+      <p class="notes" style="margin-bottom:0.5rem;">
+        Select which sibling effects (on the same item) are applied on <strong>Success</strong>
+        or <strong>Failure</strong>. IDs are stable across copies — no UUID needed.
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85em;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:2px 4px;">Effect</th>
+            <th style="text-align:center;padding:2px 4px;width:60px;">✓ Success</th>
+            <th style="text-align:center;padding:2px 4px;width:60px;">✗ Failure</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each siblingEffects}}
+          <tr>
+            <td style="padding:2px 4px;">{{this.name}}</td>
+            <td style="text-align:center;padding:2px 4px;">
+              <input type="checkbox"
+                     data-rt-role="success"
+                     value="{{this.id}}"
+                     {{#if this.isSuccess}}checked{{/if}}>
+            </td>
+            <td style="text-align:center;padding:2px 4px;">
+              <input type="checkbox"
+                     data-rt-role="failure"
+                     value="{{this.id}}"
+                     {{#if this.isFailure}}checked{{/if}}>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </fieldset>
+    {{else}}
+    <p class="notes" style="margin-top:0.5rem;">
+      <em>No sibling effects on this item. Add effects to the same item to link them here.</em>
+    </p>
+    {{/if}}
+
+    {{/if}}{{!-- /requiredTestTrigger.enabled --}}
+
+  </fieldset>
+
 </div>

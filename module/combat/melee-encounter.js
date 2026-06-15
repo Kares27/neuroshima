@@ -204,8 +204,19 @@ export class MeleeEncounter {
 
   /**
    * Closes the encounter and cleans up.
+   * MANEUVER — Trash collector (end of encounter):
+   * Clears all 4 maneuver conditions from every participant before tearing down the
+   * encounter so tokens are left in a clean state after combat ends.
    */
   static async end(id) {
+    const encounter = MeleeStore.getEncounter(id);
+    if (encounter) {
+      for (const p of Object.values(encounter.participants)) {
+        const doc = fromUuidSync(p.actorUuid);
+        const actor = doc?.actor || doc;
+        if (actor) await MeleeTurnService._clearManeuverConditions(actor);
+      }
+    }
     await MeleeStore.removeEncounter(id);
   }
 }

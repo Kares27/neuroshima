@@ -165,6 +165,12 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * Also handles scrolling-text feedback for aura / area copies and, when the GM is the
    * creating user, delegates aura propagation to `NeuroshimaAuraManager`.
    *
+   * Required Test Trigger (no-script path):
+   * If `flags.neuroshima.requiredTestTrigger.enabled` is true the effect automatically posts
+   * a Required Test chat card when applied to an actor. Effect IDs for success/failure are
+   * resolved against the source item found via `this.origin`, so they remain stable across
+   * copies and imports (they are item-local IDs, not full UUIDs).
+   *
    * @override
    */
   async _onCreate(data, options, user) {
@@ -192,6 +198,12 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     for (const script of immediateScripts) {
       await script.execute({ actor: this.actor, data, options });
     }
+
+    const rtConfig = this.getFlag("neuroshima", "requiredTestTrigger");
+    if (rtConfig?.enabled) {
+      await this._postRequiredTestFromFlag(rtConfig);
+    }
+
     if (
       game.user.isGM &&
       !options.ns_skipAuraTrigger &&
@@ -261,6 +273,47 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
         await script.execute({ actor: this.actor, options });
       }
     }
+  }
+
+  /**
+   * Post a Required Test chat card based on `flags.neuroshima.requiredTestTrigger`.
+   *
+   * Effect IDs stored in `onSuccessEffectIds` / `onFailureEffectIds` are resolved to full
+   * UUIDs by looking them up on the source Item found via `this.origin`.  This keeps the
+   * configuration portable: IDs remain stable when the beast-action item is copied or
+   * imported, while the UUID of the copied item is only needed at runtime.
+   *
+   * Falls back gracefully when the source item cannot be found (e.g. the effect was applied
+   * from an actor sheet directly) — the test card is still posted but with no auto-applied
+   * effects on resolution.
+   *
+   * @param {object} rtConfig  Value of `flags.neuroshima.requiredTestTrigger`.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _postRequiredTestFromFlag(rtConfig) {
+    const originEffect = this.origin ? fromUuidSync(this.origin) : null;
+    const sourceItem = originEffect?.parent?.documentName === "Item" ? originEffect.parent : null;
+
+    const resolveIds = (ids = []) => {
+      if (!sourceItem || !ids.length) return [];
+      return ids.map(id => sourceItem.effects.get(id)).filter(Boolean).map(e => e.uuid);
+    };
+
+    const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+    await NeuroshimaScriptRunner.postRequiredTest({
+      title:                 rtConfig.title       || this.name,
+      description:           rtConfig.description || "",
+      testType:              rtConfig.testType     || "attribute",
+      testKey:               rtConfig.testKey      || "constitution",
+      testAttributeOverride: rtConfig.testAttributeOverride || "",
+      requiredSuccesses:     rtConfig.requiredSuccesses ?? 1,
+      isOpen:                rtConfig.isOpen       ?? false,
+      baseDifficulty:        rtConfig.baseDifficulty || "average",
+      defenderActorUuid:     this.actor.uuid,
+      onSuccessEffectUuids:  resolveIds(rtConfig.onSuccessEffectIds),
+      onFailureEffectUuids:  resolveIds(rtConfig.onFailureEffectIds)
+    });
   }
 
   /**

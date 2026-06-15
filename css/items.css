@@ -2353,22 +2353,25 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     font-size: 0.85em;
 }
 
-.beast-activity-sheet .bas-open-test-row {
-    align-items: center;
-    margin-bottom: 8px;
+.beast-activity-sheet .bas-test-options-row {
+    align-items: flex-end;
 }
 
-.beast-activity-sheet .bas-open-test-label {
+.beast-activity-sheet .bas-open-test-group {
+    flex: 0 0 auto;
+    min-width: 120px;
+}
+
+.beast-activity-sheet .bas-difficulty-group {
     flex: 1;
-    font-size: 0.85em;
-    opacity: 0.85;
+    min-width: 0;
 }
 
-.beast-activity-sheet .bas-open-test-right {
+.beast-activity-sheet .bas-open-test-control {
     display: flex;
     align-items: center;
     gap: 5px;
-    flex-shrink: 0;
+    height: 26px;
 }
 
 .beast-activity-sheet .bas-open-test-sp-label {
@@ -2376,8 +2379,25 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     opacity: 0.7;
 }
 
-.beast-activity-sheet .bas-open-test-right input[type="number"] {
-    width: 48px;
+.beast-activity-sheet .bas-open-test-control select {
+    flex: 1;
+    height: 26px;
+    min-width: 0;
+    font-size: 0.82em;
+    padding: 2px 4px;
+    background: var(--ns-bg-input);
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    color: var(--ns-text-main);
+}
+
+.beast-activity-sheet .bas-open-test-control select:focus {
+    border-color: var(--ns-text-accent);
+    outline: none;
+}
+
+.beast-activity-sheet .bas-open-test-control input[type="number"] {
+    width: 44px;
     height: 26px;
     font-size: 0.82em;
     padding: 2px 4px;
@@ -2388,12 +2408,12 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     text-align: center;
 }
 
-.beast-activity-sheet .bas-open-test-right input[type="number"]:focus {
+.beast-activity-sheet .bas-open-test-control input[type="number"]:focus {
     border-color: var(--ns-text-accent);
     outline: none;
 }
 
-.beast-activity-sheet .bas-open-test-right input[type="number"]:disabled {
+.beast-activity-sheet .bas-open-test-control input[type="number"]:disabled {
     opacity: 0.35;
     cursor: not-allowed;
 }
@@ -2452,9 +2472,11 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     color: var(--ns-text-main);
 }
 
-.beast-activity-sheet .bas-field-group select option {
+.beast-activity-sheet .bas-field-group select option,
+.beast-activity-sheet .bas-field-group select optgroup {
     background-color: var(--ns-bg-sheet) !important;
     color: var(--ns-text-main) !important;
+    font-style: normal;
 }
 
 .beast-activity-sheet .bas-field-group input:focus,
@@ -2735,14 +2757,16 @@ input[type="color"].rep-color-input::-moz-color-swatch {
     box-sizing: border-box;
 }
 
-.neuroshima.beast-activity-sheet.sheet.item .sheet-body .bas-tab[data-tab="activation"] {
+.neuroshima.beast-activity-sheet.sheet.item .sheet-body .bas-tab[data-tab="activation"].active {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
-.neuroshima.beast-activity-sheet.sheet.item .sheet-body .bas-tab[data-tab="activation"].active {
+.neuroshima.beast-activity-sheet.sheet.item .sheet-body .bas-tab[data-tab="effects"].active {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .neuroshima.beast-activity-sheet.sheet.item nav.tabs .item {

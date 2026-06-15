@@ -33,11 +33,11 @@
 
     {{!-- ===== Tab navigation ===== --}}
     <nav class="sheet-tabs tabs" data-group="sheet">
-        <a class="item {{tabs.activation.cssClass}}" data-action="tab" data-group="sheet" data-tab="activation">
-            <i class="fas fa-bolt"></i> {{localize tabs.activation.label}}
-        </a>
         <a class="item {{tabs.description.cssClass}}" data-action="tab" data-group="sheet" data-tab="description">
             <i class="fas fa-scroll"></i> {{localize tabs.description.label}}
+        </a>
+        <a class="item {{tabs.activation.cssClass}}" data-action="tab" data-group="sheet" data-tab="activation">
+            <i class="fas fa-bolt"></i> {{localize tabs.activation.label}}
         </a>
         <a class="item {{tabs.effects.cssClass}}" data-action="tab" data-group="sheet" data-tab="effects">
             <i class="fas fa-star"></i> {{localize tabs.effects.label}}
@@ -411,7 +411,7 @@
             {{/if}}
 
             {{!-- ===== Damage: beast-action (success-based, single damage) ===== --}}
-            {{#unless isSegmentItem}}
+            {{#if showBeastActionDamage}}
             <fieldset class="bas-fieldset">
                 <legend>{{localize "NEUROSHIMA.Items.Fields.Damage"}}</legend>
                 <div class="bas-row">
@@ -429,7 +429,7 @@
                     </div>
                 </div>
             </fieldset>
-            {{/unless}}
+            {{/if}}
 
         </section>
 
@@ -481,15 +481,29 @@
                         </select>
                     </div>
                 </div>
-                <div class="bas-row bas-open-test-row">
-                    <span class="bas-open-test-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestIsOpen"}}</span>
-                    <div class="bas-open-test-right">
-                        <input type="checkbox" name="testIsOpen" {{#if activity.testIsOpen}}checked{{/if}}
-                               {{#unless editable}}disabled{{/unless}}/>
-                        <span class="bas-open-test-sp-label">SP</span>
-                        <input type="number" name="testSuccesses" value="{{activity.testSuccesses}}"
-                               min="1" max="10"
-                               {{#unless editable}}disabled{{else}}{{#unless activity.testIsOpen}}disabled{{/unless}}{{/unless}}/>
+                <div class="bas-row bas-test-options-row">
+                    <div class="bas-field-group bas-open-test-group">
+                        <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.RollType"}}</label>
+                        <div class="bas-open-test-control">
+                            <select name="testIsOpen" {{#unless editable}}disabled{{/unless}}>
+                                <option value="closed" {{#unless activity.testIsOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.BeastAction.Sheet.RollTypeClosed"}}</option>
+                                <option value="open" {{#if activity.testIsOpen}}selected{{/if}}>{{localize "NEUROSHIMA.BeastAction.Sheet.RollTypeOpen"}}</option>
+                            </select>
+                            <span class="bas-open-test-sp-label">SP</span>
+                            <input type="number" name="testSuccesses" value="{{activity.testSuccesses}}"
+                                   min="1" max="10"
+                                   {{#unless editable}}disabled{{else}}{{#unless activity.testIsOpen}}disabled{{/unless}}{{/unless}}/>
+                        </div>
+                    </div>
+                    <div class="bas-field-group bas-difficulty-group">
+                        <label class="bas-label">{{localize "NEUROSHIMA.BeastAction.Sheet.TestDifficulty"}}</label>
+                        <select name="testDifficulty" {{#unless editable}}disabled{{/unless}}>
+                            {{#each difficulties}}
+                            <option value="{{@key}}" {{#if (eq @key ../activity.testDifficulty)}}selected{{/if}}>
+                                {{localize this.label}}
+                            </option>
+                            {{/each}}
+                        </select>
                     </div>
                 </div>
                 <div class="bas-row">

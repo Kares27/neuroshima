@@ -100,7 +100,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
   };
 
   /** @type {{ sheet: string }} Current active tab group state. */
-  tabGroups = { sheet: "activation" };
+  tabGroups = { sheet: "description" };
 
   /**
    * WZORZEC SCROLL PRESERVATION — stosowany identycznie w actor-sheet-base.js i item-sheet.js.
@@ -146,7 +146,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
    * @returns {{ identity: object, activation: object, effects: object }}
    */
   _getTabs() {
-    const current = this.tabGroups.sheet ?? "activation";
+    const current = this.tabGroups.sheet ?? "description";
     return {
       activation: {
         id: "activation", group: "sheet",
@@ -274,6 +274,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       blastDamageTypes:       NEUROSHIMA.blastDamageTypesFull,
       testAttributes,
       testSkillGroups,
+      difficulties:           NEUROSHIMA.difficulties,
       isSegment:              activity.costType === "segment",
       isSegmentItem,
       actionTypes,
@@ -283,6 +284,7 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       isRanged:               isAttack && actWeaponType === "ranged",
       isThrown:               isAttack && actWeaponType === "thrown",
       isGrenade:              isAttack && actWeaponType === "grenade",
+      showBeastActionDamage:  !isSegmentItem && actActionType === "attack",
       editable:               this.item.isOwner
     };
   }
@@ -332,13 +334,14 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     this._itemHookId = Hooks.on("updateItem", (item) => {
       if (item.uuid !== this.item.uuid) return;
       this.item = item;
-      if (this._selfUpdating) {
-        this.render();
-      } else {
-        this.render({ force: true });
-      }
+      if (this._selfUpdating) return;
+      this.render({ force: true });
     });
-    this.changeTab(this.tabGroups.sheet ?? "activation", "sheet");
+    for (const [group, tabId] of Object.entries(this.tabGroups)) {
+      this.element.querySelectorAll(`[data-group="${group}"][data-tab]`).forEach(el => {
+        el.classList.toggle("active", el.dataset.tab === tabId);
+      });
+    }
   }
 
   /**
@@ -397,13 +400,17 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.damage                  !== undefined) act.damage                  = raw.damage;
     if (raw.piercing                !== undefined) act.piercing                = raw.piercing;
     act.testRequired  = raw.testRequired === true || raw.testRequired === "true" || raw.testRequired === "on";
-    act.testIsOpen    = raw.testIsOpen   === true || raw.testIsOpen   === "true" || raw.testIsOpen   === "on";
+    act.testIsOpen    = raw.testIsOpen   === "open" || raw.testIsOpen === true || raw.testIsOpen === "true";
     if (raw.testType                !== undefined) act.testType                = raw.testType;
     if (raw.testKey                 !== undefined) act.testKey                 = raw.testKey;
     if (raw.testAttributeOverride   !== undefined) act.testAttributeOverride   = raw.testAttributeOverride;
     if (raw.testSuccesses           !== undefined) act.testSuccesses           = Number(raw.testSuccesses) || 1;
+    if (raw.testDifficulty          !== undefined) act.testDifficulty          = raw.testDifficulty || "average";
 
-    this._selfUpdating = true;
+    const changedField = event?.target?.name ?? "";
+    const STRUCTURAL_FIELDS = ["testRequired", "testIsOpen", "testType", "actionType", "weaponType"];
+    const needsRerender = !changedField || STRUCTURAL_FIELDS.includes(changedField);
+    this._selfUpdating = !needsRerender;
     try {
       await this.item.update({ "system.activities": activities });
     } finally {

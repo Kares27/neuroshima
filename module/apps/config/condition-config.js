@@ -78,6 +78,41 @@ await this.sendMessage(\`<strong>Zatrucie (\${stacks}×)</strong>: kara \${stack
 if (!enc || enc.enabled === false || enc.max <= 0) return;
 if (enc.value >= enc.max) await this.apply();
 else await this.remove();`
+  },
+  // ── Combat Maneuver conditions ─────────────────────────────────────────────────────────────
+  // These 4 conditions are applied automatically by MeleeTurnService during melee encounters.
+  // They are PURELY cosmetic / informational on the token HUD — the mechanical effects are
+  // enforced by the resolution code, NOT by condition scripts.
+  //
+  // They CANNOT be toggled manually via the token HUD (blocked in actor.toggleStatusEffect).
+  // They are cleared at the start of each new turn and when the encounter ends.
+  //
+  // • maneuver-pace  (int  1–3): Zwiększone tempo — difficulty raised by `value` levels for
+  //   BOTH combatants.  Applied to the initiator AND their primary opponent simultaneously.
+  // • maneuver-charge (bool):    Szarża — declared at initiative roll time; shows for turn 1
+  //   only (chargeLevel reset to 0 at startNewTurn).
+  // • maneuver-fury   (bool):    Furia — +2 Zręczność in attack; auto-hit when losing initiative.
+  // • maneuver-full-defense (bool): Pełna obrona — +2 Zręczność in defense; 2-success
+  //   takeover threshold.
+  {
+    id: "maneuver-pace", name: "Zwiększone tempo", key: "maneuver-pace",
+    img: "systems/neuroshima/assets/img/weapon-melee.svg",
+    type: "int", allowNegative: false, builtin: true, booleanOnly: false, intOnly: true, scripts: [], conditionCheckCode: ""
+  },
+  {
+    id: "maneuver-charge", name: "Szarża", key: "maneuver-charge",
+    img: "systems/neuroshima/assets/effects/fist.svg",
+    type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [], conditionCheckCode: ""
+  },
+  {
+    id: "maneuver-fury", name: "Furia", key: "maneuver-fury",
+    img: "systems/neuroshima/assets/effects/crossed-swords.svg",
+    type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [], conditionCheckCode: ""
+  },
+  {
+    id: "maneuver-full-defense", name: "Pełna obrona", key: "maneuver-full-defense",
+    img: "systems/neuroshima/assets/effects/shield.svg",
+    type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [], conditionCheckCode: ""
   }
 ];
 
@@ -93,7 +128,13 @@ export function getConditions() {
     const list = Array.isArray(raw) ? raw : (raw?.list ?? []);
     if (list.length === 0) return foundry.utils.deepClone(DEFAULT_CONDITIONS);
 
-    return list.map(saved => {
+    const savedKeys = new Set(list.map(c => c.key));
+    const allEntries = [
+      ...list,
+      ...DEFAULT_CONDITIONS.filter(d => !savedKeys.has(d.key)).map(d => foundry.utils.deepClone(d))
+    ];
+
+    return allEntries.map(saved => {
       const def = DEFAULT_CONDITIONS.find(d => d.key === saved.key);
       return {
         ...saved,
