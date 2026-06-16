@@ -137,6 +137,33 @@ export class MeleeResolution {
     attacker.usedDice.push(...exchange.attackerSelectedDice);
     defender.usedDice.push(...exchange.defenderSelectedDice);
 
+    // BERSERKER counter-attack (Tryb Berserkera):
+    // Rule: "zadawać ciosy nie zważając na rany mimo przegranej Inicjatywy" — NS 1.5
+    // When the defender accepted the hit in berserker mode, berserkerAcceptHit stores
+    // all their remaining unused dice in exchange.berserkerCounterDice.  Those dice are
+    // committed to a simultaneous automatic counter-attack — no success check, the
+    // berserker always deals damage back regardless of the exchange outcome.
+    if (exchange.berserkerCounterDice?.length > 0) {
+      const counterCount = exchange.berserkerCounterDice.length;
+      const counterOptions = this._computeDamageOptions(counterCount, defender);
+      if (counterOptions.length > 0) {
+        await this.applyDamageDistributed(
+          updated, defenderId, attackerId,
+          counterOptions[0].hits,
+          exchange.berserkerCounterDice[0]
+        );
+        updated.log.push({
+          type: "berserker-counter",
+          turn: updated.turnState.turn,
+          segment: updated.turnState.segment,
+          text: game.i18n.format("NEUROSHIMA.MeleeDuel.LogBerserkerCounter", {
+            name: defender.name, dice: counterCount
+          })
+        });
+      }
+      defender.usedDice.push(...exchange.berserkerCounterDice);
+    }
+
     // 5. Store segment cost before clearing exchange (X dice = X segments consumed)
     updated.turnState.segmentCost = diceCount;
 

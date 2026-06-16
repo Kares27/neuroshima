@@ -813,6 +813,7 @@
             "LogTurnEnd": "Koniec Tury {turn}.",
             "LogFullDefenseBlock": "{defender} paruje cios (Pełna Obrona), ale nie przejmuje inicjatywy.",
             "LogFuryHit": "{name} otrzymuje dodatkowe trafienie z Furii!",
+            "LogBerserkerCounter": "{name} kontratakuje w trybie Berserkera używając {dice} kości!",
             "LogExtraAttackHit": "{attacker} trafia {defender} dodatkowym atakiem ({s}s)! Darmowa obrona: {dice}",
             "LogExtraAttackBlocked": "{attacker} atakuje {defender}, ale darmowa obrona blokuje cios! Kości: {dice}",
             "LogExtraAttackMiss": "{attacker} pudłuje dodatkowym atakiem przeciwko {defender}.",

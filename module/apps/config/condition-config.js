@@ -96,7 +96,7 @@ else await this.remove();`
   //   takeover threshold.
   {
     id: "maneuver-pace", name: "Zwiększone tempo", key: "maneuver-pace",
-    img: "systems/neuroshima/assets/img/weapon-melee.svg",
+    img: "icons/svg/clockwork.svg",
     type: "int", allowNegative: false, builtin: true, booleanOnly: false, intOnly: true, scripts: [], conditionCheckCode: ""
   },
   {
@@ -106,7 +106,7 @@ else await this.remove();`
   },
   {
     id: "maneuver-fury", name: "Furia", key: "maneuver-fury",
-    img: "systems/neuroshima/assets/effects/crossed-swords.svg",
+    img: "icons/svg/eye.svg",
     type: "boolean", allowNegative: false, builtin: true, booleanOnly: true, scripts: [], conditionCheckCode: ""
   },
   {

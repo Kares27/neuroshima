@@ -2861,7 +2861,6 @@ function initializeSocketlib() {
 
     game.neuroshima.socket.register("syncActorManeuverConditions", async (actorUuid, condKey, hasCharge, tempoLevel) => {
         game.neuroshima?.log("[socket:syncActorManeuverConditions] received", { actorUuid, condKey, hasCharge, tempoLevel });
-        const { MeleeTurnService } = await import("./module/combat/melee-turn-service.js");
         const doc = fromUuidSync(actorUuid);
         const actor = doc?.actor || doc;
         if (!actor) {
@@ -2869,10 +2868,41 @@ function initializeSocketlib() {
             return;
         }
         game.neuroshima?.log("[socket:syncActorManeuverConditions] applying to actor", { name: actor.name, type: actor.type, id: actor.id });
-        await MeleeTurnService._clearManeuverConditions(actor);
-        if (condKey) await actor.addCondition(condKey).catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed", condKey, err));
-        if (hasCharge) await actor.addCondition("maneuver-charge").catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed maneuver-charge", err));
-        if (tempoLevel > 0) await actor.addCondition("maneuver-pace", tempoLevel).catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed maneuver-pace", err));
+
+        // Idempotent boolean condition sync — only toggle when state differs to avoid
+        // the clear→empty→re-apply visual flicker on the token HUD.
+        const boolConds = [
+            { key: "maneuver-fury",         want: condKey === "maneuver-fury" },
+            { key: "maneuver-full-defense", want: condKey === "maneuver-full-defense" },
+            { key: "maneuver-charge",       want: !!hasCharge }
+        ];
+        for (const { key, want } of boolConds) {
+            const has = actor.statuses?.has(key) ?? false;
+            if (want && !has) {
+                await actor.addCondition(key).catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed", key, err));
+            } else if (!want && has) {
+                await actor.toggleStatusEffect(key, { active: false }).catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] toggleOff failed", key, err));
+            }
+        }
+
+        // Idempotent int condition sync for maneuver-pace — set exact value without
+        // deleting and recreating the effect (which would cause a HUD flicker).
+        const paceEffect = actor.effects.find(e => e.statuses?.has("maneuver-pace") && e.getFlag("neuroshima", "conditionNumbered"));
+        const currentPace = paceEffect?.getFlag("neuroshima", "conditionValue") ?? 0;
+        const wantPace = tempoLevel > 0 ? tempoLevel : 0;
+        if (wantPace > 0) {
+            if (paceEffect) {
+                if (currentPace !== wantPace) {
+                    await paceEffect.setFlag("neuroshima", "conditionValue", wantPace).catch(() => {});
+                    actor._refreshTokenHUD?.();
+                }
+            } else {
+                await actor.addCondition("maneuver-pace", wantPace).catch(err => game.neuroshima?.log("[socket:syncActorManeuverConditions] addCondition failed maneuver-pace", err));
+            }
+        } else if (paceEffect) {
+            await paceEffect.delete().catch(() => {});
+        }
+
         game.neuroshima?.log("[socket:syncActorManeuverConditions] done", { name: actor.name });
     });
 

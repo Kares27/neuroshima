@@ -226,12 +226,6 @@ export class MeleeOpposedChat {
     // Mark as resolved immediately (prevents double-click / double-response)
     await MeleeOpposedChat._setChatFlag(message, "opposedChat", { ...data, status: "resolved" });
 
-    // Clear maneuver conditions from both combatants now that the exchange is resolved.
-    const { NeuroshimaSocket: _NSResolve } = await import("../helpers/socket-helper.js");
-    game.neuroshima?.log("[melee-opposed-chat.resolveOpposed] clearing maneuver conditions", { attacker: data.attackerTokenUuid || data.attackerUuid, defender: data.defenderTokenUuid || data.defenderUuid });
-    await _NSResolve.gmExecute("clearActorManeuverConditions", data.attackerTokenUuid || data.attackerUuid);
-    await _NSResolve.gmExecute("clearActorManeuverConditions", data.defenderTokenUuid || data.defenderUuid);
-
     const attackerDoc = fromUuidSync(data.attackerTokenUuid || data.attackerUuid);
     const attackerActor = attackerDoc?.actor ?? attackerDoc;
 
@@ -499,6 +493,19 @@ export class MeleeOpposedChat {
     // Force re-render both sheets — defender's flag unset may not trigger attacker's re-render
     defenderActor?.sheet?.render();
     attackerActor?.sheet?.render();
+
+    // MANEUVER — Trash collector (non-default path):
+    // For direct (non-duel-card) resolution, clear maneuver conditions here — this is
+    // the final step of the exchange, equivalent to state.status === "done" on a duel card.
+    {
+      const { NeuroshimaSocket: _NSClear } = await import("../helpers/socket-helper.js");
+      await _NSClear.gmExecute("clearActorManeuverConditions", data.attackerTokenUuid || data.attackerUuid);
+      await _NSClear.gmExecute("clearActorManeuverConditions", data.defenderTokenUuid || data.defenderUuid);
+      game.neuroshima?.log("[melee-opposed-chat.resolveOpposed] maneuver conditions cleared (direct path)", {
+        attacker: data.attackerTokenUuid || data.attackerUuid,
+        defender: data.defenderTokenUuid || data.defenderUuid
+      });
+    }
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────
@@ -622,6 +629,7 @@ export class MeleeOpposedChat {
       attackerUuid: data.attackerUuid,
       attackerTokenUuid: data.attackerTokenUuid ?? null,
       defenderUuid: data.defenderUuid,
+      defenderTokenUuid: data.defenderTokenUuid ?? null,
       weaponId: data.weaponId,
       beastItemId: data.beastItemId ?? null,
       attackDice,
@@ -1283,6 +1291,23 @@ export class MeleeOpposedChat {
       }
 
       await MeleeOpposedChat._renderDuelCard(message, state);
+
+      // MANEUVER — Trash collector (duel card resolved):
+      // Clear maneuver conditions from both combatants only after all dice have been
+      // spent on the card (state.status === "done").  Conditions must remain active
+      // during the exchange so resolution code (pełna obrona 2-success threshold,
+      // furia auto-hit, etc.) can still read them on subsequent segments.
+      if (state.status === "done") {
+        const { MeleeTurnService: _MTS } = await import("./melee-turn-service.js");
+        const atkDoc = fromUuidSync(state.attackerTokenUuid || state.attackerUuid);
+        const defDoc = fromUuidSync(state.defenderTokenUuid || state.defenderUuid);
+        await _MTS._clearManeuverConditions(atkDoc?.actor ?? atkDoc);
+        await _MTS._clearManeuverConditions(defDoc?.actor ?? defDoc);
+        game.neuroshima?.log("[melee-opposed-chat.applyDuelBatch] maneuver conditions cleared after done", {
+          attacker: state.attackerTokenUuid || state.attackerUuid,
+          defender: state.defenderTokenUuid || state.defenderUuid
+        });
+      }
     }
   }
 

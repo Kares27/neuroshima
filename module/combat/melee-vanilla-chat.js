@@ -519,6 +519,14 @@ export class MeleeVanillaChat {
     const weapon = actor?.items.get(p.weaponId);
     const crowd  = encounter?.crowding?.[participantId];
     const crowdingDexPenalty = crowd?.dexPenalty || 0;
+
+    // Szarża (Charge) penalty: if the participant declared charge at initiative (+1..+3 to Zręczność)
+    // but LOST the initiative roll, that same value becomes a penalty on the first pool roll.
+    const isFirstTurn = (encounter?.turnState?.turn ?? 1) === 1;
+    const hasInitiative = encounter?.turnState?.initiativeOwnerId === participantId;
+    const chargeDexPenalty = (isFirstTurn && !hasInitiative && (p.chargeLevel ?? 0) > 0)
+      ? (p.chargeLevel ?? 0) : 0;
+
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
 
     const dialog = new NeuroshimaWeaponRollDialog({
@@ -527,6 +535,7 @@ export class MeleeVanillaChat {
       rollType: "melee",
       isPoolRoll: true,
       crowdingDexPenalty,
+      chargeDexPenalty,
       onClose: () => {},
       onRoll: async (rollResult) => {
         game.neuroshima?.log("[melee-vanilla-chat.onRoll] callback fired", { encounterId, participantId, maneuver: rollResult?.maneuver, tempoLevel: rollResult?.tempoLevel });

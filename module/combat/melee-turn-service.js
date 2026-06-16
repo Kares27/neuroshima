@@ -227,20 +227,13 @@ export class MeleeTurnService {
     game.neuroshima?.log("Starting new turn for melee encounter", { id, turn: updated.turnState.turn });
     await MeleeStore.updateEncounter(id, updated);
 
-    // MANEUVER — Trash collector (new turn):
-    // All 4 maneuver conditions (maneuver-pace, maneuver-charge, maneuver-fury,
-    // maneuver-full-defense) are purely turn-scoped.  At the start of each new turn
-    // we strip them from every active participant so the token HUD always reflects the
-    // current (not previous) turn's maneuver choice.
-    // NOTE: chargeLevel is also reset to 0 above — Szarża only applies to the first turn.
-    // Routing through GM socket so non-GM players can clear conditions on actors they don't own.
-    const { NeuroshimaSocket: _NS1 } = await import("../helpers/socket-helper.js");
-    game.neuroshima?.log("[MeleeTurnService.startNewTurn] clearing maneuver conditions for all active participants");
-    for (const p of Object.values(updated.participants)) {
-      if (!p.isActive) continue;
-      game.neuroshima?.log("[MeleeTurnService.startNewTurn] clearing", { name: p.name, uuid: p.tokenUuid ?? p.actorUuid });
-      await _NS1.gmExecute("clearActorManeuverConditions", p.tokenUuid ?? p.actorUuid);
-    }
+    // MANEUVER — Conditions persist across turns within the same encounter.
+    // They are NOT cleared here — they remain visible on token HUDs until the
+    // entire encounter ends (MeleeEncounter.end).  When a participant rolls their
+    // pool for the new turn, _applyParticipantManeuverConditions (called from setPool)
+    // will idempotently update conditions to reflect the newly chosen maneuver.
+    // NOTE: chargeLevel is reset to 0 above, so maneuver-charge will be removed from
+    // the actor automatically by syncActorManeuverConditions on the next pool roll.
   }
 
   /**
@@ -689,13 +682,33 @@ export class MeleeTurnService {
     await MeleeResolution.resolvePrimaryExchange(id);
   }
 
+  /**
+   * Berserker mode (Tryb Berserkera):
+   * Rule: "zadawać ciosy nie zważając na rany mimo przegranej Inicjatywy,
+   *        w ogóle nie musząc się przy tym bronić." — NS 1.5
+   *
+   * The defender does NOT block (defenderSelectedDice = []).  Instead they collect
+   * ALL remaining unused dice into a simultaneous counter-attack that is applied
+   * automatically by MeleeResolution.resolvePrimaryExchange when it detects
+   * exchange.berserkerCounterDice is set.  This creates a mutual exchange: the
+   * attacker always hits the berserker, and the berserker always hits the attacker.
+   */
   static async berserkerAcceptHit(id, participantId) {
     const encounter = MeleeStore.getEncounter(id);
     if (!encounter || encounter.turnState.phase !== "primary-defense-selection") return;
     const updated = foundry.utils.deepClone(encounter);
     const exchange = updated.currentExchange;
     if (participantId !== exchange.defenderId) return;
+
     exchange.defenderSelectedDice = [];
+
+    // Collect all unused dice for the berserker's automatic counter-attack.
+    const berserker = updated.participants[participantId];
+    const usedSet = new Set(berserker.usedDice || []);
+    exchange.berserkerCounterDice = (berserker.pool || [])
+      .map((_, i) => i)
+      .filter(i => !usedSet.has(i));
+
     await MeleeStore.updateEncounter(id, updated);
     const { MeleeResolution } = await import("./melee-resolution.js");
     await MeleeResolution.resolvePrimaryExchange(id);

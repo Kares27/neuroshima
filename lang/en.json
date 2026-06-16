@@ -772,6 +772,7 @@
             "LogBlock": "{attacker} attacks {defender}, but is blocked!",
             "LogTakeover": "{attacker} takes over initiative from {oldAttacker}!",
             "LogFuryHit": "{name} receives an additional Fury hit!",
+            "LogBerserkerCounter": "{name} counter-attacks in Berserker mode with {dice} die/dice!",
             "LogDefensiveMiss": "{attacker} failed to hit {defender}.",
             "LogDoubleMiss": "Both participants miss.",
             "LogNewTurn": "--- Turn {turn} Start ---",
