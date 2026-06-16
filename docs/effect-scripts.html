@@ -3311,14 +3311,25 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <h2 class="section-title">5a. <code>postRequiredTest</code> — Wymagany rzut dla graczy</h2>
 
   <p>
-    <code>NeuroshimaScriptRunner.postRequiredTest(params)</code> to statyczna metoda wywoływana ze skryptów
-    efektów (najczęściej z triggera <strong>manual</strong>). Tworzy kartę czatu z przyciskiem, który
-    pozwala graczom otworzyć okno dialogowe rzutu dla ich postaci — bez ingerencji MG.
+    <code>postRequiredTest</code> tworzy kartę czatu z przyciskiem, który pozwala graczowi otworzyć okno
+    dialogowe rzutu dla jego postaci — bez ingerencji MG. Karta może być skierowana do wszystkich
+    graczy (tryb publiczny) lub poszeptana wyłącznie do właścicieli konkretnego aktora (tryb whisper).
   </p>
   <p>
-    Typowe zastosowania: testy strachu, testy odporności na truciznę, testy wytrzymałości, testy
-    przetrwania — wszędzie tam, gdzie to gracz (a nie MG) ma wykonać rzut w odpowiedzi na zdarzenie
-    narracyjne.
+    Metodę można wywołać na dwa sposoby:
+  </p>
+  <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
+    <li><code>await this.postRequiredTest(params)</code> — <strong>zalecane wewnątrz skryptów</strong>;
+        automatycznie ustawia <code>defenderActorUuid = this.actor.uuid</code>, co kieruje
+        auto-aplikację efektów na aktualnie powiązanego aktora.</li>
+    <li><code>await NeuroshimaScriptRunner.postRequiredTest(params)</code> — statyczna forma,
+        wymagana gdy nie ma kontekstu <code>this</code> lub chcesz ręcznie sterować <code>defenderActorUuid</code>.</li>
+  </ul>
+  <p>
+    Typowe zastosowania: testy strachu, testy odporności na truciznę, testy kondycji po ataku bestii,
+    testy wytrzymałości — wszędzie tam, gdzie to gracz (a nie MG) ma wykonać rzut w odpowiedzi na
+    zdarzenie narracyjne. Triggery <strong>manual</strong>, <strong>applyEffect</strong> i
+    <strong>immediate</strong> są najczęstszymi miejscami wywołania.
   </p>
 
   <div class="callout info">
@@ -3332,17 +3343,27 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   </div>
 
   <h3>Sygnatura i parametry</h3>
-  <pre><code><span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
-  title:             <span class="str">"Test Strachu"</span>,             <span class="cmt">// nagłówek karty czatu</span>
-  description:       <span class="str">"Opiszij sytuację…"</span>,        <span class="cmt">// opis widoczny pod tytułem (opcjonalny)</span>
-  testType:          <span class="str">"attribute"</span>,               <span class="cmt">// "skill" lub "attribute"</span>
-  testKey:           <span class="str">"charisma"</span>,                <span class="cmt">// klucz umiejętności lub atrybutu</span>
-  requiredSuccesses: <span class="num">2</span>,                         <span class="cmt">// minimalna liczba sukcesów (domyślnie 1)</span>
-  isOpen:            <span class="kw">false</span>,                     <span class="cmt">// true = rzut otwarty, false = zamknięty</span>
-  rollMode:          <span class="kw">null</span>,                      <span class="cmt">// null = ustawienie systemowe, lub np. "gmroll"</span>
-  onSuccess:         <span class="kw">null</span>,                      <span class="cmt">// konsekwencja na sukces (patrz formaty poniżej)</span>
-  onFailure:         { addCondition: <span class="str">"frightened"</span> } <span class="cmt">// konsekwencja na porażkę</span>
-});</code></pre>
+  <pre><code><span class="cmt">// Wewnątrz skryptu efektu — zalecana forma (defenderActorUuid ustawiane automatycznie)</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">postRequiredTest</span>({
+  title:                <span class="str">"Test Kondycji"</span>,          <span class="cmt">// nagłówek karty czatu</span>
+  description:          <span class="str">"Opiszij sytuację…"</span>,     <span class="cmt">// opis widoczny pod tytułem (opcjonalny)</span>
+  testType:             <span class="str">"attribute"</span>,              <span class="cmt">// "skill" lub "attribute" (domyślnie "skill")</span>
+  testKey:              <span class="str">"constitution"</span>,           <span class="cmt">// klucz umiejętności lub atrybutu</span>
+  testAttributeOverride:<span class="str">""</span>,                       <span class="cmt">// nadpisuje atrybut używany w teście umiejętności</span>
+  requiredSuccesses:    <span class="num">2</span>,                        <span class="cmt">// minimalna liczba sukcesów (domyślnie 1)</span>
+  isOpen:               <span class="kw">false</span>,                    <span class="cmt">// true = rzut otwarty, false = zamknięty</span>
+  baseDifficulty:       <span class="str">"average"</span>,               <span class="cmt">// startowy poziom trudności</span>
+  rollMode:             <span class="kw">null</span>,                     <span class="cmt">// null = ustawienie systemowe</span>
+  onSuccess:            <span class="kw">null</span>,                     <span class="cmt">// kondycja/e na sukces (patrz formaty poniżej)</span>
+  onFailure:            { addCondition: <span class="str">"frightened"</span> }, <span class="cmt">// kondycja/e na porażkę</span>
+  onSuccessEffectUuids: [],                        <span class="cmt">// UUID efektów do nałożenia na sukces</span>
+  onFailureEffectUuids: [],                        <span class="cmt">// UUID efektów do nałożenia na porażkę</span>
+  defenderActorUuid:    <span class="str">""</span>,                       <span class="cmt">// UUID aktora-obrońcy (auto przy this.postRequiredTest)</span>
+  whisperToDefender:    <span class="kw">false</span>                     <span class="cmt">// true = karta poszeptana do właścicieli obrońcy + GM</span>
+});
+
+<span class="cmt">// Statyczna forma — pełna kontrola (np. gdy brak kontekstu this)</span>
+<span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({ <span class="cmt">/* …te same parametry… */</span> });</code></pre>
 
   <table>
     <thead><tr><th>Parametr</th><th>Typ</th><th>Domyślnie</th><th>Opis</th></tr></thead>
@@ -3351,18 +3372,30 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
       <tr><td><code>description</code></td><td>string</td><td><code>""</code></td><td>Opcjonalny tekst wyjaśniający cel testu. Pojawia się pod nagłówkiem na karcie.</td></tr>
       <tr><td><code>testType</code></td><td>string</td><td><code>"skill"</code></td><td><code>"skill"</code> — test umiejętności lub specjalizacji; <code>"attribute"</code> — test czystego atrybutu.</td></tr>
       <tr><td><code>testKey</code></td><td>string</td><td><code>""</code></td><td>Klucz umiejętności (np. <code>"spotting"</code>, <code>"painResistance"</code>) lub atrybutu (np. <code>"charisma"</code>, <code>"constitution"</code>, <code>"dexterity"</code>, <code>"perception"</code>, <code>"cleverness"</code>).</td></tr>
+      <tr><td><code>testAttributeOverride</code></td><td>string</td><td><code>""</code></td><td>Gdy podany — nadpisuje atrybut używany do wykonania testu umiejętności (np. wymuszenie testu Zr opartego na Spostrzegawczości zamiast domyślnego atrybutu).</td></tr>
       <tr><td><code>requiredSuccesses</code></td><td>number</td><td><code>1</code></td><td>Minimalna liczba sukcesów potrzebna do zaliczenia testu. Wyświetlana na karcie jako cel.</td></tr>
       <tr><td><code>isOpen</code></td><td>boolean</td><td><code>false</code></td><td><code>true</code> = rzut otwarty (gracz może rzucać ponownie każdym sukcesem); <code>false</code> = rzut zamknięty (standardowy).</td></tr>
-      <tr><td><code>rollMode</code></td><td>string|null</td><td><code>null</code></td><td>Tryb rzutu Foundry. <code>null</code> = tryb z ustawień systemowych. Możliwe: <code>"roll"</code>, <code>"gmroll"</code>, <code>"blindroll"</code>, <code>"selfroll"</code>.</td></tr>
-      <tr><td><code>onSuccess</code></td><td>Object|Array|string|null</td><td><code>null</code></td><td>Konsekwencja automatycznie aplikowana gdy gracz <strong>zda</strong> test. Patrz formaty niżej.</td></tr>
-      <tr><td><code>onFailure</code></td><td>Object|Array|string|null</td><td><code>null</code></td><td>Konsekwencja automatycznie aplikowana gdy gracz <strong>nie zda</strong> testu. Patrz formaty niżej.</td></tr>
+      <tr><td><code>baseDifficulty</code></td><td>string</td><td><code>"average"</code></td><td>Startowy poziom trudności. Klucze: <code>"easy"</code>, <code>"average"</code>, <code>"problematic"</code>, <code>"hard"</code>, <code>"veryHard"</code>, <code>"damnHard"</code>, <code>"luck"</code>. Gracz może go zmodyfikować w dialogu.</td></tr>
+      <tr><td><code>rollMode</code></td><td>string|null</td><td><code>null</code></td><td>Tryb rzutu Foundry. <code>null</code> = tryb z ustawień systemowych. Ignorowane gdy <code>whisperToDefender: true</code>.</td></tr>
+      <tr><td><code>onSuccess</code></td><td>Object|Array|string|null</td><td><code>null</code></td><td>Kondycja/e automatycznie aplikowana gdy gracz <strong>zda</strong> test. Patrz formaty niżej.</td></tr>
+      <tr><td><code>onFailure</code></td><td>Object|Array|string|null</td><td><code>null</code></td><td>Kondycja/e automatycznie aplikowana gdy gracz <strong>nie zda</strong> testu. Patrz formaty niżej.</td></tr>
+      <tr><td><code>onSuccessEffectUuids</code></td><td>string[]</td><td><code>[]</code></td><td>Tablica UUID ActiveEffect-ów do nałożenia na aktora gdy test <strong>zdany</strong>. UUID są pełne (np. <code>"Item.xxxx.ActiveEffect.yyyy"</code>). Nakładane obok <code>onSuccess</code>.</td></tr>
+      <tr><td><code>onFailureEffectUuids</code></td><td>string[]</td><td><code>[]</code></td><td>Tablica UUID ActiveEffect-ów do nałożenia na aktora gdy test <strong>niezdany</strong>. Nakładane obok <code>onFailure</code>.</td></tr>
+      <tr><td><code>defenderActorUuid</code></td><td>string</td><td><code>""</code></td><td>UUID aktora-obrońcy — cel auto-aplikacji efektów po rzucie. Przy <code>this.postRequiredTest()</code> ustawiany automatycznie na <code>this.actor.uuid</code>. Wymagany gdy <code>whisperToDefender: true</code>.</td></tr>
+      <tr><td><code>whisperToDefender</code></td><td>boolean</td><td><code>false</code></td><td>Gdy <code>true</code> i <code>defenderActorUuid</code> jest ustawiony — karta czatu jest poszeptana wyłącznie do właścicieli aktora-obrońcy i wszystkich GM-ów. Pomija ustawienie <code>rollMode</code>. Używaj gdy test dotyczy konkretnego obrońcy (atak bestii, efekt triggered).</td></tr>
     </tbody>
   </table>
 
-  <div class="callout warning">
-    <strong>Metoda jest statyczna</strong> — wywołuj ją jako <code>NeuroshimaScriptRunner.postRequiredTest(...)</code>,
-    nie przez <code>this.postRequiredTest(...)</code>. Jest dostępna globalnie w skryptach efektów, bo
-    <code>NeuroshimaScriptRunner</code> jest wstrzyknięty do kontekstu wykonania.
+  <div class="callout info">
+    <strong>Dwie formy wywołania:</strong><br>
+    • <code>await this.postRequiredTest(params)</code> — <strong>zalecane wewnątrz skryptów efektów</strong>.
+    Automatycznie ustawia <code>defenderActorUuid = this.actor.uuid</code>, dzięki czemu efekty
+    <code>onSuccessEffectUuids</code> / <code>onFailureEffectUuids</code> są nakładane na właściwego aktora
+    bez dodatkowej konfiguracji.<br>
+    • <code>await NeuroshimaScriptRunner.postRequiredTest(params)</code> — statyczna forma.
+    Użyj gdy chcesz ręcznie ustawić <code>defenderActorUuid</code> na innego aktora (np. obrońcę w walce) lub
+    gdy kod działa poza klasą skryptu. <code>NeuroshimaScriptRunner</code> jest dostępny globalnie
+    w kontekście wykonania skryptów.
   </div>
 
   <h3>Formaty <code>onSuccess</code> / <code>onFailure</code></h3>
@@ -3499,6 +3532,59 @@ onFailure: [
     testKey:           <span class="str">"terrainKnowledge"</span>,
     requiredSuccesses: <span class="num">2</span>,
     isOpen:            <span class="kw">false</span>
+  });
+})();</code></pre>
+  </div>
+
+  <h3>Wzorzec triggered — <code>applyEffect</code> / <code>immediate</code> z <code>whisperToDefender</code></h3>
+  <p>
+    Gdy efekt nałożony na aktora ma wywołać wymagany test <em>bezpośrednio dla tego aktora</em>
+    (np. jad bestii, trucizna, efekt triggered), użyj triggera <code>applyEffect</code> lub
+    <code>immediate</code> i wywołaj <code>this.postRequiredTest()</code>. Dzięki temu:
+  </p>
+  <ul style="padding-left:1.5rem; margin-bottom:0.75rem;">
+    <li><code>defenderActorUuid</code> jest ustawiany automatycznie na <code>this.actor.uuid</code>.</li>
+    <li>Karta jest poszeptana wyłącznie do gracza i GM (nie trafia do wszystkich). Wystarczy dodać <code>whisperToDefender: true</code>.</li>
+    <li>Efekty <code>onSuccessEffectUuids</code> / <code>onFailureEffectUuids</code> są nakładane na właściwego aktora bez dodatkowej konfiguracji.</li>
+  </ul>
+
+  <!-- ── Przykład: Jad — applyEffect + whisperToDefender ───────────────── -->
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">applyEffect</span>
+      Jad bestii — test kondycji natychmiast po nałożeniu efektu, karta poszeptana
+    </div>
+    <p class="example-desc">
+      Efekt "Jad" na bestii — po nałożeniu na obrońcę automatycznie wysyła poszeptaną kartę testu
+      Budowy. Sukces/porażka nakładają odpowiedni efekt przez UUID. <code>this.postRequiredTest()</code>
+      automatycznie ustawia <code>defenderActorUuid = this.actor.uuid</code>.
+    </p>
+<pre><code><span class="cmt">// Trigger: applyEffect — na efekcie "Jad Szczękowija" bestii
+// Skrypt wywołuje poszeptany test Budowy zaraz po nałożeniu efektu na obrońcę.
+// this.postRequiredTest automatycznie ustawia defenderActorUuid = this.actor.uuid</span>
+(<span class="kw">async</span> () =&gt; {
+  <span class="cmt">// Pobierz UUID efektów sukces/porażka z tego samego itemu-źródła</span>
+  <span class="kw">const</span> <span class="var">sourceItem</span> = <span class="kw">this</span>.effect.parent;
+  <span class="kw">const</span> <span class="var">onSuccessUuids</span> = [];
+  <span class="kw">const</span> <span class="var">onFailureUuids</span> = [];
+  <span class="kw">if</span> (<span class="var">sourceItem</span>?.effects?.size > <span class="num">1</span>) {
+    <span class="cmt">// Przykład: drugi efekt = wyzdrowienie, trzeci = poważne zatrucie</span>
+    <span class="kw">const</span> <span class="var">fx</span> = <span class="var">sourceItem</span>.effects.contents;
+    <span class="kw">if</span> (<span class="var">fx</span>[<span class="num">1</span>]) <span class="var">onSuccessUuids</span>.push(<span class="var">fx</span>[<span class="num">1</span>].uuid);
+    <span class="kw">if</span> (<span class="var">fx</span>[<span class="num">2</span>]) <span class="var">onFailureUuids</span>.push(<span class="var">fx</span>[<span class="num">2</span>].uuid);
+  }
+
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">postRequiredTest</span>({
+    title:                <span class="str">"Jad Szczękowija"</span>,
+    description:          <span class="str">"Test Budowy o PT 4. Sukces — bez efektu. Porażka — poważne zatrucie."</span>,
+    testType:             <span class="str">"attribute"</span>,
+    testKey:              <span class="str">"constitution"</span>,
+    requiredSuccesses:    <span class="num">4</span>,
+    isOpen:               <span class="kw">false</span>,
+    baseDifficulty:       <span class="str">"average"</span>,
+    whisperToDefender:    <span class="kw">true</span>,
+    onSuccessEffectUuids: <span class="var">onSuccessUuids</span>,
+    onFailureEffectUuids: <span class="var">onFailureUuids</span>
   });
 })();</code></pre>
   </div>

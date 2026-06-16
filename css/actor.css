@@ -5408,7 +5408,8 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     padding-right: 10px;
 }
 
-.neuroshima .conditions-column-header {
+.neuroshima .conditions-column-header,
+.neuroshima .conditions-combat-header {
     display: flex;
     align-items: center;
     padding: 3px 4px;
@@ -5420,6 +5421,10 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ns-accent, #8b0000);
+}
+
+.neuroshima .conditions-combat-header {
+    margin-top: 8px;
 }
 
 .neuroshima .conditions-state-list {

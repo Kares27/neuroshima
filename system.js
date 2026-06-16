@@ -138,6 +138,7 @@ Hooks.once('init', async function() {
     // Script triggers: combat lifecycle
     Hooks.on("combatStart", async (combat) => {
         if (!game.user.isGM) return;
+        game.neuroshima?.log("[hook:combatStart] firing startCombat scripts", { combatId: combat.id, combatantCount: combat.combatants.size });
         await NeuroshimaScriptRunner.runStartCombat(combat);
     });
 
@@ -145,6 +146,7 @@ Hooks.once('init', async function() {
         if (!game.user.isGM) return;
         const priorCombatant = prior ? combat.combatants.get(prior.combatantId) : null;
         const currentCombatant = current ? combat.combatants.get(current.combatantId) : null;
+        game.neuroshima?.log("[hook:combatTurnChange]", { priorActor: priorCombatant?.actor?.name, currentActor: currentCombatant?.actor?.name, round: combat.round, turn: combat.turn });
         if (priorCombatant) await NeuroshimaScriptRunner.runEndTurn(combat, priorCombatant);
         await NeuroshimaScriptRunner.expireEffects(combat);
         if (currentCombatant) await NeuroshimaScriptRunner.runStartTurn(combat, currentCombatant);
@@ -152,7 +154,9 @@ Hooks.once('init', async function() {
 
     Hooks.on("combatRound", async (combat, updates, options) => {
         if (!game.user.isGM) return;
-        if (options?.direction === 1 || updates?.round > (options?.previousRound ?? 0)) {
+        const forward = options?.direction === 1 || updates?.round > (options?.previousRound ?? 0);
+        game.neuroshima?.log("[hook:combatRound]", { round: combat.round, forward, updates, direction: options?.direction });
+        if (forward) {
             await NeuroshimaScriptRunner.expireEffects(combat);
             await NeuroshimaScriptRunner.runStartRound(combat);
         } else {
@@ -3158,6 +3162,7 @@ Hooks.on("controlToken", () => {
 
 Hooks.on("createToken", async (tokenDocument, options, userId) => {
     if (userId !== game.user.id) return;
+    game.neuroshima?.log("[hook:createToken] firing createToken scripts", { tokenName: tokenDocument.name, actorName: tokenDocument.actor?.name, sceneId: tokenDocument.parent?.id });
     await NeuroshimaScriptRunner.runCreateToken(tokenDocument);
     if (game.user.isGM) {
         const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
@@ -3217,6 +3222,7 @@ Hooks.on("canvasReady", async () => {
 let _worldTimeUpdatePending = false;
 Hooks.on("updateWorldTime", async (worldTime, dt) => {
     if (!game.user.isGM) return;
+    game.neuroshima?.log("[hook:updateWorldTime]", { worldTime, dt });
     _worldTimeUpdatePending = true;
     try {
         await NeuroshimaScriptRunner.runWorldTimeUpdate(worldTime, dt);
@@ -3231,6 +3237,7 @@ Hooks.on("simple-calendar.dateTimeChange", async (data) => {
     const currentWorldTime = game.time.worldTime;
     const dt = typeof data?.diff === "number" ? data.diff : 0;
     if (dt === 0) return;
+    game.neuroshima?.log("[hook:simple-calendar.dateTimeChange]", { currentWorldTime, dt });
     await NeuroshimaScriptRunner.runWorldTimeUpdate(currentWorldTime, dt);
 });
 

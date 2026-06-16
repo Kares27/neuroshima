@@ -729,8 +729,8 @@ export class MeleeResolution {
    * Required-test branch (`activity.testRequired === true`):
    *   Does NOT apply effects directly. Instead posts a Required Test chat card. Success /
    *   failure effects are resolved from `effectIds` / `onFailureEffectIds` (item-local IDs →
-   *   full UUIDs) and stored in the card flags. Whoever clicks "Roll" rolls for their own actor
-   *   and receives the appropriate effects — no `defenderActorUuid` is locked in the card.
+   *   full UUIDs) and stored in the card flags. The card is whispered to the defender's
+   *   owning player(s) and all GMs (`whisperToDefender: true`, `defenderActorUuid` locked).
    *
    * Direct-apply branch (`testRequired` absent / false):
    *   All effects in `effectIds` are created on the defender immediately. Effects that need
@@ -759,6 +759,7 @@ export class MeleeResolution {
         const resolveUuids = (ids = []) =>
           ids.map(id => weapon.effects.get(id)).filter(Boolean).map(e => e.uuid);
 
+        game.neuroshima?.log("[MeleeResolution._applyBeastActivityEffects] posting required test", { activityName: activity.name, testType: activity.testType, testKey: activity.testKey, defenderName: defenderActor?.name, defenderUuid: defenderActor?.uuid });
         await NeuroshimaScriptRunner.postRequiredTest({
           title:                 activity.name || weapon.name,
           testType:              activity.testType             || "attribute",
@@ -767,6 +768,8 @@ export class MeleeResolution {
           requiredSuccesses:     activity.testSuccesses        ?? 1,
           isOpen:                activity.testIsOpen           ?? false,
           baseDifficulty:        activity.testDifficulty       || "average",
+          defenderActorUuid:     defenderActor?.uuid ?? "",
+          whisperToDefender:     true,
           onSuccessEffectUuids:  resolveUuids(activity.effectIds),
           onFailureEffectUuids:  resolveUuids(activity.onFailureEffectIds)
         });

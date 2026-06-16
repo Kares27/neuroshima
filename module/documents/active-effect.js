@@ -171,6 +171,11 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * resolved against the source item found via `this.origin`, so they remain stable across
    * copies and imports (they are item-local IDs, not full UUIDs).
    *
+   * The card is always whispered to the owning player(s) and GMs (`whisperToDefender: true`).
+   *
+   * Note: if the effect carries both scripts and `requiredTestTrigger.enabled`, both paths
+   * fire. A debug warning is emitted so the configuration can be corrected.
+   *
    * @override
    */
   async _onCreate(data, options, user) {
@@ -190,6 +195,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     }
     if (game.user.id !== user) return;
     if (!this.actor) return;
+    game.neuroshima?.log("[NeuroshimaActiveEffect._onCreate] running applyEffect + immediate scripts", { effectName: this.name, actorName: this.actor?.name });
     const createScripts = this.scripts.filter(s => s.trigger === "applyEffect");
     for (const script of createScripts) {
       await script.execute({ actor: this.actor, data, options });
@@ -201,6 +207,9 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
     const rtConfig = this.getFlag("neuroshima", "requiredTestTrigger");
     if (rtConfig?.enabled) {
+      if (createScripts.length || immediateScripts.length) {
+        game.neuroshima?.warn("[NeuroshimaActiveEffect._onCreate] effect has BOTH scripts AND requiredTestTrigger — both will fire", { effectName: this.name });
+      }
       await this._postRequiredTestFromFlag(rtConfig);
     }
 
@@ -249,6 +258,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     }
     if (game.user.id !== user) return;
     if (!this.actor) return;
+    game.neuroshima?.log("[NeuroshimaActiveEffect._onDelete] running deleteEffect scripts + cleanup", { effectName: this.name, actorName: this.actor?.name, isAuraCopy, isAreaCopy });
 
     const transferType = this.getFlag("neuroshima", "transferType");
 
@@ -287,6 +297,8 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * from an actor sheet directly) — the test card is still posted but with no auto-applied
    * effects on resolution.
    *
+   * The card is always whispered to the owning player(s) + GMs via `whisperToDefender: true`.
+   *
    * @param {object} rtConfig  Value of `flags.neuroshima.requiredTestTrigger`.
    * @returns {Promise<void>}
    * @private
@@ -301,6 +313,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     };
 
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+    game.neuroshima?.log("[NeuroshimaActiveEffect._postRequiredTestFromFlag] posting required test", { effectName: this.name, actorName: this.actor?.name, actorUuid: this.actor?.uuid, testType: rtConfig.testType, testKey: rtConfig.testKey, requiredSuccesses: rtConfig.requiredSuccesses });
     await NeuroshimaScriptRunner.postRequiredTest({
       title:                 rtConfig.title       || this.name,
       description:           rtConfig.description || "",
@@ -311,6 +324,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       isOpen:                rtConfig.isOpen       ?? false,
       baseDifficulty:        rtConfig.baseDifficulty || "average",
       defenderActorUuid:     this.actor.uuid,
+      whisperToDefender:     true,
       onSuccessEffectUuids:  resolveIds(rtConfig.onSuccessEffectIds),
       onFailureEffectUuids:  resolveIds(rtConfig.onFailureEffectIds)
     });
@@ -400,6 +414,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    *   Plain data merged into the effect before creating it on each actor
    *   (e.g. { "duration.seconds": 3600 }). Same semantics as convertToApplied(overrides).
    * @returns {Promise<number>} Number of actors the effect was successfully applied to.
+   *   Returns 0 (and emits a debug log) when no targets can be resolved.
    *
    * @example
    * // In any trigger — apply this effect to current targets
@@ -432,7 +447,11 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       const a = targets.actor ?? targets;
       resolved = (a instanceof CONFIG.Actor.documentClass) ? [a] : [];
     }
-    if (!resolved.length) return 0;
+    if (!resolved.length) {
+      game.neuroshima?.log("[NeuroshimaActiveEffect.applyEffect] no resolved targets, skipping", { effectName: this.name });
+      return 0;
+    }
+    game.neuroshima?.log("[NeuroshimaActiveEffect.applyEffect] applying to actors", { effectName: this.name, targets: resolved.map(a => a.name) });
     const effectData = [this.convertToApplied(overrides)];
     for (const actor of resolved) {
       await actor.applyEffect({ effectData });

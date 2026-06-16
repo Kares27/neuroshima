@@ -2258,6 +2258,8 @@ export class NeuroshimaScript {
    * @param {string}   [params.rollMode]              - Foundry roll mode override.
    * @param {string}   [params.defenderActorUuid]     - UUID of the actor to receive effects.
    *                                                    Defaults to this.actor.uuid when omitted.
+   * @param {boolean}  [params.whisperToDefender=false] - When true, the chat card is whispered
+   *                                                    only to the defender's owning players and GMs.
    * @param {string[]} [params.onSuccessEffectUuids=[]] - Effect UUIDs applied on success.
    * @param {string[]} [params.onFailureEffectUuids=[]] - Effect UUIDs applied on failure.
    * @returns {Promise<void>}
@@ -2277,6 +2279,7 @@ export class NeuroshimaScript {
    */
   async postRequiredTest(params = {}) {
     const actorUuid = params.defenderActorUuid ?? this.actor?.uuid ?? "";
+    game.neuroshima?.log("[NeuroshimaScript.postRequiredTest] dispatching", { title: params.title, testType: params.testType, testKey: params.testKey, defenderActorUuid: actorUuid, whisperToDefender: params.whisperToDefender ?? false, actor: this.actor?.name });
     return NeuroshimaScriptRunner.postRequiredTest({ ...params, defenderActorUuid: actorUuid });
   }
 
@@ -3696,6 +3699,15 @@ export class NeuroshimaScriptRunner {
    * @param {Object|Array|string|null} [params.onSuccess=null] - Consequence(s) applied on success.
    * @param {Object|Array|string|null} [params.onFailure=null] - Consequence(s) applied on failure.
    * @param {string}       [params.defenderActorUuid=""]     - UUID of the actor receiving effect UUIDs.
+   *                                                            When combined with `whisperToDefender: true`
+   *                                                            the card is only visible to that actor's owning
+   *                                                            players and all GMs.
+   * @param {boolean}      [params.whisperToDefender=false]  - When true and `defenderActorUuid` is set,
+   *                                                            the chat card is whispered exclusively to the
+   *                                                            defender's owners + GMs instead of following
+   *                                                            the session rollMode. Use this whenever the test
+   *                                                            concerns a single known defender (beast attacks,
+   *                                                            effect triggers, etc.).
    * @param {string[]}     [params.onSuccessEffectUuids=[]]  - ActiveEffect UUIDs to apply on success.
    * @param {string[]}     [params.onFailureEffectUuids=[]]  - ActiveEffect UUIDs to apply on failure.
    */
@@ -3713,7 +3725,8 @@ export class NeuroshimaScriptRunner {
     onFailure = null,
     defenderActorUuid = "",
     onSuccessEffectUuids = [],
-    onFailureEffectUuids = []
+    onFailureEffectUuids = [],
+    whisperToDefender = false
   } = {}) {
     const _normalizeConsequence = (c) => {
       if (!c) return null;
@@ -3758,7 +3771,7 @@ export class NeuroshimaScriptRunner {
 
     const effectiveRollMode = rollMode ?? game.settings.get("core", "rollMode");
 
-    const msgData = ChatMessage.applyRollMode({
+    const baseMsg = {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({}),
       content,
@@ -3775,10 +3788,31 @@ export class NeuroshimaScriptRunner {
           }
         }
       }
-    }, effectiveRollMode);
+    };
+
+    // Build whisper list when test targets a specific defender, otherwise
+    // fall through to the session's normal roll mode (public / GM roll / etc.).
+    let msgData;
+    if (whisperToDefender && defenderActorUuid) {
+      // Resolve all users who own the defender actor (ownership level OWNER) plus all GMs.
+      // "default" ownership entry is skipped — it is a sentinel, not a real user ID.
+      const defDoc = fromUuidSync(defenderActorUuid);
+      const defActor = defDoc?.actor ?? defDoc;
+      const gmIds = game.users.filter(u => u.isGM).map(u => u.id);
+      const ownerIds = defActor
+        ? Object.entries(defActor.ownership ?? {})
+            .filter(([uid, lvl]) => uid !== "default" && lvl >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER && game.users.has(uid))
+            .map(([uid]) => uid)
+        : [];
+      const whisperIds = [...new Set([...gmIds, ...ownerIds])];
+      msgData = { ...baseMsg, whisper: whisperIds };
+      game.neuroshima?.log("postRequiredTest | whisper to defender owners+GMs", { defenderActorUuid, defActorName: defActor?.name, whisperIds });
+    } else {
+      msgData = ChatMessage.applyRollMode(baseMsg, effectiveRollMode);
+    }
 
     await ChatMessage.create(msgData);
-    game.neuroshima?.log("postRequiredTest | posted", { title, testType, testKey, requiredSuccesses, isOpen, baseDifficulty, onSuccess: successConsequence, onFailure: failureConsequence, defenderActorUuid, onSuccessEffectUuids, onFailureEffectUuids });
+    game.neuroshima?.log("postRequiredTest | posted", { title, testType, testKey, requiredSuccesses, isOpen, baseDifficulty, whisperToDefender, defenderActorUuid, onSuccess: successConsequence, onFailure: failureConsequence, onSuccessEffectUuids, onFailureEffectUuids });
   }
 
   /**
@@ -3851,6 +3885,7 @@ export class NeuroshimaScriptRunner {
         game.settings.get("combat-utility-belt", "enableConditionLab") === true) return;
 
     const currentRound = combat.round;
+    game.neuroshima?.log(`[expireEffects] checking effect expiry for combat round ${currentRound}`, { combatId: combat.id, combatantCount: combat.combatants.size });
     const seen = new Set();
     for (const combatant of combat.combatants) {
       const actor = combatant.actor;
@@ -3875,7 +3910,8 @@ export class NeuroshimaScriptRunner {
         .map(e => e.id);
 
       if (toDelete.length) {
-        game.neuroshima?.log(`Expiring ${toDelete.length} effect(s) on ${actor.name}`);
+        const expiredNames = actor.effects.filter(e => toDelete.includes(e.id)).map(e => e.name);
+        game.neuroshima?.log(`[expireEffects] expiring ${toDelete.length} effect(s) on ${actor.name}`, { expiredNames, currentRound });
         await actor.deleteEmbeddedDocuments("ActiveEffect", toDelete);
       }
     }

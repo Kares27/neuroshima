@@ -2495,6 +2495,11 @@ export class MeleeOpposedChat {
    * Apply selected beast actions from the resolve card.
    * Called when the GM clicks "Zastosuj akcje bestii" on the result card.
    *
+   * For activities with `testRequired === true`: posts a Required Test chat card whispered
+   * to the defender's owning player(s) and all GMs (`whisperToDefender: true`).
+   * For activities without `testRequired`: creates the linked ActiveEffects on the defender
+   * immediately.
+   *
    * @param {string}   messageId
    * @param {string[]} selectedActionIds   Item IDs of chosen beast actions (may repeat)
    */
@@ -2531,6 +2536,7 @@ export class MeleeOpposedChat {
         if (activity.testRequired) {
           const resolveUuids = (ids = []) =>
             ids.map(id => beastItem.effects.get(id)).filter(Boolean).map(e => e.uuid);
+          game.neuroshima?.log("[MeleeOpposedChat._applySelectedActions] posting required test for beast activity", { activityName: activity.name, testType: activity.testType, testKey: activity.testKey, defenderName: defenderActor?.name, defenderUuid: defenderActor?.uuid });
           await NeuroshimaScriptRunner.postRequiredTest({
             title:                 activity.name || beastItem.name,
             testType:              activity.testType             || "attribute",
@@ -2539,6 +2545,8 @@ export class MeleeOpposedChat {
             requiredSuccesses:     activity.testSuccesses        ?? 1,
             isOpen:                activity.testIsOpen           ?? false,
             baseDifficulty:        activity.testDifficulty       || "average",
+            defenderActorUuid:     defenderActor?.uuid ?? "",
+            whisperToDefender:     true,
             onSuccessEffectUuids:  resolveUuids(activity.effectIds),
             onFailureEffectUuids:  resolveUuids(activity.onFailureEffectIds)
           });

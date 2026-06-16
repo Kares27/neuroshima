@@ -433,8 +433,9 @@ export class NeuroshimaItem extends Item {
       const equipped = data.system.equipped;
       actor.syncEquipTransferEffects(this, equipped);
       import("../apps/neuroshima-script-engine.js").then(({ NeuroshimaScriptRunner }) => {
+        game.neuroshima?.log("[item._onUpdate] firing equipToggle scripts", { itemName: this.name, actorName: actor.name, equipped });
         NeuroshimaScriptRunner.execute("equipToggle", { actor, item: this, equipped });
-      });
+      }).catch(err => console.error("Neuroshima | equipToggle script dispatch failed:", err));
     }
 
     const isBuiltChanged = this.type === "facilities" && foundry.utils.hasProperty(data, "system.isBuilt");
