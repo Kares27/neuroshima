@@ -167,6 +167,12 @@
         <li><a href="#trigger-createToken">createToken — Create Token</a></li>
         <li><a href="#trigger-applyEffect">applyEffect / deleteEffect — Effect Applied / Deleted</a></li>
         <li><a href="#trigger-worldTimeUpdate">worldTimeUpdate — World Time Update</a></li>
+        <li><a href="#trigger-preApplyCondition">preApplyCondition — Pre-Apply Condition</a></li>
+        <li><a href="#trigger-applyCondition">applyCondition — Apply Condition</a></li>
+        <li><a href="#trigger-takeDamage">takeDamage — Take Damage (post-wound)</a></li>
+        <li><a href="#trigger-preOpposedAttacker">preOpposedAttacker — Pre-Opposed Attacker</a></li>
+        <li><a href="#trigger-preOpposedDefender">preOpposedDefender — Pre-Opposed Defender</a></li>
+        <li><a href="#trigger-calculateOpposedDamage">calculateOpposedDamage — Calculate Opposed Damage</a></li>
       </ul>
     </li>
     <li><a href="#predefined-keys">Predefiniowane klucze</a>
@@ -306,6 +312,7 @@
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery ran —</span><span class="ctx-type"></span><span class="ctx-desc">wszystkie przyjmują opcjonalny argument <code>actor</code>; domyślnie <code>this.actor</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getWounds(filter?, actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Rany z filtrem: <code>{ active, location, damageType, bruise }</code> — identyczny jak <code>actor.getWounds()</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getWoundCount(actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Liczba aktywnych ran na aktorze</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasWounds(types, actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor ma co najmniej jedną aktywną ranę pasującą do podanego typu (string) lub tablicy typów. Np. <code>hasWounds("C")</code>, <code>hasWounds(["D","sD","L","sL"])</code></span></div>
     <div class="ctx-row"><span class="ctx-name">await this.applyWound(damageType, location?, actor?)</span><span class="ctx-type">Promise&lt;Item&gt;</span><span class="ctx-desc">Tworzy ranę bezpośrednio (bypass). Wrapper dla <code>NeuroshimaDice.applyDamage</code> — zwraca <code>Item</code> pierwszej rany. <code>location</code> domyślnie <code>"torso"</code>.</span></div>
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery kondycji —</span><span class="ctx-type"></span><span class="ctx-desc">operacje na status efektach (krwawienie, trucizna, itp.)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getConditionValue(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Aktualny poziom kondycji int (0 = nieaktywna)</span></div>
@@ -317,8 +324,10 @@
     <div class="ctx-row"><span class="ctx-name">this.getAttributeTotal(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Atrybut + modyfikator po <code>prepareDerivedData</code></span></div>
     <div class="ctx-row"><span class="ctx-name">this.getSkill(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Wartość umiejętności (<code>"brawl"</code>, <code>"painResistance"</code>, …). Zwraca 0 jeśli brak.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.hasEffect(nameOrId, actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor ma aktywny (nie-wyłączony) efekt o tej nazwie lub ID</span></div>
-    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery pancerza —</span><span class="ctx-type"></span><span class="ctx-desc"><code>item</code> = Item typu armor; lokacje: head, torso, leftArm, rightArm, leftLeg, rightLeg</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.isInCombat(actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor uczestniczy w walce — sprawdza combat tracker Foundry (<code>game.combat</code>) LUB aktywny pojedynek melee trybu 1 (flaga <code>activeMeleeEncounter</code>)</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery pancerza i broni —</span><span class="ctx-type"></span><span class="ctx-desc"><code>item</code> = Item typu armor; lokacje: head, torso, leftArm, rightArm, leftLeg, rightLeg</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getEquippedArmors(actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Założone pancerze aktora</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getEquippedWeapons(type?, actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Założone bronie aktora. Filtr typu: <code>"melee"</code> | <code>"ranged"</code> | <code>"thrown"</code> | <code>"grenade"</code> | <code>undefined</code> (wszystkie)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getArmorRating(item, location)</span><span class="ctx-type">number</span><span class="ctx-desc">Bazowe SP pancerza w danej lokacji</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getArmorEffective(item, location)</span><span class="ctx-type">number</span><span class="ctx-desc">Efektywne SP (bazowe − uszkodzenia, min 0)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getArmorDurability(item)</span><span class="ctx-type">{ max, damage, remaining }</span><span class="ctx-desc">Wytrzymałość pancerza: maksymalna, uszkodzona i pozostała</span></div>
@@ -1531,6 +1540,176 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
 <span class="kw">const</span> <span class="var">newVal</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">increaseItemResource</span>(<span class="kw">this</span>.item, <span class="str">"charge"</span>, <span class="num">1</span>);
 <span class="kw">const</span> <span class="var">label</span> = <span class="kw">this</span>.<span class="fn">worldTimeDurationLabel</span>(args.worldTime);
 <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Ładunek naładowany o ${<span class="var">label</span>} — wartość: ${<span class="var">newVal</span>}`</span>);</code></pre>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       NOWE WYZWALACZE — Kondycje i Walka Wręcz
+  ════════════════════════════════════════════════════════════════════ -->
+
+  <h3 id="trigger-preApplyCondition">preApplyCondition — <em>Pre-Apply Condition</em></h3>
+  <p>Uruchamiany <strong>przed</strong> nałożeniem kondycji/statusu na aktora. Ustawienie <code>args.cancel = true</code> całkowicie blokuje nałożenie kondycji — idealny do implementacji immunitetów (np. odporność na trucizny, choroby). Działa dla wszystkich kondycji boolean i int zdefiniowanych w <code>CONFIG.statusEffects</code> / <code>getConditions()</code>.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor, na którego ma być nałożona kondycja</td></tr>
+    <tr><td>args.conditionKey</td><td>string</td><td>Klucz kondycji (np. <code>"poisoned"</code>, <code>"stunned"</code>)</td></tr>
+    <tr><td>args.condDef</td><td>object</td><td>Pełna definicja kondycji z <code>getConditions()</code></td></tr>
+    <tr><td>args.cancel</td><td>boolean</td><td>Ustaw <code>true</code> aby <strong>zablokować</strong> nałożenie kondycji</td></tr>
+  </tbody></table>
+  <div class="callout warn">Wyzwalacz dotyczy tylko kondycji systemowych NS 1.5 — <strong>nie dotyczy</strong> efektów nałożonych przez <code>createEmbeddedDocuments</code> bezpośrednio (bez przechodzenia przez <code>addCondition</code>).</div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preApplyCondition</span> Immuitet na trucizny (Szczur — cecha profesyjna)</div>
+    <pre><code><span class="cmt">// Blokuje kondycję "poisoned" — aktor jest odporny na trucizny.</span>
+<span class="kw">if</span> (args.conditionKey === <span class="str">"poisoned"</span>) {
+  args.cancel = <span class="kw">true</span>;
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`${args.actor.name} jest odporny na trucizny!`</span>, <span class="str">"info"</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preApplyCondition</span> Blokada kilku kondycji (odporność na choroby i trucizny)</div>
+    <pre><code><span class="kw">const</span> <span class="var">immune</span> = [<span class="str">"poisoned"</span>, <span class="str">"diseased"</span>];
+<span class="kw">if</span> (<span class="var">immune</span>.includes(args.conditionKey)) {
+  args.cancel = <span class="kw">true</span>;
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`${args.actor.name} jest odporny — kondycja ${args.conditionKey} zablokowana.`</span>, <span class="str">"info"</span>);
+}</code></pre>
+  </div>
+
+  <h3 id="trigger-applyCondition">applyCondition — <em>Apply Condition</em></h3>
+  <p>Uruchamiany <strong>po</strong> tym jak kondycja/status została już nałożona na aktora. Efekt kondycji istnieje na aktorze w momencie wywołania. Użyj do reaktywnych efektów wtórnych — np. powiadomienie na czacie, nałożenie dodatkowej kondycji jako konsekwencji, zapisanie znacznika czasu.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor, na którego nałożono kondycję</td></tr>
+    <tr><td>args.conditionKey</td><td>string</td><td>Klucz kondycji, która została nałożona</td></tr>
+    <tr><td>args.condDef</td><td>object</td><td>Pełna definicja kondycji z <code>getConditions()</code></td></tr>
+  </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">applyCondition</span> Powiadomienie na czacie po nałożeniu kondycji</div>
+    <pre><code><span class="cmt">// Wyślij wiadomość na czat gdy aktor otrzyma kondycję "stunned"</span>
+<span class="kw">if</span> (args.conditionKey !== <span class="str">"stunned"</span>) <span class="kw">return</span>;
+<span class="kw">await</span> ChatMessage.<span class="fn">create</span>({
+  content: <span class="str">`&lt;b&gt;${args.actor.name}&lt;/b&gt; został ogłuszony!`</span>,
+  speaker: ChatMessage.<span class="fn">getSpeaker</span>({ actor: args.actor })
+});</code></pre>
+  </div>
+
+  <h3 id="trigger-takeDamage">takeDamage — <em>Take Damage (post-wound)</em></h3>
+  <p>Uruchamiany <strong>po</strong> fizycznym tworzeniu ran na aktorze — po odporności na ból i redukcji przez pancerz. Odpala się raz na wywołanie <code>applyDamageToActor</code> ze wszystkimi ranami stworzonymi w danej partii. Używaj do efektów wtórnych wywoływanych obrażeniami: jad po ugryzieniu, krwawienie po ciężkiej ranie, efekty środowiskowe.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor, który otrzymał obrażenia</td></tr>
+    <tr><td>args.wounds</td><td>Item[]</td><td>Lista itemów ran (już istniejących na aktorze)</td></tr>
+    <tr><td>args.woundIds</td><td>string[]</td><td>ID ran stworzonych w tej partii obrażeń</td></tr>
+    <tr><td>args.location</td><td>string</td><td>Lokacja trafienia (np. <code>"torso"</code>, <code>"head"</code>)</td></tr>
+    <tr><td>args.attackData</td><td>object</td><td>Dane ataku (<code>isMelee</code>, <code>weaponId</code>, <code>actorId</code>, <code>damageMelee1/2/3</code>, …)</td></tr>
+  </tbody></table>
+  <div class="callout info">Wyzwalacz <strong>nie odpala się</strong> gdy rany zostały zablokowane przez odporność na ból lub pancerz — tylko gdy <code>woundIds.length &gt; 0</code>.</div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">takeDamage</span> Jad Szczękowiji — nałóż kondycję zatrucia po trafieniu paszczą</div>
+    <pre><code><span class="cmt">// Skrypt na efekcie "Jad Szczękowiji" — trigger: takeDamage</span>
+<span class="cmt">// Ten efekt jest nałożony na atakującą bestię; args.actor = ofiara</span>
+<span class="kw">const</span> <span class="var">hasSeriousWound</span> = <span class="kw">this</span>.<span class="fn">hasWounds</span>([<span class="str">"L"</span>, <span class="str">"sL"</span>, <span class="str">"C"</span>, <span class="str">"K"</span>], args.actor);
+<span class="kw">if</span> (!<span class="var">hasSeriousWound</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"poisoned"</span>, args.actor);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">takeDamage</span> Krwawienie po ciężkiej ranie</div>
+    <pre><code><span class="cmt">// Nałóż kondycję "bleeding" gdy ofiara dostała ranę ciężką (C) lub kalectwo (K)</span>
+<span class="kw">const</span> <span class="var">heavyHit</span> = args.wounds.<span class="fn">some</span>(<span class="var">w</span> =&gt; [<span class="str">"C"</span>, <span class="str">"K"</span>].includes(<span class="var">w</span>.system?.damageType));
+<span class="kw">if</span> (!<span class="var">heavyHit</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"bleeding"</span>, args.actor);
+<span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`${args.actor.name} krwawi z ciężkiej rany!`</span>, <span class="str">"warn"</span>);</code></pre>
+  </div>
+
+  <h3 id="trigger-preOpposedAttacker">preOpposedAttacker — <em>Pre-Opposed Attacker</em></h3>
+  <p>Uruchamiany na początku rozwiązywania wymiany walki wręcz (tryb 1), na aktorze będącym <strong>atakującym</strong>, zanim policzone zostaną sukcesy. Pozwala modyfikować efektywny próg trudności testu atakującego. Modyfikuj <code>args.difficultyTarget</code> — wyższa wartość = łatwiej (więcej sukcesów), niższa = trudniej.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor-atakujący</td></tr>
+    <tr><td>args.participant</td><td>object</td><td>Dane uczestnika walki (pool, wybrany manewrów, itp.)</td></tr>
+    <tr><td>args.encounter</td><td>object</td><td>Pełny stan pojedynku (MeleeEncounter)</td></tr>
+    <tr><td>args.difficultyTarget</td><td>number</td><td><strong>Modyfikowalny</strong> próg trudności dla kości atakującego</td></tr>
+    <tr><td>args.mode</td><td>string</td><td>Zawsze <code>"attack"</code> dla tego wyzwalacza</td></tr>
+  </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preOpposedAttacker</span> Bonus do ataku gdy aktor ma aktywną kondycję wspomagającą</div>
+    <pre><code><span class="cmt">// Przykład ogólny: jeśli atakujący ma kondycję "focused" → +10 do progu ataku</span>
+<span class="kw">if</span> (args.actor.statuses.<span class="fn">has</span>(<span class="str">"focused"</span>)) {
+  args.difficultyTarget += <span class="num">10</span>;
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">dialog</span> Mutant na śniadanie — gracz wybiera bonus przed testem</div>
+    <p style="font-size:0.88em;color:var(--text-dim);margin:4px 1rem 6px;">
+      Cecha "Mutant na śniadanie" daje bonus do testów przeciwko mutantom, ale nie jesteśmy w stanie automatycznie wykryć kiedy wróg jest mutantem. Zamiast tego dajemy graczowi możliwość ręcznego wybrania bonusu w dialogu rzutu.
+    </p>
+    <pre><code><span class="cmt">// Trigger: dialog — pojawia się PRZED rzutem każdego testu aktora posiadającego tę cechę.</span>
+<span class="cmt">// Gracz sam decyduje czy przeciwnik jest mutantem i czy bonus się stosuje.</span>
+args.fields.mod -= <span class="num">20</span>; <span class="cmt">// -20 PT = łatwiejszy test (modifier działa odwrotnie — niższy = łatwiej)</span></code></pre>
+  </div>
+
+  <h3 id="trigger-preOpposedDefender">preOpposedDefender — <em>Pre-Opposed Defender</em></h3>
+  <p>Analogiczny do <code>preOpposedAttacker</code>, ale uruchamiany na aktorze będącym <strong>obrońcą</strong>. Pozwala modyfikować efektywny próg trudności testu obronnego. Wyższa wartość = łatwiej się bronić.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.actor</td><td>Actor</td><td>Aktor-obrońca</td></tr>
+    <tr><td>args.participant</td><td>object</td><td>Dane uczestnika walki (pool, wybrany manewrów, itp.)</td></tr>
+    <tr><td>args.encounter</td><td>object</td><td>Pełny stan pojedynku (MeleeEncounter)</td></tr>
+    <tr><td>args.difficultyTarget</td><td>number</td><td><strong>Modyfikowalny</strong> próg trudności dla kości obrońcy</td></tr>
+    <tr><td>args.mode</td><td>string</td><td>Zawsze <code>"defense"</code> dla tego wyzwalacza</td></tr>
+  </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Bonus do obrony w terenie (schron, osłona)</div>
+    <pre><code><span class="cmt">// Efekt "Osłona" — +15 do progu obrony gdy aktor jest w osłonie</span>
+args.difficultyTarget += <span class="num">15</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Kara do obrony gdy ogłuszony</div>
+    <pre><code><span class="cmt">// Jeśli obrońca ma kondycję "stunned" — -20 do progu obrony (trudniej się bronić)</span>
+<span class="kw">if</span> (args.actor.statuses.<span class="fn">has</span>(<span class="str">"stunned"</span>)) {
+  args.difficultyTarget -= <span class="num">20</span>;
+}</code></pre>
+  </div>
+
+  <h3 id="trigger-calculateOpposedDamage">calculateOpposedDamage — <em>Calculate Opposed Damage</em></h3>
+  <p>Uruchamiany w <code>applyDamageDistributed</code> w walce wręcz (tryb 1) <strong>przed</strong> zbudowaniem <code>attackData</code> dla każdego trafienia. Odpala się raz per trafienie (każdy tier w sekwencji wielotrafień). Pozwala modyfikować typy obrażeń po stronie atakującego — np. ulepszyć tier obrażeń, zmienić typ.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td>args.attackerActor</td><td>Actor</td><td>Aktor atakujący</td></tr>
+    <tr><td>args.defenderActor</td><td>Actor</td><td>Aktor broniący się</td></tr>
+    <tr><td>args.weapon</td><td>Item|null</td><td>Broń atakującego (lub <code>null</code> dla gołej pięści)</td></tr>
+    <tr><td>args.hit</td><td>object</td><td>Dane trafienia: <code>{ cost: tierLevel }</code></td></tr>
+    <tr><td>args.attackData</td><td>object</td><td><strong>Modyfikowalny</strong>: <code>damageMelee1</code>, <code>damageMelee2</code>, <code>damageMelee3</code> — typy obrażeń dla tierów 1/2/3</td></tr>
+  </tbody></table>
+  <div class="callout info">Klucze typów obrażeń: <code>"D"</code> draśnięcie, <code>"sD"</code> silne draśnięcie, <code>"L"</code> rana lekka, <code>"sL"</code> silna lekka, <code>"C"</code> rana ciężka, <code>"K"</code> kalectwo.</div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">calculateOpposedDamage</span> Wilczy Kieł — walka bez broni zadaje rany lekkie zamiast draśnięć</div>
+    <pre><code><span class="cmt">// Cecha "Wilczy Kieł" (Treser Bestii): ataki bez broni awansują tier obrażeń.</span>
+<span class="cmt">// Bez broni: domyślnie D/sD/L → z cechą: sD/L/sL</span>
+<span class="kw">if</span> (args.weapon) <span class="kw">return</span>; <span class="cmt">// cecha działa tylko dla gołej pięści</span>
+<span class="kw">const</span> <span class="var">upgrade</span> = { <span class="str">"D"</span>: <span class="str">"sD"</span>, <span class="str">"sD"</span>: <span class="str">"L"</span>, <span class="str">"L"</span>: <span class="str">"sL"</span>, <span class="str">"sL"</span>: <span class="str">"C"</span>, <span class="str">"C"</span>: <span class="str">"K"</span> };
+args.attackData.damageMelee1 = <span class="var">upgrade</span>[args.attackData.damageMelee1] ?? args.attackData.damageMelee1;
+args.attackData.damageMelee2 = <span class="var">upgrade</span>[args.attackData.damageMelee2] ?? args.attackData.damageMelee2;
+args.attackData.damageMelee3 = <span class="var">upgrade</span>[args.attackData.damageMelee3] ?? args.attackData.damageMelee3;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">calculateOpposedDamage</span> Redukcja obrażeń jeśli obrońca ma pancerz specjalny</div>
+    <pre><code><span class="cmt">// Jeśli obrońca nosi pancerz z cechą "hartowany" → zredukuj tier1 o jeden stopień</span>
+<span class="kw">const</span> <span class="var">hasHardened</span> = args.defenderActor.items.<span class="fn">some</span>(<span class="var">i</span> =&gt;
+  <span class="var">i</span>.type === <span class="str">"armor"</span> &amp;&amp; <span class="var">i</span>.system?.equipped &amp;&amp; <span class="var">i</span>.system?.traits?.includes(<span class="str">"hartowany"</span>)
+);
+<span class="kw">if</span> (!<span class="var">hasHardened</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">downgrade</span> = { <span class="str">"C"</span>: <span class="str">"sL"</span>, <span class="str">"sL"</span>: <span class="str">"L"</span>, <span class="str">"L"</span>: <span class="str">"sD"</span>, <span class="str">"sD"</span>: <span class="str">"D"</span> };
+args.attackData.damageMelee1 = <span class="var">downgrade</span>[args.attackData.damageMelee1] ?? args.attackData.damageMelee1;</code></pre>
   </div>
 
 </section>
@@ -4323,24 +4502,60 @@ args.fields.healingModifier[<span class="str">"D,L"</span>] += <span class="num"
     <strong>Logika filtra: <code>true</code> = blokuj, <code>false</code> = zezwól.</strong><br>
     Pytaj: "czy chcę <em>wykluczyć</em> tego aktora?" — jeśli tak, zwróć <code>true</code>.
   </div>
+
+  <h5 style="margin:1rem 0 0.4rem;font-size:0.95em;color:var(--text-dim);">Helper funkcje filtrowania (dostępne w filterScript i preApplyScript)</h5>
+  <p style="font-size:0.88em;">
+    Wszystkie poniższe helpery są automatycznie wstrzykiwane do kontekstu skryptu. Nie wymagają importu.
+  </p>
+  <table>
+    <thead><tr><th>Funkcja</th><th>Argumenty</th><th>Zwraca</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>isFriendlyToken(actor)</code></td><td>Actor</td><td>boolean</td><td>Sprawdza czy token aktora ma dyspozycję <strong>FRIENDLY</strong>. Fallback: prototypeToken.</td></tr>
+      <tr><td><code>isHostileToken(actor)</code></td><td>Actor</td><td>boolean</td><td>Sprawdza czy token aktora ma dyspozycję <strong>HOSTILE</strong>.</td></tr>
+      <tr><td><code>isNeutralToken(actor)</code></td><td>Actor</td><td>boolean</td><td>Sprawdza czy token aktora ma dyspozycję <strong>NEUTRAL</strong>.</td></tr>
+      <tr><td><code>isActorType(actor, type)</code></td><td>Actor, string</td><td>boolean</td><td>Porównuje <code>actor.type</code> z podanym stringiem. Typy: <code>"character"</code>, <code>"creature"</code>, <code>"npc"</code>, <code>"vehicle"</code>, <code>"homeBase"</code>.</td></tr>
+      <tr><td><code>isSameDisposition(actorA, actorB)</code></td><td>Actor, Actor</td><td>boolean</td><td>Zwraca <code>true</code> gdy obaj aktorzy mają tę samą dyspozycję tokena (np. obaj FRIENDLY).</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info">
+    <strong>Uwaga:</strong> W <code>filterScript</code> — <code>actor</code> = cel (targetActor), <code>sourceActor</code> = właściciel aury.<br>
+    W <code>preApplyScript</code> — <code>actor</code> = źródło (sourceActor), <code>targetActor</code> = cel.
+    Domyślnie tokeny postaci gracza (typ <code>"character"</code>) są tworzone z dyspozycją <strong>FRIENDLY</strong>.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Filter — Aplikuj tylko do sojuszników (FRIENDLY)</div>
+    <pre><code><span class="cmt">// Blokuj jeśli cel NIE jest przyjazny</span>
+<span class="kw">return</span> !<span class="fn">isFriendlyToken</span>(actor);</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header">Filter — Aplikuj tylko do wrogów (HOSTILE)</div>
+    <pre><code><span class="cmt">// Blokuj jeśli cel nie jest wrogi</span>
+<span class="kw">return</span> !<span class="fn">isHostileToken</span>(actor);</code></pre>
+  </div>
   <div class="example-block">
     <div class="example-header">Filter — Aplikuj tylko do postaci gracza</div>
-    <pre><code><span class="kw">return</span> actor.type !== <span class="str">"character"</span>; <span class="cmt">// true = blokuj NPC</span></code></pre>
+    <pre><code><span class="kw">return</span> !<span class="fn">isActorType</span>(actor, <span class="str">"character"</span>); <span class="cmt">// true = blokuj non-character</span></code></pre>
   </div>
   <div class="example-block">
     <div class="example-header">Filter — Wyklucz aktora będącego źródłem efektu</div>
     <pre><code><span class="kw">return</span> actor.id === sourceActor?.id;</code></pre>
   </div>
   <div class="example-block">
+    <div class="example-header">Filter — Tylko sojusznicy (ta sama dyspozycja co źródło)</div>
+    <pre><code><span class="cmt">// Przepuszcza tylko tych co mają tę samą dyspozycję tokena co właściciel aury</span>
+<span class="kw">return</span> !<span class="fn">isSameDisposition</span>(actor, sourceActor);</code></pre>
+  </div>
+  <div class="example-block">
     <div class="example-header">Filter — Tylko wrogowie (nie gracze, nie źródło)</div>
-    <pre><code><span class="cmt">// Blokuj: postaci gracza i samo źródło aury</span>
+    <pre><code><span class="cmt">// Blokuj: samo źródło aury oraz wszystkich nie-wrogów</span>
 <span class="kw">if</span> (actor.id === sourceActor?.id) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">return</span> actor.type === <span class="str">"character"</span>; <span class="cmt">// blokuj graczy, przepuszczaj NPC/bestie</span></code></pre>
+<span class="kw">return</span> !<span class="fn">isHostileToken</span>(actor); <span class="cmt">// blokuj FRIENDLY/NEUTRAL, przepuszczaj HOSTILE</span></code></pre>
   </div>
   <div class="example-block">
     <div class="example-header">Filter — Tylko aktorzy z konkretnym typem (np. creature)</div>
     <pre><code><span class="cmt">// Przepuszcza tylko typ "creature" (bestie)</span>
-<span class="kw">return</span> actor.type !== <span class="str">"creature"</span>;</code></pre>
+<span class="kw">return</span> !<span class="fn">isActorType</span>(actor, <span class="str">"creature"</span>);</code></pre>
   </div>
   <div class="example-block">
     <div class="example-header">Filter — Aura "Ciszej niż cień" — nakłada efekt tylko gdy ktoś rzuca test wykrycia</div>
@@ -4419,11 +4634,11 @@ return false; // nie blokuj nikogo</span></code></pre>
   <div class="example-block">
     <div class="example-header">
       <span class="trigger-badge">Aura</span>
-      Aura przywódcza — tylko postacie gracza, wyklucza NPC (Filter)
+      Aura przywódcza — tylko postacie gracza, wyklucza bestie i pojazdy (Filter)
     </div>
     <p style="margin:6px 1rem;font-size:0.88em;color:#888;">Effect Application: <strong>Aura</strong> | Radius: <strong>10</strong></p>
-    <pre><code><span class="cmt">// Filter Script — blokuj NPC</span>
-<span class="kw">return</span> actor.type !== <span class="str">"character"</span>;</code></pre>
+    <pre><code><span class="cmt">// Filter Script — przepuść tylko "character" (postacie graczy)</span>
+<span class="kw">return</span> !<span class="fn">isActorType</span>(actor, <span class="str">"character"</span>);</code></pre>
   </div>
 
   <div class="example-block">
@@ -4471,8 +4686,8 @@ return false; // nie blokuj nikogo</span></code></pre>
       Strefa ochronna — tylko sojusznicy (Filter)
     </div>
     <p style="margin:6px 1rem;font-size:0.88em;color:#888;">Effect Application: <strong>Area</strong> | Radius: <strong>6</strong></p>
-    <pre><code><span class="cmt">// Filter Script — wyklucz NPC</span>
-<span class="kw">return</span> actor.type === <span class="str">"npc"</span>;</code></pre>
+    <pre><code><span class="cmt">// Filter Script — przepuść tylko tokeny z dyspozycją FRIENDLY</span>
+<span class="kw">return</span> !<span class="fn">isFriendlyToken</span>(actor);</code></pre>
   </div>
 
   <div class="example-block">
@@ -4509,12 +4724,23 @@ return false; // nie blokuj nikogo</span></code></pre>
     <p class="example-desc">
       <code>preApplyScript</code> działa na kontekście <strong>źródła</strong>. Zmienne: <code>actor</code> (źródło), <code>effect</code>, <code>targetActor</code> (cel).
       Zwróć <code>false</code> aby zablokować aplikację.
+      Helper funkcje dyspozycji (<code>isFriendlyToken</code>, <code>isHostileToken</code>, <code>isNeutralToken</code>, <code>isActorType</code>, <code>isSameDisposition</code>) są dostępne tak samo jak w filterScript.
     </p>
     <pre><code><span class="cmt">// Pre-Apply Script — aplikuj aurę tylko gdy źródło ma kondycję "focused"</span>
-<span class="kw">const</span> <span class="var">isFocused</span> = actor.effects?.some(e =&gt;
-  e.statuses?.has(<span class="str">"focused"</span>) &amp;&amp; !e.disabled
-);
+<span class="kw">const</span> <span class="var">isFocused</span> = actor.statuses?.has(<span class="str">"focused"</span>);
 <span class="kw">if</span> (!<span class="var">isFocused</span>) <span class="kw">return</span> <span class="kw">false</span>;  <span class="cmt">// blokuj gdy brak kondycji</span></code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">
+      <span class="trigger-badge">preApplyScript</span>
+      Blokada aury — nie nakładaj na wrogie tokeny (preApplyScript z helperem)
+    </div>
+    <p class="example-desc">
+      W <code>preApplyScript</code> <code>actor</code> = źródło, <code>targetActor</code> = cel. Helpery przyjmują aktora jawnie.
+    </p>
+    <pre><code><span class="cmt">// Blokuj aplikację jeśli cel jest wrogi (HOSTILE)</span>
+<span class="kw">if</span> (<span class="fn">isHostileToken</span>(targetActor)) <span class="kw">return</span> <span class="kw">false</span>;</code></pre>
   </div>
 
   <div class="example-block">
@@ -4833,6 +5059,14 @@ this.addAnnotation(`Sztuczka pozwoliła oddać strzał mimo zacięcia!`);</code>
       <td>Liczba aktywnych ran na aktorze. Skrót dla <code>this.getWounds({active:true}, actor).length</code>.</td>
     </tr>
     <tr>
+      <td><code>this.hasWounds(woundTypes, actor?)</code></td>
+      <td>
+        Zwraca <code>true</code> jeśli aktor ma co najmniej jedną aktywną ranę pasującą do podanych typów.<br>
+        Przyjmuje string (<code>"C"</code>) lub tablicę (<code>["D","sD","L","sL"]</code>).<br>
+        Zastępuje wielokrotne wywołania <code>isLightDamage</code>/<code>isHeavyDamage</code> — możesz sprawdzić dowolną kombinację typów jedną metodą.
+      </td>
+    </tr>
+    <tr>
       <td><code>await this.applyWound(damageType, location?, actor?)</code></td>
       <td>
         Tworzy ranę bezpośrednio na aktorze, <strong>z pominięciem odporności na ból</strong>.
@@ -4873,6 +5107,13 @@ this.addAnnotation(`Sztuczka pozwoliła oddać strzał mimo zacięcia!`);</code>
     <tr>
       <td><code>this.hasEffect(nameOrId, actor?)</code></td>
       <td>Zwraca <code>true</code> jeśli aktor ma aktywny (nie-wyłączony) efekt o tej nazwie (case-insensitive) lub ID. Przydatne do warunkowych bonusów.</td>
+    </tr>
+    <tr>
+      <td><code>this.isInCombat(actor?)</code></td>
+      <td>
+        Zwraca <code>true</code> jeśli aktor uczestniczy w jakiejkolwiek formie walki.<br>
+        Sprawdza dwa konteksty: <strong>combat tracker Foundry</strong> (<code>game.combat</code>) ORAZ <strong>aktywny pojedynek melee trybu 1</strong> (flaga <code>neuroshima.activeMeleeEncounter</code> na aktorze).
+      </td>
     </tr>
   </tbody></table>
 
@@ -5050,8 +5291,9 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
     <tr><td><code>await this.applyWound(type, loc?, actor?)</code></td><td>Wrapper (bypass) dla <code>NeuroshimaDice.applyDamage</code>. Nakłada ranę bez odporności na ból; zwraca <code>Item</code>. Do pełnej kontroli użyj <code>NeuroshimaDice.applyDamage</code> bezpośrednio.</td></tr>
     <tr><td><code>await this.reduceWorstWound(actor?)</code></td><td>Obniż najcięższą aktywną ranę o 1 poziom. Zwraca <code>true</code> jeśli coś zredukowano.</td></tr>
     <tr><td><code>actor.getArmorAt(location)</code></td><td>Zwraca <code>{ totalSP, details, weakPoint }</code> dla danej lokalizacji (pancerz + efekty)</td></tr>
-    <tr><td colspan="2" style="background:var(--bg2); color:var(--accent3); font-weight:bold; padding:4px 8px;">Helpery pancerza (item = Item armor)</td></tr>
+    <tr><td colspan="2" style="background:var(--bg2); color:var(--accent3); font-weight:bold; padding:4px 8px;">Helpery pancerza i broni (item = Item armor / weapon)</td></tr>
     <tr><td><code>this.getEquippedArmors(actor?)</code></td><td>Lista założonych pancerzy aktora</td></tr>
+    <tr><td><code>this.getEquippedWeapons(weaponType?, actor?)</code></td><td>Lista założonych broni aktora. Filtr: <code>"melee"</code> | <code>"ranged"</code> | <code>"thrown"</code> | <code>"grenade"</code> | <code>undefined</code> (wszystkie)</td></tr>
     <tr><td><code>this.getArmorRating(item, loc)</code></td><td>Bazowe SP w lokacji</td></tr>
     <tr><td><code>this.getArmorEffective(item, loc)</code></td><td>Efektywne SP (bazowe − uszkodzenia, min 0)</td></tr>
     <tr><td><code>this.getArmorDurability(item)</code></td><td>Obiekt <code>{ max, damage, remaining }</code> — Wytrzymałość</td></tr>
@@ -5082,7 +5324,30 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 
 <span class="cmt">// Wytrzymałość pancerza</span>
 <span class="kw">const</span> { <span class="var">max</span>, <span class="var">damage</span>, <span class="var">remaining</span> } = <span class="kw">this</span>.<span class="fn">getArmorDurability</span>(<span class="var">armor</span>);
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">damageArmorDurability</span>(<span class="var">armor</span>, <span class="num">1</span>); <span class="cmt">// zmniejsz Wytrzymałość o 1</span></code></pre>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">damageArmorDurability</span>(<span class="var">armor</span>, <span class="num">1</span>); <span class="cmt">// zmniejsz Wytrzymałość o 1</span>
+
+<span class="cmt">// getEquippedWeapons — lista założonych broni (opcjonalny filtr typu)</span>
+<span class="kw">const</span> <span class="var">allWeapons</span>   = <span class="kw">this</span>.<span class="fn">getEquippedWeapons</span>();            <span class="cmt">// wszystkie założone bronie</span>
+<span class="kw">const</span> <span class="var">meleeWeapons</span> = <span class="kw">this</span>.<span class="fn">getEquippedWeapons</span>(<span class="str">"melee"</span>);    <span class="cmt">// tylko bronie do ręki</span>
+<span class="kw">const</span> <span class="var">ranged</span>       = <span class="kw">this</span>.<span class="fn">getEquippedWeapons</span>(<span class="str">"ranged"</span>);   <span class="cmt">// broń palna / łuk</span>
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">w</span> <span class="kw">of</span> <span class="var">meleeWeapons</span>) {
+  <span class="cmt">// np. dla sztuczki Rusznikarstwo — utrudnienie zacięcia dla każdej broni</span>
+  <span class="kw">this</span>.<span class="fn">modifyJammingThreshold</span>(args, <span class="num">3</span>);
+}
+
+<span class="cmt">// hasWounds — sprawdzenie typów ran bez iterowania po getWounds</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">hasWounds</span>(<span class="str">"C"</span>)) { <span class="cmt">// ma aktywną ranę Ciężką</span>
+  args.fields.modifier -= <span class="num">20</span>;
+}
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">hasWounds</span>([<span class="str">"D"</span>, <span class="str">"sD"</span>, <span class="str">"L"</span>, <span class="str">"sL"</span>])) { <span class="cmt">// jakikolwiek lekki uraz</span>
+  <span class="cmt">// np. Niewrażliwość na lekkie rany — pomiń ranę</span>
+  args.wounds.forEach(<span class="var">w</span> =&gt; { <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">w</span>.damageType)) <span class="var">w</span>.forcePassed = <span class="kw">true</span>; });
+}
+
+<span class="cmt">// isInCombat — warunek tylko podczas walki</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isInCombat</span>()) <span class="kw">return</span>; <span class="cmt">// efekt aktywny tylko gdy walczymy</span>
+<span class="cmt">// Sprawdź konkretnego aktora (np. cel efektu)</span>
+<span class="kw">const</span> <span class="var">inFight</span> = <span class="kw">this</span>.<span class="fn">isInCombat</span>(<span class="kw">this</span>.actor);</code></pre>
 
   <h4>Helpery efektów</h4>
   <p>Zarządzanie efektami bezpośrednio z poziomu skryptu:</p>

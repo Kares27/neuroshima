@@ -32,8 +32,66 @@ export class NeuroshimaAuraManager {
   }
 
   /**
+   * Build a set of helper functions injected into filter/preApply script contexts.
+   *
+   * Helpers available in filterScript  (actor = targetActor, sourceActor = sourceActor):
+   *   isFriendlyToken(actor)          — true if the token's disposition is FRIENDLY
+   *   isHostileToken(actor)           — true if the token's disposition is HOSTILE
+   *   isNeutralToken(actor)           — true if the token's disposition is NEUTRAL
+   *   isActorType(actor, type)        — true if actor.type === type (e.g. "character", "creature")
+   *   isSameDisposition(actorA, actorB) — true if both tokens share the same disposition
+   *
+   * @returns {object} Plain helper functions to spread into an eval context.
+   */
+  static _buildAuraScriptHelpers() {
+    const getTokenDisposition = (a) => {
+      const tokenDoc = a?.getActiveTokens?.()?.[0]?.document;
+      if (tokenDoc?.disposition !== undefined) return tokenDoc.disposition;
+      const proto = a?.prototypeToken?.disposition;
+      return proto !== undefined ? proto : null;
+    };
+    return {
+      /**
+       * Returns true when the actor's scene token has FRIENDLY disposition.
+       * Falls back to prototypeToken disposition when no scene token is present.
+       * @param {Actor} a
+       */
+      isFriendlyToken: (a) => getTokenDisposition(a) === CONST.TOKEN_DISPOSITIONS.FRIENDLY,
+      /**
+       * Returns true when the actor's scene token has HOSTILE disposition.
+       * @param {Actor} a
+       */
+      isHostileToken:  (a) => getTokenDisposition(a) === CONST.TOKEN_DISPOSITIONS.HOSTILE,
+      /**
+       * Returns true when the actor's scene token has NEUTRAL disposition.
+       * @param {Actor} a
+       */
+      isNeutralToken:  (a) => getTokenDisposition(a) === CONST.TOKEN_DISPOSITIONS.NEUTRAL,
+      /**
+       * Returns true when actor.type equals the given type string.
+       * Common types: "character", "creature", "npc", "vehicle", "homeBase".
+       * @param {Actor}  a
+       * @param {string} type
+       */
+      isActorType: (a, type) => a?.type === type,
+      /**
+       * Returns true when both actors share the same token disposition.
+       * Useful for filtering auras to allies or enemies.
+       * @param {Actor} a
+       * @param {Actor} b
+       */
+      isSameDisposition: (a, b) => {
+        const da = getTokenDisposition(a);
+        const db = getTokenDisposition(b);
+        return da !== null && db !== null && da === db;
+      }
+    };
+  }
+
+  /**
    * Run preApplyScript for an effect.
    * Runs on source actor context. Returns false → prevents application.
+   * Context variables: actor (source), effect, targetActor + filter helpers.
    * @param {ActiveEffect} effect
    * @param {Actor}        sourceActor
    * @param {Actor}        targetActor
@@ -42,13 +100,15 @@ export class NeuroshimaAuraManager {
   static async _runPreApplyScript(effect, sourceActor, targetActor) {
     const code = effect.getFlag("neuroshima", "preApplyScript");
     if (!code?.trim()) return true;
-    const result = await this._evalScript(code, { actor: sourceActor, effect, targetActor });
+    const helpers = this._buildAuraScriptHelpers();
+    const result = await this._evalScript(code, { actor: sourceActor, effect, targetActor, ...helpers });
     return result !== false;
   }
 
   /**
    * Run filterScript for an effect against a specific target actor.
    * Returns true → PREVENTS application.
+   * Context variables: actor (target), effect, sourceActor + filter helpers.
    * @param {ActiveEffect} effect
    * @param {Actor}        targetActor
    * @param {Actor}        sourceActor
@@ -57,7 +117,8 @@ export class NeuroshimaAuraManager {
   static async _runFilterScript(effect, targetActor, sourceActor) {
     const code = effect.getFlag("neuroshima", "filterScript");
     if (!code?.trim()) return false;
-    const result = await this._evalScript(code, { actor: targetActor, effect, sourceActor });
+    const helpers = this._buildAuraScriptHelpers();
+    const result = await this._evalScript(code, { actor: targetActor, effect, sourceActor, ...helpers });
     return !!result;
   }
 
@@ -66,12 +127,24 @@ export class NeuroshimaAuraManager {
   /**
    * Ensure a visual MeasuredTemplate exists for every active auraActor effect
    * that has auraRender=true, positioned at the source token center.
-   * Creates the template if missing; updates position when the token moves.
+   *
+   * Called in three situations:
+   *   1. Token moves (updateToken hook) — updates position only.
+   *   2. Effect flags change (updateActiveEffect hook) — updates ALL visual properties
+   *      including radius, fill colour, border colour and opacity so that the canvas
+   *      immediately reflects a changed auraRadius or templateData without requiring a
+   *      token move or toggle cycle.
+   *   3. Canvas ready / token created — initial placement.
+   *
+   * The method also removes orphan templates whose source effect has been deleted or
+   * disabled (by comparing the set of active auraRender effect IDs against all templates
+   * tagged with flags.neuroshima.auraVisual for this actor).
    *
    * @param {TokenDocument}              sourceToken
    * @param {Actor}                      sourceActor
-   * @param {TokenDocument|null}         movedToken
-   * @param {{x:number,y:number}|null}   movedTokenNewPos
+   * @param {TokenDocument|null}         movedToken       - Token that just moved (may be null).
+   * @param {{x:number,y:number}|null}   movedTokenNewPos - Pre-computed pixel position from
+   *                                                         preUpdateToken; avoids stale-doc issues.
    */
   static async _syncRenderTemplates(sourceToken, sourceActor, movedToken, movedTokenNewPos) {
     if (!canvas?.scene) return;
@@ -103,7 +176,17 @@ export class NeuroshimaAuraManager {
       );
 
       if (existing) {
-        await existing.update({ x: cx, y: cy }, { skipAreaCheck: true, ns_skipAuraCheck: true });
+        // Update ALL visual properties — not just position — so that a radius or
+        // colour change applied via Advanced Config is immediately reflected on the
+        // canvas without the user needing to move the token or toggle the effect.
+        await existing.update({
+          x: cx,
+          y: cy,
+          distance: radiusUnits,
+          fillColor,
+          borderColor,
+          fillAlpha: fillOpacity
+        }, { skipAreaCheck: true, ns_skipAuraCheck: true });
       } else {
         await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [{
           t: "circle",

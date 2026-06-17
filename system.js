@@ -3219,6 +3219,37 @@ Hooks.on("canvasReady", async () => {
     await NeuroshimaAuraManager.refreshAllAuras();
 });
 
+// updateActiveEffect — re-sync the visual render template when an auraActor effect
+// with auraRender=true is updated (e.g. the user changes auraRadius or templateData
+// in Advanced Config).  Without this hook the MeasuredTemplate on the canvas would
+// only update on the next token move or reload, because _syncRenderTemplates is
+// normally called only by updateToken / createToken / canvasReady.
+//
+// Only the GM runs this: template mutations are server-authoritative and the hook
+// fires once on all connected clients; restricting to GM avoids duplicate updates.
+//
+// Parent resolution covers both cases:
+//   - Effect lives directly on an Actor  → effect.parent is the Actor
+//   - Effect lives on an Item owned by an Actor → effect.parent is the Item,
+//     effect.parent.actor is the owning Actor
+Hooks.on("updateActiveEffect", async (effect, changes, options, userId) => {
+    if (!game.user.isGM) return;
+    const ns = effect.flags?.neuroshima ?? {};
+    if (ns.transferType !== "auraActor") return;
+    if (!ns.auraRender) return;
+    const { NeuroshimaAuraManager } = await import("./module/apps/aura-manager.js");
+    const actor = effect.parent?.documentName === "Actor"
+        ? effect.parent
+        : effect.parent?.documentName === "Item"
+            ? effect.parent.actor
+            : null;
+    if (!actor) return;
+    const tokenDoc = actor.getActiveTokens()[0]?.document ?? null;
+    if (!tokenDoc) return;
+    game.neuroshima?.log("[hook:updateActiveEffect] re-syncing render template", { effectName: effect.name, actorName: actor.name });
+    await NeuroshimaAuraManager._syncRenderTemplates(tokenDoc, actor, null, null);
+});
+
 let _worldTimeUpdatePending = false;
 Hooks.on("updateWorldTime", async (worldTime, dt) => {
     if (!game.user.isGM) return;

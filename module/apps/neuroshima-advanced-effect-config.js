@@ -68,7 +68,7 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
       Object.entries(nsConfig.attributes ?? {}).map(([k, v]) => [k, v.label ?? k])
     );
 
-    const skillConfig = NEUROSHIMA?.skillConfiguration ?? {};
+    const skillConfig = nsConfig.skillConfiguration ?? {};
     const testSkillGroups = Object.entries(skillConfig).map(([attrKey, groups]) => {
       const cap = attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
       const skills = Object.values(groups).flat().map(skill => ({
@@ -114,7 +114,7 @@ export class NeuroshimaAdvancedEffectConfig extends HandlebarsApplicationMixin(f
         onSuccessEffectIds,
         onFailureEffectIds
       },
-      difficulties:      NEUROSHIMA.difficulties ?? {},
+      difficulties:      nsConfig.difficulties ?? {},
       siblingEffects,
       testAttributes,
       testSkillGroups

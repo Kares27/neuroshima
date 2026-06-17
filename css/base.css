@@ -3435,6 +3435,48 @@ body.theme-dark {
     border-color: var(--ns-color-green-darker);
 }
 
+.required-test-gm-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.required-test-gm-btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.82em;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid;
+    transition: opacity 0.12s;
+}
+
+.required-test-btn-success {
+    background-color: rgba(80, 160, 80, 0.25);
+    border-color: rgba(80, 160, 80, 0.5);
+    color: #8fcc8f;
+}
+
+.required-test-btn-success:hover {
+    background-color: rgba(80, 160, 80, 0.4);
+}
+
+.required-test-btn-ignore {
+    background-color: rgba(150, 100, 60, 0.25);
+    border-color: rgba(150, 100, 60, 0.5);
+    color: #cc9a60;
+}
+
+.required-test-btn-ignore:hover {
+    background-color: rgba(150, 100, 60, 0.4);
+}
+
 .btn.btn-primary {
     display: inline-flex;
     align-items: center;

@@ -399,6 +399,19 @@ export class CombatHelper {
             results = damageResult.results;
             woundIds = damageResult.woundIds;
 
+            // takeDamage — fires after wounds are physically created on the actor.
+            // Scripts can react to damage events (e.g. trigger venom, apply bleeding).
+            if (woundIds.length > 0) {
+                const wounds = woundIds.map(id => actor.items.get(id)).filter(Boolean);
+                await NeuroshimaScriptRunner.execute("takeDamage", {
+                    actor,
+                    wounds,
+                    woundIds,
+                    location,
+                    attackData
+                });
+            }
+
             await this._applyDamageTypeEffects(actor, attackData);
 
             if (!suppressChat) {

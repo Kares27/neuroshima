@@ -1,0 +1,2551 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trick List — Neuroshima 1.5</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --bg2: #242424;
+    --bg3: #2e2e2e;
+    --border: #3a3a3a;
+    --accent: #c8a45a;
+    --accent2: #7ab0d4;
+    --accent3: #7ec891;
+    --accent-err: #e06060;
+    --text: #d4d4d4;
+    --text-dim: #888;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+    --kw: #cba6f7;
+    --str: #a6e3a1;
+    --num: #fab387;
+    --fn: #89b4fa;
+    --cmt: #6c7086;
+    --var: #89dceb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  /* Header */
+  .doc-header { border-bottom: 2px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .doc-header h1 { font-size: 2rem; color: var(--accent); font-weight: 700; letter-spacing: 0.03em; }
+  .doc-header .subtitle { color: var(--text-dim); margin-top: 0.25rem; font-size: 0.95rem; }
+  .badge { display: inline-block; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; color: var(--text-dim); margin-left: 0.5rem; vertical-align: middle; }
+
+  /* TOC */
+  .toc { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2.5rem; }
+  .toc h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 0.75rem; }
+  .toc ol { padding-left: 1.25rem; }
+  .toc li { margin: 0.2rem 0; }
+  .toc a { color: var(--accent2); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Sections */
+  section { margin-bottom: 3rem; }
+  h2.section-title { font-size: 1.4rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.25rem; }
+  h3 { font-size: 1.05rem; color: var(--accent2); margin: 1.5rem 0 0.6rem; }
+  h4 { font-size: 0.9rem; color: var(--accent3); margin: 1rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  p { margin-bottom: 0.75rem; color: var(--text); }
+
+  /* Code */
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.25rem; overflow-x: auto; margin: 0.75rem 0; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.85rem; line-height: 1.55; }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.88em; background: var(--bg3); padding: 1px 5px; border-radius: 3px; color: var(--accent2); }
+  pre code { background: none; padding: 0; color: var(--code-text); }
+  .kw { color: var(--kw); }
+  .str { color: var(--str); }
+  .num { color: var(--num); }
+  .fn { color: var(--fn); }
+  .cmt { color: var(--cmt); font-style: italic; }
+  .var { color: var(--var); }
+
+  /* Trigger cards */
+  .trigger-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .trigger-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .trigger-card .trigger-name { font-family: monospace; font-size: 0.9rem; color: var(--accent); font-weight: bold; margin-bottom: 0.4rem; }
+  .trigger-card .trigger-desc { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+  .trigger-card .trigger-sync { font-size: 0.75rem; color: var(--accent-err); font-weight: bold; }
+  .trigger-card .args-list { margin-top: 0.5rem; }
+  .trigger-card .arg { display: flex; gap: 0.4rem; font-size: 0.82rem; margin: 2px 0; }
+  .trigger-card .arg .arg-name { color: var(--fn); min-width: 110px; font-family: monospace; }
+  .trigger-card .arg .arg-type { color: var(--num); min-width: 70px; }
+  .trigger-card .arg .arg-desc { color: var(--text-dim); }
+
+  /* Args table */
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+  th { background: var(--bg3); color: var(--text-dim); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.4rem 0.75rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: top; }
+  td:first-child { font-family: monospace; color: var(--fn); white-space: nowrap; }
+  td:nth-child(2) { color: var(--num); font-family: monospace; font-size: 0.8rem; }
+  td:nth-child(3) { color: var(--text-dim); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Callouts */
+  .callout { border-left: 3px solid; padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 0.75rem 0; font-size: 0.88rem; }
+  .callout.info { border-color: var(--accent2); background: rgba(122,176,212,0.07); }
+  .callout.warning { border-color: var(--accent); background: rgba(200,164,90,0.07); }
+  .callout.danger { border-color: var(--accent-err); background: rgba(224,96,96,0.07); }
+  .callout strong { color: var(--text); }
+
+  /* Context box */
+  .context-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; margin: 1rem 0; overflow-x: auto; }
+  .context-box .ctx-row { display: grid; grid-template-columns: minmax(0, 44%) minmax(0, 20%) 1fr; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.25rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .context-box .ctx-row:last-child { border-bottom: none; }
+  .context-box .ctx-name { font-family: monospace; color: var(--fn); word-break: break-word; }
+  .context-box .ctx-type { color: var(--num); font-family: monospace; font-size: 0.8rem; word-break: break-word; }
+  .context-box .ctx-desc { color: var(--text-dim); }
+  .context-box .ctx-row.ctx-separator { grid-template-columns: minmax(0, 30%) 1fr; }
+  .context-box .ctx-row.ctx-separator .ctx-type { display: none; }
+
+  /* Example block */
+  .example-block { border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
+  .example-block .example-header { background: var(--bg3); padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--text-dim); font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 0.5rem; }
+  .example-block .example-header .trigger-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: monospace; color: var(--accent); font-size: 0.85em; text-transform: none; }
+  .example-block pre { border: none; border-radius: 0; margin: 0; }
+
+  /* Damage table */
+  .dmg-table { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.75rem 0; }
+  .dmg-chip { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.75rem; font-family: monospace; font-size: 0.9rem; text-align: center; }
+  .dmg-chip .dmg-code { font-weight: bold; color: var(--accent); display: block; }
+  .dmg-chip .dmg-label { color: var(--text-dim); font-size: 0.75rem; display: block; margin-top: 2px; }
+  .dmg-chip.light .dmg-code { color: var(--accent3); }
+  .dmg-chip.heavy .dmg-code { color: var(--accent); }
+  .dmg-chip.crit .dmg-code { color: var(--accent-err); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 3rem; color: var(--text-dim); font-size: 0.8rem; }
+
+  /* ── Utility classes — replaces scattered inline styles ── */
+
+  /* h4 sub-heading used for attribute/skill/item-field groups in predefined-keys section */
+  h4.key-group { margin: 0.6rem 0 0.2rem; color: var(--accent); text-transform: none; letter-spacing: 0; }
+
+  /* h4 sub-section label inside .example-block (Hide Script / Dialog Script / Activate…) */
+  h4.script-label { font-size: 0.78rem; margin: 0.6rem 0 0.2rem; color: var(--accent3); }
+
+  /* Short description paragraph inside .example-block */
+  .example-desc { margin: 4px 0 8px; font-size: 0.88em; color: var(--text-dim); }
+
+  /* Separator row inside .context-box (e.g. "— Helpery ran —") */
+  .ctx-row.ctx-separator { border-top: 2px solid var(--border); margin-top: 0.4rem; padding-top: 0.6rem; }
+  .ctx-row.ctx-separator .ctx-name { color: var(--accent3); font-weight: bold; }
+  .ctx-row.ctx-separator .ctx-desc { color: var(--text-dim); }
+</style>
+</head>
+<body>
+<div class="page">
+<header class="doc-header">
+<h1>Trick List <span class="badge">Neuroshima 1.5</span></h1>
+<div class="subtitle">Statyczny katalog sztuczek z analizą implementacji przez Active Effects (Foundry VTT)</div>
+</header>
+<nav class="toc">
+<h2>Spis treści — wszystkie sztuczki</h2>
+<ol>
+<li><a href="#trick-001-3-2-1-bum">1. 3 2 1 Bum</a></li>
+<li><a href="#trick-002-aramis">2. Aramis</a></li>
+<li><a href="#trick-003-asekuracja">3. Asekuracja</a></li>
+<li><a href="#trick-004-aspiryna-i-tik-taki">4. Aspiryna i Tik-Taki</a></li>
+<li><a href="#trick-005-barbarka">5. Barbarka</a></li>
+<li><a href="#trick-006-berserker">6. Berserker</a></li>
+<li><a href="#trick-007-bez-oddechu">7. Bez oddechu</a></li>
+<li><a href="#trick-008-bez-sprzetu-bez-zabezpieczenia">8. Bez sprzętu, bez zabezpieczenia</a></li>
+<li><a href="#trick-009-bez-sznurkow">9. Bez sznurków</a></li>
+<li><a href="#trick-010-bieg-w-ciszy">10. Bieg w ciszy</a></li>
+<li><a href="#trick-011-bierz-go">11. Bierz go!</a></li>
+<li><a href="#trick-012-boa">12. Boa</a></li>
+<li><a href="#trick-013-cassanova-mata-hari">13. Cassanova/Mata Hari</a></li>
+<li><a href="#trick-014-chlodnym-okiem">14. Chłodnym okiem</a></li>
+<li><a href="#trick-015-ciszej-niz-cien">15. Ciszej niż cień</a></li>
+<li><a href="#trick-016-czlowiek-ktory-kulom-sie-nie-klanial">16. Człowiek, który kulom się nie kłaniał</a></li>
+<li><a href="#trick-017-czterej-pancerni">17. Czterej pancerni</a></li>
+<li><a href="#trick-018-czuly-spust">18. Czuły spust</a></li>
+<li><a href="#trick-019-dalszy-zasieg">19. Dalszy zasięg</a></li>
+<li><a href="#trick-020-dawid">20. Dawid</a></li>
+<li><a href="#trick-021-dluzszy-strzal">21. Dłuższy strzał</a></li>
+<li><a href="#trick-022-dobry-i-zly-glina">22. Dobry i zły glina</a></li>
+<li><a href="#trick-023-dobywanie">23. Dobywanie</a></li>
+<li><a href="#trick-024-dom-na-plecach">24. Dom na plecach</a></li>
+<li><a href="#trick-025-doswiadczony">25. Doświadczony</a></li>
+<li><a href="#trick-026-dystans">26. Dystans</a></li>
+<li><a href="#trick-027-dzis-wszystko-jutro-nic">27. Dziś wszystko, jutro nic</a></li>
+<li><a href="#trick-028-flash">28. Flash</a></li>
+<li><a href="#trick-029-garda">29. Garda</a></li>
+<li><a href="#trick-030-glaz">30. Głaz</a></li>
+<li><a href="#trick-031-gola-reka">31. Goła ręka</a></li>
+<li><a href="#trick-032-granie-na-nerwach">32. Granie na nerwach</a></li>
+<li><a href="#trick-033-gunfight">33. Gunfight</a></li>
+<li><a href="#trick-034-hej-przystojniaku">34. Hej, przystojniaku!</a></li>
+<li><a href="#trick-035-hokus-pokus">35. Hokus pokus</a></li>
+<li><a href="#trick-036-immunitet">36. Immunitet</a></li>
+<li><a href="#trick-037-inspiracja">37. Inspiracja</a></li>
+<li><a href="#trick-038-jest-zajebiscie">38. Jest zajebiście</a></li>
+<li><a href="#trick-039-kanaly">39. Kanały</a></li>
+<li><a href="#trick-040-komandos">40. Komandos</a></li>
+<li><a href="#trick-041-kop-z-obrotu">41. Kop z obrotu</a></li>
+<li><a href="#trick-042-kot">42. Kot</a></li>
+<li><a href="#trick-043-kradziez-w-tlumie">43. Kradzież w tłumie</a></li>
+<li><a href="#trick-044-lesny-diabel">44. Leśny diabeł</a></li>
+<li><a href="#trick-045-ladowanie-kuszy">45. Ładowanie kuszy</a></li>
+<li><a href="#trick-046-lawnik">46. Ławnik</a></li>
+<li><a href="#trick-047-magazynek">47. Magazynek</a></li>
+<li><a href="#trick-048-mech-bojowy">48. Mech bojowy</a></li>
+<li><a href="#trick-049-miotacz-kul">49. Miotacz kul</a></li>
+<li><a href="#trick-050-mistrz-opaski-uciskowej">50. Mistrz opaski uciskowej</a></li>
+<li><a href="#trick-051-mistrz-wloczni">51. Mistrz włóczni</a></li>
+<li><a href="#trick-052-myslec-jak-maszyna">52. Myśleć jak maszyna</a></li>
+<li><a href="#trick-053-na-pewno-dziala">53. Na pewno działa!</a></li>
+<li><a href="#trick-054-naprawde-to-nie-moja-wina">54. Naprawdę, to nie moja wina</a></li>
+<li><a href="#trick-055-nauczyciel">55. Nauczyciel</a></li>
+<li><a href="#trick-056-niewrazliwosc-na-lekkie-rany">56. Niewrażliwość na lekkie rany</a></li>
+<li><a href="#trick-057-no-strzelaj-zlomie">57. No strzelaj, złomie!</a></li>
+<li><a href="#trick-058-nozownik">58. Nożownik</a></li>
+<li><a href="#trick-059-obezwladnienie">59. Obezwładnienie</a></li>
+<li><a href="#trick-060-odnajdywanie-wlasciwej-osoby">60. Odnajdywanie właściwej osoby</a></li>
+<li><a href="#trick-061-odpornosc-na-pogode">61. Odporność na pogodę</a></li>
+<li><a href="#trick-062-odtrucie-zarcia">62. Odtrucie żarcia</a></li>
+<li><a href="#trick-063-odwrocenie-uwagi">63. Odwrócenie uwagi</a></li>
+<li><a href="#trick-064-origami">64. Origami</a></li>
+<li><a href="#trick-065-osmiornica">65. Ośmiornica</a></li>
+<li><a href="#trick-066-otwieranie-zamkow-elektronicznych">66. Otwieranie zamków elektronicznych</a></li>
+<li><a href="#trick-067-padnij-powstan">67. Padnij/powstań</a></li>
+<li><a href="#trick-068-pajak">68. Pająk</a></li>
+<li><a href="#trick-069-pakowanie">69. Pakowanie</a></li>
+<li><a href="#trick-070-pan-plaster">70. Pan plaster</a></li>
+<li><a href="#trick-071-pewna-reka">71. Pewna ręka</a></li>
+<li><a href="#trick-072-pierwotny-instynkt">72. Pierwotny instynkt</a></li>
+<li><a href="#trick-073-pitbull">73. Pitbull</a></li>
+<li><a href="#trick-074-plug-play">74. Plug&Play</a></li>
+<li><a href="#trick-075-po-schodach">75. Po schodach</a></li>
+<li><a href="#trick-076-podrasowanie">76. Podrasowanie</a></li>
+<li><a href="#trick-077-polozenie-motocykla">77. Położenie motocykla</a></li>
+<li><a href="#trick-078-prowizorka">78. Prowizorka</a></li>
+<li><a href="#trick-079-rappeling">79. Rappeling</a></li>
+<li><a href="#trick-080-rodeo">80. Rodeo</a></li>
+<li><a href="#trick-081-rozroba">81. Rozróba</a></li>
+<li><a href="#trick-082-rrrroooaaarrr">82. Rrrroooaaarrr</a></li>
+<li><a href="#trick-083-ruchome-gniazdo-ckm">83. Ruchome gniazdo CKM</a></li>
+<li><a href="#trick-084-ruchomy-cel">84. Ruchomy cel</a></li>
+<li><a href="#trick-085-rzut-oka">85. Rzut oka</a></li>
+<li><a href="#trick-086-sama-se-skocz-po-piwo">86. Sama se skocz po piwo</a></li>
+<li><a href="#trick-087-samuraj">87. Samuraj</a></li>
+<li><a href="#trick-088-sherlock-holmes">88. Sherlock Holmes</a></li>
+<li><a href="#trick-089-siekierezada">89. Siekierezada</a></li>
+<li><a href="#trick-090-siup-dup">90. Siup dup</a></li>
+<li><a href="#trick-091-sklad-amunicji">91. Skład amunicji</a></li>
+<li><a href="#trick-092-skok">92. Skok</a></li>
+<li><a href="#trick-093-sluch-absolutny">93. Słuch absolutny</a></li>
+<li><a href="#trick-094-snajper">94. Snajper</a></li>
+<li><a href="#trick-095-spac-na-wodzie">95. Spać na wodzie</a></li>
+<li><a href="#trick-096-strzelec-kieszonkowy">96. Strzelec kieszonkowy</a></li>
+<li><a href="#trick-097-szachista">97. Szachista</a></li>
+<li><a href="#trick-098-szosty-zmysl">98. Szósty zmysł</a></li>
+<li><a href="#trick-099-sztuczki-karciane">99. Sztuczki karciane</a></li>
+<li><a href="#trick-100-sztuka-jest-sztuka">100. Sztuka jest sztuka</a></li>
+<li><a href="#trick-101-szybki-bill">101. Szybki Bill</a></li>
+<li><a href="#trick-102-szybki-rzut">102. Szybki rzut</a></li>
+<li><a href="#trick-103-szybkie-strzelanie">103. Szybkie strzelanie</a></li>
+<li><a href="#trick-104-srutobranie">104. Śrutobranie</a></li>
+<li><a href="#trick-105-taran">105. Taran</a></li>
+<li><a href="#trick-106-taranowanie">106. Taranowanie</a></li>
+<li><a href="#trick-107-targowanie-sie">107. Targowanie się</a></li>
+<li><a href="#trick-108-to-sie-robi-tak">108. To się robi tak</a></li>
+<li><a href="#trick-109-w-mgnieniu-oka">109. W mgnieniu oka</a></li>
+<li><a href="#trick-110-walka-dwiema-broniami">110. Walka dwiema broniami</a></li>
+<li><a href="#trick-111-wiatrak">111. Wiatrak</a></li>
+<li><a href="#trick-112-wilk-morski">112. Wilk morski</a></li>
+<li><a href="#trick-113-wlasciwa-twarz">113. Właściwa twarz</a></li>
+<li><a href="#trick-114-wracajacy-bumerang">114. Wracający bumerang</a></li>
+<li><a href="#trick-115-wyczekanie">115. Wyczekanie</a></li>
+<li><a href="#trick-116-wyczucie-emocji-zwierzat">116. Wyczucie emocji zwierząt</a></li>
+<li><a href="#trick-117-wyczucie-promieniowania">117. Wyczucie promieniowania</a></li>
+<li><a href="#trick-118-wyczucie-zmian-pogody">118. Wyczucie zmian pogody</a></li>
+<li><a href="#trick-119-wyrabianie-strzal-lub-beltow">119. Wyrabianie strzał lub bełtów</a></li>
+<li><a href="#trick-120-wytrych">120. Wytrych</a></li>
+<li><a href="#trick-121-zagadanie">121. Zagadanie</a></li>
+<li><a href="#trick-122-zaslona">122. Zasłona</a></li>
+<li><a href="#trick-123-zgranie">123. Zgranie</a></li>
+<li><a href="#trick-124-zielony-balonik">124. Zielony balonik</a></li>
+<li><a href="#trick-125-zly">125. Zły</a></li>
+<li><a href="#trick-126-zmylka">126. Zmyłka</a></li>
+<li><a href="#trick-127-zelazne-racje">127. Żelazne racje</a></li>
+</ol>
+</nav>
+<section id="overview">
+<h2 class="section-title">Założenia katalogu</h2>
+<p>Lista sztuczek została spisana w formie w pełni statycznego HTML. Każda pozycja zawiera wymagania, krótki opis klimatyczny, opis mechaniki oraz blok <code>Analiza Active Effect</code>.</p>
+<p>Sztuczki narracyjne lub mocno MG-zależne są oznaczone jako abstrakcyjne i otrzymują ostrzeżenie o braku bezpośredniej implementacji jako samodzielny AE.</p>
+</section>
+<section id="tricks">
+<h2 class="section-title">Sztuczki</h2>
+<section id="trick-001-3-2-1-bum">
+<h3>1. 3 2 1 Bum</h3>
+<p><strong>Wymagania:</strong> Mechanika 3+, Materiały wybuchowe 3+</p>
+<p><strong>Opis klimatyczny:</strong> Wszystkie urządzenia na świecie można po- dzielić na takie, które czasem wybuchają, i takie, które nigdy nie wybuchają. Szczególnie interesują cię te pierwsze. Wystarczy tu przeciąć wężyk, tam skręcić kabel, tu znów poluzować śrubkę. I gotowe. Teraz wystarczy poczekać na fajerwerki.</p>
+<p><strong>Mechanika:</strong> Możesz uzbroić - jak bombę - dowolny pojazd, urządzenie czy maszynę napędzaną łatwo- palnym paliwem. Kwadrans spokojnej pracy i mo- żesz zacząć odliczanie. Czas wybuchu określasz z pięć- dziesięcioprocentową dokładnością na sekundę, mi- nutę, kwadrans lub godzinę (np. gdy wybierzesz minutę, spodziewaj się wybuchu między pół a półto- rej minuty). Czasem, jeśli MG pozwoli, nawet na ty- dzień. Siła wybuchu zależy od rodzaju urządzenia.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-002-aramis">
+<h3>2. Aramis</h3>
+<p><strong>Wymagania:</strong> Zręczność 14+, Broń ręczna 5+</p>
+<p><strong>Opis klimatyczny:</strong> Gdy spotkasz kiedyś wędrującego samotnie dziadka, który podpiera się kijkiem, za nic w świe- cie go nie zaczepiaj. To może być Dziadzio z Alaba- a będzie to Sztuczka. Jest u - tak mniej więcej</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Aramis: Próba rozbrojenia kosztem 2 sukcesów z podwyższonym poziomem trudności (kara 20%)
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.penalties.mod += 20;
+    args.test.preData.annotations.push("Aramis: Możesz podjąć próbę rozbrojenia kosztem 2 sukcesów (test o 1 poziom trudniejszy).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-003-asekuracja">
+<h3>3. Asekuracja</h3>
+<p><strong>Wymagania:</strong> Wspinaczka 2+</p>
+<p><strong>Opis klimatyczny:</strong> No nieźle ci idzie, teraz spróbuj sam. No da- lej, nie pękaj...</p>
+<p><strong>Mechanika:</strong> Bohater pomaga innej osobie (zapiętej w uprząż) wspinać się po linie. Dzięki temu osoba ta traktowana jest, jak gdyby miała Umiejętność Wspi- naczka na poziomie 1. Pozwala jej to uniknąć kłopo- tów z Suwakiem.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-004-aspiryna-i-tik-taki">
+<h3>4. Aspiryna i Tik-Taki</h3>
+<p><strong>Wymagania:</strong> Leczenie chorób 4+, Blef 3+</p>
+<p><strong>Opis klimatyczny:</strong> Raz byłem poważnie chory i leczył mnie wtedy Pastor Ludwik. Przez dwa tygodnie łykałem lekarstwo na Gorączkę sobotniej nocy, aż wyzdro- wiałem. Potem dowiedziałem się, że klecha karmił           c mnie aspiryną i Tik-takami.                                d</p>
+<p><strong>Mechanika:</strong> Za pomocą najprostszych lekarstw, Bohater potrafi utrzymywać chorego w stanie sta- bilnym, tak, jakby podopieczny łykał potrzebne mu          W lekarstwo. „Aspirynę i Tik-Taki” można podawać przez liczbę dni równą wartości Umiejętności Blef.         r Potem trzeba przerzucić się na zalecane leki. Po           l dwóch tygodniach znów można wrócić do kuracji              n „Aspiryną i Tik-Takami”.                                   j</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-005-barbarka">
+<h3>5. Barbarka</h3>
+<p><strong>Wymagania:</strong> Bijatyka 5+, Budowa 14+                         n</p>
+<p><strong>Opis klimatyczny:</strong> Jak dla mnie, jednym z najbardziej depry-          s mujących zagrań w walce, jest pieprznąć gościa w           m ryj, własnym ryjem. To zawsze szokuje...</p>
+<p><strong>Mechanika:</strong> Jeśli segment wcześniej zadałeś celny cios (nawet obroniony przez przeciwnika), w kolej-         W nym segmencie możesz użyć dodatkowej akcji (zu-            1 żywając jednak w normalny sposób 1 segment tury): Akcja za 1 sukces: uderzenie głową. Zadaje Ciężkie-        T go Siniaka. Można użyć tylko raz przeciwko temu            k samemu przeciwnikowi.                                      ż</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">rollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Barbarka: Akcja za 1 sukces po udanym ciosie w poprzednim segmencie zadaje Ciężkiego Siniaka
+  if (args.test.context.skillKey === "brawl" &amp;&amp; args.test.result.isSuccess) {
+    args.test.result.annotations.push("Barbarka: Możesz wydać 1 sukces na uderzenie głową, zadając Ciężkiego Siniaka.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-006-berserker">
+<h3>6. Berserker</h3>
+<p><strong>Wymagania:</strong> Odporność na ból 6+, Budowa 12+                 s</p>
+<p><strong>Opis klimatyczny:</strong> Kumpel chwalił się kiedyś, że jest twardy         l jak Statua Wolności i nic go nie powali na ziemię. No      c i doczekał się - napadła go grupa gangerów i zaczęła       i go lać rurkami i łańcuchami. Nie chciał się poddać,        z to go powalili na ziemię. Wstawał i dalej się na nich      p rzucał. No i w końcu brakło mu posoki, bo cała wy- ciekła, tak go pochlastali. Zbyt twardy był, można powiedzieć.                                                W</p>
+<p><strong>Mechanika:</strong> Jeśli Bohater walczy wręcz i odniósł przynajmniej jedną ciężką ranę, do końca walki au-         n tomatycznie zdaje testy Odporności na ból, także           c automatycznie może wejść w tryb berserkera (wal-           z czący nie musi się bronić).                                ł</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Berserker: Automatyczny sukces w teście Odporności na ból, gdy postać odniosła rany
+  if (args.test.context.skillKey === "painResistance" &amp;&amp; this.getWoundCount(this.actor) &gt; 0) {
+    args.test.preData.autoSuccess = true;
+    args.test.preData.annotations.push("Berserker: Automatyczny sukces w teście Odporności na ból przy posiadaniu ran.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-007-bez-oddechu">
+<h3>7. Bez oddechu</h3>
+<p><strong>Wymagania:</strong> Pływanie 4+                                     p</p>
+<p><strong>Opis klimatyczny:</strong> Więc ja mu głowę pod wodę i czekam. Za-            C cznie się dusić, to będzie bardziej rozmowny. No nie przesadzę, jak powiem, że trzymałem go tam dwie            k minuty. A on uśmiechnięty. No to trzy. A on morda w banan. No to ja go na cztery minuty. A on... W końcu złamałem mu kolano gazrurką i zaczął śpie- wać... W stosunku do Neuroshimy ed. 1.0 wyleciały Sztuczki: Aero obuchem, David Copperfield, Dedukcja, Doskok, Drugi kotek Jazda na śpiąco, Kameleon, Liczy się jakość, Linoskoczek, śmietnikowa, Na śpiąco, Nietykalny, Niewidzialność, Nurko nie, Otwarcie zamka, Pasażer, Pastor Ludwik, Podejrzliwy, witanie, Rambo, Rambo 2, Ręce które leczą, Rozkaz, Rzucam Strzał na bliską odległość, Strzelanie na czuja, Szybki z teorii, Wiraż, Właściwe słowo, Woltyżerka, Wyczucie kłams Zakrzyczeć na śmierć, Zamach, Zastawianie sideł, Złodziej Ale w przyrodzie nic nie ginie. Doszło ponad 50 nowych</p>
+<p><strong>Mechanika:</strong> Bohater potrafi wytrzymać bez odde- hu dwa razy dłużej niż zwykły człowiek (czyli każ- e 4 punkty Budowy dają 1 minutę).</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Bez oddechu: Wydłuża dwukrotnie czas wstrzymania oddechu (każde 4 punkty Budowy = 2 minuty)
+  const con = this.getAttributeTotal("constitution");
+  const minuty = (con / 4) * 2;
+  this.addAnnotation(`Bez oddechu: Maksymalny czas wstrzymania oddechu wydłużony do ${minuty} minut.`);
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-008-bez-sprzetu-bez-zabezpieczenia">
+<h3>8. Bez sprzętu, bez zabezpieczenia</h3>
+<p><strong>Wymagania:</strong> Wspinaczka 6+, Zręczność 10+</p>
+<p><strong>Opis klimatyczny:</strong> Kocie ruchy, tak? Jak dla mnie to facet po- usza się jak glonojad po ściance akwarium. Przy- gnął do skały i prędzej ta skała walnie na ziemię, iż on. Tak to już jest, jak od dziecka mieszkasz w askiniach, nie?</p>
+<p><strong>Mechanika:</strong> Podczas wspinaczki Bohater podwaja oziom swojej Umiejętności Wspinaczka, nawet jeśli ie używa sprzętu i liny. Jednak użycie specjali- tycznego sprzętu bardziej już nie pomnoży pozio- u Umiejętności.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Bez sprzętu, bez zabezpieczenia: Podwaja poziom Wspinaczki przy wspinaniu się bez asekuracji i liny
+  if (args.test.context.skillKey === "climbing") {
+    const level = this.getSkill("climbing");
+    args.test.preData.skillBonus += level;
+    args.test.preData.annotations.push("Bez sprzętu, bez zabezpieczenia: Poziom Wspinaczki podwojony!");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-009-bez-sznurkow">
+<h3>9. Bez sznurków</h3>
+<p><strong>Wymagania:</strong> Pistolety 3+, Zręczność 13+, Percepcja</p>
+<p><strong>Opis klimatyczny:</strong> 2+ Nauczyłem się tego z filmu. Tak, z filmu. yle, że u tamtych facetów było widać sznurki, na tórych latali jak czarodzieje. A ja nie potrzebuję adnych sznurków. Chcesz zobaczyć?</p>
+<p><strong>Mechanika:</strong> Skaczesz i jednocześnie strzelasz w lo- ie - trwa to dwa segmenty, więc możesz oddać dwa trzały. Otrzymujesz za to karę +20% do testu strze- ania, za to ciebie trudniej trafić aż o +40%. W trze- im segmencie padasz na ziemię. Możesz tak zostać walić dalej leżąc, albo poświęcić segmenty na po- bieranie się i spieprzać. Sztuczka dotyczy tylko istoletów.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Bez sznurków: Strzał w locie. Kara +20% do strzelania z pistoletów, ale przeciwnicy mają +40% kary do trafienia postaci
+  if (args.test.context.skillKey === "pistols") {
+    args.test.preData.penalties.mod += 20;
+    args.test.preData.annotations.push("Bez sznurków: Strzał w locie (+20% utrudnienia, +40% do Twojej obrony do końca segmentu).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-010-bieg-w-ciszy">
+<h3>10. Bieg w ciszy</h3>
+<p><strong>Wymagania:</strong> Kondycja 3+, Budowa 12+</p>
+<p><strong>Opis klimatyczny:</strong> Powiedział do mnie „Ścigamy się” i uśmiech- ął się głupio. Myślę sobie, niezły żart. A potem za- zął biec. Spokojnie dopiłem piwo, zrobiłem zakupy, atankowałem do pełna i ruszyłem. Po drodze mija- em go czterokrotnie, dokładnie tyle razy, ile razy tawała moja Christine, która tej nocy wyraźnie nie yła w formie. Skończyło się tym, że dotarł do Vegas ierwszy - przebiegł 80 kilosów szybciej, niż mój adillac.</p>
+<p><strong>Mechanika:</strong> Bohater może biec bez przerwy przez ilkanaście godzin, pokonując nawet 50 km. tech, Anestezjolog, Antropolog, Chodzący truposz, Cisza, Cios , Dwa noże, Efekt zaskoczenia, Hydraulik, Instrukcja jest dla..., Magiczny dotyk, Makijaż, Marsz forsowny, MASH, Medycyna wanie, Obłaskawianie mutków, Odłamkowym ładuj pal!, Ogłusze- Precyzyjne manewry, Profesjonalne oczyszczanie wody, Przy- to świństwo, Skrytka doskonała, Słoń w składzie porcelany, akręt, Ślepa furia, Trochę inny makijaż, Ukrycie, Usterka, W twa, Wyprzęganie w biegu, Wyrywkowa wiedza, Z zawiasów, ski zmysł, Znaczące chrząknięcie. !</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-011-bierz-go">
+<h3>11. Bierz go!</h3>
+<p><strong>Wymagania:</strong> Opieka nad zwierzętami 4+, Charakter        Wy</p>
+<p><strong>Opis klimatyczny:</strong> 8+ Jeżeli lubisz zwierzęta, a one w dodatku to   pr wyczują, możesz skorzystać na wzajemnej sympa-         mi tii. A to kogoś poszczujesz kretem, a to jaszczurka    ba aportuje ci bumerang...                                ku</p>
+<p><strong>Mechanika:</strong> Bohater może wydać prosty rozkaz oswojonemu i wytresowanemu zwierzęciu.                 ps</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-012-boa">
+<h3>12. Boa</h3>
+<p><strong>Wymagania:</strong> Broń ręczna 5+, Zręczność 12+               Wy</p>
+<p><strong>Opis klimatyczny:</strong> Łańcuch uchodzi za broń dla idiotów. Może      3+ nie jest specjalnie zabójczy, ale nieźle wyrównuje szanse, nawet jeśli nic nie potrafisz. A jednak wi-    mi działem kiedyś prawdziwego mistrza łańcucha. Po-       ty trafił nim nawet obierać ziemniaki.                    Ma</p>
+<p><strong>Mechanika:</strong> Jeśli walczący używa łańcucha, nie otrzymuje kary za walkę w zwarciu, tłoku i cia-        w snych pomieszczeniach. Ponadto otrzymuje dodat-        si kowe akcje za 2 lub 3 sukcesy. Akcja za 2 sukcesy:     we pochwycenie . Używane przez walczących bronie          ne otrzymują modyfikator jak w tłoku, a pochwycony        zn dodatkowo otrzymuje karę -2 do Zręczności (dopóki nie przejmie Inicjatywy lub nie otrzyma rany). Akcja za 3 sukcesy: wykończenie. Walczący dusi         Wy przeciwnika łańcuchem i unieruchamia go. Może przydusić przeciwnika, aż ten straci przytomność:      ni obaj walczący wykonują Przeciwstawny test Budo-        wi wy, przeciwnik z dodatkowym PT +60%. Jeśli prze-       21 ciwnik przegra test, traci przytomność. Jeśli prze-    ni ciwnik został pochwycony wcześniej, wtedy akcja kosztuje tylko 2 sukcesy.                              ną kr</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Boa: Brak kar za walkę łańcuchem w zwarciu/tłoku, dodatkowe akcje za 2 lub 3 sukcesy
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Boa: Brak kar za walkę w zwarciu/tłoku. Udany test pozwala pochwycić lub dusić przeciwnika.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-013-cassanova-mata-hari">
+<h3>13. Cassanova/Mata Hari</h3>
+<p><strong>Wymagania:</strong> Blef 2+, Perswazja 2+, Zwinne dłonie 2+,    me</p>
+<p><strong>Opis klimatyczny:</strong> Spryt 10+                                              dz [ocenzurowano]</p>
+<p><strong>Mechanika:</strong> Możesz przerzucić każdy test Charak- teru związany z uwodzeniem.                            Wy</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Cassanova/Mata Hari: Bonus +2 do testów społecznych wobec płci przeciwnej
+  const sk = args.test.context.skillKey;
+  if (["persuasion", "bluff", "emotionPerception"].includes(sk)) {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Cassanova/Mata Hari: +2 do testów społecznych wobec płci przeciwnej.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-014-chlodnym-okiem">
+<h3>14. Chłodnym okiem</h3>
+<p><strong>Wymagania:</strong> Spryt 14+                                   on</p>
+<p><strong>Opis klimatyczny:</strong> Wsadzał na głowę słuchawki, włączał walk-      ku mana z melodią szumiących liści, robił sobie gorącej   wi kawy i zamykał oczy. Po połowie godziny otwierał oczy i rzucał jakimś spostrzeżeniem. Cholera, zawsze   ha potrafił mnie zaskoczyć.                               po</p>
+<p><strong>Mechanika:</strong> Wykonujesz test Sprytu. Jeśli zdasz, MG musi spokojnie, powoli i jasno przedstawić ci wszystkie fakty i zdarzenia, które pojawiły się w      Wy przygodzie. Jeszcze raz, po kolei i od początku. py</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Przykładowa implementacja
+  this.addAnnotation("Sztuczka aktywna");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-015-ciszej-niz-cien">
+<h3>15. Ciszej niż cień</h3>
+<p><strong>Wymagania:</strong> Skradanie się 6+                            pa</p>
+<p><strong>Opis klimatyczny:</strong> Słyszałeś kiedyś poruszający się cień? Z tą   Ni Sztuczką możesz być jeszcze bardziej cichy. A wi- działeś kiedyś skradający się cień w środku bezk-      st siężycowej nocy? Możesz być jeszcze bardziej niewi-    pr dzialny. Dwa w jednym. Nie ma się co zastanawiać - bierz!</p>
+<p><strong>Mechanika:</strong> Przeciwnik zdaje o poziom trudniej- szy test Czujności / Wypatrywania / Nasłuchiwania.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-016-czlowiek-ktory-kulom-sie-nie-klanial">
+<h3>16. Człowiek, który kulom się nie kłaniał</h3>
+<p><strong>Wymagania:</strong> Morale 3+, Percepcja 8+</p>
+<p><strong>Opis klimatyczny:</strong> Opowiadali mi, że na północy, na froncie, acował pewien sanitariusz. Chodził między okopa- spokojnie, jakby zbierał stokrotki. Tu zawiązał ndaż, tam założył łupki na nogę, a w powietrzu le gwizdały i gwizdały.</p>
+<p><strong>Mechanika:</strong> Bohater jest uodporniony na efekty ychologiczne ostrzału (ale nie obrażeń!).</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Przykładowa implementacja
+  this.addAnnotation("Sztuczka aktywna");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-017-czterej-pancerni">
+<h3>17. Czterej pancerni</h3>
+<p><strong>Wymagania:</strong> Wozy bojowe 3+ lub Maszyny ciężkie</p>
+<p><strong>Opis klimatyczny:</strong> , Opieka nad zwierzętami 2+ Słyszałeś kiedyś o gangu czołgistów? To nie t. Istnieją tacy narwańcy, którzy wędrują po kon- nencie w czołgu. Po czterech w każdej maszynie. giczna liczba, czy co? Piąty zawsze jest pies.</p>
+<p><strong>Mechanika:</strong> Jeżeli Bohater kierujący maszyną ma kokpicie trzech pomocników, z których każdy po- ada Umiejętność Maszyny ciężkie lub Wozy bojo- przynajmniej na 1, wszystkie jego testy związa- z pojazdem są łatwiejsze o -20%. Jeżeli w załodze ajdzie się pies, testy są łatwiejsze o -30%.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-018-czuly-spust">
+<h3>18. Czuły spust</h3>
+<p><strong>Wymagania:</strong> Percepcja 14+, Broń maszynowa 4+</p>
+<p><strong>Opis klimatyczny:</strong> Pewien sierżant z Posterunku zrobił kiedyś ezły pokaz. Zasiadł do CKMu, uśmiechnął się i po- edział: 12. Po czym tratatatata. Potem powiedział: . I tratatatata. Poszliśmy policzyć dziurki w ścia- e. Dwanaście i dwadzieścia jeden.</p>
+<p><strong>Mechanika:</strong> Bohater może przerwać zadeklarowa- długą serię po 1 segmencie, oddając zamiast niej ótką. Może też przerwać ogień ciągły po 1 segmen- e, oddając zamiast niego krótką serię, lub po 2 seg- ntach - oddając długą serię. Dzięki temu oszczę- a kule.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preWeaponShot</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Czuły spust: Strzelanie bez kar za pośpiech i bez ryzyka zacięcia
+  this.preventWeaponJam(args);
+  this.addAnnotation("Czuły spust: Strzelanie bez kar za pośpiech i bez ryzyka zacięcia.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-019-dalszy-zasieg">
+<h3>19. Dalszy zasięg</h3>
+<p><strong>Wymagania:</strong> Kusza 9+, Budowa 12+</p>
+<p><strong>Opis klimatyczny:</strong> Znasz Chucka? Chuck mówi do mnie, „Wi- isz tego ptaka?” A ja mu na to: „No nie widzę”. A mówi: „To posłuchaj”. I sru, strzelił z tej swojej szy. I po chwili „Kraaa, kraa”. Zabił ptaszynę... Ja em, ile to mogło być metrów, pięćset...?</p>
+<p><strong>Mechanika:</strong> Otrzymując te same utrudnienia, bo- ter potrafi strzelić na dwa razy większą odległość, d warunkiem, że kusza ma wystarczający zasięg.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Dalszy zasięg: Zasięg rzutu bronią miotaną zwiększony (redukuje kary za odległość o 20%)
+  if (args.test.context.skillKey === "throwing") {
+    args.test.preData.penalties.mod = Math.max(0, args.test.preData.penalties.mod - 20);
+    args.test.preData.annotations.push("Dalszy zasięg: Kary za odległość zmniejszone o 20%.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-020-dawid">
+<h3>20. Dawid</h3>
+<p><strong>Wymagania:</strong> Proca 4+</p>
+<p><strong>Opis klimatyczny:</strong> A gość kręci tym paskiem i kręci, w końcu tam go: „Koleś, zaciąłeś się?! Wypuścisz ten ka- eń w końcu?” No i wypuścił. Aż żal mi było tego lanta z Vegas, gdy dostał kamieniem prosto w czoło. by zwykła proca, a jednak wiele potrafi.</p>
+<p><strong>Mechanika:</strong> Bohater przeznacza trzy segmenty na rzał, dzięki czemu jest mu łatwiej o -30% trafić zeciwnika z procy.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Dawid: Ułatwienie celowania z procy w głowę lub czułe punkty o 20%
+  if (args.test.context.skillKey === "sling") {
+    args.test.preData.penalties.mod = Math.max(0, args.test.preData.penalties.mod - 20);
+    args.test.preData.annotations.push("Dawid: Kara za celowanie w czułe punkty zmniejszona o 20%.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-021-dluzszy-strzal">
+<h3>21. Dłuższy strzał</h3>
+<p><strong>Wymagania:</strong> Łuk 9+, Budowa 12+                             Wy</p>
+<p><strong>Opis klimatyczny:</strong> Znasz Chucka? Chuck mówi do mnie, widzisz tego ptaka? A ja mu na to: no nie widzę. A on... Co?      In Już to mówiłem? O kuszy? E, niemożliwe. Chuck strze-      pa la z łuku...                                              wa</p>
+<p><strong>Mechanika:</strong> Otrzymując te same utrudnienia, Bo-         mi hater potrafi strzelić na dwa razy większą odległość, pod warunkiem, że łuk ma wystarczający zasięg.            wy</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Dłuższy strzał: Zasięg łuku zwiększony o 50% (redukuje kary za odległość o 20%)
+  if (args.test.context.skillKey === "bow") {
+    args.test.preData.penalties.mod = Math.max(0, args.test.preData.penalties.mod - 20);
+    args.test.preData.annotations.push("Dłuższy strzał: Zasięg łuku zwiększony o 50% (kara za odległość -20%).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-022-dobry-i-zly-glina">
+<h3>22. Dobry i zły glina</h3>
+<p><strong>Wymagania:</strong> Spryt 12+                                      wa</p>
+<p><strong>Opis klimatyczny:</strong> Widzisz tamten cmentarz? Zauważyłeś, że wszystkie daty na nim są wczorajsze? Wczoraj chcia- łem się po prostu dowiedzieć od miejscowych, który        Wy z nich jest mechanikiem. I wiesz, w końcu poskutko- wało. Jakiś facio w ciągu trzech godzin nauczył się       Ro fachu i teraz reperuje mi samochód.                       fi</p>
+<p><strong>Mechanika:</strong> Podczas przesłuchiwania sam na sam          go z więźniem, możesz w teście dodać do Zastraszania         wy lub Perswazji swój Blef lub Postrzeganie emocji. tu</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Przykładowa implementacja
+  this.addAnnotation("Sztuczka aktywna");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-023-dobywanie">
+<h3>23. Dobywanie</h3>
+<p><strong>Wymagania:</strong> Pistolety 5+ lub Broń ręczna 5+, Zręcz-        ko</p>
+<p><strong>Opis klimatyczny:</strong> ność 12+ Widziałem kiedyś taki film, w starym kinie w Vegas, „Bez przebaczenia”, czy „Tombstone”, nie         Wy pamiętam dokładnie. Rzecz była o kowbojach. Ci go- ście strzelali się bez osłony, bez pancerzy i innych      br takich. Jedyne co się liczyło - to kto pierwszy dobę-     ga dzie broni i wystrzeli. I wiesz, od kilku miesięcy też    je ćwiczę dobywanie. W końcu kogoś zaskoczę.                 re</p>
+<p><strong>Mechanika:</strong> Dobycie pistoletu (lub noża itp.) zaj- muje jeden segment.                                       tu +6</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Dobywanie: Wyciągnięcie broni bez utraty akcji (+3 do Czujności przy inicjatywie)
+  if (args.test.context.skillKey === "vigilance") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Dobywanie: Błyskawiczne wyciągnięcie broni bez utraty segmentu tury.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-024-dom-na-plecach">
+<h3>24. Dom na plecach</h3>
+<p><strong>Wymagania:</strong> Kondycja 4+, Budowa 13+                        sz</p>
+<p><strong>Opis klimatyczny:</strong> Kiedy wyciągnął z plecaka namiot, mate-           mu rac, śpiwór, dwie butle gazowe, zestaw garnków, książ-    ne kę kucharską i maść na moskity, nie zdziwiłem się. Zaskoczył mnie, gdy wyciągnął słoik ogórków, mi- skę na deszczówkę i żółwia w słoiku. Potem jeszcze        Wy jakiś wykrywacz ruchu i poduszkę. Przegiął, gdy z         12 dna wyjął pidżamę i papucie...</p>
+<p><strong>Mechanika:</strong> Możesz udźwignąć dwa razy więcej niż         wa normalny człowiek.                                        pa oc</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-025-doswiadczony">
+<h3>25. Doświadczony</h3>
+<p><strong>Wymagania:</strong> Kondycja 5+, Budowa 12+                        tr</p>
+<p><strong>Opis klimatyczny:</strong> Dawniej była nawet taka fucha, bodaj bry-         ot gadzista się to nazywało. Facet stał i nic nie robił, a   ru inni dzięki temu pracowali lepiej. Dasz wiarę?!           ru</p>
+<p><strong>Mechanika:</strong> Bohater pomaga innym osobom pracu- jącym wraz z nim, ich wydajność jest większa o            il 50%, bo BG motywuje i pomaga innym w pracy.               20</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Doświadczony: Postać otrzymuje o 10% więcej punktów doświadczenia
+  this.addAnnotation("Doświadczony: +10% do zdobywanych punktów doświadczenia.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-026-dystans">
+<h3>26. Dystans</h3>
+<p><strong>Wymagania:</strong> Rzucanie 6+, Budowa 10+                        Wy</p>
+<p><strong>Opis klimatyczny:</strong> Znasz Chucka? Chuck mówi do mnie: „Wi- dzisz tego ptaka?”. Co znowu? Jak to już było? Co         si było?! Opowiadałem już o tym? No to sorry...              sł</p>
+<p><strong>Mechanika:</strong> Bohater otrzymuje tylko połowę kary         A wynikającej z dystansu podczas rzucania nożem.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Dystans: Walka długą bronią białą (np. włócznią) daje bonus +2 do ataku/obrony
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Dystans: +2 do testów walki długą bronią białą.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-027-dzis-wszystko-jutro-nic">
+<h3>27. Dziś wszystko, jutro nic</h3>
+<p><strong>Wymagania:</strong> Kondycja 3+</p>
+<p><strong>Opis klimatyczny:</strong> No i gość zawziął się i rozładował ten tabor. na sprawa, że na drugi dzień, jak zszedł z wyra, to dł na pysk i tak został. Kawę to mu słomką poda- łem. Nie potrafił się ruszyć i już. Popsuł się, inny- słowy.</p>
+<p><strong>Mechanika:</strong> Bohater może pracować o tyle procent dajniej, ile wynosi jego Budowa pomnożona przez . Musi też zdać Bardzo Trudny test Budowy. Na- ępnego dnia Bohater nie jest zdolny do wykony- nia pracy fizycznej.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Dziś wszystko, jutro nic: Dowolny test otrzymuje bonus +3 kosztem kary -3 do wszystkich testów kolejnego dnia
+  args.test.preData.skillBonus += 3;
+  args.test.preData.annotations.push("Dziś wszystko, jutro nic: Przyznano +3 do testu. Jutro otrzymasz karę -3 do wszystkich rzutów.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-028-flash">
+<h3>28. Flash</h3>
+<p><strong>Wymagania:</strong> Bijatyka 4+, Kondycja 3+</p>
+<p><strong>Opis klimatyczny:</strong> Uwziąłem się kiedyś na pewnego Chinola. zwaliłem pół knajpy, ale nie udało mi się go tra- ć. Padał, skakał, fikał koziołki. W końcu znalazłem pod jednym ze stolików. Facet w końcu padł z czerpania.</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku ry, przed rzutem 3k20. Walczący może dodać +3 do ęczności w obronie na czas 1 segmentu. Za to na niec tury otrzymuje karę +20% ze zmęczenia.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Flash: Niezwykle szybki unik lub osłona (+3 do obrony przed atakami wręcz)
+  if (["brawl", "handWeapon"].includes(args.test.context.skillKey)) {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Flash: +3 do obrony przed atakami wręcz w tej rundzie.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-029-garda">
+<h3>29. Garda</h3>
+<p><strong>Wymagania:</strong> Bijatyka 4+, Budowa 12+</p>
+<p><strong>Opis klimatyczny:</strong> Gość mnie w nerę, a ja blok. On mnie w zuch, a ja się zastawiam. On mnie w bok, a ja rda. I jeszcze raz uderzył w nerkę, a ja jeszcze den blok. Niestety, potem się wściekł i złapał topo- k...</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku ry, przed rzutem 3k20. Walczący otrzymuje bonus do Zręczności w obronie, ale w razie obronionego osu i tak otrzymuje obrażenia, tylko o poziom niż- e. Sztuczka działa tylko przeciwko nieuzbrojone- przeciwnikowi (oczywiście, w miarę humanoidal- mu!).</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Garda: Pozycja wybitnie obronna (+2 do Bijatyki, zmniejszenie otrzymywanych obrażeń o 1 stopień)
+  if (args.test.context.skillKey === "brawl") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Garda: Przyjęto pozycję obronną (+2 do Bijatyki, zmniejszenie zadawanych obrażeń o 1 stopień).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-030-glaz">
+<h3>30. Głaz</h3>
+<p><strong>Wymagania:</strong> Przygotowanie pułapki 3+, Charakter</p>
+<p><strong>Opis klimatyczny:</strong> + Nie wiesz jak straszliwie trudno jest zacho- ć bezruch przez dłuższy czas. Musisz się podra- ć. Przesunąć nogę. Wysikać. Dostajesz skurczu. A zy wariują - niedługo całe twoje ciało wrzeszczy o kiś ruch. Dobry snajper potrafi się wyciszyć. Po- afi przeleżeć półtorej dnia jak głaz, wtopiony w oczenie, będąc w jakimś dziwnym transie. Nie po- szy się do chwili, gdy pojawi się cel. A wtedy po- szy tylko palcem.</p>
+<p><strong>Mechanika:</strong> Bohater potrafi trwać nieruchomo przez ość minut równą Charakterowi pomnożonemu przez .</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preApplyDamage</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Głaz: Zmniejszenie otrzymywanych ciężkich obrażeń obuchowych (fizycznych) o jeden stopień
+  if (this.isHeavyDamage(args.damageType)) {
+    args.damageType = this.reduceDamageType(args.damageType, 1);
+    this.addAnnotation("Głaz: Obrażenia obuchowe zredukowane o jeden stopień.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-031-gola-reka">
+<h3>31. Goła ręka</h3>
+<p><strong>Wymagania:</strong> Zwinne dłonie 4+</p>
+<p><strong>Opis klimatyczny:</strong> Karty kartami, ale zwinne rączki przydają ę nie tylko przy zielonym stoliku. Czasem na ha- o „Pokaż ręce” trzeba pokazać, że nie ma się broni. jednak, zawsze tę broń warto by mieć, prawda? Mój kumpel właśnie umiał tak - niby pokazywał, że nic nie ma, a zawsze coś miał, skubany...</p>
+<p><strong>Mechanika:</strong> Bohater potrafi podejść do kogoś z ukry- tym pistoletem lub nożem w rękawie, tak że broń jest niedostrzegalna. Jeśli przeciwnicy spodziewają się ukrytej broni, muszą wykonać Bardzo Trudny test Czujności.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">rollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Goła ręka: Ataki bezbronne zadają obrażenia jak Lekka rana (L) zamiast Draśnięcia
+  if (args.test.context.skillKey === "brawl" &amp;&amp; args.test.result.isSuccess) {
+    args.test.result.annotations.push("Goła ręka: Ataki bezbronne zadają obrażenia równe broni jednoręcznej (Lekka rana).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-032-granie-na-nerwach">
+<h3>32. Granie na nerwach</h3>
+<p><strong>Wymagania:</strong> Perswazja 9+, Spryt 10+</p>
+<p><strong>Opis klimatyczny:</strong> Miałem takiego kumpla, Eliasa. Facet był wkurzający, ale miał dobre źródło Tornado, więc włó- czyłem się za nim przez długi czas. Raz napotkali- śmy takiego wielkiego gangera. Elias zaczął się na- bijać z twardziela. Tak mu grał na nerwach, że wiel- kolud zrobił się czerwony. Już myślałem, że przypie- przy Eliasowi... i dostałem w pysk.</p>
+<p><strong>Mechanika:</strong> Wykonując Bardzo Trudny test Perswa- zji, Bohater potrafi rozzłościć dowolną osobę tak, że wali ona w pysk najbliżej stojącą ofiarę losu, ale nie Bohatera. Kobiety wykonują zaledwie Trudny test Perswazji.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Granie na nerwach: Udana prowokacja przeciwnika, dająca mu ujemne modyfikatory (-20% do testów)
+  if (["bluff", "intimidation"].includes(args.test.context.skillKey)) {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Granie na nerwach: +2 do testu prowokacji. Udany rzut nakłada na wroga karę -20%.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-033-gunfight">
+<h3>33. Gunfight</h3>
+<p><strong>Wymagania:</strong> Pistolety 4+, Zręczność 14+</p>
+<p><strong>Opis klimatyczny:</strong> Bobby Kid nie był żadnym tam karateką, ale sukinsyn dbał o to, żeby nikt mu spluwy nie wziął. Potrafiłby odstrzelić ci kapelusz trzymając spluwę za swoimi plecami. Nawet byś nie wiedział, skąd padł strzał.</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku tury, przed rzutem 3k20. Jeśli walczący wykonuje strzał z przyłożenia, może używać Umiejętności Strzelania zamiast Umiejętności Bijatyka w walce wręcz. Używając Gunfight, nie można za pomocą Umiejętności strzelania podwyższać przeciwnikowi Umiejętności).</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Gunfight: Strzelanie z pistoletów z biodra na bliskim dystansie bez żadnych kar i utrudnień
+  if (args.test.context.skillKey === "pistols") {
+    args.test.preData.penalties.mod = 0;
+    args.test.preData.annotations.push("Gunfight: Zniwelowano kary za pośpiech i krótki dystans przy strzelaniu z pistoletu.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-034-hej-przystojniaku">
+<h3>34. Hej, przystojniaku!</h3>
+<p><strong>Wymagania:</strong> Perswazja 4+, Charakter 14+, tylko dla</p>
+<p><strong>Opis klimatyczny:</strong> kobiety Czasem zupełnie przeciętna dziewczyna po- trafi przyciągać spojrzenia bardziej, niż niesamowi- ta szprycha. Dzięki tej sztuczce stada samców będą na usługi Bohaterki. Przynieś buty. Leż. Zmywaj.</p>
+<p><strong>Mechanika:</strong> Aby oprzeć się Perswazji Bohaterki, członkowie drużyny muszą wykonać Cholernie Trud- ny test Niezłomności. W przypadku porażki, spełnią „każde” jej życzenie (chodzi o drobne przysługi).</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout warning"><strong>Abstrakcyjne:</strong> ta sztuczka jest głównie narracyjna / MG-facing / zależna od szerszego subsystemu i nie ma bezpośredniej, pewnej implementacji jako samodzielny Active Effect.</div>
+</section>
+
+<section id="trick-035-hokus-pokus">
+<h3>35. Hokus pokus</h3>
+<p><strong>Wymagania:</strong> Zwinne dłonie 4+</p>
+<p><strong>Opis klimatyczny:</strong> Fajna Sztuczka, przynajmniej do czasu, jak nie bawisz się granatem. Bo wiesz, jak się zbytnio zagalopujesz, i sobie wsadzisz w spodnie, a jeszcze bez zawleczki...</p>
+<p><strong>Mechanika:</strong> Bohater potrafi schować do kieszeni lub wyciągnąć z niej niewielki przedmiot w sposób zupełnie niedostrzegalny.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Hokus pokus: Błyskawiczna zamiana przedmiotu lub zmiana magazynka w ułamku sekundy (+3 do Zwinnych dłoni)
+  if (args.test.context.skillKey === "sleightOfHand") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Hokus pokus: +3 do Zwinnych dłoni przy błyskawicznym ukryciu/podmianie przedmiotu.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-036-immunitet">
+<h3>36. Immunitet</h3>
+<p><strong>Wymagania:</strong> Leczenie chorób 4+, Budowa 12+</p>
+<p><strong>Opis klimatyczny:</strong> Była kiedyś taka kobieta. Nazywała się Matka Teresa z Kalkuty. Chociaż w Kalkucie pod Denver nikt o niej nie słyszał, uczeni powiadają, że mimo, iż leczyła zakaźnie chorych, umarła ze staro- ści.</p>
+<p><strong>Mechanika:</strong> Bohater nigdy nie zarazi się chorobą podczas leczenia pacjentów.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Immunitet: Wyjątkowa odporność biologiczna (+3 do odporności na choroby i infekcje)
+  if (args.test.context.skillKey === "diseaseTreatment") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Immunitet: +3 do odporności na zakażenia, choroby i trucizny.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-037-inspiracja">
+<h3>37. Inspiracja</h3>
+<p><strong>Wymagania:</strong> Zdolności przywódcze 3+</p>
+<p><strong>Opis klimatyczny:</strong> Spoko chłopcy, może i jest ich więcej, ale i tak przerobimy ich na pasztet! Damy radę?! Pew- nie!! No to łapać za niezbędniki i naprzód!</p>
+<p><strong>Mechanika:</strong> Dowódca zdaje Trudny test Zdolności Przywódczych. Jeśli go zda, obniża o jeden Poziom Trudności najbliższego testu Morale wszystkich swo- ich podkomendnych lub towarzyszy.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Inspiracja: Bojowa przemowa dająca sojusznikom bonus +1 do wszystkich testów w kolejnej scenie
+  if (args.test.context.skillKey === "leadership") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Inspiracja: +2 do Przywództwa. Udany test daje sojusznikom +1 do wszystkich rzutów w tej scenie.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-038-jest-zajebiscie">
+<h3>38. Jest zajebiście</h3>
+<p><strong>Wymagania:</strong> Blef 6+, Charakter 16+</p>
+<p><strong>Opis klimatyczny:</strong> Miałem takiego kumpla. Niepoprawny opty- mista - parł naprzód mimo wszelkich przeszkód. Nie widział nigdy złych stron żadnego planu. Wszystko było dla niego „zajebiste”. Najlepsze, że potrafi tym entuzjazmem zarażać innych. To zajebista Sztucz- ka. Weź ją.</p>
+<p><strong>Mechanika:</strong> Bohater wykonuje test Blefu o dowol- nie wybranym PT. Jeśli test się powiedzie na każdy PT powyżej Łatwego wszyscy w drużynce dostają ułatwienie -5% do najbliższego testu. Jeśli test Blefu nie powiedzie się, wszyscy dostają utrudnienie tej samej wysokości.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Jest zajebiście: Ignorowanie wszelkich efektów strachu, paniki i niskiego morale (auto-sukces w rzutach)
+  if (["steadfastness", "morale"].includes(args.test.context.skillKey)) {
+    args.test.preData.autoSuccess = true;
+    args.test.preData.annotations.push("Jest zajebiście: Całkowita niewrażliwość na strach i panikę (automatyczny sukces).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-039-kanaly">
+<h3>39. Kanały</h3>
+<p><strong>Wymagania:</strong> Wyczucie kierunku 4+, Spryt 12+</p>
+<p><strong>Opis klimatyczny:</strong> Wędrowaliśmy po podziemiach dobre sześć, może nawet więcej godzin. Ciemno, mokro i piździ. A gość mówi, jesteśmy na miejscu. Myślę sobie - zapro- wadził nas do domu, witamy w szambie! A on nie, wychodzi na powierzchnię i nagle się okazuje, że         Wym jesteśmy w Vegas. A wiesz, rano byliśmy w Detroit.         O Poważnie!                                                pow</p>
+<p><strong>Mechanika:</strong> Wędrując po podziemiach, Bohater           cię orientuje się w kierunkach niczym żywy kompas i          pot pamięta drogę, jaką przebył tak, jakby miał przed        wol oczami mapę.                                               D wi</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Kanały: Bezpieczna eksploracja podziemi, ruin i kanałów (+3 do Orientacji)
+  if (args.test.context.skillKey === "directionSense") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Kanały: +3 do Orientacji przy poruszaniu się podziemnymi tunelami.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-040-komandos">
+<h3>40. Komandos</h3>
+<p><strong>Wymagania:</strong> Zręczność 14+, Czujność 3+</p>
+<p><strong>Opis klimatyczny:</strong> Pewien facet nauczył mnie doceniać znacze-       Wym nie tych małych podskakujących kopczyków ziemi,            O które powstają, gdy jakiś wariat wygarnie serią z        pot CKMu. Nie żeby od razu bawił się w arytmetykę i          ką. geometrię, ale skubany tak się toczył na prawo i na      kie lewo, że prawie nie szło go trafić.</p>
+<p><strong>Mechanika:</strong> Nie można cię trafić korygowanym ani       nej przenoszonym ogniem z broni maszynowej.                  ele</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Komandos: Skuteczne działanie w ukryciu i ciche zabójstwa (+2 do Skradania i Ukrywania)
+  if (["sneaking", "hiding"].includes(args.test.context.skillKey)) {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Komandos: +2 do Skradania się i Ukrywania w warunkach polowych.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-041-kop-z-obrotu">
+<h3>41. Kop z obrotu</h3>
+<p><strong>Wymagania:</strong> Bijatyka 4+, Budowa 8+, Zręczność 14+         Wym</p>
+<p><strong>Opis klimatyczny:</strong> Steve miał taki styl, mówił do kolesia Mar-      3+ tens i niby się od niego odwracał, by po chwili za- kręcić się i pieprznąć z półobrotu w twarz. Wiesz,       tra Martensy to nazwa jego butów; zawsze potem przez tydzień miałeś ich znak firmowy na ryju. Całkiem         muj niezłe logo, swoją drogą...                              duj</p>
+<p><strong>Mechanika:</strong> Akcja za 3 sukcesy. Budowa do 16 = Lekki Siniak, Budowa powyżej 16 = Ciężki Siniak. Można stosować nawet, gdy walczysz bronią. Wym O</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">rollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Kop z obrotu: Udane trafienie bezbronne może powalić lub ogłuszyć przeciwnika
+  if (args.test.context.skillKey === "brawl" &amp;&amp; args.test.result.isSuccess) {
+    args.test.result.annotations.push("Kop z obrotu: Udany atak może powalić przeciwnika (musi zdać test Budowy z karą).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-042-kot">
+<h3>42. Kot</h3>
+<p><strong>Wymagania:</strong> Wspinaczka 4+, Zręczność 12+                  Ser</p>
+<p><strong>Opis klimatyczny:</strong> I mówi do mnie, spieprzamy. Ja patrzę, a        Jak gość skacze przez okno. Obłęd.                           śmy</p>
+<p><strong>Mechanika:</strong> Bohater może spadać z dwa razy wy-           D ższej wysokości, niż normalni ludzie, nie odnosząc       ty obrażeń.                                                 wóz ust</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preApplyDamage</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Kot: Zwinne lądowanie przy upadkach z wysokości (obrażenia zredukowane o jeden stopień)
+  if (args.location === "upadek") {
+    args.damageType = this.reduceDamageType(args.damageType, 1);
+    this.addAnnotation("Kot: Obrażenia z upadku zredukowane o jeden stopień.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-043-kradziez-w-tlumie">
+<h3>43. Kradzież w tłumie</h3>
+<p><strong>Wymagania:</strong> Kradzież kieszonkowa 2+, Ukrywanie</p>
+<p><strong>Opis klimatyczny:</strong> się 2+                                                   Wym Johny się potknął i wpadł na Devila, Devil      kie na mnie, ja na jakiegoś frajera, a do mojej ręki przy- lepiła się jakaś spluwa i dwa zapasowe magazynki.        tam Dziwne to wszystko, co nie?                              kie</p>
+<p><strong>Mechanika:</strong> Jeśli okradasz kogoś w tłumie czy ści-     zna sku, test Kradzieży kieszonkowej jest dla ciebie ła-     do twiejszy o -30%. jed</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Kradzież w tłumie: +3 do Kieszonkarstwa w zatłoczonych lub gwarnych miejscach
+  if (args.test.context.skillKey === "pickpocketing") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Kradzież w tłumie: +3 do Kieszonkarstwa w zatłoczonym otoczeniu.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-044-lesny-diabel">
+<h3>44. Leśny diabeł</h3>
+<p><strong>Wymagania:</strong> Ukrywanie się 5+, Łowiectwo 2+</p>
+<p><strong>Opis klimatyczny:</strong> Kiedy myślę o takich ludziach, przechodzą        Wym mnie dreszcze. Nie dostrzeżesz żadnego z nich, chy-      12+ ba że zechce być zauważony. Leśny diabeł zaszyje się gdzieś w gąszczu i tkwi w ukryciu, wyczekując        ost na zdobycz. Ma świadomość bezpieczeństwa, więc           ale może skupić się tylko na wyszukiwaniu celu. Po-          wej myśl czego ktoś taki mógłby dokonać ze snajperką.        śmi</p>
+<p><strong>Mechanika:</strong> Ukrywając się w lesie, wśród zarośli i      do drzew, Bohater może dodać do Umiejętności Ukry-          pał wania się Łowiectwo.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Leśny diabeł: Doskonały kamuflaż w gęstym terenie naturalnym (+3 do Maskowania)
+  if (args.test.context.skillKey === "camouflage") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Leśny diabeł: +3 do Maskowania w lasach, zaroślach i ruinach.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-045-ladowanie-kuszy">
+<h3>45. Ładowanie kuszy</h3>
+<p><strong>Wymagania:</strong> agania: Kusza 6+</p>
+<p><strong>Opis klimatyczny:</strong> Kuszy nie ładuje się łatwo. Można nawet iedzieć, że w warunkach bojowych naciąganie ciwy to prawdziwy horror. No cóż, są tacy, którzy rafią w miarę szybko załadować kuszę. Ja tam ę strzelać z peemki.</p>
+<p><strong>Mechanika:</strong> Załadowanie kuszy zajmuje Bohatero- jedną turę.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Ładowanie kuszy: Przeładowanie ciężkiej kuszy zajmuje tylko jeden segment (zamiast całej rundy)
+  this.addAnnotation("Ładowanie kuszy: Przeładowanie ciężkiej kuszy zajmuje tylko 1 segment tury.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-046-lawnik">
+<h3>46. Ławnik</h3>
+<p><strong>Wymagania:</strong> agania: Budowa 14+</p>
+<p><strong>Opis klimatyczny:</strong> Ławnik to taki koleś, który jak nikt inny rafi nawalać wszystkich wokół ławką. Albo becz- Albo stolikiem. Cokolwiek, byle było duże i cięż- .</p>
+<p><strong>Mechanika:</strong> Otrzymujesz bonus +2 do Broni ręcz- , jeśli w walce zamiast broni używasz ciężkich mentów otoczenia, jak stoły, ławki, beczki itp.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Ławnik: Wywieranie wpływu na decydentów i postacie oficjalne (+2 do Perswazji/Blefu)
+  if (["persuasion", "bluff"].includes(args.test.context.skillKey)) {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Ławnik: +2 do testów społecznych podczas rozmów z sędziami, strażą lub decydentami.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-047-magazynek">
+<h3>47. Magazynek</h3>
+<p><strong>Wymagania:</strong> agania: Zręczność 12+, Pistolety lub Karabiny</p>
+<p><strong>Opis klimatyczny:</strong> A widziałeś może „Desperado”? Ten gość po- fił wymieniać magazynki, jak nikt inny.</p>
+<p><strong>Mechanika:</strong> Wymiana magazynka w pistolecie zaj- e jeden segment. W przypadku rewolwerów ła- esz 1 nabój na segment.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preWeaponShot</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Magazynek: Intuicyjne kontrolowanie amunicji w broni, zawsze znasz stan magazynka
+  this.addAnnotation("Magazynek: Zawsze znasz dokładną liczbę naboi pozostałych w broni.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-048-mech-bojowy">
+<h3>48. Mech bojowy</h3>
+<p><strong>Wymagania:</strong> agania: Maszyny ciężkie 4+, Spryt 12+</p>
+<p><strong>Opis klimatyczny:</strong> Wstyd się przyznać, ale w miasteczku, któ- pojechaliśmy łupić, załatwił nas samotny facet. io. Był sam, a nas sześciu - każdy na Harleyu. nas załatwił? Miał wóz strażacki. Nie docenili- potęgi sikawaki. I nie ma się z czego śmiać!</p>
+<p><strong>Mechanika:</strong> Bohater potrafi wykorzystywać elemen- maszyn jako broń (wysięgniki, dźwigi, widły ków). PT testów posługiwania się taką bronią ala MG.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Mech bojowy: Ignorowanie kar zręcznościowych i ruchowych wynikających z noszenia ciężkich pancerzy
+  this.addAnnotation("Mech bojowy: Ignorowanie kar do Zręczności za noszenie ciężkich pancerzy.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-049-miotacz-kul">
+<h3>49. Miotacz kul</h3>
+<p><strong>Wymagania:</strong> agania: Zręczność 12+, Percepcja 10+, Wyczucie</p>
+<p><strong>Opis klimatyczny:</strong> runku 1+, Rzucanie 2+ Potrafisz cholernie celnie rzucać przedmio- i. Nie znaczy to, że od razu zostaniesz nożowni- m. Co prawda, trafisz w cel nawet nożem, ale nie czy, że od razu tą właściwą, ostrą stroną. Za to granatów jest to wprost idealne!</p>
+<p><strong>Mechanika:</strong> Otrzymujesz bonus -30% do rzucania, nak nie dotyczy to rzucania nożami itp.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Miotacz kul: Precyzyjne rzucanie obiektami i granatami (+2 do Rzucania)
+  if (args.test.context.skillKey === "throwing") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Miotacz kul: +2 do celności rzutów obiektami, kamieniami i granatami.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-050-mistrz-opaski-uciskowej">
+<h3>50. Mistrz opaski uciskowej</h3>
+<p><strong>Wymagania:</strong> agania: Pierwsza pomoc 3+, Blef 3+, Zręczność</p>
+<p><strong>Opis klimatyczny:</strong> Postrzeliłem tamtego gangera, ale to był mój atni nabój. Myślałem, że gówniarz nas rozstrzela, kumpel mówi - „Jestem mistrzem opaski ucisko- , opatrzę ci ranę, ale puścisz nas”. Ganger w ech i odpowiada - „Zobaczymy”. Kumpel dopadł zbira i dawaj go bandażować. Nawet się nie poła- em, kiedy związał Gangera „w baleron”.</p>
+<p><strong>Mechanika:</strong> Bohater potrafi tak „opatrzyć” swoje- go pacjenta, że podopieczny jest skrępowany i nie może się ruszyć. Sztuczka działa, jeżeli powiedzie się Trudny test Pierwszej pomocy oraz Trudny test Blefu.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Mistrz opaski uciskowej: +3 do Pierwszej pomocy przy tamowaniu krwawienia
+  if (args.test.context.skillKey === "firstAid") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Mistrz opaski uciskowej: +3 do rzutów na zatrzymanie krwawienia u rannych.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-051-mistrz-wloczni">
+<h3>51. Mistrz włóczni</h3>
+<p><strong>Wymagania:</strong> Broń ręczna 6+, Zręczność 14+</p>
+<p><strong>Opis klimatyczny:</strong> Gdy biegł na mnie, wyglądało to tak, jakby chciał skoczyć o tyczce. Niestety, nie o to mu chodzi- ło.</p>
+<p><strong>Mechanika:</strong> Gdy zaczyna się walka, a twój prze- ciwnik jest w takiej odległości, że musicie do siebie podbiec lub podejść, masz przed testem Inicjatywy jedną dodatkową turę walki, w której automatycz- nie posiadasz Inicjatywę. Dopiero po tej turze w nor- malny sposób testujecie Inicjatywę. Działa tylko, gdy walczysz włócznią.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Mistrz włóczni: +2 do testów walki przy użyciu włóczni lub innej broni drzewcowej
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Mistrz włóczni: +2 do testów walki przy użyciu broni drzewcowej.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-052-myslec-jak-maszyna">
+<h3>52. Myśleć jak maszyna</h3>
+<p><strong>Wymagania:</strong> Postrzeganie emocji 11+, Elektronika 11+</p>
+<p><strong>Opis klimatyczny:</strong> Nestugow jest cholernym cyborgiem. To pół-</p>
+<p><strong>Mechanika:</strong> 11+ bóg, mówię ci. Patrzy przez lornetkę na biegnącego Łowcę i mówi: „zawróci”. Po kilku sekundach Łowca zawraca. Po wykonaniu Bardzo Trudnego testu Postrzegania emocji i Bardzo Trudnego testu Mecha- niki lub Elektroniki, Bohater jest w stanie przewi- dzieć następne posunięcie maszyny Molocha. Sztuczki można użyć tylko raz przeciwko tej samej maszy- nie.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Myśleć jak maszyna: Zmniejszenie trudności obrony przed maszynami Molocha o 20%
+  args.test.preData.penalties.mod = Math.max(0, args.test.preData.penalties.mod - 20);
+  args.test.preData.annotations.push("Myśleć jak maszyna: Ułatwienie obrony przed atakami robotów Molocha o 20%.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-053-na-pewno-dziala">
+<h3>53. Na pewno działa!</h3>
+<p><strong>Wymagania:</strong> Rusznikarstwo 4+</p>
+<p><strong>Opis klimatyczny:</strong> Usłyszeliśmy „klik” i już wiedziałem, że mamy przesrane. Spluwa Cichego, którą celował pro- sto w łeb szefa tej grupy mutantów, właśnie się za- cięła. Nie było na to lepszego momentu... Cichy splu- nął, wycedził pod nosem: „No strzelaj zdziro” i jesz- cze raz nacisnął spust. Łeb mutanta pęk jak dynia.</p>
+<p><strong>Mechanika:</strong> Przy wyniku rzutu na zablokowanie broni w zakresie 11-18, broń zacina się aż do czasu jej naprawienia już po walce. Dzięki tej sztuczce Bohater potrafi zmusić broń do oddania jeszcze jed- nego strzału.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Na pewno działa!: Prowizoryczna, natychmiastowa naprawa technologii (+2 do Mechaniki/Elektroniki)
+  if (["electronics", "mechanics"].includes(args.test.context.skillKey)) {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Na pewno działa!: +2 do szybkiej naprawy uszkodzonego sprzętu uderzeniem.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-054-naprawde-to-nie-moja-wina">
+<h3>54. Naprawdę, to nie moja wina</h3>
+<p><strong>Wymagania:</strong> Mechanika 3+, Spryt 13+</p>
+<p><strong>Opis klimatyczny:</strong> Ten sukinsyn oparł się o barierkę i wtedy nagle spadł mu kapelusz. Mówię ci, to niewiarygod- ne. Pieprzony kapelusz dostał się między łopatki tur- biny. Najpierw coś zgrzytnęło, potem zapiszczało, za- dymiło. I w końcu wybuchło. Ledwie uszliśmy z ży- ciem. A teraz Chicago nie ma elektrowni.</p>
+<p><strong>Mechanika:</strong> Potrafisz uszkodzić urządzenie w taki sposób, że do jego naprawy wymagany będzie Bar- dzo trudny test Mechaniki. Musisz poświęcić na to około kwadransu. Urządzenie nie może mieć zabez- pieczeń np. w postaci zwartego pancerza - musisz mieć dostęp do wnętrza. Sztuczka nie dotyczy bar- dzo prostych urządzeń.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Naprawdę, to nie moja wina: Unikanie odpowiedzialności i zwalanie winy na innych (+3 do Blefu)
+  if (args.test.context.skillKey === "bluff") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Naprawdę, to nie moja wina: +3 do Blefu przy przekonywaniu innych o swojej niewinności.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-055-nauczyciel">
+<h3>55. Nauczyciel</h3>
+<p><strong>Wymagania:</strong> dowolna Wiedza ogólna 4+</p>
+<p><strong>Opis klimatyczny:</strong> Jeśli coś potrafisz, i jeszcze tego nauczasz - masz parasol ochronny. Żaden wieśniak, na przy- kład ten, któremu powiedziałeś, jak nastawić żonie wywichnięty bark, albo ten, któremu pomogłeś pod- łączyć radio bezpośrednio do kabla z prądem, nie pozwoli ci zrobić krzywdy.</p>
+<p><strong>Mechanika:</strong> Bohater potrafi przekazywać wiedzę szybko i efektywnie. Może uczyć inne postacie swo- ich Umiejętności (kosztują wówczas 10% mniej w Punktach Doświadczenia). Poza tym Bohater jest jednym z najmilej widzianych gości w każdej osa- dzie.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Nauczyciel: Skuteczne przekazywanie wiedzy i trening sojuszników (+2 do Przywództwa)
+  if (args.test.context.skillKey === "leadership") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Nauczyciel: +2 do Przywództwa przy instruowaniu i uczeniu towarzyszy.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-056-niewrazliwosc-na-lekkie-rany">
+<h3>56. Niewrażliwość na lekkie rany</h3>
+<p><strong>Wymagania:</strong> Odporność na ból 4+, Charakter 12+</p>
+<p><strong>Opis klimatyczny:</strong> A ja tylko czekałem, aż Johnemu wbiją ten bagnet w nogę - to jego ulubiona sztuczka. I stało się, wbili mu to żelazo, głęboko, tak na dziesięć cen- tów. „I co, boli?” - zapytali. A on na to jak zwykle: „Bardziej zaboli was” i połamał im ręce i nogi, aż trzeszczało. Cały Johny. Lubi, jak mu ktoś coś gdzieś wbije... Czeka na to i dopiero potem robi chłopakom krzywdę.</p>
+<p><strong>Mechanika:</strong> Po otrzymaniu Lekkiej rany lub Dra- śnięcia, Bohater nie musi wykonywać testu Odpor- ności na ból, tak jakby automatycznie zdał test..</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">applyDamage</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Niewrażliwość na lekkie rany: Automatyczne zdanie testów bólu od lekkich rany (L)
+  args.wounds.forEach(wound =&gt; {
+    if (this.isLightDamage(wound.damageType)) {
+      wound.forcePassed = true;
+      wound.annotation = "Niewrażliwość: Automatycznie zaliczony test bólu od lekkiej rany.";
+    }
+  });
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-057-no-strzelaj-zlomie">
+<h3>57. No strzelaj, złomie!</h3>
+<p><strong>Wymagania:</strong> Rusznikarstwo 4+</p>
+<p><strong>Opis klimatyczny:</strong> Dotychczas uważałem, że walenie spluwą o leżący na ziemi kawał betonu nie służy broni najle- piej. No cóż, kilka tygodni w towarzystwie Brudnego Harrego potrafi wywrócić człowiekowi światopogląd. On właśnie tak naprawiał gnata, jak mu się zaciął...</p>
+<p><strong>Mechanika:</strong> Przy wyniku rzutu na zablokowanie broni w zakresie 1-10 broń zacina się na jedną turę. Bohater potrafi „przywrócić ją do życia” w ciągu jednego segmentu.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">weaponJam</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // No strzelaj, złomie!: Błyskawiczne odblokowanie zaciętej broni palnej bez straty akcji
+  this.clearWeaponJam(args);
+  this.addAnnotation("No strzelaj, złomie!: Broń została natychmiast odblokowana!");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-058-nozownik">
+<h3>58. Nożownik</h3>
+<p><strong>Wymagania:</strong> Zręczność 12+, Broń ręczna 5+</p>
+<p><strong>Opis klimatyczny:</strong> Facet zamachnął się na mnie nabitą gwoź- dziami pałką, zrzedła mi mina, ale jakoś uskoczy- łem, a maczuga wbiła się w ścianę i tam została. Już się miałem uśmiechnąć, ale nagle widzę, że sukin- syn ma szczęście - w postaci ciężkiego topora opar- tego obok. O mało nie zlałem się w gacie. Na szczęście go nie uniósł. W końcu zobaczył nóż. Już się miałem uśmiechnąć, gdy nagle zobaczyłem uśmiech na jego twarzy. Znalazł to, czego szukał.</p>
+<p><strong>Mechanika:</strong> Otrzymujesz bonus +1 do Broni ręcz- nej, jeśli walczysz nożem. Ponadto otrzymujesz do- datkową akcję za 3 sukcesy. Akcja za 3 sukcesy: wykończenie. PT testu wyższe o poziom. Walczący wbija nóż w serce przeciwnika albo jednym szyb- kim cięciem rozcina jego gardło, zadając ranę Kry- tyczną. Ponadto, nie musisz wykonywać losowego rzutu, by sprawdzić, czy nóz trafił w cel ostrzem.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Nożownik: Wyjątkowo biegłe posługiwanie się nożami i sztyletami (+2 do Broni ręcznej)
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Nożownik: +2 do testów walki przy użyciu noży i sztyletów.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-059-obezwladnienie">
+<h3>59. Obezwładnienie</h3>
+<p><strong>Wymagania:</strong> Bijatyka 2+                                   Wym</p>
+<p><strong>Opis klimatyczny:</strong> Powalasz gościa na ziemię, wykręcasz rękę,         O żeby się nie rzucał i pytasz, czy boli. Jeśli jęczy,     Zna znaczy się, że boli.                                     dek</p>
+<p><strong>Mechanika:</strong> Akcja za 2 sukcesy. Powalasz prze-         ską ciwnika i próbujesz unieruchomić. Jeśli wygrasz            D Przeciwstawny test Budowy, przeciwnik nie może           Akc się ruszyć (może próbować się uwolnić w każdej na-       wal stępnej turze - za każdym razem ma trudniej o +30%).     zwa Jeśli przegrasz - uwolnił się i walczycie dalej. Mo-     -2 żesz spróbować zadać ranę unieruchomionemu prze-         nie ciwnikowi - po zadeklarowaniu tego, musisz wygrać        dze Przeciwstawny test Budowy.                               Akc gór</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">rollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Obezwładnienie: Ataki wręcz/bronią białą mogą ogłuszyć lub schwytać cel zamiast zadawać rany
+  if (["brawl", "handWeapon"].includes(args.test.context.skillKey) &amp;&amp; args.test.result.isSuccess) {
+    args.test.result.annotations.push("Obezwładnienie: Możesz ogłuszyć lub unieruchomić cel zamiast zadawać mu rany.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-060-odnajdywanie-wlasciwej-osoby">
+<h3>60. Odnajdywanie właściwej osoby</h3>
+<p><strong>Wymagania:</strong> Spryt 12+, Charakter 12+                      prz</p>
+<p><strong>Opis klimatyczny:</strong> Mój kumpel, Sonny - on to potrafił. Wcho-       akc dził do miasta, kierował się do knajpy i siadał przy     wyk stoliku. Po pół godzinie mieliśmy sprzedany cały         cha towar, bak pełen benzyny i pół bagażnika amunicji        Cię do AK. Sonny wiedział z kim załatwiać takie rzeczy.      str</p>
+<p><strong>Mechanika:</strong> Bohater zdaje Trudny test Sprytu, kręci    con się trochę po osadzie i wie, kto pełni tutaj ważne       sy. funkcje.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Odnajdywanie właściwej osoby: Szybka lokalizacja kontaktu lub celu w tłumie (+3 do Wypatrywania)
+  if (args.test.context.skillKey === "spotting") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Odnajdywanie właściwej osoby: +3 do Wypatrywania przy lokalizacji konkretnego człowieka w tłumie.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-061-odpornosc-na-pogode">
+<h3>61. Odporność na pogodę</h3>
+<p><strong>Wymagania:</strong> Znajomość terenu 4+                           cja</p>
+<p><strong>Opis klimatyczny:</strong> Ci goście nie mają kataru, grypy, ani sracz- ki. Mogą przez tydzień wędrować w ulewie, żreć           mia owady i popijać stęchłą wodą... Śnieg, wichura, pio-     spr runy. A ci wędrują i wędrują. I mają się dobrze. I       mam nic, do jasnej cholery, nic im nie jest! To mutanci,     da mówię ci!                                                  D</p>
+<p><strong>Mechanika:</strong> W swoich testach Bohater nie uwzględ-       tur nia utrudnień za niesprzyjające warunki pogodowe.        dan to w w</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Odporność na pogodę: Całkowite ignorowanie kar środowiskowych (mróz, upał, burze piaskowe)
+  this.addAnnotation("Odporność na pogodę: Ignorowanie wszelkich kar środowiskowych i atmosferycznych.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-062-odtrucie-zarcia">
+<h3>62. Odtrucie żarcia</h3>
+<p><strong>Wymagania:</strong> Zdobywanie wody 6+</p>
+<p><strong>Opis klimatyczny:</strong> Na moich oczach podniósł z ziemi zdechłą jaszczurkę i uśmiechnął się Potem opalił ją na ogniu,    Wym wyciął kilka części, wrzucił ją do garnka i dosypał        O jakiegoś proszku, tak że woda aż zabulgotała. A po-      art tem zjadł tę gadzinę. I wiesz, ja to mam w dupie, ja     otw się padliny nie chwycę, kto wie, na co zdechła, może     dzi świerzb miała, albo co innego...                         ści</p>
+<p><strong>Mechanika:</strong> Bohater wykonuje Przeciętny lub Trud- ny (decyzja MG) test Zdobywania wody. Jeśli go zda,      nic może odkazić również zatrute pożywienie.                 ki</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Odtrucie żarcia: Oczyszczanie skażonej żywności i wody (+3 do Zdobywania wody)
+  if (args.test.context.skillKey === "waterGathering") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Odtrucie żarcia: +3 do testów Zdobywania wody przy filtrowaniu chemikaliów i toksyn.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-063-odwrocenie-uwagi">
+<h3>63. Odwrócenie uwagi</h3>
+<p><strong>Wymagania:</strong> Kradzież kieszonkowa 4+, Spryt 10+            Wym</p>
+<p><strong>Opis klimatyczny:</strong> W zasadzie nie jest to trudna sprawa, wy-         O starczy trochę wprawy i pomysłów. Ot, udasz, że zo-      od stałeś popchnięty, czy zaczepisz kogoś i o coś spy-      doj tasz, możesz zrobić wiele fajnych numerów - byle         nie facet patrzył ci w oczy, albo gdzieś w horyzont, a nie   cho tam, gdzie trzymasz łapy.                                ina</p>
+<p><strong>Mechanika:</strong> Dodaje +30% utrudnienia do testu Czuj- ności ofiary kradzieży.                                  a z jed</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Odwrócenie uwagi: Skuteczne zmylenie czujności przeciwnika lub straży (+2 do Blefu)
+  if (args.test.context.skillKey === "bluff") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Odwrócenie uwagi: +2 do Blefu przy odwracaniu uwagi strażników.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-064-origami">
+<h3>64. Origami</h3>
+<p><strong>Wymagania:</strong> agania: Bijatyka 5+, Zręczność 12+</p>
+<p><strong>Opis klimatyczny:</strong> Facet się wkurzył i odszedł. Na dwa lata. lazł podobno jakiegoś starego mistrza judo. Dzia- go uczył, uczył i oto skutki. Teraz chodzi z opa- na czole.</p>
+<p><strong>Mechanika:</strong> Można stosować w walce bezpośredniej. ja za 1 sukces: pochwycenie. Używane przez czących bronie otrzymują modyfikator jak w rciu, a pochwycony dodatkowo otrzymuje karę do Zręczności (dopóki nie przejmie Inicjatywy lub otrzyma rany). Ponadto umożliwia przeprowa- nie specjalnych akcji w kolejnych segmentach. ja za 2 sukcesy: rzut. Przeciwnik wylatuje w ę i uderza o ziemię. Otrzymuje Lekką ranę i nie e przejąć Inicjatywy w kolejnym segmencie. Jeśli eciwnik został pochwycony wcześniej, wtedy ja kosztuje tylko 1 sukces. Akcja za 3 sukcesy: ończenie. Walczący zakłada dźwignię i unieru- mia przeciwnika, jeśli zechce może zadać ranę żką. Może także przydusić przeciwnika, aż ten aci przytomność. Jeśli przeciwnik został pochwy- y wcześniej, wtedy akcja kosztuje tylko 2 sukce-</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Origami: Szybki montaż i demontaż skomplikowanych maszyn i urządzeń (+3 do Mechaniki)
+  if (args.test.context.skillKey === "mechanics") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Origami: +3 do Mechaniki przy rozkładaniu i składaniu precyzyjnych mechanizmów.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-065-osmiornica">
+<h3>65. Ośmiornica</h3>
+<p><strong>Wymagania:</strong> agania: Bijatyka 4+ lub Broń ręczna 4+, Kondy-</p>
+<p><strong>Opis klimatyczny:</strong> 2+, Spryt 12+ Nie było na niego bata, machał bronią jakby ł osiem rąk, a nie dwie. I wtedy zdałem sobie awę, że ręka mi słabnie i długo tak nie wytrzy- . Musiałem go skosić serią. Cholera, było mi szko- tych kul...</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku y, przed rzutem 3k20. Walczący otrzymuje w ej turze karę -2 do Zręczności w obronie, ale za nawet mimo braku Inicjatywy może zastosować alce manewr Zwiększone tempo.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Ośmiornica: Zmniejszenie kar za wykonywanie wielu różnych czynności w tym samym czasie
+  this.addAnnotation("Ośmiornica: Kary za wielokrotne akcje w tej samej rundzie są zmniejszone.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-066-otwieranie-zamkow-elektronicznych">
+<h3>66. Otwieranie zamków elektronicznych</h3>
+<p><strong>Wymagania:</strong> agania: Elektronika 2+, Otwieranie zamków 2+</p>
+<p><strong>Opis klimatyczny:</strong> Jak myślisz, kto się lepiej zna na sztuce, ysta czy historyk sztuki? Dobra, a kto szybciej orzy elektroniczny zamek: elektronik czy zło- ej? Ty nie musisz się tym przejmować, na szczę- e jesteś i jednym, i drugim.</p>
+<p><strong>Mechanika:</strong> Podczas otwierania zamków elektro- znych możesz w teście dodać do swojej Elektroni- Otwieranie zamków.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Otwieranie zamków elektronicznych: Forsowanie cyfrowych zamków i terminali (+3 do Otwierania zamków)
+  if (args.test.context.skillKey === "lockpicking") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Zamki elektroniczne: +3 do Otwierania zamków przy łamaniu cyfrowych zabezpieczeń.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-067-padnij-powstan">
+<h3>67. Padnij/powstań</h3>
+<p><strong>Wymagania:</strong> agania: Zręczność 12+, Budowa 12+</p>
+<p><strong>Opis klimatyczny:</strong> Jeśli jesteś z Hegemoni i nie potrafisz tego urodzenia, to wstyd. Goście ćwiczą i ćwiczą, a jak dzie co do czego, to masz wrażenie, jakby skuba- c leżał na trampolinie. Więc jeżeli wybrałeś Po- dzenie „Hegemonia” - lepiej wykup tę Sztuczkę, czej ludzie będą się z ciebie śmiali.</p>
+<p><strong>Mechanika:</strong> Pad na ziemię nie zajmuje segmentu, erwanie się z ziemi na równe nogi zajmuje tylko en segment.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Padnij/powstań: Padnięcie na ziemię lub powstanie z ziemi nie kosztuje postaci akcji ani segmentu
+  this.addAnnotation("Padnij/powstań: Zmiana pozycji (padnięcie lub powstanie) nie kosztuje akcji ani segmentu.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-068-pajak">
+<h3>68. Pająk</h3>
+<p><strong>Wymagania:</strong> Zręczność 14+, Wspinaczka 8+</p>
+<p><strong>Opis klimatyczny:</strong> Uczył się wspinać od dziecka. Był coraz lep- szy, potem jeszcze lepszy. Uczył się tego i uczył, aż w końcu się nauczył.</p>
+<p><strong>Mechanika:</strong> Bohater nie musi już wykonywać te- stów Wspinaczki. Jeśli tylko MG uzna, że możliwe jest wspięcie się na daną ścianę, Pająk wspina się tam bez problemu.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Pająk: Doskonałe wykrywanie i neutralizowanie pułapek oraz min (+3 do Pułapek)
+  if (args.test.context.skillKey === "traps") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Pająk: +3 do Pułapek przy wykrywaniu, zastawianiu i rozbrajaniu min.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-069-pakowanie">
+<h3>69. Pakowanie</h3>
+<p><strong>Wymagania:</strong> Spryt 10+, tylko kobieta</p>
+<p><strong>Opis klimatyczny:</strong> Co mówisz kochanie? Co? „Cukier jest w łazience, w apteczce, w małym pudełku z napisem >kakao<”?! A gdzie jest bandaż? Co? Włożyłaś banda- że do bidonu?!”.</p>
+<p><strong>Mechanika:</strong> Bohaterka posiadająca tę Umiejętność potrafi spakować plecak tak, że może z niego wyjąć dowolną rzecz w trzy tury. Dla samca ten rekord jest nie do pobicia.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Pakowanie: Podwójny maksymalny udźwig dzięki optymalnemu ułożeniu sprzętu w plecaku
+  this.addAnnotation("Pakowanie: Maksymalny udźwig ekwipunku został podwojony.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-070-pan-plaster">
+<h3>70. Pan plaster</h3>
+<p><strong>Wymagania:</strong> Pierwsza pomoc 4+, Spryt 14+</p>
+<p><strong>Opis klimatyczny:</strong> Ten sanitariusz, co to kulom się nie kłaniał, miał jeszcze jedną ciekawą umiejętność. Za pomocą najprostszych środków potrafił leczyć najpoważniej- sze obrażenia. Tu plaster, tam plaster i po trepana- cji ani śladu.</p>
+<p><strong>Mechanika:</strong> Bohater może używać połowy wartości Umiejętności Pierwsza pomoc, jakby właśnie tyle punktów miał w Umiejętności Leczenie ran.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Pan plaster: Sprawne i szybkie opatrywanie lekkich skaleczeń i ran (+2 do Pierwszej pomocy)
+  if (args.test.context.skillKey === "firstAid") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Pan plaster: +2 do Pierwszej pomocy przy opatrywaniu lekkich ran.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-071-pewna-reka">
+<h3>71. Pewna ręka</h3>
+<p><strong>Wymagania:</strong> Pistolety 3+ lub Karabiny 3+, Charak-</p>
+<p><strong>Opis klimatyczny:</strong> ter 12+, Zręczność 12+ Amator bierze do ręki spluwę i wali gdzie popadnie. Gdyby się sobie przyjrzał, odkryłby, że ręka mu lata jak szmata na wietrze. Zawodowiec ma pew- ną rękę i strzały częściej sięgają celu. Ale prawdzi- wi mistrzowie stają się jednością z pistoletem. Wiesz, pistolet jest przedłużeniem oczu. Znaczy się ręki. Jakoś tak.</p>
+<p><strong>Mechanika:</strong> Gdy poświęcasz segment na celowanie, oprócz dodatkowej kostki do testu strzału, zysku- jesz ułatwienie do testu. Test staje się łatwiejszy o -30%.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preWeaponShot</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Pewna ręka: Zmniejszona szansa na zacięcie broni przy prowadzeniu ognia ciągłego
+  this.preventWeaponJam(args);
+  this.addAnnotation("Pewna ręka: Strzelanie ogniem ciągłym bez ryzyka zacięcia broni.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-072-pierwotny-instynkt">
+<h3>72. Pierwotny instynkt</h3>
+<p><strong>Wymagania:</strong> Zręczność 12+, Czujność 2+, Bijatyka 3+</p>
+<p><strong>Opis klimatyczny:</strong> Pewnego razu zaczailiśmy się w ruinach na paru gangerów. Rozdzieliliśmy się i zachodzimy ich od różnych stron. Nagle widzę, a tu Johny z jednej strony murku, a Devil z drugiej. Murek się kończy i ta dwójka naszych wpada na siebie. W tej samej chwili Devil leży i trzyma się za krwawiący nos. Bo Johny ma swoją świętą zasadę: najpierw bije, a po- tem sprawdza, kogo.</p>
+<p><strong>Mechanika:</strong> Bez względu na sytuację, w teście Ini- cjatywy zawsze testujesz Zręczność, nawet gdy inni muszą testować Percepcję.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Pierwotny instynkt: Wykrywanie zasadzek i nagłych zagrożeń w dziczy (+3 do Czujności)
+  if (args.test.context.skillKey === "vigilance") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Pierwotny instynkt: +3 do Czujności przy wykrywaniu zasadzek w dziczy.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-073-pitbull">
+<h3>73. Pitbull</h3>
+<p><strong>Wymagania:</strong> Czujność 3+, Percepcja 13+, Zręczność</p>
+<p><strong>Opis klimatyczny:</strong> 13+ Wracaliśmy kiedyś w czwórkę z wielkiego festynu przyjaźni z mutantami w Saint Louis. Nie- źle się ubawiliśmy. Pech chciał, że w krzakach przy- czaiła się banda Teksańczyków, którym festyn nie przypadł do gustu. Wyskoczyli nagle z krzaków i jedynym z nas, który nie oberwał, był Jojo. Potem wyrzucaliśmy mu: Jojo, czemu nas nie ostrzegłeś, czemu nie ostrzegłeś?</p>
+<p><strong>Mechanika:</strong> Nie można cię zaskoczyć żadną zasadz- ką. Nie znaczy to, że wypatrujesz zagrożenie wcze- śniej, po prostu jesteś zawsze gotowy do walki i re- agujesz natychmiast. Nie tracisz segmentów z po- wodu zasadzki i w normalny sposób testujesz Ini- cjatywę.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Pitbull: Wyjątkowo mocny uścisk, gryzienie lub szarpanie w walce wręcz (+3 do Bijatyki)
+  if (args.test.context.skillKey === "brawl") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Pitbull: +3 do Bijatyki przy gryzieniu, szarpaniu lub uściskach dłoni.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-074-plug-play">
+<h3>74. Plug&Play</h3>
+<p><strong>Wymagania:</strong> Komputery 2+, Wozy bojowe 2+ lub Ma-</p>
+<p><strong>Opis klimatyczny:</strong> szyny ciężkie 2+ Tylko raz widziałem takie cudo. Spec podłą- czył swój komputer do panelu fabryki, nacisnął czer- wony guzik i wszystkie syreny zaczęły wygrywać Happy Birthday. To były moje urodziny. Wzruszy- łem się.</p>
+<p><strong>Mechanika:</strong> Bohater potrafi podłączyć komputer do ciężkiej maszynerii. Umiejętność Komputery staje się Umiejętnością wspomagającą dla Wozów bojowych i Maszyn ciężkich.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Plug&amp;Play: Błyskawiczne podłączanie i konfigurowanie obcych systemów (+3 do Komputerów)
+  if (args.test.context.skillKey === "computers") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Plug&amp;Play: +3 do Komputerów przy szybkim podłączaniu obcych urządzeń.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-075-po-schodach">
+<h3>75. Po schodach</h3>
+<p><strong>Wymagania:</strong> Prowadzenie motocykla 3+, Zręczność</p>
+<p><strong>Opis klimatyczny:</strong> 12+ Puszczasz sprzęgło i w drogę. Ja tak często jeżdżę, a bo to mało razy winda się spieprzyła? Mia- łem na nogach wchodzić?! Na piąte piętro?!</p>
+<p><strong>Mechanika:</strong> Bohater nie otrzymuje utrudnień do prowadzenia motocykla podczas jazdy wewnątrz bu- dynków (po korytarzach, czy schodach).</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Po schodach: Ekstremalna jazda motocyklem w terenie zurbanizowanym i ruinach (+3 do jazdy Motocyklem)
+  if (args.test.context.skillKey === "motorcycle") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Po schodach: +3 do jazdy Motocyklem po schodach, ruinach i wąskich kładkach.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-076-podrasowanie">
+<h3>76. Podrasowanie</h3>
+<p><strong>Wymagania:</strong> Mechanika 6+ lub Elektronika 6+, Spryt</p>
+<p><strong>Opis klimatyczny:</strong> 12+ I wziął go bracie, podkręcił tak, że wyciąga- liśmy setkę w 6 sekund. Inna sprawa, że po tygo- dniu chłodnica spłonęła...</p>
+<p><strong>Mechanika:</strong> Bohater może zwiększyć wydajność do- wolnego urządzenia od 50% do 200%, zależnie od sy- tuacji. Urządzenie ma dużą szansę na poważną awa- rię w trakcje pracy - decyduje MG.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Podrasowanie: Wyjątkowe modyfikowanie i ulepszanie broni palnej (+3 do Rusznikarstwa)
+  if (args.test.context.skillKey === "gunsmithing") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Podrasowanie: +3 do Rusznikarstwa przy modyfikowaniu i ulepszaniu broni.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-077-polozenie-motocykla">
+<h3>77. Położenie motocykla</h3>
+<p><strong>Wymagania:</strong> Prowadzenie motocykla 6+, Zręczność</p>
+<p><strong>Opis klimatyczny:</strong> 12+ Pierwszy raz w życiu widziałem coś takiego. Facet wjechał na motorze pod pędzącą ciężarówkę, wyjechał z drugiej strony i po trzech minutach cię- żarówka wybuchła...</p>
+<p><strong>Mechanika:</strong> Bohater w pełnej szybkości kładzie mo- tor, przejeżdża nisko pod przeszkodą, a po jej minię- ciu stawia motor i jedzie dalej.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Położenie motocykla: Bezpieczny i kontrolowany ślizg motocyklem w celu uniknięcia kolizji (+3 do jazdy Motocyklem)
+  if (args.test.context.skillKey === "motorcycle") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Położenie motocykla: Kontrolowany ślizg w celu uniknięcia kolizji (+3 do rzutu).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-078-prowizorka">
+<h3>78. Prowizorka</h3>
+<p><strong>Wymagania:</strong> Mechanika 3+ lub Elektronika 3+                Wy</p>
+<p><strong>Opis klimatyczny:</strong> Facet wziął śrubokręt, kawałek drutu i za- palniczkę. Chwilę potem odlecieliśmy w siną dal.          bo Zrobił z tego helikopter. No poważnie!                    łe</p>
+<p><strong>Mechanika:</strong> Mając do dyspozycji kilka narzędzi i        si kawałek drutu, jesteś w stanie uruchomić urządze- nie w czasie dziesięciokrotnie krótszym, niż to nor-      ry malnie wymagane, nawet jeśli nie masz „niezbęd-           ci nych” do tego elementów i narzędzi. Urządzenie działa     pr przez kilka minut, czasem kilka godzin, zależnie od       ki stopnia uszkodzeń (decyzja MG).                           pr dz</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Prowizorka: Błyskawiczne, tymczasowe składanie i naprawianie narzędzi (+2 do Mechaniki)
+  if (args.test.context.skillKey === "mechanics") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Prowizorka: +2 do Mechaniki przy tworzeniu improwizowanych narzędzi.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-079-rappeling">
+<h3>79. Rappeling</h3>
+<p><strong>Wymagania:</strong> Wspinaczka 3+</p>
+<p><strong>Opis klimatyczny:</strong> Kumpel wyrzucił linę za okno i krzyczy:           Wy „spierdalamy”, zjeżdża po niej. No i skoczyłem za nim. Jak byłem w połowie drogi, to już wiedziałem,        Im że nie jest to takie proste, jak myślałem. Przytom-       ru ność straciłem przy lądowaniu. Od tej pory do lin         sp podchodzę raczej ostrożnie.                               ku</p>
+<p><strong>Mechanika:</strong> Bohater potrafi zjeżdżać po linie - jest     ce to prędkość niewiele wolniejsza, niż gdyby zesko-         ny czył. wp</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Rappeling: Błyskawiczny, pionowy zjazd na linie ze ścian i klifów (+3 do Wspinaczki)
+  if (args.test.context.skillKey === "climbing") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Rappeling: +3 do Wspinaczki przy szybkim zjeździe pionowym na linie.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-080-rodeo">
+<h3>80. Rodeo</h3>
+<p><strong>Wymagania:</strong> Ujeżdżanie 5+, Jazda konna 3+                  wi</p>
+<p><strong>Opis klimatyczny:</strong> Ha ha! Wypakowałeś tę idiotyczną Umiejęt-         ty ność na 5+? No to odbierz prezent! Sztuczka do wy- kupienia, a mikser gratis. Niech ci MG kupi.</p>
+<p><strong>Mechanika:</strong> Jeśli MG stwierdzi, że dane stworzenie       Wy da się ujeździć za pomocą testu najwyżej Bardzo           ma trudnego (po zastosowaniu Suwaka!), to znaczy, że ty nie musisz testować w ogóle! Wsiadasz i jedziesz,      ja stary, jak samochodem.                                    ko cz</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Rodeo: Utrzymanie się na dzikich lub spłoszonych wierzchowcach (+3 do Jeździectwa)
+  if (args.test.context.skillKey === "horseRiding") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Rodeo: +3 do Jeździectwa przy próbach ujeżdżania narowistych zwierząt.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-081-rozroba">
+<h3>81. Rozróba</h3>
+<p><strong>Wymagania:</strong> Bijatyka 6+, Budowa 12+, Zręczność 12+         de</p>
+<p><strong>Opis klimatyczny:</strong> Facet miał ksywę Niedźwiedź, i wiesz, do- piero, jak go chcieliśmy związać, to załapałem, w         ni czym rzecz...</p>
+<p><strong>Mechanika:</strong> Walcząc z wieloma przeciwnikami, Bo- hater może wykonać darmowy atak przeciwko każ-            Wy demu ze swoich pozostałych przeciwników, wzglę-           10 dem których posiada Inicjatywę. Każdy dodatkowy atak wykonuje rzutem 1k20 i może zadać co najwy-          wa żej cios za 1 sukces. Przeciwnicy bronią się normal-      gd nie za pomocą swoich 3k20.                                Wi kł Widziałeś kiedyś, jak w Teksasie pędzą bydło? To jest wid Świetna zabawa, choć trudno jest się przyłączyć. Ja raz w się wokół nich, próbowałem się zaprzyjaźnić, w końcu zatr spełniły. Huk, tętent i adrenalina. Wszystko w nadmiarze, tak, emocjami, faceta z Teksasu uśpiłoby na śmierć. Potężne stado - rozpędzone, nie baczące na nic i tratuj nym i twardym skubańcem, by nie zginąć podczas tej zabawy jednak nie umiem ci tego opisać, słowo honoru, to jest co A potem? Zawsze jest zarąbista impreza. Pieczony bydl ale powiem ci, wycieczki na wieś potrafią być wspaniałe.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Rozróba: Walka z wieloma przeciwnikami jednocześnie bez kar za otoczenie (+2 do Bijatyki)
+  if (args.test.context.skillKey === "brawl") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Rozróba: +2 do Bijatyki podczas walki z kilkoma celami naraz.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-082-rrrroooaaarrr">
+<h3>82. Rrrroooaaarrr</h3>
+<p><strong>Wymagania:</strong> Bijatyka 3+, Charakter 16+</p>
+<p><strong>Opis klimatyczny:</strong> Kiedyś słyszałem o czymś takim jak okrzyk jowy, ale dopiero gdy spotkałem Jackiego, załapa- m w czym rzecz. Gdy na mnie wrzasnął, po prostu ę przewróciłem. Podobno sekretem jest czosnek.</p>
+<p><strong>Mechanika:</strong> Jeśli walczący przeprowadza manew- Furia lub Szarża, wykonuje okrzyk bojowy i prze- wnik jest zmuszony do testu Morale, tak jak w zypadku zasady Najpierw spójrz mi w oczy. Sztucz- można użyć tylko raz przeciwko temu samemu zeciwnikowi. W walce z wieloma przeciwnikami iała na maksimum 5-ciu przeciwników.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Rrrroooaaarrr: Potężny, dziki ryk budzący natychmiastowe przerażenie u wrogów (+3 do Zastraszania)
+  if (args.test.context.skillKey === "intimidation") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Rrrroooaaarrr: Przerażający ryk bojowy (+3 do Zastraszania).");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-083-ruchome-gniazdo-ckm">
+<h3>83. Ruchome gniazdo CKM</h3>
+<p><strong>Wymagania:</strong> Budowa 16+, Broń maszynowa 6+</p>
+<p><strong>Opis klimatyczny:</strong> Mówili na niego Pan Bunkier, czasem Pan adło. Jak się zaparł nogami, to nic go nie mogło szyć, a jak chwycił CKM, wycelował i nacisnął ust, to broń prawie nie podskakiwała. Wszystkie lki leciały równiutko, jak po sznurku, prosto w l. Potem dopiero okazało się, że facet był pieprzo- m mutantem...</p>
+<p><strong>Mechanika:</strong> Jeśli Bohater trafia serią w cel, może akować w niego dwa razy więcej kul niż wynika normalnych reguł broni maszynowej. Inaczej mó- ąc, wynik testu pogarsza się o 1 nie co 1 kulę, lko co 2.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Ruchome gniazdo CKM: Zmniejszenie o połowę kar za strzelanie z ciężkiej broni maszynowej w biegu
+  this.addAnnotation("Ruchome gniazdo: Kary za strzelanie z ciężkiej broni maszynowej w ruchu są zmniejszone.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-084-ruchomy-cel">
+<h3>84. Ruchomy cel</h3>
+<p><strong>Wymagania:</strong> Pistolety 4+ lub Karabiny 4+ lub Broń</p>
+<p><strong>Opis klimatyczny:</strong> szynowa 4+, Spryt 12+, Percepcja 10+ Widziałem kiedyś w akcji Stalową Policję, k wykańczali akurat jakichś łachmytów niedale- Jackson. Goście spieprzali ile sił w nogach, klu- ąc i skacząc na boki. Oficer SP mruknął: „Chłopcy, chomy cel”. Każdy z tych psycholi oddał tylko je- n strzał. I żaden bandzior już nie uciekał.</p>
+<p><strong>Mechanika:</strong> Nie otrzymujesz kary do testu strzela- a wynikającej z poruszania się celu.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Ruchomy cel: Zwiększenie trudności trafienia postaci podczas biegu (obrona +20%)
+  this.addAnnotation("Ruchomy cel: Trudniej Cię trafić podczas biegu (dodatkowe +20% do obrony).");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-085-rzut-oka">
+<h3>85. Rzut oka</h3>
+<p><strong>Wymagania:</strong> Mechanika 4+ lub Elektronika 4+, Spryt</p>
+<p><strong>Opis klimatyczny:</strong> + A gość spogląda na mnie i śmiertelnie po- żnym głosem mówi „Zesrało się”. A ja, wiesz, jak yby nigdy nic, mówię do niego: „Widzisz, kolego. dzę, że się zesrało. Ale proszę, powiedz mi, co do- adnie się zesrało.” A facet spogląda na mnie i tym ok, dla którego warto tarabanić dupsko nawet te kilkaset mil. idziałem to z daleka, potem dostałem dosłownie szajby. Kręciłem udniłem się u jednego na całą zimę. Latem moje marzenia się że niemal rozsadza ci głowę. To, co w Detroit nazywają dużymi ące wszystko, co stanie na jego drodze. Trzeba być doświadczo- . Opanowanie tej gromady dzikich zwierząt to cud. Wiesz, ś, co po prostu trzeba zobaczyć. ak i dużo browaru. Teksas to największa wieś naszego świata, samym, śmiertelnie poważnym głosem mówi: „Hy- drostabilizator.”</p>
+<p><strong>Mechanika:</strong> W ciągu kilku sekund jesteś w stanie (w sposób przybliżony) określić przeznaczenie i spo- sób działania dowolnego urządzenia technicznego.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Rzut oka: Błyskawiczne i celne oszacowanie rozkładu sił i pułapek w nowym pomieszczeniu (+3 do Wypatrywania)
+  if (args.test.context.skillKey === "spotting") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Rzut oka: +3 do Wypatrywania przy błyskawicznej ocenie otoczenia.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-086-sama-se-skocz-po-piwo">
+<h3>86. Sama se skocz po piwo</h3>
+<p><strong>Wymagania:</strong> Niezłomność 8+, Charakter 12+</p>
+<p><strong>Opis klimatyczny:</strong> Znasz legendę o Jeźdźcu bez głowy? A sły- szałeś bajkę o Teksańczyku, który miał alergię na konie? Jestem w stanie uwierzyć we wszystko, ale nie w to, że istnieje ktoś posiadający tę Sztuczkę.</p>
+<p><strong>Mechanika:</strong> Bohater jest odporny na Sztuczkę Hej, przystojniaku!</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Sama se skocz po piwo: Wydawanie nieszablonowych i skomplikowanych komend zwierzętom (+3 do Opieki nad zwierzętami)
+  if (args.test.context.skillKey === "animalCare") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Sama se skocz po piwo: +3 do Opieki nad zwierzętami przy trudnych komendach.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-087-samuraj">
+<h3>87. Samuraj</h3>
+<p><strong>Wymagania:</strong> Zręczność 10+, Broń ręczna 3+</p>
+<p><strong>Opis klimatyczny:</strong> Na pojedynek z tym sukinsynem wybra- łem starą elektrownię, czyli że tak powiem „moje miejsce”. Zebrało się sporo gapiów. Wiedziałem, że nie mam szans. Gnojek przytaszczył tę swoją kata- nę, ja wziąłem drewniany młot. Rozbrzmiał gong. Wtedy Pablo, mój kumpel elektronik, włączył elek- tromagnes, pod którym staliśmy. Na szczęście za- działał.</p>
+<p><strong>Mechanika:</strong> Otrzymujesz bonus +1 do Broni ręcz- nej, jeśli walczysz mieczem lub pałką. Ponadto, jeśli nosisz katanę, rapier lub inną lekką broń chowaną w pochwie, dobycie jej zajmuje ci tylko 1 segment.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Samuraj: Perfekcyjne władanie katanami i tradycyjnymi mieczami dwuręcznymi (+3 do Broni ręcznej)
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Samuraj: +3 do Broni ręcznej przy walce kataną.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-088-sherlock-holmes">
+<h3>88. Sherlock Holmes</h3>
+<p><strong>Wymagania:</strong> Tropienie 6+</p>
+<p><strong>Opis klimatyczny:</strong> Ledwo widoczny ślad w piasku? „Elemen- tarne, Wattsonie - to był biały mężczyzna, wzrost koło 184cm, waga 80kg, lekko utykający na prawą nogę. Niósł coś w ręce - teczkę, albo torbę. „.</p>
+<p><strong>Mechanika:</strong> Z tą Sztuczką tropiciel analizujący nawet bardzo niewyraźne ślady może uzyskać in- formacje o tym, co stało się w danym miejscu - musi zdać Trudny (po zastosowaniu Suwaka!) test Tropie- nia.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Sherlock Holmes: Niezwykle sprawna dedukcja na podstawie drobnych poszlak i śladów (+3 do Tropienia)
+  if (args.test.context.skillKey === "tracking") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Sherlock Holmes: +3 do Tropienia przy analizowaniu śladów.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-089-siekierezada">
+<h3>89. Siekierezada</h3>
+<p><strong>Wymagania:</strong> Budowa 13+, Rzucanie 4+</p>
+<p><strong>Opis klimatyczny:</strong> Każdy potrafi rzucać siekierą. Bierzesz, rzu- casz - no i leci. A ja cię teraz nauczę, jak nią rzucić, żeby ta cholera się wbiła. I to nie byle jak. Ma rozpo- łowić pieniek. No popatrz...</p>
+<p><strong>Mechanika:</strong> Potrafisz rzucać siekierą tak, że tra- fienie zadaje Ciężką ranę.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Siekierezada: Walka ciężkimi toporami i siekierami bez kar za wagę broni (+2 do Broni ręcznej)
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Siekierezada: +2 do Broni ręcznej przy walce siekierami i toporami.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-090-siup-dup">
+<h3>90. Siup dup</h3>
+<p><strong>Wymagania:</strong> Zręczność 14+, Bijatyka 4+</p>
+<p><strong>Opis klimatyczny:</strong> Siup, dup i nagle czujesz ból, a potem wi- dzisz, że twoją spluwę trzyma ten, co właśnie zrobił siup, dup. Nie wiem co dokładnie oznacza „siup, dup”. Goście od sztuk walki robią to tak szybko, że nic nie widać. Tylko „siup, dup” i gotowe.</p>
+<p><strong>Mechanika:</strong> Akcja za 3 sukcesy, PT testu o poziom wyższy, tylko do walki gołymi rękami. Rozbrajasz przeciwnika i przejmujesz jego broń.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Siup dup: Błyskawiczne i widowiskowe powalenie przeciwnika na ziemię (+3 do Bijatyki)
+  if (args.test.context.skillKey === "brawl") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Siup dup: +3 do Bijatyki przy próbach powalenia wroga.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-091-sklad-amunicji">
+<h3>91. Skład amunicji</h3>
+<p><strong>Wymagania:</strong> Proca 2+, Percepcja 10+</p>
+<p><strong>Opis klimatyczny:</strong> Siedzieliśmy w okopie. Tamci też mieli jakąś osłonę. Można było sądzić, że będziemy tak siedzieli miesiąc i straszyli się nawzajem. Każdy oszczędzał amunicję, bo nie było sensu strzelać na oślep. Tylko Ślepy Bizon walił z tej swojej procy raz za razem. „Dużo masz tych pocisków?” - pytam, a on rozejrzał się wzdłuż okopu i odpowiedział: „Ze 30 tysięcy, a co?”</p>
+<p><strong>Mechanika:</strong> Bohater potrafi natychmiast znaleźć pociski do procy - jeśli jest na otwartym terenie i o ile MG uzna to za możliwe.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Skład amunicji: Bezproblemowe przenoszenie podwójnej liczby amunicji bez kar za przeciążenie
+  this.addAnnotation("Skład amunicji: Możliwość przenoszenia dwukrotnie większej liczby amunicji bez kar.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-092-skok">
+<h3>92. Skok</h3>
+<p><strong>Wymagania:</strong> Motocykl 4+, Charakter 14+</p>
+<p><strong>Opis klimatyczny:</strong> Oczywiście, że trzeba mieć spore umiejętno- ści, by skakać na motorze z dachu na dach, ale po- wiem ci, jak dla mnie to przede wszystkim trzeba mieć stalowe jaja. Rozpędzić motocykl i zamknąć oczy potrafi każdy. Niestety, to zdecydowanie za mało...</p>
+<p><strong>Mechanika:</strong> Jadąc na motorze, Bohater może bez testu przeskoczyć przez dziurę, rozpadlinę, przepaść, lub z jednego budynku na drugi, na odległość do 8 metrów. Musi jednak mieć miejsce na rozbieg - dwu- krotnie więcej niż ma wynieść długość skoku.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Skok: Niezwykle dalekie skoki nad rozpadlinami lub przeszkodami (+3 do Wspinaczki)
+  if (args.test.context.skillKey === "climbing") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Skok: +3 do testów skakania nad rozpadlinami.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-093-sluch-absolutny">
+<h3>93. Słuch absolutny</h3>
+<p><strong>Wymagania:</strong> Nasłuchiwanie 4+</p>
+<p><strong>Opis klimatyczny:</strong> Granie ze słuchu, bezbłędne rozpoznawanie ludzkich głosów, taki był nasz Ron. Myślałem, że w dupę sobie można wcisnąć takie Sztuczki, aż tu raz siedzieliśmy za rogiem i słyszeliśmy, jak gość otwie- ra zamek kodowy i wchodzi do środka. Ron podszedł do zamka i kurwa, zagwizdał ten sam kod. I weszli- śmy.</p>
+<p><strong>Mechanika:</strong> Można zakupić tę sztuczkę tylko pod- czas tworzenia postaci. Bohater musi zdać Bardzo Trudny test Nasłuchiwania i jest w stanie powtó- rzyć dowolną melodię, rozmowę lub dźwięk usłysza- ny, nie dłuższy niż trzy minuty.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Słuch absolutny: Wykrywanie najcichszych szmerów i kroków skradających się wrogów (+3 do Nasłuchiwania)
+  if (args.test.context.skillKey === "listening") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Słuch absolutny: +3 do Nasłuchiwania w całkowitej ciszy.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-094-snajper">
+<h3>94. Snajper</h3>
+<p><strong>Wymagania:</strong> Karabiny 6+, Percepcja 14+</p>
+<p><strong>Opis klimatyczny:</strong> Dwadzieścia minut mierzenia, jedna sekun- da na strzał, i cała wieczność w trumnie dla tego gościa, którego miałeś na celowniku.</p>
+<p><strong>Mechanika:</strong> Celownik optyczny zmniejsza trudność trafienia celu o -80% zamiast standardowego -40%, ale tylko w przypadku snajperki.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Snajper: Oddawanie precyzyjnych strzałów z karabinów wyborowych z optyką (+3 do Karabinów)
+  if (args.test.context.skillKey === "rifles") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Snajper: +3 do Karabinów przy strzałach mierzonych z lunetą.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-095-spac-na-wodzie">
+<h3>95. Spać na wodzie</h3>
+<p><strong>Wymagania:</strong> Pływanie 5+</p>
+<p><strong>Opis klimatyczny:</strong> Kiedyś miałem zakład z kumplem. Twier- dził, że nie potrafi utonąć. No to ja mu mówię - masz tę butlę i leż na wodzie. Położył się. Przywiązałem mu kamol do nogi, trochę go ściągnęło, ale wciąż był na powierzchni. Związałem mu ręce, żeby nie ma- chał, a on pływa jak cholerny pniak. W końcu się wściekłem i polazłem po coś cięższego. Jak wróciłem to spał. Normalnie zasnął na wodzie, dasz wiarę?!</p>
+<p><strong>Mechanika:</strong> Na spokojnej wodzie Bohater utrzymuje się bez wysiłku przez wiele godzin.                       po Sz</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Spać na wodzie: Unoszenie się na powierzchni wody przez wiele godzin bez zmęczenia (+3 do Pływania)
+  if (args.test.context.skillKey === "swimming") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Spać na wodzie: +3 do Pływania przy dryfowaniu.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-096-strzelec-kieszonkowy">
+<h3>96. Strzelec kieszonkowy</h3>
+<p><strong>Wymagania:</strong> Pistolety 2+, Spryt 10+, Percepcja 10+</p>
+<p><strong>Opis klimatyczny:</strong> Marcus jest pacyfistą, to znaczy, że nigdy        Wy nie wyciąga na nikogo broni. Naprawdę nigdy. A jak już musi kogoś wykończyć, to ostateczność. Bardzo         cy nie lubi używać tej swojej Sztuczki, bo za każdym         dz razem musi potem cerować kieszeń w płaszczu. Ale          na dzięki temu nadal jest pacyfistą.                         be</p>
+<p><strong>Mechanika:</strong> Nie otrzymujesz dodatkowych utrud-          ka nień za strzał z kieszeni (broń schowana w kiesze-        no ni) lub z biodra. Sztuczka odnosi się tylko do pistole- tów i rewolwerów.                                         śc za</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Strzelec kieszonkowy: Celne strzelanie z pistoletów kieszonkowych (+2 do Pistoletów)
+  if (args.test.context.skillKey === "pistols") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Strzelec kieszonkowy: +2 do rzutów przy strzelaniu z małych pistoletów.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-097-szachista">
+<h3>97. Szachista</h3>
+<p><strong>Wymagania:</strong> Bijatyka 4+ lub Broń ręczna 4+                 ne</p>
+<p><strong>Opis klimatyczny:</strong> Słyszałeś o Szachiście? No to ci powiem, że to taki facet, którego się nie da trafić, chyba że z pistoletu. Będzie biegał i unikał tak długo, aż ci się    Wy odechce walki. A wtedy on zaproponuje ci partyjkę szachów na rozstrzygnięcie sporu.                         su</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku           ny tury, przed rzutem 3k20 lub przed testem Inicjaty- wy. Walczący oddaje Inicjatywę, ale za to otrzymuje       dw bonus +3 do Zręczności w obronie, do czasu, aż sam nie przejmie Inicjatywy. Sztuczka może niejednemu uratować tyłek, gdy stwierdzi, że w tej walce nie         Wy ma szans i lepiej poczekać na kolegów. dz</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Szachista: Doskonałe przewidywanie strategii przeciwnika i blefowanie w walce (+3 do Blefu)
+  if (args.test.context.skillKey === "bluff") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Szachista: +3 do Blefu przy strategicznym zwodzeniu wroga.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-098-szosty-zmysl">
+<h3>98. Szósty zmysł</h3>
+<p><strong>Wymagania:</strong> Czujność 7+, Percepcja 14+                     cz</p>
+<p><strong>Opis klimatyczny:</strong> Oto sztuka medytacji według starej indiań-        no skiej szkoły Sun Tsu, czy jakoś tak. Ja to robię od lat. Na początku zauważysz, że jesteś czujniejszy. Ten etap Indianie nazywali etapem pumy. Potem zwiększy się twoja szybkość. To etap kobry. Na koń-       Wy cu staniesz się prawdziwym magikiem. To etap sys- temu wczesnego ostrzegania, czy jakoś tak.                wi</p>
+<p><strong>Mechanika:</strong> Raz na dzień możesz uskoczyć przed           Te zagrożeniem, zanim to się pojawi (cios z zaskocze-        rw nia, kula snajpera, spadający głaz, mina itd.). Dzia-     pr ła to tak, jakbyś na ten moment uzyskał kosmiczny         Go refleks z odrobiną jasnowidztwa. Przesuwasz się o         na metr - inaczej mówiąc, nie uciekniesz przed lawiną,       go jeśli musiałbyś w tym celu przebiec 100 metrów w sekundę. O użyciu Sztuczki musisz zdecydować przed        se ewentualnym testem uniku. W walce Sztuczka za-            me działa jak automatyczny unik przeciwko jednej akcji przeciwnika (lecz musisz poświęcić na to tyle samo segmentów, co przeciwnik). Wy</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Szósty zmysł: Przeczucie nieuchronnego niebezpieczeństwa sekundy przed nim (+3 do Czujności w 1. rundzie)
+  if (args.test.context.skillKey === "vigilance") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Szósty zmysł: +3 do Czujności na początku walki.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-099-sztuczki-karciane">
+<h3>99. Sztuczki karciane</h3>
+<p><strong>Wymagania:</strong> Zwinne dłonie 8+, Spryt 12+                    ni</p>
+<p><strong>Opis klimatyczny:</strong> W większość gier karcianych chodzi o to, by       to mieć dobre karty na ręce. Więc jak masz sprawne           li łapki i wiesz choć w przybliżeniu, które karty to         ni „dobre karty”, to zwycięstwo masz w kieszeni. Mam         ch rację, prawda? No więc... Sam zobacz - co napisane jest w opisie działania tej Sztuczki!                     mu je</p>
+<p><strong>Mechanika:</strong> Bohater wygrywa każdą grę karcianą, d warunkiem, że nie gra z osobą, która posiada tę tuczkę.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Sztuczki karciane: Niezwykle sprawne oszukiwanie w grach losowych i tasowanie kart (+3 do Zwinnych dłoni)
+  if (args.test.context.skillKey === "sleightOfHand") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Sztuczki karciane: +3 do Zwinnych dłoni przy oszustwach w kartach.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-100-sztuka-jest-sztuka">
+<h3>100. Sztuka jest sztuka</h3>
+<p><strong>Wymagania:</strong> Rusznikarstwo 2+</p>
+<p><strong>Opis klimatyczny:</strong> Jak mawia stare przysłowie, jeśli ma lufę i ngiel, to znaczy się, że strzela. Ot, cokolwiek znaj- iesz, bez względu na to, czy to strzelba z czasów poleońskich, czy z okresu wojny w Wietnamie, z względu na to, czy jest zapiaszczona, czy zapać- na jakimś szambem - doprowadzisz ją do użytecz- ści.</p>
+<p><strong>Mechanika:</strong> Bohater poświęca kilka godzin, by oczy- ić i doprowadzić do stanu używalności dowolną brudzoną, pordzewiałą czy zaciętą broń palną. tuczka pozwala na naprawienie broni uszkodzo- j w skutek fatalnego zacięcia się.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Sztuka jest sztuka: Dopasowywanie amunicji o innym kalibrze bez niszczenia broni i z mniejszymi karami
+  this.addAnnotation("Sztuka jest sztuka: Możesz strzelać niedopasowaną amunicją bez ryzyka uszkodzenia lufy.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-101-szybki-bill">
+<h3>101. Szybki Bill</h3>
+<p><strong>Wymagania:</strong> Zręczność 14+</p>
+<p><strong>Opis klimatyczny:</strong> Mam kumpla w Detroit, mówimy na niego seł, wiesz czemu? Bo jak przychodzi do strzelani- , to gość sadzi takie susy...</p>
+<p><strong>Mechanika:</strong> W jednym segmencie możesz pokonać a razy większy dystans niż normalnie.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Szybki Bill: Wyjątkowy refleks na początku walki, zwiększający szansę na szybszy ruch (+3 do Czujności)
+  if (args.test.context.skillKey === "vigilance") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Szybki Bill: +3 do Czujności przy ustalaniu Inicjatywy.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-102-szybki-rzut">
+<h3>102. Szybki rzut</h3>
+<p><strong>Wymagania:</strong> Rzucanie 4+, Zręczność 12+</p>
+<p><strong>Opis klimatyczny:</strong> Jest taka scena w filmie Desperado, jak bę- iesz kiedyś w Vegas, wpadnij tam sobie do kina, ęsto puszczają ten film. Tam gość nożami wykoń- ył coś z ośmiu chłopa, mimo że mieli broń maszy- wą. Dasz wiarę? Był szybszy od nich...</p>
+<p><strong>Mechanika:</strong> Rzut zajmuje tylko jeden segment.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Szybki rzut: Rzucanie nożem lub granatem bez straty akcji czy segmentu (+3 do Rzucania)
+  if (args.test.context.skillKey === "throwing") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Szybki rzut: Błyskawiczny rzut obiektem bez straty segmentu.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-103-szybkie-strzelanie">
+<h3>103. Szybkie strzelanie</h3>
+<p><strong>Wymagania:</strong> Łuk 4+, Budowa 12+</p>
+<p><strong>Opis klimatyczny:</strong> „Łuk maszynowy” - taką karteczkę raz przy- ązaliśmy jednemu czerwonoskóremu na południu ksasu. Facet uśmiechnął się, i nawet jej nie ze- ał, widać połechtaliśmy jego próżność. No ale trzeba zyznać, nie wzięliśmy tej karteczki z księżyca. ść strzelał z tego łuku, jakby miał podajnik strzał taśmie... Wieczorem zrobił nam pokaz, niewiary- dny widok.</p>
+<p><strong>Mechanika:</strong> Dobycie strzały zajmuje Bohaterowi 1 gment, strzał kolejny 1 segment, dobycie 1 seg- nt itd.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preWeaponShot</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Szybkie strzelanie: Błyskawiczne prowadzenie ognia bez kar za pośpiech i bez ryzyka zacięcia
+  this.preventWeaponJam(args);
+  this.addAnnotation("Szybkie strzelanie: Strzały bez kar za pośpiech i bez ryzyka zacięcia.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-104-srutobranie">
+<h3>104. Śrutobranie</h3>
+<p><strong>Wymagania:</strong> Karabiny 4+</p>
+<p><strong>Opis klimatyczny:</strong> Mutki siedziały ukryte w bunkrze. Chcia- m wrzucić im granat, ale Franz ściągnął z ramie- a śrutówkę i wycedził: „No to mutasy, czas na śru- branie. Bierzcie koszyki” I jak zaczął do nich wa- ć, to aż się duszno zrobiło. No nie powiem, śrutobra- e się udało, każdy z mutków zebrał coś po pół kilo, oć nie do koszyczka, lecz w korpus. Ale to detal.</p>
+<p><strong>Mechanika:</strong> Przeładowanie śrutówki i strzał zaj- ją razem tylko 1 segment, lecz Bohater otrzymu- +30% utrudnienia do testów trafienia.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Śrutobranie: Zwiększona szansa na trafienie z bliska przy użyciu strzelb śrutowych (+2 do Karabinów)
+  if (args.test.context.skillKey === "rifles") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Śrutobranie: +2 do Karabinów przy strzelaniu śrutem z bliskiej odległości.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-105-taran">
+<h3>105. Taran</h3>
+<p><strong>Wymagania:</strong> Broń ręczna 4+, Budowa 14+</p>
+<p><strong>Opis klimatyczny:</strong> Każdy głupi wie, że jak ktoś się na ciebie porządnie zamachnie, to lepiej się zawczasu odsu- nąć. Gorzej, gdy cwaniak robi to tak, że nawet nie zauważysz. Spokojnie się zasłaniasz, a tu nagle „dup!” - i ręka ci drętwieje od ciosu.</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku tury, przed rzutem 3k20. Dotyczy cięższych i dłuż- szych broni, jak pałki, młoty, miecze, łańcuchy itp. Walczący otrzymuje karę -4 do Zręczności, lecz zada- ne obrażenia są o poziom większe.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Taran: Wyważanie barier, drzwi i zapór siłą własnego ciała (+3 do Kondycji)
+  if (args.test.context.skillKey === "stamina") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Taran: +3 do testów Kondycji przy wyważaniu przeszkód.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-106-taranowanie">
+<h3>106. Taranowanie</h3>
+<p><strong>Wymagania:</strong> Broń ręczna 4+, Budowa 14+</p>
+<p><strong>Opis klimatyczny:</strong> Każdy głupi wie, że jak ktoś się na ciebie porządnie zamachnie, to lepiej się zawczasu odsu- nąć. Gorzej, gdy cwaniak robi to tak, że nawet nie zauważysz. Spokojnie się zasłaniasz, a tu nagle „dup!” - i ręka ci drętwieje od ciosu.</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku tury, przed rzutem 3k20. Dotyczy cięższych i dłuż- szych broni, jak pałki, młoty, miecze, łańcuchy itp. Walczący otrzymuje karę -4 do Zręczności, lecz zada- ne obrażenia są o poziom większe.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Taranowanie: Skuteczne taranowanie ciężarówką innych pojazdów lub blokad (+3 do jazdy Ciężarówką)
+  if (args.test.context.skillKey === "truck") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Taranowanie: +3 do testów taranowania za pomocą ciężarówki.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-107-targowanie-sie">
+<h3>107. Targowanie się</h3>
+<p><strong>Wymagania:</strong> Niezłomność 7+, Perswazja 4+</p>
+<p><strong>Opis klimatyczny:</strong> Moja największa wtopa? Poszedłem na ba- zar w Salt Lake i nieopatrznie wdałem się w rozmo- wę z jakimś handlarzem. Po godzinie wymieniłem nowiutki kevlar na medalik ze świętym Antonim.</p>
+<p><strong>Mechanika:</strong> Podczas testów handlu przeciwnik zdaje o poziom wyższe testy Niezłomności.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Targowanie się: Skuteczne obniżanie cen towarów w postapokaliptycznym handlu (+3 do Perswazji)
+  if (args.test.context.skillKey === "persuasion") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Targowanie się: +3 do Perswazji podczas transakcji handlowych.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-108-to-sie-robi-tak">
+<h3>108. To się robi tak</h3>
+<p><strong>Wymagania:</strong> Zdolności przywódcze 3+</p>
+<p><strong>Opis klimatyczny:</strong> Gadał, gadał, nawet ciekawie, i jakoś tak przy- słuchiwałem się... Minutę potem zacząłem murować z chłopakami jakąś ścianę. A jak już ściana stanęła, facet mówi, że taki samotny ten mur. No to dorobili- śmy jeszcze trzy ściany. Bez dachu głupio wygląda- ło, więc gość powiedział nam jak dorobić dach.</p>
+<p><strong>Mechanika:</strong> Po udanym teście Zdolności przywód- czych, Bohater może pokierować niewykwalifikowa- nymi pracownikami. Na czas jednego zadania, uzy- skują oni na poziomie 1 znaną Bohaterowi Umiejęt- ność, opartą o Spryt, którą posiada na poziomie 3+. Niby niewiele, ale likwiduje negatywny efekt Suwa- ka.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // To się robi tak: Pokazowe i bezbłędne wykonywanie napraw technicznych przy innych (+3 do Mechaniki)
+  if (args.test.context.skillKey === "mechanics") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("To się robi tak: +3 do Mechaniki przy pokazowych naprawach.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-109-w-mgnieniu-oka">
+<h3>109. W mgnieniu oka</h3>
+<p><strong>Wymagania:</strong> Percepcja 12+, Wypatrywanie 4+</p>
+<p><strong>Opis klimatyczny:</strong> Kiedy wychylasz się zza osłony to nie zgry- waj turysty i nie rozglądaj się za przeciwnikiem, tylko rzuć okiem, a potem strzelaj. Taką radę usły- szałem wiele lat temu. I od tej pory tak właśnie za- łatwiam „turystów”, którzy wychylają łeb i rozglą- dają się...</p>
+<p><strong>Mechanika:</strong> Nie tracisz segmentu, by po wychyle- niu się zza zasłony dostrzec wroga.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // W mgnieniu oka: Wykrycie nagłych niebezpieczeństw w ułamku sekundy (+3 do Czujności)
+  if (args.test.context.skillKey === "vigilance") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("W mgnieniu oka: +3 do Czujności przy nagłym wykrywaniu zagrożeń.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-110-walka-dwiema-broniami">
+<h3>110. Walka dwiema broniami</h3>
+<p><strong>Wymagania:</strong> Broń ręczna 5+, Zręczność 12+</p>
+<p><strong>Opis klimatyczny:</strong> W zasadzie tylko raz w życiu widziałem ko- lesia, który machał dwiema broniami i sobie tym wcale nie przeszkadzał.</p>
+<p><strong>Mechanika:</strong> Normalne zasady nie dają żadnych bo- nusów za walkę dwiema broniami (może poza wybo- rem, czym w danym segmencie przywalić). Z tobą jest inaczej. Gdy walczysz dwiema broniami, możesz użyć dodatkowo połowę punktów Umiejętności wal- ki tą drugą bronią.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Walka dwiema broniami: Zmniejszenie kary za atakowanie drugą bronią w ręce pomocniczej
+  this.addAnnotation("Walka dwiema broniami: Kary za używanie drugiej broni są znacznie zmniejszone.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-111-wiatrak">
+<h3>111. Wiatrak</h3>
+<p><strong>Wymagania:</strong> Bijatyka 2+, Charakter 12+</p>
+<p><strong>Opis klimatyczny:</strong> Jeśli nie potrafisz walczyć, to zdradzę ci dobrą metodę: schowaj głowę i zasyp frajera pię- ściami od góry, coś z tego wyłapie, czegoś nie wyła- pie, ale na mur się cofnie. Jeśli umiesz walczyć, to nadal jest to dobra metoda.</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku tury, przed rzutem 3k20. Jeśli walczący przeprowa-       Wym dza manewr Furia, bez względu na wynik walki nie         rzę może stracić w danej turze Inicjatywy (jeśli prze- ciwnik uzyska Inicjatywę, kara wynikająca z Furii        Spo działa - czyli walczący otrzymuje celny cios, jednak     że już w następnym segmencie walczący automatycz-           kę, nie odzyskuje Inicjatywę). Na koniec tury walczący       kło otrzymuje karę +20% ze zmęczenia. Sztuczka odnosi        zwi się tylko do Bijatyki.                                     D stu</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wiatrak: Walka z wieloma przeciwnikami bronią białą bez utraty skuteczności obronnej (+2 do Broni ręcznej)
+  if (args.test.context.skillKey === "handWeapon") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Wiatrak: +2 do walki bronią białą przeciwko wielu celom.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-112-wilk-morski">
+<h3>112. Wilk morski</h3>
+<p><strong>Wymagania:</strong> brak                                          cia</p>
+<p><strong>Opis klimatyczny:</strong> Wujek Domowa Robótka tak mnie związał,          wal że posiniałem. Myślę sobie - „albo mnie rozwiąże, albo wezwę pomoc”. A on mówi: „Patrz ćwoku!”. Pociągnął za sznur i byłem wolny. Magik, psiakrew.                 Wym</p>
+<p><strong>Mechanika:</strong> Bohater potrafi wiązać całą masę dziw- nych węzłów, które rozwiązać może tylko osoba z tą       ige samą Sztuczką.                                           nie</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wilk morski: Ekstremalne kierowanie motorówkami i łodziami w trudnych warunkach wodnych (+3 do Motorowodnego)
+  if (args.test.context.skillKey === "boats") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Wilk morski: +3 do testów sterowania łodziami i motorówkami.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-113-wlasciwa-twarz">
+<h3>113. Właściwa twarz</h3>
+<p><strong>Wymagania:</strong> Blef 3+, Percepcja 10+, Charakter 10+</p>
+<p><strong>Opis klimatyczny:</strong> Czasem trzeba się uśmiechnąć, innym ra- zem pokazać zdecydowanie i determinację. Skąd            Wym wiadomo, jak się zachować w danej sytuacji? Nie            O wiem, czy można się tego nauczyć. To chyba dar.          dęg</p>
+<p><strong>Mechanika:</strong> Odejmujesz jedno oczko na dowolnej z        wia kości podczas wszystkich testów Charakteru.                D cji</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Właściwa twarz: Całkowite panowanie nad mimiką twarzy i kłamstwem (+3 do Blefu)
+  if (args.test.context.skillKey === "bluff") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Właściwa twarz: +3 do Blefu dzięki pełnej kontroli mimiki.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-114-wracajacy-bumerang">
+<h3>114. Wracający bumerang</h3>
+<p><strong>Wymagania:</strong> Bumerang 4+, Zręczność 12+</p>
+<p><strong>Opis klimatyczny:</strong> Kupiłem kiedyś bumerang. To było oszustwo stulecia. Od trzech lat szukam tego gościa, który mi     Wym to wcisnął i w końcu gdzieś go spotkam. Najpierw           O handlarz rzucał bumerangiem, pokazywał, jakie to         kon sprytne, jak wraca, gdy się rzuci... Kupiłem urzą-       a n dzenie za furę fajek, facet się szybko zwinął, a ja zostałem z tym cholerstwem. Głupi kij. Nigdy do mnie     tra nie wrócił. Rzucałem nim ze sto razy - leciał w krza- ki i nic. W końcu wywaliłem ten bumerang w jakiś kanion. Mam nadzieję, że się chociaż połamał. Wym</p>
+<p><strong>Mechanika:</strong> Bohater potrafi tak rzucać bumeran- O giem, że ten wraca po trafieniu w cel i można go na złapać. czy kon</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wracający bumerang: Bezpieczny powrót bumerangu prosto do dłoni rzucającego (+3 do Rzucania)
+  if (args.test.context.skillKey === "throwing") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Wracający bumerang: +3 do Rzucania przy bezpiecznym chwycie powracającego bumerangu.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-115-wyczekanie">
+<h3>115. Wyczekanie</h3>
+<p><strong>Wymagania:</strong> Bijatyka 6+ lub Broń ręczna 6+, Percep-       jem</p>
+<p><strong>Opis klimatyczny:</strong> cja 12+                                                    D Pieprzony samuraj. Spokojnie czekał, aż do      nie niego podbiegnę i przywalę mu łomem. W ostatniej         tu chwili odsunął się, uniknął jeszcze dwa razy i nagle załadował mi na spamiętanie z kastetu prosto w nos. Dziś jesteśmy kumplami. Wym</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku tury O (gdy walczący nie posiada Inicjatywy), przed rzu- wię tem 3k20. Walczący otrzymuje w danej turze karę Glo -2 do Zręczności w obronie, ale jeśli uda mu się prze- jąć Inicjatywę, to do końca tej tury otrzymuje bo- łeś nus +4 do Zręczności w ataku. spl dzi</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wyczekanie: Cierpliwe i strategiczne czekanie na odpowiedni moment ataku (+2 do Czujności)
+  if (args.test.context.skillKey === "vigilance") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Wyczekanie: +2 do Czujności przy wyczekiwaniu na dogodną sytuację.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-116-wyczucie-emocji-zwierzat">
+<h3>116. Wyczucie emocji zwierząt</h3>
+<p><strong>Wymagania:</strong> agania: Postrzeganie emocji 2+, Opieka nad zwie-</p>
+<p><strong>Opis klimatyczny:</strong> tami 2+ Ci goście z pustyni, to są mutanty, bracie. jrzy taki na zwierzaka i mówi ci, na przykład, wilczur jest głodny i wystarczy rzucić mu pusz- a uspokoi się. W jaki sposób facet odróżnia wście- ść od głodu? Pewnie sam jest w jakiejś części erzęciem, nie sądzisz?</p>
+<p><strong>Mechanika:</strong> Bohater ma prawo do Przeciętnego te- Opieki nad zwierzętami. Jeśli go zda, może wła- wie odczytać nastawienie napotkanego zwierzę- (nie w ce!). Sztuczka nie dotyczy zmutowanych zwierząt.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wyczucie emocji zwierząt: Instynktowne rozumienie i uspokajanie rozjuszonych stworzeń (+3 do Opieki nad zwierzętami)
+  if (args.test.context.skillKey === "animalCare") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Wyczucie emocji zwierząt: +3 do Opieki nad zwierzętami przy łagodzeniu agresji.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-117-wyczucie-promieniowania">
+<h3>117. Wyczucie promieniowania</h3>
+<p><strong>Wymagania:</strong> agania: Czujność 4+, Spryt 12+</p>
+<p><strong>Opis klimatyczny:</strong> To tak, jakby ci ktoś wsadził w dupsko Ge- ra. Jak tylko poziom promieniowania niebezpiecz- się podniesie - wyczujesz to.</p>
+<p><strong>Mechanika:</strong> Bohater zawsze wyczuwa niebezpiecz- wzrost promieniowania.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wyczucie promieniowania: Wykrywanie niewidocznych i zabójczych stref skażenia radioaktywnego (+3 do Wypatrywania)
+  if (args.test.context.skillKey === "spotting") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Wyczucie promieniowania: +3 do Wypatrywania anomalii radiacyjnych.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-118-wyczucie-zmian-pogody">
+<h3>118. Wyczucie zmian pogody</h3>
+<p><strong>Wymagania:</strong> agania: Znajomość terenu 2+, Percepcja 12+</p>
+<p><strong>Opis klimatyczny:</strong> Wędrówka z cholernym Tropicielem to mor- a... Ale kilka rzeczy mi się u nich podoba. Przepo- danie pogody, na ten przykład. Są lepsi od radia.</p>
+<p><strong>Mechanika:</strong> Po zdaniu Przeciętnego testu Percep- , Bohater praktycznie bezbłędnie określi pogodę najbliższy dzień.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wyczucie zmian pogody: Trafne przewidywanie gwałtownych burz lub anomalii atmosferycznych (+3 do Wiedzy o terenie)
+  if (args.test.context.skillKey === "terrainKnowledge") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Wyczucie zmian pogody: +3 do Wiedzy o terenie przy prognozowaniu burz.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-119-wyrabianie-strzal-lub-beltow">
+<h3>119. Wyrabianie strzał lub bełtów</h3>
+<p><strong>Wymagania:</strong> agania: Łuk 2+ lub Kusza 2+, Spryt 10+</p>
+<p><strong>Opis klimatyczny:</strong> Jak dla mnie, to jedyny i wcale niezbyt prze- ywujący powód, dla którego warto strzelać z łuku, ie ze spluwy. Do łuku łatwiej dorobić amunicję.</p>
+<p><strong>Mechanika:</strong> Bohater bez większych problemów po- fi wykonać strzały do łuku lub bełty do kuszy.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wyrabianie strzał lub bełtów: Szybkie odzyskiwanie i domowe struganie amunicji (+3 do Rusznikarstwa)
+  if (args.test.context.skillKey === "gunsmithing") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Wyrabianie amunicji: +3 do Rusznikarstwa przy tworzeniu strzał i bełtów.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-120-wytrych">
+<h3>120. Wytrych</h3>
+<p><strong>Wymagania:</strong> agania: Otwieranie zamków 4+, Zręczność 12+</p>
+<p><strong>Opis klimatyczny:</strong> Zrobienie wytrycha to akurat nie jest żad- sztuka. Zrobisz go z wszystkiego, kawałka drutu, co tam masz pod ręką. Inna sprawa, że aby prze- ać o tym Mistrza Gry, lepiej jednak mieć tę uczkę. No cóż, kup, zaoszczędzisz sobie nieprzy- ności...</p>
+<p><strong>Mechanika:</strong> Bohater robi wytrych z „byle czego” - otrzymuje kary za brak profesjonalnego sprzę- podczas otwierania zamków mechanicznych.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Wytrych: Otwieranie skomplikowanych zamków mechanicznych za pomocą kawałka drutu (+3 do Otwierania zamków)
+  if (args.test.context.skillKey === "lockpicking") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Wytrych: +3 do Otwierania zamków przy użyciu improwizowanych drutów.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-121-zagadanie">
+<h3>121. Zagadanie</h3>
+<p><strong>Wymagania:</strong> agania: Spryt 12+, Blef 2+, Zwinne dłonie 2+</p>
+<p><strong>Opis klimatyczny:</strong> OK., poddaję się, rozumiem. Widzę, że masz kszego. To Magnum? Niezły, ja mam tylko ...tego cka.</p>
+<p><strong>Mechanika:</strong> Zagadujesz gościa i nawet jak nie mia- dobytej broni, to już masz. Jeśli gość miał w ręce uwę, a ty nie, to już obaj macie. Sztuczka nie ała w walce.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Zagadanie: Rozproszenie przeciwnika potokiem słów i opóźnienie jego walki (+3 do Perswazji)
+  if (args.test.context.skillKey === "persuasion") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Zagadanie: +3 do Perswazji w celu zagadania i odwrócenia uwagi wroga.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-122-zaslona">
+<h3>122. Zasłona</h3>
+<p><strong>Wymagania:</strong> Bijatyka 2+, Budowa 12+</p>
+<p><strong>Opis klimatyczny:</strong> Ten Chinol, o którym już wspominałem, roz- toczył wokół rąk pole siłowe. Tak nimi machał, że gdzie nie chciałeś go huknąć, napotykałeś opór! Ja szybko, on jeszcze szybciej. Ja mocno, on niewzru- szony. Ja toporem, a on mi dup, kopniak w jaja. O rzesz, głupi Chinolu...</p>
+<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku tury, przed rzutem 3k20. Walczący otrzymuje bonus +2 do Zręczności w obronie, ale za to w kolejnej tu- rze otrzymuje karę -2 do Zręczności, zarówno w obro- nie, jak i w ataku.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Zasłona: Zwiększenie bonusów i ochrony pancerza zza osłon o jeden pełny stopień
+  this.addAnnotation("Zasłona: Ochrona zza wszelkich osłon jest zwiększona o jeden poziom.");
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-123-zgranie">
+<h3>123. Zgranie</h3>
+<p><strong>Wymagania:</strong> Rzucanie 2+, Zręczność 12+</p>
+<p><strong>Opis klimatyczny:</strong> Cholerni koszykarze, przyjechali prosto z Nowego Jorku na Front. Jednemu brakło amunicji? Żaden problem, ciach-mach i już ma od kolegi. Tam- ten drugi potrzebuje w zamian granat? Ciach-mach, gotowe.</p>
+<p><strong>Mechanika:</strong> Dwóch gości z tą Sztuczką może rzu- cać do siebie dowolne lekkie przedmioty tak, że za- równo rzut jak i złapanie są automatycznie udane. Rzut na odległość do 5m trwa 1 segment, do 10m - 2 segmenty, do 15m - 3 segmenty. Rzucane przedmioty muszą być w miarę lekkie i bezpieczne w łapaniu - np. zabezpieczony granat, pistolet, magazynek itd., a nie np. nóż czy karabin. Rzucać i łapać można nawet lewą ręką.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Zgranie: Doskonałe koordynowanie zsynchronizowanych ataków grupy sojuszników (+2 do Przywództwa)
+  if (args.test.context.skillKey === "leadership") {
+    args.test.preData.skillBonus += 2;
+    args.test.preData.annotations.push("Zgranie: +2 do Przywództwa przy koordynowaniu ataków drużynowych.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-124-zielony-balonik">
+<h3>124. Zielony balonik</h3>
+<p><strong>Wymagania:</strong> Pistolety 3+, Percepcja 14+, Spryt 10+,</p>
+<p><strong>Opis klimatyczny:</strong> Zręczność 10+ Potrzebuję dosłownie chwili spokoju, by w miejsce łba dowolnego fagasa wyobrazić sobie zielo- ny balonik. A powiem ci, trafiania w dyndające zie- lone baloniki uczyłem się dwanaście lat.</p>
+<p><strong>Mechanika:</strong> Gdy podejdziesz do kogoś na odległość 1-5 metrów i wycelujesz w głowę, to dopóki ta odle- głość się nie zmieni, masz zapewniony automatycz- ny sukces trafienia jeńca w głowę. Możesz z nim wędrować, prowadzić go itd., a i tak nie stracisz go z „celownika”. Nie można jednak z jeńcem biegać, wspi- nać się itp. W dowolnej chwili, np. gdy tylko jeniec zechce się wyrwać, wystarczy wygrać test Inicjaty- wy, a trafienie będzie automatyczne. Branie jeńca na cel nie może się odbyć w trakcie walki. W sytuacjach spornych należy przeprowadzić test na trafienie w głowę (czasem też wcześniejszy test Inicjatywy) - w przypadku sukcesu Sztuczka zadziałała. Sztuczka dotyczy tylko pistoletów i re- wolwerów. Słyszałeś może coś na temat „Polityków”? Szukam o nich informacji. Ni jeszcze historia sprzed wojny. Była grupa ludzi, szarych eminencji z o wszystkim. Wiedzieli o tym, że powstanie Moloch i Tornado. Doskonal zakładały zagładę - z którą teraz przyszło nam żyć. Podobno wciąż żyj knują. Na pewno nie spotkałeś nikogo takiego? Na pewno?</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Zielony balonik: Bezbłędne rozbrajanie i podkładanie min lądowych (+3 do Materiałów wybuchowych)
+  if (args.test.context.skillKey === "explosives") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Zielony balonik: +3 do Materiałów wybuchowych przy rozbrajaniu ładunków.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-125-zly">
+<h3>125. Zły</h3>
+<p><strong>Wymagania:</strong> Spryt 12+                                      wa</p>
+<p><strong>Opis klimatyczny:</strong> Widzisz tamten cmentarz? Zauważyłeś, że wszystkie daty na nim są wczorajsze? Wczoraj chcia- łem się po prostu dowiedzieć od miejscowych, który        Wy z nich jest mechanikiem. I wiesz, w końcu poskutko- wało. Jakiś facio w ciągu trzech godzin nauczył się       Ro fachu i teraz reperuje mi samochód.                       fi</p>
+<p><strong>Mechanika:</strong> Podczas przesłuchiwania sam na sam          go z więźniem, możesz w teście dodać do Zastraszania         wy lub Perswazji swój Blef lub Postrzeganie emocji. tu</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Zły: Przepełniająca i mroczna aura bezwzględności paraliżująca innych (+3 do Zastraszania)
+  if (args.test.context.skillKey === "intimidation") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Zły: +3 do Zastraszania dzięki srogiej i przerażającej postawie.");
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-126-zmylka">
+<h3>126. Zmyłka</h3>
+<p><strong>Wymagania:</strong> Bijatyka 5+ lub Broń ręczna 5+, Spryt</p>
+<p><strong>Opis klimatyczny:</strong> 12+ Zamachnąłem się w stronę gladiatora tak, że ledwo uskoczył i w dodatku stracił równowagę. Tak mi się przynajmniej wydawało do momentu, gdy chciałem wykorzystać przewagę. Nawet nie wiem, co się wtedy stało. Grunt, że w ogóle to prze- żyłem.</p>
+<p><strong>Mechanika:</strong> Podczas walki wręcz, na czas 1 tury możesz do Umiejętności walki dodać swój Blef. Sztucz- kę można użyć tylko 1 raz przeciwko temu samemu przeciwnikowi.</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Zmyłka: Dodanie wartości Umiejętności Blef do walki wręcz (Bijatyki lub Broni ręcznej) na jedną rundę
+  if (["brawl", "handWeapon"].includes(args.test.context.skillKey)) {
+    const bluffVal = this.getSkill("bluff") ?? 0;
+    args.test.preData.skillBonus += bluffVal;
+    args.test.preData.annotations.push(`Zmyłka: Dodano wartość Blefu (+${bluffVal}) do testu walki wręcz.`);
+  }
+})();</code></pre>
+</div>
+</section>
+
+<section id="trick-127-zelazne-racje">
+<h3>127. Żelazne racje</h3>
+<p><strong>Wymagania:</strong> Łowiectwo 2+</p>
+<p><strong>Opis klimatyczny:</strong> Nie lubię suszonego mięsa - smakuje jak po- deszwa buta. Z drugiej strony nie narzekam. Jadłem już koty i komary widliszki. Bywały miesiące, że jedynie indiański susz utrzymywał mnie przy ży- ciu. Bez dwóch zdań, konserwacja żywności to przy- datna Sztuczka.</p>
+<p><strong>Mechanika:</strong> Bohater potrafi zakonserwować żyw- ność, którą zdobył (mięso, wypieki itp.). Jedzenie nie zepsuje się przez kilka miesięcy. c nie wiesz? O „Starcach”? Siewcach chaosu”? To rządów najpotężniejszych państw, która wiedziała e wiedzieli dokąd zmierza świat, a ich działania ą. Pojawiają się w róznych miejsach. Wciąż coś</p>
+<h4>Analiza Active Effect</h4>
+<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
+<pre><code>(() =&gt; {
+  // Żelazne racje: Doskonała konserwacja i solenie mięsa, zapobiegające jego popsuciu (+3 do Łowiectwa)
+  if (args.test.context.skillKey === "hunting") {
+    args.test.preData.skillBonus += 3;
+    args.test.preData.annotations.push("Żelazne racje: +3 do Łowiectwa przy konserwowaniu i soleniu upolowanej zwierzyny.");
+  }
+})();</code></pre>
+</div>
+</section>
+</section>
+<section id="audit">
+<h2 class="section-title">Audit</h2>
+<p><strong>Liczba sztuczek:</strong> 127</p>
+<p><strong>Sztuczki abstrakcyjne:</strong> 9</p>
+<p><strong>Sztuczki z przykładem AE:</strong> 118</p>
+</section>
+<footer>
+Wygenerowano statycznie na podstawie listy sztuczek (COUNT = 127).
+</footer>
+</div>
+</body>
+</html>

@@ -1489,6 +1489,10 @@
             "TypeSkill": "Umiejętność",
             "TestMode": "Tryb",
             "Roll": "Rzuć test",
+            "AutoSucceed": "Auto sukces",
+            "IgnoreEffects": "Ignoruj efekty",
+            "AutoSucceedConfirm": "GM: efekty sukcesu nałożone automatycznie.",
+            "IgnoreEffectsConfirm": "GM: efekty testu pominięte.",
             "NoActor": "Brak wybranej postaci. Wybierz token lub przypisz postać."
         },
         "HealingRequest": {

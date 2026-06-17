@@ -162,8 +162,13 @@ export class NeuroshimaActor extends Actor {
    * Apply default token settings and system-specific icons before the actor is created.
    *
    * Sets `prototypeToken.sight.enabled = true` for all actor types and
-   * `actorLink = true` for player characters.  Assigns a type-specific default icon
-   * when none is set (vehicles, creatures, home bases).
+   * for player characters additionally:
+   *   - `actorLink = true`        — token is linked to the actor document
+   *   - `disposition = FRIENDLY`  — token disposition defaults to FRIENDLY so that
+   *                                   aura filterScripts using `isFriendlyToken()` work
+   *                                   correctly for newly created PCs without manual setup.
+   *
+   * Assigns a type-specific default icon when none is set (vehicles, creatures, home bases).
    *
    * @override
    */
@@ -172,6 +177,9 @@ export class NeuroshimaActor extends Actor {
     const updates = { "prototypeToken.sight.enabled": true };
     if (data.type === "character") {
       updates["prototypeToken.actorLink"] = true;
+      // FRIENDLY disposition ensures that isFriendlyToken() filter helpers in aura
+      // filterScripts return true for player characters out of the box.
+      updates["prototypeToken.disposition"] = CONST.TOKEN_DISPOSITIONS.FRIENDLY;
     }
     const actorIcons = {
       vehicle:   "systems/neuroshima/assets/img/carkey.svg",
@@ -603,23 +611,38 @@ export class NeuroshimaActor extends Actor {
     game.neuroshima?.log(`[addCondition] key="${key}" condDef:`, condDef ? { type: condDef.type, scriptsCount: condDef.scripts?.length ?? 0, scripts: condDef.scripts } : "NOT FOUND");
     if (!condDef) return;
 
-    if (condDef.type !== "int") {
-      return this.toggleStatusEffect(key, { active: true });
-    }
-
-    const existing = this.effects.find(
-      e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
-    );
-    if (existing) {
-      const current = existing.getFlag("neuroshima", "conditionValue") ?? 0;
-      await existing.setFlag("neuroshima", "conditionValue", current + value);
-      this._refreshTokenHUD();
+    // preApplyCondition — allow scripts to cancel condition application (e.g. immunity)
+    const preArgs = { actor: this, conditionKey: key, condDef, cancel: false };
+    await NeuroshimaScriptRunner.execute("preApplyCondition", preArgs);
+    if (preArgs.cancel) {
+      game.neuroshima?.log(`[addCondition] preApplyCondition cancelled condition "${key}"`);
       return;
     }
 
-    return this.createEmbeddedDocuments("ActiveEffect", [
-      _condDefToEffectData(condDef, { conditionNumbered: true, conditionValue: value })
-    ]);
+    let result;
+    if (condDef.type !== "int") {
+      result = await this.toggleStatusEffect(key, { active: true });
+    } else {
+      const existing = this.effects.find(
+        e => e.statuses?.has(key) && e.getFlag("neuroshima", "conditionNumbered")
+      );
+      if (existing) {
+        const current = existing.getFlag("neuroshima", "conditionValue") ?? 0;
+        await existing.setFlag("neuroshima", "conditionValue", current + value);
+        this._refreshTokenHUD();
+        result = existing;
+      } else {
+        result = await this.createEmbeddedDocuments("ActiveEffect", [
+          _condDefToEffectData(condDef, { conditionNumbered: true, conditionValue: value })
+        ]);
+      }
+    }
+
+    // applyCondition — react after condition has been applied
+    await NeuroshimaScriptRunner.execute("applyCondition", { actor: this, conditionKey: key, condDef });
+    game.neuroshima?.log(`[addCondition] applyCondition fired for "${key}"`);
+
+    return result;
   }
 
   /**

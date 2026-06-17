@@ -1461,6 +1461,10 @@
             "TypeSkill": "Skill",
             "TestMode": "Mode",
             "Roll": "Roll Test",
+            "AutoSucceed": "Auto Succeed",
+            "IgnoreEffects": "Ignore Effects",
+            "AutoSucceedConfirm": "GM: success effects applied automatically.",
+            "IgnoreEffectsConfirm": "GM: test effects skipped.",
             "NoActor": "No character selected. Select a token or assign a character."
         },
         "HealingRequest": {

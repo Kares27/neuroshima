@@ -55,6 +55,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "executeRequiredTest":
             this.onExecuteRequiredTest(event, message);
             break;
+          case "autoSucceedRequiredTest":
+            this.onAutoSucceedRequiredTest(event, message);
+            break;
+          case "ignoreRequiredTest":
+            this.onIgnoreRequiredTest(event, message);
+            break;
           case "placeGrenadeTemplate":
             this.onPlaceGrenadeTemplate(event, btn, message);
             break;
@@ -524,6 +530,63 @@ export class NeuroshimaChatMessage extends ChatMessage {
       const dialog = new NeuroshimaSkillRollDialog({ actor, stat, skill: 0, label, isSkill: false, currentAttribute: data.testKey, lastRoll, resultCallback });
       dialog.render(true);
     }
+  }
+
+  /**
+   * GM-only: apply success effects immediately without a roll (Auto sukces).
+   * Resolves the defender actor from the requiredTestData flags, then applies
+   * all onSuccess conditions and onSuccessEffectUuids as if the test passed.
+   * @param {PointerEvent} event
+   * @param {ChatMessage}  message
+   */
+  static async onAutoSucceedRequiredTest(event, message) {
+    if (!game.user.isGM) return;
+    const data = message.getFlag("neuroshima", "requiredTestData");
+    if (!data) return;
+
+    const defenderActorUuid = data.defenderActorUuid;
+    const defDoc = defenderActorUuid ? await fromUuid(defenderActorUuid) : null;
+    const targetActor = defDoc?.actor ?? defDoc ?? null;
+
+    if (data.onSuccess && targetActor) {
+      const actions = Array.isArray(data.onSuccess) ? data.onSuccess : [data.onSuccess];
+      for (const action of actions) {
+        if (action.addCondition) await targetActor.addCondition(action.addCondition, action.value ?? 1);
+      }
+    }
+
+    if (data.onSuccessEffectUuids?.length && targetActor) {
+      for (const uuid of data.onSuccessEffectUuids) {
+        try {
+          const effectDoc = await fromUuid(uuid);
+          if (!effectDoc) continue;
+          const { _id, ...rest } = effectDoc.toObject();
+          await ActiveEffect.implementation.create(
+            { ...rest, disabled: false, transfer: false, origin: effectDoc.parent?.uuid ?? uuid },
+            { parent: targetActor }
+          );
+        } catch (err) {
+          console.error("Neuroshima | onAutoSucceedRequiredTest | failed to apply effect uuid:", uuid, err);
+        }
+      }
+    }
+
+    ui.notifications.info(game.i18n.localize("NEUROSHIMA.RequiredTest.AutoSucceedConfirm"));
+    game.neuroshima?.log("[onAutoSucceedRequiredTest] auto-succeed applied", { defenderActorUuid });
+  }
+
+  /**
+   * GM-only: dismiss the required test without applying any effects (Ignoruj efekty).
+   * @param {PointerEvent} event
+   * @param {ChatMessage}  message
+   */
+  static async onIgnoreRequiredTest(event, message) {
+    if (!game.user.isGM) return;
+    const data = message.getFlag("neuroshima", "requiredTestData");
+    if (!data) return;
+
+    ui.notifications.info(game.i18n.localize("NEUROSHIMA.RequiredTest.IgnoreEffectsConfirm"));
+    game.neuroshima?.log("[onIgnoreRequiredTest] test effects ignored", { title: data.title });
   }
 
   /**

@@ -347,21 +347,53 @@ export class NeuroshimaScript {
   // ── Damage type helpers ──────────────────────────────────────────────────
 
   /**
+   * Unified wound-type matcher — mirrors `hasWounds()` but tests a bare type string
+   * instead of checking the actor's wound items.
+   *
+   * Signature mirrors hasWounds():
+   *   isWound(type)                     — true if type is any valid wound key
+   *   isWound(type, "C")                — true if type === "C"
+   *   isWound(type, ["C","sC","K","sK"]) — true if type is in the array
+   *
+   * Replaces the three category shortcuts:
+   *   isLightDamage(type)  →  isWound(type, ["D","sD","L","sL"])
+   *   isHeavyDamage(type)  →  isWound(type, ["C","sC","K","sK"])
+   *   isBruiseDamage(type) →  isWound(type, ["sD","sL","sC","sK"])
+   *
+   * @param {string}          type        - Wound type key to test (e.g. "L", "sC").
+   * @param {string|string[]} [woundTypes] - Type(s) to test against. Omit to accept any valid type.
+   * @returns {boolean}
+   *
+   * @example
+   * this.isWound("L")                           // → true  (valid wound type)
+   * this.isWound("fire")                        // → false (not a wound type)
+   * this.isWound("L",  ["D","sD","L","sL"])     // → true  (light damage group)
+   * this.isWound("C",  ["D","sD","L","sL"])     // → false (heavy, not light)
+   * this.isWound("sC", ["sD","sL","sC","sK"])   // → true  (bruise track)
+   * this.isWound("C",  "C")                     // → true  (exact match)
+   */
+  isWound(type, woundTypes) {
+    return NeuroshimaScriptRunner.isWound(type, woundTypes);
+  }
+
+  /**
    * Return true if the damage type is light (D, sD, L, sL).
+   * Convenience wrapper — equivalent to isWound(type, ["D","sD","L","sL"]).
    * @param {string} damageType
    * @returns {boolean}
    */
   isLightDamage(damageType) {
-    return NeuroshimaScriptRunner.isLightDamage(damageType);
+    return NeuroshimaScriptRunner.isWound(damageType, ["D", "sD", "L", "sL"]);
   }
 
   /**
    * Return true if the damage type is heavy or worse (C, sC, K, sK).
+   * Convenience wrapper — equivalent to isWound(type, ["C","sC","K","sK"]).
    * @param {string} damageType
    * @returns {boolean}
    */
   isHeavyDamage(damageType) {
-    return NeuroshimaScriptRunner.isHeavyDamage(damageType);
+    return NeuroshimaScriptRunner.isWound(damageType, ["C", "sC", "K", "sK"]);
   }
 
   /**
@@ -376,8 +408,8 @@ export class NeuroshimaScript {
   }
 
   /**
-   * Return true if the damage type belongs to the bruise track (s-prefix: sD, sL, sC, sK).
-   * Use this instead of `type?.startsWith("s")` for readability.
+   * Return true if the damage type belongs to the bruise track (sD, sL, sC, sK).
+   * Convenience wrapper — equivalent to isWound(type, ["sD","sL","sC","sK"]).
    * @param {string} type
    * @returns {boolean}
    *
@@ -386,11 +418,10 @@ export class NeuroshimaScript {
    * this.isBruiseDamage("C")   // → false
    *
    * @example
-   * // Select the correct wound track
    * const track = this.isBruiseDamage(type) ? this.BRUISE_ORDER : this.REGULAR_ORDER;
    */
   isBruiseDamage(type) {
-    return typeof type === "string" && type.startsWith("s");
+    return NeuroshimaScriptRunner.isWound(type, ["sD", "sL", "sC", "sK"]);
   }
 
   /**
@@ -783,6 +814,35 @@ export class NeuroshimaScript {
   // ── Utility helpers ──────────────────────────────────────────────────────
 
   /**
+   * Return true if the actor is currently participating in any form of combat.
+   *
+   * Two combat contexts are checked:
+   *  1. Main Foundry combat tracker (`game.combat`) — covers turns-based encounters
+   *     on the initiative list.
+   *  2. Active melee encounter from mode-1 dueling (`flags.neuroshima.activeMeleeEncounter`)
+   *     — covers 1v1 duel cards created by the melee-encounter system.
+   *
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {boolean}
+   *
+   * @example
+   * if (!this.isInCombat()) return; // only run during combat
+   *
+   * @example
+   * // Apply penalty only when fighting in a duel
+   * if (this.isInCombat()) {
+   *   args.test.preData.penalties.mod += 10;
+   * }
+   */
+  isInCombat(actor) {
+    const target = actor ?? this.actor;
+    if (!target) return false;
+    const inTracker = game.combat?.combatants.some(c => c.actorId === target.id) ?? false;
+    const inMelee   = !!(target.getFlag?.("neuroshima", "activeMeleeEncounter"));
+    return inTracker || inMelee;
+  }
+
+  /**
    * Async pause for `ms` milliseconds.
    * Useful for waiting for Dice So Nice animations or chaining async steps.
    * @param {number} ms
@@ -947,6 +1007,45 @@ export class NeuroshimaScript {
    */
   getWoundCount(actor) {
     return this.getWounds({ active: true }, actor).length;
+  }
+
+  /**
+   * Return true if actor has at least one active wound matching the given damage type(s).
+   *
+   * Accepts a single string or an array of damage type strings.
+   * Pass the DAMAGE_ORDER / REGULAR_ORDER / BRUISE_ORDER constants, or raw strings such
+   * as "D", "L", "C", "K", "sD", "sL", "sC", "sK".
+   *
+   * Convenience type groups via helpers:
+   *   — light wounds (D, sD, L, sL): pass ["D","sD","L","sL"] or use isWound(type, ["D","sD","L","sL"])
+   *   — heavy wounds (C, sC, K, sK): pass ["C","sC","K","sK"] or use isWound(type, ["C","sC","K","sK"])
+   *
+   * isWound() is the matching counterpart: it tests a bare type string with the same
+   * flexible signature instead of checking actor wound items.
+   *
+   * @param {string|string[]} woundTypes - One or more damage type keys to match.
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {boolean}
+   *
+   * @example
+   * // Single type — has any critical wound?
+   * if (this.hasWounds("C")) { ... }
+   *
+   * @example
+   * // Multiple types — light wounds (D or sD or L or sL)?
+   * if (this.hasWounds(["D", "sD", "L", "sL"])) {
+   *   args.test.preData.penalties.mod -= 20; // Niewrażliwość na lekkie rany
+   * }
+   *
+   * @example
+   * // Heavy wounds (C, sC, K, sK)
+   * if (this.hasWounds(["C", "sC", "K", "sK"])) {
+   *   this.notification("Ciężka rana aktywna!", "warn");
+   * }
+   */
+  hasWounds(woundTypes, actor) {
+    const types = new Set(Array.isArray(woundTypes) ? woundTypes : [woundTypes]);
+    return this.getWounds({ active: true }, actor).some(w => types.has(w.system?.damageType));
   }
 
   /**
@@ -1202,6 +1301,46 @@ export class NeuroshimaScript {
   getEquippedArmors(actor) {
     const target = actor ?? this.actor;
     return target?.items.filter(i => i.type === "armor" && i.system.equipped) ?? [];
+  }
+
+  /**
+   * Return all equipped weapon items on actor.
+   *
+   * All weapons in the system share `type === "weapon"`.
+   * An optional `weaponType` filter narrows results to a specific subtype.
+   *
+   * Possible `weaponType` values:
+   *   "melee"   — hand-to-hand weapons (broń do ręki)
+   *   "ranged"  — firearms and bows (broń palna / łuk)
+   *   "thrown"  — throwing weapons (broń rzucana)
+   *   "grenade" — grenades (granaty)
+   *   null / undefined — all subtypes (default)
+   *
+   * @param {string|null} [weaponType] - Optional subtype filter.
+   * @param {Actor}       [actor]      - Defaults to this.actor.
+   * @returns {Item[]}
+   *
+   * @example
+   * // All equipped weapons
+   * const weapons = this.getEquippedWeapons();
+   *
+   * @example
+   * // Only melee weapons
+   * const melee = this.getEquippedWeapons("melee");
+   *
+   * @example
+   * // Apply Rusznikarstwo (+3 jam threshold) to every equipped ranged weapon
+   * for (const w of this.getEquippedWeapons("ranged")) {
+   *   this.modifyJammingThreshold(args, 3);
+   * }
+   */
+  getEquippedWeapons(weaponType, actor) {
+    const target = actor ?? this.actor;
+    return (target?.items ?? []).filter(i =>
+      i.type === "weapon" &&
+      i.system.equipped &&
+      (weaponType == null || i.system.weaponType === weaponType)
+    );
   }
 
   /**
@@ -2533,6 +2672,53 @@ export class NeuroshimaScript {
  * deleteEffect     — Effect Deleted: runs once when this effect is deleted from an actor
  *                    args: { actor, options }
  *
+ * preApplyCondition — Pre-Apply Condition: runs BEFORE a condition/status is applied to an actor.
+ *                    Set args.cancel = true to prevent the condition from being applied entirely.
+ *                    Only fires for conditions defined in CONFIG.statusEffects / getConditions().
+ *                    args: { actor, conditionKey, condDef, cancel }
+ *                    Use: args.cancel = true              → block the condition (e.g. immunity)
+ *                         args.conditionKey               → key of the condition being applied
+ *                         args.condDef                    → full condition definition object
+ *                    Example: immunity to poison — cancel if source condition is "poisoned"
+ *
+ * applyCondition    — Apply Condition: runs AFTER a condition/status has been applied to an actor.
+ *                    The effect already exists on the actor at this point.
+ *                    Only fires for conditions defined in CONFIG.statusEffects / getConditions().
+ *                    args: { actor, conditionKey, condDef }
+ *                    Use: react to a condition being applied (e.g. fire secondary effects,
+ *                         notify chat, apply additional penalties for a specific condition)
+ *
+ * takeDamage        — Take Damage: runs AFTER wounds are physically created on the actor
+ *                    (post pain-resistance, post armor reduction).
+ *                    Fires once per applyDamageToActor call with all wounds created in that batch.
+ *                    args: { actor, wounds: Item[], woundIds: string[], location, attackData }
+ *                    Use: secondary effects triggered by receiving damage
+ *                         (e.g. apply bleeding condition when wound type is C/K,
+ *                          trigger beast venom after a bite, push annotations to chat)
+ *
+ * preOpposedAttacker — Pre-Opposed Attacker: runs at the START of melee exchange resolution,
+ *                    on the ATTACKER before success/failure is calculated.
+ *                    Allows modifying the effective difficulty target for the attacker's dice.
+ *                    args: { actor, participant, encounter, difficultyTarget, mode: "attack" }
+ *                    Use: args.difficultyTarget += N  → raise target (easier successes)
+ *                         args.difficultyTarget -= N  → lower target (harder successes)
+ *                    Example: Mutant na śniadanie — if opponent is a mutant, -20 to attacker target
+ *
+ * preOpposedDefender — Pre-Opposed Defender: runs at the START of melee exchange resolution,
+ *                    on the DEFENDER before success/failure is calculated.
+ *                    args: { actor, participant, encounter, difficultyTarget, mode: "defense" }
+ *                    Use: args.difficultyTarget += N  → raise target (easier to defend)
+ *                         args.difficultyTarget -= N  → lower target (harder to defend)
+ *
+ * calculateOpposedDamage — Calculate Opposed Damage: runs in applyDamageDistributed BEFORE
+ *                    each hit's attackData is built — allows modifying damage types per hit.
+ *                    Fires once per hit (each tier in a multi-hit sequence).
+ *                    args: { attackerActor, defenderActor, weapon, hit, attackData }
+ *                         hit        — { cost: tierLevel, tier: tierLevel }
+ *                         attackData — mutable: modify damageMelee1/2/3 or damageType directly
+ *                    Use: increase damage tier for naked fist (Wilczy Kieł),
+ *                         reduce damage if defender has specific condition/trait
+ *
  * Context available inside every script (via `this`):
  *   this.effect                    — The ActiveEffect owning this script
  *   this.actor                     — The actor (parent of effect or item)
@@ -2582,9 +2768,14 @@ export class NeuroshimaScript {
  *     — Native Actor method. Applies effects by UUID list or raw effectData array.
  *       UUID path uses Foundry's native resolution (no sourceEffect flag written).
  *       effectData path uses our createEmbeddedDocuments override.
- *   this.isLightDamage(type)         — true for D, sD, L, sL
- *   this.isHeavyDamage(type)         — true for C, sC, K, sK
- *   this.isBruiseDamage(type)        — true for sD, sL, sC, sK (s-prefix track)
+ *   this.isWound(type, woundTypes?)   — true if type matches woundTypes (string or array); omit = any valid type
+ *                                      mirrors hasWounds() signature — replaces the three category shortcuts:
+ *                                      isLightDamage  →  isWound(type, ["D","sD","L","sL"])
+ *                                      isHeavyDamage  →  isWound(type, ["C","sC","K","sK"])
+ *                                      isBruiseDamage →  isWound(type, ["sD","sL","sC","sK"])
+ *   this.isLightDamage(type)         — convenience: isWound(type, ["D","sD","L","sL"])
+ *   this.isHeavyDamage(type)         — convenience: isWound(type, ["C","sC","K","sK"])
+ *   this.isBruiseDamage(type)        — convenience: isWound(type, ["sD","sL","sC","sK"])
  *   this.isMinDamage(type)           — true for D or sD (minimum on track; heal instead of reduce)
  *   this.isMaxDamage(type)           — true for K or sK (maximum on track)
  *   this.compareDamage(a, b)         — -1/0/1 severity comparison
@@ -2599,6 +2790,7 @@ export class NeuroshimaScript {
  *   this.getLocationLabel(loc)       — localized location name
  *   this.getChatData(merge?)         — ChatMessage data with default speaker/flavor
  *   this.sendMessage(html, data?)    — Create a chat message (async)
+ *   this.isInCombat(actor?)          — true if actor is in any combat (tracker OR active melee duel)
  *
  * Weapon / Jamming helpers (use in preWeaponShot / weaponJam / postWeaponShot triggers):
  *   this.getWeaponJammingThreshold(weapon)     — weapon's raw jamming value (default 20)
@@ -2620,6 +2812,7 @@ export class NeuroshimaScript {
  * Wound helpers:
  *   this.getWounds(filter?, actor?)       — wound items matching filter (active, location, damageType, bruise)
  *   this.getWoundCount(actor?)            — number of active wounds
+ *   this.hasWounds(types, actor?)         — true if any active wound matches the given type(s) ("C", ["L","D"], …)
  *   this.applyWound(damageType, loc?, actor?) — create a wound directly (bypasses pain resistance)
  *
  * Condition helpers:
@@ -2634,8 +2827,12 @@ export class NeuroshimaScript {
  *   this.getSkill(key, actor?)            — skill value
  *   this.hasEffect(nameOrId, actor?)      — true if actor has an active effect with that name/id
  *
- * Armor helpers (item = equipped armor Item):
+ * Armor / Weapon equipment helpers:
  *   this.getEquippedArmors(actor?)                — Item[] of equipped armors on actor
+ *   this.getEquippedWeapons(weaponType?, actor?)  — Item[] of equipped weapons; optional type filter
+ *                                                    weaponType: "melee"|"ranged"|"thrown"|"grenade"|undefined(=all)
+ *
+ * Armor helpers (item = equipped armor Item):
  *   this.getArmorRating(item, location)            — base SP at location
  *   this.getArmorEffective(item, location)         — effective SP (rating − damage, min 0)
  *   this.getArmorDurability(item)                  — { max, damage, remaining }
@@ -2727,7 +2924,13 @@ export class NeuroshimaScriptRunner {
     preWeaponShot:    "Pre-Weapon Shot",
     weaponJam:        "Weapon Jam",
     postWeaponShot:   "Post-Weapon Shot",
-    worldTimeUpdate:  "World Time Update"
+    worldTimeUpdate:  "World Time Update",
+    preApplyCondition:      "Pre-Apply Condition",
+    applyCondition:         "Apply Condition",
+    takeDamage:             "Take Damage",
+    preOpposedAttacker:     "Pre-Opposed Attacker",
+    preOpposedDefender:     "Pre-Opposed Defender",
+    calculateOpposedDamage: "Calculate Opposed Damage"
   };
 
   static _makeHealingModifierProxy() {
@@ -3141,19 +3344,38 @@ export class NeuroshimaScriptRunner {
   }
 
   /**
+   * Unified wound-type matcher.  Mirrors the instance method this.isWound() and the
+   * hasWounds() signature — accepts a single string or an array.
+   *
+   * @param {string}          type        - Wound type key to test (e.g. "L", "sC").
+   * @param {string|string[]} [woundTypes] - Type(s) to test against.
+   *                                         Omit → any valid wound key is accepted.
+   * @returns {boolean}
+   */
+  static isWound(type, woundTypes) {
+    if (woundTypes === undefined) {
+      return ["D", "sD", "L", "sL", "C", "sC", "K", "sK"].includes(type);
+    }
+    const types = Array.isArray(woundTypes) ? woundTypes : [woundTypes];
+    return types.includes(type);
+  }
+
+  /**
    * Check if a damage type is "light" (D, sD, L, sL).
+   * Convenience wrapper — equivalent to isWound(type, ["D","sD","L","sL"]).
    * @param {string} damageType
    */
   static isLightDamage(damageType) {
-    return ["D", "sD", "L", "sL"].includes(damageType);
+    return this.isWound(damageType, ["D", "sD", "L", "sL"]);
   }
 
   /**
    * Check if a damage type is "heavy or worse" (C, sC, K, sK).
+   * Convenience wrapper — equivalent to isWound(type, ["C","sC","K","sK"]).
    * @param {string} damageType
    */
   static isHeavyDamage(damageType) {
-    return ["C", "sC", "K", "sK"].includes(damageType);
+    return this.isWound(damageType, ["C", "sC", "K", "sK"]);
   }
 
   /**

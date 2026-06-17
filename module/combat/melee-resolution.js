@@ -15,6 +15,7 @@ import { MeleeStore } from "./melee-store.js";
  */
 import { MeleeStore } from "./melee-store.js";
 import { MeleeTurnService } from "./melee-turn-service.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
  * Handles exchange resolution logic: success/failure comparison, takeover, and damage triggers.
@@ -66,8 +67,25 @@ export class MeleeResolution {
     const tempoLevel = Math.max(attacker.tempoLevel || 0, defender.tempoLevel || 0);
     game.neuroshima?.log("Resolving primary melee exchange", { id, attacker: attacker.name, defender: defender.name, diceCount });
 
-    const attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
-    const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
+    let attackerTarget = this.getEffectiveTarget(attacker, tempoLevel, updated.crowding[attackerId]?.dexPenalty || 0, "attack");
+    let defenderTarget = this.getEffectiveTarget(defender, tempoLevel, updated.crowding[defenderId]?.dexPenalty || 0, "defense");
+
+    // preOpposedAttacker / preOpposedDefender — allow effect scripts to modify effective
+    // difficulty targets for each side before successes are counted.
+    const attackerActor = fromUuidSync(attacker.actorUuid);
+    const defenderActor = fromUuidSync(defender.actorUuid);
+    const attackerActorDoc = attackerActor?.actor || attackerActor;
+    const defenderActorDoc = defenderActor?.actor || defenderActor;
+    if (attackerActorDoc) {
+      const atkArgs = { actor: attackerActorDoc, participant: attacker, encounter: updated, difficultyTarget: attackerTarget, mode: "attack" };
+      await NeuroshimaScriptRunner.execute("preOpposedAttacker", atkArgs);
+      attackerTarget = atkArgs.difficultyTarget;
+    }
+    if (defenderActorDoc) {
+      const defArgs = { actor: defenderActorDoc, participant: defender, encounter: updated, difficultyTarget: defenderTarget, mode: "defense" };
+      await NeuroshimaScriptRunner.execute("preOpposedDefender", defArgs);
+      defenderTarget = defArgs.difficultyTarget;
+    }
 
     // 2. Calculate successes — use shared helper that accounts for doubleSkill allocations.
     const attackerSuccesses = exchange.attackerSelectedDice.filter(idx => this._isDieSuccess(attacker, idx, attackerTarget)).length;
@@ -682,6 +700,21 @@ export class MeleeResolution {
         dmg2 = this._shiftDamageType(weapon?.system.damageMelee2, _dmgShift);
         dmg3 = this._shiftDamageType(weapon?.system.damageMelee3, _dmgShift);
       }
+
+      // calculateOpposedDamage — allow effect scripts to modify damage types per hit
+      // before attackData is built (e.g. Wilczy Kieł — upgrade unarmed damage tier).
+      const dmgArgs = {
+        attackerActor,
+        defenderActor,
+        weapon,
+        hit,
+        attackData: { damageMelee1: dmg1, damageMelee2: dmg2, damageMelee3: dmg3 }
+      };
+      await NeuroshimaScriptRunner.execute("calculateOpposedDamage", dmgArgs);
+      dmg1 = dmgArgs.attackData.damageMelee1;
+      dmg2 = dmgArgs.attackData.damageMelee2;
+      dmg3 = dmgArgs.attackData.damageMelee3;
+
       const attackData = {
         isMelee: true,
         actorId: attackerActor.id,
