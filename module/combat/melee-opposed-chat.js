@@ -46,6 +46,7 @@ export class MeleeOpposedChat {
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
 
     const lastRoll = attacker.system.lastWeaponRoll ?? {};
+    attacker._neuroshimaAttackInitiated = true;
     const dialog = new NeuroshimaWeaponRollDialog({
       actor: attacker,
       weapon,
@@ -55,6 +56,7 @@ export class MeleeOpposedChat {
       lastRoll,
       isPoolRoll: true,
       onRoll: async (rawResult) => {
+        delete attacker._neuroshimaAttackInitiated;
         if (!rawResult) return;
         const { NeuroshimaSocket: _NSAtk } = await import("../helpers/socket-helper.js");
         const { MeleeTurnService: _MTSAtk } = await import("./melee-turn-service.js");
@@ -69,7 +71,9 @@ export class MeleeOpposedChat {
         }
         await MeleeOpposedChat._createHandlerCard(rawResult, attacker, weapon, targetUuid, mode);
       },
-      onClose: () => {}
+      onClose: () => {
+        delete attacker._neuroshimaAttackInitiated;
+      }
     });
 
     await dialog.render(true);
@@ -618,7 +622,7 @@ export class MeleeOpposedChat {
     }
 
     const segCount = Math.min(3, attackDice.length, defenseDice.length || 1);
-    const initiativeOwnerSide = "attacker";
+    const initiativeOwnerSide = data.szachistaYield ? "defender" : "attacker";
     const state = {
       status: "picking",
       initiativeOwnerSide,
@@ -1892,13 +1896,16 @@ export class MeleeOpposedChat {
             damage1: weapon.system.damageMelee1,
             damage2: weapon.system.damageMelee2,
             damage3: weapon.system.damageMelee3,
-            isGradCios: rawResult.isGradCios || false
+            isGradCios: rawResult.isGradCios || false,
+            szachistaYield: !!(await attacker.getFlag("neuroshima", "_szachistaYield"))
           }
         }
       },
       speaker: { alias: "⚔" },
       rollMode
     });
+
+    await attacker.unsetFlag("neuroshima", "_szachistaYield");
 
     if (!chatMsg) return;
 

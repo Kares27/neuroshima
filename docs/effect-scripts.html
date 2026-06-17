@@ -325,6 +325,11 @@
     <div class="ctx-row"><span class="ctx-name">this.getSkill(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Wartość umiejętności (<code>"brawl"</code>, <code>"painResistance"</code>, …). Zwraca 0 jeśli brak.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.hasEffect(nameOrId, actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor ma aktywny (nie-wyłączony) efekt o tej nazwie lub ID</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isInCombat(actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor uczestniczy w walce — sprawdza combat tracker Foundry (<code>game.combat</code>) LUB aktywny pojedynek melee trybu 1 (flaga <code>activeMeleeEncounter</code>)</span></div>
+    <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery melee inicjatywy —</span><span class="ctx-type"></span><span class="ctx-desc">Odczyt i zmiana inicjatywy w aktywnym pojedynku walki wręcz (tryb 1 i opposed-chat)</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getMeleeEncounter(actor?)</span><span class="ctx-type">object | null</span><span class="ctx-desc">Zwraca obiekt aktywnego encounter melee aktora z flag combat. null jeśli brak aktywnego pojedynku.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.getMeleeParticipantId(actor?)</span><span class="ctx-type">string | null</span><span class="ctx-desc">ID uczestnika aktora w jego aktywnym encounter. null jeśli nie znaleziono.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.hasMeleeInitiative(actor?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true jeśli aktor posiada Inicjatywę w bieżącym pojedynku wręcz. W trybie opposed-chat: true gdy dialog ataku jest otwarty (aktor właśnie atakuje).</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.yieldMeleeInitiative(actor?)</span><span class="ctx-type">Promise&lt;boolean&gt;</span><span class="ctx-desc">Oddaje Inicjatywę przeciwnikowi. W trybie 1: modyfikuje <code>turnState.initiativeOwnerId</code>. W trybie opposed-chat: ustawia flagę aktora <code>_szachistaYield</code> — karta walki tworzona jest z broniącym jako posiadaczem Inicjatywy. Zwraca true przy sukcesie.</span></div>
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery pancerza i broni —</span><span class="ctx-type"></span><span class="ctx-desc"><code>item</code> = Item typu armor; lokacje: head, torso, leftArm, rightArm, leftLeg, rightLeg</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getEquippedArmors(actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Założone pancerze aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getEquippedWeapons(type?, actor?)</span><span class="ctx-type">Item[]</span><span class="ctx-desc">Założone bronie aktora. Filtr typu: <code>"melee"</code> | <code>"ranged"</code> | <code>"thrown"</code> | <code>"grenade"</code> | <code>undefined</code> (wszystkie)</span></div>
@@ -5113,6 +5118,35 @@ this.addAnnotation(`Sztuczka pozwoliła oddać strzał mimo zacięcia!`);</code>
       <td>
         Zwraca <code>true</code> jeśli aktor uczestniczy w jakiejkolwiek formie walki.<br>
         Sprawdza dwa konteksty: <strong>combat tracker Foundry</strong> (<code>game.combat</code>) ORAZ <strong>aktywny pojedynek melee trybu 1</strong> (flaga <code>neuroshima.activeMeleeEncounter</code> na aktorze).
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2"><strong>— Helpery melee inicjatywy —</strong></td>
+    </tr>
+    <tr>
+      <td><code>this.getMeleeEncounter(actor?)</code></td>
+      <td>Zwraca obiekt aktywnego encounter melee aktora odczytany z flag combat (<code>game.combat.getFlag("neuroshima","meleeEncounters")</code>). Zwraca <code>null</code> gdy brak aktywnego pojedynku (np. tryb opposed-chat przed zebraniem obu rzutów).</td>
+    </tr>
+    <tr>
+      <td><code>this.getMeleeParticipantId(actor?)</code></td>
+      <td>Zwraca klucz uczestnika aktora w encounter (UUID z kropkami zastąpionymi myślnikami). Używane wewnętrznie przez <code>hasMeleeInitiative</code> i <code>yieldMeleeInitiative</code>.</td>
+    </tr>
+    <tr>
+      <td><code>this.hasMeleeInitiative(actor?)</code></td>
+      <td>
+        Zwraca <code>true</code> jeśli aktor posiada Inicjatywę w bieżącym pojedynku wręcz.<br>
+        <strong>Tryb 1 (encounter):</strong> porównuje <code>turnState.initiativeOwnerId</code> z ID uczestnika aktora.<br>
+        <strong>Tryb opposed-chat:</strong> zwraca <code>true</code> gdy dialog ataku jest aktualnie otwarty (sygnał in-memory <code>_neuroshimaAttackInitiated</code> ustawiany przez <code>initiateAttack</code>).<br>
+        Typowe użycie w <em>Submit Script</em> Szachisty: <code>if (!this.hasMeleeInitiative()) return;</code>
+      </td>
+    </tr>
+    <tr>
+      <td><code>await this.yieldMeleeInitiative(actor?)</code></td>
+      <td>
+        Oddaje Inicjatywę głównemu przeciwnikowi aktora. Zwraca <code>true</code> przy sukcesie, <code>false</code> gdy warunek nie jest spełniony.<br>
+        <strong>Tryb 1 (encounter):</strong> aktualizuje <code>turnState.initiativeOwnerId</code> przez socket (GM lub bezpośrednio).<br>
+        <strong>Tryb opposed-chat:</strong> ustawia flagę aktora <code>neuroshima._szachistaYield = true</code>; flaga jest odczytywana przez <code>_createHandlerCard</code> i zapisywana w chat message flags, a <code>_createDuelCard</code> ustawia <code>initiativeOwnerSide = "defender"</code> zamiast domyślnego <code>"attacker"</code>.<br>
+        Wywołuj tylko gdy <code>hasMeleeInitiative()</code> zwraca <code>true</code>.
       </td>
     </tr>
   </tbody></table>

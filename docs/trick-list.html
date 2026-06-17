@@ -141,7 +141,7 @@
 </header>
 <nav class="toc">
 <h2>Spis treści — wszystkie sztuczki</h2>
-<ol>
+<ul>
 <li><a href="#trick-001-3-2-1-bum">1. 3 2 1 Bum</a></li>
 <li><a href="#trick-002-aramis">2. Aramis</a></li>
 <li><a href="#trick-003-asekuracja">3. Asekuracja</a></li>
@@ -269,7 +269,7 @@
 <li><a href="#trick-125-zly">125. Zły</a></li>
 <li><a href="#trick-126-zmylka">126. Zmyłka</a></li>
 <li><a href="#trick-127-zelazne-racje">127. Żelazne racje</a></li>
-</ol>
+</ul>
 </nav>
 <section id="overview">
 <h2 class="section-title">Założenia katalogu</h2>
@@ -624,11 +624,8 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Dobywanie: Wyciągnięcie broni bez utraty akcji (+3 do Czujności przy inicjatywie)
-  if (args.test.context.skillKey === "vigilance") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Dobywanie: Błyskawiczne wyciągnięcie broni bez utraty segmentu tury.");
-  }
+  // Dobywanie: Dobycie pistoletu/noża zajmuje tylko 1 segment — oznacznik NARRACYJNY
+  this.addAnnotation("Dobywanie: Dobycie pistoletu, noża itp. zajmuje 1 segment (zamiast standardowego czasu).");
 })();</code></pre>
 </div>
 </section>
@@ -668,10 +665,13 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Dystans: Walka długą bronią białą (np. włócznią) daje bonus +2 do ataku/obrony
-  if (args.test.context.skillKey === "handWeapon") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Dystans: +2 do testów walki długą bronią białą.");
+  // Dystans: Tylko połowa kary za dystans przy rzucaniu nożem
+  if (args.test.context.skillKey === "throwing") {
+    const distPenalty = args.test.preData.penalties?.distanceMod ?? 0;
+    if (distPenalty > 0) {
+      args.test.preData.penalties.distanceMod = Math.floor(distPenalty / 2);
+      args.test.preData.annotations.push("Dystans: Kara za dystans przy rzucaniu nożem zmniejszona o połowę.");
+    }
   }
 })();</code></pre>
 </div>
@@ -702,14 +702,15 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Flash: Niezwykle szybki unik lub osłona (+3 do obrony przed atakami wręcz)
-  if (["brawl", "handWeapon"].includes(args.test.context.skillKey)) {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Flash: +3 do obrony przed atakami wręcz w tej rundzie.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Flash: +3 do Zręczności w obronie przez 1 segment</span>
+args.fields.attributeBonus += <span class="num">3</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="cmt">// Kara zmęczenia na koniec tury — wyślij przypomnienie</span>
+<span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Flash&lt;/b&gt;: +3 Zr w obronie aktywne. Na koniec tury MG nakłada +20% kary zmęczenia."</span>);</code></pre>
 </div>
 </section>
 
@@ -721,14 +722,15 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Garda: Pozycja wybitnie obronna (+2 do Bijatyki, zmniejszenie otrzymywanych obrażeń o 1 stopień)
-  if (args.test.context.skillKey === "brawl") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Garda: Przyjęto pozycję obronną (+2 do Bijatyki, zmniejszenie zadawanych obrażeń o 1 stopień).");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Garda: +6 do Zręczności w obronie. Działa tylko przeciw nieuzbrojonym.</span>
+args.fields.attributeBonus += <span class="num">6</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="cmt">// Powiadom że przy obronionym ciosie obrażenia są o 1 poziom niższe</span>
+<span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Garda&lt;/b&gt;: +6 Zr w obronie aktywne. Jeśli obrona skuteczna — obrażenia o 1 poziom niższe (MG stosuje przy applyDamage)."</span>);</code></pre>
 </div>
 </section>
 
@@ -740,14 +742,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preApplyDamage</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Głaz: Zmniejszenie otrzymywanych ciężkich obrażeń obuchowych (fizycznych) o jeden stopień
-  if (this.isHeavyDamage(args.damageType)) {
-    args.damageType = this.reduceDamageType(args.damageType, 1);
-    this.addAnnotation("Głaz: Obrażenia obuchowe zredukowane o jeden stopień.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Sztuczka nie wymaga żadnej automatycznej mechaniki. Bohater potrafi trwać nieruchomo przez Charakter×20 minut — MG decyduje kiedy i czy test jest konieczny. Dodaj efekt z opisem jako przypomnienie.</div>
 </div>
 </section>
 
@@ -759,13 +754,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">rollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Goła ręka: Ataki bezbronne zadają obrażenia jak Lekka rana (L) zamiast Draśnięcia
-  if (args.test.context.skillKey === "brawl" &amp;&amp; args.test.result.isSuccess) {
-    args.test.result.annotations.push("Goła ręka: Ataki bezbronne zadają obrażenia równe broni jednoręcznej (Lekka rana).");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Bohater ukrywa pistolet lub nóż tak, że jest niedostrzegalny. Wykrycie wymaga Bardzo Trudnego testu Czujności. Brak mechaniki rolowej — efekt jako przypomnienie dla MG.</div>
 </div>
 </section>
 
@@ -777,14 +766,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Granie na nerwach: Udana prowokacja przeciwnika, dająca mu ujemne modyfikatory (-20% do testów)
-  if (["bluff", "intimidation"].includes(args.test.context.skillKey)) {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Granie na nerwach: +2 do testu prowokacji. Udany rzut nakłada na wroga karę -20%.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>MANUAL trigger:</strong> Gracz deklaruje użycie, MG wykonuje Bardzo Trudny test Perswazji (dla kobiet: Trudny). Przy sukcesie ofiara atakuje losową pobliską osobę — brak automatyzacji. Użyj efektu jako oznacznika z opisem.</div>
 </div>
 </section>
 
@@ -796,14 +778,17 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Gunfight: Strzelanie z pistoletów z biodra na bliskim dystansie bez żadnych kar i utrudnień
-  if (args.test.context.skillKey === "pistols") {
-    args.test.preData.penalties.mod = 0;
-    args.test.preData.annotations.push("Gunfight: Zniwelowano kary za pośpiech i krótki dystans przy strzelaniu z pistoletu.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee (strzał z przyłożenia)</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Gunfight: Dodaj wartość Pistolety jako skillBonus zamiast Bijatyki</span>
+<span class="cmt">// Uwaga: nie można podwyższać wyników kostek tą umiejętnością (Podwójne działanie)</span>
+<span class="kw">const</span> pistolsVal = <span class="fn">this.getSkill</span>(<span class="str">"pistols"</span>) ?? <span class="num">0</span>;
+<span class="kw">const</span> brawlVal = <span class="fn">this.getSkill</span>(<span class="str">"brawling"</span>) ?? <span class="num">0</span>;
+args.fields.skillBonus += Math.<span class="fn">max</span>(<span class="num">0</span>, pistolsVal - brawlVal);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Gunfight&lt;/b&gt;: Strzał z przyłożenia aktywny — używasz Pistolety zamiast Bijatyki. Nie podwyższaj wyników kostek przez Podwójne działanie."</span>);</code></pre>
 </div>
 </section>
 
@@ -824,14 +809,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Hokus pokus: Błyskawiczna zamiana przedmiotu lub zmiana magazynka w ułamku sekundy (+3 do Zwinnych dłoni)
-  if (args.test.context.skillKey === "sleightOfHand") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Hokus pokus: +3 do Zwinnych dłoni przy błyskawicznym ukryciu/podmianie przedmiotu.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Bohater chowa lub wyciąga z kieszeni niewielki przedmiot w sposób zupełnie niedostrzegalny — brak testu. MG decyduje czy i kiedy ktoś może to zauważyć. Dodaj efekt z opisem jako przypomnienie.</div>
 </div>
 </section>
 
@@ -883,10 +861,9 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Jest zajebiście: Ignorowanie wszelkich efektów strachu, paniki i niskiego morale (auto-sukces w rzutach)
-  if (["steadfastness", "morale"].includes(args.test.context.skillKey)) {
-    args.test.preData.autoSuccess = true;
-    args.test.preData.annotations.push("Jest zajebiście: Całkowita niewrażliwość na strach i panikę (automatyczny sukces).");
+  // Jest zajebiście: Test Blefu (dowolne PT) → przy sukcesie drużyna -5% per PT powyżej Łatwego do następnego testu
+  if (args.test.context.skillKey === "bluffing") {
+    args.test.preData.annotations.push("Jest zajebiście: Udany test Blefu daje drużynie ułatwienie -5%×(PT-Łatwy) do najbliższego testu; porażka = +5% utrudnienia.");
   }
 })();</code></pre>
 </div>
@@ -921,11 +898,8 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Komandos: Skuteczne działanie w ukryciu i ciche zabójstwa (+2 do Skradania i Ukrywania)
-  if (["sneaking", "hiding"].includes(args.test.context.skillKey)) {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Komandos: +2 do Skradania się i Ukrywania w warunkach polowych.");
-  }
+  // Komandos: Odporność na korygowany i przenoszony ogień z broni maszynowej — oznacznik PASYWNY
+  this.addAnnotation("Komandos: Nie można Cię trafić korygowanym ani przenoszonym ogniem z broni maszynowej.");
 })();</code></pre>
 </div>
 </section>
@@ -996,10 +970,11 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Leśny diabeł: Doskonały kamuflaż w gęstym terenie naturalnym (+3 do Maskowania)
-  if (args.test.context.skillKey === "camouflage") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Leśny diabeł: +3 do Maskowania w lasach, zaroślach i ruinach.");
+  // Leśny diabeł: Ukrywając się w lesie/zaroślach — dodaj wartość Łowiectwa do Ukrywania się
+  if (args.test.context.skillKey === "hiding") {
+    const huntingVal = this.getSkill("hunting") ?? 0;
+    args.test.preData.skillBonus += huntingVal;
+    args.test.preData.annotations.push(`Leśny diabeł: +${huntingVal} do Ukrywania się (wartość Łowiectwa) w naturalnym terenie.`);
   }
 })();</code></pre>
 </div>
@@ -1082,10 +1057,10 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Miotacz kul: Precyzyjne rzucanie obiektami i granatami (+2 do Rzucania)
+  // Miotacz kul: -30% ułatwienie do rzucania (nie dotyczy noży itp.)
   if (args.test.context.skillKey === "throwing") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Miotacz kul: +2 do celności rzutów obiektami, kamieniami i granatami.");
+    args.test.preData.penalties.mod -= 30;
+    args.test.preData.annotations.push("Miotacz kul: -30% do trudności rzucania (granatami, kamieniami itp.). Nie dotyczy rzucania nożami.");
   }
 })();</code></pre>
 </div>
@@ -1342,10 +1317,9 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Odwrócenie uwagi: Skuteczne zmylenie czujności przeciwnika lub straży (+2 do Blefu)
-  if (args.test.context.skillKey === "bluff") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Odwrócenie uwagi: +2 do Blefu przy odwracaniu uwagi strażników.");
+  // Odwrócenie uwagi: +30% utrudnienia dla ofiary kradzieży do testu Czujności — oznacznik PASYWNY
+  if (args.test.context.skillKey === "pickpocketing") {
+    args.test.preData.annotations.push("Odwrócenie uwagi: Ofiara zdaje test Czujności o +30% trudniejszy.");
   }
 })();</code></pre>
 </div>
@@ -1361,10 +1335,9 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Origami: Szybki montaż i demontaż skomplikowanych maszyn i urządzeń (+3 do Mechaniki)
-  if (args.test.context.skillKey === "mechanics") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Origami: +3 do Mechaniki przy rozkładaniu i składaniu precyzyjnych mechanizmów.");
+  // Origami: Manewr pochwytu/rzutu/wykończenia w walce wręcz — oznacznik akcji specjalnej
+  if (args.test.context.skillKey === "brawling") {
+    args.test.preData.annotations.push("Origami: 1 sukces = pochwycenie, 2 sukcesy = rzut (Lekka rana), 3 sukcesy = wykończenie. Przy poprzednim pochwycie koszty o 1 sukces niższe.");
   }
 })();</code></pre>
 </div>
@@ -1378,11 +1351,14 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Ośmiornica: Zmniejszenie kar za wykonywanie wielu różnych czynności w tym samym czasie
-  this.addAnnotation("Ośmiornica: Kary za wielokrotne akcje w tej samej rundzie są zmniejszone.");
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Ośmiornica: -2 Zr w obronie, ale pozwala użyć Zwiększonego tempa bez Inicjatywy</span>
+args.fields.attributeBonus -= <span class="num">2</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Ośmiornica&lt;/b&gt;: -2 Zr w obronie aktywne. Możesz użyć manewru Zwiększone tempo mimo braku Inicjatywy."</span>);</code></pre>
 </div>
 </section>
 
@@ -1396,10 +1372,11 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Otwieranie zamków elektronicznych: Forsowanie cyfrowych zamków i terminali (+3 do Otwierania zamków)
+  // Otwieranie zamków elektronicznych: Dodaj Elektronikę do Otwierania zamków elektronicznych
   if (args.test.context.skillKey === "lockpicking") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Zamki elektroniczne: +3 do Otwierania zamków przy łamaniu cyfrowych zabezpieczeń.");
+    const elecVal = this.getSkill("electronics") ?? 0;
+    args.test.preData.skillBonus += elecVal;
+    args.test.preData.annotations.push(`Otwieranie zamków el.: +${elecVal} (wartość Elektroniki) do testu.`);
   }
 })();</code></pre>
 </div>
@@ -1431,10 +1408,10 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Pająk: Doskonałe wykrywanie i neutralizowanie pułapek oraz min (+3 do Pułapek)
-  if (args.test.context.skillKey === "traps") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Pająk: +3 do Pułapek przy wykrywaniu, zastawianiu i rozbrajaniu min.");
+  // Pająk: Brak konieczności testów Wspinaczki tam gdzie MG uzna to za możliwe
+  if (args.test.context.skillKey === "climbing") {
+    args.test.preData.autoSuccess = true;
+    args.test.preData.annotations.push("Pająk: Automatyczny sukces testu Wspinaczki (jeśli MG uzna wspięcie za możliwe).");
   }
 })();</code></pre>
 </div>
@@ -1466,10 +1443,12 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Pan plaster: Sprawne i szybkie opatrywanie lekkich skaleczeń i ran (+2 do Pierwszej pomocy)
-  if (args.test.context.skillKey === "firstAid") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Pan plaster: +2 do Pierwszej pomocy przy opatrywaniu lekkich ran.");
+  // Pan plaster: Połowa wartości Pierwszej pomocy działa jak Leczenie ran
+  if (args.test.context.skillKey === "woundHealing") {
+    const firstAidVal = this.getSkill("firstAid") ?? 0;
+    const bonus = Math.floor(firstAidVal / 2);
+    args.test.preData.skillBonus += bonus;
+    args.test.preData.annotations.push(`Pan plaster: +${bonus} do Leczenia ran (½ wartości Pierwszej pomocy).`);
   }
 })();</code></pre>
 </div>
@@ -1502,10 +1481,9 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Pierwotny instynkt: Wykrywanie zasadzek i nagłych zagrożeń w dziczy (+3 do Czujności)
-  if (args.test.context.skillKey === "vigilance") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Pierwotny instynkt: +3 do Czujności przy wykrywaniu zasadzek w dziczy.");
+  // Pierwotny instynkt: W teście Inicjatywy zawsze testuje Zręczność (nie Percepcję)
+  if (args.test.context.skillKey === "alertness") {
+    args.test.preData.annotations.push("Pierwotny instynkt: Zawsze testujesz Zręczność w Inicjatywie, nawet gdy inni muszą testować Percepcję.");
   }
 })();</code></pre>
 </div>
@@ -1521,11 +1499,8 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Pitbull: Wyjątkowo mocny uścisk, gryzienie lub szarpanie w walce wręcz (+3 do Bijatyki)
-  if (args.test.context.skillKey === "brawl") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Pitbull: +3 do Bijatyki przy gryzieniu, szarpaniu lub uściskach dłoni.");
-  }
+  // Pitbull: Odporność na zasadzki — oznacznik PASYWNY, MG nie stosuje kar za zasadzkę
+  this.addAnnotation("Pitbull: Niemożliwe zaskoczenie zasadzką. Bez strat segmentów, normalne testowanie Inicjatywy.");
 })();</code></pre>
 </div>
 </section>
@@ -1540,10 +1515,12 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Plug&amp;Play: Błyskawiczne podłączanie i konfigurowanie obcych systemów (+3 do Komputerów)
-  if (args.test.context.skillKey === "computers") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Plug&amp;Play: +3 do Komputerów przy szybkim podłączaniu obcych urządzeń.");
+  // Plug&amp;Play: Komputery jako umiejętność wspomagająca dla Wozów bojowych i Maszyn ciężkich
+  const sk = args.test.context.skillKey;
+  if (["combatVehicles", "heavyMachinery"].includes(sk)) {
+    const compVal = this.getSkill("computers") ?? 0;
+    args.test.preData.skillBonus += compVal;
+    args.test.preData.annotations.push(`Plug&amp;Play: +${compVal} do testu (wartość Komputerów jako wsparcie).`);
   }
 })();</code></pre>
 </div>
@@ -1762,11 +1739,8 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Sama se skocz po piwo: Wydawanie nieszablonowych i skomplikowanych komend zwierzętom (+3 do Opieki nad zwierzętami)
-  if (args.test.context.skillKey === "animalCare") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Sama se skocz po piwo: +3 do Opieki nad zwierzętami przy trudnych komendach.");
-  }
+  // Sama se skocz po piwo: Odporność na Sztuczkę „Hej, przystojniaku!" — oznacznik PASYWNY
+  this.addAnnotation("Sama se skocz po piwo: Odporny/a na Sztuczkę Hej, przystojniaku! — MG nie stosuje jej efektów.");
 })();</code></pre>
 </div>
 </section>
@@ -1781,10 +1755,10 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Samuraj: Perfekcyjne władanie katanami i tradycyjnymi mieczami dwuręcznymi (+3 do Broni ręcznej)
+  // Samuraj: +1 do Broni ręcznej przy walce mieczem lub pałką
   if (args.test.context.skillKey === "handWeapon") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Samuraj: +3 do Broni ręcznej przy walce kataną.");
+    args.test.preData.skillBonus += 1;
+    args.test.preData.annotations.push("Samuraj: +1 do Broni ręcznej przy walce mieczem lub pałką.");
   }
 })();</code></pre>
 </div>
@@ -1911,10 +1885,11 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Snajper: Oddawanie precyzyjnych strzałów z karabinów wyborowych z optyką (+3 do Karabinów)
+  // Snajper: Celownik optyczny snajperki redukuje trudność o -80% (zamiast standardowego -40%)
+  // Wymagane: karabin snajperski + celownik optyczny + mierzenie (aiming)
   if (args.test.context.skillKey === "rifles") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Snajper: +3 do Karabinów przy strzałach mierzonych z lunetą.");
+    args.test.preData.penalties.mod -= 40;
+    args.test.preData.annotations.push("Snajper: Celownik optyczny daje łącznie -80% do trudności trafienia (dodatkowe -40% ponad standardowe -40%).");
   }
 })();</code></pre>
 </div>
@@ -1949,10 +1924,9 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Strzelec kieszonkowy: Celne strzelanie z pistoletów kieszonkowych (+2 do Pistoletów)
+  // Strzelec kieszonkowy: Brak dodatkowych utrudnień za strzał z kieszeni lub z biodra (pistolety i rewolwery)
   if (args.test.context.skillKey === "pistols") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Strzelec kieszonkowy: +2 do rzutów przy strzelaniu z małych pistoletów.");
+    args.test.preData.annotations.push("Strzelec kieszonkowy: Brak kar za strzał z kieszeni lub z biodra. Dotyczy pistoletów i rewolwerów.");
   }
 })();</code></pre>
 </div>
@@ -1964,16 +1938,28 @@
 <p><strong>Opis klimatyczny:</strong> Słyszałeś o Szachiście? No to ci powiem, że to taki facet, którego się nie da trafić, chyba że z pistoletu. Będzie biegał i unikał tak długo, aż ci się    Wy odechce walki. A wtedy on zaproponuje ci partyjkę szachów na rozstrzygnięcie sporu.                         su</p>
 <p><strong>Mechanika:</strong> Decyzję należy podjąć na początku           ny tury, przed rzutem 3k20 lub przed testem Inicjaty- wy. Walczący oddaje Inicjatywę, ale za to otrzymuje       dw bonus +3 do Zręczności w obronie, do czasu, aż sam nie przejmie Inicjatywy. Sztuczka może niejednemu uratować tyłek, gdy stwierdzi, że w tej walce nie         Wy ma szans i lepiej poczekać na kolegów. dz</p>
 <h4>Analiza Active Effect</h4>
-<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="callout info"><strong>Implementowalne:</strong> trzy skrypty na triggerze <strong>dialog</strong> (Hide + Dialog + Submit). Działa zarówno w trybie 1 (encounter) jak i trybie opposed-chat.</div>
+
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Szachista: Doskonałe przewidywanie strategii przeciwnika i blefowanie w walce (+3 do Blefu)
-  if (args.test.context.skillKey === "bluff") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Szachista: +3 do Blefu przy strategicznym zwodzeniu wroga.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog — Hide Script</span></div>
+<pre><code><span class="cmt">// Pokaż opcję tylko gdy rzut jest walką wręcz</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+</div>
+
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog — Dialog Script</span></div>
+<pre><code><span class="cmt">// +3 do Zręczności w obronie (attributeBonus jest przekazywany do rzutu obronnego)</span>
+args.fields.attributeBonus += <span class="num">3</span>;</code></pre>
+</div>
+
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog — Submit Script</span></div>
+<pre><code><span class="cmt">// Sprawdź czy aktor ma Inicjatywę, jeśli tak — oddaj ją przeciwnikowi</span>
+<span class="cmt">// hasMeleeInitiative(): tryb 1 → sprawdza initiativeOwnerId; opposed-chat → true gdy dialog ataku otwarty</span>
+<span class="cmt">// yieldMeleeInitiative(): tryb 1 → zmienia initiativeOwnerId; opposed-chat → ustawia flagę _szachistaYield</span>
+<span class="cmt">//   flaga jest odczytywana przez _createDuelCard → initiativeOwnerSide = "defender"</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">hasMeleeInitiative</span>()) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">yieldMeleeInitiative</span>();</code></pre>
 </div>
 </section>
 
@@ -1987,11 +1973,9 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Szósty zmysł: Przeczucie nieuchronnego niebezpieczeństwa sekundy przed nim (+3 do Czujności w 1. rundzie)
-  if (args.test.context.skillKey === "vigilance") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Szósty zmysł: +3 do Czujności na początku walki.");
-  }
+  // Szósty zmysł: Raz na dzień automatyczny unik przed zagrożeniem — oznacznik zasobu
+  // Umieść flagę "szostyZmysl" na aktorze (raz na dzień). Przed zagrożeniem gracz deklaruje użycie.
+  this.addAnnotation("Szósty zmysł: Raz na dzień automatyczny unik przed jednym zagrożeniem (zasadzka, snajper, mina). W walce: automatyczny unik 1 akcji przeciwnika (koszt: tyle segmentów co on).");
 })();</code></pre>
 </div>
 </section>
@@ -2041,11 +2025,8 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Szybki Bill: Wyjątkowy refleks na początku walki, zwiększający szansę na szybszy ruch (+3 do Czujności)
-  if (args.test.context.skillKey === "vigilance") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Szybki Bill: +3 do Czujności przy ustalaniu Inicjatywy.");
-  }
+  // Szybki Bill: W jednym segmencie pokonuje 2× normalny dystans — oznacznik NARRACYJNY
+  this.addAnnotation("Szybki Bill: W jednym segmencie możesz pokonać dwukrotnie większy dystans niż normalny człowiek.");
 })();</code></pre>
 </div>
 </section>
@@ -2094,14 +2075,14 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Śrutobranie: Zwiększona szansa na trafienie z bliska przy użyciu strzelb śrutowych (+2 do Karabinów)
-  if (args.test.context.skillKey === "rifles") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Śrutobranie: +2 do Karabinów przy strzelaniu śrutem z bliskiej odległości.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko przy strzale ze śrutówki (ranged)</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Śrutobranie: przeładowanie + strzał w 1 segment, ale +30% kary do trafienia</span>
+args.fields.modifier += <span class="num">30</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Śrutobranie&lt;/b&gt;: Przeładowanie + strzał w 1 segment. Kara +30% do trafienia aktywna."</span>);</code></pre>
 </div>
 </section>
 
@@ -2113,33 +2094,31 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Taran: Wyważanie barier, drzwi i zapór siłą własnego ciała (+3 do Kondycji)
-  if (args.test.context.skillKey === "stamina") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Taran: +3 do testów Kondycji przy wyważaniu przeszkód.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Taran: -4 do Zręczności, ale obrażenia o 1 poziom wyższe. Tylko ciężkie/długie bronie.</span>
+args.fields.attributeBonus -= <span class="num">4</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Taran&lt;/b&gt;: -4 Zr aktywne. Przy trafieniu obrażenia o 1 poziom wyższe — MG stosuje przy applyDamage."</span>);</code></pre>
 </div>
 </section>
 
 <section id="trick-106-taranowanie">
 <h3>106. Taranowanie</h3>
-<p><strong>Wymagania:</strong> Broń ręczna 4+, Budowa 14+</p>
-<p><strong>Opis klimatyczny:</strong> Każdy głupi wie, że jak ktoś się na ciebie porządnie zamachnie, to lepiej się zawczasu odsu- nąć. Gorzej, gdy cwaniak robi to tak, że nawet nie zauważysz. Spokojnie się zasłaniasz, a tu nagle „dup!” - i ręka ci drętwieje od ciosu.</p>
-<p><strong>Mechanika:</strong> Decyzję należy podjąć na początku tury, przed rzutem 3k20. Dotyczy cięższych i dłuż- szych broni, jak pałki, młoty, miecze, łańcuchy itp. Walczący otrzymuje karę -4 do Zręczności, lecz zada- ne obrażenia są o poziom większe.</p>
+<p><strong>Wymagania:</strong> Ciężarówka 3+ lub Samochód 3+</p>
+<p><strong>Opis klimatyczny:</strong> Niepokonany w jeździe, niepokonany na drodze. Jak na wojnie coś stoi na drodze, to się taranuje, a nie omija.</p>
+<p><strong>Mechanika:</strong> Brak utrudnień do testów Prowadzenia pojazdu podczas taranowania innej maszyny lub pojazdu.</p>
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Taranowanie: Skuteczne taranowanie ciężarówką innych pojazdów lub blokad (+3 do jazdy Ciężarówką)
-  if (args.test.context.skillKey === "truck") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Taranowanie: +3 do testów taranowania za pomocą ciężarówki.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko przy testach prowadzenia pojazdu</span>
+<span class="kw">return</span> !([<span class="str">"truck"</span>, <span class="str">"car"</span>, <span class="str">"vehicle"</span>].<span class="fn">includes</span>(args.rollType));</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Taranowanie: Zeruj karę za taranowanie pojazdu (modifier normalnie by był +30-50%)</span>
+args.fields.modifier = <span class="num">0</span>;</code></pre>
 </div>
 </section>
 
@@ -2151,14 +2130,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Targowanie się: Skuteczne obniżanie cen towarów w postapokaliptycznym handlu (+3 do Perswazji)
-  if (args.test.context.skillKey === "persuasion") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Targowanie się: +3 do Perswazji podczas transakcji handlowych.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Podczas handlu przeciwnik zdaje testy Niezłomności o 1 poziom trudniejsze. MG stosuje utrudnienie dla drugiej strony — brak mechaniki po stronie bohatera. Efekt jako przypomnienie.</div>
 </div>
 </section>
 
@@ -2170,14 +2142,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // To się robi tak: Pokazowe i bezbłędne wykonywanie napraw technicznych przy innych (+3 do Mechaniki)
-  if (args.test.context.skillKey === "mechanics") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("To się robi tak: +3 do Mechaniki przy pokazowych naprawach.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>MANUAL trigger:</strong> Bohater zdaje test Zdolności przywódczych. Przy sukcesie: niewykwalifikowani pracownicy dostają Umiejętność opartą o Spryt (którą bohater ma 3+) na poziomie 1 na czas jednego zadania. Brak automatyzacji — MG stosuje tymczasowo na kartach NPC.</div>
 </div>
 </section>
 
@@ -2191,11 +2156,8 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // W mgnieniu oka: Wykrycie nagłych niebezpieczeństw w ułamku sekundy (+3 do Czujności)
-  if (args.test.context.skillKey === "vigilance") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("W mgnieniu oka: +3 do Czujności przy nagłym wykrywaniu zagrożeń.");
-  }
+  // W mgnieniu oka: Wychylenie za osłonę i wypatrywanie wroga nie kosztuje segmentu — oznacznik NARRACYJNY
+  this.addAnnotation("W mgnieniu oka: Nie tracisz segmentu, by po wychyleniu się zza osłony dostrzec wroga.");
 })();</code></pre>
 </div>
 </section>
@@ -2208,11 +2170,14 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Walka dwiema broniami: Zmniejszenie kary za atakowanie drugą bronią w ręce pomocniczej
-  this.addAnnotation("Walka dwiema broniami: Kary za używanie drugiej broni są znacznie zmniejszone.");
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu melee (walka bronią ręczną)</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Walka dwiema broniami: Dodaj ½ wartości drugiej broni do testu</span>
+<span class="cmt">// Dostosuj "brawling" do faktycznie drugiej broni którą trzymasz</span>
+<span class="kw">const</span> secondSkill = Math.<span class="fn">floor</span>((<span class="fn">this.getSkill</span>(<span class="str">"brawling"</span>) ?? <span class="num">0</span>) / <span class="num">2</span>);
+args.fields.skillBonus += secondSkill;</code></pre>
 </div>
 </section>
 
@@ -2224,14 +2189,14 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Wiatrak: Walka z wieloma przeciwnikami bronią białą bez utraty skuteczności obronnej (+2 do Broni ręcznej)
-  if (args.test.context.skillKey === "handWeapon") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Wiatrak: +2 do walki bronią białą przeciwko wielu celom.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee z Bijatyki</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Wiatrak: Aktywacja manewru Furia — nie możesz stracić Inicjatywy w tej turze</span>
+<span class="cmt">// Brak liczbowego modifikatora — efekt mechaniczny obsługiwany przez MG</span></code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Wiatrak (Furia)&lt;/b&gt;: Nie możesz stracić Inicjatywy w tej turze. Jeśli ją stracisz — odzyskujesz automatycznie w następnym segmencie. Na koniec tury: +20% kary zmęczenia."</span>);</code></pre>
 </div>
 </section>
 
@@ -2243,14 +2208,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Wilk morski: Ekstremalne kierowanie motorówkami i łodziami w trudnych warunkach wodnych (+3 do Motorowodnego)
-  if (args.test.context.skillKey === "boats") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Wilk morski: +3 do testów sterowania łodziami i motorówkami.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Bohater potrafi wiązać masę dziwnych węzłów, które rozwiązać może tylko osoba z tą samą Sztuczką. Brak testu — efekt jako przypomnienie dla MG i graczy.</div>
 </div>
 </section>
 
@@ -2264,10 +2222,10 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Właściwa twarz: Całkowite panowanie nad mimiką twarzy i kłamstwem (+3 do Blefu)
-  if (args.test.context.skillKey === "bluff") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Właściwa twarz: +3 do Blefu dzięki pełnej kontroli mimiki.");
+  // Właściwa twarz: Odejmujesz 1 oczko na dowolnej kości podczas wszystkich testów Charakteru
+  if (args.test.context.attributeKey === "charisma") {
+    args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? 0) + 1;
+    args.test.preData.annotations.push("Właściwa twarz: -1 na dowolnej kości w teście Charakteru.");
   }
 })();</code></pre>
 </div>
@@ -2300,14 +2258,15 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Wyczekanie: Cierpliwe i strategiczne czekanie na odpowiedni moment ataku (+2 do Czujności)
-  if (args.test.context.skillKey === "vigilance") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Wyczekanie: +2 do Czujności przy wyczekiwaniu na dogodną sytuację.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee gdy aktor nie ma Inicjatywy</span>
+<span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return true</span>;
+<span class="kw">return</span> <span class="fn">this.hasMeleeInitiative</span>();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Wyczekanie: -2 Zr w obronie, ale jeśli przejmiesz Inicjatywę: +4 Zr w ataku do końca tury</span>
+args.fields.attributeBonus -= <span class="num">2</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Wyczekanie&lt;/b&gt;: -2 Zr w obronie aktywne. Jeśli przejmiesz Inicjatywę: +4 Zr w ataku do końca tury (MG stosuje)."</span>);</code></pre>
 </div>
 </section>
 
@@ -2319,14 +2278,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Wyczucie emocji zwierząt: Instynktowne rozumienie i uspokajanie rozjuszonych stworzeń (+3 do Opieki nad zwierzętami)
-  if (args.test.context.skillKey === "animalCare") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Wyczucie emocji zwierząt: +3 do Opieki nad zwierzętami przy łagodzeniu agresji.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>MANUAL trigger:</strong> Bohater zdaje Przeciętny test Opieki nad zwierzętami. Przy sukcesie odczytuje nastawienie i przewiduje następne działanie napotkanego zwierzęcia (nie w walce, nie dotyczy mutantów). Brak automatyzacji — MG opisuje wynik.</div>
 </div>
 </section>
 
@@ -2338,14 +2290,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Wyczucie promieniowania: Wykrywanie niewidocznych i zabójczych stref skażenia radioaktywnego (+3 do Wypatrywania)
-  if (args.test.context.skillKey === "spotting") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Wyczucie promieniowania: +3 do Wypatrywania anomalii radiacyjnych.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik PASYWNY:</strong> Bohater zawsze wyczuwa niebezpieczny wzrost promieniowania — brak testu, brak kości. MG automatycznie informuje gracza przy wchodzeniu do obszaru skażenia. Efekt jako przypomnienie.</div>
 </div>
 </section>
 
@@ -2357,14 +2302,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Wyczucie zmian pogody: Trafne przewidywanie gwałtownych burz lub anomalii atmosferycznych (+3 do Wiedzy o terenie)
-  if (args.test.context.skillKey === "terrainKnowledge") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Wyczucie zmian pogody: +3 do Wiedzy o terenie przy prognozowaniu burz.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>MANUAL trigger:</strong> Bohater zdaje Przeciętny test Percepcji. Przy sukcesie bezbłędnie przewiduje pogodę na najbliższy dzień. MG opisuje wynik — brak automatyzacji.</div>
 </div>
 </section>
 
@@ -2397,10 +2335,9 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Wytrych: Otwieranie skomplikowanych zamków mechanicznych za pomocą kawałka drutu (+3 do Otwierania zamków)
+  // Wytrych: Brak kary za brak profesjonalnego sprzętu przy otwieraniu zamków mechanicznych
   if (args.test.context.skillKey === "lockpicking") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Wytrych: +3 do Otwierania zamków przy użyciu improwizowanych drutów.");
+    args.test.preData.annotations.push("Wytrych: Brak kary za brak wytrychów/sprzętu. Możesz użyć kawałka drutu lub czegokolwiek pod ręką.");
   }
 })();</code></pre>
 </div>
@@ -2414,14 +2351,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Zagadanie: Rozproszenie przeciwnika potokiem słów i opóźnienie jego walki (+3 do Perswazji)
-  if (args.test.context.skillKey === "persuasion") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Zagadanie: +3 do Perswazji w celu zagadania i odwrócenia uwagi wroga.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Bohater zagaduje przeciwnika i niepostrzeżenie dobiera broń. Nie działa w walce. Brak testu — MG opisuje skutek. Efekt jako przypomnienie.</div>
 </div>
 </section>
 
@@ -2433,11 +2363,14 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">prepareData</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Zasłona: Zwiększenie bonusów i ochrony pancerza zza osłon o jeden pełny stopień
-  this.addAnnotation("Zasłona: Ochrona zza wszelkich osłon jest zwiększona o jeden poziom.");
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Zasłona: +2 Zr w obronie tej tury. Następna tura: -2 Zr w obronie i ataku (MG śledzi)</span>
+args.fields.attributeBonus += <span class="num">2</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">"&lt;b&gt;Zasłona&lt;/b&gt;: +2 Zr w obronie aktywne. UWAGA: w kolejnej turze -2 Zr zarówno w obronie jak i ataku."</span>);</code></pre>
 </div>
 </section>
 
@@ -2449,14 +2382,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Zgranie: Doskonałe koordynowanie zsynchronizowanych ataków grupy sojuszników (+2 do Przywództwa)
-  if (args.test.context.skillKey === "leadership") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Zgranie: +2 do Przywództwa przy koordynowaniu ataków drużynowych.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Dwie osoby z tą Sztuczką rzucają/łapają lekkie przedmioty automatycznie (do 15m). Czas: 1 seg (5m), 2 seg (10m), 3 seg (15m). Brak testu, brak automatyzacji — efekt jako przypomnienie.</div>
 </div>
 </section>
 
@@ -2470,31 +2396,21 @@
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
 <pre><code>(() =&gt; {
-  // Zielony balonik: Bezbłędne rozbrajanie i podkładanie min lądowych (+3 do Materiałów wybuchowych)
-  if (args.test.context.skillKey === "explosives") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Zielony balonik: +3 do Materiałów wybuchowych przy rozbrajaniu ładunków.");
-  }
+  // Zielony balonik: Automatyczne trafienie w głowę na 1-5m po wycelowaniu — oznacznik NARRACYJNY
+  this.addAnnotation("Zielony balonik: Na odl. 1-5m, wycelowanie w głowę = automatyczny sukces trafienia jeńca. Tylko pistolety i rewolwery. Nie można biegać ze związanym.");
 })();</code></pre>
 </div>
 </section>
 
 <section id="trick-125-zly">
 <h3>125. Zły</h3>
-<p><strong>Wymagania:</strong> Spryt 12+                                      wa</p>
-<p><strong>Opis klimatyczny:</strong> Widzisz tamten cmentarz? Zauważyłeś, że wszystkie daty na nim są wczorajsze? Wczoraj chcia- łem się po prostu dowiedzieć od miejscowych, który        Wy z nich jest mechanikiem. I wiesz, w końcu poskutko- wało. Jakiś facio w ciągu trzech godzin nauczył się       Ro fachu i teraz reperuje mi samochód.                       fi</p>
-<p><strong>Mechanika:</strong> Podczas przesłuchiwania sam na sam          go z więźniem, możesz w teście dodać do Zastraszania         wy lub Perswazji swój Blef lub Postrzeganie emocji. tu</p>
+<p><strong>Wymagania:</strong> Zastraszanie 4+, Charakter 12+</p>
+<p><strong>Opis klimatyczny:</strong> Widzisz tamten cmentarz? Zauważyłeś, że wszystkie daty na nim są wczorajsze? Wczoraj chciałem się po prostu dowiedzieć od miejscowych, który z nich jest mechanikiem. I wiesz, w końcu poskutkowało...</p>
+<p><strong>Mechanika:</strong> Przebywający w pobliżu mówiącego muszą zdać Bardzo Trudny test Morale lub otrzymują +10% utrudnienia do wszystkich akcji.</p>
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Zły: Przepełniająca i mroczna aura bezwzględności paraliżująca innych (+3 do Zastraszania)
-  if (args.test.context.skillKey === "intimidation") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Zły: +3 do Zastraszania dzięki srogiej i przerażającej postawie.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>MANUAL trigger / aura:</strong> Bohater aktywuje Sztuczką. Pobliskie osoby zdają Bardzo Trudny test Morale. Przy porażce: +10% kary do wszystkich akcji. MG stosuje ręcznie dla NPC, whisper do graczy przy sukcesie i porażce.</div>
 </div>
 </section>
 
@@ -2506,15 +2422,16 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Zmyłka: Dodanie wartości Umiejętności Blef do walki wręcz (Bijatyki lub Broni ręcznej) na jedną rundę
-  if (["brawl", "handWeapon"].includes(args.test.context.skillKey)) {
-    const bluffVal = this.getSkill("bluff") ?? 0;
-    args.test.preData.skillBonus += bluffVal;
-    args.test.preData.annotations.push(`Zmyłka: Dodano wartość Blefu (+${bluffVal}) do testu walki wręcz.`);
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Hide Script</div>
+<pre><code><span class="cmt">// Pokaż tylko w dialogu rzutu na melee</span>
+<span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Dialog Script</div>
+<pre><code><span class="cmt">// Zmyłka: Dodaj wartość Blefu do walki wręcz na czas 1 tury (raz na tego samego przeciwnika)</span>
+<span class="kw">const</span> bluffVal = <span class="fn">this.getSkill</span>(<span class="str">"bluffing"</span>) ?? <span class="num">0</span>;
+args.fields.skillBonus += bluffVal;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog</span> Submit Script</div>
+<pre><code><span class="kw">const</span> bluffVal = <span class="fn">this.getSkill</span>(<span class="str">"bluffing"</span>) ?? <span class="num">0</span>;
+<span class="kw">await</span> <span class="fn">this.sendToChat</span>(<span class="str">`&lt;b&gt;Zmyłka&lt;/b&gt;: +${bluffVal} (Blef) do walki wręcz aktywne na tę turę. Można użyć tylko raz na tego samego przeciwnika.`</span>);</code></pre>
 </div>
 </section>
 
@@ -2526,14 +2443,7 @@
 <h4>Analiza Active Effect</h4>
 <div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Żelazne racje: Doskonała konserwacja i solenie mięsa, zapobiegające jego popsuciu (+3 do Łowiectwa)
-  if (args.test.context.skillKey === "hunting") {
-    args.test.preData.skillBonus += 3;
-    args.test.preData.annotations.push("Żelazne racje: +3 do Łowiectwa przy konserwowaniu i soleniu upolowanej zwierzyny.");
-  }
-})();</code></pre>
+<div class="callout warning"><strong>Oznacznik NARRACYJNY:</strong> Bohater potrafi zakonserwować zdobytą żywność na kilka miesięcy. Brak testu — efekt jako przypomnienie dla MG. Jedzenie nie psuje się przez kilka miesięcy.</div>
 </div>
 </section>
 </section>

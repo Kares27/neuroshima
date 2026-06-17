@@ -579,6 +579,145 @@ export class NeuroshimaScript {
     return track[Math.min(track.length - 1, idx + steps)];
   }
 
+  // ── Melee encounter helpers ──────────────────────────────────────────────
+
+  /**
+   * Return the active MeleeEncounter data for `actor` (or this.actor).
+   * Reads directly from the active combat's `neuroshima.meleeEncounters` flag.
+   * Returns null when the actor is not in any active melee encounter.
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {object|null}
+   *
+   * @example
+   * const enc = this.getMeleeEncounter();
+   * if (!enc) return;
+   * console.log(enc.turnState.initiativeOwnerId);
+   */
+  getMeleeEncounter(actor) {
+    const target = actor ?? this.actor;
+    if (!target) return null;
+    const encounterId = target.getFlag("neuroshima", "activeMeleeEncounter");
+    if (!encounterId) return null;
+    const encounters = game.combat?.getFlag("neuroshima", "meleeEncounters") ?? {};
+    return encounters[encounterId] ?? null;
+  }
+
+  /**
+   * Return the participant ID for `actor` within their active melee encounter.
+   * The participant key is the actor UUID (or token UUID) with every dot replaced by a dash —
+   * matching the key stored in `encounter.participants`.
+   * Returns null if the actor has no active encounter or is not found among its participants.
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {string|null}
+   *
+   * @example
+   * const pid         = this.getMeleeParticipantId();
+   * const participant = this.getMeleeEncounter()?.participants[pid];
+   */
+  getMeleeParticipantId(actor) {
+    const target = actor ?? this.actor;
+    if (!target) return null;
+    const enc = this.getMeleeEncounter(target);
+    if (!enc) return null;
+    const entry = Object.values(enc.participants).find(p => p.actorUuid === target.uuid);
+    return entry?.id ?? null;
+  }
+
+  /**
+   * Return true if `actor` (or this.actor) currently holds Initiative in their active
+   * melee encounter — i.e. is the `turnState.initiativeOwnerId`.
+   * Returns false when the actor has no active encounter.
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {boolean}
+   *
+   * @example
+   * // dialog trigger — offer Szachista only when the actor holds initiative
+   * if (!this.hasMeleeInitiative()) return;
+   * const yield = await this.dialog("Zastosować manewr Szachista?", "confirm");
+   * if (yield) await this.yieldMeleeInitiative();
+   *
+   * @example
+   * // preOpposedDefender — Szachista: +3 Zr in defense when not holding initiative
+   * if (!this.hasMeleeInitiative()) args.difficultyTarget += 3;
+   */
+  hasMeleeInitiative(actor) {
+    const target = actor ?? this.actor;
+    const enc = this.getMeleeEncounter(target);
+    if (!enc) {
+      return target?._neuroshimaAttackInitiated === true;
+    }
+    const pid = this.getMeleeParticipantId(target);
+    if (!pid) return false;
+    return enc.turnState?.initiativeOwnerId === pid;
+  }
+
+  /**
+   * Transfer Initiative to the primary opponent of `actor` (or this.actor).
+   * Updates `encounter.turnState.initiativeOwnerId` to the opponent's participant ID
+   * and persists the change via the socket-aware combat flag update.
+   *
+   * Returns false (no-op) when:
+   *   - the actor has no active encounter
+   *   - the actor does not currently hold initiative
+   *   - no primary opponent can be resolved
+   *
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {Promise<boolean>} true if initiative was transferred, false otherwise.
+   *
+   * @example
+   * // Szachista — yields initiative before pool roll, gains +3 Zr in defense
+   * if (!this.hasMeleeInitiative()) return;
+   * const confirmed = await this.dialog(
+   *   "Zastosować <b>Szachista</b>?<br>Oddajesz Inicjatywę — zyskujesz +3 Zr w obronie.",
+   *   "confirm"
+   * );
+   * if (!confirmed) return;
+   * const ok = await this.yieldMeleeInitiative();
+   * if (ok) this.notification("Inicjatywa oddana.", "info");
+   */
+  async yieldMeleeInitiative(actor) {
+    const target = actor ?? this.actor;
+    const enc = this.getMeleeEncounter(target);
+    if (!enc) {
+      await target.setFlag("neuroshima", "_szachistaYield", true);
+      return true;
+    }
+
+    const pid = this.getMeleeParticipantId(target);
+    if (!pid || enc.turnState?.initiativeOwnerId !== pid) return false;
+
+    let opponentId = enc.primaryTargets?.[pid] ?? null;
+    if (!opponentId) {
+      const myParticipant = enc.participants[pid];
+      if (myParticipant) {
+        const opposingTeam = myParticipant.team === "A" ? "B" : "A";
+        const opponents = (enc.teams[opposingTeam] || []).filter(id => enc.participants[id]?.isActive);
+        if (opponents.length === 1) opponentId = opponents[0];
+      }
+    }
+    if (!opponentId || !enc.participants[opponentId]) return false;
+
+    const encounterId = target.getFlag("neuroshima", "activeMeleeEncounter");
+    const encounters = foundry.utils.deepClone(
+      game.combat?.getFlag("neuroshima", "meleeEncounters") ?? {}
+    );
+    const updated = encounters[encounterId];
+    if (!updated) return false;
+
+    updated.turnState.initiativeOwnerId = opponentId;
+
+    if (game.user.isGM || !game.neuroshima?.socket) {
+      await game.combat.setFlag("neuroshima", "meleeEncounters", encounters);
+    } else {
+      await game.neuroshima.socket.executeAsGM("updateCombatFlag", "meleeEncounters", encounters);
+    }
+
+    game.neuroshima?.log(`[yieldMeleeInitiative] ${target.name} → ${enc.participants[opponentId]?.name}`, {
+      encounterId, from: pid, to: opponentId
+    });
+    return true;
+  }
+
   // ── Token / targeting helpers ────────────────────────────────────────────
 
   /**
