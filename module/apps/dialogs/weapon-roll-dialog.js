@@ -194,6 +194,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     }
     context.baseDifficulty = effectDifficulty;
     context.damageShift = scriptFields.damageShift || 0;
+    context.damageShift1 = scriptFields.damageShift1 || 0;
+    context.damageShift2 = scriptFields.damageShift2 || 0;
+    context.damageShift3 = scriptFields.damageShift3 || 0;
     context.hitLocation    = (scriptFields.hitLocation && this.userEntry.hitLocation === undefined)
       ? scriptFields.hitLocation : hitLocation;
 
@@ -522,6 +525,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       distance:        parseFloat(formData.distance) || 0,
       distancePenalty: parseInt(formData.distancePenalty) || 0,
       damageShift:     sf?.damageShift || 0,
+      damageShift1:    sf?.damageShift1 || 0,
+      damageShift2:    sf?.damageShift2 || 0,
+      damageShift3:    sf?.damageShift3 || 0,
       dieManualBonus:      Number(this.userEntry.dieManualBonus ?? 0) || 0,
       dieReductionBonus:  Number(this.userEntry.dieReductionBonus ?? 0) || 0,
       rollMode:        formData.rollMode

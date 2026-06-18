@@ -2863,6 +2863,43 @@ function initializeSocketlib() {
         await MeleeOpposedChat.applyDuelBatch(messageId, pool, diceIndices, action ?? null, beastQueue ?? null);
     });
 
+    // Disarm a weapon — unequip the specified weapon from an actor, or auto-find the first
+    // equipped melee weapon that is longer than a knife (skill !== "brawl").
+    // Called via NeuroshimaSocket.gmExecute / this.disarmWeapon() from script context.
+    game.neuroshima.socket.register("disarmWeapon", async (actorUuid, weaponId) => {
+        game.neuroshima?.log("[socket:disarmWeapon] received", { actorUuid, weaponId });
+        const doc = fromUuidSync(actorUuid);
+        const actor = doc?.actor ?? doc;
+        if (!actor) {
+            game.neuroshima?.log("[socket:disarmWeapon] actor not found", actorUuid);
+            return { success: false, reason: "Actor not found" };
+        }
+        // If a specific weaponId was provided, use it; otherwise auto-pick the first
+        // equipped melee weapon longer than a knife (skill !== "brawl").
+        let weapon;
+        if (weaponId) {
+            weapon = actor.items.get(weaponId);
+        } else {
+            weapon = actor.items.find(i =>
+                i.type === "weapon" &&
+                i.system.equipped &&
+                i.system.weaponType === "melee" &&
+                i.system.skill !== "brawl"
+            );
+        }
+        if (!weapon) {
+            game.neuroshima?.log("[socket:disarmWeapon] eligible weapon not found", { actorName: actor.name, weaponId });
+            return { success: false, reason: "No eligible weapon found" };
+        }
+        if (!weapon.system.equipped) {
+            game.neuroshima?.log("[socket:disarmWeapon] weapon already unequipped", weapon.name);
+            return { success: true, alreadyUnequipped: true, weaponName: weapon.name, actorName: actor.name };
+        }
+        await weapon.update({ "system.equipped": false });
+        game.neuroshima?.log("[socket:disarmWeapon] weapon disarmed", { actorName: actor.name, weaponName: weapon.name });
+        return { success: true, weaponName: weapon.name, actorName: actor.name };
+    });
+
     game.neuroshima.socket.register("syncActorManeuverConditions", async (actorUuid, condKey, hasCharge, tempoLevel) => {
         game.neuroshima?.log("[socket:syncActorManeuverConditions] received", { actorUuid, condKey, hasCharge, tempoLevel });
         const doc = fromUuidSync(actorUuid);

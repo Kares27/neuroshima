@@ -655,7 +655,7 @@ export class MeleeOpposedChat {
       applied: false
     };
 
-    const context = MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
+    const context = await MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
     const content = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-duel-card.hbs",
       context
@@ -670,7 +670,7 @@ export class MeleeOpposedChat {
     await MeleeOpposedChat._syncInitiativeToTracker(state);
   }
 
-  static _buildDuelContext(state, attackerActor, defenderActor) {
+  static async _buildDuelContext(state, attackerActor, defenderActor) {
     const {
       attackDice, defenseDice, usedAttackDice, usedDefenseDice,
       waitingFor, initiativeOwnerSide, committedOwnerIndices,
@@ -777,6 +777,9 @@ export class MeleeOpposedChat {
     const ownerDeclaredAttack    = isResponderTurn && effectiveDeclared === "attack";
     const ownerDeclaredExit      = isResponderTurn && effectiveDeclared === "exit";
     const ownerDeclaredNonCombat = isResponderTurn && effectiveDeclared === "nonCombat";
+    // Sztuczka — traktowana jak atak (obrońca broni się tak samo)
+    const ownerDeclaredTrick        = isResponderTurn && effectiveDeclared === "trick";
+    const ownerDeclaredAttackOrTrick = ownerDeclaredAttack || ownerDeclaredTrick;
 
     let responderConfirmActionType = "defend";
     let responderConfirmLabel      = game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelConfirmDefense");
@@ -840,6 +843,117 @@ export class MeleeOpposedChat {
       }
     }
 
+    // getMeleeActions trigger — fires for non-creature actors during their own turn.
+    // Effect scripts push extra action entries (sztuczki like Barbarka) to args.actions.
+    // Actions with successCost > 0 appear in a queue section (like beast actions, budget = uncommitted successes).
+    // Actions without successCost appear as standalone attack-alternative buttons.
+    let ownerExtraActions    = null;  // standalone trick buttons (successCost === 0)
+    let ownerTrickQueue      = null;  // queue-style tricks (successCost > 0), like beast actions
+    let ownerDialogModifiers = null;  // dialog-mode getMeleeActions modifiers (isDialogScript === true)
+    if (ownerActor && !ownerIsCreature && status === "picking" && isOwnerTurn) {
+      // --- helper context for effect scripts ---
+      const ownerDiceArrFull = isOwnerAttacker ? (attackDice || []) : (defenseDice || []);
+      const usedOwnerSet = new Set(isOwnerAttacker ? (usedAttackDice || []) : (usedDefenseDice || []));
+      const uncommittedOwnerDice = ownerDiceArrFull.filter((_, i) => !usedOwnerSet.has(i));
+      const uncommittedDiceCount    = uncommittedOwnerDice.length;
+      const uncommittedSuccessCount = uncommittedOwnerDice.filter(d => d.isSuccess).length;
+
+      // Segments resolved before the current one (outcome not null and not "spent")
+      const pastSegs = (segments || []).slice(0, currentSegment).filter(s => s.outcome && s.outcome !== "spent");
+      // ownerHadHit: any previous segment with outcome "hit" (from attacker's perspective)
+      const ownerHadHit      = pastSegs.some(s => s.outcome === "hit");
+      const ownerPreviousHits = pastSegs.filter(s => s.outcome === "hit");
+
+      // getMeleeActions — dwa tryby skryptów:
+      // • isDialogScript === false (domyślny): skrypt odpala się zawsze pasywnie
+      //   i wpycha akcje do ownerExtraActions lub ownerTrickQueue.
+      // • isDialogScript === true: sztuczka pojawia się jako checkbox na karcie walki.
+      //   Skrypt odpala się DOPIERO gdy gracz go aktywuje i zatwierdzi Atak.
+      //   evalHide() → ukrywa modifier; evalActivate() → auto-zaznacza checkbox.
+      const extraActionsArr = [];
+      try {
+        const { NeuroshimaScriptRunner, NeuroshimaScript: _NS } = await import("../apps/neuroshima-script-engine.js");
+        const triggerArgs = {
+          actor: ownerActor,
+          state,
+          actions: extraActionsArr,
+          ownerHadHit,
+          ownerPreviousHits,
+          uncommittedDice: uncommittedDiceCount,
+          uncommittedSuccesses: uncommittedSuccessCount
+        };
+
+        const allMeleeScripts = NeuroshimaScriptRunner.getScripts(ownerActor, "getMeleeActions");
+        const dialogModsArr = [];
+        for (const script of allMeleeScripts) {
+          if (script.isDialogScript) {
+            // Dialog-mode: evaluate hide/activate to build the modifier entry.
+            // The actual code runs later when the player checks the box and clicks Attack.
+            let isHidden = false, isAutoActive = false;
+            try {
+              isHidden    = await script.evalHide(triggerArgs);
+              isAutoActive = await script.evalActivate(triggerArgs);
+            } catch (err) {
+              game.neuroshima?.log("[getMeleeActions] dialog modifier eval error", err);
+            }
+            if (!isHidden) {
+              const eff = script.effect;
+              // _sourceIdx is set by the active-effect.js scripts getter (array position).
+              const scriptIdx = script._sourceIdx ?? -1;
+              dialogModsArr.push({
+                id:          `dm-${eff?.id ?? foundry.utils.randomID(6)}-${scriptIdx}`,
+                label:       script.label || eff?.name || "Sztuczka",
+                img:         eff?.img     ?? "systems/neuroshima/assets/effects/gears.svg",
+                isAutoActive,
+                effectUuid:  eff?.uuid   ?? null,
+                scriptIdx
+              });
+            }
+          } else {
+            // Passive-mode: run the script immediately, it pushes to extraActionsArr.
+            try {
+              await script.execute(triggerArgs);
+            } catch (err) {
+              game.neuroshima?.log("[getMeleeActions] trigger error", err);
+            }
+          }
+        }
+        if (dialogModsArr.length) ownerDialogModifiers = dialogModsArr;
+      } catch (err) {
+        game.neuroshima?.log("[getMeleeActions] trigger error", err);
+      }
+      if (extraActionsArr.length > 0) {
+        const normalized = extraActionsArr.map(a => ({
+          id:          a.id          ?? `trick-${foundry.utils.randomID(8)}`,
+          name:        a.name        ?? "Extra Action",
+          img:         a.img         ?? "systems/neuroshima/assets/effects/gears.svg",
+          damage:      a.damage      ?? "D",
+          successCost: a.successCost ?? 0,
+          minDice:     a.minDice     ?? 1,
+          maxDice:     a.maxDice     ?? 3,
+          annotation:  a.annotation  ?? null,
+          // onHitScript: optional JS string executed instead of damage when a standalone trick hits.
+          // Gets args: { actor (attacker), target (defender), state, hit: { tier, damageType, trickId } }
+          // If set, damage field is ignored for hit resolution. Use this.applyWound() inside if damage is also needed.
+          onHitScript: a.onHitScript ?? null
+        }));
+        const queued     = normalized.filter(a => a.successCost > 0);
+        const standalone = normalized.filter(a => !a.successCost);
+        ownerExtraActions = standalone.length ? standalone : null;
+        ownerTrickQueue   = queued.length     ? queued     : null;
+
+        // Persist onHitScript map to state so applyDuelBatch can resolve it after dice comparison.
+        // Keyed by action id — only standalone actions can have onHitScript (they are dice-compared attacks).
+        const onHitMap = {};
+        for (const a of normalized) {
+          if (a.onHitScript && !a.successCost) onHitMap[a.id] = a.onHitScript;
+        }
+        if (Object.keys(onHitMap).length > 0) {
+          state.trickOnHitScripts = { ...(state.trickOnHitScripts ?? {}), ...onHitMap };
+        }
+      }
+    }
+
     const damageTiers = (state.damage1 || state.damage2 || state.damage3) ? {
       d: state.damage1 ?? "?",
       l: state.damage2 ?? "?",
@@ -869,9 +983,13 @@ export class MeleeOpposedChat {
       ownerPool, responderPool, ownerActorUuid, responderActorUuid,
       committedOwnerCount: committedIndices.length,
       damageTiers, confirmOwnerLabel, canSwapInit, isGradCios: isGradCios || false,
-      ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat,
+      ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat, ownerDeclaredTrick, ownerDeclaredAttackOrTrick,
       responderConfirmActionType, responderConfirmLabel, responderExactDice,
-      ownerIsCreature, ownerBeastActions, committedSuccessCount
+      ownerIsCreature, ownerBeastActions, committedSuccessCount,
+      ownerExtraActions, ownerTrickQueue, ownerDialogModifiers,
+      isGM:    game.user.isGM,
+      canUndo: game.user.isGM && (state.segmentHistory?.length ?? 0) > 0,
+      canRedo: game.user.isGM && (state.segmentFuture?.length  ?? 0) > 0
     };
   }
 
@@ -881,7 +999,7 @@ export class MeleeOpposedChat {
     const defenderDoc = fromUuidSync(state.defenderUuid);
     const defenderActor = defenderDoc?.actor ?? defenderDoc ?? null;
 
-    const context = MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
+    const context = await MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
     const content = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/melee-duel-card.hbs",
       context
@@ -949,6 +1067,7 @@ export class MeleeOpposedChat {
         chip.classList.toggle("mvc-die-selected");
         updateActionButtons();
         updateBeastQueue();
+        updateTrickQueue();
       });
     });
 
@@ -963,10 +1082,107 @@ export class MeleeOpposedChat {
         const selected   = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
         const indices    = selected.map(c => parseInt(c.dataset.dieIdx, 10)).filter(n => !isNaN(n));
 
+        // Sztuczki gracza (getMeleeActions) mają action-type="trick" z dodatkowymi atrybutami.
+        // Kodujemy jako "trick:ID:damage" aby applyDuelBatch mógł parsować metadane sztuczki.
+        let actionArg = actionType;
+        if (actionType === "trick") {
+          const trickId     = btn.dataset.trickId     ?? "";
+          const trickDamage = btn.dataset.trickDamage ?? "";
+          actionArg = `trick:${trickId}:${trickDamage}`;
+        }
+
+        // Jeśli gracz zatwierdza atak i ma aktywną kolejkę sztuczek (successCost > 0),
+        // zbieramy zakolejkowane sztuczki i przekazujemy jako beastQueue z prefiksem "trick:".
+        // applyDuelBatch rozpozna te wpisy i oddzieli je od akcji bestii.
+        let extraQueue = null;
+        if (actionType === "attack") {
+          const tqs = root.querySelector(".mdc-trick-queue-section");
+          if (tqs) {
+            const trickItems = [];
+            tqs.querySelectorAll(".mdc-trick-qty-val").forEach(el => {
+              const qty = parseInt(el.textContent, 10) || 0;
+              const id  = el.dataset.trickId;
+              const dmg = el.dataset.trickDamage;
+              if (qty > 0 && id && dmg) {
+                for (let i = 0; i < qty; i++) trickItems.push(`trick:${id}:${dmg}`);
+              }
+            });
+            if (trickItems.length) extraQueue = trickItems;
+          }
+
+          // getMeleeActions dialog modifiers — zaznaczone checkboxy uruchamiają swój skrypt
+          // i dodają wypchnięte akcje jako trick-queue entries (aplikowane bezwarunkowo).
+          const dmsSection = root.querySelector(".mdc-dialog-modifiers-section");
+          if (dmsSection) {
+            const checkedMods = [...dmsSection.querySelectorAll(".mdc-dialog-mod-check:checked")];
+            if (checkedMods.length > 0) {
+              try {
+                const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+                const duelState = message.getFlag("neuroshima", "duelCard");
+                const ownerUuid = root.querySelector("[data-melee-owner]")?.dataset.meleeOwner;
+                const ownerDocMod = fromUuidSync(ownerUuid);
+                const ownerActorMod = ownerDocMod?.actor ?? ownerDocMod;
+
+                const segments = duelState?.segments ?? [];
+                const currentSeg = duelState?.currentSegment ?? 0;
+                const pastSegs = segments.slice(0, currentSeg).filter(s => s.outcome && s.outcome !== "spent");
+                const ownerIsAttacker = duelState?.initiativeOwnerSide === "attacker";
+                const ownerDiceArr = ownerIsAttacker ? (duelState?.attackDice ?? []) : (duelState?.defenseDice ?? []);
+                const usedSet = new Set(ownerIsAttacker ? (duelState?.usedAttackDice ?? []) : (duelState?.usedDefenseDice ?? []));
+                const uncommitted = ownerDiceArr.filter((_, ii) => !usedSet.has(ii));
+
+                for (const cb of checkedMods) {
+                  const entry = cb.closest("[data-effect-uuid]");
+                  const effectUuid = entry?.dataset.effectUuid;
+                  const scriptIdx  = parseInt(entry?.dataset.scriptIdx ?? "-1", 10);
+                  if (!effectUuid || scriptIdx < 0) continue;
+
+                  const eff = fromUuidSync(effectUuid);
+                  if (!eff) continue;
+                  const scriptData = eff.system?.scriptData?.[scriptIdx];
+                  if (!scriptData) continue;
+
+                  const script = new NeuroshimaScript(scriptData, eff);
+                  const dialogActions = [];
+                  // Skrypt zatwierdzenia dla trybu isDialogScript:
+                  // Jeśli zdefiniowany submissionScript → wywołaj runSubmission() (dedykowany handler zatwierdzenia).
+                  // Fallback → execute() (główny skrypt "code"), dla zachowania wstecznej kompatybilności.
+                  const triggerArgs = {
+                    actor: ownerActorMod,
+                    state: duelState,
+                    actions: dialogActions,
+                    ownerHadHit: pastSegs.some(s => s.outcome === "hit"),
+                    ownerPreviousHits: pastSegs.filter(s => s.outcome === "hit"),
+                    uncommittedDice: uncommitted.length,
+                    uncommittedSuccesses: uncommitted.filter(d => d.isSuccess).length
+                  };
+                  try {
+                    if (script.submissionScript) {
+                      await script.runSubmission(triggerArgs);
+                    } else {
+                      await script.execute(triggerArgs);
+                    }
+                  } catch (err) {
+                    game.neuroshima?.log("[getMeleeActions dialog] script exec error", err);
+                  }
+                  // Wszystkie akcje z dialogowego modifikatora wchodzą jako trick-queue entries.
+                  for (const a of dialogActions) {
+                    if (!a.id || !a.damage) continue;
+                    if (!extraQueue) extraQueue = [];
+                    extraQueue.push(`trick:${a.id}:${a.damage}`);
+                  }
+                }
+              } catch (err) {
+                game.neuroshima?.log("[getMeleeActions dialog] import error", err);
+              }
+            }
+          }
+        }
+
         if (game.user.isGM) {
-          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, actionType);
+          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, actionArg, extraQueue);
         } else if (game.neuroshima?.socket) {
-          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, actionType);
+          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, actionArg, extraQueue);
         }
       });
     });
@@ -1069,8 +1285,156 @@ export class MeleeOpposedChat {
       }
     }
 
+    // getMeleeActions trick queue — sekcja dla sztuczek gracza z successCost > 0.
+    // Budżet = liczba sukcesów wśród zaznaczonych kości (klasa is-success).
+    // Gracz wybiera ile razy użyć danej sztuczki; przy zatwierdzeniu "Attack"
+    // kolejka jest kodowana jako "trick:ID:damage" i przekazywana do applyDuelBatch.
+    const trickQueueSection = root.querySelector(".mdc-trick-queue-section");
+
+    const updateTrickQueue = () => {
+      if (!trickQueueSection) return;
+      const selectedChips    = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
+      const successBudget    = selectedChips.filter(c => c.classList.contains("is-success")).length;
+
+      let spent = 0;
+      trickQueueSection.querySelectorAll(".mdc-trick-qty-val").forEach(el => {
+        const qty  = parseInt(el.textContent, 10) || 0;
+        const cost = parseInt(
+          el.closest(".mdc-trick-action-entry")?.dataset.cost ?? "1", 10
+        ) || 1;
+        spent += qty * cost;
+      });
+
+      const remaining = successBudget - spent;
+      const remainingEl = trickQueueSection.querySelector(".mdc-trick-budget-remaining");
+      const totalEl     = trickQueueSection.querySelector(".mdc-trick-budget-total");
+      if (remainingEl) remainingEl.textContent = remaining;
+      if (totalEl)     totalEl.textContent     = successBudget;
+
+      trickQueueSection.querySelectorAll(".mdc-trick-pick-btn").forEach(btn => {
+        const cost = parseInt(btn.dataset.cost, 10) || 1;
+        btn.disabled = remaining < cost;
+        btn.classList.toggle("is-disabled", remaining < cost);
+        btn.classList.toggle("is-ready",    remaining >= cost);
+      });
+    };
+
+    if (trickQueueSection) {
+      trickQueueSection.querySelectorAll(".mdc-trick-pick-btn").forEach(pickBtn => {
+        pickBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id   = pickBtn.dataset.trickId;
+          const dmg  = pickBtn.dataset.damage;
+          const cost = parseInt(pickBtn.dataset.cost, 10) || 1;
+
+          const selectedChips = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
+          const successBudget = selectedChips.filter(c => c.classList.contains("is-success")).length;
+          let spent = 0;
+          trickQueueSection.querySelectorAll(".mdc-trick-qty-val").forEach(el => {
+            spent += (parseInt(el.textContent, 10) || 0) *
+                     (parseInt(el.closest(".mdc-trick-action-entry")?.dataset.cost ?? "1", 10) || 1);
+          });
+          if (spent + cost > successBudget) return;
+
+          const qtyEl   = trickQueueSection.querySelector(`.mdc-trick-qty-val[data-trick-id="${id}"]`);
+          const badgeEl = trickQueueSection.querySelector(`.mdc-trick-qty-badge[data-trick-id="${id}"]`);
+          if (!qtyEl) return;
+          qtyEl.textContent = (parseInt(qtyEl.textContent, 10) || 0) + 1;
+          if (badgeEl) badgeEl.style.display = "";
+          updateTrickQueue();
+        });
+      });
+
+      trickQueueSection.querySelectorAll(".mdc-trick-undo-btn").forEach(undoBtn => {
+        undoBtn.addEventListener("click", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id      = undoBtn.dataset.trickId;
+          const qtyEl   = trickQueueSection.querySelector(`.mdc-trick-qty-val[data-trick-id="${id}"]`);
+          const badgeEl = trickQueueSection.querySelector(`.mdc-trick-qty-badge[data-trick-id="${id}"]`);
+          if (!qtyEl) return;
+          const cur = parseInt(qtyEl.textContent, 10) || 0;
+          if (cur > 0) qtyEl.textContent = cur - 1;
+          if (badgeEl && parseInt(qtyEl.textContent, 10) === 0) badgeEl.style.display = "none";
+          updateTrickQueue();
+        });
+      });
+    }
+
+    // Dialog modifier checkboxes — explicit click handler because Foundry chat messages
+    // may not properly propagate native label/checkbox interactions.
+    // Clicking the entry label toggles the checkbox and updates the visual state.
+    root.querySelectorAll(".mdc-dialog-mod-entry").forEach(entry => {
+      entry.addEventListener("click", e => {
+        e.stopPropagation();
+        const cb = entry.querySelector(".mdc-dialog-mod-check");
+        if (!cb) return;
+        if (e.target === cb) return;
+        cb.checked = !cb.checked;
+      });
+    });
+
+    // Trick queue confirm button — works like beast confirm button:
+    // collects selected dice + trick queue items and submits as "attack" action.
+    // Allows mixing tricks with normal attack (all selected dice go to attack comparison,
+    // tricks are additional effects resolved on top based on success budget).
+    const trickConfirmBtn = root.querySelector(".mdc-trick-confirm-btn");
+    if (trickConfirmBtn && trickQueueSection) {
+      trickConfirmBtn.addEventListener("click", async e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (trickConfirmBtn.disabled) return;
+        const pool    = trickConfirmBtn.dataset.pool;
+        const selected = [...root.querySelectorAll("button.die-chip-mvc.mvc-die-selected")];
+        const indices  = selected.map(c => parseInt(c.dataset.dieIdx, 10)).filter(n => !isNaN(n));
+        const trickItems = [];
+        trickQueueSection.querySelectorAll(".mdc-trick-qty-val").forEach(el => {
+          const qty = parseInt(el.textContent, 10) || 0;
+          const id  = el.dataset.trickId;
+          const dmg = el.dataset.trickDamage;
+          if (qty > 0 && id && dmg) {
+            for (let i = 0; i < qty; i++) trickItems.push(`trick:${id}:${dmg}`);
+          }
+        });
+        if (game.user.isGM) {
+          await MeleeOpposedChat.applyDuelBatch(message.id, pool, indices, "attack", trickItems.length ? trickItems : null);
+        } else if (game.neuroshima?.socket) {
+          await game.neuroshima.socket.executeAsGM("applyDuelBatch", message.id, pool, indices, "attack", trickItems.length ? trickItems : null);
+        }
+      });
+    }
+
     updateActionButtons();
     updateBeastQueue();
+    updateTrickQueue();
+
+    // Trick confirm button state — enabled when dice are selected (like beast confirm).
+    const updateTrickConfirm = () => {
+      if (!trickConfirmBtn) return;
+      const selectedCount = root.querySelectorAll("button.die-chip-mvc.mvc-die-selected").length;
+      let spent = 0;
+      if (trickQueueSection) {
+        trickQueueSection.querySelectorAll(".mdc-trick-qty-val").forEach(el => {
+          spent += parseInt(el.textContent, 10) || 0;
+        });
+      }
+      const ok = selectedCount >= 1;
+      trickConfirmBtn.disabled = !ok;
+      trickConfirmBtn.classList.toggle("is-disabled", !ok);
+      trickConfirmBtn.classList.toggle("is-ready", ok);
+    };
+    updateTrickConfirm();
+
+    // Re-run after die chip clicks.
+    root.querySelectorAll("button.die-chip-mvc").forEach(chip => {
+      chip.addEventListener("click", updateTrickConfirm);
+    });
+    if (trickQueueSection) {
+      trickQueueSection.querySelectorAll(".mdc-trick-pick-btn, .mdc-trick-undo-btn").forEach(b => {
+        b.addEventListener("click", updateTrickConfirm);
+      });
+    }
   }
 
   static async applyDuelBatch(messageId, pool, diceIndices, action = null, beastQueue = null) {
@@ -1086,8 +1450,34 @@ export class MeleeOpposedChat {
 
     if (state.waitingFor === "initiativeOwner") {
       if (pool !== ownerPool) return;
-      const declaredAction = action || "attack";
+
+      // Segment history — save a snapshot of the full state BEFORE this segment begins.
+      // Strips segmentHistory/segmentFuture from the snapshot to avoid recursive nesting.
+      // Used by undoDuelSegment / redoDuelSegment so the GM can roll back mistakes.
+      const snapshot = foundry.utils.deepClone(state);
+      delete snapshot.segmentHistory;
+      delete snapshot.segmentFuture;
+      if (!state.segmentHistory) state.segmentHistory = [];
+      state.segmentHistory.push(snapshot);
+      state.segmentFuture = [];  // clear redo stack when a new action is taken
+
+      const rawAction      = action || "attack";
       const ownerDicePool  = isOwnerAttacker ? state.attackDice : state.defenseDice;
+
+      // Sztuczki gracza mają format "trick:ID:damage" (np. "trick:barbarka-head-butt:sC").
+      // Traktujemy je jak atak — porównanie sukcesów — ale przy trafieniu używamy
+      // damage z sztuczki zamiast damage${N} z uzbrojenia.
+      const isTrick = rawAction.startsWith("trick:");
+      let declaredAction = rawAction;
+      let committedTrickId     = null;
+      let committedTrickDamage = null;
+      if (isTrick) {
+        const parts = rawAction.split(":");
+        committedTrickId     = parts[1] ?? null;
+        committedTrickDamage = parts[2] ?? null;
+        declaredAction = "trick";
+      }
+
       if (declaredAction === "exit") {
         if (diceIndices.length !== 1) return;
       } else if (declaredAction === "nonCombat") {
@@ -1098,11 +1488,20 @@ export class MeleeOpposedChat {
           return;
         }
       } else {
+        // attack, trick — wymagają co najmniej 1, max 3 kości
         if (!diceIndices.length || diceIndices.length > 3) return;
       }
       state.declaredAction        = declaredAction;
       state.committedOwnerIndices = diceIndices;
-      state.committedBeastQueue   = (Array.isArray(beastQueue) && beastQueue.length > 0) ? beastQueue : null;
+      // Rozdziel beastQueue na akcje bestii i sztuczki gracza (trick: prefix).
+      // Sztuczki z successCost wrzucane są przez UI jako "trick:ID:damage" w tym samym parametrze.
+      const rawBeastItems = Array.isArray(beastQueue) ? beastQueue.filter(id => !id.startsWith("trick:")) : [];
+      const rawTrickItems = Array.isArray(beastQueue) ? beastQueue.filter(id =>  id.startsWith("trick:")) : [];
+      state.committedBeastQueue  = rawBeastItems.length  > 0 ? rawBeastItems  : null;
+      state.committedTrickQueue  = rawTrickItems.length  > 0 ? rawTrickItems  : null;
+      // Zapisz metadane sztuczki — używane przy rozstrzygnięciu w fazie responder
+      state.committedTrickId     = committedTrickId;
+      state.committedTrickDamage = committedTrickDamage;
       state.waitingFor            = "responder";
       await MeleeOpposedChat._renderDuelCard(message, state);
       return;
@@ -1176,18 +1575,32 @@ export class MeleeOpposedChat {
         const ownerHasSuccess     = ownerSuccessCount > 0;
         const responderHasSuccess  = responderSuccessCount > 0;
 
-        if (declaredAction === "attack") {
+        if (declaredAction === "attack" || declaredAction === "trick") {
           if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
           else if (ownerSuccessCount < responderSuccessCount)  outcome = "takeover";
           else if (ownerSuccessCount > 0)                      outcome = "draw";
           else                                                  outcome = "nothing";
 
-          if (outcome === "hit") state.hits.push({ tier: N, damageType: state[`damage${N}`] ?? "?" });
+          if (outcome === "hit") {
+            // Sztuczki gracza mają własny, stały typ obrażeń niezależny od uzbrojenia.
+            // Dla zwykłego ataku używamy damage${N} z profilu broni.
+            const hitDmgType = declaredAction === "trick" && state.committedTrickDamage
+              ? state.committedTrickDamage
+              : (state[`damage${N}`] ?? "?");
+            const hitEntry = { tier: N, damageType: hitDmgType };
+            if (declaredAction === "trick" && state.committedTrickId) {
+              hitEntry.trickId = state.committedTrickId;
+            }
+            state.hits.push(hitEntry);
+          }
 
           segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
           segDefenseVal = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
 
           if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
+          // Wyczyść metadane sztuczki po rozstrzygnięciu segmentu
+          state.committedTrickId     = null;
+          state.committedTrickDamage = null;
 
         } else if (declaredAction === "exit") {
           outcome = (ownerHasSuccess && !responderHasSuccess) ? "exit" : "blocked";
@@ -1222,6 +1635,13 @@ export class MeleeOpposedChat {
 
       state.committedOwnerIndices = null;
       state.declaredAction        = null;
+
+      // Akumuluj sztuczki z kolejki (successCost) — są niezależne od wyniku porównania kości.
+      // Sztuczki w queue są "opłacone" sukcesami gracza z góry, więc zawsze się aplikują.
+      if (state.committedTrickQueue?.length > 0) {
+        state.allTrickQueue = [...(state.allTrickQueue || []), ...state.committedTrickQueue];
+        state.committedTrickQueue = null;
+      }
 
       await MeleeOpposedChat._syncInitiativeToTracker(state);
 
@@ -1289,6 +1709,8 @@ export class MeleeOpposedChat {
           affordableBeastActions,
           isBeastAttack,
           pendingBeastQueue: state.committedBeastQueue ?? null,
+          // Sztuczki gracza z kolejki (successCost) — aplikowane razem z normalnymi obrażeniami
+          pendingTrickQueue: state.allTrickQueue?.length > 0 ? state.allTrickQueue : null,
           applied: false,
           beastActionsApplied: false
         });
@@ -1333,6 +1755,63 @@ export class MeleeOpposedChat {
 
     await MeleeOpposedChat._syncInitiativeToTracker(state);
     await MeleeOpposedChat._renderDuelCard(message, state);
+  }
+
+  /**
+   * Undo the last segment decision and restore the duel to the state
+   * it was in before that segment's initiativeOwner pick.
+   * Only available to the GM. Works like CTRL+Z — the undone state
+   * goes onto the redo stack so it can be restored with redoDuelSegment.
+   */
+  static async undoDuelSegment(messageId) {
+    if (!game.user.isGM) return;
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
+    if (!state?.segmentHistory?.length) return;
+
+    // Current state stripped of history/future → goes to redo stack
+    const current = foundry.utils.deepClone(state);
+    delete current.segmentHistory;
+    delete current.segmentFuture;
+
+    const prev = state.segmentHistory[state.segmentHistory.length - 1];
+    prev.segmentHistory = state.segmentHistory.slice(0, -1);
+    prev.segmentFuture  = [current, ...(state.segmentFuture || [])];
+
+    game.neuroshima?.log("[melee-opposed-chat] undoDuelSegment", {
+      historyLength: prev.segmentHistory.length,
+      futureLength:  prev.segmentFuture.length
+    });
+    await MeleeOpposedChat._renderDuelCard(message, prev);
+  }
+
+  /**
+   * Redo a previously undone segment decision.
+   * Works like CTRL+Y — restores the most recently undone state.
+   */
+  static async redoDuelSegment(messageId) {
+    if (!game.user.isGM) return;
+    const message = game.messages.get(messageId);
+    if (!message) return;
+
+    const state = foundry.utils.deepClone(message.getFlag("neuroshima", "duelCard"));
+    if (!state?.segmentFuture?.length) return;
+
+    const current = foundry.utils.deepClone(state);
+    delete current.segmentHistory;
+    delete current.segmentFuture;
+
+    const next = state.segmentFuture[0];
+    next.segmentHistory = [...(state.segmentHistory || []), current];
+    next.segmentFuture  = state.segmentFuture.slice(1);
+
+    game.neuroshima?.log("[melee-opposed-chat] redoDuelSegment", {
+      historyLength: next.segmentHistory.length,
+      futureLength:  next.segmentFuture.length
+    });
+    await MeleeOpposedChat._renderDuelCard(message, next);
   }
 
   static async _syncInitiativeToTracker(state) {
@@ -2122,14 +2601,41 @@ export class MeleeOpposedChat {
         const escapeeActor = escapeeDoc?.actor ?? escapeeDoc;
         if (escapeeActor) targetActor = escapeeActor;
       }
+      // Sztuczki gracza mają stały typ obrażeń niezależny od profilu broni.
+      // Aby applyDamageToActor wybrał właściwy typ, nadpisujemy wszystkie trzy
+      // pola damageMelee wartością z sztuczki — tier zostanie obliczony z hit.tier
+      // i dla każdej wartości indeksu zwróci tę samą cyfrę.
+      const isTrickHit = !!hit.trickId;
+
+      // onHitScript — jeśli sztuczka ma zdefiniowany skrypt zamiast obrażeń (np. rozbrojenie Aramis),
+      // uruchamiamy go zamiast applyDamageToActor. Skrypt dostaje pełny kontekst walki.
+      // args: { actor (atakujący), target (broniony), state (stan pojedynku), hit (dane trafienia) }
+      if (isTrickHit && rd.trickOnHitScripts?.[hit.trickId]) {
+        try {
+          const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+          const onHitCode = rd.trickOnHitScripts[hit.trickId];
+          const scriptObj = new NeuroshimaScript({ code: onHitCode, trigger: "getMeleeActions", label: "onHitScript" }, null);
+          await scriptObj.execute({
+            actor:  attackerActor,
+            target: targetActor,
+            state:  rd,
+            hit
+          });
+          game.neuroshima?.log?.("[applyDuelBatch] onHitScript executed for trick", hit.trickId);
+        } catch (err) {
+          game.neuroshima?.log?.("[applyDuelBatch] onHitScript error for trick", hit.trickId, err);
+        }
+        continue;
+      }
+
       const attackData = {
         isMelee: true,
         actorId: attackerActor?.id,
         weaponId: rd.weaponId,
         label: weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
-        damageMelee1: rd.damage1,
-        damageMelee2: rd.damage2,
-        damageMelee3: rd.damage3,
+        damageMelee1: isTrickHit ? hit.damageType : rd.damage1,
+        damageMelee2: isTrickHit ? hit.damageType : rd.damage2,
+        damageMelee3: isTrickHit ? hit.damageType : rd.damage3,
         finalLocation: rd.location,
         successPoints: hit.tier
       };
@@ -2144,6 +2650,39 @@ export class MeleeOpposedChat {
         allWoundIds.push(...(batch.woundIds ?? []));
         totalReduced += batch.reducedProjectiles ?? 0;
         allReducedDetails.push(...(batch.reducedDetails ?? []));
+      }
+    }
+
+    // Sztuczki gracza z kolejki (successCost) — niezależne od wyniku porównania kości,
+    // opłacone sukcesami jeszcze przed rozstrzygnięciem walki. Format: "trick:ID:damage".
+    if (rd.pendingTrickQueue?.length > 0) {
+      for (const trickEntry of rd.pendingTrickQueue) {
+        if (!trickEntry.startsWith("trick:")) continue;
+        const parts = trickEntry.split(":");
+        const trickDamage = parts[2];
+        if (!trickDamage) continue;
+        const trickAttackData = {
+          isMelee: true,
+          actorId: attackerActor?.id,
+          label: `${weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed")} (sztuczka)`,
+          damageMelee1: trickDamage,
+          damageMelee2: trickDamage,
+          damageMelee3: trickDamage,
+          finalLocation: rd.location,
+          successPoints: 1
+        };
+        const trickBatch = await CombatHelper.applyDamageToActor(defenderActor, trickAttackData, {
+          isOpposed: true,
+          spDifference: 1,
+          location: rd.location,
+          suppressChat: true
+        });
+        if (trickBatch) {
+          allResults.push(...(trickBatch.results ?? []));
+          allWoundIds.push(...(trickBatch.woundIds ?? []));
+          totalReduced += trickBatch.reducedProjectiles ?? 0;
+          allReducedDetails.push(...(trickBatch.reducedDetails ?? []));
+        }
       }
     }
 

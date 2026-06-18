@@ -290,19 +290,64 @@
 <section id="trick-002-aramis">
 <h3>2. Aramis</h3>
 <p><strong>Wymagania:</strong> Zręczność 14+, Broń ręczna 5+</p>
-<p><strong>Opis klimatyczny:</strong> Gdy spotkasz kiedyś wędrującego samotnie dziadka, który podpiera się kijkiem, za nic w świe- cie go nie zaczepiaj. To może być Dziadzio z Alaba- a będzie to Sztuczka. Jest u - tak mniej więcej</p>
+<p><strong>Opis klimatyczny:</strong> Gdy spotkasz kiedyś wędrującego samotnie dziadka, który podpiera się kijkiem, za nic w świecie go nie zaczepiaj. To może być Dziadzio z Alabamy. Najpierw wytrąci ci kijkiem twój topór; potem złoi na kwaśne jabłko, a na koniec pogrozi palcem i pójdzie sobie dalej.</p>
+<p><strong>Mechanika:</strong> Akcja za 2 sukcesy — PT testu o poziom wyższy, do ataku dowolną bronią dłuższą od noża. Broń przeciwnika (każda dłuższa od noża) leci na bok.</p>
 <h4>Analiza Active Effect</h4>
-<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="callout info"><strong>Implementowalne przez <code>getMeleeActions</code> + <code>isDialogScript</code>:</strong> sztuczka pojawia się jako opcjonalny checkbox w oknie rzutu (pre-roll) <em>i</em> jako akcja kolejki na karcie walki. Zaznaczenie checkboxa podnosi PT o 1 poziom; przy 2 sukcesach uruchamia się rozbrojenie przez <code>onHitScript</code>.</div>
+<p>Utwórz jeden <strong>Active Effect</strong> z wyzwalaczem <code>getMeleeActions</code> i włącz opcję <em>Modyfikator w dialogu walki</em> (<code>isDialogScript = true</code>). Uzupełnij wszystkie cztery pola skryptowe:</p>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Aramis: Próba rozbrojenia kosztem 2 sukcesów z podwyższonym poziomem trudności (kara 20%)
-  if (args.test.context.skillKey === "handWeapon") {
-    args.test.preData.penalties.mod += 20;
-    args.test.preData.annotations.push("Aramis: Możesz podjąć próbę rozbrojenia kosztem 2 sukcesów (test o 1 poziom trudniejszy).");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Skrypt akcji <code>code</code> — pasywny, push do kolejki sukcesów</div>
+<p class="example-desc">Odpala się zawsze podczas budowania karty walki. Dodaje akcję "Rozbrojenie" wymagającą 2 sukcesów z <code>onHitScript</code> — gdy atakujący wygra porównanie 2 kości, skrypt rozbrojenia zastępuje zadanie obrażeń.</p>
+<pre><code><span class="cmt">// Aramis — akcja za 2 sukcesy; rozbrojenie zamiast obrażeń</span>
+<span class="kw">const</span> <span class="var">weapons</span> = <span class="kw">this</span>.<span class="fn">getEquippedWeapons</span>() ?? [];
+<span class="kw">const</span> <span class="var">hasValidWeapon</span> = <span class="var">weapons</span>.some(<span class="var">w</span> =&gt; {
+  <span class="kw">const</span> <span class="var">t</span> = <span class="var">w</span>.system?.type;
+  <span class="kw">return</span> <span class="var">t</span> &amp;&amp; <span class="var">t</span> !== <span class="str">"knife"</span> &amp;&amp; <span class="var">t</span> !== <span class="str">"unarmed"</span>;
+});
+<span class="kw">if</span> (!<span class="var">hasValidWeapon</span>) <span class="kw">return</span>;
+
+args.actions.push({
+  id:          <span class="str">"aramis-disarm"</span>,
+  name:        <span class="str">"Aramis – Rozbrojenie"</span>,
+  img:         <span class="str">"systems/neuroshima/assets/effects/gears.svg"</span>,
+  successCost: <span class="num">2</span>,
+  minDice:     <span class="num">2</span>,
+  maxDice:     <span class="num">2</span>,
+  damage:      <span class="str">"—"</span>,
+  annotation:  <span class="str">"Aramis: broń przeciwnika leci na bok (tylko raz na walkę)."</span>,
+  <span class="cmt">// onHitScript zastępuje zadanie obrażeń gdy atak 2 sukcesami trafi</span>
+  onHitScript: <span class="str">`
+    const result = await this.disarmWeapon(args.target);
+    if (result?.success) {
+      ChatMessage.create({
+        content: \`&lt;p&gt;&lt;strong&gt;Aramis!&lt;/strong&gt; \${args.actor.name} rozbraja \${args.target?.name}: \${result.weaponName} leci na bok.&lt;/p&gt;\`
+      });
+    } else {
+      ui.notifications.warn("Aramis: rozbrojenie nie powiodło się (" + (result?.reason ?? "brak broni") + ").");
+    }
+    game.neuroshima?.log?.("[Aramis] disarm result", result);
+  `</span>
+});</code></pre>
 </div>
+
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">getMeleeActions → dialogCode</span> Skrypt dialogowy (pre-roll) — podnosi PT o 1</div>
+<p class="example-desc">Odpala się w oknie rzutu bronią gdy checkbox <em>Aramis</em> jest zaznaczony. Przesuwa trudność o 1 poziom wyżej (płaci się trudnością za próbę rozbrojenia).</p>
+<pre><code><span class="cmt">// Aramis — dialog pre-roll: PT testu o poziom wyższy</span>
+args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
+</div>
+
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">getMeleeActions → hideScript</span> Skrypt ukrywania — ukryj gdy brak odpowiedniej broni</div>
+<p class="example-desc">Zwróć <code>true</code> gdy postać nie ma broni dłuższej od noża — w tym przypadku Aramis nie ma sensu i modifier znika z okna rzutu.</p>
+<pre><code><span class="cmt">// hideScript — ukryj Aramisa gdy brak odpowiedniej broni</span>
+<span class="kw">const</span> <span class="var">weapons</span> = <span class="kw">this</span>.<span class="fn">getEquippedWeapons</span>() ?? [];
+<span class="kw">return</span> !<span class="var">weapons</span>.some(<span class="var">w</span> =&gt; {
+  <span class="kw">const</span> <span class="var">t</span> = <span class="var">w</span>.system?.type;
+  <span class="kw">return</span> <span class="var">t</span> &amp;&amp; <span class="var">t</span> !== <span class="str">"knife"</span> &amp;&amp; <span class="var">t</span> !== <span class="str">"unarmed"</span>;
+});</code></pre>
+</div>
+<div class="callout warning"><strong>Uwaga:</strong> <code>onHitScript</code> to pole w obiekcie akcji push'owanym do <code>args.actions</code>, nie osobny wyzwalacz. Odpala się tylko gdy atakujący wygra porównanie 2 kości i nie ma żadnych obrażeń — skrypt zastępuje zadanie ran. <code>this.disarmWeapon(target)</code> działa przez socket GM i unequipuje pierwszą znalezioną broń celu (dłuższą od noża).</div>
 </section>
 
 <section id="trick-003-asekuracja">
@@ -325,20 +370,40 @@
 
 <section id="trick-005-barbarka">
 <h3>5. Barbarka</h3>
-<p><strong>Wymagania:</strong> Bijatyka 5+, Budowa 14+                         n</p>
-<p><strong>Opis klimatyczny:</strong> Jak dla mnie, jednym z najbardziej depry-          s mujących zagrań w walce, jest pieprznąć gościa w           m ryj, własnym ryjem. To zawsze szokuje...</p>
-<p><strong>Mechanika:</strong> Jeśli segment wcześniej zadałeś celny cios (nawet obroniony przez przeciwnika), w kolej-         W nym segmencie możesz użyć dodatkowej akcji (zu-            1 żywając jednak w normalny sposób 1 segment tury): Akcja za 1 sukces: uderzenie głową. Zadaje Ciężkie-        T go Siniaka. Można użyć tylko raz przeciwko temu            k samemu przeciwnikowi.                                      ż</p>
+<p><strong>Wymagania:</strong> Bijatyka 5+, Budowa 14+</p>
+<p><strong>Opis klimatyczny:</strong> Jak dla mnie, jednym z najbardziej deprymujących zagrań w walce, jest pieprznąć gościa w ryj, własnym ryjem. To zawsze szokuje...</p>
+<p><strong>Mechanika:</strong> Jeśli w poprzednim segmencie zadałeś celny cios (nawet obroniony przez przeciwnika), w kolejnym segmencie możesz użyć dodatkowej akcji, zużywając w normalny sposób 1 segment tury. <strong>Akcja za 1 sukces:</strong> Uderzenie głową — zadaje Ciężkiego Siniaka (<code>sC</code>). Można użyć tylko raz przeciwko temu samemu przeciwnikowi.</p>
 <h4>Analiza Active Effect</h4>
-<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="callout info"><strong>Implementowalne przez <code>getMeleeActions</code>:</strong> wyzwalacz pasywny. Sprawdza <code>args.ownerHadHit</code> — jeśli gracz zadał cios w poprzednim segmencie, wstrzykuje akcję "Uderzenie głową" do listy dostępnych akcji na karcie walki.</div>
+<p>Utwórz jeden <strong>Active Effect</strong> z wyzwalaczem <code>getMeleeActions</code> (bez <code>isDialogScript</code>). Uzupełnij pole <em>Skrypt akcji</em> (<code>code</code>):</p>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">rollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Barbarka: Akcja za 1 sukces po udanym ciosie w poprzednim segmencie zadaje Ciężkiego Siniaka
-  if (args.test.context.skillKey === "brawl" &amp;&amp; args.test.result.isSuccess) {
-    args.test.result.annotations.push("Barbarka: Możesz wydać 1 sukces na uderzenie głową, zadając Ciężkiego Siniaka.");
-  }
-})();</code></pre>
+<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Skrypt akcji <code>code</code> — pasywny, sprawdza poprzedni segment</div>
+<p class="example-desc"><code>args.ownerHadHit</code> jest <code>true</code> gdy posiadacz efektu wygrał porównanie kości w poprzednim segmencie (niezależnie od tego, czy trafienie zostało obronione). <code>args.state.defenderId</code> pozwala śledzić czy Barbarka była już użyta wobec tego samego przeciwnika.</p>
+<pre><code><span class="cmt">// Barbarka — akcja za 1 sukces dostępna po zadaniu trafienia w poprzednim segmencie</span>
+<span class="kw">if</span> (!args.ownerHadHit) <span class="kw">return</span>; <span class="cmt">// brak trafienia w poprzednim segmencie → nie dodawaj akcji</span>
+
+<span class="cmt">// Zabezpieczenie jednorazowości: śledź użycie per-przeciwnik w stanie walki</span>
+<span class="kw">const</span> <span class="var">usedKey</span> = <span class="str">`barbarka_used_${args.state?.defenderId ?? "unknown"}`</span>;
+<span class="kw">if</span> (args.state?.[<span class="var">usedKey</span>]) <span class="kw">return</span>; <span class="cmt">// już użyta wobec tego przeciwnika</span>
+
+args.actions.push({
+  id:          <span class="str">"barbarka-headbutt"</span>,
+  name:        <span class="str">"Uderzenie głową"</span>,
+  img:         <span class="str">"systems/neuroshima/assets/effects/gears.svg"</span>,
+  successCost: <span class="num">1</span>,   <span class="cmt">// akcja za 1 sukces</span>
+  minDice:     <span class="num">1</span>,
+  maxDice:     <span class="num">1</span>,
+  damage:      <span class="str">"sC"</span>, <span class="cmt">// Ciężki Siniak</span>
+  annotation:  <span class="str">"Barbarka: Uderzenie głową — Ciężki Siniak. Jednorazowo na tego samego przeciwnika."</span>,
+  <span class="cmt">// onHitScript: oznacz zużycie sztuczki w stanie walki po trafieniu</span>
+  onHitScript: <span class="str">`
+    const key = \`barbarka_used_\${args.state?.defenderId ?? "unknown"}\`;
+    if (args.state) args.state[key] = true;
+    game.neuroshima?.log?.("[Barbarka] headbutt hit, marking as used for", args.target?.name);
+  `</span>
+});</code></pre>
 </div>
+<div class="callout warning"><strong>Uwaga:</strong> Flaga <code>args.state[usedKey]</code> jest przetrzymywana w stanie karty walki (obiekcie <code>rd</code> / <code>state</code>) i resetuje się po zakończeniu wymiany. Jeśli chcesz trwałego „raz na walkę" trzeba by zamiast tego użyć flagi na aktora przez <code>args.actor.setFlag("neuroshima", "barbarka_used_…", true)</code> i sprzątać ją w <code>postCombat</code>.</div>
 </section>
 
 <section id="trick-006-berserker">

@@ -3018,7 +3018,7 @@ export class NeuroshimaDice {
    * Modes (controlled by flags):
    *   - Default (no flags): bypass — direct wound creation, no armor, no hooks, no pain test.
    *   - withPainResistance: runs 3d20 Odporność na Ból test, chat report (unless suppressChat).
-   *   - withHooks: fires the "applyDamage" script hook before wound creation (can set forceSkip).
+   *   - withHooks: fires the "takeDamage" script hook before wound creation (can set forceSkip).
    *   - penaltyOverride: forces an exact penalty value, skips pain resistance regardless of flag.
    *   - wounds[]: batch input for multiple pre-built wounds (used by the combat pipeline).
    *
@@ -3032,7 +3032,7 @@ export class NeuroshimaDice {
    * @param {number}   [opts.penaltyOverride]         - Exact penalty %; skips pain resistance.
    * @param {Object}   [opts.additionalSystem={}]     - Extra system fields merged into every wound document.
    * @param {boolean}  [opts.withPainResistance=false]- Run 3d20 pain resistance test.
-   * @param {boolean}  [opts.withHooks=false]         - Fire "applyDamage" script hook (wounds can be skipped).
+   * @param {boolean}  [opts.withHooks=false]         - Fire "takeDamage" script hook (wounds can be skipped).
    * @param {boolean}  [opts.forcePassed=false]       - Auto-pass pain resistance (no roll, min penalty).
    * @param {string}   [opts.annotation=null]         - Annotation shown in the pain resistance chat report.
    * @param {boolean}  [opts.suppressChat=false]      - Suppress the pain resistance chat report.
@@ -3060,7 +3060,8 @@ export class NeuroshimaDice {
 
     if (withHooks) {
       const scriptArgs = { actor, wounds: rawWounds, location };
-      await NeuroshimaScriptRunner.execute("applyDamage", scriptArgs);
+      // takeDamage (DEFENDER side) — can forceSkip or forcePassed on individual wounds
+      await NeuroshimaScriptRunner.execute("takeDamage", scriptArgs);
       rawWounds = rawWounds.filter(w => !w.forceSkip);
     }
 

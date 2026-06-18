@@ -604,18 +604,22 @@ export class MeleeResolution {
     const doc = fromUuidSync(attacker.actorUuid);
     const actor = doc?.actor || doc;
     const weapon = actor?.items.get(attacker.weaponId);
+    // Global shift applies to all tiers; per-tier shifts (damageShift1/2/3) stack on top.
     const shift = attacker.damageShift || 0;
+    const s1 = shift + (attacker.damageShift1 || 0);
+    const s2 = shift + (attacker.damageShift2 || 0);
+    const s3 = shift + (attacker.damageShift3 || 0);
     let d1, d2, d3;
     if (weapon?.type === "beast-action") {
       const acts = weapon.system.activities ?? [];
       const getActDmg = (cost) => acts.find(a => a.successCost === cost && a.damage)?.damage ?? null;
-      d1 = this._shiftDamageType(getActDmg(1) ?? "D", shift);
-      d2 = this._shiftDamageType(getActDmg(2) ?? "D", shift);
-      d3 = this._shiftDamageType(getActDmg(3) ?? "D", shift);
+      d1 = this._shiftDamageType(getActDmg(1) ?? "D", s1);
+      d2 = this._shiftDamageType(getActDmg(2) ?? "D", s2);
+      d3 = this._shiftDamageType(getActDmg(3) ?? "D", s3);
     } else {
-      d1 = this._shiftDamageType(weapon?.system.damageMelee1 || "D", shift);
-      d2 = this._shiftDamageType(weapon?.system.damageMelee2 || "L", shift);
-      d3 = this._shiftDamageType(weapon?.system.damageMelee3 || "C", shift);
+      d1 = this._shiftDamageType(weapon?.system.damageMelee1 || "D", s1);
+      d2 = this._shiftDamageType(weapon?.system.damageMelee2 || "L", s2);
+      d3 = this._shiftDamageType(weapon?.system.damageMelee3 || "C", s3);
     }
 
     const tiers = [
@@ -682,38 +686,31 @@ export class MeleeResolution {
     const location = this._getLocationFromRoll(rawValue);
 
     // Collect all wounds from all hits, then create ONE chat message.
+    // NOTE: preApplyDamage and applyDamage attacker-side triggers fire inside
+    // CombatHelper.applyDamageToActor (general — not melee-specific).
     const allResults = [];
     const allWoundIds = [];
     let totalReducedProjectiles = 0;
     const allReducedDetails = [];
 
+    // Per-tier damage shifts (additive on top of the global damageShift).
+    const _globalShift = attacker.damageShift || 0;
+    const _s1 = _globalShift + (attacker.damageShift1 || 0);
+    const _s2 = _globalShift + (attacker.damageShift2 || 0);
+    const _s3 = _globalShift + (attacker.damageShift3 || 0);
+
     for (const hit of hits) {
-      const _dmgShift = attacker.damageShift || 0;
       if (isBeastActionWeapon && !beastActionDamage) continue;
       let dmg1, dmg2, dmg3;
       if (isBeastActionWeapon) {
-        dmg1 = this._shiftDamageType(beastActionDamage, _dmgShift);
-        dmg2 = dmg1;
-        dmg3 = dmg1;
+        dmg1 = this._shiftDamageType(beastActionDamage, _s1);
+        dmg2 = this._shiftDamageType(beastActionDamage, _s2);
+        dmg3 = this._shiftDamageType(beastActionDamage, _s3);
       } else {
-        dmg1 = this._shiftDamageType(weapon?.system.damageMelee1, _dmgShift);
-        dmg2 = this._shiftDamageType(weapon?.system.damageMelee2, _dmgShift);
-        dmg3 = this._shiftDamageType(weapon?.system.damageMelee3, _dmgShift);
+        dmg1 = this._shiftDamageType(weapon?.system.damageMelee1, _s1);
+        dmg2 = this._shiftDamageType(weapon?.system.damageMelee2, _s2);
+        dmg3 = this._shiftDamageType(weapon?.system.damageMelee3, _s3);
       }
-
-      // calculateOpposedDamage — allow effect scripts to modify damage types per hit
-      // before attackData is built (e.g. Wilczy Kieł — upgrade unarmed damage tier).
-      const dmgArgs = {
-        attackerActor,
-        defenderActor,
-        weapon,
-        hit,
-        attackData: { damageMelee1: dmg1, damageMelee2: dmg2, damageMelee3: dmg3 }
-      };
-      await NeuroshimaScriptRunner.execute("calculateOpposedDamage", dmgArgs);
-      dmg1 = dmgArgs.attackData.damageMelee1;
-      dmg2 = dmgArgs.attackData.damageMelee2;
-      dmg3 = dmgArgs.attackData.damageMelee3;
 
       const attackData = {
         isMelee: true,
@@ -726,6 +723,7 @@ export class MeleeResolution {
         damageMelee2: dmg2,
         damageMelee3: dmg3
       };
+
       const batchResult = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
         isOpposed: true, spDifference: hit.cost, location, suppressChat: true
       });

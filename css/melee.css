@@ -2652,6 +2652,22 @@
     background: rgba(100, 100, 100, 0.08);
 }
 
+.melee-duel-card .mdc-action-choice--trick {
+    border-color: rgba(180, 140, 60, 0.18);
+}
+.melee-duel-card .mdc-action-choice--trick.is-ready {
+    border-color: rgba(180, 140, 60, 0.5);
+    background: rgba(160, 120, 30, 0.09);
+}
+.melee-duel-card .mdc-action-choice--trick.is-ready:hover {
+    border-color: rgba(200, 160, 50, 0.8);
+    background: rgba(170, 130, 30, 0.18);
+}
+.melee-duel-card .mdc-trick-dmg-badge {
+    color: rgba(200, 160, 50, 0.9);
+    font-weight: 600;
+}
+
 .melee-duel-card .mdc-action-choice--passive.is-ready:hover {
     border-color: rgba(160, 160, 160, 0.55);
     background: rgba(120, 120, 120, 0.14);
@@ -2820,6 +2836,242 @@
     background: rgba(40, 180, 40, 0.15);
 }
 
+/* ── Trick Queue Confirm Button ── */
+.melee-duel-card .mdc-trick-confirm-btn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 5px 9px;
+    border: 1px solid rgba(180, 140, 60, 0.18);
+    border-radius: 5px;
+    background: rgba(160, 120, 30, 0.05);
+    color: var(--color-text-light-secondary, #999);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    margin-top: 4px;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.melee-duel-card .mdc-trick-confirm-btn.is-disabled,
+.melee-duel-card .mdc-trick-confirm-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.melee-duel-card .mdc-trick-confirm-btn.is-ready {
+    border-color: rgba(180, 140, 60, 0.45);
+    background: rgba(160, 120, 30, 0.09);
+    opacity: 1;
+}
+
+.melee-duel-card .mdc-trick-confirm-btn.is-ready:hover {
+    border-color: rgba(210, 170, 60, 0.75);
+    background: rgba(180, 140, 40, 0.16);
+}
+
+/* ── Trick Queue Section (getMeleeActions: sztuczki z successCost > 0) ── */
+.melee-duel-card .mdc-trick-queue-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(180, 140, 60, 0.2);
+}
+
+.melee-duel-card .mdc-trick-budget-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72em;
+    color: rgba(200, 160, 50, 0.8);
+    padding: 1px 2px 3px 2px;
+}
+
+.melee-duel-card .mdc-trick-action-entry {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.melee-duel-card .mdc-trick-pick-btn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 5px 9px;
+    border: 1px solid rgba(180, 140, 60, 0.18);
+    border-radius: 5px;
+    background: rgba(160, 120, 30, 0.05);
+    color: var(--color-text-light-secondary, #999);
+    cursor: pointer;
+    text-align: left;
+    flex: 1;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.melee-duel-card .mdc-trick-pick-btn.is-disabled,
+.melee-duel-card .mdc-trick-pick-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.melee-duel-card .mdc-trick-pick-btn.is-ready {
+    border-color: rgba(180, 140, 60, 0.45);
+    background: rgba(160, 120, 30, 0.09);
+    opacity: 1;
+}
+
+.melee-duel-card .mdc-trick-pick-btn.is-ready:hover {
+    border-color: rgba(210, 170, 60, 0.75);
+    background: rgba(180, 140, 40, 0.16);
+}
+
+.melee-duel-card .mdc-trick-pick-btn .mac-icon {
+    font-size: 0.95em;
+    width: 18px;
+    text-align: center;
+    opacity: 0.75;
+    flex-shrink: 0;
+}
+
+.melee-duel-card .mdc-trick-pick-btn .mac-body {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 5px;
+    flex: 1;
+}
+
+.melee-duel-card .mdc-trick-pick-btn .mac-label {
+    font-size: 0.76em;
+    font-weight: 600;
+    color: var(--color-text-light-heading, #ccc);
+    line-height: 1.2;
+    text-align: left;
+}
+
+.melee-duel-card .mdc-trick-pick-btn .mac-hint {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.68em;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.melee-duel-card .mdc-trick-pick-btn .mbc-cost-badge {
+    color: #f0c060;
+    font-weight: 700;
+}
+
+.melee-duel-card .mdc-trick-qty-badge {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    font-size: 0.8em;
+    color: rgba(200, 160, 50, 0.85);
+    white-space: nowrap;
+}
+
+.melee-duel-card .mdc-trick-qty-val {
+    font-weight: 700;
+    color: rgba(220, 180, 60, 1);
+}
+
+.melee-duel-card .mdc-trick-undo-btn {
+    background: none;
+    border: 1px solid rgba(180, 140, 60, 0.2);
+    border-radius: 3px;
+    cursor: pointer;
+    color: rgba(180, 140, 60, 0.7);
+    font-size: 0.9em;
+    padding: 1px 5px;
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.melee-duel-card .mdc-trick-undo-btn:hover {
+    color: rgba(220, 180, 60, 1);
+    border-color: rgba(200, 160, 50, 0.5);
+}
+
+/* ── Dialog Modifiers Section (getMeleeActions: isDialogScript = true) ── */
+.melee-duel-card .mdc-dialog-modifiers-section {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 6px;
+    padding-top: 5px;
+    border-top: 1px solid rgba(100, 150, 200, 0.2);
+}
+
+.melee-duel-card .mdc-dialog-mod-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72em;
+    color: rgba(120, 170, 220, 0.8);
+    padding: 1px 2px 3px 2px;
+}
+
+.melee-duel-card .mdc-dialog-mod-entry {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 8px;
+    border: 1px solid rgba(100, 150, 200, 0.18);
+    border-radius: 5px;
+    background: rgba(80, 120, 180, 0.05);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.melee-duel-card .mdc-dialog-mod-entry:hover {
+    background: rgba(80, 120, 180, 0.12);
+    border-color: rgba(100, 150, 220, 0.4);
+}
+
+.melee-duel-card .mdc-dialog-mod-entry:has(.mdc-dialog-mod-check:checked) {
+    background: rgba(80, 120, 180, 0.14);
+    border-color: rgba(100, 170, 240, 0.5);
+}
+
+.melee-duel-card .mdc-dialog-mod-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.melee-duel-card .mdc-dialog-mod-icon img {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: none;
+}
+
+.melee-duel-card .mdc-dialog-mod-label {
+    flex: 1;
+    font-size: 0.76em;
+    font-weight: 600;
+    color: var(--color-text-light-secondary, #aaa);
+    line-height: 1.2;
+}
+
+.melee-duel-card .mdc-dialog-mod-check {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    accent-color: rgba(100, 170, 240, 0.9);
+    cursor: pointer;
+}
+
 .melee-duel-card .mdc-dice-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2842,6 +3094,32 @@
     display: flex;
     gap: 6px;
     justify-content: center;
+    align-items: center;
+}
+
+.duel-segments-row .duel-seg-nav-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 4px;
+    color: rgba(200,200,200,0.6);
+    cursor: pointer;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+    flex-shrink: 0;
+}
+
+.duel-segments-row .duel-seg-nav-btn.is-disabled,
+.duel-segments-row .duel-seg-nav-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.duel-segments-row .duel-seg-nav-btn:not(:disabled):hover {
+    color: rgba(255,255,255,0.9);
+    border-color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.07);
 }
 
 .duel-seg-dot {

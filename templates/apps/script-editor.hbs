@@ -20,28 +20,38 @@
         </div>
 
         <div class="form-group ns-run-if-disabled-group">
-            <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.RunIfDisabledHint'}}">
+            <label for="ns-se-runIfDisabled" data-tooltip="{{localize 'NEUROSHIMA.Scripts.RunIfDisabledHint'}}" style="cursor:pointer">
                 {{localize "NEUROSHIMA.Scripts.RunIfDisabled"}}
             </label>
             <div class="form-fields">
-                <input type="checkbox" name="runIfDisabled" {{#if scriptData.runIfDisabled}}checked{{/if}}>
+                <input type="checkbox" id="ns-se-runIfDisabled" name="runIfDisabled" {{#if scriptData.runIfDisabled}}checked{{/if}}>
             </div>
         </div>
         {{#if (eq scriptData.trigger "dialog")}}
         <div class="form-group">
-            <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.TargeterHint'}}">
+            <label for="ns-se-targeter" data-tooltip="{{localize 'NEUROSHIMA.Scripts.TargeterHint'}}" style="cursor:pointer">
                 {{localize "NEUROSHIMA.Scripts.Targeter"}}
             </label>
             <div class="form-fields">
-                <input type="checkbox" name="targeter" {{#if scriptData.targeter}}checked{{/if}}>
+                <input type="checkbox" id="ns-se-targeter" name="targeter" {{#if scriptData.targeter}}checked{{/if}}>
             </div>
         </div>
         <div class="form-group">
-            <label data-tooltip="{{localize 'NEUROSHIMA.Scripts.DefendingAgainstHint'}}">
+            <label for="ns-se-defendingAgainst" data-tooltip="{{localize 'NEUROSHIMA.Scripts.DefendingAgainstHint'}}" style="cursor:pointer">
                 {{localize "NEUROSHIMA.Scripts.DefendingAgainst"}}
             </label>
             <div class="form-fields">
-                <input type="checkbox" name="defendingAgainst" {{#if scriptData.defendingAgainst}}checked{{/if}}>
+                <input type="checkbox" id="ns-se-defendingAgainst" name="defendingAgainst" {{#if scriptData.defendingAgainst}}checked{{/if}}>
+            </div>
+        </div>
+        {{/if}}
+        {{#if isMeleeActionsScript}}
+        <div class="form-group">
+            <label for="ns-se-isDialogScript" data-tooltip="Gdy zaznaczone: sztuczka pojawia się jako opcjonalny checkbox w oknie rzutu (pre-roll, dialogCode modyfikuje args.fields.*) ORAZ na karcie walki wręcz (submissionScript odpala się gdy gracz klika Atak). Pasywny skrypt (code) działa zawsze niezależnie." style="cursor:pointer">
+                Modyfikator w dialogu walki
+            </label>
+            <div class="form-fields">
+                <input type="checkbox" id="ns-se-isDialogScript" name="isDialogScript" {{#if scriptData.isDialogScript}}checked{{/if}}>
             </div>
         </div>
         {{/if}}
@@ -49,11 +59,44 @@
 
     <div class="ns-editor-scroll-area">
         <div class="form-group stacked ns-script-code-group">
-            <label>{{#if (eq scriptData.trigger "dialog")}}{{localize "NEUROSHIMA.Scripts.DialogScript"}}{{else}}{{localize "NEUROSHIMA.Scripts.Code"}}{{/if}}</label>
+            <label>
+                {{#if isMeleeActionsScript}}
+                    Skrypt akcji <span class="hint">— pasywny; odpala się zawsze przy budowaniu karty walki; push do <code>args.actions</code> (standalone lub kolejka)</span>
+                {{else if showDialogSubScripts}}
+                    {{localize "NEUROSHIMA.Scripts.DialogScript"}}
+                {{else}}
+                    {{localize "NEUROSHIMA.Scripts.Code"}}
+                {{/if}}
+            </label>
             <code-mirror name="code" language="javascript" indent="4">{{scriptData.code}}</code-mirror>
         </div>
 
-        {{#if (eq scriptData.trigger "dialog")}}
+        {{#if showDialogCode}}
+        <div class="ns-dialog-subscripts">
+            <div class="form-group stacked ns-script-code-group">
+                <label>
+                    Skrypt dialogowy (pre-roll) <span class="hint">— odpala się w oknie rzutu bronią gdy checkbox zaznaczony; modyfikuje <code>args.fields.*</code> (np. difficultyShift, modifier)</span>
+                </label>
+                <code-mirror name="dialogCode" language="javascript" indent="4">{{scriptData.dialogCode}}</code-mirror>
+            </div>
+            <div class="form-group stacked ns-script-code-group">
+                <label>
+                    {{localize "NEUROSHIMA.Scripts.HideScript"}} <span class="hint">— return true = ukryj w oknie rzutu (pre-roll) i na karcie walki. <code>args.weaponId</code> / <code>args.isPreRollContext</code> dostępne</span>
+                </label>
+                <code-mirror name="hideScript" language="javascript" indent="4">{{scriptData.hideScript}}</code-mirror>
+            </div>
+            <div class="form-group stacked ns-script-code-group">
+                <label>{{localize "NEUROSHIMA.Scripts.ActivateScript"}} <span class="hint">— return true to auto-activate</span></label>
+                <code-mirror name="activateScript" language="javascript" indent="4">{{scriptData.activateScript}}</code-mirror>
+            </div>
+            <div class="form-group stacked ns-script-code-group">
+                <label>
+                    Skrypt zatwierdzenia (Atak — karta walki) <span class="hint">— odpala się gdy checkbox zaznaczony i gracz klika Atak na karcie walki; push do <code>args.actions</code> lub bezpośrednia akcja (np. rozbrojenie)</span>
+                </label>
+                <code-mirror name="submissionScript" language="javascript" indent="4">{{scriptData.submissionScript}}</code-mirror>
+            </div>
+        </div>
+        {{else if showDialogSubScripts}}
         <div class="ns-dialog-subscripts">
             <div class="form-group stacked ns-script-code-group">
                 <label>{{localize "NEUROSHIMA.Scripts.HideScript"}} <span class="hint">— return true to hide</span></label>
@@ -63,10 +106,12 @@
                 <label>{{localize "NEUROSHIMA.Scripts.ActivateScript"}} <span class="hint">— return true to auto-activate</span></label>
                 <code-mirror name="activateScript" language="javascript" indent="4">{{scriptData.activateScript}}</code-mirror>
             </div>
+            {{#if showSubmissionScript}}
             <div class="form-group stacked ns-script-code-group">
                 <label>{{localize "NEUROSHIMA.Scripts.SubmissionScript"}} <span class="hint">— runs on submit when active</span></label>
                 <code-mirror name="submissionScript" language="javascript" indent="4">{{scriptData.submissionScript}}</code-mirror>
             </div>
+            {{/if}}
         </div>
         {{/if}}
     </div>

@@ -170,6 +170,14 @@ export class NeuroshimaScript {
     this.submissionScript = scriptData.submissionScript || "";
     this.targeter = scriptData.targeter ?? false;
     this.defendingAgainst = scriptData.defendingAgainst ?? false;
+    // getMeleeActions dialog mode: when true, the script appears as an opt-in
+    // checkbox modifier on the duel card instead of always firing passively.
+    // `code` still runs passively (push to args.actions).
+    // `dialogCode` runs in the pre-roll weapon dialog phase (args.fields.*) when the checkbox is active.
+    // `hideScript`/`activateScript` control visibility/auto-check in both phases.
+    // `submissionScript` runs when the modifier is checked and the player confirms Attack on the duel card.
+    this.isDialogScript = scriptData.isDialogScript ?? false;
+    this.dialogCode = scriptData.dialogCode || "";
     this.effect = effect;
   }
 
@@ -2561,6 +2569,57 @@ export class NeuroshimaScript {
     return NeuroshimaScriptRunner.postRequiredTest({ ...params, defenderActorUuid: actorUuid });
   }
 
+  // ── Disarm helper ─────────────────────────────────────────────────────────
+
+  /**
+   * Disarm (unequip) a weapon from a target actor. Runs via GM socket so it works
+   * even when the caller is a player who doesn't own the target actor.
+   *
+   * Two usage patterns:
+   *  1. Provide both `actorOrUuid` and `weaponId` — disarms that exact item.
+   *  2. Provide only `actorOrUuid` — auto-picks the first equipped melee weapon
+   *     longer than a knife (system.skill !== "brawl") on the actor.
+   *
+   * Primarily used in tricks like "Aramis" where the attacker disarms the opponent's
+   * weapon as a result of a getMeleeActions submissionScript.
+   *
+   * @param {string|Actor} actorOrUuid - Target actor document or their UUID.
+   * @param {string}       [weaponId]  - Optional item ID of the specific weapon to disarm.
+   * @returns {Promise<{success: boolean, weaponName?: string, actorName?: string, reason?: string}>}
+   *
+   * @example
+   * // In a getMeleeActions submissionScript (Aramis trick):
+   * const state = args.state;
+   * const isOwnerAttacker = state.initiativeOwnerSide === "attacker";
+   * const opponentUuid = isOwnerAttacker ? state.defenderUuid : state.attackerUuid;
+   * const opponentDoc = fromUuidSync(opponentUuid);
+   * const opponentActor = opponentDoc?.actor ?? opponentDoc;
+   *
+   * // Auto-find the first equipped non-knife melee weapon:
+   * const result = await this.disarmWeapon(opponentUuid);
+   * if (result?.success) {
+   *   ChatMessage.create({
+   *     content: `<p>Aramis: ${args.actor.name} rozbrajia <em>${result.weaponName}</em>!</p>`
+   *   });
+   * }
+   */
+  async disarmWeapon(actorOrUuid, weaponId) {
+    const actorUuid = typeof actorOrUuid === "string" ? actorOrUuid : actorOrUuid?.uuid;
+    if (!actorUuid) {
+      game.neuroshima?.log("[NeuroshimaScript.disarmWeapon] missing actorUuid");
+      return { success: false, reason: "Missing actorUuid" };
+    }
+    game.neuroshima?.log("[NeuroshimaScript.disarmWeapon] executing via socket", { actorUuid, weaponId });
+    try {
+      const socket = game.neuroshima?.socket;
+      if (!socket) return { success: false, reason: "Socket not available" };
+      return await socket.executeAsGM("disarmWeapon", actorUuid, weaponId ?? null);
+    } catch (err) {
+      game.neuroshima?.log("[NeuroshimaScript.disarmWeapon] error", err);
+      return { success: false, reason: err?.message ?? String(err) };
+    }
+  }
+
   // ── Execution ─────────────────────────────────────────────────────────────
 
   /**
@@ -2614,8 +2673,25 @@ export class NeuroshimaScript {
     }
   }
 
+  /**
+   * Execute the main `code` script for this trigger.
+   * Used by all triggers except getMeleeActions pre-roll phase (which uses executeDialogCode).
+   * @param {object} args - Trigger args (actor, fields, state, …)
+   */
   async execute(args = {}) {
     return this._executeCode(this.code, args);
+  }
+
+  /**
+   * Executes `dialogCode` — the pre-roll modifier script used by getMeleeActions+isDialogScript.
+   * `dialogCode` runs in the weapon roll dialog phase and may modify args.fields.* (e.g. difficultyShift).
+   * Falls back to `code` when `dialogCode` is empty (backward-compat).
+   * @param {object} args - dialog modifier args (actor, fields, rollType, weapon, isPreRollContext …)
+   */
+  async executeDialogCode(args = {}) {
+    const src = this.dialogCode || this.code;
+    if (!src) return;
+    return this._executeCode(src, args);
   }
 
   async evalHide(args = {}) {
@@ -2711,16 +2787,53 @@ export class NeuroshimaScript {
  *                    Use: react to success/failure, add chat annotations, apply conditions
  *                         this.addAnnotation("text")             → shown under roll result in chat
  *
- * preApplyDamage   — Pre-Apply Damage: runs BEFORE armor reduction for an incoming hit.
- *                    Modify raw wound list before armor/pain resistance processing.
- *                    args: { actor, location, damageType, rawWounds, piercing }
- *                    Use: push/pop entries in args.rawWounds, or change args.damageType
+ * ── Cztery wyzwalacze obrażeń (wzorowane na WFRP4e) ──────────────────────────
  *
- * applyDamage      — Apply Damage: runs before pain resistance is processed for incoming wounds
- *                    args: { actor, wounds: [{name, damageType, forcePassed?, forceSkip?, annotation?}], location }
- *                    Use: set wound.forcePassed = true  → auto-pass pain resistance for that wound
- *                         set wound.forceSkip   = true  → remove the wound entirely
- *                         set wound.annotation  = "text"→ custom text shown in chat for this wound
+ * Obrażenia w walce wręcz i dystansowej obsługiwane są przez cztery wyzwalacze:
+ * dwa po stronie ATAKUJĄCEGO i dwa po stronie OBROŃCY. Kolejność wykonania:
+ *
+ *   preApplyDamage  →  applyDamage  →  [armor / damage to defender]  →  preTakeDamage  →  takeDamage
+ *   (attacker, pre)   (attacker, per-hit)                               (defender, pre)   (defender, post-armor)
+ *
+ * preApplyDamage   — Pre-Apply Damage (ATTACKER side): fires on the actor DOING damage,
+ *                    BEFORE the damage type for this hit is selected. Fires for ALL attack
+ *                    sources that carry a known attacker (actorId in attackData): melee,
+ *                    ranged, thrown, grenade. Runs inside applyDamageToActor.
+ *                    Analogous to WFRP4e preApplyDamage.
+ *                    args: { actor (attacker), defenderActor, weapon, location, attackData }
+ *                         attackData — mutable: modify damageMelee1/2/3 (melee) or
+ *                                      attackData.damage (ranged/thrown) to influence
+ *                                      which damage type gets selected for this hit
+ *                    Use: args.attackData.damageMelee1 = "L" → upgrade tier-1 damage before selection
+ *
+ * applyDamage      — Apply Damage (ATTACKER side): fires on the actor DOING damage,
+ *                    AFTER the damage type has been selected for this hit, but BEFORE
+ *                    armor reduction on the defender. Fires for ALL attack sources that
+ *                    carry a known attacker. Runs inside applyDamageToActor.
+ *                    Analogous to WFRP4e applyDamage.
+ *                    args: { actor (attacker), defenderActor, weapon, location, attackData }
+ *                         attackData.damageType   — selected damage type (read: current value)
+ *                         attackData.damageOverride — set this to replace the selected type
+ *                    Use: args.attackData.damageOverride = "C" → override final damage type
+ *                    Example: Wilczy Kieł — walka bez broni zadaje Lekką zamiast Draśnięcia
+ *
+ * preTakeDamage    — Pre-Take Damage (DEFENDER side): fires on the actor RECEIVING damage,
+ *                    BEFORE armor reduction is applied to the incoming hit.
+ *                    Analogous to WFRP4e preTakeDamage.
+ *                    args: { actor (defender), location, damageType, rawWounds, piercing,
+ *                            isMelee, isRanged, isThrown, isGrenade, attackLabel, weaponType }
+ *                    Use: args.damageType = "D"    → downgrade incoming damage type before armor
+ *                         args.piercing  += 2       → make hit more piercing
+ *                         args.rawWounds.push({...}) → add an extra wound to the batch
+ *
+ * takeDamage       — Take Damage (DEFENDER side): fires on the actor RECEIVING damage,
+ *                    AFTER armor reduction but BEFORE pain resistance is processed.
+ *                    Analogous to WFRP4e takeDamage. Args carry mutable wound plain-objects
+ *                    (not yet Item documents) — you can still block or skip wounds here.
+ *                    args: { actor (defender), wounds: [{name, damageType, forcePassed?, forceSkip?, annotation?}], location }
+ *                    Use: wound.forcePassed = true  → auto-pass pain resistance for that wound
+ *                         wound.forceSkip   = true  → remove the wound entirely (block it)
+ *                         wound.annotation  = "text"→ custom text shown in chat for this wound
  *
  * armorCalculation — Armour Calculation: runs before armor SP reduction is applied to an incoming hit [SYNC]
  *                    args: { actor, location, damageType, sp, piercing, bonusSP }
@@ -2827,14 +2940,6 @@ export class NeuroshimaScript {
  *                    Use: react to a condition being applied (e.g. fire secondary effects,
  *                         notify chat, apply additional penalties for a specific condition)
  *
- * takeDamage        — Take Damage: runs AFTER wounds are physically created on the actor
- *                    (post pain-resistance, post armor reduction).
- *                    Fires once per applyDamageToActor call with all wounds created in that batch.
- *                    args: { actor, wounds: Item[], woundIds: string[], location, attackData }
- *                    Use: secondary effects triggered by receiving damage
- *                         (e.g. apply bleeding condition when wound type is C/K,
- *                          trigger beast venom after a bite, push annotations to chat)
- *
  * preOpposedAttacker — Pre-Opposed Attacker: runs at the START of melee exchange resolution,
  *                    on the ATTACKER before success/failure is calculated.
  *                    Allows modifying the effective difficulty target for the attacker's dice.
@@ -2849,14 +2954,37 @@ export class NeuroshimaScript {
  *                    Use: args.difficultyTarget += N  → raise target (easier to defend)
  *                         args.difficultyTarget -= N  → lower target (harder to defend)
  *
- * calculateOpposedDamage — Calculate Opposed Damage: runs in applyDamageDistributed BEFORE
- *                    each hit's attackData is built — allows modifying damage types per hit.
- *                    Fires once per hit (each tier in a multi-hit sequence).
- *                    args: { attackerActor, defenderActor, weapon, hit, attackData }
- *                         hit        — { cost: tierLevel, tier: tierLevel }
- *                         attackData — mutable: modify damageMelee1/2/3 or damageType directly
- *                    Use: increase damage tier for naked fist (Wilczy Kieł),
- *                         reduce damage if defender has specific condition/trait
+ * getMeleeActions   — Get Melee Actions: fires when building the duel card context for a
+ *                    participant (mode 1 opposed melee). Allows effect scripts to inject
+ *                    EXTRA ACTION CHOICES into the UI alongside the normal Attack/Exit/NonCombat
+ *                    buttons. Only fires on non-creature actors during their own turn.
+ *                    args: { actor, state (duel card state, read-only), actions (mutable array),
+ *                            ownerHadHit, ownerPreviousHits, uncommittedDice, uncommittedSuccesses }
+ *                    Use: push an action object to args.actions:
+ *                    {
+ *                      id:          string  — unique stable identifier (e.g. "barbarka-head-butt")
+ *                      name:        string  — button label
+ *                      img:         string  — icon path (optional, defaults to shield icon)
+ *                      damage:      string  — fixed damage type on hit: "D","L","C","K","sC",…
+ *                      successCost: number  — (optional, default 0) if > 0: sztuczka pojawia się
+ *                                            w sekcji KOLEJKI a nie jako samodzielny atak. Budżet
+ *                                            = liczba sukcesów wśród zaznaczonych kości. Sztuczka
+ *                                            jest "opłacana" przed rzutem i zawsze się aplikuje.
+ *                                            Przykład: successCost: 1 → kosztuje 1 sukces z budżetu.
+ *                      minDice:     number  — (dotyczy tylko standalone: successCost === 0) min kości
+ *                      maxDice:     number  — (dotyczy tylko standalone: successCost === 0) max kości
+ *                      annotation:  string  — text shown in chat result (optional)
+ *                    }
+ *                    Dwa tryby działania:
+ *                    • successCost === 0 (domyślnie): sztuczka pojawia się jako ALTERNATYWA ataku
+ *                      (osobny przycisk obok Atak/Wyjście/Nie-walka). Gracz wybiera ją jako akcję
+ *                      segmentu — porównuje kości i przy trafieniu aplikuje damage z sztuczki.
+ *                    • successCost > 0: sztuczka pojawia się w KOLEJCE (jak akcje bestii). Budżet
+ *                      = sukcesy wśród wybranych kości. Gracz konfiguruje kolejkę i zatwierdza
+ *                      normalnym "Atak" — sztuczki z kolejki aplikują się niezależnie od wyniku.
+ *                    Example: Barbarka — after previous segment hit, add "Uderzenie Głową" (sC):
+ *                      args.actions.push({ id: "barbarka-head-butt", name: "Uderzenie Głową",
+ *                        damage: "sC", successCost: 1, annotation: "Barbarka" });
  *
  * Context available inside every script (via `this`):
  *   this.effect                    — The ActiveEffect owning this script
@@ -3048,6 +3176,8 @@ export class NeuroshimaScriptRunner {
     rollTest:         "Roll Test",
     preApplyDamage:   "Pre-Apply Damage",
     applyDamage:      "Apply Damage",
+    preTakeDamage:    "Pre-Take Damage",
+    takeDamage:       "Take Damage",
     armorCalculation: "Armour Calculation",
     equipToggle:      "Equip Toggle",
     startCombat:      "Start Combat",
@@ -3066,10 +3196,9 @@ export class NeuroshimaScriptRunner {
     worldTimeUpdate:  "World Time Update",
     preApplyCondition:      "Pre-Apply Condition",
     applyCondition:         "Apply Condition",
-    takeDamage:             "Take Damage",
     preOpposedAttacker:     "Pre-Opposed Attacker",
     preOpposedDefender:     "Pre-Opposed Defender",
-    calculateOpposedDamage: "Calculate Opposed Damage"
+    getMeleeActions:        "Get Melee Actions"
   };
 
   static _makeHealingModifierProxy() {
@@ -3118,14 +3247,32 @@ export class NeuroshimaScriptRunner {
 
   /**
    * Execute a single dialog modifier script and return the populated fields object.
-   * Call this when the user toggles a modifier ON in the roll dialog.
-   * @param {object} dm            - Dialog modifier entry from runDialogScripts (must have _script and _rollContext)
-   * @param {Actor}  actor
-   * @param {object} [liveContext] - Live form values to override stored rollContext fields
-   * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number}>}
+   *
+   * Two code paths are supported:
+   *  • Regular `dialog` trigger: dm.isMeleePreRoll=false  → runs script.code via execute().
+   *  • getMeleeActions+isDialogScript (pre-roll phase): dm.isMeleePreRoll=true  → runs script.dialogCode
+   *    (with fallback to code if dialogCode is empty) via executeDialogCode().
+   *    `code` in that case is the *passive* getMeleeActions push-to-actions script and must NOT
+   *    run here — it fires separately on the duel card.
+   *
+   * @param {object} dm            - Dialog modifier entry from computeDialogFields (has _script, _rollContext, isMeleePreRoll)
+   * @param {Actor}  actor         - Source actor for the modifier
+   * @param {object} [liveContext] - Live form values to override stored rollContext fields (difficulty, armorPenalty …)
+   * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number, difficultyShift:number, …}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-    if (!dm?._script?.code) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {} };
+    // For isMeleePreRoll (getMeleeActions+isDialogScript) entries, prefer dialogCode over code.
+    // code is the passive push-to-actions script; dialogCode is the pre-roll modifier (args.fields.*).
+    const effectiveCode = dm?.isMeleePreRoll
+      ? (dm._script?.dialogCode || dm._script?.code)
+      : dm._script?.code;
+    if (!effectiveCode) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {} };
+    game.neuroshima?.log?.(`[dialog] execDialogModifier`, {
+      label: dm.label,
+      trigger: dm._script?.trigger,
+      isMeleePreRoll: dm.isMeleePreRoll ?? false,
+      usingDialogCode: !!(dm.isMeleePreRoll && dm._script?.dialogCode)
+    });
     const rc = dm._rollContext || {};
     const initialDifficulty = liveContext.difficulty ?? rc.difficulty ?? "average";
     const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
@@ -3143,6 +3290,9 @@ export class NeuroshimaScriptRunner {
       distanceModifier: 0,
       difficultyShift: 0,
       damageShift: 0,
+      damageShift1: 0,
+      damageShift2: 0,
+      damageShift3: 0,
       difficulty: initialDifficulty,
       hitLocation: initialHitLocation,
       healingModifierAll: 0,
@@ -3166,8 +3316,11 @@ export class NeuroshimaScriptRunner {
       rollType: rc.rollType ?? null,
       healingMethod: rc.healingMethod ?? null,
       weapon: rc.weapon ?? null,
+      weaponId: rc.weaponId ?? rc.weapon?.id ?? null,
       wounds: rc.wounds ?? [],
       stat: rc.stat ?? null,
+      // isPreRollContext: true when this script runs in pre-roll weapon dialog phase (getMeleeActions + isDialogScript)
+      isPreRollContext: rc.isPreRollContext ?? false,
 
       flags: {},
       fields,
@@ -3178,7 +3331,13 @@ export class NeuroshimaScriptRunner {
       currentDistance: liveContext.distance ?? rc.distance ?? 0,
       currentDistanceModifier: liveContext.distanceModifier ?? rc.distanceModifier ?? 0
     };
-    await dm._script.execute(args);
+    // isMeleePreRoll: use executeDialogCode (runs dialogCode with fallback to code).
+    // Otherwise standard execute() which runs code.
+    if (dm.isMeleePreRoll) {
+      await dm._script.executeDialogCode(args);
+    } else {
+      await dm._script.execute(args);
+    }
     return {
       modifier: fields.modifier,
       attributeBonus: fields.attributeBonus,
@@ -3191,6 +3350,9 @@ export class NeuroshimaScriptRunner {
       distanceModifierDelta: fields.distanceModifier,
       difficultyShift: fields.difficultyShift || 0,
       damageShift: fields.damageShift || 0,
+      damageShift1: fields.damageShift1 || 0,
+      damageShift2: fields.damageShift2 || 0,
+      damageShift3: fields.damageShift3 || 0,
       difficulty: fields.difficulty !== initialDifficulty ? fields.difficulty : null,
       hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null,
       healingModifierAll: fields.healingModifierAll || 0,
@@ -3632,7 +3794,7 @@ export class NeuroshimaScriptRunner {
     game.neuroshima?.log?.(`[${trigger}] fired`, NeuroshimaScriptRunner._triggerArgsForLog(args));
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
-      if (trigger === "applyDamage" && Array.isArray(args.wounds)) {
+      if (trigger === "takeDamage" && Array.isArray(args.wounds)) {
         const before = args.wounds.map(w => ({ forcePassed: w.forcePassed, annotation: w.annotation }));
         await script.execute(args);
         args.wounds.forEach((w, i) => {
@@ -3729,17 +3891,26 @@ export class NeuroshimaScriptRunner {
   /**
    * Compute dialog modifiers (hide/activate/run scripts) and return combined field deltas.
    * This is the WFRP-pattern replacement for runDialogScripts + applyDialogFieldOverrides.
-   * @param {Actor} actor
-   * @param {Object} rollContext - Contextual data passed to scripts
-   * @param {Set<string>} selectedModifierIds - Effect IDs user manually toggled ON
-   * @param {Set<string>} unselectedModifierIds - Effect IDs user manually toggled OFF
-   * @param {Actor[]} [targetActors=[]] - Target actors for targeter/defendingAgainst scripts
+   *
+   * Sources of dialog modifiers collected into allScriptEntries:
+   *  1. Own `dialog` trigger scripts (non-targeter) — active effects on the rolling actor.
+   *  2. Target `dialog` trigger scripts (targeter=true or defendingAgainst=true) — from target actors.
+   *  3. Own `getMeleeActions` scripts with isDialogScript=true (only when rollContext.rollType==="melee").
+   *     These appear as opt-in checkboxes in the pre-roll weapon dialog (isMeleePreRoll=true).
+   *     Their `dialogCode` modifies args.fields.* (e.g. difficultyShift). Their `code` fires separately
+   *     on the duel card via the getMeleeActions pipeline and is NOT executed here.
+   *
+   * @param {Actor}          actor
+   * @param {Object}         rollContext            - Contextual data passed to scripts (rollType, weapon, difficulty …)
+   * @param {Set<string>}    selectedModifierIds    - Effect IDs user manually toggled ON
+   * @param {Set<string>}    unselectedModifierIds  - Effect IDs user manually toggled OFF
+   * @param {Actor[]}        [targetActors=[]]      - Target actors for targeter/defendingAgainst scripts
    * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown}>}
    */
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [] },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [] },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -3761,15 +3932,40 @@ export class NeuroshimaScriptRunner {
       }
     }
 
+    // getMeleeActions scripts with isDialogScript=true appear ALSO in the pre-roll melee weapon
+    // dialog as optional checkboxes. Their `dialogCode` (pre-roll modifier) runs with full dialog
+    // args (args.fields.*) when the checkbox is active — e.g. Aramis difficulty shift.
+    // `code` (passive script) still fires separately via the duel-card getMeleeActions pipeline.
+    // execDialogModifier dispatches to executeDialogCode() for these entries (dm.isMeleePreRoll=true).
+    if (rollContext.rollType === "melee") {
+      const meleeDialogScripts = this.getScripts(actor, "getMeleeActions").filter(s => s.isDialogScript);
+      for (const script of meleeDialogScripts) {
+        allScriptEntries.push({ script, sourceActor: actor, sourceLabel: null, isMeleePreRoll: true });
+      }
+    }
+
     const dialogModifiers = [];
     for (const [idx, entry] of allScriptEntries.entries()) {
-      const { script, sourceActor } = entry;
+      const { script, sourceActor, isMeleePreRoll = false } = entry;
       const effectId = script.effect?.id
         ? (sourceActor !== actor ? `target_${sourceActor.id}_${script.effect.id}_${idx}` : `${script.effect.id}_${idx}`)
         : `${sourceActor.id}_script_${idx}`;
       const flags = {};
       const isTargetScript = sourceActor !== actor;
-      const baseArgs = { actor: isTargetScript ? sourceActor : actor, rollingActor: actor, flags, ...rollContext };
+      // isMeleePreRoll=true: this getMeleeActions+isDialogScript entry runs with dialog context.
+      // Pass weapon/weaponId explicitly so hideScript can check the weapon (args.state is not
+      // available pre-roll). flag isPreRollContext=true lets scripts detect which phase they run in.
+      const baseArgs = {
+        actor: isTargetScript ? sourceActor : actor,
+        rollingActor: actor,
+        flags,
+        ...rollContext,
+        ...(isMeleePreRoll ? {
+          weapon:         rollContext.weapon ?? null,
+          weaponId:       rollContext.weapon?.id ?? null,
+          isPreRollContext: true
+        } : {})
+      };
 
       const hidden = await script.evalHide(baseArgs);
       if (hidden) continue;
@@ -3789,6 +3985,12 @@ export class NeuroshimaScriptRunner {
       const _modSnap1 = _modId1 ? (parentItem?.system?.mods?.[_modId1] ?? null) : null;
       const resolvedLabel = NeuroshimaScriptRunner._resolveItemRef(rawLabel, parentItem, script.effect ?? null, _modSnap1, _modId1 ?? null);
 
+      // For isMeleePreRoll entries, inject weapon/weaponId/isPreRollContext into _rollContext
+      // so execDialogModifier passes them to the script via args.weapon / args.isPreRollContext.
+      const storedRollContext = isMeleePreRoll
+        ? { ...rollContext, weapon: rollContext.weapon ?? null, weaponId: rollContext.weapon?.id ?? null, isPreRollContext: true }
+        : { ...rollContext };
+
       dialogModifiers.push({
         label: resolvedLabel,
         activated,
@@ -3796,28 +3998,34 @@ export class NeuroshimaScriptRunner {
         _effectId: effectId,
         _script: script,
         _sourceActor: sourceActor,
-        _rollContext: { ...rollContext }
+        _rollContext: storedRollContext,
+        // isMeleePreRoll=true: this is a getMeleeActions+isDialogScript entry running in the
+        // pre-roll dialog phase. execDialogModifier will run dialogCode (not code) for it.
+        isMeleePreRoll
       });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [] };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [] };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
-      if (!dm.activated || !dm._script?.code) continue;
+      // For isMeleePreRoll entries prefer dialogCode; fall back to code if dialogCode empty.
+      const effectiveCode = dm.isMeleePreRoll
+        ? (dm._script?.dialogCode || dm._script?.code)
+        : dm._script?.code;
+      if (!dm.activated || !effectiveCode) continue;
       const srcActor = dm._sourceActor || actor;
       const result = await this.execDialogModifier(dm, srcActor, {
-      rollingActor: actor,
-      rollType: rollContext.rollType ?? null,
-      healingMethod: rollContext.healingMethod ?? null,
-      difficulty: rollContext.difficulty || "average",
-      hitLocation: rollContext.hitLocation || "random",
-      armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
-      woundPenalty: actor.system.combat?.totalWoundPenalty || 0,
-      distance: rollContext.distance || 0,
-      distanceModifier: rollContext.distanceModifier || 0,
-      
-    });
+        rollingActor: actor,
+        rollType: rollContext.rollType ?? null,
+        healingMethod: rollContext.healingMethod ?? null,
+        difficulty: rollContext.difficulty || "average",
+        hitLocation: rollContext.hitLocation || "random",
+        armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
+        woundPenalty: actor.system.combat?.totalWoundPenalty || 0,
+        distance: rollContext.distance || 0,
+        distanceModifier: rollContext.distanceModifier || 0
+      });
       scriptFields.modifier += result.modifier || 0;
       scriptFields.attributeBonus += result.attributeBonus || 0;
       scriptFields.skillBonus += result.skillBonus || 0;
@@ -3827,6 +4035,9 @@ export class NeuroshimaScriptRunner {
       scriptFields.weaponModifier += result.weaponModifier || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
       scriptFields.damageShift += result.damageShift || 0;
+      scriptFields.damageShift1 += result.damageShift1 || 0;
+      scriptFields.damageShift2 += result.damageShift2 || 0;
+      scriptFields.damageShift3 += result.damageShift3 || 0;
       scriptFields.healingModifierAll += result.healingModifierAll || 0;
       for (const [dt, val] of Object.entries(result.healingModifier || {})) {
         scriptFields.healingModifier[dt] = (scriptFields.healingModifier[dt] || 0) + (val || 0);

@@ -522,7 +522,10 @@ export class MeleeTurnCard {
           typeof rollResult.target === "number" ? rollResult.target : null,
           rollResult.meleeAction || "attack",
           dieResults,
-          rollResult.damageShift || 0
+          rollResult.damageShift || 0,
+          rollResult.damageShift1 || 0,
+          rollResult.damageShift2 || 0,
+          rollResult.damageShift3 || 0
         );
       }
     });

@@ -82,6 +82,16 @@ export class NeuroshimaChatMessage extends ChatMessage {
           case "duelSwapInit":
             this.onDuelSwapInit(event, message);
             break;
+          case "duelUndoSegment": {
+            const { MeleeOpposedChat: _MOCUndo } = await import("../combat/melee-opposed-chat.js");
+            await _MOCUndo.undoDuelSegment(message.id);
+            break;
+          }
+          case "duelRedoSegment": {
+            const { MeleeOpposedChat: _MOCRedo } = await import("../combat/melee-opposed-chat.js");
+            await _MOCRedo.redoDuelSegment(message.id);
+            break;
+          }
           case "applyBeastActions": {
             const section = root.querySelector(".beast-action-spending");
             if (!section) break;

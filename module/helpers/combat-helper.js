@@ -212,6 +212,20 @@ export class CombatHelper {
     let piercing = attackData.piercing || 0;
     const damageCategory = attackData.damageCategory ?? "physical";
     const spDifference = options.spDifference ?? attackData.successPoints ?? 0;
+
+    // Resolve attacker for attacker-side triggers (preApplyDamage / applyDamage).
+    // Works for any damage source: melee, ranged, thrown, grenade — any attackData with actorId.
+    const attackerActor = attackData.actorId ? game.actors.get(attackData.actorId) : null;
+    const attackerWeapon = attackerActor && attackData.weaponId ? attackerActor.items.get(attackData.weaponId) : null;
+
+    // preApplyDamage (ATTACKER side) — fires before damage type selection.
+    // Scripts can modify attackData.damageMelee1/2/3 (melee) or attackData.damage (ranged/thrown)
+    // to influence which damage type will ultimately be selected for this hit.
+    // Analogous to WFRP4e preApplyDamage. Fires for ALL attack sources with a known attacker.
+    if (attackerActor) {
+        game.neuroshima?.log("[preApplyDamage] fired on attacker", { attacker: attackerActor.name, location });
+        await NeuroshimaScriptRunner.execute("preApplyDamage", { actor: attackerActor, defenderActor: actor, weapon: attackerWeapon, location, attackData });
+    }
     
     // For melee, select the appropriate damage field (damageMelee1/2/3) based on spDifference
     let damageType = initialDamageType;
@@ -251,6 +265,18 @@ export class CombatHelper {
         game.neuroshima.log(`Melee: spDifference=${spDifference}, selected damage profile=${damageType} (from ${initialDamageType})`);
     }
 
+    // applyDamage (ATTACKER side) — fires after damage type is selected for this hit, but
+    // before armor reduction on the defender. Scripts can set attackData.damageOverride to
+    // replace the selected damage type, or modify attackData fields for downstream effects.
+    // Analogous to WFRP4e applyDamage. Fires for ALL attack sources with a known attacker.
+    if (attackerActor) {
+        attackData.damageType = damageType;
+        game.neuroshima?.log("[applyDamage] fired on attacker", { attacker: attackerActor.name, damageType, location });
+        await NeuroshimaScriptRunner.execute("applyDamage", { actor: attackerActor, defenderActor: actor, weapon: attackerWeapon, location, attackData });
+        damageType = attackData.damageOverride || attackData.damageType || damageType;
+        delete attackData.damageOverride;
+    }
+
     const sourceInfo = `<p><em>Source: ${attackData.label || "Weapon"} ${options.attackerMessageId ? `(${options.attackerMessageId})` : ""}</em></p>`;
     
     const rawWounds = [];
@@ -270,9 +296,10 @@ export class CombatHelper {
       weaponType:  _wType
     };
 
-    // preApplyDamage: scripts can modify damageType, piercing, or push extra wounds
+    // preTakeDamage (DEFENDER side): scripts can modify damageType, piercing, or push extra wounds
+    // before armor reduction is applied. Analogous to WFRP4e preTakeDamage.
     const preArgs = { actor, location, damageType, piercing, rawWounds, ...attackContext };
-    await NeuroshimaScriptRunner.execute("preApplyDamage", preArgs);
+    await NeuroshimaScriptRunner.execute("preTakeDamage", preArgs);
     damageType = preArgs.damageType;
     piercing   = preArgs.piercing;
 
@@ -384,8 +411,11 @@ export class CombatHelper {
         let woundIds = [];
         
         if (rawWounds.length > 0) {
+            // takeDamage (DEFENDER side): fires after armor reduction but BEFORE pain resistance.
+            // Analogous to WFRP4e takeDamage. Scripts can still block (forceSkip) or auto-pass
+            // pain resistance (forcePassed) on individual wounds in this mutable array.
             const scriptArgs = { actor, wounds: rawWounds, location };
-            await NeuroshimaScriptRunner.execute("applyDamage", scriptArgs);
+            await NeuroshimaScriptRunner.execute("takeDamage", scriptArgs);
             const filteredWounds = rawWounds.filter(w => !w.forceSkip);
 
             const damageResult = await game.neuroshima.NeuroshimaDice.applyDamage(actor, {
@@ -398,19 +428,6 @@ export class CombatHelper {
             });
             results = damageResult.results;
             woundIds = damageResult.woundIds;
-
-            // takeDamage — fires after wounds are physically created on the actor.
-            // Scripts can react to damage events (e.g. trigger venom, apply bleeding).
-            if (woundIds.length > 0) {
-                const wounds = woundIds.map(id => actor.items.get(id)).filter(Boolean);
-                await NeuroshimaScriptRunner.execute("takeDamage", {
-                    actor,
-                    wounds,
-                    woundIds,
-                    location,
-                    attackData
-                });
-            }
 
             await this._applyDamageTypeEffects(actor, attackData);
 
@@ -1148,10 +1165,13 @@ export class CombatHelper {
     reductionData.armorDetails = details;
 
     if (weakPoint) {
-      const tiers = ["D", "L", "C", "K"];
-      const currentIdx = tiers.indexOf(damageType);
-      if (currentIdx !== -1 && currentIdx < tiers.length - 1) {
-        damageType = tiers[currentIdx + 1];
+      // Słaby punkt eskaluje typ obrażeń o jeden poziom wyżej.
+      // Obsługuje zarówno zwykłe rany (D→L→C→K) jak i siniaki (sD→sL→sC→sK).
+      const isBruiseWeak = NEUROSHIMA.woundConfiguration[damageType]?.isBruise ?? damageType.startsWith("s");
+      const tiersWeak = isBruiseWeak ? ["sD", "sL", "sC", "sK"] : ["D", "L", "C", "K"];
+      const currentIdx = tiersWeak.indexOf(damageType);
+      if (currentIdx !== -1 && currentIdx < tiersWeak.length - 1) {
+        damageType = tiersWeak[currentIdx + 1];
         reductionData.originalDamage = damageType;
       }
     }
@@ -1191,6 +1211,10 @@ export class CombatHelper {
     const woundConfig = NEUROSHIMA.woundConfiguration[damageType];
     const baseDamagePoints = woundConfig?.damagePoints || 1;
     const reducedDamagePoints = Math.max(0, baseDamagePoints - actualReduction);
+
+    // Preserve bruise (siniak) nature: sD/sL/sC/sK reduce within their own tier track.
+    // A bruised wound reduced by armor stays a bruise — it never becomes a regular wound.
+    const isBruise = woundConfig?.isBruise ?? damageType.startsWith("s");
     
     // Map reduced points to damage type
     let reducedDamageType = null;
@@ -1198,13 +1222,13 @@ export class CombatHelper {
     if (reducedDamagePoints === 0) {
       reducedDamageType = null;
     } else if (reducedDamagePoints >= 4) {
-      reducedDamageType = "K";
+      reducedDamageType = isBruise ? "sK" : "K";
     } else if (reducedDamagePoints === 3) {
-      reducedDamageType = "C";
+      reducedDamageType = isBruise ? "sC" : "C";
     } else if (reducedDamagePoints === 2) {
-      reducedDamageType = "L";
+      reducedDamageType = isBruise ? "sL" : "L";
     } else {
-      reducedDamageType = "D";
+      reducedDamageType = isBruise ? "sD" : "D";
     }
 
     reductionData.reducedDamageType = reducedDamageType;

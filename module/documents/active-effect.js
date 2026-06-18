@@ -24,7 +24,14 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   get scripts() {
     if (!this._scripts) {
       const scriptData = this.system?.scriptData ?? [];
-      this._scripts = scriptData.map(s => new NeuroshimaScript(s, this));
+      // _sourceIdx tracks the position of each script in scriptData[].
+      // Used by getMeleeActions dialog modifier mode to re-locate the script
+      // by index when the player activates it at click time.
+      this._scripts = scriptData.map((s, i) => {
+        const ns = new NeuroshimaScript(s, this);
+        ns._sourceIdx = i;
+        return ns;
+      });
     }
     return this._scripts;
   }
@@ -493,9 +500,14 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
           hideScript:       new fields.StringField({ initial: "",        blank: true }),
           activateScript:   new fields.StringField({ initial: "",        blank: true }),
           submissionScript: new fields.StringField({ initial: "",        blank: true }),
+          // dialogCode: for getMeleeActions+isDialogScript only.
+          // Runs in the pre-roll weapon dialog phase (args.fields.*) when the modifier checkbox is active.
+          // The main `code` field remains the passive getMeleeActions script (push to args.actions).
+          dialogCode:       new fields.StringField({ initial: "",        blank: true }),
           runIfDisabled:    new fields.BooleanField({ initial: false }),
           targeter:         new fields.BooleanField({ initial: false }),
           defendingAgainst: new fields.BooleanField({ initial: false }),
+          isDialogScript:   new fields.BooleanField({ initial: false }),
         }),
         { initial: [] }
       ),
