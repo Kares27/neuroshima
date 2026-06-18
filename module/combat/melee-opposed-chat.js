@@ -652,7 +652,8 @@ export class MeleeOpposedChat {
         outcome: null
       })),
       hits: [],
-      applied: false
+      applied: false,
+      activatedMeleePreRollMods: data.activatedMeleePreRollMods ?? []
     };
 
     const context = await MeleeOpposedChat._buildDuelContext(state, attackerActor, defenderActor);
@@ -847,9 +848,7 @@ export class MeleeOpposedChat {
     // Effect scripts push extra action entries (sztuczki like Barbarka) to args.actions.
     // Actions with successCost > 0 appear in a queue section (like beast actions, budget = uncommitted successes).
     // Actions without successCost appear as standalone attack-alternative buttons.
-    let ownerExtraActions    = null;  // standalone trick buttons (successCost === 0)
-    let ownerTrickQueue      = null;  // queue-style tricks (successCost > 0), like beast actions
-    let ownerDialogModifiers = null;  // dialog-mode getMeleeActions modifiers (isDialogScript === true)
+    let ownerExtraActions = null;  // trick action buttons (all types)
     if (ownerActor && !ownerIsCreature && status === "picking" && isOwnerTurn) {
       // --- helper context for effect scripts ---
       const ownerDiceArrFull = isOwnerAttacker ? (attackDice || []) : (defenseDice || []);
@@ -864,15 +863,15 @@ export class MeleeOpposedChat {
       const ownerHadHit      = pastSegs.some(s => s.outcome === "hit");
       const ownerPreviousHits = pastSegs.filter(s => s.outcome === "hit");
 
-      // getMeleeActions — dwa tryby skryptów:
-      // • isDialogScript === false (domyślny): skrypt odpala się zawsze pasywnie
-      //   i wpycha akcje do ownerExtraActions lub ownerTrickQueue.
-      // • isDialogScript === true: sztuczka pojawia się jako checkbox na karcie walki.
-      //   Skrypt odpala się DOPIERO gdy gracz go aktywuje i zatwierdzi Atak.
-      //   evalHide() → ukrywa modifier; evalActivate() → auto-zaznacza checkbox.
+      // getMeleeActions — two modes:
+      // • isDialogScript === false: always fires passively, pushes actions to extraActionsArr.
+      // • isDialogScript === true: shown as checkbox in the pre-roll weapon dialog.
+      //   On the duel card its passive `code` runs only when the modifier was activated
+      //   in the pre-roll dialog (UUID present in state.activatedMeleePreRollMods).
+      const activatedPreRollMods = new Set(state.activatedMeleePreRollMods ?? []);
       const extraActionsArr = [];
       try {
-        const { NeuroshimaScriptRunner, NeuroshimaScript: _NS } = await import("../apps/neuroshima-script-engine.js");
+        const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
         const triggerArgs = {
           actor: ownerActor,
           state,
@@ -884,33 +883,17 @@ export class MeleeOpposedChat {
         };
 
         const allMeleeScripts = NeuroshimaScriptRunner.getScripts(ownerActor, "getMeleeActions");
-        const dialogModsArr = [];
         for (const script of allMeleeScripts) {
           if (script.isDialogScript) {
-            // Dialog-mode: evaluate hide/activate to build the modifier entry.
-            // The actual code runs later when the player checks the box and clicks Attack.
-            let isHidden = false, isAutoActive = false;
-            try {
-              isHidden    = await script.evalHide(triggerArgs);
-              isAutoActive = await script.evalActivate(triggerArgs);
-            } catch (err) {
-              game.neuroshima?.log("[getMeleeActions] dialog modifier eval error", err);
-            }
-            if (!isHidden) {
-              const eff = script.effect;
-              // _sourceIdx is set by the active-effect.js scripts getter (array position).
-              const scriptIdx = script._sourceIdx ?? -1;
-              dialogModsArr.push({
-                id:          `dm-${eff?.id ?? foundry.utils.randomID(6)}-${scriptIdx}`,
-                label:       script.label || eff?.name || "Sztuczka",
-                img:         eff?.img     ?? "systems/neuroshima/assets/effects/gears.svg",
-                isAutoActive,
-                effectUuid:  eff?.uuid   ?? null,
-                scriptIdx
-              });
+            const effectUuid = script.effect?.uuid;
+            if (effectUuid && activatedPreRollMods.has(effectUuid)) {
+              try {
+                await script.execute(triggerArgs);
+              } catch (err) {
+                game.neuroshima?.log("[getMeleeActions] dialog script exec error", err);
+              }
             }
           } else {
-            // Passive-mode: run the script immediately, it pushes to extraActionsArr.
             try {
               await script.execute(triggerArgs);
             } catch (err) {
@@ -918,35 +901,26 @@ export class MeleeOpposedChat {
             }
           }
         }
-        if (dialogModsArr.length) ownerDialogModifiers = dialogModsArr;
       } catch (err) {
         game.neuroshima?.log("[getMeleeActions] trigger error", err);
       }
       if (extraActionsArr.length > 0) {
         const normalized = extraActionsArr.map(a => ({
           id:          a.id          ?? `trick-${foundry.utils.randomID(8)}`,
-          name:        a.name        ?? "Extra Action",
+          name:        a.name        ?? a.label ?? "Sztuczka",
           img:         a.img         ?? "systems/neuroshima/assets/effects/gears.svg",
           damage:      a.damage      ?? "D",
           successCost: a.successCost ?? 0,
           minDice:     a.minDice     ?? 1,
           maxDice:     a.maxDice     ?? 3,
           annotation:  a.annotation  ?? null,
-          // onHitScript: optional JS string executed instead of damage when a standalone trick hits.
-          // Gets args: { actor (attacker), target (defender), state, hit: { tier, damageType, trickId } }
-          // If set, damage field is ignored for hit resolution. Use this.applyWound() inside if damage is also needed.
           onHitScript: a.onHitScript ?? null
         }));
-        const queued     = normalized.filter(a => a.successCost > 0);
-        const standalone = normalized.filter(a => !a.successCost);
-        ownerExtraActions = standalone.length ? standalone : null;
-        ownerTrickQueue   = queued.length     ? queued     : null;
+        ownerExtraActions = normalized.length ? normalized : null;
 
-        // Persist onHitScript map to state so applyDuelBatch can resolve it after dice comparison.
-        // Keyed by action id — only standalone actions can have onHitScript (they are dice-compared attacks).
         const onHitMap = {};
         for (const a of normalized) {
-          if (a.onHitScript && !a.successCost) onHitMap[a.id] = a.onHitScript;
+          if (a.onHitScript) onHitMap[a.id] = a.onHitScript;
         }
         if (Object.keys(onHitMap).length > 0) {
           state.trickOnHitScripts = { ...(state.trickOnHitScripts ?? {}), ...onHitMap };
@@ -986,7 +960,7 @@ export class MeleeOpposedChat {
       ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat, ownerDeclaredTrick, ownerDeclaredAttackOrTrick,
       responderConfirmActionType, responderConfirmLabel, responderExactDice,
       ownerIsCreature, ownerBeastActions, committedSuccessCount,
-      ownerExtraActions, ownerTrickQueue, ownerDialogModifiers,
+      ownerExtraActions,
       isGM:    game.user.isGM,
       canUndo: game.user.isGM && (state.segmentHistory?.length ?? 0) > 0,
       canRedo: game.user.isGM && (state.segmentFuture?.length  ?? 0) > 0
@@ -2376,7 +2350,8 @@ export class MeleeOpposedChat {
             damage2: weapon.system.damageMelee2,
             damage3: weapon.system.damageMelee3,
             isGradCios: rawResult.isGradCios || false,
-            szachistaYield: !!(await attacker.getFlag("neuroshima", "_szachistaYield"))
+            szachistaYield: !!(await attacker.getFlag("neuroshima", "_szachistaYield")),
+            activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? []
           }
         }
       },

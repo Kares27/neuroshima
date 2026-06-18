@@ -545,6 +545,10 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       }
       if (rawResult) {
         rawResult.isGradCios = !!(formData.gradCios);
+        rawResult.activatedMeleePreRollMods = (this._dialogModifiers ?? [])
+          .filter(dm => dm.isMeleePreRoll && dm.activated !== false)
+          .map(dm => dm._script?.effect?.uuid)
+          .filter(Boolean);
         try {
           const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
           await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);

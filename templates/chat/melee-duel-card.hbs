@@ -176,12 +176,14 @@
         <button type="button" class="mdc-action-choice mdc-action-choice--trick is-disabled"
             data-action-type="trick" data-trick-id="{{id}}" data-trick-damage="{{damage}}"
             data-pool="{{../ownerPool}}"
-            data-min-dice="{{minDice}}" data-max-dice="{{maxDice}}" disabled>
+            data-min-dice="{{minDice}}" data-max-dice="{{maxDice}}"
+            {{#if successCost}}data-min-success="{{successCost}}"{{/if}} disabled>
           <span class="mac-icon">
             {{#if img}}<img src="{{img}}" style="width:20px;height:20px;border-radius:3px;object-fit:cover" alt="">{{else}}<i class="fas fa-star"></i>{{/if}}
           </span>
           <span class="mac-body">
             <span class="mac-label">{{name}}</span>
+            {{#if successCost}}<span class="mac-hint">{{successCost}}✦ sukces</span>{{/if}}
             {{#if annotation}}<span class="mac-hint">{{annotation}}</span>{{/if}}
             <span class="mac-hint mdc-trick-dmg-badge"> → {{damage}}</span>
           </span>
@@ -190,39 +192,6 @@
       {{/if}}
       {{/if}}
     </div>
-    {{#if ownerTrickQueue}}
-    <div class="mdc-trick-queue-section">
-      <div class="mdc-trick-budget-row">
-        <i class="fas fa-star-half-alt"></i>
-        <span class="mdc-trick-budget-remaining">0</span>/<span class="mdc-trick-budget-total">0</span>✦
-      </div>
-      {{#each ownerTrickQueue}}
-      <div class="mdc-trick-action-entry" data-trick-id="{{id}}" data-cost="{{successCost}}" data-damage="{{damage}}">
-        <button type="button" class="mdc-trick-pick-btn is-disabled"
-            data-trick-id="{{id}}" data-cost="{{successCost}}" data-damage="{{damage}}" disabled>
-          <span class="mac-icon">
-            {{#if img}}<img src="{{img}}" style="width:22px;height:22px;border-radius:3px;object-fit:cover" alt="">{{else}}<i class="fas fa-star"></i>{{/if}}
-          </span>
-          <span class="mac-body">
-            <span class="mac-label">{{name}}</span>
-            <span class="mac-hint"><span class="mbc-cost-badge">{{successCost}}✦</span> → {{damage}}{{#if annotation}} <em>({{annotation}})</em>{{/if}}</span>
-          </span>
-        </button>
-        <span class="mdc-trick-qty-badge" data-trick-id="{{id}}" style="display:none">
-          <span class="mdc-trick-qty-val" data-trick-id="{{id}}" data-trick-damage="{{damage}}">0</span>×
-          <button type="button" class="mdc-trick-undo-btn" data-trick-id="{{id}}">↩</button>
-        </span>
-      </div>
-      {{/each}}
-      <button type="button" class="mdc-trick-confirm-btn is-disabled" data-pool="{{ownerPool}}" disabled>
-        <span class="mac-icon"><i class="fas fa-check"></i></span>
-        <span class="mac-body">
-          <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionAttack"}}</span>
-          <span class="mac-hint">+ sztuczki</span>
-        </span>
-      </button>
-    </div>
-    {{/if}}
     {{#if ownerDialogModifiers}}
     <div class="mdc-dialog-modifiers-section">
       <div class="mdc-dialog-mod-header">
