@@ -549,11 +549,20 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
           .filter(dm => dm.isMeleePreRoll && dm.activated !== false)
           .map(dm => dm._script?.effect?.uuid)
           .filter(Boolean);
+        let rollMessage = null;
         try {
           const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-          await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
+          rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
         } catch (err) {
           console.error("Neuroshima | Pool roll: failed to render weapon roll card:", err);
+        }
+        // Dice So Nice integration: wait for 3D dice animation before continuing to duel card.
+        if (game.dice3d && rollMessage) {
+          await new Promise((resolve) => {
+            Hooks.once("diceSoNiceRollComplete", (messageId) => {
+              if (messageId === rollMessage.id) resolve();
+            });
+          });
         }
       }
       return this.onPoolRoll(rawResult);

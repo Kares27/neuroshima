@@ -5735,14 +5735,17 @@ body.theme-dark {
     display: block;
     width: 100%;
     height: 200px;
+    min-height: 80px;
     border: 1px solid var(--ns-border-main);
     border-radius: 3px;
-    overflow: hidden;
+    overflow: auto;
     box-sizing: border-box;
+    resize: vertical;
 }
 
 .neuroshima.script-editor .ns-dialog-subscripts .ns-script-code-group code-mirror {
     height: 140px;
+    min-height: 60px;
 }
 
 .neuroshima.script-editor .ns-script-code-group code-mirror .cm-editor {
@@ -5764,6 +5767,145 @@ body.theme-dark {
     flex-shrink: 0;
     padding-top: 0.25rem;
     border-top: 1px solid var(--ns-border-main, #7a7971);
+}
+
+.neuroshima.script-editor .ns-script-description-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--ns-border-main, #7a7971);
+    margin-bottom: 0.25rem;
+}
+
+.neuroshima.script-editor .ns-script-description-group > label {
+    font-size: 0.85em;
+    font-weight: bold;
+    margin: 0;
+    cursor: default;
+}
+
+.neuroshima.script-editor .ns-dialog-description-input {
+    display: block;
+    width: 100%;
+    height: 70px;
+    min-height: 40px;
+    border: 1px solid var(--ns-border-main, #7a7971);
+    border-radius: 3px;
+    background: rgba(0,0,0,0.2);
+    color: var(--color-text-light-primary, #ccc);
+    font-size: 0.82em;
+    padding: 4px 6px;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.4;
+}
+
+/* ── Action Builder (getMeleeActions declarative form) ───────────────────── */
+
+.neuroshima.script-editor .ns-action-builder {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem 0.5rem 0.75rem;
+    border: 1px solid var(--ns-border-main, #7a7971);
+    border-radius: 4px;
+    background: rgba(0,0,0,0.1);
+}
+
+.neuroshima.script-editor .ns-ab-section-title {
+    font-size: 0.9em;
+    font-weight: bold;
+    letter-spacing: 0.03em;
+    color: var(--color-text-light-heading, #ddd);
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--ns-border-main, #7a7971);
+    margin-bottom: 0.1rem;
+}
+
+.neuroshima.script-editor .ns-ab-section-subtitle {
+    font-size: 0.8em;
+    font-weight: bold;
+    color: var(--color-text-light-muted, #aaa);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.4rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.neuroshima.script-editor .ns-ab-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 26px;
+}
+
+.neuroshima.script-editor .ns-ab-row > label {
+    flex: 0 0 150px;
+    font-size: 0.82em;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    cursor: default;
+}
+
+.neuroshima.script-editor .ns-ab-row > input[type="text"],
+.neuroshima.script-editor .ns-ab-row > input[type="number"],
+.neuroshima.script-editor .ns-ab-row > select {
+    flex: 1;
+    height: 26px;
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.neuroshima.script-editor .ns-ab-row > input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.neuroshima.script-editor .ns-ab-row.ns-ab-row-stacked {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.neuroshima.script-editor .ns-ab-row.ns-ab-row-stacked > label {
+    flex: none;
+    margin-bottom: 0.2rem;
+}
+
+.neuroshima.script-editor .ns-ab-row.ns-ab-row-stacked > code-mirror,
+.neuroshima.script-editor .ns-ab-cm-small {
+    width: 100%;
+    height: 100px;
+    min-height: 60px;
+    border: 1px solid var(--ns-border-main);
+    border-radius: 3px;
+    overflow: auto;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.neuroshima.script-editor .ns-ab-queue-fields,
+.neuroshima.script-editor .ns-ab-standalone-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.neuroshima.script-editor .ns-ab-onhit-applyEffect,
+.neuroshima.script-editor .ns-ab-onhit-notify,
+.neuroshima.script-editor .ns-ab-onhit-script {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
 }
 
 /* ── Melee Opposed Chat Cards ────────────────────────────────────────────── */

@@ -178,6 +178,12 @@ export class NeuroshimaScript {
     // `submissionScript` runs when the modifier is checked and the player confirms Attack on the duel card.
     this.isDialogScript = scriptData.isDialogScript ?? false;
     this.dialogCode = scriptData.dialogCode || "";
+    this.dialogDescription = scriptData.dialogDescription || "";
+    // getMeleeActions action builder mode: when true, the action definition is stored as a
+    // structured object (actionDef) instead of raw JS code. The pipeline builds the action
+    // declaratively from actionDef rather than executing `code`.
+    this.useActionDef = scriptData.useActionDef ?? false;
+    this.actionDef = scriptData.actionDef ?? null;
     this.effect = effect;
   }
 
@@ -1909,6 +1915,54 @@ export class NeuroshimaScript {
       await actor.applyEffect({ effectData });
     }
     return effects.length * resolved.length;
+  }
+
+  /**
+   * Check whether a given effect is currently active on an actor.
+   *
+   * Identification priority:
+   *   1. If `effectRef` is a NeuroshimaActiveEffect (or any document with a `.uuid`),
+   *      matches by flags.neuroshima.sourceEffect === effectRef.uuid.
+   *      This finds copies applied via convertToApplied() / applyEffect().
+   *   2. If `effectRef` is a string, matches by effect name (case-insensitive).
+   *
+   * @param {ActiveEffect|string} effectRef - The source effect or its name to look for.
+   * @param {Actor|null} [actor]            - Actor to inspect. Defaults to this.actor.
+   * @returns {boolean} True if at least one matching active effect is found.
+   *
+   * @example
+   * // Check by source effect reference (most reliable)
+   * const defenseEffect = this.item.effects.contents[1];
+   * if (!this.isEffectActive(defenseEffect)) {
+   *   await defenseEffect.applyEffect(this.actor, { "duration.rounds": 1 });
+   * }
+   *
+   * @example
+   * // Check by name
+   * if (this.isEffectActive("Bez Sznurków – Obrona")) { ... }
+   *
+   * @example
+   * // Check on a different actor
+   * const [target] = this.getTargets();
+   * if (this.isEffectActive(this.item.effects.contents[0], target)) { ... }
+   */
+  isEffectActive(effectRef, actor = null) {
+    const targetActor = (actor?.actor ?? actor) ?? this.actor;
+    if (!targetActor) return false;
+
+    if (effectRef && typeof effectRef === "object" && effectRef.uuid) {
+      const uuid = effectRef.uuid;
+      return targetActor.effects.some(
+        e => e.getFlag("neuroshima", "sourceEffect") === uuid
+      );
+    }
+
+    if (typeof effectRef === "string") {
+      const lower = effectRef.toLowerCase();
+      return targetActor.effects.some(e => e.name?.toLowerCase() === lower);
+    }
+
+    return false;
   }
 
   /**
@@ -3738,6 +3792,12 @@ export class NeuroshimaScriptRunner {
       collectFromEffect(effect);
     }
 
+    // Effects that require explicit application to an actor (via convertToApplied / applyEffect)
+    // are NOT collected passively from items — they only fire when the applied copy lives on the actor.
+    // This mirrors WFRP4e behaviour: "other", "target", "damage", "auraActor", "areaActor" effects
+    // on items are templates; only "owningDocument" effects transfer passively.
+    const PASSIVE_TRANSFER_TYPES = new Set(["owningDocument"]);
+
     for (const item of (actor.items ?? [])) {
       if (item.type === "weapon-mod" || item.type === "armor-mod") continue;
       const hasEquipped  = "equipped" in (item.system ?? {});
@@ -3752,6 +3812,14 @@ export class NeuroshimaScriptRunner {
           collectFromEffect(effect, true, item);
           continue;
         }
+
+        // Skip non-passive transfer types — they must be explicitly applied to the actor first.
+        const transferType = effect.getFlag("neuroshima", "transferType") ?? "owningDocument";
+        if (!PASSIVE_TRANSFER_TYPES.has(transferType)) {
+          game.neuroshima?.log?.(`[getScripts:${trigger}] SKIPPED effect "${effect.name}" on item "${item.name}" (transferType="${transferType}", must be applied first)`);
+          continue;
+        }
+
         const equipTransfer = effect.getFlag("neuroshima", "equipTransfer") ?? false;
         const skipped = equipTransfer && isUnequipped && trigger !== "equipToggle";
         if (skipped) {
@@ -3993,6 +4061,7 @@ export class NeuroshimaScriptRunner {
 
       dialogModifiers.push({
         label: resolvedLabel,
+        description: script.dialogDescription || null,
         activated,
         canToggle: true,
         _effectId: effectId,

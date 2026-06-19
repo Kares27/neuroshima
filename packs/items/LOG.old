@@ -1,1 +1,12 @@
-2026/06/18-17:10:47.636 52c8 Delete type=3 #1
+2026/06/19-08:06:04.898 48a8 Delete type=3 #1
+2026/06/19-09:13:30.312 1010 Level-0 table #714: started
+2026/06/19-09:13:30.312 1010 Level-0 table #714: 0 bytes OK
+2026/06/19-09:13:30.313 1010 Delete type=0 #712
+2026/06/19-09:13:30.320 1010 Manual compaction at level-0 from '!folders!FRynz6MR2XfeY9tZ' @ 72057594037927935 : 1 .. '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 0 : 0; will stop at '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 272 : 1
+2026/06/19-09:13:30.320 1010 Compacting 2@0 + 0@1 files
+2026/06/19-09:13:30.323 1010 Generated table #715@0: 130 keys, 82692 bytes
+2026/06/19-09:13:30.323 1010 Compacted 2@0 + 0@1 files => 82692 bytes
+2026/06/19-09:13:30.324 1010 compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/06/19-09:13:30.324 1010 Delete type=2 #673
+2026/06/19-09:13:30.324 1010 Delete type=2 #705
+2026/06/19-09:13:30.328 1010 Manual compaction at level-0 from '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 272 : 1 .. '!items.effects!yXe6WaKhxHx7gvu0.ZhipMlM4izdItXqm' @ 0 : 0; will stop at (end)

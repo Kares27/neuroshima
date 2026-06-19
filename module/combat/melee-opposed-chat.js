@@ -884,16 +884,21 @@ export class MeleeOpposedChat {
 
         const allMeleeScripts = NeuroshimaScriptRunner.getScripts(ownerActor, "getMeleeActions");
         for (const script of allMeleeScripts) {
-          if (script.isDialogScript) {
-            const effectUuid = script.effect?.uuid;
-            if (effectUuid && activatedPreRollMods.has(effectUuid)) {
-              try {
-                await script.execute(triggerArgs);
-              } catch (err) {
-                game.neuroshima?.log("[getMeleeActions] dialog script exec error", err);
-              }
+          // isDialogScript: only run when the modifier was activated in the pre-roll dialog.
+          // Non-dialog scripts (passive) always run.
+          const shouldRun = !script.isDialogScript ||
+            (script.effect?.uuid && activatedPreRollMods.has(script.effect.uuid));
+          if (!shouldRun) continue;
+
+          if (script.useActionDef && script.actionDef) {
+            // Action Builder path: declarative action definition, no raw JS code execution.
+            try {
+              await MeleeOpposedChat._buildActionFromDef(script, triggerArgs, extraActionsArr);
+            } catch (err) {
+              game.neuroshima?.log("[getMeleeActions] actionDef error", err);
             }
           } else {
+            // Legacy path: execute raw JS code that pushes to args.actions.
             try {
               await script.execute(triggerArgs);
             } catch (err) {
@@ -905,6 +910,37 @@ export class MeleeOpposedChat {
         game.neuroshima?.log("[getMeleeActions] trigger error", err);
       }
       if (extraActionsArr.length > 0) {
+        // ── Convenience field expansion ───────────────────────────────────
+        // Expand `applyEffectOnHit` and `notifyOnHit` shorthand into
+        // a generated onHitScript string. This runs before normalization
+        // so the generated code lands in trickOnHitScripts automatically.
+        for (const a of extraActionsArr) {
+          // applyEffectOnHit: "Effect Name"
+          // Finds the named ActiveEffect by searching all items on the attacker,
+          // checks isEffectActive to avoid duplicates, then applies convertToApplied() on hit.
+          if (a.applyEffectOnHit && !a.onHitScript) {
+            const safeName = JSON.stringify(a.applyEffectOnHit);
+            a.onHitScript = [
+              `let _tmpl = null;`,
+              `for (const _it of (args.actor?.items ?? [])) {`,
+              `  _tmpl = _it.effects?.getName(${safeName});`,
+              `  if (_tmpl) break;`,
+              `}`,
+              `if (!_tmpl || !args.target) { neuroshima.log("[applyEffectOnHit] effect not found:", ${safeName}); return; }`,
+              `if (this.isEffectActive(_tmpl, args.target)) { neuroshima.log("[applyEffectOnHit] already active:", ${safeName}); return; }`,
+              `const _data = _tmpl.convertToApplied();`,
+              `await args.target.createEmbeddedDocuments("ActiveEffect", [_data]);`,
+              `neuroshima.log("[applyEffectOnHit] applied", ${safeName}, "to", args.target?.name);`
+            ].join("\n");
+          }
+          // notifyOnHit: "Tekst powiadomienia"
+          // Shows a UI notification when the action hits (attacker vs target).
+          if (a.notifyOnHit && !a.onHitScript) {
+            const safeText = JSON.stringify(a.notifyOnHit);
+            a.onHitScript = `ui.notifications.info(\`\${${safeText}}: \${args.actor?.name} vs \${args.target?.name}\`);`;
+          }
+        }
+
         const normalized = extraActionsArr.map(a => ({
           id:          a.id          ?? `trick-${foundry.utils.randomID(8)}`,
           name:        a.name        ?? a.label ?? "Sztuczka",
@@ -1031,6 +1067,22 @@ export class MeleeOpposedChat {
         btn.disabled = !ok;
         btn.classList.toggle("is-disabled", !ok);
         btn.classList.toggle("is-ready",    ok);
+
+        // Aktualizuj licznik wybranych/dostępnych kości w .mac-counter
+        const counterEl = btn.querySelector(".mac-counter");
+        if (counterEl) {
+          if (minSuccess !== null) {
+            // Sztuczki z successCost — pokazuj ile sukcesów wybrano / ile wymaganych
+            counterEl.textContent = `${successCount}/${minSuccess}✦`;
+          } else if (exactDice !== null) {
+            counterEl.textContent = `${count}/${exactDice}`;
+          } else if (maxDice !== null) {
+            counterEl.textContent = `${count}/${maxDice}`;
+          } else {
+            // Brak górnego limitu (np. interrupt) — pokazuj tylko liczbę wybranych kości
+            counterEl.textContent = `${count}`;
+          }
+        }
       });
     };
 
@@ -1076,8 +1128,8 @@ export class MeleeOpposedChat {
             tqs.querySelectorAll(".mdc-trick-qty-val").forEach(el => {
               const qty = parseInt(el.textContent, 10) || 0;
               const id  = el.dataset.trickId;
-              const dmg = el.dataset.trickDamage;
-              if (qty > 0 && id && dmg) {
+              const dmg = el.dataset.trickDamage ?? "";
+              if (qty > 0 && id) {
                 for (let i = 0; i < qty; i++) trickItems.push(`trick:${id}:${dmg}`);
               }
             });
@@ -2522,6 +2574,130 @@ export class MeleeOpposedChat {
   }
 
   /**
+   * Builds a melee action object declaratively from a script's `actionDef` structure
+   * and pushes it into extraActionsArr. Called by _buildDuelContext when
+   * `script.useActionDef === true` instead of executing raw JS code.
+   *
+   * actionDef schema:
+   *   { id, name, img, tooltip,
+   *     mode: "standalone"|"queue", successCost, minDice, maxDice,
+   *     damage,          // wound type string or "" for no damage
+   *     condition: { requiresPreviousHit, requiredConditionKey, customScript },
+   *     onHit:     { type: "damage"|"applyEffect"|"notify"|"script",
+   *                  effectName, notifyText, customScript } }
+   *
+   * @param {NeuroshimaScript} script    - Script object (has .effect, .actionDef, .isDialogScript)
+   * @param {Object}           triggerArgs - getMeleeActions trigger args (actor, state, ownerHadHit, …)
+   * @param {Array}            extraActionsArr - Mutable array to push the built action into
+   */
+  static async _buildActionFromDef(script, triggerArgs, extraActionsArr) {
+    const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+    const def = script.actionDef;
+
+    // ── 1. Condition checks ──────────────────────────────────────────────────
+    if (def.condition?.requiresPreviousHit && !triggerArgs.ownerHadHit) {
+      game.neuroshima?.log?.("[getMeleeActions] actionDef skipped (requiresPreviousHit)", def.name);
+      return;
+    }
+    if (def.condition?.requiredConditionKey?.trim()) {
+      const val = triggerArgs.actor.getConditionValue?.(def.condition.requiredConditionKey.trim()) ?? 0;
+      if (!val) {
+        game.neuroshima?.log?.("[getMeleeActions] actionDef skipped (condition key missing)", def.name, def.condition.requiredConditionKey);
+        return;
+      }
+    }
+    if (def.condition?.customScript?.trim()) {
+      try {
+        const condScript = new NeuroshimaScript(
+          { code: def.condition.customScript, trigger: "getMeleeActions", label: `condition:${def.name}` },
+          script.effect
+        );
+        const result = await condScript.execute(triggerArgs);
+        if (result === false) {
+          game.neuroshima?.log?.("[getMeleeActions] actionDef skipped (customScript returned false)", def.name);
+          return;
+        }
+      } catch (err) {
+        game.neuroshima?.log?.("[getMeleeActions] actionDef condition script error", def.name, err);
+      }
+    }
+
+    // ── 2. Build onHitScript from declarative onHit definition ──────────────
+    let onHitScript = null;
+    const onHit = def.onHit ?? {};
+
+    if (onHit.type === "applyEffect" && onHit.effectName?.trim()) {
+      // Embed effectUuid in generated code so this.item can be resolved at execution time.
+      const effectUuid = script.effect?.uuid ?? "";
+      const effectName = onHit.effectName.trim();
+      onHitScript = [
+        `const _eff = fromUuidSync(${JSON.stringify(effectUuid)});`,
+        `const _item = _eff?.parent?.documentName === "Item" ? _eff.parent : null;`,
+        `const _tmpl = _item?.effects?.getName(${JSON.stringify(effectName)});`,
+        `if (!_tmpl || !args.target) return;`,
+        `const _already = args.target.effects?.some(e => e.getFlag("neuroshima","sourceEffect") === _tmpl.uuid);`,
+        `if (!_already) { await _tmpl.applyEffect([args.target]); }`,
+        `neuroshima.log("[ActionDef] Applied", ${JSON.stringify(effectName)}, "to", args.target?.name);`
+      ].join("\n");
+    } else if (onHit.type === "notify") {
+      const text = JSON.stringify(onHit.notifyText?.trim() || def.name || "Sztuczka");
+      onHitScript = [
+        `ui.notifications.info(\`\${${text}}: \${args.actor?.name} vs \${args.target?.name}\`);`,
+        `neuroshima.log("[ActionDef] Notify:", ${text});`
+      ].join("\n");
+    } else if (onHit.type === "script" && onHit.customScript?.trim()) {
+      onHitScript = onHit.customScript.trim();
+    }
+    // type === "damage" or no onHit → onHitScript stays null (pipeline applies damage from `damage` field)
+
+    // ── 3. Push normalised action ────────────────────────────────────────────
+    const action = {
+      id:          def.id?.trim()  || `actionDef-${foundry.utils.randomID(8)}`,
+      name:        def.name?.trim() || "Sztuczka",
+      img:         def.img?.trim()  || "systems/neuroshima/assets/effects/gears.svg",
+      damage:      def.damage       ?? "",
+      successCost: def.mode === "queue" ? (parseInt(def.successCost) || 1) : 0,
+      minDice:     parseInt(def.minDice)  || 1,
+      maxDice:     parseInt(def.maxDice)  || 3,
+      annotation:  def.tooltip?.trim()    || null,
+      onHitScript
+    };
+
+    extraActionsArr.push(action);
+    game.neuroshima?.log?.("[getMeleeActions] actionDef built:", def.name, { mode: def.mode, damage: def.damage, onHitType: onHit.type });
+  }
+
+  /**
+   * Parsuje spec obrażeń sztuczki na listę typów ran do nałożenia.
+   *
+   * Format wejściowy (case-sensitive co do skrótów ran):
+   *   ""         → []                       (brak obrażeń)
+   *   "—"        → []                       (brak obrażeń, wartość placeholder)
+   *   "D"        → ["D"]                    (jedno Draśnięcie)
+   *   "sC"       → ["sC"]                   (jeden Ciężki Siniak)
+   *   "3D"       → ["D","D","D"]            (trzy Draśnięcia)
+   *   "2L + 1D"  → ["L","L","D"]           (dwie Lekkie + jedno Draśnięcie)
+   *   "2sC"      → ["sC","sC"]              (dwa Ciężkie Siniaki)
+   *
+   * @param {string|null|undefined} damage - Spec obrażeń z pola damage akcji sztuczki.
+   * @returns {string[]} Lista typów ran; pusta gdy brak obrażeń.
+   */
+  static _parseDamageSpec(damage) {
+    if (!damage || damage === "—") return [];
+    const segments = damage.split(/\s*\+\s*/);
+    const result = [];
+    for (const seg of segments) {
+      // Match optional leading count + wound type (e.g. "3", "sC", "2sC", "D")
+      const m = seg.trim().match(/^(\d+)?([A-Za-z]+)$/);
+      if (!m) continue;
+      const n    = m[1] ? parseInt(m[1], 10) : 1;
+      const type = m[2];
+      for (let i = 0; i < n; i++) result.push(type);
+    }
+    return result;
+  }
+
+  /**
    * Apply damage stored in an opposed result card's flags.
    * Called when the GM clicks the "Apply Damage" button on the result card.
    */
@@ -2603,28 +2779,61 @@ export class MeleeOpposedChat {
         continue;
       }
 
-      const attackData = {
-        isMelee: true,
-        actorId: attackerActor?.id,
-        weaponId: rd.weaponId,
-        label: weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
-        damageMelee1: isTrickHit ? hit.damageType : rd.damage1,
-        damageMelee2: isTrickHit ? hit.damageType : rd.damage2,
-        damageMelee3: isTrickHit ? hit.damageType : rd.damage3,
-        finalLocation: rd.location,
-        successPoints: hit.tier
-      };
-      const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
-        isOpposed: true,
-        spDifference: hit.tier,
-        location: rd.location,
-        suppressChat: true
-      });
-      if (batch) {
-        allResults.push(...(batch.results ?? []));
-        allWoundIds.push(...(batch.woundIds ?? []));
-        totalReduced += batch.reducedProjectiles ?? 0;
-        allReducedDetails.push(...(batch.reducedDetails ?? []));
+      if (isTrickHit) {
+        // Parsuj spec obrażeń sztuczki — obsługuje multi-damage ("3D", "2L + 1D")
+        // i brak obrażeń ("" lub "—") gdy sztuczka bazuje tylko na onHitScript.
+        const trickWounds = MeleeOpposedChat._parseDamageSpec(hit.damageType);
+        game.neuroshima?.log?.("[applyDuelBatch] trick hit", { trickId: hit.trickId, damageType: hit.damageType, wounds: trickWounds });
+        if (trickWounds.length === 0) continue; // brak obrażeń — sztuczka wyłącznie skryptowa
+        for (const woundType of trickWounds) {
+          const attackData = {
+            isMelee: true,
+            actorId: attackerActor?.id,
+            weaponId: rd.weaponId,
+            label: weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+            damageMelee1: woundType,
+            damageMelee2: woundType,
+            damageMelee3: woundType,
+            finalLocation: rd.location,
+            successPoints: hit.tier
+          };
+          const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
+            isOpposed: true,
+            spDifference: hit.tier,
+            location: rd.location,
+            suppressChat: true
+          });
+          if (batch) {
+            allResults.push(...(batch.results ?? []));
+            allWoundIds.push(...(batch.woundIds ?? []));
+            totalReduced += batch.reducedProjectiles ?? 0;
+            allReducedDetails.push(...(batch.reducedDetails ?? []));
+          }
+        }
+      } else {
+        const attackData = {
+          isMelee: true,
+          actorId: attackerActor?.id,
+          weaponId: rd.weaponId,
+          label: weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+          damageMelee1: rd.damage1,
+          damageMelee2: rd.damage2,
+          damageMelee3: rd.damage3,
+          finalLocation: rd.location,
+          successPoints: hit.tier
+        };
+        const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
+          isOpposed: true,
+          spDifference: hit.tier,
+          location: rd.location,
+          suppressChat: true
+        });
+        if (batch) {
+          allResults.push(...(batch.results ?? []));
+          allWoundIds.push(...(batch.woundIds ?? []));
+          totalReduced += batch.reducedProjectiles ?? 0;
+          allReducedDetails.push(...(batch.reducedDetails ?? []));
+        }
       }
     }
 
@@ -2633,30 +2842,55 @@ export class MeleeOpposedChat {
     if (rd.pendingTrickQueue?.length > 0) {
       for (const trickEntry of rd.pendingTrickQueue) {
         if (!trickEntry.startsWith("trick:")) continue;
-        const parts = trickEntry.split(":");
-        const trickDamage = parts[2];
-        if (!trickDamage) continue;
-        const trickAttackData = {
-          isMelee: true,
-          actorId: attackerActor?.id,
-          label: `${weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed")} (sztuczka)`,
-          damageMelee1: trickDamage,
-          damageMelee2: trickDamage,
-          damageMelee3: trickDamage,
-          finalLocation: rd.location,
-          successPoints: 1
-        };
-        const trickBatch = await CombatHelper.applyDamageToActor(defenderActor, trickAttackData, {
-          isOpposed: true,
-          spDifference: 1,
-          location: rd.location,
-          suppressChat: true
-        });
-        if (trickBatch) {
-          allResults.push(...(trickBatch.results ?? []));
-          allWoundIds.push(...(trickBatch.woundIds ?? []));
-          totalReduced += trickBatch.reducedProjectiles ?? 0;
-          allReducedDetails.push(...(trickBatch.reducedDetails ?? []));
+        const parts       = trickEntry.split(":");
+        const trickId     = parts[1] ?? null;
+        const trickDamage = parts.slice(2).join(":") ?? "";
+
+        // onHitScript for queue tricks — executed before damage, same as standalone tricks.
+        if (trickId && rd.trickOnHitScripts?.[trickId]) {
+          try {
+            const { NeuroshimaScript: NS2 } = await import("../apps/neuroshima-script-engine.js");
+            const onHitCode = rd.trickOnHitScripts[trickId];
+            const scriptObj = new NS2({ code: onHitCode, trigger: "getMeleeActions", label: "onHitScript" }, null);
+            await scriptObj.execute({
+              actor:  attackerActor,
+              target: defenderActor,
+              state:  rd,
+              hit:    { trickId, damageType: trickDamage, tier: 1 }
+            });
+            game.neuroshima?.log?.("[applyDuelBatch] queue trick onHitScript executed", trickId);
+          } catch (err) {
+            game.neuroshima?.log?.("[applyDuelBatch] queue trick onHitScript error", trickId, err);
+          }
+        }
+
+        // Parsuj spec obrażeń — obsługuje multi-damage i pusty damage.
+        const queueWounds = MeleeOpposedChat._parseDamageSpec(trickDamage);
+        game.neuroshima?.log?.("[applyDuelBatch] queue trick", { trickDamage, wounds: queueWounds });
+        if (queueWounds.length === 0) continue; // brak obrażeń
+        for (const woundType of queueWounds) {
+          const trickAttackData = {
+            isMelee: true,
+            actorId: attackerActor?.id,
+            label: `${weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed")} (sztuczka)`,
+            damageMelee1: woundType,
+            damageMelee2: woundType,
+            damageMelee3: woundType,
+            finalLocation: rd.location,
+            successPoints: 1
+          };
+          const trickBatch = await CombatHelper.applyDamageToActor(defenderActor, trickAttackData, {
+            isOpposed: true,
+            spDifference: 1,
+            location: rd.location,
+            suppressChat: true
+          });
+          if (trickBatch) {
+            allResults.push(...(trickBatch.results ?? []));
+            allWoundIds.push(...(trickBatch.woundIds ?? []));
+            totalReduced += trickBatch.reducedProjectiles ?? 0;
+            allReducedDetails.push(...(trickBatch.reducedDetails ?? []));
+          }
         }
       }
     }

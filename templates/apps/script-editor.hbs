@@ -1,5 +1,5 @@
-<div class="ns-script-editor-body">
 
+<div class="ns-script-editor-body">
     <div class="ns-editor-fields">
         <div class="form-group">
             <label data-tooltip="Puste = użyj pola Test z zakładki Efekty itemu. Obsługuje referencje @item.ścieżka np. @item.system.tests.value">{{localize "NEUROSHIMA.Scripts.Label"}}</label>
@@ -58,6 +58,12 @@
     </div>
 
     <div class="ns-editor-scroll-area">
+        {{#if showDialogSubScripts}}
+        <div class="form-group stacked ns-script-description-group">
+            <label data-tooltip="Krótki opis wyświetlany jako tooltip po najechaniu na ten modyfikator w oknie rzutu. Obsługuje plain text.">Opis w oknie rzutu</label>
+            <textarea name="dialogDescription" class="ns-dialog-description-input" placeholder="Opcjonalny opis modyfikatora…">{{scriptData.dialogDescription}}</textarea>
+        </div>
+        {{/if}}
         <div class="form-group stacked ns-script-code-group">
             <label>
                 {{#if isMeleeActionsScript}}

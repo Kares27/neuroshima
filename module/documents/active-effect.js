@@ -372,35 +372,65 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
   }
 
   /**
-   * Convert this item-embedded effect into plain data suitable for applying directly
-   * to an actor via Actor#createEmbeddedDocuments or Actor#applyEffect({ effectData }).
+   * Convert this effect into plain data suitable for applying directly to an actor
+   * via Actor#createEmbeddedDocuments or Actor#applyEffect({ effectData }).
    *
-   * Inspired by WFRP4e's convertToApplied().
+   * Inspired by WFRP4e's convertToApplied() from warhammer-lib.
    *
    * - Strips the _id so Foundry generates a fresh one on the actor.
    * - Sets transfer = false (the effect lives on the actor, not via transfer).
-   * - Stores source item UUID in flags.neuroshima.sourceItem so scripts can trace origin.
+   * - Stores source item/effect UUIDs in flags.neuroshima so scripts can trace origin.
+   * - Stores the original transferType in flags.neuroshima.originalTransferType.
+   * - Normalises the transferType so the applied copy behaves as a plain owningDocument
+   *   effect on the actor — prevents aura/area/other copies from trying to re-propagate:
+   *     • "auraActor" / "areaActor" → "owningDocument"  (copy is a plain actor effect)
+   *     • "other" / "target" / "damage" → "owningDocument"  (same logic)
+   *     • "owningDocument" → kept as-is
    * - Accepts optional overrides merged on top (e.g. duration, name).
    *
    * @param {Object} [overrides={}] - Plain data to merge over the result (deep merge).
    * @returns {Object} Effect creation data object.
    *
    * @example
-   * // In a manual script on an item effect:
-   * const effectData = this.item.effects.contents[1].convertToApplied({
-   *   "duration.seconds": 3600
-   * });
-   * await this.actor.applyEffect({ effectData: [effectData] });
+   * // Apply effect[1] from item to self with 1-round duration
+   * const data = this.item.effects.contents[1].convertToApplied({ "duration.rounds": 1 });
+   * await this.actor.createEmbeddedDocuments("ActiveEffect", [data]);
+   *
+   * @example
+   * // Use applyEffect() as a higher-level wrapper (recommended in scripts)
+   * await this.item.effects.contents[1].applyEffect(this.actor, { "duration.rounds": 1 });
    */
   convertToApplied(overrides = {}) {
     const data = this.toObject();
+
     delete data._id;
     data.transfer = false;
-    foundry.utils.setProperty(data, "flags.neuroshima.sourceItem", this.parent?.uuid ?? null);
-    foundry.utils.setProperty(data, "flags.neuroshima.sourceEffect", this.uuid);
+
+    const originalTransferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";
+
+    foundry.utils.setProperty(data, "flags.neuroshima.sourceItem",         this.parent?.uuid ?? null);
+    foundry.utils.setProperty(data, "flags.neuroshima.sourceEffect",       this.uuid);
+    foundry.utils.setProperty(data, "flags.neuroshima.originalTransferType", originalTransferType);
+
+    // Normalise transferType: applied copies are always plain actor effects.
+    // auraActor/areaActor copies must NOT re-propagate their own aura/area;
+    // other/target/damage effects likewise become regular owning-document effects.
+    const applicativeTypes = new Set(["auraActor", "areaActor", "other", "target", "damage"]);
+    if (applicativeTypes.has(originalTransferType)) {
+      foundry.utils.setProperty(data, "flags.neuroshima.transferType",  "owningDocument");
+      foundry.utils.setProperty(data, "flags.neuroshima.documentType",  "actor");
+    }
+
     if (Object.keys(overrides).length) {
       foundry.utils.mergeObject(data, foundry.utils.expandObject(overrides));
     }
+
+    game.neuroshima?.log("[NeuroshimaActiveEffect.convertToApplied]", {
+      effectName:           this.name,
+      originalTransferType,
+      appliedTransferType:  foundry.utils.getProperty(data, "flags.neuroshima.transferType"),
+    });
+
     return data;
   }
 
@@ -508,6 +538,7 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
           targeter:         new fields.BooleanField({ initial: false }),
           defendingAgainst: new fields.BooleanField({ initial: false }),
           isDialogScript:   new fields.BooleanField({ initial: false }),
+          dialogDescription: new fields.StringField({ initial: "", blank: true }),
         }),
         { initial: [] }
       ),

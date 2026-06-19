@@ -465,20 +465,68 @@ args.actions.push({
 
 <section id="trick-009-bez-sznurkow">
 <h3>9. Bez sznurków</h3>
-<p><strong>Wymagania:</strong> Pistolety 3+, Zręczność 13+, Percepcja</p>
-<p><strong>Opis klimatyczny:</strong> 2+ Nauczyłem się tego z filmu. Tak, z filmu. yle, że u tamtych facetów było widać sznurki, na tórych latali jak czarodzieje. A ja nie potrzebuję adnych sznurków. Chcesz zobaczyć?</p>
-<p><strong>Mechanika:</strong> Skaczesz i jednocześnie strzelasz w lo- ie - trwa to dwa segmenty, więc możesz oddać dwa trzały. Otrzymujesz za to karę +20% do testu strze- ania, za to ciebie trudniej trafić aż o +40%. W trze- im segmencie padasz na ziemię. Możesz tak zostać walić dalej leżąc, albo poświęcić segmenty na po- bieranie się i spieprzać. Sztuczka dotyczy tylko istoletów.</p>
+<p><strong>Wymagania:</strong> Pistolety 3+, Zręczność 13+, Percepcja 2+</p>
+<p><strong>Opis klimatyczny:</strong> Nauczyłem się tego z filmu. Tak, z filmu. Tyle, że u tamtych facetów było widać sznurki, na których latali jak czarodzieje. A ja nie potrzebuję żadnych sznurków. Chcesz zobaczyć?</p>
+<p><strong>Mechanika:</strong> Skaczesz i jednocześnie strzelasz w locie — trwa to dwa segmenty, więc możesz oddać dwa strzały. Otrzymujesz za to karę <strong>+20% do testu strzelania</strong>, za to ciebie trudniej trafić aż o <strong>+40%</strong>. W trzecim segmencie padasz na ziemię. Możesz tak zostać i walić dalej leżąc, albo poświęcić segmenty na pozbieranie się i spieprzać. Sztuczka dotyczy <strong>tylko pistoletów</strong>.</p>
 <h4>Analiza Active Effect</h4>
-<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="callout info">
+  <strong>Implementowalne — wzorzec dwóch efektów (jak WFRP4e).</strong><br>
+  Przedmiot ma <strong>dwa efekty</strong>:
+  <ol style="margin:0.5rem 0 0 1rem;">
+    <li><strong>Efekt 1</strong> (<code>transferType: owned</code>, trigger: <code>dialog</code>) — pojawia się w dialogu strzału z pistoletu. Po zaznaczeniu i zatwierdzeniu: nakłada <strong>+20% PT</strong> i aplikuje Efekt 2 na siebie przez <code>convertToApplied()</code>.</li>
+    <li><strong>Efekt 2</strong> (<code>transferType: other</code>, trigger: <code>dialog</code>, <code>defendingAgainst: true</code>) — gdy jest aktywny na postaci i ktoś strzela do niej, atakujący widzi ten modyfikator i dostaje <strong>+40% PT</strong>. Trwa 1 rundę.</li>
+  </ol>
+</div>
+
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Bez sznurków: Strzał w locie. Kara +20% do strzelania z pistoletów, ale przeciwnicy mają +40% kary do trafienia postaci
-  if (args.test.context.skillKey === "pistols") {
-    args.test.preData.penalties.mod += 20;
-    args.test.preData.annotations.push("Bez sznurków: Strzał w locie (+20% utrudnienia, +40% do Twojej obrony do końca segmentu).");
-  }
-})();</code></pre>
+  <div class="example-header"><span class="trigger-badge">dialog</span> Efekt 1 — "Bez Sznurków – Skok" &nbsp;|&nbsp; <code>transferType: owned</code></div>
+  <p style="margin:0.5rem 1rem 0.25rem"><strong>Hide Script</strong> — ukryj jeśli broń nie jest pistoletem:</p>
+  <pre><code><span class="cmt">// Pokaż modyfikator tylko gdy strzelamy z pistoletu</span>
+<span class="kw">return</span> <span class="var">args</span>.weapon?.system?.rangedSubtype !== <span class="str">"pistols"</span>;</code></pre>
+
+  <p style="margin:0.5rem 1rem 0.25rem"><strong>Skrypt główny</strong> — kara do testu strzelania:</p>
+  <pre><code><span class="cmt">// +20% utrudnienia do testu strzelania z pistoletu w locie</span>
+<span class="var">args</span>.fields.modifier += <span class="num">20</span>;</code></pre>
+
+  <p style="margin:0.5rem 1rem 0.25rem"><strong>Submission Script</strong> — aplikacja efektu obronnego przez <code>convertToApplied()</code>:</p>
+  <pre><code><span class="cmt">// Pobierz Efekt 2 (obrona +40%) z listy efektów przedmiotu</span>
+<span class="kw">const</span> <span class="var">defenseEffect</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">1</span>];
+
+<span class="cmt">// Nie nakładaj jeśli już aktywny na postaci</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">defenseEffect</span>)) {
+  <span class="cmt">// convertToApplied() przygotowuje dane: usuwa _id, normalizuje transferType → owningDocument,</span>
+  <span class="cmt">// zapisuje sourceEffect UUID — umożliwia późniejsze usunięcie przez removeEffectsAppliedFromThis()</span>
+  <span class="kw">const</span> <span class="var">data</span> = <span class="var">defenseEffect</span>.<span class="fn">convertToApplied</span>({ <span class="str">"duration.rounds"</span>: <span class="num">1</span> });
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">createEmbeddedDocuments</span>(<span class="str">"ActiveEffect"</span>, [<span class="var">data</span>]);
+}</code></pre>
+</div>
+
+<div class="example-block">
+  <div class="example-header"><span class="trigger-badge">dialog</span> Efekt 2 — "Bez Sznurków – Obrona" &nbsp;|&nbsp; <code>transferType: other</code> &nbsp;|&nbsp; <code>defendingAgainst: true</code></div>
+  <p style="margin:0.5rem 1rem 0.25rem"><strong>Hide Script</strong> — pokaż tylko gdy atakujący strzela:</p>
+  <pre><code><span class="cmt">// getScripts() nie zbiera pasywnie efektów z transferType "other" z itemów.</span>
+<span class="cmt">// Ten skrypt odpala się wyłącznie na aktywnej kopii (applied copy na aktorze — owningDocument).</span>
+<span class="cmt">// Nie trzeba sprawdzać parent.documentName — template nigdy sam tutaj nie trafia.</span>
+<span class="kw">return</span> <span class="var">args</span>.weapon?.system?.weaponType !== <span class="str">"ranged"</span>;</code></pre>
+
+  <p style="margin:0.5rem 1rem 0.25rem"><strong>Activation Script</strong> — automatycznie zaznacz:</p>
+  <pre><code><span class="cmt">// Modyfikator aktywuje się automatycznie gdy postać jest w locie</span>
+<span class="kw">return</span> <span class="kw">true</span>;</code></pre>
+
+  <p style="margin:0.5rem 1rem 0.25rem"><strong>Skrypt główny</strong> — utrudnienie dla atakującego:</p>
+  <pre><code><span class="cmt">// Atakujący strzela do skaczącej postaci — ma +40% PT</span>
+<span class="var">args</span>.fields.modifier += <span class="num">40</span>;</code></pre>
+</div>
+
+<div class="callout info">
+  <strong>Dlaczego <code>convertToApplied()</code> a nie <code>applyEffect()</code>?</strong><br>
+  Obie metody są równoważne — <code>applyEffect()</code> wywołuje <code>convertToApplied()</code> wewnętrznie.<br>
+  Wzorzec WFRP4e z <code>convertToApplied()</code> daje pełną kontrolę nad danymi przed stworzeniem efektu
+  (np. można modyfikować <code>data</code> po przygotowaniu przed wywołaniem <code>createEmbeddedDocuments</code>).<br>
+  <strong>Wersja skrótowa</strong> przez <code>applyEffect()</code>:
+  <pre style="margin-top:0.5rem"><code><span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">defenseEffect</span>)) {
+  <span class="kw">await</span> <span class="var">defenseEffect</span>.<span class="fn">applyEffect</span>(<span class="kw">this</span>.actor, { <span class="str">"duration.rounds"</span>: <span class="num">1</span> });
+}</code></pre>
 </div>
 </section>
 
@@ -502,20 +550,90 @@ args.actions.push({
 
 <section id="trick-012-boa">
 <h3>12. Boa</h3>
-<p><strong>Wymagania:</strong> Broń ręczna 5+, Zręczność 12+               Wy</p>
-<p><strong>Opis klimatyczny:</strong> Łańcuch uchodzi za broń dla idiotów. Może      3+ nie jest specjalnie zabójczy, ale nieźle wyrównuje szanse, nawet jeśli nic nie potrafisz. A jednak wi-    mi działem kiedyś prawdziwego mistrza łańcucha. Po-       ty trafił nim nawet obierać ziemniaki.                    Ma</p>
-<p><strong>Mechanika:</strong> Jeśli walczący używa łańcucha, nie otrzymuje kary za walkę w zwarciu, tłoku i cia-        w snych pomieszczeniach. Ponadto otrzymuje dodat-        si kowe akcje za 2 lub 3 sukcesy. Akcja za 2 sukcesy:     we pochwycenie . Używane przez walczących bronie          ne otrzymują modyfikator jak w tłoku, a pochwycony        zn dodatkowo otrzymuje karę -2 do Zręczności (dopóki nie przejmie Inicjatywy lub nie otrzyma rany). Akcja za 3 sukcesy: wykończenie. Walczący dusi         Wy przeciwnika łańcuchem i unieruchamia go. Może przydusić przeciwnika, aż ten straci przytomność:      ni obaj walczący wykonują Przeciwstawny test Budo-        wi wy, przeciwnik z dodatkowym PT +60%. Jeśli prze-       21 ciwnik przegra test, traci przytomność. Jeśli prze-    ni ciwnik został pochwycony wcześniej, wtedy akcja kosztuje tylko 2 sukcesy.                              ną kr</p>
+<p><strong>Wymagania:</strong> Broń ręczna 5+, Zręczność 12+</p>
+<p><strong>Opis klimatyczny:</strong> Łańcuch uchodzi za broń dla idiotów. Może nie jest specjalnie zabójczy, ale nieźle wyrównuje szanse, nawet jeśli nic nie potrafisz. A jednak widziałem kiedyś prawdziwego mistrza łańcucha. Potrafił nim nawet obierać ziemniaki.</p>
+<p><strong>Mechanika:</strong> Jeśli walczący używa łańcucha, nie otrzymuje kary za walkę w zwarciu, tłoku i ciasnych pomieszczeniach. Ponadto otrzymuje dodatkowe akcje za 2 lub 3 sukcesy.<br>
+<strong>Akcja za 2 sukcesy — Pochwycenie:</strong> Używane przez walczących bronie otrzymują modyfikator jak w tłoku, a pochwycony dodatkowo otrzymuje karę -2 do Zręczności (dopóki nie przejmie Inicjatywy lub nie otrzyma rany).<br>
+<strong>Akcja za 3 sukcesy — Wykończenie:</strong> Walczący dusi przeciwnika łańcuchem i unieruchamia go. Obaj wykonują Przeciwstawny test Budowy, przeciwnik z dodatkowym PT +60%. Jeśli przeciwnik przegra — traci przytomność. Jeśli przeciwnik był wcześniej pochwycony, akcja kosztuje tylko 2 sukcesy.</p>
+
 <h4>Analiza Active Effect</h4>
-<div class="callout info"><strong>Implementowalne:</strong> przykład poniżej pokazuje konkretny wariant użycia jednego triggera z API skryptów efektów.</div>
+<div class="callout info">
+  <strong>Implementowalne — wzorzec dwóch efektów na jednym itemu.</strong><br>
+  <ul style="margin:0.5rem 0 0 1rem;">
+    <li><strong>Efekt 1</strong> (<code>owningDocument</code>, trigger: <code>getMeleeActions</code>, <code>isDialogScript: true</code>) — pojawia się jako checkbox w dialogu rzutu walki wręcz. Po aktywacji wstrzykuje akcje Pochwycenie i Wykończenie w interfejs walki.</li>
+    <li><strong>Efekt 2</strong> (<code>other</code>) — szablon "Boa – Pochwycony". Nie ma triggera. Zawiera change -2 Zręczności. Nakładany na cel przez <code>convertToApplied()</code> w <code>onHitScript</code> Pochwycenia.</li>
+  </ul>
+  <em>Brak kary za walkę w tłoku: ta część mechaniki pozostaje narracyjna — MG/gracz ręcznie pomija lub nie wprowadza debufu Zręczności za tłok gdy postać walczy łańcuchem.</em>
+</div>
+
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span>Przykład AE</div>
-<pre><code>(() =&gt; {
-  // Boa: Brak kar za walkę łańcuchem w zwarciu/tłoku, dodatkowe akcje za 2 lub 3 sukcesy
-  if (args.test.context.skillKey === "handWeapon") {
-    args.test.preData.skillBonus += 2;
-    args.test.preData.annotations.push("Boa: Brak kar za walkę w zwarciu/tłoku. Udany test pozwala pochwycić lub dusić przeciwnika.");
-  }
-})();</code></pre>
+  <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Efekt 1 — "Boa – Akcje łańcucha" &nbsp;|&nbsp; <code>transferType: owningDocument</code> &nbsp;|&nbsp; <code>isDialogScript: true</code></div>
+  <p style="margin:0.5rem 1rem 0.25rem">Zaznacz <strong>Modyfikator w dialogu walki</strong> w konfiguracji efektu. Efekt pojawi się wtedy jako checkbox w dialogu rzutu walki wręcz — po zaznaczeniu i zatwierdzeniu aktywuje akcje na karcie walki.</p>
+  <p style="margin:0.5rem 1rem 0.25rem"><strong>Skrypt główny</strong> — wstrzykuje Pochwycenie i Wykończenie. Używa skrótu <code>applyEffectOnHit</code> dla Pochwycenia (zamiast ręcznego <code>onHitScript</code>) oraz <code>notifyOnHit</code> dla Wykończenia:</p>
+  <pre><code><span class="cmt">// Ustal UUID przeciwnika na podstawie strony inicjatywy</span>
+<span class="kw">const</span> <span class="var">isOwnerAttacker</span> = <span class="var">args</span>.state.initiativeOwnerSide === <span class="str">"attacker"</span>;
+<span class="kw">const</span> <span class="var">opponentUuid</span> = <span class="var">isOwnerAttacker</span>
+  ? (<span class="var">args</span>.state.defenderTokenUuid ?? <span class="var">args</span>.state.defenderUuid)
+  : (<span class="var">args</span>.state.attackerTokenUuid ?? <span class="var">args</span>.state.attackerUuid);
+<span class="kw">const</span> <span class="var">opponentDoc</span> = fromUuidSync(<span class="var">opponentUuid</span>);
+<span class="kw">const</span> <span class="var">opponentActor</span> = <span class="var">opponentDoc</span>?.actor ?? <span class="var">opponentDoc</span>;
+
+<span class="cmt">// Szablon "Boa – Pochwycony" (transferType: other, brak triggera)</span>
+<span class="kw">const</span> <span class="var">grappledTemplate</span> = <span class="kw">this</span>.item.effects.getName(<span class="str">"Boa – Pochwycony"</span>);
+
+<span class="cmt">// Sprawdź czy cel jest już pochwycony (koszt Wykończenia spada do 2)</span>
+<span class="kw">const</span> <span class="var">isGrappled</span> = <span class="var">grappledTemplate</span>
+  ? <span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">grappledTemplate</span>, <span class="var">opponentActor</span>)
+  : <span class="kw">false</span>;
+
+neuroshima.log(<span class="str">"[Boa] akcje"</span>, { <span class="var">isGrappled</span>, opponent: <span class="var">opponentActor</span>?.name });
+
+<span class="cmt">// Akcja za 2 sukcesy: Pochwycenie
+// applyEffectOnHit — skrót: system znajdzie "Boa – Pochwycony" na itemach aktora
+// i nałoży go na cel przez convertToApplied(). Bez pisania onHitScript.</span>
+<span class="var">args</span>.actions.push({
+  id:               <span class="str">"boa-pochwycenie"</span>,
+  name:             <span class="str">"Pochwycenie"</span>,
+  damage:           <span class="str">""</span>,
+  successCost:      <span class="num">2</span>,
+  annotation:       <span class="str">"Boa: cel -2 Zręczności"</span>,
+  applyEffectOnHit: <span class="str">"Boa – Pochwycony"</span>
+});
+
+<span class="cmt">// Akcja za 3 sukcesy: Wykończenie (2 jeśli cel już pochwycony)
+// notifyOnHit — skrót: wyświetla powiadomienie i przypomina o teście Budowy.</span>
+<span class="var">args</span>.actions.push({
+  id:          <span class="str">"boa-wykonczenie"</span>,
+  name:        <span class="str">"Wykończenie"</span>,
+  damage:      <span class="str">""</span>,
+  successCost: <span class="var">isGrappled</span> ? <span class="num">2</span> : <span class="num">3</span>,
+  annotation:  <span class="var">isGrappled</span>
+    ? <span class="str">"Boa: Wykończenie (cel pochwycony — koszt 2)"</span>
+    : <span class="str">"Boa: Wykończenie — duszenie łańcuchem"</span>,
+  notifyOnHit: <span class="str">"Boa – Wykończenie: wykonaj Przeciwstawny test Budowy (cel +60% PT)"</span>
+});</code></pre>
+</div>
+
+<div class="example-block">
+  <div class="example-header">Efekt 2 — "Boa – Pochwycony" &nbsp;|&nbsp; <code>transferType: other</code> &nbsp;|&nbsp; brak triggera</div>
+  <p style="margin:0.5rem 1rem 0.25rem">Ten efekt jest <strong>szablonem</strong> — nie ma triggera ani skryptu. Jego zadaniem jest przetrzymywanie zmiany atrybutu, którą <code>convertToApplied()</code> naniesie na cel w momencie udanego Pochwycenia.</p>
+  <table style="margin:0.5rem 1rem;">
+    <thead><tr><th>Pole</th><th>Wartość</th></tr></thead>
+    <tbody>
+      <tr><td>Nazwa</td><td><code>Boa – Pochwycony</code></td></tr>
+      <tr><td>Effect Application</td><td><code>Other</code></td></tr>
+      <tr><td>Change: Key</td><td><code>system.attributeBonuses.dexterity</code></td></tr>
+      <tr><td>Change: Mode</td><td><code>Add</code></td></tr>
+      <tr><td>Change: Value</td><td><code>-2</code></td></tr>
+    </tbody>
+  </table>
+  <p style="margin:0 1rem 0.5rem">Gdy <code>convertToApplied()</code> nałoży kopię na cel, kopiuje te zmiany i normalizuje <code>transferType → owningDocument</code>, więc kopia działa jako zwykły efekt tymczasowy na aktorze ze zmodyfikowaną Zręcznością.</p>
+</div>
+
+<div class="callout warning">
+  <strong>Lokalizacja szablonu:</strong> Skrypty <code>onHitScript</code> szukają itemu Boa na aktorze atakującego po nazwie (<code>args.actor.items.find(i => i.name === "Boa")</code>). Jeśli item ma inną nazwę niż "Boa" — zmień odpowiednio linię wyszukiwania.<br>
+  <strong>Wykończenie:</strong> Test Budowy jest wykonywany ręcznie przez MG. System wyświetla powiadomienie z nazwami uczestników.<br>
+  <strong>Efekt 1</strong> pojawia się w dialogu walki tylko po ręcznym zaznaczeniu checkboxu — gracz aktywuje go gdy faktycznie walczy łańcuchem.
 </div>
 </section>
 

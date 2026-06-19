@@ -1781,12 +1781,17 @@ args.difficultyTarget += <span class="num">15</span>;</code></pre>
     <tr><td><code>id</code></td><td>string</td><td>Unikalny, stabilny identyfikator (np. <code>"barbarka-head-butt"</code>)</td></tr>
     <tr><td><code>name</code></td><td>string</td><td>Etykieta przycisku w UI</td></tr>
     <tr><td><code>img</code></td><td>string</td><td>Ścieżka do ikony (opcjonalne)</td></tr>
-    <tr><td><code>damage</code></td><td>string</td><td>Stały typ obrażeń przy trafieniu: <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code>, <code>"sC"</code> itp.</td></tr>
+    <tr><td><code>damage</code></td><td>string</td><td>Typ obrażeń przy trafieniu: <code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"sC"</code>, złożony <code>"2L+1D"</code>. Puste <code>""</code> = brak obrażeń (akcja czysto skryptowa).</td></tr>
     <tr><td><code>successCost</code></td><td>number</td><td><strong>Opcjonalne, domyślnie 0.</strong> Jeśli &gt; 0 → tryb kolejki: sztuczka kosztuje tyle sukcesów z budżetu. Jeśli 0 → tryb standalone (osobny przycisk ataku).</td></tr>
     <tr><td><code>minDice</code></td><td>number</td><td>Min kości do zaangażowania (dotyczy tylko trybu standalone, domyślnie 1)</td></tr>
     <tr><td><code>maxDice</code></td><td>number</td><td>Max kości do zaangażowania (dotyczy tylko trybu standalone, domyślnie 3)</td></tr>
     <tr><td><code>annotation</code></td><td>string</td><td>Dodatkowy opis wyświetlany w UI i w logu czatu (opcjonalne)</td></tr>
+    <tr><td><code>onHitScript</code></td><td>string</td><td>Zaawansowany skrypt JS wykonywany po trafieniu (jako string). Dostęp do <code>args.actor</code>, <code>args.target</code>, <code>args.state</code>, <code>args.hit</code>, <code>this.*</code> helperów. Pomijany gdy ustawiono <code>applyEffectOnHit</code> lub <code>notifyOnHit</code>.</td></tr>
+    <tr><td><code>applyEffectOnHit</code></td><td>string</td><td><strong>Skrót.</strong> Nazwa ActiveEffect (na dowolnym itemu aktora) który ma być nałożony na cel przy trafieniu — przez <code>convertToApplied()</code>. Pomija duplikaty (sprawdza <code>isEffectActive</code>). Nie wymaga pisania <code>onHitScript</code>.</td></tr>
+    <tr><td><code>notifyOnHit</code></td><td>string</td><td><strong>Skrót.</strong> Tekst powiadomienia wyświetlanego w UI gdy akcja trafi (<code>ui.notifications.info</code>). Przydatne gdy akcja wymaga manualnej obsługi MG (np. test Budowy). Nie wymaga pisania <code>onHitScript</code>.</td></tr>
   </tbody></table>
+
+  <div class="callout info"><strong>Skróty onHit:</strong> Pola <code>applyEffectOnHit</code> i <code>notifyOnHit</code> są rozwijane automatycznie w wygenerowany <code>onHitScript</code> <em>przed</em> normalizacją — nie musisz pisać boilerplate kodu dla typowych przypadków. Jeśli obie są ustawione jednocześnie, priorytet ma <code>applyEffectOnHit</code>. Ręczny <code>onHitScript</code> zawsze ma pierwszeństwo nad skrótami.</div>
 
   <div class="callout info">Wyzwalacz odpala się wyłącznie dla graczy (nie-stworzeń) i tylko gdy aktualnie czekamy na wybór akcji właściciela inicjatywy. Warunek sprawdź przez <code>args.state.status === "picking"</code>.</div>
 
@@ -4209,14 +4214,23 @@ onFailure: [
   <table>
     <tbody>
       <tr><th>Opcja</th><th>Opis</th></tr>
-      <tr><td><code>Owning Document</code></td><td>Efekt zostaje przekazany do dokumentu właściciela (domyślne). Dla sztuczek / talentów — aktor dostaje efekt automatycznie.</td></tr>
-      <tr><td><code>Target</code></td><td>Efekt jest aplikowany do wskazanego celu (token). Wymaga obsługi skryptem.</td></tr>
-      <tr><td><code>Damage</code></td><td>Efekt jest przekazywany gdy aktor/item zadaje obrażenia. Wymaga obsługi skryptem.</td></tr>
-      <tr><td><code>Other</code></td><td>Efekt nie jest transferowany automatycznie — pełna kontrola przez skrypty.</td></tr>
-      <tr><td><code>Aura</code></td><td>Efekt jest automatycznie aplikowany do wszystkich aktorów w promieniu wokół tokena właściciela. Kopie efektu pojawiają się w zakładce <em>Temporary</em> na arkuszach celów. Konfiguracja promienia i wizualizacji w <strong>Open Advanced Configuration</strong>.</td></tr>
-      <tr><td><code>Area</code></td><td>Efekt jest aplikowany do aktorów w obrębie szablonu (MeasuredTemplate). Szablon można umieścić ręcznie z <strong>Open Advanced Configuration → Place Template</strong>. Obsługuje tryby <em>Sustained</em> (stały) i <em>Instantaneous</em> (jednorazowy).</td></tr>
+      <tr><td><code>Owning Document</code></td><td>Efekt zostaje przekazany do dokumentu właściciela (domyślne). Dla sztuczek / talentów — aktor dostaje efekt automatycznie. <strong>Jedyny typ zbierany pasywnie przez <code>getScripts()</code>.</strong></td></tr>
+      <tr><td><code>Target</code></td><td><strong>Template.</strong> Efekt na itemu jest tylko szablonem — nie jest zbierany pasywnie przez <code>getScripts()</code>. Musi być jawnie nałożony na cel przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie na aktorach stają się <code>owningDocument</code>.</td></tr>
+      <tr><td><code>Damage</code></td><td><strong>Template.</strong> Jak <code>Target</code> — musi być jawnie aplikowany skryptem. Używany gdy efekt powinien trafiać na aktora otrzymującego obrażenia.</td></tr>
+      <tr><td><code>Other</code></td><td><strong>Template.</strong> Efekt na itemu jest tylko szablonem — nie pojawia się pasywnie w dialogach ani <code>getScripts()</code>. Aktywny dopiero gdy zostanie nałożony na aktora przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie na aktorach stają się <code>owningDocument</code>. Typowe zastosowanie: sztuczki z czasowym efektem (np. "Bez Sznurków").</td></tr>
+      <tr><td><code>Aura</code></td><td><strong>Template + automatyczna propagacja.</strong> Efekt jest automatycznie aplikowany do aktorów w promieniu wokół tokena. Kopie na celach mają <code>transferType: owningDocument</code> (nie propagują dalej). Konfiguracja w <strong>Open Advanced Configuration</strong>.</td></tr>
+      <tr><td><code>Area</code></td><td><strong>Template + propagacja przez szablon.</strong> Efekt jest aplikowany do aktorów w obrębie MeasuredTemplate. Kopie na celach mają <code>transferType: owningDocument</code>. Szablon w <strong>Open Advanced Configuration → Place Template</strong>. Tryby: <em>Sustained</em> i <em>Instantaneous</em>.</td></tr>
     </tbody>
   </table>
+  <div class="callout warning">
+    <strong>Pasywne vs jawne zbieranie skryptów.</strong><br>
+    <code>getScripts()</code> zbiera efekty z dwóch źródeł: efekty bezpośrednio na aktorze oraz efekty na itemach aktora.
+    Z itemów zbierane są <strong>wyłącznie efekty z <code>transferType: owningDocument</code></strong>.
+    Typy <code>other</code>, <code>target</code>, <code>damage</code>, <code>auraActor</code>, <code>areaActor</code> są pomijane — są to template'y,
+    których skrypty stają się aktywne dopiero gdy efekt zostanie jawnie nałożony na aktora przez
+    <code>convertToApplied()</code> lub <code>applyEffect()</code>. Kopie na aktorze mają wtedy <code>transferType: owningDocument</code>
+    i są normalnie zbierane.
+  </div>
   <div class="callout info">
     Foundry's natywne pole <code>transfer</code> jest automatycznie ustawiane na <strong>true</strong>
     gdy wybrany jest <code>Owning Document</code>, a <strong>false</strong> dla pozostałych opcji.
@@ -4236,14 +4250,14 @@ onFailure: [
   <table>
     <thead><tr><th>Effect Application</th><th>Document Type</th><th>Wynik</th></tr></thead>
     <tbody>
-      <tr><td>Owning Document</td><td>Actor</td><td>Transfer do właściciela-aktora. Typowe dla sztuczek i pancerzy.</td></tr>
+      <tr><td>Owning Document</td><td>Actor</td><td>Pasywny transfer do właściciela-aktora. <strong>Jedyna kombinacja zbierana automatycznie przez <code>getScripts()</code>.</strong> Typowe dla sztuczek i pancerzy.</td></tr>
       <tr><td>Owning Document</td><td>Item</td><td>Transfer do właściciela-itemu. Rzadko używane.</td></tr>
-      <tr><td>Target</td><td>Actor</td><td>Transfer do wskazanego aktora (token target). Obsługa skryptem.</td></tr>
-      <tr><td>Damage</td><td>Actor</td><td>Transfer do aktora który otrzymuje obrażenia.</td></tr>
-      <tr><td>Damage</td><td>Item</td><td>Transfer do itemu gdy item zadaje obrażenia.</td></tr>
-      <tr><td>Other</td><td>Actor / Item</td><td>Brak automatycznego transferu — pełna kontrola skryptami.</td></tr>
-      <tr><td>Aura</td><td>Actor</td><td>Automatyczny transfer do aktorów w promieniu tokena. Kopia pojawia się w <em>Temporary</em> u każdego celu. Usuwana gdy aktor wyjdzie poza promień (lub po wyłączeniu/usunięciu efektu źródłowego).</td></tr>
-      <tr><td>Area</td><td>Actor</td><td>Transfer do aktorów w obrębie umieszczonego szablonu. Szablon statyczny — nie porusza się z tokenem.</td></tr>
+      <tr><td>Target</td><td>Actor</td><td><strong>Template.</strong> Nie zbierany pasywnie. Efekt musi być nałożony jawnie przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie na aktorach działają jako <code>owningDocument</code>.</td></tr>
+      <tr><td>Damage</td><td>Actor</td><td><strong>Template.</strong> Jak Target — jawna aplikacja skryptem. Dla efektów wywoływanych przez obrażenia.</td></tr>
+      <tr><td>Damage</td><td>Item</td><td><strong>Template.</strong> Efekt jawnie aplikowany na item przy obrażeniach. Obsługa skryptem.</td></tr>
+      <tr><td>Other</td><td>Actor / Item</td><td><strong>Template.</strong> Brak pasywnego zbierania — efekt niewidoczny dla <code>getScripts()</code> dopóki nie zostanie nałożony przez <code>convertToApplied()</code> / <code>applyEffect()</code>. Kopie działają jako <code>owningDocument</code>.</td></tr>
+      <tr><td>Aura</td><td>Actor</td><td>Automatyczna propagacja do aktorów w promieniu tokena. Kopie w <em>Temporary</em> u celów. Kopie mają <code>transferType: owningDocument</code> — nie re-propagują. Usuwane gdy aktor wyjdzie z zasięgu lub efekt źródłowy zostanie usunięty.</td></tr>
+      <tr><td>Area</td><td>Actor</td><td>Propagacja do aktorów w obrębie MeasuredTemplate. Kopie mają <code>transferType: owningDocument</code>. Szablon statyczny.</td></tr>
     </tbody>
   </table>
 
@@ -5116,6 +5130,15 @@ return false; // nie blokuj nikogo</span></code></pre>
     Metoda <code>convertToApplied(overrides?)</code> tworzy kopię efektu gotową do nałożenia na aktora.
     Argument <code>overrides</code> to płaski obiekt z polami nadpisującymi dane efektu — najczęściej używany do ustawienia czasu trwania.
   </p>
+  <div class="callout info">
+    <strong>Normalizacja <code>transferType</code>.</strong><br>
+    <code>convertToApplied()</code> automatycznie ustawia <code>transferType: "owningDocument"</code>
+    na kopii jeśli oryginał miał <code>other</code>, <code>target</code>, <code>damage</code>, <code>auraActor</code> lub <code>areaActor</code>.
+    Dzięki temu kopia na aktorze jest normalnie zbierana przez <code>getScripts()</code> i nie próbuje
+    re-propagować aury/strefy. Oryginalny typ jest zachowany w <code>flags.neuroshima.originalTransferType</code>
+    dla celów diagnostycznych.<br><br>
+    Efekty <code>owningDocument</code> pozostają bez zmian.
+  </div>
   <table>
     <thead>
       <tr><th>Pola duration</th><th>Kiedy używać</th><th>Przykład wartości</th></tr>
@@ -6678,6 +6701,20 @@ args.test.preData.penalties.mod += <span class="num">10</span>;
           Domyślnie przeszukuje wszystkich aktorów z tokenami na aktywnej scenie.
           Zwraca liczbę usuniętych efektów.
           Przeznaczone do wyzwalacza <code>deleteEffect</code> — uruchamia się przy odłączaniu moda.
+        </td>
+      </tr>
+      <tr>
+        <td><code>this.isEffectActive(effectRef, actor?)</code></td>
+        <td>boolean</td>
+        <td>
+          Sprawdza, czy dany efekt jest już aktywny na aktorze.<br>
+          <strong>effectRef</strong> może być:
+          <ul style="margin:0.4rem 0 0 1rem;">
+            <li>obiektem efektu (NeuroshimaActiveEffect) — szuka po <code>flags.neuroshima.sourceEffect === effectRef.uuid</code></li>
+            <li>stringiem — szuka po nazwie efektu (case-insensitive)</li>
+          </ul>
+          <strong>actor</strong> — aktor do sprawdzenia; domyślnie <code>this.actor</code>.<br>
+          Przydatne przed <code>applyEffect()</code> / <code>convertToApplied()</code>, żeby nie duplikować efektu.
         </td>
       </tr>
     </tbody>

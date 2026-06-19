@@ -1,4 +1,3 @@
-import { NeuroshimaScriptRunner } from "./neuroshima-script-engine.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -42,14 +41,16 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
   }
 
   async _prepareContext(options) {
+    const { NeuroshimaScriptRunner } = await import("./neuroshima-script-engine.js");
     const scripts = this._freshEffect.system?.scriptData ?? [];
     const scriptData = foundry.utils.deepClone(scripts[this.scriptIndex]) || { trigger: "manual", label: "", code: "" };
-    scriptData.code             = (scriptData.code             ?? "").trimEnd();
-    scriptData.hideScript       = (scriptData.hideScript       ?? "").trimEnd();
-    scriptData.activateScript   = (scriptData.activateScript   ?? "").trimEnd();
-    scriptData.submissionScript = (scriptData.submissionScript ?? "").trimEnd();
-    scriptData.dialogCode       = (scriptData.dialogCode       ?? "").trimEnd();
-    scriptData.isDialogScript   = scriptData.isDialogScript ?? false;
+    scriptData.code              = (scriptData.code             ?? "").trimEnd();
+    scriptData.hideScript        = (scriptData.hideScript       ?? "").trimEnd();
+    scriptData.activateScript    = (scriptData.activateScript   ?? "").trimEnd();
+    scriptData.submissionScript  = (scriptData.submissionScript ?? "").trimEnd();
+    scriptData.dialogCode        = (scriptData.dialogCode       ?? "").trimEnd();
+    scriptData.dialogDescription = scriptData.dialogDescription ?? "";
+    scriptData.isDialogScript    = scriptData.isDialogScript ?? false;
 
     // _pendingIsDialogScript overrides the stored value for the render immediately
     // following a checkbox toggle, so the UI reflects the user's intent even if
@@ -72,6 +73,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     // For getMeleeActions in dialog mode, submissionScript runs when modifier is checked and Attack clicked.
     const showSubmissionScript = scriptData.trigger === "dialog" ||
       (scriptData.trigger === "getMeleeActions" && scriptData.isDialogScript);
+
     return {
       scriptData,
       triggers: NeuroshimaScriptRunner.TRIGGERS,
@@ -114,6 +116,11 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
         clearTimeout(this._cmSaveTimer);
         this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
       });
+    });
+
+    form.querySelector('textarea[name="dialogDescription"]')?.addEventListener("input", () => {
+      clearTimeout(this._cmSaveTimer);
+      this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
     });
 
     form.querySelector(".ns-se-save-btn")?.addEventListener("click", async () => {
@@ -172,6 +179,9 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
 
     const dialogCode = this._readCmValue(form, "dialogCode");
     if (dialogCode !== undefined) s.dialogCode = dialogCode;
+
+    const descEl = form.querySelector('textarea[name="dialogDescription"]');
+    if (descEl) s.dialogDescription = descEl.value;
 
     await effect.update({ "system.scriptData": scripts });
     // Refresh our local reference after the update — the embedded document
