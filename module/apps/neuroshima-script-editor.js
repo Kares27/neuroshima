@@ -17,7 +17,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     tag: "div",
     classes: ["neuroshima", "script-editor"],
     window: { resizable: true },
-    position: { width: 640, height: 620 }
+    position: { width: 720, height: 680 }
   };
 
   static PARTS = {

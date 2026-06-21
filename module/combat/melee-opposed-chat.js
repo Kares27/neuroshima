@@ -897,8 +897,7 @@ export class MeleeOpposedChat {
             } catch (err) {
               game.neuroshima?.log("[getMeleeActions] actionDef error", err);
             }
-          } else {
-            // Legacy path: execute raw JS code that pushes to args.actions.
+          } else if (script.code?.trim()) {
             try {
               await script.execute(triggerArgs);
             } catch (err) {
@@ -2575,20 +2574,10 @@ export class MeleeOpposedChat {
 
   /**
    * Builds a melee action object declaratively from a script's `actionDef` structure
-   * and pushes it into extraActionsArr. Called by _buildDuelContext when
-   * `script.useActionDef === true` instead of executing raw JS code.
-   *
-   * actionDef schema:
-   *   { id, name, img, tooltip,
-   *     mode: "standalone"|"queue", successCost, minDice, maxDice,
-   *     damage,          // wound type string or "" for no damage
-   *     condition: { requiresPreviousHit, requiredConditionKey, customScript },
-   *     onHit:     { type: "damage"|"applyEffect"|"notify"|"script",
-   *                  effectName, notifyText, customScript } }
-   *
-   * @param {NeuroshimaScript} script    - Script object (has .effect, .actionDef, .isDialogScript)
-   * @param {Object}           triggerArgs - getMeleeActions trigger args (actor, state, ownerHadHit, …)
-   * @param {Array}            extraActionsArr - Mutable array to push the built action into
+   * and pushes it into extraActionsArr. Called when `script.useActionDef === true`.
+   * @param {NeuroshimaScript} script        - Script object (has .effect, .actionDef)
+   * @param {Object}           triggerArgs   - getMeleeActions trigger args
+   * @param {Array}            extraActionsArr - Mutable array to push into
    */
   static async _buildActionFromDef(script, triggerArgs, extraActionsArr) {
     const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
