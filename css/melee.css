@@ -2608,12 +2608,16 @@
     width: 18px;
     height: 18px;
     text-align: center;
-    opacity: 0.7;
+    opacity: 1;
     flex-shrink: 0;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.melee-duel-card .mdc-action-choice .mac-icon--berserk img {
+    filter: invert(70%) sepia(80%) saturate(600%) hue-rotate(5deg) brightness(1.1);
 }
 
 .melee-duel-card .mdc-action-choice .mac-icon img {
@@ -2696,6 +2700,20 @@
 .melee-duel-card .mdc-action-choice--danger.is-ready:hover {
     border-color: rgba(220, 80, 80, 0.75);
     background: rgba(200, 50, 50, 0.18);
+}
+
+.melee-duel-card .mdc-action-choice--berserk {
+    border-color: rgba(180, 100, 20, 0.18);
+}
+
+.melee-duel-card .mdc-action-choice--berserk.is-ready {
+    border-color: rgba(210, 130, 30, 0.50);
+    background: rgba(160, 80, 10, 0.10);
+}
+
+.melee-duel-card .mdc-action-choice--berserk.is-ready:hover {
+    border-color: rgba(240, 160, 40, 0.80);
+    background: rgba(200, 110, 20, 0.20);
 }
 
 .melee-duel-card .mdc-action-choice--passive.is-ready {
@@ -3582,3 +3600,96 @@ span.duel-die-chip.is-pending {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ── Duel card: hits-detail (wynik walki) ─────────────────────────────────── */
+
+.melee-duel-card .hits-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 6px;
+}
+
+.melee-duel-card .hit-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.82em;
+    padding: 2px 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.04);
+}
+
+.melee-duel-card .hit-row--counter {
+    background: rgba(180, 100, 10, 0.08);
+    border-left: 2px solid rgba(210, 130, 30, 0.45);
+}
+
+.melee-duel-card .hit-source {
+    font-weight: 600;
+    color: rgba(255,255,255,0.75);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 90px;
+}
+
+.melee-duel-card .hit-arrow {
+    color: rgba(255,255,255,0.35);
+    flex-shrink: 0;
+}
+
+.melee-duel-card .hit-target {
+    color: rgba(255,255,255,0.55);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 90px;
+    flex: 1;
+    margin-right: auto;
+}
+
+.melee-duel-card .hit-badge {
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 3px;
+    padding: 1px 7px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: rgba(255,255,255,0.90);
+}
+
+.melee-duel-card .hit-badge--counter {
+    background: rgba(210, 130, 30, 0.18);
+    border-color: rgba(210, 130, 30, 0.45);
+    color: rgba(240, 180, 60, 0.95);
+}
+
+/* Typy obrażeń — badge colorways */
+.melee-duel-card .hit-badge--scratch {
+    background: rgba(80, 160, 80, 0.14);
+    border-color: rgba(100, 200, 100, 0.35);
+    color: rgba(140, 220, 140, 0.95);
+}
+.melee-duel-card .hit-badge--light {
+    background: rgba(200, 200, 40, 0.13);
+    border-color: rgba(220, 220, 60, 0.40);
+    color: rgba(240, 240, 100, 0.95);
+}
+.melee-duel-card .hit-badge--heavy {
+    background: rgba(220, 120, 20, 0.14);
+    border-color: rgba(240, 140, 30, 0.45);
+    color: rgba(255, 175, 70, 0.95);
+}
+.melee-duel-card .hit-badge--crit {
+    background: rgba(200, 30, 30, 0.16);
+    border-color: rgba(230, 60, 60, 0.50);
+    color: rgba(255, 120, 120, 0.95);
+}
+
+/* kontr-atak + override koloru gdy jest też klasa damage-type */
+.melee-duel-card .hit-badge--counter.hit-badge--scratch { border-color: rgba(100, 200, 100, 0.50); }
+.melee-duel-card .hit-badge--counter.hit-badge--light   { border-color: rgba(220, 220, 60, 0.55);  }
+.melee-duel-card .hit-badge--counter.hit-badge--heavy   { border-color: rgba(240, 140, 30, 0.65);  }
+.melee-duel-card .hit-badge--counter.hit-badge--crit    { border-color: rgba(230, 60, 60, 0.70);   }

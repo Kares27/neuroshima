@@ -246,6 +246,20 @@
           <span class="mac-counter">0/{{responderExactDice}}</span>
         </span>
       </button>
+      {{#if responderCanCounterAttack}}
+      <button type="button" class="mdc-action-choice mdc-action-choice--berserk is-disabled"
+          data-action-type="attack" data-pool="{{responderPool}}"
+          data-exact-dice="{{responderExactDice}}"
+          data-tooltip="NEUROSHIMA.MeleeDuel.DuelHintAttack" disabled>
+        <span class="mac-icon mac-icon--berserk"><img src="systems/neuroshima/assets/img/berserker.svg" alt=""></span>
+        <span class="mac-body">
+          <span class="mac-label">{{localize "NEUROSHIMA.MeleeDuel.DuelActionAttack"}}</span>
+        </span>
+        <span class="mac-meta">
+          <span class="mac-counter">0/{{responderExactDice}}</span>
+        </span>
+      </button>
+      {{/if}}
       {{#unless isGradCios}}
       <button type="button" class="mdc-action-choice mdc-action-choice--danger"
           data-action-type="flee" data-pool="{{responderPool}}"
@@ -324,11 +338,24 @@
   {{/if}}
 
   {{#if isDone}}
-  {{#if hasHits}}
+  {{#if hasAnyHits}}
   <div class="apply-damage-section opposed-apply-row" data-gm-only="true">
     <div class="hits-detail">
-      {{#each hits}}
-      <span class="hit-badge">{{tier}}k: {{damageType}}</span>
+      {{#each hitsDetail}}
+      <div class="hit-row">
+        <span class="hit-source">{{sourceName}}</span>
+        <span class="hit-arrow">→</span>
+        <span class="hit-target">{{targetName}}</span>
+        <span class="hit-badge {{damageClass}}" data-tooltip="{{damageTooltip}}">{{lookup this "damageLabel"}}</span>
+      </div>
+      {{/each}}
+      {{#each counterHitsDetail}}
+      <div class="hit-row hit-row--counter">
+        <span class="hit-source">{{sourceName}}</span>
+        <span class="hit-arrow">→</span>
+        <span class="hit-target">{{targetName}}</span>
+        <span class="hit-badge hit-badge--counter {{damageClass}}" data-tooltip="{{damageTooltip}}">{{lookup this "damageLabel"}}</span>
+      </div>
       {{/each}}
     </div>
     <button type="button" class="btn btn-primary apply-damage-button apply-opposed-damage-btn" data-action="applyOpposedDamage">

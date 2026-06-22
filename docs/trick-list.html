@@ -377,9 +377,12 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <p><strong>Mechanika:</strong> Podwaja poziom Wspinaczki przy wspinaniu się bez sprzętu i liny.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
-<pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"climbing"</span>) <span class="kw">return</span>;
-args.test.preData.skillBonus += <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"climbing"</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj jeśli nie test Wspinaczki</div>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"climbing"</span>;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +poziom Wspinaczki jako bonus</div>
+<pre><code>args.fields.skillBonus += <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"climbing"</span>) ?? <span class="num">0</span>;</code></pre>
 </div>
 </div>
 </section>
@@ -542,10 +545,15 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <p><strong>Mechanika:</strong> Strzela z łuku na dwukrotnie większą odległość przy tych samych karach.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
-<pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"bow"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">dist</span> = args.test.preData.penalties?.distanceMod ?? <span class="num">0</span>;
-<span class="kw">if</span> (<span class="var">dist</span> &gt; <span class="num">0</span>) args.test.preData.penalties.distanceMod = Math.floor(<span class="var">dist</span> / <span class="num">2</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj jeśli nie strzelasz z łuku</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span> || args.weapon?.system?.rangedSubtype !== <span class="str">"bow"</span>;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Połowa kary za dystans</div>
+<pre><code><span class="cmt">// args.currentDistanceModifier = aktualna kara za odległość (tylko do odczytu)
+// args.fields.distanceModifier  = delta — wartość odjęta od aktualnej kary za odległość</span>
+<span class="kw">const</span> <span class="var">dist</span> = args.currentDistanceModifier ?? <span class="num">0</span>;
+<span class="kw">if</span> (<span class="var">dist</span> &gt; <span class="num">0</span>) args.fields.distanceModifier -= Math.<span class="fn">floor</span>(<span class="var">dist</span> / <span class="num">2</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -593,11 +601,13 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <p><strong>Mechanika:</strong> Przy rzucaniu nożem: tylko połowa kary za dystans.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
-<pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"throwing"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (args.test?.context?.weapon?.system?.rangedSubtype !== <span class="str">"knife"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">d</span> = args.test.preData.penalties?.distanceMod ?? <span class="num">0</span>;
-<span class="kw">if</span> (<span class="var">d</span> &gt; <span class="num">0</span>) args.test.preData.penalties.distanceMod = Math.floor(<span class="var">d</span> / <span class="num">2</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj jeśli nie rzucasz nożem</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span> || args.weapon?.system?.rangedSubtype !== <span class="str">"knife"</span>;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Połowa kary za dystans</div>
+<pre><code><span class="kw">const</span> <span class="var">d</span> = args.currentDistanceModifier ?? <span class="num">0</span>;
+<span class="kw">if</span> (<span class="var">d</span> &gt; <span class="num">0</span>) args.fields.distanceModifier -= Math.<span class="fn">floor</span>(<span class="var">d</span> / <span class="num">2</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -845,10 +855,13 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <p><strong>Mechanika:</strong> Przy rzucaniu (nie-nożem): -30% do trudności testu rzucania.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
-<pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"throwing"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (args.test?.context?.weapon?.system?.rangedSubtype === <span class="str">"knife"</span>) <span class="kw">return</span>;
-args.test.preData.penalties.mod -= <span class="num">30</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj jeśli nie rzucasz (lub rzucasz nożem)</div>
+<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"ranged"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">return</span> args.weapon?.system?.rangedSubtype === <span class="str">"knife"</span>;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> -30% PT do testu rzucania</div>
+<pre><code>args.fields.modifier -= <span class="num">30</span>;</code></pre>
 </div>
 </div>
 </section>

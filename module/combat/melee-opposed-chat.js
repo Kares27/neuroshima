@@ -545,6 +545,19 @@ export class MeleeOpposedChat {
     await MeleeOpposedChat._updateChatContent(message, updatedContent);
   }
 
+  static _resolveActorMeleeDamage(actor, tier) {
+    const DEFAULTS = ["D", "L", "K"];
+    const field = `damageMelee${tier}`;
+    const weapon = actor?.items?.find(i =>
+      i.type === "weapon" && i.system?.weaponGroup === "melee" && i.system?.equipped
+    ) ?? actor?.items?.find(i =>
+      i.type === "weapon" && i.system?.weaponGroup === "melee"
+    ) ?? null;
+    const raw = weapon?.system?.[field];
+    if (typeof raw === "string" && raw) return raw;
+    return DEFAULTS[tier - 1] ?? "D";
+  }
+
   static async _createDuelCard(handlerMessage, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget) {
     if (data.isGradCios) {
       const atkSuccessCount = attackDice.filter(d => d.isSuccess).length;
@@ -643,6 +656,9 @@ export class MeleeOpposedChat {
       damage1: data.damage1,
       damage2: data.damage2,
       damage3: data.damage3,
+      defenderDamage1: MeleeOpposedChat._resolveActorMeleeDamage(defenderActor, 1),
+      defenderDamage2: MeleeOpposedChat._resolveActorMeleeDamage(defenderActor, 2),
+      defenderDamage3: MeleeOpposedChat._resolveActorMeleeDamage(defenderActor, 3),
       usedAttackDice: [],
       usedDefenseDice: [],
       segments: Array.from({ length: segCount }, (_, i) => ({
@@ -818,6 +834,13 @@ export class MeleeOpposedChat {
     const ownerActor    = ownerActorDoc?.actor ?? ownerActorDoc;
     const ownerIsCreature = ownerActor?.type === "creature";
 
+    // Berserker: sprawdź czy odpowiadający ma stan berserkera i może kontr-atakować.
+    // Stan "berserker" jest nadawany przez efekt sztuczki Berserker (Effect 2, statuses: ["berserker"]).
+    // Używamy już rozwiązanych aktorów z parametrów — nie rozwiązujemy ponownie przez UUID.
+    const responderActorCheck = isOwnerAttacker ? defenderActor : attackerActor;
+    const responderCanCounterAttack = !!ownerDeclaredAttackOrTrick &&
+      (responderActorCheck?.statuses?.has("berserker") ?? false);
+
     const ownerDiceArr = isOwnerAttacker ? (attackDice || []) : (defenseDice || []);
     const committedSuccessCount = committedIndices.filter(i => ownerDiceArr[i]?.isSuccess).length;
 
@@ -980,14 +1003,77 @@ export class MeleeOpposedChat {
     const confirmOwnerLabel = game.i18n.format("NEUROSHIMA.MeleeDuel.DuelConfirmAttack", { n: 0 });
     const canSwapInit = game.user.isGM && status === "picking" && !isGradCios;
 
+    // ── Hits-detail: przygotuj etykietowane ciosy dla obu stron ──────────────
+    // Ciosy atakującego idą do obrońcy (state.hits).
+    // Kontr-ciosy berserkera (state.counterHits) idą do atakującego.
+    // Dla kontr-ciosów rozwiązujemy typ obrażeń z broni obrońcy już tutaj.
+    const attackerNameLabel = attackerActor?.name ?? "Attacker";
+    const defenderNameLabel = defenderActor?.name ?? "Defender";
+
+    // Mapowanie kodu obrażeń → skrócony label, tooltip PL + klasa CSS dla badge
+    const _dmgCode = (code) => {
+      // Zawsze sprowadź do stringa — code może być obiektem, tablicą lub undefined
+      if (typeof code === "string" && code) return code;
+      if (Array.isArray(code) && code.length) return String(code[0]);
+      if (code != null && typeof code === "object") {
+        // próbuj wyciągnąć z typowych pól modeli danych
+        const v = code.value ?? code.damageType ?? code.label ?? code.type ?? null;
+        if (typeof v === "string" && v) return v;
+        game.neuroshima?.log?.("[hitsDetail] unknown damageType object:", code);
+        return "?";
+      }
+      return "?";
+    };
+    const _dmgMeta = (code) => {
+      const raw = _dmgCode(code);
+      const up  = raw.toUpperCase();
+      // Obsługa s-prefix (sC, sL, sD, sK — poważny wariant)
+      if (up.length === 2 && up[0] === "S") {
+        const base = up[1];
+        const baseTip = { K: "Krytyczna rana", C: "Ciężka rana", L: "Lekka rana", D: "Draśnięcie" }[base] ?? base;
+        const baseCls = { K: "hit-badge--crit", C: "hit-badge--heavy", L: "hit-badge--light", D: "hit-badge--scratch" }[base] ?? "";
+        return { label: raw, tooltip: `Poważna ${baseTip}`, cls: `${baseCls} hit-badge--serious` };
+      }
+      if (up === "K")  return { label: "K",  tooltip: "Krytyczna rana",  cls: "hit-badge--crit"    };
+      if (up === "C")  return { label: "C",  tooltip: "Ciężka rana",     cls: "hit-badge--heavy"   };
+      if (up === "L")  return { label: "L",  tooltip: "Lekka rana",      cls: "hit-badge--light"   };
+      if (up === "D")  return { label: "D",  tooltip: "Draśnięcie",      cls: "hit-badge--scratch" };
+      return { label: raw || "?", tooltip: raw || "?", cls: "" };
+    };
+
+    const _buildHit = (h, srcName, tgtName) => {
+      const meta = _dmgMeta(h.damageType);
+      return {
+        tier:           h.tier,
+        damageType:     _dmgCode(h.damageType),
+        damageLabel:    meta.label,
+        damageTooltip:  meta.tooltip,
+        damageClass:    meta.cls,
+        sourceName:     srcName,
+        targetName:     tgtName
+      };
+    };
+
+    const hitsDetail = (hits || []).map(h => _buildHit(h, attackerNameLabel, defenderNameLabel));
+
+    let counterHitsDetail = [];
+    if ((state.counterHits || []).length > 0) {
+      counterHitsDetail = state.counterHits.map(h =>
+        _buildHit(h, defenderNameLabel, attackerNameLabel)
+      );
+    }
+    const hasCounterHits = counterHitsDetail.length > 0;
+    const hasAnyHits = hitsDetail.length > 0 || hasCounterHits;
+
     return {
       status,
-      attackerName: attackerActor?.name ?? "Attacker",
+      attackerName: attackerNameLabel,
       attackerImg:  attackerActor?.img  ?? "",
-      defenderName: defenderActor?.name ?? "Defender",
+      defenderName: defenderNameLabel,
       defenderImg:  defenderActor?.img  ?? "",
       phaseBanner, segmentDots, attackDiceChips, defenseDiceChips, resolvedSegs,
       hits: hits || [], hasHits: (hits || []).length > 0, isDone: status === "done",
+      hitsDetail, counterHitsDetail, hasCounterHits, hasAnyHits,
       isOwnerAttacker, isOwnerTurn, isResponderTurn,
       ownerPool, responderPool, ownerActorUuid, responderActorUuid,
       committedOwnerCount: committedIndices.length,
@@ -995,7 +1081,7 @@ export class MeleeOpposedChat {
       ownerDeclaredAttack, ownerDeclaredExit, ownerDeclaredNonCombat, ownerDeclaredTrick, ownerDeclaredAttackOrTrick,
       responderConfirmActionType, responderConfirmLabel, responderExactDice,
       ownerIsCreature, ownerBeastActions, committedSuccessCount,
-      ownerExtraActions,
+      ownerExtraActions, responderCanCounterAttack,
       isGM:    game.user.isGM,
       canUndo: game.user.isGM && (state.segmentHistory?.length ?? 0) > 0,
       canRedo: game.user.isGM && (state.segmentFuture?.length  ?? 0) > 0
@@ -1601,31 +1687,67 @@ export class MeleeOpposedChat {
         const responderHasSuccess  = responderSuccessCount > 0;
 
         if (declaredAction === "attack" || declaredAction === "trick") {
-          if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
-          else if (ownerSuccessCount < responderSuccessCount)  outcome = "takeover";
-          else if (ownerSuccessCount > 0)                      outcome = "draw";
-          else                                                  outcome = "nothing";
-
-          if (outcome === "hit") {
-            // Sztuczki gracza mają własny, stały typ obrażeń niezależny od uzbrojenia.
-            // Dla zwykłego ataku używamy damage${N} z profilu broni.
+          if (responderAction === "attack") {
+            // ── BERSERKER: obaj atakują ───────────────────────────────────
+            // Atakujący zadaje obrażenia jeśli ma sukcesy.
+            // Odpowiadający (berserker) kontr-atakuje — też może trafić niezależnie.
             const hitDmgType = declaredAction === "trick" && state.committedTrickDamage
               ? state.committedTrickDamage
               : (state[`damage${N}`] ?? "?");
-            const hitEntry = { tier: N, damageType: hitDmgType };
-            if (declaredAction === "trick" && state.committedTrickId) {
-              hitEntry.trickId = state.committedTrickId;
+
+            if (ownerSuccessCount > 0) {
+              const hitEntry = { tier: N, damageType: hitDmgType };
+              if (declaredAction === "trick" && state.committedTrickId) {
+                hitEntry.trickId = state.committedTrickId;
+              }
+              state.hits.push(hitEntry);
             }
-            state.hits.push(hitEntry);
+
+            if (responderSuccessCount > 0) {
+              state.counterHits = state.counterHits ?? [];
+              state.counterHits.push({ tier: N, damageType: state[`defenderDamage${N}`] ?? "D" });
+            }
+
+            if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
+            else if (ownerSuccessCount < responderSuccessCount)  outcome = "takeover";
+            else if (ownerSuccessCount > 0)                      outcome = "draw";
+            else                                                  outcome = "nothing";
+
+            segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
+            segDefenseVal = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
+
+            if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
+            state.committedTrickId     = null;
+            state.committedTrickDamage = null;
+
+          } else {
+            // ── Normalna obrona ───────────────────────────────────────────
+            if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
+            else if (ownerSuccessCount < responderSuccessCount)  outcome = "takeover";
+            else if (ownerSuccessCount > 0)                      outcome = "draw";
+            else                                                  outcome = "nothing";
+
+            if (outcome === "hit") {
+              // Sztuczki gracza mają własny, stały typ obrażeń niezależny od uzbrojenia.
+              // Dla zwykłego ataku używamy damage${N} z profilu broni.
+              const hitDmgType = declaredAction === "trick" && state.committedTrickDamage
+                ? state.committedTrickDamage
+                : (state[`damage${N}`] ?? "?");
+              const hitEntry = { tier: N, damageType: hitDmgType };
+              if (declaredAction === "trick" && state.committedTrickId) {
+                hitEntry.trickId = state.committedTrickId;
+              }
+              state.hits.push(hitEntry);
+            }
+
+            segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
+            segDefenseVal = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
+
+            if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
+            // Wyczyść metadane sztuczki po rozstrzygnięciu segmentu
+            state.committedTrickId     = null;
+            state.committedTrickDamage = null;
           }
-
-          segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
-          segDefenseVal = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
-
-          if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
-          // Wyczyść metadane sztuczki po rozstrzygnięciu segmentu
-          state.committedTrickId     = null;
-          state.committedTrickDamage = null;
 
         } else if (declaredAction === "exit") {
           outcome = (ownerHasSuccess && !responderHasSuccess) ? "exit" : "blocked";
@@ -1736,6 +1858,8 @@ export class MeleeOpposedChat {
           pendingBeastQueue: state.committedBeastQueue ?? null,
           // Sztuczki gracza z kolejki (successCost) — aplikowane razem z normalnymi obrażeniami
           pendingTrickQueue: state.allTrickQueue?.length > 0 ? state.allTrickQueue : null,
+          // counterHits: trafienia kontr-ataku berserkera (obrażenia zadane atakującemu)
+          counterHits: state.counterHits?.length > 0 ? state.counterHits : null,
           applied: false,
           beastActionsApplied: false
         });
@@ -2700,20 +2824,10 @@ export class MeleeOpposedChat {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.AlreadyApplied"));
       return;
     }
-    if (!rd.hits || rd.hits.length === 0) {
+    const hasHits        = rd.hits?.length > 0;
+    const hasCounterHits = rd.counterHits?.length > 0;
+    if (!hasHits && !hasCounterHits) {
       ui.notifications.info(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.NoHits"));
-      return;
-    }
-
-    if (rd.isBeastAttack) {
-      const queue = rd.pendingBeastQueue ?? [];
-      if (queue.length > 0) {
-        await MeleeOpposedChat.applyBeastActions(messageId, queue);
-        const refreshed = message.getFlag("neuroshima", "opposedResult");
-        await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
-      } else {
-        await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
-      }
       return;
     }
 
@@ -2727,6 +2841,79 @@ export class MeleeOpposedChat {
     }
 
     const { CombatHelper } = await import("../helpers/combat-helper.js");
+
+    // ── BERSERKER kontr-ataki muszą być aplikowane PRZED isBeastAttack early-return ──
+    // Kiedy atakujący to stworzenie (isBeastAttack === true), poniższy blok robi return
+    // wcześniej niż oryginalny kod counterHits — dlatego obsługujemy je tutaj.
+    if (hasCounterHits && attackerActor) {
+      const defWeapon = defenderActor?.items?.find(i =>
+        i.type === "weapon" && i.system?.weaponGroup === "melee" && i.system?.equipped
+      ) ?? defenderActor?.items?.find(i =>
+        i.type === "weapon" && i.system?.weaponGroup === "melee"
+      ) ?? null;
+
+      const counterResults        = [];
+      const counterWoundIds       = [];
+      let   counterReduced        = 0;
+      const counterReducedDetails = [];
+
+      for (const counterHit of rd.counterHits) {
+        const tier = counterHit.tier ?? 1;
+        const dmgForTier = counterHit.damageType
+          ?? defWeapon?.system?.[`damageMelee${tier}`]
+          ?? ["D", "L", "K"][tier - 1] ?? "D";
+        const counterAttackData = {
+          isMelee:     true,
+          actorId:     defenderActor?.id,
+          weaponId:    defWeapon?.id ?? null,
+          label:       defWeapon?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+          damageMelee1: dmgForTier,
+          damageMelee2: dmgForTier,
+          damageMelee3: dmgForTier,
+          finalLocation: rd.location,
+          successPoints: tier
+        };
+        const batch = await CombatHelper.applyDamageToActor(attackerActor, counterAttackData, {
+          isOpposed:    true,
+          spDifference: tier,
+          location:     rd.location,
+          suppressChat: true
+        });
+        if (batch) {
+          counterResults.push(...(batch.results ?? []));
+          counterWoundIds.push(...(batch.woundIds ?? []));
+          counterReduced += batch.reducedProjectiles ?? 0;
+          counterReducedDetails.push(...(batch.reducedDetails ?? []));
+        }
+      }
+
+      if (counterWoundIds.length > 0) {
+        ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.DamageApplied", {
+          count: counterWoundIds.length, name: attackerActor.name
+        }));
+      }
+      if (counterResults.length > 0 || counterReduced > 0 || counterWoundIds.length > 0) {
+        await CombatHelper.renderPainResistanceReport(
+          attackerActor, counterResults, counterWoundIds, counterReduced, counterReducedDetails
+        );
+      }
+      game.neuroshima?.log?.("[applyDuelBatch] berserker counter-hits applied", {
+        from: defenderActor?.name, to: attackerActor?.name,
+        hits: rd.counterHits.length, weapon: defWeapon?.name ?? "unarmed"
+      });
+    }
+
+    if (rd.isBeastAttack) {
+      const queue = rd.pendingBeastQueue ?? [];
+      if (queue.length > 0) {
+        await MeleeOpposedChat.applyBeastActions(messageId, queue);
+        const refreshed = message.getFlag("neuroshima", "opposedResult");
+        await message.setFlag("neuroshima", "opposedResult", { ...refreshed, applied: true });
+      } else {
+        await message.setFlag("neuroshima", "opposedResult", { ...rd, applied: true });
+      }
+      return;
+    }
     const weaponItem = attackerActor?.items?.get(rd.weaponId);
 
     const allResults = [];

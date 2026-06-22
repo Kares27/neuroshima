@@ -2710,11 +2710,11 @@ export class NeuroshimaScript {
       let fn;
       const expr = code.trimEnd().replace(/;\s*$/, "");
       try {
-        fn = new AsyncFunction("args", "NeuroshimaScriptRunner", `return (${expr})`);
+        fn = new AsyncFunction("args", "NeuroshimaScriptRunner", "neuroshima", `return (${expr})`);
       } catch {
-        fn = new AsyncFunction("args", "NeuroshimaScriptRunner", code);
+        fn = new AsyncFunction("args", "NeuroshimaScriptRunner", "neuroshima", code);
       }
-      return await fn.call(ctx, args, NeuroshimaScriptRunner);
+      return await fn.call(ctx, args, NeuroshimaScriptRunner, game.neuroshima);
     } catch (e) {
       if (e instanceof SyntaxError) {
         console.debug(`Neuroshima | Script Syntax [${this.label}]:`, e.message);
