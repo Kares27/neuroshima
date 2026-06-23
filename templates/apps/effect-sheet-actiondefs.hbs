@@ -1,0 +1,26 @@
+<section class="tab scrollable" data-group="sheet" data-tab="actiondefs" data-application-part="actiondefs">
+    <div class="neuroshima-script-list">
+        {{#each actionDefs}}
+        <div class="ns-script-row ns-actiondef-row" data-index="{{@index}}">
+            <label class="ns-script-label">
+                <a data-action="editActionDef" data-index="{{@index}}">
+                    <i class="fa-solid fa-swords"></i> {{#if this.name}}{{this.name}}{{else}}<em>Bez nazwy</em>{{/if}}
+                </a>
+            </label>
+            <code class="ns-actiondef-uuid" data-action="copyActionDefId" data-index="{{@index}}">{{this.id}}</code>
+            <span class="ns-script-trigger">{{this.damage}} / {{this.successCost}}suk.</span>
+            <a class="ns-script-action" data-action="removeActionDef" data-index="{{@index}}" data-tooltip="{{localize 'DOCUMENT.Delete'}}">
+                <i class="fa-solid fa-xmark"></i>
+            </a>
+        </div>
+        {{/each}}
+        {{#unless actionDefs.length}}
+        <p class="ns-scripts-empty hint">Brak definicji akcji. Kliknij „Dodaj akcję" aby stworzyć pierwszą.</p>
+        {{/unless}}
+        <div class="ns-script-add">
+            <button type="button" data-action="addActionDef">
+                <i class="fa-solid fa-plus"></i> Dodaj akcję
+            </button>
+        </div>
+    </div>
+</section>

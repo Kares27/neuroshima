@@ -221,7 +221,11 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
         removeScript: NeuroshimaEffectSheet.prototype._onRemoveScript,
         runManualScript: NeuroshimaEffectSheet.prototype._onRunManualScript,
         editScript: NeuroshimaEffectSheet.prototype._onEditScript,
-        toggleChangeMode: NeuroshimaEffectSheet.prototype._onToggleChangeMode
+        toggleChangeMode: NeuroshimaEffectSheet.prototype._onToggleChangeMode,
+        addActionDef: NeuroshimaEffectSheet.prototype._onAddActionDef,
+        removeActionDef: NeuroshimaEffectSheet.prototype._onRemoveActionDef,
+        editActionDef: NeuroshimaEffectSheet.prototype._onEditActionDef,
+        copyActionDefId: NeuroshimaEffectSheet.prototype._onCopyActionDefId
       }
     },
     { inplace: false }
@@ -236,6 +240,9 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     scripts: {
       template: "systems/neuroshima/templates/apps/effect-sheet-scripts.hbs"
     },
+    actiondefs: {
+      template: "systems/neuroshima/templates/apps/effect-sheet-actiondefs.hbs"
+    },
     footer: BaseEffectSheet.PARTS.footer
   };
 
@@ -245,7 +252,8 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       ...(BaseEffectSheet.TABS?.sheet ?? {}),
       tabs: [
         ...(BaseEffectSheet.TABS?.sheet?.tabs ?? []),
-        { id: "scripts", icon: "fa-solid fa-code", label: "NEUROSHIMA.Tabs.Scripts" }
+        { id: "scripts",    icon: "fa-solid fa-code",  label: "NEUROSHIMA.Tabs.Scripts" },
+        { id: "actiondefs", icon: "fa-solid fa-swords", label: "NEUROSHIMA.Tabs.ActionDefs" }
       ]
     }
   };
@@ -329,6 +337,7 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
     context.scripts      = foundry.utils.deepClone(this.document.system?.scriptData ?? []);
+    context.actionDefs   = foundry.utils.deepClone(this.document.system?.actionDefs ?? []);
     context.triggers     = NeuroshimaScriptRunner.TRIGGERS;
     context.transferType = this.document.getFlag("neuroshima", "transferType") ?? "owningDocument";
     context.documentType = this.document.getFlag("neuroshima", "documentType") ?? "actor";
@@ -464,5 +473,37 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
       return;
     }
     await NeuroshimaScriptRunner.executeManual(actor, this.document, index);
+  }
+
+  async _onAddActionDef(event, target) {
+    const defs = foundry.utils.deepClone(this.document.system?.actionDefs ?? []);
+    const newIndex = defs.length;
+    defs.push({ id: crypto.randomUUID(), name: "Nowa akcja", damage: "—", successCost: 1, minDice: 1, maxDice: 3, onHitScript: "" });
+    await this.document.update({ "system.actionDefs": defs });
+    const { NeuroshimaActionDefEditor } = await import("../apps/neuroshima-action-def-editor.js");
+    new NeuroshimaActionDefEditor(this.document, newIndex).render(true);
+  }
+
+  async _onRemoveActionDef(event, target) {
+    const index = parseInt(target.closest("[data-index]")?.dataset.index ?? target.dataset.index);
+    const defs = foundry.utils.deepClone(this.document.system?.actionDefs ?? []);
+    defs.splice(index, 1);
+    await this.document.update({ "system.actionDefs": defs });
+  }
+
+  async _onEditActionDef(event, target) {
+    const index = parseInt(target.closest("[data-index]")?.dataset.index ?? target.dataset.index);
+    const { NeuroshimaActionDefEditor } = await import("../apps/neuroshima-action-def-editor.js");
+    new NeuroshimaActionDefEditor(this.document, index).render(true);
+  }
+
+  async _onCopyActionDefId(event, target) {
+    const index = parseInt(target.closest("[data-index]")?.dataset.index ?? target.dataset.index);
+    const defs = this.document.system?.actionDefs ?? [];
+    const id = defs[index]?.id;
+    if (id) {
+      await navigator.clipboard.writeText(id);
+      ui.notifications.info(`Skopiowano: ${id}`);
+    }
   }
 }

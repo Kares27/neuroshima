@@ -895,6 +895,24 @@ export class MeleeOpposedChat {
       const extraActionsArr = [];
       try {
         const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+
+        // lookupActionDef: searches all effects on the actor (and their items) for an actionDef by id or name.
+        // Available in scripts as args.lookupActionDef("uuid-or-name").
+        const lookupActionDef = (idOrName) => {
+          const match = (d) => d.id === idOrName || d.name === idOrName;
+          for (const effect of (ownerActor.effects ?? [])) {
+            const def = (effect.system?.actionDefs ?? []).find(match);
+            if (def) return foundry.utils.deepClone(def);
+          }
+          for (const item of (ownerActor.items ?? [])) {
+            for (const effect of (item.effects ?? [])) {
+              const def = (effect.system?.actionDefs ?? []).find(match);
+              if (def) return foundry.utils.deepClone(def);
+            }
+          }
+          return null;
+        };
+
         const triggerArgs = {
           actor: ownerActor,
           state,
@@ -902,7 +920,8 @@ export class MeleeOpposedChat {
           ownerHadHit,
           ownerPreviousHits,
           uncommittedDice: uncommittedDiceCount,
-          uncommittedSuccesses: uncommittedSuccessCount
+          uncommittedSuccesses: uncommittedSuccessCount,
+          lookupActionDef
         };
 
         const allMeleeScripts = NeuroshimaScriptRunner.getScripts(ownerActor, "getMeleeActions");
@@ -912,6 +931,8 @@ export class MeleeOpposedChat {
           const shouldRun = !script.isDialogScript ||
             (script.effect?.uuid && activatedPreRollMods.has(script.effect.uuid));
           if (!shouldRun) continue;
+
+          const prevLength = extraActionsArr.length;
 
           if (script.useActionDef && script.actionDef) {
             // Action Builder path: declarative action definition, no raw JS code execution.
@@ -927,6 +948,24 @@ export class MeleeOpposedChat {
               game.neuroshima?.log("[getMeleeActions] trigger error", err);
             }
           }
+
+          // Expand any string IDs pushed by this script using the script's parent effect actionDefs.
+          // Scripts can push a plain string: args.actions.push("my-action-id")
+          // The system resolves it to the full actionDef stored on the effect.
+          for (let i = prevLength; i < extraActionsArr.length; i++) {
+            const entry = extraActionsArr[i];
+            if (typeof entry === "string") {
+              const effectDefs = script.effect?.system?.actionDefs ?? [];
+              const localMatch = (d) => d.id === entry || d.name === entry;
+              const def = effectDefs.find(localMatch) ?? lookupActionDef(entry);
+              extraActionsArr[i] = def ? foundry.utils.deepClone(def) : null;
+              if (!def) game.neuroshima?.log("[getMeleeActions] actionDef not found:", entry);
+            }
+          }
+        }
+        // Remove null entries (unresolved IDs)
+        for (let i = extraActionsArr.length - 1; i >= 0; i--) {
+          if (extraActionsArr[i] == null) extraActionsArr.splice(i, 1);
         }
       } catch (err) {
         game.neuroshima?.log("[getMeleeActions] trigger error", err);

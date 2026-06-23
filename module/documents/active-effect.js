@@ -530,15 +530,24 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
           hideScript:       new fields.StringField({ initial: "",        blank: true }),
           activateScript:   new fields.StringField({ initial: "",        blank: true }),
           submissionScript: new fields.StringField({ initial: "",        blank: true }),
-          // dialogCode: for getMeleeActions+isDialogScript only.
-          // Runs in the pre-roll weapon dialog phase (args.fields.*) when the modifier checkbox is active.
-          // The main `code` field remains the passive getMeleeActions script (push to args.actions).
           dialogCode:       new fields.StringField({ initial: "",        blank: true }),
           runIfDisabled:    new fields.BooleanField({ initial: false }),
           targeter:         new fields.BooleanField({ initial: false }),
           defendingAgainst: new fields.BooleanField({ initial: false }),
           isDialogScript:   new fields.BooleanField({ initial: false }),
           dialogDescription: new fields.StringField({ initial: "", blank: true }),
+        }),
+        { initial: [] }
+      ),
+      actionDefs: new fields.ArrayField(
+        new fields.SchemaField({
+          id:           new fields.StringField({ initial: "", blank: true }),
+          name:         new fields.StringField({ initial: "", blank: true }),
+          damage:       new fields.StringField({ initial: "—", blank: true }),
+          successCost:  new fields.NumberField({ initial: 1, integer: true, min: 0 }),
+          minDice:      new fields.NumberField({ initial: 1, integer: true, min: 0 }),
+          maxDice:      new fields.NumberField({ initial: 3, integer: true, min: 0 }),
+          onHitScript:  new fields.StringField({ initial: "", blank: true }),
         }),
         { initial: [] }
       ),

@@ -3375,6 +3375,9 @@ export class NeuroshimaScriptRunner {
       stat: rc.stat ?? null,
       // isPreRollContext: true when this script runs in pre-roll weapon dialog phase (getMeleeActions + isDialogScript)
       isPreRollContext: rc.isPreRollContext ?? false,
+      // Safety array for getMeleeActions scripts that fall through when dialogCode is empty.
+      // Actions pushed here in dialog phase are harmlessly discarded.
+      actions: [],
 
       flags: {},
       fields,

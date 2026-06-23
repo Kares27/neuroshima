@@ -1,0 +1,77 @@
+
+<div class="ns-script-editor-body">
+    <div class="ns-editor-fields ns-actiondef-fields">
+
+        <div class="form-group">
+            <label>Nazwa</label>
+            <div class="form-fields">
+                <input type="text" name="name" value="{{actionDef.name}}" placeholder="np. Boa – Pochwycenie">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>ID</label>
+            <div class="form-fields ns-actiondef-uuid-row">
+                <input type="text" class="ns-actiondef-uuid-input" value="{{actionDef.id}}" readonly tabindex="-1" data-action-id="{{actionDef.id}}">
+                <button type="button" class="ns-copy-uuid-btn" data-tooltip="Kopiuj ID do schowka" title="Kopiuj ID">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="ns-actiondef-stats-row">
+            <div class="form-group">
+                <label>Obrażenia</label>
+                <div class="form-fields" style="gap:4px">
+                    <input type="number" name="damageCount" value="{{actionDef.damageCount}}" min="1" max="9" step="1" style="width:52px" {{#if (eq actionDef.damageType "—")}}disabled{{/if}}>
+                    <select name="damageType">
+                        <option value="—"  {{#if (eq actionDef.damageType "—")}}selected{{/if}}>— (brak)</option>
+                        <option value="D"  {{#if (eq actionDef.damageType "D")}}selected{{/if}}>D — Draśnięcie</option>
+                        <option value="L"  {{#if (eq actionDef.damageType "L")}}selected{{/if}}>L — Lekka</option>
+                        <option value="C"  {{#if (eq actionDef.damageType "C")}}selected{{/if}}>C — Ciężka</option>
+                        <option value="K"  {{#if (eq actionDef.damageType "K")}}selected{{/if}}>K — Krytyczna</option>
+                        <option value="sD" {{#if (eq actionDef.damageType "sD")}}selected{{/if}}>sD — Poważne draśnięcie</option>
+                        <option value="sL" {{#if (eq actionDef.damageType "sL")}}selected{{/if}}>sL — Poważna lekka</option>
+                        <option value="sC" {{#if (eq actionDef.damageType "sC")}}selected{{/if}}>sC — Poważna ciężka</option>
+                        <option value="sK" {{#if (eq actionDef.damageType "sK")}}selected{{/if}}>sK — Poważna krytyczna</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Koszt suk.</label>
+                <div class="form-fields">
+                    <input type="number" name="successCost" value="{{actionDef.successCost}}" min="0" step="1" style="width:60px">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Min kości</label>
+                <div class="form-fields">
+                    <input type="number" name="minDice" value="{{actionDef.minDice}}" min="0" step="1" style="width:60px">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Maks kości</label>
+                <div class="form-fields">
+                    <input type="number" name="maxDice" value="{{actionDef.maxDice}}" min="0" step="1" style="width:60px">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="ns-editor-scroll-area">
+        <div class="form-group stacked ns-script-code-group">
+            <label>
+                onHitScript
+                <span class="hint">— args: <code>actor</code> (atakujący), <code>target</code> (cel), <code>state</code>, <code>hit</code>. Zastępuje aplikację obrażeń gdy niepuste.</span>
+            </label>
+            <code-mirror name="onHitScript" language="javascript" indent="4">{{actionDef.onHitScript}}</code-mirror>
+        </div>
+    </div>
+
+    <footer class="form-footer">
+        <button type="button" class="ns-se-save-btn">
+            <i class="fa-solid fa-floppy-disk"></i> Zapisz i zamknij
+        </button>
+    </footer>
+</div>

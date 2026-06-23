@@ -5599,6 +5599,24 @@ body.theme-dark {
     color: var(--ns-border-focus);
 }
 
+.neuroshima.effect .ns-actiondef-uuid {
+    flex: 0 0 auto;
+    max-width: 6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    font-size: 0.72em;
+    opacity: 0.6;
+    align-self: center;
+    line-height: 1;
+    padding: 1px 3px;
+    background: none;
+    border: none;
+    font-family: var(--font-mono, monospace);
+    color: inherit;
+}
+
 .neuroshima.effect .ns-scripts-empty {
     text-align: center;
     padding: 1rem 0;
@@ -8680,5 +8698,73 @@ button.jam-toggle-btn.header-control {
 .ns-trick-plus:disabled {
     opacity: 0.3;
     cursor: not-allowed;
+}
+
+.neuroshima.script-editor .ns-actiondef-uuid-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.neuroshima.script-editor .ns-actiondef-uuid-input {
+    flex: 1;
+    font-family: monospace;
+    font-size: 0.82em;
+    opacity: 0.75;
+}
+
+.neuroshima.script-editor .ns-copy-uuid-btn {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    height: 26px;
+    line-height: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 3px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.65);
+}
+
+.neuroshima.script-editor .ns-copy-uuid-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.95);
+}
+
+.neuroshima.script-editor .ns-actiondef-stats-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.neuroshima.script-editor .ns-actiondef-stats-row .form-group {
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.neuroshima.script-editor .ns-actiondef-stats-row .form-group label {
+    flex: none;
+    width: auto;
+    font-size: 0.79em;
+    white-space: nowrap;
+}
+
+.neuroshima.script-editor .ns-actiondef-stats-row .form-group select {
+    width: 100%;
+    height: 26px;
+    font-size: 0.82em;
+}
+
+.neuroshima.script-editor .ns-actiondef-stats-row .form-group input[type="number"] {
+    width: 100%;
+    height: 26px;
+    text-align: center;
 }
 
