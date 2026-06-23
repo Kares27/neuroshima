@@ -350,16 +350,31 @@ args.actions.push({
 <p><strong>Wymagania:</strong> Odporność na ból 6+, Budowa 12+</p>
 <p><strong>Mechanika:</strong> Po otrzymaniu Ciężkiej rany w walce wręcz: auto-sukces wszystkich testów Odporności na ból.</p>
 <div class="ns-trick-scripts">
+<div class="callout info"><strong>Implementacja dwuefektowa:</strong> Efekt 1 (<code>manual</code>) aktywuje stan Berserker przez <code>convertToApplied</code>. Efekt 2 (aplikowany, nazwa <em>"Berserker – Aktywny"</em>) zawiera <code>applyDamage</code> + <code>updateCombat</code> — działa dopóki trwa walka.</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">immediate</span> Aktywacja efektu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Berserker!&lt;/b&gt; Stan aktywny — automatyczne sukcesy Odporności na ból."</span>);
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"berserker"</span>, <span class="kw">true</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">manual</span> Efekt 1 — Aktywacja (gracz naciska ręcznie po otrzymaniu Ciężkiej rany)</div>
+<pre><code><span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">hasWounds</span>([<span class="str">"C"</span>, <span class="str">"sC"</span>, <span class="str">"K"</span>, <span class="str">"sK"</span>])) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Berserker wymaga co najmniej Ciężkiej rany!"</span>, <span class="str">"warn"</span>);
+  <span class="kw">return</span>;
+}
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">hasEffect</span>(<span class="str">"Berserker \u2013 Aktywny"</span>)) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Berserker już aktywny."</span>, <span class="str">"info"</span>);
+  <span class="kw">return</span>;
+}
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">convertToApplied</span>(<span class="str">"Berserker \u2013 Aktywny"</span>);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;BERSERKER!&lt;/b&gt; Stan aktywny — automatyczny sukces Odporności na ból."</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
-<pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"painResistance"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (!<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"berserker"</span>)) <span class="kw">return</span>;
-args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">applyDamage</span> Efekt 2 "Berserker – Aktywny" — auto-sukces OdP przy każdej ranie</div>
+<pre><code><span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
+}</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">updateCombat</span> Efekt 2 — usuń gdy walka zakończona</div>
+<pre><code><span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isInCombat</span>()) {
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+}</code></pre>
 </div>
 </div>
 </section>
@@ -402,7 +417,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Bez sznurków&lt;/b&gt;: +20% PT aktywne. Przeciwnik: +40% PT do trafienia."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Bez sznurków&lt;/b&gt;: +20% PT aktywne. Przeciwnik: +40% PT do trafienia."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -431,7 +446,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <pre><code>args.actions.push({
   id: <span class="str">"boa-choke"</span>,
   name: <span class="str">"Boa – Duszenie"</span>,
-  damage: <span class="str">"LS"</span>,
+  damage: <span class="str">"L"</span>,
   successCost: <span class="num">1</span>,
   minDice: <span class="num">1</span>,
   maxDice: <span class="num">3</span>,
@@ -456,7 +471,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> ![<span class="str">"persuasion"</span>, <span class="str">"bluffing"</span>, <span class="str">"intimidation"</span>].includes(args.test?.context?.skillKey);</code></pre>
+<pre><code><span class="kw">return</span> ![<span class="str">"persuasion"</span>, <span class="str">"bluffing"</span>, <span class="str">"intimidation"</span>].includes(args.skill?.key);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -500,7 +515,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> ![<span class="str">"combatVehicles"</span>].includes(args.test?.context?.skillKey);</code></pre>
+<pre><code><span class="kw">return</span> ![<span class="str">"combatVehicles"</span>].includes(args.skill?.key);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -565,7 +580,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> ![<span class="str">"intimidation"</span>, <span class="str">"persuasion"</span>].includes(args.test?.context?.skillKey);</code></pre>
+<pre><code><span class="kw">return</span> ![<span class="str">"intimidation"</span>, <span class="str">"persuasion"</span>].includes(args.skill?.key);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -619,7 +634,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">immediate</span> Aktywacja efektu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Dziś wszystko, jutro nic!&lt;/b&gt; Intensywny wysiłek aktywowany. MG nakłada stan Przemęczenia."</span>);
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Dziś wszystko, jutro nic!&lt;/b&gt; Intensywny wysiłek aktywowany. MG nakłada stan Przemęczenia."</span>);
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"exhausted"</span>);</code></pre>
 </div>
 </div>
@@ -640,7 +655,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Flash&lt;/b&gt;: +3 Zr w obronie. Na koniec tury: +20% kary zmęczenia."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Flash&lt;/b&gt;: +3 Zr w obronie. Na koniec tury: +20% kary zmęczenia."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -660,7 +675,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Garda&lt;/b&gt;: +6 Zr w obronie vs nieuzbrojony. Obroniony cios: -1 poziom obrażeń."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Garda&lt;/b&gt;: +6 Zr w obronie vs nieuzbrojony. Obroniony cios: -1 poziom obrażeń."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -763,7 +778,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <pre><code>args.actions.push({
   id: <span class="str">"kop-z-obrotu"</span>,
   name: <span class="str">"Kop z obrotu"</span>,
-  damage: <span class="str">"HC"</span>,
+  damage: <span class="str">"C"</span>,
   successCost: <span class="num">3</span>,
   minDice: <span class="num">1</span>,
   maxDice: <span class="num">3</span>,
@@ -787,7 +802,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"pickpocketing"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"pickpocketing"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -803,7 +818,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"hiding"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"hiding"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -915,8 +930,11 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">applyDamage</span> Obrażenia</div>
-<pre><code><span class="kw">if</span> (![<span class="str">"light"</span>, <span class="str">"scratch"</span>].includes(args.woundType)) <span class="kw">return</span>;
-args.skipPainResistanceTest = <span class="kw">true</span>;</code></pre>
+<pre><code><span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
+    <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
+  }
+}</code></pre>
 </div>
 </div>
 </section>
@@ -1022,7 +1040,7 @@ args.skipPainResistanceTest = <span class="kw">true</span>;</code></pre>
 }, {
   id: <span class="str">"origami-throw"</span>,
   name: <span class="str">"Origami – Rzut"</span>,
-  damage: <span class="str">"LS"</span>,
+  damage: <span class="str">"L"</span>,
   successCost: <span class="num">2</span>,
   minDice: <span class="num">1</span>,
   maxDice: <span class="num">3</span>,
@@ -1030,7 +1048,7 @@ args.skipPainResistanceTest = <span class="kw">true</span>;</code></pre>
 }, {
   id: <span class="str">"origami-lock"</span>,
   name: <span class="str">"Origami – Wykończenie"</span>,
-  damage: <span class="str">"HC"</span>,
+  damage: <span class="str">"C"</span>,
   successCost: <span class="num">3</span>,
   minDice: <span class="num">2</span>,
   maxDice: <span class="num">3</span>,
@@ -1055,7 +1073,7 @@ args.skipPainResistanceTest = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Ośmiornica&lt;/b&gt;: -2 Zr w obronie. Możesz użyć Zwiększonego tempa bez Inicjatywy."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Ośmiornica&lt;/b&gt;: -2 Zr w obronie. Możesz użyć Zwiększonego tempa bez Inicjatywy."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1067,7 +1085,7 @@ args.skipPainResistanceTest = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"lockpicking"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"lockpicking"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1110,7 +1128,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"woundHealing"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"woundHealing"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1157,7 +1175,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> ![<span class="str">"combatVehicles"</span>, <span class="str">"heavyMachinery"</span>].includes(args.test?.context?.skillKey);</code></pre>
+<pre><code><span class="kw">return</span> ![<span class="str">"combatVehicles"</span>, <span class="str">"heavyMachinery"</span>].includes(args.skill?.key);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1173,7 +1191,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"combatVehicles"</span> &amp;&amp; args.test?.context?.skillKey !== <span class="str">"riding"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"combatVehicles"</span> &amp;&amp; args.skill?.key !== <span class="str">"riding"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1227,7 +1245,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <pre><code>args.actions.push({
   id: <span class="str">"rozroba-strefowy"</span>,
   name: <span class="str">"Rozróba – Atak strefowy"</span>,
-  damage: <span class="str">"LS"</span>,
+  damage: <span class="str">"L"</span>,
   successCost: <span class="num">0</span>,
   minDice: <span class="num">1</span>,
   maxDice: <span class="num">3</span>,
@@ -1319,7 +1337,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"tracking"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"tracking"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1391,7 +1409,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"rifles"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"rifles"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1414,7 +1432,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"pistols"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"pistols"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1438,7 +1456,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Szachista&lt;/b&gt;: +3 Zr aktywne. Możesz oddać Inicjatywę by uzyskać bonus."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Szachista&lt;/b&gt;: +3 Zr aktywne. Możesz oddać Inicjatywę by uzyskać bonus."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1451,11 +1469,11 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">immediate</span> Aktywacja efektu</div>
 <pre><code><span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"szostyZmysl"</span>)) {
-  ui.notifications.warn(<span class="str">"Szósty zmysł: już zużyty."</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Szósty zmysł: już zużyty."</span>, <span class="str">"warn"</span>);
   <span class="kw">return</span>;
 }
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"szostyZmysl"</span>, <span class="kw">true</span>);
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Szósty zmysł!&lt;/b&gt; Unikasz jednego ataku z zaskoczenia."</span>);</code></pre>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Szósty zmysł!&lt;/b&gt; Unikasz jednego ataku z zaskoczenia."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1526,7 +1544,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Taran&lt;/b&gt;: -4 Zr w obronie. Przy trafieniu obrażenia o 1 poziom wyższe."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Taran&lt;/b&gt;: -4 Zr w obronie. Przy trafieniu obrażenia o 1 poziom wyższe."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1538,7 +1556,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> ![<span class="str">"combatVehicles"</span>, <span class="str">"heavyMachinery"</span>].includes(args.test?.context?.skillKey);</code></pre>
+<pre><code><span class="kw">return</span> ![<span class="str">"combatVehicles"</span>, <span class="str">"heavyMachinery"</span>].includes(args.skill?.key);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1683,7 +1701,7 @@ args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? <s
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.test?.context?.skillKey !== <span class="str">"lockpicking"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"lockpicking"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
