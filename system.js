@@ -1594,9 +1594,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
             if (currentLevel < 1) return false;
             if (message.getFlag("neuroshima", "ammoRefunded")) return false;
-            const actor = game.actors.get(flags.actorId);
-            if (!actor) return false;
-            return game.user.isGM || actor.isOwner || message.getFlag("neuroshima", "burstShiftGranted");
+            return game.user.isGM || message.getFlag("neuroshima", "burstShiftGranted");
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
@@ -1622,9 +1620,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const originalLevel = flags.burstLevel ?? 0;
             if (currentLevel >= originalLevel) return false;
             if (message.getFlag("neuroshima", "ammoRefunded")) return false;
-            const actor = game.actors.get(flags.actorId);
-            if (!actor) return false;
-            return game.user.isGM || actor.isOwner || message.getFlag("neuroshima", "burstShiftGranted");
+            return game.user.isGM || message.getFlag("neuroshima", "burstShiftGranted");
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);

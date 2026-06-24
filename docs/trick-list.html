@@ -653,33 +653,15 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <section id="trick-018-czuly-spust">
 <h3>18. Czuły spust</h3>
 <p><strong>Wymagania:</strong> Pistolety 5+</p>
-<p><strong>Mechanika:</strong> Bohater może przerwać zadeklarowaną długą serię po 1 segmencie, oddając zamiast niej krótką. Może też przerwać ogień ciągły po 1 segmencie, oddając zamiast niego krótką serię, lub po 2 segmentach oddając długą serię. Dzięki temu oszczędza naboje.</p>
-<p>W systemie: <strong>context menu</strong> — po oddaniu strzału z burstLevel ≥ 1 gracz (właściciel aktora) lub GM może kliknąć prawym przyciskiem na kartę czatu i wybrać <strong>„Zmniejsz Serię"</strong> lub <strong>„Zwiększ Serię"</strong>. Każde kliknięcie zmienia poziom serii o 1 krok (ciągły→długa→krótka→pojedynczy lub odwrotnie). Naboje są zwracane do lub pobierane z magazynka. Trafienia z rzutu pozostają niezmienione.</p>
-<div class="callout info"><strong>Uwaga:</strong> Opcje menu kontekstowego pojawiają się automatycznie dla właściciela aktora i GM. Skrypt AE z <code>grantBurstShift()</code> rozszerza ten dostęp na innych użytkowników (np. gracz nieposiadający pełnych uprawnień do aktora). Jeśli sztuczka ma działać <em>automatycznie</em> (bez decyzji gracza), użyj triggera <code>postWeaponShot</code> z helperem <code>this.refundBurstLevel()</code>.</div>
+<p><strong>Mechanika:</strong> Bohater może przerwać zadeklarowaną długą serię po 1 segmencie oddając krótką, ogień ciągły po 1 segmencie oddając krótką lub po 2 segmentach oddając długą. Oszczędza naboje.</p>
+<div class="callout info"><strong>Implementacja:</strong> GM zawsze widzi opcje <strong>„Zmniejsz Serię"</strong> / <strong>„Zwiększ Serię"</strong> w PPM menu czatu. Gracz widzi je tylko gdy efekt sztuczki wywoła <code>this.grantBurstShift(args)</code> po strzale — trigger <code>postWeaponShot</code>.</div>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">postWeaponShot</span> Wariant z decyzją gracza (zalecany) — skrypt AE</div>
+<div class="example-header"><span class="trigger-badge">postWeaponShot</span> Skrypt efektu Czuły spust</div>
 <pre><code><span class="cmt">// Trigger: postWeaponShot
-// Czuły Spust: gdy oddano serię, odblokuj opcje Zmniejsz/Zwiększ Serię w menu kontekstowym
-// i poinformuj gracza.</span>
+// Gdy oddano serię (burstLevel >= 1), odblokuj graczowi opcje Zmniejsz/Zwiększ Serię w PPM.</span>
 <span class="kw">if</span> (args.rollData.burstLevel < <span class="num">1</span>) <span class="kw">return</span>;
-
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">grantBurstShift</span>(args);
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
-    `&lt;strong&gt;Czuły spust:&lt;/strong&gt; możesz zmniejszyć lub zwiększyć serię —`
-  + ` kliknij <strong>PPM</strong> na kartę czatu i wybierz „Zmniejsz Serię" lub „Zwiększ Serię".`
-);</code></pre>
-</div>
-<div class="example-block">
-<div class="example-header"><span class="trigger-badge">postWeaponShot</span> Wariant automatyczny (bez decyzji gracza)</div>
-<pre><code><span class="cmt">// Trigger: postWeaponShot
-// Automatycznie skróć serię do krótkiej gdy jest długa lub ciągła.</span>
-<span class="kw">if</span> (args.rollData.burstLevel < <span class="num">2</span>) <span class="kw">return</span>;
-
-<span class="kw">const</span> <span class="var">refunded</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">refundBurstLevel</span>(args.rollData, <span class="num">1</span>);
-<span class="kw">if</span> (<span class="var">refunded</span> > <span class="num">0</span>) {
-    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(`&lt;strong&gt;Czuły spust:&lt;/strong&gt; seria skrócona, zwrócono &lt;strong&gt;${<span class="var">refunded</span>}&lt;/strong&gt; naboi.`);
-}</code></pre>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">grantBurstShift</span>(args);</code></pre>
 </div>
 </div>
 </section>
