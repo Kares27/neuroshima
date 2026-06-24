@@ -952,6 +952,7 @@ export class MeleeOpposedChat {
           // Expand any string IDs pushed by this script using the script's parent effect actionDefs.
           // Scripts can push a plain string: args.actions.push("my-action-id")
           // The system resolves it to the full actionDef stored on the effect.
+          // After expansion, @effect.* / @item.* / @mod.* tokens in `name` are resolved.
           for (let i = prevLength; i < extraActionsArr.length; i++) {
             const entry = extraActionsArr[i];
             if (typeof entry === "string") {
@@ -960,6 +961,17 @@ export class MeleeOpposedChat {
               const def = effectDefs.find(localMatch) ?? lookupActionDef(entry);
               extraActionsArr[i] = def ? foundry.utils.deepClone(def) : null;
               if (!def) game.neuroshima?.log("[getMeleeActions] actionDef not found:", entry);
+            }
+            const resolved = extraActionsArr[i];
+            if (resolved && typeof resolved === "object") {
+              if (resolved.name) {
+                resolved.name = NeuroshimaScriptRunner._resolveItemRef(
+                  resolved.name, script.effect?.parent ?? null, script.effect ?? null
+                );
+              }
+              if (!resolved._effectUuid && script.effect?.uuid) {
+                resolved._effectUuid = script.effect.uuid;
+              }
             }
           }
         }
@@ -1003,21 +1015,23 @@ export class MeleeOpposedChat {
         }
 
         const normalized = extraActionsArr.map(a => ({
-          id:          a.id          ?? `trick-${foundry.utils.randomID(8)}`,
-          name:        a.name        ?? a.label ?? "Sztuczka",
-          img:         a.img         ?? "systems/neuroshima/assets/effects/gears.svg",
-          damage:      a.damage      ?? "D",
-          successCost: a.successCost ?? 0,
-          minDice:     a.minDice     ?? 1,
-          maxDice:     a.maxDice     ?? 3,
-          annotation:  a.annotation  ?? null,
-          onHitScript: a.onHitScript ?? null
+          id:             a.id             ?? `trick-${foundry.utils.randomID(8)}`,
+          name:           a.name           ?? a.label ?? "Sztuczka",
+          img:            a.img            ?? "systems/neuroshima/assets/effects/gears.svg",
+          damage:         a.damage         ?? "D",
+          successCost:    a.successCost    ?? 0,
+          minDice:        a.minDice        ?? 1,
+          maxDice:        a.maxDice        ?? 3,
+          annotation:     a.annotation     ?? null,
+          onHitScript:    a.onHitScript    ?? null,
+          immediateOnHit: a.immediateOnHit ?? false,
+          _effectUuid:    a._effectUuid    ?? null
         }));
         ownerExtraActions = normalized.length ? normalized : null;
 
         const onHitMap = {};
         for (const a of normalized) {
-          if (a.onHitScript) onHitMap[a.id] = a.onHitScript;
+          if (a.onHitScript) onHitMap[a.id] = { code: a.onHitScript, effectUuid: a._effectUuid ?? null, immediate: a.immediateOnHit ?? false };
         }
         if (Object.keys(onHitMap).length > 0) {
           state.trickOnHitScripts = { ...(state.trickOnHitScripts ?? {}), ...onHitMap };
@@ -1740,6 +1754,7 @@ export class MeleeOpposedChat {
                 hitEntry.trickId = state.committedTrickId;
               }
               state.hits.push(hitEntry);
+              if (hitEntry.trickId) await MeleeOpposedChat._fireImmediateOnHitScript(state, hitEntry, isOwnerAttacker);
             }
 
             if (responderSuccessCount > 0) {
@@ -1777,6 +1792,7 @@ export class MeleeOpposedChat {
                 hitEntry.trickId = state.committedTrickId;
               }
               state.hits.push(hitEntry);
+              if (hitEntry.trickId) await MeleeOpposedChat._fireImmediateOnHitScript(state, hitEntry, isOwnerAttacker);
             }
 
             segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
@@ -1899,6 +1915,7 @@ export class MeleeOpposedChat {
           pendingTrickQueue: state.allTrickQueue?.length > 0 ? state.allTrickQueue : null,
           // counterHits: trafienia kontr-ataku berserkera (obrażenia zadane atakującemu)
           counterHits: state.counterHits?.length > 0 ? state.counterHits : null,
+          trickOnHitScripts: state.trickOnHitScripts ?? null,
           applied: false,
           beastActionsApplied: false
         });
@@ -2743,7 +2760,7 @@ export class MeleeOpposedChat {
    * @param {Array}            extraActionsArr - Mutable array to push into
    */
   static async _buildActionFromDef(script, triggerArgs, extraActionsArr) {
-    const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+    const { NeuroshimaScript, NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
     const def = script.actionDef;
 
     // ── 1. Condition checks ──────────────────────────────────────────────────
@@ -2805,18 +2822,54 @@ export class MeleeOpposedChat {
     // ── 3. Push normalised action ────────────────────────────────────────────
     const action = {
       id:          def.id?.trim()  || `actionDef-${foundry.utils.randomID(8)}`,
-      name:        def.name?.trim() || "Sztuczka",
+      name:        NeuroshimaScriptRunner._resolveItemRef(def.name?.trim() || "Sztuczka", script.effect?.parent ?? null, script.effect ?? null),
       img:         def.img?.trim()  || "systems/neuroshima/assets/effects/gears.svg",
       damage:      def.damage       ?? "",
       successCost: def.mode === "queue" ? (parseInt(def.successCost) || 1) : 0,
       minDice:     parseInt(def.minDice)  || 1,
       maxDice:     parseInt(def.maxDice)  || 3,
       annotation:  def.tooltip?.trim()    || null,
-      onHitScript
+      onHitScript,
+      immediateOnHit: def.immediateOnHit ?? false,
+      _effectUuid: script.effect?.uuid ?? null
     };
 
     extraActionsArr.push(action);
     game.neuroshima?.log?.("[getMeleeActions] actionDef built:", def.name, { mode: def.mode, damage: def.damage, onHitType: onHit.type });
+  }
+
+  /**
+   * Fires an onHitScript marked as `immediate: true` right at the moment a trick hit
+   * is determined (during the responder phase of applyDuelBatch), before the duel ends.
+   * Scripts without `immediate` still execute at "Nałóż obrażenia" time.
+   *
+   * @param {object} state         - Current duel state (deepClone of duelCard flag).
+   * @param {object} hitEntry      - The hit entry just pushed to state.hits.
+   * @param {boolean} isOwnerAttacker - True when the initiative owner is the attacker.
+   */
+  static async _fireImmediateOnHitScript(state, hitEntry, isOwnerAttacker) {
+    const entry = state.trickOnHitScripts?.[hitEntry.trickId];
+    if (!entry?.immediate) return;
+    try {
+      const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
+      const effect = entry.effectUuid ? fromUuidSync(entry.effectUuid) : null;
+      const ownerDoc    = fromUuidSync(isOwnerAttacker
+        ? (state.attackerTokenUuid || state.attackerUuid)
+        : (state.defenderTokenUuid || state.defenderUuid));
+      const ownerActor  = ownerDoc?.actor  ?? ownerDoc;
+      const targetDoc   = fromUuidSync(isOwnerAttacker
+        ? (state.defenderTokenUuid || state.defenderUuid)
+        : (state.attackerTokenUuid || state.attackerUuid));
+      const targetActor = targetDoc?.actor ?? targetDoc;
+      const scriptObj = new NeuroshimaScript(
+        { code: entry.code, trigger: "getMeleeActions", label: "onHitScript:immediate" },
+        effect
+      );
+      await scriptObj.execute({ actor: ownerActor, target: targetActor, state, hit: hitEntry });
+      game.neuroshima?.log?.("[applyDuelBatch] immediate onHitScript executed", hitEntry.trickId);
+    } catch (err) {
+      game.neuroshima?.log?.("[applyDuelBatch] immediate onHitScript error", hitEntry.trickId, err);
+    }
   }
 
   /**
@@ -2979,8 +3032,11 @@ export class MeleeOpposedChat {
       if (isTrickHit && rd.trickOnHitScripts?.[hit.trickId]) {
         try {
           const { NeuroshimaScript } = await import("../apps/neuroshima-script-engine.js");
-          const onHitCode = rd.trickOnHitScripts[hit.trickId];
-          const scriptObj = new NeuroshimaScript({ code: onHitCode, trigger: "getMeleeActions", label: "onHitScript" }, null);
+          const entry = rd.trickOnHitScripts[hit.trickId];
+          const onHitCode  = typeof entry === "string" ? entry : entry.code;
+          const effectUuid = typeof entry === "string" ? null  : entry.effectUuid;
+          const effect     = effectUuid ? fromUuidSync(effectUuid) : null;
+          const scriptObj  = new NeuroshimaScript({ code: onHitCode, trigger: "getMeleeActions", label: "onHitScript" }, effect);
           await scriptObj.execute({
             actor:  attackerActor,
             target: targetActor,
@@ -3065,8 +3121,11 @@ export class MeleeOpposedChat {
         if (trickId && rd.trickOnHitScripts?.[trickId]) {
           try {
             const { NeuroshimaScript: NS2 } = await import("../apps/neuroshima-script-engine.js");
-            const onHitCode = rd.trickOnHitScripts[trickId];
-            const scriptObj = new NS2({ code: onHitCode, trigger: "getMeleeActions", label: "onHitScript" }, null);
+            const entry2      = rd.trickOnHitScripts[trickId];
+            const onHitCode2  = typeof entry2 === "string" ? entry2 : entry2.code;
+            const effectUuid2 = typeof entry2 === "string" ? null   : entry2.effectUuid;
+            const effect2     = effectUuid2 ? fromUuidSync(effectUuid2) : null;
+            const scriptObj   = new NS2({ code: onHitCode2, trigger: "getMeleeActions", label: "onHitScript" }, effect2);
             await scriptObj.execute({
               actor:  attackerActor,
               target: defenderActor,

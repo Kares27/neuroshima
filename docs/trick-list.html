@@ -143,6 +143,7 @@
 <nav class="toc">
 <h2>Spis treści — wszystkie sztuczki</h2>
 <ul>
+<li><a href="#action-defs">System Definicji Akcji (ActionDefs)</a></li>
 <li><a href="#trick-001-3-2-1-bum">3 2 1 Bum</a></li>
 <li><a href="#trick-002-aramis">Aramis</a></li>
 <li><a href="#trick-003-asekuracja">Asekuracja</a></li>
@@ -272,6 +273,52 @@
 <li><a href="#trick-127-zelazne-racje">Żelazne racje</a></li>
 </ul>
 </nav>
+<section id="action-defs">
+<h2 class="section-title">System Definicji Akcji (ActionDefs)</h2>
+<p>Zakładka <strong>Akcje</strong> na arkuszu Active Effect pozwala zdefiniować deklaratywne opisy akcji walki wręcz — zamiast wpisywać surowe obiekty JS bezpośrednio w skryptach <code>getMeleeActions</code>. Definicje są przechowywane w <code>effect.system.actionDefs[]</code> i edytowane przez UI.</p>
+
+<h3>Pola definicji akcji</h3>
+<table>
+<thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>string</td><td>Auto-generowany przez <code>foundry.utils.randomID()</code> — tylko do odczytu po stworzeniu. Kopiuj przyciskiem <i class="fa-solid fa-copy"></i> w nagłówku okna edytora.</td></tr>
+<tr><td>name</td><td>string</td><td>Etykieta przycisku wyświetlana na karcie duelu.</td></tr>
+<tr><td>damage</td><td>string</td><td>Format: <code>[count]type</code> — np. <code>D</code>, <code>L</code>, <code>2L</code>, <code>sC</code>, <code>3K</code>. Typy: <code>D</code> Draśnięcie / <code>L</code> Lekka Rana / <code>C</code> Ciężka Rana / <code>K</code> Krytyczna Rana; prefix <code>s</code> = Siniak (isBruise: true) → <code>sD</code> Draśnięcie (Siniak), <code>sL</code> Lekka Rana (Siniak), <code>sC</code> Ciężka Rana (Siniak), <code>sK</code> Krytyczna Rana (Siniak). Wartość <code>—</code> = brak obrażeń.</td></tr>
+<tr><td>successCost</td><td>number</td><td>0 = akcja standalone (osobny przycisk). &gt;0 = akcja z kolejki sukcesów.</td></tr>
+<tr><td>minDice</td><td>number</td><td>Min. kości deklarowanych (tylko standalone).</td></tr>
+<tr><td>maxDice</td><td>number</td><td>Maks. kości deklarowanych (tylko standalone).</td></tr>
+<tr><td>onHitScript</td><td>string</td><td>Kod JS wykonywany przy trafieniu. Args: <code>actor</code>, <code>target</code>, <code>state</code>, <code>hit</code>. Zastępuje domyślną aplikację obrażeń gdy niepuste. Domyślnie odpala się przy „Nałóż obrażenia" — chyba że <code>immediateOnHit = true</code>.</td></tr>
+<tr><td>immediateOnHit</td><td>boolean</td><td>Gdy <code>true</code>: <code>onHitScript</code> odpala się <strong>natychmiast w momencie trafienia</strong> — w trakcie trwania duela, bez czekania na „Nałóż obrażenia". Niezbędne dla efektów aktywnych przez resztę walki (np. Boa – Pochwycenie). Domyślnie <code>false</code>.</td></tr>
+</tbody>
+</table>
+
+<h3>Użycie w skrypcie getMeleeActions</h3>
+<div class="example-block">
+<div class="example-header">Referencja przez ID (zalecane)</div>
+<pre><code><span class="cmt">// Skopiuj ID z zakładki Akcje i wklej tutaj</span>
+args.actions.push(<span class="str">"PASTE_ID_HERE"</span>);</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header">Nadpisanie pola w runtime</div>
+<pre><code><span class="cmt">// Pobierz definicję i zmień successCost dynamicznie</span>
+<span class="kw">const</span> <span class="var">def</span> = args.<span class="fn">lookupActionDef</span>(<span class="str">"PASTE_ID_HERE"</span>);
+args.actions.push({ ...<span class="var">def</span>, successCost: <span class="num">2</span> });</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header">Inline (bez zakładki Akcje)</div>
+<pre><code>args.actions.push({
+  id: <span class="str">"moja-akcja"</span>,
+  name: <span class="str">"Nazwa akcji"</span>,
+  damage: <span class="str">"L"</span>,
+  successCost: <span class="num">1</span>,
+  minDice: <span class="num">1</span>,
+  maxDice: <span class="num">3</span>
+});</code></pre>
+</div>
+
+<div class="callout info"><strong>Wskazówka:</strong> ID generowane przez <code>foundry.utils.randomID()</code> są unikalne i stabilne — bezpieczne do hardkodowania w skryptach tego samego efektu. Kopiuj je przyciskiem <i class="fa-solid fa-copy"></i> w nagłówku okna edytora akcji.</div>
+</section>
+
 <section id="tricks">
 <h2 class="section-title">Sztuczki</h2>
 
@@ -348,19 +395,37 @@ args.actions.push({
 <section id="trick-006-berserker">
 <h3>6. Berserker</h3>
 <p><strong>Wymagania:</strong> Odporność na ból 6+, Budowa 12+</p>
-<p><strong>Mechanika:</strong> Po otrzymaniu Ciężkiej rany w walce wręcz: auto-sukces wszystkich testów Odporności na ból.</p>
+<p><strong>Mechanika:</strong> Jeśli bohater odniósł przynajmniej jedną ciężką ranę — gracz aktywuje tryb berserkera ręcznie. Do końca walki auto-sukces testów Odporności na ból i brak obowiązku obrony. Efekt znika po zakończeniu walki.</p>
+<div class="callout info"><strong>Dwa efekty:</strong> Sztuczka wymaga dwóch Active Effects na itemu — <em>Berserker</em> (owningDocument, przycisk aktywacyjny w UI) i <em>Berserk</em> (other, aplikowany do aktora przez przycisk).</div>
 <div class="ns-trick-scripts">
+
+<h4 class="script-label">Effect 1 — "Berserker" (transferType: owningDocument)</h4>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">immediate</span> Aktywacja efektu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Berserker!&lt;/b&gt; Stan aktywny — automatyczne sukcesy Odporności na ból."</span>);
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"berserker"</span>, <span class="kw">true</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">manual</span> Aktywacja trybu Berserkera</div>
+<pre><code><span class="kw">const</span> <span class="var">berserkerEffect</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (!<span class="var">berserkerEffect</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">berserkerEffect</span>)) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Berserker jest już aktywny."</span>);
+  <span class="kw">return</span>;
+}
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">berserkerEffect</span>);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Berserker!&lt;/b&gt; Tryb aktywny — nie musisz się bronić."</span>);</code></pre>
+</div>
+
+<h4 class="script-label">Effect 2 — "Berserk" (transferType: other, statuses: ["berserker"])</h4>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">takeDamage</span> Auto-sukces Odporności na ból</div>
+<pre><code><span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
+  <span class="var">wound</span>.forcePassed = <span class="kw">true</span>;
+  <span class="var">wound</span>.annotation = <span class="str">"Berserker — auto-sukces"</span>;
+}</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
-<pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"painResistance"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (!<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"berserker"</span>)) <span class="kw">return</span>;
-args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">endCombat</span> Usunięcie efektu po walce</div>
+<pre><code><span class="kw">const</span> <span class="var">effect</span> = <span class="kw">this</span>.effect;
+<span class="kw">if</span> (<span class="var">effect</span>?.parent) <span class="kw">await</span> <span class="var">effect</span>.<span class="fn">delete</span>();</code></pre>
 </div>
+
 </div>
 </section>
 
@@ -382,7 +447,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +poziom Wspinaczki jako bonus</div>
-<pre><code>args.fields.skillBonus += <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"climbing"</span>) ?? <span class="num">0</span>;</code></pre>
+<pre><code>args.fields.skillBonus += <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"climbing"</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -402,7 +467,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Bez sznurków&lt;/b&gt;: +20% PT aktywne. Przeciwnik: +40% PT do trafienia."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Bez sznurków&lt;/b&gt;: +20% PT aktywne. Przeciwnik: +40% PT do trafienia."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -423,29 +488,102 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 
 <section id="trick-012-boa">
 <h3>12. Boa</h3>
-<p><strong>Wymagania:</strong> Bijatyka 5+, Budowa 12+</p>
-<p><strong>Mechanika:</strong> Pochwycenie i duszenie: akcja za 1 sukces dusi, za 2 unieruchamia.</p>
+<p><strong>Wymagania:</strong> Broń ręczna 5+, Zręczność 12+</p>
+<p><strong>Mechanika:</strong> Łańcuch — dwie dodatkowe akcje specjalne:</p>
+<ul style="margin: 0.5rem 0 0.75rem 1.5rem; color: var(--text);">
+  <li><strong>Pochwycenie (2 sukcesy):</strong> Używane bronie dostają modyfikator jak w tłoku, pochwycony dostaje -2 do Zręczności (do przejęcia Inicjatywy lub rany).</li>
+  <li><strong>Wykończenie (3 sukcesy, lub 2 jeśli cel już pochwycony):</strong> Przeciwstawny test Budowy, przeciwnik +60% PT. Przegrana = utrata przytomności.</li>
+</ul>
+<div class="callout info"><strong>isDialogScript:</strong> Skrypt <code>getMeleeActions</code> Boa powinien mieć zaznaczone <em>Dialog Script</em> w edytorze skryptu. Wtedy w oknie dialogowym rzutu pojawi się opcjonalny checkbox „Boa" — akcje Pochwycenia i Wykończenia trafią do duela <strong>tylko jeśli gracz go zaznaczy</strong>. Nie ma potrzeby ręcznego sprawdzania warunku — system pomija cały blok <code>code</code> gdy checkbox jest odznaczony.</div>
+
+<h4 class="script-label">Zakładka Akcje — konfiguracja</h4>
+<table>
+<thead><tr><th>Pole</th><th>Pochwycenie</th><th>Wykończenie</th></tr></thead>
+<tbody>
+<tr><td>Nazwa</td><td>Boa – Pochwycenie</td><td>Boa – Wykończenie</td></tr>
+<tr><td>Obrażenia</td><td>— (brak)</td><td>— (brak)</td></tr>
+<tr><td>Koszt suk.</td><td>2</td><td>3 (dynamicznie: 2 gdy już pochwycony)</td></tr>
+<tr><td>Min kości</td><td>1</td><td>1</td></tr>
+<tr><td>Maks kości</td><td>3</td><td>3</td></tr>
+<tr><td>onHitScript</td><td>aplikuj efekt Pochwycenia na cel</td><td>requestTest Budowy vs cel +60% PT</td></tr>
+<tr><td>immediateOnHit</td><td><strong>true</strong> — efekt musi być aktywny w kolejnych segmentach duela</td><td>false (domyślnie) — wystarczy przy „Nałóż obrażenia"</td></tr>
+</tbody>
+</table>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
-<pre><code>args.actions.push({
-  id: <span class="str">"boa-choke"</span>,
-  name: <span class="str">"Boa – Duszenie"</span>,
-  damage: <span class="str">"LS"</span>,
-  successCost: <span class="num">1</span>,
-  minDice: <span class="num">1</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Duszenie: ofiara traci 1 akcję."</span>
-}, {
-  id: <span class="str">"boa-pin"</span>,
-  name: <span class="str">"Boa – Unieruchomienie"</span>,
-  damage: <span class="str">"—"</span>,
-  successCost: <span class="num">2</span>,
-  minDice: <span class="num">2</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Unieruchamia przeciwnika do przejęcia Inicjatywy."</span>
+<pre><code><span class="cmt">// ID skopiowane z zakładki Akcje (przycisk kopiuj przy definicji)</span>
+<span class="kw">const</span> <span class="var">ID_POCHW</span> = <span class="str">"PASTE_POCHWYCENIE_ID"</span>;
+<span class="kw">const</span> <span class="var">ID_WKON</span>  = <span class="str">"PASTE_WYKOŃCZENIE_ID"</span>;
+
+args.actions.push(<span class="var">ID_POCHW</span>);
+
+<span class="cmt">// Wykończenie kosztuje 2 suk. jeśli cel już ma efekt Pochwycenia</span>
+<span class="kw">const</span> <span class="var">pochTemplate</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">1</span>];
+<span class="kw">const</span> <span class="var">alreadyCaptured</span> = pochTemplate &amp;&amp; <span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">pochTemplate</span>, args.target);
+args.actions.push({
+  ...args.<span class="fn">lookupActionDef</span>(<span class="var">ID_WKON</span>),
+  successCost: <span class="var">alreadyCaptured</span> ? <span class="num">2</span> : <span class="num">3</span>
 });</code></pre>
 </div>
+
+<div class="callout info"><strong>contents[n] zamiast find by name:</strong> Referencja po indeksie w tablicy efektów itemu jest stabilna — efekty nie zmieniają kolejności po stworzeniu. <code>isEffectActive(template, actor)</code> przyjmuje obiekt efektu i sprawdza po UUID (<code>flags.neuroshima.sourceEffect</code>), więc jest niezależny od nazwy.</div>
+
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">onHitScript</span> Pochwycenie — wpisz w polu onHitScript definicji w zakładce Akcje</div>
+<pre><code><span class="cmt">// this.item.effects.contents[1] = szablon "Boa - Pochwycenie" (2. efekt na itemu)</span>
+<span class="cmt">// isEffectActive sprawdza po UUID — niezależne od nazwy efektu</span>
+<span class="kw">const</span> <span class="var">template</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">template</span> &amp;&amp; !<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">template</span>, args.target)) {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">template</span>, [args.target]);
+}</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">onHitScript</span> Wykończenie — wpisz w polu onHitScript definicji w zakładce Akcje</div>
+<pre><code><span class="cmt">// args.target = cel (duszony)</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>(args.target, {
+  skill: <span class="str">"constitution"</span>,
+  modifier: <span class="num">60</span>,
+  label: <span class="str">"Boa – Duszenie"</span>
+});</code></pre>
+</div>
+</div>
+
+<h4 class="script-label">Efekt nr 2 na itemu — „Boa – Pochwycenie" (szablon aplikowany na cel)</h4>
+<p>
+  Drugi efekt na itemu Boa (<code>this.item.effects.contents[1]</code>) to szablon nakładany na cel przez <code>onHitScript</code> akcji Pochwycenie.
+  Należy go skonfigurować jako <strong>transferType: other</strong> (nie przenosi się automatycznie na właściciela).
+  Efekt aplikuje -2 do Zręczności i usuwa się automatycznie, gdy pochwycony <strong>przejmie Inicjatywę</strong> lub <strong>otrzyma ranę</strong>.
+</p>
+<table>
+<thead><tr><th>Pole</th><th>Wartość</th></tr></thead>
+<tbody>
+<tr><td>Nazwa</td><td>Boa – Pochwycenie</td></tr>
+<tr><td>Transfer Type</td><td><code>other</code> (musi być ręcznie aplikowany, nie przenosi się na właściciela)</td></tr>
+<tr><td>Changes (modyfikatory)</td><td><code>system.attributes.agility.value</code> · mode: <em>Add</em> · value: <code>-2</code></td></tr>
+<tr><td>Usunięcie</td><td>Trigger <code>takeDamage</code> (rana) lub <code>preOpposedAttacker</code> (przejął Inicjatywę)</td></tr>
+</tbody>
+</table>
+
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">takeDamage</span> Boa – Pochwycenie · usuń przy ranie</div>
+<pre><code><span class="cmt">// Pochwycony otrzymał ranę → efekt wygasa</span>
+<span class="kw">if</span> (args.wounds?.length) {
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+}</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preOpposedAttacker</span> Boa – Pochwycenie · usuń przy przejęciu Inicjatywy</div>
+<pre><code><span class="cmt">// Ten trigger odpala się gdy TEN aktor jest atakującym</span>
+<span class="cmt">// = przejął Inicjatywę → efekt Pochwycenia wygasa</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
+</div>
+</div>
+
+<div class="callout info">
+  <strong>Kolejność skryptów na szablonie:</strong> Skrypty z efektu szablonu (<code>contents[1]</code>) są kopiowane do aplikowanej wersji przez <code>convertToApplied()</code>. Wystarczy je napisać raz na szablonie — każda kopia nałożona na cel będzie je posiadać automatycznie.
 </div>
 </section>
 
@@ -512,8 +650,35 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <section id="trick-018-czuly-spust">
 <h3>18. Czuły spust</h3>
 <p><strong>Wymagania:</strong> Pistolety 5+</p>
-<p><strong>Mechanika:</strong> Wyczuwa zacięcie broni z wyprzedzeniem — może zapobiec strzałowi przed zacięciem.</p>
-<div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
+<p><strong>Mechanika:</strong> Bohater może przerwać zadeklarowaną długą serię po 1 segmencie, oddając zamiast niej krótką. Może też przerwać ogień ciągły po 1 segmencie, oddając zamiast niego krótką serię, lub po 2 segmentach oddając długą serię. Dzięki temu oszczędza naboje.</p>
+<p>W systemie: <strong>context menu</strong> — po oddaniu strzału z burstLevel ≥ 1 gracz (właściciel aktora) lub GM może kliknąć prawym przyciskiem na kartę czatu i wybrać <strong>„Zmniejsz Serię"</strong> lub <strong>„Zwiększ Serię"</strong>. Każde kliknięcie zmienia poziom serii o 1 krok (ciągły→długa→krótka→pojedynczy lub odwrotnie). Naboje są zwracane do lub pobierane z magazynka. Trafienia z rzutu pozostają niezmienione.</p>
+<div class="callout info"><strong>Uwaga:</strong> Opcje menu kontekstowego pojawiają się automatycznie dla właściciela aktora i GM. Skrypt AE z <code>grantBurstShift()</code> rozszerza ten dostęp na innych użytkowników (np. gracz nieposiadający pełnych uprawnień do aktora). Jeśli sztuczka ma działać <em>automatycznie</em> (bez decyzji gracza), użyj triggera <code>postWeaponShot</code> z helperem <code>this.refundBurstLevel()</code>.</div>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">postWeaponShot</span> Wariant z decyzją gracza (zalecany) — skrypt AE</div>
+<pre><code><span class="cmt">// Trigger: postWeaponShot
+// Czuły Spust: gdy oddano serię, odblokuj opcje Zmniejsz/Zwiększ Serię w menu kontekstowym
+// i poinformuj gracza.</span>
+<span class="kw">if</span> (args.rollData.burstLevel < <span class="num">1</span>) <span class="kw">return</span>;
+
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">grantBurstShift</span>(args);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    `&lt;strong&gt;Czuły spust:&lt;/strong&gt; możesz zmniejszyć lub zwiększyć serię —`
+  + ` kliknij <strong>PPM</strong> na kartę czatu i wybierz „Zmniejsz Serię" lub „Zwiększ Serię".`
+);</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">postWeaponShot</span> Wariant automatyczny (bez decyzji gracza)</div>
+<pre><code><span class="cmt">// Trigger: postWeaponShot
+// Automatycznie skróć serię do krótkiej gdy jest długa lub ciągła.</span>
+<span class="kw">if</span> (args.rollData.burstLevel < <span class="num">2</span>) <span class="kw">return</span>;
+
+<span class="kw">const</span> <span class="var">refunded</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">refundBurstLevel</span>(args.rollData, <span class="num">1</span>);
+<span class="kw">if</span> (<span class="var">refunded</span> > <span class="num">0</span>) {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(`&lt;strong&gt;Czuły spust:&lt;/strong&gt; seria skrócona, zwrócono &lt;strong&gt;${<span class="var">refunded</span>}&lt;/strong&gt; naboi.`);
+}</code></pre>
+</div>
+</div>
 </section>
 
 <section id="trick-019-dalszy-zasieg">
@@ -619,7 +784,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">immediate</span> Aktywacja efektu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Dziś wszystko, jutro nic!&lt;/b&gt; Intensywny wysiłek aktywowany. MG nakłada stan Przemęczenia."</span>);
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Dziś wszystko, jutro nic!&lt;/b&gt; Intensywny wysiłek aktywowany. MG nakłada stan Przemęczenia."</span>);
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"exhausted"</span>);</code></pre>
 </div>
 </div>
@@ -640,7 +805,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Flash&lt;/b&gt;: +3 Zr w obronie. Na koniec tury: +20% kary zmęczenia."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Flash&lt;/b&gt;: +3 Zr w obronie. Na koniec tury: +20% kary zmęczenia."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -660,7 +825,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Garda&lt;/b&gt;: +6 Zr w obronie vs nieuzbrojony. Obroniony cios: -1 poziom obrażeń."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Garda&lt;/b&gt;: +6 Zr w obronie vs nieuzbrojony. Obroniony cios: -1 poziom obrażeń."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1055,7 +1220,7 @@ args.skipPainResistanceTest = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Ośmiornica&lt;/b&gt;: -2 Zr w obronie. Możesz użyć Zwiększonego tempa bez Inicjatywy."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Ośmiornica&lt;/b&gt;: -2 Zr w obronie. Możesz użyć Zwiększonego tempa bez Inicjatywy."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1438,7 +1603,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Szachista&lt;/b&gt;: +3 Zr aktywne. Możesz oddać Inicjatywę by uzyskać bonus."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Szachista&lt;/b&gt;: +3 Zr aktywne. Możesz oddać Inicjatywę by uzyskać bonus."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1451,11 +1616,11 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">immediate</span> Aktywacja efektu</div>
 <pre><code><span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"szostyZmysl"</span>)) {
-  ui.notifications.warn(<span class="str">"Szósty zmysł: już zużyty."</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"już zużyty."</span>, <span class="str">"warn"</span>);
   <span class="kw">return</span>;
 }
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"szostyZmysl"</span>, <span class="kw">true</span>);
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Szósty zmysł!&lt;/b&gt; Unikasz jednego ataku z zaskoczenia."</span>);</code></pre>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Szósty zmysł!&lt;/b&gt; Unikasz jednego ataku z zaskoczenia."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1526,7 +1691,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Taran&lt;/b&gt;: -4 Zr w obronie. Przy trafieniu obrażenia o 1 poziom wyższe."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Taran&lt;/b&gt;: -4 Zr w obronie. Przy trafieniu obrażenia o 1 poziom wyższe."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1595,7 +1760,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Wiatrak (Furia)&lt;/b&gt;: Nie możesz stracić Inicjatywy tej tury. Na koniec tury: +20% zmęczenia."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Wiatrak (Furia)&lt;/b&gt;: Nie możesz stracić Inicjatywy tej tury. Na koniec tury: +20% zmęczenia."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1643,7 +1808,7 @@ args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? <s
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Wyczekanie&lt;/b&gt;: -2 Zr w obronie. Po przejęciu Inicjatywy: +4 Zr w ataku do końca tury."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Wyczekanie&lt;/b&gt;: -2 Zr w obronie. Po przejęciu Inicjatywy: +4 Zr w ataku do końca tury."</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1714,7 +1879,7 @@ args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? <s
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendToChat</span>(<span class="str">"&lt;b&gt;Zasłona&lt;/b&gt;: +2 Zr w obronie. W następnej turze: -2 do ataku i obrony."</span>);</code></pre>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Zasłona&lt;/b&gt;: +2 Zr w obronie. W następnej turze: -2 do ataku i obrony."</span>);</code></pre>
 </div>
 </div>
 </section>

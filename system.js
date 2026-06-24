@@ -1585,6 +1585,62 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
     });
 
     options.push({
+        name: "NEUROSHIMA.Roll.DecreaseBurst",
+        icon: '<i class="fas fa-minus-circle"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const flags = message?.getFlag("neuroshima", "rollData");
+            if (!flags?.isWeapon || flags.isMelee) return false;
+            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
+            if (currentLevel < 1) return false;
+            if (message.getFlag("neuroshima", "ammoRefunded")) return false;
+            const actor = game.actors.get(flags.actorId);
+            if (!actor) return false;
+            return game.user.isGM || actor.isOwner || message.getFlag("neuroshima", "burstShiftGranted");
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const flags = message.getFlag("neuroshima", "rollData");
+            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
+            const targetLevel = Math.max(0, currentLevel - 1);
+            const refunded = await CombatHelper.refundBurstLevel(message, targetLevel);
+            if (refunded > 0) {
+                await message.setFlag("neuroshima", "burstReducedTo", targetLevel);
+                ui.notifications.info(game.i18n.format("NEUROSHIMA.Roll.BurstDecreased", { count: refunded }));
+            }
+        }
+    });
+
+    options.push({
+        name: "NEUROSHIMA.Roll.IncreaseBurst",
+        icon: '<i class="fas fa-plus-circle"></i>',
+        condition: li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const flags = message?.getFlag("neuroshima", "rollData");
+            if (!flags?.isWeapon || flags.isMelee) return false;
+            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
+            const originalLevel = flags.burstLevel ?? 0;
+            if (currentLevel >= originalLevel) return false;
+            if (message.getFlag("neuroshima", "ammoRefunded")) return false;
+            const actor = game.actors.get(flags.actorId);
+            if (!actor) return false;
+            return game.user.isGM || actor.isOwner || message.getFlag("neuroshima", "burstShiftGranted");
+        },
+        callback: async li => {
+            const message = game.messages.get(li.dataset.messageId);
+            const flags = message.getFlag("neuroshima", "rollData");
+            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
+            const originalLevel = flags.burstLevel ?? 0;
+            const targetLevel = Math.min(originalLevel, currentLevel + 1);
+            const consumed = await CombatHelper.increaseBurstLevel(message, targetLevel);
+            if (consumed > 0) {
+                await message.setFlag("neuroshima", "burstReducedTo", targetLevel);
+                ui.notifications.info(game.i18n.format("NEUROSHIMA.Roll.BurstIncreased", { count: consumed }));
+            }
+        }
+    });
+
+    options.push({
         name: "NEUROSHIMA.Roll.ReverseWounds",
         icon: '<i class="fas fa-heart-broken"></i>',
         condition: li => {

@@ -161,6 +161,132 @@ export class CombatHelper {
   }
 
   /**
+   * Reduce the burst level of a weapon roll from its chat message, refunding excess bullets.
+   * Single shot (level 0) = 1 bullet, Short (level 1) = rof bullets, Long (level 2) = rof*3,
+   * Continuous (level 3) = rof*9.
+   * @param {ChatMessage} message      The roll chat message containing rollData flags.
+   * @param {number}      targetLevel  Desired burst level (0=single, 1=short, 2=long).
+   * @returns {Promise<number>} Number of bullets actually refunded, or 0 on failure.
+   */
+  static async refundBurstLevel(message, targetLevel) {
+    const flags = message.getFlag("neuroshima", "rollData");
+    if (!flags?.isWeapon) return 0;
+
+    const actor = game.actors.get(flags.actorId);
+    if (!actor) return 0;
+
+    const bulletSequence = flags.bulletSequence ?? [];
+    if (bulletSequence.length === 0) return 0;
+
+    const rof = flags.fireRate ?? 1;
+    const bulletsFired = flags.bulletsFired ?? bulletSequence.length;
+    const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
+    const targetBullets = levelBullets[Math.max(0, Math.min(3, targetLevel))] ?? 1;
+    const refundCount = Math.min(bulletsFired - targetBullets, bulletSequence.length);
+    if (refundCount <= 0) return 0;
+
+    const toRefund = [...bulletSequence].slice(bulletSequence.length - refundCount).reverse();
+    const magazineId = flags.magazineId;
+    const ammoId = flags.ammoId;
+
+    if (magazineId) {
+      const magazine = actor.items.get(magazineId);
+      if (magazine?.type === "magazine") {
+        const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
+        for (const bullet of toRefund) {
+          const lastStack = contents[contents.length - 1];
+          if (this._isSameAmmo(lastStack, bullet)) {
+            lastStack.quantity += 1;
+          } else {
+            contents.push({
+              name: bullet.name,
+              img: bullet.img || "systems/neuroshima/assets/img/ammo.svg",
+              quantity: 1,
+              overrides: {
+                enabled: bullet.damage !== undefined,
+                damage: bullet.damage,
+                piercing: bullet.piercing,
+                jamming: bullet.jamming,
+                isPellet: bullet.isPellet,
+                pelletCount: bullet.pelletCount,
+                pelletRanges: bullet.pelletRanges
+              }
+            });
+          }
+        }
+        await magazine.update({ "system.contents": contents });
+        return refundCount;
+      }
+    } else if (ammoId) {
+      const ammo = actor.items.get(ammoId);
+      if (ammo?.type === "ammo") {
+        await ammo.update({ "system.quantity": ammo.system.quantity + refundCount });
+        return refundCount;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Increase the burst level of a weapon roll by one step, consuming bullets from the magazine.
+   * Can only restore up to the original fired burstLevel (cannot exceed what was declared).
+   * Single shot (level 0) = 1 bullet, Short (level 1) = rof bullets, Long (level 2) = rof*3,
+   * Continuous (level 3) = rof*9.
+   * @param {ChatMessage} message      The roll chat message containing rollData flags.
+   * @param {number}      targetLevel  Desired burst level to restore to (e.g. currentLevel + 1).
+   * @returns {Promise<number>} Number of bullets actually consumed, or 0 on failure.
+   */
+  static async increaseBurstLevel(message, targetLevel) {
+    const flags = message.getFlag("neuroshima", "rollData");
+    if (!flags?.isWeapon) return 0;
+
+    const actor = game.actors.get(flags.actorId);
+    if (!actor) return 0;
+
+    const rof = flags.fireRate ?? 1;
+    const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0;
+    const originalLevel = flags.burstLevel ?? 0;
+    const clampedTarget = Math.max(0, Math.min(originalLevel, targetLevel));
+    const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
+    const currentBullets = levelBullets[currentLevel] ?? 1;
+    const targetBullets = levelBullets[clampedTarget] ?? 1;
+    const consumeCount = targetBullets - currentBullets;
+    if (consumeCount <= 0) return 0;
+
+    const magazineId = flags.magazineId;
+    const ammoId = flags.ammoId;
+
+    if (magazineId) {
+      const magazine = actor.items.get(magazineId);
+      if (magazine?.type === "magazine") {
+        const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
+        let remaining = consumeCount;
+        while (remaining > 0 && contents.length > 0) {
+          const last = contents[contents.length - 1];
+          if (last.quantity <= remaining) {
+            remaining -= last.quantity;
+            contents.pop();
+          } else {
+            last.quantity -= remaining;
+            remaining = 0;
+          }
+        }
+        if (remaining > 0) return 0;
+        await magazine.update({ "system.contents": contents });
+        return consumeCount;
+      }
+    } else if (ammoId) {
+      const ammo = actor.items.get(ammoId);
+      if (ammo?.type === "ammo") {
+        if ((ammo.system.quantity ?? 0) < consumeCount) return 0;
+        await ammo.update({ "system.quantity": ammo.system.quantity - consumeCount });
+        return consumeCount;
+      }
+    }
+    return 0;
+  }
+
+  /**
    * Compare two ammo stacks or a stack and a bullet definition to see if they are identical.
    * @private
    */

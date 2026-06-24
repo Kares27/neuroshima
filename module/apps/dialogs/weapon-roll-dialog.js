@@ -338,7 +338,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const formData = new foundry.applications.ux.FormDataExtended(form).object;
 
     const aimingLevel    = formData.aimingLevel     !== undefined ? parseInt(formData.aimingLevel)   : (this.userEntry.aimingLevel   ?? this.rollOptions.aimingLevel   ?? 0);
-    const burstLevel     = formData.burstLevel      !== undefined ? parseInt(formData.burstLevel)    : (this.userEntry.burstLevel    ?? 0);
+    let burstLevel       = formData.burstLevel       !== undefined ? parseInt(formData.burstLevel)    : (this.userEntry.burstLevel    ?? 0);
+    if (this._scriptFields?.burstLevelOverride != null) burstLevel = Math.min(burstLevel, this._scriptFields.burstLevelOverride);
     const tempoLevel     = formData.tempoLevel      !== undefined ? parseInt(formData.tempoLevel)    : (this.userEntry.tempoLevel    ?? this.rollOptions.tempoLevel    ?? 1);
     const maneuver       = formData.maneuver        || (this.userEntry.maneuver ?? this.rollOptions.maneuver ?? "none");
     const isMelee        = this.rollType === "melee";
@@ -472,7 +473,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const totalModifier    = parseInt(formData.modifier)         || 0;
     const totalAttrBonus   = parseInt(formData.attributeBonus)   || 0;
     const totalSkillBonus  = parseInt(formData.skillBonus)       || 0;
-    const burstLevel       = formData.burstLevel  !== undefined ? parseInt(formData.burstLevel)  : 0;
+    let burstLevel         = formData.burstLevel  !== undefined ? parseInt(formData.burstLevel)  : 0;
+    if (sf?.burstLevelOverride != null) burstLevel = Math.min(burstLevel, sf.burstLevelOverride);
     const aimingLevel      = formData.aimingLevel !== undefined ? parseInt(formData.aimingLevel) : (ue.aimingLevel ?? this.rollOptions.aimingLevel ?? 0);
     // selectedTempo = what the user explicitly chose in the dialog (saved to lastWeaponRoll for recall).
     // tempoLevel    = effective value passed to the roll engine — includes any condition-forced shift.

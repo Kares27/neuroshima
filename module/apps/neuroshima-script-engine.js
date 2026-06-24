@@ -964,6 +964,139 @@ export class NeuroshimaScript {
     annotations.push(String(text));
   }
 
+  // ── Ammo refund helpers ───────────────────────────────────────────────────
+
+  /**
+   * Refund the last `count` bullets from the roll's bulletSequence back into the magazine / ammo item.
+   * Works for both magazine-based and direct-ammo (thrown) weapons.
+   * Call inside `postWeaponShot` or any other trigger that has access to `rollData`.
+   *
+   * @param {Object} rollData  - The `args.rollData` reference from the trigger.
+   * @param {number} count     - Number of bullets to refund (taken from the tail of bulletSequence).
+   * @returns {Promise<number>} Actual number of bullets refunded.
+   *
+   * @example
+   * // In postWeaponShot — refund the difference between fired and short-burst bullets
+   * const rof   = args.weapon.system.fireRate || 1;
+   * const extra = args.bulletsFired - rof;
+   * if (extra > 0) await this.refundBullets(args.rollData, extra);
+   */
+  async refundBullets(rollData, count) {
+    if (!rollData || count <= 0) return 0;
+    const seq = rollData.bulletSequence ?? [];
+    const refundCount = Math.min(count, seq.length);
+    if (refundCount === 0) return 0;
+
+    const actor = this.actor ?? this._currentArgs?.actor;
+    if (!actor) return 0;
+
+    const toRefund = seq.slice(seq.length - refundCount).reverse();
+
+    if (rollData.magazineId) {
+      const mag = actor.items.get(rollData.magazineId);
+      if (mag?.type === "magazine") {
+        const contents = JSON.parse(JSON.stringify(mag.system.contents || []));
+        for (const b of toRefund) {
+          const last = contents[contents.length - 1];
+          if (last?.name === b.name) {
+            last.quantity += 1;
+          } else {
+            contents.push({
+              name: b.name,
+              img: b.img || "systems/neuroshima/assets/img/ammo.svg",
+              quantity: 1,
+              overrides: {
+                enabled: b.damage !== undefined,
+                damage: b.damage,
+                piercing: b.piercing,
+                jamming: b.jamming,
+                isPellet: b.isPellet,
+                pelletCount: b.pelletCount,
+                pelletRanges: b.pelletRanges
+              }
+            });
+          }
+        }
+        await mag.update({ "system.contents": contents });
+        return refundCount;
+      }
+    } else if (rollData.ammoId) {
+      const ammo = actor.items.get(rollData.ammoId);
+      if (ammo?.type === "ammo") {
+        await ammo.update({ "system.quantity": ammo.system.quantity + refundCount });
+        return refundCount;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Refund bullets to match a lower burst level.
+   * Level 0 = single shot (1 bullet), level 1 = short (`rof`), level 2 = long (`rof*3`),
+   * level 3 = continuous fire (`rof*9`).
+   * Calculates the difference and calls `refundBullets`.
+   *
+   * @param {Object} rollData     - The `args.rollData` reference from the trigger.
+   * @param {number} targetLevel  - Desired burst level (0=single, 1=short, 2=long).
+   * @returns {Promise<number>} Actual number of bullets refunded.
+   *
+   * @example
+   * // In postWeaponShot — automatically downgrade to short burst
+   * if (args.rollData.burstLevel >= 2) {
+   *   const refunded = await this.refundBurstLevel(args.rollData, 1);
+   *   if (refunded > 0) await this.sendMessage(`<strong>Seria skrócona:</strong> zwrócono ${refunded} naboi.`);
+   * }
+   *
+   * @example
+   * // Downgrade to single shot
+   * const refunded = await this.refundBurstLevel(args.rollData, 0);
+   */
+  async refundBurstLevel(rollData, targetLevel) {
+    if (!rollData) return 0;
+    const rof = rollData.fireRate ?? 1;
+    const bulletsFired = rollData.bulletsFired ?? (rollData.bulletSequence?.length ?? 0);
+    const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
+    const targetBullets = levelBullets[Math.max(0, Math.min(3, targetLevel))] ?? 1;
+    const refundCount = bulletsFired - targetBullets;
+    if (refundCount <= 0) return 0;
+    return this.refundBullets(rollData, refundCount);
+  }
+
+  /**
+   * Mark the weapon-roll chat message as having explicit burst-shift access granted.
+   * Once set, the "Zmniejsz Serię" / "Zwiększ Serię" context-menu options become
+   * visible to ANY logged-in user (not just the actor owner or GM).
+   *
+   * Typical use: call this inside a `postWeaponShot` trick script to signal that
+   * the trick (e.g. Czuły Spust) grants the owning player burst control.
+   * If the player is already the actor owner the call is a no-op for access
+   * (they already see the options), but it serves as explicit documentation and
+   * also extends access in cases where ownership is absent (allied NPC, etc.).
+   *
+   * @param {Object} args - The trigger args object (must contain `args.rollData`).
+   * @returns {Promise<void>}
+   *
+   * @example
+   * // postWeaponShot — Czuły Spust: grant burst shift and notify the player
+   * if (args.rollData.burstLevel >= 1) {
+   *   await this.grantBurstShift(args);
+   * }
+   *
+   * @example
+   * // postWeaponShot — grant only when firing a burst (not single shot)
+   * if (args.rollData.burstLevel >= 2) {
+   *   await this.grantBurstShift(args);
+   *   await this.sendMessage("<strong>Czuły spust:</strong> możesz zmniejszyć serię w menu kontekstowym karty czatu.");
+   * }
+   */
+  async grantBurstShift(args) {
+    const messageId = args?.rollData?.messageId ?? args?.messageId;
+    if (!messageId) return;
+    const message = game.messages.get(messageId);
+    if (!message) return;
+    await message.setFlag("neuroshima", "burstShiftGranted", true);
+  }
+
   // ── Utility helpers ──────────────────────────────────────────────────────
 
   /**
@@ -3014,31 +3147,55 @@ export class NeuroshimaScript {
  *                    buttons. Only fires on non-creature actors during their own turn.
  *                    args: { actor, state (duel card state, read-only), actions (mutable array),
  *                            ownerHadHit, ownerPreviousHits, uncommittedDice, uncommittedSuccesses }
- *                    Use: push an action object to args.actions:
+ *                    ── Definiowanie akcji ────────────────────────────────────────────────────
+ *                    Zalecane: zdefiniuj akcję w zakładce „Akcje" efektu (system.actionDefs[]).
+ *                    Każda akcja dostaje unikalne ID generowane przez foundry.utils.randomID().
+ *                    W skrypcie getMeleeActions wystarczy podać to ID:
+ *                      args.actions.push("PASTE_ID_HERE")
+ *                    System automatycznie pobierze pola name/damage/successCost/minDice/maxDice
+ *                    z definicji na efekcie.
+ *
+ *                    Można też nadpisać pojedyncze pola w runtime, zachowując resztę definicji:
+ *                      args.actions.push({ ...args.lookupActionDef("PASTE_ID_HERE"), successCost: 2 })
+ *
+ *                    Alternatywnie: przekaż pełny obiekt akcji inline (bez definicji w zakładce):
  *                    {
- *                      id:          string  — unique stable identifier (e.g. "barbarka-head-butt")
- *                      name:        string  — button label
- *                      img:         string  — icon path (optional, defaults to shield icon)
- *                      damage:      string  — fixed damage type on hit: "D","L","C","K","sC",…
- *                      successCost: number  — (optional, default 0) if > 0: sztuczka pojawia się
+ *                      id:          string  — stabilny identyfikator (np. "barbarka-head-butt")
+ *                      name:        string  — etykieta przycisku na karcie duelu
+ *                      img:         string  — ścieżka ikony (opcjonalne; domyślnie ikona tarczy)
+ *                      damage:      string  — typ obrażeń przy trafieniu; format: [count]type
+ *                                            count: opcjonalny prefiks liczby trafień (domyślnie 1)
+ *                                            type:  D | L | C | K (draśnięcie/lekka/ciężka/krytyczna)
+ *                                                   sD | sL | sC | sK (te same typy jako siniak; isBruise=true)
+ *                                            Przykłady: "D", "L", "2L", "3C", "sC"
+ *                      successCost: number  — (opcjonalne, domyślnie 0) jeśli > 0: akcja pojawia się
  *                                            w sekcji KOLEJKI a nie jako samodzielny atak. Budżet
- *                                            = liczba sukcesów wśród zaznaczonych kości. Sztuczka
+ *                                            = liczba sukcesów wśród zaznaczonych kości. Akcja
  *                                            jest "opłacana" przed rzutem i zawsze się aplikuje.
  *                                            Przykład: successCost: 1 → kosztuje 1 sukces z budżetu.
  *                      minDice:     number  — (dotyczy tylko standalone: successCost === 0) min kości
  *                      maxDice:     number  — (dotyczy tylko standalone: successCost === 0) max kości
- *                      annotation:  string  — text shown in chat result (optional)
+ *                      annotation:  string  — tekst wyświetlany w wyniku czatu (opcjonalne)
  *                    }
- *                    Dwa tryby działania:
- *                    • successCost === 0 (domyślnie): sztuczka pojawia się jako ALTERNATYWA ataku
+ *                    ── Dwa tryby działania ───────────────────────────────────────────────────
+ *                    • successCost === 0 (domyślnie): akcja pojawia się jako ALTERNATYWA ataku
  *                      (osobny przycisk obok Atak/Wyjście/Nie-walka). Gracz wybiera ją jako akcję
- *                      segmentu — porównuje kości i przy trafieniu aplikuje damage z sztuczki.
- *                    • successCost > 0: sztuczka pojawia się w KOLEJCE (jak akcje bestii). Budżet
+ *                      segmentu — porównuje kości i przy trafieniu aplikuje damage ze sztuczki.
+ *                    • successCost > 0: akcja pojawia się w KOLEJCE (jak akcje bestii). Budżet
  *                      = sukcesy wśród wybranych kości. Gracz konfiguruje kolejkę i zatwierdza
- *                      normalnym "Atak" — sztuczki z kolejki aplikują się niezależnie od wyniku.
- *                    Example: Barbarka — after previous segment hit, add "Uderzenie Głową" (sC):
+ *                      normalnym "Atak" — akcje z kolejki aplikują się niezależnie od wyniku.
+ *                    ── Przykłady ─────────────────────────────────────────────────────────────
+ *                    // Barbarka — po trafieniu w poprzednim segmencie dodaj "Uderzenie Głową" (sC):
  *                      args.actions.push({ id: "barbarka-head-butt", name: "Uderzenie Głową",
  *                        damage: "sC", successCost: 1, annotation: "Barbarka" });
+ *
+ *                    // Boa – Pochwycenie — referencja przez ID z zakładki Akcje:
+ *                      args.actions.push("PASTE_ACTIONDEF_ID_HERE");
+ *
+ *                    // Boa – Wykończenie — nadpisanie successCost w runtime:
+ *                      const hasPrior = state.hits?.some(h => h.actionId === "boa-capture");
+ *                      args.actions.push({ ...args.lookupActionDef("PASTE_ACTIONDEF_ID_HERE"),
+ *                        successCost: hasPrior ? 2 : 3 });
  *
  * Context available inside every script (via `this`):
  *   this.effect                    — The ActiveEffect owning this script
@@ -3122,6 +3279,12 @@ export class NeuroshimaScript {
  *   this.allowShotDespiteJam(args, count=1)    — canFireDespiteJam = true + bullet limit (weaponJam)
  *   this.clearWeaponJam(args)                  — clearJam = true, also clears system.jammed (weaponJam)
  *   this.isStandardJam(args, min=1, max=20)    — true if bestResult in [min,max] AND wouldSucceed; swaps min/max if inverted
+ *
+ * Burst shift / ammo helpers (use in postWeaponShot; rollData = args.rollData):
+ *   await this.refundBullets(rollData, count)  — return last `count` bullets from bulletSequence to the magazine/ammo item
+ *   await this.refundBurstLevel(rollData, targetLevel)
+ *                                              — refund bullets so effective burst level = targetLevel (0=single, 1=short, 2=long)
+ *   await this.grantBurstShift(args)           — flag the chat message so any user sees "Zmniejsz/Zwiększ Serię" in context menu
  *
  * Disease helpers (available in all triggers and Enable Script via this.*):
  *   this.getDiseases(actor?)              — Array of {id, name, diseaseType, currentState, transientPenalty}
@@ -3315,12 +3478,13 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number, difficultyShift:number, …}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-    // For isMeleePreRoll (getMeleeActions+isDialogScript) entries, prefer dialogCode over code.
-    // code is the passive push-to-actions script; dialogCode is the pre-roll modifier (args.fields.*).
+    // For isMeleePreRoll (getMeleeActions+isDialogScript) entries use dialogCode only.
+    // code is the push-to-actions script that runs later on the duel card — never run it here.
+    // If dialogCode is empty the modifier has no pre-roll fields to contribute; return early.
     const effectiveCode = dm?.isMeleePreRoll
-      ? (dm._script?.dialogCode || dm._script?.code)
+      ? (dm._script?.dialogCode || null)
       : dm._script?.code;
-    if (!effectiveCode) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {} };
+    if (!effectiveCode) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, burstLevelOverride: null };
     game.neuroshima?.log?.(`[dialog] execDialogModifier`, {
       label: dm.label,
       trigger: dm._script?.trigger,
@@ -3332,6 +3496,7 @@ export class NeuroshimaScriptRunner {
     const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
     const initialArmorPenalty = liveContext.armorPenalty ?? rc.armorPenalty ?? (actor.system.combat?.totalArmorPenalty || 0);
     const initialWoundPenalty = liveContext.woundPenalty ?? rc.woundPenalty ?? (actor.system.combat?.totalWoundPenalty || 0);
+    const initialBurstLevel = rc.burstLevel ?? 0;
     const fields = {
       modifier: 0,
       attributeBonus: 0,
@@ -3352,6 +3517,7 @@ export class NeuroshimaScriptRunner {
       healingModifierAll: 0,
       healingModifier: NeuroshimaScriptRunner._makeHealingModifierProxy(),
       healingDifficulty: NeuroshimaScriptRunner._makeHealingDifficultyProxy(),
+      burstLevel: initialBurstLevel,
 
       rollType: rc.rollType ?? null,
       healingMethod: rc.healingMethod ?? null,
@@ -3414,7 +3580,8 @@ export class NeuroshimaScriptRunner {
       hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null,
       healingModifierAll: fields.healingModifierAll || 0,
       healingModifier: fields.healingModifier?._raw ?? fields.healingModifier ?? {},
-      healingDifficulty: fields.healingDifficulty?._raw ?? fields.healingDifficulty ?? {}
+      healingDifficulty: fields.healingDifficulty?._raw ?? fields.healingDifficulty ?? {},
+      burstLevelOverride: fields.burstLevel !== initialBurstLevel ? Math.max(0, Math.floor(fields.burstLevel)) : null
     };
   }
 

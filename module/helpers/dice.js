@@ -794,7 +794,8 @@ export class NeuroshimaDice {
         fireCorrectionData,
         damageCategory: ammoDamageCategory,
         dieManualBonus: dieManualBonus || 0,
-        dieReductionBonus: dieReductionBonus || 0
+        dieReductionBonus: dieReductionBonus || 0,
+        fireRate: weapon.system.fireRate || 1
     };
 
     // Generate rich tooltip for weapon test

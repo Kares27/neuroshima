@@ -38,7 +38,7 @@ function _buildDamage(count, type) {
  *   args.actions.push("uuid-or-name")
  *
  * Each actionDef stores:
- *   - id          {string}  — auto-generated UUID (crypto.randomUUID()), read-only after creation.
+ *   - id          {string}  — auto-generated ID (foundry.utils.randomID()), read-only after creation.
  *   - name        {string}  — human-readable display name shown on the duel card.
  *   - damage      {string}  — combined damage string ("D", "2L", "sC" …) or "—" for no damage.
  *   - successCost {number}  — minimum successes required to use this action.
@@ -93,12 +93,20 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
   async _prepareContext(options) {
     const defs = this._freshEffect.system?.actionDefs ?? [];
     const raw = foundry.utils.deepClone(defs[this.defIndex]) || {
-      id: "", name: "", damage: "—", successCost: 1, minDice: 1, maxDice: 3, onHitScript: ""
+      id: "", name: "", damage: "—", successCost: 1, minDice: 1, maxDice: 3, onHitScript: "", immediateOnHit: false
     };
     const { damageCount, damageType } = _parseDamage(raw.damage);
     const actionDef = { ...raw, damageCount, damageType };
     actionDef.onHitScript = (actionDef.onHitScript ?? "").trimEnd();
-    return { actionDef, index: this.defIndex };
+    actionDef.immediateOnHit = actionDef.immediateOnHit ?? false;
+
+    const config = game.neuroshima?.config ?? {};
+    const damageTypeOptions = Object.keys(config.damageTypes ?? {}).map(key => ({
+      value: key,
+      label: `${key} — ${game.i18n.localize(`NEUROSHIMA.Damage.Full.${key}`)}`
+    }));
+
+    return { actionDef, index: this.defIndex, damageTypeOptions };
   }
 
   /**
@@ -126,31 +134,42 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       form.querySelector(`input[name="${name}"]`)?.addEventListener("change", () => this._persist(form));
     }
 
+    form.querySelector('input[name="immediateOnHit"]')?.addEventListener("change", () => this._persist(form));
+
     form.querySelector('code-mirror[name="onHitScript"]')?.addEventListener("change", () => {
       clearTimeout(this._cmSaveTimer);
       this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
-    });
-
-    form.querySelector(".ns-copy-uuid-btn")?.addEventListener("click", () => {
-      const id = form.querySelector('.ns-actiondef-uuid-input')?.value ?? "";
-      if (id) {
-        navigator.clipboard.writeText(id).then(() => {
-          ui.notifications.info(`Skopiowano: ${id}`);
-        });
-      }
     });
 
     form.querySelector(".ns-se-save-btn")?.addEventListener("click", async () => {
       await this._persist(form);
       await this.close();
     });
+
+    const header = this.element.querySelector(".window-header");
+    if (header && !header.querySelector(".ns-copy-id-header-btn")) {
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "ns-copy-id-header-btn";
+      copyBtn.title = "Kopiuj ID akcji";
+      copyBtn.dataset.tooltip = "Kopiuj ID akcji";
+      copyBtn.innerHTML = `<i class="fa-solid fa-copy"></i>`;
+      copyBtn.addEventListener("click", () => {
+        const defs = this._freshEffect.system?.actionDefs ?? [];
+        const id = defs[this.defIndex]?.id ?? "";
+        if (id) navigator.clipboard.writeText(id).then(() => ui.notifications.info(`Skopiowano: ${id}`));
+      });
+      const closeBtn = header.querySelector('[data-action="close"], .close, .header-close');
+      if (closeBtn) header.insertBefore(copyBtn, closeBtn);
+      else header.appendChild(copyBtn);
+    }
   }
 
   /**
    * Read all form fields and persist the updated actionDef back to the effect.
    * The `damage` combined string is re-built from `damageCount` + `damageType`.
    * The `id` field is intentionally never read from the form — it is auto-generated
-   * at creation time (crypto.randomUUID()) and immutable afterwards.
+   * at creation time (foundry.utils.randomID()) and immutable afterwards.
    *
    * @param {HTMLElement} form - Root element of the rendered application.
    * @returns {Promise<void>}
@@ -167,11 +186,12 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       return isNaN(v) ? d[name] : v;
     };
 
-    d.name        = read("name");
-    d.damage      = _buildDamage(read("damageCount"), read("damageType"));
-    d.successCost = readNum("successCost");
-    d.minDice     = readNum("minDice");
-    d.maxDice     = readNum("maxDice");
+    d.name           = read("name");
+    d.damage         = _buildDamage(read("damageCount"), read("damageType"));
+    d.successCost    = readNum("successCost");
+    d.minDice        = readNum("minDice");
+    d.maxDice        = readNum("maxDice");
+    d.immediateOnHit = form.querySelector('input[name="immediateOnHit"]')?.checked ?? false;
 
     const cmEl = form.querySelector('code-mirror[name="onHitScript"]');
     if (cmEl !== null && cmEl !== undefined) d.onHitScript = cmEl.value ?? d.onHitScript;

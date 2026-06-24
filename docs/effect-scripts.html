@@ -1786,7 +1786,8 @@ args.difficultyTarget += <span class="num">15</span>;</code></pre>
     <tr><td><code>minDice</code></td><td>number</td><td>Min kości do zaangażowania (dotyczy tylko trybu standalone, domyślnie 1)</td></tr>
     <tr><td><code>maxDice</code></td><td>number</td><td>Max kości do zaangażowania (dotyczy tylko trybu standalone, domyślnie 3)</td></tr>
     <tr><td><code>annotation</code></td><td>string</td><td>Dodatkowy opis wyświetlany w UI i w logu czatu (opcjonalne)</td></tr>
-    <tr><td><code>onHitScript</code></td><td>string</td><td>Zaawansowany skrypt JS wykonywany po trafieniu (jako string). Dostęp do <code>args.actor</code>, <code>args.target</code>, <code>args.state</code>, <code>args.hit</code>, <code>this.*</code> helperów. Pomijany gdy ustawiono <code>applyEffectOnHit</code> lub <code>notifyOnHit</code>.</td></tr>
+    <tr><td><code>onHitScript</code></td><td>string</td><td>Zaawansowany skrypt JS wykonywany po trafieniu (jako string). Dostęp do <code>args.actor</code>, <code>args.target</code>, <code>args.state</code>, <code>args.hit</code>, <code>this.*</code> helperów. Domyślnie odpala się przy „Nałóż obrażenia" — chyba że <code>immediateOnHit = true</code>. Pomijany gdy ustawiono <code>applyEffectOnHit</code> lub <code>notifyOnHit</code>.</td></tr>
+    <tr><td><code>immediateOnHit</code></td><td>boolean</td><td><strong>Opcjonalne, domyślnie false.</strong> Gdy <code>true</code>: <code>onHitScript</code> odpala się <strong>natychmiast</strong> w momencie ustalenia trafienia — w trakcie trwania duela, bez czekania na „Nałóż obrażenia". Niezbędne dla efektów statusowych aktywnych przez resztę walki (np. Boa – Pochwycenie). W zakładce Akcje edytora ustaw checkbox <em>Natychmiastowy</em>.</td></tr>
     <tr><td><code>applyEffectOnHit</code></td><td>string</td><td><strong>Skrót.</strong> Nazwa ActiveEffect (na dowolnym itemu aktora) który ma być nałożony na cel przy trafieniu — przez <code>convertToApplied()</code>. Pomija duplikaty (sprawdza <code>isEffectActive</code>). Nie wymaga pisania <code>onHitScript</code>.</td></tr>
     <tr><td><code>notifyOnHit</code></td><td>string</td><td><strong>Skrót.</strong> Tekst powiadomienia wyświetlanego w UI gdy akcja trafi (<code>ui.notifications.info</code>). Przydatne gdy akcja wymaga manualnej obsługi MG (np. test Budowy). Nie wymaga pisania <code>onHitScript</code>.</td></tr>
   </tbody></table>
@@ -1899,14 +1900,10 @@ args.actions.<span class="fn">push</span>({
 <span class="cmt">// Zręczność >= 14 && Broń ręczna >= 5 && walczymy bronią dłuższą od noża</span>
 <span class="cmt">// args.isPreRollContext=true → kontekst okna rzutu (args.weaponId dostępne)</span>
 <span class="cmt">// args.isPreRollContext=false → kontekst karty walki (args.state?.weaponId)</span>
-<span class="kw">const</span> <span class="var">actor</span> = args.actor;
-<span class="kw">if</span> (!<span class="var">actor</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">const</span> <span class="var">dex</span> = <span class="var">actor</span>.system.attributes.dexterity?.value ?? <span class="num">0</span>;
-<span class="kw">const</span> <span class="var">hw</span>  = <span class="var">actor</span>.system.skills.handWeapon?.value ?? <span class="num">0</span>;
-<span class="kw">if</span> (<span class="var">dex</span> &lt; <span class="num">14</span> || <span class="var">hw</span> &lt; <span class="num">5</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">getAttribute</span>(<span class="str">"dexterity"</span>) &lt; <span class="num">14</span> || <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"handWeapon"</span>) &lt; <span class="num">5</span>) <span class="kw">return</span> <span class="kw">true</span>;
 <span class="cmt">// Pobierz weaponId zarówno z pre-roll (args.weaponId) jak i post-roll (args.state?.weaponId)</span>
 <span class="kw">const</span> <span class="var">wId</span> = args.weaponId ?? args.state?.weaponId;
-<span class="kw">const</span> <span class="var">weapon</span> = <span class="var">wId</span> ? <span class="var">actor</span>.items.<span class="fn">get</span>(<span class="var">wId</span>) : <span class="kw">null</span>;
+<span class="kw">const</span> <span class="var">weapon</span> = <span class="var">wId</span> ? args.actor?.items.<span class="fn">get</span>(<span class="var">wId</span>) : <span class="kw">null</span>;
 <span class="kw">return</span> !<span class="var">weapon</span> || <span class="var">weapon</span>.system.skill !== <span class="str">"handWeapon"</span>;</code></pre>
     <p style="font-size:0.85em;color:var(--text-dim);margin:8px 1rem 4px;"><strong>Główny skrypt (pre-roll, code)</strong> — podnosi PT akcji o 1 poziom (Aramis wymaga podwyższonego PT):</p>
     <pre><code><span class="cmt">// code — odpala się PRE-ROLL gdy checkbox zaznaczony w oknie rzutu bronią</span>
@@ -1924,32 +1921,24 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
 <span class="kw">const</span> <span class="var">opponentActor</span>  = <span class="var">opponentDoc</span>?.actor ?? <span class="var">opponentDoc</span>;
 
 <span class="kw">if</span> (!<span class="var">opponentActor</span>) {
-  ui.notifications.<span class="fn">warn</span>(<span class="str">"Aramis: brak aktora przeciwnika."</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"brak aktora przeciwnika."</span>, <span class="str">"warn"</span>);
   <span class="kw">return</span>;
 }
 
 <span class="cmt">// Sprawdź czy przeciwnik ma broń melee dłuższą od noża (skill !== "brawl")</span>
-<span class="kw">const</span> <span class="var">targetWeapon</span> = <span class="var">opponentActor</span>.items.<span class="fn">find</span>(i =&gt;
-  i.type === <span class="str">"weapon"</span> &amp;&amp;
-  i.system.equipped &amp;&amp;
-  i.system.weaponType === <span class="str">"melee"</span> &amp;&amp;
-  i.system.skill !== <span class="str">"brawl"</span>
-);
+<span class="kw">const</span> <span class="var">targetWeapon</span> = <span class="kw">this</span>.<span class="fn">getEquippedWeapons</span>(<span class="str">"melee"</span>, <span class="var">opponentActor</span>).<span class="fn">find</span>(w =&gt; w.system.skill !== <span class="str">"brawl"</span>);
 
 <span class="kw">if</span> (!<span class="var">targetWeapon</span>) {
-  ui.notifications.<span class="fn">info</span>(<span class="str">`Aramis: ${opponentActor.name} nie ma wyposażonej broni dłuższej od noża.`</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`${opponentActor.name} nie ma wyposażonej broni dłuższej od noża.`</span>);
   <span class="kw">return</span>;
 }
 
 <span class="cmt">// Rozbrój broń przez GM socket (działa niezależnie od uprawnień klienta)</span>
 <span class="kw">const</span> <span class="var">result</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">disarmWeapon</span>(<span class="var">opponentUuid</span>, <span class="var">targetWeapon</span>.id);
 <span class="kw">if</span> (<span class="var">result</span>?.success) {
-  <span class="fn">ChatMessage</span>.<span class="fn">create</span>({
-    content: `&lt;div class="neuroshima-chat-card"&gt;&lt;p&gt;⚔ &lt;strong&gt;Aramis — Rozbrojenie!&lt;/strong&gt; ${args.actor.name} wytrąca &lt;em&gt;${result.weaponName}&lt;/em&gt; z rąk ${opponentActor.name}!&lt;/p&gt;&lt;/div&gt;`,
-    speaker: <span class="fn">ChatMessage</span>.<span class="fn">getSpeaker</span>({ actor: args.actor })
-  });
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(`&lt;div class="neuroshima-chat-card"&gt;&lt;p&gt;⚔ &lt;strong&gt;Aramis — Rozbrojenie!&lt;/strong&gt; ${args.actor.name} wytrąca &lt;em&gt;${result.weaponName}&lt;/em&gt; z rąk ${opponentActor.name}!&lt;/p&gt;&lt;/div&gt;`);
 } <span class="kw">else</span> {
-  ui.notifications.<span class="fn">warn</span>(<span class="str">`Aramis: Rozbrojenie nie powiodło się. ${result?.reason ?? ""}`</span>);
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Rozbrojenie nie powiodło się. ${result?.reason ?? ""}`</span>, <span class="str">"warn"</span>);
 }</code></pre>
     <div class="callout info">
       <strong>Uwaga dot. kosztu 2 sukcesów:</strong> W trybie <code>isDialogScript</code> gracz zaznacza checkbox i klika Atak bez automatycznego naliczania kosztu sukcesów. Mechaniczna cena 2 sukcesów jest tu traktowana narracyjnie — GM zatwierdza użycie sztuczki widząc, że atakujący ma co najmniej 2 sukcesy. Alternatywnie użyj trybu pasywnego (<code>isDialogScript = false</code>) z <code>successCost: 2</code> i zwykłą akcją w <code>args.actions</code> — ale wymaga to obsługi rozbrojenia przez rozszerzenie kolejki triku.
@@ -6480,6 +6469,29 @@ args.test.preData.penalties.mod += <span class="num">10</span>;
     <code>preWeaponShot</code> → sprawdzenie progu → (jeśli zacięcie) <code>weaponJam</code> → oddanie/pominięcie strzału → <code>postWeaponShot</code>.<br>
     Helper <code>preventWeaponJam</code> wywołany w <code>preWeaponShot</code> całkowicie zapobiega uruchomieniu <code>weaponJam</code>.
   </div>
+
+  <h3>Helpery serii i refundacji amunicji (postWeaponShot)</h3>
+  <p>Pozwalają na <strong>automatyczny zwrot naboi</strong> po rzucie lub <strong>przekazanie graczowi decyzji</strong> o zmianie serii przez menu kontekstowe. Używaj w skryptach <code>postWeaponShot</code> — <code>rollData</code> to <code>args.rollData</code>.</p>
+  <table>
+    <tbody>
+      <tr><th>Helper</th><th>Trigger</th><th>Opis</th></tr>
+      <tr>
+        <td><code>await this.refundBullets(rollData, count)</code></td>
+        <td>postWeaponShot</td>
+        <td>Zwraca ostatnie <code>count</code> naboi z <code>bulletSequence</code> do magazynka lub amunicji (LIFO). Obsługuje oba typy broni: magazynkową i direct-ammo (miotana). Zwraca rzeczywistą liczbę zwróconych naboi.</td>
+      </tr>
+      <tr>
+        <td><code>await this.refundBurstLevel(rollData, targetLevel)</code></td>
+        <td>postWeaponShot</td>
+        <td>Oblicza ile naboi odpowiada docelowemu poziomowi serii (<code>0</code>=pojedynczy, <code>1</code>=krótka, <code>2</code>=długa) i zwraca nadmiar przez <code>refundBullets</code>. Zwraca liczbę zwróconych naboi.</td>
+      </tr>
+      <tr>
+        <td><code>await this.grantBurstShift(args)</code></td>
+        <td>postWeaponShot</td>
+        <td>Oznacza wiadomość czatu flagą <code>burstShiftGranted</code>, dzięki której opcje <strong>„Zmniejsz Serię"</strong> / <strong>„Zwiększ Serię"</strong> w menu kontekstowym stają się widoczne dla <em>wszystkich</em> użytkowników (nie tylko właściciela aktora i GM). Właściciel i GM widzą te opcje zawsze — <code>grantBurstShift</code> rozszerza dostęp np. na graczy bez pełnego ownership. Użyj gdy sztuczka ma dać graczowi <em>wybór</em> jak skrócić/wydłużyć serię.</td>
+      </tr>
+    </tbody>
+  </table>
 
   <h3>Pobieranie wartości broni w skryptach jammingu</h3>
   <p>W skryptach wyzwalaczy jammingu masz bezpośredni dostęp do <code>args.weapon</code> (Item broni) i <code>args.actor</code> (Actor strzelającego). Możesz odczytać dane broni przez standardowe API Foundry:</p>
