@@ -778,21 +778,65 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <section id="trick-028-flash">
 <h3>28. Flash</h3>
 <p><strong>Wymagania:</strong> Bijatyka 4+, Kondycja 3+</p>
-<p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20: +3 Zr w obronie przez 1 segment, na koniec tury: +20% kary zmęczenia.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 (jako obrona): +3 Zręczności w obronie przez 1 segment. Na koniec tury: +20% kary ze zmęczenia.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 2 efekty na itemu sztuczki.</strong><br>
+  Efekt nr 1 (<code>transferType: self</code>) — <strong>Błysk</strong>: dialog checkbox widoczny tylko przy rzucie obronnym w melee. Gdy zaznaczony: +3 do atrybutu wbudowane w snapshot, flaga na aktora, skrypt <code>endTurn</code> aplikuje Efekt nr 2.<br>
+  Efekt nr 2 (<code>transferType: other</code>) — <strong>Błysk – Zmęczenie</strong>: template nakładany na postać przez <code>endTurn</code>; dodaje +20% kary do każdego testu przez <code>preRollTest</code>. Usuwa się ręcznie przez MG lub po odpoczynku.
+</div>
+
+<h4 class="script-label">Efekt nr 1 — „Błysk" (transferType: self)</h4>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy obronnym rzucie melee</div>
+<pre><code><span class="cmt">// Pokaż checkbox tylko gdy gracz rzuca pulę jako obrona w walce wręcz.</span>
+<span class="cmt">// args.meleeAction jest dostępne od wersji systemu, która dodaje je do rollContext.</span>
+<span class="kw">return</span> !(args.rollType === <span class="str">"melee"</span> && args.meleeAction === <span class="str">"defense"</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.attributeBonus += <span class="num">3</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +3 do atrybutu wbudowane w snapshot obrony</div>
+<pre><code><span class="cmt">// Modyfikuje atrybut przed rzutem — wartość trafia do defenseTargetSnapshot.</span>
+<span class="cmt">// Nie potrzeba preOpposedDefender — bonus jest już zapieczony w puli.</span>
+args.fields.attributeBonus += <span class="num">3</span>;
+<span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"flashActive"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Flash&lt;/b&gt;: +3 Zr w obronie. Na koniec tury: +20% kary zmęczenia."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">endTurn</span> Nałóż zmęczenie i wyczyść flagę</div>
+<pre><code><span class="cmt">// Odpala się na koniec tury postaci (GM-side, po podpięciu w updateCombat).</span>
+<span class="kw">const</span> <span class="var">flashActive</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"flashActive"</span>);
+<span class="kw">if</span> (!<span class="var">flashActive</span>) <span class="kw">return</span>;
+<span class="kw">await</span> args.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"flashActive"</span>);
+<span class="cmt">// Znajdź Efekt nr 2 na tym samym itemu sztuczki i nałóż na postać.</span>
+<span class="kw">const</span> <span class="var">fatigueEffect</span> = <span class="kw">this</span>.item?.effects?.<span class="fn">getName</span>(<span class="str">"Błysk – Zmęczenie"</span>);
+<span class="kw">if</span> (<span class="var">fatigueEffect</span>) {
+  <span class="kw">await</span> <span class="var">fatigueEffect</span>.<span class="fn">applyEffect</span>([args.actor]);
+} <span class="kw">else</span> {
+  game.neuroshima?.log?.(<span class="str">"Flash endTurn: brak efektu 'Błysk – Zmęczenie' na sztuczce"</span>);
+}</code></pre>
 </div>
 </div>
+
+<h4 class="script-label">Efekt nr 2 — „Błysk – Zmęczenie" (transferType: other)</h4>
+<p class="example-desc">Nie przenosi się automatycznie. Aplikowany przez skrypt <code>endTurn</code> powyżej. Usuwa się ręcznie (MG) lub skryptem odpoczynku.</p>
+
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span> +20% kary do każdego testu umiejętności/atrybutu</div>
+<pre><code><span class="cmt">// Działa na rollTest (umiejętności, atrybuty). NIE działa na rollWeaponTest.</span>
+<span class="cmt">// Dla kar do rzutów bronią dodaj analogiczny skrypt preWeaponShot (patrz niżej).</span>
+args.test.preData.penalties.mod += <span class="num">20</span>;
+<span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Zmęczenie (Błysk): +20%"</span>);</code></pre>
+</div>
+</div>
+
+<div class="callout warning">
+  <strong>Uwaga:</strong> <code>preRollTest</code> odpala się tylko dla <code>rollTest</code> (testy umiejętności i atrybutów), <strong>nie</strong> dla <code>rollWeaponTest</code> (rzuty bronią). Jeśli zmęczenie ma karać też rzuty bronią, dodaj na Efekcie nr 2 skrypt <code>preWeaponShot</code>:
+  <pre style="margin-top:0.5rem"><code>args.rollData.penalties = args.rollData.penalties ?? {};
+args.rollData.penalties.mod = (args.rollData.penalties.mod ?? 0) + 20;</code></pre>
+</div>
+
 </section>
 
 <section id="trick-029-garda">

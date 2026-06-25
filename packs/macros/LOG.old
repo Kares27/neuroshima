@@ -1,5 +1,5 @@
-2026/06/24-21:50:12.591 45b4 Log #335: 0 ops saved to Table #336 OK
-2026/06/24-21:50:12.592 45b4 Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\macros/000335.log: OK
-2026/06/24-21:50:12.592 45b4 Table #325: 6 entries OK
-2026/06/24-21:50:12.596 45b4 Archiving H:\FOUNDRY DATA\Data\systems\neuroshima\packs\macros/MANIFEST-000334: OK
-2026/06/24-21:50:12.600 45b4 **** Repaired leveldb H:\FOUNDRY DATA\Data\systems\neuroshima\packs\macros; recovered 1 files; 1187 bytes. Some data may have been lost. ****
+2026/06/25-08:28:33.043 1ce4 Log #338: 0 ops saved to Table #339 OK
+2026/06/25-08:28:33.044 1ce4 Archiving D:\FoundryData\Data\systems\neuroshima\packs\macros/000338.log: OK
+2026/06/25-08:28:33.044 1ce4 Table #325: 6 entries OK
+2026/06/25-08:28:33.046 1ce4 Archiving D:\FoundryData\Data\systems\neuroshima\packs\macros/MANIFEST-000337: OK
+2026/06/25-08:28:33.048 1ce4 **** Repaired leveldb D:\FoundryData\Data\systems\neuroshima\packs\macros; recovered 1 files; 1187 bytes. Some data may have been lost. ****

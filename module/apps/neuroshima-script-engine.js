@@ -1090,7 +1090,11 @@ export class NeuroshimaScript {
    * }
    */
   async grantBurstShift(args) {
-    const messageId = args?.rollData?.messageId ?? args?.messageId;
+    if (args?.rollData) {
+      args.rollData.burstShiftGranted = true;
+      return;
+    }
+    const messageId = args?.messageId;
     if (!messageId) return;
     const message = game.messages.get(messageId);
     if (!message) return;

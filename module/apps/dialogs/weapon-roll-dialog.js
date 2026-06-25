@@ -136,6 +136,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.actor,
     {
       rollType: this.rollType,
+      meleeAction,
       weapon: this.weapon,
       skill: weaponSkillObj,
       attribute: weaponAttrObj,

@@ -48,6 +48,34 @@ import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 import { MeleeVanillaChat } from "./module/combat/melee-vanilla-chat.js";
 import { MeleeOpposedChat } from "./module/combat/melee-opposed-chat.js";
 
+function _applyBurstLevelToDOM(messageIdOrEl, level, rollData) {
+    let root;
+    if (messageIdOrEl instanceof HTMLElement) {
+        root = messageIdOrEl;
+    } else {
+        root = ui.chat?.element?.querySelector(`[data-message-id="${messageIdOrEl}"]`)
+            ?? document.querySelector(`[data-message-id="${messageIdOrEl}"]`);
+    }
+    console.log("[NS] _applyBurstLevelToDOM", { messageIdOrEl: messageIdOrEl instanceof HTMLElement ? "<HTMLElement>" : messageIdOrEl, level, rootFound: !!root });
+    if (!root) return;
+
+    const rof = rollData?.fireRate ?? 1;
+    const originalFired = rollData?.bulletsFired ?? Infinity;
+    const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
+    const newBullets = Math.min(levelBullets[level] ?? 1, originalFired);
+    const newLabel = game.i18n.localize(NEUROSHIMA.burstLabels[level] ?? NEUROSHIMA.burstLabels[0]);
+
+    const burstLabelEl = root.querySelector(".burst-label");
+    if (burstLabelEl) burstLabelEl.textContent = newLabel;
+
+    const bulletsRow = root.querySelector(".js-bullets-row");
+    const bulletsValue = root.querySelector(".js-bullets-value");
+    if (bulletsValue) {
+        bulletsValue.textContent = newBullets;
+        if (bulletsRow) bulletsRow.style.display = newBullets > 1 ? "" : "none";
+    }
+}
+
 // System initialization
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
@@ -77,7 +105,17 @@ Hooks.once('init', async function() {
         appInstances.forEach(app => {
             if (_isActorSheet(app)) app.render(false);
         });
-        if (game.user.isGM) await NeuroshimaScriptRunner.runUpdateCombat(combat, updates);
+        if (game.user.isGM) {
+            await NeuroshimaScriptRunner.runUpdateCombat(combat, updates);
+            const turnChanged = foundry.utils.hasProperty(updates, "turn") || foundry.utils.hasProperty(updates, "round");
+            if (turnChanged && combat.started) {
+                const prevCombatantId = combat.previous?.combatantId;
+                const prevCombatant = prevCombatantId ? combat.combatants.get(prevCombatantId) : null;
+                if (prevCombatant) await NeuroshimaScriptRunner.runEndTurn(combat, prevCombatant);
+                const currCombatant = combat.combatant;
+                if (currCombatant) await NeuroshimaScriptRunner.runStartTurn(combat, currCombatant);
+            }
+        }
     });
 
     // Hide GM-only elements in chat messages for non-GM users
@@ -133,6 +171,17 @@ Hooks.once('init', async function() {
         appInstances.forEach(app => {
             if (_isActorSheet(app)) app.render(false);
         });
+    });
+
+    Hooks.on("updateChatMessage", (message, changes) => {
+        const hasBurstChange = changes?.flags?.neuroshima?.burstReducedTo !== undefined
+            || foundry.utils.getProperty(changes, "flags.neuroshima.burstReducedTo") !== undefined;
+        if (!hasBurstChange) return;
+        const flags = message.getFlag("neuroshima", "rollData");
+        if (!flags?.isWeapon || flags.isMelee) return;
+
+        const newLevel = message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0;
+        _applyBurstLevelToDOM(message.id, newLevel, flags);
     });
 
     // Script triggers: combat lifecycle
@@ -1598,12 +1647,15 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
+            if (!message) { console.error("[NS] DecreaseBurst: message not found", li.dataset); return; }
             const flags = message.getFlag("neuroshima", "rollData");
             const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
             const targetLevel = Math.max(0, currentLevel - 1);
+            console.log("[NS] DecreaseBurst", { messageId: message.id, currentLevel, targetLevel, burstLevel: flags.burstLevel });
             const refunded = await CombatHelper.refundBurstLevel(message, targetLevel);
+            await message.setFlag("neuroshima", "burstReducedTo", targetLevel);
+            _applyBurstLevelToDOM(message.id, targetLevel, flags);
             if (refunded > 0) {
-                await message.setFlag("neuroshima", "burstReducedTo", targetLevel);
                 ui.notifications.info(game.i18n.format("NEUROSHIMA.Roll.BurstDecreased", { count: refunded }));
             }
         }
@@ -1631,6 +1683,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             const consumed = await CombatHelper.increaseBurstLevel(message, targetLevel);
             if (consumed > 0) {
                 await message.setFlag("neuroshima", "burstReducedTo", targetLevel);
+                _applyBurstLevelToDOM(message.id, targetLevel, flags);
                 ui.notifications.info(game.i18n.format("NEUROSHIMA.Roll.BurstIncreased", { count: consumed }));
             }
         }
@@ -2000,6 +2053,15 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 Hooks.on("renderChatMessageHTML", (message, html) => {
     // Initialize Neuroshima chat actions dispatcher
     NeuroshimaChatMessage.onChatAction(html);
+
+    // Restore burst label if burst level was reduced via context menu
+    const burstReducedTo = message.getFlag("neuroshima", "burstReducedTo");
+    if (burstReducedTo !== undefined && burstReducedTo !== null) {
+        const flags = message.getFlag("neuroshima", "rollData");
+        if (flags?.isWeapon && !flags.isMelee) {
+            _applyBurstLevelToDOM(html, burstReducedTo, flags);
+        }
+    }
 
     // Melee Vanilla Chat (default mode only)
     if ((game.settings.get("neuroshima", "meleeCombatType") || "default") === "default") {

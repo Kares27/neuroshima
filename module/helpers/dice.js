@@ -252,11 +252,7 @@ export class NeuroshimaDice {
     
     // Collect results and find the best die (lowest value)
     const results = roll.terms[0].results.map(r => r.result);
-    const rawResults = results.map(v => ({
-        value: v,
-        isNat1: v === 1,
-        isNat20: v === 20
-    }));
+    const rawResults = [...results];
     const bestResult = Math.min(...results);
 
     // Final open/closed state — melee always uses a closed 3d20 test
@@ -843,6 +839,9 @@ export class NeuroshimaDice {
         const flags = rollMessage.getFlag("neuroshima", "rollData") ?? {};
         flags.messageId = rollMessage.id;
         await rollMessage.setFlag("neuroshima", "rollData", flags);
+        if (rollData.burstShiftGranted) {
+            await rollMessage.setFlag("neuroshima", "burstShiftGranted", true);
+        }
     }
 
     return rollMessage;
@@ -1562,8 +1561,11 @@ export class NeuroshimaDice {
     const flags = message.getFlag("neuroshima", "rollData");
     if (!flags || !selectedIndices?.length) return;
 
-    const rawResults = [...(flags.rawResults || flags.results || [])];
-    if (!rawResults.length) return;
+    const rawResultsRaw = [...(flags.rawResults || flags.results || [])];
+    if (!rawResultsRaw.length) return;
+
+    // rawResults may be stored as plain numbers OR as objects {value, isNat1, isNat20} — normalize to numbers
+    const rawResults = rawResultsRaw.map(v => (typeof v === "object" && v !== null ? (v.value ?? v) : v));
 
     const actor = game.actors.get(flags.actorId);
     if (!actor) return;
@@ -1699,7 +1701,7 @@ export class NeuroshimaDice {
     const hasReductions = Object.values(reductions).some(v => v > 0);
     if (!hasReductions) return;
 
-    const rawResults = [...(flags.rawResults || [])];
+    const rawResults = [...(flags.rawResults || [])].map(v => (typeof v === "object" && v !== null ? (v.value ?? v) : v));
     const actor = game.actors.get(flags.actorId);
     if (!actor) return;
 
@@ -1792,7 +1794,7 @@ export class NeuroshimaDice {
     const originalBonus = Object.values(reductions).reduce((sum, v) => sum + (v || 0), 0);
     if (originalBonus <= 0) return;
 
-    const rawResults = [...(flags.rawResults || [])];
+    const rawResults = [...(flags.rawResults || [])].map(v => (typeof v === "object" && v !== null ? (v.value ?? v) : v));
     const actor = game.actors.get(flags.actorId);
     if (!actor) return;
 

@@ -17,7 +17,7 @@
         <div class="header-details">
             <div class="weapon-title">
                 {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
-                {{label}}{{#if actionLabel}}: {{actionLabel}}{{/if}}
+                {{label}}{{#if actionLabel}}: <span class="burst-label">{{actionLabel}}</span>{{/if}}
             </div>
             <div class="test-type">
                 {{localize difficultyLabel}}
@@ -36,9 +36,9 @@
     <hr class="dotted-hr">
     <div class="weapon-details">
         {{#if (gt bulletsFired 1)}}
-        <div class="detail-item">
+        <div class="detail-item js-bullets-row">
             <span class="label">Pociski:</span>
-            <span class="value"><strong>{{bulletsFired}}</strong></span>
+            <span class="value"><strong class="js-bullets-value">{{bulletsFired}}</strong></span>
         </div>
         {{/if}}
         <div class="detail-item">

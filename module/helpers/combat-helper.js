@@ -52,10 +52,21 @@ export class CombatHelper {
       return false;
     }
 
-    game.neuroshima.log("Bullet sequence to refund:", bulletSequence);
+    // If burst level was already reduced, only refund bullets still active (not yet returned)
+    const burstReducedTo = message.getFlag("neuroshima", "burstReducedTo");
+    let activeSequence = bulletSequence;
+    if (burstReducedTo !== undefined && burstReducedTo !== null) {
+      const rof = flags.fireRate ?? 1;
+      const originalBulletsFired = flags.bulletsFired ?? bulletSequence.length;
+      const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
+      const activeBullets = Math.min(levelBullets[burstReducedTo] ?? originalBulletsFired, originalBulletsFired);
+      activeSequence = bulletSequence.slice(0, activeBullets);
+    }
 
-    // Refund ammo in reverse order (LIFO)
-    const refundSequence = [...bulletSequence].reverse();
+    game.neuroshima.log("Bullet sequence to refund:", { total: bulletSequence.length, active: activeSequence.length });
+
+    // Refund active bullets in reverse order (LIFO)
+    const refundSequence = [...activeSequence].reverse();
 
     const magazineId = flags.magazineId;
     const ammoId = flags.ammoId;
@@ -85,7 +96,6 @@ export class CombatHelper {
                   lastStackBefore: lastStack ? { name: lastStack.name, quantity: lastStack.quantity } : null
                 });
 
-                // Compare with current stack to see if we can merge
                 if (canMerge) {
                     lastStack.quantity += 1;
                     game.neuroshima.log("Increased quantity:", { 
@@ -124,7 +134,7 @@ export class CombatHelper {
             }
             
             ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.AmmoRefunded", { 
-                amount: bulletSequence.length, 
+                amount: activeSequence.length, 
                 name: magazine.name 
             }));
 
@@ -139,13 +149,13 @@ export class CombatHelper {
 
         if (ammo && ammo.type === "ammo") {
             const oldQuantity = ammo.system.quantity;
-            const newQuantity = oldQuantity + bulletSequence.length;
+            const newQuantity = oldQuantity + activeSequence.length;
             game.neuroshima.log("Updating ammo quantity:", { oldQuantity, newQuantity });
 
             await ammo.update({ "system.quantity": newQuantity });
             
             ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.AmmoRefunded", { 
-                amount: bulletSequence.length, 
+                amount: activeSequence.length, 
                 name: ammo.name 
             }));
 
@@ -179,13 +189,19 @@ export class CombatHelper {
     if (bulletSequence.length === 0) return 0;
 
     const rof = flags.fireRate ?? 1;
-    const bulletsFired = flags.bulletsFired ?? bulletSequence.length;
+    const originalBulletsFired = flags.bulletsFired ?? bulletSequence.length;
+    const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0;
     const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
-    const targetBullets = levelBullets[Math.max(0, Math.min(3, targetLevel))] ?? 1;
-    const refundCount = Math.min(bulletsFired - targetBullets, bulletSequence.length);
+    const currentBullets = Math.min(levelBullets[currentLevel] ?? originalBulletsFired, originalBulletsFired);
+    const targetBullets = Math.min(levelBullets[Math.max(0, Math.min(3, targetLevel))] ?? 1, currentBullets);
+    const refundCount = currentBullets - targetBullets;
     if (refundCount <= 0) return 0;
 
-    const toRefund = [...bulletSequence].slice(bulletSequence.length - refundCount).reverse();
+    // Slice only from the portion of bulletSequence that is still "active":
+    // bullets at the tail (index >= originalBulletsFired - currentBullets) were already refunded.
+    const alreadyRefunded = originalBulletsFired - currentBullets;
+    const effectiveEnd = bulletSequence.length - alreadyRefunded;
+    const toRefund = [...bulletSequence].slice(effectiveEnd - refundCount, effectiveEnd).reverse();
     const magazineId = flags.magazineId;
     const ammoId = flags.ammoId;
 
