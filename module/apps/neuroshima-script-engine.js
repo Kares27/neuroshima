@@ -3144,6 +3144,26 @@ export class NeuroshimaScript {
  *                    args: { actor, participant, encounter, difficultyTarget, mode: "defense" }
  *                    Use: args.difficultyTarget += N  → raise target (easier to defend)
  *                         args.difficultyTarget -= N  → lower target (harder to defend)
+ *                    Participant persistence: any property written to args.participant is
+ *                    read back by the resolution code after success counting. Use this to
+ *                    carry intent forward without flags:
+ *                      args.participant.blockDamageShift = -1  → Garda: take damage 1 tier lower on block
+ *
+ * postExchangeResult — Post-Exchange Result: fires AFTER hit/block/takeover is determined but
+ *                    BEFORE damage is applied. Fires on BOTH the attacker and defender actors
+ *                    (side "attacker" then "defender"). Use to react to the outcome or inject
+ *                    secondary effects based on combat result.
+ *                    args: { actor, side ("attacker"|"defender"), resultType, diceCount,
+ *                            attackerId, defenderId, attacker (participant), defender (participant),
+ *                            attackerSuccesses, defenderSuccesses, encounter,
+ *                            blockDamageShift (number, default 0) }
+ *                    Use: args.resultType = "block"     → override result (hit→block etc.)
+ *                         args.blockDamageShift = -1    → on block, apply damage 1 tier lower
+ *                         args.blockDamageShift = -4    → on block, absorb all damage (full block)
+ *                    Note: args.participant.blockDamageShift (set in preOpposedDefender) is merged
+ *                    with args.blockDamageShift automatically — you only need one of the two.
+ *                    Example: Wyczekanie — after taking over (args.resultType === "takeover"),
+ *                      upgrade attacker's damage for this segment by setting damageShift on participant.
  *
  * getMeleeActions   — Get Melee Actions: fires when building the duel card context for a
  *                    participant (mode 1 opposed melee). Allows effect scripts to inject
@@ -3419,6 +3439,7 @@ export class NeuroshimaScriptRunner {
     applyCondition:         "Apply Condition",
     preOpposedAttacker:     "Pre-Opposed Attacker",
     preOpposedDefender:     "Pre-Opposed Defender",
+    postExchangeResult:     "Post-Exchange Result",
     getMeleeActions:        "Get Melee Actions"
   };
 

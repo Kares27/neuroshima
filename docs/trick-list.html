@@ -409,7 +409,7 @@ args.actions.push({
   <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Berserker już aktywny."</span>, <span class="str">"info"</span>);
   <span class="kw">return</span>;
 }
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">convertToApplied</span>(<span class="str">"Berserker \u2013 Aktywny"</span>);
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="kw">this</span>.item.effects.<span class="fn">getName</span>(<span class="str">"Berserker \u2013 Aktywny"</span>), [<span class="kw">this</span>.actor]);
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;BERSERKER!&lt;/b&gt; Stan aktywny — automatyczny sukces Odporności na ból."</span>);</code></pre>
 </div>
 <div class="example-block">
@@ -781,9 +781,10 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 (jako obrona): +3 Zręczności w obronie przez 1 segment. Na koniec tury: +20% kary ze zmęczenia.</p>
 
 <div class="callout info">
-  <strong>Implementacja: 2 efekty na itemu sztuczki.</strong><br>
-  Efekt nr 1 (<code>transferType: self</code>) — <strong>Błysk</strong>: dialog checkbox widoczny tylko przy rzucie obronnym w melee. Gdy zaznaczony: +3 do atrybutu wbudowane w snapshot, flaga na aktora, skrypt <code>endTurn</code> aplikuje Efekt nr 2.<br>
-  Efekt nr 2 (<code>transferType: other</code>) — <strong>Błysk – Zmęczenie</strong>: template nakładany na postać przez <code>endTurn</code>; dodaje +20% kary do każdego testu przez <code>preRollTest</code>. Usuwa się ręcznie przez MG lub po odpoczynku.
+  <strong>Implementacja: 3 efekty na itemu sztuczki — bez flag, bez ręcznych warunków.</strong><br>
+  Efekt nr 1 (<code>transferType: self</code>) — <strong>Błysk</strong>: dialog checkbox widoczny tylko przy rzucie obronnym w melee. Gdy zaznaczony: +3 do atrybutu + aplikuje Efekt nr 2 (marker) na aktora.<br>
+  Efekt nr 2 (<code>transferType: other</code>) — <strong>Błysk – Aktywny</strong>: tymczasowy marker na aktorze. Wyzwalacz <code>endTurn</code> nakłada Efekt nr 3 i usuwa siebie — dokładnie na końcu tury, bez flag.<br>
+  Efekt nr 3 (<code>transferType: other</code>) — <strong>Błysk – Zmęczenie</strong>: trwały; dodaje +20% kary do testów przez <code>preRollTest</code>. Usuwa się ręcznie (MG) lub po odpoczynku.
 </div>
 
 <h4 class="script-label">Efekt nr 1 — „Błysk" (transferType: self)</h4>
@@ -791,50 +792,52 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy obronnym rzucie melee</div>
-<pre><code><span class="cmt">// Pokaż checkbox tylko gdy gracz rzuca pulę jako obrona w walce wręcz.</span>
-<span class="cmt">// args.meleeAction jest dostępne od wersji systemu, która dodaje je do rollContext.</span>
+<pre><code><span class="cmt">// Pokaż checkbox tylko gdy gracz rzuca jako obrona w walce wręcz.</span>
 <span class="kw">return</span> !(args.rollType === <span class="str">"melee"</span> && args.meleeAction === <span class="str">"defense"</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +3 do atrybutu wbudowane w snapshot obrony</div>
-<pre><code><span class="cmt">// Modyfikuje atrybut przed rzutem — wartość trafia do defenseTargetSnapshot.</span>
-<span class="cmt">// Nie potrzeba preOpposedDefender — bonus jest już zapieczony w puli.</span>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +3 Zr w obronie + aplikuj marker</div>
+<pre><code><span class="cmt">// +3 do atrybutu wbudowane w snapshot obrony.</span>
 args.fields.attributeBonus += <span class="num">3</span>;
-<span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"flashActive"</span>, <span class="kw">true</span>);</code></pre>
-</div>
-<div class="example-block">
-<div class="example-header"><span class="trigger-badge">endTurn</span> Nałóż zmęczenie i wyczyść flagę</div>
-<pre><code><span class="cmt">// Odpala się na koniec tury postaci (GM-side, po podpięciu w updateCombat).</span>
-<span class="kw">const</span> <span class="var">flashActive</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"flashActive"</span>);
-<span class="kw">if</span> (!<span class="var">flashActive</span>) <span class="kw">return</span>;
-<span class="kw">await</span> args.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"flashActive"</span>);
-<span class="cmt">// Znajdź Efekt nr 2 na tym samym itemu sztuczki i nałóż na postać.</span>
-<span class="kw">const</span> <span class="var">fatigueEffect</span> = <span class="kw">this</span>.item?.effects?.<span class="fn">getName</span>(<span class="str">"Błysk – Zmęczenie"</span>);
-<span class="kw">if</span> (<span class="var">fatigueEffect</span>) {
-  <span class="kw">await</span> <span class="var">fatigueEffect</span>.<span class="fn">applyEffect</span>([args.actor]);
-} <span class="kw">else</span> {
-  game.neuroshima?.log?.(<span class="str">"Flash endTurn: brak efektu 'Błysk – Zmęczenie' na sztuczce"</span>);
-}</code></pre>
+<span class="cmt">// Nałóż marker — drugi efekt na liście (index 1) to "Błysk – Aktywny".</span>
+<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
 </div>
 </div>
 
-<h4 class="script-label">Efekt nr 2 — „Błysk – Zmęczenie" (transferType: other)</h4>
-<p class="example-desc">Nie przenosi się automatycznie. Aplikowany przez skrypt <code>endTurn</code> powyżej. Usuwa się ręcznie (MG) lub skryptem odpoczynku.</p>
+<h4 class="script-label">Efekt nr 2 — „Błysk – Aktywny" (transferType: other)</h4>
+<p class="example-desc">Marker tymczasowy aplikowany na aktora przez Efekt nr 1. Na końcu tury nakłada zmęczenie i usuwa siebie — bez flag, bez UUID lookupów.</p>
+
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">endTurn</span> Nałóż zmęczenie i usuń marker</div>
+<pre><code><span class="cmt">// Sztuczka Flash jest itemem na aktorze — szukamy przez actor.items.contents.</span>
+<span class="cmt">// Identyfikujemy item po tym, że jego contents[1] ma tę samą nazwę co ten marker.</span>
+<span class="cmt">// Konwencja: contents[0]=dialog, contents[1]=marker, contents[2]=zmęczenie.</span>
+<span class="kw">const</span> <span class="var">src</span> = <span class="kw">this</span>.actor.items.contents.<span class="fn">find</span>(
+  i =&gt; i.effects.size === <span class="num">3</span> && i.effects.contents[<span class="num">1</span>]?.name === <span class="kw">this</span>.effect.name
+);
+<span class="kw">const</span> <span class="var">fatigue</span> = <span class="var">src</span>?.effects.contents[<span class="num">2</span>];
+<span class="kw">if</span> (<span class="var">fatigue</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">fatigue</span>, [<span class="kw">this</span>.actor]);
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
+</div>
+</div>
+
+<h4 class="script-label">Efekt nr 3 — „Błysk – Zmęczenie" (transferType: other)</h4>
+<p class="example-desc">Trwały efekt zmęczenia nakładany przez marker w chwili endTurn. Usuwa się ręcznie (MG) lub skryptem odpoczynku.</p>
 
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span> +20% kary do każdego testu umiejętności/atrybutu</div>
-<pre><code><span class="cmt">// Działa na rollTest (umiejętności, atrybuty). NIE działa na rollWeaponTest.</span>
-<span class="cmt">// Dla kar do rzutów bronią dodaj analogiczny skrypt preWeaponShot (patrz niżej).</span>
-args.test.preData.penalties.mod += <span class="num">20</span>;
+<pre><code>args.test.preData.penalties.mod += <span class="num">20</span>;
 <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Zmęczenie (Błysk): +20%"</span>);</code></pre>
 </div>
 </div>
 
 <div class="callout warning">
-  <strong>Uwaga:</strong> <code>preRollTest</code> odpala się tylko dla <code>rollTest</code> (testy umiejętności i atrybutów), <strong>nie</strong> dla <code>rollWeaponTest</code> (rzuty bronią). Jeśli zmęczenie ma karać też rzuty bronią, dodaj na Efekcie nr 2 skrypt <code>preWeaponShot</code>:
+  <strong>Uwaga:</strong> <code>preRollTest</code> odpala się tylko dla <code>rollTest</code> (testy umiejętności i atrybutów), <strong>nie</strong> dla <code>rollWeaponTest</code> (rzuty bronią). Jeśli zmęczenie ma karać też rzuty bronią, dodaj na Efekcie nr 3 skrypt <code>preWeaponShot</code>:
   <pre style="margin-top:0.5rem"><code>args.rollData.penalties = args.rollData.penalties ?? {};
-args.rollData.penalties.mod = (args.rollData.penalties.mod ?? 0) + 20;</code></pre>
+args.rollData.penalties.mod = (args.rollData.penalties.mod ?? 0) + <span class="num">20</span>;</code></pre>
 </div>
 
 </section>
@@ -842,20 +845,48 @@ args.rollData.penalties.mod = (args.rollData.penalties.mod ?? 0) + 20;</code></p
 <section id="trick-029-garda">
 <h3>29. Garda</h3>
 <p><strong>Wymagania:</strong> Bijatyka 4+, Budowa 12+</p>
-<p><strong>Mechanika:</strong> Decyzja przed rzutem: +6 Zr w obronie vs nieuzbrojony przeciwnik; obroniony cios zadaje obrażenia o 1 poziom niższe.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 (obrona): +6 Zr. Mimo obronionego ciosu obrażenia zadawane o 1 poziom niższe. Działa tylko vs nieuzbrojony humanoid.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
+  Utwórz Item o typie Sztuczka, a w nim <strong>dwa AE w tej kolejności</strong> (kolejność = indeks w tablicy):<br><br>
+  <strong>AE nr 1</strong> — <em>„Garda"</em> (<code>transferType: self</code>): widoczny w dialogu walki obronnej. Dodaje +6 do Zręczności i aplikuje marker (AE nr 2) na aktora.<br>
+  <strong>AE nr 2</strong> — <em>„Garda – Aktywna"</em> (<code>transferType: other</code>): marker jednorazowy. Odpalany przez <code>preOpposedDefender</code> — sygnalizuje silnikowi, że przy bloku obrażenia mają być 1 poziom niżej na torze D→L→C→K. Po użyciu usuwa się sam.<br><br>
+  <strong>Ważne:</strong> AE nr 1 musi być <em>pierwszy</em> na liście efektów (indeks 0), AE nr 2 drugi (indeks 1) — dialog script odwołuje się do <code>effects.contents[1]</code>.
+</div>
+
+<h4 class="script-label">Efekt nr 1 — „Garda" (transferType: self)</h4>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy obronnym rzucie melee</div>
+<pre><code><span class="kw">return</span> !(args.rollType === <span class="str">"melee"</span> && args.meleeAction === <span class="str">"defense"</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.attributeBonus += <span class="num">6</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +6 Zr w obronie + aplikuj marker</div>
+<pre><code>args.fields.attributeBonus += <span class="num">6</span>;
+<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
 </div>
+</div>
+
+<h4 class="script-label">Efekt nr 2 — „Garda – Aktywna" (transferType: other)</h4>
+<p class="example-desc">Marker jednorazowy. <code>preOpposedDefender</code> odpala się podczas rozdzielczości — ustawia <code>blockDamageShift = -1</code> na uczestniku walki i usuwa siebie. Silnik rozdzielczości <code>_shiftDamageTypeUnclamped</code> obniża typ obrażeń o 1 poziom: C→L, L→D, D→brak obrażeń.</p>
+<div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Garda&lt;/b&gt;: +6 Zr w obronie vs nieuzbrojony. Obroniony cios: -1 poziom obrażeń."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Ustaw blockDamageShift i usuń marker</div>
+<pre><code><span class="cmt">// Sygnalizujemy silnikowi walki: przy bloku obrażenia 1 tier niżej na torze D→L→C→K.</span>
+<span class="cmt">// D zablokowane = brak obrażeń (null zamiast D przez _shiftDamageTypeUnclamped).</span>
+args.participant.blockDamageShift = -<span class="num">1</span>;
+<span class="cmt">// Marker jednorazowy — usuwa się sam po użyciu.</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
+</div>
+
+<div class="callout info">
+  <strong>Alternatywna implementacja przez postExchangeResult:</strong> Zamiast <code>preOpposedDefender</code> marker może też ustawiać shift w <code>postExchangeResult</code> na <code>args.blockDamageShift = -1</code>. Obie drogi są równoważne i obsługiwane przez silnik.
+</div>
+<div class="callout warning">
+  <strong>Warunek narracyjny:</strong> Garda działa tylko vs nieuzbrojony humanoid. Zweryfikuj narracyjnie — trudno sprawdzić automatycznie czy atakujący jest bez broni w momencie rzutu obronnego.
 </div>
 </section>
 
@@ -868,9 +899,21 @@ args.rollData.penalties.mod = (args.rollData.penalties.mod ?? 0) + 20;</code></p
 
 <section id="trick-031-gola-reka">
 <h3>31. Goła ręka</h3>
-<p><strong>Wymagania:</strong> Bijatyka 3+</p>
-<p><strong>Mechanika:</strong> Walcząc gołymi rękami traktuje je jak normalną broń bez kar za brak broni.</p>
-<div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
+<p><strong>Wymagania:</strong> Zwinne dłonie 4+</p>
+<p><strong>Mechanika:</strong> Bohater podchodzi do celu z pistoletem lub nożem ukrytym w rękawie — broń jest całkowicie niedostrzegalna. Jeśli przeciwnicy podejrzewają ukrytą broń, muszą wykonać <strong>Bardzo Trudny test Czujności</strong> aby ją wykryć.</p>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">manuallyInvoked</span> Wyślij test Czujności do wybranych graczy / MG</div>
+<pre><code><span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+  testKey:    <span class="str">"alertness"</span>,
+  difficulty: <span class="str">"veryHard"</span>,
+  label:      <span class="str">"Czujność — wykrycie ukrytej broni (Goła ręka)"</span>
+});</code></pre>
+</div>
+</div>
+<div class="callout info">
+  <strong>Użycie:</strong> MG ręcznie odpala efekt w momencie gdy NPC ma szansę wykryć ukrytą broń. Test wysyłany jest publicznie do wszystkich graczy. Sztuczka nie wymaga żadnej automatyki po stronie postaci gracza — efekt służy wyłącznie jako szybki launcher testu wykrycia.
+</div>
 </section>
 
 <section id="trick-032-granie-na-nerwach">
@@ -882,19 +925,25 @@ args.rollData.penalties.mod = (args.rollData.penalties.mod ?? 0) + 20;</code></p
 
 <section id="trick-033-gunfight">
 <h3>33. Gunfight</h3>
-<p><strong>Wymagania:</strong> Pistolety 5+, Broń ręczna 3+</p>
-<p><strong>Mechanika:</strong> W walce wręcz może strzelać z pistoletu zamiast bić — używa Pistoletów zamiast Broni ręcznej.</p>
+<p><strong>Wymagania:</strong> Pistolety 4+, Zręczność 14+</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20. Przy strzale z przyłożenia walczący używa Pistoletów zamiast Bijatyki/Broni ręcznej w walce wręcz. Nie można tą umiejętnością podwyższać wyników kości przeciwnika (reguła Podwójnego Działania).</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy ataku wręcz pistoletem/rewolwerem</div>
+<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span> <span class="kw">true</span>;
 <span class="kw">const</span> <span class="var">sub</span> = args.weapon?.system?.rangedSubtype;
 <span class="kw">return</span> <span class="var">sub</span> !== <span class="str">"pistols"</span> &amp;&amp; <span class="var">sub</span> !== <span class="str">"revolver"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.useSkillOverride = <span class="str">"pistols"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zastąp umiejętność wartością Pistoletów</div>
+<pre><code><span class="cmt">// Brak useSkillOverride w silniku — kompensujemy różnicę przez skillBonus.</span>
+<span class="cmt">// Wynik: efektywna umiejętność = wartość Pistoletów gracza.</span>
+<span class="kw">const</span> <span class="var">pistols</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"pistols"</span>);
+args.fields.skillBonus += <span class="var">pistols</span> - (args.skill?.value ?? <span class="num">0</span>);</code></pre>
 </div>
+</div>
+<div class="callout warning">
+  <strong>Ograniczenie Podwójnego Działania:</strong> Narracyjne — silnik nie rozróżnia która umiejętność jest "prawdziwa". MG nie stosuje podnoszenia wyników kości przeciwnika gdy Gunfight jest aktywny, mimo że wartość sumaryczna może to sugerować.
 </div>
 </section>
 

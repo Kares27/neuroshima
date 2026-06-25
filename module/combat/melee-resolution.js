@@ -155,6 +155,56 @@ export class MeleeResolution {
     attacker.usedDice.push(...exchange.attackerSelectedDice);
     defender.usedDice.push(...exchange.defenderSelectedDice);
 
+    // postExchangeResult — fires on attacker then defender after result is determined,
+    // before damage is applied. Scripts can read resultType and react or override it.
+    // args.blockDamageShift (negative) shifts the damage type down on block (Garda).
+    const postResultArgs = {
+      encounter: updated, resultType, diceCount, attackerId, defenderId,
+      attacker, defender, attackerSuccesses, defenderSuccesses, blockDamageShift: 0
+    };
+    if (attackerActorDoc) {
+      await NeuroshimaScriptRunner.execute("postExchangeResult", { actor: attackerActorDoc, side: "attacker", ...postResultArgs });
+    }
+    if (defenderActorDoc) {
+      await NeuroshimaScriptRunner.execute("postExchangeResult", { actor: defenderActorDoc, side: "defender", ...postResultArgs });
+    }
+    resultType = postResultArgs.resultType;
+
+    // blockDamageShift — set by preOpposedDefender scripts (e.g. Garda trick) via
+    // args.participant.blockDamageShift, OR via postExchangeResult args.blockDamageShift.
+    // Negative value = shift damage type DOWN by N levels on the D→L→C→K track on block.
+    // -1 = one tier lower (C→L, L→D, D→nothing/no damage).
+    const _blockShift = (defender.blockDamageShift || 0) || (postResultArgs.blockDamageShift || 0);
+    if (resultType === "block" && _blockShift !== 0) {
+      const locationDieIndex = exchange.locationDieIndex ?? exchange.attackerSelectedDice[0];
+      const weaponForBlock = attackerActorDoc?.items.get(attacker.weaponId);
+      const globalShift = attacker.damageShift || 0;
+      const tierShift = globalShift + (attacker[`damageShift${Math.min(diceCount, 3)}`] || 0);
+      let baseDmg;
+      if (diceCount >= 3) baseDmg = weaponForBlock?.system.damageMelee3 || "C";
+      else if (diceCount >= 2) baseDmg = weaponForBlock?.system.damageMelee2 || "L";
+      else baseDmg = weaponForBlock?.system.damageMelee1 || "D";
+      const afterTierShift = this._shiftDamageTypeUnclamped(baseDmg, tierShift);
+      const finalDmg = afterTierShift ? this._shiftDamageTypeUnclamped(afterTierShift, _blockShift) : null;
+      if (finalDmg && defenderActorDoc) {
+        const rawValue = attacker.pool[locationDieIndex] ?? 8;
+        const location = this._getLocationFromRoll(rawValue);
+        const { CombatHelper } = await import("../helpers/combat-helper.js");
+        await CombatHelper.applyDamageToActor(defenderActorDoc, {
+          isMelee: true,
+          actorId: attackerActorDoc?.id,
+          weaponId: attacker.weaponId,
+          label: weaponForBlock?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+          successPoints: 1,
+          finalLocation: location,
+          damageMelee1: finalDmg,
+          damageMelee2: finalDmg,
+          damageMelee3: finalDmg
+        }, { isOpposed: true, spDifference: 1, location });
+      }
+    }
+    defender.blockDamageShift = 0;
+
     // BERSERKER counter-attack (Tryb Berserkera):
     // Rule: "zadawać ciosy nie zważając na rany mimo przegranej Inicjatywy" — NS 1.5
     // When the defender accepted the hit in berserker mode, berserkerAcceptHit stores
@@ -597,6 +647,22 @@ export class MeleeResolution {
     const idx     = track.indexOf(type);
     if (idx < 0) return type;
     return track[Math.min(Math.max(0, idx + steps), track.length - 1)];
+  }
+
+  /**
+   * Like _shiftDamageType but returns null when the shift goes below the track minimum.
+   * Used for blockDamageShift: D shifted by -1 returns null (= no damage), not "D".
+   */
+  static _shiftDamageTypeUnclamped(type, steps) {
+    if (!steps) return type;
+    const REGULAR = ["D", "L", "C", "K"];
+    const BRUISE  = ["sD", "sL", "sC", "sK"];
+    const track   = type?.startsWith("s") ? BRUISE : REGULAR;
+    const idx     = track.indexOf(type);
+    if (idx < 0) return type;
+    const newIdx = idx + steps;
+    if (newIdx < 0) return null;
+    return track[Math.min(newIdx, track.length - 1)];
   }
 
   static _computeDamageOptions(diceCount, attacker) {

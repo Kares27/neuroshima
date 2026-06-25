@@ -173,6 +173,7 @@
         <li><a href="#trigger-applyCondition">applyCondition — Apply Condition</a></li>
         <li><a href="#trigger-preOpposedAttacker">preOpposedAttacker — Pre-Opposed Attacker</a></li>
         <li><a href="#trigger-preOpposedDefender">preOpposedDefender — Pre-Opposed Defender</a></li>
+        <li><a href="#trigger-postExchangeResult">postExchangeResult — Post-Exchange Result</a></li>
         <li><a href="#trigger-getMeleeActions">getMeleeActions — Get Melee Actions (sztuczki gracza)</a></li>
       </ul>
     </li>
@@ -1755,6 +1756,81 @@ args.difficultyTarget += <span class="num">15</span>;</code></pre>
 <span class="kw">if</span> (args.actor.statuses.<span class="fn">has</span>(<span class="str">"stunned"</span>)) {
   args.difficultyTarget -= <span class="num">20</span>;
 }</code></pre>
+  </div>
+
+  <div class="callout info">
+    <strong>Persist przez uczestnika:</strong> Dowolna właściwość zapisana na <code>args.participant</code> jest dostępna po liczeniu sukcesów podczas rozdzielczości. To najczystsza metoda przeniesienia intencji z <code>preOpposedDefender</code> do etapu aplikowania obrażeń — bez flag, bez efektów tymczasowych.<br>
+    <strong>Kluczowa właściwość: <code>args.participant.blockDamageShift</code></strong><br>
+    Ujemna wartość = obrażenia obniżone o N poziomów na torze (D→L→C→K) gdy cios zostaje zablokowany. D−1 = brak obrażeń. Przykład: Garda — obrona blokuje cios ale obrażenia redukowane o 1 poziom.
+    <pre style="margin-top:0.5rem"><code><span class="cmt">// preOpposedDefender — ustaw, by silnik przy bloku zadał obrażenia 1 tier niżej</span>
+args.participant.blockDamageShift = -<span class="num">1</span>;
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// marker jednorazowy</span></code></pre>
+  </div>
+
+  <h3 id="trigger-postExchangeResult">postExchangeResult — <em>Post-Exchange Result</em></h3>
+  <p>Odpala się <strong>po ustaleniu wyniku wymiany</strong> (trafienie/blok/przejęcie inicjatywy), ale <strong>przed aplikowaniem obrażeń</strong>. Odpala się dwukrotnie — raz na aktorze atakującym (<code>side:"attacker"</code>), raz na obrońcy (<code>side:"defender"</code>). Pozwala efektom reagować na wynik walki lub modyfikować typ obrażeń blokowanego ciosu.</p>
+  <table>
+    <tbody>
+      <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+      <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktualny aktor (atakujący lub obrońca zależnie od <code>side</code>)</td></tr>
+      <tr><td><code>args.side</code></td><td>string</td><td><code>"attacker"</code> lub <code>"defender"</code> — która strona odpala skrypt</td></tr>
+      <tr><td><code>args.resultType</code></td><td>string</td><td><strong>Modyfikowalny</strong> wynik: <code>"hit"</code> / <code>"block"</code> / <code>"takeover"</code></td></tr>
+      <tr><td><code>args.blockDamageShift</code></td><td>number</td><td><strong>Modyfikowalny</strong> (domyślnie 0): przesuwa typ obrażeń na torze przy bloku. -1 = 1 tier niżej. Wartość ujemna → D−1 = brak obrażeń.</td></tr>
+      <tr><td><code>args.diceCount</code></td><td>number</td><td>Liczba kości atakującego (siła uderzenia: 1–3)</td></tr>
+      <tr><td><code>args.attackerSuccesses</code></td><td>number</td><td>Sukcesy atakującego (do odczytu)</td></tr>
+      <tr><td><code>args.defenderSuccesses</code></td><td>number</td><td>Sukcesy obrońcy (do odczytu)</td></tr>
+      <tr><td><code>args.attacker</code></td><td>object</td><td>Dane uczestnika-atakującego</td></tr>
+      <tr><td><code>args.defender</code></td><td>object</td><td>Dane uczestnika-obrońcy</td></tr>
+      <tr><td><code>args.encounter</code></td><td>object</td><td>Stan całej wymiany (do odczytu)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">postExchangeResult</span> Reakcja obrońcy po otrzymaniu trafienia — nałóż stan</div>
+    <pre><code><span class="cmt">// Odpala się na obrońcy po każdym trafieniu — np. dodaj kondycję "wstrząśnięty"</span>
+<span class="kw">if</span> (args.side !== <span class="str">"defender"</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.resultType === <span class="str">"hit"</span>) {
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"shaken"</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">postExchangeResult</span> Garda — alternatywna wersja przez postExchangeResult zamiast preOpposedDefender</div>
+    <pre><code><span class="cmt">// Alternatywa dla preOpposedDefender: marker na efekcie ustawia blockDamageShift = -1</span>
+<span class="cmt">// bezpośrednio w args zamiast w args.participant.</span>
+<span class="kw">if</span> (args.side !== <span class="str">"defender"</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.resultType === <span class="str">"block"</span>) {
+  args.blockDamageShift = -<span class="num">1</span>; <span class="cmt">// C → L, L → D, D → brak obrażeń</span>
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// marker jednorazowy</span>
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">postExchangeResult</span> Wyczekanie — po przejęciu inicjatywy: bonus do ataku</div>
+    <pre><code><span class="cmt">// Wyczekanie: jeśli aktor przejął inicjatywę, jego attackTargetSnapshot rośnie o +4</span>
+<span class="cmt">// (wyższy próg = łatwiejsze sukcesy) do końca tury.</span>
+<span class="kw">if</span> (args.side !== <span class="str">"defender"</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.resultType === <span class="str">"takeover"</span>) {
+  <span class="cmt">// Po przejęciu inicjatywy — args.defender to teraz nowy atakujący</span>
+  args.defender.attackTargetSnapshot = (args.defender.attackTargetSnapshot || <span class="num">10</span>) + <span class="num">4</span>;
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// efekt jednorazowy</span>
+}</code></pre>
+  </div>
+
+  <div class="callout info">
+    <strong>blockDamageShift — pełna tabela wartości:</strong>
+    <table style="margin-top:0.5rem">
+      <thead><tr><th>Atak (dice)</th><th>Normalny wynik</th><th>shift = -1</th><th>shift = -2</th><th>shift = -3</th></tr></thead>
+      <tbody>
+        <tr><td>3 kości (C)</td><td>Ciężka rana (C)</td><td>Lekka rana (L)</td><td>Draśnięcie (D)</td><td>Brak</td></tr>
+        <tr><td>2 kości (L)</td><td>Lekka rana (L)</td><td>Draśnięcie (D)</td><td>Brak</td><td>Brak</td></tr>
+        <tr><td>1 kość (D)</td><td>Draśnięcie (D)</td><td>Brak</td><td>Brak</td><td>Brak</td></tr>
+      </tbody>
+    </table>
+    Oba sposoby ustawienia są równoważne:<br>
+    1. <code>preOpposedDefender</code>: <code>args.participant.blockDamageShift = -1</code><br>
+    2. <code>postExchangeResult</code>: <code>args.blockDamageShift = -1</code> (gdy <code>args.resultType === "block"</code>)<br>
+    Silnik automatycznie łączy obie wartości (sumuje). Pancerz i <code>preTakeDamage</code> nadal stosują się do zredukowanego typu.
   </div>
 
   <h3 id="trigger-getMeleeActions">getMeleeActions — <em>Get Melee Actions</em></h3>
