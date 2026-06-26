@@ -386,7 +386,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const attrBonus  = parseInt(formData.attributeBonus) || 0;
 
     if (allowCombatShift && !isMelee) {
-      let skillKey = this.weapon.system.skill;
+      let skillKey = this._scriptFields?.skillKey || this.weapon.system.skill;
       if (!skillKey || skillKey === "none") {
         const attrGroups = NEUROSHIMA.skillConfiguration[this.weapon.system.attribute || "dexterity"] || {};
         skillKey = (Object.values(attrGroups)[0] || [])[0] || "";
@@ -415,7 +415,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       activeDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, effectiveTempoShift);
     }
     if (allowCombatShift && !isMelee) {
-      let skillKey2 = this.weapon.system.skill;
+      let skillKey2 = this._scriptFields?.skillKey || this.weapon.system.skill;
       if (!skillKey2 || skillKey2 === "none") {
         const attrGroups = NEUROSHIMA.skillConfiguration[this.weapon.system.attribute || "dexterity"] || {};
         skillKey2 = (Object.values(attrGroups)[0] || [])[0] || "";
@@ -533,7 +533,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       damageShift3:    sf?.damageShift3 || 0,
       dieManualBonus:      Number(this.userEntry.dieManualBonus ?? 0) || 0,
       dieReductionBonus:  Number(this.userEntry.dieReductionBonus ?? 0) || 0,
-      rollMode:        formData.rollMode
+      rollMode:        formData.rollMode,
+      skillKeyOverride: sf?.skillKey || null
     };
 
     const submissionOptions = await this._runSubmissionScripts();

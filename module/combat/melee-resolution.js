@@ -155,23 +155,23 @@ export class MeleeResolution {
     attacker.usedDice.push(...exchange.attackerSelectedDice);
     defender.usedDice.push(...exchange.defenderSelectedDice);
 
-    // postExchangeResult — fires on attacker then defender after result is determined,
-    // before damage is applied. Scripts can read resultType and react or override it.
+    // opposedAttacker / opposedDefender — fire after result is determined, before damage applied.
+    // Scripts can read resultType and react or override it.
     // args.blockDamageShift (negative) shifts the damage type down on block (Garda).
     const postResultArgs = {
       encounter: updated, resultType, diceCount, attackerId, defenderId,
       attacker, defender, attackerSuccesses, defenderSuccesses, blockDamageShift: 0
     };
     if (attackerActorDoc) {
-      await NeuroshimaScriptRunner.execute("postExchangeResult", { actor: attackerActorDoc, side: "attacker", ...postResultArgs });
+      await NeuroshimaScriptRunner.execute("opposedAttacker", { actor: attackerActorDoc, ...postResultArgs });
     }
     if (defenderActorDoc) {
-      await NeuroshimaScriptRunner.execute("postExchangeResult", { actor: defenderActorDoc, side: "defender", ...postResultArgs });
+      await NeuroshimaScriptRunner.execute("opposedDefender", { actor: defenderActorDoc, ...postResultArgs });
     }
     resultType = postResultArgs.resultType;
 
     // blockDamageShift — set by preOpposedDefender scripts (e.g. Garda trick) via
-    // args.participant.blockDamageShift, OR via postExchangeResult args.blockDamageShift.
+    // args.participant.blockDamageShift, OR via opposedDefender args.defender.blockDamageShift.
     // Negative value = shift damage type DOWN by N levels on the D→L→C→K track on block.
     // -1 = one tier lower (C→L, L→D, D→nothing/no damage).
     const _blockShift = (defender.blockDamageShift || 0) || (postResultArgs.blockDamageShift || 0);
@@ -308,10 +308,12 @@ export class MeleeResolution {
     updated.turnState.segmentCost = 0;
 
     if (newSeg > 3) {
+      await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "turn-end");
       await MeleeStore.updateEncounter(id, updated);
       await MeleeTurnService.startNewTurn(id);
     } else {
       updated.turnState.segment = newSeg;
+      await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "segment-advance");
       updated.turnState.phase = "primary-attack-selection";
       updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
       await MeleeStore.updateEncounter(id, updated);

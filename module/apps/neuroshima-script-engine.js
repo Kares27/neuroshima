@@ -638,6 +638,68 @@ export class NeuroshimaScript {
   }
 
   /**
+   * Mark this effect as "activated for the current melee turn" for the given actor.
+   * Stores the actor's participant ID under `encounter._effects._tricks[effect.id]`.
+   * Call this in a `dialog` script (or `preMeleePool`) when the player opts in to a trick.
+   * The activation is automatically cleared on `turn-start` (encounter._effects reset).
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {boolean} true if the activation was recorded, false if no active encounter found.
+   *
+   * @example
+   * // dialog script — player opts in to Flash trick:
+   * this.activateForMelee();
+   * args.fields.attrBonus = (args.fields.attrBonus || 0) + 3;
+   */
+  activateForMelee(actor) {
+    const target = actor ?? this.actor;
+    const enc = this.getMeleeEncounter(target);
+    const pid = this.getMeleeParticipantId(target);
+    if (!enc || !pid) return false;
+    enc._effects = enc._effects || {};
+    enc._effects._tricks = enc._effects._tricks || {};
+    enc._effects._tricks[this.effect.id] = pid;
+    return true;
+  }
+
+  /**
+   * Return true if this effect was activated via `activateForMelee` for the participant
+   * identified by `args.participantId` (or by looking up the actor in the encounter).
+   * @param {object} [args] - Trigger args containing `encounter` and/or `participantId`.
+   * @param {Actor}  [actor] - Defaults to this.actor. Used only when args lacks encounter/participantId.
+   * @returns {boolean}
+   *
+   * @example
+   * // opposedDefender — apply Garda bonus only when the trick was activated this turn:
+   * if (!this.isActiveForMelee(args)) return;
+   * args.blockDamageShift = -1;
+   */
+  isActiveForMelee(args, actor) {
+    const target = actor ?? this.actor;
+    const enc = args?.encounter ?? this.getMeleeEncounter(target);
+    const pid = args?.participantId ?? this.getMeleeParticipantId(target);
+    if (!enc || !pid) return false;
+    return enc?._effects?._tricks?.[this.effect.id] === pid;
+  }
+
+  /**
+   * Clear the activation set by `activateForMelee` for this effect.
+   * Useful when the trick is "consumed" mid-turn and should not fire again.
+   * @param {object} [args] - Trigger args containing `encounter`.
+   * @param {Actor}  [actor] - Defaults to this.actor.
+   *
+   * @example
+   * // meleeUpdate phase "segment-advance" — consume Wiatrak initiative reclaim:
+   * if (!this.isActiveForMelee(args)) return;
+   * args.encounter.turnState.initiativeOwnerId = myId;
+   * this.deactivateForMelee(args);
+   */
+  deactivateForMelee(args, actor) {
+    const target = actor ?? this.actor;
+    const enc = args?.encounter ?? this.getMeleeEncounter(target);
+    if (enc?._effects?._tricks) delete enc._effects._tricks[this.effect.id];
+  }
+
+  /**
    * Return true if `actor` (or this.actor) currently holds Initiative in their active
    * melee encounter — i.e. is the `turnState.initiativeOwnerId`.
    * Returns false when the actor has no active encounter.
@@ -3131,6 +3193,25 @@ export class NeuroshimaScript {
  *                    Use: react to a condition being applied (e.g. fire secondary effects,
  *                         notify chat, apply additional penalties for a specific condition)
  *
+ * preMeleePool      — Pre-Melee Pool: fires AFTER the actor's 3k20 dice are set but BEFORE the
+ *                    pool is committed and visible to the opponent. Allows modifying snapshot
+ *                    target values (attackTargetSnapshot, defenseTargetSnapshot) and skill/action.
+ *                    Fires only for the participant who just rolled.
+ *                    Analogous to WFRP4e's preRollTest but scoped to the melee pool roll.
+ *                    args: { actor, encounter, participant, meleeAction, maneuver }
+ *                    participant.id         — participant's key in encounter.participants map
+ *                    participant.attackTargetSnapshot   — mutable: shift attacker's difficulty
+ *                    participant.defenseTargetSnapshot  — mutable: shift defender's difficulty
+ *                    participant.damageShift            — NOT mutable here (overwritten after trigger)
+ *                    meleeAction            — "attack" | "defense" (which dialog the player used)
+ *                    maneuver               — selected maneuver string (e.g. "fury", "fullDefense")
+ *                    Use: args.participant.attackTargetSnapshot += N  → raise attack threshold
+ *                         args.participant.defenseTargetSnapshot += N → raise defense threshold
+ *                         args.participant.skillKey = "shooting"      → Gunfight: use Shooting skill
+ *                    Note: do NOT write args.participant.damageShift here — it is overwritten
+ *                    after the trigger fires. Use preOpposedAttacker for damage modifiers.
+ *                    Example: Ośmiornica — args.participant.defenseTargetSnapshot -= 2
+ *
  * preOpposedAttacker — Pre-Opposed Attacker: runs at the START of melee exchange resolution,
  *                    on the ATTACKER before success/failure is calculated.
  *                    Allows modifying the effective difficulty target for the attacker's dice.
@@ -3149,21 +3230,32 @@ export class NeuroshimaScript {
  *                    carry intent forward without flags:
  *                      args.participant.blockDamageShift = -1  → Garda: take damage 1 tier lower on block
  *
- * postExchangeResult — Post-Exchange Result: fires AFTER hit/block/takeover is determined but
- *                    BEFORE damage is applied. Fires on BOTH the attacker and defender actors
- *                    (side "attacker" then "defender"). Use to react to the outcome or inject
- *                    secondary effects based on combat result.
- *                    args: { actor, side ("attacker"|"defender"), resultType, diceCount,
- *                            attackerId, defenderId, attacker (participant), defender (participant),
+ * opposedAttacker   — Opposed Attacker: fires AFTER hit/block/takeover is determined but BEFORE
+ *                    damage is applied. Fires on the ATTACKER's actor only. Use to react to the
+ *                    exchange outcome or inject secondary effects (e.g. mark a reclaim intent).
+ *                    Analogous to WFRP4e's opposedAttacker trigger.
+ *                    args: { actor, resultType, diceCount, attackerId, defenderId,
+ *                            attacker (participant), defender (participant),
  *                            attackerSuccesses, defenderSuccesses, encounter,
  *                            blockDamageShift (number, default 0) }
  *                    Use: args.resultType = "block"     → override result (hit→block etc.)
  *                         args.blockDamageShift = -1    → on block, apply damage 1 tier lower
- *                         args.blockDamageShift = -4    → on block, absorb all damage (full block)
- *                    Note: args.participant.blockDamageShift (set in preOpposedDefender) is merged
- *                    with args.blockDamageShift automatically — you only need one of the two.
- *                    Example: Wyczekanie — after taking over (args.resultType === "takeover"),
- *                      upgrade attacker's damage for this segment by setting damageShift on participant.
+ *                    Example: Wiatrak — when fury + takeover, set encounter._effects.wiatrakReclaim
+ *
+ * opposedDefender   — Opposed Defender: fires AFTER hit/block/takeover is determined but BEFORE
+ *                    damage is applied. Fires on the DEFENDER's actor only. Use to react to the
+ *                    exchange outcome from the defender's perspective (e.g. Garda — reduce damage).
+ *                    Analogous to WFRP4e's opposedDefender trigger.
+ *                    args: { actor, resultType, diceCount, attackerId, defenderId,
+ *                            attacker (participant), defender (participant),
+ *                            attackerSuccesses, defenderSuccesses, encounter,
+ *                            blockDamageShift (number, default 0) }
+ *                    Use: args.defender.blockDamageShift = -1  → on block, apply damage 1 tier lower
+ *                         args.defender.blockDamageShift = -4  → on block, absorb all damage
+ *                    Note: write to args.defender.blockDamageShift (object reference — persists).
+ *                    Do NOT write to args.blockDamageShift (primitive in spread-copy — lost).
+ *                    Preferred alternative: use preOpposedDefender → args.participant.blockDamageShift.
+ *                    Example: Garda — on block, reduce incoming damage by one level.
  *
  * getMeleeActions   — Get Melee Actions: fires when building the duel card context for a
  *                    participant (mode 1 opposed melee). Allows effect scripts to inject
@@ -3220,6 +3312,46 @@ export class NeuroshimaScript {
  *                      const hasPrior = state.hits?.some(h => h.actionId === "boa-capture");
  *                      args.actions.push({ ...args.lookupActionDef("PASTE_ACTIONDEF_ID_HERE"),
  *                        successCost: hasPrior ? 2 : 3 });
+ *
+ * meleeUpdate       — Melee Lifecycle Update: fires at KEY transition points in the melee turn
+ *                    state machine — analogous to Foundry's `updateCombat` hook but for the
+ *                    internal melee encounter lifecycle. Fires for EVERY active participant actor.
+ *                    args: { actor, encounter (mutable), encounterId, phase, participant, participantId }
+ *                    ── phase values ──────────────────────────────────────────────────────────
+ *                    "segment-advance"  — all exchanges in this segment are done; segment pointer
+ *                                         is about to increment. Scripts can modify
+ *                                         args.encounter.turnState.initiativeOwnerId before the
+ *                                         state is saved. Replaces the old hardcoded wiatrakReclaimId.
+ *                    "turn-end"         — all 3 segments exhausted; melee TURN is about to reset.
+ *                                         Apply end-of-turn effects (fatigue, markers) here.
+ *                                         Fires BEFORE startNewTurn resets pool data.
+ *                    "turn-start"       — new melee turn has been set up (pools reset, initiative
+ *                                         order sorted). Fires BEFORE the new state is persisted.
+ *                    ── encounter._effects namespace ──────────────────────────────────────────
+ *                    Scripts should use args.encounter._effects.{key} to pass state between
+ *                    triggers (e.g. opposedAttacker → meleeUpdate).  The engine never reads
+ *                    this namespace — it is reserved exclusively for effect scripts.
+ *                    _effects is cleared automatically at each turn-start.
+ *                    ── participantId vs participant ──────────────────────────────────────────
+ *                    args.participantId — string key in encounter.participants map for this actor
+ *                    args.participant   — the participant data object (same as encounter.participants[participantId])
+ *                    ── Example: Wiatrak (initiative reclaim after fury takeover) ─────────────
+ *                    // opposedAttacker — mark reclaim intent:
+ *                      if (args.resultType !== "takeover") return;
+ *                      if (args.attacker?.maneuver !== "fury" && args.attacker?.maneuver !== "furia") return;
+ *                      args.encounter._effects = args.encounter._effects || {};
+ *                      args.encounter._effects.wiatrakReclaim = args.participantId;
+ *
+ *                    // meleeUpdate — execute the reclaim / apply fatigue:
+ *                      if (args.phase === "segment-advance") {
+ *                        if (args.encounter._effects?.wiatrakReclaim !== args.participantId) return;
+ *                        args.encounter.turnState.initiativeOwnerId = args.participantId;
+ *                        delete args.encounter._effects.wiatrakReclaim;
+ *                        await this.effect.delete();
+ *                      } else if (args.phase === "turn-end") {
+ *                        // Apply +20% fatigue then remove marker
+ *                        await this.effect.delete();
+ *                      }
  *
  * Context available inside every script (via `this`):
  *   this.effect                    — The ActiveEffect owning this script
@@ -3437,10 +3569,13 @@ export class NeuroshimaScriptRunner {
     worldTimeUpdate:  "World Time Update",
     preApplyCondition:      "Pre-Apply Condition",
     applyCondition:         "Apply Condition",
+    preMeleePool:           "Pre-Melee Pool",
     preOpposedAttacker:     "Pre-Opposed Attacker",
     preOpposedDefender:     "Pre-Opposed Defender",
-    postExchangeResult:     "Post-Exchange Result",
-    getMeleeActions:        "Get Melee Actions"
+    opposedAttacker:        "Opposed Attacker",
+    opposedDefender:        "Opposed Defender",
+    getMeleeActions:        "Get Melee Actions",
+    meleeUpdate:            "Melee Update"
   };
 
   static _makeHealingModifierProxy() {
@@ -3548,7 +3683,9 @@ export class NeuroshimaScriptRunner {
       healingMethod: rc.healingMethod ?? null,
       weapon: rc.weapon ?? null,
       wounds: rc.wounds ?? [],
-      stat: rc.stat ?? null
+      stat: rc.stat ?? null,
+      skillKey: null,
+      skillLabel: null
     };
     const args = {
       actor,
@@ -3606,7 +3743,9 @@ export class NeuroshimaScriptRunner {
       healingModifierAll: fields.healingModifierAll || 0,
       healingModifier: fields.healingModifier?._raw ?? fields.healingModifier ?? {},
       healingDifficulty: fields.healingDifficulty?._raw ?? fields.healingDifficulty ?? {},
-      burstLevelOverride: fields.burstLevel !== initialBurstLevel ? Math.max(0, Math.floor(fields.burstLevel)) : null
+      burstLevelOverride: fields.burstLevel !== initialBurstLevel ? Math.max(0, Math.floor(fields.burstLevel)) : null,
+      skillKey: fields.skillKey || null,
+      skillLabel: fields.skillLabel || null
     };
   }
 
@@ -4173,7 +4312,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [] },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -4269,7 +4408,7 @@ export class NeuroshimaScriptRunner {
       });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [] };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -4318,6 +4457,8 @@ export class NeuroshimaScriptRunner {
       if (result.healingModifierAll || Object.keys(result.healingModifier || {}).length > 0) {
         scriptFields.healingModBreakdown.push({ label, healingModifierAll: result.healingModifierAll || 0, healingModifier: result.healingModifier || {} });
       }
+      if (result.skillKey) scriptFields.skillKey = result.skillKey;
+      if (result.skillLabel) scriptFields.skillLabel = result.skillLabel;
     }
 
     return { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown };
@@ -4463,6 +4604,26 @@ export class NeuroshimaScriptRunner {
       if (!actor || actors.has(actor.id)) continue;
       actors.add(actor.id);
       await this.execute("updateCombat", { actor, combat, updates });
+    }
+  }
+
+  /**
+   * Run meleeUpdate scripts for all active participants in a melee encounter.
+   * Fires at key lifecycle transition points: "segment-advance", "turn-end", "turn-start".
+   * The encounter object is passed as mutable — scripts may modify turnState before it is saved.
+   * @param {string} encounterId
+   * @param {object} encounter  Mutable encounter data (deepClone in progress, not yet saved)
+   * @param {string} phase      "segment-advance" | "turn-end" | "turn-start"
+   */
+  static async runMeleeUpdate(encounterId, encounter, phase) {
+    for (const [participantId, p] of Object.entries(encounter.participants)) {
+      if (!p.isActive) continue;
+      const doc = fromUuidSync(p.actorUuid);
+      const actor = doc?.actor || doc;
+      if (!actor) continue;
+      await this.execute("meleeUpdate", {
+        actor, encounter, encounterId, phase, participant: p, participantId
+      });
     }
   }
 

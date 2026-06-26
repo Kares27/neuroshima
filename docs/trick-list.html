@@ -883,7 +883,7 @@ args.participant.blockDamageShift = -<span class="num">1</span>;
 </div>
 
 <div class="callout info">
-  <strong>Alternatywna implementacja przez postExchangeResult:</strong> Zamiast <code>preOpposedDefender</code> marker może też ustawiać shift w <code>postExchangeResult</code> na <code>args.blockDamageShift = -1</code>. Obie drogi są równoważne i obsługiwane przez silnik.
+  <strong>Alternatywna implementacja przez opposedDefender:</strong> Zamiast <code>preOpposedDefender</code> marker może też ustawiać shift w <code>opposedDefender</code> na <code>args.blockDamageShift = -1</code>. Obie drogi są równoważne i obsługiwane przez silnik.
 </div>
 <div class="callout warning">
   <strong>Warunek narracyjny:</strong> Garda działa tylko vs nieuzbrojony humanoid. Zweryfikuj narracyjnie — trudno sprawdzić automatycznie czy atakujący jest bez broni w momencie rzutu obronnego.
@@ -927,23 +927,44 @@ args.participant.blockDamageShift = -<span class="num">1</span>;
 <h3>33. Gunfight</h3>
 <p><strong>Wymagania:</strong> Pistolety 4+, Zręczność 14+</p>
 <p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20. Przy strzale z przyłożenia walczący używa Pistoletów zamiast Bijatyki/Broni ręcznej w walce wręcz. Nie można tą umiejętnością podwyższać wyników kości przeciwnika (reguła Podwójnego Działania).</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 AE (<code>transferType: self</code>) z 2 skryptami.</strong><br>
+  Skrypt <code>dialog</code> zastępuje umiejętność i ustawia flagę na aktorze.<br>
+  Skrypt <code>preMeleePool</code> przenosi flagę na uczestnika puli walki — silnik blokuje wtedy kierowanie punków umiejętności na kości przeciwnika.
+</div>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy ataku wręcz pistoletem/rewolwerem</div>
 <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span> <span class="kw">true</span>;
 <span class="kw">const</span> <span class="var">sub</span> = args.weapon?.system?.rangedSubtype;
-<span class="kw">return</span> <span class="var">sub</span> !== <span class="str">"pistols"</span> &amp;&amp; <span class="var">sub</span> !== <span class="str">"revolver"</span>;</code></pre>
+<span class="kw">return</span> <span class="var">sub</span> !== <span class="str">"pistols"</span> && <span class="var">sub</span> !== <span class="str">"revolver"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zastąp umiejętność wartością Pistoletów</div>
-<pre><code><span class="cmt">// Brak useSkillOverride w silniku — kompensujemy różnicę przez skillBonus.</span>
-<span class="cmt">// Wynik: efektywna umiejętność = wartość Pistoletów gracza.</span>
-<span class="kw">const</span> <span class="var">pistols</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"pistols"</span>);
-args.fields.skillBonus += <span class="var">pistols</span> - (args.skill?.value ?? <span class="num">0</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zastąp umiejętność wartością Pistoletów + ustaw flagę</div>
+<pre><code><span class="cmt">// Nadpisujemy klucz umiejętności (wyświetlany w podglądzie dialogu od wersji z skillKey).</span>
+args.fields.skillKey = <span class="str">"pistols"</span>;
+<span class="cmt">// Kompensujemy różnicę — efektywna umiejętność = wartość Pistoletów.</span>
+<span class="kw">const</span> <span class="var">pistols</span> = args.actor.system.skills?.pistols?.value ?? <span class="num">0</span>;
+args.fields.skillBonus += <span class="var">pistols</span> - (args.skill?.value ?? <span class="num">0</span>);
+<span class="cmt">// Flaga: preMeleePool ustawi participant.cannotTargetOpponentDice = true.</span>
+<span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"gunfightActive"</span>, <span class="kw">true</span>);</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preMeleePool</span> Zablokuj kierowanie umiejętności na kości przeciwnika</div>
+<pre><code><span class="cmt">// Odpala się po rzucie 3k20, przed zapisaniem puli w silniku walki wręcz.</span>
+<span class="cmt">// args.participant to obiekt uczestnika przechowywany w encounter store.</span>
+<span class="kw">const</span> <span class="var">active</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"gunfightActive"</span>);
+<span class="kw">if</span> (!<span class="var">active</span>) <span class="kw">return</span>;
+<span class="kw">await</span> args.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"gunfightActive"</span>);
+<span class="cmt">// Silnik sprawdza participant.cannotTargetOpponentDice w allocateSkill().</span>
+args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code></pre>
 </div>
 </div>
-<div class="callout warning">
-  <strong>Ograniczenie Podwójnego Działania:</strong> Narracyjne — silnik nie rozróżnia która umiejętność jest "prawdziwa". MG nie stosuje podnoszenia wyników kości przeciwnika gdy Gunfight jest aktywny, mimo że wartość sumaryczna może to sugerować.
+
+<div class="callout info">
+  <strong>Jak działa <code>cannotTargetOpponentDice</code>:</strong> Flaga ustawiona na obiekcie uczestnika jest zapisywana w MeleeStore. Metoda <code>allocateSkill()</code> sprawdza ją przed próbą kierowania punktów na kości oponenta — jeśli jest <code>true</code>, operacja jest odrzucana. Gracz może nadal obniżać własne kości (Podwójne Działanie samodzielne).
 </div>
 </section>
 
@@ -1289,19 +1310,25 @@ args.fields.skillBonus += <span class="var">pistols</span> - (args.skill?.value 
 <section id="trick-065-osmiornica">
 <h3>65. Ośmiornica</h3>
 <p><strong>Wymagania:</strong> Bijatyka 4+ lub Broń ręczna 4+, Kondycja 2+, Spryt 12+</p>
-<p><strong>Mechanika:</strong> Decyzja przed rzutem: -2 Zr w obronie, ale może użyć Zwiększonego tempa bez Inicjatywy.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem: -2 Zr w obronie, ale może użyć manewru Zwiększone tempo nawet bez Inicjatywy.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 AE (<code>transferType: self</code>).</strong><br>
+  Skrypt <code>dialog</code> dodaje -2 do Zręczności (kara za agresywny manewr). Dostępny przy braku inicjatywy.<br>
+  Manewr <strong>Zwiększone tempo</strong> jest dostępny w oknie rzutu dla obu stron walki — sztuczka nie wymaga żadnej dodatkowej logiki dla samej opcji tempa.
+</div>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy obronnym rzucie melee (brak Inicjatywy)</div>
+<pre><code><span class="cmt">// Pokaż tylko gdy walczymy wręcz jako obrońca (brak inicjatywy).</span>
+<span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">return</span> <span class="kw">this</span>.<span class="fn">hasMeleeInitiative</span>();</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.attributeBonus -= <span class="num">2</span>;</code></pre>
-</div>
-<div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Ośmiornica&lt;/b&gt;: -2 Zr w obronie. Możesz użyć Zwiększonego tempa bez Inicjatywy."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> -2 Zr w obronie</div>
+<pre><code><span class="cmt">// Kara do Zręczności (zarówno do puli atrybutu jak i snapshotura walki).</span>
+args.fields.attributeBonus -= <span class="num">2</span>;</code></pre>
 </div>
 </div>
 </section>
@@ -1486,20 +1513,37 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <section id="trick-082-rrrroooaaarrr">
 <h3>82. Rrrroooaaarrr</h3>
 <p><strong>Wymagania:</strong> Bijatyka 2+, Charakter 12+</p>
-<p><strong>Mechanika:</strong> Bojowy okrzyk podczas Furii lub Szarży — pobliskie jednostki muszą zdać test Morale.</p>
+<p><strong>Mechanika:</strong> Bojowy okrzyk podczas Furii lub Szarży — pobliskie wrogie jednostki muszą zdać test Morale (jak przy zasadzie <em>Najpierw spójrz mi w oczy</em>). Działa tylko raz vs ten sam przeciwnik; max 5 wrogów jednocześnie.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 AE (<code>transferType: self</code>) z wyzwalaczem <code>opposedAttacker</code>.</strong><br>
+  Efekt odpala się po rozstrzygnięciu wymiany dla atakującego — jeśli walczący przeprowadził manewr Furia lub Szarża, wysyła wymagany test Morale dla aktywnych wrogów. Flaga na aktorze śledzi użycie vs konkretny target (reset po turze).
+</div>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
-<pre><code>args.actions.push({
-  id: <span class="str">"rrrroooaaarrr"</span>,
-  name: <span class="str">"Rrrroooaaarrr!"</span>,
-  damage: <span class="str">"—"</span>,
-  successCost: <span class="num">0</span>,
-  minDice: <span class="num">1</span>,
-  maxDice: <span class="num">2</span>,
-  annotation: <span class="str">"Okrzyk: wszyscy pobliżni wrogowie zdają test Morale. Wymaga manewru Furia lub Szarża."</span>
+<div class="example-header"><span class="trigger-badge">opposedAttacker</span> Wymuś test Morale po ataku z Furią / Szarżą</div>
+<pre><code><span class="cmt">// Odpal tylko dla atakującego (strona inicjatywy), który wybrał Furię lub Szarżę.</span>
+<span class="kw">const</span> <span class="var">maneuver</span> = args.attacker?.maneuver;
+<span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span> &&
+    <span class="var">maneuver</span> !== <span class="str">"charge"</span> && <span class="var">maneuver</span> !== <span class="str">"szarza"</span>) <span class="kw">return</span>;
+
+<span class="cmt">// Sprawdź czy efekt już użyty vs ten cel (flaga na aktorze).</span>
+<span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">"rrrroooaaarrr_</span>" + args.defenderId;
+<span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>)) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>, <span class="kw">true</span>);
+
+<span class="cmt">// Test Morale dla przeciwnika.</span>
+<span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
+  testKey:    <span class="str">"morale"</span>,
+  difficulty: <span class="str">"average"</span>,
+  label:      <span class="str">"Morale — Rrrroooaaarrr! (okrzyk bojowy)"</span>
 });</code></pre>
 </div>
+</div>
+
+<div class="callout warning">
+  <strong>Ograniczenie "tylko raz vs ten sam przeciwnik":</strong> Flaga <code>rrrroooaaarrr_{defenderId}</code> ustawiana na aktorze blokuje kolejne użycia. Reset następuje przez usunięcie efektu (MG) lub skryptem odpoczynku. Max 5 wrogów — weryfikacja narracyjna przez MG.
 </div>
 </section>
 
@@ -1672,19 +1716,45 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <section id="trick-097-szachista">
 <h3>97. Szachista</h3>
 <p><strong>Wymagania:</strong> Broń ręczna 4+ lub Bijatyka 4+</p>
-<p><strong>Mechanika:</strong> +3 Zr w ataku; może oddać Inicjatywę by dostać bonus.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 lub przed testem Inicjatywy. Walczący oddaje Inicjatywę — w zamian otrzymuje +3 do Zręczności w obronie do czasu, aż sam nie przejmie Inicjatywy.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
+  <strong>AE nr 1</strong> — <em>„Szachista"</em> (<code>transferType: self</code>): checkbox w dialogu ataku (tylko gdy aktor ma inicjatywę). Po zaznaczeniu natychmiast oddaje inicjatywę i aplikuje marker.<br>
+  <strong>AE nr 2</strong> — <em>„Szachista – Bonus"</em> (<code>transferType: other</code>): persistent marker. <code>preOpposedDefender</code> dodaje +3 do progu trudności obrony. <code>opposedDefender</code> usuwa marker gdy obrońca przejmie inicjatywę (takeover).
+</div>
+
+<h4 class="script-label">Efekt nr 1 — „Szachista" (transferType: self)</h4>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko gdy aktor ma inicjatywę</div>
+<pre><code><span class="cmt">// Szachista dostępny tylko dla posiadacza inicjatywy — może ją oddać.</span>
+<span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">return</span> !<span class="kw">this</span>.<span class="fn">hasMeleeInitiative</span>();</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.attributeBonus += <span class="num">3</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Oddaj inicjatywę + aplikuj marker bonusu</div>
+<pre><code><span class="cmt">// Oddaj inicjatywę przeciwnikowi przez wbudowany helper.</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">yieldMeleeInitiative</span>();
+<span class="cmt">// Aplikuj marker — AE nr 2 na liście efektów (index 1).</span>
+<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
+</div>
+</div>
+
+<h4 class="script-label">Efekt nr 2 — „Szachista – Bonus" (transferType: other)</h4>
+<p class="example-desc">Persistent marker aplikowany na aktorze przez AE nr 1. Dodaje +3 do progu trudności obrony we wszystkich wymianach. Usuwa się gdy aktor przejmie inicjatywę (takeover).</p>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preOpposedDefender</span> +3 do progu trudności obrony</div>
+<pre><code><span class="cmt">// Szachista: bonus obronny aktywny dopóki marker istnieje na aktorze.</span>
+args.difficultyTarget += <span class="num">3</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Szachista&lt;/b&gt;: +3 Zr aktywne. Możesz oddać Inicjatywę by uzyskać bonus."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">opposedDefender</span> Usuń marker po przejęciu inicjatywy</div>
+<pre><code><span class="cmt">// Marker wygasa gdy obrońca przejmie inicjatywę (takeover jako defender).</span>
+<span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
 </div>
 </section>
@@ -1760,19 +1830,26 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <section id="trick-105-taran">
 <h3>105. Taran</h3>
 <p><strong>Wymagania:</strong> Broń ręczna 5+, Budowa 14+</p>
-<p><strong>Mechanika:</strong> Decyzja przed rzutem: -4 Zr w obronie, ale przy trafieniu obrażenia o 1 poziom wyższe.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem: -4 Zr (zarówno w ataku jak i obronie), ale przy trafieniu obrażenia o 1 poziom wyższe (D→L→C→K). Dotyczy cięższych broni (pałki, młoty, miecze, łańcuchy).</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 AE (<code>transferType: self</code>).</strong><br>
+  Skrypt <code>dialog</code> ustawia -4 Zr i podnosi poziom obrażeń przez <code>damageShift1/2/3</code> — każdy poziom dice count dostaje +1 tier. Razem silnik walki automatycznie stosuje wyższy poziom obrażeń przy trafieniu.
+</div>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko dla walki wręcz (atak lub obrona)</div>
 <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.attributeBonus -= <span class="num">4</span>;</code></pre>
-</div>
-<div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Taran&lt;/b&gt;: -4 Zr w obronie. Przy trafieniu obrażenia o 1 poziom wyższe."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> -4 Zr + obrażenia 1 poziom wyższe</div>
+<pre><code><span class="cmt">// -4 Zr = kara do snapshotu ataku i obrony w tej turze.</span>
+args.fields.attributeBonus -= <span class="num">4</span>;
+<span class="cmt">// Obrażenia o 1 tier wyższe przy trafieniu dla każdej liczby kości (1/2/3 kości).</span>
+args.fields.damageShift1 += <span class="num">1</span>;
+args.fields.damageShift2 += <span class="num">1</span>;
+args.fields.damageShift3 += <span class="num">1</span>;</code></pre>
 </div>
 </div>
 </section>
@@ -1817,15 +1894,26 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <section id="trick-110-walka-dwiema-broniami">
 <h3>110. Walka dwiema broniami</h3>
 <p><strong>Wymagania:</strong> Broń ręczna 5+, Zręczność 12+</p>
-<p><strong>Mechanika:</strong> Walcząc dwiema broniami: dodaje połowę punktów drugiej umiejętności walki.</p>
+<p><strong>Mechanika:</strong> Walcząc dwiema broniami: dodaje połowę punktów Umiejętności drugiej broni jako bonus do aktywnego testu melee.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 AE (<code>transferType: self</code>).</strong><br>
+  Skrypt <code>dialog</code> dodaje do <code>skillBonus</code> połowę wartości drugiej umiejętności walki. Domyślna implementacja bierze umiejętność <em>Broń ręczna</em> jako "drugą broń" — edytuj klucz (<code>"handWeapon"</code> lub <code>"brawling"</code>) na potrzeby konkretnej postaci.
+</div>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko w walce wręcz (atak)</div>
+<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">return</span> args.meleeAction !== <span class="str">"attack"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.skillBonus += Math.floor((<span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"brawling"</span>) ?? <span class="num">0</span>) / <span class="num">2</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +½ Umiejętności drugiej broni do testu</div>
+<pre><code><span class="cmt">// Zmień klucz drugiej umiejętności walki stosownie do postaci.</span>
+<span class="cmt">// "handWeapon" = Broń ręczna, "brawling" = Bijatyka.</span>
+<span class="kw">const</span> <span class="var">secondSkillKey</span> = <span class="str">"handWeapon"</span>;
+<span class="kw">const</span> <span class="var">secondSkill</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="var">secondSkillKey</span>) ?? <span class="num">0</span>;
+args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">secondSkill</span> / <span class="num">2</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1833,16 +1921,75 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <section id="trick-111-wiatrak">
 <h3>111. Wiatrak</h3>
 <p><strong>Wymagania:</strong> Bijatyka 2+, Charakter 12+</p>
-<p><strong>Mechanika:</strong> Manewr Furia: nie można stracić Inicjatywy w tej turze; odzyskuje ją automatycznie w następnym segmencie. Na koniec: +20% zmęczenia.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 przy manewrze Furia. Jeśli przeciwnik przejmie Inicjatywę — kara Furii działa (celny cios), ale w <strong>następnym segmencie</strong> walczący automatycznie odzyskuje Inicjatywę. Na koniec tury: +20% kary ze zmęczenia. Działa tylko przy Bijatyce.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
+  <strong>AE nr 1</strong> — <em>„Wiatrak"</em> (<code>transferType: self</code>): checkbox w dialogu melee. Kod aplikuje marker AE nr 2 na aktora.<br>
+  <strong>AE nr 2</strong> — <em>„Wiatrak – Aktywny"</em> (<code>transferType: other</code>): marker. <code>opposedAttacker</code> zapisuje intent do <code>encounter._effects.wiatrakReclaim</code>. <code>meleeUpdate</code> obsługuje oba momenty: <code>segment-advance</code> (przywróć inicjatywę) i <code>turn-end</code> (nałóż zmęczenie i usuń marker).<br>
+  <strong>Brak zmian silnika</strong> — całość przez wyzwalacze <code>opposedAttacker</code> + <code>meleeUpdate</code>.
+</div>
+
+<h4 class="script-label">Efekt nr 1 — „Wiatrak" (transferType: self)</h4>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy ataku melee (Bijatyka)</div>
+<pre><code><span class="cmt">// Wiatrak działa tylko przy manewrze Furia — pokaż checkbox przy ataku wręcz.</span>
+<span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="cmt">// Ogranicz do Bijatyki.</span>
+<span class="kw">return</span> args.weapon?.system?.skill !== <span class="str">"brawling"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Wiatrak (Furia)&lt;/b&gt;: Nie możesz stracić Inicjatywy tej tury. Na koniec tury: +20% zmęczenia."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Aplikuj marker Wiatraku</div>
+<pre><code><span class="cmt">// Aplikuj marker — AE nr 2 (index 1).</span>
+<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
 </div>
+</div>
+
+<h4 class="script-label">Efekt nr 2 — „Wiatrak – Aktywny" (transferType: other)</h4>
+<p class="example-desc">Marker aplikowany przez AE nr 1. <code>opposedAttacker</code> zapisuje intent do <code>encounter._effects</code>. <code>meleeUpdate</code> wykonuje właściwą akcję zależnie od fazy.</p>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">opposedAttacker</span> Zaznacz odzysk inicjatywy gdy Furia + takeover</div>
+<pre><code><span class="cmt">// Odpal tylko gdy atakujący z Furią stracił inicjatywę (takeover).</span>
+<span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">maneuver</span> = args.attacker?.maneuver;
+<span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span>) <span class="kw">return</span>;
+<span class="cmt">// Znajdź ID uczestnika (tego aktora) w encounter.</span>
+<span class="kw">const</span> <span class="var">myId</span> = Object.<span class="fn">entries</span>(args.encounter.participants)
+  .<span class="fn">find</span>(([id, p]) => p.actorUuid === <span class="kw">this</span>.actor.uuid)?.[<span class="num">0</span>];
+<span class="kw">if</span> (!<span class="var">myId</span>) <span class="kw">return</span>;
+<span class="cmt">// Zapisz intent do _effects — meleeUpdate wykona odzysk w segment-advance.</span>
+args.encounter._effects = args.encounter._effects || {};
+args.encounter._effects.wiatrakReclaim = <span class="var">myId</span>;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Wykonaj odzysk inicjatywy (segment-advance) lub nałóż zmęczenie (turn-end)</div>
+<pre><code><span class="kw">const</span> <span class="var">myId</span> = Object.<span class="fn">entries</span>(args.encounter.participants)
+  .<span class="fn">find</span>(([id, p]) => p.actorUuid === <span class="kw">this</span>.actor.uuid)?.[<span class="num">0</span>];
+
+<span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
+  <span class="kw">if</span> (args.encounter._effects?.wiatrakReclaim !== <span class="var">myId</span>) <span class="kw">return</span>;
+  <span class="cmt">// Przywróć inicjatywę — atakujący następnego segmentu.</span>
+  args.encounter.turnState.initiativeOwnerId = <span class="var">myId</span>;
+  <span class="kw">delete</span> args.encounter._effects.wiatrakReclaim;
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+} <span class="kw">else if</span> (args.phase === <span class="str">"turn-end"</span>) {
+  <span class="kw">if</span> (<span class="var">myId</span> !== args.participantId) <span class="kw">return</span>;
+  <span class="cmt">// Nałóż efekt zmęczenia (+20%) i usuń marker.</span>
+  <span class="kw">const</span> <span class="var">src</span> = <span class="kw">this</span>.actor.items.contents.<span class="fn">find</span>(
+    i => i.effects.size >= <span class="num">2</span> && i.effects.contents[<span class="num">1</span>]?.name === <span class="kw">this</span>.effect.name
+  );
+  <span class="kw">const</span> <span class="var">fatigueEffect</span> = <span class="var">src</span>?.effects.contents[<span class="num">2</span>];
+  <span class="kw">if</span> (<span class="var">fatigueEffect</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">fatigueEffect</span>, [<span class="kw">this</span>.actor]);
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+}</code></pre>
+</div>
+</div>
+
+<div class="callout info">
+  <strong>Jak działa <code>meleeUpdate</code> dla Wiatraku:</strong> <code>opposedAttacker</code> zapisuje ID uczestnika do <code>encounter._effects.wiatrakReclaim</code>. Przy <code>phase === "segment-advance"</code> silnik odpala <code>meleeUpdate</code> dla wszystkich aktywnych uczestników — skrypt Wiatraku sprawdza flagę, przywraca <code>initiativeOwnerId</code> i usuwa marker. Przy <code>phase === "turn-end"</code> nakłada zmęczenie. Namespace <code>_effects</code> jest resetowany automatycznie na początku każdej tury (<code>startNewTurn</code> ustawia <code>updated._effects = {}</code>).
 </div>
 </section>
 
@@ -1876,20 +2023,54 @@ args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? <s
 <section id="trick-115-wyczekanie">
 <h3>115. Wyczekanie</h3>
 <p><strong>Wymagania:</strong> Bijatyka 6+ lub Broń ręczna 6+, Percepcja 12+</p>
-<p><strong>Mechanika:</strong> Decyzja przed rzutem (gdy brak Inicjatywy): -2 Zr w obronie, ale po przejęciu Inicjatywy: +4 Zr w ataku do końca tury.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem (gdy brak Inicjatywy): -2 Zr w obronie. Jeśli walczący przejmie Inicjatywę — otrzymuje +4 Zr w ataku do końca tury.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
+  <strong>AE nr 1</strong> — <em>„Wyczekanie"</em> (<code>transferType: self</code>): checkbox w dialogu (tylko gdy brak inicjatywy). Kod aplikuje -2 Zr i marker AE nr 2.<br>
+  <strong>AE nr 2</strong> — <em>„Wyczekanie – Bonus Ataku"</em> (<code>transferType: other</code>): marker. <code>opposedDefender</code> — gdy obrońca przejął inicjatywę (takeover): ustawia flagę bonusu. <code>preMeleePool</code> — gdy atak i flaga: +4 do snapshotu ataku, czyści flagę. <code>endTurn</code> — usuwa marker.
+</div>
+
+<h4 class="script-label">Efekt nr 1 — „Wyczekanie" (transferType: self)</h4>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko gdy brak inicjatywy (obrońca)</div>
+<pre><code><span class="cmt">// Wyczekanie dostępne tylko gdy walczący jest obrońcą (brak inicjatywy).</span>
+<span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
 <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">hasMeleeInitiative</span>();</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.attributeBonus -= <span class="num">2</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> -2 Zr w obronie + aplikuj marker</div>
+<pre><code><span class="cmt">// Kara do Zręczności w bieżącej turze (obrona).</span>
+args.fields.attributeBonus -= <span class="num">2</span>;
+<span class="cmt">// Aplikuj marker — AE nr 2 (index 1).</span>
+<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
+</div>
+</div>
+
+<h4 class="script-label">Efekt nr 2 — „Wyczekanie – Bonus Ataku" (transferType: other)</h4>
+<p class="example-desc">Marker aplikowany przez AE nr 1. Śledzi przejęcie inicjatywy i nagradza +4 Zr w następnym ataku. Usuwa się po zakończeniu tury.</p>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">opposedDefender</span> Ustaw flagę bonusu gdy obrońca przejął inicjatywę</div>
+<pre><code><span class="cmt">// Wyczekanie: nagradza tylko gdy obrońca (brak inicjatywy) przejmie inicjatywę (takeover).</span>
+<span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Wyczekanie&lt;/b&gt;: -2 Zr w obronie. Po przejęciu Inicjatywy: +4 Zr w ataku do końca tury."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">preMeleePool</span> +4 Zr w ataku po przejęciu inicjatywy</div>
+<pre><code><span class="cmt">// Bonus +4 Zr aktywny tylko gdy flaga ustawiona (po takeover) i w fazie ataku.</span>
+<span class="kw">if</span> (args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">bonusActive</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>);
+<span class="kw">if</span> (!<span class="var">bonusActive</span>) <span class="kw">return</span>;
+args.participant.attackTargetSnapshot += <span class="num">4</span>;
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>);</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">endTurn</span> Usuń marker i ewentualną flagę na koniec tury</div>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>);
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
 </div>
 </section>
@@ -1948,19 +2129,47 @@ args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? <s
 <section id="trick-122-zaslona">
 <h3>122. Zasłona</h3>
 <p><strong>Wymagania:</strong> Bijatyka 4+ lub Broń ręczna 4+</p>
-<p><strong>Mechanika:</strong> Decyzja przed rzutem: +2 Zr w obronie; w następnej turze -2 do ataku i obrony.</p>
+<p><strong>Mechanika:</strong> Decyzja przed rzutem: +2 Zr w obronie tej tury; w <strong>następnej</strong> turze -2 do Zręczności zarówno w ataku, jak i w obronie.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
+  <strong>AE nr 1</strong> — <em>„Zasłona"</em> (<code>transferType: self</code>): checkbox w dialogu melee. Kod daje +2 Zr i aplikuje marker AE nr 2.<br>
+  <strong>AE nr 2</strong> — <em>„Zasłona – Kara Następnej Tury"</em> (<code>transferType: other</code>): marker. <code>endTurn</code> — ustawia flagę „zastosuj przy kolejnym preMeleePool". <code>preMeleePool</code> — gdy flaga aktywna: -2 do <code>attackTargetSnapshot</code> i <code>defenseTargetSnapshot</code>, usuwa marker.
+</div>
+
+<h4 class="script-label">Efekt nr 1 — „Zasłona" (transferType: self)</h4>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko w walce wręcz</div>
 <pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.attributeBonus += <span class="num">2</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +2 Zr w obronie + aplikuj marker kary</div>
+<pre><code><span class="cmt">// Bonus obronny w bieżącej turze.</span>
+args.fields.attributeBonus += <span class="num">2</span>;
+<span class="cmt">// Aplikuj marker kary (AE nr 2, index 1) — obowiązuje od następnej tury.</span>
+<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
+</div>
+</div>
+
+<h4 class="script-label">Efekt nr 2 — „Zasłona – Kara Następnej Tury" (transferType: other)</h4>
+<p class="example-desc">Marker aplikowany przez AE nr 1. Na koniec bieżącej tury ustawia flagę; przy przygotowaniu puli w następnej turze aplikuje -2 do ataku i obrony, po czym usuwa siebie.</p>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">endTurn</span> Oznacz że kara działa w następnej turze</div>
+<pre><code><span class="cmt">// Koniec tury: aktywuj flagę — kara zastosuje się przy pierwszym preMeleePool.</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"zaslonaApplyNow"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Submit Script</span> Zatwierdzenie testu</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Zasłona&lt;/b&gt;: +2 Zr w obronie. W następnej turze: -2 do ataku i obrony."</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">preMeleePool</span> Zastosuj -2 Zr do ataku i obrony następnej tury</div>
+<pre><code><span class="cmt">// Kara działa tylko po aktywacji flagi (nie w bieżącej turze).</span>
+<span class="kw">const</span> <span class="var">applyNow</span> = <span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"zaslonaApplyNow"</span>);
+<span class="kw">if</span> (!<span class="var">applyNow</span>) <span class="kw">return</span>;
+<span class="cmt">// -2 do snapshotu ataku i obrony (niższa Zr = trudniejszy rzut).</span>
+args.participant.attackTargetSnapshot -= <span class="num">2</span>;
+args.participant.defenseTargetSnapshot -= <span class="num">2</span>;
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
 </div>
 </section>
@@ -1989,16 +2198,41 @@ args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? <s
 <section id="trick-126-zmylka">
 <h3>126. Zmyłka</h3>
 <p><strong>Wymagania:</strong> Blef 5+, Broń ręczna 3+</p>
-<p><strong>Mechanika:</strong> Raz na każdego przeciwnika: dodaje wartość Blefu do testu melee.</p>
+<p><strong>Mechanika:</strong> Podczas walki wręcz: dodaje wartość Blefu do testu melee. Można użyć tylko <strong>raz</strong> przeciwko temu samemu przeciwnikowi.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 AE (<code>transferType: self</code>).</strong><br>
+  Skrypt <code>dialog</code> dodaje Blef do puli i zaznacza flagę <code>zmylka_{opponentId}</code> — blokuje ponowne użycie vs ten sam cel. Flaga reset następuje przez usunięcie efektu lub odpoczynek.
+</div>
+
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko w walce wręcz (atak)</div>
+<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">return</span> args.meleeAction !== <span class="str">"attack"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.skillBonus += <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"bluffing"</span>) ?? <span class="num">0</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +Blef do testu, tylko raz vs ten sam przeciwnik</div>
+<pre><code><span class="cmt">// Znajdź ID aktywnego przeciwnika z encounter (primaryTargets).</span>
+<span class="kw">const</span> <span class="var">enc</span> = <span class="kw">this</span>.<span class="fn">getMeleeEncounter</span>();
+<span class="kw">const</span> <span class="var">myPid</span> = <span class="kw">this</span>.<span class="fn">getMeleeParticipantId</span>();
+<span class="kw">const</span> <span class="var">opponentPid</span> = <span class="var">enc</span>?.primaryTargets?.[<span class="var">myPid</span>] ?? <span class="kw">null</span>;
+<span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">"zmylka_"</span> + (<span class="var">opponentPid</span> ?? <span class="str">"unknown"</span>);
+
+<span class="cmt">// Sprawdź czy Zmyłka już użyta vs ten cel.</span>
+<span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>)) {
+  <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Zmyłka: już użyta vs ten przeciwnik."</span>, <span class="str">"warn"</span>);
+  <span class="kw">return</span>;
+}
+
+<span class="cmt">// Zastosuj bonus i zablokuj kolejne użycia vs tego samego wroga.</span>
+args.fields.skillBonus += <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"bluffing"</span>) ?? <span class="num">0</span>;
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>, <span class="kw">true</span>);</code></pre>
 </div>
+</div>
+
+<div class="callout warning">
+  <strong>Reset flagi:</strong> Flaga <code>zmylka_{opponentPid}</code> jest trwała na aktorze. MG może ją ręcznie usunąć (Foundry → Aktor → Flags) lub dodać skrypt odpoczynku, który usuwa wszystkie flagi z prefiksem <code>zmylka_</code>.
 </div>
 </section>
 

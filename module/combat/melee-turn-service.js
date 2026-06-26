@@ -22,6 +22,7 @@
  *   `doubleSkillAction` OFF: `_evaluateClosedTest` auto-applies skill during pool roll.
  */
 import { MeleeStore } from "./melee-store.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
  * Handles turn transitions, segment resets, and maneuver application for Melee Encounters.
@@ -171,6 +172,7 @@ export class MeleeTurnService {
     updated.turnState.segment = 1;
     updated.turnState.segmentCost = 0;
     updated.turnState.selectionTurn = null;
+    updated._effects = {};
 
     // Reset pool data for all participants
     for (const pId in updated.participants) {
@@ -225,6 +227,7 @@ export class MeleeTurnService {
     }
 
     game.neuroshima?.log("Starting new turn for melee encounter", { id, turn: updated.turnState.turn });
+    await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "turn-start");
     await MeleeStore.updateEncounter(id, updated);
 
     // MANEUVER — Conditions persist across turns within the same encounter.
@@ -340,6 +343,14 @@ export class MeleeTurnService {
       game.neuroshima?.log("setPool snapshot", {
         name: p.name, rollTarget, meleeAction,
         attackTarget: p.attackTargetSnapshot, defenseTarget: p.defenseTargetSnapshot
+      });
+
+      await NeuroshimaScriptRunner.execute("preMeleePool", {
+        actor,
+        encounter: updated,
+        participant: p,
+        meleeAction,
+        maneuver
       });
     }
 
@@ -730,6 +741,7 @@ export class MeleeTurnService {
     updated.turnState.segment = 1;
     updated.turnState.segmentCost = 0;
     updated.turnState.selectionTurn = null;
+    updated._effects = {};
 
     for (const pId in updated.participants) {
       const p = updated.participants[pId];
@@ -895,6 +907,7 @@ export class MeleeTurnService {
         spender.selfReductions[dieIndex] = current - 1;
       }
     } else {
+      if (spender.cannotTargetOpponentDice) return;
       if (!spender.spentOnOpponent[targetId]) {
         spender.spentOnOpponent[targetId] = new Array(target.pool.length).fill(0);
       }

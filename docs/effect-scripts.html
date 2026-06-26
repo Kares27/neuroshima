@@ -171,9 +171,12 @@
         <li><a href="#trigger-worldTimeUpdate">worldTimeUpdate — World Time Update</a></li>
         <li><a href="#trigger-preApplyCondition">preApplyCondition — Pre-Apply Condition</a></li>
         <li><a href="#trigger-applyCondition">applyCondition — Apply Condition</a></li>
+        <li><a href="#trigger-preMeleePool">preMeleePool — Pre-Melee Pool</a></li>
         <li><a href="#trigger-preOpposedAttacker">preOpposedAttacker — Pre-Opposed Attacker</a></li>
         <li><a href="#trigger-preOpposedDefender">preOpposedDefender — Pre-Opposed Defender</a></li>
-        <li><a href="#trigger-postExchangeResult">postExchangeResult — Post-Exchange Result</a></li>
+        <li><a href="#trigger-opposedAttacker">opposedAttacker — Opposed Attacker</a></li>
+        <li><a href="#trigger-opposedDefender">opposedDefender — Opposed Defender</a></li>
+        <li><a href="#trigger-meleeUpdate">meleeUpdate — Melee Update</a></li>
         <li><a href="#trigger-getMeleeActions">getMeleeActions — Get Melee Actions (sztuczki gracza)</a></li>
       </ul>
     </li>
@@ -1704,6 +1707,34 @@ args.piercing = <span class="num">0</span>;</code></pre>
 
 
 
+  <h3 id="trigger-preMeleePool">preMeleePool — <em>Pre-Melee Pool</em></h3>
+  <p>Uruchamiany <strong>po</strong> tym jak aktor rzucił 3k20 (wyniki są znane), ale <strong>przed</strong> zatwierdzeniem puli i jej widocznością dla przeciwnika. Odpala się tylko na aktorze który właśnie rzucał. Pozwala modyfikować progi trudności snapshotu ataku/obrony oraz klucz umiejętności.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor który rzucał pulę</td></tr>
+    <tr><td><code>args.encounter</code></td><td>object</td><td>Pełny stan pojedynku (MeleeEncounter)</td></tr>
+    <tr><td><code>args.participant</code></td><td>object</td><td>Dane uczestnika. <code>participant.id</code> = klucz w mapie uczestników</td></tr>
+    <tr><td><code>args.participant.attackTargetSnapshot</code></td><td>number</td><td><strong>Modyfikowalny</strong> — próg trudności dla ataku tego uczestnika</td></tr>
+    <tr><td><code>args.participant.defenseTargetSnapshot</code></td><td>number</td><td><strong>Modyfikowalny</strong> — próg trudności dla obrony tego uczestnika</td></tr>
+    <tr><td><code>args.participant.skillKey</code></td><td>string</td><td><strong>Modyfikowalny</strong> — klucz umiejętności używanej w tej turze (np. <code>"shooting"</code> dla Gunfight)</td></tr>
+    <tr><td><code>args.meleeAction</code></td><td>string</td><td><code>"attack"</code> lub <code>"defense"</code> — który dialog gracz otworzył</td></tr>
+    <tr><td><code>args.maneuver</code></td><td>string</td><td>Wybrany manewr (np. <code>"fury"</code>, <code>"fullDefense"</code>, <code>"none"</code>)</td></tr>
+  </tbody></table>
+  <div class="callout warning"><strong>Uwaga:</strong> <code>args.participant.damageShift</code> NIE jest tu modyfikowalny — wartość jest nadpisywana przez silnik po zakończeniu triggera. Dla modyfikacji damage toru użyj <code>preOpposedAttacker</code>.</div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preMeleePool</span> Ośmiornica — -2 do progu obrony, dozwól Zwiększone Tempo bez inicjatywy</div>
+    <pre><code><span class="cmt">// Kara do progu obrony (trudniej się bronić) w tej turze.</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
+args.participant.defenseTargetSnapshot -= <span class="num">2</span>;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preMeleePool</span> Gunfight — zamień umiejętność na Strzelanie</div>
+    <pre><code><span class="cmt">// Zastąp Bijatykę Strzelaniem dla tej tury (sztuczka Gunfight).</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
+args.participant.skillKey = <span class="str">"shooting"</span>;
+args.participant.skillLabel = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"shooting"</span>)?.label ?? <span class="str">"Strzelanie"</span>;</code></pre>
+  </div>
+
   <h3 id="trigger-preOpposedAttacker">preOpposedAttacker — <em>Pre-Opposed Attacker</em></h3>
   <p>Uruchamiany na początku rozwiązywania wymiany walki wręcz (tryb 1), na aktorze będącym <strong>atakującym</strong>, zanim policzone zostaną sukcesy. Pozwala modyfikować efektywny próg trudności testu atakującego. Modyfikuj <code>args.difficultyTarget</code> — wyższa wartość = łatwiej (więcej sukcesów), niższa = trudniej.</p>
   <table>
@@ -1767,70 +1798,113 @@ args.participant.blockDamageShift = -<span class="num">1</span>;
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// marker jednorazowy</span></code></pre>
   </div>
 
-  <h3 id="trigger-postExchangeResult">postExchangeResult — <em>Post-Exchange Result</em></h3>
-  <p>Odpala się <strong>po ustaleniu wyniku wymiany</strong> (trafienie/blok/przejęcie inicjatywy), ale <strong>przed aplikowaniem obrażeń</strong>. Odpala się dwukrotnie — raz na aktorze atakującym (<code>side:"attacker"</code>), raz na obrońcy (<code>side:"defender"</code>). Pozwala efektom reagować na wynik walki lub modyfikować typ obrażeń blokowanego ciosu.</p>
+  <h3 id="trigger-opposedAttacker">opposedAttacker — <em>Opposed Attacker</em></h3>
+  <p>Odpala się <strong>po ustaleniu wyniku wymiany</strong> (hit/block/takeover), ale <strong>przed aplikowaniem obrażeń</strong>. Odpala się <strong>tylko na aktorze-atakującym</strong> (posiadaczu inicjatywy). Analogiczny do <code>opposedAttacker</code> w WFRP4e.</p>
   <table>
-    <tbody>
-      <tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
-      <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktualny aktor (atakujący lub obrońca zależnie od <code>side</code>)</td></tr>
-      <tr><td><code>args.side</code></td><td>string</td><td><code>"attacker"</code> lub <code>"defender"</code> — która strona odpala skrypt</td></tr>
-      <tr><td><code>args.resultType</code></td><td>string</td><td><strong>Modyfikowalny</strong> wynik: <code>"hit"</code> / <code>"block"</code> / <code>"takeover"</code></td></tr>
-      <tr><td><code>args.blockDamageShift</code></td><td>number</td><td><strong>Modyfikowalny</strong> (domyślnie 0): przesuwa typ obrażeń na torze przy bloku. -1 = 1 tier niżej. Wartość ujemna → D−1 = brak obrażeń.</td></tr>
-      <tr><td><code>args.diceCount</code></td><td>number</td><td>Liczba kości atakującego (siła uderzenia: 1–3)</td></tr>
-      <tr><td><code>args.attackerSuccesses</code></td><td>number</td><td>Sukcesy atakującego (do odczytu)</td></tr>
-      <tr><td><code>args.defenderSuccesses</code></td><td>number</td><td>Sukcesy obrońcy (do odczytu)</td></tr>
-      <tr><td><code>args.attacker</code></td><td>object</td><td>Dane uczestnika-atakującego</td></tr>
-      <tr><td><code>args.defender</code></td><td>object</td><td>Dane uczestnika-obrońcy</td></tr>
-      <tr><td><code>args.encounter</code></td><td>object</td><td>Stan całej wymiany (do odczytu)</td></tr>
-    </tbody>
-  </table>
-
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor-atakujący</td></tr>
+    <tr><td><code>args.resultType</code></td><td>string</td><td>Wynik wymiany: <code>"hit"</code> / <code>"block"</code> / <code>"takeover"</code> (tylko do odczytu — zmiana przez spread-copy nie działa)</td></tr>
+    <tr><td><code>args.diceCount</code></td><td>number</td><td>Liczba kości zaangażowanych przez atakującego (1–3)</td></tr>
+    <tr><td><code>args.attackerSuccesses</code></td><td>number</td><td>Sukcesy atakującego</td></tr>
+    <tr><td><code>args.defenderSuccesses</code></td><td>number</td><td>Sukcesy obrońcy</td></tr>
+    <tr><td><code>args.attacker</code></td><td>object</td><td>Dane uczestnika-atakującego (referencja — modyfikowalna)</td></tr>
+    <tr><td><code>args.defender</code></td><td>object</td><td>Dane uczestnika-obrońcy (referencja — modyfikowalna)</td></tr>
+    <tr><td><code>args.encounter</code></td><td>object</td><td>Pełny stan pojedynku (referencja — modyfikowalna, w tym <code>encounter._effects</code>)</td></tr>
+    <tr><td><code>args.attackerId</code></td><td>string</td><td>ID uczestnika-atakującego</td></tr>
+    <tr><td><code>args.defenderId</code></td><td>string</td><td>ID uczestnika-obrońcy</td></tr>
+  </tbody></table>
+  <div class="callout info"><strong>Kanał stanu między triggerami:</strong> Użyj <code>args.encounter._effects.{klucz}</code> do przekazania informacji do <code>meleeUpdate</code>. Ten namespace jest automatycznie czyszczony na początku każdej tury (<code>turn-start</code>).</div>
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">postExchangeResult</span> Reakcja obrońcy po otrzymaniu trafienia — nałóż stan</div>
-    <pre><code><span class="cmt">// Odpala się na obrońcy po każdym trafieniu — np. dodaj kondycję "wstrząśnięty"</span>
-<span class="kw">if</span> (args.side !== <span class="str">"defender"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (args.resultType === <span class="str">"hit"</span>) {
-  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"shaken"</span>);
-}</code></pre>
+    <div class="example-header"><span class="trigger-badge">opposedAttacker</span> Wiatrak — zaznacz odzysk inicjatywy gdy Furia + takeover</div>
+    <pre><code><span class="cmt">// Furia: jeśli atakujący stracił inicjatywę (takeover), zaznacz intent do odzysku.</span>
+<span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">maneuver</span> = args.attacker?.maneuver;
+<span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">myId</span> = Object.<span class="fn">entries</span>(args.encounter.participants)
+  .<span class="fn">find</span>(([, p]) => p.actorUuid === <span class="kw">this</span>.actor.uuid)?.[<span class="num">0</span>];
+<span class="kw">if</span> (!<span class="var">myId</span>) <span class="kw">return</span>;
+args.encounter._effects = args.encounter._effects || {};
+args.encounter._effects.wiatrakReclaim = <span class="var">myId</span>;</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">opposedAttacker</span> Rrrroooaaarrr — wymusz test Morale po Furii/Szarży</div>
+    <pre><code><span class="cmt">// Wywołaj test Morale dla obrońcy jeśli manewr to Furia lub Szarża.</span>
+<span class="kw">const</span> <span class="var">maneuver</span> = args.attacker?.maneuver;
+<span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span> &&
+    <span class="var">maneuver</span> !== <span class="str">"charge"</span> && <span class="var">maneuver</span> !== <span class="str">"szarza"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">"rrrroooaaarrr_"</span> + args.defenderId;
+<span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>)) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>, <span class="kw">true</span>);</code></pre>
   </div>
 
-  <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">postExchangeResult</span> Garda — alternatywna wersja przez postExchangeResult zamiast preOpposedDefender</div>
-    <pre><code><span class="cmt">// Alternatywa dla preOpposedDefender: marker na efekcie ustawia blockDamageShift = -1</span>
-<span class="cmt">// bezpośrednio w args zamiast w args.participant.</span>
-<span class="kw">if</span> (args.side !== <span class="str">"defender"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (args.resultType === <span class="str">"block"</span>) {
-  args.blockDamageShift = -<span class="num">1</span>; <span class="cmt">// C → L, L → D, D → brak obrażeń</span>
-  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// marker jednorazowy</span>
-}</code></pre>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">postExchangeResult</span> Wyczekanie — po przejęciu inicjatywy: bonus do ataku</div>
-    <pre><code><span class="cmt">// Wyczekanie: jeśli aktor przejął inicjatywę, jego attackTargetSnapshot rośnie o +4</span>
-<span class="cmt">// (wyższy próg = łatwiejsze sukcesy) do końca tury.</span>
-<span class="kw">if</span> (args.side !== <span class="str">"defender"</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (args.resultType === <span class="str">"takeover"</span>) {
-  <span class="cmt">// Po przejęciu inicjatywy — args.defender to teraz nowy atakujący</span>
-  args.defender.attackTargetSnapshot = (args.defender.attackTargetSnapshot || <span class="num">10</span>) + <span class="num">4</span>;
-  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// efekt jednorazowy</span>
-}</code></pre>
-  </div>
-
+  <h3 id="trigger-opposedDefender">opposedDefender — <em>Opposed Defender</em></h3>
+  <p>Analogiczny do <code>opposedAttacker</code>, ale odpala się <strong>tylko na aktorze-obrońcy</strong>. Pozwala reagować na wynik wymiany z perspektywy obrony — np. gdy blok redukuje obrażenia (Garda) lub gdy przejęcie inicjatywy nagradza bonusem (Wyczekanie).</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor-obrońca</td></tr>
+    <tr><td><code>args.resultType</code></td><td>string</td><td>Wynik wymiany: <code>"hit"</code> / <code>"block"</code> / <code>"takeover"</code></td></tr>
+    <tr><td><code>args.defender</code></td><td>object</td><td>Dane uczestnika-obrońcy (referencja). <code>args.defender.blockDamageShift = -1</code> → obrażenia o 1 tier niżej przy bloku</td></tr>
+    <tr><td><code>args.attacker</code></td><td>object</td><td>Dane uczestnika-atakującego (referencja — do odczytu)</td></tr>
+    <tr><td><code>args.encounter</code></td><td>object</td><td>Pełny stan pojedynku (referencja)</td></tr>
+    <tr><td><code>args.diceCount</code></td><td>number</td><td>Liczba kości atakującego</td></tr>
+    <tr><td><code>args.attackerSuccesses / args.defenderSuccesses</code></td><td>number</td><td>Sukcesy obu stron</td></tr>
+  </tbody></table>
   <div class="callout info">
-    <strong>blockDamageShift — pełna tabela wartości:</strong>
+    <strong>blockDamageShift — modyfikacja przez referencję:</strong> Użyj <code>args.defender.blockDamageShift = N</code> (obiekt-referencja, działa). NIE używaj <code>args.blockDamageShift = N</code> (spread-kopia, wartość ginie). Preferowana alternatywa: <code>preOpposedDefender</code> → <code>args.participant.blockDamageShift = -1</code>.<br>
     <table style="margin-top:0.5rem">
-      <thead><tr><th>Atak (dice)</th><th>Normalny wynik</th><th>shift = -1</th><th>shift = -2</th><th>shift = -3</th></tr></thead>
+      <thead><tr><th>Atak (dice)</th><th>Normalny blok</th><th>blockDamageShift = -1</th><th>blockDamageShift = -2</th></tr></thead>
       <tbody>
-        <tr><td>3 kości (C)</td><td>Ciężka rana (C)</td><td>Lekka rana (L)</td><td>Draśnięcie (D)</td><td>Brak</td></tr>
-        <tr><td>2 kości (L)</td><td>Lekka rana (L)</td><td>Draśnięcie (D)</td><td>Brak</td><td>Brak</td></tr>
-        <tr><td>1 kość (D)</td><td>Draśnięcie (D)</td><td>Brak</td><td>Brak</td><td>Brak</td></tr>
+        <tr><td>3 kości (C)</td><td>brak obrażeń</td><td>Lekka rana (L)</td><td>Draśnięcie (D)</td></tr>
+        <tr><td>2 kości (L)</td><td>brak obrażeń</td><td>Draśnięcie (D)</td><td>brak obrażeń</td></tr>
+        <tr><td>1 kość (D)</td><td>brak obrażeń</td><td>brak obrażeń</td><td>brak obrażeń</td></tr>
       </tbody>
     </table>
-    Oba sposoby ustawienia są równoważne:<br>
-    1. <code>preOpposedDefender</code>: <code>args.participant.blockDamageShift = -1</code><br>
-    2. <code>postExchangeResult</code>: <code>args.blockDamageShift = -1</code> (gdy <code>args.resultType === "block"</code>)<br>
-    Silnik automatycznie łączy obie wartości (sumuje). Pancerz i <code>preTakeDamage</code> nadal stosują się do zredukowanego typu.
+  </div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">opposedDefender</span> Szachista — usuń marker gdy obrońca przejął inicjatywę</div>
+    <pre><code><span class="cmt">// Marker Szachisty wygasa gdy obrońca przejmie inicjatywę (takeover).</span>
+<span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
+  </div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">opposedDefender</span> Reakcja obrońcy po otrzymaniu trafienia — nałóż kondycję</div>
+    <pre><code><span class="cmt">// Gdy obrońca dostał cios — nałóż kondycję "wstrząśnięty".</span>
+<span class="kw">if</span> (args.resultType !== <span class="str">"hit"</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"shaken"</span>);</code></pre>
+  </div>
+
+  <h3 id="trigger-meleeUpdate">meleeUpdate — <em>Melee Update</em></h3>
+  <p>Odpala się w <strong>kluczowych punktach przejścia</strong> stanu maszyny stanów melee — analogicznie do <code>updateCombat</code> w Foundry, ale scoped do wewnętrznego lifecycle pojedynku. Odpala się dla <strong>każdego aktywnego uczestnika</strong>. Użyj do efektów zależnych od segmentu lub końca tury.</p>
+  <table>
+    <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
+    <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor-uczestnik</td></tr>
+    <tr><td><code>args.phase</code></td><td>string</td><td>Faza przejścia — patrz tabela poniżej</td></tr>
+    <tr><td><code>args.encounter</code></td><td>object</td><td>Stan pojedynku (mutable — zmiany są zapisywane)</td></tr>
+    <tr><td><code>args.encounterId</code></td><td>string</td><td>ID pojedynku</td></tr>
+    <tr><td><code>args.participant</code></td><td>object</td><td>Dane uczestnika (referencja)</td></tr>
+    <tr><td><code>args.participantId</code></td><td>string</td><td>Klucz uczestnika w mapie</td></tr>
+  </tbody></table>
+  <table style="margin-top:0.5rem">
+    <thead><tr><th>phase</th><th>Kiedy odpala się</th><th>Typowe użycie</th></tr></thead>
+    <tbody>
+      <tr><td><code>"segment-advance"</code></td><td>Po każdej wymianie, gdy segment się przesuwa (segment ≤ 3)</td><td>Odzysk inicjatywy, jednorazowe efekty segmentowe</td></tr>
+      <tr><td><code>"turn-end"</code></td><td>Gdy wszystkie 3 segmenty wyczerpane, przed resetem tury</td><td>Kary zmęczenia (+20%), usunięcie markerów</td></tr>
+      <tr><td><code>"turn-start"</code></td><td>Nowa tura ustawiona (pule zresetowane, inicjatywa posortowana)</td><td>Inicjalizacja efektów nowej tury (rzadko używane)</td></tr>
+    </tbody>
+  </table>
+  <div class="callout info"><strong>encounter._effects:</strong> Namespace zarezerwowany dla skryptów efektów. Silnik nigdy go nie odczytuje. Czyszczony automatycznie przy <code>turn-start</code>. Użyj go do przekazywania stanu między <code>opposedAttacker</code>/<code>opposedDefender</code> a <code>meleeUpdate</code>.</div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Wiatrak — odzysk inicjatywy (segment-advance) lub zmęczenie (turn-end)</div>
+    <pre><code><span class="kw">const</span> <span class="var">myId</span> = args.participantId;
+<span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
+  <span class="kw">if</span> (args.encounter._effects?.wiatrakReclaim !== <span class="var">myId</span>) <span class="kw">return</span>;
+  args.encounter.turnState.initiativeOwnerId = <span class="var">myId</span>;
+  <span class="kw">delete</span> args.encounter._effects.wiatrakReclaim;
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+} <span class="kw">else if</span> (args.phase === <span class="str">"turn-end"</span>) {
+  <span class="cmt">// Nałóż +20% zmęczenia i usuń marker.</span>
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+}</code></pre>
   </div>
 
   <h3 id="trigger-getMeleeActions">getMeleeActions — <em>Get Melee Actions</em></h3>
