@@ -810,9 +810,11 @@ args.fields.attributeBonus += <span class="num">3</span>;
 
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">endTurn</span> Nałóż zmęczenie i usuń marker</div>
-<pre><code><span class="cmt">// Sztuczka Flash jest itemem na aktorze — szukamy przez actor.items.contents.</span>
-<span class="cmt">// Identyfikujemy item po tym, że jego contents[1] ma tę samą nazwę co ten marker.</span>
+<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Nałóż zmęczenie i usuń marker (faza turn-end)</div>
+<pre><code><span class="cmt">// Odpala się gdy melee tura kończy się (3 segmenty wyczerpane).</span>
+<span class="cmt">// Nie używamy endTurn (Foundry tracker) — tu chodzi o koniec melee tury.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
+<span class="cmt">// Sztuczka Flash jest itemem na aktorze — szukamy przez actor.items.contents.</span>
 <span class="cmt">// Konwencja: contents[0]=dialog, contents[1]=marker, contents[2]=zmęczenie.</span>
 <span class="kw">const</span> <span class="var">src</span> = <span class="kw">this</span>.actor.items.contents.<span class="fn">find</span>(
   i =&gt; i.effects.size === <span class="num">3</span> && i.effects.contents[<span class="num">1</span>]?.name === <span class="kw">this</span>.effect.name
@@ -828,16 +830,14 @@ args.fields.attributeBonus += <span class="num">3</span>;
 
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preRollTest</span> +20% kary do każdego testu umiejętności/atrybutu</div>
+<div class="example-header"><span class="trigger-badge">preRollTest</span> +20% kary do wszystkich testów — umiejętności, atrybutów i rzutów bronią</div>
 <pre><code>args.test.preData.penalties.mod += <span class="num">20</span>;
 <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Zmęczenie (Błysk): +20%"</span>);</code></pre>
 </div>
 </div>
 
-<div class="callout warning">
-  <strong>Uwaga:</strong> <code>preRollTest</code> odpala się tylko dla <code>rollTest</code> (testy umiejętności i atrybutów), <strong>nie</strong> dla <code>rollWeaponTest</code> (rzuty bronią). Jeśli zmęczenie ma karać też rzuty bronią, dodaj na Efekcie nr 3 skrypt <code>preWeaponShot</code>:
-  <pre style="margin-top:0.5rem"><code>args.rollData.penalties = args.rollData.penalties ?? {};
-args.rollData.penalties.mod = (args.rollData.penalties.mod ?? 0) + <span class="num">20</span>;</code></pre>
+<div class="callout info">
+  <strong>preRollTest działa dla wszystkich rzutów:</strong> od tej wersji wyzwalacz <code>preRollTest</code> odpala się zarówno dla testów umiejętności/atrybutów (<code>rollTest</code>), jak i dla <strong>rzutów bronią</strong> (<code>rollWeaponTest</code>). Przy rzucie bronią obecny jest <code>args.test.weapon</code> — możesz go używać jako flagi: <code>if (!args.test.weapon) return;</code> aby skrypt działał tylko przy testach umiejętności, lub <code>if (!args.test.context.isMelee) return;</code> aby ograniczyć do dystansu.
 </div>
 
 </section>
@@ -2029,7 +2029,7 @@ args.test.preData.dieReductionBonus = (args.test.preData.dieReductionBonus ?? <s
 <div class="callout info">
   <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
   <strong>AE nr 1</strong> — <em>„Wyczekanie"</em> (<code>transferType: self</code>): checkbox w dialogu (tylko gdy brak inicjatywy). Kod aplikuje -2 Zr i marker AE nr 2.<br>
-  <strong>AE nr 2</strong> — <em>„Wyczekanie – Bonus Ataku"</em> (<code>transferType: other</code>): marker. <code>opposedDefender</code> — gdy obrońca przejął inicjatywę (takeover): ustawia flagę bonusu. <code>preMeleePool</code> — gdy atak i flaga: +4 do snapshotu ataku, czyści flagę. <code>endTurn</code> — usuwa marker.
+  <strong>AE nr 2</strong> — <em>„Wyczekanie – Bonus Ataku"</em> (<code>transferType: other</code>): marker. <code>opposedDefender</code> — gdy takeover: ustawia <code>args.defender.wyczekanieBonusPending = true</code> (prop na uczestniku w store, przeżywa reset tury). <code>preMeleePool</code> — gdy atak i prop aktywny: +4 do snapshotu, usuwa marker i czyści prop. <code>meleeUpdate "turn-end"</code> — sprzątanie gdy bonus nie użyty.
 </div>
 
 <h4 class="script-label">Efekt nr 1 — „Wyczekanie" (transferType: self)</h4>
@@ -2051,26 +2051,30 @@ args.fields.attributeBonus -= <span class="num">2</span>;
 </div>
 
 <h4 class="script-label">Efekt nr 2 — „Wyczekanie – Bonus Ataku" (transferType: other)</h4>
-<p class="example-desc">Marker aplikowany przez AE nr 1. Śledzi przejęcie inicjatywy i nagradza +4 Zr w następnym ataku. Usuwa się po zakończeniu tury.</p>
+<p class="example-desc">Marker aplikowany przez AE nr 1. Śledzi przejęcie inicjatywy i nagradza +4 Zr w następnym ataku. Bonus przechowywany jako właściwość uczestnika w encounter store — bez flag. Usuwa się po zakończeniu melee tury.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">opposedDefender</span> Ustaw flagę bonusu gdy obrońca przejął inicjatywę</div>
-<pre><code><span class="cmt">// Wyczekanie: nagradza tylko gdy obrońca (brak inicjatywy) przejmie inicjatywę (takeover).</span>
+<div class="example-header"><span class="trigger-badge">opposedDefender</span> Zapisz bonus na uczestniku gdy obrońca przejął inicjatywę</div>
+<pre><code><span class="cmt">// Wyczekanie: nagradza tylko gdy obrońca przejmie inicjatywę (takeover).</span>
+<span class="cmt">// args.defender jest referencją do uczestnika zapisywaną w encounter store.</span>
+<span class="cmt">// Właściwość przeżywa reset tury — startNewTurn czyści tylko znane pola.</span>
 <span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>, <span class="kw">true</span>);</code></pre>
+args.defender.wyczekanieBonusPending = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preMeleePool</span> +4 Zr w ataku po przejęciu inicjatywy</div>
-<pre><code><span class="cmt">// Bonus +4 Zr aktywny tylko gdy flaga ustawiona (po takeover) i w fazie ataku.</span>
+<div class="example-header"><span class="trigger-badge">preMeleePool</span> +4 Zr w ataku gdy bonus oczekuje (następna tura, faza ataku)</div>
+<pre><code><span class="cmt">// Bonus aktywny tylko w fazie ataku i gdy właściwość ustawiona przez opposedDefender.</span>
 <span class="kw">if</span> (args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">bonusActive</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>);
-<span class="kw">if</span> (!<span class="var">bonusActive</span>) <span class="kw">return</span>;
-args.participant.attackTargetSnapshot += <span class="num">4</span>;
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>);</code></pre>
+<span class="kw">if</span> (!args.participant.wyczekanieBonusPending) <span class="kw">return</span>;
+args.participant.attackTargetSnapshot = (args.participant.attackTargetSnapshot ?? <span class="num">10</span>) + <span class="num">4</span>;
+args.participant.wyczekanieBonusPending = <span class="kw">false</span>;
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">endTurn</span> Usuń marker i ewentualną flagę na koniec tury</div>
-<pre><code><span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"wyczekanieBonusActive"</span>);
+<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Usuń marker na koniec melee tury (faza turn-end)</div>
+<pre><code><span class="cmt">// Jeśli bonus nie został użyty (takeover nie nastąpił) — usuń marker na końcu tury.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
+args.participant.wyczekanieBonusPending = <span class="kw">false</span>;
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
 </div>
@@ -2135,7 +2139,7 @@ args.participant.attackTargetSnapshot += <span class="num">4</span>;
 <div class="callout info">
   <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
   <strong>AE nr 1</strong> — <em>„Zasłona"</em> (<code>transferType: self</code>): checkbox w dialogu melee. Kod daje +2 Zr i aplikuje marker AE nr 2.<br>
-  <strong>AE nr 2</strong> — <em>„Zasłona – Kara Następnej Tury"</em> (<code>transferType: other</code>): marker. <code>endTurn</code> — ustawia flagę „zastosuj przy kolejnym preMeleePool". <code>preMeleePool</code> — gdy flaga aktywna: -2 do <code>attackTargetSnapshot</code> i <code>defenseTargetSnapshot</code>, usuwa marker.
+  <strong>AE nr 2</strong> — <em>„Zasłona – Kara Następnej Tury"</em> (<code>transferType: other</code>): marker. <code>meleeUpdate "turn-end"</code> — ustawia <code>args.participant.zaslonaKaraPending = true</code> (prop na uczestniku, przeżywa reset tury, bez flag). <code>preMeleePool</code> — gdy prop aktywny: -2 do <code>attackTargetSnapshot</code> i <code>defenseTargetSnapshot</code>, usuwa marker i czyści prop.
 </div>
 
 <h4 class="script-label">Efekt nr 1 — „Zasłona" (transferType: self)</h4>
@@ -2155,21 +2159,23 @@ args.fields.attributeBonus += <span class="num">2</span>;
 </div>
 
 <h4 class="script-label">Efekt nr 2 — „Zasłona – Kara Następnej Tury" (transferType: other)</h4>
-<p class="example-desc">Marker aplikowany przez AE nr 1. Na koniec bieżącej tury ustawia flagę; przy przygotowaniu puli w następnej turze aplikuje -2 do ataku i obrony, po czym usuwa siebie.</p>
+<p class="example-desc">Marker aplikowany przez AE nr 1. Na koniec melee tury zapisuje pending-prop na uczestniku; przy przygotowaniu puli w następnej turze aplikuje -2 do ataku i obrony i usuwa siebie. Bez flag.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">endTurn</span> Oznacz że kara działa w następnej turze</div>
-<pre><code><span class="cmt">// Koniec tury: aktywuj flagę — kara zastosuje się przy pierwszym preMeleePool.</span>
-<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"zaslonaApplyNow"</span>, <span class="kw">true</span>);</code></pre>
+<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Zapisz pending na uczestniku na koniec melee tury (faza turn-end)</div>
+<pre><code><span class="cmt">// Koniec melee tury — zaznacz że kara ma zadziałać przy rzucie puli następnej tury.</span>
+<span class="cmt">// args.participant jest referencją zapisywaną w store — przeżywa startNewTurn.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
+args.participant.zaslonaKaraPending = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preMeleePool</span> Zastosuj -2 Zr do ataku i obrony następnej tury</div>
-<pre><code><span class="cmt">// Kara działa tylko po aktywacji flagi (nie w bieżącej turze).</span>
-<span class="kw">const</span> <span class="var">applyNow</span> = <span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"zaslonaApplyNow"</span>);
-<span class="kw">if</span> (!<span class="var">applyNow</span>) <span class="kw">return</span>;
+<pre><code><span class="cmt">// Kara działa tylko gdy pending-prop ustawiony przez turn-end (nie w bieżącej turze).</span>
+<span class="kw">if</span> (!args.participant.zaslonaKaraPending) <span class="kw">return</span>;
 <span class="cmt">// -2 do snapshotu ataku i obrony (niższa Zr = trudniejszy rzut).</span>
-args.participant.attackTargetSnapshot -= <span class="num">2</span>;
-args.participant.defenseTargetSnapshot -= <span class="num">2</span>;
+args.participant.attackTargetSnapshot = (args.participant.attackTargetSnapshot ?? <span class="num">10</span>) - <span class="num">2</span>;
+args.participant.defenseTargetSnapshot = (args.participant.defenseTargetSnapshot ?? <span class="num">10</span>) - <span class="num">2</span>;
+args.participant.zaslonaKaraPending = <span class="kw">false</span>;
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
 </div>

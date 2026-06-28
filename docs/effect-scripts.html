@@ -831,28 +831,62 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
 
   <!-- preRollTest -->
   <h3 id="trigger-preRollTest">preRollTest — <em>Pre-Roll Test</em></h3>
-  <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut lub umiejętność. Obsługuje wszystkie modyfikacje przed rzuceniem kośćmi: anulowanie rzutu, automatyczny sukces, zmianę parametrów (atrybut, umiejętność, kary, bonusy). Jest to główny trigger do mutowania wartości statystyk przed rzutem.</p>
-  <p>Argumenty są dostępne przez obiekt <code>args.test</code> — wzorzec analogiczny do warhammer-lib.</p>
+  <p>Uruchamiany <em>przed</em> każdym rzutem na atrybut/umiejętność <strong>oraz przed każdym rzutem bronią</strong> (dystansowym i wręcz). Obsługuje wszystkie modyfikacje przed obliczeniem progu trafienia: zmianę kar, bonusów, anulowanie rzutu, automatyczny sukces. Jest to główny trigger do nakładania pasywnych kar i bonusów niezależnie od typu rzutu.</p>
+  <p>Argumenty są dostępne przez obiekt <code>args.test</code>. Przy rzucie bronią obecne jest <code>args.test.weapon</code> — użyj go do rozróżnienia kontekstu.</p>
+  <div class="callout info">
+    <strong>Rozróżnianie kontekstu:</strong><br>
+    <code>args.test.weapon</code> — obecne (truthy) tylko przy rzucie bronią (<code>rollWeaponTest</code>). Null przy testach umiejętności.<br>
+    <code>args.test.rollType</code> — <code>"weapon"</code> przy rzucie bronią, brak/undefined przy teście umiejętności.<br>
+    <code>args.test.context.isMelee</code> — <code>true</code> jeśli broń wręcz (tylko przy rzucie bronią).<br>
+    <code>args.test.attribute</code> i <code>args.test.skill</code> — dostępne tylko przy testach umiejętności/atrybutów (null przy rzucie bronią).
+  </div>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.test.actor</td><td>Actor</td><td>Rzucający aktor</td></tr>
-    <tr><td>args.test.attribute</td><td>{ key, value, name } | null</td><td>Atrybut rzutu — modyfikuj <code>args.test.attribute.value += 5</code></td></tr>
-    <tr><td>args.test.skill</td><td>{ key, value, name } | null</td><td>Umiejętność rzutu — modyfikuj <code>args.test.skill.value += 1</code>. Null przy rzucie czysto atrybutowym</td></tr>
+    <tr><td>args.test.weapon</td><td>Item | undefined</td><td><strong>Tylko przy rzucie bronią:</strong> item broni. Null/undefined przy testach umiejętności</td></tr>
+    <tr><td>args.test.rollType</td><td>string | undefined</td><td><code>"weapon"</code> przy rzucie bronią; undefined przy teście umiejętności</td></tr>
+    <tr><td>args.test.attribute</td><td>{ key, value, name } | null</td><td><strong>Tylko przy teście umiejętności:</strong> atrybut rzutu — modyfikuj <code>args.test.attribute.value += 5</code></td></tr>
+    <tr><td>args.test.skill</td><td>{ key, value, name } | null</td><td><strong>Tylko przy teście umiejętności:</strong> umiejętność — modyfikuj <code>args.test.skill.value += 1</code></td></tr>
     <tr><td>args.test.item</td><td>Item | null</td><td>Item użyty do rzutu (z <code>options.item</code>), jeśli podany</td></tr>
-    <tr><td>args.test.preData.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base, disease }</code> — modyfikuj <code>args.test.preData.penalties.mod -= 20</code></td></tr>
-    <tr><td>args.test.preData.skillBonus</td><td>number</td><td>Bonus do umiejętności — modyfikuj bezpośrednio</td></tr>
-    <tr><td>args.test.preData.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio</td></tr>
-    <tr><td>args.test.preData.label</td><td>string</td><td>Etykieta rzutu (read-only)</td></tr>
-    <tr><td>args.test.preData.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces</td></tr>
-    <tr><td>args.test.preData.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut</td></tr>
-    <tr><td>args.test.preData.annotation</td><td>string</td><td>Tekst pokazywany w chacie przy auto-sukcesie (zastępuje domyślny)</td></tr>
+    <tr><td>args.test.preData.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base, disease }</code> — modyfikuj <code>args.test.preData.penalties.mod += 20</code> (działa dla obu typów)</td></tr>
+    <tr><td>args.test.preData.skillBonus</td><td>number</td><td>Bonus do umiejętności — modyfikuj bezpośrednio (działa dla obu typów)</td></tr>
+    <tr><td>args.test.preData.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio (działa dla obu typów)</td></tr>
+    <tr><td>args.test.preData.label</td><td>string</td><td>Etykieta rzutu (read-only, tylko testy umiejętności)</td></tr>
+    <tr><td>args.test.preData.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces (tylko testy umiejętności)</td></tr>
+    <tr><td>args.test.preData.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut (tylko testy umiejętności)</td></tr>
     <tr><td>args.test.preData.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
-    <tr><td>args.test.preData.dieManualBonus</td><td>number</td><td>Liczba oczek do rozdysponowania przez gracza w UI czatu (patrz <code>args.fields.dieManualBonus</code>). Modyfikuj bezpośrednio: <code>args.test.preData.dieManualBonus = 2</code>.</td></tr>
-    <tr><td>args.test.preData.dieReductionBonus</td><td>number</td><td>Automatyczna redukcja kości pomijająca slider umiejętności (patrz <code>args.fields.dieReductionBonus</code>). Modyfikuj bezpośrednio: <code>args.test.preData.dieReductionBonus += 1</code>.</td></tr>
-    <tr><td>args.test.context.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code> (read-only)</td></tr>
-    <tr><td>args.test.context.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code> (read-only)</td></tr>
+    <tr><td>args.test.preData.dieManualBonus</td><td>number</td><td>Liczba oczek do rozdysponowania przez gracza w UI czatu. Modyfikuj bezpośrednio: <code>args.test.preData.dieManualBonus = 2</code></td></tr>
+    <tr><td>args.test.preData.dieReductionBonus</td><td>number</td><td>Automatyczna redukcja kości pomijająca slider umiejętności. Modyfikuj bezpośrednio: <code>args.test.preData.dieReductionBonus += 1</code></td></tr>
+    <tr><td>args.test.context.attributeKey</td><td>string | null</td><td>Klucz atrybutu np. <code>"dexterity"</code> (testy umiejętności) lub null (rzuty bronią)</td></tr>
+    <tr><td>args.test.context.skillKey</td><td>string | null</td><td>Klucz umiejętności np. <code>"stealth"</code> — przy rzucie bronią to klucz skill broni</td></tr>
+    <tr><td>args.test.context.isMelee</td><td>boolean | undefined</td><td><strong>Tylko przy rzucie bronią:</strong> true = broń wręcz, false = dystansowa</td></tr>
+    <tr><td>args.test.context.meleeAction</td><td>string | undefined</td><td><strong>Tylko przy rzucie melee:</strong> <code>"attack"</code> lub <code>"defense"</code></td></tr>
     <tr><td>args.test.context.options</td><td>object</td><td>Opcje rzutu — tu odczytuj flagi ustawione przez submission script w dialogu</td></tr>
   </tbody></table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preRollTest</span> Pasywna kara +20% do WSZYSTKICH rzutów (zmęczenie, Flash)</div>
+    <pre><code><span class="cmt">// Działa dla: testów umiejętności, rzutów bronią (melee i dystans).</span>
+<span class="cmt">// Nie trzeba oddzielnego preWeaponShot dla kar procentowych.</span>
+args.test.preData.penalties.mod += <span class="num">20</span>;
+<span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Zmęczenie: +20%"</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preRollTest</span> Kara tylko przy rzutach bronią dystansową (nie dotyczy testów umiejętności)</div>
+    <pre><code><span class="cmt">// args.test.weapon obecne = rzut bronią; context.isMelee = false = dystans.</span>
+<span class="kw">if</span> (!args.test.weapon || args.test.context.isMelee) <span class="kw">return</span>;
+args.test.preData.penalties.mod += <span class="num">10</span>;
+<span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Kara do strzelania"</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preRollTest</span> Auto-sukces testu konkretnej umiejętności (nie przy rzutach bronią)</div>
+    <pre><code><span class="cmt">// args.test.weapon brak = test umiejętności/atrybutu.</span>
+<span class="kw">if</span> (args.test.weapon) <span class="kw">return</span>;
+<span class="kw">if</span> (args.test.context.skillKey !== <span class="str">"painResistance"</span>) <span class="kw">return</span>;
+args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
+  </div>
 
   <!-- rollTest -->
   <h3 id="trigger-rollTest">rollTest — <em>Roll Test (post-roll)</em></h3>

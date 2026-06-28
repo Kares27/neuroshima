@@ -417,7 +417,32 @@ export class NeuroshimaDice {
     }
 
     // 5. Compute skill value and success threshold (must run before jam triggers)
-    const baseDifficulty = this.getDifficultyFromPercent(totalPenalty);
+    // preRollTest for weapon rolls: fires before threshold computation so passive penalty
+    // effects (e.g. fatigue +20%) apply equally to both skill tests and weapon rolls.
+    // args.test.weapon is present — scripts can distinguish weapon rolls from skill tests.
+    let extraWeaponModifier = 0;
+    let effectiveSkillBonus = skillBonus;
+    if (actor && !isReroll) {
+        const preWeaponTest = {
+            actor,
+            weapon,
+            rollType: "weapon",
+            preData: {
+                penalties: { mod: 0, wounds: woundPenalty, armor: armorPenalty, base: basePenalty },
+                skillBonus: effectiveSkillBonus,
+                attributeBonus: effectiveAttributeBonus,
+                autoSuccess: false,
+                cancelled: false,
+            },
+            context: { isMelee, meleeAction, skillKey: weapon.system.skill }
+        };
+        await NeuroshimaScriptRunner.execute("preRollTest", { test: preWeaponTest });
+        extraWeaponModifier = preWeaponTest.preData.penalties.mod ?? 0;
+        effectiveSkillBonus = preWeaponTest.preData.skillBonus ?? effectiveSkillBonus;
+        effectiveAttributeBonus = preWeaponTest.preData.attributeBonus ?? effectiveAttributeBonus;
+    }
+
+    const baseDifficulty = this.getDifficultyFromPercent(totalPenalty + extraWeaponModifier);
 
     let skillValue = 0;
     let skillKey = weapon.system.skill;
@@ -431,7 +456,7 @@ export class NeuroshimaDice {
         const baseSkill = (skillKey === "experience" && isCreature)
             ? (actor.system.experience ?? 0)
             : (actor.system.skills[skillKey]?.value || 0);
-        skillValue = baseSkill + skillBonus;
+        skillValue = baseSkill + effectiveSkillBonus;
         if (isMelee) {
             if (bonusMode === "skill" || bonusMode === "both") skillValue += weaponBonus;
         } else {
