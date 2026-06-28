@@ -41,7 +41,7 @@ export class NeuroshimaDice {
         chargeBonus = chargeLevel || 2;
     } else if (isMeleeInitiative) {
         // Fallback to active encounter if not provided in params
-        const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+        const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
         const encounter = NeuroshimaMeleeCombat.findActiveEncounterForActor(actor);
         if (encounter) {
             const p = encounter.participants[actor.uuid] || encounter.participants[actor.id];

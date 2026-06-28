@@ -2406,7 +2406,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                 const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
                 const hailData   = pendingMsg?.getFlag("neuroshima", "hailCard");
                 if (hailData?.status === "pending") {
-                    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+                    const { MeleeOpposedChat } = await import("../combat/combat.js");
                     await MeleeOpposedChat.hailDefendFromChat(opposeFlag.messageId);
                     this._isRolling = false;
                     return;
@@ -2420,7 +2420,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                         mode: opposeData.mode,
                         opposedChatMessageId: opposeFlag.messageId
                     };
-                    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+                    const { MeleeOpposedChat } = await import("../combat/combat.js");
                     await MeleeOpposedChat.openDefenseDialog(this.document, syntheticPending, weapon.id);
                     this._isRolling = false;
                     return;
@@ -2441,27 +2441,27 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                     : null;
                 const hailPendingData = pendingMsg?.getFlag("neuroshima", "hailCard");
                 if (hailPendingData?.status === "pending") {
-                    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+                    const { MeleeOpposedChat } = await import("../combat/combat.js");
                     await MeleeOpposedChat.hailDefendFromChat(opposedPending.opposedChatMessageId);
                     this._isRolling = false;
                     return;
                 }
                 const pendingMsgData = pendingMsg?.getFlag("neuroshima", "opposedChat");
                 if (pendingMsgData?.status === "pending") {
-                    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+                    const { MeleeOpposedChat } = await import("../combat/combat.js");
                     await MeleeOpposedChat.openDefenseDialog(this.document, opposedPending, weapon.id);
                     this._isRolling = false;
                     return;
                 }
                 // Stale entry — clean it up and fall through to start a new attack
-                const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+                const { MeleeOpposedChat } = await import("../combat/combat.js");
                 await MeleeOpposedChat._removePending(opposedPending.id ?? this.document.uuid);
             }
 
             // 3. No pending — initiate a new opposed attack against the current target
             const chatTargets = targetUuids.filter(uuid => !myUuidsCheck.includes(uuid));
             if (chatTargets.length > 0) {
-                const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+                const { MeleeOpposedChat } = await import("../combat/combat.js");
                 await MeleeOpposedChat.initiateAttack(this.document, weapon, chatTargets[0], effectiveMode);
                 this._isRolling = false;
                 return;
@@ -2967,7 +2967,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
       
       const activeEncounterId = this.document.getFlag("neuroshima", "activeMeleeEncounter");
       if (activeEncounterId) {
-          const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+          const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
           return NeuroshimaMeleeCombat.openMeleeApp(activeEncounterId);
       }
 
@@ -2980,7 +2980,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           const opposeData = pendingMsg?.getFlag("neuroshima", "opposedChat");
           const hailData   = pendingMsg?.getFlag("neuroshima", "hailCard");
           if (hailData?.status === "pending") {
-              const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+              const { MeleeOpposedChat } = await import("../combat/combat.js");
               await MeleeOpposedChat.hailDefendFromChat(opposeFlag.messageId);
               return;
           }
@@ -2993,7 +2993,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                   mode: opposeData.mode,
                   opposedChatMessageId: opposeFlag.messageId
               };
-              const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+              const { MeleeOpposedChat } = await import("../combat/combat.js");
               await MeleeOpposedChat.openDefenseDialog(this.document, syntheticPending);
               return;
           }
@@ -3007,11 +3007,11 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           const pendingMsg = pending.opposedChatMessageId ? game.messages.get(pending.opposedChatMessageId) : null;
           const hailPendingData = pendingMsg?.getFlag("neuroshima", "hailCard");
           if (hailPendingData?.status === "pending") {
-              const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+              const { MeleeOpposedChat } = await import("../combat/combat.js");
               await MeleeOpposedChat.hailDefendFromChat(pending.opposedChatMessageId);
               return;
           }
-          const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+          const { MeleeOpposedChat } = await import("../combat/combat.js");
           await MeleeOpposedChat.openDefenseDialog(this.document, pending);
           return;
       }
@@ -3031,7 +3031,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
                   isMeleeInitiative: true
               });
               
-              const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+              const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
               await NeuroshimaMeleeCombat.respondToMeleePending(pendingId, result.successPoints);
               
               this._isRolling = false;
@@ -3062,7 +3062,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         messageId = defActor?.getFlag("neuroshima", "oppose")?.messageId;
       }
 
-      const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+      const { MeleeOpposedChat } = await import("../combat/combat.js");
 
       if (messageId) {
         const msg = game.messages.get(messageId);
@@ -3072,7 +3072,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         }
       }
 
-      const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+      const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
       await NeuroshimaMeleeCombat.dismissMeleePending(pendingId);
 
       await MeleeOpposedChat._unsetDefenderFlag(pendingId);

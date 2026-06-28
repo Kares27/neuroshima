@@ -83,12 +83,12 @@ export class NeuroshimaChatMessage extends ChatMessage {
             this.onDuelSwapInit(event, message);
             break;
           case "duelUndoSegment": {
-            const { MeleeOpposedChat: _MOCUndo } = await import("../combat/melee-opposed-chat.js");
+            const { MeleeOpposedChat: _MOCUndo } = await import("../combat/combat.js");
             await _MOCUndo.undoDuelSegment(message.id);
             break;
           }
           case "duelRedoSegment": {
-            const { MeleeOpposedChat: _MOCRedo } = await import("../combat/melee-opposed-chat.js");
+            const { MeleeOpposedChat: _MOCRedo } = await import("../combat/combat.js");
             await _MOCRedo.redoDuelSegment(message.id);
             break;
           }
@@ -101,7 +101,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
               const id = el.dataset.actionId;
               for (let i = 0; i < qty; i++) selectedActionIds.push(id);
             });
-            const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+            const { MeleeOpposedChat } = await import("../combat/combat.js");
             await MeleeOpposedChat.applyBeastActions(message.id, selectedActionIds);
             btn.disabled = true;
             btn.classList.add("applied");
@@ -154,7 +154,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     const defenderId = targets[0];
 
-    const { NeuroshimaMeleeCombat } = await import("../combat/melee-combat.js");
+    const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
     await NeuroshimaMeleeCombat.startDuel(attackerId, defenderId, flags);
   }
 
@@ -164,7 +164,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static async onMeleeOpposedDefend(event, btn, message) {
     const weaponId = btn.dataset.weaponId || null;
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
     await MeleeOpposedChat.defendFromChat(message.id, weaponId);
   }
 
@@ -177,7 +177,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static async onApplyOpposedDamage(event, message) {
     const btn = event.currentTarget;
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
     await MeleeOpposedChat.applyOpposedDamage(message.id);
     if (btn) {
       btn.disabled = true;
@@ -195,7 +195,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static async onApplyHailDamage(event, message) {
     const btn = event.currentTarget;
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
     await MeleeOpposedChat.applyHailDamage(message.id);
     if (btn) {
       btn.disabled = true;
@@ -212,7 +212,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * @param {ChatMessage}   message
    */
   static async onHailDefend(event, message) {
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
     await MeleeOpposedChat.hailDefendFromChat(message.id);
   }
 
@@ -243,7 +243,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       if (side === "defender" && !defenderActor?.isOwner) return;
     }
 
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
     if (game.user.isGM) {
       await MeleeOpposedChat.applyDuelPick(message.id, side, dieIdx);
     } else if (game.neuroshima?.socket) {
@@ -260,7 +260,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    */
   static async onDuelSwapInit(event, message) {
     if (!game.user.isGM) return;
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
     await MeleeOpposedChat.swapDuelInitiative(message.id);
   }
 
@@ -288,7 +288,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     if (sideConfirmed) return;
 
     const patch = { type: "adjust", spender, target, dieIndex, delta };
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
 
     if (game.user.isGM) {
       await MeleeOpposedChat.applyAllocPatch(message.id, patch);
@@ -315,7 +315,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     if (sideConfirmed) return;
 
     const patch = { type: "reset", side };
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
 
     if (game.user.isGM) {
       await MeleeOpposedChat.applyAllocPatch(message.id, patch);
@@ -342,7 +342,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     if (sideConfirmed) return;
 
     const patch = { type: "confirm", side };
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
 
     if (game.user.isGM) {
       await MeleeOpposedChat.applyAllocPatch(message.id, patch);
@@ -670,7 +670,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       return;
     }
 
-    const { MeleeOpposedChat } = await import("../combat/melee-opposed-chat.js");
+    const { MeleeOpposedChat } = await import("../combat/combat.js");
     await MeleeOpposedChat.initiateAttack(attackerActor, syntheticWeapon, chatTargets[0].document.uuid, data.mode);
   }
 

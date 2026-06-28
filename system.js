@@ -16,7 +16,7 @@ import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.j
 import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
-import { NeuroshimaMeleeCombat } from "./module/combat/melee-combat.js";
+import { NeuroshimaMeleeCombat } from "./module/combat/combat.js";
 import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/config/combat-config.js";
@@ -43,10 +43,8 @@ import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/
 import { GMPayoutApp } from "./module/apps/gm/gm-payout-app.js";
 import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
-import { NeuroshimaCombatTracker } from "./module/combat/combat-tracker.js";
+import { NeuroshimaCombatTracker, MeleeVanillaChat, MeleeOpposedChat } from "./module/combat/combat.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
-import { MeleeVanillaChat } from "./module/combat/melee-vanilla-chat.js";
-import { MeleeOpposedChat } from "./module/combat/melee-opposed-chat.js";
 
 function _applyBurstLevelToDOM(messageIdOrEl, level, rollData) {
     let root;
@@ -2043,7 +2041,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                 rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
             };
 
-            const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
+            const { MeleeOpposedChat } = await import("./module/combat/combat.js");
             await MeleeOpposedChat._createHandlerCard(rawResult, attackerActor, weapon, defenderUuid, mode);
         }
     });
@@ -2871,13 +2869,13 @@ function initializeSocketlib() {
 
     // Specialized handler to end melee encounters (handles cross-actor flag cleanup)
     game.neuroshima.socket.register("removeMeleeEncounter", async (id) => {
-        const { MeleeStore } = await import("./module/combat/melee-store.js");
+        const { MeleeStore } = await import("./module/combat/combat.js");
         return MeleeStore.removeEncounter(id);
     });
 
     // Specialized handler to remove a melee pending
     game.neuroshima.socket.register("removeMeleePending", async (pendingUuid) => {
-        const { MeleeStore } = await import("./module/combat/melee-store.js");
+        const { MeleeStore } = await import("./module/combat/combat.js");
         return MeleeStore.removePending(pendingUuid);
     });
 
@@ -2940,11 +2938,10 @@ function initializeSocketlib() {
     });
 
     game.neuroshima.socket.register("postVanillaCard", async (cardType, encounterId) => {
-        const { MeleeVanillaChat } = await import("./module/combat/melee-vanilla-chat.js");
+        const { MeleeVanillaChat, MeleeStore } = await import("./module/combat/combat.js");
         if (cardType === "start") {
             await MeleeVanillaChat._syncEncounter(encounterId);
         } else if (cardType === "result") {
-            const { MeleeStore } = await import("./module/combat/melee-store.js");
             const enc = MeleeStore.getEncounter(encounterId);
             if (enc) await MeleeVanillaChat._postResultCard(encounterId, enc, null);
         }
@@ -2967,7 +2964,7 @@ function initializeSocketlib() {
 
     // Skill allocation patch — executed as GM so the message flag can be written
     game.neuroshima.socket.register("applySkillAlloc", async (messageId, patch) => {
-        const { MeleeOpposedChat } = await import("./module/combat/melee-opposed-chat.js");
+        const { MeleeOpposedChat } = await import("./module/combat/combat.js");
         await MeleeOpposedChat.applyAllocPatch(messageId, patch);
     });
 
@@ -3065,7 +3062,7 @@ function initializeSocketlib() {
 
     game.neuroshima.socket.register("clearActorManeuverConditions", async (actorUuid) => {
         game.neuroshima?.log("[socket:clearActorManeuverConditions] received", { actorUuid });
-        const { MeleeTurnService } = await import("./module/combat/melee-turn-service.js");
+        const { MeleeTurnService } = await import("./module/combat/combat.js");
         const doc = fromUuidSync(actorUuid);
         const actor = doc?.actor || doc;
         if (!actor) {

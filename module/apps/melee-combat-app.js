@@ -1,4 +1,4 @@
-import { MeleeStore } from "../combat/melee-store.js";
+import { MeleeStore, MeleeEncounter, MeleeTurnService } from "../combat/combat.js";
 /**
  * @file melee-combat-app.js
  * @description ApplicationV2 UI for the Neuroshima 1.5 Melee Combat system.
@@ -45,8 +45,7 @@ import { MeleeStore } from "../combat/melee-store.js";
  * Advancing a turn resets all pools and starts a fresh target-selection/pool phase.
  */
 
-import { MeleeEncounter } from "../combat/melee-encounter.js";
-import { MeleeTurnService } from "../combat/melee-turn-service.js";
+
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -90,7 +89,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         return MeleeTurnService.performAction(this.encounterId, target.dataset.id);
       },
       confirmDamageDistribution: async function(event, target) {
-        const { MeleeResolution } = await import("../combat/melee-resolution.js");
+        const { MeleeResolution } = await import("../combat/combat.js");
         return MeleeResolution.confirmDamageDistribution(this.encounterId, parseInt(target.dataset.optionIndex));
       },
       confirmDefense: function(event, target) {
@@ -549,29 +548,7 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       onRoll: async (rollResult) => {
         this._openPoolDialogs.delete(participantId);
         if (!rollResult) return;
-        const toNum = r => typeof r === "object" ? (r.value ?? r.result ?? r.original ?? Number(r)) : Number(r);
-        const results = (rollResult.results || []).map(toNum);
-        const modifiedPool = (rollResult.modifiedResults || []).map(r =>
-          typeof r === "object" ? toNum({ value: r.modified ?? r.original }) : toNum(r)
-        );
-        // Per-die success flags from the roll — matches what the chat card shows.
-        // isNat20 is stored separately so nat-20 dice always show as failure even
-        // if skill reduced their value below the target.
-        const dieResults = (rollResult.modifiedResults || []).map(r => ({
-          isSuccess: typeof r === "object" ? (r.isSuccess ?? false) : false,
-          isNat20:  typeof r === "object" ? (r.original === 20) : false
-        }));
-        const skillBudget = rollResult.skill ?? 0;
-        const maneuver = rollResult.maneuver || "none";
-        const tempoLevel = rollResult.tempoLevel || 0;
-        const attributeBonus = rollResult.attributeBonus || 0;
-        const rollTarget = typeof rollResult.target === "number" ? rollResult.target : null;
-        const meleeAction = rollResult.meleeAction || "attack";
-        const damageShift = rollResult.damageShift || 0;
-        const damageShift1 = rollResult.damageShift1 || 0;
-        const damageShift2 = rollResult.damageShift2 || 0;
-        const damageShift3 = rollResult.damageShift3 || 0;
-        await MeleeTurnService.setPool(this.encounterId, participantId, results, maneuver, tempoLevel, attributeBonus, modifiedPool, skillBudget, rollTarget, meleeAction, dieResults, damageShift, damageShift1, damageShift2, damageShift3);
+        await MeleeTurnService.setPool(this.encounterId, participantId, rollResult);
       }
     });
     this._openPoolDialogs.set(participantId, dialog);

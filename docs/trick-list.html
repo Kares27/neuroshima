@@ -930,8 +930,8 @@ args.participant.blockDamageShift = -<span class="num">1</span>;
 
 <div class="callout info">
   <strong>Implementacja: 1 AE (<code>transferType: self</code>) z 2 skryptami.</strong><br>
-  Skrypt <code>dialog</code> zastępuje umiejętność i ustawia flagę na aktorze.<br>
-  Skrypt <code>preMeleePool</code> przenosi flagę na uczestnika puli walki — silnik blokuje wtedy kierowanie punków umiejętności na kości przeciwnika.
+  Skrypt <code>dialog</code> zastępuje umiejętność i rejestruje aktywację przez <code>activateForMelee()</code>.<br>
+  Skrypt <code>preMeleePool</code> sprawdza aktywację przez <code>isActiveForMelee(args)</code> i ustawia <code>participant.cannotTargetOpponentDice = true</code> — silnik blokuje kierowanie punktów umiejętności na kości oponenta w <code>allocateSkill()</code>. Brak flag — aktywacja jest przechowywana w <code>encounter._effects._tricks</code> i czyszczona automatycznie na początku każdej tury.
 </div>
 
 <div class="ns-trick-scripts">
@@ -942,29 +942,30 @@ args.participant.blockDamageShift = -<span class="num">1</span>;
 <span class="kw">return</span> <span class="var">sub</span> !== <span class="str">"pistols"</span> && <span class="var">sub</span> !== <span class="str">"revolver"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zastąp umiejętność wartością Pistoletów + ustaw flagę</div>
-<pre><code><span class="cmt">// Nadpisujemy klucz umiejętności (wyświetlany w podglądzie dialogu od wersji z skillKey).</span>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zastąp umiejętność wartością Pistoletów + zarejestruj aktywację</div>
+<pre><code><span class="cmt">// Nadpisujemy klucz umiejętności (podgląd dialogu pokaże "Pistolety").</span>
 args.fields.skillKey = <span class="str">"pistols"</span>;
-<span class="cmt">// Kompensujemy różnicę — efektywna umiejętność = wartość Pistoletów.</span>
-<span class="kw">const</span> <span class="var">pistols</span> = args.actor.system.skills?.pistols?.value ?? <span class="num">0</span>;
+<span class="cmt">// Kompensujemy różnicę — efektywna wartość umiejętności w rzucie = Pistolety.</span>
+<span class="kw">const</span> <span class="var">pistols</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"pistols"</span>);
 args.fields.skillBonus += <span class="var">pistols</span> - (args.skill?.value ?? <span class="num">0</span>);
-<span class="cmt">// Flaga: preMeleePool ustawi participant.cannotTargetOpponentDice = true.</span>
-<span class="kw">await</span> args.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"gunfightActive"</span>, <span class="kw">true</span>);</code></pre>
+<span class="cmt">// Rejestruj aktywację w encounter store — bez flag, czyści się automatycznie.</span>
+<span class="kw">this</span>.<span class="fn">activateForMelee</span>();</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preMeleePool</span> Zablokuj kierowanie umiejętności na kości przeciwnika</div>
-<pre><code><span class="cmt">// Odpala się po rzucie 3k20, przed zapisaniem puli w silniku walki wręcz.</span>
-<span class="cmt">// args.participant to obiekt uczestnika przechowywany w encounter store.</span>
-<span class="kw">const</span> <span class="var">active</span> = args.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"gunfightActive"</span>);
-<span class="kw">if</span> (!<span class="var">active</span>) <span class="kw">return</span>;
-<span class="kw">await</span> args.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"gunfightActive"</span>);
-<span class="cmt">// Silnik sprawdza participant.cannotTargetOpponentDice w allocateSkill().</span>
+<pre><code><span class="cmt">// Odpala się po rzucie 3k20, przed zapisaniem puli w encounter store.</span>
+<span class="cmt">// isActiveForMelee() sprawdza encounter._effects._tricks — nie potrzeba flag.</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
+<span class="cmt">// Przekaż wybrany klucz umiejętności do uczestnika (dla wyświetlenia na karcie).</span>
+args.participant.skillKey = <span class="str">"pistols"</span>;
+<span class="cmt">// allocateSkill() sprawdza tę właściwość — odrzuca próbę kierowania na kości oponenta.</span>
 args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code></pre>
 </div>
 </div>
 
 <div class="callout info">
-  <strong>Jak działa <code>cannotTargetOpponentDice</code>:</strong> Flaga ustawiona na obiekcie uczestnika jest zapisywana w MeleeStore. Metoda <code>allocateSkill()</code> sprawdza ją przed próbą kierowania punktów na kości oponenta — jeśli jest <code>true</code>, operacja jest odrzucana. Gracz może nadal obniżać własne kości (Podwójne Działanie samodzielne).
+  <strong>Jak działa <code>cannotTargetOpponentDice</code>:</strong> Właściwość ustawiona na obiekcie uczestnika jest zapisywana w MeleeStore. Metoda <code>allocateSkill()</code> (<code>melee-turn-service.js</code> linia 910) sprawdza ją przed próbą kierowania punktów na kości oponenta — jeśli <code>true</code>, operacja jest odrzucana. Gracz może nadal obniżać własne kości (samodzielne Podwójne Działanie).<br>
+  <strong>Jak działa <code>activateForMelee()</code>:</strong> Zapisuje ID efektu + ID uczestnika w <code>encounter._effects._tricks</code>. Automatycznie czyszczone przy starcie kolejnej tury (<code>turn-start</code>). <code>isActiveForMelee(args)</code> odczytuje ten wpis — działa w każdym wyzwalaczu melee który otrzymuje <code>args.encounter</code> lub <code>args.participant</code>.
 </div>
 </section>
 

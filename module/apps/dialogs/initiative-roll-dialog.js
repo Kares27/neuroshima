@@ -353,8 +353,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
         let targetDoc = typeof rawTarget === "string" ? fromUuidSync(rawTarget) : rawTarget;
         const targetActor = targetDoc?.actor || targetDoc;
         if (targetActor?.getFlag) {
-          const { MeleeEncounter } = await import("../../combat/melee-encounter.js");
-          const { MeleeStore } = await import("../../combat/melee-store.js");
+          const { MeleeEncounter, MeleeStore } = await import("../../combat/combat.js");
           const activeEncounterId = targetActor.getFlag("neuroshima", "activeMeleeEncounter");
           const activeEncounter = activeEncounterId ? MeleeStore.getEncounter(activeEncounterId) : null;
           if (activeEncounter) {
@@ -365,7 +364,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
             }, "A");
           } else {
             if (activeEncounterId) await targetActor.unsetFlag("neuroshima", "activeMeleeEncounter");
-            const { NeuroshimaMeleeCombat } = await import("../../combat/melee-combat.js");
+            const { NeuroshimaMeleeCombat } = await import("../../combat/combat.js");
             await NeuroshimaMeleeCombat.initiateMeleePending(
               this.actor.uuid, targetActor.uuid, result.successPoints,
               this.weaponId, rollData.maneuver, rollData.chargeLevel

@@ -1887,12 +1887,18 @@ args.encounter._effects.wiatrakReclaim = <span class="var">myId</span>;</code></
   <table style="margin-top:0.5rem">
     <thead><tr><th>phase</th><th>Kiedy odpala się</th><th>Typowe użycie</th></tr></thead>
     <tbody>
-      <tr><td><code>"segment-advance"</code></td><td>Po każdej wymianie, gdy segment się przesuwa (segment ≤ 3)</td><td>Odzysk inicjatywy, jednorazowe efekty segmentowe</td></tr>
-      <tr><td><code>"turn-end"</code></td><td>Gdy wszystkie 3 segmenty wyczerpane, przed resetem tury</td><td>Kary zmęczenia (+20%), usunięcie markerów</td></tr>
+      <tr><td><code>"pool-ready"</code></td><td>Wszyscy uczestnicy rzucili 3k20 — zaraz przed fazą wyboru kości ataku</td><td>Efekty "przed pierwszą wymianą tury", warunki wejścia w manewry</td></tr>
+      <tr><td><code>"attack-committed"</code></td><td>Atakujący zatwierdził swoje kości — obrońca jeszcze nie wybrał</td><td>Reagowanie na liczbę zadeklarowanych kości, efekty obrońcy na nadchodzący atak</td></tr>
+      <tr><td><code>"exchange-resolved"</code></td><td>Po aplikacji wszystkich obrażeń z wymiany (w tym crowding), przed awansem segmentu. <code>args.encounter.lastExchangeResult</code> zawiera podsumowanie</td><td>Efekty "po każdej wymianie", warunki Berserkera, liczniki trafień</td></tr>
+      <tr><td><code>"segment-advance"</code></td><td>Segment się przesuwa do przodu (≤ 3) — po <code>exchange-resolved</code></td><td>Odzysk inicjatywy, jednorazowe efekty segmentowe</td></tr>
+      <tr><td><code>"turn-end"</code></td><td>Wszystkie 3 segmenty wyczerpane, przed resetem tury</td><td>Kary zmęczenia (+20%), usunięcie markerów</td></tr>
       <tr><td><code>"turn-start"</code></td><td>Nowa tura ustawiona (pule zresetowane, inicjatywa posortowana)</td><td>Inicjalizacja efektów nowej tury (rzadko używane)</td></tr>
     </tbody>
   </table>
-  <div class="callout info"><strong>encounter._effects:</strong> Namespace zarezerwowany dla skryptów efektów. Silnik nigdy go nie odczytuje. Czyszczony automatycznie przy <code>turn-start</code>. Użyj go do przekazywania stanu między <code>opposedAttacker</code>/<code>opposedDefender</code> a <code>meleeUpdate</code>.</div>
+  <div class="callout info">
+    <strong>encounter._effects:</strong> Namespace zarezerwowany dla skryptów efektów. Silnik nigdy go nie odczytuje. Czyszczony automatycznie przy <code>turn-start</code>. Użyj go do przekazywania stanu między triggerami.<br>
+    <strong>encounter.lastExchangeResult:</strong> Dostępny tylko w fazie <code>"exchange-resolved"</code> (przed <code>segment-advance</code>). Zawiera: <code>{ attackerId, defenderId, resultType, diceCount, attackerSuccesses, defenderSuccesses }</code>. Czyszczony automatycznie po fazie.
+  </div>
   <div class="example-block">
     <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Wiatrak — odzysk inicjatywy (segment-advance) lub zmęczenie (turn-end)</div>
     <pre><code><span class="kw">const</span> <span class="var">myId</span> = args.participantId;
@@ -1904,6 +1910,45 @@ args.encounter._effects.wiatrakReclaim = <span class="var">myId</span>;</code></
 } <span class="kw">else if</span> (args.phase === <span class="str">"turn-end"</span>) {
   <span class="cmt">// Nałóż +20% zmęczenia i usuń marker.</span>
   <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> pool-ready — Efekt reagujący gdy wszystkie kości rzucone (przed wyborem)</div>
+    <pre><code><span class="cmt">// Przykład: efekt który sprawdza stan puli i modyfikuje inicjatywę zanim wybór się zacznie.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"pool-ready"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">myPool</span> = args.participant.pool;
+<span class="cmt">// Np. sztuczka "aura strachu" — jeśli mamy trójkę jedynek, zaznaczamy efekt.</span>
+<span class="kw">const</span> <span class="var">ones</span> = <span class="var">myPool</span>.<span class="fn">filter</span>(<span class="var">v</span> => <span class="var">v</span> === <span class="num">1</span>).length;
+<span class="kw">if</span> (<span class="var">ones</span> >= <span class="num">3</span>) args.encounter._effects.fearAura = <span class="kw">true</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> attack-committed — Efekt obrońcy reagujący na liczbę zadeklarowanych kości</div>
+    <pre><code><span class="cmt">// Przykład: efekt "Tarcza" — jeśli atakujący użył 3 kości, obrońca dostaje +2 do obrony.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"attack-committed"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">exchange</span> = args.encounter.currentExchange;
+<span class="kw">const</span> <span class="var">isDefender</span> = args.participantId === <span class="var">exchange</span>.defenderId;
+<span class="kw">if</span> (!<span class="var">isDefender</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (<span class="var">exchange</span>.declaredDiceCount >= <span class="num">3</span>) {
+  <span class="cmt">// Zmodyfikuj snapshot obrony (+2 do progu obrony).</span>
+  args.participant.defenseTargetSnapshot = (args.participant.defenseTargetSnapshot || <span class="num">10</span>) + <span class="num">2</span>;
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> exchange-resolved — Licznik trafień (warunek Berserkera) + przykład lastExchangeResult</div>
+    <pre><code><span class="cmt">// Przykład: efekt liczący trafienia na aktora — aktywuje berserker po pierwszym ciężkim ciosie.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"exchange-resolved"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">result</span> = args.encounter.lastExchangeResult;
+<span class="kw">if</span> (!<span class="var">result</span>) <span class="kw">return</span>;
+<span class="cmt">// Sprawdzamy czy nasz uczestnik był obrońcą który dostał trafienie.</span>
+<span class="kw">const</span> <span class="var">wasDamaged</span> = <span class="var">result</span>.resultType === <span class="str">"hit"</span> && <span class="var">result</span>.defenderId === args.participantId;
+<span class="kw">if</span> (!<span class="var">wasDamaged</span>) <span class="kw">return</span>;
+<span class="cmt">// Aktywuj berserker przez convertToApplied.</span>
+<span class="kw">const</span> <span class="var">berserkEffect</span> = <span class="kw">this</span>.actor.effects.<span class="fn">find</span>(<span class="var">e</span> => <span class="var">e</span>.name === <span class="str">"Berserker (Aktywny)"</span>);
+<span class="kw">if</span> (<span class="var">berserkEffect</span> && !<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="str">"Berserker (Aktywny)"</span>)) {
+  <span class="kw">await this</span>.<span class="fn">convertToApplied</span>(<span class="var">berserkEffect</span>);
 }</code></pre>
   </div>
 
