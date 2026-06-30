@@ -3560,7 +3560,8 @@ Hooks.on("getItemDirectoryEntryContext", (html, options) => {
 
 Hooks.on("renderItemDirectory", (app, html) => {
     const el = html instanceof HTMLElement ? html : html[0];
-    if (!el) return;
+    if (!el || el.dataset.nsDropSetup) return;
+    el.dataset.nsDropSetup = "1";
 
     el.addEventListener("drop", async (event) => {
         let data;

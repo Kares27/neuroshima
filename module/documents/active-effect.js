@@ -405,6 +405,28 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
 
     delete data._id;
     data.transfer = false;
+    data.origin = null;
+
+    // Foundry v13 may not serialize system data for item-embedded effects in all contexts.
+    // Explicitly copy scriptData and actionDefs from the live DataModel as a safety net.
+    if (!data.system) data.system = {};
+    const liveScriptData = this.system?.scriptData ?? [];
+    if (!(data.system.scriptData?.length > 0) && liveScriptData.length > 0) {
+      data.system.scriptData = liveScriptData.map(s => ({
+        trigger:           s.trigger           ?? "manual",
+        label:             s.label             ?? "",
+        code:              s.code              ?? "",
+        hideScript:        s.hideScript        ?? "",
+        activateScript:    s.activateScript    ?? "",
+        submissionScript:  s.submissionScript  ?? "",
+        dialogCode:        s.dialogCode        ?? "",
+        runIfDisabled:     s.runIfDisabled     ?? false,
+        targeter:          s.targeter          ?? false,
+        defendingAgainst:  s.defendingAgainst  ?? false,
+        isDialogScript:    s.isDialogScript    ?? false,
+        dialogDescription: s.dialogDescription ?? "",
+      }));
+    }
 
     const originalTransferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";
 
@@ -424,6 +446,8 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     if (Object.keys(overrides).length) {
       foundry.utils.mergeObject(data, foundry.utils.expandObject(overrides));
     }
+
+    console.log(`[NS-DIAG convertToApplied] name="${this.name}" originalTransferType="${originalTransferType}" scriptDataLen=${data.system?.scriptData?.length ?? "MISSING_SYSTEM"} scriptData=`, data.system?.scriptData ?? "MISSING");
 
     game.neuroshima?.log("[NeuroshimaActiveEffect.convertToApplied]", {
       effectName:           this.name,

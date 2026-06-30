@@ -453,7 +453,7 @@ args.actions.push({
 
 <section id="trick-009-bez-sznurkow">
 <h3>9. Bez sznurków</h3>
-<p><strong>Wymagania:</strong> Pistolety 3+, Zręczność 13+, Percepcja 2+</p>
+<p><strong>Wymagania:</strong> Pistolety 3+, Zręczność 13+, Percepcja 12+</p>
 <p><strong>Mechanika:</strong> Skok + dwa strzały w locie: +20% PT do strzelania, przeciwnik ma +40% PT by trafić.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -473,15 +473,15 @@ args.actions.push({
 
 <section id="trick-010-bieg-w-ciszy">
 <h3>10. Bieg w ciszy</h3>
-<p><strong>Wymagania:</strong> Ukrywanie się 3+, Zręczność 12+</p>
-<p><strong>Mechanika:</strong> Biegnąc nie zwiększa trudności testów Ukrywania się dla obserwatorów.</p>
+<p><strong>Wymagania:</strong> Kondycja 3+, Budowa 12+</p>
+<p><strong>Mechanika:</strong> Bohater może biec bez przerwy przez kilkanaście godzin, pokonując nawet 50 km.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-011-bierz-go">
 <h3>11. Bierz go!</h3>
-<p><strong>Wymagania:</strong> Bijatyka 3+, Zdolności przywódcze 2+</p>
-<p><strong>Mechanika:</strong> Jeden okrzyk — sprzymierzeńcy mogą zaatakować wskazanego wroga bez testu Inicjatywy.</p>
+<p><strong>Wymagania:</strong> Opieka nad zwierzętami 4+, Charakter 8+</p>
+<p><strong>Mechanika:</strong> Bohater może wydać prosty rozkaz oswojonemu i wytresowanemu zwierzęciu.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
@@ -592,8 +592,8 @@ args.actions.push({
 
 <section id="trick-013-cassanova-mata-hari">
 <h3>13. Cassanova/Mata Hari</h3>
-<p><strong>Wymagania:</strong> Charakter 13+, Perswazja 3+</p>
-<p><strong>Mechanika:</strong> Może przerzucić jeden nieudany test społeczny raz na scenę.</p>
+<p><strong>Wymagania:</strong> Blef 2+, Perswazja 2+, Zwinne dłonie 2+, Spryt 10+</p>
+<p><strong>Mechanika:</strong> Może przerzucić każdy test Charakteru związany z uwodzeniem.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
@@ -608,22 +608,22 @@ args.actions.push({
 
 <section id="trick-014-chlodnym-okiem">
 <h3>14. Chłodnym okiem</h3>
-<p><strong>Wymagania:</strong> Spryt 12+, Wypatrywanie 2+</p>
-<p><strong>Mechanika:</strong> Błyskawicznie analizuje sytuację — test Sprytu daje MG dane taktyczne o wrogach.</p>
+<p><strong>Wymagania:</strong> Spryt 14+</p>
+<p><strong>Mechanika:</strong> Test Sprytu: MG musi spokojnie i jasno przedstawić wszystkie fakty i zdarzenia z przygody, jeszcze raz, po kolei i od początku.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-015-ciszej-niz-cien">
 <h3>15. Ciszej niż cień</h3>
-<p><strong>Wymagania:</strong> Ukrywanie się 5+</p>
+<p><strong>Wymagania:</strong> Skradanie się 6+</p>
 <p><strong>Mechanika:</strong> Ukrywa się tak dobrze, że MG podnosi trudność dla obserwatorów o 1 poziom.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-016-czlowiek-ktory-kulom-sie-nie-klanial">
 <h3>16. Człowiek, który kulom się nie kłaniał</h3>
-<p><strong>Wymagania:</strong> Niezłomność 3+</p>
-<p><strong>Mechanika:</strong> Automatycznie zdaje testy Morale przy ostrzale zaporowym.</p>
+<p><strong>Wymagania:</strong> Morale 3+, Percepcja 8+</p>
+<p><strong>Mechanika:</strong> Bohater jest uodporniony na efekty psychologiczne ostrzału (ale nie na obrażenia).</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
@@ -636,8 +636,8 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 
 <section id="trick-017-czterej-pancerni">
 <h3>17. Czterej pancerni</h3>
-<p><strong>Wymagania:</strong> Wozy bojowe 3+, Spryt 12+</p>
-<p><strong>Mechanika:</strong> Podczas walki pojazdem bojowym: -20% do trudności testów prowadzenia.</p>
+<p><strong>Wymagania:</strong> Wozy bojowe 3+ lub Maszyny ciężkie 3+, Opieka nad zwierzętami 2+</p>
+<p><strong>Mechanika:</strong> Gdy kierowca ma w kokpicie 3 pomocników z Wozy bojowe lub Maszyny ciężkie 1+ — wszystkie testy pojazdu łatwiejsze o -20%. Z psem w załodze: -30%.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
@@ -652,7 +652,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 
 <section id="trick-018-czuly-spust">
 <h3>18. Czuły spust</h3>
-<p><strong>Wymagania:</strong> Pistolety 5+</p>
+<p><strong>Wymagania:</strong> Percepcja 14+, Broń maszynowa 4+</p>
 <p><strong>Mechanika:</strong> Bohater może przerwać zadeklarowaną długą serię po 1 segmencie oddając krótką, ogień ciągły po 1 segmencie oddając krótką lub po 2 segmentach oddając długą. Oszczędza naboje.</p>
 <div class="callout info"><strong>Implementacja:</strong> GM zawsze widzi opcje <strong>„Zmniejsz Serię"</strong> / <strong>„Zwiększ Serię"</strong> w PPM menu czatu. Gracz widzi je tylko gdy efekt sztuczki wywoła <code>this.grantBurstShift(args)</code> po strzale — trigger <code>postWeaponShot</code>.</div>
 <div class="ns-trick-scripts">
@@ -668,8 +668,8 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 
 <section id="trick-019-dalszy-zasieg">
 <h3>19. Dalszy zasięg</h3>
-<p><strong>Wymagania:</strong> Karabiny 4+ lub Łuk 4+</p>
-<p><strong>Mechanika:</strong> Efektywny zasięg broni zwiększony dwukrotnie przy tych samych karach.</p>
+<p><strong>Wymagania:</strong> Kusza 9+, Budowa 12+</p>
+<p><strong>Mechanika:</strong> Przy tych samych utrudnieniach bohater może strzelać z kuszy na dwa razy większą odległość (pod warunkiem, że kusza ma wystarczający zasięg).</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
@@ -892,7 +892,7 @@ args.participant.blockDamageShift = -<span class="num">1</span>;
 
 <section id="trick-030-glaz">
 <h3>30. Głaz</h3>
-<p><strong>Wymagania:</strong> Tropienie 3+</p>
+<p><strong>Wymagania:</strong> Przygotowanie pułapki 3+, Charakter 12+</p>
 <p><strong>Mechanika:</strong> Potrafi leżeć nieruchomo przez bardzo długi czas wtopieniu w otoczenie — snajperska cierpliwość.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
@@ -918,8 +918,8 @@ args.participant.blockDamageShift = -<span class="num">1</span>;
 
 <section id="trick-032-granie-na-nerwach">
 <h3>32. Granie na nerwach</h3>
-<p><strong>Wymagania:</strong> Perswazja 3+, Blef 3+</p>
-<p><strong>Mechanika:</strong> Irytuje i prowokuje cel — MG stosuje test Niezłomności dla ofiary lub zwiększa jej kary.</p>
+<p><strong>Wymagania:</strong> Perswazja 9+, Spryt 10+</p>
+<p><strong>Mechanika:</strong> Bardzo Trudny test Perswazji (dla kobiet Trudny): rozzłoszcza cel tak, że uderza najbliższą ofiarę losu (nie Bohatera).</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
@@ -971,57 +971,57 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-034-hej-przystojniaku">
 <h3>34. Hej, przystojniaku!</h3>
-<p><strong>Wymagania:</strong> Charakter 12+, Perswazja 3+</p>
-<p><strong>Mechanika:</strong> Odwraca uwagę jednej osoby płci przeciwnej; ta traci segment.</p>
+<p><strong>Wymagania:</strong> Perswazja 4+, Charakter 14+ (tylko dla kobiety)</p>
+<p><strong>Mechanika:</strong> Aby oprzeć się Perswazji bohaterki — Cholernie Trudny test Niezłomności. Porażka = spełnianie drobnych życzeń.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-035-hokus-pokus">
 <h3>35. Hokus pokus</h3>
-<p><strong>Wymagania:</strong> Zręczność 12+, Blef 4+</p>
-<p><strong>Mechanika:</strong> Wykonuje sztuczkę zręcznościową — mylący ruch, ukrycie przedmiotu, odwrócenie uwagi.</p>
+<p><strong>Wymagania:</strong> Zwinne dłonie 4+</p>
+<p><strong>Mechanika:</strong> Chowa do kieszeni lub wyciąga z niej niewielki przedmiot całkowicie niedostrzegalnie dla obserwatorów.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-036-immunitet">
 <h3>36. Immunitet</h3>
-<p><strong>Wymagania:</strong> Leczenie chorób 4+</p>
+<p><strong>Wymagania:</strong> Leczenie chorób 4+, Budowa 12+</p>
 <p><strong>Mechanika:</strong> Nigdy nie zaraża się chorobami podczas leczenia chorych.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-037-inspiracja">
 <h3>37. Inspiracja</h3>
-<p><strong>Wymagania:</strong> Zdolności przywódcze 4+, Charakter 12+</p>
+<p><strong>Wymagania:</strong> Zdolności przywódcze 3+</p>
 <p><strong>Mechanika:</strong> Po udanym teście Zdolności przywódczych zmniejsza trudność testów Morale drużyny.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-038-jest-zajebiscie">
 <h3>38. Jest zajebiście</h3>
-<p><strong>Wymagania:</strong> Niezłomność 5+, Charakter 12+</p>
-<p><strong>Mechanika:</strong> Wszechobecny optymizm — inni w grupie dostają +1 do Niezłomności przy nim.</p>
+<p><strong>Wymagania:</strong> Blef 6+, Charakter 16+</p>
+<p><strong>Mechanika:</strong> Test Blefu o wybranym PT: każdy PT powyżej Łatwego = -5% do najbliższego testu całej drużyny. Niepowodzenie = +kara tej samej wartości.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-039-kanaly">
 <h3>39. Kanały</h3>
-<p><strong>Wymagania:</strong> Orientacja w terenie 2+</p>
+<p><strong>Wymagania:</strong> Wyczucie kierunku 4+, Spryt 12+</p>
 <p><strong>Mechanika:</strong> Zna drogi przez kanały i podziemia miasta — porusza się nimi bez testów.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-040-komandos">
 <h3>40. Komandos</h3>
-<p><strong>Wymagania:</strong> Automatyczna broń maszynowa 4+</p>
-<p><strong>Mechanika:</strong> Odporny na taktykę ognia zaporowego — nie traci segmentów z powodu ostrzału.</p>
+<p><strong>Wymagania:</strong> Zręczność 14+, Czujność 3+</p>
+<p><strong>Mechanika:</strong> Nie można go trafić korygowanym ani przenoszonym ogniem z broni maszynowej.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-041-kop-z-obrotu">
 <h3>41. Kop z obrotu</h3>
-<p><strong>Wymagania:</strong> Bijatyka 4+, Zręczność 12+</p>
-<p><strong>Mechanika:</strong> Akcja za 3 sukcesy: potężny kopniak powalający przeciwnika.</p>
+<p><strong>Wymagania:</strong> Bijatyka 4+, Budowa 8+, Zręczność 14+</p>
+<p><strong>Mechanika:</strong> Akcja za 3 sukcesy: Budowa ≤16 = Lekki Siniak, Budowa &gt;16 = Ciężki Siniak. Działa nawet gdy walczy bronią.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
@@ -1040,14 +1040,14 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-042-kot">
 <h3>42. Kot</h3>
-<p><strong>Wymagania:</strong> Zręczność 14+, Wspinaczka 4+</p>
-<p><strong>Mechanika:</strong> Zawsze pada na nogi — upadki z do 4m bez testu, wyższe z bonusem.</p>
+<p><strong>Wymagania:</strong> Wspinaczka 4+, Zręczność 12+</p>
+<p><strong>Mechanika:</strong> Może spadać z dwa razy wyższej wysokości niż normalni ludzie, nie odnosząc obrażeń.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-043-kradziez-w-tlumie">
 <h3>43. Kradzież w tłumie</h3>
-<p><strong>Wymagania:</strong> Kradzież kieszonkowa 3+</p>
+<p><strong>Wymagania:</strong> Kradzież kieszonkowa 2+, Ukrywanie się 2+</p>
 <p><strong>Mechanika:</strong> W tłumie i ścisku: -30% do trudności testów Kradzieży kieszonkowej.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1102,7 +1102,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-047-magazynek">
 <h3>47. Magazynek</h3>
-<p><strong>Wymagania:</strong> Zręczność 12+, Pistolety lub Karabiny</p>
+<p><strong>Wymagania:</strong> Zręczność 12+, Pistolety 3+ lub Karabiny 3+</p>
 <p><strong>Mechanika:</strong> Wymiana magazynka w pistolecie zajmuje 1 segment (rewolwer: 1 nabój/segment).</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
@@ -1116,7 +1116,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-049-miotacz-kul">
 <h3>49. Miotacz kul</h3>
-<p><strong>Wymagania:</strong> Zręczność 12+, Percepcja 10+, Rzucanie 2+</p>
+<p><strong>Wymagania:</strong> Zręczność 12+, Percepcja 10+, Wyczucie kierunku 1+, Rzucanie 2+</p>
 <p><strong>Mechanika:</strong> Przy rzucaniu (nie-nożem): -30% do trudności testu rzucania.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1147,7 +1147,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-052-myslec-jak-maszyna">
 <h3>52. Myśleć jak maszyna</h3>
-<p><strong>Wymagania:</strong> Postrzeganie emocji 11+, Elektronika 11+</p>
+<p><strong>Wymagania:</strong> Postrzeganie emocji 11+, Elektronika 11+ lub Mechanika 11+</p>
 <p><strong>Mechanika:</strong> Po testach PP emocji i Mechaniki/Elektroniki: przewiduje następny ruch maszyny Molocha (raz/maszynę).</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
@@ -1175,7 +1175,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-056-niewrazliwosc-na-lekkie-rany">
 <h3>56. Niewrażliwość na lekkie rany</h3>
-<p><strong>Wymagania:</strong> Odporność na ból 4+</p>
+<p><strong>Wymagania:</strong> Odporność na ból 4+, Charakter 12+</p>
 <p><strong>Mechanika:</strong> Automatycznie zdaje testy Odporności na ból przy lekkich obrażeniach.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1191,14 +1191,14 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-057-no-strzelaj-zlomie">
 <h3>57. No strzelaj, złomie!</h3>
-<p><strong>Wymagania:</strong> Niezłomność 4+, Charakter 12+</p>
-<p><strong>Mechanika:</strong> Prowokuje wroga słowami — oponent traci Inicjatywę przez impulsywne działanie.</p>
+<p><strong>Wymagania:</strong> Rusznikarstwo 4+</p>
+<p><strong>Mechanika:</strong> Przy wyniku rzutu 1–10 na zacięciu broń zacina się na 1 turę. Bohater potrafi naprawić broń w jednym segmencie.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-058-nozownik">
 <h3>58. Nożownik</h3>
-<p><strong>Wymagania:</strong> Broń ręczna 4+, Zręczność 12+</p>
+<p><strong>Wymagania:</strong> Zręczność 12+, Broń ręczna 5+</p>
 <p><strong>Mechanika:</strong> Walcząc nożem: +1 do Broni ręcznej. Akcja za 3 sukcesy: ciche wykończenie.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1226,7 +1226,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-059-obezwladnienie">
 <h3>59. Obezwładnienie</h3>
-<p><strong>Wymagania:</strong> Bijatyka 4+</p>
+<p><strong>Wymagania:</strong> Bijatyka 2+</p>
 <p><strong>Mechanika:</strong> Akcja za 2 sukcesy: chwyt obezwładniający — cel nie może się ruszyć.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1246,29 +1246,29 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 
 <section id="trick-060-odnajdywanie-wlasciwej-osoby">
 <h3>60. Odnajdywanie właściwej osoby</h3>
-<p><strong>Wymagania:</strong> Perswazja 3+, Spryt 10+</p>
+<p><strong>Wymagania:</strong> Spryt 12+, Charakter 12+</p>
 <p><strong>Mechanika:</strong> Zawsze wie kogo zapytać — w każdej lokacji zlokalizuje eksperta lub pośrednika.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-061-odpornosc-na-pogode">
 <h3>61. Odporność na pogodę</h3>
-<p><strong>Wymagania:</strong> Budowa 10+, Kondycja 3+ </p>
+<p><strong>Wymagania:</strong> Znajomość terenu 4+</p>
 <p><strong>Mechanika:</strong> Ignoruje kary wynikające z ekstremalnych warunków pogodowych.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-062-odtrucie-zarcia">
 <h3>62. Odtrucie żarcia</h3>
-<p><strong>Wymagania:</strong> Zbieranie wody 3+, Spryt 12+</p>
-<p><strong>Mechanika:</strong> Test Zbierania wody pozwala mu określić czy żarcie/woda jest bezpieczna.</p>
+<p><strong>Wymagania:</strong> Zdobywanie wody 6+</p>
+<p><strong>Mechanika:</strong> Przeciętny lub Trudny test Zdobywania wody pozwala odkazić zatrute pożywienie lub wodę.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-063-odwrocenie-uwagi">
 <h3>63. Odwrócenie uwagi</h3>
-<p><strong>Wymagania:</strong> Blef 4+</p>
-<p><strong>Mechanika:</strong> Odwraca uwagę celu — MG podnosi trudność testów Wypatrywania dla ofiary.</p>
+<p><strong>Wymagania:</strong> Kradzież kieszonkowa 4+, Spryt 10+</p>
+<p><strong>Mechanika:</strong> Dodaje +30% utrudnienia do testu Czujności ofiary kradzieży.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
@@ -1458,21 +1458,21 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 
 <section id="trick-076-podrasowanie">
 <h3>76. Podrasowanie</h3>
-<p><strong>Wymagania:</strong> Mechanika 4+, Rusznikarstwo 3+</p>
-<p><strong>Mechanika:</strong> Modyfikuje broń lub pojazd poprawiając jej parametry tymczasowo.</p>
+<p><strong>Wymagania:</strong> Mechanika 6+ lub Elektronika 6+, Spryt 12+</p>
+<p><strong>Mechanika:</strong> Zwiększa wydajność dowolnego urządzenia od 50% do 200%. Duże ryzyko awarii w trakcie pracy.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-077-polozenie-motocykla">
 <h3>77. Położenie motocykla</h3>
-<p><strong>Wymagania:</strong> Prowadzenie motocykla 4+</p>
-<p><strong>Mechanika:</strong> Kładzie motocyklem na zakręcie bez uszkodzeń i strat czasu.</p>
+<p><strong>Wymagania:</strong> Prowadzenie motocykla 6+, Zręczność 12+</p>
+<p><strong>Mechanika:</strong> W pełnej szybkości kładzie motor, przejeżdża nisko pod przeszkodą, a po jej minięciu stawia motor i jedzie dalej.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-078-prowizorka">
 <h3>78. Prowizorka</h3>
-<p><strong>Wymagania:</strong> Mechanika 3+</p>
+<p><strong>Wymagania:</strong> Mechanika 3+ lub Elektronika 3+</p>
 <p><strong>Mechanika:</strong> Naprawia uszkodzone urządzenie tymczasowo z dostępnych materiałów.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
@@ -1486,14 +1486,14 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 
 <section id="trick-080-rodeo">
 <h3>80. Rodeo</h3>
-<p><strong>Wymagania:</strong> Jazda konna 3+ lub Prowadzenie motocykla 3+</p>
-<p><strong>Mechanika:</strong> Utrzymuje się na wierzchowcu/pojeździe w ekstremalnych warunkach bez testu.</p>
+<p><strong>Wymagania:</strong> Ujeżdżanie 5+, Jazda konna 3+</p>
+<p><strong>Mechanika:</strong> Jeśli MG uzna, że stworzenie da się ujeździć najwyżej testem Bardzo Trudnym — bohater wsiada bez testu.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-081-rozroba">
 <h3>81. Rozróba</h3>
-<p><strong>Wymagania:</strong> Bijatyka 4+, Zręczność 12+</p>
+<p><strong>Wymagania:</strong> Bijatyka 6+, Budowa 12+, Zręczność 12+</p>
 <p><strong>Mechanika:</strong> Gdy posiada Inicjatywę: może zaatakować każdego przeciwnika w zasięgu w tej turze.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1513,7 +1513,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 
 <section id="trick-082-rrrroooaaarrr">
 <h3>82. Rrrroooaaarrr</h3>
-<p><strong>Wymagania:</strong> Bijatyka 2+, Charakter 12+</p>
+<p><strong>Wymagania:</strong> Bijatyka 3+, Charakter 16+</p>
 <p><strong>Mechanika:</strong> Bojowy okrzyk podczas Furii lub Szarży — pobliskie wrogie jednostki muszą zdać test Morale (jak przy zasadzie <em>Najpierw spójrz mi w oczy</em>). Działa tylko raz vs ten sam przeciwnik; max 5 wrogów jednocześnie.</p>
 
 <div class="callout info">
@@ -1550,14 +1550,14 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 
 <section id="trick-083-ruchome-gniazdo-ckm">
 <h3>83. Ruchome gniazdo CKM</h3>
-<p><strong>Wymagania:</strong> Automatyczna broń maszynowa 4+, Budowa 12+</p>
-<p><strong>Mechanika:</strong> Strzela z CKM w ruchu bez dodatkowych kar za poruszanie się.</p>
+<p><strong>Wymagania:</strong> Budowa 16+, Broń maszynowa 6+</p>
+<p><strong>Mechanika:</strong> Gdy trafia serią: może wpakować w cel dwa razy więcej kul niż normalnie (wynik pogarsza się co 2 kule zamiast co 1).</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-084-ruchomy-cel">
 <h3>84. Ruchomy cel</h3>
-<p><strong>Wymagania:</strong> Pistolety 3+ lub Karabiny 3+</p>
+<p><strong>Wymagania:</strong> Pistolety 4+ lub Karabiny 4+ lub Broń maszynowa 4+, Spryt 12+, Percepcja 10+</p>
 <p><strong>Mechanika:</strong> Brak kary do testów strzelania za ruchomy cel.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1573,7 +1573,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 
 <section id="trick-085-rzut-oka">
 <h3>85. Rzut oka</h3>
-<p><strong>Wymagania:</strong> Wypatrywanie 3+, Spryt 12+</p>
+<p><strong>Wymagania:</strong> Mechanika 4+ lub Elektronika 4+, Spryt 10+</p>
 <p><strong>Mechanika:</strong> W ciągu kilku sekund określa przeznaczenie i działanie dowolnego urządzenia technicznego.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
@@ -1762,7 +1762,7 @@ args.difficultyTarget += <span class="num">3</span>;</code></pre>
 
 <section id="trick-098-szosty-zmysl">
 <h3>98. Szósty zmysł</h3>
-<p><strong>Wymagania:</strong> Czujność 5+, Percepcja 12+</p>
+<p><strong>Wymagania:</strong> Czujność 7+, Percepcja 14+</p>
 <p><strong>Mechanika:</strong> Raz dziennie: automatycznie unika jednego ataku z zaskoczenia.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1779,43 +1779,43 @@ args.difficultyTarget += <span class="num">3</span>;</code></pre>
 
 <section id="trick-099-sztuczki-karciane">
 <h3>99. Sztuczki karciane</h3>
-<p><strong>Wymagania:</strong> Zręczność 14+</p>
-<p><strong>Mechanika:</strong> Wykonuje sztuczki karciane — mylenie kart, ukrywanie, czytanie ruchów dłoni.</p>
+<p><strong>Wymagania:</strong> Zwinne dłonie 8+, Spryt 12+</p>
+<p><strong>Mechanika:</strong> Wygrywa każdą grę karcianą, pod warunkiem że nie gra z kimś posiadającym tę samą Sztuczkę.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-100-sztuka-jest-sztuka">
 <h3>100. Sztuka jest sztuka</h3>
-<p><strong>Wymagania:</strong> Charakter 12+</p>
-<p><strong>Mechanika:</strong> Potrafi sprzedać każdy badziew jako dzieło sztuki — Test Perswazji bez kary za jakość towaru.</p>
+<p><strong>Wymagania:</strong> Rusznikarstwo 2+</p>
+<p><strong>Mechanika:</strong> Poświęcając kilka godzin czyści i naprawia zabrudzoną lub pordzewiałą broń palną (w tym tę zaciętą fatalnie).</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-101-szybki-bill">
 <h3>101. Szybki Bill</h3>
-<p><strong>Wymagania:</strong> Pistolety 7+, Zręczność 14+</p>
-<p><strong>Mechanika:</strong> Strzela tak szybko, że może oddać dwa strzały z pistoletu w jednym segmencie.</p>
+<p><strong>Wymagania:</strong> Zręczność 14+</p>
+<p><strong>Mechanika:</strong> W jednym segmencie może pokonać dwa razy większy dystans niż normalnie.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-102-szybki-rzut">
 <h3>102. Szybki rzut</h3>
-<p><strong>Wymagania:</strong> Rzucanie 5+, Zręczność 12+</p>
+<p><strong>Wymagania:</strong> Rzucanie 4+, Zręczność 12+</p>
 <p><strong>Mechanika:</strong> Rzuca przedmiotem w jednym segmencie bez poświęcania dodatkowych tur.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-103-szybkie-strzelanie">
 <h3>103. Szybkie strzelanie</h3>
-<p><strong>Wymagania:</strong> Pistolety 4+</p>
-<p><strong>Mechanika:</strong> Oddaje dodatkowy strzał z pistoletu za cenę kary do testu.</p>
+<p><strong>Wymagania:</strong> Łuk 4+, Budowa 12+</p>
+<p><strong>Mechanika:</strong> Strzał z łuku zajmuje 1 segment, dobycie strzały kolejny 1 segment — strzały następują naprzemiennie w tempie 1/segment.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-104-srutobranie">
 <h3>104. Śrutobranie</h3>
-<p><strong>Wymagania:</strong> Strzelby 3+</p>
-<p><strong>Mechanika:</strong> Pompuje i strzela z obu luf z jednej akcji: +30% do trudności, ale podwójne obrażenia.</p>
+<p><strong>Wymagania:</strong> Karabiny 4+</p>
+<p><strong>Mechanika:</strong> Przeładowanie śrutówki i strzał zajmują razem tylko 1 segment, lecz bohater otrzymuje +30% utrudnienia do testów trafienia.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
@@ -1830,7 +1830,7 @@ args.difficultyTarget += <span class="num">3</span>;</code></pre>
 
 <section id="trick-105-taran">
 <h3>105. Taran</h3>
-<p><strong>Wymagania:</strong> Broń ręczna 5+, Budowa 14+</p>
+<p><strong>Wymagania:</strong> Broń ręczna 4+, Budowa 14+</p>
 <p><strong>Mechanika:</strong> Decyzja przed rzutem: -4 Zr (zarówno w ataku jak i obronie), ale przy trafieniu obrażenia o 1 poziom wyższe (D→L→C→K). Dotyczy cięższych broni (pałki, młoty, miecze, łańcuchy).</p>
 
 <div class="callout info">
@@ -1857,7 +1857,7 @@ args.fields.damageShift3 += <span class="num">1</span>;</code></pre>
 
 <section id="trick-106-taranowanie">
 <h3>106. Taranowanie</h3>
-<p><strong>Wymagania:</strong> Wozy bojowe 4+</p>
+<p><strong>Wymagania:</strong> Ciężarówka 3+ lub Samochód 3+</p>
 <p><strong>Mechanika:</strong> Brak kar do testów prowadzenia pojazdu podczas taranowania.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -2096,21 +2096,21 @@ args.participant.wyczekanieBonusPending = <span class="kw">false</span>;
 
 <section id="trick-118-wyczucie-zmian-pogody">
 <h3>118. Wyczucie zmian pogody</h3>
-<p><strong>Wymagania:</strong> Percepcja 12+</p>
+<p><strong>Wymagania:</strong> Znajomość terenu 2+, Percepcja 12+</p>
 <p><strong>Mechanika:</strong> Test Percepcji pozwala przewidzieć zmianę pogody na kilka godzin wprzód.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-119-wyrabianie-strzal-lub-beltow">
 <h3>119. Wyrabianie strzał lub bełtów</h3>
-<p><strong>Wymagania:</strong> Łuk 3+ lub Kusza 3+</p>
+<p><strong>Wymagania:</strong> Łuk 2+ lub Kusza 2+, Spryt 10+</p>
 <p><strong>Mechanika:</strong> W terenie wytwarza strzały lub bełty z dostępnych materiałów.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-120-wytrych">
 <h3>120. Wytrych</h3>
-<p><strong>Wymagania:</strong> Otwieranie zamków 4+</p>
+<p><strong>Wymagania:</strong> Otwieranie zamków 4+, Zręczność 12+</p>
 <p><strong>Mechanika:</strong> Otwiera zamki mechaniczne bez narzędzi — brak kary za brak wytrychów.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -2126,14 +2126,14 @@ args.participant.wyczekanieBonusPending = <span class="kw">false</span>;
 
 <section id="trick-121-zagadanie">
 <h3>121. Zagadanie</h3>
-<p><strong>Wymagania:</strong> Perswazja 5+, Spryt 12+</p>
-<p><strong>Mechanika:</strong> Zagaduje cel na tyle skutecznie, że ten traci segmenty — test Perswazji vs Niezłomność celu.</p>
+<p><strong>Wymagania:</strong> Spryt 12+, Blef 2+, Zwinne dłonie 2+</p>
+<p><strong>Mechanika:</strong> Zagaduje cel i chwyta za broń — nawet bez dobytej broni, nagle ją ma. Jeśli cel miał broń, teraz obaj mają. Nie działa w trakcie walki.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-122-zaslona">
 <h3>122. Zasłona</h3>
-<p><strong>Wymagania:</strong> Bijatyka 4+ lub Broń ręczna 4+</p>
+<p><strong>Wymagania:</strong> Bijatyka 2+, Budowa 12+</p>
 <p><strong>Mechanika:</strong> Decyzja przed rzutem: +2 Zr w obronie tej tury; w <strong>następnej</strong> turze -2 do Zręczności zarówno w ataku, jak i w obronie.</p>
 
 <div class="callout info">
@@ -2183,28 +2183,28 @@ args.participant.zaslonaKaraPending = <span class="kw">false</span>;
 
 <section id="trick-123-zgranie">
 <h3>123. Zgranie</h3>
-<p><strong>Wymagania:</strong> Zdolności przywódcze 4+, Charakter 12+</p>
-<p><strong>Mechanika:</strong> Drużyna działa jak jeden organizm — MG może pominąć testy koordynacji przy wspólnych akcjach.</p>
+<p><strong>Wymagania:</strong> Rzucanie 2+, Zręczność 12+</p>
+<p><strong>Mechanika:</strong> Dwie postacie z tą Sztuczką mogą rzucać do siebie lekkie przedmioty z automatycznym sukcesem (do 5m/1s, 10m/2s, 15m/3s).</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-124-zielony-balonik">
 <h3>124. Zielony balonik</h3>
-<p><strong>Wymagania:</strong> Broń ręczna 5+, Zręczność 14+</p>
-<p><strong>Mechanika:</strong> Na unieruchomionym lub zaskoczonym celu: automatyczne trafienie w głowę, obrażenia jak z broni.</p>
+<p><strong>Wymagania:</strong> Pistolety 3+, Percepcja 14+, Spryt 10+, Zręczność 10+</p>
+<p><strong>Mechanika:</strong> Celuje w głowę z odległości 1–5 m: automatyczny sukces trafienia dopóki dystans się nie zmieni. Działa tylko z pistoletami/rewolwerami.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-125-zly">
 <h3>125. Zły</h3>
-<p><strong>Wymagania:</strong> Zastraszanie 5+, Charakter 12+</p>
+<p><strong>Wymagania:</strong> Zastraszanie 4+, Charakter 12+</p>
 <p><strong>Mechanika:</strong> Sama obecność — pobliskie wrogie jednostki zdają test Morale co turę.</p>
 <div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
 </section>
 
 <section id="trick-126-zmylka">
 <h3>126. Zmyłka</h3>
-<p><strong>Wymagania:</strong> Blef 5+, Broń ręczna 3+</p>
+<p><strong>Wymagania:</strong> Bijatyka 5+ lub Broń ręczna 5+, Spryt 12+</p>
 <p><strong>Mechanika:</strong> Podczas walki wręcz: dodaje wartość Blefu do testu melee. Można użyć tylko <strong>raz</strong> przeciwko temu samemu przeciwnikowi.</p>
 
 <div class="callout info">

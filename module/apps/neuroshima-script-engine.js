@@ -1021,7 +1021,9 @@ export class NeuroshimaScript {
    * }
    */
   addAnnotation(text) {
-    const annotations = this._currentArgs?.annotations;
+    const annotations = this._currentArgs?.annotations
+      ?? this._currentArgs?.test?.preData?.annotations
+      ?? this._currentArgs?.rollData?.annotations;
     if (!Array.isArray(annotations)) return;
     annotations.push(String(text));
   }
@@ -4120,10 +4122,28 @@ export class NeuroshimaScriptRunner {
 
     const actorItemUuids = new Set((actor.items ?? []).map(i => i.uuid));
 
+    if (trigger === "preRollTest") {
+      console.log(`[NS-DIAG preRollTest] actor="${actor.name}" effectsCount=${actor.effects?.size ?? 0}`);
+      for (const e of (actor.effects ?? [])) {
+        const sd = e.system?.scriptData ?? [];
+        const matchingTrigger = sd.filter(s => s.trigger === "preRollTest").length;
+        console.log(`[NS-DIAG preRollTest]  effect="${e.name}" origin=${e.origin} fromEquip=${!!e.getFlag("neuroshima","fromEquipTransfer")} scriptData=${sd.length} (preRollTest=${matchingTrigger})`);
+      }
+    }
+
     for (const effect of (actor.effects ?? [])) {
       if (effect.getFlag("neuroshima", "fromEquipTransfer")) continue;
-      if (effect.origin && actorItemUuids.has(effect.origin)) continue;
-      collectFromEffect(effect);
+      if (effect.origin && actorItemUuids.has(effect.origin)) {
+        game.neuroshima?.log?.(`[getScripts:${trigger}] SKIP actor effect "${effect.name}" (origin=${effect.origin} in itemUuids)`);
+        continue;
+      }
+      const _sd = effect.system?.scriptData ?? [];
+      const _scripts = effect.scripts ?? [];
+      game.neuroshima?.log?.(`[getScripts:${trigger}] CHECK actor effect "${effect.name}" origin=${effect.origin} suppressed=${effect.isSuppressed} scriptDataLen=${_sd.length} scriptsLen=${_scripts.length} transferType=${effect.getFlag("neuroshima","transferType")} type=${effect.type}`);
+      if (_sd.length !== _scripts.length) {
+        console.warn(`NS | [getScripts] scriptData/scripts mismatch on "${effect.name}": scriptData=${_sd.length} scripts=${_scripts.length}`);
+      }
+      collectFromEffect(effect, true);
     }
 
     // Effects that require explicit application to an actor (via convertToApplied / applyEffect)
@@ -4193,6 +4213,7 @@ export class NeuroshimaScriptRunner {
   static async execute(trigger, args = {}) {
     const actor = args.actor;
     if (!actor) return;
+    if (trigger === "preRollTest") console.log(`[NS-DIAG execute] preRollTest called actor="${actor?.name}" effectsCount=${actor?.effects?.size ?? 0}`);
     game.neuroshima?.log?.(`[${trigger}] fired`, NeuroshimaScriptRunner._triggerArgsForLog(args));
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
@@ -4276,7 +4297,7 @@ export class NeuroshimaScriptRunner {
       preData: { penalties: { ...penalties }, skillBonus, attributeBonus, label, autoSuccess: false, cancelled: false, annotations: [] },
       context: { attributeKey, skillKey, options },
     };
-    await this.execute("preRollTest", { test });
+    await this.execute("preRollTest", { actor, test });
     return { autoSuccess: !!test.preData.autoSuccess, cancelled: !!test.preData.cancelled };
   }
 

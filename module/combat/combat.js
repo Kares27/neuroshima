@@ -3043,6 +3043,15 @@ export class MeleeOpposedChat {
           attacker: state.attackerTokenUuid || state.attackerUuid,
           defender: state.defenderTokenUuid || state.defenderUuid
         });
+        for (const doc of [atkDoc, defDoc]) {
+          const actor = doc?.actor ?? doc;
+          if (!actor) continue;
+          await NeuroshimaScriptRunner.execute("meleeUpdate", {
+            actor, phase: "turn-end",
+            encounter: null, encounterId: null,
+            participant: null, participantId: null
+          });
+        }
       }
     }
   }

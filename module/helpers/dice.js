@@ -422,6 +422,7 @@ export class NeuroshimaDice {
     // args.test.weapon is present — scripts can distinguish weapon rolls from skill tests.
     let extraWeaponModifier = 0;
     let effectiveSkillBonus = skillBonus;
+    const preRollAnnotations = [];
     if (actor && !isReroll) {
         const preWeaponTest = {
             actor,
@@ -433,13 +434,15 @@ export class NeuroshimaDice {
                 attributeBonus: effectiveAttributeBonus,
                 autoSuccess: false,
                 cancelled: false,
+                annotations: preRollAnnotations,
             },
             context: { isMelee, meleeAction, skillKey: weapon.system.skill }
         };
-        await NeuroshimaScriptRunner.execute("preRollTest", { test: preWeaponTest });
+        await NeuroshimaScriptRunner.execute("preRollTest", { actor, test: preWeaponTest });
         extraWeaponModifier = preWeaponTest.preData.penalties.mod ?? 0;
         effectiveSkillBonus = preWeaponTest.preData.skillBonus ?? effectiveSkillBonus;
         effectiveAttributeBonus = preWeaponTest.preData.attributeBonus ?? effectiveAttributeBonus;
+        console.log(`[NS-DIAG weapon preRollTest] actor="${actor?.name}" extraWeaponModifier=${extraWeaponModifier} totalPenalty=${totalPenalty}`);
     }
 
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty + extraWeaponModifier);
@@ -834,7 +837,7 @@ export class NeuroshimaDice {
         const postShotArgs = { actor, weapon, isSuccess, isJamming, firedDespiteJam: canFireDespiteJam, despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData, annotations: rollAnnotations, options };
         await NeuroshimaScriptRunner.execute("postWeaponShot", postShotArgs);
     }
-    rollData.annotations = rollAnnotations.filter(Boolean);
+    rollData.annotations = [...preRollAnnotations, ...rollAnnotations].filter(Boolean);
 
     // Update weapon jammed flag
     if (!isMelee) {
@@ -999,7 +1002,7 @@ export class NeuroshimaDice {
                 options,
             },
         };
-        await NeuroshimaScriptRunner.execute("preRollTest", { test });
+        await NeuroshimaScriptRunner.execute("preRollTest", { actor, test });
         if (test.preData.cancelled) {
             game.neuroshima.log("rollTest cancelled by preRollTest script");
             game.neuroshima.groupEnd();
@@ -1024,6 +1027,7 @@ export class NeuroshimaDice {
         penalties = test.preData.penalties ?? penalties;
         dieReductionBonus = test.preData.dieReductionBonus ?? dieReductionBonus;
         dieManualBonus = test.preData.dieManualBonus ?? dieManualBonus;
+        console.log(`[NS-DIAG rollTest preRollTest] actor="${actor?.name}" penalties.mod=${penalties?.mod} penalties.base=${penalties?.base}`);
     }
     
     // Check whether the actor has a pending opposed test (Defense)
