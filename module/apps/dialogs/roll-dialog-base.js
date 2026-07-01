@@ -65,13 +65,18 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     const userLabel   = game.i18n.localize("NEUROSHIMA.Roll.UserEntry");
     const effectLabel = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
     const totalLabel  = game.i18n.localize("NEUROSHIMA.Roll.Total");
-    const parts = [`<strong>${userLabel}:</strong> ${sign(userVal)}`];
+    const td  = (content, style = "") => `<td style="padding:1px 3px;${style}">${content}</td>`;
+    const tdr = (content, style = "") => td(content, `text-align:right;padding-left:8px;${style}`);
+    const rows = [];
+    rows.push(`<tr>${td(`<span style="opacity:.75">${userLabel}:</span>`)}${tdr(`<span style="opacity:.75">${sign(userVal)}</span>`)}</tr>`);
     if (breakdown.length) {
-      parts.push(`<strong>${effectLabel}:</strong>`);
-      for (const e of breakdown) parts.push(`&nbsp;&bull; ${e.label}: ${sign(e.value)}`);
+      rows.push(`<tr><td colspan="2" style="padding:2px 3px 0"><strong>${effectLabel}:</strong></td></tr>`);
+      for (const e of breakdown) {
+        rows.push(`<tr>${td(`&nbsp;&bull;&nbsp;${e.label}`)}${tdr(`<strong>${sign(e.value)}%</strong>`)}</tr>`);
+      }
     }
-    parts.push(`<strong>${totalLabel}:</strong> ${sign(userVal + delta)}`);
-    return parts.join("<br>");
+    rows.push(`<tr style="border-top:1px solid rgba(255,255,255,.2)">${td(`<strong>${totalLabel}:</strong>`)}${tdr(`<strong>${sign(userVal + delta)}</strong>`)}</tr>`);
+    return `<table style="border-collapse:collapse;white-space:nowrap">${rows.join("")}</table>`;
   }
 
   /**
@@ -85,11 +90,16 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     if (!sf || !uv) return;
     const bd = this._breakdown;
 
-    const set = (name, tooltip) => {
+    const set = (name, html_tooltip) => {
       const el = html.querySelector(`[name="${name}"]`);
       if (!el) return;
-      if (tooltip) el.dataset.tooltip = tooltip;
-      else delete el.dataset.tooltip;
+      if (html_tooltip) {
+        el.dataset.tooltipHtml = html_tooltip;
+        delete el.dataset.tooltip;
+      } else {
+        delete el.dataset.tooltipHtml;
+        delete el.dataset.tooltip;
+      }
     };
 
     set("modifier",       this._buildTooltip(uv.modifier,       sf.modifier,       bd.mod));
@@ -104,21 +114,16 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     const effectLabel  = game.i18n.localize("NEUROSHIMA.Roll.EffectBonus");
     const totalLabel   = game.i18n.localize("NEUROSHIMA.Roll.Total");
 
-    if (sf.armorDelta) {
-      set("armorPenalty", `<strong>${userLabel}:</strong> ${sign(actorArmor)}<br><strong>${effectLabel}:</strong> ${sign(sf.armorDelta)}<br><strong>${totalLabel}:</strong> ${sign(actorArmor + sf.armorDelta)}`);
-    } else {
-      set("armorPenalty", null);
-    }
-    if (sf.woundDelta) {
-      set("woundPenalty", `<strong>${userLabel}:</strong> ${sign(actorWound)}<br><strong>${effectLabel}:</strong> ${sign(sf.woundDelta)}<br><strong>${totalLabel}:</strong> ${sign(actorWound + sf.woundDelta)}`);
-    } else {
-      set("woundPenalty", null);
-    }
-    if (sf.diseasePenalty) {
-      set("diseasePenalty", `<strong>${userLabel}:</strong> ${sign(actorDisease)}<br><strong>${effectLabel}:</strong> ${sign(sf.diseasePenalty)}<br><strong>${totalLabel}:</strong> ${sign(actorDisease + sf.diseasePenalty)}`);
-    } else {
-      set("diseasePenalty", null);
-    }
+    const buildSimple = (base, delta) =>
+      `<table style="border-collapse:collapse;white-space:nowrap">` +
+      `<tr><td style="padding:1px 3px"><span style="opacity:.75">${userLabel}:</span></td><td style="padding:1px 3px;text-align:right;padding-left:8px"><span style="opacity:.75">${sign(base)}</span></td></tr>` +
+      `<tr><td style="padding:1px 3px"><strong>${effectLabel}:</strong></td><td style="padding:1px 3px;text-align:right;padding-left:8px"><strong>${sign(delta)}</strong></td></tr>` +
+      `<tr style="border-top:1px solid rgba(255,255,255,.2)"><td style="padding:1px 3px"><strong>${totalLabel}:</strong></td><td style="padding:1px 3px;text-align:right;padding-left:8px"><strong>${sign(base + delta)}</strong></td></tr>` +
+      `</table>`;
+
+    set("armorPenalty",   sf.armorDelta    ? buildSimple(actorArmor,   sf.armorDelta)    : null);
+    set("woundPenalty",   sf.woundDelta    ? buildSimple(actorWound,   sf.woundDelta)    : null);
+    set("diseasePenalty", sf.diseasePenalty? buildSimple(actorDisease, sf.diseasePenalty): null);
   }
 
   /**

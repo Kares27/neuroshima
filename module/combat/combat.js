@@ -1381,7 +1381,8 @@ export class MeleeOpposedChat {
     // ── Interactive duel card (default meleeCombatType setting) ──────────
     if ((game.settings.get("neuroshima", "meleeCombatType") || "default") === "default") {
       try {
-        await MeleeOpposedChat._createDuelCard(message, data, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget);
+        const augmentedData = { ...data, defenderManeuver: defenseResult.maneuver ?? null };
+        await MeleeOpposedChat._createDuelCard(message, augmentedData, attackerActor, defenderActor, attackDice, defenseDice, attackTarget, defenseTarget);
         await MeleeOpposedChat._updateHandlerToResolved(message, data, attackerActor, defenderActor);
       } catch (err) {
         console.error("Neuroshima | resolveOpposed: failed to create duel card", err);
@@ -1753,6 +1754,8 @@ export class MeleeOpposedChat {
       attackerTokenUuid: data.attackerTokenUuid ?? null,
       defenderUuid: data.defenderUuid,
       defenderTokenUuid: data.defenderTokenUuid ?? null,
+      attackerManeuver: data.attackerManeuver ?? null,
+      defenderManeuver: data.defenderManeuver ?? null,
       weaponId: data.weaponId,
       beastItemId: data.beastItemId ?? null,
       attackDice,
@@ -2845,6 +2848,22 @@ export class MeleeOpposedChat {
         const ownerHasSuccess     = ownerSuccessCount > 0;
         const responderHasSuccess  = responderSuccessCount > 0;
 
+        // preOpposedAttacker — fire for the owner (attacking) side before segment resolution.
+        // Allows scripts (e.g. Boa – Pochwycenie) to react when this actor is about to attack.
+        {
+          const _paUuid  = isOwnerAttacker
+            ? (state.attackerTokenUuid || state.attackerUuid)
+            : (state.defenderTokenUuid || state.defenderUuid);
+          const _paDoc   = fromUuidSync(_paUuid);
+          const _paActor = _paDoc?.actor ?? _paDoc;
+          if (_paActor) {
+            await NeuroshimaScriptRunner.execute("preOpposedAttacker", {
+              actor: _paActor, encounter: null, participant: null,
+              difficultyTarget: 0, mode: "attack"
+            });
+          }
+        }
+
         if (declaredAction === "attack" || declaredAction === "trick") {
           if (responderAction === "attack") {
             // ── BERSERKER: obaj atakują ───────────────────────────────────
@@ -2880,6 +2899,32 @@ export class MeleeOpposedChat {
             state.committedTrickId     = null;
             state.committedTrickDamage = null;
 
+            // opposedAttacker — fire for the owner (attacking) side after BERSERKER segment.
+            {
+              const _oaUuid  = isOwnerAttacker
+                ? (state.attackerTokenUuid || state.attackerUuid)
+                : (state.defenderTokenUuid || state.defenderUuid);
+              const _oaDoc   = fromUuidSync(_oaUuid);
+              const _oaActor = _oaDoc?.actor ?? _oaDoc;
+              if (_oaActor) {
+                const _oaResultType  = outcome === "hit" ? "hit" : outcome === "takeover" ? "takeover" : "block";
+                const _ownerManeuver = isOwnerAttacker ? (state.attackerManeuver ?? null) : (state.defenderManeuver ?? null);
+                await NeuroshimaScriptRunner.execute("opposedAttacker", {
+                  actor: _oaActor,
+                  resultType: _oaResultType,
+                  diceCount: N,
+                  encounter: null,
+                  attacker: { maneuver: _ownerManeuver },
+                  defender: {},
+                  attackerId: isOwnerAttacker ? state.attackerUuid : state.defenderUuid,
+                  defenderId: isOwnerAttacker ? state.defenderUuid : state.attackerUuid,
+                  attackerSuccesses: ownerSuccessCount,
+                  defenderSuccesses: responderSuccessCount,
+                  blockDamageShift: 0
+                });
+              }
+            }
+
           } else {
             // ── Normalna obrona ───────────────────────────────────────────
             if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
@@ -2908,6 +2953,69 @@ export class MeleeOpposedChat {
             // Wyczyść metadane sztuczki po rozstrzygnięciu segmentu
             state.committedTrickId     = null;
             state.committedTrickDamage = null;
+
+            // opposedDefender — fire for the defending side after each normal-defense segment.
+            // Scripts on the defender's applied effects (e.g. Garda – Aktywna) can react to
+            // the result and self-delete or set blockDamageShift.
+            const _oppDefUuid  = isOwnerAttacker
+              ? (state.defenderTokenUuid || state.defenderUuid)
+              : (state.attackerTokenUuid || state.attackerUuid);
+            const _oppDefDoc   = fromUuidSync(_oppDefUuid);
+            const _oppDefActor = _oppDefDoc?.actor ?? _oppDefDoc;
+            if (_oppDefActor) {
+              const _oppResultType = outcome === "hit" ? "hit" : outcome === "takeover" ? "takeover" : "block";
+              const _defObj = { blockDamageShift: 0 };
+              const _oppArgs = {
+                actor: _oppDefActor,
+                resultType: _oppResultType,
+                diceCount: N,
+                encounter: null,
+                attacker: {},
+                defender: _defObj,
+                participant: _defObj,
+                attackerSuccesses: ownerSuccessCount,
+                defenderSuccesses: responderSuccessCount,
+                blockDamageShift: 0
+              };
+              await NeuroshimaScriptRunner.execute("opposedDefender", _oppArgs);
+              const _bds = (_oppArgs.defender.blockDamageShift || 0) + (_oppArgs.blockDamageShift || 0);
+              if (_bds !== 0) {
+                if (!state.blockDamageShiftByActor) state.blockDamageShiftByActor = {};
+                state.blockDamageShiftByActor[_oppDefUuid] = _bds;
+              }
+              const _effectiveShift = _bds || (state.blockDamageShiftByActor?.[_oppDefUuid] || 0);
+              if (_effectiveShift !== 0 && outcome === "draw" && ownerSuccessCount > 0) {
+                const _baseDmg    = state[`damage${N}`] ?? "D";
+                const _shiftedDmg = MeleeOpposedChat._shiftDamageTypeUnclamped(_baseDmg, _effectiveShift);
+                if (_shiftedDmg) state.hits.push({ tier: N, damageType: _shiftedDmg, isBlockDamage: true });
+              }
+            }
+
+            // opposedAttacker — fire for the owner (attacking) side after each normal-defense segment.
+            {
+              const _oaUuid  = isOwnerAttacker
+                ? (state.attackerTokenUuid || state.attackerUuid)
+                : (state.defenderTokenUuid || state.defenderUuid);
+              const _oaDoc   = fromUuidSync(_oaUuid);
+              const _oaActor = _oaDoc?.actor ?? _oaDoc;
+              if (_oaActor) {
+                const _oaResultType  = outcome === "hit" ? "hit" : outcome === "takeover" ? "takeover" : "block";
+                const _ownerManeuver = isOwnerAttacker ? (state.attackerManeuver ?? null) : (state.defenderManeuver ?? null);
+                await NeuroshimaScriptRunner.execute("opposedAttacker", {
+                  actor: _oaActor,
+                  resultType: _oaResultType,
+                  diceCount: N,
+                  encounter: null,
+                  attacker: { maneuver: _ownerManeuver },
+                  defender: {},
+                  attackerId: isOwnerAttacker ? state.attackerUuid : state.defenderUuid,
+                  defenderId: isOwnerAttacker ? state.defenderUuid : state.attackerUuid,
+                  attackerSuccesses: ownerSuccessCount,
+                  defenderSuccesses: responderSuccessCount,
+                  blockDamageShift: 0
+                });
+              }
+            }
           }
 
         } else if (declaredAction === "exit") {
@@ -3696,7 +3804,8 @@ export class MeleeOpposedChat {
             damage3: weapon.system.damageMelee3,
             isGradCios: rawResult.isGradCios || false,
             szachistaYield: !!(await attacker.getFlag("neuroshima", "_szachistaYield")),
-            activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? []
+            activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? [],
+            attackerManeuver: rawResult.maneuver ?? null
           }
         }
       },
@@ -4194,6 +4303,30 @@ export class MeleeOpposedChat {
             totalReduced += batch.reducedProjectiles ?? 0;
             allReducedDetails.push(...(batch.reducedDetails ?? []));
           }
+        }
+      } else if (hit.isBlockDamage) {
+        const attackData = {
+          isMelee: true,
+          actorId: attackerActor?.id,
+          weaponId: rd.weaponId,
+          label: weaponItem?.name ?? game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
+          damageMelee1: hit.damageType,
+          damageMelee2: hit.damageType,
+          damageMelee3: hit.damageType,
+          finalLocation: rd.location,
+          successPoints: hit.tier
+        };
+        const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
+          isOpposed: true,
+          spDifference: hit.tier,
+          location: rd.location,
+          suppressChat: true
+        });
+        if (batch) {
+          allResults.push(...(batch.results ?? []));
+          allWoundIds.push(...(batch.woundIds ?? []));
+          totalReduced += batch.reducedProjectiles ?? 0;
+          allReducedDetails.push(...(batch.reducedDetails ?? []));
         }
       } else {
         const attackData = {
@@ -5007,7 +5140,7 @@ export class MeleeResolution {
     // args.blockDamageShift (negative) shifts the damage type down on block (Garda).
     const postResultArgs = {
       encounter: updated, resultType, diceCount, attackerId, defenderId,
-      attacker, defender, attackerSuccesses, defenderSuccesses, blockDamageShift: 0
+      attacker, defender, participant: defender, attackerSuccesses, defenderSuccesses, blockDamageShift: 0
     };
     if (attackerActorDoc) {
       await NeuroshimaScriptRunner.execute("opposedAttacker", { actor: attackerActorDoc, ...postResultArgs });

@@ -423,7 +423,7 @@ export class NeuroshimaDice {
     let extraWeaponModifier = 0;
     let effectiveSkillBonus = skillBonus;
     const preRollAnnotations = [];
-    if (actor && !isReroll) {
+    if (actor && !isReroll && !options?.skipPreRollTest) {
         const preWeaponTest = {
             actor,
             weapon,
@@ -442,7 +442,6 @@ export class NeuroshimaDice {
         extraWeaponModifier = preWeaponTest.preData.penalties.mod ?? 0;
         effectiveSkillBonus = preWeaponTest.preData.skillBonus ?? effectiveSkillBonus;
         effectiveAttributeBonus = preWeaponTest.preData.attributeBonus ?? effectiveAttributeBonus;
-        console.log(`[NS-DIAG weapon preRollTest] actor="${actor?.name}" extraWeaponModifier=${extraWeaponModifier} totalPenalty=${totalPenalty}`);
     }
 
     const baseDifficulty = this.getDifficultyFromPercent(totalPenalty + extraWeaponModifier);
@@ -981,7 +980,7 @@ export class NeuroshimaDice {
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
 
     const testAnnotations = [];
-    if (actor && !isReroll && !isDebug) {
+    if (actor && !isReroll && !isDebug && !options?.skipPreRollTest) {
         const test = {
             actor,
             attribute: attributeKey ? { key: attributeKey, value: stat, name: game.i18n.localize(`NEUROSHIMA.attributes.${attributeKey}`) || attributeKey } : null,
@@ -1027,7 +1026,6 @@ export class NeuroshimaDice {
         penalties = test.preData.penalties ?? penalties;
         dieReductionBonus = test.preData.dieReductionBonus ?? dieReductionBonus;
         dieManualBonus = test.preData.dieManualBonus ?? dieManualBonus;
-        console.log(`[NS-DIAG rollTest preRollTest] actor="${actor?.name}" penalties.mod=${penalties?.mod} penalties.base=${penalties?.base}`);
     }
     
     // Check whether the actor has a pending opposed test (Defense)

@@ -81,7 +81,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     const attrObj = { name: currentAttribute, value: attrValue, key: currentAttribute };
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
-    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
+    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers } = await NeuroshimaScriptRunner.computeDialogFields(
       this.actor,
       { rollType: this.isSkill ? "skill" : "attribute", label: this.label, stat: this.stat, skill: skillObj, attribute: attrObj, difficulty: baseDifficulty },
       this.selectedModifierIds,
@@ -93,6 +93,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     this._scriptFields = scriptFields;
     this._breakdown = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown };
     this._userValues = { modifier: userModifier, attributeBonus: userAttrBonus, skillBonus: userSkillBonus };
+    this._preRollModifiers = preRollModifiers ?? [];
 
     context.actor = this.actor;
     context.difficulties = NEUROSHIMA.difficulties;
@@ -265,7 +266,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     const woundPenalty   = useWound   ? (actorWoundPenalty   + (sf.woundDelta   || 0)) : 0;
     const diseasePenalty = useDisease ? (actorDiseasePenalty + (sf.diseasePenalty || 0)) : 0;
 
-    const submissionOptions = {};
+    const submissionOptions = { skipPreRollTest: true };
     for (const dm of this._dialogModifiers) {
       if (!dm.activated || !dm._script?.submissionScript) continue;
       await dm._script.runSubmission({ actor: this.actor, options: submissionOptions, fields: sf });

@@ -2875,6 +2875,39 @@ export class NeuroshimaScript {
     }
   }
 
+  // ── Effect deletion ───────────────────────────────────────────────────────
+
+  /**
+   * Delete the active effect that owns this script from the actor.
+   *
+   * Prefer this over `this.effect.delete()` in scripts. `this.effect.delete()`
+   * calls `Document.deleteDocuments([id], {parent: this.effect.parent})`, where
+   * `this.effect.parent` is the actor reference captured when the effect was first
+   * created. For unlinked-token (synthetic) actors this reference can become stale
+   * if Foundry V13 rebuilds the synthetic-actor instance between effect creation
+   * and trigger execution (e.g. after an HP or combat-state update). A stale
+   * parent causes Foundry's socket layer to target the wrong document collection
+   * and the delete is silently rejected.
+   *
+   * This helper always resolves the actor through `this.actor` — the proxy value
+   * bound to `args.actor` at trigger time — which is always a fresh, live
+   * reference, and calls `actor.deleteEmbeddedDocuments` directly so Foundry
+   * routes the operation correctly for both linked and unlinked token actors.
+   *
+   * @param {object} [options={}] - Options forwarded to deleteEmbeddedDocuments.
+   * @returns {Promise<void>}
+   *
+   * @example
+   * // Preferred over: await this.effect.delete()
+   * await this.deleteEffect();
+   */
+  async deleteEffect(options = {}) {
+    const id = this.effect?.id;
+    const actor = this.actor;
+    if (!id || !actor) return;
+    await actor.deleteEmbeddedDocuments("ActiveEffect", [id], options);
+  }
+
   // ── Execution ─────────────────────────────────────────────────────────────
 
   /**
@@ -4122,15 +4155,6 @@ export class NeuroshimaScriptRunner {
 
     const actorItemUuids = new Set((actor.items ?? []).map(i => i.uuid));
 
-    if (trigger === "preRollTest") {
-      console.log(`[NS-DIAG preRollTest] actor="${actor.name}" effectsCount=${actor.effects?.size ?? 0}`);
-      for (const e of (actor.effects ?? [])) {
-        const sd = e.system?.scriptData ?? [];
-        const matchingTrigger = sd.filter(s => s.trigger === "preRollTest").length;
-        console.log(`[NS-DIAG preRollTest]  effect="${e.name}" origin=${e.origin} fromEquip=${!!e.getFlag("neuroshima","fromEquipTransfer")} scriptData=${sd.length} (preRollTest=${matchingTrigger})`);
-      }
-    }
-
     for (const effect of (actor.effects ?? [])) {
       if (effect.getFlag("neuroshima", "fromEquipTransfer")) continue;
       if (effect.origin && actorItemUuids.has(effect.origin)) {
@@ -4213,7 +4237,6 @@ export class NeuroshimaScriptRunner {
   static async execute(trigger, args = {}) {
     const actor = args.actor;
     if (!actor) return;
-    if (trigger === "preRollTest") console.log(`[NS-DIAG execute] preRollTest called actor="${actor?.name}" effectsCount=${actor?.effects?.size ?? 0}`);
     game.neuroshima?.log?.(`[${trigger}] fired`, NeuroshimaScriptRunner._triggerArgsForLog(args));
     const scripts = this.getScripts(actor, trigger);
     for (const script of scripts) {
@@ -4334,7 +4357,7 @@ export class NeuroshimaScriptRunner {
     if (!actor) return {
       dialogModifiers: [],
       scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null },
-      modBreakdown: [], attrBreakdown: [], skillBreakdown: []
+      modBreakdown: [], attrBreakdown: [], skillBreakdown: [], preRollModifiers: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
 
@@ -4429,6 +4452,32 @@ export class NeuroshimaScriptRunner {
       });
     }
 
+    const preRollModifiers = [];
+    const preRollTestScripts = this.getScripts(actor, "preRollTest");
+    for (const script of preRollTestScripts) {
+      const syntheticTest = {
+        actor,
+        preData: {
+          penalties: { mod: 0, wounds: 0, armor: 0, base: 0 },
+          skillBonus: 0,
+          attributeBonus: 0,
+          autoSuccess: false,
+          cancelled: false,
+          annotations: [],
+        },
+        context: { ...rollContext },
+      };
+      try {
+        await script.execute({ actor, test: syntheticTest });
+      } catch (e) {
+        console.error(`Neuroshima | preRollTest script error on "${script.label}":`, e);
+        continue;
+      }
+      const penMod = syntheticTest.preData.penalties.mod ?? 0;
+      const annotation = syntheticTest.preData.annotations?.[0] ?? script.label ?? "preRollTest";
+      preRollModifiers.push({ label: annotation, value: penMod });
+    }
+
     const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
@@ -4482,7 +4531,12 @@ export class NeuroshimaScriptRunner {
       if (result.skillLabel) scriptFields.skillLabel = result.skillLabel;
     }
 
-    return { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown };
+    for (const prt of preRollModifiers) {
+      scriptFields.modifier += prt.value;
+      if (prt.value) modBreakdown.push({ label: prt.label, value: prt.value });
+    }
+
+    return { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers };
   }
 
   /**

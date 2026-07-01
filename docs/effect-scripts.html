@@ -1877,20 +1877,21 @@ args.encounter._effects.wiatrakReclaim = <span class="var">myId</span>;</code></
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor-obrońca</td></tr>
     <tr><td><code>args.resultType</code></td><td>string</td><td>Wynik wymiany: <code>"hit"</code> / <code>"block"</code> / <code>"takeover"</code></td></tr>
-    <tr><td><code>args.defender</code></td><td>object</td><td>Dane uczestnika-obrońcy (referencja). <code>args.defender.blockDamageShift = -1</code> → obrażenia o 1 tier niżej przy bloku</td></tr>
+    <tr><td><code>args.defender</code></td><td>object</td><td>Dane uczestnika-obrońcy (referencja). <code>args.defender.blockDamageShift = -1</code> → obrażenia o 1 tier niżej przy draw</td></tr>
+    <tr><td><code>args.participant</code></td><td>object</td><td>Alias do <code>args.defender</code> — ta sama referencja. Zalecany do ustawiania <code>blockDamageShift</code> (spójny z innymi triggerami)</td></tr>
     <tr><td><code>args.attacker</code></td><td>object</td><td>Dane uczestnika-atakującego (referencja — do odczytu)</td></tr>
     <tr><td><code>args.encounter</code></td><td>object</td><td>Pełny stan pojedynku (referencja)</td></tr>
     <tr><td><code>args.diceCount</code></td><td>number</td><td>Liczba kości atakującego</td></tr>
     <tr><td><code>args.attackerSuccesses / args.defenderSuccesses</code></td><td>number</td><td>Sukcesy obu stron</td></tr>
   </tbody></table>
   <div class="callout info">
-    <strong>blockDamageShift — modyfikacja przez referencję:</strong> Użyj <code>args.defender.blockDamageShift = N</code> (obiekt-referencja, działa). NIE używaj <code>args.blockDamageShift = N</code> (spread-kopia, wartość ginie). Preferowana alternatywa: <code>preOpposedDefender</code> → <code>args.participant.blockDamageShift = -1</code>.<br>
+    <strong>blockDamageShift — modyfikacja przez referencję:</strong> Użyj <code>args.participant.blockDamageShift = N</code> lub <code>args.defender.blockDamageShift = N</code> — to ten sam obiekt (alias). NIE używaj <code>args.blockDamageShift = N</code> (spread-kopia, wartość ginie). Silnik odczytuje wartość po triggerze i zapisuje ją w <code>state.blockDamageShiftByActor[uuid]</code> — persystuje przez wszystkie segmenty wymiany. Redukcja aplikowana jest przy wyniku <code>"draw"</code> (równe sukcesy &gt; 0 po obu stronach).<br>
     <table style="margin-top:0.5rem">
-      <thead><tr><th>Atak (dice)</th><th>Normalny blok</th><th>blockDamageShift = -1</th><th>blockDamageShift = -2</th></tr></thead>
+      <thead><tr><th>Atak (dice / typ broni)</th><th>Draw bez Gardy (brak obrażeń)</th><th>Draw z Gardą (shift = -1) → obrażenia</th><th>Draw z Gardą (shift = -2) → obrażenia</th></tr></thead>
       <tbody>
-        <tr><td>3 kości (C)</td><td>brak obrażeń</td><td>Lekka rana (L)</td><td>Draśnięcie (D)</td></tr>
-        <tr><td>2 kości (L)</td><td>brak obrażeń</td><td>Draśnięcie (D)</td><td>brak obrażeń</td></tr>
-        <tr><td>1 kość (D)</td><td>brak obrażeń</td><td>brak obrażeń</td><td>brak obrażeń</td></tr>
+        <tr><td>3 kości → C</td><td>brak obrażeń</td><td>Lekka rana (L)</td><td>Draśnięcie (D)</td></tr>
+        <tr><td>2 kości → L</td><td>brak obrażeń</td><td>Draśnięcie (D)</td><td>brak obrażeń</td></tr>
+        <tr><td>1 kość → D</td><td>brak obrażeń</td><td>brak obrażeń</td><td>brak obrażeń</td></tr>
       </tbody>
     </table>
   </div>
@@ -5804,6 +5805,7 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
     <tr><td><code>this.getEquippedArmors(actor?)</code></td><td>Lista założonych pancerzy aktora</td></tr>
     <tr><td><code>this.getEquippedWeapons(weaponType?, actor?)</code></td><td>Lista założonych broni aktora. Filtr: <code>"melee"</code> | <code>"ranged"</code> | <code>"thrown"</code> | <code>"grenade"</code> | <code>undefined</code> (wszystkie)</td></tr>
     <tr><td><code>await this.disarmWeapon(actorOrUuid, weaponId?)</code></td><td>Rozbraja (odznacza <code>equipped</code>) broń na wskazanym aktorze przez socket GM. Bez <code>weaponId</code> auto-wybiera pierwszą założoną broń melee dłuższą od noża (<code>skill !== "brawl"</code>). Zwraca <code>{ success, weaponName, actorName, reason }</code></td></tr>
+    <tr><td><code>await this.deleteEffect(options?)</code></td><td>Usuwa efekt, który jest właścicielem tego skryptu, z aktora. <strong>Preferowane nad <code>this.effect.delete()</code></strong> — działa poprawnie dla tokenów unlinkowanych (synthetic actor), gdzie <code>this.effect.parent</code> może być przestarzałą referencją między aplikowaniem efektu a wywołaniem triggera. Używa <code>this.actor.deleteEmbeddedDocuments()</code> z fresh <code>args.actor</code>.</td></tr>
     <tr><td><code>this.getArmorRating(item, loc)</code></td><td>Bazowe SP w lokacji</td></tr>
     <tr><td><code>this.getArmorEffective(item, loc)</code></td><td>Efektywne SP (bazowe − uszkodzenia, min 0)</td></tr>
     <tr><td><code>this.getArmorDurability(item)</code></td><td>Obiekt <code>{ max, damage, remaining }</code> — Wytrzymałość</td></tr>

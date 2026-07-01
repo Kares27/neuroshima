@@ -132,7 +132,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const weaponAttrObj    = { name: weaponAttrKey, value: weaponAttrValue, key: weaponAttrKey };
 
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
-    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown } = await NeuroshimaScriptRunner.computeDialogFields(
+    const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers } = await NeuroshimaScriptRunner.computeDialogFields(
     this.actor,
     {
       rollType: this.rollType,
@@ -156,6 +156,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this._scriptFields = scriptFields;
     this._breakdown = { mod: modBreakdown, attr: attrBreakdown, skill: skillBreakdown };
     this._userValues = { modifier: userModifier, attributeBonus: userAttrBonus, skillBonus: userSkillBonus };
+    this._preRollModifiers = preRollModifiers ?? [];
 
     const targetTokens = Array.from(game.user.targets);
     const isVehicleTarget = targetTokens.some(t => t.actor?.type === "vehicle");
@@ -538,6 +539,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     };
 
     const submissionOptions = await this._runSubmissionScripts();
+    submissionOptions.skipPreRollTest = true;
     this.close();
 
     if (this.isPoolRoll && this.onPoolRoll) {

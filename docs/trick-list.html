@@ -588,6 +588,9 @@ args.actions.push({
 <div class="callout info">
   <strong>Kolejność skryptów na szablonie:</strong> Skrypty z efektu szablonu (<code>contents[1]</code>) są kopiowane do aplikowanej wersji przez <code>convertToApplied()</code>. Wystarczy je napisać raz na szablonie — każda kopia nałożona na cel będzie je posiadać automatycznie.
 </div>
+<div class="callout info">
+  <strong>Implementacja w applyDuelBatch:</strong> Wyzwalacz <code>preOpposedAttacker</code> jest wywoływany z <code>MeleeOpposedChat.applyDuelBatch()</code> przed obliczeniem wyników każdego segmentu, dla aktora będącego w danym segmencie atakującym (strona inicjatywy). Skrypt Pochwycenia usuwa się gdy pochwycony przejmie inicjatywę i stanie się atakującym. Manewr atakującego dostępny przez <code>args.attacker.maneuver</code> jest ustawiony na <code>null</code> w tym wyzwalaczu (<code>difficultyTarget</code> nie jest modyfikowany w applyDuelBatch — kości są już rzucone).
+</div>
 </section>
 
 <section id="trick-013-cassanova-mata-hari">
@@ -851,7 +854,7 @@ args.fields.attributeBonus += <span class="num">3</span>;
   <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
   Utwórz Item o typie Sztuczka, a w nim <strong>dwa AE w tej kolejności</strong> (kolejność = indeks w tablicy):<br><br>
   <strong>AE nr 1</strong> — <em>„Garda"</em> (<code>transferType: self</code>): widoczny w dialogu walki obronnej. Dodaje +6 do Zręczności i aplikuje marker (AE nr 2) na aktora.<br>
-  <strong>AE nr 2</strong> — <em>„Garda – Aktywna"</em> (<code>transferType: other</code>): marker jednorazowy. Odpalany przez <code>preOpposedDefender</code> — sygnalizuje silnikowi, że przy bloku obrażenia mają być 1 poziom niżej na torze D→L→C→K. Po użyciu usuwa się sam.<br><br>
+  <strong>AE nr 2</strong> — <em>„Garda – Aktywna"</em> (<code>transferType: other</code>): marker jednorazowy. Odpalany przez <code>opposedDefender</code> — sygnalizuje silnikowi, że przy bloku obrażenia mają być 1 poziom niżej na torze D→L→C→K. Po użyciu usuwa się sam.<br><br>
   <strong>Ważne:</strong> AE nr 1 musi być <em>pierwszy</em> na liście efektów (indeks 0), AE nr 2 drugi (indeks 1) — dialog script odwołuje się do <code>effects.contents[1]</code>.
 </div>
 
@@ -862,28 +865,39 @@ args.fields.attributeBonus += <span class="num">3</span>;
 <pre><code><span class="kw">return</span> !(args.rollType === <span class="str">"melee"</span> && args.meleeAction === <span class="str">"defense"</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +6 Zr w obronie + aplikuj marker</div>
-<pre><code>args.fields.attributeBonus += <span class="num">6</span>;
-<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+<div class="example-header"><span class="trigger-badge">dialog Code</span> Dodaj +6 do Zr (modyfikator w dialogu)</div>
+<pre><code>args.fields.attributeBonus += <span class="num">6</span>;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog Submission Script</span> Aplikuj marker po kliknięciu Rzuć</div>
+<pre><code><span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
 <span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
 </div>
 </div>
 
 <h4 class="script-label">Efekt nr 2 — „Garda – Aktywna" (transferType: other)</h4>
-<p class="example-desc">Marker jednorazowy. <code>preOpposedDefender</code> odpala się podczas rozdzielczości — ustawia <code>blockDamageShift = -1</code> na uczestniku walki i usuwa siebie. Silnik rozdzielczości <code>_shiftDamageTypeUnclamped</code> obniża typ obrażeń o 1 poziom: C→L, L→D, D→brak obrażeń.</p>
+<p class="example-desc">Persistent marker — aktywny przez całą wymianę melee (wszystkie 3 segmenty tury), usuwany dopiero w fazie <code>turn-end</code>. Wymaga <strong>dwóch skryptów</strong>: <code>opposedDefender</code> (ustawia redukcję obrażeń) i <code>meleeUpdate</code> (sprzątanie). Silnik persystuje wartość <code>blockDamageShift</code> w <code>state.blockDamageShiftByActor</code> — działa nawet jeśli marker wygaśnie w środku wymiany. Silnik rozdzielczości <code>_shiftDamageTypeUnclamped</code> obniża typ obrażeń o 1 poziom: C→L, L→D, D→brak obrażeń.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Ustaw blockDamageShift i usuń marker</div>
-<pre><code><span class="cmt">// Sygnalizujemy silnikowi walki: przy bloku obrażenia 1 tier niżej na torze D→L→C→K.</span>
-<span class="cmt">// D zablokowane = brak obrażeń (null zamiast D przez _shiftDamageTypeUnclamped).</span>
-args.participant.blockDamageShift = -<span class="num">1</span>;
-<span class="cmt">// Marker jednorazowy — usuwa się sam po użyciu.</span>
-<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
+<div class="example-header"><span class="trigger-badge">opposedDefender</span> Ustaw blockDamageShift (dla każdego segmentu wymiany)</div>
+<pre><code><span class="cmt">// args.participant to alias do args.defender — ta sama referencja, zmiana persist.</span>
+<span class="cmt">// Silnik zapisuje wartość w state.blockDamageShiftByActor[uuid] po tym triggerze.</span>
+<span class="cmt">// NIE usuwaj markera tutaj — Garda działa przez całą wymianę (3 segmenty).</span>
+args.participant.blockDamageShift = -<span class="num">1</span>;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Usuń marker na koniec tury melee</div>
+<pre><code><span class="cmt">// Sprzątanie — usuń marker gdy wymiana skończona.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">deleteEffect</span>();</code></pre>
 </div>
 </div>
 
+<div class="callout warning">
+  <strong>Używaj <code>this.deleteEffect()</code>, nie <code>this.effect.delete()</code>:</strong> W Foundry V13 dla tokenów <em>unlinkowanych</em> (synthetic actor) <code>this.effect.parent</code> może być przestarzałą referencją — Foundry może odtworzyć instancję synthetic actor między aplikowaniem efektu a wywołaniem triggera (np. po aktualizacji HP). <code>this.effect.delete()</code> wywołuje <code>deleteDocuments({parent: staleActor})</code>, co może skutkować błędem „document not found". <code>this.deleteEffect()</code> używa <code>this.actor</code> (świeże <code>args.actor</code> z triggera) i wywołuje <code>actor.deleteEmbeddedDocuments</code> bezpośrednio — działa poprawnie dla obu typów tokenów.
+</div>
 <div class="callout info">
-  <strong>Alternatywna implementacja przez opposedDefender:</strong> Zamiast <code>preOpposedDefender</code> marker może też ustawiać shift w <code>opposedDefender</code> na <code>args.blockDamageShift = -1</code>. Obie drogi są równoważne i obsługiwane przez silnik.
+  <strong>Implementacja w applyDuelBatch:</strong> Wyzwalacz <code>opposedDefender</code> jest wywoływany z <code>MeleeOpposedChat.applyDuelBatch()</code> po każdym segmencie. Mapowanie wyników: <code>"hit"→"hit"</code>, <code>"takeover"→"takeover"</code>, <code>"draw"/"nothing"→"block"</code>. Silnik odczytuje <code>args.participant.blockDamageShift</code> (przez alias <code>args.defender</code>) i zapisuje wartość w <code>state.blockDamageShiftByActor[uuid]</code> — trwa przez wszystkie segmenty wymiany. Gdy shift ≠ 0 i wynik to <code>"draw"</code> (równe sukcesy &gt; 0 po obu stronach), silnik automatycznie dodaje zredukowane obrażenia (<code>isBlockDamage: true</code>) do <code>state.hits</code> i aplikuje je przez <code>applyOpposedDamage</code>.
 </div>
 <div class="callout warning">
   <strong>Warunek narracyjny:</strong> Garda działa tylko vs nieuzbrojony humanoid. Zweryfikuj narracyjnie — trudno sprawdzić automatycznie czy atakujący jest bez broni w momencie rzutu obronnego.
@@ -966,6 +980,9 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 <div class="callout info">
   <strong>Jak działa <code>cannotTargetOpponentDice</code>:</strong> Właściwość ustawiona na obiekcie uczestnika jest zapisywana w MeleeStore. Metoda <code>allocateSkill()</code> (<code>melee-turn-service.js</code> linia 910) sprawdza ją przed próbą kierowania punktów na kości oponenta — jeśli <code>true</code>, operacja jest odrzucana. Gracz może nadal obniżać własne kości (samodzielne Podwójne Działanie).<br>
   <strong>Jak działa <code>activateForMelee()</code>:</strong> Zapisuje ID efektu + ID uczestnika w <code>encounter._effects._tricks</code>. Automatycznie czyszczone przy starcie kolejnej tury (<code>turn-start</code>). <code>isActiveForMelee(args)</code> odczytuje ten wpis — działa w każdym wyzwalaczu melee który otrzymuje <code>args.encounter</code> lub <code>args.participant</code>.
+</div>
+<div class="callout warning">
+  <strong>Ograniczenie applyDuelBatch:</strong> Wyzwalacz <code>preMeleePool</code> odpala się <strong>tylko w NeuroshimaCombat</strong> (pełny system starcia) — po wygenerowaniu puli kości, przed jej zapisaniem w store. W systemie kart czatu (<code>applyDuelBatch</code>) nie ma fazy generowania puli — kości są rzucane bezpośrednio w dialogu i <code>preMeleePool</code> nie jest wywoływany. Gunfight działa w kartach czatu tylko przez skrypt dialogowy (zmiana klucza umiejętności). Reguła <code>cannotTargetOpponentDice</code> nie ma zastosowania w kartach czatu.
 </div>
 </section>
 
@@ -1546,6 +1563,9 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="callout warning">
   <strong>Ograniczenie "tylko raz vs ten sam przeciwnik":</strong> Flaga <code>rrrroooaaarrr_{defenderId}</code> ustawiana na aktorze blokuje kolejne użycia. Reset następuje przez usunięcie efektu (MG) lub skryptem odpoczynku. Max 5 wrogów — weryfikacja narracyjna przez MG.
 </div>
+<div class="callout info">
+  <strong>Implementacja w applyDuelBatch:</strong> Wyzwalacz <code>opposedAttacker</code> jest wywoływany z <code>MeleeOpposedChat.applyDuelBatch()</code> po każdym segmencie (zarówno w trybie normalnym jak i berserker), dla aktora będącego w danym segmencie atakującym (strona inicjatywy). Manewr atakującego (<code>args.attacker.maneuver</code>) pochodzi z wybranego manewru w dialogu rzutu i jest zapisywany w stanie karty duelu. <code>args.defenderId</code> to UUID obrońcy w danym segmencie.
+</div>
 </section>
 
 <section id="trick-083-ruchome-gniazdo-ckm">
@@ -1757,6 +1777,9 @@ args.difficultyTarget += <span class="num">3</span>;</code></pre>
 <span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
+</div>
+<div class="callout warning">
+  <strong>Ograniczenie applyDuelBatch:</strong> Wyzwalacz <code>preOpposedDefender</code> (odpowiadający za <code>args.difficultyTarget += 3</code>) odpala się <strong>tylko w NeuroshimaCombat</strong> (pełny system starcia), nie w systemie kart czatu (<code>applyDuelBatch</code>). W kartach czatu kości są już rzucone przed porównaniem — bonus +3 jest dodawany przez skrypt dialogowy AE nr 1 (dialog code) w momencie rzutu, co daje ten sam efekt mechanicznie. Wyzwalacz <code>opposedDefender</code> (usuwanie markera) działa w obu systemach.
 </div>
 </section>
 
