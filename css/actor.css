@@ -3174,6 +3174,24 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     font-size: 0.9em;
 }
 
+.neuroshima.roll-card .outcome-result {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+    letter-spacing: 0.04em;
+    padding: 2px 0 4px;
+    text-transform: uppercase;
+    font-family: 'SpecialElite', serif;
+}
+
+.neuroshima.roll-card .outcome-result.outcome-success {
+    color: #5aad5a;
+}
+
+.neuroshima.roll-card .outcome-result.outcome-failure {
+    color: #c75050;
+}
+
 /* Melee Summary in Combat Tracker */
 .active-duels-wrapper {
     margin: 5px;
@@ -8241,31 +8259,101 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     gap: 3px;
 }
 
-/* Group Check Chat Card */
+/* Request Test Chat Card */
 
-.neuroshima.group-check-card {
-    padding: 10px 12px;
+.neuroshima.request-test-card {
+    padding: 8px 12px 10px;
     font-size: 0.9em;
 }
 
-.neuroshima.group-check-card .roll-header {
+.neuroshima.request-test-card .rt-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-weight: bold;
-    font-size: 1.05em;
-    border-bottom: 2px solid #7a7971;
-    padding-bottom: 4px;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-    font-family: 'SpecialElite', serif;
+    gap: 7px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ns-border-main, #555);
+    margin-bottom: 6px;
 }
 
-.neuroshima.group-check-card hr.dotted-hr {
-    border: none;
-    border-top: 1px dotted var(--ns-border-main);
-    margin: 5px 0;
+.neuroshima.request-test-card .rt-header i {
+    font-size: 1.1em;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.neuroshima.request-test-card .rt-title {
+    font-family: 'SpecialElite', serif;
+    font-size: 1.05em;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+}
+
+.neuroshima.request-test-card .rt-title em {
+    font-style: normal;
+    opacity: 0.85;
+}
+
+.neuroshima.request-test-card .rt-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.neuroshima.request-test-card .rt-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--ns-text-main, #ccc);
+}
+
+.neuroshima.request-test-card .rt-badge-diff {
+    background: rgba(120, 100, 60, 0.3);
+    border-color: rgba(180, 150, 80, 0.4);
+    color: #d4b96a;
+}
+
+.neuroshima.request-test-card .rt-badge-type {
+    background: rgba(60, 80, 120, 0.3);
+    border-color: rgba(80, 120, 180, 0.4);
+    color: #8ab0d8;
+}
+
+.neuroshima.request-test-card .rt-note {
+    font-size: 0.82em;
+    opacity: 0.75;
+    font-style: italic;
+    margin-bottom: 6px;
+    padding-left: 2px;
+}
+
+.neuroshima.request-test-card .rt-action {
+    margin-top: 4px;
+}
+
+.neuroshima.request-test-card .rt-roll-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     width: 100%;
+    padding: 5px 10px;
+    background: rgba(80, 140, 80, 0.25);
+    border: 1px solid rgba(80, 160, 80, 0.45);
+    border-radius: 3px;
+    color: var(--ns-text-main, #ccc);
+    font-size: 0.88em;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.neuroshima.request-test-card .rt-roll-btn:hover {
+    background: rgba(80, 160, 80, 0.45);
 }
 
 .group-check-title {
@@ -8360,31 +8448,44 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     background: rgba(80, 160, 80, 0.5);
 }
 
-/* Group Check Card — dark theme */
+/* Request Test Card — dark theme */
 
-.theme-dark .chat-message:has(.neuroshima.group-check-card) {
+.theme-dark .chat-message:has(.neuroshima.request-test-card) {
     background: #0b0a13e6;
     border-color: #5a5a54;
     color: #e0e0d0;
 }
 
-.theme-dark .chat-message:has(.neuroshima.group-check-card) .message-header,
-.theme-dark .chat-message:has(.neuroshima.group-check-card) .message-header .message-sender,
-.theme-dark .chat-message:has(.neuroshima.group-check-card) .message-header .message-metadata {
+.theme-dark .chat-message:has(.neuroshima.request-test-card) .message-header,
+.theme-dark .chat-message:has(.neuroshima.request-test-card) .message-header .message-sender,
+.theme-dark .chat-message:has(.neuroshima.request-test-card) .message-header .message-metadata {
     color: #e0e0d0;
 }
 
-.theme-dark .neuroshima.group-check-card .roll-header {
-    border-color: #5a5a54;
+.theme-dark .neuroshima.request-test-card .rt-header {
+    border-bottom-color: #5a5a54;
     color: #e0e0d0;
 }
 
-.theme-dark .neuroshima.group-check-card hr.dotted-hr {
-    border-top-color: #5a5a54;
+.theme-dark .neuroshima.request-test-card .rt-roll-btn {
+    color: #e0e0d0;
 }
 
-.theme-dark .neuroshima.group-check-card .group-check-actor-row {
-    background: rgba(255, 255, 255, 0.04);
+/* Request Test — result message */
+
+.neuroshima.group-check-result {
+    padding: 4px 6px;
+    font-size: 0.9em;
+}
+
+.neuroshima.group-check-result .group-check-success {
+    color: #5aad5a;
+    font-weight: bold;
+}
+
+.neuroshima.group-check-result .group-check-failure {
+    color: #c75050;
+    font-weight: bold;
 }
 
 /* XP amount hint */

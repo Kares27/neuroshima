@@ -2986,7 +2986,7 @@ export class MeleeOpposedChat {
               const _effectiveShift = _bds || (state.blockDamageShiftByActor?.[_oppDefUuid] || 0);
               if (_effectiveShift !== 0 && outcome === "draw" && ownerSuccessCount > 0) {
                 const _baseDmg    = state[`damage${N}`] ?? "D";
-                const _shiftedDmg = MeleeOpposedChat._shiftDamageTypeUnclamped(_baseDmg, _effectiveShift);
+                const _shiftedDmg = MeleeResolution._shiftDamageTypeUnclamped(_baseDmg, _effectiveShift);
                 if (_shiftedDmg) state.hits.push({ tier: N, damageType: _shiftedDmg, isBlockDamage: true });
               }
             }

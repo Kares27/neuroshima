@@ -164,18 +164,21 @@ export class GMGroupCheckApp extends HandlebarsApplicationMixin(ApplicationV2) {
             const whisper = [...new Set([...playerIds, ...gmUserIds])];
 
             const templateData = {
-                actorId:      actor.id,
-                actorName:    actor.name,
-                skillKey:     this._skillKey,
-                attributeKey: this._attributeKey,
-                difficulty:   this._difficulty,
+                targetActorId: actor.id,
+                actorName:     actor.name,
+                skillKey:      this._skillKey,
+                attributeKey:  this._attributeKey,
+                difficulty:    this._difficulty,
+                modifier:      0,
+                isOpen:        false,
+                minAP:         0,
                 skillLabel,
                 diffLabel,
-                note:         this._note
+                note:          this._note
             };
 
             const content = await foundry.applications.handlebars.renderTemplate(
-                "systems/neuroshima/templates/apps/group-check-card.hbs",
+                "systems/neuroshima/templates/apps/request-test-card.hbs",
                 templateData
             );
 
@@ -183,7 +186,7 @@ export class GMGroupCheckApp extends HandlebarsApplicationMixin(ApplicationV2) {
                 content,
                 speaker,
                 whisper,
-                flags: { neuroshima: { groupCheck: true } }
+                flags: { neuroshima: { requestTest: true } }
             });
             sent++;
         }
@@ -197,21 +200,37 @@ export class GMGroupCheckApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
 export function registerGroupCheckChatListeners() {
     Hooks.on("renderChatMessageHTML", (message, html) => {
-        if (!message.flags?.neuroshima?.groupCheck) return;
+        if (!message.flags?.neuroshima?.requestTest) return;
 
         html.querySelectorAll(".group-check-roll-btn").forEach(btn => {
             btn.addEventListener("click", async () => {
-                const actorId    = btn.dataset.actorId;
-                const skillKey   = btn.dataset.skillKey;
-                const attrKey    = btn.dataset.attrKey;
-                const difficulty = btn.dataset.difficulty;
+                const targetActorId = btn.dataset.targetActorId || null;
+                const skillKey      = btn.dataset.skillKey;
+                const attrKey       = btn.dataset.attrKey;
+                const difficulty    = btn.dataset.difficulty || null;
+                const modifier      = btn.dataset.modifier ? Number(btn.dataset.modifier) : 0;
+                const isOpen        = btn.dataset.isOpen === "true";
 
-                const actor = game.actors.get(actorId);
-                if (!actor) return;
-
-                if (!actor.isOwner) {
-                    ui.notifications.warn(game.i18n.localize("NEUROSHIMA.GMToolkit.GroupCheck.NotOwner"));
-                    return;
+                let actor;
+                if (targetActorId) {
+                    actor = game.actors.get(targetActorId);
+                    if (!actor) return;
+                    if (!actor.isOwner) {
+                        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.GMToolkit.GroupCheck.NotOwner"));
+                        return;
+                    }
+                } else {
+                    actor = game.user.character
+                        ?? canvas.tokens?.controlled?.[0]?.actor
+                        ?? null;
+                    if (!actor) {
+                        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.GMToolkit.GroupCheck.NoCharacter"));
+                        return;
+                    }
+                    if (!actor.isOwner) {
+                        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.GMToolkit.GroupCheck.NotOwner"));
+                        return;
+                    }
                 }
 
                 const { NeuroshimaSkillRollDialog } = await import("../dialogs/skill-roll-dialog.js");
@@ -219,6 +238,30 @@ export function registerGroupCheckChatListeners() {
                 const attrValue  = actor.system.attributeTotals?.[attrKey] ?? actor.system.attributes?.[attrKey] ?? 0;
                 const skillValue = actor.system.skills?.[skillKey]?.value ?? 0;
                 const label      = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+
+                const lastRollBase = { ...actor.system.lastRoll, isOpen };
+                if (difficulty) lastRollBase.baseDifficulty = difficulty;
+                if (modifier)   lastRollBase.modifier = modifier;
+
+                const rawSuccess = message.flags?.neuroshima?.onSuccess ?? null;
+                const rawFailure = message.flags?.neuroshima?.onFailure ?? null;
+                let resultCallback = null;
+                if (rawSuccess || rawFailure) {
+                    const _norm = (c) => {
+                        if (!c) return null;
+                        const arr = Array.isArray(c) ? c : [typeof c === "string" ? { addCondition: c } : c];
+                        return arr.length ? arr : null;
+                    };
+                    const successConsequences = _norm(rawSuccess);
+                    const failureConsequences = _norm(rawFailure);
+                    resultCallback = async ({ isSuccess }) => {
+                        const consequences = isSuccess ? successConsequences : failureConsequences;
+                        if (!consequences) return;
+                        for (const action of consequences) {
+                            if (action.addCondition) await actor.addCondition(action.addCondition, action.value ?? 1);
+                        }
+                    };
+                }
 
                 const dialog = new NeuroshimaSkillRollDialog({
                     actor,
@@ -228,7 +271,8 @@ export function registerGroupCheckChatListeners() {
                     isSkill:          true,
                     skillKey,
                     currentAttribute: attrKey,
-                    lastRoll:         { ...actor.system.lastRoll, baseDifficulty: difficulty }
+                    lastRoll:         lastRollBase,
+                    resultCallback
                 });
                 dialog.render(true);
             });

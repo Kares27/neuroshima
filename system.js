@@ -3074,6 +3074,56 @@ function initializeSocketlib() {
         game.neuroshima?.log("[socket:clearActorManeuverConditions] done", { name: actor.name });
     });
 
+    game.neuroshima.socket.register("requestTest", async ({ targetActorId, skillKey, attributeKey, difficulty, modifier, isOpen, label, note, minAP, onSuccess, onFailure }) => {
+        const NEUROSHIMA = game.neuroshima?.config ?? {};
+        const skillLabel = label || game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+        const diffLabel  = difficulty
+            ? game.i18n.localize(NEUROSHIMA.difficulties?.[difficulty]?.label ?? difficulty)
+            : "";
+        const speaker = { alias: game.i18n.localize("NEUROSHIMA.GMToolkit.Title") };
+
+        let whisper = [];
+        let actorName = "";
+
+        if (targetActorId) {
+            const actor = game.actors.get(targetActorId);
+            if (!actor) return;
+            actorName = actor.name;
+            const gmUserIds  = game.users.filter(u => u.isGM).map(u => u.id);
+            const playerIds  = game.users.filter(u => !u.isGM && actor.testUserPermission(u, "OWNER")).map(u => u.id);
+            whisper = [...new Set([...playerIds, ...gmUserIds])];
+        }
+
+        const templateData = {
+            targetActorId: targetActorId ?? "",
+            actorName,
+            skillKey,
+            attributeKey: attributeKey ?? "",
+            difficulty:   difficulty ?? "",
+            modifier:     modifier ?? 0,
+            isOpen:       isOpen === true,
+            minAP:        minAP  ?? 0,
+            skillLabel,
+            diffLabel,
+            note:         note ?? ""
+        };
+        const content = await foundry.applications.handlebars.renderTemplate(
+            "systems/neuroshima/templates/apps/request-test-card.hbs",
+            templateData
+        );
+        const _norm = (c) => {
+            if (!c) return null;
+            const arr = Array.isArray(c) ? c : [typeof c === "string" ? { addCondition: c } : c];
+            return arr.length ? arr : null;
+        };
+        const normSuccess = _norm(onSuccess);
+        const normFailure = _norm(onFailure);
+        const nsFlags = { requestTest: true };
+        if (normSuccess) nsFlags.onSuccess = normSuccess;
+        if (normFailure) nsFlags.onFailure = normFailure;
+        await ChatMessage.create({ content, speaker, whisper, flags: { neuroshima: nsFlags } });
+    });
+
     game.neuroshima.socket.register("healingRequestPrompt", async ({ patientUuid, patientName, patientPortrait, requesterUserId, medicActorUuid, isPrivate }) => {
         const gmNeedsActorPick = game.user.isGM && !medicActorUuid;
 

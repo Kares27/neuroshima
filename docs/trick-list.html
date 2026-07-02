@@ -546,9 +546,9 @@ args.actions.push({
 <div class="example-header"><span class="trigger-badge">onHitScript</span> Wykończenie — wpisz w polu onHitScript definicji w zakładce Akcje</div>
 <pre><code><span class="cmt">// args.target = cel (duszony)</span>
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>(args.target, {
-  skill: <span class="str">"constitution"</span>,
-  modifier: <span class="num">60</span>,
-  label: <span class="str">"Boa – Duszenie"</span>
+  skillKey:  <span class="str">"constitution"</span>,
+  modifier:  <span class="num">60</span>,
+  label:     <span class="str">"Boa – Duszenie"</span>
 });</code></pre>
 </div>
 </div>
@@ -989,8 +989,38 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 <section id="trick-034-hej-przystojniaku">
 <h3>34. Hej, przystojniaku!</h3>
 <p><strong>Wymagania:</strong> Perswazja 4+, Charakter 14+ (tylko dla kobiety)</p>
-<p><strong>Mechanika:</strong> Aby oprzeć się Perswazji bohaterki — Cholernie Trudny test Niezłomności. Porażka = spełnianie drobnych życzeń.</p>
-<div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
+<p><strong>Mechanika:</strong> Aby oprzeć się Perswazji bohaterki, członkowie drużyny muszą wykonać <strong>Cholernie Trudny test Niezłomności</strong>. W przypadku porażki spełnią każde jej życzenie (drobne przysługi). Sztuczka używana ręcznie — kliknięcie ▶ na karcie aktora wysyła karty testów do właścicieli postaci.</p>
+
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Hej, przystojniaku!"</em> (<code>transferType: self</code>) z jednym skryptem triggera <code>manual</code>. Kliknięcie ▶ na arkuszu aktora wysyła jedną kartę testu na czat (widoczną dla wszystkich). Każdy gracz klika przycisk <em>Rzuć</em> i dostaje dialog dla swojej postaci. Po rzucie whispered wiadomość do gracza + GM pokazuje Sukces / Porażkę.
+</div>
+
+<h4 class="script-label">AE — „Hej, przystojniaku!" (transferType: self)</h4>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">manual</span> Wyślij kartę testu Niezłomności do drużyny</div>
+<pre><code><span class="cmt">// Jedna karta na czacie — każdy gracz klika "Rzuć" dla swojej postaci.</span>
+<span class="cmt">// Po rzucie wysyłana jest whispered wiadomość z wynikiem (Sukces/Porażka) do gracza i GM.</span>
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>({
+  skillKey:   <span class="str">"steadfastness"</span>,
+  difficulty: <span class="str">"damnHard"</span>,
+  note:       <span class="str">"Perswazja — Hej, przystojniaku!"</span>
+});</code></pre>
+</div>
+</div>
+
+<div class="callout info">
+  <strong>this.requestTest(actorOrOptions, options?):</strong><br>
+  Dwa tryby wywołania:<br>
+  • <strong>Grupowy</strong> — <code>this.requestTest({ skillKey, difficulty?, modifier?, isOpen?, minAP?, note?, label?, onSuccess?, onFailure? })</code> — jedna publiczna karta; każdy gracz klika i rzuca dla swojej postaci.<br>
+  • <strong>Pojedynczy</strong> — <code>this.requestTest(actor, { skillKey, modifier?, difficulty?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</code> — karta whisperowana do właściciela wskazanego aktora + GM.<br>
+  <strong>onSuccess / onFailure</strong>: klucz kondycji jako string (<code>"fear"</code>) lub tablica obiektów <code>[{ addCondition: "fear", value: 1 }]</code>. Kondycja jest nakładana na aktora który rzuca po zakończeniu testu.<br>
+  Po rzucie: wynik (Sukces / Porażka) widoczny bezpośrednio w karcie rzutu. Handler socketowy <code>"requestTest"</code> działa przez GM. <code>attributeKey</code> jest automatycznie wnioskowany z konfiguracji systemu gdy pominięty. Domyślnie <code>isOpen: false</code> (test zamknięty).
+</div>
+<div class="callout warning">
+  <strong>Klucze:</strong> Upewnij się, że <code>skillKey</code>, <code>attributeKey</code> i <code>difficulty</code> pasują do kluczy w konfiguracji systemu. Sprawdź przez <code>game.neuroshima.config</code> w konsoli przeglądarki.
+</div>
 </section>
 
 <section id="trick-035-hokus-pokus">
@@ -1038,18 +1068,30 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 <section id="trick-041-kop-z-obrotu">
 <h3>41. Kop z obrotu</h3>
 <p><strong>Wymagania:</strong> Bijatyka 4+, Budowa 8+, Zręczność 14+</p>
-<p><strong>Mechanika:</strong> Akcja za 3 sukcesy: Budowa ≤16 = Lekki Siniak, Budowa &gt;16 = Ciężki Siniak. Działa nawet gdy walczy bronią.</p>
+<p><strong>Mechanika:</strong> Akcja za 3 sukcesy: Budowa ≤16 = Lekki Siniak (<code>sL</code>), Budowa &gt;16 = Ciężki Siniak (<code>sC</code>). Działa nawet gdy walczy bronią.</p>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Kop z obrotu"</em> (<code>transferType: owningDocument</code>) z triggerem <code>getMeleeActions</code>.
+  Skrypt sprawdza Budowę celu w momencie budowania listy akcji i dodaje akcję z odpowiednim typem siniaka.
+  Działa niezależnie od tego czy walczący ma broń.
+</div>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
-<pre><code>args.actions.push({
-  id: <span class="str">"kop-z-obrotu"</span>,
-  name: <span class="str">"Kop z obrotu"</span>,
-  damage: <span class="str">"C"</span>,
+<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Dodaj akcję kopnięcia do kolejki</div>
+<pre><code><span class="cmt">// Sprawdź Budowę celu — decyduje o rodzaju siniaka.</span>
+<span class="kw">const</span> defDoc = fromUuidSync(args.state.defenderTokenUuid || args.state.defenderUuid);
+<span class="kw">const</span> defActor = defDoc?.actor ?? defDoc;
+<span class="kw">const</span> constitution = defActor?.system?.attributeTotals?.constitution
+  ?? defActor?.system?.attributes?.constitution
+  ?? <span class="num">0</span>;
+<span class="kw">const</span> isTough = constitution > <span class="num">16</span>;
+<span class="kw">const</span> damage = isTough ? <span class="str">"sC"</span> : <span class="str">"sL"</span>;
+args.actions.push({
+  id:          <span class="str">"kop-z-obrotu"</span>,
+  name:        <span class="str">"Kop z obrotu"</span>,
+  damage,
   successCost: <span class="num">3</span>,
-  minDice: <span class="num">1</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Kopniak z obrotu — przewraca przeciwnika, otrzymuje Ciężką ranę."</span>
+  annotation:  isTough ? <span class="str">"Ciężki Siniak (Budowa &gt; 16)"</span> : <span class="str">"Lekki Siniak (Budowa ≤ 16)"</span>
 });</code></pre>
 </div>
 </div>
@@ -1104,14 +1146,18 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 <section id="trick-046-lawnik">
 <h3>46. Ławnik</h3>
 <p><strong>Wymagania:</strong> Budowa 14+</p>
-<p><strong>Mechanika:</strong> Walcząc elementami otoczenia (stoły, ławki): +2 do Broni ręcznej.</p>
+<p><strong>Mechanika:</strong> Walcząc elementami otoczenia (stoły, ławki, beczki): +2 do Broni ręcznej. Gracz ręcznie zaznacza, że atakuje elementem otoczenia — system nie może tego wykryć automatycznie.</p>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Ławnik"</em> (<code>transferType: self</code>) z triggera <code>dialog</code>. Checkbox pojawia się w dialogu rzutu melee tylko podczas akcji ataku. Gracz zaznacza go ręcznie gdy używa elementu otoczenia — efekt daje +2 do skill bonus.
+</div>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy ataku wręcz</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Dodaj +2 do rzutu</div>
 <pre><code>args.fields.skillBonus += <span class="num">2</span>;</code></pre>
 </div>
 </div>
@@ -1134,15 +1180,19 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 <section id="trick-049-miotacz-kul">
 <h3>49. Miotacz kul</h3>
 <p><strong>Wymagania:</strong> Zręczność 12+, Percepcja 10+, Wyczucie kierunku 1+, Rzucanie 2+</p>
-<p><strong>Mechanika:</strong> Przy rzucaniu (nie-nożem): -30% do trudności testu rzucania.</p>
+<p><strong>Mechanika:</strong> Przy rzucaniu przedmiotami (nie nożami itp.): -30% do trudności testu Rzucania.</p>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Miotacz kul"</em> (<code>transferType: self</code>) z triggera <code>dialog</code>.
+  Checkbox pojawia się gdy <code>rollType === "ranged"</code> <strong>lub</strong> <code>skill.key === "throwing"</code>. Ukryty tylko gdy oba warunki są fałszywe (np. melee, lub zwykły test skilla innego niż Rzucanie). Gracz zaznacza ręcznie gdy rzuca kamieniem/beczką itp. — bonus -30% do <code>modifier</code>.
+</div>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj jeśli nie rzucasz (lub rzucasz nożem)</div>
-<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"ranged"</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">return</span> args.weapon?.system?.rangedSubtype === <span class="str">"knife"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż przy dowolnym rzucie ranged lub skilla Rzucanie</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span> && args.skill?.key !== <span class="str">"throwing"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> -30% PT do testu rzucania</div>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> -30% do trudności rzutu</div>
 <pre><code>args.fields.modifier -= <span class="num">30</span>;</code></pre>
 </div>
 </div>
@@ -1216,26 +1266,29 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 <section id="trick-058-nozownik">
 <h3>58. Nożownik</h3>
 <p><strong>Wymagania:</strong> Zręczność 12+, Broń ręczna 5+</p>
-<p><strong>Mechanika:</strong> Walcząc nożem: +1 do Broni ręcznej. Akcja za 3 sukcesy: ciche wykończenie.</p>
+<p><strong>Mechanika:</strong> Walcząc nożem: +1 do Broni ręcznej. Ponadto akcja za 3 sukcesy — <em>Wykończenie</em>: rana Krytyczna (<code>K</code>); PT wyższe o poziom (trudniejsza do wykonania); bez losowego rzutu na ostrze noża.</p>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects</strong><br>
+  • AE <em>„Nożownik – Bonus"</em> (<code>transferType: self</code>, trigger <code>dialog</code>): checkbox widoczny tylko podczas ataku nożem — daje +1 do skill bonus.<br>
+  • AE <em>„Nożownik – Wykończenie"</em> (<code>transferType: owningDocument</code>, trigger <code>getMeleeActions</code>): akcja z kolejki (3 sukcesy) dostępna tylko gdy walczymy nożem — zadaje ranę Krytyczną.
+</div>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span> || args.weapon?.system?.meleeSubtype !== <span class="str">"knife"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż +1 bonus tylko przy ataku wręcz</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +1 do Broni ręcznej</div>
 <pre><code>args.fields.skillBonus += <span class="num">1</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
+<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Dodaj akcję Wykończenia</div>
 <pre><code>args.actions.push({
-  id: <span class="str">"nozownik-execution"</span>,
-  name: <span class="str">"Nożownik – Wykończenie"</span>,
-  damage: <span class="str">"—"</span>,
+  id:          <span class="str">"nozownik-wykonczenie"</span>,
+  name:        <span class="str">"Wykończenie"</span>,
+  damage:      <span class="str">"K"</span>,
   successCost: <span class="num">3</span>,
-  minDice: <span class="num">2</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Ciche wykończenie nożem (cel musi być unieruchomiony lub zaskoczony)."</span>
+  annotation:  <span class="str">"Rana Krytyczna — wbicie noża w serce lub podcięcie gardła. PT wyższe o poziom."</span>
 });</code></pre>
 </div>
 </div>

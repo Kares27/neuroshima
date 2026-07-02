@@ -2300,8 +2300,17 @@
                 "Posted": "Group check posted to chat.",
                 "NoSelection": "Select a skill and at least one actor.",
                 "NotOwner": "You do not own this character.",
+                "NoCharacter": "No character selected. Select a token or assign a character to your user.",
+                "ResultSuccess": "Success",
+                "ResultFailure": "Failure",
                 "CardTitle": "Group Check",
-                "Roll": "Roll"
+                "Roll": "Roll",
+                "ModifierLabel": "Modifier",
+                "RollTypeLabel": "Roll type",
+                "RollOpen": "Open",
+                "RollClosed": "Closed",
+                "MinAPLabel": "Min. advantage points",
+                "APUnit": "AP"
             }
         }
     },

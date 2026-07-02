@@ -1581,6 +1581,92 @@ export class NeuroshimaScript {
     return target?.removeCondition(key);
   }
 
+  /**
+   * Send a test-request card to one or more actors.
+   * Runs as GM via socketlib — works for both GM and players.
+   *
+   * Two call signatures are supported:
+   *
+   *   // Single actor (e.g. from onHitScript)
+   *   await this.requestTest(args.target, {
+   *     skillKey: "constitution",
+   *     modifier:  60,
+   *     label:    "Boa – Duszenie"
+   *   });
+   *
+   *   // Group (defaults to all player-owned characters)
+   *   await this.requestTest({
+   *     skillKey:     "steadfastness",
+   *     attributeKey: "willpower",
+   *     difficulty:   "damnHard",
+   *     note:         "Perswazja — Hej, przystojniaku!"
+   *   });
+   *
+   * @param {Actor|Token|object} actorOrOptions
+   *   If an Actor or Token is passed as the first argument, it becomes the sole target.
+   *   Otherwise this argument is treated as the full options object.
+   * @param {object}   [options]              Only used when first arg is an Actor/Token.
+   * @param {string}   options.skillKey       Skill key (e.g. "constitution", "steadfastness").
+   * @param {string}   [options.attributeKey] Attribute key; inferred from skill config if omitted.
+   * @param {string}   [options.difficulty]   Difficulty key (e.g. "damnHard"). Mutually exclusive with modifier.
+   * @param {number}   [options.modifier]     Flat % modifier added to the roll (e.g. 60 → +60%). Mutually exclusive with difficulty.
+   * @param {boolean}  [options.isOpen]       true = open roll (default), false = closed roll.
+   * @param {string}   [options.label]        Card title override (defaults to localised skill name).
+   * @param {string}   [options.note]         Extra info shown below the title on the card.
+   * @param {string|Array<{addCondition:string,value?:number}>} [options.onSuccess]
+   *   Consequence applied to the rolling actor when the test succeeds.
+   *   Accepts a condition key string, a consequence object, or an array of them.
+   * @param {string|Array<{addCondition:string,value?:number}>} [options.onFailure]
+   *   Consequence applied to the rolling actor when the test fails.
+   *   Same format as onSuccess.
+   * @returns {Promise<void>}
+   */
+  async requestTest(actorOrOptions, options = {}) {
+    const { NeuroshimaSocket } = await import("../helpers/socket-helper.js");
+
+    let opts;
+    let targetActorId = null;
+
+    if (actorOrOptions && (actorOrOptions.documentName === "Actor" || actorOrOptions.documentName === "Token" || actorOrOptions.actor)) {
+      const resolvedActor = actorOrOptions.actor ?? actorOrOptions;
+      targetActorId = resolvedActor.id ?? null;
+      opts = options;
+    } else {
+      opts = actorOrOptions ?? {};
+    }
+
+    const { skillKey, attributeKey, difficulty, modifier, isOpen, label, note, onSuccess, onFailure } = opts;
+
+    if (!skillKey) {
+      ui.notifications.warn("requestTest: wymagane skillKey.");
+      return;
+    }
+
+    const inferredAttrKey = attributeKey || (() => {
+      const cfg = game.neuroshima?.config?.skillConfiguration ?? {};
+      for (const [attrKey, groups] of Object.entries(cfg)) {
+        for (const skills of Object.values(groups)) {
+          if (skills.includes(skillKey)) return attrKey;
+        }
+      }
+      return "";
+    })();
+
+    await NeuroshimaSocket.gmExecute("requestTest", {
+      targetActorId: targetActorId ?? null,
+      skillKey,
+      attributeKey: inferredAttrKey,
+      difficulty:   difficulty ?? null,
+      modifier:     modifier   ?? 0,
+      isOpen:       isOpen     === true,
+      minAP:        opts.minAP ?? 0,
+      label:        label      ?? null,
+      note:         note       ?? "",
+      onSuccess:    onSuccess  ?? null,
+      onFailure:    onFailure  ?? null
+    });
+  }
+
   // ── Actor stat helpers ────────────────────────────────────────────────────
 
   /**

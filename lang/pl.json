@@ -2346,8 +2346,17 @@
                 "Posted": "Rzut grupowy wysłany do czatu.",
                 "NoSelection": "Wybierz umiejętność i przynajmniej jedną postać.",
                 "NotOwner": "Nie masz tej postaci.",
+                "NoCharacter": "Brak wybranej postaci. Zaznacz token lub przypisz postać do swojego użytkownika.",
+                "ResultSuccess": "Sukces",
+                "ResultFailure": "Porażka",
                 "CardTitle": "Rzut Grupowy",
-                "Roll": "Rzuć"
+                "Roll": "Rzuć",
+                "ModifierLabel": "Modyfikator",
+                "RollTypeLabel": "Typ rzutu",
+                "RollOpen": "Otwarty",
+                "RollClosed": "Zamknięty",
+                "MinAPLabel": "Min. pkt. przewagi",
+                "APUnit": "pp"
             }
         }
     },

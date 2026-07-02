@@ -1,0 +1,36 @@
+<div class="neuroshima request-test-card">
+    <header class="rt-header">
+        <i class="fas fa-dice-d20"></i>
+        <span class="rt-title">{{localize "NEUROSHIMA.Roll.Test"}} <em>{{skillLabel}}</em></span>
+    </header>
+
+    <div class="rt-badges">
+        {{#if modifier}}
+        <span class="rt-badge rt-badge-diff">{{#if (gt modifier 0)}}+{{/if}}{{modifier}}%</span>
+        {{else if diffLabel}}
+        <span class="rt-badge rt-badge-diff">{{diffLabel}}</span>
+        {{/if}}
+        <span class="rt-badge rt-badge-type">{{#if isOpen}}{{localize "NEUROSHIMA.Roll.OpenTestShort"}}{{else}}{{localize "NEUROSHIMA.Roll.ClosedTestShort"}}{{/if}}</span>
+        {{#if minAP}}
+        <span class="rt-badge">min. {{minAP}} AP</span>
+        {{/if}}
+    </div>
+
+    {{#if note}}
+    <div class="rt-note">{{note}}</div>
+    {{/if}}
+
+    <div class="rt-action">
+        <button type="button" class="rt-roll-btn group-check-roll-btn"
+            data-skill-key="{{skillKey}}"
+            data-attr-key="{{attributeKey}}"
+            data-difficulty="{{difficulty}}"
+            data-modifier="{{modifier}}"
+            data-is-open="{{isOpen}}"
+            data-min-ap="{{minAP}}"
+            data-target-actor-id="{{targetActorId}}">
+            <i class="fas fa-dice"></i>
+            {{#if targetActorId}}{{actorName}} — {{/if}}{{localize "NEUROSHIMA.GMToolkit.GroupCheck.Roll"}}
+        </button>
+    </div>
+</div>
