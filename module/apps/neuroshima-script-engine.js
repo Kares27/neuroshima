@@ -3765,7 +3765,7 @@ export class NeuroshimaScriptRunner {
     const effectiveCode = dm?.isMeleePreRoll
       ? (dm._script?.dialogCode || null)
       : dm._script?.code;
-    if (!effectiveCode) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, burstLevelOverride: null };
+    if (!effectiveCode) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, burstLevelOverride: null, burstHitStep: null };
     game.neuroshima?.log?.(`[dialog] execDialogModifier`, {
       label: dm.label,
       trigger: dm._script?.trigger,
@@ -3799,6 +3799,7 @@ export class NeuroshimaScriptRunner {
       healingModifier: NeuroshimaScriptRunner._makeHealingModifierProxy(),
       healingDifficulty: NeuroshimaScriptRunner._makeHealingDifficultyProxy(),
       burstLevel: initialBurstLevel,
+      burstHitStep: 1,
 
       rollType: rc.rollType ?? null,
       healingMethod: rc.healingMethod ?? null,
@@ -3822,6 +3823,8 @@ export class NeuroshimaScriptRunner {
       weaponId: rc.weaponId ?? rc.weapon?.id ?? null,
       wounds: rc.wounds ?? [],
       stat: rc.stat ?? null,
+      movingTargetPenalty: rc.movingTargetPenalty ?? 0,
+      movingShooterPenalty: rc.movingShooterPenalty ?? 0,
       // isPreRollContext: true when this script runs in pre-roll weapon dialog phase (getMeleeActions + isDialogScript)
       isPreRollContext: rc.isPreRollContext ?? false,
       // Safety array for getMeleeActions scripts that fall through when dialogCode is empty.
@@ -3865,6 +3868,7 @@ export class NeuroshimaScriptRunner {
       healingModifier: fields.healingModifier?._raw ?? fields.healingModifier ?? {},
       healingDifficulty: fields.healingDifficulty?._raw ?? fields.healingDifficulty ?? {},
       burstLevelOverride: fields.burstLevel !== initialBurstLevel ? Math.max(0, Math.floor(fields.burstLevel)) : null,
+      burstHitStep: fields.burstHitStep !== 1 ? Math.max(1, fields.burstHitStep) : null,
       skillKey: fields.skillKey || null,
       skillLabel: fields.skillLabel || null
     };

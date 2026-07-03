@@ -211,6 +211,8 @@
             "AttributeBonusAbbr": "Bon Atr.",
             "CrowdingPenalty": "Kara za osaczenie (Zr)",
             "ChargePenalty": "Kara za szarżę (Zr)",
+            "ShooterMovedPenalty": "Kara: strzelec się ruszył (%)",
+            "TargetMovedPenalty": "Kara: cel się ruszył (%)",
             "WeaponModifier": "Mod. Broni",
             "IncludeSkill": "Uwzględnij Umiejętność",
             "NoSkill": "Bez Umiejętności",

@@ -43,7 +43,7 @@ import { GMGroupCheckApp, registerGroupCheckChatListeners } from "./module/apps/
 import { GMPayoutApp } from "./module/apps/gm/gm-payout-app.js";
 import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
-import { NeuroshimaCombatTracker, MeleeVanillaChat, MeleeOpposedChat } from "./module/combat/combat.js";
+import { NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat } from "./module/combat/combat.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 
 function _applyBurstLevelToDOM(messageIdOrEl, level, rollData) {
@@ -86,6 +86,7 @@ Hooks.once('init', async function() {
     CONFIG.defaultFontFamily = "Special Elite";
 
     CONFIG.ui.combat = NeuroshimaCombatTracker;
+    CONFIG.Token.rulerClass = NeuroshimaTokenRuler;
     MeleeCombatApp.registerHooks();
     MeleeVanillaChat.registerHooks();
 
@@ -206,6 +207,9 @@ Hooks.once('init', async function() {
         if (forward) {
             await NeuroshimaScriptRunner.expireEffects(combat);
             await NeuroshimaScriptRunner.runStartRound(combat);
+            for (const combatant of combat.combatants) {
+                await combatant.token?.clearMovementHistory?.();
+            }
         } else {
             await NeuroshimaScriptRunner.runEndRound(combat);
         }

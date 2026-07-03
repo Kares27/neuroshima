@@ -208,6 +208,8 @@
             "AttributeBonusAbbr": "Attr. Bon.",
             "CrowdingPenalty": "Crowding Penalty (Dex)",
             "ChargePenalty": "Charge Penalty (Dex)",
+            "ShooterMovedPenalty": "Shooter Moved Penalty (%)",
+            "TargetMovedPenalty": "Target Moved Penalty (%)",
             "WeaponModifier": "Weapon Mod.",
             "IncludeSkill": "Include Skill",
             "NoSkill": "No Skill",

@@ -68,6 +68,18 @@
                 <input type="number" value="-{{chargeDexPenalty}}" disabled style="color:#ef9a9a; flex: 0 0 62px; height: 22px;"/>
             </div>
             {{/if}}
+            {{#if shooterMovedPenalty}}
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.ShooterMovedPenalty"}}</label>
+                <input type="number" value="+{{shooterMovedPenalty}}" disabled style="color:#ef9a9a; flex: 0 0 62px; height: 22px;"/>
+            </div>
+            {{/if}}
+            {{#if targetMovedPenalty}}
+            <div class="form-group">
+                <label>{{localize "NEUROSHIMA.Roll.TargetMovedPenalty"}}</label>
+                <input type="number" value="+{{targetMovedPenalty}}" disabled style="color:#ef9a9a; flex: 0 0 62px; height: 22px;"/>
+            </div>
+            {{/if}}
         </div>
 
         <div class="rd-modifiers-col">

@@ -324,8 +324,8 @@
     <div class="ctx-row"><span class="ctx-name">await this.setConditionValue(key, value, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Ustaw poziom kondycji int bezpośrednio. <code>0</code> usuwa efekt kondycji.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.addCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Dodaj/inkrementuj kondycję (bool: włącza; int: +1)</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.removeCondition(key, actor?)</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Usuń/dekrementuj kondycję (bool: wyłącza; int: −1, usuwa przy 0)</span></div>
-    <div class="ctx-row"><span class="ctx-name">await this.requestTest(actor, { skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Pojedynczy aktor: karta whisperowana do właściciela aktora + GM. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora po rzucie. <code>isOpen</code> domyślnie <code>false</code>.</span></div>
-    <div class="ctx-row"><span class="ctx-name">await this.requestTest({ skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Grupowy: jedna publiczna karta na czacie. Każdy gracz klika i rzuca dla swojej postaci. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora. <code>isOpen</code> domyślnie <code>false</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.requestTest(actor, { skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Pojedynczy aktor: karta whisperowana do właściciela aktora + GM. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora po rzucie. <code>isOpen</code> domyślnie <code>false</code>. Czysty test atrybutu (np. Budowy): ustaw <code>skillKey</code> i <code>attributeKey</code> na ten sam klucz atrybutu (np. <code>"constitution"</code>) — skill = 0, roll tylko na atrybut.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.requestTest({ skillKey, difficulty?, modifier?, attributeKey?, isOpen?, minAP?, label?, note?, onSuccess?, onFailure? })</span><span class="ctx-type">Promise&lt;void&gt;</span><span class="ctx-desc">Grupowy: jedna publiczna karta na czacie. Każdy gracz klika i rzuca dla swojej postaci. <code>onSuccess</code>/<code>onFailure</code>: klucz kondycji (string) lub <code>[{addCondition, value?}]</code> — nakładane na rzucającego aktora. <code>isOpen</code> domyślnie <code>false</code>. Czysty test atrybutu: <code>skillKey === attributeKey</code> (np. oba <code>"constitution"</code>).</span></div>
     <div class="ctx-row ctx-separator"><span class="ctx-name">— Helpery statystyk aktora —</span><span class="ctx-type"></span><span class="ctx-desc">skróty do odczytu danych aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getAttribute(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Atrybut bazowy (<code>"dexterity"</code>, <code>"constitution"</code>, …)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.getAttributeTotal(key, actor?)</span><span class="ctx-type">number</span><span class="ctx-desc">Atrybut + modyfikator po <code>prepareDerivedData</code></span></div>
@@ -531,6 +531,8 @@
       <tr><td><code>args.currentDistance</code></td><td>number</td><td>Aktualny dystans do celu (read-only).</td></tr>
       <tr><td><code>args.aimingLevel</code></td><td>number</td><td>Aktualna wartość celowania (0-2)</td></tr>
       <tr><td><code>args.burstLevel</code></td><td>number</td><td>Aktualna wartość serii (0-3)</td></tr>
+      <tr><td><code>args.movingTargetPenalty</code></td><td>number</td><td>Kara % za ruchomy cel (20 jeśli cel ruszył się w tej rundzie, 0 w przeciwnym razie). Dostępne przy <code>rollType === "ranged"</code>. Użyj <code>args.fields.modifier -= args.movingTargetPenalty</code> aby anulować karę (Sztuczka: Ruchowy Cel).</td></tr>
+      <tr><td><code>args.movingShooterPenalty</code></td><td>number</td><td>Kara % za ruch strzelca (30 jeśli strzelec ruszył się w tej rundzie, 0 w przeciwnym razie). Dostępne przy <code>rollType === "ranged"</code>. Kara jest zawsze naliczana, nie posiada dedykowanej sztuczki.</td></tr>
     
     </tbody>
   </table>
@@ -559,6 +561,7 @@
       <tr><td><code>args.fields.healingDifficulty</code></td><td>Proxy (object)</td><td>Obiekt indeksowany typem rany (<code>"D"</code>, <code>"L"</code>, <code>"C"</code>, <code>"K"</code>, <code>"sD"</code>, <code>"sL"</code>, <code>"sC"</code>, <code>"sK"</code>) z <strong>przesunięciem poziomu trudności</strong> dla konkretnego typu rany. Działa identycznie jak <code>difficultyShift</code>, ale tylko dla wybranego typu: <code>+1</code> = poziom wyżej (trudniej), <code>-1</code> = poziom niżej (łatwiej). Obsługuje <code>+=</code> bez inicjalizacji: <code>args.fields.healingDifficulty["K"] += 1</code>. Obsługuje multi-klucze: <code>args.fields.healingDifficulty["K,C"] = 1</code>. Kumuluje się z globalnym <code>difficultyShift</code>. Stosowane wyłącznie w testach leczenia.</td></tr>
       <tr><td><code>args.fields.dieManualBonus</code></td><td>number</td><td>Liczba <strong>oczek do rozdysponowania</strong> przez gracza w UI czatu po rzucie — gracz sam decyduje, które kości obniżyć, klikając przyciski „+" na karcie wyniki. Wartość ustawiana programowo (brak widocznego inputu w dialogu). Domyślnie <code>0</code>. Dostępne we wszystkich typach rzutów.</td></tr>
       <tr><td><code>args.fields.dieReductionBonus</code></td><td>number</td><td>Automatyczna redukcja kości, działająca jak punkty umiejętności, ale <strong>całkowicie pomijająca SUWAK</strong>. System wydaje je optymalnie przed punktami umiejętności gracza. Wartość ustawiana programowo (brak widocznego inputu). Domyślnie <code>0</code>. Dostępne we wszystkich typach rzutów.</td></tr>
+      <tr><td><code>args.fields.burstHitStep</code></td><td>number</td><td>Krok trafień przy serii — ile kul trafia na jeden Punkt Przewagi. Domyślnie <code>1</code> (1 kula / PP). Ustaw <code>2</code> aby podwoić liczbę trafionych kul (Ruchome gniazdo CKM). Obsługuje dowolne całkowite wartości ≥ 1. Działa wyłącznie przy <code>rollType === "ranged"</code> i <code>burstLevel ≥ 1</code>.</td></tr>
     </tbody>
   </table>
 
@@ -1868,9 +1871,20 @@ args.encounter._effects.wiatrakReclaim = <span class="var">myId</span>;</code></
 <span class="kw">const</span> <span class="var">maneuver</span> = args.attacker?.maneuver;
 <span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span> &&
     <span class="var">maneuver</span> !== <span class="str">"charge"</span> && <span class="var">maneuver</span> !== <span class="str">"szarza"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">"rrrroooaaarrr_"</span> + args.defenderId;
-<span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>)) <span class="kw">return</span>;
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>, <span class="kw">true</span>);</code></pre>
+args.encounter._rrrroooaaarrr ??= [];
+<span class="kw">if</span> (args.encounter._rrrroooaaarrr.length >= <span class="num">5</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.encounter._rrrroooaaarrr.<span class="fn">includes</span>(args.defenderId)) <span class="kw">return</span>;
+args.encounter._rrrroooaaarrr.<span class="fn">push</span>(args.defenderId);
+<span class="kw">const</span> <span class="var">defPart</span> = args.defender;
+<span class="kw">const</span> <span class="var">defenderActor</span> = <span class="var">defPart</span>?.actorUuid
+  ? (fromUuidSync(<span class="var">defPart</span>.actorUuid)?.actor ?? fromUuidSync(<span class="var">defPart</span>.actorUuid))
+  : <span class="kw">null</span>;
+<span class="kw">if</span> (!<span class="var">defenderActor</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>(<span class="var">defenderActor</span>, {
+  skillKey: <span class="str">"morale"</span>,
+  label:    <span class="str">"Morale — Rrrroooaaarrr! (okrzyk bojowy)"</span>,
+  note:     <span class="str">"Atakujący wydał bojowy okrzyk podczas Furii/Szarży. Test jak przy zasadzie Najpierw spójrz mi w oczy."</span>
+});</code></pre>
   </div>
 
   <h3 id="trigger-opposedDefender">opposedDefender — <em>Opposed Defender</em></h3>

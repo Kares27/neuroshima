@@ -237,7 +237,7 @@ export function registerGroupCheckChatListeners() {
 
                 const attrValue  = actor.system.attributeTotals?.[attrKey] ?? actor.system.attributes?.[attrKey] ?? 0;
                 const skillValue = actor.system.skills?.[skillKey]?.value ?? 0;
-                const label      = game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
+                const label      = btn.dataset.label || game.i18n.localize(`NEUROSHIMA.Skills.${skillKey}`);
 
                 const lastRollBase = { ...actor.system.lastRoll, isOpen };
                 if (difficulty) lastRollBase.baseDifficulty = difficulty;

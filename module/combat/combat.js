@@ -19,6 +19,109 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
+ * Custom Token Ruler for Neuroshima 1.5.
+ *
+ * Overrides Foundry's built-in TokenRuler to color the movement path and grid
+ * highlights according to the Neuroshima movement segment system.  Each actor
+ * has a `system.movement` value (in grid units) representing one movement
+ * segment.  A full turn allows up to three segments:
+ *
+ *   Distance ≤ 1 segment  → green  (normal move)
+ *   Distance ≤ 2 segments → yellow (fast move)
+ *   Distance ≤ 3 segments → red    (sprint)
+ *   Distance >  3 segments → purple (beyond sprint — out of range)
+ *
+ * The waypoint label is also overridden to display `"dist / maxDist"` so the
+ * player can see exactly how many units remain within the three-segment cap.
+ *
+ * Registered in system.js as `CONFIG.Token.rulerClass = NeuroshimaTokenRuler`.
+ */
+export class NeuroshimaTokenRuler extends foundry.canvas.placeables.tokens.TokenRuler {
+    /**
+     * Returns the actor's base movement value (one segment, in grid units).
+     * Returns `null` when the value is not a plain number (e.g. vehicles that
+     * store movement as a descriptive string) so the ruler falls back to the
+     * default Foundry rendering for those tokens.
+     *
+     * @returns {number|null}
+     */
+    _getActorMovement() {
+        const actor = this.token?.document?.actor;
+        const mov = actor?.system?.movement;
+        return typeof mov === "number" ? mov : null;
+    }
+
+    /**
+     * Maps a cumulative travel distance to a hex color code based on how many
+     * movement segments have been consumed.
+     *
+     * @param {number} dist - Cumulative distance traveled so far (grid units).
+     * @param {number} mov  - One movement segment length (grid units).
+     * @returns {number} Hex color (0xRRGGBB).
+     */
+    _distColor(dist, mov) {
+        if (dist <= mov)         return 0x00c000;
+        if (dist <= mov * 2)     return 0xc8c800;
+        if (dist <= mov * 3)     return 0xc80000;
+        return 0x800080;
+    }
+
+    /**
+     * Overrides the ruler line segment color to reflect the current movement
+     * segment band.  Falls back to the default style when the actor has no
+     * numeric movement value.
+     *
+     * @param {TokenRulerWaypoint} waypoint
+     * @returns {object} Merged style object with `color` set.
+     * @override
+     */
+    _getSegmentStyle(waypoint) {
+        const base = super._getSegmentStyle(waypoint);
+        const mov = this._getActorMovement();
+        if (mov === null) return base;
+        const dist = waypoint.measurement?.distance ?? 0;
+        return { ...base, color: this._distColor(dist, mov) };
+    }
+
+    /**
+     * Overrides the grid-cell highlight color to reflect the current movement
+     * segment band for each cell along the path.
+     *
+     * @param {TokenRulerWaypoint} waypoint
+     * @param {GridOffset} offset
+     * @returns {object} Merged style object with `color` set.
+     * @override
+     */
+    _getGridHighlightStyle(waypoint, offset) {
+        const base = super._getGridHighlightStyle(waypoint, offset);
+        const mov = this._getActorMovement();
+        if (mov === null) return base;
+        const dist = waypoint.measurement?.distance ?? 0;
+        return { ...base, color: this._distColor(dist, mov) };
+    }
+
+    /**
+     * Overrides the waypoint distance label to show `"dist / maxDist"` where
+     * `maxDist` is the three-segment cap (sprint limit).  This lets the player
+     * see at a glance how much movement budget remains.
+     *
+     * @param {TokenRulerWaypoint} waypoint
+     * @param {object} state
+     * @returns {object|null} Label context with `label` set, or the parent
+     *   result unchanged when no movement data is available.
+     * @override
+     */
+    _getWaypointLabelContext(waypoint, state) {
+        const ctx = super._getWaypointLabelContext(waypoint, state);
+        const mov = this._getActorMovement();
+        if (!ctx || mov === null) return ctx;
+        const dist = waypoint.measurement?.distance ?? 0;
+        ctx.label = `${dist} / ${mov * 3}`;
+        return ctx;
+    }
+}
+
+/**
  * Custom Combat Tracker for Neuroshima 1.5.
  * Extends the native Combat Tracker to include a Melee tab for initiative tracking.
  */

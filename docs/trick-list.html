@@ -1072,7 +1072,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 <div class="callout info">
   <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
   AE <em>„Kop z obrotu"</em> (<code>transferType: owningDocument</code>) z triggerem <code>getMeleeActions</code>.
-  Skrypt sprawdza Budowę celu w momencie budowania listy akcji i dodaje akcję z odpowiednim typem siniaka.
+  Wymaga skryptu (nie zakładki Akcje) — typ obrażeń jest dynamiczny i zależy od Budowy celu w momencie walki.
   Działa niezależnie od tego czy walczący ma broń.
 </div>
 <div class="ns-trick-scripts">
@@ -1269,8 +1269,12 @@ args.actions.push({
 <p><strong>Mechanika:</strong> Walcząc nożem: +1 do Broni ręcznej. Ponadto akcja za 3 sukcesy — <em>Wykończenie</em>: rana Krytyczna (<code>K</code>); PT wyższe o poziom (trudniejsza do wykonania); bez losowego rzutu na ostrze noża.</p>
 <div class="callout info">
   <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects</strong><br>
-  • AE <em>„Nożownik – Bonus"</em> (<code>transferType: self</code>, trigger <code>dialog</code>): checkbox widoczny tylko podczas ataku nożem — daje +1 do skill bonus.<br>
-  • AE <em>„Nożownik – Wykończenie"</em> (<code>transferType: owningDocument</code>, trigger <code>getMeleeActions</code>): akcja z kolejki (3 sukcesy) dostępna tylko gdy walczymy nożem — zadaje ranę Krytyczną.
+  • AE <em>„Nożownik – Bonus"</em> (<code>transferType: self</code>, trigger <code>dialog</code>): checkbox widoczny tylko podczas ataku wręcz — daje +1 do skill bonus.<br>
+  • AE <em>„Nożownik – Wykończenie"</em> (<code>transferType: owningDocument</code>): akcja kolejkowa (3 sukcesy, rana K) — definicja w <strong>zakładce Akcje</strong>, minimalny skrypt <code>getMeleeActions</code> pushuje nazwę jako string.
+</div>
+<div class="callout warning" style="margin-top:8px">
+  <strong>Wzorzec: zakładka Akcje + getMeleeActions</strong><br>
+  Zakładka Akcje przechowuje definicje w <code>effect.system.actionDefs</code>. Skrypt <code>getMeleeActions</code> pushuje ID lub nazwę akcji jako <strong>string</strong> — system automatycznie rozwiązuje go do pełnej definicji (damage, successCost, onHitScript). Bez skryptu akcja nigdy nie trafi do kolejki.
 </div>
 <div class="ns-trick-scripts">
 <div class="example-block">
@@ -1281,15 +1285,13 @@ args.actions.push({
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> +1 do Broni ręcznej</div>
 <pre><code>args.fields.skillBonus += <span class="num">1</span>;</code></pre>
 </div>
+<div class="example-block callout info" style="margin-top:8px">
+<strong>Zakładka Akcje (AE „Nożownik – Wykończenie")</strong><br>
+Nazwa: <code>Wykończenie</code> | Obrażenia: <code>K</code> | Koszt suk.: <code>3</code> | onHitScript: brak
+</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Dodaj akcję Wykończenia</div>
-<pre><code>args.actions.push({
-  id:          <span class="str">"nozownik-wykonczenie"</span>,
-  name:        <span class="str">"Wykończenie"</span>,
-  damage:      <span class="str">"K"</span>,
-  successCost: <span class="num">3</span>,
-  annotation:  <span class="str">"Rana Krytyczna — wbicie noża w serce lub podcięcie gardła. PT wyższe o poziom."</span>
-});</code></pre>
+<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Dodaj akcję przez nazwę (rozwiązuje do actionDef)</div>
+<pre><code>args.actions.push(<span class="str">"Wykończenie"</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1297,19 +1299,32 @@ args.actions.push({
 <section id="trick-059-obezwladnienie">
 <h3>59. Obezwładnienie</h3>
 <p><strong>Wymagania:</strong> Bijatyka 2+</p>
-<p><strong>Mechanika:</strong> Akcja za 2 sukcesy: chwyt obezwładniający — cel nie może się ruszyć.</p>
+<p><strong>Mechanika:</strong> Akcja za 2 sukcesy. Powalasz i próbujesz unieruchomić — Przeciwstawny test Budowy: sukces atakującego = kondycja Unieruchomiony na cel; porażka = cel się uwalnia. Unieruchomiony cel może próbować ucieczki co turę (każda próba +30% trudniej). Atak na unieruchomionego celu = kolejny Przeciwstawny test Budowy.</p>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Obezwładnienie"</em> (<code>transferType: owningDocument</code>) — definicja akcji w <strong>zakładce Akcje</strong>, skrypt <code>getMeleeActions</code> pushuje nazwę jako string.
+  <code>onHitScript</code> (w zakładce Akcje) wysyła do obrońcy test Budowy — porażka nakłada kondycję <code>restrained</code> (Unieruchomiony).
+  Mechanika ucieczki z rosnącą trudnością (+30%) wymaga ręcznego prowadzenia przez MG lub osobnego AE na kondycji.
+</div>
 <div class="ns-trick-scripts">
+<div class="example-block callout info">
+<strong>Zakładka Akcje (AE „Obezwładnienie")</strong><br>
+Nazwa: <code>Obezwładnienie</code> | Obrażenia: <code>—</code> (brak) | Koszt suk.: <code>2</code>
+</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
-<pre><code>args.actions.push({
-  id: <span class="str">"obezwladnienie"</span>,
-  name: <span class="str">"Obezwładnienie"</span>,
-  damage: <span class="str">"—"</span>,
-  successCost: <span class="num">2</span>,
-  minDice: <span class="num">1</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Cel unieruchomiony dopóki nie pokona walczącego w teście Siły lub Bijatyki."</span>
+<div class="example-header"><span class="trigger-badge">onHitScript</span> (w zakładce Akcje) Test Budowy celu — porażka = Unieruchomiony</div>
+<pre><code><span class="kw">if</span> (!args.target) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>(args.target, {
+  skillKey:     <span class="str">"constitution"</span>,
+  attributeKey: <span class="str">"constitution"</span>,
+  label:        <span class="str">"Obezwładnienie — test Budowy"</span>,
+  note:         <span class="str">"Sprawdź Budowę, aby oprzeć się unieruchomieniu. Porażka = Unieruchomiony."</span>,
+  onFailure:    <span class="str">"restrained"</span>
 });</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Dodaj akcję przez nazwę (rozwiązuje do actionDef)</div>
+<pre><code>args.actions.push(<span class="str">"Obezwładnienie"</span>);</code></pre>
 </div>
 </div>
 </section>
@@ -1339,41 +1354,84 @@ args.actions.push({
 <h3>63. Odwrócenie uwagi</h3>
 <p><strong>Wymagania:</strong> Kradzież kieszonkowa 4+, Spryt 10+</p>
 <p><strong>Mechanika:</strong> Dodaje +30% utrudnienia do testu Czujności ofiary kradzieży.</p>
-<div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Odwrócenie uwagi"</em> z triggerem <code>manual</code>. Gracz ręcznie odpala sztuczke po udanej kradzieży — skrypt postuje grupowy <code>requestTest</code> dla Czujności z modifikorem +30% (utrudnienie) dla wszystkich graczy przy stole.
+</div>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">manual</span> Wyślij test Czujności z utrudnieniem +30%</div>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>({
+  skillKey: <span class="str">"vigilance"</span>,
+  modifier: <span class="num">30</span>,
+  label:    <span class="str">"Odwrócenie uwagi — Czujność"</span>,
+  note:     <span class="str">"Ofiara kradzieży musi zdać Czujność z utrudnieniem +30%."</span>
+});</code></pre>
+</div>
+</div>
 </section>
 
 <section id="trick-064-origami">
 <h3>64. Origami</h3>
 <p><strong>Wymagania:</strong> Bijatyka 5+, Zręczność 12+</p>
-<p><strong>Mechanika:</strong> Judo: 1 sukces = pochwycenie, 2 sukcesy = rzut (Lekka rana), 3 sukcesy = wykończenie.</p>
+<p><strong>Mechanika:</strong> Trzy akcje kolejkowe z dynamicznym kosztem:</p>
+<ul>
+  <li><strong>Pochwycenie</strong> (1 sukces): cel dostaje modyfikator jak w zwarciu i −2 Zręczności dopóki nie przejmie Inicjatywy lub nie otrzyma rany.</li>
+  <li><strong>Rzut</strong> (2 sukcesy; 1 jeśli cel jest pochwycony): Lekka rana + cel nie może przejąć Inicjatywy w następnym segmencie.</li>
+  <li><strong>Wykończenie</strong> (3 sukcesy; 2 jeśli pochwycony): Ciężka rana lub przyduszenie (Nieprzytomny).</li>
+</ul>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Origami"</em> (<code>transferType: owningDocument</code>). 3 definicje akcji w <strong>zakładce Akcje</strong>.
+  Skrypt <code>getMeleeActions</code> sprawdza kondycję <code>restrained</code> celu (= pochwycony) i dynamicznie obniża koszt Rzutu i Wykończenia.
+  Kondycja −2 Zręczności z Pochwycenia wymaga ręcznego nałożenia osobnego AE przez MG (brak automatycznego modyfikatora atrybutu w onHitScript).
+</div>
+<div class="callout warning">
+  <strong>Uwaga:</strong> Kondycja <code>restrained</code> jest tu używana jako marker „pochwycony" (Origami). Jeśli postać ma jednocześnie Obezwładnienie (<code>restrained</code> z innej sztuczki), system nie rozróżni źródła — MG powinien to narracyjnie uwzględnić.
+</div>
 <div class="ns-trick-scripts">
+<div class="example-block callout info">
+<strong>Zakładka Akcje (AE „Origami") — 3 definicje:</strong><br>
+• <code>Pochwycenie</code> | Obrażenia: <code>—</code> | Koszt: <code>1</code> | onHitScript: patrz niżej<br>
+• <code>Rzut</code> | Obrażenia: <code>sL</code> | Koszt: <code>2</code> | onHitScript: patrz niżej<br>
+• <code>Wykończenie</code> | Obrażenia: <code>C</code> | Koszt: <code>3</code> | onHitScript: brak (opcjonalnie: aplikuj <code>unconscious</code>)
+</div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
-<pre><code>args.actions.push({
-  id: <span class="str">"origami-grab"</span>,
-  name: <span class="str">"Origami – Pochwycenie"</span>,
-  damage: <span class="str">"—"</span>,
-  successCost: <span class="num">1</span>,
-  minDice: <span class="num">1</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Pochwycenie: walczący bronią = modyfikator jak w rzucie."</span>
-}, {
-  id: <span class="str">"origami-throw"</span>,
-  name: <span class="str">"Origami – Rzut"</span>,
-  damage: <span class="str">"L"</span>,
-  successCost: <span class="num">2</span>,
-  minDice: <span class="num">1</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Rzut: Lekka rana, cel nie może przejąć Inicjatywy następny segment."</span>
-}, {
-  id: <span class="str">"origami-lock"</span>,
-  name: <span class="str">"Origami – Wykończenie"</span>,
-  damage: <span class="str">"C"</span>,
-  successCost: <span class="num">3</span>,
-  minDice: <span class="num">2</span>,
-  maxDice: <span class="num">3</span>,
-  annotation: <span class="str">"Dźwignia: cel unieruchomiony lub Ciężka rana."</span>
-});</code></pre>
+<div class="example-header"><span class="trigger-badge">onHitScript</span> Pochwycenie — nałóż kondycję restrained na cel</div>
+<pre><code><span class="kw">if</span> (!args.target) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"restrained"</span>, args.target);</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">onHitScript</span> Rzut — zdejmij restrained (koniec chwytu po rzucie)</div>
+<pre><code><span class="kw">if</span> (!args.target) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">removeCondition</span>(<span class="str">"restrained"</span>, args.target);</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">getMeleeActions</span> Dynamiczny koszt — tańszy gdy cel jest pochwycony</div>
+<pre><code><span class="cmt">// IDs skopiowane z zakładki Akcje (kliknij na ID w UI, żeby skopiować)</span>
+<span class="kw">const</span> ID_POCHWYCENIE  = <span class="str">"&lt;ID-Pochwycenie&gt;"</span>;
+<span class="kw">const</span> ID_RZUT         = <span class="str">"&lt;ID-Rzut&gt;"</span>;
+<span class="kw">const</span> ID_WYKONCZENIE  = <span class="str">"&lt;ID-Wykończenie&gt;"</span>;
+
+<span class="kw">const</span> targetDoc = fromUuidSync(args.state.defenderTokenUuid || args.state.defenderUuid);
+<span class="kw">const</span> targetActor = targetDoc?.actor ?? targetDoc;
+<span class="kw">const</span> isGrappled = targetActor ? <span class="kw">this</span>.<span class="fn">getConditionValue</span>(<span class="str">"restrained"</span>, targetActor) > <span class="num">0</span> : <span class="kw">false</span>;
+
+<span class="kw">const</span> defs = <span class="kw">this</span>.effect.system.actionDefs;
+<span class="kw">const</span> cloneById = (id) => foundry.utils.<span class="fn">deepClone</span>(defs.<span class="fn">find</span>(d => d.id === id) ?? {});
+
+<span class="cmt">// Pochwycenie — stały koszt, pushuję ID jako string</span>
+args.actions.<span class="fn">push</span>(ID_POCHWYCENIE);
+
+<span class="cmt">// Rzut — klonuję po ID, obniżam koszt jeśli cel jest pochwycony</span>
+<span class="kw">const</span> rzut = <span class="fn">cloneById</span>(ID_RZUT);
+<span class="kw">if</span> (isGrappled) rzut.successCost = <span class="num">1</span>;
+args.actions.<span class="fn">push</span>(rzut);
+
+<span class="cmt">// Wykończenie — j.w.</span>
+<span class="kw">const</span> wykonczenie = <span class="fn">cloneById</span>(ID_WYKONCZENIE);
+<span class="kw">if</span> (isGrappled) wykonczenie.successCost = <span class="num">2</span>;
+args.actions.<span class="fn">push</span>(wykonczenie);</code></pre>
 </div>
 </div>
 </section>
@@ -1381,25 +1439,22 @@ args.actions.push({
 <section id="trick-065-osmiornica">
 <h3>65. Ośmiornica</h3>
 <p><strong>Wymagania:</strong> Bijatyka 4+ lub Broń ręczna 4+, Kondycja 2+, Spryt 12+</p>
-<p><strong>Mechanika:</strong> Decyzja przed rzutem: -2 Zr w obronie, ale może użyć manewru Zwiększone tempo nawet bez Inicjatywy.</p>
-
+<p><strong>Mechanika:</strong> Decyzja przed rzutem: walczący akceptuje karę −2 do Zręczności w obronie, w zamian może użyć manewru Zwiększone tempo nawet bez Inicjatywy.</p>
 <div class="callout info">
-  <strong>Implementacja: 1 AE (<code>transferType: self</code>).</strong><br>
-  Skrypt <code>dialog</code> dodaje -2 do Zręczności (kara za agresywny manewr). Dostępny przy braku inicjatywy.<br>
-  Manewr <strong>Zwiększone tempo</strong> jest dostępny w oknie rzutu dla obu stron walki — sztuczka nie wymaga żadnej dodatkowej logiki dla samej opcji tempa.
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Ośmiornica"</em> (<code>transferType: self</code>) z triggerem <code>dialog</code>.
+  Checkbox pojawia się w dialogu rzutu obrony melee — gracz zaznacza gdy chce aktywować manewr.
+  Zaznaczenie nakłada karę −2 do Zręczności na tę obronę.
+  Dostęp do manewru Zwiększone tempo jest narracyjny — MG zezwala gdy checkbox jest aktywny.
 </div>
-
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy obronnym rzucie melee (brak Inicjatywy)</div>
-<pre><code><span class="cmt">// Pokaż tylko gdy walczymy wręcz jako obrońca (brak inicjatywy).</span>
-<span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">return</span> <span class="kw">this</span>.<span class="fn">hasMeleeInitiative</span>();</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy melee obronie</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"defense"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> -2 Zr w obronie</div>
-<pre><code><span class="cmt">// Kara do Zręczności (zarówno do puli atrybutu jak i snapshotura walki).</span>
-args.fields.attributeBonus -= <span class="num">2</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> −2 do Zręczności (kara za aktywację manewru)</div>
+<pre><code>args.fields.attributeBonus -= <span class="num">2</span>;</code></pre>
 </div>
 </div>
 </section>
@@ -1599,22 +1654,29 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span> &&
     <span class="var">maneuver</span> !== <span class="str">"charge"</span> && <span class="var">maneuver</span> !== <span class="str">"szarza"</span>) <span class="kw">return</span>;
 
-<span class="cmt">// Sprawdź czy efekt już użyty vs ten cel (flaga na aktorze).</span>
-<span class="kw">const</span> <span class="var">flagKey</span> = <span class="str">"rrrroooaaarrr_</span>" + args.defenderId;
-<span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>)) <span class="kw">return</span>;
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="var">flagKey</span>, <span class="kw">true</span>);
+<span class="cmt">// Stan przechowywany na obiekcie encounter (in-memory, resetuje się po walce).</span>
+args.encounter._rrrroooaaarrr ??= [];
+<span class="kw">if</span> (args.encounter._rrrroooaaarrr.length >= <span class="num">5</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.encounter._rrrroooaaarrr.<span class="fn">includes</span>(args.defenderId)) <span class="kw">return</span>;
+args.encounter._rrrroooaaarrr.<span class="fn">push</span>(args.defenderId);
 
-<span class="cmt">// Test Morale dla przeciwnika.</span>
-<span class="kw">await</span> NeuroshimaScriptRunner.<span class="fn">postRequiredTest</span>({
-  testKey:    <span class="str">"morale"</span>,
-  difficulty: <span class="str">"average"</span>,
-  label:      <span class="str">"Morale — Rrrroooaaarrr! (okrzyk bojowy)"</span>
+<span class="cmt">// Pobierz aktora-obrońcę z danych uczestnika i wyślij test Morale.</span>
+<span class="kw">const</span> <span class="var">defPart</span> = args.defender;
+<span class="kw">const</span> <span class="var">defenderActor</span> = <span class="var">defPart</span>?.actorUuid
+  ? (fromUuidSync(<span class="var">defPart</span>.actorUuid)?.actor ?? fromUuidSync(<span class="var">defPart</span>.actorUuid))
+  : <span class="kw">null</span>;
+<span class="kw">if</span> (!<span class="var">defenderActor</span>) <span class="kw">return</span>;
+
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>(<span class="var">defenderActor</span>, {
+  skillKey: <span class="str">"morale"</span>,
+  label:    <span class="str">"Morale — Rrrroooaaarrr! (okrzyk bojowy)"</span>,
+  note:     <span class="str">"Atakujący wydał bojowy okrzyk podczas Furii/Szarży. Test jak przy zasadzie Najpierw spójrz mi w oczy."</span>
 });</code></pre>
 </div>
 </div>
 
-<div class="callout warning">
-  <strong>Ograniczenie "tylko raz vs ten sam przeciwnik":</strong> Flaga <code>rrrroooaaarrr_{defenderId}</code> ustawiana na aktorze blokuje kolejne użycia. Reset następuje przez usunięcie efektu (MG) lub skryptem odpoczynku. Max 5 wrogów — weryfikacja narracyjna przez MG.
+<div class="callout info">
+  <strong>Stan na encounter, nie na aktorze:</strong> Tablica <code>args.encounter._rrrroooaaarrr</code> przechowuje ID obrońców, którym wysłano test w tej walce. Resetuje się automatycznie po zakończeniu combatu — brak flag, brak czyszczenia ręcznego. Max 5 wrogów egzekwowane przez długość tablicy.
 </div>
 <div class="callout info">
   <strong>Implementacja w applyDuelBatch:</strong> Wyzwalacz <code>opposedAttacker</code> jest wywoływany z <code>MeleeOpposedChat.applyDuelBatch()</code> po każdym segmencie (zarówno w trybie normalnym jak i berserker), dla aktora będącego w danym segmencie atakującym (strona inicjatywy). Manewr atakującego (<code>args.attacker.maneuver</code>) pochodzi z wybranego manewru w dialogu rzutu i jest zapisywany w stanie karty duelu. <code>args.defenderId</code> to UUID obrońcy w danym segmencie.
@@ -1625,22 +1687,50 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <h3>83. Ruchome gniazdo CKM</h3>
 <p><strong>Wymagania:</strong> Budowa 16+, Broń maszynowa 6+</p>
 <p><strong>Mechanika:</strong> Gdy trafia serią: może wpakować w cel dwa razy więcej kul niż normalnie (wynik pogarsza się co 2 kule zamiast co 1).</p>
-<div class="callout warning"><strong>Narracyjne:</strong> Efekt oznacznik — brak automatycznej mechaniki. Utwórz pasywny AE jako przypomnienie dla MG/gracza.</div>
-</section>
-
-<section id="trick-084-ruchomy-cel">
-<h3>84. Ruchomy cel</h3>
-<p><strong>Wymagania:</strong> Pistolety 4+ lub Karabiny 4+ lub Broń maszynowa 4+, Spryt 12+, Percepcja 10+</p>
-<p><strong>Mechanika:</strong> Brak kary do testów strzelania za ruchomy cel.</p>
+<div class="callout info">
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect</strong><br>
+  AE <em>„Ruchome gniazdo CKM"</em> (<code>transferType: self</code>, trigger <code>dialog</code>). Checkbox pojawia się tylko przy strzale serią. Po zaznaczeniu ustawia <code>args.fields.burstHitStep = 2</code>, co powoduje że każdy punkt Przewagi trafia 2 kule zamiast 1.
+</div>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy strzale serią</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span> || args.burstLevel < <span class="num">1</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
-<pre><code>args.fields.movingTargetPenalty = <span class="num">0</span>;</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Podwój liczbę trafionych kul na Punkt Przewagi</div>
+<pre><code>args.fields.burstHitStep = <span class="num">2</span>;</code></pre>
 </div>
+</div>
+<div class="callout info">
+  <strong>Jak działa <code>burstHitStep</code>:</strong> Domyślnie każdy Punkt Przewagi trafia 1 kulę (kula j trafia gdy PP &gt; j). Z <code>burstHitStep = 2</code> kula j trafia gdy PP &gt; floor(j / 2) — efektywnie 2 kule na każdy PP. Pole obsługuje dowolne całkowite wartości ≥ 1.
+</div>
+</section>
+
+<section id="trick-084-ruchowy-cel">
+<h3>84. Ruchowy cel</h3>
+<p><strong>Wymagania:</strong> Pistolety 4+ lub Karabiny 4+ lub Broń maszynowa 4+, Spryt 12+, Percepcja 10+</p>
+<p><strong>Mechanika:</strong> Brak kary do testów strzelania wynikającej z poruszania się celu.</p>
+<div class="callout info">
+  <strong>Implementacja: 1 AE (<code>transferType: self</code>) z wyzwalaczem <code>dialog</code>.</strong><br>
+  System automatycznie wykrywa, czy token celu ruszył się w tej rundzie (flaga <code>neuroshima.movedThisRound</code>) i nalicza +20% kary w oknie dialogowym strzału. Sztuczka pojawia się jako checkbox tylko gdy kara jest aktywna. Po zaznaczeniu redukuje <code>args.fields.modifier</code> o wartość kary, efektywnie ją zerując.
+</div>
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko gdy cel się ruszył</div>
+<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span> || !args.movingTargetPenalty;</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Anuluj karę za ruchomy cel</div>
+<pre><code>args.fields.modifier -= args.movingTargetPenalty;</code></pre>
+</div>
+</div>
+<div class="callout info">
+  <strong>Jak działa automatyczna kara ruchu:</strong> Gdy token się ruszy podczas aktywnego combatu, system ustawia flagę <code>neuroshima.movedThisRound</code>. W dialogu strzału naliczana jest:
+  <ul>
+    <li><strong>+30%</strong> — gdy strzelec sam się ruszył w tej rundzie</li>
+    <li><strong>+20%</strong> — gdy cel się ruszył w tej rundzie (eliminowana przez Ruchowy Cel)</li>
+  </ul>
+  Kary wyświetlane są jako oddzielne oznaczone pola (jak kara za osaczenie). Flagi są czyszczone automatycznie na początku każdej nowej rundy.
 </div>
 </section>
 
@@ -1661,8 +1751,13 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <section id="trick-087-samuraj">
 <h3>87. Samuraj</h3>
 <p><strong>Wymagania:</strong> Zręczność 10+, Broń ręczna 3+</p>
-<p><strong>Mechanika:</strong> Walcząc mieczem lub pałką: +1 do Broni ręcznej.</p>
+<p><strong>Mechanika:</strong></p>
+<ul>
+  <li><strong>Efekt 1:</strong> Walcząc mieczem lub pałką: +1 do Broni ręcznej.</li>
+  <li><strong>Efekt 2:</strong> Jeśli nosisz katanę, rapier lub inną lekką broń chowaną w pochwie, dobycie jej zajmuje tylko 1 segment (zamiast normalnego czasu).</li>
+</ul>
 <div class="ns-trick-scripts">
+<p><strong>Efekt 1 — bonus do walki:</strong></p>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
 <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
@@ -1674,6 +1769,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <pre><code>args.fields.skillBonus += <span class="num">1</span>;</code></pre>
 </div>
 </div>
+<div class="callout warning"><strong>Efekt 2 — dobycie broni (narracyjne):</strong> Skrócenie czasu dobycia do 1 segmentu jest regułą sytuacyjną obsługiwaną przez MG. Utwórz pasywny AE jako przypomnienie dla gracza, że broń jest dobywana w 1 segmencie.</div>
 </section>
 
 <section id="trick-088-sherlock-holmes">
@@ -1702,11 +1798,14 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <section id="trick-090-siup-dup">
 <h3>90. Siup dup</h3>
 <p><strong>Wymagania:</strong> Zręczność 14+, Bijatyka 4+</p>
-<p><strong>Mechanika:</strong> Akcja za 3 sukcesy, PT o poziom wyższy, gołe ręce: rozbraja i przejmuje broń.</p>
+<p><strong>Mechanika:</strong> Tylko walka gołymi rękami. Akcja za 3 sukcesy, PT o poziom wyższy — rozbraja przeciwnika i przejmuje jego broń.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Script Akcji</div>
-<pre><code>args.actions.push({
+<pre><code><span class="kw">const</span> <span class="var">weaponId</span> = args.state?.weaponId;
+<span class="kw">const</span> <span class="var">weapon</span> = <span class="var">weaponId</span> ? args.actor.items.get(<span class="var">weaponId</span>) : <span class="kw">null</span>;
+<span class="kw">if</span> (<span class="var">weapon</span> && <span class="var">weapon</span>.system.skill !== <span class="str">"brawl"</span>) <span class="kw">return</span>;
+args.actions.push({
   id: <span class="str">"siup-dup-disarm"</span>,
   name: <span class="str">"Siup dup – Rozbrojenie"</span>,
   damage: <span class="str">"—"</span>,
@@ -1718,7 +1817,9 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"melee"</span>;</code></pre>
+<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<span class="kw">const</span> <span class="var">skill</span> = args.weapon?.system?.skill;
+<span class="kw">return</span> <span class="var">skill</span> !== <span class="kw">undefined</span> && <span class="var">skill</span> !== <span class="str">"brawl"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>

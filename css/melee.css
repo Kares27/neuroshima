@@ -3693,3 +3693,27 @@ span.duel-die-chip.is-pending {
 .melee-duel-card .hit-badge--counter.hit-badge--light   { border-color: rgba(220, 220, 60, 0.55);  }
 .melee-duel-card .hit-badge--counter.hit-badge--heavy   { border-color: rgba(240, 140, 30, 0.65);  }
 .melee-duel-card .hit-badge--counter.hit-badge--crit    { border-color: rgba(230, 60, 60, 0.70);   }
+
+/* ── Combat Tracker — movement row ───────────────────────────── */
+.ct-movement-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.72em;
+    color: rgba(255, 255, 255, 0.40);
+    line-height: 1;
+    margin-top: 1px;
+}
+
+.ct-movement-row.has-moved {
+    color: rgba(100, 210, 255, 0.75);
+}
+
+.ct-movement-icon {
+    flex-shrink: 0;
+    font-size: 0.9em;
+}
+
+.ct-movement-values {
+    letter-spacing: 0.02em;
+}

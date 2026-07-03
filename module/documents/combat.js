@@ -88,4 +88,12 @@ export class NeuroshimaCombat extends Combat {
 
     return this;
   }
+
+  /**
+   * Override to prevent Foundry's default per-turn movement history clearing.
+   * Neuroshima tracks movement per-round instead — clearing is done manually
+   * in the combatRound hook at the start of each new round.
+   * @override
+   */
+  async _clearMovementHistoryOnStartTurn() {}
 }

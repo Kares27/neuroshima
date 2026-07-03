@@ -166,6 +166,7 @@ export class NeuroshimaDice {
         chatMessage = true, 
         dieManualBonus = 0,
         dieReductionBonus = 0,
+        burstHitStep = 1,
         rollMode = game.settings.get("core", "rollMode"),
         options = {}
     } = params;
@@ -651,8 +652,9 @@ export class NeuroshimaDice {
 
             // Iterate over every fired bullet (casing)
             for (let j = 0; j < effectiveBullets; j++) {
-                // Bullet j hits only when our Advantage Points (pp) exceed j
-                if (pp <= j) break; 
+                // Bullet j hits only when our Advantage Points (pp) exceed floor(j / burstHitStep).
+                // burstHitStep=1 (default): 1 AP per bullet. burstHitStep=2: 1 AP per 2 bullets (double hits).
+                if (pp <= Math.floor(j / Math.max(1, burstHitStep ?? 1))) break; 
 
                 const bullet = bulletSequence[j];
                 if (!bullet) break;

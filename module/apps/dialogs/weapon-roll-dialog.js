@@ -46,6 +46,20 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     this.crowdingDexPenalty = options.crowdingDexPenalty || 0;
     this.chargeDexPenalty   = options.chargeDexPenalty   || 0;
     this.rollOptions.gradCios = options.gradCios ?? false;
+
+    this.shooterMovedPenalty = 0;
+    this.targetMovedPenalty = 0;
+    if (game.combats?.active && this.rollType === "ranged") {
+      const shooterToken = canvas.scene?.tokens?.find(t => t.actor?.id === this.actor?.id);
+      if (shooterToken?.movementHistory?.length > 0) {
+        this.shooterMovedPenalty = 30;
+      }
+      const firstTarget = (options.targets || [])[0];
+      const targetTokenDoc = firstTarget?.document ?? firstTarget;
+      if (targetTokenDoc?.movementHistory?.length > 0) {
+        this.targetMovedPenalty = 20;
+      }
+    }
   }
 
   static DEFAULT_OPTIONS = {
@@ -145,7 +159,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       distance,
       distanceModifier: distancePenalty,
       aimingLevel,
-      burstLevel
+      burstLevel,
+      movingTargetPenalty: this.targetMovedPenalty,
+      movingShooterPenalty: this.shooterMovedPenalty
     },
     this.selectedModifierIds,
     this.unselectedModifierIds,
@@ -188,6 +204,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     context.useWeaponModifier = useWeaponModifier;
     context.crowdingDexPenalty = this.crowdingDexPenalty;
     context.chargeDexPenalty   = this.chargeDexPenalty;
+    context.shooterMovedPenalty = this.shooterMovedPenalty;
+    context.targetMovedPenalty  = this.targetMovedPenalty;
 
     let effectDifficulty = (scriptFields.difficulty && this.userEntry.baseDifficulty === undefined)
       ? scriptFields.difficulty : baseDifficulty;
@@ -518,7 +536,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       burstLevel:      burstLevel,
       difficulty:      _effectiveDiff,
       hitLocation:     formData.hitLocation,
-      modifier:        totalModifier,
+      modifier:        totalModifier + (this.shooterMovedPenalty || 0) + (this.targetMovedPenalty || 0),
       applyArmor:      !!formData.useArmorPenalty,
       applyWounds:     !!formData.useWoundPenalty,
       applyDisease:    !!formData.useDiseasePenalty,
@@ -534,6 +552,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       damageShift3:    sf?.damageShift3 || 0,
       dieManualBonus:      Number(this.userEntry.dieManualBonus ?? 0) || 0,
       dieReductionBonus:  Number(this.userEntry.dieReductionBonus ?? 0) || 0,
+      burstHitStep:    sf?.burstHitStep ?? 1,
       rollMode:        formData.rollMode,
       skillKeyOverride: sf?.skillKey || null
     };
