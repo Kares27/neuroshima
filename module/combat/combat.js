@@ -5239,25 +5239,29 @@ export class MeleeResolution {
     defender.usedDice.push(...exchange.defenderSelectedDice);
 
     // opposedAttacker / opposedDefender — fire after result is determined, before damage applied.
-    // Scripts can read resultType and react or override it.
-    // args.blockDamageShift (negative) shifts the damage type down on block (Garda).
-    const postResultArgs = {
-      encounter: updated, resultType, diceCount, attackerId, defenderId,
-      attacker, defender, participant: defender, attackerSuccesses, defenderSuccesses, blockDamageShift: 0
+    // Each trigger receives its own spread copy so actor differs per side; primitive fields
+    // (resultType, blockDamageShift) are synced back after each call.
+    // Object fields (attacker, defender) are shared references — mutations persist automatically.
+    const postResultBase = {
+      encounter: updated, diceCount, attackerId, defenderId,
+      attacker, defender, participant: defender, attackerSuccesses, defenderSuccesses
     };
     if (attackerActorDoc) {
-      await NeuroshimaScriptRunner.execute("opposedAttacker", { actor: attackerActorDoc, ...postResultArgs });
+      const atkArgs = { ...postResultBase, actor: attackerActorDoc, resultType, blockDamageShift: 0 };
+      await NeuroshimaScriptRunner.execute("opposedAttacker", atkArgs);
+      resultType = atkArgs.resultType;
     }
     if (defenderActorDoc) {
-      await NeuroshimaScriptRunner.execute("opposedDefender", { actor: defenderActorDoc, ...postResultArgs });
+      const defArgs = { ...postResultBase, actor: defenderActorDoc, resultType, blockDamageShift: 0 };
+      await NeuroshimaScriptRunner.execute("opposedDefender", defArgs);
+      resultType = defArgs.resultType;
     }
-    resultType = postResultArgs.resultType;
 
     // blockDamageShift — set by preOpposedDefender scripts (e.g. Garda trick) via
-    // args.participant.blockDamageShift, OR via opposedDefender args.defender.blockDamageShift.
+    // args.participant.blockDamageShift, OR via opposedDefender via args.blockDamageShift.
     // Negative value = shift damage type DOWN by N levels on the D→L→C→K track on block.
     // -1 = one tier lower (C→L, L→D, D→nothing/no damage).
-    const _blockShift = (defender.blockDamageShift || 0) || (postResultArgs.blockDamageShift || 0);
+    const _blockShift = defender.blockDamageShift || 0;
     if (resultType === "block" && _blockShift !== 0) {
       const locationDieIndex = exchange.locationDieIndex ?? exchange.attackerSelectedDice[0];
       const weaponForBlock = attackerActorDoc?.items.get(attacker.weaponId);

@@ -1852,11 +1852,12 @@ args.actions.push({
 <section id="trick-094-snajper">
 <h3>94. Snajper</h3>
 <p><strong>Wymagania:</strong> Karabiny 6+, Percepcja 14+</p>
-<p><strong>Mechanika:</strong> Celownik optyczny snajperki daje łącznie -80% do trudności (standardowe -40% + dodatkowe -40%).</p>
+<p><strong>Mechanika:</strong> Celownik optyczny zmniejsza trudność o -80% zamiast standardowego -40% — ale tylko w przypadku snajperki (podtyp: Karabin snajperski).</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"rifles"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"rifles"</span>
+  || args.weapon?.system?.rangedSubtype !== <span class="str">"sniperRifles"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -1894,46 +1895,20 @@ args.actions.push({
 <p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 lub przed testem Inicjatywy. Walczący oddaje Inicjatywę — w zamian otrzymuje +3 do Zręczności w obronie do czasu, aż sam nie przejmie Inicjatywy.</p>
 
 <div class="callout info">
-  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
-  <strong>AE nr 1</strong> — <em>„Szachista"</em> (<code>transferType: self</code>): checkbox w dialogu ataku (tylko gdy aktor ma inicjatywę). Po zaznaczeniu natychmiast oddaje inicjatywę i aplikuje marker.<br>
-  <strong>AE nr 2</strong> — <em>„Szachista – Bonus"</em> (<code>transferType: other</code>): persistent marker. <code>preOpposedDefender</code> dodaje +3 do progu trudności obrony. <code>opposedDefender</code> usuwa marker gdy obrońca przejmie inicjatywę (takeover).
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect.</strong><br>
+  AE <em>„Szachista"</em> (<code>transferType: self</code>): checkbox w dialogu (tylko gdy aktor ma inicjatywę). Po zaznaczeniu oddaje inicjatywę i dodaje +3 do Zręczności dla rzutu 3k20 tej rundy. Ponieważ bonus wchodzi w <code>rollTarget</code> → <code>defenseTargetSnapshot</code>, obowiązuje dla wszystkich wymian w tej rundzie.
 </div>
-
-<h4 class="script-label">Efekt nr 1 — „Szachista" (transferType: self)</h4>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko gdy aktor ma inicjatywę</div>
-<pre><code><span class="cmt">// Szachista dostępny tylko dla posiadacza inicjatywy — może ją oddać.</span>
-<span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
+<pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
 <span class="kw">return</span> !<span class="kw">this</span>.<span class="fn">hasMeleeInitiative</span>();</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Oddaj inicjatywę + aplikuj marker bonusu</div>
-<pre><code><span class="cmt">// Oddaj inicjatywę przeciwnikowi przez wbudowany helper.</span>
-<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">yieldMeleeInitiative</span>();
-<span class="cmt">// Aplikuj marker — AE nr 2 na liście efektów (index 1).</span>
-<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
-<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Oddaj inicjatywę i dodaj +3 do Zręczności dla rzutu</div>
+<pre><code><span class="kw">await</span> <span class="kw">this</span>.<span class="fn">yieldMeleeInitiative</span>();
+args.fields.attributeBonus += <span class="num">3</span>;</code></pre>
 </div>
-</div>
-
-<h4 class="script-label">Efekt nr 2 — „Szachista – Bonus" (transferType: other)</h4>
-<p class="example-desc">Persistent marker aplikowany na aktorze przez AE nr 1. Dodaje +3 do progu trudności obrony we wszystkich wymianach. Usuwa się gdy aktor przejmie inicjatywę (takeover).</p>
-<div class="ns-trick-scripts">
-<div class="example-block">
-<div class="example-header"><span class="trigger-badge">preOpposedDefender</span> +3 do progu trudności obrony</div>
-<pre><code><span class="cmt">// Szachista: bonus obronny aktywny dopóki marker istnieje na aktorze.</span>
-args.difficultyTarget += <span class="num">3</span>;</code></pre>
-</div>
-<div class="example-block">
-<div class="example-header"><span class="trigger-badge">opposedDefender</span> Usuń marker po przejęciu inicjatywy</div>
-<pre><code><span class="cmt">// Marker wygasa gdy obrońca przejmie inicjatywę (takeover jako defender).</span>
-<span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
-<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
-</div>
-</div>
-<div class="callout warning">
-  <strong>Ograniczenie applyDuelBatch:</strong> Wyzwalacz <code>preOpposedDefender</code> (odpowiadający za <code>args.difficultyTarget += 3</code>) odpala się <strong>tylko w NeuroshimaCombat</strong> (pełny system starcia), nie w systemie kart czatu (<code>applyDuelBatch</code>). W kartach czatu kości są już rzucone przed porównaniem — bonus +3 jest dodawany przez skrypt dialogowy AE nr 1 (dialog code) w momencie rzutu, co daje ten sam efekt mechanicznie. Wyzwalacz <code>opposedDefender</code> (usuwanie markera) działa w obu systemach.
 </div>
 </section>
 
@@ -2102,72 +2077,60 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 <p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 przy manewrze Furia. Jeśli przeciwnik przejmie Inicjatywę — kara Furii działa (celny cios), ale w <strong>następnym segmencie</strong> walczący automatycznie odzyskuje Inicjatywę. Na koniec tury: +20% kary ze zmęczenia. Działa tylko przy Bijatyce.</p>
 
 <div class="callout info">
-  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
-  <strong>AE nr 1</strong> — <em>„Wiatrak"</em> (<code>transferType: self</code>): checkbox w dialogu melee. Kod aplikuje marker AE nr 2 na aktora.<br>
-  <strong>AE nr 2</strong> — <em>„Wiatrak – Aktywny"</em> (<code>transferType: other</code>): marker. <code>opposedAttacker</code> zapisuje intent do <code>encounter._effects.wiatrakReclaim</code>. <code>meleeUpdate</code> obsługuje oba momenty: <code>segment-advance</code> (przywróć inicjatywę) i <code>turn-end</code> (nałóż zmęczenie i usuń marker).<br>
-  <strong>Brak zmian silnika</strong> — całość przez wyzwalacze <code>opposedAttacker</code> + <code>meleeUpdate</code>.
+  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect.</strong><br>
+  AE <em>„Wiatrak"</em> (<code>transferType: self</code>) z czterema wyzwalaczami na tym samym efekcie:<br>
+  <code>dialog</code> — checkbox przed rzutem (Bijatyka + atak). Aktywacja przez <code>activateForMelee()</code>.<br>
+  <code>opposedAttacker</code> — jeśli Furia + takeover, zapisuje intent odzysku do <code>encounter._effects.wiatrakReclaim</code>.<br>
+  <code>meleeUpdate / segment-advance</code> — przywraca <code>initiativeOwnerId</code> gdy flaga odzysku jest ustawiona.<br>
+  <code>meleeUpdate / turn-end</code> — wysyła powiadomienie o +20% zmęczenia i czyści aktywację.<br>
+  <strong>Brak zmian silnika</strong> — całość przez wyzwalacze. Namespace <code>_effects</code> jest resetowany automatycznie na początku każdej tury.
 </div>
 
-<h4 class="script-label">Efekt nr 1 — „Wiatrak" (transferType: self)</h4>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy ataku melee (Bijatyka)</div>
-<pre><code><span class="cmt">// Wiatrak działa tylko przy manewrze Furia — pokaż checkbox przy ataku wręcz.</span>
+<pre><code><span class="cmt">// Wiatrak requires a melee attack roll with a brawl (Bijatyka) weapon.</span>
 <span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="cmt">// Ogranicz do Bijatyki.</span>
-<span class="kw">return</span> args.weapon?.system?.skill !== <span class="str">"brawling"</span>;</code></pre>
+<span class="kw">return</span> args.weapon?.system?.skill !== <span class="str">"brawl"</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Aplikuj marker Wiatraku</div>
-<pre><code><span class="cmt">// Aplikuj marker — AE nr 2 (index 1).</span>
-<span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
-<span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
+<div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zarejestruj aktywację Wiatraku</div>
+<pre><code><span class="cmt">// Mark this trick as active for the current melee turn via the built-in helper.</span>
+<span class="cmt">// The activation persists until explicitly cleared by deactivateForMelee().</span>
+<span class="kw">this</span>.<span class="fn">activateForMelee</span>();</code></pre>
 </div>
-</div>
-
-<h4 class="script-label">Efekt nr 2 — „Wiatrak – Aktywny" (transferType: other)</h4>
-<p class="example-desc">Marker aplikowany przez AE nr 1. <code>opposedAttacker</code> zapisuje intent do <code>encounter._effects</code>. <code>meleeUpdate</code> wykonuje właściwą akcję zależnie od fazy.</p>
-<div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">opposedAttacker</span> Zaznacz odzysk inicjatywy gdy Furia + takeover</div>
-<pre><code><span class="cmt">// Odpal tylko gdy atakujący z Furią stracił inicjatywę (takeover).</span>
+<pre><code><span class="cmt">// Only trigger when this actor (attacker) lost initiative (opponent took over).</span>
 <span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">maneuver</span> = args.attacker?.maneuver;
-<span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span>) <span class="kw">return</span>;
-<span class="cmt">// Znajdź ID uczestnika (tego aktora) w encounter.</span>
-<span class="kw">const</span> <span class="var">myId</span> = Object.<span class="fn">entries</span>(args.encounter.participants)
-  .<span class="fn">find</span>(([id, p]) => p.actorUuid === <span class="kw">this</span>.actor.uuid)?.[<span class="num">0</span>];
-<span class="kw">if</span> (!<span class="var">myId</span>) <span class="kw">return</span>;
-<span class="cmt">// Zapisz intent do _effects — meleeUpdate wykona odzysk w segment-advance.</span>
+<span class="cmt">// Wiatrak requires the Furia maneuver — use the helper instead of args.attacker.maneuver.</span>
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">getMeleeManeuver</span>() !== <span class="str">"fury"</span>) <span class="kw">return</span>;
+<span class="cmt">// Guard: Wiatrak must have been activated in the dialog this turn.</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
+<span class="cmt">// args.attackerId is the attacker's participant key — no manual lookup needed.</span>
 args.encounter._effects = args.encounter._effects || {};
-args.encounter._effects.wiatrakReclaim = <span class="var">myId</span>;</code></pre>
+args.encounter._effects.wiatrakReclaim = args.attackerId;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Wykonaj odzysk inicjatywy (segment-advance) lub nałóż zmęczenie (turn-end)</div>
-<pre><code><span class="kw">const</span> <span class="var">myId</span> = Object.<span class="fn">entries</span>(args.encounter.participants)
-  .<span class="fn">find</span>(([id, p]) => p.actorUuid === <span class="kw">this</span>.actor.uuid)?.[<span class="num">0</span>];
-
+<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Odzysk inicjatywy (segment-advance) / powiadomienie o zmęczeniu (turn-end)</div>
+<pre><code><span class="cmt">// args.participantId is this actor's key in encounter.participants — no manual lookup needed.</span>
 <span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
-  <span class="kw">if</span> (args.encounter._effects?.wiatrakReclaim !== <span class="var">myId</span>) <span class="kw">return</span>;
-  <span class="cmt">// Przywróć inicjatywę — atakujący następnego segmentu.</span>
-  args.encounter.turnState.initiativeOwnerId = <span class="var">myId</span>;
+  <span class="cmt">// Restore initiative on the next segment after a Furia takeover.</span>
+  <span class="cmt">// The reclaim flag was set by the opposedAttacker trigger above.</span>
+  <span class="kw">if</span> (args.encounter._effects?.wiatrakReclaim !== args.participantId) <span class="kw">return</span>;
+  args.encounter.turnState.initiativeOwnerId = args.participantId;
   <span class="kw">delete</span> args.encounter._effects.wiatrakReclaim;
-  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+
 } <span class="kw">else if</span> (args.phase === <span class="str">"turn-end"</span>) {
-  <span class="kw">if</span> (<span class="var">myId</span> !== args.participantId) <span class="kw">return</span>;
-  <span class="cmt">// Nałóż efekt zmęczenia (+20%) i usuń marker.</span>
-  <span class="kw">const</span> <span class="var">src</span> = <span class="kw">this</span>.actor.items.contents.<span class="fn">find</span>(
-    i => i.effects.size >= <span class="num">2</span> && i.effects.contents[<span class="num">1</span>]?.name === <span class="kw">this</span>.effect.name
+  <span class="cmt">// Apply the +20% fatigue penalty at end of turn.</span>
+  <span class="cmt">// Fatigue is not tracked as a numeric actor field — notify the GM to apply it.</span>
+  <span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
+    <span class="str">"&lt;b&gt;Wiatrak:&lt;/b&gt; Walczący otrzymuje &lt;b&gt;+20% kary ze zmęczenia&lt;/b&gt; za tę turę."</span>
   );
-  <span class="kw">const</span> <span class="var">fatigueEffect</span> = <span class="var">src</span>?.effects.contents[<span class="num">2</span>];
-  <span class="kw">if</span> (<span class="var">fatigueEffect</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">fatigueEffect</span>, [<span class="kw">this</span>.actor]);
-  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
+  <span class="kw">this</span>.<span class="fn">deactivateForMelee</span>(args);
 }</code></pre>
 </div>
-</div>
-
-<div class="callout info">
-  <strong>Jak działa <code>meleeUpdate</code> dla Wiatraku:</strong> <code>opposedAttacker</code> zapisuje ID uczestnika do <code>encounter._effects.wiatrakReclaim</code>. Przy <code>phase === "segment-advance"</code> silnik odpala <code>meleeUpdate</code> dla wszystkich aktywnych uczestników — skrypt Wiatraku sprawdza flagę, przywraca <code>initiativeOwnerId</code> i usuwa marker. Przy <code>phase === "turn-end"</code> nakłada zmęczenie. Namespace <code>_effects</code> jest resetowany automatycznie na początku każdej tury (<code>startNewTurn</code> ustawia <code>updated._effects = {}</code>).
 </div>
 </section>
 

@@ -794,6 +794,100 @@ export class NeuroshimaScript {
     return true;
   }
 
+  // ── Melee opponent helpers ────────────────────────────────────────────────
+
+  /**
+   * Return the primary opponent's participant data object for `actor` in their active melee
+   * encounter.  Looks up `encounter.primaryTargets[pid]` and returns the corresponding entry
+   * from `encounter.participants`.
+   *
+   * Returns `null` when:
+   *   - the actor has no active encounter
+   *   - the actor is not found among participants
+   *   - no primary target is assigned
+   *
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {{ id: string, name: string, actorUuid: string, maneuver: string, … } | null}
+   *
+   * @example
+   * // opposedAttacker — check opponent's maneuver
+   * const opp = this.getMeleeOpponentParticipant();
+   * if (opp?.maneuver === "fullDefense") { ... }
+   *
+   * @example
+   * // meleeUpdate — inspect opponent's pool
+   * const opp = this.getMeleeOpponentParticipant();
+   * if (opp && opp.pool.some(v => v === 1)) { ... }
+   */
+  getMeleeOpponentParticipant(actor) {
+    const target = actor ?? this.actor;
+    const enc = this.getMeleeEncounter(target);
+    if (!enc) return null;
+    const pid = this.getMeleeParticipantId(target);
+    if (!pid) return null;
+    const opponentId = enc.primaryTargets?.[pid];
+    if (!opponentId) return null;
+    const p = enc.participants[opponentId];
+    return p ? { ...p, id: opponentId } : null;
+  }
+
+  /**
+   * Return the primary opponent's Actor document for `actor` in their active melee encounter.
+   * Resolves the participant's `actorUuid` via Foundry's sync UUID resolver.
+   *
+   * Returns `null` when:
+   *   - the actor has no active encounter
+   *   - no primary opponent can be resolved
+   *   - the opponent's UUID cannot be resolved (unloaded compendium, stale UUID)
+   *
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {Actor | null}
+   *
+   * @example
+   * // dialog Hide Script — show only when fighting a beast
+   * const opp = this.getMeleeOpponentActor();
+   * return opp?.type !== "beast";
+   *
+   * @example
+   * // meleeUpdate — apply a wound to the opponent at turn-end
+   * const opp = this.getMeleeOpponentActor();
+   * if (opp) await this.applyWound("D", "torso", opp);
+   */
+  getMeleeOpponentActor(actor) {
+    const p = this.getMeleeOpponentParticipant(actor);
+    if (!p) return null;
+    const doc = fromUuidSync(p.actorUuid);
+    return doc?.actor ?? doc ?? null;
+  }
+
+  /**
+   * Return the maneuver string chosen by `actor` (or this.actor) for the current melee turn.
+   * Reads `participant.maneuver` from the active encounter's participant data.
+   *
+   * Returns `null` when the actor has no active encounter or is not a participant.
+   * Common return values: `"none"`, `"fury"`, `"fullDefense"`, `"increasedTempo"`.
+   *
+   * @param {Actor} [actor] - Defaults to this.actor.
+   * @returns {string | null}
+   *
+   * @example
+   * // opposedAttacker — Wiatrak: only trigger on fury + takeover
+   * if (args.resultType !== "takeover") return;
+   * if (this.getMeleeManeuver() !== "fury") return;
+   *
+   * @example
+   * // dialog Hide Script — show only when actor chose fury this turn
+   * return this.getMeleeManeuver() !== "fury";
+   */
+  getMeleeManeuver(actor) {
+    const target = actor ?? this.actor;
+    const enc = this.getMeleeEncounter(target);
+    if (!enc) return null;
+    const pid = this.getMeleeParticipantId(target);
+    if (!pid) return null;
+    return enc.participants[pid]?.maneuver ?? null;
+  }
+
   // ── Token / targeting helpers ────────────────────────────────────────────
 
   /**
@@ -3439,15 +3533,27 @@ export class NeuroshimaScript {
  *                    internal melee encounter lifecycle. Fires for EVERY active participant actor.
  *                    args: { actor, encounter (mutable), encounterId, phase, participant, participantId }
  *                    ── phase values ──────────────────────────────────────────────────────────
+ *                    "turn-start"       — new melee turn has been set up (pools reset, initiative
+ *                                         order sorted, _effects cleared). Use for per-turn setup.
+ *                                         Fires BEFORE the new state is persisted.
+ *                    "pool-ready"       — BOTH participants have submitted their 3k20 rolls and the
+ *                                         pool is committed. Fires before any exchange resolves.
+ *                                         Use to react to the dice pool composition.
+ *                    "attack-committed" — the current attacker has declared which die/dice they
+ *                                         are committing for this exchange. Fires before resolution.
+ *                                         args.encounter.currentExchange.declaredDiceCount is set.
+ *                    "exchange-resolved"— fires on all participants after damage is applied but
+ *                                         BEFORE the segment pointer advances. Ideal for tricks
+ *                                         that count per-exchange hits or apply per-exchange riders.
+ *                                         args.encounter.currentExchange.lastResult is set to the
+ *                                         resolved resultType ("hit", "block", "takeover").
  *                    "segment-advance"  — all exchanges in this segment are done; segment pointer
  *                                         is about to increment. Scripts can modify
  *                                         args.encounter.turnState.initiativeOwnerId before the
- *                                         state is saved. Replaces the old hardcoded wiatrakReclaimId.
+ *                                         state is saved.
  *                    "turn-end"         — all 3 segments exhausted; melee TURN is about to reset.
  *                                         Apply end-of-turn effects (fatigue, markers) here.
  *                                         Fires BEFORE startNewTurn resets pool data.
- *                    "turn-start"       — new melee turn has been set up (pools reset, initiative
- *                                         order sorted). Fires BEFORE the new state is persisted.
  *                    ── encounter._effects namespace ──────────────────────────────────────────
  *                    Scripts should use args.encounter._effects.{key} to pass state between
  *                    triggers (e.g. opposedAttacker → meleeUpdate).  The engine never reads
@@ -3457,21 +3563,22 @@ export class NeuroshimaScript {
  *                    args.participantId — string key in encounter.participants map for this actor
  *                    args.participant   — the participant data object (same as encounter.participants[participantId])
  *                    ── Example: Wiatrak (initiative reclaim after fury takeover) ─────────────
- *                    // opposedAttacker — mark reclaim intent:
+ *                    // opposedAttacker — mark reclaim intent using args.attackerId directly:
  *                      if (args.resultType !== "takeover") return;
- *                      if (args.attacker?.maneuver !== "fury" && args.attacker?.maneuver !== "furia") return;
+ *                      if (this.getMeleeManeuver() !== "fury") return;
+ *                      if (!this.isActiveForMelee(args)) return;
  *                      args.encounter._effects = args.encounter._effects || {};
- *                      args.encounter._effects.wiatrakReclaim = args.participantId;
+ *                      args.encounter._effects.wiatrakReclaim = args.attackerId;
  *
- *                    // meleeUpdate — execute the reclaim / apply fatigue:
+ *                    // meleeUpdate — execute the reclaim / apply fatigue using args.participantId:
  *                      if (args.phase === "segment-advance") {
  *                        if (args.encounter._effects?.wiatrakReclaim !== args.participantId) return;
  *                        args.encounter.turnState.initiativeOwnerId = args.participantId;
  *                        delete args.encounter._effects.wiatrakReclaim;
- *                        await this.effect.delete();
  *                      } else if (args.phase === "turn-end") {
- *                        // Apply +20% fatigue then remove marker
- *                        await this.effect.delete();
+ *                        if (!this.isActiveForMelee(args)) return;
+ *                        await this.sendMessage("<b>Wiatrak:</b> +20% kary ze zmęczenia.");
+ *                        this.deactivateForMelee(args);
  *                      }
  *
  * Context available inside every script (via `this`):
