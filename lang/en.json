@@ -1657,7 +1657,22 @@
                 "TestDifficulty": "Base difficulty",
                 "SuccessEffects": "Effects on success",
                 "FailureEffects": "Effects on failure",
-                "AddFailureEffect": "Create effect (failure)"
+                "AddFailureEffect": "Create effect (failure)",
+                "EffectApplication": "Effect Application",
+                "EffectTiming": "Application timing",
+                "EffectTarget": "Effect target",
+                "ApplyEffectsAutomatically": "Apply automatically"
+            },
+            "EffectTiming": {
+                "OnUse": "On use",
+                "OnHit": "On hit",
+                "AfterDamage": "After damage"
+            },
+            "EffectTarget": {
+                "Self": "Self (attacker)",
+                "Target": "Attack target",
+                "Selected": "Selected tokens",
+                "Manual": "Manual (script)"
             }
         },
         "BeastSegment": {

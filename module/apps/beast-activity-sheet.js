@@ -259,6 +259,19 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
 
     const enrichedGmNote = await TextEditor.enrichHTML(activity.gmNote ?? "", { relativeTo: this.item });
 
+    const effectTimingOptions = {
+      onUse:       "NEUROSHIMA.BeastAction.EffectTiming.OnUse",
+      onHit:       "NEUROSHIMA.BeastAction.EffectTiming.OnHit",
+      afterDamage: "NEUROSHIMA.BeastAction.EffectTiming.AfterDamage"
+    };
+
+    const effectTargetOptions = {
+      self:     "NEUROSHIMA.BeastAction.EffectTarget.Self",
+      target:   "NEUROSHIMA.BeastAction.EffectTarget.Target",
+      selected: "NEUROSHIMA.BeastAction.EffectTarget.Selected",
+      manual:   "NEUROSHIMA.BeastAction.EffectTarget.Manual"
+    };
+
     return {
       tabs:                   this._getTabs(),
       activity,
@@ -275,6 +288,8 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
       testAttributes,
       testSkillGroups,
       difficulties:           NEUROSHIMA.difficulties,
+      effectTimingOptions,
+      effectTargetOptions,
       isSegment:              activity.costType === "segment",
       isSegmentItem,
       actionTypes,
@@ -406,6 +421,10 @@ export class BeastActivitySheet extends HandlebarsApplicationMixin(foundry.appli
     if (raw.testAttributeOverride   !== undefined) act.testAttributeOverride   = raw.testAttributeOverride;
     if (raw.testSuccesses           !== undefined) act.testSuccesses           = Number(raw.testSuccesses) || 1;
     if (raw.testDifficulty          !== undefined) act.testDifficulty          = raw.testDifficulty || "average";
+    if (raw.effectTiming            !== undefined) act.effectTiming            = raw.effectTiming;
+    if (raw.effectTarget            !== undefined) act.effectTarget            = raw.effectTarget;
+    if (raw.resolverKind            !== undefined) act.resolverKind            = raw.resolverKind;
+    act.applyEffectsAutomatically = raw.applyEffectsAutomatically === true || raw.applyEffectsAutomatically === "true" || raw.applyEffectsAutomatically === "on";
 
     const changedField = event?.target?.name ?? "";
     const STRUCTURAL_FIELDS = ["testRequired", "testIsOpen", "testType", "actionType", "weaponType"];

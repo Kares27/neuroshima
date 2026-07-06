@@ -1695,7 +1695,22 @@
                 "TestDifficulty": "Bazowa trudność",
                 "SuccessEffects": "Efekty przy sukcesie",
                 "FailureEffects": "Efekty przy porażce",
-                "AddFailureEffect": "Utwórz efekt (porażka)"
+                "AddFailureEffect": "Utwórz efekt (porażka)",
+                "EffectApplication": "Aplikacja efektów",
+                "EffectTiming": "Moment aplikacji",
+                "EffectTarget": "Cel efektów",
+                "ApplyEffectsAutomatically": "Aplikuj automatycznie"
+            },
+            "EffectTiming": {
+                "OnUse": "Przy użyciu akcji",
+                "OnHit": "Po trafieniu",
+                "AfterDamage": "Po zastosowaniu obrażeń"
+            },
+            "EffectTarget": {
+                "Self": "Własny aktor (atakujący)",
+                "Target": "Cel ataku",
+                "Selected": "Zaznaczone tokeny",
+                "Manual": "Ręcznie (skrypt)"
             }
         },
         "BeastSegment": {

@@ -311,7 +311,11 @@ export class BeastActionData extends foundry.abstract.TypeDataModel {
       testAttributeOverride:   new fields.StringField({ initial: "", blank: true }),
       testIsOpen:              new fields.BooleanField({ initial: false }),
       testSuccesses:           new fields.NumberField({ integer: true, initial: 1, min: 1, max: 10 }),
-      onFailureEffectIds:      new fields.ArrayField(new fields.StringField(), { initial: [] })
+      onFailureEffectIds:      new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      effectTiming:            new fields.StringField({ initial: "onUse", choices: ["onUse", "onHit", "afterDamage"] }),
+      effectTarget:            new fields.StringField({ initial: "target", choices: ["self", "target", "selected", "manual"] }),
+      applyEffectsAutomatically: new fields.BooleanField({ initial: true }),
+      resolverKind:            new fields.StringField({ initial: "opposedMelee", choices: ["opposedMelee", "directApply"] })
     });
     return {
       description: new fields.HTMLField({ initial: "" }),
@@ -373,7 +377,11 @@ export class BeastSegmentData extends foundry.abstract.TypeDataModel {
       testAttributeOverride:   new fields.StringField({ initial: "", blank: true }),
       testIsOpen:              new fields.BooleanField({ initial: false }),
       testSuccesses:           new fields.NumberField({ integer: true, initial: 1, min: 1, max: 10 }),
-      onFailureEffectIds:      new fields.ArrayField(new fields.StringField(), { initial: [] })
+      onFailureEffectIds:      new fields.ArrayField(new fields.StringField(), { initial: [] }),
+      effectTiming:            new fields.StringField({ initial: "onUse", choices: ["onUse", "onHit", "afterDamage"] }),
+      effectTarget:            new fields.StringField({ initial: "target", choices: ["self", "target", "selected", "manual"] }),
+      applyEffectsAutomatically: new fields.BooleanField({ initial: true }),
+      resolverKind:            new fields.StringField({ initial: "opposedMelee", choices: ["opposedMelee", "directApply"] })
     });
     return {
       description: new fields.HTMLField({ initial: "" }),

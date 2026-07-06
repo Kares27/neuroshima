@@ -3506,7 +3506,12 @@ export class NeuroshimaScript {
  *                                            Przykład: successCost: 1 → kosztuje 1 sukces z budżetu.
  *                      minDice:     number  — (dotyczy tylko standalone: successCost === 0) min kości
  *                      maxDice:     number  — (dotyczy tylko standalone: successCost === 0) max kości
- *                      annotation:  string  — tekst wyświetlany w wyniku czatu (opcjonalne)
+ *                      gmNote:      string  — tekst wyświetlany w tooltipie przycisku akcji (opcjonalne)
+ *                                            (alias: annotation — zachowany dla kompatybilności wstecznej)
+ *                      effectIds:   string[] — (opcjonalne) id efektów z itemu źródłowego do aplikacji
+ *                      effectTiming: "onHit"|"afterDamage"|"onUse" — kiedy efekty mają być zastosowane (domyślnie "onHit")
+ *                      effectTarget: "target"|"self"|"selected"|"manual" — cel efektów (domyślnie "target")
+ *                      applyEffectsAutomatically: boolean — false = pomija auto-aplikację (domyślnie true)
  *                    }
  *                    ── Dwa tryby działania ───────────────────────────────────────────────────
  *                    • successCost === 0 (domyślnie): akcja pojawia się jako ALTERNATYWA ataku
@@ -3515,10 +3520,21 @@ export class NeuroshimaScript {
  *                    • successCost > 0: akcja pojawia się w KOLEJCE (jak akcje bestii). Budżet
  *                      = sukcesy wśród wybranych kości. Gracz konfiguruje kolejkę i zatwierdza
  *                      normalnym "Atak" — akcje z kolejki aplikują się niezależnie od wyniku.
+ *                    ── Deklaratywna aplikacja efektów (effectIds) ───────────────────────────
+ *                    Dla akcji z effectIds + effectTiming:"onHit" system AUTOMATYCZNIE generuje
+ *                    onHitScript, który aplikuje efekty z itemu źródłowego (parent itemu efektu
+ *                    getMeleeActions). Wspierane tylko dla effectTiming:"onHit".
+ *                    Dla "onUse" / "afterDamage" — pisz onHitScript ręcznie.
+ *
+ *                    // Aplikuj efekt z itemu źródłowego na cel przy trafieniu:
+ *                      args.actions.push({ id: "aramis-disarm", name: "Rozbrojenie",
+ *                        effectIds: ["<effect-id-on-parent-item>"],
+ *                        effectTiming: "onHit", effectTarget: "target" });
+ *
  *                    ── Przykłady ─────────────────────────────────────────────────────────────
  *                    // Barbarka — po trafieniu w poprzednim segmencie dodaj "Uderzenie Głową" (sC):
  *                      args.actions.push({ id: "barbarka-head-butt", name: "Uderzenie Głową",
- *                        damage: "sC", successCost: 1, annotation: "Barbarka" });
+ *                        damage: "sC", successCost: 1, gmNote: "Barbarka" });
  *
  *                    // Boa – Pochwycenie — referencja przez ID z zakładki Akcje:
  *                      args.actions.push("PASTE_ACTIONDEF_ID_HERE");
@@ -4453,6 +4469,53 @@ export class NeuroshimaScriptRunner {
       } else {
         await script.execute(args);
       }
+    }
+  }
+
+  /**
+   * Execute scripts for a trigger filtered to those originating from a specific source.
+   *
+   * This is the action-scoped variant of `execute`.  Only scripts whose parent effect
+   * matches one of the provided source identifiers are run.  Use this when a hit,
+   * block, or effect event should only fire scripts belonging to the action that caused
+   * it — not every getMeleeActions script present on the actor.
+   *
+   * @param {string} trigger                         - Script trigger name
+   * @param {object} args                            - Arguments passed to each script; must include `actor`
+   * @param {object} [scope={}]
+   * @param {string|null} [scope.sourceEffectUuid]   - UUID of the originating ActiveEffect
+   * @param {string|null} [scope.sourceItemUuid]     - UUID of the originating Item
+   * @param {string|null} [scope.activityId]         - Activity id injected into args for each script
+   * @returns {Promise<void>}
+   *
+   * @example
+   * // Fire getMeleeActions scripts scoped to the effect that owns a specific trick:
+   * await NeuroshimaScriptRunner.executeScoped("getMeleeActions", { actor, target, state, hit }, {
+   *   sourceEffectUuid: trickEntry.effectUuid,
+   *   activityId: trickEntry.activityId
+   * });
+   */
+  static async executeScoped(trigger, args = {}, { sourceEffectUuid = null, sourceItemUuid = null, activityId = null } = {}) {
+    const actor = args.actor;
+    if (!actor) return;
+
+    const scripts = this.getScripts(actor, trigger);
+    const scoped = scripts.filter(script => {
+      const effect = script.effect;
+      if (!effect) return false;
+      if (sourceEffectUuid && effect.uuid === sourceEffectUuid) return true;
+      if (sourceItemUuid) {
+        const parentItem = effect.parent?.documentName === "Item" ? effect.parent : null;
+        if (parentItem?.uuid === sourceItemUuid) return true;
+      }
+      return false;
+    });
+
+    if (scoped.length === 0) return;
+    game.neuroshima?.log?.(`[${trigger}:scoped]`, { sourceEffectUuid, sourceItemUuid, activityId });
+    const scopedArgs = activityId ? { ...args, activityId } : args;
+    for (const script of scoped) {
+      await script.execute(scopedArgs);
     }
   }
 
