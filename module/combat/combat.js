@@ -21,6 +21,63 @@ import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 
 /**
+ * Context object for a resolved melee segment.
+ *
+ * Created by MeleeActionContext.fromSegment() when a segment resolves to hit/takeover/draw.
+ * Passed to onMeleeHit / onMeleeBlock / onMeleeTakeover hooks as args.context (full object)
+ * and args.action (partial MeleeAction descriptor for the current segment's trick, or null).
+ *
+ * Shape:
+ *   action:   { id, name, damage, effectIds, effectTiming, effectTarget, sourceEffectUuid } | null
+ *   attacker: { actor, uuid, successes }
+ *   defender: { actor, uuid, successes }
+ *   diceCount:  number        — segment tier N (1–3)
+ *   outcome:    string        — "hit" | "takeover" | "draw" | …
+ *   hitEntry:   object | null — hit record pushed to state.hits, or null
+ *   messageId:  string | null
+ *   state:      object        — full duel card state (read-only in hooks)
+ */
+class MeleeActionContext {
+  constructor({ action, attacker, defender, diceCount, outcome, hitEntry = null, messageId = null, state }) {
+    this.action    = action;
+    this.attacker  = attacker;
+    this.defender  = defender;
+    this.diceCount = diceCount;
+    this.outcome   = outcome;
+    this.hitEntry  = hitEntry;
+    this.messageId = messageId;
+    this.state     = state;
+  }
+
+  /**
+   * Build a MeleeActionContext from the resolved segment data.
+   * Reconstructs the action descriptor from state.trickOnHitScripts using the supplied
+   * trickId (captured before committedTrickId is cleared). Returns action: null for plain attacks.
+   * @param {object} params
+   * @returns {MeleeActionContext}
+   */
+  static fromSegment({ state, trickId, attackerActor, defenderActor, attackerSuccesses,
+                       defenderSuccesses, diceCount, outcome, hitEntry, messageId }) {
+    const trickMeta = trickId ? (state.trickOnHitScripts?.[trickId] ?? null) : null;
+    const action = trickId ? {
+      id:               trickId,
+      name:             trickMeta?.name             ?? trickId,
+      damage:           hitEntry?.damageType        ?? null,
+      effectIds:        trickMeta?.effectIds        ?? [],
+      effectTiming:     trickMeta?.effectTiming     ?? "onHit",
+      effectTarget:     trickMeta?.effectTarget     ?? "target",
+      sourceEffectUuid: trickMeta?.effectUuid       ?? null
+    } : null;
+    return new MeleeActionContext({
+      action,
+      attacker: { actor: attackerActor, uuid: state.attackerUuid, successes: attackerSuccesses },
+      defender: { actor: defenderActor, uuid: state.defenderUuid, successes: defenderSuccesses },
+      diceCount, outcome, hitEntry: hitEntry ?? null, messageId, state
+    });
+  }
+}
+
+/**
  * Custom Token Ruler for Neuroshima 1.5.
  *
  * Overrides Foundry's built-in TokenRuler to color the movement path and grid
@@ -2244,7 +2301,15 @@ export class MeleeOpposedChat {
 
         const onHitMap = {};
         for (const a of normalized) {
-          if (a.onHitScript) onHitMap[a.id] = { code: a.onHitScript, effectUuid: a.sourceEffectUuid ?? null, immediate: a.immediateOnHit ?? false };
+          if (a.onHitScript) onHitMap[a.id] = {
+            code:         a.onHitScript,
+            effectUuid:   a.sourceEffectUuid  ?? null,
+            immediate:    a.immediateOnHit    ?? false,
+            name:         a.name,
+            effectIds:    a.effectIds         ?? [],
+            effectTiming: a.effectTiming      ?? "onHit",
+            effectTarget: a.effectTarget      ?? "target"
+          };
         }
         if (Object.keys(onHitMap).length > 0) {
           state.trickOnHitScripts = { ...(state.trickOnHitScripts ?? {}), ...onHitMap };
@@ -2954,6 +3019,10 @@ export class MeleeOpposedChat {
         const ownerHasSuccess     = ownerSuccessCount > 0;
         const responderHasSuccess  = responderSuccessCount > 0;
 
+        // Capture the active trick id NOW, before resolution branches clear committedTrickId.
+        // Used by MeleeActionContext.fromSegment when building the hook context below.
+        const _segmentTrickId = state.committedTrickId ?? null;
+
         // preOpposedAttacker — fire for the owner (attacking) side before segment resolution.
         // Allows scripts (e.g. Boa – Pochwycenie) to react when this actor is about to attack.
         {
@@ -3142,12 +3211,30 @@ export class MeleeOpposedChat {
           const _defDoc   = fromUuidSync(_defUuid);
           const _atkActor = _atkDoc?.actor ?? _atkDoc;
           const _defActor = _defDoc?.actor ?? _defDoc;
-          const _hookBase = {
-            outcome,
+          const _atkSucc  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
+          const _defSucc  = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
+          const _currentHit = outcome === "hit" && state.hits?.length
+            ? state.hits[state.hits.length - 1] : null;
+          const _ctx = MeleeActionContext.fromSegment({
+            state,
+            trickId:           _segmentTrickId,
             attackerActor:     _atkActor,
             defenderActor:     _defActor,
-            attackerSuccesses: isOwnerAttacker ? ownerSuccessCount : responderSuccessCount,
-            defenderSuccesses: isOwnerAttacker ? responderSuccessCount : ownerSuccessCount,
+            attackerSuccesses: _atkSucc,
+            defenderSuccesses: _defSucc,
+            diceCount:         N,
+            outcome,
+            hitEntry:          _currentHit,
+            messageId:         message.id
+          });
+          const _hookBase = {
+            outcome,
+            action:            _ctx.action,
+            context:           _ctx,
+            attackerActor:     _atkActor,
+            defenderActor:     _defActor,
+            attackerSuccesses: _atkSucc,
+            defenderSuccesses: _defSucc,
             diceCount:         N,
             hits:              [...(state.hits ?? [])],
             state

@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Melee Combat — Reference Skryptowy</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --bg2: #242424;
+    --bg3: #2e2e2e;
+    --border: #3a3a3a;
+    --accent: #c8a45a;
+    --accent2: #7ab0d4;
+    --accent3: #7ec891;
+    --accent-err: #e06060;
+    --text: #d4d4d4;
+    --text-dim: #888;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+    --kw: #cba6f7;
+    --str: #a6e3a1;
+    --num: #fab387;
+    --fn: #89b4fa;
+    --cmt: #6c7086;
+    --var: #89dceb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  .doc-header { border-bottom: 2px solid var(--accent); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  .doc-header h1 { font-size: 2rem; color: var(--accent); font-weight: 700; letter-spacing: 0.03em; }
+  .doc-header .subtitle { color: var(--text-dim); margin-top: 0.25rem; font-size: 0.95rem; }
+  .badge { display: inline-block; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; color: var(--text-dim); margin-left: 0.5rem; vertical-align: middle; }
+
+  .header-nav { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+  .header-nav a { color: var(--accent2); text-decoration: none; }
+  .header-nav a:hover { text-decoration: underline; }
+  .header-nav span { color: var(--border); }
+
+  .toc { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2.5rem; }
+  .toc h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 0.75rem; }
+  .toc ul { list-style: none; padding-left: 0; }
+  .toc li { margin: 0.2rem 0; }
+  .toc a { color: var(--accent2); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  section { margin-bottom: 3rem; }
+  h2.section-title { font-size: 1.4rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1.25rem; }
+  h3 { font-size: 1.05rem; color: var(--accent2); margin: 1.5rem 0 0.6rem; }
+  h4 { font-size: 0.9rem; color: var(--accent3); margin: 1rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  p { margin-bottom: 0.75rem; color: var(--text); }
+
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.25rem; overflow-x: auto; margin: 0.75rem 0; font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.85rem; line-height: 1.55; }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 0.88em; background: var(--bg3); padding: 1px 5px; border-radius: 3px; color: var(--accent2); }
+  pre code { background: none; padding: 0; color: var(--code-text); }
+  .kw { color: var(--kw); }
+  .str { color: var(--str); }
+  .num { color: var(--num); }
+  .fn { color: var(--fn); }
+  .cmt { color: var(--cmt); font-style: italic; }
+  .var { color: var(--var); }
+
+  .trigger-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .trigger-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+  .trigger-card .trigger-name { font-family: monospace; font-size: 0.95rem; color: var(--accent); font-weight: bold; margin-bottom: 0.5rem; }
+  .trigger-card .trigger-desc { font-size: 0.88rem; color: var(--text-dim); margin-bottom: 0.75rem; }
+  .trigger-card .args-list { margin-top: 0.5rem; }
+  .trigger-card .arg { display: flex; gap: 0.5rem; font-size: 0.82rem; margin: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px; }
+  .trigger-card .arg:last-child { border-bottom: none; }
+  .trigger-card .arg .arg-name { color: var(--fn); min-width: 130px; font-family: monospace; }
+  .trigger-card .arg .arg-type { color: var(--num); min-width: 90px; font-family: monospace; }
+  .trigger-card .arg .arg-desc { color: var(--text-dim); }
+
+  table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; }
+  th { background: var(--bg3); color: var(--text-dim); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.4rem 0.75rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; vertical-align: top; }
+  td:first-child { font-family: monospace; color: var(--fn); white-space: nowrap; }
+  td:nth-child(2) { color: var(--num); font-family: monospace; font-size: 0.8rem; }
+  td:nth-child(3) { color: var(--text-dim); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .callout { border-left: 3px solid; padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 0.75rem 0; font-size: 0.88rem; }
+  .callout.info { border-color: var(--accent2); background: rgba(122,176,212,0.07); }
+  .callout.warning { border-color: var(--accent); background: rgba(200,164,90,0.07); }
+  .callout.danger { border-color: var(--accent-err); background: rgba(224,96,96,0.07); }
+  .callout strong { color: var(--text); }
+
+  .context-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; margin: 1rem 0; overflow-x: auto; }
+  .context-box .ctx-row { display: grid; grid-template-columns: minmax(0, 30%) minmax(0, 20%) 1fr; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.25rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  .context-box .ctx-row:last-child { border-bottom: none; }
+  .context-box .ctx-name { font-family: monospace; color: var(--fn); word-break: break-word; }
+  .context-box .ctx-type { color: var(--num); font-family: monospace; font-size: 0.8rem; word-break: break-word; }
+  .context-box .ctx-desc { color: var(--text-dim); }
+  .context-box .ctx-row.ctx-separator { grid-template-columns: minmax(0, 30%) 1fr; }
+  .context-box .ctx-row.ctx-separator .ctx-type { display: none; }
+  .ctx-row.ctx-separator { border-top: 2px solid var(--border); margin-top: 0.4rem; padding-top: 0.6rem; }
+  .ctx-row.ctx-separator .ctx-name { color: var(--accent3); font-weight: bold; }
+  .ctx-row.ctx-separator .ctx-desc { color: var(--text-dim); }
+
+  .example-block { border: 1px solid var(--border); border-radius: 8px; margin: 1.5rem 0; overflow: hidden; }
+  .example-block .example-header { background: var(--bg3); padding: 0.6rem 1rem; font-size: 0.8rem; color: var(--text-dim); font-weight: bold; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 0.5rem; }
+  .example-block .example-header .trigger-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: monospace; color: var(--accent); font-size: 0.85em; text-transform: none; }
+  .example-block pre { border: none; border-radius: 0; margin: 0; }
+
+  .timeline { position: relative; padding-left: 2.5rem; margin: 2rem 0; border-left: 2px solid var(--border); }
+  .timeline-group { margin-top: 1.5rem; margin-bottom: 1rem; }
+  .timeline-group-title { font-size: 0.95rem; color: var(--accent3); text-transform: uppercase; letter-spacing: 0.08em; font-weight: bold; margin-bottom: 1rem; margin-left: -2.5rem; display: flex; align-items: center; gap: 0.5rem; background: var(--bg); padding-left: 10px; }
+  .timeline-item { position: relative; margin-bottom: 1.25rem; }
+  .timeline-item::before { content: ""; position: absolute; left: -2.95rem; top: 0.25rem; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--accent); }
+  .timeline-item.important-step::before { border-color: var(--accent-err); background: var(--accent-err); }
+  .timeline-step { display: inline-block; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; font-weight: bold; color: var(--accent); margin-right: 0.5rem; }
+  .timeline-title { font-weight: bold; color: var(--text); font-size: 0.95rem; }
+  .timeline-desc { color: var(--text-dim); font-size: 0.88rem; margin-top: 0.25rem; padding-left: 0.25rem; }
+
+  .decision-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+  .decision-table th { background: var(--bg3); color: var(--accent); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.6rem 1rem; text-align: left; border-bottom: 2px solid var(--border); }
+  .decision-table td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+  .decision-table td:first-child { color: var(--text); font-family: inherit; font-weight: 500; }
+  .decision-table td:nth-child(2) { font-family: monospace; color: var(--accent2); font-weight: bold; }
+  .decision-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 3rem; color: var(--text-dim); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="header-nav">
+  <a href="trick-list.html">&larr; Lista Sztuczek</a>
+  <span>|</span>
+  <a href="effect-scripts.html">Skrypty Efektów</a>
+</nav>
+
+<header class="doc-header">
+  <h1>Melee Combat — Reference Skryptowy <span class="badge">Neuroshima 1.5</span></h1>
+  <div class="subtitle">Podręcznik programisty dla interfejsu API walki wręcz systemu Neuroshima 1.5 w Foundry VTT</div>
+</header>
+
+<nav class="toc">
+  <h2>Spis treści</h2>
+  <ul>
+    <li><a href="#cykl-zycia">Cykl życia walki wręcz</a></li>
+    <li><a href="#lista-triggerow">Pełna lista triggerów melee</a></li>
+    <li><a href="#melee-action-context">MeleeActionContext</a></li>
+    <li><a href="#pola-stanu">Kluczowe pola stanu (state / rd)</a></li>
+    <li><a href="#pola-deskryptora">Pola deskryptora akcji (getMeleeActions)</a></li>
+    <li><a href="#wzorce-przepisy">Wzorce i przepisy</a></li>
+    <li><a href="#kiedy-uzyc">Kiedy użyć którego triggera</a></li>
+  </ul>
+</nav>
+
+<section id="cykl-zycia">
+  <h2 class="section-title">Cykl życia walki wręcz</h2>
+  <p>Poniższa oś czasu przedstawia dokładną kolejność, w jakiej uruchamiane są triggery walki wręcz w trakcie rundy.</p>
+
+  <div class="timeline">
+    <div class="timeline-group">
+      <div class="timeline-group-title">Rozpoczęcie tury (Turn start)</div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">1</span>
+        <span class="timeline-title">meleeUpdate (phase: "turn-start")</span>
+        <div class="timeline-desc">Następuje reset puli kości uczestników oraz wyczyszczenie efektów tymczasowych w przestrzeni nazw <code>encounter._effects</code>.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">2</span>
+        <span class="timeline-title">preMeleePool (3k20 Roll)</span>
+        <div class="timeline-desc">Gracz wykonuje rzut 3k20. Na tym etapie skrypty mogą modyfikować parametry <code>attackTargetSnapshot</code> oraz <code>defenseTargetSnapshot</code> uczestnika.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">3</span>
+        <span class="timeline-title">meleeUpdate (phase: "pool-ready")</span>
+        <div class="timeline-desc">Obie pule kości (ataku i obrony) zostają ostatecznie zatwierdzone i przygotowane do podziału na segmenty.</div>
+      </div>
+    </div>
+
+    <div class="timeline-group">
+      <div class="timeline-group-title">Przebieg segmentu (Per segment — powtarzany dla każdego z 3 segmentów)</div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">4</span>
+        <span class="timeline-title">meleeUpdate (phase: "attack-committed")</span>
+        <div class="timeline-desc">Atakujący deklaruje liczbę kości przeznaczonych na dany segment.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">5</span>
+        <span class="timeline-title">preOpposedAttacker</span>
+        <div class="timeline-desc">Uruchamiane po stronie atakującego tuż przed kalkulacją sukcesów. Pozwala na modyfikację trudności <code>difficultyTarget</code>.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">6</span>
+        <span class="timeline-title">preOpposedDefender</span>
+        <div class="timeline-desc">Uruchamiane po stronie obrońcy tuż przed kalkulacją sukcesów. Pozwala na modyfikację trudności <code>difficultyTarget</code> oraz ustawienie <code>blockDamageShift</code>.</div>
+      </div>
+      
+      <div class="timeline-item important-step">
+        <span class="timeline-step">7</span>
+        <span class="timeline-title">System computes successes</span>
+        <div class="timeline-desc">System automatycznie oblicza liczbę sukcesów i określa wynik segmentu (trafienie / remis-blok / przejęcie inicjatywy). Jeśli sztuczka posiada natychmiastowy skrypt (<code>immediateOnHit: true</code>), zostanie on wykonany w tym miejscu.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">8</span>
+        <span class="timeline-title">onMeleeHit / onMeleeBlock / onMeleeTakeover</span>
+        <div class="timeline-desc">Odpala się dla OBU stron (osobne wywołanie dla atakującego i obrońcy) w zależności od wyznaczonego wyniku segmentu.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">9</span>
+        <span class="timeline-title">opposedAttacker</span>
+        <div class="timeline-desc">Uruchamiane wyłącznie po stronie atakującego. Pozwala na nadpisanie ostatecznego typu wyniku <code>resultType</code> oraz modyfikację <code>blockDamageShift</code>.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">10</span>
+        <span class="timeline-title">opposedDefender</span>
+        <div class="timeline-desc">Uruchamiane wyłącznie po stronie obrońcy. Pozwala na zmodyfikowanie wartości <code>defender.blockDamageShift</code>.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">11</span>
+        <span class="timeline-title">meleeUpdate (phase: "exchange-resolved")</span>
+        <div class="timeline-desc">Kalkulacje dla danego segmentu zostały zakończone i zapisane w stanie pojedynku.</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">12</span>
+        <span class="timeline-title">meleeUpdate (phase: "segment-advance")</span>
+        <div class="timeline-desc">Następuje przejście indeksu segmentu do przodu.</div>
+      </div>
+    </div>
+
+    <div class="timeline-group">
+      <div class="timeline-group-title">Zakończenie tury (Turn end)</div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">13</span>
+        <span class="timeline-title">meleeUpdate (phase: "turn-end")</span>
+        <div class="timeline-desc">Uruchamiane pod koniec tury pojedynku, tuż przed zresetowaniem całego stanu kości i przygotowaniem nowej rundy.</div>
+      </div>
+    </div>
+
+    <div class="timeline-group">
+      <div class="timeline-group-title">Aplikacja obrażeń (Damage apply — gdy GM klika "Nałóż obrażenia")</div>
+      
+      <div class="timeline-item important-step">
+        <span class="timeline-step">14</span>
+        <span class="timeline-title">onHitScript (deferred)</span>
+        <div class="timeline-desc">Dla każdego odnotowanego trafienia segmentu, system odpala odłożone skrypty trafień ze sztuczek (zapisane w <code>trickOnHitScripts</code>).</div>
+      </div>
+      
+      <div class="timeline-item">
+        <span class="timeline-step">15</span>
+        <span class="timeline-title">preTakeDamage &amp; takeDamage</span>
+        <div class="timeline-desc">Wykonywane indywidualnie dla każdej rany nakładanej na docelowego aktora.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="lista-triggerow">
+  <h2 class="section-title">Pełna lista triggerów melee</h2>
+  <p>Poniżej znajduje się szczegółowy wykaz wszystkich triggerów obsługiwanych przez silnik walki wręcz Neuroshima 1.5.</p>
+
+  <div class="trigger-grid">
+    <div class="trigger-card">
+      <div class="trigger-name">preMeleePool</div>
+      <div class="trigger-desc">Odpala się po rzucie inicjującym 3k20, przed ostatecznym zatwierdzeniem puli.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Uczestnik wykonujący rzut</span></div>
+        <div class="arg"><span class="arg-name">encounter</span><span class="arg-type">Encounter</span><span class="arg-desc">Instancja walki</span></div>
+        <div class="arg"><span class="arg-name">participant</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika walki</span></div>
+        <div class="arg"><span class="arg-name">meleeAction</span><span class="arg-type">string</span><span class="arg-desc">"attack" lub "defense"</span></div>
+        <div class="arg"><span class="arg-name">maneuver</span><span class="arg-type">string</span><span class="arg-desc">Wybrany manewr</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> <code>participant.attackTargetSnapshot</code> (modyfikacja PT ataku), <code>participant.defenseTargetSnapshot</code> (modyfikacja PT obrony), <code>participant.skillKey</code> (zmiana umiejętności pojedynku).</p>
+      <div class="callout danger" style="padding: 0.4rem; font-size: 0.78rem; margin: 0.4rem 0 0 0;">Nie modyfikować <code>participant.damageShift</code> — zostanie nadpisany po wyjściu z triggera.</div>
+    </div>
+
+    <div class="trigger-card">
+      <div class="trigger-name">preOpposedAttacker</div>
+      <div class="trigger-desc">Odpala się na początku rozstrzygania segmentu, przed kalkulacją sukcesów, tylko po stronie atakującego.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Aktor atakujący</span></div>
+        <div class="arg"><span class="arg-name">participant</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika ataku</span></div>
+        <div class="arg"><span class="arg-name">encounter</span><span class="arg-type">Encounter</span><span class="arg-desc">Instancja walki</span></div>
+        <div class="arg"><span class="arg-name">difficultyTarget</span><span class="arg-type">number</span><span class="arg-desc">Aktualny próg trudności</span></div>
+        <div class="arg"><span class="arg-name">mode</span><span class="arg-type">string</span><span class="arg-desc">"attack"</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> <code>args.difficultyTarget</code> (modyfikacja progu sukcesu dla rzutów ataku).</p>
+    </div>
+
+    <div class="trigger-card">
+      <div class="trigger-name">preOpposedDefender</div>
+      <div class="trigger-desc">Odpala się na początku rozstrzygania segmentu, przed kalkulacją sukcesów, tylko po stronie obrońcy.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Aktor broniący się</span></div>
+        <div class="arg"><span class="arg-name">participant</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika obrony</span></div>
+        <div class="arg"><span class="arg-name">encounter</span><span class="arg-type">Encounter</span><span class="arg-desc">Instancja walki</span></div>
+        <div class="arg"><span class="arg-name">difficultyTarget</span><span class="arg-type">number</span><span class="arg-desc">Aktualny próg trudności</span></div>
+        <div class="arg"><span class="arg-name">mode</span><span class="arg-type">string</span><span class="arg-desc">"defense"</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> <code>args.difficultyTarget</code> (próg sukcesu obrony), <code>args.participant.blockDamageShift</code>.</p>
+    </div>
+
+    <div class="trigger-card">
+      <div class="trigger-name">onMeleeHit / onMeleeBlock / onMeleeTakeover</div>
+      <div class="trigger-desc">Trzy triggery wywoływane dla obu uczestników (osobno dla atakującego i obrońcy) po ustaleniu wyniku segmentu.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Aktualnie ewaluowany uczestnik pojedynku</span></div>
+        <div class="arg"><span class="arg-name">isAttacker</span><span class="arg-type">boolean</span><span class="arg-desc">Czy <code>actor</code> jest atakującym w segmencie</span></div>
+        <div class="arg"><span class="arg-name">attackerActor</span><span class="arg-type">Actor</span><span class="arg-desc">Aktor atakujący w tym pojedynku</span></div>
+        <div class="arg"><span class="arg-name">defenderActor</span><span class="arg-type">Actor</span><span class="arg-desc">Aktor broniący się w tym pojedynku</span></div>
+        <div class="arg"><span class="arg-name">attackerSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy atakującego w segmencie</span></div>
+        <div class="arg"><span class="arg-name">defenderSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy obrońcy w segmencie</span></div>
+        <div class="arg"><span class="arg-name">diceCount</span><span class="arg-type">number</span><span class="arg-desc">Tier segmentu N (1-3 kości)</span></div>
+        <div class="arg"><span class="arg-name">outcome</span><span class="arg-type">string</span><span class="arg-desc">"hit", "block" lub "takeover"</span></div>
+        <div class="arg"><span class="arg-name">action</span><span class="arg-type">object|null</span><span class="arg-desc">Deskryptor sztuczki lub null dla zwykłego ataku</span></div>
+        <div class="arg"><span class="arg-name">context</span><span class="arg-type">object</span><span class="arg-desc">Pełny MeleeActionContext</span></div>
+        <div class="arg"><span class="arg-name">hits</span><span class="arg-type">array</span><span class="arg-desc">Akumulowana tablica trafień</span></div>
+        <div class="arg"><span class="arg-name">state</span><span class="arg-type">object</span><span class="arg-desc">Stan karty pojedynku (tylko do odczytu)</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> Brak. Parametry <code>state</code> i <code>context</code> są w tych triggerach przeznaczone wyłącznie do odczytu.</p>
+    </div>
+
+    <div class="trigger-card">
+      <div class="trigger-name">opposedAttacker</div>
+      <div class="trigger-desc">Odpala się po ustaleniu wyniku segmentu, wyłącznie dla atakującego.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Atakujący</span></div>
+        <div class="arg"><span class="arg-name">resultType</span><span class="arg-type">string</span><span class="arg-desc">Wynik segmentu ("hit"|"block"|"takeover")</span></div>
+        <div class="arg"><span class="arg-name">diceCount</span><span class="arg-type">number</span><span class="arg-desc">Liczba kości segmentu</span></div>
+        <div class="arg"><span class="arg-name">attackerId</span><span class="arg-type">string</span><span class="arg-desc">ID uczestnika atakującego</span></div>
+        <div class="arg"><span class="arg-name">defenderId</span><span class="arg-type">string</span><span class="arg-desc">ID uczestnika broniącego się</span></div>
+        <div class="arg"><span class="arg-name">attacker</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika atakującego</span></div>
+        <div class="arg"><span class="arg-name">defender</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika obrony</span></div>
+        <div class="arg"><span class="arg-name">attackerSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy atakującego</span></div>
+        <div class="arg"><span class="arg-name">defenderSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy obrońcy</span></div>
+        <div class="arg"><span class="arg-name">blockDamageShift</span><span class="arg-type">number</span><span class="arg-desc">Modyfikator redukcji ran przy bloku</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> <code>args.resultType</code> (nadpisanie wyniku segmentu), <code>args.blockDamageShift</code>.</p>
+    </div>
+
+    <div class="trigger-card">
+      <div class="trigger-name">opposedDefender</div>
+      <div class="trigger-desc">Odpala się po ustaleniu wyniku segmentu, wyłącznie dla obrońcy.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Obrońca</span></div>
+        <div class="arg"><span class="arg-name">resultType</span><span class="arg-type">string</span><span class="arg-desc">Wynik segmentu ("hit"|"block"|"takeover")</span></div>
+        <div class="arg"><span class="arg-name">diceCount</span><span class="arg-type">number</span><span class="arg-desc">Liczba kości segmentu</span></div>
+        <div class="arg"><span class="arg-name">attackerId</span><span class="arg-type">string</span><span class="arg-desc">ID uczestnika atakującego</span></div>
+        <div class="arg"><span class="arg-name">defenderId</span><span class="arg-type">string</span><span class="arg-desc">ID uczestnika broniącego się</span></div>
+        <div class="arg"><span class="arg-name">attacker</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika atakującego</span></div>
+        <div class="arg"><span class="arg-name">defender</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika obrony</span></div>
+        <div class="arg"><span class="arg-name">attackerSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy atakującego</span></div>
+        <div class="arg"><span class="arg-name">defenderSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy obrońcy</span></div>
+        <div class="arg"><span class="arg-name">blockDamageShift</span><span class="arg-type">number</span><span class="arg-desc">Prymitywna kopia przesunięcia bloku</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> <code>args.defender.blockDamageShift</code>.</p>
+      <div class="callout warning" style="padding: 0.4rem; font-size: 0.78rem; margin: 0.4rem 0 0 0;">Modyfikowanie samego <code>args.blockDamageShift</code> nie zadziała, ponieważ jest to prymitywna kopia przekazywana przez wartość. Należy zawsze pisać do obiektu uczestnika: <code>args.defender.blockDamageShift</code>.</div>
+    </div>
+
+    <div class="trigger-card">
+      <div class="trigger-name">getMeleeActions</div>
+      <div class="trigger-desc">Odpala się podczas generowania przycisków akcji walki na karcie pojedynku.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Właściciel sztuczek (tylko w swojej turze)</span></div>
+        <div class="arg"><span class="arg-name">state</span><span class="arg-type">object</span><span class="arg-desc">Stan karty pojedynku (tylko do odczytu)</span></div>
+        <div class="arg"><span class="arg-name">actions</span><span class="arg-type">array</span><span class="arg-desc">Mutowalna lista akcji</span></div>
+        <div class="arg"><span class="arg-name">ownerHadHit</span><span class="arg-type">boolean</span><span class="arg-desc">Czy właściciel zadał trafienie w tej rundzie</span></div>
+        <div class="arg"><span class="arg-name">ownerPreviousHits</span><span class="arg-type">array</span><span class="arg-desc">Dotychczasowe trafienia właściciela</span></div>
+        <div class="arg"><span class="arg-name">uncommittedDice</span><span class="arg-type">number</span><span class="arg-desc">Niezadeklarowane kości</span></div>
+        <div class="arg"><span class="arg-name">uncommittedSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Niewykorzystane sukcesy w kolejce</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> <code>args.actions</code> (tablica, do której można dodawać ID sztuczek jako stringi lub pełne obiekty definicji akcji).</p>
+    </div>
+
+    <div class="trigger-card">
+      <div class="trigger-name">meleeUpdate</div>
+      <div class="trigger-desc">Odpala się w kluczowych punktach przejścia cyklu życia pojedynku. Wywoływany u wszystkich uczestników.</div>
+      <div class="args-list">
+        <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Uczestnik walki</span></div>
+        <div class="arg"><span class="arg-name">encounter</span><span class="arg-type">Encounter</span><span class="arg-desc">Mutowalny obiekt pojedynku</span></div>
+        <div class="arg"><span class="arg-name">encounterId</span><span class="arg-type">string</span><span class="arg-desc">ID pojedynku</span></div>
+        <div class="arg"><span class="arg-name">phase</span><span class="arg-type">string</span><span class="arg-desc">Aktualna faza cyklu życia</span></div>
+        <div class="arg"><span class="arg-name">participant</span><span class="arg-type">object</span><span class="arg-desc">Dane uczestnika</span></div>
+        <div class="arg"><span class="arg-name">participantId</span><span class="arg-type">string</span><span class="arg-desc">ID uczestnika</span></div>
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.82rem;"><strong>Modyfikowalne:</strong> Obiekt <code>encounter</code> oraz jego przestrzeń stanów <code>encounter._effects</code> (idealna na stan inter-trigger czyszczony przy "turn-start").</p>
+    </div>
+  </div>
+</section>
+
+<section id="melee-action-context">
+  <h2 class="section-title">MeleeActionContext</h2>
+  <p>Obiekt <code>MeleeActionContext</code> jest tworzony metodą statyczną <code>MeleeActionContext.fromSegment()</code> wewnątrz <code>applyDuelBatch()</code>. Jest przekazywany jako parametr <code>args.context</code> w triggerach <code>onMeleeHit</code>, <code>onMeleeBlock</code> oraz <code>onMeleeTakeover</code>. Parametr <code>args.action</code> to bezpośredni skrót do <code>args.context.action</code>.</p>
+
+  <div class="context-box">
+    <div class="ctx-row">
+      <div class="ctx-name">action</div>
+      <div class="ctx-type">object|null</div>
+      <div class="ctx-desc">Deskryptor sztuczki użytej w tym segmencie lub null dla zwykłego ataku.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">action.id</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">Unikalne ID sztuczki.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">action.name</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">Nazwa wyświetlana sztuczki.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">action.damage</div>
+      <div class="ctx-type">string|null</div>
+      <div class="ctx-desc">Typ obrażeń sztuczki (np. "L", "2C", "sD"), wyciągnięty z rekordu hitEntry.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">action.effectIds</div>
+      <div class="ctx-type">string[]</div>
+      <div class="ctx-desc">Tablica powiązanych ID efektów Active Effects z przedmiotu macierzystego.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">action.effectTiming</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">Moment nałożenia efektów: "onHit" | "afterDamage" | "onUse".</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">action.effectTarget</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">Cel nałożenia efektów: "target" | "self" | "selected" | "manual".</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">action.sourceEffectUuid</div>
+      <div class="ctx-type">string|null</div>
+      <div class="ctx-desc">UUID źródłowego efektu ActiveEffect.</div>
+    </div>
+    <div class="ctx-row ctx-separator">
+      <div class="ctx-name">— Dane uczestników i segmentu —</div>
+      <div class="ctx-desc">Poniższe pola opisują przebieg segmentu walki.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">attacker</div>
+      <div class="ctx-type">object</div>
+      <div class="ctx-desc">Obiekt atakującego: <code>{ actor: Actor, uuid: string, successes: number }</code>.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">defender</div>
+      <div class="ctx-type">object</div>
+      <div class="ctx-desc">Obiekt obrońcy: <code>{ actor: Actor, uuid: string, successes: number }</code>.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">diceCount</div>
+      <div class="ctx-type">number</div>
+      <div class="ctx-desc">Poziom (tier) segmentu walki wręcz (od 1 do 3 kości).</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">outcome</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">Ustalony wynik starcia w segmencie: "hit" | "takeover" | "draw".</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">hitEntry</div>
+      <div class="ctx-type">object|null</div>
+      <div class="ctx-desc">Rekord trafienia dopisywany do stanu pojedynku (np. <code>{ tier, damageType, trickId }</code>). Wartość null przy remisach i przejęciach.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">messageId</div>
+      <div class="ctx-type">string|null</div>
+      <div class="ctx-desc">ID powiązanej wiadomości na czacie, jeśli została utworzona.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">state</div>
+      <div class="ctx-type">object</div>
+      <div class="ctx-desc">Pełny stan karty pojedynku (obiekt tylko do odczytu).</div>
+    </div>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header">Użycie kontekstu w skrypcie onMeleeHit</div>
+    <pre><code><span class="kw">if</span> (<span class="var">args</span>.isAttacker &amp;&amp; <span class="var">args</span>.action?.id === <span class="str">"moja-sztuczka-id"</span>) {
+  <span class="kw">const</span> <span class="var">target</span> = <span class="var">args</span>.context.defender.actor;
+  <span class="kw">const</span> <span class="var">successes</span> = <span class="var">args</span>.context.attacker.successes;
+  <span class="kw">if</span> (<span class="var">target</span> &amp;&amp; <span class="var">successes</span> &gt;= <span class="num">2</span>) {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"Sztuczka trafia z potężną siłą!"</span>);
+  }
+}</code></pre>
+  </div>
+</section>
+
+<section id="pola-stanu">
+  <h2 class="section-title">Kluczowe pola stanu (state / rd)</h2>
+  <p>Obiekt stanu pojedynku (dostępny jako <code>args.state</code> w hookach lub jako skrót <code>rd</code> w <code>applyOpposedDamage</code>) przechowuje kompletny zestaw danych o trwającej walce wręcz.</p>
+
+  <div class="context-box">
+    <div class="ctx-row">
+      <div class="ctx-name">attackerUuid</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">UUID aktora pełniącego rolę atakującego w pojedynku.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">defenderUuid</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">UUID aktora pełniącego rolę obrońcy w pojedynku.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">attackerTokenUuid</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">UUID tokenu atakującego (zalecane do pobierania metodą <code>fromUuidSync</code>).</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">defenderTokenUuid</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">UUID tokenu obrońcy.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">attackDice</div>
+      <div class="ctx-type">array</div>
+      <div class="ctx-desc">Tablica obiektów reprezentujących kości atakującego (np. <code>{ value, isSuccess }</code>).</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">defenseDice</div>
+      <div class="ctx-type">array</div>
+      <div class="ctx-desc">Tablica obiektów reprezentujących kości obrońcy.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">hits</div>
+      <div class="ctx-type">array</div>
+      <div class="ctx-desc">Tablica skumulowanych udanych trafień <code>{ tier, damageType, trickId }</code> zadanych w tej rundzie.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">counterHits</div>
+      <div class="ctx-type">array</div>
+      <div class="ctx-desc">Trafienia z kontrataku berserkera (aplikowane bezpośrednio do pierwotnego atakującego).</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">allTrickQueue</div>
+      <div class="ctx-type">string[]</div>
+      <div class="ctx-desc">Kolejka zadeklarowanych sztuczek do wykonania (w formacie <code>"trick:ID:damage"</code>).</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">trickOnHitScripts</div>
+      <div class="ctx-type">Map</div>
+      <div class="ctx-desc">Mapa <code>trickId</code> na definicje skryptów do odpalenia przy nakładaniu obrażeń.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">committedTrickId</div>
+      <div class="ctx-type">string|null</div>
+      <div class="ctx-desc">ID aktualnie zadeklarowanej sztuczki w bieżącym segmencie (czyszczone po rozstrzygnięciu segmentu).</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">committedTrickDamage</div>
+      <div class="ctx-type">string|null</div>
+      <div class="ctx-desc">Typ obrażeń powiązany z zadeklarowaną sztuczką.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">currentSegment</div>
+      <div class="ctx-type">number</div>
+      <div class="ctx-desc">Indeks rozpatrywanego segmentu walki (wartości od 0 do 2).</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">segments</div>
+      <div class="ctx-type">array</div>
+      <div class="ctx-desc">Tablica obiektów z rezultatami poszczególnych segmentów pojedynku.</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">initiativeOwnerSide</div>
+      <div class="ctx-type">string</div>
+      <div class="ctx-desc">Strona posiadająca inicjatywę w pojedynku: "attacker" lub "defender".</div>
+    </div>
+    <div class="ctx-row">
+      <div class="ctx-name">blockDamageShiftByActor</div>
+      <div class="ctx-type">Map</div>
+      <div class="ctx-desc">Mapa UUID aktora na wartość przesunięcia obrażeń przy bloku w tej turze.</div>
+    </div>
+  </div>
+</section>
+
+<section id="pola-deskryptora">
+  <h2 class="section-title">Pola deskryptora akcji (getMeleeActions)</h2>
+  <p>Podczas wywołania triggera <code>getMeleeActions</code> do tablicy <code>args.actions</code> można dodawać obiekty konfigurujące dynamiczne przyciski akcji walki. Poniższa tabela przedstawia wszystkie akceptowane pola takiego deskryptora.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Pole</th>
+        <th>Typ</th>
+        <th>Opis</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>id</td>
+        <td>string</td>
+        <td>Unikalny, stabilny identyfikator akcji (najlepiej pobrany z zakładki ActionDefs).</td>
+      </tr>
+      <tr>
+        <td>name</td>
+        <td>string</td>
+        <td>Etykieta przycisku wyświetlana na karcie pojedynku.</td>
+      </tr>
+      <tr>
+        <td>img</td>
+        <td>string</td>
+        <td>Opcjonalna ścieżka do pliku ikony graficznej przycisku.</td>
+      </tr>
+      <tr>
+        <td>damage</td>
+        <td>string|null</td>
+        <td>Typ rany: D/L/C/K (lub z prefiksem s- dla siniaków), np. "L", "2C", "sD". null oznacza brak obrażeń.</td>
+      </tr>
+      <tr>
+        <td>successCost</td>
+        <td>number</td>
+        <td>Koszt akcji w sukcesach. 0 oznacza akcję standalone (osobny przycisk); wartość &gt; 0 aktywuje automatyczną kolejkę sukcesów przed zadeklarowaniem kości.</td>
+      </tr>
+      <tr>
+        <td>minDice / maxDice</td>
+        <td>number</td>
+        <td>Minimalna i maksymalna liczba kości dozwolona przy deklaracji (tylko akcje standalone).</td>
+      </tr>
+      <tr>
+        <td>onHitScript</td>
+        <td>string</td>
+        <td>Kod JavaScript uruchamiany w momencie trafienia. Zastępuje standardowy mechanizm aplikacji rany, chyba że określono inaczej.</td>
+      </tr>
+      <tr>
+        <td>immediateOnHit</td>
+        <td>boolean</td>
+        <td>Jeśli true, skrypt <code>onHitScript</code> odpala się natychmiast przy rozstrzyganiu segmentu (nie czeka na naciśnięcie przycisku aplikacji obrażeń).</td>
+      </tr>
+      <tr>
+        <td>effectIds</td>
+        <td>string[]</td>
+        <td>Lista identyfikatorów Active Effects z przedmiotu macierzystego, które zostaną automatycznie zaaplikowane przy trafieniu.</td>
+      </tr>
+      <tr>
+        <td>effectTiming</td>
+        <td>string</td>
+        <td>Określa moment nałożenia efektów: "onHit" | "onUse" | "afterDamage".</td>
+      </tr>
+      <tr>
+        <td>effectTarget</td>
+        <td>string</td>
+        <td>Cel dla aplikacji efektów: "target" | "self" | "selected" | "manual".</td>
+      </tr>
+      <tr>
+        <td>applyEffectsAutomatically</td>
+        <td>boolean</td>
+        <td>Gdy false, automatyczna generacja kodu aplikacji efektów z <code>effectIds</code> zostaje wyłączona.</td>
+      </tr>
+      <tr>
+        <td>resolverKind</td>
+        <td>string</td>
+        <td>Mechanizm rozstrzygania: "opposedMelee" (standardowy test walki) lub "directApply" (bezpośrednie nałożenie bez rzutu oporu).</td>
+      </tr>
+      <tr>
+        <td>gmNote</td>
+        <td>string</td>
+        <td>Podpowiedź / notatka widoczna wyłącznie dla Mistrza Gry po najechaniu kursorem myszy na przycisk akcji.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="wzorce-przepisy">
+  <h2 class="section-title">Wzorce i przepisy</h2>
+  <p>Poniżej zebrano typowe i sprawdzone fragmenty skryptów implementujących najczęstsze mechaniki sztuczek w walkach wręcz.</p>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Wzorzec 1: Deklaratywna akcja z effectIds</div>
+    <pre><code><span class="cmt">// Zastosuj AE "Ogłuszony" na cel gdy sztuczka trafia (bez pisania onHitScript)</span>
+<span class="var">args</span>.actions.<span class="fn">push</span>({
+  id: <span class="str">"ogłuszenie-id"</span>,
+  name: <span class="str">"Ogłuszenie"</span>,
+  damage: <span class="kw">null</span>,
+  successCost: <span class="num">2</span>,
+  effectIds: [<span class="str">"&lt;id-efektu-ogłuszony&gt;"</span>],
+  effectTiming: <span class="str">"onHit"</span>,
+  effectTarget: <span class="str">"target"</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Wzorzec 2: Referencja przez ID z zakładki Akcje</div>
+    <pre><code><span class="cmt">// Referencja do gotowej konfiguracji zapisanej w edytorze ActionDefs</span>
+<span class="var">args</span>.actions.<span class="fn">push</span>(<span class="str">"PASTE_ACTIONDEF_ID_HERE"</span>);</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Wzorzec 3: Nadpisanie pola w runtime</div>
+    <pre><code><span class="cmt">// Zmiana kosztu w sukcesach w zależności od zaistnienia wcześniejszego trafienia</span>
+<span class="kw">const</span> <span class="var">hasPrior</span> = <span class="var">args</span>.state.hits?.<span class="fn">some</span>(<span class="var">h</span> =&gt; <span class="var">h</span>.trickId === <span class="str">"boa-capture"</span>);
+<span class="var">args</span>.actions.<span class="fn">push</span>({
+  ...<span class="var">args</span>.<span class="fn">lookupActionDef</span>(<span class="str">"PASTE_ACTIONDEF_ID_HERE"</span>),
+  successCost: <span class="var">hasPrior</span> ? <span class="num">2</span> : <span class="num">3</span>
+});</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">onMeleeHit</span> Wzorzec 4: Zastosuj efekt gdy konkretna sztuczka trafia</div>
+    <pre><code><span class="cmt">// Wykrycie trafienia naszą sztuczką i nałożenie Active Effect</span>
+<span class="kw">if</span> (!<span class="var">args</span>.isAttacker) <span class="kw">return</span>;
+<span class="kw">if</span> (<span class="var">args</span>.action?.id !== <span class="str">"moja-sztuczka-id"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">target</span> = <span class="var">args</span>.context.defender.actor;
+<span class="kw">if</span> (!<span class="var">target</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">tmpl</span> = <span class="kw">this</span>.effect?.parent?.effects?.<span class="fn">getName</span>(<span class="str">"Ogłuszony"</span>);
+<span class="kw">if</span> (<span class="var">tmpl</span> &amp;&amp; !<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">tmpl</span>, <span class="var">target</span>)) {
+  <span class="kw">await</span> <span class="var">target</span>.<span class="fn">createEmbeddedDocuments</span>(<span class="str">"ActiveEffect"</span>, [<span class="var">tmpl</span>.<span class="fn">convertToApplied</span>()]);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Wzorzec 5: Garda (przesunięcie obrażeń przy bloku)</div>
+    <pre><code><span class="cmt">// Zmniejszenie stopnia otrzymywanych ran po udanym bloku kośćmi obrony</span>
+<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(<span class="var">args</span>)) <span class="kw">return</span>;
+<span class="var">args</span>.participant.blockDamageShift = (<span class="var">args</span>.participant.blockDamageShift ?? <span class="num">0</span>) - <span class="num">1</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Wzorzec 6: Efekt per tura / Wiatrak</div>
+    <pre><code><span class="cmt">// Przykład: Wiatrak — odzyskanie inicjatywy w fazie segment-advance</span>
+<span class="kw">if</span> (<span class="var">args</span>.phase === <span class="str">"segment-advance"</span>) {
+  <span class="kw">if</span> (<span class="var">args</span>.encounter._effects?.wiatrakReclaim !== <span class="var">args</span>.participantId) <span class="kw">return</span>;
+  <span class="var">args</span>.encounter.turnState.initiativeOwnerId = <span class="var">args</span>.participantId;
+  <span class="kw">delete</span> <span class="var">args</span>.encounter._effects.wiatrakReclaim;
+} <span class="kw">else</span> <span class="kw">if</span> (<span class="var">args</span>.phase === <span class="str">"turn-end"</span>) {
+  <span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(<span class="var">args</span>)) <span class="kw">return</span>;
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">"&lt;b&gt;Wiatrak:&lt;/b&gt; +20% kary ze zmęczenia."</span>);
+  <span class="kw">this</span>.<span class="fn">deactivateForMelee</span>(<span class="var">args</span>);
+}</code></pre>
+  </div>
+</section>
+
+<section id="kiedy-uzyc">
+  <h2 class="section-title">Kiedy użyć którego triggera</h2>
+  <p>Poniższa tabela decyzyjna ułatwia dobór odpowiedniego punktu wejścia dla Twojego skryptu w zależności od zamierzonego efektu mechanicznego.</p>
+
+  <table class="decision-table">
+    <thead>
+      <tr>
+        <th>Zadanie / Cel biznesowy</th>
+        <th>Wskazany trigger skryptowy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Zmień PT rzutu przed walką</td>
+        <td>dialog</td>
+      </tr>
+      <tr>
+        <td>Zmień próg sukcesów w puli 3k20</td>
+        <td>preMeleePool</td>
+      </tr>
+      <tr>
+        <td>Zmień próg sukcesów ataku w konkretnym segmencie</td>
+        <td>preOpposedAttacker</td>
+      </tr>
+      <tr>
+        <td>Zmień próg sukcesów obrony lub ustaw parametry bloku</td>
+        <td>preOpposedDefender</td>
+      </tr>
+      <tr>
+        <td>Dynamiczne dodawanie akcji/sztuczek do karty walki</td>
+        <td>getMeleeActions</td>
+      </tr>
+      <tr>
+        <td>Reakcja na trafienie sztuczką z pełnym kontekstem akcji</td>
+        <td>onMeleeHit</td>
+      </tr>
+      <tr>
+        <td>Reakcja na zablokowanie ataku przez obrońcę (obie strony)</td>
+        <td>onMeleeBlock</td>
+      </tr>
+      <tr>
+        <td>Reakcja na przejęcie inicjatywy w walce (obie strony)</td>
+        <td>onMeleeTakeover</td>
+      </tr>
+      <tr>
+        <td>Obsługa wyniku segmentu tylko po stronie atakującego (brak kontekstu sztuczki)</td>
+        <td>opposedAttacker</td>
+      </tr>
+      <tr>
+        <td>Obsługa wyniku segmentu tylko po stronie obrońcy (brak kontekstu sztuczki)</td>
+        <td>opposedDefender</td>
+      </tr>
+      <tr>
+        <td>Działania na koniec tury, przechodzenie segmentów, stany inter-trigger</td>
+        <td>meleeUpdate</td>
+      </tr>
+      <tr>
+        <td>Aplikacja natychmiastowego efektu bezpośrednio przy rozstrzyganiu starcia</td>
+        <td>onHitScript (z ustawionym immediateOnHit: true)</td>
+      </tr>
+      <tr>
+        <td>Opóźniony efekt nakładany dopiero przy kliknięciu "Nałóż obrażenia"</td>
+        <td>onHitScript (z ustawionym immediateOnHit: false)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <strong>Porównanie opposedAttacker/opposedDefender vs onMeleeHit/Block/Takeover:</strong>
+    <ul style="margin-top: 0.5rem; margin-left: 1.25rem; list-style-type: disc;">
+      <li><strong>opposedAttacker / opposedDefender</strong>: Wywoływane wyłącznie dla jednej ze stron starcia. Nie posiadają obiektu <code>MeleeActionContext</code>, przez co nie mają informacji, jaka konkretnie sztuczka była zadeklarowana. Umożliwiają jednak modyfikowanie parametrów takich jak <code>resultType</code> (nadpisanie wyniku segmentu) czy <code>blockDamageShift</code>.</li>
+      <li><strong>onMeleeHit / onMeleeBlock / onMeleeTakeover</strong>: Wywoływane dla obu stron pojedynku (dwie osobne egzekucje skryptu). Posiadają pełny obiekt <code>MeleeActionContext</code> z dokładnymi informacjami o użytych sztuczkach i efektach, ale obiekt stanu pojedynku (<code>state</code>) jest w nich wyłącznie do odczytu (read-only).</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Neuroshima 1.5 · Foundry VTT — Melee Combat Reference
+</footer>
+</div>
+</body>
+</html>

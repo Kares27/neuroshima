@@ -144,6 +144,7 @@
 <h2>Spis treści — wszystkie sztuczki</h2>
 <ul>
 <li><a href="#action-defs">System Definicji Akcji (ActionDefs)</a></li>
+<li><a href="#melee-hooks">Triggery melee: onMeleeHit / onMeleeBlock / onMeleeTakeover</a></li>
 <li><a href="#trick-001-3-2-1-bum">3 2 1 Bum</a></li>
 <li><a href="#trick-002-aramis">Aramis</a></li>
 <li><a href="#trick-003-asekuracja">Asekuracja</a></li>
@@ -289,6 +290,12 @@
 <tr><td>maxDice</td><td>number</td><td>Maks. kości deklarowanych (tylko standalone).</td></tr>
 <tr><td>onHitScript</td><td>string</td><td>Kod JS wykonywany przy trafieniu. Args: <code>actor</code>, <code>target</code>, <code>state</code>, <code>hit</code>. Zastępuje domyślną aplikację obrażeń gdy niepuste. Domyślnie odpala się przy „Nałóż obrażenia" — chyba że <code>immediateOnHit = true</code>.</td></tr>
 <tr><td>immediateOnHit</td><td>boolean</td><td>Gdy <code>true</code>: <code>onHitScript</code> odpala się <strong>natychmiast w momencie trafienia</strong> — w trakcie trwania duela, bez czekania na „Nałóż obrażenia". Niezbędne dla efektów aktywnych przez resztę walki (np. Boa – Pochwycenie). Domyślnie <code>false</code>.</td></tr>
+<tr><td>effectIds</td><td>string[]</td><td>Lista ID Active Effects (z item macierzystego) do automatycznego zastosowania. Gdy niepusta i brak <code>onHitScript</code>, system generuje skrypt automatycznie na podstawie <code>effectTiming</code>/<code>effectTarget</code>. Domyślnie <code>[]</code>.</td></tr>
+<tr><td>effectTiming</td><td>string</td><td>Kiedy zastosować efekty z <code>effectIds</code>: <code>"onHit"</code> (przy trafieniu — domyślne), <code>"onUse"</code> (przy deklaracji akcji), <code>"afterDamage"</code> (po aplikacji obrażeń). Domyślnie <code>"onHit"</code>.</td></tr>
+<tr><td>effectTarget</td><td>string</td><td>Na kogo aplikować efekty: <code>"target"</code> (cel ataku — domyślne), <code>"self"</code> (atakujący), <code>"selected"</code> (aktualnie zaznaczone tokeny), <code>"manual"</code> (skrypt obsługuje ręcznie). Domyślnie <code>"target"</code>.</td></tr>
+<tr><td>applyEffectsAutomatically</td><td>boolean</td><td>Gdy <code>false</code>: wyłącza automatyczne generowanie <code>onHitScript</code> nawet jeśli <code>effectIds</code> jest niepuste — skrypt obsługuje aplikację ręcznie. Domyślnie <code>true</code>.</td></tr>
+<tr><td>resolverKind</td><td>string</td><td>Jak akcja się rozwiązuje: <code>"opposedMelee"</code> (standardowe porównanie kości — domyślne), <code>"directApply"</code> (bez testu oporu, efekty aplikowane bezpośrednio). Domyślnie <code>"opposedMelee"</code>.</td></tr>
+<tr><td>gmNote</td><td>string</td><td>Notatka GM widoczna na karcie duelu obok akcji. <em>Dawny alias: <code>annotation</code> (nadal akceptowany, ale przestarzały).</em></td></tr>
 </tbody>
 </table>
 
@@ -317,6 +324,96 @@ args.actions.push({ ...<span class="var">def</span>, successCost: <span class="n
 </div>
 
 <div class="callout info"><strong>Wskazówka:</strong> ID generowane przez <code>foundry.utils.randomID()</code> są unikalne i stabilne — bezpieczne do hardkodowania w skryptach tego samego efektu. Kopiuj je przyciskiem <i class="fa-solid fa-copy"></i> w nagłówku okna edytora akcji.</div>
+</section>
+
+<section id="melee-hooks">
+<h2 class="section-title">Triggery melee: onMeleeHit / onMeleeBlock / onMeleeTakeover</h2>
+<p>Te trzy triggery odpytują <strong>obu uczestników</strong> po każdym rozstrzygnięciu segmentu duela. Odpalają się wewnątrz <code>applyDuelBatch()</code> — po wyliczeniu outcome, ale przed zapisem stanu i przed aplikacją obrażeń przez GM.</p>
+<p>Pełny reference melee combat (wszystkie triggery, timing, wzorce): <a href="melee-info.html">melee-info.html</a></p>
+
+<div class="callout info"><strong>Różnica od opposedAttacker/opposedDefender:</strong> tamte triggery odpytują tylko jedną stronę (każdą osobno) i nie mają <code>MeleeActionContext</code> — nie wiedzą jaka sztuczka była użyta. <code>onMeleeHit/Block/Takeover</code> odpytują obu uczestników i dostarczają pełny kontekst akcji.</div>
+
+<div class="trigger-grid">
+  <div class="trigger-card">
+    <div class="trigger-name">onMeleeHit</div>
+    <div class="trigger-desc">Segment zakończony trafieniem — atakujący ma więcej sukcesów od obrońcy.</div>
+    <div class="args-list">
+      <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Uczestnik odbierający trigger (atakujący lub obrońca)</span></div>
+      <div class="arg"><span class="arg-name">isAttacker</span><span class="arg-type">boolean</span><span class="arg-desc">True gdy <code>actor</code> jest atakującym w tym segmencie</span></div>
+      <div class="arg"><span class="arg-name">attackerActor</span><span class="arg-type">Actor</span><span class="arg-desc">Atakujący (zawsze, niezależnie od <code>actor</code>)</span></div>
+      <div class="arg"><span class="arg-name">defenderActor</span><span class="arg-type">Actor</span><span class="arg-desc">Obrońca (zawsze, niezależnie od <code>actor</code>)</span></div>
+      <div class="arg"><span class="arg-name">attackerSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy atakującego w tym segmencie</span></div>
+      <div class="arg"><span class="arg-name">defenderSuccesses</span><span class="arg-type">number</span><span class="arg-desc">Sukcesy obrońcy w tym segmencie</span></div>
+      <div class="arg"><span class="arg-name">diceCount</span><span class="arg-type">number</span><span class="arg-desc">Tier segmentu N (1–3 kości)</span></div>
+      <div class="arg"><span class="arg-name">outcome</span><span class="arg-type">string</span><span class="arg-desc">"hit"</span></div>
+      <div class="arg"><span class="arg-name">action</span><span class="arg-type">object|null</span><span class="arg-desc">Deskryptor sztuczki lub null dla zwykłego ataku</span></div>
+      <div class="arg"><span class="arg-name">context</span><span class="arg-type">MeleeActionContext</span><span class="arg-desc">Pełny kontekst segmentu (patrz niżej)</span></div>
+      <div class="arg"><span class="arg-name">hits</span><span class="arg-type">object[]</span><span class="arg-desc">Wszystkie trafienia do tej pory (wliczając bieżące)</span></div>
+      <div class="arg"><span class="arg-name">state</span><span class="arg-type">object</span><span class="arg-desc">Pełny stan karty duelu (read-only)</span></div>
+    </div>
+  </div>
+  <div class="trigger-card">
+    <div class="trigger-name">onMeleeBlock</div>
+    <div class="trigger-desc">Segment zakończony remisem — obaj mają tyle samo sukcesów (&gt; 0). Taki sam kształt args co onMeleeHit.</div>
+    <div class="trigger-sync">context.hitEntry === null (brak trafienia przy remisie)</div>
+  </div>
+  <div class="trigger-card">
+    <div class="trigger-name">onMeleeTakeover</div>
+    <div class="trigger-desc">Segment zakończony przejęciem inicjatywy — obrońca ma więcej sukcesów. Taki sam kształt args co onMeleeHit.</div>
+    <div class="trigger-sync">context.hitEntry === null (brak trafienia przy przejęciu)</div>
+  </div>
+</div>
+
+<h3>Kształt MeleeActionContext (args.context)</h3>
+<p><code>args.action</code> jest skrótem do <code>args.context.action</code>.</p>
+<div class="context-box">
+  <div class="ctx-row"><span class="ctx-name">context.action</span><span class="ctx-type">object|null</span><span class="ctx-desc">Deskryptor sztuczki — null dla zwykłego ataku bez sztuczki</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.action.id</span><span class="ctx-type">string</span><span class="ctx-desc">ID sztuczki (z getMeleeActions)</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.action.name</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyświetlana</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.action.damage</span><span class="ctx-type">string|null</span><span class="ctx-desc">Typ obrażeń użyty w tym segmencie (z hitEntry)</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.action.effectIds</span><span class="ctx-type">string[]</span><span class="ctx-desc">ID powiązanych AE z item macierzystego</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.action.effectTiming</span><span class="ctx-type">string</span><span class="ctx-desc">"onHit" | "afterDamage" | "onUse"</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.action.effectTarget</span><span class="ctx-type">string</span><span class="ctx-desc">"target" | "self" | "selected" | "manual"</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.action.sourceEffectUuid</span><span class="ctx-type">string|null</span><span class="ctx-desc">UUID Active Effect źródłowego</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.attacker</span><span class="ctx-type">object</span><span class="ctx-desc">{ actor, uuid, successes }</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.defender</span><span class="ctx-type">object</span><span class="ctx-desc">{ actor, uuid, successes }</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.diceCount</span><span class="ctx-type">number</span><span class="ctx-desc">Tier segmentu N (1–3)</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.outcome</span><span class="ctx-type">string</span><span class="ctx-desc">"hit" | "takeover" | "draw"</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.hitEntry</span><span class="ctx-type">object|null</span><span class="ctx-desc">{ tier, damageType, trickId? } — ostatnie trafienie dodane do state.hits, lub null</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.messageId</span><span class="ctx-type">string|null</span><span class="ctx-desc">ID wiadomości czatu z kartą duelu</span></div>
+  <div class="ctx-row"><span class="ctx-name">context.state</span><span class="ctx-type">object</span><span class="ctx-desc">Pełny stan karty duelu (read-only w hooku)</span></div>
+</div>
+
+<h3>Przykłady użycia</h3>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">onMeleeHit</span> Zastosuj efekt na cel gdy konkretna sztuczka trafia</div>
+<pre><code><span class="cmt">// Trigger: onMeleeHit — tylko gdy ta sztuczka trafia i actor jest atakującym</span>
+<span class="kw">if</span> (!args.isAttacker) <span class="kw">return</span>;
+<span class="kw">if</span> (args.action?.id !== <span class="str">"moja-sztuczka-id"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">target</span> = args.context.defender.actor;
+<span class="kw">if</span> (!<span class="var">target</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">tmpl</span> = <span class="kw">this</span>.<span class="fn">effect</span>?.parent?.effects?.getName(<span class="str">"Ogłuszony"</span>);
+<span class="kw">if</span> (<span class="var">tmpl</span> &amp;&amp; !<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">tmpl</span>, <span class="var">target</span>)) {
+  <span class="kw">await</span> <span class="var">target</span>.<span class="fn">createEmbeddedDocuments</span>(<span class="str">"ActiveEffect"</span>, [<span class="var">tmpl</span>.<span class="fn">convertToApplied</span>()]);
+}</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">onMeleeTakeover</span> Reakcja na przejęcie inicjatywy — tylko obrońca</div>
+<pre><code><span class="cmt">// Trigger: onMeleeTakeover — obrońca przejął inicjatywę</span>
+<span class="kw">if</span> (args.isAttacker) <span class="kw">return</span>; <span class="cmt">// tylko strona, która przejmuje (obrońca)</span>
+<span class="kw">const</span> <span class="var">advantage</span> = args.defenderSuccesses - args.attackerSuccesses;
+<span class="fn">ui.notifications.info</span>(<span class="str">`Przejęcie inicjatywy! Przewaga: +${<span class="var">advantage</span>}`</span>);</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">onMeleeBlock</span> Powiadom czat gdy obrońca blokuje z przewagą</div>
+<pre><code><span class="cmt">// Trigger: onMeleeBlock — obaj mają sukcesy, wynik remis</span>
+<span class="kw">if</span> (args.isAttacker) <span class="kw">return</span>; <span class="cmt">// tylko obrońca reaguje</span>
+<span class="kw">if</span> (args.defenderSuccesses &lt; args.attackerSuccesses) <span class="kw">return</span>; <span class="cmt">// pomiń jeśli nie obroniono z przewagą</span>
+<span class="fn">ChatMessage.create</span>({ content: <span class="str">`${args.actor.name} blokuje z ${args.defenderSuccesses} sukcesami!`</span> });</code></pre>
+</div>
+
+<div class="callout info"><strong>Ważne:</strong> Trigger odpala się dwa razy — raz dla atakującego, raz dla obrońcy. Zawsze sprawdzaj <code>args.isAttacker</code>, żeby nie wykonywać logiki dwa razy.</div>
+<div class="callout warning"><strong>state jest read-only:</strong> Hooki nie mogą trwale modyfikować stanu duelu. Do zmian w trakcie rozstrzygania segmentu użyj <code>onHitScript</code> z <code>immediateOnHit: true</code>. Do zmian przed segmentem użyj <code>preOpposedAttacker</code> / <code>preOpposedDefender</code>.</div>
 </section>
 
 <section id="tricks">

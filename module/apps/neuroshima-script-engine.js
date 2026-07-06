@@ -3544,6 +3544,29 @@ export class NeuroshimaScript {
  *                      args.actions.push({ ...args.lookupActionDef("PASTE_ACTIONDEF_ID_HERE"),
  *                        successCost: hasPrior ? 2 : 3 });
  *
+ * onMeleeHit        — Fires for BOTH participants when a segment resolves to "hit" (attacker wins).
+ *                    args: {
+ *                      actor, isAttacker,
+ *                      attackerActor, defenderActor,
+ *                      attackerSuccesses, defenderSuccesses, diceCount,
+ *                      outcome,
+ *                      action: {               — partial MeleeAction for the current segment
+ *                        id, name, damage,
+ *                        effectIds, effectTiming, effectTarget, sourceEffectUuid
+ *                      } | null,              — null for plain (non-trick) attacks
+ *                      context: MeleeActionContext,  — full context object
+ *                      hits,                  — all hits accumulated so far (including this one)
+ *                      state                  — duel card state (read-only)
+ *                    }
+ *
+ * onMeleeBlock      — Fires for BOTH participants when a segment resolves to "draw" (equal successes,
+ *                    each side > 0). Same args shape as onMeleeHit (action/context are for the current
+ *                    segment, hitEntry on context is null since no hit was pushed on a draw).
+ *
+ * onMeleeTakeover   — Fires for BOTH participants when a segment resolves to "takeover" (defender
+ *                    wins — initiative changes sides). Same args shape as onMeleeHit.
+ *                    Note: for takeover, hitEntry on context is null.
+ *
  * meleeUpdate       — Melee Lifecycle Update: fires at KEY transition points in the melee turn
  *                    state machine — analogous to Foundry's `updateCombat` hook but for the
  *                    internal melee encounter lifecycle. Fires for EVERY active participant actor.
