@@ -3361,7 +3361,8 @@ export class MeleeOpposedChat {
           await NeuroshimaScriptRunner.execute("meleeUpdate", {
             actor, phase: "turn-end",
             encounter: null, encounterId: null,
-            participant: null, participantId: null
+            participant: null, participantId: null,
+            state
           });
         }
       }

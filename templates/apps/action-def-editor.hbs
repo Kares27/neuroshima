@@ -54,6 +54,18 @@
 
     <div class="ns-editor-scroll-area">
 
+        {{#if actionDef.id}}
+        <div class="form-group ns-actiondef-snippet-group">
+            <label data-tooltip="Wklej ten kod w skrypcie getMeleeActions aby dodać tę akcję. Przycisk kopiuje snippet do schowka.">Push snippet</label>
+            <div class="form-fields" style="gap:4px">
+                <input type="text" readonly value='args.actions.push("{{actionDef.id}}");' style="font-family:monospace;font-size:11px;flex:1">
+                <button type="button" class="ns-copy-snippet-btn" data-tooltip="Kopiuj snippet do schowka" style="flex:0 0 auto">
+                    <i class="fa-solid fa-copy"></i>
+                </button>
+            </div>
+        </div>
+        {{/if}}
+
         <div class="form-group stacked ns-script-code-group">
             <label>onHitScript</label>
             <code-mirror name="onHitScript" language="javascript" indent="4">{{actionDef.onHitScript}}</code-mirror>

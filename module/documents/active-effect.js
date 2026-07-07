@@ -559,13 +559,14 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
       ),
       actionDefs: new fields.ArrayField(
         new fields.SchemaField({
-          id:           new fields.StringField({ initial: "", blank: true }),
-          name:         new fields.StringField({ initial: "", blank: true }),
-          damage:       new fields.StringField({ initial: "—", blank: true }),
-          successCost:  new fields.NumberField({ initial: 1, integer: true, min: 0 }),
-          minDice:      new fields.NumberField({ initial: 1, integer: true, min: 0 }),
-          maxDice:      new fields.NumberField({ initial: 3, integer: true, min: 0 }),
-          onHitScript:  new fields.StringField({ initial: "", blank: true }),
+          id:                  new fields.StringField({ initial: "", blank: true }),
+          name:                new fields.StringField({ initial: "", blank: true }),
+          damage:              new fields.StringField({ initial: "—", blank: true }),
+          successCost:         new fields.NumberField({ initial: 1, integer: true, min: 0 }),
+          minDice:             new fields.NumberField({ initial: 1, integer: true, min: 0 }),
+          maxDice:             new fields.NumberField({ initial: 3, integer: true, min: 0 }),
+          immediateOnHit:      new fields.BooleanField({ initial: false }),
+          onHitScript:         new fields.StringField({ initial: "", blank: true }),
         }),
         { initial: [] }
       ),

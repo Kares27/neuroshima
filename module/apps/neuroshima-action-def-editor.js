@@ -1,4 +1,6 @@
 
+const { HandlebarsApplicationMixin } = foundry.applications.api;
+
 /**
  * Parse a combined damage string (e.g. "2L", "D", "sC") into its components.
  * The stored `damage` field uses the format `[count]type`, where count is omitted when 1.
@@ -94,12 +96,16 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
   async _prepareContext(options) {
     const defs = this._freshEffect.system?.actionDefs ?? [];
     const raw = foundry.utils.deepClone(defs[this.defIndex]) || {
-      id: "", name: "", damage: "—", successCost: 1, minDice: 1, maxDice: 3, onHitScript: "", immediateOnHit: false
+      id: "", name: "", damage: "—", successCost: 1, minDice: 1, maxDice: 3,
+      immediateOnHit: false, onHitScript: ""
     };
     const { damageCount, damageType } = _parseDamage(raw.damage);
     const actionDef = { ...raw, damageCount, damageType };
-    actionDef.onHitScript = (actionDef.onHitScript ?? "").trimEnd();
+    actionDef.onHitScript    = (actionDef.onHitScript ?? "").trimEnd();
     actionDef.immediateOnHit = actionDef.immediateOnHit ?? false;
+    const pushSnippet = actionDef.id
+      ? `args.actions.push("${actionDef.id}");`
+      : "";
 
     const config = game.neuroshima?.config ?? {};
     const damageTypeOptions = Object.keys(config.damageTypes ?? {}).map(key => ({
@@ -107,7 +113,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       label: `${key} — ${game.i18n.localize(`NEUROSHIMA.Damage.Full.${key}`)}`
     }));
 
-    return { actionDef, index: this.defIndex, damageTypeOptions };
+    return { actionDef, index: this.defIndex, damageTypeOptions, pushSnippet };
   }
 
   /**
@@ -147,6 +153,14 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       await this.close();
     });
 
+    form.querySelector(".ns-copy-snippet-btn")?.addEventListener("click", () => {
+      const defs = this._freshEffect.system?.actionDefs ?? [];
+      const id = defs[this.defIndex]?.id ?? "";
+      if (!id) return;
+      const snippet = `args.actions.push("${id}");`;
+      navigator.clipboard.writeText(snippet).then(() => ui.notifications.info(`Skopiowano snippet`));
+    });
+
     const header = this.element.querySelector(".window-header");
     if (header && !header.querySelector(".ns-copy-id-header-btn")) {
       const copyBtn = document.createElement("button");
@@ -158,7 +172,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       copyBtn.addEventListener("click", () => {
         const defs = this._freshEffect.system?.actionDefs ?? [];
         const id = defs[this.defIndex]?.id ?? "";
-        if (id) navigator.clipboard.writeText(id).then(() => ui.notifications.info(`Skopiowano: ${id}`));
+        if (id) navigator.clipboard.writeText(id).then(() => ui.notifications.info(`Skopiowano ID: ${id}`));
       });
       const closeBtn = header.querySelector('[data-action="close"], .close, .header-close');
       if (closeBtn) header.insertBefore(copyBtn, closeBtn);

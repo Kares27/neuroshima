@@ -674,6 +674,7 @@ export class NeuroshimaScript {
    * args.blockDamageShift = -1;
    */
   isActiveForMelee(args, actor) {
+    if (this.effect?.uuid && args?.state?.activatedMeleePreRollMods?.includes(this.effect.uuid)) return true;
     const target = actor ?? this.actor;
     const enc = args?.encounter ?? this.getMeleeEncounter(target);
     const pid = args?.participantId ?? this.getMeleeParticipantId(target);
