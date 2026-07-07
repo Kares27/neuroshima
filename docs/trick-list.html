@@ -288,14 +288,12 @@
 <tr><td>successCost</td><td>number</td><td>0 = akcja standalone (osobny przycisk). &gt;0 = akcja z kolejki sukcesów.</td></tr>
 <tr><td>minDice</td><td>number</td><td>Min. kości deklarowanych (tylko standalone).</td></tr>
 <tr><td>maxDice</td><td>number</td><td>Maks. kości deklarowanych (tylko standalone).</td></tr>
-<tr><td>onHitScript</td><td>string</td><td>Kod JS wykonywany przy trafieniu. Args: <code>actor</code>, <code>target</code>, <code>state</code>, <code>hit</code>. Zastępuje domyślną aplikację obrażeń gdy niepuste. Domyślnie odpala się przy „Nałóż obrażenia" — chyba że <code>immediateOnHit = true</code>.</td></tr>
+<tr><td>onHitScript</td><td>string</td><td>Kod JS wykonywany przy trafieniu. Args: <code>actor</code>, <code>target</code>, <code>state</code>, <code>hit</code>. Zastępuje domyślną aplikację obrażeń gdy niepuste. Domyślnie odpala się przy „Nałóż obrażenia" — chyba że <code>immediateOnHit = true</code>. Użyj <code>this.effect.parent.effects.getName("...").convertToApplied()</code> do aplikowania AE z itemu.</td></tr>
 <tr><td>immediateOnHit</td><td>boolean</td><td>Gdy <code>true</code>: <code>onHitScript</code> odpala się <strong>natychmiast w momencie trafienia</strong> — w trakcie trwania duela, bez czekania na „Nałóż obrażenia". Niezbędne dla efektów aktywnych przez resztę walki (np. Boa – Pochwycenie). Domyślnie <code>false</code>.</td></tr>
-<tr><td>effectIds</td><td>string[]</td><td>Lista ID Active Effects (z item macierzystego) do automatycznego zastosowania. Gdy niepusta i brak <code>onHitScript</code>, system generuje skrypt automatycznie na podstawie <code>effectTiming</code>/<code>effectTarget</code>. Domyślnie <code>[]</code>.</td></tr>
-<tr><td>effectTiming</td><td>string</td><td>Kiedy zastosować efekty z <code>effectIds</code>: <code>"onHit"</code> (przy trafieniu — domyślne), <code>"onUse"</code> (przy deklaracji akcji), <code>"afterDamage"</code> (po aplikacji obrażeń). Domyślnie <code>"onHit"</code>.</td></tr>
-<tr><td>effectTarget</td><td>string</td><td>Na kogo aplikować efekty: <code>"target"</code> (cel ataku — domyślne), <code>"self"</code> (atakujący), <code>"selected"</code> (aktualnie zaznaczone tokeny), <code>"manual"</code> (skrypt obsługuje ręcznie). Domyślnie <code>"target"</code>.</td></tr>
-<tr><td>applyEffectsAutomatically</td><td>boolean</td><td>Gdy <code>false</code>: wyłącza automatyczne generowanie <code>onHitScript</code> nawet jeśli <code>effectIds</code> jest niepuste — skrypt obsługuje aplikację ręcznie. Domyślnie <code>true</code>.</td></tr>
-<tr><td>resolverKind</td><td>string</td><td>Jak akcja się rozwiązuje: <code>"opposedMelee"</code> (standardowe porównanie kości — domyślne), <code>"directApply"</code> (bez testu oporu, efekty aplikowane bezpośrednio). Domyślnie <code>"opposedMelee"</code>.</td></tr>
-<tr><td>gmNote</td><td>string</td><td>Notatka GM widoczna na karcie duelu obok akcji. <em>Dawny alias: <code>annotation</code> (nadal akceptowany, ale przestarzały).</em></td></tr>
+<tr><td>gmNote</td><td>string</td><td>Notatka GM widoczna na karcie duelu obok akcji (tooltip). Dostępne tylko inline. <em>Alias: <code>annotation</code> (przestarzały).</em></td></tr>
+<tr style="opacity:0.6"><td>effectIds <sup>inline</sup></td><td>string[]</td><td><em>Tylko inline push — niedostępne przez zakładkę Akcje.</em> Lista ID Active Effects z item macierzystego. Gdy niepuste, preferuj zamiast tego trigger <code>onMeleeHit</code> z <code>convertToApplied()</code>.</td></tr>
+<tr style="opacity:0.6"><td>effectTiming <sup>inline</sup></td><td>string</td><td><em>Tylko inline.</em> <code>"onHit"</code> / <code>"onUse"</code> / <code>"afterDamage"</code>. Domyślnie <code>"onHit"</code>.</td></tr>
+<tr style="opacity:0.6"><td>effectTarget <sup>inline</sup></td><td>string</td><td><em>Tylko inline.</em> <code>"target"</code> / <code>"self"</code> / <code>"selected"</code> / <code>"manual"</code>. Domyślnie <code>"target"</code>.</td></tr>
 </tbody>
 </table>
 
@@ -328,10 +326,10 @@ args.actions.push({ ...<span class="var">def</span>, successCost: <span class="n
 
 <section id="melee-hooks">
 <h2 class="section-title">Triggery melee: onMeleeHit / onMeleeBlock / onMeleeTakeover</h2>
-<p>Te trzy triggery odpytują <strong>obu uczestników</strong> po każdym rozstrzygnięciu segmentu duela. Odpalają się wewnątrz <code>applyDuelBatch()</code> — po wyliczeniu outcome, ale przed zapisem stanu i przed aplikacją obrażeń przez GM.</p>
+<p>Te trzy triggery są <strong>pełnoprawnymi wyzwalaczami systemu</strong> — widocznymi w dropdownie selektora wyzwalacza w zakładce Skrypty efektu, tak jak <code>getMeleeActions</code> czy <code>opposedAttacker</code>. Odpytują <strong>obu uczestników</strong> po każdym rozstrzygnięciu segmentu duela, wewnątrz <code>applyDuelBatch()</code> — po wyliczeniu outcome, ale przed zapisem stanu i przed aplikacją obrażeń przez GM.</p>
 <p>Pełny reference melee combat (wszystkie triggery, timing, wzorce): <a href="melee-info.html">melee-info.html</a></p>
 
-<div class="callout info"><strong>Różnica od opposedAttacker/opposedDefender:</strong> tamte triggery odpytują tylko jedną stronę (każdą osobno) i nie mają <code>MeleeActionContext</code> — nie wiedzą jaka sztuczka była użyta. <code>onMeleeHit/Block/Takeover</code> odpytują obu uczestników i dostarczają pełny kontekst akcji.</div>
+<div class="callout info"><strong>Różnica od opposedAttacker/opposedDefender:</strong> tamte triggery odpytują tylko jedną stronę (każdą osobno) i nie mają <code>MeleeActionContext</code> — nie wiedzą jaka sztuczka była użyta. <code>onMeleeHit/Block/Takeover</code> odpytują obu uczestników i dostarczają pełny kontekst akcji (w tym <code>args.action.id</code> ze zdefiniowanej sztuczki).</div>
 
 <div class="trigger-grid">
   <div class="trigger-card">
@@ -384,18 +382,48 @@ args.actions.push({ ...<span class="var">def</span>, successCost: <span class="n
   <div class="ctx-row"><span class="ctx-name">context.state</span><span class="ctx-type">object</span><span class="ctx-desc">Pełny stan karty duelu (read-only w hooku)</span></div>
 </div>
 
+<h3>Powiązanie z getMeleeActions — dwa podejścia do efektów przy trafieniu</h3>
+<p>Gdy akcja zdefiniowana w <code>getMeleeActions</code> trafi, masz dwie drogi obsługi efektów. Można je łączyć na tym samym efekcie:</p>
+
+<table class="decision-table">
+<thead><tr><th>Podejście</th><th>Gdzie piszesz kod</th><th>Kiedy używać</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>onHitScript</strong> w zakładce Akcje</td>
+  <td>Pole <code>onHitScript</code> w edytorze akcji</td>
+  <td>Efekt ściśle związany z tą akcją. Prosta aplikacja AE na cel. Potrzebujesz <code>immediateOnHit</code> (odpala w trakcie duela).</td>
+</tr>
+<tr>
+  <td><strong>Trigger onMeleeHit</strong> w zakładce Skrypty</td>
+  <td>Nowy skrypt efektu z wyzwalaczem <code>onMeleeHit</code></td>
+  <td>Logika zależy od kontekstu (tier, sukcesy obu stron, poprzednie trafienia). Chcesz reagować na każde trafienie niezależnie od akcji. Potrzebujesz <code>args.context</code> lub <code>args.hits</code>.</td>
+</tr>
+</tbody>
+</table>
+
+<div class="callout info"><strong>Zalecany przepis na sztuczki z efektem:</strong> Zdefiniuj akcję w zakładce Akcje (name + damage). W zakładce Skrypty dodaj drugi skrypt z wyzwalaczem <code>onMeleeHit</code> — sprawdzaj <code>args.action?.id</code> i aplikuj efekt. Nie potrzebujesz <code>onHitScript</code> w edytorze akcji.</div>
+
 <h3>Przykłady użycia</h3>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">onMeleeHit</span> Zastosuj efekt na cel gdy konkretna sztuczka trafia</div>
-<pre><code><span class="cmt">// Trigger: onMeleeHit — tylko gdy ta sztuczka trafia i actor jest atakującym</span>
-<span class="kw">if</span> (!args.isAttacker) <span class="kw">return</span>;
-<span class="kw">if</span> (args.action?.id !== <span class="str">"moja-sztuczka-id"</span>) <span class="kw">return</span>;
+<div class="example-header"><span class="trigger-badge">onMeleeHit</span> Zastosuj efekt na cel gdy konkretna sztuczka trafia — zalecany wzorzec</div>
+<pre><code><span class="cmt">// Trigger: onMeleeHit — skrypt na tym samym efekcie co akcja w zakładce Akcje</span>
+<span class="kw">if</span> (!args.isAttacker) <span class="kw">return</span>; <span class="cmt">// tylko atakujący aplikuje efekt</span>
+<span class="kw">if</span> (args.action?.id !== <span class="str">"PASTE_ACTIONDEF_ID_HERE"</span>) <span class="kw">return</span>; <span class="cmt">// filtruj po ID akcji z zakładki Akcje</span>
 <span class="kw">const</span> <span class="var">target</span> = args.context.defender.actor;
 <span class="kw">if</span> (!<span class="var">target</span>) <span class="kw">return</span>;
 <span class="kw">const</span> <span class="var">tmpl</span> = <span class="kw">this</span>.<span class="fn">effect</span>?.parent?.effects?.getName(<span class="str">"Ogłuszony"</span>);
 <span class="kw">if</span> (<span class="var">tmpl</span> &amp;&amp; !<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="var">tmpl</span>, <span class="var">target</span>)) {
   <span class="kw">await</span> <span class="var">target</span>.<span class="fn">createEmbeddedDocuments</span>(<span class="str">"ActiveEffect"</span>, [<span class="var">tmpl</span>.<span class="fn">convertToApplied</span>()]);
 }</code></pre>
+</div>
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">onMeleeHit</span> Efekt na siebie gdy trafiasz (dowolna akcja, min. 2 sukcesy)</div>
+<pre><code><span class="cmt">// Trigger: onMeleeHit — atakujący dostaje buff gdy trafi z przewagą</span>
+<span class="kw">if</span> (!args.isAttacker) <span class="kw">return</span>;
+<span class="kw">if</span> (args.attackerSuccesses - args.defenderSuccesses &lt; <span class="num">2</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">tmpl</span> = <span class="kw">this</span>.<span class="fn">effect</span>?.parent?.effects?.getName(<span class="str">"Furia"</span>);
+<span class="kw">if</span> (<span class="var">tmpl</span>) <span class="kw">await</span> args.actor.<span class="fn">createEmbeddedDocuments</span>(<span class="str">"ActiveEffect"</span>, [<span class="var">tmpl</span>.<span class="fn">convertToApplied</span>()]);
+</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">onMeleeTakeover</span> Reakcja na przejęcie inicjatywy — tylko obrońca</div>
@@ -408,12 +436,12 @@ args.actions.push({ ...<span class="var">def</span>, successCost: <span class="n
 <div class="example-header"><span class="trigger-badge">onMeleeBlock</span> Powiadom czat gdy obrońca blokuje z przewagą</div>
 <pre><code><span class="cmt">// Trigger: onMeleeBlock — obaj mają sukcesy, wynik remis</span>
 <span class="kw">if</span> (args.isAttacker) <span class="kw">return</span>; <span class="cmt">// tylko obrońca reaguje</span>
-<span class="kw">if</span> (args.defenderSuccesses &lt; args.attackerSuccesses) <span class="kw">return</span>; <span class="cmt">// pomiń jeśli nie obroniono z przewagą</span>
+<span class="kw">if</span> (args.defenderSuccesses &lt; args.attackerSuccesses) <span class="kw">return</span>;
 <span class="fn">ChatMessage.create</span>({ content: <span class="str">`${args.actor.name} blokuje z ${args.defenderSuccesses} sukcesami!`</span> });</code></pre>
 </div>
 
 <div class="callout info"><strong>Ważne:</strong> Trigger odpala się dwa razy — raz dla atakującego, raz dla obrońcy. Zawsze sprawdzaj <code>args.isAttacker</code>, żeby nie wykonywać logiki dwa razy.</div>
-<div class="callout warning"><strong>state jest read-only:</strong> Hooki nie mogą trwale modyfikować stanu duelu. Do zmian w trakcie rozstrzygania segmentu użyj <code>onHitScript</code> z <code>immediateOnHit: true</code>. Do zmian przed segmentem użyj <code>preOpposedAttacker</code> / <code>preOpposedDefender</code>.</div>
+<div class="callout warning"><strong>state jest read-only:</strong> Triggery onMeleeHit/Block/Takeover nie mogą trwale modyfikować stanu duelu. Do zmian aktywnych w trakcie trwania walki użyj <code>onHitScript</code> z <code>immediateOnHit: true</code>. Do zmian przed segmentem użyj <code>preOpposedAttacker</code> / <code>preOpposedDefender</code>.</div>
 </section>
 
 <section id="tricks">

@@ -1,4 +1,3 @@
-const { HandlebarsApplicationMixin } = foundry.applications.api;
 
 /**
  * Parse a combined damage string (e.g. "2L", "D", "sC") into its components.
@@ -34,8 +33,8 @@ function _buildDamage(count, type) {
  * Popup editor for a single Action Definition stored on an ActiveEffect.
  *
  * Action definitions (actionDefs) are declarative action descriptors attached to effect's
- * system data. They are referenced in getMeleeActions scripts by UUID or name via:
- *   args.actions.push("uuid-or-name")
+ * system data. They are referenced in getMeleeActions scripts by ID via:
+ *   args.actions.push("PASTE_ID_HERE")
  *
  * Each actionDef stores:
  *   - id          {string}  — auto-generated ID (foundry.utils.randomID()), read-only after creation.
@@ -44,8 +43,10 @@ function _buildDamage(count, type) {
  *   - successCost {number}  — minimum successes required to use this action.
  *   - minDice     {number}  — minimum declared dice count for this action to be available.
  *   - maxDice     {number}  — maximum declared dice count for this action to be available.
+ *   - immediateOnHit {boolean} — when true, onHitScript fires at resolution time, not at "Apply Damage".
  *   - onHitScript {string}  — optional JS code executed on hit; receives args: actor, target, state, hit.
  *                             When non-empty, replaces default damage application.
+ *                             Use this.effect.parent.effects.getName("...").convertToApplied() to apply AEs.
  */
 export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2) {
   /**

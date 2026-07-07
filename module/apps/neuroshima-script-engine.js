@@ -3839,9 +3839,12 @@ export class NeuroshimaScriptRunner {
     preMeleePool:           "Pre-Melee Pool",
     preOpposedAttacker:     "Pre-Opposed Attacker",
     preOpposedDefender:     "Pre-Opposed Defender",
+    getMeleeActions:        "Get Melee Actions",
     opposedAttacker:        "Opposed Attacker",
     opposedDefender:        "Opposed Defender",
-    getMeleeActions:        "Get Melee Actions",
+    onMeleeHit:             "On Melee Hit",
+    onMeleeBlock:           "On Melee Block",
+    onMeleeTakeover:        "On Melee Takeover",
     meleeUpdate:            "Melee Update"
   };
 
