@@ -3841,11 +3841,19 @@ export class NeuroshimaScriptRunner {
     preOpposedAttacker:     "Pre-Opposed Attacker",
     preOpposedDefender:     "Pre-Opposed Defender",
     getMeleeActions:        "Get Melee Actions",
+    collectMeleeActions:    "Collect Melee Actions",
     opposedAttacker:        "Opposed Attacker",
     opposedDefender:        "Opposed Defender",
     onMeleeHit:             "On Melee Hit",
     onMeleeBlock:           "On Melee Block",
     onMeleeTakeover:        "On Melee Takeover",
+    onMeleeActionHit:       "On Melee Action Hit",
+    onMeleeActionMiss:      "On Melee Action Miss",
+    onMeleeActionQueued:    "On Melee Action Queued",
+    onMeleeActionResolved:  "On Melee Action Resolved",
+    onDuelStart:            "On Duel Start",
+    onDuelSegmentStart:     "On Duel Segment Start",
+    onDuelEnd:              "On Duel End",
     meleeUpdate:            "Melee Update"
   };
 

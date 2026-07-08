@@ -19,6 +19,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
+import { DuelContext, DuelSegmentContext, DuelLifecycle } from "./combat-api.js";
 
 /**
  * Context object for a resolved melee segment.
@@ -1955,6 +1956,7 @@ export class MeleeOpposedChat {
       speaker: { alias: "⚔" },
       rollMode
     });
+    await DuelLifecycle.start(DuelContext.fromFlag(state));
     await MeleeOpposedChat._syncInitiativeToTracker(state);
   }
 
@@ -2233,6 +2235,24 @@ export class MeleeOpposedChat {
         // Remove null entries (unresolved IDs)
         for (let i = extraActionsArr.length - 1; i >= 0; i--) {
           if (extraActionsArr[i] == null) extraActionsArr.splice(i, 1);
+        }
+
+        // collectMeleeActions — new clean API (alongside getMeleeActions for BC).
+        // Scripts use args.actions.push(descriptor) with no isDialogScript / activateForMelee coupling.
+        try {
+          await NeuroshimaScriptRunner.execute("collectMeleeActions", {
+            actor: ownerActor,
+            duel:  DuelContext.fromFlag(state),
+            state,
+            actions: extraActionsArr,
+            ownerHadHit,
+            ownerPreviousHits,
+            uncommittedDice: uncommittedDiceCount,
+            uncommittedSuccesses: uncommittedSuccessCount,
+            lookupActionDef
+          });
+        } catch (err) {
+          game.neuroshima?.log("[collectMeleeActions] trigger error", err);
         }
       } catch (err) {
         game.neuroshima?.log("[getMeleeActions] trigger error", err);
@@ -2947,6 +2967,10 @@ export class MeleeOpposedChat {
       state.committedTrickId     = committedTrickId;
       state.committedTrickDamage = committedTrickDamage;
       state.waitingFor            = "responder";
+      await DuelLifecycle.segmentStart(
+        DuelContext.fromFlag(state),
+        DuelSegmentContext.fromOwnerCommit({ N: diceIndices.length, ownerAction: declaredAction, ownerDiceIndices: diceIndices })
+      );
       await MeleeOpposedChat._renderDuelCard(message, state);
       return;
     }
@@ -3203,8 +3227,6 @@ export class MeleeOpposedChat {
         }
 
         if (outcome === "hit" || outcome === "takeover" || outcome === "draw") {
-          const _hookTrigger = outcome === "hit"      ? "onMeleeHit"
-            : outcome === "takeover" ? "onMeleeTakeover" : "onMeleeBlock";
           const _atkUuid  = state.attackerTokenUuid || state.attackerUuid;
           const _defUuid  = state.defenderTokenUuid || state.defenderUuid;
           const _atkDoc   = fromUuidSync(_atkUuid);
@@ -3227,24 +3249,21 @@ export class MeleeOpposedChat {
             hitEntry:          _currentHit,
             messageId:         message.id
           });
-          const _hookBase = {
+          const _duel    = DuelContext.fromFlag(state);
+          const _segment = DuelSegmentContext.fromResolution({
+            duel:               _duel,
+            N,
+            ownerAction:        declaredAction,
+            ownerDiceIndices:   ownerIndices,
+            responderDiceIndices: diceIndices,
+            ownerSuccesses:     ownerSuccessCount,
+            responderSuccesses: responderSuccessCount,
             outcome,
-            action:            _ctx.action,
-            context:           _ctx,
-            attackerActor:     _atkActor,
-            defenderActor:     _defActor,
-            attackerSuccesses: _atkSucc,
-            defenderSuccesses: _defSucc,
-            diceCount:         N,
-            hits:              [...(state.hits ?? [])],
-            state
-          };
-          if (_atkActor) {
-            await NeuroshimaScriptRunner.execute(_hookTrigger, { ..._hookBase, actor: _atkActor, isAttacker: true });
-          }
-          if (_defActor) {
-            await NeuroshimaScriptRunner.execute(_hookTrigger, { ..._hookBase, actor: _defActor, isAttacker: false });
-          }
+            hitEntry:           _currentHit,
+            action:             _ctx.action ?? null,
+            trickId:            _segmentTrickId
+          });
+          await DuelLifecycle.segmentResolve(_duel, _segment, _ctx);
         }
 
         if (isOwnerAttacker) {
@@ -3365,6 +3384,7 @@ export class MeleeOpposedChat {
             state
           });
         }
+        await DuelLifecycle.end(DuelContext.fromFlag(state));
       }
     }
   }
