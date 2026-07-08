@@ -422,6 +422,8 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       defendingAgainst:  s.defendingAgainst  ?? false,
       isDialogScript:    s.isDialogScript    ?? false,
       dialogDescription: s.dialogDescription ?? "",
+      useActionDef:      s.useActionDef      ?? false,
+      actionDef:         s.actionDef         ?? null,
     }));
 
     const originalTransferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";

@@ -205,6 +205,53 @@ export class NeuroshimaScript {
     return canvas.scene?.tokens.find(t => t.actor?.id === this.actor?.id) ?? null;
   }
 
+  /**
+   * The DuelContext for the current melee exchange, if available.
+   * Set when the script runs inside onMeleeHit / onMeleeActionHit / onDuelStart / etc.
+   * @returns {import("../combat/combat-api.js").DuelContext|null}
+   */
+  get meleeDuel() {
+    return this._currentArgs?.duel ?? null;
+  }
+
+  /**
+   * The DuelSegmentContext for the current segment, if available.
+   * Null for lifecycle triggers that fire outside a segment (onDuelStart, onDuelEnd).
+   * @returns {import("../combat/combat-api.js").DuelSegmentContext|null}
+   */
+  get meleeSegment() {
+    return this._currentArgs?.segment ?? null;
+  }
+
+  /**
+   * The MeleeAction that is currently the subject of this trigger, if any.
+   * Populated for onMeleeActionHit / onMeleeActionMiss / action-scoped triggers.
+   * @returns {import("../combat/combat-api.js").MeleeAction|null}
+   */
+  get meleeAction() {
+    return this._currentArgs?.action ?? null;
+  }
+
+  /**
+   * Returns true when the currently firing trigger is scoped to THIS effect's action.
+   * Equivalent to `args.action?.sourceEffectUuid === this.effect?.uuid`.
+   *
+   * Use in global triggers (onMeleeHit) to guard action-specific logic
+   * without duplicating UUID checks:
+   * @param {object} args - The trigger args object
+   * @returns {boolean}
+   *
+   * @example
+   * // onMeleeHit — passiv i action-scoped w jednym skrypcie
+   * if (this.isSourceAction(args)) {
+   *   // ten efekt jest zadeklarowaną akcją tego segmentu
+   * }
+   */
+  isSourceAction(args) {
+    if (!this.effect?.uuid) return false;
+    return (args?.action?.sourceEffectUuid ?? null) === this.effect.uuid;
+  }
+
   // ── Notifications ────────────────────────────────────────────────────────
 
   notification(content, type = "info") {
@@ -3847,6 +3894,10 @@ export class NeuroshimaScriptRunner {
     onMeleeHit:             "On Melee Hit",
     onMeleeBlock:           "On Melee Block",
     onMeleeTakeover:        "On Melee Takeover",
+    beforeMeleeAction:      "Before Melee Action",
+    afterMeleeAction:       "After Melee Action",
+    beforeMeleeDamage:      "Before Melee Damage",
+    afterMeleeDamage:       "After Melee Damage",
     onMeleeActionHit:       "On Melee Action Hit",
     onMeleeActionMiss:      "On Melee Action Miss",
     onMeleeActionQueued:    "On Melee Action Queued",

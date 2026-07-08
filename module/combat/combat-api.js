@@ -484,20 +484,13 @@ export class MeleeAction {
       if (!effect) return;
       const actor = effect.parent?.actor ?? effect.parent;
       if (!actor) return;
-
-      const scripts = NeuroshimaScriptRunner.getScripts(actor, triggerName)
-        .filter(s => s.effect?.uuid === this.sourceEffectUuid);
-
-      const args = { ...extraArgs, action: this, actor };
-      for (const script of scripts) {
-        try {
-          await script.execute(args);
-        } catch (err) {
-          game.neuroshima?.log(`[MeleeAction.executeTrigger] ${triggerName} error`, err);
-        }
-      }
+      await NeuroshimaScriptRunner.executeScoped(
+        triggerName,
+        { ...extraArgs, action: this, actor },
+        { sourceEffectUuid: this.sourceEffectUuid }
+      );
     } catch (err) {
-      game.neuroshima?.log(`[MeleeAction.executeTrigger] ${triggerName} outer error`, err);
+      game.neuroshima?.log(`[MeleeAction.executeTrigger] ${triggerName} error`, err);
     }
   }
 

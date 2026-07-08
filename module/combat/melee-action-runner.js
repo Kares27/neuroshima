@@ -90,7 +90,7 @@ export class MeleeActionRunner {
       const targetActor = targetDoc?.actor ?? targetDoc;
 
       const scriptObj = new NeuroshimaScript(
-        { code: entry.code, trigger: "getMeleeActions", label: "onHitScript:immediate" },
+        { code: entry.code, trigger: "onMeleeHit", label: "onHitScript:immediate" },
         effect
       );
       await scriptObj.execute({ actor: ownerActor, target: targetActor, state, hit: hitEntry });
@@ -125,7 +125,7 @@ export class MeleeActionRunner {
       const effectUuid = typeof entry === "string" ? null  : entry.effectUuid;
       const effect     = effectUuid ? fromUuidSync(effectUuid) : null;
       const scriptObj  = new NeuroshimaScript(
-        { code: onHitCode, trigger: "getMeleeActions", label: "onHitScript" },
+        { code: onHitCode, trigger: "onMeleeHit", label: "onHitScript" },
         effect
       );
       await scriptObj.execute({ actor: attackerActor, target: targetActor, state: rd, hit });
