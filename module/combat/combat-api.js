@@ -339,12 +339,11 @@ export class DuelLifecycle {
    * @returns {Promise<void>}
    */
   static async segmentResolve(duel, segment, legacyContext = null) {
-    if (!["hit", "takeover", "draw"].includes(segment.outcome)) return;
+    const _isHitOutcome = ["hit", "takeover", "draw"].includes(segment.outcome);
+    const _hasAction    = !!(duel.actions?.declared);
+    if (!_isHitOutcome && !_hasAction) return;
     try {
       const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
-      const trigger = segment.outcome === "hit"      ? "onMeleeHit"
-                    : segment.outcome === "takeover" ? "onMeleeTakeover"
-                    : "onMeleeBlock";
 
       const atk = duel.attackerActor;
       const def = duel.defenderActor;
@@ -355,15 +354,20 @@ export class DuelLifecycle {
         defenderId: duel.defenderTokenUuid || duel.defenderUuid
       };
 
-      if (atk) {
-        await NeuroshimaScriptRunner.execute(trigger, {
-          ...buildSegmentArgs(duel, atk, segment), ...extraBC, isAttacker: true
-        });
-      }
-      if (def) {
-        await NeuroshimaScriptRunner.execute(trigger, {
-          ...buildSegmentArgs(duel, def, segment), ...extraBC, isAttacker: false
-        });
+      if (_isHitOutcome) {
+        const trigger = segment.outcome === "hit"      ? "onMeleeHit"
+                      : segment.outcome === "takeover" ? "onMeleeTakeover"
+                      : "onMeleeBlock";
+        if (atk) {
+          await NeuroshimaScriptRunner.execute(trigger, {
+            ...buildSegmentArgs(duel, atk, segment), ...extraBC, isAttacker: true
+          });
+        }
+        if (def) {
+          await NeuroshimaScriptRunner.execute(trigger, {
+            ...buildSegmentArgs(duel, def, segment), ...extraBC, isAttacker: false
+          });
+        }
       }
 
       const declaredAction = duel.actions?.declared ?? null;
@@ -375,6 +379,142 @@ export class DuelLifecycle {
       }
     } catch (err) {
       game.neuroshima?.log("[DuelLifecycle.segmentResolve] error", err);
+    }
+  }
+
+  /**
+   * Odpal beforeMeleeAction dla obu uczestników.
+   * Wywoływany tuż przed rozstrzygnięciem segmentu (przed segmentResolve).
+   *
+   * @param {DuelContext}        duel
+   * @param {DuelSegmentContext} segment  - fromResolution (outcome znany)
+   * @param {object}             [legacyContext]
+   * @returns {Promise<void>}
+   */
+  static async beforeAction(duel, segment, legacyContext = null) {
+    try {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      const atk = duel.attackerActor;
+      const def = duel.defenderActor;
+      const extraBC = {
+        context:    legacyContext,
+        attackerId: duel.attackerTokenUuid || duel.attackerUuid,
+        defenderId: duel.defenderTokenUuid || duel.defenderUuid
+      };
+      if (atk) {
+        await NeuroshimaScriptRunner.execute("beforeMeleeAction", {
+          ...buildSegmentArgs(duel, atk, segment), ...extraBC, isAttacker: true
+        });
+      }
+      if (def) {
+        await NeuroshimaScriptRunner.execute("beforeMeleeAction", {
+          ...buildSegmentArgs(duel, def, segment), ...extraBC, isAttacker: false
+        });
+      }
+    } catch (err) {
+      game.neuroshima?.log("[DuelLifecycle.beforeAction] error", err);
+    }
+  }
+
+  /**
+   * Odpal afterMeleeAction dla obu uczestników.
+   * Wywoływany zaraz po segmentResolve (triggery hit/block/takeover już odpalone).
+   *
+   * @param {DuelContext}        duel
+   * @param {DuelSegmentContext} segment
+   * @param {object}             [legacyContext]
+   * @returns {Promise<void>}
+   */
+  static async afterAction(duel, segment, legacyContext = null) {
+    try {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      const atk = duel.attackerActor;
+      const def = duel.defenderActor;
+      const extraBC = {
+        context:    legacyContext,
+        attackerId: duel.attackerTokenUuid || duel.attackerUuid,
+        defenderId: duel.defenderTokenUuid || duel.defenderUuid
+      };
+      if (atk) {
+        await NeuroshimaScriptRunner.execute("afterMeleeAction", {
+          ...buildSegmentArgs(duel, atk, segment), ...extraBC, isAttacker: true
+        });
+      }
+      if (def) {
+        await NeuroshimaScriptRunner.execute("afterMeleeAction", {
+          ...buildSegmentArgs(duel, def, segment), ...extraBC, isAttacker: false
+        });
+      }
+    } catch (err) {
+      game.neuroshima?.log("[DuelLifecycle.afterAction] error", err);
+    }
+  }
+
+  /**
+   * Odpal beforeMeleeDamage dla obu uczestników przed aplikacją obrażeń jednego hitu.
+   * Wywoływany przez applyOpposedDamage dla każdego wpisu z rd.hits.
+   *
+   * Args dla scriptera:
+   *   args.hit, args.rd, args.targetActor, args.attackerActor, args.defenderActor
+   *   args.attackerId, args.defenderId, args.isAttacker
+   *
+   * @param {object} rd              - opposedResult flag data
+   * @param {object} hit             - pojedynczy hit entry ({ tier, damageType, trickId })
+   * @param {Actor}  attackerActor
+   * @param {Actor}  defenderActor
+   * @param {Actor}  targetActor
+   * @returns {Promise<void>}
+   */
+  static async beforeDamage(rd, hit, attackerActor, defenderActor, targetActor) {
+    try {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      const base = {
+        hit, rd, targetActor, attackerActor, defenderActor,
+        attackerId: rd.attackerUuid,
+        defenderId: rd.defenderUuid
+      };
+      if (attackerActor) {
+        await NeuroshimaScriptRunner.execute("beforeMeleeDamage",
+          { ...base, actor: attackerActor, isAttacker: true });
+      }
+      if (defenderActor) {
+        await NeuroshimaScriptRunner.execute("beforeMeleeDamage",
+          { ...base, actor: defenderActor, isAttacker: false });
+      }
+    } catch (err) {
+      game.neuroshima?.log("[DuelLifecycle.beforeDamage] error", err);
+    }
+  }
+
+  /**
+   * Odpal afterMeleeDamage dla obu uczestników po aplikacji obrażeń jednego hitu.
+   *
+   * @param {object}      rd
+   * @param {object}      hit
+   * @param {Actor}       attackerActor
+   * @param {Actor}       defenderActor
+   * @param {Actor}       targetActor
+   * @param {object|null} batch  - wynik applyDamageToActor (results, woundIds, …)
+   * @returns {Promise<void>}
+   */
+  static async afterDamage(rd, hit, attackerActor, defenderActor, targetActor, batch) {
+    try {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      const base = {
+        hit, rd, targetActor, attackerActor, defenderActor, batch,
+        attackerId: rd.attackerUuid,
+        defenderId: rd.defenderUuid
+      };
+      if (attackerActor) {
+        await NeuroshimaScriptRunner.execute("afterMeleeDamage",
+          { ...base, actor: attackerActor, isAttacker: true });
+      }
+      if (defenderActor) {
+        await NeuroshimaScriptRunner.execute("afterMeleeDamage",
+          { ...base, actor: defenderActor, isAttacker: false });
+      }
+    } catch (err) {
+      game.neuroshima?.log("[DuelLifecycle.afterDamage] error", err);
     }
   }
 
@@ -429,8 +569,7 @@ export class DuelLifecycle {
  *     usuwa z activatedMods (= activatedMeleePreRollMods) → zero zombie activation
  *
  *   deactivateForMelee(args) w script-engine.js:
- *     PROBLEM: czyści tylko enc._effects._tricks, nie state.activatedMeleePreRollMods
- *     FIX (todo Faza 2): wywołać też duel.deactivateMod(this.effect.uuid)
+ *     FIXED (Faza 2): czyści też state.activatedMeleePreRollMods (args.state) i args.duel.activatedMods
  */
 
 /* ══════════════════════════════════════════════════════════════════════════

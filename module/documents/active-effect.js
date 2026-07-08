@@ -424,6 +424,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       dialogDescription: s.dialogDescription ?? "",
       useActionDef:      s.useActionDef      ?? false,
       actionDef:         s.actionDef         ?? null,
+      scope:             s.scope             ?? null,
     }));
 
     const originalTransferType = this.getFlag("neuroshima", "transferType") ?? "owningDocument";
@@ -509,7 +510,12 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       return 0;
     }
     game.neuroshima?.log("[NeuroshimaActiveEffect.applyEffect] applying to actors", { effectName: this.name, targets: resolved.map(a => a.name) });
-    const effectData = [this.convertToApplied(overrides)];
+    const runner = game.neuroshima?.NeuroshimaScriptRunner;
+    const meleeActionUuid = runner?._currentMeleeActionSourceEffectUuid ?? null;
+    const mergedOverrides = meleeActionUuid
+      ? { ...overrides, "flags.neuroshima.fromMeleeActionSourceEffectUuid": meleeActionUuid }
+      : overrides;
+    const effectData = [this.convertToApplied(mergedOverrides)];
     for (const actor of resolved) {
       await actor.applyEffect({ effectData });
     }

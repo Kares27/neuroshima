@@ -184,6 +184,7 @@ export class NeuroshimaScript {
     // declaratively from actionDef rather than executing `code`.
     this.useActionDef = scriptData.useActionDef ?? false;
     this.actionDef = scriptData.actionDef ?? null;
+    this.scope = scriptData.scope ?? null;
     this.effect = effect;
   }
 
@@ -745,6 +746,14 @@ export class NeuroshimaScript {
     const target = actor ?? this.actor;
     const enc = args?.encounter ?? this.getMeleeEncounter(target);
     if (enc?._effects?._tricks) delete enc._effects._tricks[this.effect.id];
+    const uuid = this.effect?.uuid;
+    if (uuid) {
+      const mods = args?.state?.activatedMeleePreRollMods ?? args?.duel?.activatedMods;
+      if (Array.isArray(mods)) {
+        const idx = mods.indexOf(uuid);
+        if (idx !== -1) mods.splice(idx, 1);
+      }
+    }
   }
 
   /**
@@ -2332,12 +2341,13 @@ export class NeuroshimaScript {
       ui.notifications?.warn("applyModEffectsToTargets: no targets — select a token or designate a target.");
       return 0;
     }
+    const _ov = NeuroshimaScriptRunner._withMeleeActionOverrides(overrides);
     const effectData = effects.map(e => {
-      if (typeof e.convertToApplied === "function") return e.convertToApplied(overrides);
+      if (typeof e.convertToApplied === "function") return e.convertToApplied(_ov);
       const d = e.toObject();
       delete d._id;
       d.transfer = false;
-      if (Object.keys(overrides).length) foundry.utils.mergeObject(d, foundry.utils.expandObject(overrides));
+      if (Object.keys(_ov).length) foundry.utils.mergeObject(d, foundry.utils.expandObject(_ov));
       return d;
     });
     for (const actor of resolved) {
@@ -2484,12 +2494,13 @@ export class NeuroshimaScript {
       ui.notifications?.warn("applyEffects: no targets — select a token or designate a target.");
       return 0;
     }
+    const _ov = NeuroshimaScriptRunner._withMeleeActionOverrides(overrides);
     const effectData = valid.map(e => {
-      if (typeof e.convertToApplied === "function") return e.convertToApplied(overrides);
+      if (typeof e.convertToApplied === "function") return e.convertToApplied(_ov);
       const d = e.toObject?.() ?? foundry.utils.deepClone(e);
       delete d._id;
       d.transfer = false;
-      if (Object.keys(overrides).length) foundry.utils.mergeObject(d, foundry.utils.expandObject(overrides));
+      if (Object.keys(_ov).length) foundry.utils.mergeObject(d, foundry.utils.expandObject(_ov));
       return d;
     });
     for (const actor of resolved) {
@@ -3167,6 +3178,10 @@ export class NeuroshimaScript {
     const ctx = this._buildContext(executingActor, executingItem);
     const prev = this._currentArgs;
     this._currentArgs = args;
+    const prevMeleeActionUuid = NeuroshimaScriptRunner._currentMeleeActionSourceEffectUuid;
+    if (args.action?.sourceEffectUuid) {
+      NeuroshimaScriptRunner._currentMeleeActionSourceEffectUuid = args.action.sourceEffectUuid;
+    }
     try {
       const AsyncFunction = Object.getPrototypeOf(async function() {}).constructor;
       let fn;
@@ -3186,6 +3201,7 @@ export class NeuroshimaScript {
       }
     } finally {
       this._currentArgs = prev;
+      NeuroshimaScriptRunner._currentMeleeActionSourceEffectUuid = prevMeleeActionUuid;
     }
   }
 
@@ -3907,6 +3923,15 @@ export class NeuroshimaScriptRunner {
     onDuelEnd:              "On Duel End",
     meleeUpdate:            "Melee Update"
   };
+
+  static _currentMeleeActionSourceEffectUuid = null;
+
+  static _withMeleeActionOverrides(overrides) {
+    const uuid = NeuroshimaScriptRunner._currentMeleeActionSourceEffectUuid;
+    return uuid
+      ? { ...overrides, "flags.neuroshima.fromMeleeActionSourceEffectUuid": uuid }
+      : overrides;
+  }
 
   static _makeHealingModifierProxy() {
     const data = {};

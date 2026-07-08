@@ -19,7 +19,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
-import { DuelContext, DuelSegmentContext, DuelLifecycle } from "./combat-api.js";
+import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline } from "./combat-api.js";
 
 /**
  * Context object for a resolved melee segment.
@@ -2964,8 +2964,12 @@ export class MeleeOpposedChat {
       state.committedBeastQueue  = rawBeastItems.length  > 0 ? rawBeastItems  : null;
       state.committedTrickQueue  = rawTrickItems.length  > 0 ? rawTrickItems  : null;
       // Zapisz metadane sztuczki — używane przy rozstrzygnięciu w fazie responder
-      state.committedTrickId     = committedTrickId;
-      state.committedTrickDamage = committedTrickDamage;
+      state.committedTrickId          = committedTrickId;
+      state.committedTrickDamage      = committedTrickDamage;
+      // effectUuid dla deklarowanej sztuczki — potrzebny do DuelActionPipeline przy resolution
+      state.committedActionEffectUuid = committedTrickId
+        ? (state.trickOnHitScripts?.[committedTrickId]?.effectUuid ?? null)
+        : null;
       state.waitingFor            = "responder";
       await DuelLifecycle.segmentStart(
         DuelContext.fromFlag(state),
@@ -3226,7 +3230,9 @@ export class MeleeOpposedChat {
           outcome = responderSuccesses >= ownerSuccesses ? "interrupted" : "nonCombat";
         }
 
-        if (outcome === "hit" || outcome === "takeover" || outcome === "draw") {
+        const _isMeleeActionOutcome = outcome === "hit" || outcome === "takeover" || outcome === "draw";
+        const _isMissOutcome = outcome === "nothing" && (declaredAction === "attack" || declaredAction === "trick");
+        if (_isMeleeActionOutcome || _isMissOutcome) {
           const _atkUuid  = state.attackerTokenUuid || state.attackerUuid;
           const _defUuid  = state.defenderTokenUuid || state.defenderUuid;
           const _atkDoc   = fromUuidSync(_atkUuid);
@@ -3249,7 +3255,13 @@ export class MeleeOpposedChat {
             hitEntry:          _currentHit,
             messageId:         message.id
           });
-          const _duel    = DuelContext.fromFlag(state);
+          const _duel     = DuelContext.fromFlag(state);
+          const _pipeline = new DuelActionPipeline();
+          if (_ctx.action) {
+            const _declaredAction = MeleeAction.fromDescriptor(_ctx.action, _duel);
+            _pipeline.declare(_declaredAction);
+          }
+          _duel.actions = _pipeline;
           const _segment = DuelSegmentContext.fromResolution({
             duel:               _duel,
             N,
@@ -3263,7 +3275,9 @@ export class MeleeOpposedChat {
             action:             _ctx.action ?? null,
             trickId:            _segmentTrickId
           });
+          await DuelLifecycle.beforeAction(_duel, _segment, _ctx);
           await DuelLifecycle.segmentResolve(_duel, _segment, _ctx);
+          await DuelLifecycle.afterAction(_duel, _segment, _ctx);
         }
 
         if (isOwnerAttacker) {
@@ -4429,28 +4443,26 @@ export class MeleeOpposedChat {
         const escapeeActor = escapeeDoc?.actor ?? escapeeDoc;
         if (escapeeActor) targetActor = escapeeActor;
       }
-      // Sztuczki gracza mają stały typ obrażeń niezależny od profilu broni.
-      // Aby applyDamageToActor wybrał właściwy typ, nadpisujemy wszystkie trzy
-      // pola damageMelee wartością z sztuczki — tier zostanie obliczony z hit.tier
-      // i dla każdej wartości indeksu zwróci tę samą cyfrę.
       const isTrickHit = !!hit.trickId;
+
+      await DuelLifecycle.beforeDamage(rd, hit, attackerActor, defenderActor, targetActor);
 
       if (isTrickHit && rd.trickOnHitScripts?.[hit.trickId]) {
         // Trick has an onHitScript — fire it via the runner and skip normal damage.
         await MeleeActionRunner.fireOnHitScript(hit, rd, attackerActor, targetActor);
-        continue;
-      }
-
-      if (isTrickHit) {
+        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, null);
+      } else if (isTrickHit) {
         // Trick with inline damage spec — apply via runner (routes through CombatHelper pipeline).
         const trickResult = await MeleeActionRunner.applyTrickHitDamage(hit, {
           attackerActor, targetActor, weaponItem, rd, CombatHelper
         });
-        if (trickResult.woundIds.length === 0 && trickResult.results.length === 0) continue;
-        allResults.push(...trickResult.results);
-        allWoundIds.push(...trickResult.woundIds);
-        totalReduced += trickResult.reduced;
-        allReducedDetails.push(...trickResult.reducedDetails);
+        if (trickResult.woundIds.length > 0 || trickResult.results.length > 0) {
+          allResults.push(...trickResult.results);
+          allWoundIds.push(...trickResult.woundIds);
+          totalReduced += trickResult.reduced;
+          allReducedDetails.push(...trickResult.reducedDetails);
+        }
+        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, trickResult);
       } else if (hit.isBlockDamage) {
         const attackData = {
           isMelee: true,
@@ -4475,6 +4487,7 @@ export class MeleeOpposedChat {
           totalReduced += batch.reducedProjectiles ?? 0;
           allReducedDetails.push(...(batch.reducedDetails ?? []));
         }
+        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, batch ?? null);
       } else {
         const attackData = {
           isMelee: true,
@@ -4499,6 +4512,7 @@ export class MeleeOpposedChat {
           totalReduced += batch.reducedProjectiles ?? 0;
           allReducedDetails.push(...(batch.reducedDetails ?? []));
         }
+        await DuelLifecycle.afterDamage(rd, hit, attackerActor, defenderActor, targetActor, batch ?? null);
       }
     }
 
@@ -4506,6 +4520,28 @@ export class MeleeOpposedChat {
     // Each entry is a "trick:ID:damage" string; the runner handles script + damage application.
     if (rd.pendingTrickQueue?.length > 0) {
       for (const trickEntry of rd.pendingTrickQueue) {
+        if (trickEntry?.startsWith("trick:")) {
+          const _qfc = trickEntry.indexOf(":");
+          const _qsc = trickEntry.indexOf(":", _qfc + 1);
+          const _qTrickId = _qsc > _qfc + 1
+            ? trickEntry.slice(_qfc + 1, _qsc)
+            : trickEntry.slice(_qfc + 1);
+          const _qDesc = _qTrickId ? rd.trickOnHitScripts?.[_qTrickId] : null;
+          if (_qDesc && typeof _qDesc !== "string" && _qDesc.effectUuid) {
+            const _qDuel   = DuelContext.fromFlag(rd);
+            const _qAction = MeleeAction.fromDescriptor({
+              id:               _qTrickId,
+              sourceEffectUuid: _qDesc.effectUuid,
+              name:             _qDesc.name ?? _qTrickId
+            }, _qDuel);
+            _qAction.status = "queued";
+            await _qAction.executeTrigger("onMeleeActionQueued", {
+              actor:   attackerActor,
+              duel:    _qDuel,
+              trickId: _qTrickId
+            });
+          }
+        }
         const queueResult = await MeleeActionRunner.applyQueueTrickEntry(trickEntry, {
           attackerActor, defenderActor, weaponItem, rd, CombatHelper
         });
