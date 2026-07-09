@@ -417,8 +417,114 @@ export class DuelLifecycle {
   }
 
   /**
+   * Odpal preOpposedAttacker dla aktora-atakującego (role: initiative owner).
+   * Wywoływany PRZED obliczeniem sukcesów segmentu.
+   * Skrypt może modyfikować args.participant.successMod, args.successMod (oba odczytywane).
+   *
+   * @param {DuelContext}        duel
+   * @param {DuelSegmentContext} segment  - fromPreResolution
+   * @param {Actor|null}         ownerActor  - initiative owner (rola atakującego)
+   * @returns {Promise<{successMod: number}>}
+   */
+  static async preOpposedAttacker(duel, segment, ownerActor) {
+    const ctx = { successMod: 0, difficultyTarget: 0 };
+    try {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      if (ownerActor) {
+        const _args = {
+          ...buildSegmentArgs(duel, ownerActor, segment),
+          encounter:      null,
+          participant:    ctx,
+          attacker:       ctx,
+          difficultyTarget: 0,
+          mode:           "attack",
+          isAttacker:     true
+        };
+        await NeuroshimaScriptRunner.execute("preOpposedAttacker", _args);
+        ctx.successMod = (_args.participant?.successMod ?? 0) + (typeof _args.successMod === "number" ? _args.successMod - 0 : 0);
+      }
+    } catch (err) {
+      game.neuroshima?.log("[DuelLifecycle.preOpposedAttacker] error", err);
+    }
+    return ctx;
+  }
+
+  /**
+   * Odpal preOpposedDefender dla aktora-obrońcy (role: responder).
+   * Wywoływany PRZED obliczeniem sukcesów segmentu.
+   * Skrypt może modyfikować args.participant.successMod/blockDamageShift (lub args.* bezpośrednio).
+   * blockDamageShift < 0 → obrony z remisem zadają obrażenia o N poziomów niżej.
+   *
+   * @param {DuelContext}        duel
+   * @param {DuelSegmentContext} segment  - fromPreResolution
+   * @param {Actor|null}         responderActor  - responder (rola obrońcy)
+   * @returns {Promise<{successMod: number, blockDamageShift: number}>}
+   */
+  static async preOpposedDefender(duel, segment, responderActor) {
+    const ctx = { successMod: 0, blockDamageShift: 0, difficultyTarget: 0 };
+    try {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      if (responderActor) {
+        const _args = {
+          ...buildSegmentArgs(duel, responderActor, segment),
+          encounter:       null,
+          participant:     ctx,
+          defender:        ctx,
+          difficultyTarget: 0,
+          mode:            "defense",
+          isAttacker:      false
+        };
+        await NeuroshimaScriptRunner.execute("preOpposedDefender", _args);
+        const _pCtx = _args.participant ?? _args.defender ?? ctx;
+        ctx.successMod      = (_pCtx.successMod      ?? 0);
+        ctx.blockDamageShift = (_pCtx.blockDamageShift ?? 0);
+      }
+    } catch (err) {
+      game.neuroshima?.log("[DuelLifecycle.preOpposedDefender] error", err);
+    }
+    return ctx;
+  }
+
+  /**
+   * Odpal meleeUpdate dla obu uczestników duela w kontekście karty duelowej.
+   * Używany do faz: "attack-committed", "exchange-resolved", "segment-advance", "turn-end".
+   *
+   * @param {string}      phase   - faza lifecycle
+   * @param {DuelContext} duel
+   * @param {object}      [state] - mutable state (do odczytu przez skrypty)
+   * @returns {Promise<void>}
+   */
+  static async meleeUpdate(phase, duel, state = null) {
+    try {
+      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+      const atk = duel.attackerActor;
+      const def = duel.defenderActor;
+      const _baseArgs = {
+        phase,
+        encounter:     null,
+        encounterId:   null,
+        participant:   null,
+        participantId: null,
+        state:         state ?? duel
+      };
+      if (atk) {
+        await NeuroshimaScriptRunner.execute("meleeUpdate", {
+          ..._baseArgs, actor: atk, isAttacker: true
+        });
+      }
+      if (def) {
+        await NeuroshimaScriptRunner.execute("meleeUpdate", {
+          ..._baseArgs, actor: def, isAttacker: false
+        });
+      }
+    } catch (err) {
+      game.neuroshima?.log("[DuelLifecycle.meleeUpdate] error", err);
+    }
+  }
+
+  /**
    * Odpal beforeMeleeAction dla obu uczestników.
-   * Wywoływany przed obliczeniem outcome — args.segment.outcome jest null.
+   * Wywoływany PRZED obliczeniem outcome — args.segment.outcome jest null.
    * Skrypty mogą modyfikować state/duel.hits przed rozstrzygnięciem.
    * Używa DuelSegmentContext.fromPreResolution (successes znane, outcome = null).
    *
@@ -1449,12 +1555,14 @@ export class DuelDeclarationEngine {
 
     state.waitingFor = "responder";
 
+    const _commitDuel = DuelContext.fromFlag(state);
     await DuelLifecycle.segmentStart(
-      DuelContext.fromFlag(state),
+      _commitDuel,
       DuelSegmentContext.fromOwnerCommit({
         N: diceIndices.length, ownerAction: declaredAction, ownerDiceIndices: diceIndices
       })
     );
+    await DuelLifecycle.meleeUpdate("attack-committed", _commitDuel, state);
     await onRender(message, state);
     return true;
   }
@@ -1550,8 +1658,9 @@ export class MeleeActionContext {
  * Obsługuje:
  *   • porównanie sukcesów (attack/trick vs defend, berserker, flee, exit, nonCombat)
  *   • rejestrację hitów w state.hits
- *   • triggery: preOpposedAttacker, opposedAttacker, opposedDefender
+ *   • triggery: preOpposedAttacker, preOpposedDefender, opposedAttacker, opposedDefender
  *   • cykl DuelLifecycle: beforeAction → segmentResolve → afterAction
+ *   • meleeUpdate: "exchange-resolved", "segment-advance"
  *   • akumulację trick queue
  *   • ustalenie wyniku końcowego i zapis flagi opposedResult
  *   • trigger onDuelEnd przez DuelLifecycle.end
@@ -1649,32 +1758,36 @@ export class DuelSegmentEngine {
 
       const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
 
-      {
-        const _paUuid  = isOwnerAttacker
-          ? (state.attackerTokenUuid || state.attackerUuid)
-          : (state.defenderTokenUuid || state.defenderUuid);
-        const _paDoc   = fromUuidSync(_paUuid);
-        const _paActor = _paDoc?.actor ?? _paDoc;
-        if (_paActor) {
-          await NeuroshimaScriptRunner.execute("preOpposedAttacker", {
-            actor: _paActor, encounter: null, participant: null,
-            difficultyTarget: 0, mode: "attack"
-          });
-        }
-      }
+      const _preDuel    = DuelContext.fromFlag(state);
+      const _preSegment = DuelSegmentContext.fromPreResolution({
+        N, ownerAction: declaredAction,
+        ownerDiceIndices:     ownerIndices,
+        responderDiceIndices: diceIndices,
+        ownerSuccesses:       ownerSuccessCount,
+        responderSuccesses:   responderSuccessCount,
+        duel: _preDuel
+      });
 
-      {
-        const _preDuel    = DuelContext.fromFlag(state);
-        const _preSegment = DuelSegmentContext.fromPreResolution({
-          N, ownerAction: declaredAction,
-          ownerDiceIndices:     ownerIndices,
-          responderDiceIndices: diceIndices,
-          ownerSuccesses:       ownerSuccessCount,
-          responderSuccesses:   responderSuccessCount,
-          duel: _preDuel
-        });
-        await DuelLifecycle.beforeAction(_preDuel, _preSegment, null);
-      }
+      const _ownerUuidPre  = isOwnerAttacker
+        ? (state.attackerTokenUuid || state.attackerUuid)
+        : (state.defenderTokenUuid || state.defenderUuid);
+      const _ownerDocPre   = fromUuidSync(_ownerUuidPre);
+      const _ownerActorPre = _ownerDocPre?.actor ?? _ownerDocPre;
+
+      const _respUuidPre  = isOwnerAttacker
+        ? (state.defenderTokenUuid || state.defenderUuid)
+        : (state.attackerTokenUuid || state.attackerUuid);
+      const _respDocPre   = fromUuidSync(_respUuidPre);
+      const _respActorPre = _respDocPre?.actor ?? _respDocPre;
+
+      const _preOwner = await DuelLifecycle.preOpposedAttacker(_preDuel, _preSegment, _ownerActorPre);
+      const _preResp  = await DuelLifecycle.preOpposedDefender(_preDuel, _preSegment, _respActorPre);
+
+      const ownerEffective     = Math.max(0, ownerSuccessCount + (_preOwner.successMod ?? 0));
+      const responderEffective = Math.max(0, responderSuccessCount + (_preResp.successMod ?? 0));
+      const _preBlockDmgShift  = _preResp.blockDamageShift ?? 0;
+
+      await DuelLifecycle.beforeAction(_preDuel, _preSegment, null);
 
       if (declaredAction === "attack" || declaredAction === "trick") {
         if (responderAction === "attack") {
@@ -1698,13 +1811,13 @@ export class DuelSegmentEngine {
             state.counterHits.push({ tier: N, damageType: state[`defenderDamage${N}`] ?? "D" });
           }
 
-          if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
-          else if (ownerSuccessCount < responderSuccessCount)  outcome = "takeover";
-          else if (ownerSuccessCount > 0)                      outcome = "draw";
-          else                                                  outcome = "nothing";
+          if      (ownerEffective > responderEffective)  outcome = "hit";
+          else if (ownerEffective < responderEffective)  outcome = "takeover";
+          else if (ownerEffective > 0)                   outcome = "draw";
+          else                                            outcome = "nothing";
 
-          segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
-          segDefenseVal = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
+          segAttackVal  = isOwnerAttacker ? ownerEffective    : responderEffective;
+          segDefenseVal = isOwnerAttacker ? responderEffective : ownerEffective;
 
           if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
           state.committedTrickId     = null;
@@ -1728,18 +1841,18 @@ export class DuelSegmentEngine {
                 defender: {},
                 attackerId: isOwnerAttacker ? state.attackerUuid : state.defenderUuid,
                 defenderId: isOwnerAttacker ? state.defenderUuid : state.attackerUuid,
-                attackerSuccesses: ownerSuccessCount,
-                defenderSuccesses: responderSuccessCount,
+                attackerSuccesses: ownerEffective,
+                defenderSuccesses: responderEffective,
                 blockDamageShift: 0
               });
             }
           }
 
         } else {
-          if      (ownerSuccessCount > responderSuccessCount)  outcome = "hit";
-          else if (ownerSuccessCount < responderSuccessCount)  outcome = "takeover";
-          else if (ownerSuccessCount > 0)                      outcome = "draw";
-          else                                                  outcome = "nothing";
+          if      (ownerEffective > responderEffective)  outcome = "hit";
+          else if (ownerEffective < responderEffective)  outcome = "takeover";
+          else if (ownerEffective > 0)                   outcome = "draw";
+          else                                            outcome = "nothing";
 
           if (outcome === "hit") {
             const hitDmgType = declaredAction === "trick" && state.committedTrickDamage
@@ -1754,8 +1867,8 @@ export class DuelSegmentEngine {
             await MeleeActionRunner.onHit({ state, hitEntry, isOwnerAttacker });
           }
 
-          segAttackVal  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
-          segDefenseVal = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
+          segAttackVal  = isOwnerAttacker ? ownerEffective    : responderEffective;
+          segDefenseVal = isOwnerAttacker ? responderEffective : ownerEffective;
 
           if (outcome === "takeover") state.initiativeOwnerSide = isOwnerAttacker ? "defender" : "attacker";
           state.committedTrickId     = null;
@@ -1777,18 +1890,18 @@ export class DuelSegmentEngine {
               attacker: {},
               defender: _defObj,
               participant: _defObj,
-              attackerSuccesses: ownerSuccessCount,
-              defenderSuccesses: responderSuccessCount,
+              attackerSuccesses: ownerEffective,
+              defenderSuccesses: responderEffective,
               blockDamageShift: 0
             };
             await NeuroshimaScriptRunner.execute("opposedDefender", _oppArgs);
-            const _bds = (_oppArgs.defender.blockDamageShift || 0) + (_oppArgs.blockDamageShift || 0);
+            const _bds = (_oppArgs.defender.blockDamageShift || 0) + (_oppArgs.blockDamageShift || 0) + _preBlockDmgShift;
             if (_bds !== 0) {
               if (!state.blockDamageShiftByActor) state.blockDamageShiftByActor = {};
               state.blockDamageShiftByActor[_oppDefUuid] = _bds;
             }
             const _effectiveShift = _bds || (state.blockDamageShiftByActor?.[_oppDefUuid] || 0);
-            if (_effectiveShift !== 0 && outcome === "draw" && ownerSuccessCount > 0) {
+            if (_effectiveShift !== 0 && outcome === "draw" && ownerEffective > 0) {
               const _baseDmg    = state[`damage${N}`] ?? "D";
               const _shiftedDmg = _shiftDamageTypeUnclamped(_baseDmg, _effectiveShift);
               if (_shiftedDmg) state.hits.push({ tier: N, damageType: _shiftedDmg, isBlockDamage: true });
@@ -1813,8 +1926,8 @@ export class DuelSegmentEngine {
                 defender: {},
                 attackerId: isOwnerAttacker ? state.attackerUuid : state.defenderUuid,
                 defenderId: isOwnerAttacker ? state.defenderUuid : state.attackerUuid,
-                attackerSuccesses: ownerSuccessCount,
-                defenderSuccesses: responderSuccessCount,
+                attackerSuccesses: ownerEffective,
+                defenderSuccesses: responderEffective,
                 blockDamageShift: 0
               });
             }
@@ -1839,8 +1952,8 @@ export class DuelSegmentEngine {
         const _defDoc   = fromUuidSync(_defUuid);
         const _atkActor = _atkDoc?.actor ?? _atkDoc;
         const _defActor = _defDoc?.actor ?? _defDoc;
-        const _atkSucc  = isOwnerAttacker ? ownerSuccessCount    : responderSuccessCount;
-        const _defSucc  = isOwnerAttacker ? responderSuccessCount : ownerSuccessCount;
+        const _atkSucc  = isOwnerAttacker ? ownerEffective    : responderEffective;
+        const _defSucc  = isOwnerAttacker ? responderEffective : ownerEffective;
         const _currentHit = outcome === "hit" && state.hits?.length
           ? state.hits[state.hits.length - 1] : null;
         const _ctx = MeleeActionContext.fromSegment({
@@ -1868,8 +1981,8 @@ export class DuelSegmentEngine {
           ownerAction:          declaredAction,
           ownerDiceIndices:     ownerIndices,
           responderDiceIndices: diceIndices,
-          ownerSuccesses:       ownerSuccessCount,
-          responderSuccesses:   responderSuccessCount,
+          ownerSuccesses:       ownerEffective,
+          responderSuccesses:   responderEffective,
           outcome,
           hitEntry:             _currentHit,
           action:               _ctx.action ?? null,
@@ -1877,6 +1990,7 @@ export class DuelSegmentEngine {
         });
         await DuelLifecycle.segmentResolve(_duel, _segment, _ctx);
         await DuelLifecycle.afterAction(_duel, _segment, _ctx);
+        await DuelLifecycle.meleeUpdate("exchange-resolved", _duel, state);
       }
 
       if (isOwnerAttacker) {
@@ -1921,6 +2035,7 @@ export class DuelSegmentEngine {
     if (hasNext) {
       state.currentSegment = nextSegment;
       state.waitingFor     = "initiativeOwner";
+      await DuelLifecycle.meleeUpdate("segment-advance", DuelContext.fromFlag(state), state);
     } else {
       state.status     = "done";
       state.waitingFor = null;

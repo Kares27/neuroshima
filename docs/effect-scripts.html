@@ -1775,66 +1775,87 @@ args.participant.skillLabel = <span class="kw">this</span>.<span class="fn">getS
   </div>
 
   <h3 id="trigger-preOpposedAttacker">preOpposedAttacker — <em>Pre-Opposed Attacker</em></h3>
-  <p>Uruchamiany na początku rozwiązywania wymiany walki wręcz (tryb 1), na aktorze będącym <strong>atakującym</strong>, zanim policzone zostaną sukcesy. Pozwala modyfikować efektywny próg trudności testu atakującego. Modyfikuj <code>args.difficultyTarget</code> — wyższa wartość = łatwiej (więcej sukcesów), niższa = trudniej.</p>
+  <p>Uruchamiany na początku rozwiązywania wymiany walki wręcz, na aktorze będącym <strong>posiadaczem inicjatywy (atakującym w tym segmencie)</strong>, <em>zanim</em> zostaną policzone efektywne sukcesy. Pozwala modyfikować liczbę efektywnych sukcesów atakującego przez <code>args.participant.successMod</code>. Wynik jest doliczany do raw sukcesów z kości przed porównaniem z obrońcą.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
-    <tr><td>args.actor</td><td>Actor</td><td>Aktor-atakujący</td></tr>
-    <tr><td>args.participant</td><td>object</td><td>Dane uczestnika walki (pool, wybrany manewrów, itp.)</td></tr>
-    <tr><td>args.encounter</td><td>object</td><td>Pełny stan pojedynku (MeleeEncounter)</td></tr>
-    <tr><td>args.difficultyTarget</td><td>number</td><td><strong>Modyfikowalny</strong> próg trudności dla kości atakującego</td></tr>
-    <tr><td>args.mode</td><td>string</td><td>Zawsze <code>"attack"</code> dla tego wyzwalacza</td></tr>
+    <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor posiadający inicjatywę (atakujący w tym segmencie)</td></tr>
+    <tr><td><code>args.participant</code></td><td>object</td><td>Akumulator modyfikatorów: <code>{ successMod, difficultyTarget }</code>. <strong>Pisz do <code>args.participant.successMod</code></strong> — silnik sumuje tę wartość z raw sukcesami po triggerze.</td></tr>
+    <tr><td><code>args.attacker</code></td><td>object</td><td>Alias do <code>args.participant</code> — ta sama referencja.</td></tr>
+    <tr><td><code>args.attackerActor</code></td><td>Actor</td><td>Globalny atakujący (strona inicjatywy)</td></tr>
+    <tr><td><code>args.defenderActor</code></td><td>Actor</td><td>Globalny obrońca (strona respondentem)</td></tr>
+    <tr><td><code>args.duel</code></td><td>DuelContext</td><td>Kontekst duela (kości, historia segmentów, stan)</td></tr>
+    <tr><td><code>args.segment</code></td><td>DuelSegmentContext</td><td>Kontekst segmentu — N, ownerAction, raw sukcesy obu stron. outcome = null (jeszcze nieznane).</td></tr>
+    <tr><td><code>args.attackerSuccesses</code></td><td>number</td><td>Raw sukcesy atakującego z kości (przed successMod)</td></tr>
+    <tr><td><code>args.defenderSuccesses</code></td><td>number</td><td>Raw sukcesy obrońcy z kości (przed successMod)</td></tr>
+    <tr><td><code>args.diceCount</code></td><td>number</td><td>Tier segmentu N (1–3 kości)</td></tr>
+    <tr><td><code>args.encounter</code></td><td>null</td><td>Zawsze <code>null</code> — nie dostępny w tym triggerze</td></tr>
+    <tr><td><code>args.mode</code></td><td>string</td><td>Zawsze <code>"attack"</code> dla tego wyzwalacza</td></tr>
+    <tr><td><code>args.isAttacker</code></td><td>boolean</td><td>Zawsze <code>true</code> — ten trigger odpala się tylko na posiadaczu inicjatywy</td></tr>
   </tbody></table>
+  <div class="callout info">
+    <strong>successMod — jak odczytywany przez silnik:</strong><br>
+    Silnik odczytuje <code>args.participant.successMod</code> po triggerze i oblicza:<br>
+    <code>ownerEffective = Math.max(0, rawSuccesses + participant.successMod)</code><br>
+    Wynik <code>ownerEffective</code> jest używany we wszystkich porównaniach segmentu (hit/takeover/draw/nothing), w triggerach <code>opposedAttacker</code>/<code>opposedDefender</code> i w <code>MeleeActionContext</code>.
+  </div>
 
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">preOpposedAttacker</span> Bonus do ataku gdy aktor ma aktywną kondycję wspomagającą</div>
-    <pre><code><span class="cmt">// Przykład ogólny: jeśli atakujący ma kondycję "focused" → +10 do progu ataku</span>
+    <div class="example-header"><span class="trigger-badge">preOpposedAttacker</span> +1 efektywny sukces gdy aktor ma kondycję "skupiony"</div>
+    <pre><code><span class="cmt">// Jeśli atakujący ma kondycję "focused" → +1 efektywny sukces w tym segmencie</span>
 <span class="kw">if</span> (args.actor.statuses.<span class="fn">has</span>(<span class="str">"focused"</span>)) {
-  args.difficultyTarget += <span class="num">10</span>;
+  args.participant.successMod += <span class="num">1</span>;
 }</code></pre>
   </div>
 
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">dialog</span> Mutant na śniadanie — gracz wybiera bonus przed testem</div>
-    <p style="font-size:0.88em;color:var(--text-dim);margin:4px 1rem 6px;">
-      Cecha "Mutant na śniadanie" daje bonus do testów przeciwko mutantom, ale nie jesteśmy w stanie automatycznie wykryć kiedy wróg jest mutantem. Zamiast tego dajemy graczowi możliwość ręcznego wybrania bonusu w dialogu rzutu.
-    </p>
-    <pre><code><span class="cmt">// Trigger: dialog — pojawia się PRZED rzutem każdego testu aktora posiadającego tę cechę.</span>
-<span class="cmt">// Gracz sam decyduje czy przeciwnik jest mutantem i czy bonus się stosuje.</span>
-args.fields.mod -= <span class="num">20</span>; <span class="cmt">// -20 PT = łatwiejszy test (modifier działa odwrotnie — niższy = łatwiej)</span></code></pre>
+    <div class="example-header"><span class="trigger-badge">preOpposedAttacker</span> Boa – Pochwycenie · usuń marker przy przejęciu Inicjatywy</div>
+    <pre><code><span class="cmt">// Ten trigger odpala się gdy TEN aktor jest posiadaczem inicjatywy</span>
+<span class="cmt">// = przejął Inicjatywę → efekt Pochwycenia wygasa natychmiast</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
   </div>
 
   <h3 id="trigger-preOpposedDefender">preOpposedDefender — <em>Pre-Opposed Defender</em></h3>
-  <p>Analogiczny do <code>preOpposedAttacker</code>, ale uruchamiany na aktorze będącym <strong>obrońcą</strong>. Pozwala modyfikować efektywny próg trudności testu obronnego. Wyższa wartość = łatwiej się bronić.</p>
+  <p>Analogiczny do <code>preOpposedAttacker</code>, ale uruchamiany na aktorze będącym <strong>respondentem (obrońcą w tym segmencie)</strong>, zanim zostaną policzone efektywne sukcesy. Pozwala modyfikować liczbę efektywnych sukcesów obrońcy (<code>args.participant.successMod</code>) oraz ustawić prewencyjny <code>blockDamageShift</code> na wypadek bloku w tym segmencie.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
-    <tr><td>args.actor</td><td>Actor</td><td>Aktor-obrońca</td></tr>
-    <tr><td>args.participant</td><td>object</td><td>Dane uczestnika walki (pool, wybrany manewrów, itp.)</td></tr>
-    <tr><td>args.encounter</td><td>object</td><td>Pełny stan pojedynku (MeleeEncounter)</td></tr>
-    <tr><td>args.difficultyTarget</td><td>number</td><td><strong>Modyfikowalny</strong> próg trudności dla kości obrońcy</td></tr>
-    <tr><td>args.mode</td><td>string</td><td>Zawsze <code>"defense"</code> dla tego wyzwalacza</td></tr>
+    <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor-respondent (obrońca w tym segmencie)</td></tr>
+    <tr><td><code>args.participant</code></td><td>object</td><td>Akumulator modyfikatorów: <code>{ successMod, blockDamageShift, difficultyTarget }</code>. Pisz do <code>args.participant.successMod</code> i <code>args.participant.blockDamageShift</code>.</td></tr>
+    <tr><td><code>args.defender</code></td><td>object</td><td>Alias do <code>args.participant</code> — ta sama referencja.</td></tr>
+    <tr><td><code>args.attackerActor</code></td><td>Actor</td><td>Globalny atakujący</td></tr>
+    <tr><td><code>args.defenderActor</code></td><td>Actor</td><td>Globalny obrońca</td></tr>
+    <tr><td><code>args.duel</code></td><td>DuelContext</td><td>Kontekst duela</td></tr>
+    <tr><td><code>args.segment</code></td><td>DuelSegmentContext</td><td>Kontekst segmentu — N, ownerAction, raw sukcesy obu stron. outcome = null (jeszcze nieznane).</td></tr>
+    <tr><td><code>args.attackerSuccesses</code></td><td>number</td><td>Raw sukcesy atakującego z kości (przed successMod)</td></tr>
+    <tr><td><code>args.defenderSuccesses</code></td><td>number</td><td>Raw sukcesy obrońcy z kości (przed successMod)</td></tr>
+    <tr><td><code>args.diceCount</code></td><td>number</td><td>Tier segmentu N (1–3 kości)</td></tr>
+    <tr><td><code>args.encounter</code></td><td>null</td><td>Zawsze <code>null</code> — nie dostępny w tym triggerze</td></tr>
+    <tr><td><code>args.mode</code></td><td>string</td><td>Zawsze <code>"defense"</code> dla tego wyzwalacza</td></tr>
+    <tr><td><code>args.isAttacker</code></td><td>boolean</td><td>Zawsze <code>false</code> — ten trigger odpala się tylko na respondencie</td></tr>
   </tbody></table>
 
-  <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Bonus do obrony w terenie (schron, osłona)</div>
-    <pre><code><span class="cmt">// Efekt "Osłona" — +15 do progu obrony gdy aktor jest w osłonie</span>
-args.difficultyTarget += <span class="num">15</span>;</code></pre>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Kara do obrony gdy ogłuszony</div>
-    <pre><code><span class="cmt">// Jeśli obrońca ma kondycję "stunned" — -20 do progu obrony (trudniej się bronić)</span>
-<span class="kw">if</span> (args.actor.statuses.<span class="fn">has</span>(<span class="str">"stunned"</span>)) {
-  args.difficultyTarget -= <span class="num">20</span>;
-}</code></pre>
-  </div>
-
   <div class="callout info">
-    <strong>Persist przez uczestnika:</strong> Dowolna właściwość zapisana na <code>args.participant</code> jest dostępna po liczeniu sukcesów podczas rozdzielczości. To najczystsza metoda przeniesienia intencji z <code>preOpposedDefender</code> do etapu aplikowania obrażeń — bez flag, bez efektów tymczasowych.<br>
-    <strong>Kluczowa właściwość: <code>args.participant.blockDamageShift</code></strong><br>
-    Ujemna wartość = obrażenia obniżone o N poziomów na torze (D→L→C→K) gdy cios zostaje zablokowany. D−1 = brak obrażeń. Przykład: Garda — obrona blokuje cios ale obrażenia redukowane o 1 poziom.
-    <pre style="margin-top:0.5rem"><code><span class="cmt">// preOpposedDefender — ustaw, by silnik przy bloku zadał obrażenia 1 tier niżej</span>
+    <strong>successMod i blockDamageShift — jak odczytywane przez silnik:</strong><br>
+    • <code>successMod</code> → <code>responderEffective = Math.max(0, rawSuccesses + participant.successMod)</code><br>
+    • <code>blockDamageShift</code> → sumowany z wartością z późniejszego triggera <code>opposedDefender.blockDamageShift</code>. Łączna wartość (pre + post) decyduje o redukcji obrażeń przy wyniku <code>"draw"</code> (równe sukcesy &gt; 0).<br><br>
+    <strong>Garda — wzorzec jednorazowy (tylko bieżący segment):</strong>
+    <pre style="margin-top:0.3rem"><code><span class="cmt">// preOpposedDefender — marker jednorazowy: ustaw shift i usuń siebie</span>
 args.participant.blockDamageShift = -<span class="num">1</span>;
-<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// marker jednorazowy</span></code></pre>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>(); <span class="cmt">// marker jednorazowy — działa tylko w tym segmencie</span></code></pre>
+    <strong>Garda — wzorzec persystentny (cała wymiana melee):</strong> Użyj <code>opposedDefender</code> zamiast <code>preOpposedDefender</code> — patrz sekcja poniżej.
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preOpposedDefender</span> +1 efektywny sukces w obronie gdy aktor ma efekt osłony</div>
+    <pre><code><span class="cmt">// Efekt "Osłona" — +1 efektywny sukces obrońcy w tym segmencie</span>
+args.participant.successMod += <span class="num">1</span>;</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">preOpposedDefender</span> Kara do obrony gdy ogłuszony (−1 sukces)</div>
+    <pre><code><span class="cmt">// Jeśli obrońca ma kondycję "stunned" — −1 efektywny sukces (trudniej się bronić)</span>
+<span class="kw">if</span> (args.actor.statuses.<span class="fn">has</span>(<span class="str">"stunned"</span>)) {
+  args.participant.successMod -= <span class="num">1</span>;
+}</code></pre>
   </div>
 
   <h3 id="trigger-opposedAttacker">opposedAttacker — <em>Opposed Attacker</em></h3>
@@ -1925,81 +1946,71 @@ args.encounter._rrrroooaaarrr.<span class="fn">push</span>(args.defenderId);
   </div>
 
   <h3 id="trigger-meleeUpdate">meleeUpdate — <em>Melee Update</em></h3>
-  <p>Odpala się w <strong>kluczowych punktach przejścia</strong> stanu maszyny stanów melee — analogicznie do <code>updateCombat</code> w Foundry, ale scoped do wewnętrznego lifecycle pojedynku. Odpala się dla <strong>każdego aktywnego uczestnika</strong>. Użyj do efektów zależnych od segmentu lub końca tury.</p>
+  <p>Odpala się w <strong>kluczowych punktach przejścia</strong> stanu karty duelowej — analogicznie do <code>updateCombat</code> w Foundry, ale scoped do wewnętrznego lifecycle wymiany melee. Odpala się dla <strong>obu uczestników</strong> (atakującego i obrońcy). Użyj do efektów zależnych od fazy wymiany.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td><code>args.actor</code></td><td>Actor</td><td>Aktor-uczestnik</td></tr>
     <tr><td><code>args.phase</code></td><td>string</td><td>Faza przejścia — patrz tabela poniżej</td></tr>
-    <tr><td><code>args.encounter</code></td><td>object</td><td>Stan pojedynku (mutable — zmiany są zapisywane)</td></tr>
-    <tr><td><code>args.encounterId</code></td><td>string</td><td>ID pojedynku</td></tr>
-    <tr><td><code>args.participant</code></td><td>object</td><td>Dane uczestnika (referencja)</td></tr>
-    <tr><td><code>args.participantId</code></td><td>string</td><td>Klucz uczestnika w mapie</td></tr>
+    <tr><td><code>args.isAttacker</code></td><td>boolean</td><td>Czy ten aktor jest globalnym atakującym (stroną inicjatywy)</td></tr>
+    <tr><td><code>args.state</code></td><td>object</td><td>Mutable stan karty duelowej — <code>state.hits</code>, <code>state.segments</code>, <code>state.currentSegment</code>, itp.</td></tr>
+    <tr><td><code>args.encounter</code></td><td>null</td><td>Zawsze <code>null</code> — nie dostępny w tym triggerze</td></tr>
+    <tr><td><code>args.participant</code></td><td>null</td><td>Zawsze <code>null</code> — nie dostępny w tym triggerze</td></tr>
+    <tr><td><code>args.participantId</code></td><td>null</td><td>Zawsze <code>null</code> — nie dostępny w tym triggerze</td></tr>
   </tbody></table>
   <table style="margin-top:0.5rem">
     <thead><tr><th>phase</th><th>Kiedy odpala się</th><th>Typowe użycie</th></tr></thead>
     <tbody>
-      <tr><td><code>"pool-ready"</code></td><td>Wszyscy uczestnicy rzucili 3k20 — zaraz przed fazą wyboru kości ataku</td><td>Efekty "przed pierwszą wymianą tury", warunki wejścia w manewry</td></tr>
-      <tr><td><code>"attack-committed"</code></td><td>Atakujący zatwierdził swoje kości — obrońca jeszcze nie wybrał</td><td>Reagowanie na liczbę zadeklarowanych kości, efekty obrońcy na nadchodzący atak</td></tr>
-      <tr><td><code>"exchange-resolved"</code></td><td>Po aplikacji wszystkich obrażeń z wymiany (w tym crowding), przed awansem segmentu. <code>args.encounter.lastExchangeResult</code> zawiera podsumowanie</td><td>Efekty "po każdej wymianie", warunki Berserkera, liczniki trafień</td></tr>
-      <tr><td><code>"segment-advance"</code></td><td>Segment się przesuwa do przodu (≤ 3) — po <code>exchange-resolved</code></td><td>Odzysk inicjatywy, jednorazowe efekty segmentowe</td></tr>
-      <tr><td><code>"turn-end"</code></td><td>Wszystkie 3 segmenty wyczerpane, przed resetem tury</td><td>Kary zmęczenia (+20%), usunięcie markerów</td></tr>
-      <tr><td><code>"turn-start"</code></td><td>Nowa tura ustawiona (pule zresetowane, inicjatywa posortowana)</td><td>Inicjalizacja efektów nowej tury (rzadko używane)</td></tr>
+      <tr><td><code>"attack-committed"</code></td><td>Posiadacz inicjatywy zatwierdził swoje kości — respondent jeszcze nie wybrał</td><td>Reagowanie na zadeklarowaną liczbę kości, efekty obrońcy na nadchodzący atak</td></tr>
+      <tr><td><code>"exchange-resolved"</code></td><td>Po rozstrzygnięciu segmentu (hit/takeover/draw/nothing) i triggerach <code>segmentResolve</code>/<code>afterAction</code>, przed awansem segmentu</td><td>Efekty "po każdej wymianie", liczniki trafień</td></tr>
+      <tr><td><code>"segment-advance"</code></td><td>Segment przesuwa się do przodu — po <code>exchange-resolved</code></td><td>Jednorazowe efekty segmentowe, odczysk inicjatywy (Wiatrak)</td></tr>
+      <tr><td><code>"turn-end"</code></td><td>Wszystkie kości wyczerpane, przed resetem tury</td><td>Kary zmęczenia (Flash +20%), usunięcie markerów (Garda)</td></tr>
     </tbody>
   </table>
   <div class="callout info">
-    <strong>encounter._effects:</strong> Namespace zarezerwowany dla skryptów efektów. Silnik nigdy go nie odczytuje. Czyszczony automatycznie przy <code>turn-start</code>. Użyj go do przekazywania stanu między triggerami.<br>
-    <strong>encounter.lastExchangeResult:</strong> Dostępny tylko w fazie <code>"exchange-resolved"</code> (przed <code>segment-advance</code>). Zawiera: <code>{ attackerId, defenderId, resultType, diceCount, attackerSuccesses, defenderSuccesses }</code>. Czyszczony automatycznie po fazie.
+    <strong>args.state:</strong> Mutable obiekt stanu karty duelowej. Zawiera m.in. <code>state.hits</code>, <code>state.segments</code>, <code>state.currentSegment</code>, <code>state.attackerUuid</code>, <code>state.defenderUuid</code>, <code>state.initiativeOwnerSide</code>. Zmiany w <code>state</code> są zapisywane do flagi wiadomości po zakończeniu triggera.<br>
+    <strong>args.isAttacker:</strong> Pozwala rozróżnić która strona odbiera trigger bez potrzeby sprawdzania UUID.
   </div>
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Wiatrak — odzysk inicjatywy (segment-advance) lub zmęczenie (turn-end)</div>
-    <pre><code><span class="kw">const</span> <span class="var">myId</span> = args.participantId;
-<span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
-  <span class="kw">if</span> (args.encounter._effects?.wiatrakReclaim !== <span class="var">myId</span>) <span class="kw">return</span>;
-  args.encounter.turnState.initiativeOwnerId = <span class="var">myId</span>;
-  <span class="kw">delete</span> args.encounter._effects.wiatrakReclaim;
-  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
-} <span class="kw">else if</span> (args.phase === <span class="str">"turn-end"</span>) {
-  <span class="cmt">// Nałóż +20% zmęczenia i usuń marker.</span>
-  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();
-}</code></pre>
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Flash – Aktywny · nałóż zmęczenie i usuń marker (faza turn-end)</div>
+    <pre><code><span class="cmt">// Marker Błysk – Aktywny. Gdy melee tura kończy się → nałóż zmęczenie i usuń marker.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">src</span> = <span class="kw">this</span>.actor.items.contents.<span class="fn">find</span>(
+  i => i.effects.size === <span class="num">3</span> && i.effects.contents[<span class="num">1</span>]?.name === <span class="kw">this</span>.effect.name
+);
+<span class="kw">const</span> <span class="var">fatigue</span> = <span class="var">src</span>?.effects.contents[<span class="num">2</span>];
+<span class="kw">if</span> (<span class="var">fatigue</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">fatigue</span>, [<span class="kw">this</span>.actor]);
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
   </div>
 
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> pool-ready — Efekt reagujący gdy wszystkie kości rzucone (przed wyborem)</div>
-    <pre><code><span class="cmt">// Przykład: efekt który sprawdza stan puli i modyfikuje inicjatywę zanim wybór się zacznie.</span>
-<span class="kw">if</span> (args.phase !== <span class="str">"pool-ready"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">myPool</span> = args.participant.pool;
-<span class="cmt">// Np. sztuczka "aura strachu" — jeśli mamy trójkę jedynek, zaznaczamy efekt.</span>
-<span class="kw">const</span> <span class="var">ones</span> = <span class="var">myPool</span>.<span class="fn">filter</span>(<span class="var">v</span> => <span class="var">v</span> === <span class="num">1</span>).length;
-<span class="kw">if</span> (<span class="var">ones</span> >= <span class="num">3</span>) args.encounter._effects.fearAura = <span class="kw">true</span>;</code></pre>
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Garda – Aktywna · usuń marker na koniec tury melee</div>
+    <pre><code><span class="cmt">// Sprzątanie — usuń marker Gardy gdy wymiana skończona.</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.<span class="fn">deleteEffect</span>();</code></pre>
   </div>
 
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> attack-committed — Efekt obrońcy reagujący na liczbę zadeklarowanych kości</div>
-    <pre><code><span class="cmt">// Przykład: efekt "Tarcza" — jeśli atakujący użył 3 kości, obrońca dostaje +2 do obrony.</span>
-<span class="kw">if</span> (args.phase !== <span class="str">"attack-committed"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">exchange</span> = args.encounter.currentExchange;
-<span class="kw">const</span> <span class="var">isDefender</span> = args.participantId === <span class="var">exchange</span>.defenderId;
-<span class="kw">if</span> (!<span class="var">isDefender</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (<span class="var">exchange</span>.declaredDiceCount >= <span class="num">3</span>) {
-  <span class="cmt">// Zmodyfikuj snapshot obrony (+2 do progu obrony).</span>
-  args.participant.defenseTargetSnapshot = (args.participant.defenseTargetSnapshot || <span class="num">10</span>) + <span class="num">2</span>;
-}</code></pre>
-  </div>
-
-  <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> exchange-resolved — Licznik trafień (warunek Berserkera) + przykład lastExchangeResult</div>
-    <pre><code><span class="cmt">// Przykład: efekt liczący trafienia na aktora — aktywuje berserker po pierwszym ciężkim ciosie.</span>
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> exchange-resolved — Reakcja po rozstrzygnięciu wymiany (args.state)</div>
+    <pre><code><span class="cmt">// Przykład: reaguj gdy byłeś obrońcą i dostałeś trafienie</span>
 <span class="kw">if</span> (args.phase !== <span class="str">"exchange-resolved"</span>) <span class="kw">return</span>;
-<span class="kw">const</span> <span class="var">result</span> = args.encounter.lastExchangeResult;
-<span class="kw">if</span> (!<span class="var">result</span>) <span class="kw">return</span>;
-<span class="cmt">// Sprawdzamy czy nasz uczestnik był obrońcą który dostał trafienie.</span>
-<span class="kw">const</span> <span class="var">wasDamaged</span> = <span class="var">result</span>.resultType === <span class="str">"hit"</span> && <span class="var">result</span>.defenderId === args.participantId;
-<span class="kw">if</span> (!<span class="var">wasDamaged</span>) <span class="kw">return</span>;
-<span class="cmt">// Aktywuj berserker przez convertToApplied.</span>
-<span class="kw">const</span> <span class="var">berserkEffect</span> = <span class="kw">this</span>.actor.effects.<span class="fn">find</span>(<span class="var">e</span> => <span class="var">e</span>.name === <span class="str">"Berserker (Aktywny)"</span>);
+<span class="kw">if</span> (args.isAttacker) <span class="kw">return</span>; <span class="cmt">// tylko obrońca</span>
+<span class="kw">const</span> <span class="var">lastSeg</span> = args.state.segments[args.state.currentSegment];
+<span class="kw">if</span> (<span class="var">lastSeg</span>?.outcome !== <span class="str">"hit"</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">berserkEffect</span> = <span class="kw">this</span>.actor.effects.<span class="fn">find</span>(e => e.name === <span class="str">"Berserker (Aktywny)"</span>);
 <span class="kw">if</span> (<span class="var">berserkEffect</span> && !<span class="kw">this</span>.<span class="fn">isEffectActive</span>(<span class="str">"Berserker (Aktywny)"</span>)) {
   <span class="kw">await this</span>.<span class="fn">convertToApplied</span>(<span class="var">berserkEffect</span>);
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> attack-committed — Efekt reagujący na liczbę zadeklarowanych kości atakującego</div>
+    <pre><code><span class="cmt">// Przykład: efekt obrońcy reagujący gdy atakujący zadeklarował 3 kości</span>
+<span class="kw">if</span> (args.phase !== <span class="str">"attack-committed"</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.isAttacker) <span class="kw">return</span>; <span class="cmt">// tylko obrońca</span>
+<span class="kw">const</span> <span class="var">ownerIndices</span> = args.state.committedOwnerIndices ?? [];
+<span class="kw">if</span> (<span class="var">ownerIndices</span>.length >= <span class="num">3</span>) {
+  <span class="cmt">// Reaguj na 3-kościowy atak — np. zarejestruj flagę w state</span>
+  args.state._myEffectTriggered = <span class="kw">true</span>;
 }</code></pre>
   </div>
 

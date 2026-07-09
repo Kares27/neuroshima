@@ -714,7 +714,7 @@ args.actions.push({
   <strong>Kolejność skryptów na szablonie:</strong> Skrypty z efektu szablonu (<code>contents[1]</code>) są kopiowane do aplikowanej wersji przez <code>convertToApplied()</code>. Wystarczy je napisać raz na szablonie — każda kopia nałożona na cel będzie je posiadać automatycznie.
 </div>
 <div class="callout info">
-  <strong>Implementacja w applyDuelBatch:</strong> Wyzwalacz <code>preOpposedAttacker</code> jest wywoływany z <code>MeleeOpposedChat.applyDuelBatch()</code> przed obliczeniem wyników każdego segmentu, dla aktora będącego w danym segmencie atakującym (strona inicjatywy). Skrypt Pochwycenia usuwa się gdy pochwycony przejmie inicjatywę i stanie się atakującym. Manewr atakującego dostępny przez <code>args.attacker.maneuver</code> jest ustawiony na <code>null</code> w tym wyzwalaczu (<code>difficultyTarget</code> nie jest modyfikowany w applyDuelBatch — kości są już rzucone).
+  <strong>Implementacja w DuelLifecycle:</strong> Wyzwalacz <code>preOpposedAttacker</code> jest wywoływany przez <code>DuelLifecycle.preOpposedAttacker()</code> przed obliczeniem efektywnych sukcesów każdego segmentu, dla aktora będącego posiadaczem inicjatywy (atakującym w tym segmencie). Skrypt Pochwycenia usuwa się gdy pochwycony przejmie inicjatywę i stanie się atakującym. Dostępne modyfikatory: <code>args.participant.successMod</code> (modyfikuje efektywne sukcesy atakującego). Pola <code>args.attacker.maneuver</code> ani <code>args.difficultyTarget</code> nie są dostępne w tym triggerze.
 </div>
 </section>
 
@@ -1022,7 +1022,7 @@ args.participant.blockDamageShift = -<span class="num">1</span>;</code></pre>
   <strong>Używaj <code>this.deleteEffect()</code>, nie <code>this.effect.delete()</code>:</strong> W Foundry V13 dla tokenów <em>unlinkowanych</em> (synthetic actor) <code>this.effect.parent</code> może być przestarzałą referencją — Foundry może odtworzyć instancję synthetic actor między aplikowaniem efektu a wywołaniem triggera (np. po aktualizacji HP). <code>this.effect.delete()</code> wywołuje <code>deleteDocuments({parent: staleActor})</code>, co może skutkować błędem „document not found". <code>this.deleteEffect()</code> używa <code>this.actor</code> (świeże <code>args.actor</code> z triggera) i wywołuje <code>actor.deleteEmbeddedDocuments</code> bezpośrednio — działa poprawnie dla obu typów tokenów.
 </div>
 <div class="callout info">
-  <strong>Implementacja w applyDuelBatch:</strong> Wyzwalacz <code>opposedDefender</code> jest wywoływany z <code>MeleeOpposedChat.applyDuelBatch()</code> po każdym segmencie. Mapowanie wyników: <code>"hit"→"hit"</code>, <code>"takeover"→"takeover"</code>, <code>"draw"/"nothing"→"block"</code>. Silnik odczytuje <code>args.participant.blockDamageShift</code> (przez alias <code>args.defender</code>) i zapisuje wartość w <code>state.blockDamageShiftByActor[uuid]</code> — trwa przez wszystkie segmenty wymiany. Gdy shift ≠ 0 i wynik to <code>"draw"</code> (równe sukcesy &gt; 0 po obu stronach), silnik automatycznie dodaje zredukowane obrażenia (<code>isBlockDamage: true</code>) do <code>state.hits</code> i aplikuje je przez <code>applyOpposedDamage</code>.
+  <strong>Implementacja w DuelSegmentEngine:</strong> Wyzwalacz <code>opposedDefender</code> jest wywoływany przez <code>DuelSegmentEngine.processResponder()</code> po każdym segmencie. Mapowanie wyników: <code>"hit"→"hit"</code>, <code>"takeover"→"takeover"</code>, <code>"draw"/"nothing"→"block"</code>. Silnik odczytuje <code>args.participant.blockDamageShift</code> (przez alias <code>args.defender</code>) i zapisuje wartość w <code>state.blockDamageShiftByActor[uuid]</code> — trwa przez wszystkie segmenty wymiany. Gdy shift ≠ 0 i wynik to <code>"draw"</code> (równe sukcesy &gt; 0 po obu stronach), silnik automatycznie dodaje zredukowane obrażenia (<code>isBlockDamage: true</code>) do <code>state.hits</code>. <code>args.encounter = null</code> w tym triggerze.
 </div>
 <div class="callout warning">
   <strong>Warunek narracyjny:</strong> Garda działa tylko vs nieuzbrojony humanoid. Zweryfikuj narracyjnie — trudno sprawdzić automatycznie czy atakujący jest bez broni w momencie rzutu obronnego.
@@ -1779,17 +1779,15 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span> &&
     <span class="var">maneuver</span> !== <span class="str">"charge"</span> && <span class="var">maneuver</span> !== <span class="str">"szarza"</span>) <span class="kw">return</span>;
 
-<span class="cmt">// Stan przechowywany na obiekcie encounter (in-memory, resetuje się po walce).</span>
-args.encounter._rrrroooaaarrr ??= [];
-<span class="kw">if</span> (args.encounter._rrrroooaaarrr.length >= <span class="num">5</span>) <span class="kw">return</span>;
-<span class="kw">if</span> (args.encounter._rrrroooaaarrr.<span class="fn">includes</span>(args.defenderId)) <span class="kw">return</span>;
-args.encounter._rrrroooaaarrr.<span class="fn">push</span>(args.defenderId);
+<span class="cmt">// args.encounter = null — stan przechowujemy w flagach aktora (persystuje przez walkę).</span>
+<span class="kw">const</span> <span class="var">alerted</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_rrrroooaaarrr"</span>) ?? [];
+<span class="kw">if</span> (<span class="var">alerted</span>.length >= <span class="num">5</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (<span class="var">alerted</span>.<span class="fn">includes</span>(args.defenderId)) <span class="kw">return</span>;
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_rrrroooaaarrr"</span>, [...<span class="var">alerted</span>, args.defenderId]);
 
-<span class="cmt">// Pobierz aktora-obrońcę z danych uczestnika i wyślij test Morale.</span>
-<span class="kw">const</span> <span class="var">defPart</span> = args.defender;
-<span class="kw">const</span> <span class="var">defenderActor</span> = <span class="var">defPart</span>?.actorUuid
-  ? (fromUuidSync(<span class="var">defPart</span>.actorUuid)?.actor ?? fromUuidSync(<span class="var">defPart</span>.actorUuid))
-  : <span class="kw">null</span>;
+<span class="cmt">// args.defenderId = UUID obrońcy — pobierz aktora bezpośrednio.</span>
+<span class="kw">const</span> <span class="var">defDoc</span> = fromUuidSync(args.defenderId);
+<span class="kw">const</span> <span class="var">defenderActor</span> = <span class="var">defDoc</span>?.actor ?? <span class="var">defDoc</span>;
 <span class="kw">if</span> (!<span class="var">defenderActor</span>) <span class="kw">return</span>;
 
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">requestTest</span>(<span class="var">defenderActor</span>, {
@@ -1801,10 +1799,10 @@ args.encounter._rrrroooaaarrr.<span class="fn">push</span>(args.defenderId);
 </div>
 
 <div class="callout info">
-  <strong>Stan na encounter, nie na aktorze:</strong> Tablica <code>args.encounter._rrrroooaaarrr</code> przechowuje ID obrońców, którym wysłano test w tej walce. Resetuje się automatycznie po zakończeniu combatu — brak flag, brak czyszczenia ręcznego. Max 5 wrogów egzekwowane przez długość tablicy.
+  <strong>Stan na flagach aktora:</strong> Lista ID obrońców, którym wysłano test, przechowywana jest w <code>this.actor.getFlag("neuroshima", "_rrrroooaaarrr")</code>. Persystuje przez całą walkę — wyczyść ręcznie po walce lub przez skrypt <code>onCombatEnd</code>. Max 5 wrogów egzekwowane przez długość tablicy.
 </div>
 <div class="callout info">
-  <strong>Implementacja w applyDuelBatch:</strong> Wyzwalacz <code>opposedAttacker</code> jest wywoływany z <code>MeleeOpposedChat.applyDuelBatch()</code> po każdym segmencie (zarówno w trybie normalnym jak i berserker), dla aktora będącego w danym segmencie atakującym (strona inicjatywy). Manewr atakującego (<code>args.attacker.maneuver</code>) pochodzi z wybranego manewru w dialogu rzutu i jest zapisywany w stanie karty duelu. <code>args.defenderId</code> to UUID obrońcy w danym segmencie.
+  <strong>Implementacja w DuelSegmentEngine:</strong> Wyzwalacz <code>opposedAttacker</code> jest wywoływany przez <code>DuelSegmentEngine.processResponder()</code> po każdym segmencie, dla aktora będącego posiadaczem inicjatywy (atakującym w tym segmencie). <code>args.encounter = null</code> — stan między triggerami przechowuj w flagach aktora. Manewr atakującego dostępny przez <code>args.attacker.maneuver</code>. <code>args.defenderId</code> = UUID obrońcy.
 </div>
 </section>
 
@@ -2232,19 +2230,18 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">getMeleeManeuver</span>() !== <span class="str">"fury"</span>) <span class="kw">return</span>;
 <span class="cmt">// Guard: Wiatrak must have been activated in the dialog this turn.</span>
 <span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
-<span class="cmt">// args.attackerId is the attacker's participant key — no manual lookup needed.</span>
-args.encounter._effects = args.encounter._effects || {};
-args.encounter._effects.wiatrakReclaim = args.attackerId;</code></pre>
+<span class="cmt">// args.encounter = null — zapisz flagę na aktorze do odczytu przez meleeUpdate.</span>
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_wiatrakReclaim"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Odzysk inicjatywy (segment-advance) / powiadomienie o zmęczeniu (turn-end)</div>
-<pre><code><span class="cmt">// args.participantId is this actor's key in encounter.participants — no manual lookup needed.</span>
-<span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
+<pre><code><span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
   <span class="cmt">// Restore initiative on the next segment after a Furia takeover.</span>
   <span class="cmt">// The reclaim flag was set by the opposedAttacker trigger above.</span>
-  <span class="kw">if</span> (args.encounter._effects?.wiatrakReclaim !== args.participantId) <span class="kw">return</span>;
-  args.encounter.turnState.initiativeOwnerId = args.participantId;
-  <span class="kw">delete</span> args.encounter._effects.wiatrakReclaim;
+  <span class="kw">if</span> (!<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_wiatrakReclaim"</span>)) <span class="kw">return</span>;
+  <span class="cmt">// args.isAttacker = true jeśli ten aktor jest globalnym atakującym.</span>
+  args.state.initiativeOwnerSide = args.isAttacker ? <span class="str">"attacker"</span> : <span class="str">"defender"</span>;
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_wiatrakReclaim"</span>);
 
 } <span class="kw">else if</span> (args.phase === <span class="str">"turn-end"</span>) {
   <span class="cmt">// Apply the +20% fatigue penalty at end of turn.</span>
