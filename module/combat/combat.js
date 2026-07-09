@@ -19,7 +19,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
-import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelSegmentEngine } from "./combat-api.js";
+import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
 
 /**
  * Custom Token Ruler for Neuroshima 1.5.
@@ -2067,216 +2067,13 @@ export class MeleeOpposedChat {
       if (flat.length > 0) ownerBeastActions = flat;
     }
 
-    // getMeleeActions trigger — fires for non-creature actors during their own turn.
-    // Effect scripts push extra action entries (sztuczki like Barbarka) to args.actions.
-    // Actions with successCost > 0 appear in a queue section (like beast actions, budget = uncommitted successes).
-    // Actions without successCost appear as standalone attack-alternative buttons.
-    let ownerExtraActions = null;  // trick action buttons (all types)
+    let ownerExtraActions = null;
     if (ownerActor && !ownerIsCreature && status === "picking" && isOwnerTurn) {
-      // --- helper context for effect scripts ---
-      const ownerDiceArrFull = isOwnerAttacker ? (attackDice || []) : (defenseDice || []);
-      const usedOwnerSet = new Set(isOwnerAttacker ? (usedAttackDice || []) : (usedDefenseDice || []));
-      const uncommittedOwnerDice = ownerDiceArrFull.filter((_, i) => !usedOwnerSet.has(i));
-      const uncommittedDiceCount    = uncommittedOwnerDice.length;
-      const uncommittedSuccessCount = uncommittedOwnerDice.filter(d => d.isSuccess).length;
-
-      // Segments resolved before the current one (outcome not null and not "spent")
-      const pastSegs = (segments || []).slice(0, currentSegment).filter(s => s.outcome && s.outcome !== "spent");
-      // ownerHadHit: any previous segment with outcome "hit" (from attacker's perspective)
-      const ownerHadHit      = pastSegs.some(s => s.outcome === "hit");
-      const ownerPreviousHits = pastSegs.filter(s => s.outcome === "hit");
-
-      // getMeleeActions — two modes:
-      // • isDialogScript === false: always fires passively, pushes actions to extraActionsArr.
-      // • isDialogScript === true: shown as checkbox in the pre-roll weapon dialog.
-      //   On the duel card its passive `code` runs only when the modifier was activated
-      //   in the pre-roll dialog (UUID present in state.activatedMeleePreRollMods).
-      const activatedPreRollMods = new Set(state.activatedMeleePreRollMods ?? []);
-      const extraActionsArr = [];
-      try {
-        const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
-
-        // lookupActionDef: searches all effects on the actor (and their items) for an actionDef by id or name.
-        // Available in scripts as args.lookupActionDef("uuid-or-name").
-        const lookupActionDef = (idOrName) => {
-          const match = (d) => d.id === idOrName || d.name === idOrName;
-          for (const effect of (ownerActor.effects ?? [])) {
-            const def = (effect.system?.actionDefs ?? []).find(match);
-            if (def) return foundry.utils.deepClone(def);
-          }
-          for (const item of (ownerActor.items ?? [])) {
-            for (const effect of (item.effects ?? [])) {
-              const def = (effect.system?.actionDefs ?? []).find(match);
-              if (def) return foundry.utils.deepClone(def);
-            }
-          }
-          return null;
-        };
-
-        const triggerArgs = {
-          actor: ownerActor,
-          state,
-          actions: extraActionsArr,
-          ownerHadHit,
-          ownerPreviousHits,
-          uncommittedDice: uncommittedDiceCount,
-          uncommittedSuccesses: uncommittedSuccessCount,
-          lookupActionDef
-        };
-
-        const allMeleeScripts = NeuroshimaScriptRunner.getScripts(ownerActor, "getMeleeActions");
-        for (const script of allMeleeScripts) {
-          // isDialogScript: only run when the modifier was activated in the pre-roll dialog.
-          // Non-dialog scripts (passive) always run.
-          const shouldRun = !script.isDialogScript ||
-            (script.effect?.uuid && activatedPreRollMods.has(script.effect.uuid));
-          if (!shouldRun) continue;
-
-          const prevLength = extraActionsArr.length;
-
-          if (script.useActionDef && script.actionDef) {
-            // Action Builder path: declarative action definition, no raw JS code execution.
-            try {
-              await MeleeOpposedChat._buildActionFromDef(script, triggerArgs, extraActionsArr);
-            } catch (err) {
-              game.neuroshima?.log("[getMeleeActions] actionDef error", err);
-            }
-          } else if (script.code?.trim()) {
-            try {
-              await script.execute(triggerArgs);
-            } catch (err) {
-              game.neuroshima?.log("[getMeleeActions] trigger error", err);
-            }
-          }
-
-          // Expand any string IDs pushed by this script using the script's parent effect actionDefs.
-          // Scripts can push a plain string: args.actions.push("my-action-id")
-          // The system resolves it to the full actionDef stored on the effect.
-          // After expansion, @effect.* / @item.* / @mod.* tokens in `name` are resolved.
-          for (let i = prevLength; i < extraActionsArr.length; i++) {
-            const entry = extraActionsArr[i];
-            if (typeof entry === "string") {
-              const effectDefs = script.effect?.system?.actionDefs ?? [];
-              const localMatch = (d) => d.id === entry || d.name === entry;
-              const def = effectDefs.find(localMatch) ?? lookupActionDef(entry);
-              extraActionsArr[i] = def ? foundry.utils.deepClone(def) : null;
-              if (!def) game.neuroshima?.log("[getMeleeActions] actionDef not found:", entry);
-            }
-            const resolved = extraActionsArr[i];
-            if (resolved && typeof resolved === "object") {
-              if (resolved.name) {
-                resolved.name = NeuroshimaScriptRunner._resolveItemRef(
-                  resolved.name, script.effect?.parent ?? null, script.effect ?? null
-                );
-              }
-              if (!resolved._effectUuid && script.effect?.uuid) {
-                resolved._effectUuid = script.effect.uuid;
-              }
-            }
-          }
-        }
-        // Remove null entries (unresolved IDs)
-        for (let i = extraActionsArr.length - 1; i >= 0; i--) {
-          if (extraActionsArr[i] == null) extraActionsArr.splice(i, 1);
-        }
-
-        // collectMeleeActions — new clean API (alongside getMeleeActions for BC).
-        // Scripts use args.actions.push(descriptor) with no isDialogScript / activateForMelee coupling.
-        try {
-          await NeuroshimaScriptRunner.execute("collectMeleeActions", {
-            actor: ownerActor,
-            duel:  DuelContext.fromFlag(state),
-            state,
-            actions: extraActionsArr,
-            ownerHadHit,
-            ownerPreviousHits,
-            uncommittedDice: uncommittedDiceCount,
-            uncommittedSuccesses: uncommittedSuccessCount,
-            lookupActionDef
-          });
-        } catch (err) {
-          game.neuroshima?.log("[collectMeleeActions] trigger error", err);
-        }
-      } catch (err) {
-        game.neuroshima?.log("[getMeleeActions] trigger error", err);
-      }
-      if (extraActionsArr.length > 0) {
-        // ── Convenience field expansion ───────────────────────────────────
-        // Expand `applyEffectOnHit` and `notifyOnHit` shorthand into
-        // a generated onHitScript string. This runs before normalization
-        // so the generated code lands in trickOnHitScripts automatically.
-        for (const a of extraActionsArr) {
-          // applyEffectOnHit: "Effect Name"
-          // Finds the named ActiveEffect by searching all items on the attacker,
-          // checks isEffectActive to avoid duplicates, then applies convertToApplied() on hit.
-          if (a.applyEffectOnHit && !a.onHitScript) {
-            const safeName = JSON.stringify(a.applyEffectOnHit);
-            a.onHitScript = [
-              `let _tmpl = null;`,
-              `for (const _it of (args.actor?.items ?? [])) {`,
-              `  _tmpl = _it.effects?.getName(${safeName});`,
-              `  if (_tmpl) break;`,
-              `}`,
-              `if (!_tmpl || !args.target) { neuroshima.log("[applyEffectOnHit] effect not found:", ${safeName}); return; }`,
-              `if (this.isEffectActive(_tmpl, args.target)) { neuroshima.log("[applyEffectOnHit] already active:", ${safeName}); return; }`,
-              `const _data = _tmpl.convertToApplied();`,
-              `await args.target.createEmbeddedDocuments("ActiveEffect", [_data]);`,
-              `neuroshima.log("[applyEffectOnHit] applied", ${safeName}, "to", args.target?.name);`
-            ].join("\n");
-          }
-          // notifyOnHit: "Tekst powiadomienia"
-          // Shows a UI notification when the action hits (attacker vs target).
-          if (a.notifyOnHit && !a.onHitScript) {
-            const safeText = JSON.stringify(a.notifyOnHit);
-            a.onHitScript = `ui.notifications.info(\`\${${safeText}}: \${args.actor?.name} vs \${args.target?.name}\`);`;
-          }
-          // effectIds + effectTiming:"onHit" → generated onHitScript
-          // Declarative effect application for script-based actions:
-          // pushes effectIds on the raw entry and the system auto-generates the onHitScript.
-          // Supports effectTarget: "target" (default) or "self".
-          // effectTiming "onUse" and "afterDamage" are NOT supported for script actions — use onHitScript.
-          if (Array.isArray(a.effectIds) && a.effectIds.length > 0 && !a.onHitScript &&
-              a.applyEffectsAutomatically !== false &&
-              (!a.effectTiming || a.effectTiming === "onHit")) {
-            const safeIds    = JSON.stringify(a.effectIds);
-            const targetExpr = a.effectTarget === "self" ? "args.actor" : "args.target";
-            a.onHitScript = [
-              `const _srcEffect = this.effect;`,
-              `const _srcItem = _srcEffect?.parent?.documentName === "Item" ? _srcEffect.parent : null;`,
-              `const _tgtActor = ${targetExpr};`,
-              `if (!_srcItem || !_tgtActor) return;`,
-              `const _ids = new Set(${safeIds});`,
-              `for (const _eff of _srcItem.effects) {`,
-              `  if (!_ids.has(_eff.id)) continue;`,
-              `  const _data = _eff.toObject();`,
-              `  delete _data._id;`,
-              `  _data.disabled = false;`,
-              `  _data.transfer = false;`,
-              `  _data.origin = _srcItem.uuid;`,
-              `  await _tgtActor.createEmbeddedDocuments("ActiveEffect", [_data]);`,
-              `}`
-            ].join("\n");
-          }
-        }
-
-        const normalized = MeleeActionRegistry.normalizeEffectActions(extraActionsArr, uncommittedSuccessCount);
-        ownerExtraActions = normalized.length ? normalized : null;
-
-        const onHitMap = {};
-        for (const a of normalized) {
-          if (a.onHitScript) onHitMap[a.id] = {
-            code:         a.onHitScript,
-            effectUuid:   a.sourceEffectUuid  ?? null,
-            immediate:    a.immediateOnHit    ?? false,
-            name:         a.name,
-            effectIds:    a.effectIds         ?? [],
-            effectTiming: a.effectTiming      ?? "onHit",
-            effectTarget: a.effectTarget      ?? "target"
-          };
-        }
-        if (Object.keys(onHitMap).length > 0) {
-          state.trickOnHitScripts = { ...(state.trickOnHitScripts ?? {}), ...onHitMap };
-        }
+      const _pipeline = new DuelActionPipeline();
+      await _pipeline.collect(DuelContext.fromFlag(state), null);
+      ownerExtraActions = _pipeline.descriptors.length ? _pipeline.descriptors : null;
+      if (Object.keys(_pipeline.onHitMap).length > 0) {
+        state.trickOnHitScripts = { ...(state.trickOnHitScripts ?? {}), ..._pipeline.onHitMap };
       }
     }
 
@@ -2854,71 +2651,12 @@ export class MeleeOpposedChat {
     const responderPool   = isOwnerAttacker ? "defender" : "attacker";
 
     if (state.waitingFor === "initiativeOwner") {
-      if (pool !== ownerPool) return;
-
-      // Segment history — save a snapshot of the full state BEFORE this segment begins.
-      // Strips segmentHistory/segmentFuture from the snapshot to avoid recursive nesting.
-      // Used by undoDuelSegment / redoDuelSegment so the GM can roll back mistakes.
-      const snapshot = foundry.utils.deepClone(state);
-      delete snapshot.segmentHistory;
-      delete snapshot.segmentFuture;
-      if (!state.segmentHistory) state.segmentHistory = [];
-      state.segmentHistory.push(snapshot);
-      state.segmentFuture = [];  // clear redo stack when a new action is taken
-
-      const rawAction      = action || "attack";
-      const ownerDicePool  = isOwnerAttacker ? state.attackDice : state.defenseDice;
-
-      // Sztuczki gracza mają format "trick:ID:damage" (np. "trick:barbarka-head-butt:sC").
-      // Traktujemy je jak atak — porównanie sukcesów — ale przy trafieniu używamy
-      // damage z sztuczki zamiast damage${N} z uzbrojenia.
-      const isTrick = rawAction.startsWith("trick:");
-      let declaredAction = rawAction;
-      let committedTrickId     = null;
-      let committedTrickDamage = null;
-      if (isTrick) {
-        const parts = rawAction.split(":");
-        committedTrickId     = parts[1] ?? null;
-        committedTrickDamage = parts[2] ?? null;
-        declaredAction = "trick";
-      }
-
-      if (declaredAction === "exit") {
-        if (diceIndices.length !== 1) return;
-      } else if (declaredAction === "nonCombat") {
-        if (!diceIndices.length || diceIndices.length > 3) return;
-        const hasSuccess = diceIndices.some(i => ownerDicePool[i]?.isSuccess);
-        if (!hasSuccess) {
-          ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelNonCombatNeedSuccess"));
-          return;
-        }
-      } else {
-        // attack, trick — wymagają co najmniej 1, max 3 kości
-        if (!diceIndices.length || diceIndices.length > 3) return;
-      }
-      state.declaredAction        = declaredAction;
-      state.committedOwnerIndices = diceIndices;
-      // Split the raw queue into beast activity ids and trick strings using the registry.
-      // Beast entries are composite "itemId::activityId" strings.
-      // Trick entries begin with "trick:" and carry their damage spec inline.
-      const { beastEntries, trickActions } = MeleeActionRegistry.splitQueue(beastQueue);
-      const rawBeastItems = beastEntries;
-      const rawTrickItems = trickActions.map(a => MeleeActionRegistry.serializeTrickLegacy(a));
-      state.committedBeastQueue  = rawBeastItems.length  > 0 ? rawBeastItems  : null;
-      state.committedTrickQueue  = rawTrickItems.length  > 0 ? rawTrickItems  : null;
-      // Zapisz metadane sztuczki — używane przy rozstrzygnięciu w fazie responder
-      state.committedTrickId          = committedTrickId;
-      state.committedTrickDamage      = committedTrickDamage;
-      // effectUuid dla deklarowanej sztuczki — potrzebny do DuelActionPipeline przy resolution
-      state.committedActionEffectUuid = committedTrickId
-        ? (state.trickOnHitScripts?.[committedTrickId]?.effectUuid ?? null)
-        : null;
-      state.waitingFor            = "responder";
-      await DuelLifecycle.segmentStart(
-        DuelContext.fromFlag(state),
-        DuelSegmentContext.fromOwnerCommit({ N: diceIndices.length, ownerAction: declaredAction, ownerDiceIndices: diceIndices })
-      );
-      await MeleeOpposedChat._renderDuelCard(message, state);
+      const _committed = await DuelDeclarationEngine.processOwnerCommit(state, {
+        pool, ownerPool, action, diceIndices, beastQueue, message,
+        onRender:           (msg, st) => MeleeOpposedChat._renderDuelCard(msg, st),
+        onInvalidNonCombat: ()        => ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeDuel.DuelNonCombatNeedSuccess"))
+      });
+      if (!_committed) return;
       return;
     }
 
@@ -3750,92 +3488,6 @@ export class MeleeOpposedChat {
   }
 
   /**
-   * Builds a melee action object declaratively from a script's `actionDef` structure
-   * and pushes it into extraActionsArr. Called when `script.useActionDef === true`.
-   * @param {NeuroshimaScript} script        - Script object (has .effect, .actionDef)
-   * @param {Object}           triggerArgs   - getMeleeActions trigger args
-   * @param {Array}            extraActionsArr - Mutable array to push into
-   */
-  static async _buildActionFromDef(script, triggerArgs, extraActionsArr) {
-    const { NeuroshimaScript, NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
-    const def = script.actionDef;
-
-    // ── 1. Condition checks ──────────────────────────────────────────────────
-    if (def.condition?.requiresPreviousHit && !triggerArgs.ownerHadHit) {
-      game.neuroshima?.log?.("[getMeleeActions] actionDef skipped (requiresPreviousHit)", def.name);
-      return;
-    }
-    if (def.condition?.requiredConditionKey?.trim()) {
-      const val = triggerArgs.actor.getConditionValue?.(def.condition.requiredConditionKey.trim()) ?? 0;
-      if (!val) {
-        game.neuroshima?.log?.("[getMeleeActions] actionDef skipped (condition key missing)", def.name, def.condition.requiredConditionKey);
-        return;
-      }
-    }
-    if (def.condition?.customScript?.trim()) {
-      try {
-        const condScript = new NeuroshimaScript(
-          { code: def.condition.customScript, trigger: "getMeleeActions", label: `condition:${def.name}` },
-          script.effect
-        );
-        const result = await condScript.execute(triggerArgs);
-        if (result === false) {
-          game.neuroshima?.log?.("[getMeleeActions] actionDef skipped (customScript returned false)", def.name);
-          return;
-        }
-      } catch (err) {
-        game.neuroshima?.log?.("[getMeleeActions] actionDef condition script error", def.name, err);
-      }
-    }
-
-    // ── 2. Build onHitScript from declarative onHit definition ──────────────
-    let onHitScript = null;
-    const onHit = def.onHit ?? {};
-
-    if (onHit.type === "applyEffect" && onHit.effectName?.trim()) {
-      // Embed effectUuid in generated code so this.item can be resolved at execution time.
-      const effectUuid = script.effect?.uuid ?? "";
-      const effectName = onHit.effectName.trim();
-      onHitScript = [
-        `const _eff = fromUuidSync(${JSON.stringify(effectUuid)});`,
-        `const _item = _eff?.parent?.documentName === "Item" ? _eff.parent : null;`,
-        `const _tmpl = _item?.effects?.getName(${JSON.stringify(effectName)});`,
-        `if (!_tmpl || !args.target) return;`,
-        `const _already = args.target.effects?.some(e => e.getFlag("neuroshima","sourceEffect") === _tmpl.uuid);`,
-        `if (!_already) { await _tmpl.applyEffect([args.target]); }`,
-        `neuroshima.log("[ActionDef] Applied", ${JSON.stringify(effectName)}, "to", args.target?.name);`
-      ].join("\n");
-    } else if (onHit.type === "notify") {
-      const text = JSON.stringify(onHit.notifyText?.trim() || def.name || "Sztuczka");
-      onHitScript = [
-        `ui.notifications.info(\`\${${text}}: \${args.actor?.name} vs \${args.target?.name}\`);`,
-        `neuroshima.log("[ActionDef] Notify:", ${text});`
-      ].join("\n");
-    } else if (onHit.type === "script" && onHit.customScript?.trim()) {
-      onHitScript = onHit.customScript.trim();
-    }
-    // type === "damage" or no onHit → onHitScript stays null (pipeline applies damage from `damage` field)
-
-    // ── 3. Push normalised action ────────────────────────────────────────────
-    const action = {
-      id:          def.id?.trim()  || `actionDef-${foundry.utils.randomID(8)}`,
-      name:        NeuroshimaScriptRunner._resolveItemRef(def.name?.trim() || "Sztuczka", script.effect?.parent ?? null, script.effect ?? null),
-      img:         def.img?.trim()  || "systems/neuroshima/assets/effects/gears.svg",
-      damage:      def.damage       ?? "",
-      successCost: def.mode === "queue" ? (parseInt(def.successCost) || 1) : 0,
-      minDice:     parseInt(def.minDice)  || 1,
-      maxDice:     parseInt(def.maxDice)  || 3,
-      annotation:  def.tooltip?.trim()    || null,
-      onHitScript,
-      immediateOnHit: def.immediateOnHit ?? false,
-      _effectUuid: script.effect?.uuid ?? null
-    };
-
-    extraActionsArr.push(action);
-    game.neuroshima?.log?.("[getMeleeActions] actionDef built:", def.name, { mode: def.mode, damage: def.damage, onHitType: onHit.type });
-  }
-
-  /**
    * Fires an onHitScript marked as `immediate: true` right at the moment a trick hit
    * is determined (during the responder phase of applyDuelBatch), before the duel ends.
    * Scripts without `immediate` still execute at "Nałóż obrażenia" time.
@@ -4342,211 +3994,24 @@ export class MeleeOpposedChat {
       return;
     }
 
-    const defenderDoc = await fromUuid(rd.defenderUuid);
+    const defenderDoc   = await fromUuid(rd.defenderUuid);
     const defenderActor = defenderDoc?.actor ?? defenderDoc;
-    const attackerDoc  = await fromUuid(rd.attackerUuid);
+    const attackerDoc   = await fromUuid(rd.attackerUuid);
     const attackerActor = attackerDoc?.actor ?? attackerDoc;
     if (!defenderActor || !attackerActor) {
       ui.notifications.warn(game.i18n.localize("NEUROSHIMA.MeleeOpposedChat.DefenderNotFound"));
       return;
     }
 
-    const { CombatHelper } = await import("../helpers/combat-helper.js");
-    const location = rd.location ?? "torso";
-
-    const beastItemFilter = rd.beastItemId ?? null;
-    const beastItemsForEffects = attackerActor.items.filter(i =>
-      i.type === "beast-action" && (!beastItemFilter || i.id === beastItemFilter)
-    );
+    const { CombatHelper }           = await import("../helpers/combat-helper.js");
     const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
-    const _applyLinkedEffects = async (item, activity, targetActor) => {
-      const linkedEffectIds = new Set(activity.effectIds ?? []);
-      for (const effect of item.effects) {
-        if (!linkedEffectIds.has(effect.id)) continue;
-        try {
-          const { _id, ...rest } = effect.toObject();
-          const existingFlags = rest.flags ?? {};
-          const existingNS    = existingFlags.neuroshima ?? {};
-          await ActiveEffect.implementation.create(
-            {
-              ...rest,
-              disabled: false,
-              transfer: false,
-              origin:   item.uuid,
-              flags: {
-                ...existingFlags,
-                neuroshima: {
-                  ...existingNS,
-                  sourceActivityId:    activity.id,
-                  sourceItemId:        item.id,
-                  sourceMeleeMessageId: messageId
-                }
-              }
-            },
-            { parent: targetActor }
-          );
-        } catch (err) {
-          console.error("Neuroshima | Failed to apply beast effect:", err);
-        }
-      }
-    };
 
-    for (const beastItem of beastItemsForEffects) {
-      for (const activity of (beastItem.system.activities ?? [])) {
-        if (activity.testRequired) {
-          const resolveUuids = (ids = []) =>
-            ids.map(id => beastItem.effects.get(id)).filter(Boolean).map(e => e.uuid);
-          game.neuroshima?.log("[MeleeOpposedChat._applySelectedActions] posting required test for beast activity", { activityName: activity.name, testType: activity.testType, testKey: activity.testKey, defenderName: defenderActor?.name, defenderUuid: defenderActor?.uuid });
-          await NeuroshimaScriptRunner.postRequiredTest({
-            title:                 activity.name || beastItem.name,
-            testType:              activity.testType             || "attribute",
-            testKey:               activity.testKey              || "constitution",
-            testAttributeOverride: activity.testAttributeOverride || "",
-            requiredSuccesses:     activity.testSuccesses        ?? 1,
-            isOpen:                activity.testIsOpen           ?? false,
-            baseDifficulty:        activity.testDifficulty       || "average",
-            defenderActorUuid:     defenderActor?.uuid ?? "",
-            whisperToDefender:     true,
-            onSuccessEffectUuids:  resolveUuids(activity.effectIds),
-            onFailureEffectUuids:  resolveUuids(activity.onFailureEffectIds)
-          });
-          continue;
-        }
-        if (activity.applyEffectsAutomatically === false) continue;
-        const timing = activity.effectTiming ?? "onUse";
-        if (timing === "onHit" || timing === "afterDamage") continue;
-        const effectTarget = activity.effectTarget ?? "target";
-        if (effectTarget === "manual" || effectTarget === "selected") continue;
-        const onUseTargetActor = effectTarget === "self" ? attackerActor : defenderActor;
-        await _applyLinkedEffects(beastItem, activity, onUseTargetActor);
-      }
-    }
-
-    const spentPerAction = {};
-    let totalSpent = 0;
-    for (const actionId of selectedActionIds) {
-      spentPerAction[actionId] = (spentPerAction[actionId] ?? 0) + 1;
-    }
-
-    const allWoundIds = [];
-    const allResults  = [];
-    let totalReduced  = 0;
-    const allReducedDetails = [];
-    const appliedNames = [];
-
-    for (const [compositeId, count] of Object.entries(spentPerAction)) {
-      const [itemId, activityId] = compositeId.split("::");
-      const actionItem = attackerActor.items.get(itemId);
-      if (!actionItem) continue;
-      const activity = (actionItem.system.activities ?? []).find(a => a.id === activityId);
-      if (!activity) continue;
-      const cost   = activity.successCost ?? 1;
-      const damage = activity.damage || null;
-      const label  = activity.name || actionItem.name;
-
-      totalSpent += cost * count;
-      appliedNames.push(...Array(count).fill(label));
-
-      for (let n = 0; n < count; n++) {
-        if (damage) {
-          const freshDefDoc = await fromUuid(rd.defenderUuid);
-          const freshDefender = freshDefDoc?.actor ?? freshDefDoc;
-          if (!freshDefender) continue;
-          const attackData = {
-            isMelee: true,
-            actorId: attackerActor.id,
-            label,
-            damageMelee1: damage,
-            damageMelee2: damage,
-            damageMelee3: damage,
-            finalLocation: location,
-            successPoints: 1
-          };
-          const batch = await CombatHelper.applyDamageToActor(freshDefender, attackData, {
-            isOpposed: true, spDifference: 1, location, suppressChat: true
-          });
-          if (batch) {
-            allResults.push(...(batch.results ?? []));
-            allWoundIds.push(...(batch.woundIds ?? []));
-            totalReduced += batch.reducedProjectiles ?? 0;
-            allReducedDetails.push(...(batch.reducedDetails ?? []));
-          }
-        }
-
-        const hitTiming = activity.effectTiming ?? "onUse";
-        if ((hitTiming === "onHit" || hitTiming === "afterDamage") &&
-            activity.applyEffectsAutomatically !== false) {
-          const effectTarget = activity.effectTarget ?? "target";
-          let hitEffectTarget = null;
-          if (effectTarget === "self") hitEffectTarget = attackerActor;
-          else if (effectTarget === "target") hitEffectTarget = defenderActor;
-          if (hitEffectTarget) {
-            await _applyLinkedEffects(actionItem, activity, hitEffectTarget);
-          }
-        }
-      }
-    }
-
-    // Apply remaining pip-wins or success-points as normal weapon damage.
-    // For beast attacks (synthetic weapon, no real weaponId) remaining successes are wasted —
-    // all damage must be chosen explicitly through beast action spending.
-    const remaining = rd.netSuccesses - totalSpent;
-    if (remaining > 0 && !rd.isBeastAttack) {
-      if (rd.mode === "opposedPips") {
-        // opposedPips: hits are sorted ascending by tier (done in resolveOpposed).
-        // Beast actions consumed the first `totalSpent` pips (lowest tiers).
-        // The remaining hits keep their own tier-specific damageType.
-        const sortedHits = [...(rd.hits ?? [])].sort((a, b) => a.tier - b.tier);
-        const remainingHits = sortedHits.slice(totalSpent);
-        for (const hit of remainingHits) {
-          if (!hit.damageType) continue;
-          const attackData = {
-            isMelee: true,
-            actorId: attackerActor.id,
-            label: attackerActor.items.get(rd.weaponId)?.name ?? "—",
-            damageMelee1: hit.damageType,
-            damageMelee2: hit.damageType,
-            damageMelee3: hit.damageType,
-            finalLocation: location,
-            successPoints: 1
-          };
-          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
-            isOpposed: true, spDifference: 1, location, suppressChat: true
-          });
-          if (batch) {
-            allResults.push(...(batch.results ?? []));
-            allWoundIds.push(...(batch.woundIds ?? []));
-            totalReduced += batch.reducedProjectiles ?? 0;
-            allReducedDetails.push(...(batch.reducedDetails ?? []));
-          }
-        }
-      } else {
-        // opposedSuccesses: remaining net successes map to a single damage tier.
-        const remainingTier = Math.min(3, remaining);
-        const damageType = rd[`damage${remainingTier}`];
-        if (damageType) {
-          const attackData = {
-            isMelee: true,
-            actorId: attackerActor.id,
-            label: attackerActor.items.get(rd.weaponId)?.name ?? "—",
-            damageMelee1: rd.damage1,
-            damageMelee2: rd.damage2,
-            damageMelee3: rd.damage3,
-            finalLocation: location,
-            successPoints: remainingTier
-          };
-          const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
-            isOpposed: true, spDifference: remainingTier, location, suppressChat: true
-          });
-          if (batch) {
-            allResults.push(...(batch.results ?? []));
-            allWoundIds.push(...(batch.woundIds ?? []));
-            totalReduced += batch.reducedProjectiles ?? 0;
-            allReducedDetails.push(...(batch.reducedDetails ?? []));
-          }
-        }
-      }
-    }
+    const { allResults, allWoundIds, totalReduced, allReducedDetails, appliedNames } =
+      await DuelBeastActionEngine.processSelected(
+        { ...rd, messageId },
+        selectedActionIds,
+        { attackerActor, defenderActor, CombatHelper, NeuroshimaScriptRunner }
+      );
 
     if (allWoundIds.length > 0 || appliedNames.length > 0) {
       ui.notifications.info(
