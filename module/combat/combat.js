@@ -2670,7 +2670,7 @@ export class MeleeOpposedChat {
         message,
         onRender:         (msg, st) => MeleeOpposedChat._renderDuelCard(msg, st),
         onSyncInitiative: (st)      => MeleeOpposedChat._syncInitiativeToTracker(st),
-        onClearManeuvers: (actor)   => MeleaTurnService._clearManeuverConditions(actor)
+        onClearManeuvers: (actor)   => MeleeTurnService._clearManeuverConditions(actor)
       });
       if (!_responded) return;
     }

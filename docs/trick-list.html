@@ -1069,8 +1069,8 @@ args.participant.blockDamageShift = -<span class="num">1</span>;</code></pre>
 
 <div class="callout info">
   <strong>Implementacja: 1 AE (<code>transferType: self</code>) z 2 skryptami.</strong><br>
-  Skrypt <code>dialog</code> zastępuje umiejętność i rejestruje aktywację przez <code>activateForMelee()</code>.<br>
-  Skrypt <code>preMeleePool</code> sprawdza aktywację przez <code>isActiveForMelee(args)</code> i ustawia <code>participant.cannotTargetOpponentDice = true</code> — silnik blokuje kierowanie punktów umiejętności na kości oponenta w <code>allocateSkill()</code>. Brak flag — aktywacja jest przechowywana w <code>encounter._effects._tricks</code> i czyszczona automatycznie na początku każdej tury.
+  Skrypt <code>dialog</code> zastępuje umiejętność i ustawia flagę aktywacji na aktorze.<br>
+  Skrypt <code>preMeleePool</code> sprawdza flagę i ustawia <code>participant.cannotTargetOpponentDice = true</code> — silnik blokuje kierowanie punktów umiejętności na kości oponenta w <code>allocateSkill()</code>. Flaga jest jednorazowa — czyszczona przez <code>preMeleePool</code> zaraz po odczycie.
 </div>
 
 <div class="ns-trick-scripts">
@@ -1087,14 +1087,15 @@ args.fields.skillKey = <span class="str">"pistols"</span>;
 <span class="cmt">// Kompensujemy różnicę — efektywna wartość umiejętności w rzucie = Pistolety.</span>
 <span class="kw">const</span> <span class="var">pistols</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"pistols"</span>);
 args.fields.skillBonus += <span class="var">pistols</span> - (args.skill?.value ?? <span class="num">0</span>);
-<span class="cmt">// Rejestruj aktywację w encounter store — bez flag, czyści się automatycznie.</span>
-<span class="kw">this</span>.<span class="fn">activateForMelee</span>();</code></pre>
+<span class="cmt">// Ustaw flagę aktywacji — preMeleePool ją odczyta i wyczyści.</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preMeleePool</span> Zablokuj kierowanie umiejętności na kości przeciwnika</div>
 <pre><code><span class="cmt">// Odpala się po rzucie 3k20, przed zapisaniem puli w encounter store.</span>
-<span class="cmt">// isActiveForMelee() sprawdza encounter._effects._tricks — nie potrzeba flag.</span>
-<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
+<span class="kw">if</span> (!<span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>)) <span class="kw">return</span>;
+<span class="cmt">// Jednorazowe — wyczyść flagę natychmiast po odczycie.</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>);
 <span class="cmt">// Przekaż wybrany klucz umiejętności do uczestnika (dla wyświetlenia na karcie).</span>
 args.participant.skillKey = <span class="str">"pistols"</span>;
 <span class="cmt">// allocateSkill() sprawdza tę właściwość — odrzuca próbę kierowania na kości oponenta.</span>
@@ -1103,8 +1104,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
 </div>
 
 <div class="callout info">
-  <strong>Jak działa <code>cannotTargetOpponentDice</code>:</strong> Właściwość ustawiona na obiekcie uczestnika jest zapisywana w MeleeStore. Metoda <code>allocateSkill()</code> (<code>melee-turn-service.js</code> linia 910) sprawdza ją przed próbą kierowania punktów na kości oponenta — jeśli <code>true</code>, operacja jest odrzucana. Gracz może nadal obniżać własne kości (samodzielne Podwójne Działanie).<br>
-  <strong>Jak działa <code>activateForMelee()</code>:</strong> Zapisuje ID efektu + ID uczestnika w <code>encounter._effects._tricks</code>. Automatycznie czyszczone przy starcie kolejnej tury (<code>turn-start</code>). <code>isActiveForMelee(args)</code> odczytuje ten wpis — działa w każdym wyzwalaczu melee który otrzymuje <code>args.encounter</code> lub <code>args.participant</code>.
+  <strong>Jak działa <code>cannotTargetOpponentDice</code>:</strong> Właściwość ustawiona na obiekcie uczestnika jest zapisywana w MeleeStore. Metoda <code>allocateSkill()</code> (<code>melee-turn-service.js</code> linia 910) sprawdza ją przed próbą kierowania punktów na kości oponenta — jeśli <code>true</code>, operacja jest odrzucana. Gracz może nadal obniżać własne kości (samodzielne Podwójne Działanie).
 </div>
 <div class="callout warning">
   <strong>Ograniczenie applyDuelBatch:</strong> Wyzwalacz <code>preMeleePool</code> odpala się <strong>tylko w NeuroshimaCombat</strong> (pełny system starcia) — po wygenerowaniu puli kości, przed jej zapisaniem w store. W systemie kart czatu (<code>applyDuelBatch</code>) nie ma fazy generowania puli — kości są rzucane bezpośrednio w dialogu i <code>preMeleePool</code> nie jest wywoływany. Gunfight działa w kartach czatu tylko przez skrypt dialogowy (zmiana klucza umiejętności). Reguła <code>cannotTargetOpponentDice</code> nie ma zastosowania w kartach czatu.
@@ -1779,11 +1779,11 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <span class="kw">if</span> (<span class="var">maneuver</span> !== <span class="str">"fury"</span> && <span class="var">maneuver</span> !== <span class="str">"furia"</span> &&
     <span class="var">maneuver</span> !== <span class="str">"charge"</span> && <span class="var">maneuver</span> !== <span class="str">"szarza"</span>) <span class="kw">return</span>;
 
-<span class="cmt">// args.encounter = null — stan przechowujemy w flagach aktora (persystuje przez walkę).</span>
-<span class="kw">const</span> <span class="var">alerted</span> = <span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_rrrroooaaarrr"</span>) ?? [];
+<span class="cmt">// args.encounter = null — stan przechowujemy w flagach efektu (automatycznie czyszczone z efektem).</span>
+<span class="kw">const</span> <span class="var">alerted</span> = <span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_alerted"</span>) ?? [];
 <span class="kw">if</span> (<span class="var">alerted</span>.length >= <span class="num">5</span>) <span class="kw">return</span>;
 <span class="kw">if</span> (<span class="var">alerted</span>.<span class="fn">includes</span>(args.defenderId)) <span class="kw">return</span>;
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_rrrroooaaarrr"</span>, [...<span class="var">alerted</span>, args.defenderId]);
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_alerted"</span>, [...<span class="var">alerted</span>, args.defenderId]);
 
 <span class="cmt">// args.defenderId = UUID obrońcy — pobierz aktora bezpośrednio.</span>
 <span class="kw">const</span> <span class="var">defDoc</span> = fromUuidSync(args.defenderId);
@@ -1799,10 +1799,10 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 </div>
 
 <div class="callout info">
-  <strong>Stan na flagach aktora:</strong> Lista ID obrońców, którym wysłano test, przechowywana jest w <code>this.actor.getFlag("neuroshima", "_rrrroooaaarrr")</code>. Persystuje przez całą walkę — wyczyść ręcznie po walce lub przez skrypt <code>onCombatEnd</code>. Max 5 wrogów egzekwowane przez długość tablicy.
+  <strong>Stan na flagach efektu:</strong> Lista UUID obrońców, którym wysłano test, przechowywana jest w <code>this.effect.getFlag("neuroshima", "_alerted")</code>. Flaga znika razem z AE Rrrroooaaarrr gdy efekt jest usunięty. Max 5 wrogów egzekwowane przez długość tablicy.
 </div>
 <div class="callout info">
-  <strong>Implementacja w DuelSegmentEngine:</strong> Wyzwalacz <code>opposedAttacker</code> jest wywoływany przez <code>DuelSegmentEngine.processResponder()</code> po każdym segmencie, dla aktora będącego posiadaczem inicjatywy (atakującym w tym segmencie). <code>args.encounter = null</code> — stan między triggerami przechowuj w flagach aktora. Manewr atakującego dostępny przez <code>args.attacker.maneuver</code>. <code>args.defenderId</code> = UUID obrońcy.
+  <strong>Implementacja w DuelSegmentEngine:</strong> Wyzwalacz <code>opposedAttacker</code> jest wywoływany przez <code>DuelSegmentEngine.processResponder()</code> po każdym segmencie, dla aktora będącego posiadaczem inicjatywy (atakującym w tym segmencie). <code>args.encounter = null</code> — stan między triggerami przechowuj w flagach efektu (<code>this.effect.setFlag</code>). Manewr atakującego dostępny przez <code>args.attacker.maneuver</code>. <code>args.defenderId</code> = UUID obrońcy.
 </div>
 </section>
 
@@ -2200,13 +2200,14 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 <p><strong>Mechanika:</strong> Decyzja przed rzutem 3k20 przy manewrze Furia. Jeśli przeciwnik przejmie Inicjatywę — kara Furii działa (celny cios), ale w <strong>następnym segmencie</strong> walczący automatycznie odzyskuje Inicjatywę. Na koniec tury: +20% kary ze zmęczenia. Działa tylko przy Bijatyce.</p>
 
 <div class="callout info">
-  <strong>Implementacja: 1 Item (Sztuczka) z 1 Active Effect.</strong><br>
-  AE <em>„Wiatrak"</em> (<code>transferType: self</code>) z czterema wyzwalaczami na tym samym efekcie:<br>
-  <code>dialog</code> — checkbox przed rzutem (Bijatyka + atak). Aktywacja przez <code>activateForMelee()</code>.<br>
-  <code>opposedAttacker</code> — jeśli Furia + takeover, zapisuje intent odzysku do <code>encounter._effects.wiatrakReclaim</code>.<br>
-  <code>meleeUpdate / segment-advance</code> — przywraca <code>initiativeOwnerId</code> gdy flaga odzysku jest ustawiona.<br>
-  <code>meleeUpdate / turn-end</code> — wysyła powiadomienie o +20% zmęczenia i czyści aktywację.<br>
-  <strong>Brak zmian silnika</strong> — całość przez wyzwalacze. Namespace <code>_effects</code> jest resetowany automatycznie na początku każdej tury.
+  <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
+  <strong>AE „Wiatrak"</strong> (<code>transferType: self</code>) — cztery wyzwalacze:<br>
+  <code>dialog</code> — checkbox przed rzutem (Bijatyka + atak). Ustawia flagę <code>_active</code> na efekcie.<br>
+  <code>opposedAttacker</code> — jeśli Furia + takeover i flaga aktywna, ustawia <code>_reclaim</code> na efekcie.<br>
+  <code>meleeUpdate / segment-advance</code> — przywraca <code>args.state.initiativeOwnerSide</code> gdy <code>_reclaim</code> ustawiona; czyści flagę.<br>
+  <code>meleeUpdate / turn-end</code> — nakłada AE zmęczenia przez <code>applyEffects</code>, wysyła powiadomienie, czyści <code>_active</code>.<br>
+  <strong>AE „Wiatrak — Kara Zmęczenia"</strong> (<code>transferType: other</code>) — bierny efekt +20% zmęczenia nakładany przez skrypt <code>turn-end</code>.<br>
+  <strong>Brak zmian silnika</strong> — całość przez wyzwalacze i effect flags (karty duelowe: <code>args.encounter = null</code>).
 </div>
 
 <div class="ns-trick-scripts">
@@ -2218,40 +2219,47 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zarejestruj aktywację Wiatraku</div>
-<pre><code><span class="cmt">// Mark this trick as active for the current melee turn via the built-in helper.</span>
-<span class="cmt">// The activation persists until explicitly cleared by deactivateForMelee().</span>
-<span class="kw">this</span>.<span class="fn">activateForMelee</span>();</code></pre>
+<pre><code><span class="cmt">// activateForMelee() działa tylko w NeuroshimaCombat — w kartach duelowych używamy flag efektu.</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">opposedAttacker</span> Zaznacz odzysk inicjatywy gdy Furia + takeover</div>
 <pre><code><span class="cmt">// Only trigger when this actor (attacker) lost initiative (opponent took over).</span>
 <span class="kw">if</span> (args.resultType !== <span class="str">"takeover"</span>) <span class="kw">return</span>;
-<span class="cmt">// Wiatrak requires the Furia maneuver — use the helper instead of args.attacker.maneuver.</span>
+<span class="cmt">// Wiatrak requires the Furia maneuver.</span>
 <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">getMeleeManeuver</span>() !== <span class="str">"fury"</span>) <span class="kw">return</span>;
 <span class="cmt">// Guard: Wiatrak must have been activated in the dialog this turn.</span>
-<span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
-<span class="cmt">// args.encounter = null — zapisz flagę na aktorze do odczytu przez meleeUpdate.</span>
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_wiatrakReclaim"</span>, <span class="kw">true</span>);</code></pre>
+<span class="kw">if</span> (!<span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>)) <span class="kw">return</span>;
+<span class="cmt">// Zapisz flagę odzysku do odczytu przez meleeUpdate "segment-advance".</span>
+<span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_reclaim"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Odzysk inicjatywy (segment-advance) / powiadomienie o zmęczeniu (turn-end)</div>
 <pre><code><span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
-  <span class="cmt">// Restore initiative on the next segment after a Furia takeover.</span>
-  <span class="cmt">// The reclaim flag was set by the opposedAttacker trigger above.</span>
-  <span class="kw">if</span> (!<span class="kw">this</span>.actor.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_wiatrakReclaim"</span>)) <span class="kw">return</span>;
-  <span class="cmt">// args.isAttacker = true jeśli ten aktor jest globalnym atakującym.</span>
+  <span class="kw">if</span> (!<span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_reclaim"</span>)) <span class="kw">return</span>;
   args.state.initiativeOwnerSide = args.isAttacker ? <span class="str">"attacker"</span> : <span class="str">"defender"</span>;
-  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_wiatrakReclaim"</span>);
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_reclaim"</span>);
 
 } <span class="kw">else if</span> (args.phase === <span class="str">"turn-end"</span>) {
-  <span class="cmt">// Apply the +20% fatigue penalty at end of turn.</span>
-  <span class="cmt">// Fatigue is not tracked as a numeric actor field — notify the GM to apply it.</span>
-  <span class="kw">if</span> (!<span class="kw">this</span>.<span class="fn">isActiveForMelee</span>(args)) <span class="kw">return</span>;
+  <span class="kw">if</span> (!<span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>)) <span class="kw">return</span>;
+  <span class="kw">const</span> <span class="var">fatigue</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
+  <span class="kw">if</span> (<span class="var">fatigue</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">fatigue</span>, [<span class="kw">this</span>.actor]);
   <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(
-    <span class="str">"&lt;b&gt;Wiatrak:&lt;/b&gt; Walczący otrzymuje &lt;b&gt;+20% kary ze zmęczenia&lt;/b&gt; za tę turę."</span>
+    <span class="str">'&lt;div class="neuroshima roll-card"&gt;&lt;p&gt;&lt;b&gt;Wiatrak:&lt;/b&gt; Nałożono &lt;b&gt;+20% kary ze zmęczenia&lt;/b&gt; za tę turę.&lt;/p&gt;&lt;/div&gt;'</span>
   );
-  <span class="kw">this</span>.<span class="fn">deactivateForMelee</span>(args);
+  <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">unsetFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>);
 }</code></pre>
+</div>
+</div>
+
+<h4 class="script-label">Efekt nr 2 — „Wiatrak — Kara Zmęczenia" (transferType: other)</h4>
+<p class="example-desc">Trwały efekt zmęczenia nakładany przez skrypt <code>turn-end</code> AE nr 1. Odpowiada dokładnie efektowi „Błysk – Zmęczenie" z Flasha. Usuwa się ręcznie (MG) lub skryptem odpoczynku.</p>
+
+<div class="ns-trick-scripts">
+<div class="example-block">
+<div class="example-header"><span class="trigger-badge">preRollTest</span> +20% kary do wszystkich testów</div>
+<pre><code>args.test.preData.penalties.mod += <span class="num">20</span>;
+<span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Zmęczenie (Wiatrak): +20%"</span>);</code></pre>
 </div>
 </div>
 </section>
