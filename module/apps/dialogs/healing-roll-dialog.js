@@ -384,8 +384,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       stat: attrValue,
       skillBonus,
       attributeBonus,
-      dieManualBonus: Number(this.userEntry.dieManualBonus ?? 0) || 0,
-      dieReductionBonus: Number(this.userEntry.dieReductionBonus ?? 0) || 0
+      dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
+      dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0)
     });
 
     await this.close();

@@ -83,7 +83,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     const targetActors = Array.from(game.user.targets || []).map(t => t.actor).filter(Boolean);
     const { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers } = await NeuroshimaScriptRunner.computeDialogFields(
       this.actor,
-      { rollType: this.isSkill ? "skill" : "attribute", label: this.label, stat: this.stat, skill: skillObj, attribute: attrObj, difficulty: baseDifficulty },
+      { rollType: this.isSkill ? "skill" : "attribute", label: this.label, stat: this.stat, skill: skillObj, attribute: attrObj, attributeKey: currentAttribute || null, skillKey: this.skillKey || null, difficulty: baseDifficulty },
       this.selectedModifierIds,
       this.unselectedModifierIds,
       targetActors
@@ -309,8 +309,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       skillKey: this.skillKey || null,
       attributeKey: currentAttribute || null,
       rollMode,
-      dieManualBonus: Number(this.userEntry.dieManualBonus ?? 0) || 0,
-      dieReductionBonus: Number(this.userEntry.dieReductionBonus ?? 0) || 0,
+      dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
+      dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0),
       options: submissionOptions,
       resultCallback: this.resultCallback ?? null
     });

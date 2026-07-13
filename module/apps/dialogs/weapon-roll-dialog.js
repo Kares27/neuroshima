@@ -550,8 +550,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       damageShift1:    sf?.damageShift1 || 0,
       damageShift2:    sf?.damageShift2 || 0,
       damageShift3:    sf?.damageShift3 || 0,
-      dieManualBonus:      Number(this.userEntry.dieManualBonus ?? 0) || 0,
-      dieReductionBonus:  Number(this.userEntry.dieReductionBonus ?? 0) || 0,
+      dieManualBonus:      (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf?.dieManualBonus || 0),
+      dieReductionBonus:  (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf?.dieReductionBonus || 0),
       burstHitStep:    sf?.burstHitStep ?? 1,
       rollMode:        formData.rollMode,
       skillKeyOverride: sf?.skillKey || null

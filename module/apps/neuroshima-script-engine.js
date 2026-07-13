@@ -4034,6 +4034,8 @@ export class NeuroshimaScriptRunner {
       healingDifficulty: NeuroshimaScriptRunner._makeHealingDifficultyProxy(),
       burstLevel: initialBurstLevel,
       burstHitStep: 1,
+      dieManualBonus: 0,
+      dieReductionBonus: 0,
 
       rollType: rc.rollType ?? null,
       healingMethod: rc.healingMethod ?? null,
@@ -4104,7 +4106,9 @@ export class NeuroshimaScriptRunner {
       burstLevelOverride: fields.burstLevel !== initialBurstLevel ? Math.max(0, Math.floor(fields.burstLevel)) : null,
       burstHitStep: fields.burstHitStep !== 1 ? Math.max(1, fields.burstHitStep) : null,
       skillKey: fields.skillKey || null,
-      skillLabel: fields.skillLabel || null
+      skillLabel: fields.skillLabel || null,
+      dieManualBonus: fields.dieManualBonus || 0,
+      dieReductionBonus: fields.dieReductionBonus || 0
     };
   }
 
@@ -4727,7 +4731,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: [], preRollModifiers: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -4849,7 +4853,7 @@ export class NeuroshimaScriptRunner {
       preRollModifiers.push({ label: annotation, value: penMod });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -4900,6 +4904,8 @@ export class NeuroshimaScriptRunner {
       }
       if (result.skillKey) scriptFields.skillKey = result.skillKey;
       if (result.skillLabel) scriptFields.skillLabel = result.skillLabel;
+      scriptFields.dieManualBonus += result.dieManualBonus || 0;
+      scriptFields.dieReductionBonus += result.dieReductionBonus || 0;
     }
 
     for (const prt of preRollModifiers) {

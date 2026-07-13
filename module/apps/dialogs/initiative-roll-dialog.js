@@ -322,8 +322,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       attributeBonus: combinedAttrBonus,
       maneuver: formData.maneuver || "none",
       chargeLevel: parseInt(formData.chargeLevel) || 0,
-      dieManualBonus: Number(this.userEntry.dieManualBonus ?? 0) || 0,
-      dieReductionBonus: Number(this.userEntry.dieReductionBonus ?? 0) || 0,
+      dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
+      dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0),
       rollMode: this.userEntry.rollMode ?? this.rollOptions.rollMode
     };
 

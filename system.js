@@ -2172,32 +2172,26 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                         dieEl?.querySelector(".die-square.original")?.classList.add("ns-selected-for-reroll");
                     });
                 } else {
-                    const trickPending = (messageType === "roll" || messageType === "initiative")
-                        && (rollData?.dieManualBonus || 0) > 0
-                        && !message?.getFlag("neuroshima", "trickBonusUsed");
-
                     window._nsRerollSelectedMap ??= new Map();
                     const selected = new Set();
                     window._nsRerollSelectedMap.set(message.id, selected);
 
-                    if (!trickPending) {
-                        dieElements.forEach(dieEl => {
-                            if (dieEl.classList.contains("ignored")) return;
-                            const square = dieEl.querySelector(".die-square.original");
-                            if (!square) return;
-                            square.classList.add("ns-rerollable");
-                            square.addEventListener("click", () => {
-                                const idx = parseInt(dieEl.dataset.dieIndex);
-                                if (selected.has(idx)) {
-                                    selected.delete(idx);
-                                    square.classList.remove("ns-selected-for-reroll");
-                                } else {
-                                    selected.add(idx);
-                                    square.classList.add("ns-selected-for-reroll");
-                                }
-                            });
+                    dieElements.forEach(dieEl => {
+                        if (dieEl.classList.contains("ignored")) return;
+                        const square = dieEl.querySelector(".die-square.original");
+                        if (!square) return;
+                        square.classList.add("ns-rerollable");
+                        square.addEventListener("click", () => {
+                            const idx = parseInt(dieEl.dataset.dieIndex);
+                            if (selected.has(idx)) {
+                                selected.delete(idx);
+                                square.classList.remove("ns-selected-for-reroll");
+                            } else {
+                                selected.add(idx);
+                                square.classList.add("ns-selected-for-reroll");
+                            }
                         });
-                    }
+                    });
                 }
             }
         }
