@@ -7790,6 +7790,113 @@ console.<span class="fn">log</span>(sources);</code></pre>
 
 </section>
 
+<section id="trait-born-killer">
+  <h2>Cechy z wyborem pakietu — wzorzec „Urodzony morderca"</h2>
+  <p>
+    <strong>Urodzony morderca</strong> to Cecha (Item typu <code>trait</code>), której efekt przy dodaniu otwiera
+    dialog wyboru pakietu Umiejętności Wojownika.  Gracz wybiera jeden z dostępnych pakietów (np.
+    <em>melee</em>, <em>firearms</em>, <em>ranged</em>), a każda umiejętność z wybranego pakietu
+    wzrasta o zadany poziom (target level = 4).  Wybór jest zapisany w fladze traita;
+    skrypt <code>deleteEffect</code> cofa wszystkie zmiany.
+  </p>
+
+  <div class="callout info">
+    <strong>Struktura:</strong> 1 Item (Cecha) z 1 Active Effect (transferType: <code>self</code>).<br>
+    Skrypt <code>immediate</code> odpala się dzięki <code>item._onCreate</code> (plik <code>module/documents/item.js</code>),
+    który jawnie wykonuje skrypty embedded AE gdy Item jest tworzony na aktorze.<br>
+    Skrypt <code>deleteEffect</code> odpala się przez <code>item._onDelete</code>, która cofa zmiany
+    przed usunięciem traita lub usunięciem Pochodzenia/Profesji, które go wygenerowało.
+  </div>
+
+  <h3>AE — „Urodzony morderca" (transferType: self)</h3>
+
+  <div class="ns-trick-scripts">
+    <div class="example-block">
+      <div class="example-header"><span class="trigger-badge">immediate</span> Wybierz pakiet umiejętności i podnieś umiejętności</div>
+<pre><code><span class="cmt">// Guard — nie uruchamiaj ponownie jeśli pakiet już wybrany.</span>
+<span class="kw">const</span> <span class="var">trait</span> = <span class="kw">this</span>.item;
+<span class="kw">if</span> (<span class="var">trait</span>?.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"bornKillerPackage"</span>)) <span class="kw">return</span>;
+
+<span class="cmt">// Dostępne pakiety z dexterity (Umiejętności Wojownika).</span>
+<span class="kw">const</span> <span class="var">dexGroups</span> = neuroshima.config.skillConfiguration.dexterity;
+<span class="kw">const</span> <span class="var">items</span> = Object.<span class="fn">entries</span>(<span class="var">dexGroups</span>).<span class="fn">map</span>(([<span class="var">key</span>, <span class="var">skills</span>]) => ({
+  value: <span class="var">key</span>,
+  label: game.i18n.<span class="fn">localize</span>(<span class="str">"NEUROSHIMA.SkillGroup."</span> + <span class="var">key</span>) || <span class="var">key</span>,
+  description: <span class="var">skills</span>.<span class="fn">join</span>(<span class="str">" · "</span>)
+}));
+
+<span class="kw">const</span> { ListChoiceDialog } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">"systems/neuroshima/module/apps/dialogs/list-choice-dialog.js"</span>);
+<span class="kw">const</span> <span class="var">chosen</span> = <span class="kw">await</span> ListChoiceDialog.<span class="fn">wait</span>(
+  <span class="var">items</span>,
+  game.i18n.<span class="fn">localize</span>(<span class="str">"NEUROSHIMA.Traits.BornKiller.ChoosePackage"</span>),
+  game.i18n.<span class="fn">localize</span>(<span class="str">"NEUROSHIMA.Traits.BornKiller.Title"</span>)
+);
+
+<span class="kw">if</span> (!<span class="var">chosen</span>) {
+  <span class="kw">await</span> <span class="var">trait</span>?.<span class="fn">delete</span>();
+  <span class="kw">return</span>;
+}
+
+<span class="kw">const</span> <span class="var">targetLevel</span> = <span class="num">4</span>;
+<span class="kw">const</span> <span class="var">skills</span> = <span class="var">dexGroups</span>[<span class="var">chosen</span>];
+<span class="kw">const</span> <span class="var">previousValues</span> = {};
+<span class="kw">const</span> <span class="var">changedSkills</span> = [];
+<span class="kw">const</span> <span class="var">updateData</span> = {};
+
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">skillKey</span> <span class="kw">of</span> <span class="var">skills</span>) {
+  <span class="kw">const</span> <span class="var">current</span> = <span class="kw">this</span>.actor.system.skills?.[<span class="var">skillKey</span>]?.value ?? <span class="num">0</span>;
+  <span class="var">previousValues</span>[<span class="var">skillKey</span>] = <span class="var">current</span>;
+  <span class="kw">if</span> (<span class="var">current</span> < <span class="var">targetLevel</span>) {
+    <span class="var">updateData</span>[<span class="str">`system.skills.</span><span class="var">${skillKey}</span><span class="str">.value`</span>] = <span class="var">targetLevel</span>;
+    <span class="var">changedSkills</span>.<span class="fn">push</span>(<span class="var">skillKey</span>);
+  }
+}
+
+<span class="kw">if</span> (Object.<span class="fn">keys</span>(<span class="var">updateData</span>).length) {
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">update</span>(<span class="var">updateData</span>, { ns_skip_xp: <span class="kw">true</span> });
+}
+
+<span class="kw">await</span> <span class="var">trait</span>.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"bornKillerPackage"</span>, {
+  selectedPackage: <span class="var">chosen</span>,
+  changedSkills: <span class="var">changedSkills</span>,
+  previousValues: <span class="var">previousValues</span>,
+  targetLevel: <span class="var">targetLevel</span>
+});</code></pre>
+    </div>
+
+    <div class="example-block">
+      <div class="example-header"><span class="trigger-badge">deleteEffect</span> Cofnij zmiany umiejętności przy usunięciu traita</div>
+<pre><code><span class="kw">const</span> <span class="var">trait</span> = <span class="kw">this</span>.item;
+<span class="kw">const</span> <span class="var">pkg</span> = <span class="var">trait</span>?.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"bornKillerPackage"</span>);
+<span class="kw">if</span> (!<span class="var">pkg</span>) <span class="kw">return</span>;
+
+<span class="kw">const</span> <span class="var">updateData</span> = {};
+<span class="kw">for</span> (<span class="kw">const</span> <span class="var">skillKey</span> <span class="kw">of</span> (<span class="var">pkg</span>.changedSkills ?? [])) {
+  <span class="kw">const</span> <span class="var">prev</span> = <span class="var">pkg</span>.previousValues?.[<span class="var">skillKey</span>] ?? <span class="num">0</span>;
+  <span class="var">updateData</span>[<span class="str">`system.skills.</span><span class="var">${skillKey}</span><span class="str">.value`</span>] = <span class="var">prev</span>;
+}
+<span class="kw">if</span> (Object.<span class="fn">keys</span>(<span class="var">updateData</span>).length) {
+  <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">update</span>(<span class="var">updateData</span>, { ns_skip_xp: <span class="kw">true</span> });
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="callout warning">
+    <strong>Lokalizacja:</strong> Klucze <code>NEUROSHIMA.SkillGroup.melee</code>,
+    <code>NEUROSHIMA.Traits.BornKiller.ChoosePackage</code> i <code>NEUROSHIMA.Traits.BornKiller.Title</code>
+    muszą istnieć w pliku <code>lang/pl.json</code>.  Jeśli nie istnieją, <code>i18n.localize</code>
+    zwróci klucz jako fallback — dialog będzie działał, lecz wyświetli klucze zamiast etykiet.
+  </div>
+
+  <div class="callout info">
+    <strong>Jak działa cofanie (deleteEffect):</strong>
+    Gdy trait jest usuwany bezpośrednio (<em>lub</em> gdy Pochodzenie/Profesja, która wygenerowała ten trait,
+    jest usuwana), <code>item._onDelete</code> odpala skrypt <code>deleteEffect</code> dla każdego embedded AE
+    i przywraca wartości umiejętności do wartości sprzed wyboru pakietu.
+  </div>
+
+</section>
+
 <footer>
   <p>Neuroshima 1.5 dla Foundry VTT — dokumentacja skryptów efektów · wygenerowano dla wersji systemu v18.6+</p>
 </footer>

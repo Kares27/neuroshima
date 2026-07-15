@@ -1,0 +1,31 @@
+<div class="neuroshima list-choice-dialog">
+
+    {{#if prompt}}
+    <p class="list-choice-prompt">{{prompt}}</p>
+    {{/if}}
+
+    <div class="list-choice-list">
+        {{#each items as |item|}}
+        <div class="list-choice-row {{#if item.isSelected}}selected{{/if}}"
+             data-action="selectItem"
+             data-item-idx="{{@index}}"
+             data-item-value="{{item.value}}">
+            <span class="list-choice-cb {{#if item.isSelected}}checked{{/if}}">
+                <span class="list-choice-mark"></span>
+            </span>
+            <div class="list-choice-text">
+                <span class="list-choice-label">{{item.label}}</span>
+                {{#if item.description}}
+                <span class="list-choice-desc">{{item.description}}</span>
+                {{/if}}
+            </div>
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="list-choice-footer">
+        <button type="button" data-action="confirmItem">{{localize "Confirm"}}</button>
+        <button type="button" data-action="cancelItem">{{localize "Cancel"}}</button>
+    </div>
+
+</div>

@@ -391,13 +391,34 @@ export class NeuroshimaItem extends Item {
   /**
    * Trigger a re-render of the parent container sheet (on all clients) when this item is
    * created inside a container (i.e. it already has a `containerId` flag at creation time).
+   *
+   * Also fires `applyEffect` and `immediate` trigger scripts for all embedded AEs when this
+   * item is created on an actor (owning client only). This mirrors the behaviour of
+   * `NeuroshimaActiveEffect._onCreate` for item-embedded effects — which FoundryVTT does not
+   * independently fire when the parent Item is created with pre-existing effect data.
    * @override
    */
-  _onCreate(data, options, userId) {
+  async _onCreate(data, options, userId) {
     super._onCreate(data, options, userId);
     const containerId = this.getFlag("neuroshima", "containerId");
-    if (containerId && this.parent?.documentName === "Actor") {
-      NeuroshimaItem._rerenderParentContainerById(this.parent, containerId);
+    const actor = this.parent?.documentName === "Actor" ? this.parent : null;
+    if (containerId && actor) {
+      NeuroshimaItem._rerenderParentContainerById(actor, containerId);
+    }
+
+    if (!actor) return;
+    if (game.user.id !== userId) return;
+
+    const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+    for (const effect of this.effects) {
+      const createScripts = effect.scripts.filter(s => s.trigger === "applyEffect");
+      for (const script of createScripts) {
+        await script.execute({ actor, item: this, data, options });
+      }
+      const immediateScripts = effect.scripts.filter(s => s.trigger === "immediate");
+      for (const script of immediateScripts) {
+        await script.execute({ actor, item: this, data, options });
+      }
     }
   }
 
@@ -468,7 +489,7 @@ export class NeuroshimaItem extends Item {
    *
    * @override
    */
-  _onDelete(options, userId) {
+  async _onDelete(options, userId) {
     super._onDelete(options, userId);
 
     const actor = this.parent;
@@ -479,6 +500,21 @@ export class NeuroshimaItem extends Item {
 
     if (game.user.id !== userId) return;
     if (!actor || actor.documentName !== "Actor") return;
+
+    const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+    for (const effect of this.effects) {
+      const deleteScripts = effect.scripts.filter(s => s.trigger === "deleteEffect");
+      for (const script of deleteScripts) {
+        await script.execute({ actor, item: this, options });
+      }
+    }
+
+    if (this.type === "origin" || this.type === "profession") {
+      const linkedTraits = actor.items.filter(i =>
+        i.type === "trait" && i.getFlag?.("neuroshima", "traitSource")?.itemId === this.id
+      );
+      for (const t of linkedTraits) await t.delete();
+    }
 
     if (this.type === "specialization") {
       const updateData = {};

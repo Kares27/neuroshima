@@ -1,5 +1,5 @@
-2026/07/13-09:40:01.293 2d7c Recovering log #828
-2026/07/13-09:40:01.293 2d7c Level-0 table #830: started
-2026/07/13-09:40:01.295 2d7c Level-0 table #830: 2879 bytes OK
-2026/07/13-09:40:01.302 2d7c Delete type=0 #828
-2026/07/13-09:40:01.302 2d7c Delete type=3 #827
+2026/07/15-09:13:18.101 1d4c Recovering log #831
+2026/07/15-09:13:18.102 1d4c Level-0 table #833: started
+2026/07/15-09:13:18.105 1d4c Level-0 table #833: 121383 bytes OK
+2026/07/15-09:13:18.109 1d4c Delete type=0 #831
+2026/07/15-09:13:18.109 1d4c Delete type=3 #829

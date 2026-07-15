@@ -7104,6 +7104,107 @@ body.theme-dark .neuroshima.sheet.actor .wounds-table input {
     justify-content: flex-end;
 }
 
+.neuroshima.list-choice-dialog .list-choice-dialog-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.neuroshima.list-choice-dialog .list-choice-prompt {
+    font-size: 13px;
+    margin: 0;
+}
+
+.neuroshima.list-choice-dialog .list-choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.neuroshima.list-choice-dialog .list-choice-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid rgba(180, 160, 80, 0.25);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.neuroshima.list-choice-dialog .list-choice-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(180, 160, 80, 0.5);
+}
+
+.neuroshima.list-choice-dialog .list-choice-row.selected {
+    background: rgba(139, 0, 0, 0.1);
+    border-color: rgba(139, 0, 0, 0.6);
+}
+
+.neuroshima.list-choice-dialog .list-choice-cb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+    position: relative;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.neuroshima.list-choice-dialog .list-choice-cb.checked {
+    background: rgba(139, 0, 0, 0.35);
+    border-color: #8b0000;
+}
+
+.neuroshima.list-choice-dialog .list-choice-mark {
+    display: none;
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(1px, -2px);
+}
+
+.neuroshima.list-choice-dialog .list-choice-cb.checked .list-choice-mark {
+    display: block;
+}
+
+.neuroshima.list-choice-dialog .list-choice-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    overflow: hidden;
+}
+
+.neuroshima.list-choice-dialog .list-choice-label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.neuroshima.list-choice-dialog .list-choice-desc {
+    font-size: 11px;
+    color: var(--ns-text-dim, rgba(255,255,255,0.55));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.neuroshima.list-choice-dialog .list-choice-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
 .neuroshima .trait-name-block {
     display: flex;
     flex-direction: column;
