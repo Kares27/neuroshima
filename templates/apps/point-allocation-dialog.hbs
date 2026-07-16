@@ -1,0 +1,123 @@
+<div class="point-allocation-body">
+
+  {{#if prompt}}
+    <p class="point-allocation-prompt">
+      {{prompt}}
+    </p>
+  {{/if}}
+
+  <div class="point-allocation-summary">
+    <div class="point-allocation-summary-text">
+      {{#if summary}}
+        <strong>{{summary}}</strong>
+      {{/if}}
+
+      {{#if hint}}
+        <span class="point-allocation-hint">
+          {{hint}}
+        </span>
+      {{/if}}
+    </div>
+
+    <div class="point-allocation-pool">
+      <span>{{labels.remaining}}</span>
+
+      <strong class="point-allocation-remaining">
+        {{remaining}}
+      </strong>
+
+      <span>/ {{pool}}</span>
+    </div>
+  </div>
+
+  <div class="point-allocation-list">
+    {{#each rows as |row|}}
+      <div
+        class="point-allocation-row"
+        data-row-key="{{row.key}}"
+      >
+        <div class="point-allocation-info">
+          <span
+            class="point-allocation-label"
+            title="{{row.label}}"
+          >
+            {{row.label}}
+          </span>
+
+          {{#if row.description}}
+            <span class="point-allocation-description">
+              {{row.description}}
+            </span>
+          {{/if}}
+
+          <div class="point-allocation-details">
+            {{#if ../showCurrent}}
+              <span>
+                {{../labels.current}}:
+                <strong>{{row.current}}</strong>
+              </span>
+            {{/if}}
+
+            {{#if ../showResult}}
+              <span>
+                {{../labels.result}}:
+                <strong>{{row.result}}</strong>
+              </span>
+            {{/if}}
+
+            {{#if ../showMaximum}}
+              <span>
+                {{../labels.maximum}}:
+                <strong>+{{row.dynamicMax}}</strong>
+              </span>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="point-allocation-controls">
+          <button
+            type="button"
+            data-action="decrease"
+            title="{{../labels.decrease}}"
+            {{#unless row.canDecrease}}disabled{{/unless}}
+          >
+            <i class="fas fa-minus"></i>
+          </button>
+
+          <strong class="point-allocation-value">
+            +{{row.value}}
+          </strong>
+
+          <button
+            type="button"
+            data-action="increase"
+            title="{{../labels.increase}}"
+            {{#unless row.canIncrease}}disabled{{/unless}}
+          >
+            <i class="fas fa-plus"></i>
+          </button>
+        </div>
+      </div>
+    {{/each}}
+  </div>
+
+  <footer class="point-allocation-footer">
+    <button
+      type="button"
+      data-action="confirm"
+      {{#unless canConfirm}}disabled{{/unless}}
+    >
+      <i class="fas fa-check"></i>
+      {{labels.confirm}}
+    </button>
+
+    <button
+      type="button"
+      data-action="cancel"
+    >
+      <i class="fas fa-times"></i>
+      {{labels.cancel}}
+    </button>
+  </footer>
+
+</div>

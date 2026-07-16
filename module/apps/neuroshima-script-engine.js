@@ -3993,124 +3993,363 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number, difficultyShift:number, …}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-    // For isMeleePreRoll (getMeleeActions+isDialogScript) entries use dialogCode only.
-    // code is the push-to-actions script that runs later on the duel card — never run it here.
-    // If dialogCode is empty the modifier has no pre-roll fields to contribute; return early.
-    const effectiveCode = dm?.isMeleePreRoll
-      ? (dm._script?.dialogCode || null)
-      : dm._script?.code;
-    if (!effectiveCode) return { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, distanceDelta: 0, distanceModifierDelta: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, burstLevelOverride: null, burstHitStep: null };
-    game.neuroshima?.log?.(`[dialog] execDialogModifier`, {
-      label: dm.label,
-      trigger: dm._script?.trigger,
-      isMeleePreRoll: dm.isMeleePreRoll ?? false,
-      usingDialogCode: !!(dm.isMeleePreRoll && dm._script?.dialogCode)
-    });
-    const rc = dm._rollContext || {};
-    const initialDifficulty = liveContext.difficulty ?? rc.difficulty ?? "average";
-    const initialHitLocation = liveContext.hitLocation ?? rc.hitLocation ?? "random";
-    const initialArmorPenalty = liveContext.armorPenalty ?? rc.armorPenalty ?? (actor.system.combat?.totalArmorPenalty || 0);
-    const initialWoundPenalty = liveContext.woundPenalty ?? rc.woundPenalty ?? (actor.system.combat?.totalWoundPenalty || 0);
-    const initialBurstLevel = rc.burstLevel ?? 0;
-    const fields = {
+  /*
+   * Dla getMeleeActions w trybie dialogowym wykonujemy dialogCode.
+   * Dla zwykłego triggera dialog wykonujemy code.
+   */
+  const effectiveCode = dm?.isMeleePreRoll
+    ? (dm._script?.dialogCode || null)
+    : dm._script?.code;
+
+  /*
+   * Domyślny pusty wynik.
+   *
+   * NOWE:
+   * attributeKey: null
+   */
+  if (!effectiveCode) {
+    return {
       modifier: 0,
       attributeBonus: 0,
       skillBonus: 0,
-      armorPenalty: 0,
-      woundPenalty: 0,
+      armorDelta: 0,
+      woundDelta: 0,
       diseasePenalty: 0,
       weaponModifier: 0,
-      distance: 0,
-      distanceModifier: 0,
+      distanceDelta: 0,
+      distanceModifierDelta: 0,
+      difficulty: null,
+      hitLocation: null,
       difficultyShift: 0,
       damageShift: 0,
       damageShift1: 0,
       damageShift2: 0,
       damageShift3: 0,
-      difficulty: initialDifficulty,
-      hitLocation: initialHitLocation,
       healingModifierAll: 0,
-      healingModifier: NeuroshimaScriptRunner._makeHealingModifierProxy(),
-      healingDifficulty: NeuroshimaScriptRunner._makeHealingDifficultyProxy(),
-      burstLevel: initialBurstLevel,
-      burstHitStep: 1,
-      dieManualBonus: 0,
-      dieReductionBonus: 0,
+      healingModifier: {},
+      healingDifficulty: {},
+      burstLevelOverride: null,
+      burstHitStep: null,
 
-      rollType: rc.rollType ?? null,
-      healingMethod: rc.healingMethod ?? null,
-      weapon: rc.weapon ?? null,
-      wounds: rc.wounds ?? [],
-      stat: rc.stat ?? null,
+      attributeKey: null,
       skillKey: null,
-      skillLabel: null
-    };
-    const args = {
-      actor,
-      rollingActor: liveContext.rollingActor ?? actor,
-      skill: rc.skill ?? null,
-      attribute: rc.attribute ?? null,
-      aimingLevel: rc.aimingLevel ?? 0,
-      burstLevel: rc.burstLevel ?? 0,
-      // Flattened roll context for scripts
-      rollType: rc.rollType ?? null,
-      healingMethod: rc.healingMethod ?? null,
-      weapon: rc.weapon ?? null,
-      weaponId: rc.weaponId ?? rc.weapon?.id ?? null,
-      wounds: rc.wounds ?? [],
-      stat: rc.stat ?? null,
-      movingTargetPenalty: rc.movingTargetPenalty ?? 0,
-      movingShooterPenalty: rc.movingShooterPenalty ?? 0,
-      // isPreRollContext: true when this script runs in pre-roll weapon dialog phase (getMeleeActions + isDialogScript)
-      isPreRollContext: rc.isPreRollContext ?? false,
-      // Safety array for getMeleeActions scripts that fall through when dialogCode is empty.
-      // Actions pushed here in dialog phase are harmlessly discarded.
-      actions: [],
+      skillLabel: null,
 
-      flags: {},
-      fields,
-      currentDifficulty: initialDifficulty,
-      currentHitLocation: initialHitLocation,
-      currentArmorPenalty: initialArmorPenalty,
-      currentWoundPenalty: initialWoundPenalty,
-      currentDistance: liveContext.distance ?? rc.distance ?? 0,
-      currentDistanceModifier: liveContext.distanceModifier ?? rc.distanceModifier ?? 0
-    };
-    // isMeleePreRoll: use executeDialogCode (runs dialogCode with fallback to code).
-    // Otherwise standard execute() which runs code.
-    if (dm.isMeleePreRoll) {
-      await dm._script.executeDialogCode(args);
-    } else {
-      await dm._script.execute(args);
-    }
-    return {
-      modifier: fields.modifier,
-      attributeBonus: fields.attributeBonus,
-      skillBonus: fields.skillBonus,
-      armorDelta: fields.armorPenalty,
-      woundDelta: fields.woundPenalty,
-      diseasePenalty: fields.diseasePenalty,
-      weaponModifier: fields.weaponModifier,
-      distanceDelta: fields.distance,
-      distanceModifierDelta: fields.distanceModifier,
-      difficultyShift: fields.difficultyShift || 0,
-      damageShift: fields.damageShift || 0,
-      damageShift1: fields.damageShift1 || 0,
-      damageShift2: fields.damageShift2 || 0,
-      damageShift3: fields.damageShift3 || 0,
-      difficulty: fields.difficulty !== initialDifficulty ? fields.difficulty : null,
-      hitLocation: fields.hitLocation !== initialHitLocation ? fields.hitLocation : null,
-      healingModifierAll: fields.healingModifierAll || 0,
-      healingModifier: fields.healingModifier?._raw ?? fields.healingModifier ?? {},
-      healingDifficulty: fields.healingDifficulty?._raw ?? fields.healingDifficulty ?? {},
-      burstLevelOverride: fields.burstLevel !== initialBurstLevel ? Math.max(0, Math.floor(fields.burstLevel)) : null,
-      burstHitStep: fields.burstHitStep !== 1 ? Math.max(1, fields.burstHitStep) : null,
-      skillKey: fields.skillKey || null,
-      skillLabel: fields.skillLabel || null,
-      dieManualBonus: fields.dieManualBonus || 0,
-      dieReductionBonus: fields.dieReductionBonus || 0
+      dieManualBonus: 0,
+      dieReductionBonus: 0
     };
   }
+
+  game.neuroshima?.log?.(
+    "[dialog] execDialogModifier",
+    {
+      label: dm.label,
+      trigger: dm._script?.trigger,
+      isMeleePreRoll: dm.isMeleePreRoll ?? false,
+      usingDialogCode: !!(
+        dm.isMeleePreRoll
+        && dm._script?.dialogCode
+      )
+    }
+  );
+
+  const rc = dm._rollContext || {};
+
+  const initialDifficulty =
+    liveContext.difficulty
+    ?? rc.difficulty
+    ?? "average";
+
+  const initialHitLocation =
+    liveContext.hitLocation
+    ?? rc.hitLocation
+    ?? "random";
+
+  const initialArmorPenalty =
+    liveContext.armorPenalty
+    ?? rc.armorPenalty
+    ?? actor.system.combat?.totalArmorPenalty
+    ?? 0;
+
+  const initialWoundPenalty =
+    liveContext.woundPenalty
+    ?? rc.woundPenalty
+    ?? actor.system.combat?.totalWoundPenalty
+    ?? 0;
+
+  const initialBurstLevel =
+    rc.burstLevel ?? 0;
+
+  /*
+   * Zapamiętujemy pierwotny Współczynnik.
+   *
+   * Dzięki temu po wykonaniu skryptu możemy rozpoznać,
+   * czy skrypt rzeczywiście zmienił args.attribute.key.
+   */
+  const initialAttributeKey =
+    rc.attribute?.key ?? null;
+
+  /*
+   * Przekazujemy skryptowi kopię obiektu Współczynnika.
+   *
+   * Bez kopii skrypt zmieniałby obiekt rollContext,
+   * co mogłoby powodować trudne do wykrycia efekty
+   * przy kolejnych przerysowaniach dialogu.
+   */
+  const scriptAttribute = rc.attribute
+    ? { ...rc.attribute }
+    : null;
+
+  const fields = {
+    modifier: 0,
+    attributeBonus: 0,
+    skillBonus: 0,
+
+    armorPenalty: 0,
+    woundPenalty: 0,
+    diseasePenalty: 0,
+
+    weaponModifier: 0,
+    distance: 0,
+    distanceModifier: 0,
+
+    difficultyShift: 0,
+
+    damageShift: 0,
+    damageShift1: 0,
+    damageShift2: 0,
+    damageShift3: 0,
+
+    difficulty: initialDifficulty,
+    hitLocation: initialHitLocation,
+
+    healingModifierAll: 0,
+    healingModifier:
+      NeuroshimaScriptRunner._makeHealingModifierProxy(),
+    healingDifficulty:
+      NeuroshimaScriptRunner._makeHealingDifficultyProxy(),
+
+    burstLevel: initialBurstLevel,
+    burstHitStep: 1,
+
+    dieManualBonus: 0,
+    dieReductionBonus: 0,
+
+    rollType: rc.rollType ?? null,
+    healingMethod: rc.healingMethod ?? null,
+    weapon: rc.weapon ?? null,
+    wounds: rc.wounds ?? [],
+    stat: rc.stat ?? null,
+
+    /*
+     * NOWE:
+     * Skrypty dialogowe mogą ustawić:
+     *
+     * args.fields.attributeKey = "charisma";
+     */
+    attributeKey: null,
+
+    skillKey: null,
+    skillLabel: null
+  };
+
+  const args = {
+    actor,
+
+    rollingActor:
+      liveContext.rollingActor
+      ?? actor,
+
+    skill:
+      rc.skill ?? null,
+
+    /*
+     * ZMIANA:
+     * wcześniej było:
+     *
+     * attribute: rc.attribute ?? null
+     *
+     * Teraz przekazywana jest bezpieczna kopia.
+     */
+    attribute: scriptAttribute,
+
+    aimingLevel:
+      rc.aimingLevel ?? 0,
+
+    burstLevel:
+      rc.burstLevel ?? 0,
+
+    rollType:
+      rc.rollType ?? null,
+
+    healingMethod:
+      rc.healingMethod ?? null,
+
+    weapon:
+      rc.weapon ?? null,
+
+    weaponId:
+      rc.weaponId
+      ?? rc.weapon?.id
+      ?? null,
+
+    wounds:
+      rc.wounds ?? [],
+
+    stat:
+      rc.stat ?? null,
+
+    movingTargetPenalty:
+      rc.movingTargetPenalty ?? 0,
+
+    movingShooterPenalty:
+      rc.movingShooterPenalty ?? 0,
+
+    isPreRollContext:
+      rc.isPreRollContext ?? false,
+
+    actions: [],
+
+    flags: {},
+    fields,
+
+    currentDifficulty:
+      initialDifficulty,
+
+    currentHitLocation:
+      initialHitLocation,
+
+    currentArmorPenalty:
+      initialArmorPenalty,
+
+    currentWoundPenalty:
+      initialWoundPenalty,
+
+    currentDistance:
+      liveContext.distance
+      ?? rc.distance
+      ?? 0,
+
+    currentDistanceModifier:
+      liveContext.distanceModifier
+      ?? rc.distanceModifier
+      ?? 0
+  };
+
+  if (dm.isMeleePreRoll) {
+    await dm._script.executeDialogCode(args);
+  } else {
+    await dm._script.execute(args);
+  }
+
+  /*
+   * NOWE:
+   *
+   * Obsługujemy dwa sposoby zmiany Współczynnika:
+   *
+   * args.fields.attributeKey = "charisma";
+   *
+   * oraz kompatybilnościowo:
+   *
+   * args.attribute.key = "charisma";
+   */
+  const attributeKey =
+    fields.attributeKey
+    ?? (
+      args.attribute?.key
+      && args.attribute.key !== initialAttributeKey
+        ? args.attribute.key
+        : null
+    );
+
+  return {
+    modifier:
+      fields.modifier,
+
+    attributeBonus:
+      fields.attributeBonus,
+
+    skillBonus:
+      fields.skillBonus,
+
+    armorDelta:
+      fields.armorPenalty,
+
+    woundDelta:
+      fields.woundPenalty,
+
+    diseasePenalty:
+      fields.diseasePenalty,
+
+    weaponModifier:
+      fields.weaponModifier,
+
+    distanceDelta:
+      fields.distance,
+
+    distanceModifierDelta:
+      fields.distanceModifier,
+
+    difficultyShift:
+      fields.difficultyShift || 0,
+
+    damageShift:
+      fields.damageShift || 0,
+
+    damageShift1:
+      fields.damageShift1 || 0,
+
+    damageShift2:
+      fields.damageShift2 || 0,
+
+    damageShift3:
+      fields.damageShift3 || 0,
+
+    difficulty:
+      fields.difficulty !== initialDifficulty
+        ? fields.difficulty
+        : null,
+
+    hitLocation:
+      fields.hitLocation !== initialHitLocation
+        ? fields.hitLocation
+        : null,
+
+    healingModifierAll:
+      fields.healingModifierAll || 0,
+
+    healingModifier:
+      fields.healingModifier?._raw
+      ?? fields.healingModifier
+      ?? {},
+
+    healingDifficulty:
+      fields.healingDifficulty?._raw
+      ?? fields.healingDifficulty
+      ?? {},
+
+    burstLevelOverride:
+      fields.burstLevel !== initialBurstLevel
+        ? Math.max(
+            0,
+            Math.floor(fields.burstLevel)
+          )
+        : null,
+
+    burstHitStep:
+      fields.burstHitStep !== 1
+        ? Math.max(
+            1,
+            fields.burstHitStep
+          )
+        : null,
+    attributeKey,
+    skillKey:fields.skillKey || null,
+    skillLabel:fields.skillLabel || null,
+    dieManualBonus:fields.dieManualBonus || 0,
+    dieReductionBonus:fields.dieReductionBonus || 0
+  };
+}
 
   /**
    * @deprecated Replaced by computeDialogFields() + WFRP re-render pattern.
@@ -4731,7 +4970,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: [], preRollModifiers: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -4853,7 +5092,7 @@ export class NeuroshimaScriptRunner {
       preRollModifiers.push({ label: annotation, value: penMod });
     }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -4902,6 +5141,7 @@ export class NeuroshimaScriptRunner {
       if (result.healingModifierAll || Object.keys(result.healingModifier || {}).length > 0) {
         scriptFields.healingModBreakdown.push({ label, healingModifierAll: result.healingModifierAll || 0, healingModifier: result.healingModifier || {} });
       }
+      if (result.attributeKey) scriptFields.attributeKey = result.attributeKey;
       if (result.skillKey) scriptFields.skillKey = result.skillKey;
       if (result.skillLabel) scriptFields.skillLabel = result.skillLabel;
       scriptFields.dieManualBonus += result.dieManualBonus || 0;

@@ -8769,3 +8769,148 @@ button.jam-toggle-btn.header-control {
     text-align: center;
 }
 
+/* point-allocation-dialog  */
+.neuroshima.point-allocation-dialog .window-content {
+  padding: 12px;
+  overflow: hidden;
+}
+
+.point-allocation-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.point-allocation-prompt {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.point-allocation-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-light-2);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.point-allocation-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.point-allocation-hint {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.point-allocation-pool {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.point-allocation-remaining {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 30px;
+  border: 1px solid var(--color-border-light-2);
+  border-radius: 4px;
+}
+
+.point-allocation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 62vh;
+  padding-right: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.point-allocation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-light-2);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.point-allocation-row:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.point-allocation-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 4px;
+}
+
+.point-allocation-label {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.point-allocation-description {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.point-allocation-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.82em;
+  opacity: 0.75;
+}
+
+.point-allocation-details span {
+  white-space: nowrap;
+}
+
+.point-allocation-controls {
+  display: grid;
+  grid-template-columns: 32px 44px 32px;
+  align-items: center;
+  justify-content: end;
+  gap: 5px;
+}
+
+.point-allocation-controls button {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+}
+
+.point-allocation-value {
+  text-align: center;
+}
+
+.point-allocation-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.point-allocation-footer button {
+  min-height: 36px;
+}

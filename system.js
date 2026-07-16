@@ -29,6 +29,9 @@ import { DamageCategoryConfig, _applyCustomDamageCategories } from "./module/app
 import { GrenadeConfig } from "./module/apps/config/grenade-config.js";
 import { DebugRollDialog } from "./module/apps/dialogs/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/dialogs/minor-dialogs.js";
+import { PointAllocationDialog } from "./module/apps/dialogs/point-allocation-dialog.js";
+import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
+
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/dialogs/healing-roll-dialog.js";
@@ -45,6 +48,7 @@ import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 
 import { NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat } from "./module/combat/combat.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
+
 
 function _applyBurstLevelToDOM(messageIdOrEl, level, rollData) {
     let root;
@@ -237,6 +241,8 @@ Hooks.once('init', async function() {
         NeuroshimaItem,
         NeuroshimaChatMessage,
         NeuroshimaInitiativeRollDialog,
+        ListChoiceDialog,
+        PointAllocationDialog,
         NeuroshimaDice,
         CombatHelper,
         NeuroshimaMeleeCombat,
