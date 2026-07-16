@@ -3993,20 +3993,12 @@ export class NeuroshimaScriptRunner {
    * @returns {Promise<{modifier:number, attributeBonus:number, skillBonus:number, difficultyShift:number, …}>}
    */
   static async execDialogModifier(dm, actor, liveContext = {}) {
-  /*
-   * Dla getMeleeActions w trybie dialogowym wykonujemy dialogCode.
-   * Dla zwykłego triggera dialog wykonujemy code.
-   */
+  
   const effectiveCode = dm?.isMeleePreRoll
     ? (dm._script?.dialogCode || null)
     : dm._script?.code;
 
-  /*
-   * Domyślny pusty wynik.
-   *
-   * NOWE:
-   * attributeKey: null
-   */
+
   if (!effectiveCode) {
     return {
       modifier: 0,
@@ -4059,6 +4051,16 @@ export class NeuroshimaScriptRunner {
     liveContext.difficulty
     ?? rc.difficulty
     ?? "average";
+
+  const finalDifficulty =
+    liveContext.finalDifficulty
+    ?? rc.finalDifficulty
+    ?? null;
+
+  const finalDifficulties =
+    liveContext.finalDifficulties
+    ?? rc.finalDifficulties
+    ?? null;
 
   const initialHitLocation =
     liveContext.hitLocation
@@ -4121,6 +4123,9 @@ export class NeuroshimaScriptRunner {
     damageShift3: 0,
 
     difficulty: initialDifficulty,
+    finalDifficulty,
+    finalDifficulties,
+
     hitLocation: initialHitLocation,
 
     healingModifierAll: 0,
@@ -4163,14 +4168,6 @@ export class NeuroshimaScriptRunner {
     skill:
       rc.skill ?? null,
 
-    /*
-     * ZMIANA:
-     * wcześniej było:
-     *
-     * attribute: rc.attribute ?? null
-     *
-     * Teraz przekazywana jest bezpieczna kopia.
-     */
     attribute: scriptAttribute,
 
     aimingLevel:
@@ -4215,6 +4212,8 @@ export class NeuroshimaScriptRunner {
 
     currentDifficulty:
       initialDifficulty,
+      finalDifficulty,
+      finalDifficulties,
 
     currentHitLocation:
       initialHitLocation,
@@ -4948,6 +4947,108 @@ export class NeuroshimaScriptRunner {
     return order[newIdx];
   }
 
+
+  static difficultyKeyFromPercent(percent) {
+    const difficulties =
+      game.neuroshima?.config?.difficulties
+      ?? {};
+
+    const value =
+      Number(percent) || 0;
+
+    const match =
+      Object.entries(difficulties)
+        .find(([, difficulty]) =>
+          value >= Number(difficulty.min)
+          && value <= Number(difficulty.max)
+        );
+
+    if (match) {
+      return match[0];
+    }
+
+    return value < 0 ? "easy" : "grandmasterful";
+  }
+
+  static highestDifficultyKey(keys = []) {
+    const order =
+      NeuroshimaScriptRunner.DIFFICULTY_ORDER;
+
+    return keys.reduce(
+      (highest, key) => {
+        if (!order.includes(key)) {
+          return highest;
+        }
+
+        if (!highest) {
+          return key;
+        }
+
+        return order.indexOf(key)
+          > order.indexOf(highest)
+            ? key
+            : highest;
+      },
+      null
+    );
+  }
+
+  static resolveFinalDifficultyKey({
+    difficulty = "average",
+    difficultyShift = 0,
+    penalties = [],
+    skillShift = 0,
+    extraShift = 0
+  } = {}) {
+    let effectiveDifficulty =
+      difficulty;
+
+    if (difficultyShift) {
+      effectiveDifficulty =
+        NeuroshimaScriptRunner.shiftDifficultyKey(
+          effectiveDifficulty,
+          difficultyShift
+        );
+    }
+
+    const basePenalty =
+      Number(
+        game.neuroshima
+          ?.config
+          ?.difficulties
+          ?.[effectiveDifficulty]
+          ?.min
+        ?? 0
+      );
+
+    const additionalPenalty =
+      penalties.reduce(
+        (sum, penalty) =>
+          sum + (Number(penalty) || 0),
+        0
+      );
+
+    let finalDifficulty =
+      NeuroshimaScriptRunner
+        .difficultyKeyFromPercent(
+          basePenalty + additionalPenalty
+        );
+
+    const finalShift =
+      Number(extraShift || 0)
+      - Number(skillShift || 0);
+
+    if (finalShift) {
+      finalDifficulty =
+        NeuroshimaScriptRunner.shiftDifficultyKey(
+          finalDifficulty,
+          finalShift
+        );
+    }
+
+    return finalDifficulty;
+  }
+
   /**
    * Compute dialog modifiers (hide/activate/run scripts) and return combined field deltas.
    * This is the WFRP-pattern replacement for runDialogScripts + applyDialogFieldOverrides.
@@ -4967,7 +5068,7 @@ export class NeuroshimaScriptRunner {
    * @param {Actor[]}        [targetActors=[]]      - Target actors for targeter/defendingAgainst scripts
    * @returns {Promise<{dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown}>}
    */
-  static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = []) {
+  static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = [], options = {}) {
     if (!actor) return {
       dialogModifiers: [],
       scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 },
@@ -5065,9 +5166,92 @@ export class NeuroshimaScriptRunner {
         isMeleePreRoll
       });
     }
+    /**/ 
+      const hasCachedPreRollModifiers =
+    Array.isArray(
+      options.preRollModifiers
+    );
 
-    const preRollModifiers = [];
-    const preRollTestScripts = this.getScripts(actor, "preRollTest");
+  const preRollModifiers =
+    hasCachedPreRollModifiers
+      ? foundry.utils.deepClone(
+          options.preRollModifiers
+        )
+      : [];
+
+  if (!hasCachedPreRollModifiers) {
+    const preRollTestScripts =
+      this.getScripts(
+        actor,
+        "preRollTest"
+      );
+
+    for (
+      const script
+      of preRollTestScripts
+    ) {
+      const syntheticTest = {
+        actor,
+
+        preData: {
+          penalties: {
+            mod: 0,
+            wounds: 0,
+            armor: 0,
+            base: 0
+          },
+
+          skillBonus: 0,
+          attributeBonus: 0,
+          autoSuccess: false,
+          cancelled: false,
+          annotations: []
+        },
+
+        context: {
+          ...rollContext
+        }
+      };
+
+      try {
+        await script.execute({
+          actor,
+          test:
+            syntheticTest
+        });
+      } catch (error) {
+        console.error(
+          `Neuroshima | preRollTest script error on "${script.label}":`,
+          error
+        );
+
+        continue;
+      }
+
+      const value =
+        Number(
+          syntheticTest
+            .preData
+            .penalties
+            .mod
+          ?? 0
+        );
+
+      const label =
+        syntheticTest
+          .preData
+          .annotations
+          ?.[0]
+        ?? script.label
+        ?? "preRollTest";
+
+      preRollModifiers.push({
+        label,
+        value
+      });
+    }
+  }
+
     for (const script of preRollTestScripts) {
       const syntheticTest = {
         actor,
@@ -5107,6 +5291,8 @@ export class NeuroshimaScriptRunner {
         rollType: rollContext.rollType ?? null,
         healingMethod: rollContext.healingMethod ?? null,
         difficulty: rollContext.difficulty || "average",
+        finalDifficulty: rollContext.finalDifficulty ?? null,
+        finalDifficulties: rollContext.finalDifficulties ?? null,
         hitLocation: rollContext.hitLocation || "random",
         armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
         woundPenalty: actor.system.combat?.totalWoundPenalty || 0,
@@ -5154,6 +5340,7 @@ export class NeuroshimaScriptRunner {
     }
 
     return { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers };
+    
   }
 
   /**

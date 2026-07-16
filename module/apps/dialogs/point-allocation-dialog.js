@@ -25,75 +25,43 @@ export class PointAllocationDialog
     },
 
     actions: {
-      increase:
-        PointAllocationDialog.prototype._onIncrease,
-
-      decrease:
-        PointAllocationDialog.prototype._onDecrease,
-
-      confirm:
-        PointAllocationDialog.prototype._onConfirm,
-
-      cancel:
-        PointAllocationDialog.prototype._onCancel
+      increase: PointAllocationDialog.prototype._onIncrease,
+      decrease: PointAllocationDialog.prototype._onDecrease,
+      confirm: PointAllocationDialog.prototype._onConfirm,
+      cancel: PointAllocationDialog.prototype._onCancel
     }
   };
 
   static PARTS = {
-    main: {
-      template:
-        "systems/neuroshima/templates/apps/point-allocation-dialog.hbs"
-    }
-  };
+        main: {
+            template:
+            "systems/neuroshima/templates/apps/point-allocation-dialog.hbs",
+
+            scrollable: [
+            ".point-allocation-list"
+            ]
+        }
+    };
 
   constructor(options = {}) {
     super(options);
 
-    this._titleText =
-      options.title ?? "";
+    this._titleText = options.title ?? "";
+    this._prompt =  options.prompt ?? "";
+    this._summary =  options.summary ?? "";
+    this._hint = options.hint ?? "";
+    this._pool = Math.max( 0, Math.floor( Number(options.pool) || 0 ));
+    this._step = Math.max(  1, Math.floor( Number(options.step) || 1 ));
+    this._requireExact = options.requireExact ?? true;
+    this._showCurrent = options.showCurrent ?? true;
 
-    this._prompt =
-      options.prompt ?? "";
+    this._showResult = options.showResult ?? true;
 
-    this._summary =
-      options.summary ?? "";
+    this._showMaximum = options.showMaximum ?? true;
 
-    this._hint =
-      options.hint ?? "";
+    this._validate = typeof options.validate === "function" ? options.validate : null;
 
-    this._pool = Math.max(
-      0,
-      Math.floor(
-        Number(options.pool) || 0
-      )
-    );
-
-    this._step = Math.max(
-      1,
-      Math.floor(
-        Number(options.step) || 1
-      )
-    );
-
-    this._requireExact =
-      options.requireExact ?? true;
-
-    this._showCurrent =
-      options.showCurrent ?? true;
-
-    this._showResult =
-      options.showResult ?? true;
-
-    this._showMaximum =
-      options.showMaximum ?? true;
-
-    this._validate =
-      typeof options.validate === "function"
-        ? options.validate
-        : null;
-
-    this._labels = {
-      remaining:
+    this._labels = { remaining:
         "Pozostało",
 
       current:
