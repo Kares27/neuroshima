@@ -971,9 +971,10 @@ export class NeuroshimaDice {
    * @param {Object} [params.actor] - The actor performing the roll
    * @param {number} [params.skillBonus=0] - Additional bonus to skill
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
+   * @param {number} [params.finalDifficultyShift=0] - Difficulty levels applied after percentage penalties
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {}, resultCallback = null, dieManualBonus = 0, dieReductionBonus = 0 } = {}) {
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, finalDifficultyShift = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {}, resultCallback = null, dieManualBonus = 0, dieReductionBonus = 0 } = {}) {
     game.neuroshima.log("rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
     if (isNaN(stat)) {
         game.neuroshima.warn("rollTest received NaN stat!", { stat, label });
@@ -1075,7 +1076,7 @@ export class NeuroshimaDice {
     }));
 
     // 3. Compute difficulty shifts (Slider)
-    let totalShift = 0;
+    let totalShift = Number(finalDifficultyShift ?? 0);
     const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
     
     // Skill and dice shifts (natural 1s and 20s)
@@ -1099,6 +1100,7 @@ export class NeuroshimaDice {
       skill: finalSkill,
       skillBonus,
       attributeBonus,
+      finalDifficultyShift: Number(finalDifficultyShift ?? 0),
       baseStat: stat,
       baseSkill: skill,
       baseDifficulty: baseDifficulty,

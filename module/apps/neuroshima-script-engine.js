@@ -4013,6 +4013,7 @@ export class NeuroshimaScriptRunner {
       difficulty: null,
       hitLocation: null,
       difficultyShift: 0,
+      finalDifficultyShift: 0,
       damageShift: 0,
       damageShift1: 0,
       damageShift2: 0,
@@ -4116,6 +4117,7 @@ export class NeuroshimaScriptRunner {
     distanceModifier: 0,
 
     difficultyShift: 0,
+    finalDifficultyShift: 0,
 
     damageShift: 0,
     damageShift1: 0,
@@ -4288,7 +4290,10 @@ export class NeuroshimaScriptRunner {
       fields.distanceModifier,
 
     difficultyShift:
-      fields.difficultyShift || 0,
+      Number(fields.difficultyShift ?? 0),
+
+    finalDifficultyShift:
+      Number(fields.finalDifficultyShift ?? 0),
 
     damageShift:
       fields.damageShift || 0,
@@ -4994,6 +4999,7 @@ export class NeuroshimaScriptRunner {
   static resolveFinalDifficultyKey({
     difficulty = "average",
     difficultyShift = 0,
+    finalDifficultyShift = 0,
     penalties = [],
     skillShift = 0,
     extraShift = 0
@@ -5034,6 +5040,7 @@ export class NeuroshimaScriptRunner {
 
     const finalShift =
       Number(extraShift || 0)
+      + Number(finalDifficultyShift || 0)
       - Number(skillShift || 0);
 
     if (finalShift) {
@@ -5069,7 +5076,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = [], options = {}) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: [], preRollModifiers: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -5250,7 +5257,7 @@ export class NeuroshimaScriptRunner {
     }
   }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -5281,6 +5288,7 @@ export class NeuroshimaScriptRunner {
       scriptFields.diseasePenalty += result.diseasePenalty || 0;
       scriptFields.weaponModifier += result.weaponModifier || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
+      scriptFields.finalDifficultyShift += Number(result.finalDifficultyShift ?? 0);
       scriptFields.damageShift += result.damageShift || 0;
       scriptFields.damageShift1 += result.damageShift1 || 0;
       scriptFields.damageShift2 += result.damageShift2 || 0;

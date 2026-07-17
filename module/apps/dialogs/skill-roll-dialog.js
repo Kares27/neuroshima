@@ -307,6 +307,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
             finalDifficulty: NeuroshimaScriptRunner.resolveFinalDifficultyKey({
               difficulty: effectiveDifficulty,
               difficultyShift: sf.difficultyShift || 0,
+              finalDifficultyShift: Number(sf.finalDifficultyShift ?? 0),
               penalties: [
                 userModifier + (sf.modifier || 0),
                 useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0,
@@ -785,6 +786,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       NeuroshimaDice._getShiftedDifficulty(
         penaltyDiff,
         -skillShift
+          + Number(sf.finalDifficultyShift ?? 0)
       );
 
     const finalTarget =
@@ -1047,6 +1049,9 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
       attributeBonus:
         combinedAttrBonus,
+
+      finalDifficultyShift:
+        Number(sf.finalDifficultyShift ?? 0),
 
       skillKey:
         this.skillKey
