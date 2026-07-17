@@ -4123,8 +4123,6 @@ export class NeuroshimaScriptRunner {
     damageShift3: 0,
 
     difficulty: initialDifficulty,
-    finalDifficulty,
-    finalDifficulties,
 
     hitLocation: initialHitLocation,
 
