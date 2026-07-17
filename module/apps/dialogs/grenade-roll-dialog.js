@@ -86,7 +86,27 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       { rollType: "grenade", weapon: this.weapon, skill: weaponSkillObj, attribute: weaponAttrObj, difficulty: baseDifficulty, distance, distanceModifier: distancePenalty },
       this.selectedModifierIds,
       this.unselectedModifierIds,
-      targetActors
+      targetActors,
+      {
+        resolveFinalContext: ({ scriptFields: sf }) => {
+          const effectiveDifficulty = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
+            ? sf.difficulty
+            : baseDifficulty;
+          return {
+            finalDifficulty: NeuroshimaScriptRunner.resolveFinalDifficultyKey({
+              difficulty: effectiveDifficulty,
+              difficultyShift: sf.difficultyShift || 0,
+              penalties: [
+                userModifier + (sf.modifier || 0),
+                useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0,
+                useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0,
+                useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0,
+                distancePenalty
+              ]
+            })
+          };
+        }
+      }
     );
 
     this._dialogModifiers = dialogModifiers;

@@ -296,7 +296,28 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       },
       this.selectedModifierIds,
       this.unselectedModifierIds,
-      targetActors
+      targetActors,
+      {
+        resolveFinalContext: ({ scriptFields: sf }) => {
+          const effectiveDifficulty = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
+            ? sf.difficulty
+            : baseDifficulty;
+          const totalSkill = (this.skill || 0) + userSkillBonus + (sf.skillBonus || 0);
+          return {
+            finalDifficulty: NeuroshimaScriptRunner.resolveFinalDifficultyKey({
+              difficulty: effectiveDifficulty,
+              difficultyShift: sf.difficultyShift || 0,
+              penalties: [
+                userModifier + (sf.modifier || 0),
+                useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0,
+                useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0,
+                useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0
+              ],
+              skillShift: NeuroshimaDice.getSkillShift(totalSkill)
+            })
+          };
+        }
+      }
     );
 
     /*

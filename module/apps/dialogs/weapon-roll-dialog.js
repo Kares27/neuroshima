@@ -165,7 +165,50 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     },
     this.selectedModifierIds,
     this.unselectedModifierIds,
-    targetActors
+    targetActors,
+    {
+      resolveFinalContext: ({ scriptFields: sf }) => {
+        const effectiveDifficulty = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
+          ? sf.difficulty
+          : baseDifficulty;
+        const effectiveHitLocation = (sf.hitLocation && this.userEntry.hitLocation === undefined)
+          ? sf.hitLocation
+          : hitLocation;
+        const locationPenalty = NeuroshimaDice.getLocationPenalty(this.weapon.system.weaponType, effectiveHitLocation);
+        const weaponModifier = this.userEntry.weaponModifier
+          ?? ((this.weapon?.system?.weaponModifier ?? 0) + (sf.weaponModifier || 0));
+        const isMelee = this.rollType === "melee";
+        const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
+        const effectiveTempoShift = isMelee
+          ? Math.max(this._conditionTempo || 0, maneuver === "increasedTempo" ? tempoLevel : 0)
+          : 0;
+        let skillShift = 0;
+        if (allowCombatShift && !isMelee) {
+          const skillKey = sf.skillKey || weaponSkillKey;
+          const baseSkill = skillKey === "experience" && _isCreature
+            ? (this.actor.system.experience ?? 0)
+            : (this.actor.system.skills?.[skillKey]?.value || 0);
+          skillShift = NeuroshimaDice.getSkillShift(baseSkill + userSkillBonus + (sf.skillBonus || 0));
+        }
+        return {
+          finalDifficulty: NeuroshimaScriptRunner.resolveFinalDifficultyKey({
+            difficulty: effectiveDifficulty,
+            difficultyShift: sf.difficultyShift || 0,
+            penalties: [
+              userModifier + (sf.modifier || 0),
+              useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0,
+              useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0,
+              useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0,
+              useWeaponModifier ? weaponModifier : 0,
+              locationPenalty,
+              distancePenalty
+            ],
+            skillShift,
+            extraShift: effectiveTempoShift
+          })
+        };
+      }
+    }
   );
 
     this._dialogModifiers = dialogModifiers;

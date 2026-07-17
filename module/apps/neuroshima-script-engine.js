@@ -5252,30 +5252,6 @@ export class NeuroshimaScriptRunner {
     }
   }
 
-    for (const script of preRollTestScripts) {
-      const syntheticTest = {
-        actor,
-        preData: {
-          penalties: { mod: 0, wounds: 0, armor: 0, base: 0 },
-          skillBonus: 0,
-          attributeBonus: 0,
-          autoSuccess: false,
-          cancelled: false,
-          annotations: [],
-        },
-        context: { ...rollContext },
-      };
-      try {
-        await script.execute({ actor, test: syntheticTest });
-      } catch (e) {
-        console.error(`Neuroshima | preRollTest script error on "${script.label}":`, e);
-        continue;
-      }
-      const penMod = syntheticTest.preData.penalties.mod ?? 0;
-      const annotation = syntheticTest.preData.annotations?.[0] ?? script.label ?? "preRollTest";
-      preRollModifiers.push({ label: annotation, value: penMod });
-    }
-
     const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
@@ -5339,7 +5315,52 @@ export class NeuroshimaScriptRunner {
       if (prt.value) modBreakdown.push({ label: prt.label, value: prt.value });
     }
 
-    return { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers };
+    const result = { dialogModifiers, scriptFields, modBreakdown, attrBreakdown, skillBreakdown, preRollModifiers };
+    const resolveFinalContext = options.resolveFinalContext;
+
+    if (typeof resolveFinalContext === "function") {
+      const resolved = await resolveFinalContext(result, rollContext) || {};
+      const nextFinalDifficulty = resolved.finalDifficulty ?? null;
+      const nextFinalDifficulties = resolved.finalDifficulties ?? null;
+      const currentFinalDifficulty = rollContext.finalDifficulty ?? null;
+      const currentFinalDifficulties = rollContext.finalDifficulties ?? null;
+      const difficultiesChanged = JSON.stringify(nextFinalDifficulties) !== JSON.stringify(currentFinalDifficulties);
+      const difficultyChanged = nextFinalDifficulty !== currentFinalDifficulty;
+      const pass = Number(options._finalContextPass || 0);
+
+      if ((difficultyChanged || difficultiesChanged) && pass < 4) {
+        return this.computeDialogFields(
+          actor,
+          {
+            ...rollContext,
+            finalDifficulty: nextFinalDifficulty,
+            finalDifficulties: nextFinalDifficulties
+          },
+          selectedModifierIds,
+          unselectedModifierIds,
+          targetActors,
+          {
+            ...options,
+            preRollModifiers,
+            _finalContextPass: pass + 1
+          }
+        );
+      }
+
+      if ((difficultyChanged || difficultiesChanged) && pass >= 4) {
+        console.warn("Neuroshima | Dialog final difficulty did not stabilize after 4 passes", {
+          actor: actor.name,
+          rollType: rollContext.rollType,
+          finalDifficulty: nextFinalDifficulty,
+          finalDifficulties: nextFinalDifficulties
+        });
+      }
+
+      result.finalDifficulty = nextFinalDifficulty;
+      result.finalDifficulties = nextFinalDifficulties;
+    }
+
+    return result;
     
   }
 

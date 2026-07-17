@@ -37,6 +37,8 @@ function getHealingPercent(healingMethod, hadFirstAid = false) {
  * skill:         { name: string, value: number, key: string }
  * wounds:        Array<{ id, name, damageType, hadFirstAid }>
  * stat:          number  // attribute total value
+ * finalDifficulty: string // highest final wound difficulty
+ * finalDifficulties: Record<woundId, string>
  * ```
  *
  * ### Supported script return fields:
@@ -153,7 +155,36 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       },
       this.selectedModifierIds,
       this.unselectedModifierIds,
-      targetActors
+      targetActors,
+      {
+        resolveFinalContext: ({ scriptFields: sf }) => {
+          const commonModifier = userModifier
+            + (sf.modifier || 0)
+            + (useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0)
+            + (useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0)
+            + (useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0);
+          const finalDifficulties = {};
+
+          for (const group of Object.values(this._woundGroupMap)) {
+            const damageType = group.damageType;
+            const difficulty = this.userEntry[`difficulty-${damageType}`] ?? group.difficulty;
+            const finalDifficulty = NeuroshimaScriptRunner.resolveFinalDifficultyKey({
+              difficulty,
+              penalties: [commonModifier],
+              extraShift: (sf.difficultyShift || 0) + (sf.healingDifficulty?.[damageType] || 0)
+            });
+            for (const wound of group.woundList) {
+              const woundId = wound.id ?? wound._id;
+              if (woundId) finalDifficulties[woundId] = finalDifficulty;
+            }
+          }
+
+          return {
+            finalDifficulties,
+            finalDifficulty: NeuroshimaScriptRunner.highestDifficultyKey(Object.values(finalDifficulties))
+          };
+        }
+      }
     );
 
     this._dialogModifiers = dialogModifiers;

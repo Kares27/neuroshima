@@ -91,7 +91,29 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       { rollType: "initiative", isMelee: this.isMelee, skill: initSkillObj, attribute: initAttrObj, difficulty },
       this.selectedModifierIds,
       this.unselectedModifierIds,
-      targetActors
+      targetActors,
+      {
+        resolveFinalContext: ({ scriptFields: sf }) => {
+          const effectiveDifficulty = (sf.difficulty && this.userEntry.difficulty === undefined)
+            ? sf.difficulty
+            : difficulty;
+          const finalSkill = useSkill ? initSkillValue + userSkillBonus + (sf.skillBonus || 0) : 0;
+          const skillShift = finalSkill <= 0 ? -1 : Math.floor(finalSkill / 4);
+          return {
+            finalDifficulty: NeuroshimaScriptRunner.resolveFinalDifficultyKey({
+              difficulty: effectiveDifficulty,
+              difficultyShift: sf.difficultyShift || 0,
+              penalties: [
+                userModifier + (sf.modifier || 0),
+                useArmorPenalty ? actorArmorPenalty + (sf.armorDelta || 0) : 0,
+                useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0,
+                useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0
+              ],
+              skillShift
+            })
+          };
+        }
+      }
     );
 
     this._dialogModifiers = dialogModifiers;
