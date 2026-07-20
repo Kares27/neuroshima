@@ -1657,6 +1657,10 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     game.neuroshima.log(`[Background] dropped ${type} "${created.name}" onto actor "${actor.name}"`);
 
     if (["origin", "profession"].includes(type) && actor.type === "character") {
+      // The choice dialog must not compete with an Immediate script dialog.
+      // Wait for every applyEffect/Immediate script on the newly-created item.
+      await created.waitForCreateEffectScripts?.();
+
       const traits = Array.from(created.system.traits || []);
       if (traits.length > 0) {
         await this._showTraitChoiceDialog(traits, created.name, created.id, type, actor, created, fieldPath);

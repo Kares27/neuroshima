@@ -19,6 +19,17 @@
             </div>
         </div>
 
+        {{#if (eq scriptData.trigger "immediate")}}
+        <div class="form-group ns-delete-after-run-group">
+            <label for="ns-se-deleteAfterRun" data-tooltip="{{localize 'NEUROSHIMA.Scripts.DeleteAfterRunHint'}}" style="cursor:pointer">
+                {{localize "NEUROSHIMA.Scripts.DeleteAfterRun"}}
+            </label>
+            <div class="form-fields">
+                <input type="checkbox" id="ns-se-deleteAfterRun" name="deleteAfterRun" {{#if scriptData.deleteAfterRun}}checked{{/if}}>
+            </div>
+        </div>
+        {{/if}}
+
         <div class="form-group ns-run-if-disabled-group">
             <label for="ns-se-runIfDisabled" data-tooltip="{{localize 'NEUROSHIMA.Scripts.RunIfDisabledHint'}}" style="cursor:pointer">
                 {{localize "NEUROSHIMA.Scripts.RunIfDisabled"}}

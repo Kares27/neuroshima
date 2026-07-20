@@ -1944,6 +1944,8 @@
             "NoActor": "Script requires an assigned actor",
             "RunIfDisabled": "Run if Disabled",
             "RunIfDisabledHint": "Run this script even when the effect is disabled",
+            "DeleteAfterRun": "Delete Script",
+            "DeleteAfterRunHint": "Delete only this script from the effect after its Immediate execution",
             "Targeter": "Targeter",
             "TargeterHint": "Run this script in the dialog of any actor that is targeting this actor",
             "DefendingAgainst": "Defending Against",

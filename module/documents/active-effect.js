@@ -410,6 +410,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
     if (!data.system) data.system = {};
     const liveScriptData = this.system?.scriptData ?? [];
     data.system.scriptData = liveScriptData.map(s => ({
+      id:                s.id                ?? "",
       trigger:           s.trigger           ?? "manual",
       label:             s.label             ?? "",
       code:              s.code              ?? "",
@@ -418,6 +419,7 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       submissionScript:  s.submissionScript  ?? "",
       dialogCode:        s.dialogCode        ?? "",
       runIfDisabled:     s.runIfDisabled     ?? false,
+      deleteAfterRun:    s.deleteAfterRun    ?? false,
       targeter:          s.targeter          ?? false,
       defendingAgainst:  s.defendingAgainst  ?? false,
       isDialogScript:    s.isDialogScript    ?? false,
@@ -550,6 +552,7 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
     return {
       scriptData: new fields.ArrayField(
         new fields.SchemaField({
+          id:                new fields.StringField({ initial: "",       blank: true }),
           trigger:           new fields.StringField({ initial: "manual", blank: true }),
           label:             new fields.StringField({ initial: "",       blank: true }),
           code:              new fields.StringField({ initial: "",       blank: true }),
@@ -558,6 +561,7 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
           submissionScript:  new fields.StringField({ initial: "",       blank: true }),
           dialogCode:        new fields.StringField({ initial: "",       blank: true }),
           runIfDisabled:     new fields.BooleanField({ initial: false }),
+          deleteAfterRun:    new fields.BooleanField({ initial: false }),
           targeter:          new fields.BooleanField({ initial: false }),
           defendingAgainst:  new fields.BooleanField({ initial: false }),
           isDialogScript:    new fields.BooleanField({ initial: false }),

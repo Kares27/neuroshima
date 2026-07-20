@@ -51,6 +51,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     scriptData.dialogCode        = (scriptData.dialogCode       ?? "").trimEnd();
     scriptData.dialogDescription = scriptData.dialogDescription ?? "";
     scriptData.isDialogScript    = scriptData.isDialogScript ?? false;
+    scriptData.deleteAfterRun    = scriptData.deleteAfterRun ?? false;
 
     // _pendingIsDialogScript overrides the stored value for the render immediately
     // following a checkbox toggle, so the UI reflects the user's intent even if
@@ -96,6 +97,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
 
     form.querySelector('input[name="label"]')?.addEventListener("change", () => this._persist(form));
     form.querySelector('input[name="runIfDisabled"]')?.addEventListener("change", () => this._persist(form));
+    form.querySelector('input[name="deleteAfterRun"]')?.addEventListener("change", () => this._persist(form));
     form.querySelector('input[name="targeter"]')?.addEventListener("change", () => this._persist(form));
     form.querySelector('input[name="defendingAgainst"]')?.addEventListener("change", () => this._persist(form));
 
@@ -140,6 +142,7 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     const scripts = foundry.utils.deepClone(effect.system?.scriptData ?? []);
     if (!scripts[this.scriptIndex]) return;
     const s = scripts[this.scriptIndex];
+    s.id ??= foundry.utils.randomID();
 
     const labelEl = form.querySelector('input[name="label"]');
     if (labelEl) s.label = labelEl.value;
@@ -149,6 +152,11 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
 
     const ridEl = form.querySelector('input[name="runIfDisabled"]');
     s.runIfDisabled = ridEl ? ridEl.checked : (s.runIfDisabled ?? false);
+
+    const deleteAfterRunEl = form.querySelector('input[name="deleteAfterRun"]');
+    s.deleteAfterRun = s.trigger === "immediate" && deleteAfterRunEl
+      ? deleteAfterRunEl.checked
+      : false;
 
     const targeterEl = form.querySelector('input[name="targeter"]');
     s.targeter = targeterEl ? targeterEl.checked : (s.targeter ?? false);

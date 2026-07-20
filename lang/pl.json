@@ -1982,6 +1982,8 @@
             "NoActor": "Skrypt wymaga przypisanego aktora",
             "RunIfDisabled": "Uruchom gdy wyłączony",
             "RunIfDisabledHint": "Uruchamia ten skrypt nawet gdy efekt jest wyłączony",
+            "DeleteAfterRun": "Usuń skrypt",
+            "DeleteAfterRunHint": "Usuń tylko ten skrypt z efektu po jego natychmiastowym wykonaniu",
             "Targeter": "Targeted",
             "TargeterHint": "Uruchamia ten skrypt w dialogu każdego aktora, który celuje w tego aktora",
             "DefendingAgainst": "Obrona przed",

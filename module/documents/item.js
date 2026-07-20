@@ -409,7 +409,15 @@ export class NeuroshimaItem extends Item {
     if (!actor) return;
     if (game.user.id !== userId) return;
 
-    const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
+    // Foundry does not guarantee that callers awaiting createEmbeddedDocuments()
+    // also await asynchronous work performed by this lifecycle callback. Expose
+    // the work as a promise so flows which depend on Immediate scripts can wait
+    // for their dialogs and other asynchronous operations to finish.
+    this._createEffectScriptsPromise = this._executeCreateEffectScripts(actor, data, options);
+    await this._createEffectScriptsPromise;
+  }
+
+  async _executeCreateEffectScripts(actor, data, options) {
     for (const effect of this.effects) {
       const createScripts = effect.scripts.filter(s => s.trigger === "applyEffect");
       for (const script of createScripts) {
@@ -420,6 +428,11 @@ export class NeuroshimaItem extends Item {
         await script.execute({ actor, item: this, data, options });
       }
     }
+  }
+
+  /** Wait until applyEffect and Immediate scripts fired during item creation finish. */
+  async waitForCreateEffectScripts() {
+    await (this._createEffectScriptsPromise ?? Promise.resolve());
   }
 
   /**

@@ -161,10 +161,12 @@ export class ResourceHandle {
  */
 export class NeuroshimaScript {
   constructor(scriptData, effect) {
+    this.id = scriptData.id || null;
     this.trigger = scriptData.trigger || "manual";
     this.label = scriptData.label || "";
     this.code = scriptData.code || "";
     this.runIfDisabled = scriptData.runIfDisabled ?? false;
+    this.deleteAfterRun = scriptData.deleteAfterRun ?? false;
     this.hideScript = scriptData.hideScript || "";
     this.activateScript = scriptData.activateScript || "";
     this.submissionScript = scriptData.submissionScript || "";
@@ -3211,7 +3213,33 @@ export class NeuroshimaScript {
    * @param {object} args - Trigger args (actor, fields, state, …)
    */
   async execute(args = {}) {
-    return this._executeCode(this.code, args);
+    const result = await this._executeCode(this.code, args);
+    if (this.trigger === "immediate" && this.deleteAfterRun) {
+      await this._deleteOwnScript();
+    }
+    return result;
+  }
+
+  /** Remove only this script entry from its owning ActiveEffect. */
+  async _deleteOwnScript() {
+    const effect = fromUuidSync(this.effect?.uuid) ?? this.effect;
+    if (!effect) return;
+
+    const scripts = foundry.utils.deepClone(effect.system?.scriptData ?? []);
+    const index = this.id
+      ? scripts.findIndex(script => script.id === this.id)
+      : this._sourceIdx;
+    if (!Number.isInteger(index) || index < 0 || index >= scripts.length) return;
+
+    // Legacy scripts without an id may have shifted after another immediate script
+    // removed itself. Refuse to delete an entry that is no longer this script.
+    if (!this.id) {
+      const candidate = scripts[index];
+      if (candidate?.trigger !== this.trigger || candidate?.label !== this.label || candidate?.code !== this.code) return;
+    }
+
+    scripts.splice(index, 1);
+    await effect.update({ "system.scriptData": scripts });
   }
 
   /**
