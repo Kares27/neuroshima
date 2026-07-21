@@ -279,6 +279,57 @@ export class NeuroshimaScript {
     args.dialogModifiers.push({ label, modifier: Number(modifier) || 0, description });
   }
 
+  /** Resolve mutable Roll Test data and initialise its change history. */
+  _getRollTestData(args) {
+    const data = args?.test?.result?.rollData;
+    if (!data || !Array.isArray(data.rawResults)) return null;
+    data.rolledResults ??= [...data.rawResults];
+    data.diceChanges ??= [];
+    return data;
+  }
+
+  /** Declare a replacement of one effective Roll Test die. */
+  replaceTestDie(args, targetIndex, newValue, options = {}) {
+    const data = this._getRollTestData(args);
+    targetIndex = Number(targetIndex);
+    newValue = Number(newValue);
+    if (!data || !Number.isInteger(targetIndex)) return false;
+    if (targetIndex < 0 || targetIndex >= data.rawResults.length) return false;
+    if (!Number.isFinite(newValue)) return false;
+
+    newValue = Math.clamp(Math.trunc(newValue), 1, 20);
+    const oldValue = data.rawResults[targetIndex];
+    if (oldValue === newValue) return false;
+
+    data.rawResults[targetIndex] = newValue;
+    data.diceChanges.push({
+      type: options.type ?? "replace",
+      targetIndex,
+      sourceIndex: Number.isInteger(options.sourceIndex) ? options.sourceIndex : null,
+      oldValue,
+      newValue,
+      label: options.label ?? this.effect?.name ?? this.label ?? "Effect",
+      icon: options.icon ?? "fas fa-pen",
+      effectUuid: this.effect?.uuid ?? null
+    });
+    return true;
+  }
+
+  /** Declare copying the current effective value of one Roll Test die to another. */
+  copyTestDie(args, sourceIndex, targetIndex, options = {}) {
+    const data = this._getRollTestData(args);
+    sourceIndex = Number(sourceIndex);
+    if (!data || !Number.isInteger(sourceIndex)) return false;
+    if (sourceIndex < 0 || sourceIndex >= data.rawResults.length) return false;
+
+    return this.replaceTestDie(args, targetIndex, data.rawResults[sourceIndex], {
+      ...options,
+      type: "copy",
+      sourceIndex,
+      icon: options.icon ?? "fas fa-copy"
+    });
+  }
+
   // ── Location helpers ─────────────────────────────────────────────────────
 
   /**

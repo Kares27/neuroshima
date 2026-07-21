@@ -876,6 +876,104 @@ export class NeuroshimaDice {
     return rollMessage;
   }
 
+  /** Re-evaluate a Roll Test once after all scripts have declared die changes. */
+  static recalculateRollTestAfterScripts(test) {
+    const data = test?.result?.rollData;
+    if (!data?.diceChanges?.length) return;
+
+    const results = [...data.rawResults];
+    let totalShift = Number(data.finalDifficultyShift ?? 0);
+    if (!data.isCombat || game.settings.get("neuroshima", "allowCombatShift")) {
+      totalShift -= this.getSkillShift(Number(data.skill) || 0);
+      totalShift += this.getDiceShift(results);
+    }
+
+    const difficulty = this._getShiftedDifficulty(data.baseDifficulty, totalShift);
+    const target = Number(data.stat || 0) + Number(difficulty.mod || 0);
+    const dice = results.map((value, index) => ({
+      original: value, modified: value, index, isSuccess: false, ignored: false
+    }));
+    const evaluated = {
+      target,
+      skill: Number(data.skill) || 0,
+      dieReductionBonus: Number(data.dieReductionBonus) || 0
+    };
+
+    if (data.isOpen) {
+      this._evaluateOpenTest(evaluated, dice);
+    } else if (data.isDefending) {
+      evaluated.modifiedResults = dice.map(die => ({
+        ...die,
+        modified: die.original,
+        isSuccess: die.original <= target && die.original !== 20,
+        isNat1: die.original === 1,
+        isNat20: die.original === 20
+      }));
+      evaluated.successCount = evaluated.modifiedResults.filter(die => die.isSuccess).length;
+      evaluated.success = evaluated.successCount >= 2;
+    } else {
+      this._evaluateClosedTest(evaluated, dice);
+    }
+
+    const changesByDie = new Map();
+    for (const change of data.diceChanges) {
+      const changes = changesByDie.get(change.targetIndex) ?? [];
+      changes.push(change);
+      changesByDie.set(change.targetIndex, changes);
+    }
+
+    data.modifiedResults = evaluated.modifiedResults.map((die, index) => {
+      const changes = changesByDie.get(index) ?? [];
+      const rolled = Number(data.rolledResults?.[index] ?? die.original);
+      const lastChange = changes[changes.length - 1];
+      return {
+        ...die,
+        rolled,
+        rolledNat1: rolled === 1,
+        rolledNat20: rolled === 20,
+        changed: changes.length > 0,
+        changes,
+        changeIcon: lastChange?.icon ?? "fas fa-exchange-alt",
+        changeTooltip: this.buildDieChangeTooltip(changes, index)
+      };
+    });
+
+    data.ptMod = difficulty.mod;
+    data.difficultyLabel = difficulty.label;
+    data.target = target;
+    data.success = !!evaluated.success;
+    data.successCount = Number(evaluated.successCount ?? 0);
+    data.successPoints = data.isOpen ? Number(evaluated.successPoints ?? 0) : data.successCount;
+    data.skillUsed = evaluated.skillUsed;
+    data.remainingSkill = evaluated.remainingSkill;
+    data.isCritSuccess = !!evaluated.isCritSuccess;
+    data.isCritFailure = !!evaluated.isCritFailure;
+
+    test.result.isSuccess = data.success;
+    test.result.successCount = data.successCount;
+    game.neuroshima.log("Roll Test dice changes applied", {
+      rolledResults: data.rolledResults,
+      effectiveResults: data.rawResults,
+      diceChanges: data.diceChanges,
+      target: data.target,
+      success: data.success,
+      successCount: data.successCount
+    });
+  }
+
+  /** Build user-facing text from declarative die-change data. */
+  static buildDieChangeTooltip(changes, targetIndex) {
+    return (changes ?? []).map(change => {
+      const label = Handlebars.escapeExpression(
+        change.label || game.i18n.localize("NEUROSHIMA.Scripts.DieChangeEffect")
+      );
+      const detail = change.type === "copy" && Number.isInteger(change.sourceIndex)
+        ? game.i18n.format("NEUROSHIMA.Scripts.DieCopied", { source: change.sourceIndex + 1 })
+        : game.i18n.localize("NEUROSHIMA.Scripts.DieReplaced");
+      return `<strong>${label}</strong><br>D${targetIndex + 1}: ${change.oldValue} → ${change.newValue}, ${detail}`;
+    }).join("<hr>");
+  }
+
   /**
    * Groups hits with identical damage and piercing for more readable card display.
    * @private
@@ -1113,10 +1211,13 @@ export class NeuroshimaDice {
       target,
       isOpen: finalIsOpen,
       isCombat,
+      isDefending: isActuallyDefending,
       isReroll,
       isDebug,
       rollMode,
       rawResults,
+      rolledResults: [...rawResults],
+      diceChanges: [],
       isCritSuccess: false,
       isCritFailure: false,
       isGM: game.user.isGM,
@@ -1173,7 +1274,8 @@ export class NeuroshimaDice {
                 options,
             },
         };
-        await NeuroshimaScriptRunner.execute("rollTest", { test });
+        await NeuroshimaScriptRunner.execute("rollTest", { actor, test });
+        this.recalculateRollTestAfterScripts(test);
 
         if (resultCallback) {
             await resultCallback({ isSuccess: rollData.success ?? false, successes: rollData.successCount ?? 0, rollData, actor });

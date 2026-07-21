@@ -1354,6 +1354,11 @@ body.theme-dark {
     color: #7a7971;
 }
 
+.neuroshima.roll-card .die-square-container .ns-die-change-icon {
+    cursor: help;
+    color: var(--ns-accent, #a02e2e);
+}
+
 .neuroshima.roll-card .die-result.best .die-square.original {
     box-shadow: 0 0 10px rgba(160, 46, 46, 0.4);
     border-color: #a02e2e;
