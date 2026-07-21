@@ -915,28 +915,8 @@ export class NeuroshimaDice {
       this._evaluateClosedTest(evaluated, dice);
     }
 
-    const changesByDie = new Map();
-    for (const change of data.diceChanges) {
-      const changes = changesByDie.get(change.targetIndex) ?? [];
-      changes.push(change);
-      changesByDie.set(change.targetIndex, changes);
-    }
-
-    data.modifiedResults = evaluated.modifiedResults.map((die, index) => {
-      const changes = changesByDie.get(index) ?? [];
-      const rolled = Number(data.rolledResults?.[index] ?? die.original);
-      const lastChange = changes[changes.length - 1];
-      return {
-        ...die,
-        rolled,
-        rolledNat1: rolled === 1,
-        rolledNat20: rolled === 20,
-        changed: changes.length > 0,
-        changes,
-        changeIcon: lastChange?.icon ?? "fas fa-exchange-alt",
-        changeTooltip: this.buildDieChangeTooltip(changes, index)
-      };
-    });
+    data.modifiedResults = evaluated.modifiedResults;
+    this.applyDiceChangePresentation(data);
 
     data.ptMod = difficulty.mod;
     data.difficultyLabel = difficulty.label;
@@ -961,17 +941,61 @@ export class NeuroshimaDice {
     });
   }
 
+  /** Attach visual change metadata to evaluated dice without recalculating them. */
+  static applyDiceChangePresentation(data) {
+    if (!Array.isArray(data?.modifiedResults)) return;
+    const changesByDie = new Map();
+    for (const change of (data.diceChanges ?? [])) {
+      const changes = changesByDie.get(change.targetIndex) ?? [];
+      changes.push(change);
+      changesByDie.set(change.targetIndex, changes);
+    }
+
+    data.modifiedResults = data.modifiedResults.map((die, index) => {
+      const changes = changesByDie.get(index) ?? [];
+      const rolled = Number(data.rolledResults?.[index] ?? die.original);
+      const lastChange = changes[changes.length - 1];
+      return {
+        ...die,
+        rolled,
+        rolledNat1: rolled === 1,
+        rolledNat20: rolled === 20,
+        changed: changes.length > 0,
+        changes,
+        changeIcon: lastChange?.icon ?? "fas fa-exchange-alt",
+        changeTooltip: this.buildDieChangeTooltip(changes, index)
+      };
+    });
+  }
+
   /** Build user-facing text from declarative die-change data. */
   static buildDieChangeTooltip(changes, targetIndex) {
-    return (changes ?? []).map(change => {
-      const label = Handlebars.escapeExpression(
-        change.label || game.i18n.localize("NEUROSHIMA.Scripts.DieChangeEffect")
-      );
-      const detail = change.type === "copy" && Number.isInteger(change.sourceIndex)
+    const entries = Array.isArray(changes) ? changes : [];
+    if (!entries.length) return "";
+
+    const loc = key => game.i18n.localize(key);
+    const escape = value => Handlebars.escapeExpression(String(value ?? ""));
+
+    return entries.map(change => {
+      const label = escape(change.label || loc("NEUROSHIMA.Scripts.DieChangeEffect"));
+      const reason = change.type === "copy" && Number.isInteger(change.sourceIndex)
         ? game.i18n.format("NEUROSHIMA.Scripts.DieCopied", { source: change.sourceIndex + 1 })
-        : game.i18n.localize("NEUROSHIMA.Scripts.DieReplaced");
-      return `<strong>${label}</strong><br>D${targetIndex + 1}: ${change.oldValue} → ${change.newValue}, ${detail}`;
-    }).join("<hr>");
+        : loc("NEUROSHIMA.Scripts.DieReplaced");
+
+      return `
+        <div class="ns-die-change-tooltip">
+          <strong class="ns-die-change-title">${label}</strong>
+          <div class="ns-die-change-line">
+            <span>${loc("NEUROSHIMA.Scripts.DieOriginalResult")}:</span>
+            <strong>${change.oldValue}</strong>
+          </div>
+          <div class="ns-die-change-line">
+            <span>${loc("NEUROSHIMA.Scripts.DieEffectiveResult")}:</span>
+            <strong>${change.newValue}</strong>
+          </div>
+          <div class="ns-die-change-reason">D${targetIndex + 1}: ${escape(reason)}</div>
+        </div>`;
+    }).join('<hr class="ns-die-change-separator">');
   }
 
   /**
@@ -1699,6 +1723,9 @@ export class NeuroshimaDice {
 
     // rawResults may be stored as plain numbers OR as objects {value, isNat1, isNat20} — normalize to numbers
     const rawResults = rawResultsRaw.map(v => (typeof v === "object" && v !== null ? (v.value ?? v) : v));
+    const rolledResults = [...(flags.rolledResults ?? rawResults)]
+      .map(v => (typeof v === "object" && v !== null ? (v.value ?? v) : v));
+    const selectedSet = new Set(selectedIndices);
 
     const actor = game.actors.get(flags.actorId);
     if (!actor) return;
@@ -1706,8 +1733,13 @@ export class NeuroshimaDice {
     const roll = await new Roll(`${selectedIndices.length}d20`).evaluate();
     const newValues = roll.dice[0].results.map(r => r.result);
     selectedIndices.forEach((idx, i) => {
-      if (idx >= 0 && idx < rawResults.length) rawResults[idx] = newValues[i];
+      if (idx < 0 || idx >= rawResults.length) return;
+      rawResults[idx] = newValues[i];
+      rolledResults[idx] = newValues[i];
     });
+    const diceChanges = (flags.diceChanges ?? []).filter(
+      change => !selectedSet.has(change.targetIndex)
+    );
 
     const { target, skill: skillValue, isOpen, isWeapon, isMelee } = flags;
     const isJamming = flags.jamming === true || flags.isJamming === true;
@@ -1777,12 +1809,13 @@ export class NeuroshimaDice {
     const messageType = message.getFlag("neuroshima", "messageType");
     const isInitiative = messageType === "initiative";
 
-    const updatedData = foundry.utils.mergeObject(flags, {
-      rawResults, isSuccess, isJamming, successPoints, successCount,
+    const updatedData = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
+      rawResults, rolledResults, diceChanges, isSuccess, isJamming, successPoints, successCount,
       modifiedResults, hitBullets, totalPelletSP, hitBulletsData: finalHitSequence,
       isReroll: true,
       debugMode: game.settings.get("neuroshima", "debugMode")
     });
+    this.applyDiceChangePresentation(updatedData);
 
     const template = isInitiative
       ? "systems/neuroshima/templates/chat/initiative-roll-card.hbs"

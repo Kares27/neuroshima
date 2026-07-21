@@ -1949,6 +1949,8 @@
             "DieChangeEffect": "Effect",
             "DieCopied": "copied the result from D{source}.",
             "DieReplaced": "replaced the result.",
+            "DieOriginalResult": "Rolled result",
+            "DieEffectiveResult": "Result after change",
             "Targeter": "Targeter",
             "TargeterHint": "Run this script in the dialog of any actor that is targeting this actor",
             "DefendingAgainst": "Defending Against",

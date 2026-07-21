@@ -2158,7 +2158,8 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
         }
     }
 
-    // Selective dice reroll — click die-square.original to mark; context menu reroll uses selection
+    // Selective dice reroll — click the explicitly marked effective die;
+    // context menu reroll uses the stored selection.
     const rollCard = html.querySelector(".neuroshima.roll-card, .neuroshima.weapon-roll-card, .neuroshima.melee-roll-card");
     if (rollCard) {
         const messageType = message?.getFlag("neuroshima", "messageType");
@@ -2175,7 +2176,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
                 if (isRerolled && !game.user.isGM) {
                     rerolledIndices.forEach(idx => {
                         const dieEl = rollCard.querySelector(`.die-result[data-die-index="${idx}"]`);
-                        dieEl?.querySelector(".die-square.original")?.classList.add("ns-selected-for-reroll");
+                        dieEl?.querySelector("[data-reroll-die]")?.classList.add("ns-selected-for-reroll");
                     });
                 } else {
                     window._nsRerollSelectedMap ??= new Map();
@@ -2184,7 +2185,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
 
                     dieElements.forEach(dieEl => {
                         if (dieEl.classList.contains("ignored")) return;
-                        const square = dieEl.querySelector(".die-square.original");
+                        const square = dieEl.querySelector("[data-reroll-die]");
                         if (!square) return;
                         square.classList.add("ns-rerollable");
                         square.addEventListener("click", () => {
@@ -3866,4 +3867,3 @@ Hooks.once("item-piles-ready", () => {
         }
     });
 });
-

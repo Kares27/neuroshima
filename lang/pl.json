@@ -1987,6 +1987,8 @@
             "DieChangeEffect": "Efekt",
             "DieCopied": "skopiowano wynik z D{source}.",
             "DieReplaced": "zastąpiono wynik.",
+            "DieOriginalResult": "Wyrzucony wynik",
+            "DieEffectiveResult": "Wynik po zmianie",
             "Targeter": "Targeted",
             "TargeterHint": "Uruchamia ten skrypt w dialogu każdego aktora, który celuje w tego aktora",
             "DefendingAgainst": "Obrona przed",

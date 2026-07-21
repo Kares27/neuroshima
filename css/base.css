@@ -1354,9 +1354,72 @@ body.theme-dark {
     color: #7a7971;
 }
 
-.neuroshima.roll-card .die-square-container .ns-die-change-icon {
+.neuroshima.roll-card .die-square.ns-die-changed {
+    position: relative;
     cursor: help;
+    border-style: dashed;
+    border-color: var(--ns-accent, #a02e2e);
+    box-shadow:
+        inset 0 0 4px #00000022,
+        0 0 5px rgba(160, 46, 46, 0.35);
+}
+
+.neuroshima.roll-card .die-square-container .ns-die-change-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--ns-accent, #a02e2e);
+    color: white;
+    font-size: 7px;
+    line-height: 1;
+    border: 1px solid var(--ns-bg, #fff);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+}
+
+.theme-dark .neuroshima.roll-card .die-square.ns-die-changed {
+    box-shadow:
+        inset 0 0 4px #00000055,
+        0 0 6px rgba(200, 70, 70, 0.45);
+}
+
+.ns-die-change-tooltip {
+    min-width: 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ns-die-change-title {
+    display: block;
+    margin-bottom: 3px;
     color: var(--ns-accent, #a02e2e);
+}
+
+.ns-die-change-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.ns-die-change-reason {
+    margin-top: 3px;
+    padding-top: 3px;
+    border-top: 1px solid rgba(127, 127, 127, 0.35);
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.ns-die-change-separator {
+    margin: 6px 0;
+    border: 0;
+    border-top: 1px solid rgba(127, 127, 127, 0.35);
 }
 
 .neuroshima.roll-card .die-result.best .die-square.original {
