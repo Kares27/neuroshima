@@ -1,5 +1,1 @@
-2026/07/21-09:55:56.491 1b90 Log #859: 0 ops saved to Table #860 OK
-2026/07/21-09:55:56.491 1b90 Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/000859.log: OK
-2026/07/21-09:55:56.492 1b90 Table #857: 258 entries OK
-2026/07/21-09:55:56.494 1b90 Archiving D:\FoundryData\Data\systems\neuroshima\packs\items/MANIFEST-000858: OK
-2026/07/21-09:55:56.496 1b90 **** Repaired leveldb D:\FoundryData\Data\systems\neuroshima\packs\items; recovered 1 files; 175092 bytes. Some data may have been lost. ****
+2026/07/21-09:55:56.501 1b90 Delete type=3 #1
