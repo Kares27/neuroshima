@@ -299,6 +299,8 @@
     <div class="ctx-row"><span class="ctx-name">this.getChatData(merge?)</span><span class="ctx-type">object</span><span class="ctx-desc">Domyślne dane do ChatMessage.create() z speaker aktora i flavorem efektu</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.dialog(content, type?, config?)</span><span class="ctx-type">Promise&lt;any&gt;</span><span class="ctx-desc">Dialog Foundry: "confirm" → true/false, "prompt" → string|null, "input" → dane formularza. Tytuł = nazwa efektu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.chooseFromList(items, prompt?, title?)</span><span class="ctx-type">Promise&lt;any | null&gt;</span><span class="ctx-desc">Przeszukiwalny wybór jednej pozycji. Element wymaga <code>{ value, label }</code> i może zawierać <code>description</code>, <code>img</code>, <code>tooltipHtml</code> oraz zwykły obiekt <code>rollData</code>. Tooltip obsługuje wzory Foundry <code>[[...]]</code>; dane aktora są dostępne pod <code>@actor</code>. Zwraca <code>value</code> albo <code>null</code> po anulowaniu. Decyzję podejmuje aktywny właściciel aktora, awaryjnie aktywny MG.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.allocatePoints(options)</span><span class="ctx-type">Promise&lt;object | null&gt;</span><span class="ctx-desc">Otwiera u właściwego gracza dialog rozdawania puli. <code>options</code> zawiera m.in. <code>pool</code>, <code>rows</code>, <code>requireExact</code> i opcjonalną lokalną funkcję <code>validate</code>. Zwraca mapę wartości według kluczy wierszy albo <code>null</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isLightDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla D, sD, L, sL</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isHeavyDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla C, sC, K, sK</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isBruiseDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla toru siniaków: sD, sL, sC, sK (prefix "s"). Skrót dla <code>type.startsWith("s")</code>.</span></div>
@@ -552,6 +554,8 @@
       <tr><td><code>args.fields.distanceModifier</code></td><td>number</td><td>Modyfikator kary za dystans.</td></tr>
       <tr><td><code>args.fields.hitLocation</code></td><td>string</td><td>Docelowa lokacja trafienia (np. <code>"random"</code>, <code>"head"</code>).</td></tr>
       <tr><td><code>args.fields.difficultyShift</code></td><td>number</td><td>Przesuwa poziom trudności o podaną liczbę stopni (np. <code>+1</code> = poziom wyżej, <code>-1</code> = poziom niżej). Kumuluje się z innymi modyfikatorami. W testach leczenia (<code>rollType === "healing"</code>) przesunięcie stosowane jest do <strong>wszystkich</strong> typów ran jednocześnie.</td></tr>
+      <tr><td><code>args.fields.finalDifficultyShift</code></td><td>number</td><td>Przesuwa już wyliczony poziom trudności po uwzględnieniu kar procentowych i zwykłego <code>difficultyShift</code>, lecz przed zastosowaniem limitu <code>maximumDifficulty</code>. Wartości wielu efektów sumują się.</td></tr>
+      <tr><td><code>args.fields.maximumDifficulty</code></td><td>string | null</td><td>Górny limit trudności końcowej. Np. <code>"hard"</code> sprawi, że wynik <code>veryHard</code>, <code>luck</code> itd. zostanie obniżony do <code>hard</code>, ale łatwiejszy wynik pozostanie bez zmian. Przy wielu limitach wygrywa najłatwiejszy (najbardziej restrykcyjny). Poprawna nazwa pola to <code>maximumDifficulty</code>, nie <code>maxDifficulty</code>.</td></tr>
       <tr><td><code>args.fields.damageShift</code></td><td>number</td><td>Przesuwa typ obrażeń broni białej o podaną liczbę stopni (np. <code>+1</code> = D→L, L→C, C→K; <code>-1</code> = odwrotnie). Działa na <strong>wszystkie trzy</strong> poziomy obrażeń (tier 1/2/3) i obsługuje zarówno obrażenia regularne (<code>D/L/C/K</code>), jak i stłuczeniowe (<code>sD/sL/sC/sK</code>). Stackuje się addytywnie z <code>damageShift1/2/3</code>. Stosowane wyłącznie w testach broni białej.</td></tr>
       <tr><td><code>args.fields.damageShift1</code></td><td>number</td><td>Przesuwa typ obrażeń <strong>tylko dla tiera 1</strong> (1 sukces) o podaną liczbę stopni. Stackuje się addytywnie z globalnym <code>damageShift</code>. Finalny shift dla tiera 1 = <code>damageShift + damageShift1</code>. Stosowane wyłącznie w testach broni białej.</td></tr>
       <tr><td><code>args.fields.damageShift2</code></td><td>number</td><td>Przesuwa typ obrażeń <strong>tylko dla tiera 2</strong> (2 sukcesy) o podaną liczbę stopni. Stackuje się addytywnie z globalnym <code>damageShift</code>. Finalny shift dla tiera 2 = <code>damageShift + damageShift2</code>. Stosowane wyłącznie w testach broni białej.</td></tr>
@@ -589,6 +593,15 @@ args.fields.difficultyShift += <span class="num">1</span>;
 
 <span class="cmt">// Przesuń o 2 poziomy w dół (łatwiej)</span>
 args.fields.difficultyShift -= <span class="num">2</span>;</code></pre>
+
+  <h4>Końcowa trudność i jej limit</h4>
+  <p>System ustala trudność w kolejności: wybrana/bazowa trudność → <code>difficultyShift</code> → kary procentowe → <code>finalDifficultyShift</code> → <code>maximumDifficulty</code>. Pole <code>args.finalDifficulty</code> jest wyliczonym kontekstem wyniku i służy do odczytu; do zmiany używaj pól w <code>args.fields</code>.</p>
+  <pre><code><span class="cmt">// Ostatecznie utrudnij test o jeden poziom, po przeliczeniu kar</span>
+args.fields.finalDifficultyShift += <span class="num">1</span>;
+
+<span class="cmt">// Test nigdy nie będzie trudniejszy niż Trudny.</span>
+<span class="cmt">// veryHard, luck i grandmasterful zostaną zablokowane na hard.</span>
+args.fields.maximumDifficulty = <span class="str">"hard"</span>;</code></pre>
 
   <h4>Przesunięcie obrażeń (<code>damageShift</code>, <code>damageShift1/2/3</code>)</h4>
   <p>Przesuwa typ obrażeń broni białej o podaną liczbę poziomów (D→L→C→K oraz sD→sL→sC→sK). Globalne <code>damageShift</code> dotyczy wszystkich trzech tierów jednocześnie. Per-tier <code>damageShift1/2/3</code> stackuje się addytywnie z globalnym i działa tylko dla konkretnego tieru (1 sukces / 2 sukcesy / 3 sukcesy). Stosowane wyłącznie w testach broni białej.</p>

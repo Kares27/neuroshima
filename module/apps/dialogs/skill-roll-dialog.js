@@ -782,12 +782,14 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         totalPenalty
       );
 
-    const finalDiff =
+    const finalDiff = NeuroshimaDice.clampMaximumDifficulty(
       NeuroshimaDice._getShiftedDifficulty(
         penaltyDiff,
         -skillShift
           + Number(sf.finalDifficultyShift ?? 0)
-      );
+      ),
+      sf.maximumDifficulty
+    );
 
     const finalTarget =
       finalStat
@@ -1052,6 +1054,9 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
       finalDifficultyShift:
         Number(sf.finalDifficultyShift ?? 0),
+
+      maximumDifficulty:
+        sf.maximumDifficulty || null,
 
       skillKey:
         this.skillKey

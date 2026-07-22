@@ -1,7 +1,7 @@
 <header class="sheet-header">
     <div class="profile-container">
-        <img class="profile-img" src="{{item.img}}" data-action="editImage" title="{{item.name}}" height="100" width="100"
-             data-tooltip-html="{{nsItemPreviewTooltip item.img item.name system.weight system.cost}}" data-tooltip-direction="LEFT"/>
+        <img class="profile-img" src="{{item.img}}" data-action="editImage" aria-label="{{item.name}}" height="100" width="100"
+             data-item-preview-html="{{itemPreviewTooltip}}" data-item-preview-direction="LEFT"/>
     </div>
     <div class="header-details">
         <div class="item-subtitle">
@@ -13,10 +13,20 @@
             </div>
             {{/unless}}
         </div>
-        <div class="item-name-row">
+        <div class="item-name-row{{#if isTrait}} trait-name-row{{/if}}">
             <h1>
                 <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'Name'}}"/>
             </h1>
+            {{#if isTrait}}
+            <div class="form-group row-group trait-category-control">
+                <label for="{{traitCategoryFieldId}}">{{localize "NEUROSHIMA.Traits.Category.Label"}}</label>
+                <select id="{{traitCategoryFieldId}}" name="system.traitCategory">
+                    {{#each traitCategoryOptions as |option|}}
+                    <option value="{{option.value}}" {{#if option.selected}}selected{{/if}}>{{option.label}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            {{/if}}
         </div>
         <div class="item-header-stats">
             {{#unless (or isNonCountable isLimitedView isContainerLocked)}}

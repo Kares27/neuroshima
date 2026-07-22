@@ -30,6 +30,7 @@ export class NeuroshimaDice {
         chargeLevel = 0,
         dieManualBonus = 0,
         dieReductionBonus = 0,
+        maximumDifficulty = null,
         rollMode = game.settings.get("core", "rollMode") 
     } = params;
     
@@ -88,6 +89,7 @@ export class NeuroshimaDice {
         skillBonus: skillBonus,
         dieManualBonus: dieManualBonus || 0,
         dieReductionBonus: dieReductionBonus || 0,
+        maximumDifficulty,
         rollMode: rollMode,
         chatMessage: false,
         attributeKey: attribute,
@@ -166,6 +168,7 @@ export class NeuroshimaDice {
         chatMessage = true, 
         dieManualBonus = 0,
         dieReductionBonus = 0,
+        maximumDifficulty = null,
         burstHitStep = 1,
         rollMode = game.settings.get("core", "rollMode"),
         options = {}
@@ -475,7 +478,7 @@ export class NeuroshimaDice {
     }
 
     const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
-    const finalDiff = shiftedDifficulty;
+    const finalDiff = this.clampMaximumDifficulty(shiftedDifficulty, maximumDifficulty);
 
     const baseAttr = Number(actor.system.attributeTotals?.[weapon.system.attribute]) || 10;
     let finalStat = baseAttr + effectiveAttributeBonus;
@@ -888,7 +891,10 @@ export class NeuroshimaDice {
       totalShift += this.getDiceShift(results);
     }
 
-    const difficulty = this._getShiftedDifficulty(data.baseDifficulty, totalShift);
+    const difficulty = this.clampMaximumDifficulty(
+      this._getShiftedDifficulty(data.baseDifficulty, totalShift),
+      data.maximumDifficulty
+    );
     const target = Number(data.stat || 0) + Number(difficulty.mod || 0);
     const dice = results.map((value, index) => ({
       original: value, modified: value, index, isSuccess: false, ignored: false
@@ -1094,9 +1100,10 @@ export class NeuroshimaDice {
    * @param {number} [params.skillBonus=0] - Additional bonus to skill
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    * @param {number} [params.finalDifficultyShift=0] - Difficulty levels applied after percentage penalties
+   * @param {string|null} [params.maximumDifficulty=null] - Final difficulty ceiling; harder bands are clamped to this key
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, finalDifficultyShift = 0, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {}, resultCallback = null, dieManualBonus = 0, dieReductionBonus = 0 } = {}) {
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, finalDifficultyShift = 0, maximumDifficulty = null, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {}, resultCallback = null, dieManualBonus = 0, dieReductionBonus = 0 } = {}) {
     game.neuroshima.log("rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
     if (isNaN(stat)) {
         game.neuroshima.warn("rollTest received NaN stat!", { stat, label });
@@ -1207,7 +1214,10 @@ export class NeuroshimaDice {
         totalShift += this.getDiceShift(rawResults);
     }
 
-    const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
+    const shiftedDifficulty = this.clampMaximumDifficulty(
+      this._getShiftedDifficulty(baseDifficulty, totalShift),
+      maximumDifficulty
+    );
     const ptMod = shiftedDifficulty.mod;
     
     // Final success threshold (Attribute + PT modifier)
@@ -1223,6 +1233,7 @@ export class NeuroshimaDice {
       skillBonus,
       attributeBonus,
       finalDifficultyShift: Number(finalDifficultyShift ?? 0),
+      maximumDifficulty,
       baseStat: stat,
       baseSkill: skill,
       baseDifficulty: baseDifficulty,
@@ -1337,6 +1348,23 @@ export class NeuroshimaDice {
     
     let shiftedIndex = Math.clamp(index + shift, 0, order.length - 1);
     return NEUROSHIMA.difficulties[order[shiftedIndex]] || NEUROSHIMA.difficulties.average;
+  }
+
+  /**
+   * Clamp a resolved difficulty object so it cannot be harder than the supplied
+   * key. This is a ceiling, not an override: easier difficulties are preserved.
+   */
+  static clampMaximumDifficulty(difficulty, maximumDifficulty) {
+    if (!difficulty || !maximumDifficulty) return difficulty;
+    const order = NeuroshimaScriptRunner.DIFFICULTY_ORDER;
+    const maximumIndex = order.indexOf(maximumDifficulty);
+    if (maximumIndex < 0) return difficulty;
+
+    const currentKey = order.find(key => NEUROSHIMA.difficulties?.[key]?.label === difficulty.label);
+    const currentIndex = order.indexOf(currentKey);
+    return currentIndex > maximumIndex
+      ? (NEUROSHIMA.difficulties?.[maximumDifficulty] ?? difficulty)
+      : difficulty;
   }
 
   /**

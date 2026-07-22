@@ -28,6 +28,7 @@ export class TraitChoiceDialog extends HandlebarsApplicationMixin(ApplicationV2)
     super(options);
     this._traits       = options.traits  ?? [];
     this._prompt       = options.prompt  ?? "";
+    this._actor        = options.actor   ?? null;
     this._selectedIdx  = 0;
     this._resolve      = null;
   }
@@ -39,11 +40,41 @@ export class TraitChoiceDialog extends HandlebarsApplicationMixin(ApplicationV2)
   async _prepareContext(options) {
     const ctx = await super._prepareContext(options);
     ctx.prompt = this._prompt;
-    ctx.traits = this._traits.map((t, idx) => ({
-      uuid:       t.uuid,
-      name:       t.item.name,
-      img:        t.item.img || "systems/neuroshima/assets/Brain.svg",
-      isSelected: idx === this._selectedIdx
+    const actorRollData = this._actor?.getRollData() ?? {};
+    ctx.traits = await Promise.all(this._traits.map(async (t, idx) => {
+      const traitItem = t.item;
+      const name = traitItem.name;
+      const img = traitItem.img || "systems/neuroshima/assets/Brain.svg";
+      const description = traitItem.system?.description?.trim()
+        ? await foundry.applications.ux.TextEditor.enrichHTML(traitItem.system.description, {
+            async: true,
+            secrets: traitItem.isOwner,
+            rollData: {
+              ...traitItem.getRollData(),
+              actor: actorRollData
+            },
+            relativeTo: traitItem
+          })
+        : `<p class="trait-choice-tooltip-empty">${foundry.utils.escapeHTML(game.i18n.localize("NEUROSHIMA.Traits.NoDescription"))}</p>`;
+
+      const safeName = foundry.utils.escapeHTML(name);
+      const safeImg = foundry.utils.escapeHTML(img);
+      const tooltipHtml = `
+        <article class="trait-choice-tooltip">
+          <header class="trait-choice-tooltip-header">
+            <img src="${safeImg}" alt="">
+            <strong>${safeName}</strong>
+          </header>
+          <div class="trait-choice-tooltip-description">${description}</div>
+        </article>`;
+
+      return {
+        uuid: t.uuid,
+        name,
+        img,
+        tooltipHtml,
+        isSelected: idx === this._selectedIdx
+      };
     }));
     return ctx;
   }
@@ -87,9 +118,9 @@ export class TraitChoiceDialog extends HandlebarsApplicationMixin(ApplicationV2)
     return super.close(options);
   }
 
-  static async wait(traits, prompt) {
+  static async wait(traits, prompt, actor = null) {
     return new Promise(resolve => {
-      const dialog = new TraitChoiceDialog({ traits, prompt });
+      const dialog = new TraitChoiceDialog({ traits, prompt, actor });
       dialog._resolve = resolve;
       dialog.render(true);
     });

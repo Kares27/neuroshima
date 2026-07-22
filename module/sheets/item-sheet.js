@@ -2,6 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { TraitBrowserApp } from "../apps/trait-browser.js";
 import { BeastActivitySheet } from "../apps/beast-activity-sheet.js";
 import { installMod, attachMod, detachMod, removeMod, buildInstalledMap, buildModDeltaSummary, getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveWeight, getEffectiveCost, computeWeaponEffective, buildWeaponWriteback } from "../helpers/mod-helpers.js";
+import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -151,7 +152,8 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
 
   async _onAddTrait(event, target) {
     const item = this.document;
-    const uuid = await TraitBrowserApp.pick();
+    const traitCategory = ["origin", "profession"].includes(item.type) ? item.type : null;
+    const uuid = await TraitBrowserApp.pick({ traitCategory });
     if (!uuid) return;
     const currentTraits = Array.from(item.system.traits || []);
     if (currentTraits.includes(uuid)) {
@@ -330,6 +332,13 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const NON_COUNTABLE = ["wound", "vehicle-damage", "vehicle-mod", "beast-action", "beast-segment", "specialization", "origin", "profession", "trick", "trait", "reputation", "disease", "facilities"];
     context.isNonCountable = NON_COUNTABLE.includes(item.type);
     context.isModItem = item.type === "weapon-mod" || item.type === "armor-mod";
+    context.isTrait = item.type === "trait";
+    context.traitCategoryFieldId = `${this.id}-trait-category`;
+    context.traitCategoryOptions = ["origin", "profession"].map(value => ({
+      value,
+      label: game.i18n.localize(`NEUROSHIMA.Traits.Category.${value === "origin" ? "Origin" : "Profession"}`),
+      selected: item.system.traitCategory === value
+    }));
 
     // Prepare type label
     let typeLabelKey = item.type.charAt(0).toUpperCase() + item.type.slice(1);
@@ -459,12 +468,24 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     }
 
     // Prepare description object
+    const rollData = {
+      ...item.getRollData(),
+      actor: item.actor?.getRollData() ?? {}
+    };
+
     context.enrichedDescription = await foundry.applications.ux.TextEditor.enrichHTML(item.system.description || "", {
       async: true,
       secrets: item.isOwner,
-      rollData: item.getRollData(),
+      rollData,
       relativeTo: item
     });
+    context.itemPreviewTooltip = buildItemPreviewTooltip(
+      item.img,
+      item.name,
+      item.system.weight,
+      item.system.cost,
+      context.enrichedDescription
+    );
 
     if (item.type === "vehicle-mod") {
       context.enrichedRules = await foundry.applications.ux.TextEditor.enrichHTML(item.system.rules || "", {

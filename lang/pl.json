@@ -1041,6 +1041,7 @@
         },
         "Dialog": {
             "Cancel": "Anuluj",
+            "NoResults": "Brak pasujących wyników.",
             "WeaponType": {
                 "Title": "Wybierz typ broni",
                 "Content": "Jakiego typu broń chcesz utworzyć?"
@@ -1094,6 +1095,11 @@
         },
         "Traits": {
             "Label": "Cechy",
+            "Category": {
+                "Label": "Kategoria",
+                "Origin": "Pochodzenie",
+                "Profession": "Profesja"
+            },
             "FromOrigin": "Cechy z Pochodzenia",
             "FromProfession": "Cechy z Profesji",
             "Source": "Źródło",
@@ -1105,6 +1111,7 @@
             "SelectTrait": "Wybierz cechę",
             "ChooseTraitDialog": "Wybierz Cechę do przeniesienia",
             "ChooseTraitPrompt": "Wybierz jedną cechę z {source}, która zostanie skopiowana na postać:",
+            "NoDescription": "Brak opisu tej cechy.",
             "NoTraitsInSource": "Ten przedmiot nie zawiera żadnych cech.",
             "SourceNotFound": "Nie znaleziono oryginalnego itemu cechy w świecie.",
             "Browser": {

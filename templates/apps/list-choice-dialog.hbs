@@ -1,18 +1,37 @@
-<div class="neuroshima list-choice-dialog">
+<div class="list-choice-dialog-inner">
 
     {{#if prompt}}
     <p class="list-choice-prompt">{{prompt}}</p>
     {{/if}}
 
-    <div class="list-choice-list">
+    <div class="list-choice-search">
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input
+            type="search"
+            data-list-choice-search
+            placeholder="{{localize 'Search'}}..."
+            aria-label="{{localize 'Search'}}">
+    </div>
+
+    <div class="list-choice-list" role="radiogroup">
         {{#each items as |item|}}
-        <div class="list-choice-row {{#if item.isSelected}}selected{{/if}}"
+        <div
+             class="list-choice-row {{#if item.isSelected}}selected{{/if}}"
              data-action="selectItem"
              data-item-idx="{{@index}}"
-             data-item-value="{{item.value}}">
+             data-item-value="{{item.value}}"
+             role="radio"
+             aria-checked="{{#if item.isSelected}}true{{else}}false{{/if}}"
+             {{#if item.tooltipHtml}}
+             data-tooltip-html="{{item.tooltipHtml}}"
+             data-tooltip-class="list-choice-tooltip"
+             {{/if}}>
             <span class="list-choice-cb {{#if item.isSelected}}checked{{/if}}">
                 <span class="list-choice-mark"></span>
             </span>
+            {{#if item.img}}
+            <img class="list-choice-img" src="{{item.img}}" alt="" loading="lazy">
+            {{/if}}
             <div class="list-choice-text">
                 <span class="list-choice-label">{{item.label}}</span>
                 {{#if item.description}}
@@ -21,6 +40,9 @@
             </div>
         </div>
         {{/each}}
+        <p class="list-choice-empty" data-list-choice-empty hidden>
+            {{localize "NEUROSHIMA.Dialog.NoResults"}}
+        </p>
     </div>
 
     <div class="list-choice-footer">

@@ -439,6 +439,11 @@ export class TraitData extends foundry.abstract.TypeDataModel {
     const fields = foundry.data.fields;
     return {
       description: new fields.HTMLField({ initial: "" }),
+      traitCategory: new fields.StringField({
+        required: true,
+        initial: "origin",
+        choices: ["origin", "profession"]
+      }),
       ...testsSchema()
     };
   }

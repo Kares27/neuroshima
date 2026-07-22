@@ -490,6 +490,13 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       if (bonusMode === "skill" || bonusMode === "both") sv += weaponBonus;
       activeDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, -game.neuroshima.NeuroshimaDice.getSkillShift(sv));
     }
+    activeDiff = game.neuroshima.NeuroshimaDice.clampMaximumDifficulty(
+      activeDiff,
+      this._scriptFields?.maximumDifficulty
+    );
+    if (finalLevelElement) {
+      finalLevelElement.innerText = game.i18n.localize(activeDiff.label);
+    }
 
     let effectiveWeaponBonus = 0;
     if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) effectiveWeaponBonus = weaponBonus;
@@ -595,6 +602,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       damageShift3:    sf?.damageShift3 || 0,
       dieManualBonus:      (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf?.dieManualBonus || 0),
       dieReductionBonus:  (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf?.dieReductionBonus || 0),
+      maximumDifficulty: sf?.maximumDifficulty || null,
       burstHitStep:    sf?.burstHitStep ?? 1,
       rollMode:        formData.rollMode,
       skillKeyOverride: sf?.skillKey || null

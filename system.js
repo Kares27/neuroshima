@@ -18,6 +18,8 @@ import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { NeuroshimaMeleeCombat } from "./module/combat/combat.js";
 import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
+import { buildItemPreviewTooltip } from "./module/helpers/item-tooltip.js";
+import { InteractiveItemTooltip } from "./module/helpers/interactive-item-tooltip.js";
 import { EncumbranceConfig } from "./module/apps/config/encumbrance-config.js";
 import { CombatConfig } from "./module/apps/config/combat-config.js";
 import { DistanceConfig, DEFAULT_DISTANCE_PENALTIES } from "./module/apps/config/distance-config.js";
@@ -31,6 +33,7 @@ import { DebugRollDialog } from "./module/apps/dialogs/debug-roll-dialog.js";
 import { EditRollDialog } from "./module/apps/dialogs/minor-dialogs.js";
 import { PointAllocationDialog } from "./module/apps/dialogs/point-allocation-dialog.js";
 import { ListChoiceDialog } from "./module/apps/dialogs/list-choice-dialog.js";
+import { NeuroshimaChoiceRouter } from "./module/helpers/choice-router.js";
 
 import { NeuroshimaInitiativeRollDialog } from "./module/apps/dialogs/initiative-roll-dialog.js";
 import { HealingApp } from "./module/apps/healing-app.js";
@@ -81,6 +84,7 @@ function _applyBurstLevelToDOM(messageIdOrEl, level, rollData) {
 // System initialization
 Hooks.once('init', async function() {
     console.log('Neuroshima 1.5 | Inicjalizacja systemu');
+    InteractiveItemTooltip.initialize();
 
     CONFIG.fontDefinitions["Special Elite"] = {
         editor: true,
@@ -243,6 +247,7 @@ Hooks.once('init', async function() {
         NeuroshimaInitiativeRollDialog,
         ListChoiceDialog,
         PointAllocationDialog,
+        NeuroshimaChoiceRouter,
         NeuroshimaDice,
         CombatHelper,
         NeuroshimaMeleeCombat,
@@ -421,23 +426,7 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('neuroshimaRollTooltip', (rollData) => {
         return NeuroshimaDice.buildRollTooltip(rollData);
     });
-    Handlebars.registerHelper('nsItemPreviewTooltip', (img, name, weight, cost) => {
-        if (!img) return "";
-        const safeName = Handlebars.escapeExpression(name ?? "");
-        const safeImg  = Handlebars.escapeExpression(img);
-        const wNum = typeof weight === "number" ? weight : parseFloat(weight);
-        const cNum = typeof cost   === "number" ? cost   : parseFloat(cost);
-        const hasW = !isNaN(wNum);
-        const hasC = !isNaN(cNum);
-        let statsHtml = "";
-        if (hasW || hasC) {
-            const wChip = hasW ? `<span class='ns-tip-stat'><i class='fas fa-weight-hanging'></i> ${wNum} kg</span>` : "";
-            const cFormatted = Number.isInteger(cNum) ? cNum.toLocaleString("pl-PL") : cNum.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const cChip = hasC ? `<span class='ns-tip-stat'><i class='fas fa-coins'></i> ${cFormatted}</span>` : "";
-            statsHtml = `<div class='ns-item-preview-stats'>${wChip}${cChip}</div>`;
-        }
-        return `<div class='ns-item-preview'><div class='ns-item-preview-name'>${safeName}</div><img src='${safeImg}' />${statsHtml}</div>`;
-    });
+    Handlebars.registerHelper('nsItemPreviewTooltip', buildItemPreviewTooltip);
     Handlebars.registerHelper('nsGearTypeLabel', (gearType) => {
         if (!gearType || gearType === "misc") return "";
         const NEUROSHIMA = game.neuroshima.config;
@@ -2801,6 +2790,8 @@ function initializeSocketlib() {
 
     game.neuroshima.socket = socketlib.registerSystem("neuroshima");
     if (!game.neuroshima.socket) return;
+
+    NeuroshimaChoiceRouter.registerSocketHandlers();
 
     console.log("Neuroshima 1.5 | Rejestracja handlerów Socketlib");
     

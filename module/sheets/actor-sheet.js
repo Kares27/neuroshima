@@ -6,10 +6,11 @@ import { AmmunitionLoadingDialog, RestDialog } from "../apps/dialogs/minor-dialo
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { CombatHelper } from "../helpers/combat-helper.js";
 import { getConditions } from "../apps/config/condition-config.js";
-import { TraitChoiceDialog } from "../apps/dialogs/trait-choice-dialog.js";
 import { NeuroshimaGrenadeRollDialog } from "../apps/dialogs/grenade-roll-dialog.js";
 import { NeuroshimaBaseActorSheet } from "./actor-sheet-base.js";
 import { getEffectiveArmorRatings, getEffectiveArmorResistances, getEffectiveRadiationResistance, getRadiationResistanceSources, installMod } from "../helpers/mod-helpers.js";
+import { buildItemPreviewTooltip } from "../helpers/item-tooltip.js";
+import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
 
 function _collectArmorBonusByEffect(actor) {
   const byLoc = {};
@@ -193,6 +194,34 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
 
     // Organize Items - Sort by 'sort' property to allow manual reordering
     const items = actor.items.contents.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+    const actorRollData = actor.getRollData();
+    const itemDescriptionEntries = await Promise.all(items.map(async item => {
+      const rollData = {
+        ...item.getRollData(),
+        actor: actorRollData
+      };
+      const description = await foundry.applications.ux.TextEditor.enrichHTML(
+        item.system.description || "",
+        {
+          async: true,
+          secrets: item.isOwner,
+          rollData,
+          relativeTo: item
+        }
+      );
+      return [item.id, description];
+    }));
+    context.itemDescriptions = Object.fromEntries(itemDescriptionEntries);
+    context.itemPreviewTooltips = Object.fromEntries(items.map(item => [
+      item.id,
+      buildItemPreviewTooltip(
+        item.img,
+        item.name,
+        item.system.weight,
+        item.system.cost,
+        context.itemDescriptions[item.id]
+      )
+    ]));
     const containerChildIds = new Set(
       items.filter(i => i.getFlag("neuroshima", "containerId")).map(i => i.id)
     );
@@ -1715,7 +1744,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
     if (resolved.length === 0) return;
 
     const prompt = game.i18n.format("NEUROSHIMA.Traits.ChooseTraitPrompt", { source: sourceName });
-    const chosenUuid = await TraitChoiceDialog.wait(resolved, prompt);
+    const chosenUuid = await NeuroshimaChoiceRouter.chooseTrait(actor, resolved, prompt);
 
     if (!chosenUuid) {
       if (sourceCreatedItem) {

@@ -35,7 +35,7 @@
  *   4. Update normalizeAll() / normalizeActor() if applicable.
  */
 
-const CURRENT_SCHEMA_VERSION = "1.1";
+const CURRENT_SCHEMA_VERSION = "1.2";
 
 export function registerMigrationHook() {
     Hooks.once("ready", async () => {
@@ -57,6 +57,7 @@ export function registerMigrationHook() {
 
         try {
             if (!_versionGte(stored, "1.1")) await _migrate_1_0_to_1_1();
+            if (!_versionGte(stored, "1.2")) await _migrate_1_1_to_1_2();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -277,6 +278,58 @@ async function _migrate_1_0_to_1_1() {
             await _migrate_1_1_normalizeWorldItemMods(item);
         } catch (err) {
             console.warn(`Neuroshima | Migration 1.1 failed for world item "${item.name}":`, err);
+        }
+    }
+}
+
+// Migration 1.1 -> 1.2: classify traits used by Origins and Professions.
+function _hasStoredTraitCategory(trait) {
+    return ["origin", "profession"].includes(trait._source?.system?.traitCategory);
+}
+
+async function _migrate_1_1_to_1_2() {
+    console.log("Neuroshima | Running migration 1.1 -> 1.2 (trait categories)");
+
+    const originTraits = new Set();
+    const professionTraits = new Set();
+
+    for (const item of _allWorldItems()) {
+        const target = item.type === "origin"
+            ? originTraits
+            : item.type === "profession"
+                ? professionTraits
+                : null;
+        if (!target) continue;
+        for (const uuid of item.system.traits ?? []) target.add(uuid);
+    }
+
+    for (const trait of _allWorldItems()) {
+        if (trait.type !== "trait" || _hasStoredTraitCategory(trait)) continue;
+        try {
+            const usedByOrigin = originTraits.has(trait.uuid);
+            const usedByProfession = professionTraits.has(trait.uuid);
+            if (usedByOrigin && usedByProfession) {
+                console.warn(
+                    `Neuroshima | Trait "${trait.name}" is used by both an Origin and a Profession. Classified as origin.`
+                );
+            }
+            const traitCategory = !usedByOrigin && usedByProfession ? "profession" : "origin";
+            await trait.update({ "system.traitCategory": traitCategory });
+        } catch (err) {
+            console.warn(`Neuroshima | Migration 1.2 failed for world trait "${trait.name}":`, err);
+        }
+    }
+
+    for (const actor of _allActors()) {
+        for (const trait of actor.items) {
+            if (trait.type !== "trait" || _hasStoredTraitCategory(trait)) continue;
+            try {
+                const sourceType = trait._source?.flags?.neuroshima?.traitSource?.type;
+                const traitCategory = sourceType === "profession" ? "profession" : "origin";
+                await trait.update({ "system.traitCategory": traitCategory });
+            } catch (err) {
+                console.warn(`Neuroshima | Migration 1.2 failed for trait "${trait.name}" on actor "${actor.name}":`, err);
+            }
         }
     }
 }

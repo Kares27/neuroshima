@@ -31,30 +31,39 @@ export class TraitBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
     this._resolve = null;
     this._filter = "";
     this._allTraits = [];
+    this._traitCategory = ["origin", "profession"].includes(options.traitCategory)
+      ? options.traitCategory
+      : null;
   }
 
   async _prepareContext(options) {
     const ctx = await super._prepareContext(options);
 
     const worldTraits = game.items
-      .filter(i => i.type === "trait")
+      .filter(i => i.type === "trait" && (
+        !this._traitCategory || (i.system.traitCategory ?? "origin") === this._traitCategory
+      ))
       .map(i => ({
         uuid: i.uuid,
         name: i.name,
         img: i.img || "systems/neuroshima/assets/Brain.svg",
+        traitCategory: i.system.traitCategory ?? "origin",
         source: game.i18n.localize("NEUROSHIMA.Traits.Browser.World")
       }));
 
     const compTraits = [];
     for (const pack of game.packs.filter(p => p.metadata.type === "Item")) {
       try {
-        const index = await pack.getIndex({ fields: ["name", "type", "img"] });
+        const index = await pack.getIndex({ fields: ["name", "type", "img", "system.traitCategory"] });
         for (const entry of index) {
           if (entry.type !== "trait") continue;
+          const traitCategory = entry.system?.traitCategory ?? "origin";
+          if (this._traitCategory && traitCategory !== this._traitCategory) continue;
           compTraits.push({
             uuid: `Compendium.${pack.collection}.${entry._id}`,
             name: entry.name,
             img: entry.img || "systems/neuroshima/assets/Brain.svg",
+            traitCategory,
             source: pack.metadata.label
           });
         }
@@ -104,9 +113,9 @@ export class TraitBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
     return super.close(options);
   }
 
-  static async pick() {
+  static async pick({ traitCategory = null } = {}) {
     return new Promise((resolve) => {
-      const browser = new TraitBrowserApp();
+      const browser = new TraitBrowserApp({ traitCategory });
       browser._resolve = resolve;
       browser.render(true);
     });

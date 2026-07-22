@@ -1014,6 +1014,7 @@
         },
         "Dialog": {
             "Cancel": "Cancel",
+            "NoResults": "No matching results.",
             "WeaponType": {
                 "Title": "Select Weapon Type",
                 "Content": "What type of weapon do you want to create?"
@@ -1067,6 +1068,11 @@
         },
         "Traits": {
             "Label": "Traits",
+            "Category": {
+                "Label": "Category",
+                "Origin": "Origin",
+                "Profession": "Profession"
+            },
             "FromOrigin": "Traits from Origin",
             "FromProfession": "Traits from Profession",
             "Source": "Source",
@@ -1078,6 +1084,7 @@
             "SelectTrait": "Select a trait",
             "ChooseTraitDialog": "Choose a Trait to Transfer",
             "ChooseTraitPrompt": "Choose one trait from {source} to copy onto the character:",
+            "NoDescription": "No description is available for this trait.",
             "NoTraitsInSource": "This item contains no traits.",
             "SourceNotFound": "Could not find the original trait item in the world.",
             "Browser": {

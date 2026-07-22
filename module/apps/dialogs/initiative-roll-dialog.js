@@ -281,7 +281,10 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const baseDiffKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key].label === baseDifficulty.label);
     const baseDiffIndex = order.indexOf(baseDiffKey);
     const shiftedIndex = Math.max(0, Math.min(order.length - 1, baseDiffIndex - skillShift));
-    const shiftedDifficulty = NEUROSHIMA.difficulties[order[shiftedIndex]];
+    const shiftedDifficulty = game.neuroshima.NeuroshimaDice.clampMaximumDifficulty(
+      NEUROSHIMA.difficulties[order[shiftedIndex]],
+      sf.maximumDifficulty
+    );
 
     const shiftedElement = html.querySelector('.shifted-difficulty');
     if (shiftedElement) shiftedElement.innerText = game.i18n.localize(shiftedDifficulty.label);
@@ -346,6 +349,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       chargeLevel: parseInt(formData.chargeLevel) || 0,
       dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
       dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0),
+      maximumDifficulty: sf.maximumDifficulty || null,
       rollMode: this.userEntry.rollMode ?? this.rollOptions.rollMode
     };
 

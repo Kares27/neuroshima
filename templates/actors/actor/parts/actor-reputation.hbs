@@ -97,7 +97,7 @@
                                 {{#if item.system.description}}
                                 <div class="item-description-wrapper">
                                     <div class="summary-section-header">{{localize "NEUROSHIMA.Summary.Description"}}</div>
-                                    <div class="item-description">{{{item.system.description}}}</div>
+                                    <div class="item-description">{{{lookup @root.itemDescriptions item.id}}}</div>
                                 </div>
                                 {{/if}}
                             </div>

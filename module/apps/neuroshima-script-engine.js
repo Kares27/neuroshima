@@ -1,3 +1,5 @@
+import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
+
 /**
  * Thin wrapper around a roll result that normalises both a Foundry Roll object
  * (returned by async rollToChat / roll) and a plain number[] (returned by SYNC
@@ -198,6 +200,25 @@ export class NeuroshimaScript {
 
   get item() {
     return this._executingItem ?? (this.effect?.parent?.documentName === "Item" ? this.effect.parent : null);
+  }
+
+  /**
+   * Ask the Actor's designated decision-maker to choose one list entry.
+   * Rows support value/label plus optional description, img, tooltipHtml and
+   * rollData. Only the selected value returns here; document changes stay on
+   * the client executing this script.
+   */
+  async chooseFromList(items, prompt = "", title = "") {
+    return NeuroshimaChoiceRouter.chooseFromList(this.actor, { items, prompt, title });
+  }
+
+  /**
+   * Ask the Actor's designated decision-maker to distribute a point pool.
+   * Socket-safe constraints are checked remotely and an optional `validate`
+   * callback is applied locally to the returned allocation.
+   */
+  async allocatePoints(options = {}) {
+    return NeuroshimaChoiceRouter.allocatePoints(this.actor, options);
   }
 
   /**
@@ -4093,6 +4114,7 @@ export class NeuroshimaScriptRunner {
       hitLocation: null,
       difficultyShift: 0,
       finalDifficultyShift: 0,
+      maximumDifficulty: null,
       damageShift: 0,
       damageShift1: 0,
       damageShift2: 0,
@@ -4197,6 +4219,7 @@ export class NeuroshimaScriptRunner {
 
     difficultyShift: 0,
     finalDifficultyShift: 0,
+    maximumDifficulty: null,
 
     damageShift: 0,
     damageShift1: 0,
@@ -4373,6 +4396,9 @@ export class NeuroshimaScriptRunner {
 
     finalDifficultyShift:
       Number(fields.finalDifficultyShift ?? 0),
+
+    maximumDifficulty:
+      fields.maximumDifficulty || null,
 
     damageShift:
       fields.damageShift || 0,
@@ -5111,6 +5137,8 @@ export class NeuroshimaScriptRunner {
         0
       );
 
+    // Percentage penalties first resolve to a difficulty band. The final shift
+    // intentionally runs afterwards, so effects can move the truly final band.
     let finalDifficulty =
       NeuroshimaScriptRunner
         .difficultyKeyFromPercent(
@@ -5155,7 +5183,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = [], options = {}) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: [], preRollModifiers: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -5336,7 +5364,7 @@ export class NeuroshimaScriptRunner {
     }
   }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -5368,6 +5396,16 @@ export class NeuroshimaScriptRunner {
       scriptFields.weaponModifier += result.weaponModifier || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
       scriptFields.finalDifficultyShift += Number(result.finalDifficultyShift ?? 0);
+      if (result.maximumDifficulty) {
+        // Multiple caps use the easiest (lowest index), i.e. the strictest
+        // ceiling on how difficult the resolved test is allowed to become.
+        const order = this.DIFFICULTY_ORDER;
+        const nextIndex = order.indexOf(result.maximumDifficulty);
+        const currentIndex = order.indexOf(scriptFields.maximumDifficulty);
+        if (nextIndex >= 0 && (currentIndex < 0 || nextIndex < currentIndex)) {
+          scriptFields.maximumDifficulty = result.maximumDifficulty;
+        }
+      }
       scriptFields.damageShift += result.damageShift || 0;
       scriptFields.damageShift1 += result.damageShift1 || 0;
       scriptFields.damageShift2 += result.damageShift2 || 0;
@@ -5405,8 +5443,21 @@ export class NeuroshimaScriptRunner {
 
     if (typeof resolveFinalContext === "function") {
       const resolved = await resolveFinalContext(result, rollContext) || {};
-      const nextFinalDifficulty = resolved.finalDifficulty ?? null;
+      let nextFinalDifficulty = resolved.finalDifficulty ?? null;
       const nextFinalDifficulties = resolved.finalDifficulties ?? null;
+      const maximumDifficulty = scriptFields.maximumDifficulty;
+
+      if (maximumDifficulty && nextFinalDifficulty) {
+        // Apply the cap only after every normal and final shift has resolved.
+        // Example: a `hard` cap turns luck/veryHard into hard, but leaves
+        // average unchanged.
+        const order = this.DIFFICULTY_ORDER;
+        const finalIndex = order.indexOf(nextFinalDifficulty);
+        const maximumIndex = order.indexOf(maximumDifficulty);
+        if (finalIndex > maximumIndex && maximumIndex >= 0) {
+          nextFinalDifficulty = maximumDifficulty;
+        }
+      }
       const currentFinalDifficulty = rollContext.finalDifficulty ?? null;
       const currentFinalDifficulties = rollContext.finalDifficulties ?? null;
       const difficultiesChanged = JSON.stringify(nextFinalDifficulties) !== JSON.stringify(currentFinalDifficulties);
