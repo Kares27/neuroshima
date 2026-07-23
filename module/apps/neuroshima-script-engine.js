@@ -1235,7 +1235,9 @@ export class NeuroshimaScript {
   /**
    * Append a short annotation to the roll result card.
    * Annotations appear below the roll-outcome footer.
-   * Available in `preRollTest`, `rollTest`, `preWeaponShot`, `weaponJam`, and `postWeaponShot` triggers.
+   * Available whenever the trigger exposes a roll annotation collection, including
+   * `dialog`, `preRollTest`, `rollTest`, `preWeaponShot`, `weaponJam`, and
+   * `postWeaponShot`. Dialog annotations are carried into the eventual roll card.
    * @param {string} text - Annotation text to display.
    *
    * @example
@@ -1246,11 +1248,26 @@ export class NeuroshimaScript {
    * }
    */
   addAnnotation(text) {
-    const annotations = this._currentArgs?.annotations
-      ?? this._currentArgs?.test?.preData?.annotations
-      ?? this._currentArgs?.rollData?.annotations;
-    if (!Array.isArray(annotations)) return;
-    annotations.push(String(text));
+    const args = this._currentArgs;
+    if (!args || text === undefined || text === null) return false;
+
+    // Keep this order explicit: trigger-local arrays are authoritative, while
+    // fields.annotations is the persistent bridge from dialog/submission to roll.
+    const candidates = [
+      args.annotations,
+      args.fields?.annotations,
+      args.test?.preData?.annotations,
+      args.test?.result?.annotations,
+      args.test?.result?.rollData?.annotations,
+      args.rollData?.annotations
+    ];
+    const annotations = candidates.find(Array.isArray);
+    if (!annotations) return false;
+
+    const annotation = String(text).trim();
+    if (!annotation) return false;
+    annotations.push(annotation);
+    return true;
   }
 
   // ── Ammo refund helpers ───────────────────────────────────────────────────
@@ -4115,6 +4132,8 @@ export class NeuroshimaScriptRunner {
       difficultyShift: 0,
       finalDifficultyShift: 0,
       maximumDifficulty: null,
+      autoSuccess: false,
+      annotations: [],
       damageShift: 0,
       damageShift1: 0,
       damageShift2: 0,
@@ -4220,6 +4239,9 @@ export class NeuroshimaScriptRunner {
     difficultyShift: 0,
     finalDifficultyShift: 0,
     maximumDifficulty: null,
+    // A dialog script may force the final outcome without skipping the roll.
+    autoSuccess: false,
+    annotations: [],
 
     damageShift: 0,
     damageShift1: 0,
@@ -4311,6 +4333,8 @@ export class NeuroshimaScriptRunner {
 
     flags: {},
     fields,
+    // Direct access is kept for consistency with weapon/test triggers.
+    annotations: fields.annotations,
 
     currentDifficulty:
       initialDifficulty,
@@ -4399,6 +4423,12 @@ export class NeuroshimaScriptRunner {
 
     maximumDifficulty:
       fields.maximumDifficulty || null,
+
+    autoSuccess:
+      fields.autoSuccess === true,
+
+    annotations:
+      fields.annotations.filter(Boolean),
 
     damageShift:
       fields.damageShift || 0,
@@ -5183,7 +5213,7 @@ export class NeuroshimaScriptRunner {
   static async computeDialogFields(actor, rollContext = {}, selectedModifierIds = new Set(), unselectedModifierIds = new Set(), targetActors = [], options = {}) {
     if (!actor) return {
       dialogModifiers: [],
-      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
+      scriptFields: { modifier: 0, attributeBonus: 0, skillBonus: 0, attributeKey: null, skillKey: null, skillLabel: null, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], dieManualBonus: 0, dieReductionBonus: 0 },
       modBreakdown: [], attrBreakdown: [], skillBreakdown: [], preRollModifiers: []
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
@@ -5364,7 +5394,7 @@ export class NeuroshimaScriptRunner {
     }
   }
 
-    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
+    const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
 
     for (const dm of dialogModifiers) {
@@ -5396,6 +5426,8 @@ export class NeuroshimaScriptRunner {
       scriptFields.weaponModifier += result.weaponModifier || 0;
       scriptFields.difficultyShift += result.difficultyShift || 0;
       scriptFields.finalDifficultyShift += Number(result.finalDifficultyShift ?? 0);
+      scriptFields.autoSuccess ||= result.autoSuccess === true;
+      scriptFields.annotations.push(...(result.annotations ?? []));
       if (result.maximumDifficulty) {
         // Multiple caps use the easiest (lowest index), i.e. the strictest
         // ceiling on how difficult the resolved test is allowed to become.

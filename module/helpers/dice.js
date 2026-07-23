@@ -31,6 +31,8 @@ export class NeuroshimaDice {
         dieManualBonus = 0,
         dieReductionBonus = 0,
         maximumDifficulty = null,
+        autoSuccess = false,
+        annotations = [],
         rollMode = game.settings.get("core", "rollMode") 
     } = params;
     
@@ -90,6 +92,8 @@ export class NeuroshimaDice {
         dieManualBonus: dieManualBonus || 0,
         dieReductionBonus: dieReductionBonus || 0,
         maximumDifficulty,
+        autoSuccess,
+        annotations,
         rollMode: rollMode,
         chatMessage: false,
         attributeKey: attribute,
@@ -170,6 +174,8 @@ export class NeuroshimaDice {
         dieReductionBonus = 0,
         maximumDifficulty = null,
         burstHitStep = 1,
+        autoSuccess = false,
+        annotations = [],
         rollMode = game.settings.get("core", "rollMode"),
         options = {}
     } = params;
@@ -426,7 +432,7 @@ export class NeuroshimaDice {
     // args.test.weapon is present — scripts can distinguish weapon rolls from skill tests.
     let extraWeaponModifier = 0;
     let effectiveSkillBonus = skillBonus;
-    const preRollAnnotations = [];
+    const preRollAnnotations = [...(Array.isArray(annotations) ? annotations : [])].filter(Boolean);
     if (actor && !isReroll && !options?.skipPreRollTest) {
         const preWeaponTest = {
             actor,
@@ -602,6 +608,9 @@ export class NeuroshimaDice {
             modifiedResults = evalData.modifiedResults;
         }
         
+        // Dialog auto-success preserves the rolled dice but overrides the final verdict.
+        if (autoSuccess) isSuccess = true;
+
         if (isSuccess) {
             hitBullets = 1;
             finalHitSequence = [{
@@ -639,8 +648,13 @@ export class NeuroshimaDice {
             successPoints = isSuccess ? 1 : 0;
         }
 
-        // Number of successes for burst and pellet purposes (AP + 1)
-        const pp = isSuccess ? (overflow + 1) : 0;
+        if (autoSuccess) {
+            isSuccess = true;
+            successPoints = Math.max(1, successPoints);
+        }
+
+        // A forced success always provides at least one AP, so it can produce a normal hit.
+        const pp = isSuccess ? Math.max(autoSuccess ? 1 : 0, overflow + 1) : 0;
 
         // Evaluate hits in the burst (individually per bullet)
         if (isSuccess && (!isJamming || canFireDespiteJam)) {
@@ -781,6 +795,7 @@ export class NeuroshimaDice {
         tempoLevel,
         isReroll,
         isSuccess,
+        autoSuccess: autoSuccess === true,
         successPoints,
         hitBullets,
         totalPelletSP: totalPelletSP || 0,
@@ -927,7 +942,7 @@ export class NeuroshimaDice {
     data.ptMod = difficulty.mod;
     data.difficultyLabel = difficulty.label;
     data.target = target;
-    data.success = !!evaluated.success;
+    data.success = data.autoSuccess === true || !!evaluated.success;
     data.successCount = Number(evaluated.successCount ?? 0);
     data.successPoints = data.isOpen ? Number(evaluated.successPoints ?? 0) : data.successCount;
     data.skillUsed = evaluated.skillUsed;
@@ -1101,9 +1116,10 @@ export class NeuroshimaDice {
    * @param {number} [params.attributeBonus=0] - Additional bonus to attribute
    * @param {number} [params.finalDifficultyShift=0] - Difficulty levels applied after percentage penalties
    * @param {string|null} [params.maximumDifficulty=null] - Final difficulty ceiling; harder bands are clamped to this key
+   * @param {boolean} [params.autoSuccess=false] - Roll normally, then force the final result to success
    * @param {string} [params.rollMode] - The roll mode to use (default: core setting)
    */
-  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, finalDifficultyShift = 0, maximumDifficulty = null, meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {}, resultCallback = null, dieManualBonus = 0, dieReductionBonus = 0 } = {}) {
+  static async rollTest({ stat, skill = 0, penalties = { mod: 0, wounds: 0, armor: 0 }, isOpen = false, isCombat = false, isDebug = false, isReroll = false, fixedDice = null, label = "", actor = null, skillBonus = 0, attributeBonus = 0, finalDifficultyShift = 0, maximumDifficulty = null, autoSuccess = false, annotations = [], meleeAction = "attack", rollMode = game.settings.get("core", "rollMode"), chatMessage = true, isInitiative = false, attributeKey = null, skillKey = null, options = {}, resultCallback = null, dieManualBonus = 0, dieReductionBonus = 0 } = {}) {
     game.neuroshima.log("rollTest started", { stat, skill, label, actor: actor?.name, isInitiative });
     if (isNaN(stat)) {
         game.neuroshima.warn("rollTest received NaN stat!", { stat, label });
@@ -1111,7 +1127,7 @@ export class NeuroshimaDice {
     // Open log group for this standard roll
     game.neuroshima.group(`Inicjalizacja testu: ${label || "Standard"}`);
 
-    const testAnnotations = [];
+    const testAnnotations = [...(Array.isArray(annotations) ? annotations : [])].filter(Boolean);
     if (actor && !isReroll && !isDebug && !options?.skipPreRollTest) {
         const test = {
             actor,
@@ -1144,12 +1160,16 @@ export class NeuroshimaDice {
             game.neuroshima.groupEnd();
             if (chatMessage) {
                 const autoMsg = test.preData.annotation || game.i18n.localize("NEUROSHIMA.Scripts.AutoSuccess");
+                const extraAnnotations = testAnnotations
+                  .filter(Boolean)
+                  .map(annotation => `<div class="roll-annotation"><i class="fas fa-info-circle"></i> ${String(annotation)}</div>`)
+                  .join("");
                 await ChatMessage.create({
-                    content: `<div class="neuroshima roll-result"><strong>${label}</strong>: ${autoMsg}</div>`,
+                    content: `<div class="neuroshima roll-result"><strong>${label}</strong>: ${autoMsg}${extraAnnotations ? `<div class="roll-annotations">${extraAnnotations}</div>` : ""}</div>`,
                     speaker: actor ? ChatMessage.getSpeaker({ actor }) : ChatMessage.getSpeaker()
                 });
             }
-            return { autoSuccess: true, successes: 1, cancelled: false };
+            return { autoSuccess: true, successes: 1, cancelled: false, annotations: [...testAnnotations] };
         }
         stat = test.attribute?.value ?? stat;
         skill = test.skill?.value ?? skill;
@@ -1234,6 +1254,7 @@ export class NeuroshimaDice {
       attributeBonus,
       finalDifficultyShift: Number(finalDifficultyShift ?? 0),
       maximumDifficulty,
+      autoSuccess: autoSuccess === true,
       baseStat: stat,
       baseSkill: skill,
       baseDifficulty: baseDifficulty,
@@ -1285,6 +1306,9 @@ export class NeuroshimaDice {
       game.neuroshima.log("Evaluation: CLOSED TEST");
       this._evaluateClosedTest(rollData, dice);
     }
+
+    // Unlike preRollTest.autoSuccess, this does not bypass dice evaluation or chat output.
+    if (rollData.autoSuccess) rollData.success = true;
 
     game.neuroshima.log("Results after skill modification", rollData.modifiedResults);
     game.neuroshima.groupEnd();
@@ -1627,7 +1651,8 @@ export class NeuroshimaDice {
             isSuccess = evalData.success;
         }
         modifiedResults = evalData.modifiedResults;
-        
+        if (flags.autoSuccess) isSuccess = true;
+
         if (isWeapon && isSuccess) {
             hitBullets = 1;
             finalHitSequence = [{
@@ -1666,7 +1691,11 @@ export class NeuroshimaDice {
             successCount = isSuccess ? 1 : 0;
         }
 
-        const pp = isSuccess ? (overflow + 1) : 0;
+        if (flags.autoSuccess) {
+            isSuccess = true;
+            successPoints = Math.max(1, successPoints);
+        }
+        const pp = isSuccess ? Math.max(flags.autoSuccess ? 1 : 0, overflow + 1) : 0;
 
         if (isSuccess && !isJamming) {
             const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
@@ -1792,6 +1821,7 @@ export class NeuroshimaDice {
         isSuccess = evalData.success;
       }
       modifiedResults = evalData.modifiedResults;
+      if (flags.autoSuccess) isSuccess = true;
       if (isWeapon && isSuccess) {
         hitBullets = 1;
         finalHitSequence = [{ damage: flags.damage || "L", piercing: flags.piercing || 0, successPoints: 1, isPellet: false }];
@@ -1813,9 +1843,13 @@ export class NeuroshimaDice {
         successPoints = isSuccess ? 1 : 0;
         successCount = isSuccess ? 1 : 0;
       }
+      if (flags.autoSuccess) {
+        isSuccess = true;
+        successPoints = Math.max(1, successPoints);
+      }
       if (isSuccess && !isJamming) {
         const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
-        const pp = overflow + 1;
+        const pp = Math.max(flags.autoSuccess ? 1 : 0, overflow + 1);
         const originalSequence = flags.bulletSequence || flags.hitBulletsData || [];
         let totalPelletHits = 0;
         for (let j = 0; j < flags.bulletsFired; j++) {
@@ -1947,6 +1981,7 @@ export class NeuroshimaDice {
       isCritSuccess = successes === 3;
       isCritFailure = successes === 0 && diceObjects.some(d => d.original === 20);
     }
+    if (flags.autoSuccess) isSuccess = true;
 
     const updatedData = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
       rawResults, isSuccess, successPoints, successCount, modifiedResults,
@@ -2013,6 +2048,7 @@ export class NeuroshimaDice {
       isCritSuccess = evalData.isCritSuccess ?? false;
       isCritFailure = evalData.isCritFailure ?? false;
     }
+    if (flags.autoSuccess) isSuccess = true;
 
     const modifiedResults = evalData.modifiedResults;
 
@@ -2477,6 +2513,8 @@ export class NeuroshimaDice {
     stat = null,
     skillBonus = 0,
     attributeBonus = 0,
+    autoSuccess = false,
+    annotations = [],
     dieManualBonus = 0,
     dieReductionBonus = 0
   }) {
@@ -2578,6 +2616,13 @@ export class NeuroshimaDice {
 
       // Evaluate closed test
       this._evaluateClosedTest(testRollData, diceObjects);
+      if (autoSuccess) {
+        testRollData.autoSuccess = true;
+        testRollData.success = true;
+        // Healing consequences consume successCount, so provide the normal minimum.
+        testRollData.successCount = Math.max(2, Number(testRollData.successCount ?? 0));
+      }
+      testRollData.annotations = [...annotations];
 
       game.neuroshima?.log("Test result for wound", {
         woundName: config.woundName,
@@ -2624,7 +2669,8 @@ export class NeuroshimaDice {
           target: testTarget,
           skill: totalSkill,
           successCount: testRollData.successCount
-        })
+        }),
+        annotations: [...annotations]
       });
 
       healingResults.push({
@@ -2657,7 +2703,9 @@ export class NeuroshimaDice {
         woundConfigs: woundConfigs,
         stat: baseStat,
         skillBonus: skillBonus,
-        attributeBonus: attributeBonus
+        attributeBonus: attributeBonus,
+        autoSuccess: autoSuccess === true,
+        annotations: [...annotations]
       }
     );
 
@@ -2668,7 +2716,7 @@ export class NeuroshimaDice {
   /**
    * Re-roll a healing test for a specific wound (without creating a new chat message).
    */
-  static async rerollHealingTest(medicActor, patientActor, healingMethod, woundConfig, baseStat, skillBonus, attributeBonus) {
+  static async rerollHealingTest(medicActor, patientActor, healingMethod, woundConfig, baseStat, skillBonus, attributeBonus, autoSuccess = false) {
     game.neuroshima?.group("NeuroshimaDice | rerollHealingTest");
     game.neuroshima?.log("Re-rolling test for wound", {
       woundName: woundConfig.woundName,
@@ -2751,6 +2799,11 @@ export class NeuroshimaDice {
 
     // Evaluate
     this._evaluateClosedTest(testRollData, diceObjects);
+    if (autoSuccess) {
+      testRollData.autoSuccess = true;
+      testRollData.success = true;
+      testRollData.successCount = Math.max(2, Number(testRollData.successCount ?? 0));
+    }
 
     game.neuroshima?.log("Re-roll result for wound", {
       woundName: woundConfig.woundName,
@@ -2980,6 +3033,8 @@ export class NeuroshimaDice {
       useWoundPenalty = true,
       useDiseasePenalty = true,
       diseasePenalty: rawDiseasePenalty = 0,
+      autoSuccess = false,
+      annotations = [],
       rollMode = game.settings.get("core", "rollMode")
     } = params;
 
@@ -3016,7 +3071,8 @@ export class NeuroshimaDice {
     const rollData = { target, skill: skillValue };
     this._evaluateClosedTest(rollData, dice);
 
-    const { modifiedResults, successCount, success: isSuccess, isCritSuccess, isCritFailure } = rollData;
+    const { modifiedResults, successCount, isCritSuccess, isCritFailure } = rollData;
+    const isSuccess = autoSuccess === true || rollData.success;
 
     const failureMargin = isSuccess ? 0 : (3 - successCount);
     const distanceFactor = distance <= 10 ? 1 : Math.ceil(distance / 10);
@@ -3038,6 +3094,8 @@ export class NeuroshimaDice {
       totalPenalty,
       target,
       isSuccess,
+      autoSuccess: autoSuccess === true,
+      annotations: [...(Array.isArray(annotations) ? annotations : [])].filter(Boolean),
       isCritSuccess,
       isCritFailure,
       failureMargin,

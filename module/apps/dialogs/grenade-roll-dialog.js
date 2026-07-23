@@ -254,7 +254,9 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       useWoundPenalty:    useWound,
       useDiseasePenalty:  useDisease,
       diseasePenalty:     useDisease ? this._computeActorDiseasePenalty() + (sf.diseasePenalty || 0) : 0,
-      scriptModifier:     sf.modifier || 0
+      scriptModifier:     sf.modifier || 0,
+      autoSuccess:        sf.autoSuccess === true,
+      annotations:        sf.annotations || []
     });
 
     const grenade = this.weapon;

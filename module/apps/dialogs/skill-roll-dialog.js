@@ -1058,6 +1058,12 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       maximumDifficulty:
         sf.maximumDifficulty || null,
 
+      autoSuccess:
+        sf.autoSuccess === true,
+
+      annotations:
+        sf.annotations || [],
+
       skillKey:
         this.skillKey
         || null,

@@ -350,6 +350,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
       dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0),
       maximumDifficulty: sf.maximumDifficulty || null,
+      autoSuccess: sf.autoSuccess === true,
+      annotations: sf.annotations || [],
       rollMode: this.userEntry.rollMode ?? this.rollOptions.rollMode
     };
 

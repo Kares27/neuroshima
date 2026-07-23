@@ -1261,7 +1261,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
         woundConfig,
         extraData.stat,
         extraData.skillBonus,
-        extraData.attributeBonus
+        extraData.attributeBonus,
+        extraData.autoSuccess === true
     );
 
     if (newResult) {
@@ -1284,6 +1285,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
                 method,
                 successCount,
                 failedCount,
+                annotations: extraData.annotations || [],
                 patientRef: { uuid: patient.uuid },
                 medicRef: { uuid: medic.uuid },
                 config: NEUROSHIMA
@@ -1813,6 +1815,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       failedCount,
       successTooltip,
       failedTooltip,
+      annotations: extraData.annotations || [],
       patientRef: { uuid: patientActor.uuid },
       medicRef: { uuid: medicActor?.uuid },
       config: NEUROSHIMA

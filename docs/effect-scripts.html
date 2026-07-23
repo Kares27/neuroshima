@@ -136,7 +136,7 @@
 
 <header class="doc-header">
   <h1>System Skryptów Efektów <span class="badge">Neuroshima 1.5</span></h1>
-  <div class="subtitle">Dokumentacja dla twórców modułów i administratorów gry — Foundry VTT v13, Application V2</div>
+  <div class="subtitle">Dokumentacja dla twórców modułów i administratorów gry — system 1.0.0.7, Foundry VTT v13, Application V2 · audyt API: 2026-07-23</div>
 </header>
 
 <nav class="toc">
@@ -178,6 +178,7 @@
         <li><a href="#trigger-opposedDefender">opposedDefender — Opposed Defender</a></li>
         <li><a href="#trigger-meleeUpdate">meleeUpdate — Melee Update</a></li>
         <li><a href="#trigger-getMeleeActions">getMeleeActions — Get Melee Actions (sztuczki gracza)</a></li>
+        <li><a href="#trigger-melee-actions">Nowy pipeline melee — akcje, segmenty i cykl pojedynku</a></li>
       </ul>
     </li>
     <li><a href="#predefined-keys">Predefiniowane klucze</a>
@@ -203,7 +204,7 @@
     <li><a href="#helpers">Helpery i narzędzia</a>
       <ul style="margin-top:0.2rem; padding-left:1.1rem; list-style:disc;">
         <li><a href="#apply-damage-api"><code>game.neuroshima.applyDamage()</code></a></li>
-        <li><a href="#apply-wound-api"><code>NeuroshimaDice.applyWound()</code></a></li>
+        <li><a href="#apply-wound-api"><code>NeuroshimaDice.applyDamage()</code></a></li>
       </ul>
     </li>
     <li><a href="#item-resources">Zasoby itemu</a></li>
@@ -236,7 +237,7 @@
     w określonych momentach gry (wyzwalacze) lub manualnie po kliknięciu przycisku ▶ na arkuszu efektu.
   </p>
   <p>
-    Każdy skrypt jest przechowywany jako flaga na dokumencie ActiveEffect (<code>flags.neuroshima.scripts</code>) i
+    Każdy skrypt jest przechowywany w modelu ActiveEffect (<code>effect.system.scriptData</code>) i
     wykonywany przez klasę <code>NeuroshimaScriptRunner</code>. Skrypty mogą być dołączone zarówno do efektów
     bezpośrednio na aktorze, jak i do efektów na itemach (sztuczki, pancerze, ekwipunek).
   </p>
@@ -291,7 +292,7 @@
     <div class="ctx-row"><span class="ctx-name">this.trigger</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyzwalacza który uruchomił ten skrypt</span></div>
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
-    <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">void</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Działa w triggerach: <code>preRollTest</code>, <code>rollTest</code>, <code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Zwraca <code>true</code>, gdy bieżący wyzwalacz udostępnia adnotacje. Działa m.in. w <code>dialog</code> (również Dialog/Submission Script), <code>preRollTest</code>, <code>rollTest</code>, <code>preWeaponShot</code>, <code>weaponJam</code> i <code>postWeaponShot</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora. <strong>Tylko w triggerach ASYNC.</strong></span></div>
     <div class="ctx-row"><span class="ctx-name">this.rollToChat(count, sides, options?)</span><span class="ctx-type">number[] | Promise&lt;Roll&gt;</span><span class="ctx-desc"><strong>Ujednolicony rzut kością — działa w SYNC i ASYNC.</strong> W triggerze SYNC (<code>armorCalculation</code>) zachowuje się jak <code>deferRollToChat</code>: wykonuje rzut natychmiast i zwraca <code>number[]</code>, wpis na czat jest odroczony. W triggerze ASYNC działa jak <code>this.roll</code> i zwraca <code>Promise&lt;Roll&gt;</code>. Możesz bezpiecznie pisać <code>await this.rollToChat(...)</code> w obu kontekstach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.deferRollToChat(count, sides, options?)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Rzut synchroniczny — wynik dostępny natychmiast jako <code>number[]</code>. Wpis na czat z flavorem odroczony do momentu zakończenia wszystkich kalkulacji. <strong>Tylko w triggerach SYNC</strong> (<code>armorCalculation</code>). Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
@@ -299,8 +300,12 @@
     <div class="ctx-row"><span class="ctx-name">this.getChatData(merge?)</span><span class="ctx-type">object</span><span class="ctx-desc">Domyślne dane do ChatMessage.create() z speaker aktora i flavorem efektu</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.sendMessage(content, chatData?)</span><span class="ctx-type">Promise&lt;ChatMessage&gt;</span><span class="ctx-desc">Tworzy wiadomość czatu przypisaną do aktora</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.dialog(content, type?, config?)</span><span class="ctx-type">Promise&lt;any&gt;</span><span class="ctx-desc">Dialog Foundry: "confirm" → true/false, "prompt" → string|null, "input" → dane formularza. Tytuł = nazwa efektu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.addDialogModifier(label, modifier, description?)</span><span class="ctx-type">void</span><span class="ctx-desc">W triggerze <code>dialog</code> dodaje opisany modyfikator procentowy do panelu bieżącego rzutu.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.chooseFromList(items, prompt?, title?)</span><span class="ctx-type">Promise&lt;any | null&gt;</span><span class="ctx-desc">Przeszukiwalny wybór jednej pozycji. Element wymaga <code>{ value, label }</code> i może zawierać <code>description</code>, <code>img</code>, <code>tooltipHtml</code> oraz zwykły obiekt <code>rollData</code>. Tooltip obsługuje wzory Foundry <code>[[...]]</code>; dane aktora są dostępne pod <code>@actor</code>. Zwraca <code>value</code> albo <code>null</code> po anulowaniu. Decyzję podejmuje aktywny właściciel aktora, awaryjnie aktywny MG.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.allocatePoints(options)</span><span class="ctx-type">Promise&lt;object | null&gt;</span><span class="ctx-desc">Otwiera u właściwego gracza dialog rozdawania puli. <code>options</code> zawiera m.in. <code>pool</code>, <code>rows</code>, <code>requireExact</code> i opcjonalną lokalną funkcję <code>validate</code>. Zwraca mapę wartości według kluczy wierszy albo <code>null</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await this.deleteEffect(options?)</span><span class="ctx-type">Promise&lt;boolean&gt;</span><span class="ctx-desc">Usuwa efekt źródłowy przez właściwego wykonawcę/GM. Preferowane nad bezpośrednim <code>this.effect.delete()</code>, gdy skrypt może działać na kliencie bez praw do dokumentu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.replaceTestDie(args, index, value, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Tylko <code>rollTest</code>: zastępuje efektywny wynik jednej k20 (clamp 1–20) i zapisuje historię zmiany dla karty czatu oraz późniejszego przerzutu.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.copyTestDie(args, sourceIndex, targetIndex, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Tylko <code>rollTest</code>: kopiuje wartość jednej kości na drugą bez niszczenia bazowych danych rzutu.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isLightDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla D, sD, L, sL</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isHeavyDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla C, sC, K, sK</span></div>
     <div class="ctx-row"><span class="ctx-name">this.isBruiseDamage(type)</span><span class="ctx-type">boolean</span><span class="ctx-desc">true dla toru siniaków: sD, sL, sC, sK (prefix "s"). Skrót dla <code>type.startsWith("s")</code>.</span></div>
@@ -475,6 +480,30 @@
 <section id="triggers">
   <h2 class="section-title">3. Lista wyzwalaczy</h2>
 
+  <div class="callout info">
+    <strong>Źródło prawdy:</strong> poniższa lista odpowiada dokładnie
+    <code>NeuroshimaScriptRunner.TRIGGERS</code>. Nazwy triggerów są czułe na wielkość liter.
+    Triggery oznaczone jako <strong>SYNC</strong> nie mogą używać <code>await</code> ani operacji
+    zapisujących dokumenty; w pozostałych skryptach można korzystać z API asynchronicznego.
+  </div>
+  <table>
+    <thead><tr><th>Grupa</th><th>Triggery</th><th>Przeznaczenie</th></tr></thead>
+    <tbody>
+      <tr><td>Ogólne</td><td><code>manual</code>, <code>immediate</code>, <code>applyEffect</code>, <code>deleteEffect</code>, <code>equipToggle</code>, <code>createToken</code></td><td>Cykl życia efektu, itemu i tokena.</td></tr>
+      <tr><td>Dane <strong>SYNC</strong></td><td><code>prepareData</code></td><td>Synchroniczne przygotowanie danych pochodnych aktora.</td></tr>
+      <tr><td>Dialog i test</td><td><code>dialog</code>, <code>preRollTest</code>, <code>rollTest</code>, <code>getInitiativeFormula</code></td><td>Modyfikacja dialogu, testu przed rzutem i reakcja po rzucie.</td></tr>
+      <tr><td>Strzał</td><td><code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code></td><td>Zacięcie, amunicja i wynik strzału.</td></tr>
+      <tr><td>Obrażenia</td><td><code>preApplyDamage</code>, <code>applyDamage</code>, <code>preTakeDamage</code>, <code>takeDamage</code>, <code>armorCalculation</code> <strong>SYNC</strong></td><td>Kolejne etapy od strony atakującego i obrońcy.</td></tr>
+      <tr><td>Walka</td><td><code>startCombat</code>, <code>updateCombat</code>, <code>startRound</code>, <code>startTurn</code>, <code>endTurn</code>, <code>endRound</code>, <code>endCombat</code></td><td>Cykl Combat Foundry.</td></tr>
+      <tr><td>Stan świata</td><td><code>worldTimeUpdate</code>, <code>preApplyCondition</code>, <code>applyCondition</code></td><td>Czas świata i kondycje.</td></tr>
+      <tr><td>Melee — pula/opposed</td><td><code>preMeleePool</code>, <code>preOpposedAttacker</code>, <code>preOpposedDefender</code>, <code>opposedAttacker</code>, <code>opposedDefender</code>, <code>meleeUpdate</code></td><td>Modyfikacja puli i kompatybilny pipeline rozstrzygania.</td></tr>
+      <tr><td>Melee — akcje</td><td><code>getMeleeActions</code>, <code>collectMeleeActions</code>, <code>onMeleeActionHit</code>, <code>onMeleeActionMiss</code>, <code>onMeleeActionQueued</code>, <code>onMeleeActionResolved</code></td><td>Definicje i cykl życia deklarowanych sztuczek.</td></tr>
+      <tr><td>Melee — segment</td><td><code>beforeMeleeAction</code>, <code>onMeleeHit</code>, <code>onMeleeBlock</code>, <code>onMeleeTakeover</code>, <code>afterMeleeAction</code></td><td>Rozstrzygnięcie segmentu dla obu uczestników.</td></tr>
+      <tr><td>Melee — obrażenia</td><td><code>beforeMeleeDamage</code>, <code>afterMeleeDamage</code></td><td>Przed i po aplikacji pojedynczego trafienia melee.</td></tr>
+      <tr><td>Melee — pojedynek</td><td><code>onDuelStart</code>, <code>onDuelSegmentStart</code>, <code>onDuelEnd</code></td><td>Cykl całej karty pojedynku.</td></tr>
+    </tbody>
+  </table>
+
   <!-- manual -->
   <h3 id="trigger-manual">manual — <em>Manually Invoked</em></h3>
   <p>Wyzwalany ręcznie przez kliknięcie przycisku ▶ na liście skryptów efektu na arkuszu aktora.</p>
@@ -489,8 +518,8 @@
 
   <!-- immediate -->
   <h3 id="trigger-immediate">immediate — <em>Immediate</em></h3>
-  <p>Uruchamiany <strong>raz</strong>, zaraz po tym jak efekt zostanie utworzony na aktorze. Idealny do efektów jednorazowych (konsumabli), gdzie efekt powinien zadziałać natychmiast, a następnie można go usunąć skryptem <code>deleteEffect</code> lub ręcznie.</p>
-  <p>Różnica względem <code>createEffect</code>: <code>createEffect</code> uruchamia się chwilę wcześniej (hooks Foundry), <code>immediate</code> — tuż po nim, w tej samej ramce. W praktyce dla konsumabli użyj <code>immediate</code>.</p>
+  <p>Uruchamiany <strong>raz</strong>, zaraz po utworzeniu efektu na aktorze, po skryptach <code>applyEffect</code>. Operacja dodawania itemu czeka na zakończenie skryptów <code>immediate</code>, dlatego dialogi i wybory kończą się przed dalszą logiką, np. wyborem cechy pochodzenia.</p>
+  <p>Opcja <strong>Delete Script</strong> jest dostępna wyłącznie dla tego triggera. Po udanym zakończeniu usuwa z <code>system.scriptData</code> tylko wykonany wpis skryptu — <strong>nie usuwa Active Effectu</strong>. Aby usunąć cały efekt jawnie, użyj <code>await this.deleteEffect()</code>.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor na którym utworzono efekt</td></tr>
@@ -556,6 +585,8 @@
       <tr><td><code>args.fields.difficultyShift</code></td><td>number</td><td>Przesuwa poziom trudności o podaną liczbę stopni (np. <code>+1</code> = poziom wyżej, <code>-1</code> = poziom niżej). Kumuluje się z innymi modyfikatorami. W testach leczenia (<code>rollType === "healing"</code>) przesunięcie stosowane jest do <strong>wszystkich</strong> typów ran jednocześnie.</td></tr>
       <tr><td><code>args.fields.finalDifficultyShift</code></td><td>number</td><td>Przesuwa już wyliczony poziom trudności po uwzględnieniu kar procentowych i zwykłego <code>difficultyShift</code>, lecz przed zastosowaniem limitu <code>maximumDifficulty</code>. Wartości wielu efektów sumują się.</td></tr>
       <tr><td><code>args.fields.maximumDifficulty</code></td><td>string | null</td><td>Górny limit trudności końcowej. Np. <code>"hard"</code> sprawi, że wynik <code>veryHard</code>, <code>luck</code> itd. zostanie obniżony do <code>hard</code>, ale łatwiejszy wynik pozostanie bez zmian. Przy wielu limitach wygrywa najłatwiejszy (najbardziej restrykcyjny). Poprawna nazwa pola to <code>maximumDifficulty</code>, nie <code>maxDifficulty</code>.</td></tr>
+      <tr><td><code>args.fields.autoSuccess</code></td><td>boolean</td><td>Ustawienie na <code>true</code> wymusza udany wynik testu. Kości nadal są normalnie rzucane, wyświetlane i mogą być przerzucane; zmienia się wyłącznie końcowa ocena testu oraz jego konsekwencje (np. trafienie lub udane leczenie). Jeśli kilka aktywnych skryptów ustawi tę wartość, wystarczy jeden z wartością <code>true</code>.</td></tr>
+      <tr><td><code>args.fields.annotations</code></td><td>string[]</td><td>Adnotacje przenoszone z dialogu do wynikowej karty rzutu. Zalecany zapis to <code>this.addAnnotation("tekst")</code>; bezpośrednie <code>args.fields.annotations.push("tekst")</code> również działa.</td></tr>
       <tr><td><code>args.fields.damageShift</code></td><td>number</td><td>Przesuwa typ obrażeń broni białej o podaną liczbę stopni (np. <code>+1</code> = D→L, L→C, C→K; <code>-1</code> = odwrotnie). Działa na <strong>wszystkie trzy</strong> poziomy obrażeń (tier 1/2/3) i obsługuje zarówno obrażenia regularne (<code>D/L/C/K</code>), jak i stłuczeniowe (<code>sD/sL/sC/sK</code>). Stackuje się addytywnie z <code>damageShift1/2/3</code>. Stosowane wyłącznie w testach broni białej.</td></tr>
       <tr><td><code>args.fields.damageShift1</code></td><td>number</td><td>Przesuwa typ obrażeń <strong>tylko dla tiera 1</strong> (1 sukces) o podaną liczbę stopni. Stackuje się addytywnie z globalnym <code>damageShift</code>. Finalny shift dla tiera 1 = <code>damageShift + damageShift1</code>. Stosowane wyłącznie w testach broni białej.</td></tr>
       <tr><td><code>args.fields.damageShift2</code></td><td>number</td><td>Przesuwa typ obrażeń <strong>tylko dla tiera 2</strong> (2 sukcesy) o podaną liczbę stopni. Stackuje się addytywnie z globalnym <code>damageShift</code>. Finalny shift dla tiera 2 = <code>damageShift + damageShift2</code>. Stosowane wyłącznie w testach broni białej.</td></tr>
@@ -602,6 +633,11 @@ args.fields.finalDifficultyShift += <span class="num">1</span>;
 <span class="cmt">// Test nigdy nie będzie trudniejszy niż Trudny.</span>
 <span class="cmt">// veryHard, luck i grandmasterful zostaną zablokowane na hard.</span>
 args.fields.maximumDifficulty = <span class="str">"hard"</span>;</code></pre>
+
+  <h4>Automatyczny sukces z normalnym rzutem</h4>
+  <p><code>args.fields.autoSuccess</code> należy do wyzwalacza <code>dialog</code>. W przeciwieństwie do <code>args.test.preData.autoSuccess</code> z <code>preRollTest</code> nie pomija rzutu: karta czatu i wynik kości powstają normalnie, ale system traktuje test jako udany.</p>
+  <pre><code><span class="cmt">// Rzuć i pokaż kości, lecz niezależnie od nich uznaj test za udany.</span>
+args.fields.autoSuccess = <span class="kw">true</span>;</code></pre>
 
   <h4>Przesunięcie obrażeń (<code>damageShift</code>, <code>damageShift1/2/3</code>)</h4>
   <p>Przesuwa typ obrażeń broni białej o podaną liczbę poziomów (D→L→C→K oraz sD→sL→sC→sK). Globalne <code>damageShift</code> dotyczy wszystkich trzech tierów jednocześnie. Per-tier <code>damageShift1/2/3</code> stackuje się addytywnie z globalnym i działa tylko dla konkretnego tieru (1 sukces / 2 sukcesy / 3 sukcesy). Stosowane wyłącznie w testach broni białej.</p>
@@ -908,7 +944,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 
   <!-- rollTest -->
   <h3 id="trigger-rollTest">rollTest — <em>Roll Test (post-roll)</em></h3>
-  <p>Uruchamiany <em>po</em> rzucie kośćmi — gdy kości zostały już rzucone i wynik znany. Pozwala reagować na wynik rzutu: modyfikować adnotacje, nakładać efekty zależne od sukcesu/porażki, liczyć punkty przewagi. <strong>Nie można już tutaj zmieniać wartości atrybutów ani kar</strong> — do tego służy <code>preRollTest</code>.</p>
+  <p>Uruchamiany <em>po</em> rzucie kośćmi — gdy surowe kości są już znane. Pozwala reagować na wynik, dodawać adnotacje oraz kontrolowanie zastępować/kopiować kości przed finalnym renderem. <strong>Nie zmieniaj tutaj atrybutów ani kar</strong> — do tego służy <code>preRollTest</code>. Do zmian kości używaj helperów, nie mutuj ręcznie obiektu <code>Roll</code>.</p>
   <div class="callout info">
     <strong>Uwaga:</strong> Trigger <code>rollTest</code> jest wołany tylko gdy rzut doszedł do skutku (nie został anulowany, nie było auto-sukcesu). Sprawdź <code>args.test.result.isSuccess</code> aby rozróżnić wynik.
   </div>
@@ -920,7 +956,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
     <tr><td>args.test.item</td><td>Item | null</td><td>Item użyty do rzutu (jeśli podany)</td></tr>
     <tr><td>args.test.result.isSuccess</td><td>boolean</td><td>Czy rzut był sukcesem (read-only)</td></tr>
     <tr><td>args.test.result.successCount</td><td>number</td><td>Liczba sukcesów (Punkty Przewagi) — może być ujemna przy porażce (read-only)</td></tr>
-    <tr><td>args.test.result.rollData</td><td>object</td><td>Pełny obiekt danych rzutu (read-only) — zawiera m.in. <code>successPoints</code>, <code>stat</code>, <code>skill</code></td></tr>
+    <tr><td>args.test.result.rollData</td><td>object</td><td>Dane rzutu. Odczytuj wynik normalnie; kontrolowane zmiany kości wykonuj przez <code>replaceTestDie</code>/<code>copyTestDie</code>, które aktualizują <code>rawResults</code>, <code>rolledResults</code> i <code>diceChanges</code>.</td></tr>
     <tr><td>args.test.result.roll</td><td>Roll</td><td>Obiekt Foundry Roll z wynikami kości (read-only)</td></tr>
     <tr><td>args.test.result.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
     <tr><td>args.test.context.label</td><td>string</td><td>Etykieta rzutu (read-only)</td></tr>
@@ -937,6 +973,18 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
   <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">addCondition</span>(<span class="str">"exhausted"</span>);
   <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Wyczerpanie — porażka testu kondycji!"</span>);
 }</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">rollTest</span> Bezpieczne skopiowanie najlepszej kości</div>
+    <pre><code><span class="kw">const</span> <span class="var">dice</span> = args.test.result.rollData?.rawResults ?? [];
+<span class="kw">if</span> (<span class="var">dice</span>.length &lt; <span class="num">2</span>) <span class="kw">return</span>;
+<span class="kw">const</span> <span class="var">bestIndex</span>  = <span class="var">dice</span>.<span class="fn">indexOf</span>(Math.<span class="fn">min</span>(...<span class="var">dice</span>));
+<span class="kw">const</span> <span class="var">worstIndex</span> = <span class="var">dice</span>.<span class="fn">indexOf</span>(Math.<span class="fn">max</span>(...<span class="var">dice</span>));
+<span class="kw">this</span>.<span class="fn">copyTestDie</span>(args, <span class="var">bestIndex</span>, <span class="var">worstIndex</span>, {
+  label: <span class="kw">this</span>.effect.name,
+  icon: <span class="str">"fas fa-copy"</span>
+});</code></pre>
   </div>
 
   <div class="example-block">
@@ -1366,7 +1414,7 @@ args.piercing = <span class="num">0</span>;</code></pre>
 <span class="kw">const</span> <span class="var">r</span> = <span class="kw">this</span>.<span class="fn">rollResults</span>(<span class="kw">this</span>.<span class="fn">rollToChat</span>(<span class="num">10</span>, <span class="num">20</span>, { flavor: <span class="str">"Odłamki granatu"</span> }));
 <span class="kw">const</span> <span class="var">hits</span>   = <span class="var">r</span>.<span class="fn">countAtLeast</span>(<span class="num">15</span>);  <span class="cmt">// liczba kości ≥ 15</span>
 <span class="kw">const</span> <span class="var">crits</span>  = <span class="var">r</span>.<span class="fn">countAtLeast</span>(<span class="num">20</span>);  <span class="cmt">// liczba perfekcyjnych</span>
-<span class="kw">const</span> <span class="var">misses</span> = <span class="var">r</span>.<span class="fn">countWhere</span>(<span class="var">v</span> => <span class="var">v</span> < <span class="num">5</span>); <span class="cmt">// kości poniżej 5</span></code></pre>
+<span class="kw">const</span> <span class="var">misses</span> = <span class="var">r</span>.<span class="fn">countWhere</span>(<span class="var">v</span> =&gt; <span class="var">v</span> &lt; <span class="num">5</span>); <span class="cmt">// kości poniżej 5</span></code></pre>
   </div>
 
   <div class="example-block">
@@ -2215,6 +2263,59 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
     </div>
   </div>
 
+  <h3 id="trigger-melee-actions">Nowy pipeline melee — akcje, segmenty i cykl pojedynku</h3>
+  <p>
+    Te triggery obsługują aktualny model <code>DuelContext</code>/<code>MeleeAction</code>.
+    Triggery globalne uruchamiają się dla efektów obu uczestników; triggery
+    <em>action-scoped</em> uruchamiają się tylko na efekcie będącym źródłem zadeklarowanej akcji.
+    W tym kontekście dostępne są skróty <code>this.meleeDuel</code>,
+    <code>this.meleeSegment</code>, <code>this.meleeAction</code> i
+    <code>this.isSourceAction(args)</code>.
+  </p>
+  <table>
+    <thead><tr><th>Trigger</th><th>Zakres i moment</th><th>Najważniejsze argumenty</th></tr></thead>
+    <tbody>
+      <tr><td><code>collectMeleeActions</code></td><td>Globalny; po zebraniu akcji z <code>getMeleeActions</code>. Dopisz definicje do mutowalnej tablicy <code>args.actions</code>.</td><td><code>actor</code>, <code>duel</code>, <code>state</code>, <code>actions</code>, <code>uncommittedDice</code>, <code>uncommittedSuccesses</code>, <code>lookupActionDef</code></td></tr>
+      <tr><td><code>onDuelStart</code></td><td>Dla obu aktorów, raz po utworzeniu karty pojedynku.</td><td><code>duel</code>, <code>isAttacker</code>, <code>attackerActor</code>, <code>defenderActor</code>; <code>segment</code> ma wartość <code>null</code></td></tr>
+      <tr><td><code>onDuelSegmentStart</code></td><td>Dla obu aktorów, gdy właściciel inicjatywy zatwierdzi kości segmentu.</td><td>argumenty bazowe oraz <code>segment</code></td></tr>
+      <tr><td><code>beforeMeleeAction</code></td><td>Dla obu aktorów przed ustaleniem wyniku segmentu.</td><td><code>duel</code>, <code>segment</code>, <code>action</code>, <code>isAttacker</code>; <code>segment.outcome</code> jest jeszcze <code>null</code></td></tr>
+      <tr><td><code>onMeleeHit</code>, <code>onMeleeBlock</code>, <code>onMeleeTakeover</code></td><td>Globalne, dla obu aktorów, po ustaleniu odpowiednio trafienia, remisu/bloku lub przejęcia inicjatywy.</td><td><code>outcome</code>, <code>action</code>, <code>diceCount</code>, <code>attackerSuccesses</code>, <code>defenderSuccesses</code>, <code>hitEntry</code>, <code>hits</code></td></tr>
+      <tr><td><code>onMeleeActionHit</code>, <code>onMeleeActionMiss</code></td><td><em>Action-scoped</em>; tylko efekt źródłowy zadeklarowanej akcji.</td><td><code>action</code>, <code>duel</code>, <code>segment</code></td></tr>
+      <tr><td><code>afterMeleeAction</code></td><td>Dla obu aktorów po triggerze wyniku segmentu.</td><td>pełny kontekst rozstrzygniętego segmentu</td></tr>
+      <tr><td><code>onMeleeActionQueued</code></td><td><em>Action-scoped</em>; przed wykonaniem akcji z kolejki.</td><td><code>action</code>, <code>duel</code> oraz dane przekazane przez kolejkę</td></tr>
+      <tr><td><code>beforeMeleeDamage</code></td><td>Dla obu aktorów przed aplikacją każdego pojedynczego trafienia. Ustaw <code>args.hit.cancelled = true</code>, aby je anulować.</td><td><code>hit</code>, <code>rd</code>, <code>duel</code>, <code>targetActor</code>, <code>attackerActor</code>, <code>defenderActor</code>, <code>isAttacker</code></td></tr>
+      <tr><td><code>afterMeleeDamage</code></td><td>Dla obu aktorów po aplikacji pojedynczego trafienia.</td><td>jak wyżej oraz <code>batch</code> z wynikiem aplikacji obrażeń</td></tr>
+      <tr><td><code>onMeleeActionResolved</code></td><td><em>Action-scoped</em>; po pełnym rozpatrzeniu trafionej sztuczki.</td><td><code>action</code>, <code>duel</code> i wynik kolejki</td></tr>
+      <tr><td><code>onDuelEnd</code></td><td>Dla obu aktorów po wyczerpaniu wszystkich kości.</td><td><code>duel</code> z <code>hits</code> i <code>netSuccesses</code>; <code>segment</code> ma wartość <code>null</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">collectMeleeActions</span> Dodanie akcji z rejestru</div>
+    <pre><code><span class="kw">const</span> <span class="var">def</span> = args.<span class="fn">lookupActionDef</span>(<span class="str">"my-action-id"</span>);
+<span class="kw">if</span> (<span class="var">def</span> &amp;&amp; args.uncommittedSuccesses &gt;= (<span class="var">def</span>.successCost ?? <span class="num">0</span>)) {
+  args.actions.<span class="fn">push</span>(foundry.utils.<span class="fn">deepClone</span>(<span class="var">def</span>));
+}</code></pre>
+  </div>
+
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">beforeMeleeDamage</span> Anulowanie jednego trafienia</div>
+    <pre><code><span class="cmt">// Skrypt uruchamia się po obu stronach — reaguj tylko jako obrońca.</span>
+<span class="kw">if</span> (args.isAttacker || !args.hit) <span class="kw">return</span>;
+<span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">getConditionValue</span>(<span class="str">"protected"</span>) &gt; <span class="num">0</span>) {
+  args.hit.cancelled = <span class="kw">true</span>;
+}</code></pre>
+  </div>
+
+  <div class="callout warn">
+    <strong>Nie mieszaj dwóch modeli akcji:</strong> <code>getMeleeActions</code> może nadal
+    definiować akcję oraz jej modyfikator dialogowy, natomiast
+    <code>collectMeleeActions</code> jest docelowym globalnym punktem rozszerzania listy.
+    Logikę konkretnej zadeklarowanej sztuczki umieszczaj w triggerach
+    <code>onMeleeAction*</code>; pasywne reakcje obu walczących w triggerach
+    <code>onMeleeHit/Block/Takeover</code>.
+  </div>
+
 </section>
 
 <!-- PREDEFINED KEYS -->
@@ -2385,6 +2486,14 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
       <tr><td><code>system.availability</code></td><td>number (0–100)</td><td>Dostępność w %</td></tr>
       <tr><td><code>system.equipped</code></td><td>boolean</td><td>Czy założony (weapon, armor, magazine)</td></tr>
       <tr><td><code>system.resources</code></td><td>Array</td><td>Zasoby zdefiniowane na itemu</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="key-group">Cecha (<code>trait</code>)</h4>
+  <table>
+    <thead><tr><th>Pole</th><th>Typ</th><th>Opis</th></tr></thead>
+    <tbody>
+      <tr><td><code>system.traitCategory</code></td><td>string</td><td>Kategoria cechy: <code>"origin"</code> albo <code>"profession"</code>. Filtruje cechy pokazywane podczas wyboru dla pochodzenia/profesji; wartość domyślna i migracyjna to <code>"origin"</code>.</td></tr>
     </tbody>
   </table>
 
@@ -2773,14 +2882,14 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">applyDamage</span>
+      <span class="trigger-badge">takeDamage</span>
       Niewrażliwość na lekkie rany — auto-sukces odporności na ból dla D, sD, L, sL
     </div>
     <p class="example-desc">
       Wariant <strong>bez annotation</strong> — w raporcie czatu pojawi się domyślny tekst systemowy
       <em>"Auto-zdany (przez skrypt efektu)"</em>.
     </p>
-    <pre><code><span class="cmt">// Trigger: applyDamage — efekt na tricku "Hartowanie" / "Żelazny Brzuch"
+    <pre><code><span class="cmt">// Trigger: takeDamage — efekt na tricku "Hartowanie" / "Żelazny Brzuch"
 // isLightDamage() zwraca true dla D, sD, L, sL — nie trzeba ręcznie wypisywać listy</span>
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
   <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
@@ -2791,14 +2900,14 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">applyDamage</span>
+      <span class="trigger-badge">takeDamage</span>
       Niewrażliwość na lekkie rany — z <code>annotation</code> (własny tekst w raporcie czatu)
     </div>
     <p class="example-desc">
       Wariant <strong>z annotation</strong> — zamiast domyślnego tekstu pojawi się niestandardowy opis
       bezpośrednio przy nazwie rany w raporcie. Tooltip zawiera ten sam tekst.
     </p>
-    <pre><code><span class="cmt">// Trigger: applyDamage — forcePassed + annotation (własny tekst w raporcie)
+    <pre><code><span class="cmt">// Trigger: takeDamage — forcePassed + annotation (własny tekst w raporcie)
 // annotation pojawia się obok nazwy rany w karcie czatu zamiast domyślnego tekstu</span>
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
   <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
@@ -2810,7 +2919,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">applyDamage</span>
+      <span class="trigger-badge">takeDamage</span>
       Ochrona przed radiacją — aplikant/eliksir blokuje ranę radiacyjną
     </div>
     <p class="example-desc">
@@ -2818,7 +2927,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
       Wystarczy ustawić <code>wound.forceSkip = true</code>; rana nie zostanie stworzona
       i wiadomość czatu nie pojawi się.
     </p>
-    <pre><code><span class="cmt">// Trigger: applyDamage — efekt na aplikancie "Preparat Antyradiacyjny"
+    <pre><code><span class="cmt">// Trigger: takeDamage — efekt na aplikancie "Preparat Antyradiacyjny"
 // Blokuje rany radiacyjne dopóki efekt jest aktywny</span>
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
   <span class="kw">if</span> (<span class="var">wound</span>.isRadiation) {
@@ -2902,7 +3011,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">applyDamage</span>
+      <span class="trigger-badge">takeDamage</span>
       Ochrona losowa — jeden rzut Xd100, każdy wynik ≤ 25 niweluje jedną ranę
     </div>
     <pre><code><span class="cmt">// Jeden rzut Xd100 (X = liczba ran), bez osobnych komunikatów
@@ -2930,7 +3039,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">applyDamage</span>
+      <span class="trigger-badge">takeDamage</span>
       Deflection — Xd100, wynik ≤ 25 → rana "odchylona" (odporność na ból auto-zdana)
     </div>
     <pre><code><span class="cmt">// Zamiast całkowitej negacji, rany są "odchylone":
@@ -3123,10 +3232,10 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">createEffect</span> + <span class="trigger-badge">deleteEffect</span>
+      <span class="trigger-badge">applyEffect</span> + <span class="trigger-badge">deleteEffect</span>
       Śledzenie czasu trwania efektu przez flagi aktora
     </div>
-    <pre><code><span class="cmt">// Skrypt 1 — trigger: createEffect — zapisz czas startu</span>
+    <pre><code><span class="cmt">// Skrypt 1 — trigger: applyEffect — zapisz czas startu</span>
 <span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">`effectStart_${this.effect.id}`</span>, game.time.worldTime);
 <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">`Efekt "${this.effect.name}" aktywny.`</span>);
 
@@ -3269,21 +3378,21 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     rounds: <span class="num">5</span>,
     startRound: game.combat?.round ?? <span class="num">0</span>
   },
-  <span class="str">"flags.neuroshima.scripts"</span>: []   <span class="cmt">// opcjonalnie — puste lub ze skryptami</span>
+  system: { scriptData: [] }   <span class="cmt">// opcjonalnie — wpisy { id, trigger, label, code, ... }</span>
 }]);</code></pre>
 
     <div class="callout info" style="margin-top:0.75rem;">
       <strong>Tip:</strong> Foundry automatycznie odlicza czas i usuwa efekt po upływie duration
       <em>gdy aktywna jest walka</em>. Poza walką licznik sekund zależy od czasu świata (<code>game.time.worldTime</code>).
       Dla efektów jednorazowych (jak Propital) lepiej usunąć efekt ręcznie w skrypcie <code>immediate</code>
-      przez <code>this.effect.delete()</code>.
+      przez <code>await this.deleteEffect()</code>.
     </div>
   </div>
 
   <!-- ── Rykoszet lokacja-specyficzny ────────────────────────────────────── -->
   <div class="example-block" style="border-color: var(--accent2);">
     <div class="example-header" style="background:linear-gradient(90deg,#101828,var(--bg2));">
-      <span class="trigger-badge" style="color:var(--accent2);">applyDamage</span>
+      <span class="trigger-badge" style="color:var(--accent2);">takeDamage</span>
       Rykoszet — ochrona per-lokacja (efekt na pancerzu, <em>Transfer on Equip</em>)
     </div>
     <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
@@ -3295,9 +3404,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     <div class="callout info" style="margin-bottom:0.75rem; font-size:0.86em;">
       <strong>Jak ustawić efekt na pancerzu:</strong><br>
       Item → Efekty → Nowy efekt → zakładka <strong>Details</strong> → <em>Transfer on Equip: ✓</em><br>
-      Zakładka Skrypty → Trigger: <strong>applyDamage</strong> → wklej poniższy kod.
+      Zakładka Skrypty → Trigger: <strong>takeDamage</strong> → wklej poniższy kod.
     </div>
-    <pre><code><span class="cmt">// Trigger: applyDamage — efekt na pancerzu (Transfer on Equip)
+    <pre><code><span class="cmt">// Trigger: takeDamage — efekt na pancerzu (Transfer on Equip)
 // this.item = pancerz; this.actor = właściciel pancerza
 // args.wounds = lista ran dla tej rundy; args.location = lokacja trafienia</span>
 
@@ -3369,17 +3478,16 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <!-- ── Trucizna: addCondition/setConditionValue + warunki ──────────────── -->
   <div class="example-block">
     <div class="example-header">
-      <span class="trigger-badge">applyDamage</span>
-      Trucizna na broni — nakłada krwawienie gdy rana wejdzie (<code>addCondition</code>)
+      <span class="trigger-badge">takeDamage</span>
+      Reakcja obrońcy — nakłada krwawienie, gdy rana wejdzie (<code>addCondition</code>)
     </div>
     <p style="margin:6px 0 8px; font-size:0.88em; color:#888;">
-      Efekt na <strong>broni</strong> (<em>Transfer: Owning Document → Actor</em>). Gdy broń zadaje obrażenia
-      i co najmniej jedna rana wejdzie (nie <code>forceSkip</code>), dokłada 1 poziom krwawienia na cel.
-      Używamy <code>args.actor</code> (obrońca), nie <code>this.actor</code> (atakujący).
+      Efekt na <strong>obrońcy</strong>. Gdy po pancerzu pozostaje co najmniej jedna rana
+      (bez <code>forceSkip</code>), dokłada 1 poziom krwawienia.
     </p>
-    <pre><code><span class="cmt">// Trigger: applyDamage — na efekcie broni
-// args.actor = obrońca (ten który dostał rany)
-// Skrypt uruchamia się PO tym jak system obliczył rany</span>
+    <pre><code><span class="cmt">// Trigger: takeDamage — na efekcie obrońcy
+// args.actor i this.actor wskazują aktora otrzymującego rany
+// Skrypt uruchamia się po pancerzu, przed odpornością na ból</span>
 <span class="cmt">// getEffectiveWounds filtruje rany z forceSkip=true — skrót dla args.wounds.filter(w => !w.forceSkip)</span>
 <span class="kw">const</span> <span class="var">effective</span> = <span class="kw">this</span>.<span class="fn">getEffectiveWounds</span>(args);
 <span class="kw">if</span> (!<span class="var">effective</span>.length) <span class="kw">return</span>; <span class="cmt">// brak ran → brak trucizny</span>
@@ -3863,7 +3971,7 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
     Możesz zautomatyzować to skryptem <code>manual</code> uruchamianym raz dziennie:
     <pre style="margin:6px 0 0;"><code><span class="cmt">// Trigger: manual — "Dzienny rzut choroby"</span>
 (<span class="kw">async</span> () =&gt; {
-  <span class="kw">const</span> <span class="var">disease</span> = <span class="fn">getDisease</span>();
+  <span class="kw">const</span> <span class="var">disease</span> = <span class="kw">this</span>.<span class="fn">getDisease</span>();
   <span class="kw">if</span> (!<span class="var">disease</span>) <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">notification</span>(<span class="str">"Brak choroby u postaci."</span>);
 
   <span class="kw">const</span> <span class="var">states</span>  = [<span class="str">"none"</span>, <span class="str">"firstSymptoms"</span>, <span class="str">"acute"</span>, <span class="str">"critical"</span>, <span class="str">"terminal"</span>];
@@ -3871,9 +3979,9 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
   <span class="kw">const</span> <span class="var">idx</span>     = <span class="var">states</span>.<span class="fn">indexOf</span>(<span class="var">current</span>);
   <span class="kw">if</span> (<span class="var">idx</span> >= <span class="num">4</span>) <span class="kw">return</span>; <span class="cmt">// terminal — już najgorszy</span>
 
-  <span class="kw">const</span> <span class="var">roll</span>      = <span class="kw">await</span> <span class="kw">new</span> <span class="fn">Roll</span>(<span class="str">"1d20"</span>).<span class="fn">evaluate</span>();
+  <span class="kw">const</span> <span class="var">roll</span>      = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">"1d20"</span>);
   <span class="kw">const</span> <span class="var">threshold</span> = <span class="var">idx</span> === <span class="num">0</span> ? <span class="num">16</span> : <span class="num">18</span>; <span class="cmt">// 16+ na "none", 18+ na pozostałych</span>
-  <span class="kw">if</span> (<span class="var">roll</span>.total < <span class="var">threshold</span>) {
+  <span class="kw">if</span> (<span class="var">roll</span>.total &lt; <span class="var">threshold</span>) {
     <span class="kw">return</span> <span class="kw">this</span>.<span class="fn">sendMessage</span>(<span class="str">`Rzut k20 = ${roll.total} — stan choroby bez zmian.`</span>);
   }
 
@@ -4082,20 +4190,23 @@ args.actor.system.attributes.dexterity += Math.floor(<span class="var">con</span
 
   <h3>Formaty <code>onSuccess</code> / <code>onFailure</code></h3>
   <p>Parametry przyjmują kilka równoważnych form:</p>
-  <pre><code><span class="cmt">// 1. Krótki string — aplikuje jedną kondycję (wartość 1)</span>
-onFailure: <span class="str">"frightened"</span>
+  <pre><code><span class="cmt">// Każdy z poniższych obiektów jest poprawnym fragmentem opcji wywołania.</span>
+<span class="kw">const</span> <span class="var">variants</span> = [
+  <span class="cmt">// 1. Krótki string — aplikuje jedną kondycję (wartość 1)</span>
+  { onFailure: <span class="str">"frightened"</span> },
 
-<span class="cmt">// 2. Obiekt { addCondition } — to samo, bardziej jawnie</span>
-onFailure: { addCondition: <span class="str">"frightened"</span> }
+  <span class="cmt">// 2. Obiekt { addCondition } — to samo, bardziej jawnie</span>
+  { onFailure: { addCondition: <span class="str">"frightened"</span> } },
 
-<span class="cmt">// 3. Obiekt z value — dla kondycji liczbowych, nakłada N stosów</span>
-onFailure: { addCondition: <span class="str">"bleeding"</span>, value: <span class="num">3</span> }
+  <span class="cmt">// 3. Obiekt z value — dla kondycji liczbowych, nakłada N stosów</span>
+  { onFailure: { addCondition: <span class="str">"bleeding"</span>, value: <span class="num">3</span> } },
 
-<span class="cmt">// 4. Tablica — wiele kondycji jednocześnie (można mieszać)</span>
-onFailure: [
-  { addCondition: <span class="str">"frightened"</span> },
-  { addCondition: <span class="str">"bleeding"</span>, value: <span class="num">2</span> }
-]</code></pre>
+  <span class="cmt">// 4. Tablica — wiele kondycji jednocześnie (można mieszać)</span>
+  { onFailure: [
+    { addCondition: <span class="str">"frightened"</span> },
+    { addCondition: <span class="str">"bleeding"</span>, value: <span class="num">2</span> }
+  ] }
+];</code></pre>
 
   <div class="callout info">
     <strong>Kondycje liczbowe i <code>value</code>:</strong> Jeśli kondycja jest typu <em>int</em>
@@ -5427,27 +5538,27 @@ return false; // nie blokuj nikogo</span></code></pre>
   </table>
 
   <pre><code><span class="cmt">// Czas rzeczywisty — 10 minut</span>
-<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({ <span class="str">"duration.seconds"</span>: <span class="num">600</span> });
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });
+<span class="kw">const</span> <span class="var">effSeconds</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({ <span class="str">"duration.seconds"</span>: <span class="num">600</span> });
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effSeconds</span>] });
 
 <span class="cmt">// Rundy walki — 3 rundy od bieżącej</span>
-<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
+<span class="kw">const</span> <span class="var">effRounds</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
   <span class="str">"duration.rounds"</span>:     <span class="num">3</span>,
   <span class="str">"duration.startRound"</span>: game.combat?.round ?? <span class="num">0</span>
 });
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effRounds</span>] });
 
 <span class="cmt">// Tury inicjatywy — 2 tury od bieżącej pozycji</span>
-<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
+<span class="kw">const</span> <span class="var">effTurns</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>({
   <span class="str">"duration.turns"</span>:      <span class="num">2</span>,
   <span class="str">"duration.startRound"</span>: game.combat?.round ?? <span class="num">0</span>,
   <span class="str">"duration.startTurn"</span>:  game.combat?.turn  ?? <span class="num">0</span>
 });
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effTurns</span>] });
 
 <span class="cmt">// Efekt stały — bez duration</span>
-<span class="kw">const</span> <span class="var">eff</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>();
-<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">eff</span>] });</code></pre>
+<span class="kw">const</span> <span class="var">effPermanent</span> = <span class="kw">this</span>.item.effects.contents[<span class="num">0</span>].<span class="fn">convertToApplied</span>();
+<span class="kw">await</span> <span class="kw">this</span>.actor.<span class="fn">applyEffect</span>({ effectData: [<span class="var">effPermanent</span>] });</code></pre>
 
   <hr>
 
@@ -5473,7 +5584,12 @@ return false; // nie blokuj nikogo</span></code></pre>
     <tr><td><code>this.getTargets()</code></td><td>Aktorzy wskazanych tokenów (<code>game.user.targets</code>)</td></tr>
     <tr><td><code>this.getSelected()</code></td><td>Aktorzy zaznaczonych tokenów; fallback: przypisana postać gracza</td></tr>
     <tr><td><code>this.getTargetsOrSelected()</code></td><td>Targets jeśli są, inaczej selected — najczęściej używana metoda celowania</td></tr>
+    <tr><td><code>await this.applyTargetEffects(source, targets?)</code></td><td>Nakłada efekty typu Target z aktora/itemu źródłowego. Cele domyślnie pochodzą z <code>getTargets()</code>.</td></tr>
     <tr><td><code>await this.applyTransferredAura(targets?)</code></td><td>Nałóż kopię efektu aury (auraTransferred) na podanych aktorów lub aktualnie wskazane tokeny</td></tr>
+    <tr><td><code>await this.chooseFromList(items, prompt?, title?)</code></td><td>Przeszukiwalny wybór jednej wartości, wykonywany przez aktywnego właściciela aktora lub aktywnego MG. Wiersze obsługują <code>img</code>, wzbogacany <code>tooltipHtml</code> i <code>rollData</code>.</td></tr>
+    <tr><td><code>await this.allocatePoints(options)</code></td><td>Rozdanie puli punktów przez właściwego użytkownika; zwraca mapę wartości lub <code>null</code>.</td></tr>
+    <tr><td><code>await this.deleteEffect(options?)</code></td><td>Bezpiecznie usuwa efekt źródłowy również dla aktorów synthetic/unlinked.</td></tr>
+    <tr><td><code>this.getWeaponJammingThreshold(weapon)</code></td><td>Zwraca bazowy próg zacięcia broni; przy braku pola używa wartości <code>20</code>.</td></tr>
     <tr>
       <td><code>this.DAMAGE_ORDER</code></td>
       <td>
@@ -5530,6 +5646,7 @@ return false; // nie blokuj nikogo</span></code></pre>
     <tr><td><code>this.isLightDamage(type)</code></td><td>Zwraca <code>true</code> dla D, sD, L, sL</td></tr>
     <tr><td><code>this.isHeavyDamage(type)</code></td><td>Zwraca <code>true</code> dla C, sC, K, sK</td></tr>
     <tr><td><code>this.isBruiseDamage(type)</code></td><td>Zwraca <code>true</code> dla toru siniaków: sD, sL, sC, sK. Skrót dla <code>type.startsWith("s")</code>.</td></tr>
+    <tr><td><code>this.isWound(type, woundTypes?)</code></td><td>Ogólny i zalecany test typu rany. Drugi argument może być kluczem lub tablicą; pominięty akceptuje każdy poprawny typ rany.</td></tr>
     <tr><td><code>this.isMinDamage(type)</code></td><td>Zwraca <code>true</code> dla D lub sD (minimum na torze). Używaj zamiast <code>DAMAGE_ORDER.indexOf(type) === 0</code>.</td></tr>
     <tr><td><code>this.isMaxDamage(type)</code></td><td>Zwraca <code>true</code> dla K lub sK (maksimum na torze)</td></tr>
     <tr><td><code>this.compareDamage(a, b)</code></td><td>Porównuje wagę ran. Ujemny = a lżejszy, 0 = równe, dodatni = a cięższy</td></tr>
@@ -5537,7 +5654,9 @@ return false; // nie blokuj nikogo</span></code></pre>
     <tr><td><code>this.reduceDamageType(type, steps?)</code></td><td>Obniż typ obrażeń o <code>steps</code> poziomów w obrębie toru (min D/sD). <em>Regular: D→L→C→K; Siniak: sD→sL→sC→sK</em></td></tr>
     <tr><td><code>this.increaseDamageType(type, steps?)</code></td><td>Podwyższ typ obrażeń o <code>steps</code> poziomów w obrębie toru (max K/sK)</td></tr>
     <tr><td><code>this.getDiceResults(roll, dieIndex?)</code></td><td>Wyciąga wyniki kości z <code>Roll</code> jako <code>number[]</code>. Skrót dla <code>roll.dice[idx].results.map(r =&gt; r.result)</code>. Domyślnie <code>dieIndex=0</code>.</td></tr>
-    <tr><td><code>this.getEffectiveWounds(args)</code></td><td>Zwraca rany z <code>args.wounds</code> które <strong>nie</strong> mają <code>forceSkip=true</code>. Skrót dla <code>args.wounds.filter(w =&gt; !w.forceSkip)</code>. Trigger: <code>applyDamage</code>.</td></tr>
+    <tr><td><code>this.replaceTestDie(args, index, value, options?)</code></td><td>W <code>rollTest</code> bezpiecznie zastępuje jedną k20 i zapisuje zmianę dla karty oraz mechanizmu przerzutu.</td></tr>
+    <tr><td><code>this.copyTestDie(args, sourceIndex, targetIndex, options?)</code></td><td>W <code>rollTest</code> kopiuje wartość kości źródłowej na docelową.</td></tr>
+    <tr><td><code>this.getEffectiveWounds(args)</code></td><td>Zwraca rany z <code>args.wounds</code> które <strong>nie</strong> mają <code>forceSkip=true</code>. Skrót dla <code>args.wounds.filter(w =&gt; !w.forceSkip)</code>. Trigger: <code>takeDamage</code>.</td></tr>
     <tr>
       <td><code>this.getHitLocation(args)</code></td>
       <td>
@@ -5647,6 +5766,14 @@ this.addAnnotation(`Sztuczka pozwoliła oddać strzał mimo zacięcia!`);</code>
       <td><code>this.getMeleeParticipantId(actor?)</code></td>
       <td>Zwraca klucz uczestnika aktora w encounter (UUID z kropkami zastąpionymi myślnikami). Używane wewnętrznie przez <code>hasMeleeInitiative</code> i <code>yieldMeleeInitiative</code>.</td>
     </tr>
+    <tr><td><code>this.getMeleeOpponentParticipant(actor?)</code></td><td>Zwraca dane głównego przeciwnika z <code>encounter.participants</code> albo <code>null</code>.</td></tr>
+    <tr><td><code>this.getMeleeOpponentActor(actor?)</code></td><td>Rozwiązuje dokument Actor głównego przeciwnika albo zwraca <code>null</code>.</td></tr>
+    <tr><td><code>this.getMeleeManeuver(actor?)</code></td><td>Zwraca klucz aktualnego manewru, np. <code>"fury"</code>, <code>"fullDefense"</code> lub <code>"none"</code>.</td></tr>
+    <tr><td><code>this.activateForMelee(actor?)</code></td><td>Oznacza ten efekt jako aktywowany dla bieżącej tury/duelu. Używaj, gdy gracz świadomie włączył sztuczkę.</td></tr>
+    <tr><td><code>this.isActiveForMelee(args, actor?)</code></td><td>Sprawdza aktywację zarówno w encounter, jak i w aktualnym <code>DuelContext</code>.</td></tr>
+    <tr><td><code>this.deactivateForMelee(args, actor?)</code></td><td>Zużywa/usuwa aktywację tego efektu w bieżącej walce.</td></tr>
+    <tr><td><code>this.isSourceAction(args)</code></td><td>Zwraca <code>true</code>, gdy bieżąca akcja melee pochodzi dokładnie z tego efektu.</td></tr>
+    <tr><td><code>this.meleeDuel</code>, <code>this.meleeSegment</code>, <code>this.meleeAction</code></td><td>Skróty do aktualnych argumentów nowego pipeline’u; poza odpowiednim triggerem mają wartość <code>null</code>.</td></tr>
     <tr>
       <td><code>this.hasMeleeInitiative(actor?)</code></td>
       <td>
@@ -5668,11 +5795,11 @@ this.addAnnotation(`Sztuczka pozwoliła oddać strzał mimo zacięcia!`);</code>
   </tbody></table>
 
   <pre><code><span class="cmt">// Rzut kością — przez this.roll() (zalecane w skryptach efektów)</span>
-<span class="kw">const</span> <span class="var">roll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">"2d6"</span>);
-console.<span class="fn">log</span>(<span class="var">roll</span>.total);
+<span class="kw">const</span> <span class="var">diceRoll</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">roll</span>(<span class="str">"2d6"</span>);
+console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
 
 <span class="cmt">// Czekaj na animację kości (Dice So Nice), potem kontynuuj</span>
-<span class="kw">const</span> <span class="var">msg</span> = <span class="kw">await</span> <span class="var">roll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({ flavor: <span class="str">"Test"</span> }));
+<span class="kw">const</span> <span class="var">msg</span> = <span class="kw">await</span> <span class="var">diceRoll</span>.<span class="fn">toMessage</span>(<span class="kw">this</span>.<span class="fn">getChatData</span>({ flavor: <span class="str">"Test"</span> }));
 <span class="kw">if</span> (game.dice3d) <span class="kw">await</span> game.dice3d.<span class="fn">waitFor3DAnimationByMessageID</span>(<span class="var">msg</span>.id);
 <span class="cmt">// lub zamiast czekać na ID wiadomości, po prostu poczekaj określony czas:</span>
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">sleep</span>(<span class="num">1500</span>);
@@ -5730,7 +5857,7 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 <span class="kw">const</span> <span class="var">results</span> = <span class="kw">this</span>.<span class="fn">getDiceResults</span>(<span class="var">roll</span>);        <span class="cmt">// [13, 7, 18]</span>
 
 <span class="cmt">// Rany które faktycznie wejdą — getEffectiveWounds zamiast filter(w => !w.forceSkip)</span>
-<span class="kw">const</span> <span class="var">effective</span> = <span class="kw">this</span>.<span class="fn">getEffectiveWounds</span>(args);  <span class="cmt">// Trigger: applyDamage</span>
+<span class="kw">const</span> <span class="var">effective</span> = <span class="kw">this</span>.<span class="fn">getEffectiveWounds</span>(args);  <span class="cmt">// Trigger: takeDamage</span>
 <span class="kw">if</span> (!<span class="var">effective</span>.length) <span class="kw">return</span>;</code></pre>
 
   <h3>Typy obrażeń — hierarchia</h3>
@@ -6257,17 +6384,18 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
     <strong>Tryb pełnego pipelinu</strong> (domyślny, <code>penaltyOverride</code> nie ustawiony)<br>
     Wywołuje <code>CombatHelper.applyDamageToActor()</code>. Kolejność:
     <ol style="margin: 0.4rem 0 0 1.2rem; padding: 0;">
-      <li>Uruchomienie hooka <code>preApplyDamage</code> (skrypty efektów mogą modyfikować typ/przebicie)</li>
-      <li>Redukcja pancerza (<code>reduceArmorDamageWithDetails</code>)</li>
-      <li>Uruchomienie hooka <code>applyDamage</code> (skrypty efektów mogą blokować/modyfikować rany)</li>
-      <li>Test odporności na ból (<code>processPainResistance</code>)</li>
-      <li>Zapis ran na aktora i raport w chacie</li>
+      <li><code>preApplyDamage</code> po stronie atakującego — przed wyborem typu obrażeń.</li>
+      <li><code>applyDamage</code> po stronie atakującego — po wyborze typu, przed pancerzem.</li>
+      <li><code>preTakeDamage</code> po stronie obrońcy — ostatnia modyfikacja trafienia przed redukcją.</li>
+      <li><code>armorCalculation</code> i redukcja pancerza.</li>
+      <li><code>takeDamage</code> po stronie obrońcy — mutowalne rany po pancerzu, przed odpornością na ból.</li>
+      <li>Test odporności na ból, zapis ran i raport w chacie.</li>
     </ol>
   </div>
 
   <div class="callout warning">
     <strong>Tryb bezpośredni</strong> (<code>penaltyOverride</code> ustawiony na liczbę)<br>
-    Deleguje do <code>NeuroshimaDice.applyWound()</code> — tej samej funkcji co system radiacji i krwawienia.
+    Deleguje do <code>NeuroshimaDice.applyDamage()</code> — tej samej funkcji co system radiacji i krwawienia.
     Pomija pancerz, pomija test odporności na ból, pomija oba hooki skryptów.
     Rana ma dokładnie podaną karę i zawiera komplet pól systemowych (<code>originalPenalty</code>, <code>hadFirstAid</code>, <code>healingAttempts</code> itd.).
     Przydatne do ran środowiskowych (trucizna, toksyny, pola minowe) gdzie system nie powinien ingerować w wartość kary.
@@ -6389,7 +6517,7 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 
 </section>
 
-<section id="apply-wound-api">
+<section>
   <h3 id="apply-wound-api"><code>game.neuroshima.NeuroshimaDice.applyDamage(actor, opts)</code></h3>
 
   <p>
@@ -6644,6 +6772,20 @@ console.<span class="fn">log</span>(<span class="var">roll</span>.total);
 <section id="tips">
   <h2 class="section-title">10. Dobre praktyki</h2>
 
+  <h3>Aktualne zamienniki starych wzorców</h3>
+  <table>
+    <thead><tr><th>Nie używaj</th><th>Użyj</th><th>Powód</th></tr></thead>
+    <tbody>
+      <tr><td><code>createEffect</code></td><td><code>applyEffect</code> lub <code>immediate</code></td><td><code>createEffect</code> nie znajduje się w aktualnym <code>TRIGGERS</code>.</td></tr>
+      <tr><td><code>flags.neuroshima.scripts</code></td><td><code>effect.system.scriptData</code></td><td>Skrypty należą obecnie do modelu systemowego Active Effectu.</td></tr>
+      <tr><td><code>this.effect.delete()</code></td><td><code>await this.deleteEffect()</code></td><td>Helper poprawnie obsługuje uprawnienia oraz aktorów synthetic/unlinked.</td></tr>
+      <tr><td>Ręczna zmiana <code>Roll.dice</code> lub samych danych HTML</td><td><code>replaceTestDie</code> / <code>copyTestDie</code></td><td>Historia zmiany i późniejszy przerzut pozostają spójne.</td></tr>
+      <tr><td><code>NeuroshimaScriptRunner.runDialogScripts()</code></td><td><code>computeDialogFields()</code> w kodzie systemu; w skrypcie efektu modyfikuj <code>args.fields</code></td><td>Stara metoda jest oznaczona jako deprecated.</td></tr>
+      <tr><td><code>NeuroshimaScriptRunner.applyDialogFieldOverrides()</code></td><td>Reaktywny pipeline dialogu oparty na <code>computeDialogFields()</code></td><td>Bezpośrednia aktualizacja DOM jest deprecated.</td></tr>
+      <tr><td><code>NeuroshimaDice.applyWound()</code></td><td><code>NeuroshimaDice.applyDamage()</code> lub <code>game.neuroshima.applyDamage()</code></td><td>Aktualne API używa jednej funkcji obrażeń z opcjami trybu.</td></tr>
+    </tbody>
+  </table>
+
   <h3>Sprawdzaj warunki przed modyfikacją</h3>
   <pre><code><span class="cmt">// Dobry przykład (preRollTest) — sprawdzamy czy rzut dotyczy właściwej umiejętności</span>
 <span class="kw">if</span> (args.test.context.skillKey !== <span class="str">"stealth"</span>) <span class="kw">return</span>;
@@ -6654,7 +6796,7 @@ args.test.preData.penalties.mod -= <span class="num">20</span>; <span class="cmt
 args.test.preData.penalties.mod += <span class="num">10</span>;
 
 <span class="cmt">// DOBRZE — modyfikujesz tylko gdy warunek spełniony</span>
-<span class="kw">if</span> (args.test.preData.label?.includes(<span class="str">"Strzelanie"</span>)) {
+<span class="kw">if</span> (args.test.context.skillKey === <span class="str">"shooting"</span>) {
   args.test.preData.penalties.mod += <span class="num">10</span>;
 }</code></pre>
 
@@ -6670,7 +6812,7 @@ args.test.preData.penalties.mod += <span class="num">10</span>;
   </div>
 
   <h3>Filtrowanie skryptów po typie obrażeń</h3>
-  <pre><code><span class="cmt">// Trigger: applyDamage
+  <pre><code><span class="cmt">// Trigger: takeDamage
 // Ignoruj ciężkie rany (C, sC, K, sK) — tylko lekkie</span>
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">wound</span> <span class="kw">of</span> args.wounds) {
   <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">isLightDamage</span>(<span class="var">wound</span>.damageType)) {
@@ -7838,8 +7980,8 @@ console.<span class="fn">log</span>(sources);</code></pre>
   description: <span class="var">skills</span>.<span class="fn">join</span>(<span class="str">" · "</span>)
 }));
 
-<span class="kw">const</span> { ListChoiceDialog } = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">"systems/neuroshima/module/apps/dialogs/list-choice-dialog.js"</span>);
-<span class="kw">const</span> <span class="var">chosen</span> = <span class="kw">await</span> ListChoiceDialog.<span class="fn">wait</span>(
+<span class="cmt">// Router pokaże dialog aktywnemu właścicielowi aktora, awaryjnie aktywnemu MG.</span>
+<span class="kw">const</span> <span class="var">chosen</span> = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">chooseFromList</span>(
   <span class="var">items</span>,
   game.i18n.<span class="fn">localize</span>(<span class="str">"NEUROSHIMA.Traits.BornKiller.ChoosePackage"</span>),
   game.i18n.<span class="fn">localize</span>(<span class="str">"NEUROSHIMA.Traits.BornKiller.Title"</span>)
@@ -7859,7 +8001,7 @@ console.<span class="fn">log</span>(sources);</code></pre>
 <span class="kw">for</span> (<span class="kw">const</span> <span class="var">skillKey</span> <span class="kw">of</span> <span class="var">skills</span>) {
   <span class="kw">const</span> <span class="var">current</span> = <span class="kw">this</span>.actor.system.skills?.[<span class="var">skillKey</span>]?.value ?? <span class="num">0</span>;
   <span class="var">previousValues</span>[<span class="var">skillKey</span>] = <span class="var">current</span>;
-  <span class="kw">if</span> (<span class="var">current</span> < <span class="var">targetLevel</span>) {
+  <span class="kw">if</span> (<span class="var">current</span> &lt; <span class="var">targetLevel</span>) {
     <span class="var">updateData</span>[<span class="str">`system.skills.</span><span class="var">${skillKey}</span><span class="str">.value`</span>] = <span class="var">targetLevel</span>;
     <span class="var">changedSkills</span>.<span class="fn">push</span>(<span class="var">skillKey</span>);
   }

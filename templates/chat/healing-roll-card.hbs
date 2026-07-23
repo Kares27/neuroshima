@@ -19,6 +19,14 @@
         {{/if}}
     </div>
 
+    {{#if annotations}}
+    <div class="roll-annotations">
+        {{#each annotations}}
+        <div class="roll-annotation"><i class="fas fa-info-circle"></i> {{this}}</div>
+        {{/each}}
+    </div>
+    {{/if}}
+
     {{#if results.length}}
     <hr class="dotted-hr">
 

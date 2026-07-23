@@ -1,5 +1,6 @@
 
 import { NEUROSHIMA } from "../../config.js";
+import { NeuroshimaDice } from "../../helpers/dice.js";
 import { getDistancePenalty } from "../config/distance-config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
@@ -603,6 +604,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       dieManualBonus:      (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf?.dieManualBonus || 0),
       dieReductionBonus:  (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf?.dieReductionBonus || 0),
       maximumDifficulty: sf?.maximumDifficulty || null,
+      autoSuccess:     sf?.autoSuccess === true,
+      annotations:     sf?.annotations || [],
       burstHitStep:    sf?.burstHitStep ?? 1,
       rollMode:        formData.rollMode,
       skillKeyOverride: sf?.skillKey || null

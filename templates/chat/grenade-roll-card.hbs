@@ -77,6 +77,14 @@
         </div>
     </footer>
 
+    {{#if annotations}}
+    <div class="roll-annotations">
+        {{#each annotations}}
+        <div class="roll-annotation"><i class="fas fa-info-circle"></i> {{this}}</div>
+        {{/each}}
+    </div>
+    {{/if}}
+
     {{#if blastResults}}
     <div class="grenade-blast-inline-section apply-damage-section">
         <div class="damage-application-header collapsible-toggle">
