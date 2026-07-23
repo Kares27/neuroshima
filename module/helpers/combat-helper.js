@@ -8,6 +8,20 @@ import { getEffectiveArmorResistances } from "./mod-helpers.js";
  */
 export class CombatHelper {
   /**
+   * Increase a wound type along its regular or bruising track.
+   * Unknown/custom damage types are left untouched and both tracks cap at K.
+   */
+  static shiftDamageType(type, steps = 1) {
+    if (!steps) return type;
+    const regular = ["D", "L", "C", "K"];
+    const bruising = ["sD", "sL", "sC", "sK"];
+    const track = type?.startsWith?.("s") ? bruising : regular;
+    const index = track.indexOf(type);
+    if (index < 0) return type;
+    return track[Math.clamp(index + Number(steps || 0), 0, track.length - 1)];
+  }
+
+  /**
    * Refund ammunition consumed during a weapon roll.
    * @param {ChatMessage} message The roll chat message.
    * @returns {Promise<boolean>} Success status.
@@ -407,6 +421,19 @@ export class CombatHelper {
         game.neuroshima.log(`Melee: spDifference=${spDifference}, selected damage profile=${damageType} (from ${initialDamageType})`);
     }
 
+    // Neuroshima location rule: a hit to the head increases damage by one
+    // category. Apply it after selecting the melee tier, but before attacker
+    // applyDamage scripts and armor. The damage track itself clamps at K/sK.
+    if (location === "head" && attackData.headDamageApplied !== true) {
+        const beforeHeadShift = damageType;
+        damageType = this.shiftDamageType(damageType, 1);
+        game.neuroshima.log("Head hit: damage increased by one category", {
+            before: beforeHeadShift,
+            after: damageType,
+            isMelee
+        });
+    }
+
     // applyDamage (ATTACKER side) — fires after damage type is selected for this hit, but
     // before armor reduction on the defender. Scripts can set attackData.damageOverride to
     // replace the selected damage type, or modify attackData fields for downstream effects.
@@ -475,7 +502,12 @@ export class CombatHelper {
             const count = bullet.isPellet ? (bullet.successPoints || 1) : 1;
             for (let i = 0; i < count; i++) {
                 totalProjectiles++;
-                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bullet.damage || damageType, bullet.piercing ?? piercing, attackContext, damageCategory);
+                // Ranged/pellet hits use their own ammunition damage rather than
+                // the aggregate damageType, so apply the same head rule here.
+                const bulletDamage = location === "head" && attackData.headDamageApplied !== true
+                    ? this.shiftDamageType(bullet.damage || initialDamageType, 1)
+                    : (bullet.damage || damageType);
+                const reductionData = this.reduceArmorDamageWithDetails(actor, location, bulletDamage, bullet.piercing ?? piercing, attackContext, damageCategory);
                 if (reductionData.pendingResourceUpdates?.length) allPendingResourceUpdates.push(...reductionData.pendingResourceUpdates);
                 if (reductionData.pendingChatRolls?.length) allPendingChatRolls.push(...reductionData.pendingChatRolls);
                 if (reductionData.reducedDamageType) {
@@ -486,7 +518,7 @@ export class CombatHelper {
                     });
                 } else {
                     reducedProjectiles++;
-                    reductionData.fullName = game.i18n.localize(NEUROSHIMA.woundConfiguration[bullet.damage || damageType]?.fullLabel || bullet.damage || damageType);
+                    reductionData.fullName = game.i18n.localize(NEUROSHIMA.woundConfiguration[bulletDamage]?.fullLabel || bulletDamage);
                     reducedDetails.push(reductionData);
                 }
             }

@@ -1186,6 +1186,7 @@ export class DuelDamageEngine {
           damageMelee2:  hit.damageType,
           damageMelee3:  hit.damageType,
           finalLocation: rd.location,
+          headDamageApplied: rd.headDamageApplied === true,
           successPoints: hit.tier
         };
         const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
@@ -1211,6 +1212,7 @@ export class DuelDamageEngine {
           damageMelee2:  rd.damage2,
           damageMelee3:  rd.damage3,
           finalLocation: rd.location,
+          headDamageApplied: rd.headDamageApplied === true,
           successPoints: hit.tier
         };
         const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
@@ -2043,7 +2045,7 @@ export class DuelSegmentEngine {
 
     if (state.status === "done") {
       const locationRoll       = (state.attackDice[0]?.original) ?? 10;
-      const location           = _duelGetLocation(locationRoll);
+      const location           = state.location || _duelGetLocation(locationRoll);
       const atkDoc             = fromUuidSync(state.attackerTokenUuid || state.attackerUuid);
       const atkActor           = atkDoc?.actor ?? atkDoc;
       const isCreatureAttacker = atkActor?.type === "creature";
@@ -2066,6 +2068,7 @@ export class DuelSegmentEngine {
         beastItemId:           state.beastItemId ?? null,
         hits:                  state.hits,
         location,
+        headDamageApplied:     state.headDamageApplied === true,
         escapeeUuid:           state._escapeeUuid ?? null,
         damage1:               state.damage1,
         damage2:               state.damage2,

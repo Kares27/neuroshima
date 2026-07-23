@@ -168,6 +168,9 @@ export class NeuroshimaDice {
         tempoLevel = 0,
         meleeDiceCount = 3,
         damageShift = 0,
+        damageShift1 = 0,
+        damageShift2 = 0,
+        damageShift3 = 0,
         isReroll = false, 
         chatMessage = true, 
         dieManualBonus = 0,
@@ -249,6 +252,7 @@ export class NeuroshimaDice {
         if (idx < 0) return type;
         return track[Math.min(Math.max(0, idx + steps), track.length - 1)];
     };
+    let resolvedMeleeDamage = null;
     let damageValue = isMelee
         ? [weapon.system.damageMelee1, weapon.system.damageMelee2, weapon.system.damageMelee3]
             .filter(d => d)
@@ -291,6 +295,25 @@ export class NeuroshimaDice {
         });
         finalLocation = entry ? entry[0] : "torso";
         game.neuroshima.log("Hit location rolled", { roll: rollVal, location: finalLocation });
+    }
+
+    if (isMelee) {
+        const headShift = finalLocation === "head" ? 1 : 0;
+        resolvedMeleeDamage = [
+            _shiftDamageType(weapon.system.damageMelee1 || "D", damageShift + damageShift1 + headShift),
+            _shiftDamageType(weapon.system.damageMelee2 || weapon.system.damageMelee1 || "D", damageShift + damageShift2 + headShift),
+            _shiftDamageType(weapon.system.damageMelee3 || weapon.system.damageMelee2 || weapon.system.damageMelee1 || "D", damageShift + damageShift3 + headShift)
+        ];
+        damageValue = resolvedMeleeDamage.join("/");
+        game.neuroshima.log("Resolved melee damage profiles", {
+            finalLocation,
+            headShift,
+            damageShift,
+            damageShift1,
+            damageShift2,
+            damageShift3,
+            resolvedMeleeDamage
+        });
     }
 
     // 4. Burst fire — determine number of bullets fired
@@ -767,9 +790,11 @@ export class NeuroshimaDice {
         isWeapon: true,
         isMelee,
         meleeAction: isMelee ? (params.meleeAction || "attack") : null,
-        damageMelee1: isMelee ? weapon.system.damageMelee1 : null,
-        damageMelee2: isMelee ? weapon.system.damageMelee2 : null,
-        damageMelee3: isMelee ? weapon.system.damageMelee3 : null,
+        damageMelee1: isMelee ? resolvedMeleeDamage?.[0] : null,
+        damageMelee2: isMelee ? resolvedMeleeDamage?.[1] : null,
+        damageMelee3: isMelee ? resolvedMeleeDamage?.[2] : null,
+        damageProfilesResolved: isMelee,
+        headDamageApplied: isMelee && finalLocation === "head",
         damageShift: isMelee ? (damageShift || 0) : 0,
         targets: isMelee ? (params.targets ?? []) : [],
         weaponId: weapon.id,

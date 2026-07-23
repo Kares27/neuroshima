@@ -178,6 +178,7 @@ export class MeleeActionRunner {
         damageMelee2:  woundType,
         damageMelee3:  woundType,
         finalLocation: rd.location,
+        headDamageApplied: rd.headDamageApplied === true,
         successPoints: hit.tier
       };
       const batch = await CombatHelper.applyDamageToActor(targetActor, attackData, {
@@ -271,6 +272,7 @@ export class MeleeActionRunner {
         damageMelee2:  woundType,
         damageMelee3:  woundType,
         finalLocation: rd.location,
+        headDamageApplied: rd.headDamageApplied === true,
         successPoints: 1
       };
       const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {

@@ -1650,7 +1650,7 @@ export class MeleeOpposedChat {
     );
 
     const locationRoll = data.attackRaw?.[0] ?? 10;
-    const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
+    const location = data.location || MeleeOpposedChat._getLocationFromRoll(locationRoll);
 
     const rollMode = game.settings.get("core", "rollMode");
     await ChatMessage.create({
@@ -1664,6 +1664,7 @@ export class MeleeOpposedChat {
             beastItemId: data.beastItemId ?? null,
             hits,
             location,
+            headDamageApplied: data.headDamageApplied === true,
             damage1: data.damage1,
             damage2: data.damage2,
             damage3: data.damage3,
@@ -1783,7 +1784,7 @@ export class MeleeOpposedChat {
         const tier = Math.min(netSuccesses, 3);
         const damage = data[`damage${tier}`] ?? data.damage1 ?? "?";
         const locationRoll = data.attackRaw?.[0] ?? 10;
-        const location = MeleeOpposedChat._getLocationFromRoll(locationRoll);
+        const location = data.location || MeleeOpposedChat._getLocationFromRoll(locationRoll);
         const outcomeLabel = game.i18n.format("NEUROSHIMA.GradCios.Hit", { n: tier, dmg: damage });
         const hitContent = await foundry.applications.handlebars.renderTemplate(
           "systems/neuroshima/templates/chat/melee-hail-card.hbs",
@@ -1814,7 +1815,8 @@ export class MeleeOpposedChat {
                 damage1:  data.damage1,
                 damage2:  data.damage2,
                 damage3:  data.damage3,
-                location
+                location,
+                headDamageApplied: data.headDamageApplied === true
               }
             }
           },
@@ -1871,6 +1873,8 @@ export class MeleeOpposedChat {
       damage1: data.damage1,
       damage2: data.damage2,
       damage3: data.damage3,
+      location: data.location ?? null,
+      headDamageApplied: data.headDamageApplied === true,
       defenderDamage1: MeleeOpposedChat._resolveActorMeleeDamage(defenderActor, 1),
       defenderDamage2: MeleeOpposedChat._resolveActorMeleeDamage(defenderActor, 2),
       defenderDamage3: MeleeOpposedChat._resolveActorMeleeDamage(defenderActor, 3),
@@ -3271,9 +3275,9 @@ export class MeleeOpposedChat {
       attackerName: attacker.name,
       attackerImg: attacker.img,
       weaponName: weapon.name,
-      damage1: weapon.system.damageMelee1,
-      damage2: weapon.system.damageMelee2,
-      damage3: weapon.system.damageMelee3,
+      damage1: rawResult.damageMelee1 ?? weapon.system.damageMelee1,
+      damage2: rawResult.damageMelee2 ?? weapon.system.damageMelee2,
+      damage3: rawResult.damageMelee3 ?? weapon.system.damageMelee3,
       attackDice,
       attackerTarget: rawResult.target,
       attackerSuccesses,
@@ -3311,9 +3315,11 @@ export class MeleeOpposedChat {
             attackTarget: rawResult.target,
             attackSuccesses: attackerSuccesses,
             attackerSkillBudget: rawResult.skill ?? 0,
-            damage1: weapon.system.damageMelee1,
-            damage2: weapon.system.damageMelee2,
-            damage3: weapon.system.damageMelee3,
+            damage1: rawResult.damageMelee1 ?? weapon.system.damageMelee1,
+            damage2: rawResult.damageMelee2 ?? weapon.system.damageMelee2,
+            damage3: rawResult.damageMelee3 ?? weapon.system.damageMelee3,
+            location: rawResult.finalLocation ?? null,
+            headDamageApplied: rawResult.headDamageApplied === true,
             isGradCios: rawResult.isGradCios || false,
             szachistaYield: !!(await attacker.getFlag("neuroshima", "_szachistaYield")),
             activatedMeleePreRollMods: rawResult.activatedMeleePreRollMods ?? [],
@@ -3573,6 +3579,7 @@ export class MeleeOpposedChat {
           damageMelee2: dmgForTier,
           damageMelee3: dmgForTier,
           finalLocation: rd.location,
+          headDamageApplied: rd.headDamageApplied === true,
           successPoints: tier
         };
         const batch = await CombatHelper.applyDamageToActor(attackerActor, counterAttackData, {
@@ -3942,6 +3949,7 @@ export class MeleeOpposedChat {
       damageMelee2: hr.damage2,
       damageMelee3: hr.damage3,
       finalLocation: hr.location,
+      headDamageApplied: hr.headDamageApplied === true,
       successPoints: hr.tier
     };
     const batch = await CombatHelper.applyDamageToActor(defenderActor, attackData, {
@@ -4719,13 +4727,17 @@ export class MeleeResolution {
     const doc = fromUuidSync(attacker.actorUuid);
     const actor = doc?.actor || doc;
     const weapon = actor?.items.get(attacker.weaponId);
-    // Global shift applies to all tiers; per-tier shifts (damageShift1/2/3) stack on top.
-    const shift = attacker.damageShift || 0;
+    // Head selected/resolved in the roll dialog raises every damage tier once.
+    const shift = (attacker.damageShift || 0) + (attacker.finalLocation === "head" ? 1 : 0);
     const s1 = shift + (attacker.damageShift1 || 0);
     const s2 = shift + (attacker.damageShift2 || 0);
     const s3 = shift + (attacker.damageShift3 || 0);
     let d1, d2, d3;
-    if (weapon?.type === "beast-action") {
+    if (attacker.damageMelee1 || attacker.damageMelee2 || attacker.damageMelee3) {
+      d1 = attacker.damageMelee1 ?? "D";
+      d2 = attacker.damageMelee2 ?? attacker.damageMelee1 ?? "D";
+      d3 = attacker.damageMelee3 ?? attacker.damageMelee2 ?? attacker.damageMelee1 ?? "D";
+    } else if (weapon?.type === "beast-action") {
       const acts = weapon.system.activities ?? [];
       const getActDmg = (cost) => acts.find(a => a.successCost === cost && a.damage)?.damage ?? null;
       d1 = this._shiftDamageType(getActDmg(1) ?? "D", s1);
@@ -4798,7 +4810,7 @@ export class MeleeResolution {
     const { CombatHelper } = await import("../helpers/combat-helper.js");
 
     const rawValue = attacker.pool[locationDieIndex];
-    const location = this._getLocationFromRoll(rawValue);
+    const location = attacker.finalLocation || this._getLocationFromRoll(rawValue);
 
     // Collect all wounds from all hits, then create ONE chat message.
     // NOTE: preApplyDamage and applyDamage attacker-side triggers fire inside
@@ -4808,16 +4820,22 @@ export class MeleeResolution {
     let totalReducedProjectiles = 0;
     const allReducedDetails = [];
 
-    // Per-tier damage shifts (additive on top of the global damageShift).
-    const _globalShift = attacker.damageShift || 0;
+    // Per-tier shifts include the single head-hit increase shown in the action result.
+    const _headShift = location === "head" ? 1 : 0;
+    const _globalShift = (attacker.damageShift || 0) + _headShift;
     const _s1 = _globalShift + (attacker.damageShift1 || 0);
     const _s2 = _globalShift + (attacker.damageShift2 || 0);
     const _s3 = _globalShift + (attacker.damageShift3 || 0);
 
     for (const hit of hits) {
-      if (isBeastActionWeapon && !beastActionDamage) continue;
+      const hasSnapshotDamage = attacker.damageMelee1 || attacker.damageMelee2 || attacker.damageMelee3;
+      if (isBeastActionWeapon && !beastActionDamage && !hasSnapshotDamage) continue;
       let dmg1, dmg2, dmg3;
-      if (isBeastActionWeapon) {
+      if (attacker.damageMelee1 || attacker.damageMelee2 || attacker.damageMelee3) {
+        dmg1 = attacker.damageMelee1;
+        dmg2 = attacker.damageMelee2 ?? attacker.damageMelee1;
+        dmg3 = attacker.damageMelee3 ?? attacker.damageMelee2 ?? attacker.damageMelee1;
+      } else if (isBeastActionWeapon) {
         dmg1 = this._shiftDamageType(beastActionDamage, _s1);
         dmg2 = this._shiftDamageType(beastActionDamage, _s2);
         dmg3 = this._shiftDamageType(beastActionDamage, _s3);
@@ -4834,6 +4852,7 @@ export class MeleeResolution {
         label: weapon?.name || game.i18n.localize("NEUROSHIMA.MeleeDuel.Unarmed"),
         successPoints: hit.cost,
         finalLocation: location,
+        headDamageApplied: _headShift > 0,
         damageMelee1: dmg1,
         damageMelee2: dmg2,
         damageMelee3: dmg3
@@ -5862,6 +5881,10 @@ export class MeleeTurnService {
     const damageShift1  = rollResult.damageShift1 || 0;
     const damageShift2  = rollResult.damageShift2 || 0;
     const damageShift3  = rollResult.damageShift3 || 0;
+    const finalLocation = rollResult.finalLocation || null;
+    const damageMelee1  = rollResult.damageMelee1 || null;
+    const damageMelee2  = rollResult.damageMelee2 || null;
+    const damageMelee3  = rollResult.damageMelee3 || null;
     const activatedTricks = rollResult.activatedMeleePreRollMods || [];
 
     game.neuroshima?.log("[MeleeTurnService.setPool] called", { id, participantId, maneuver, tempoLevel, meleeAction, results, activatedTricks });
@@ -5971,6 +5994,10 @@ export class MeleeTurnService {
     p.damageShift1 = damageShift1 || 0;
     p.damageShift2 = damageShift2 || 0;
     p.damageShift3 = damageShift3 || 0;
+    p.finalLocation = finalLocation;
+    p.damageMelee1 = damageMelee1;
+    p.damageMelee2 = damageMelee2;
+    p.damageMelee3 = damageMelee3;
     p.usedDice = [];
     p.skillSpent = 0;
     // Store per-die success flags from the roll (canonical source of truth matching chat card).
