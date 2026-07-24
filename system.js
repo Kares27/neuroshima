@@ -1195,6 +1195,7 @@ Hooks.once('init', async function() {
         "systems/neuroshima/templates/chat/grenade-blast-result.hbs",
         "systems/neuroshima/templates/chat/grenade-blast-pain-report.hbs",
         "systems/neuroshima/templates/chat/roll-card.hbs",
+        "systems/neuroshima/templates/chat/parts/effect-actions.hbs",
         "systems/neuroshima/templates/chat/patient-card.hbs",
         "systems/neuroshima/templates/chat/pain-resistance-report.hbs",
         "systems/neuroshima/templates/chat/rest-report.hbs",

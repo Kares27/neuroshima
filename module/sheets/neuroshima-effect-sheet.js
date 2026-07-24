@@ -478,7 +478,12 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
   async _onAddActionDef(event, target) {
     const defs = foundry.utils.deepClone(this.document.system?.actionDefs ?? []);
     const newIndex = defs.length;
-    defs.push({ id: foundry.utils.randomID(), name: "Nowa akcja", damage: "—", successCost: 1, minDice: 1, maxDice: 3, onHitScript: "" });
+    defs.push({
+      id: foundry.utils.randomID(), type: "melee", name: "Nowa akcja", img: "", tooltip: "",
+      mode: "queue", damage: "—",
+      successCost: 1, minDice: 1, maxDice: 3, onHitScript: "",
+      resource: null, usage: { oncePerMessage: true }, result: null
+    });
     await this.document.update({ "system.actionDefs": defs });
     const { NeuroshimaActionDefEditor } = await import("../apps/neuroshima-action-def-editor.js");
     new NeuroshimaActionDefEditor(this.document, newIndex).render(true);

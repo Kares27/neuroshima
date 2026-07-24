@@ -67,7 +67,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     tag: "div",
     classes: ["neuroshima", "script-editor"],
     window: { resizable: true },
-    position: { width: 640, height: 560 }
+    position: { width: 720, height: 760 }
   };
 
   static PARTS = {
@@ -99,6 +99,17 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       id: "", name: "", damage: "—", successCost: 1, minDice: 1, maxDice: 3,
       immediateOnHit: false, onHitScript: ""
     };
+    raw.type ??= "melee";
+    raw.mode ??= (Number(raw.successCost ?? 0) > 0 ? "queue" : "standalone");
+    raw.resource ??= { key: "", cost: 0 };
+    raw.usage ??= { oncePerMessage: true };
+    raw.result ??= {
+      surfaces: {
+        testResult: { enabled: true, selection: { type: "none", min: 0, max: 0 } },
+        meleePool: { enabled: false, selection: { type: "die", min: 1, max: 1 } }
+      },
+      availabilityScript: "", executeScript: "", recalculate: true
+    };
     const { damageCount, damageType } = _parseDamage(raw.damage);
     const actionDef = { ...raw, damageCount, damageType };
     actionDef.onHitScript    = (actionDef.onHitScript ?? "").trimEnd();
@@ -126,7 +137,15 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     super._onRender(context, options);
     const form = this.element;
 
-    form.querySelector('input[name="name"]')?.addEventListener("change", () => this._persist(form));
+    for (const name of ["name", "img", "tooltip", "mode"]) {
+      form.querySelector(`[name="${name}"]`)?.addEventListener("change", () => this._persist(form));
+    }
+    form.querySelector('select[name="type"]')?.addEventListener("change", event => {
+      form.querySelectorAll("[data-action-kind]").forEach(panel => {
+        panel.hidden = panel.dataset.actionKind !== event.currentTarget.value;
+      });
+      this._persist(form);
+    });
 
     const damageTypeSelect = form.querySelector('select[name="damageType"]');
     const damageCountInput = form.querySelector('input[name="damageCount"]');
@@ -147,6 +166,16 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       clearTimeout(this._cmSaveTimer);
       this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
     });
+    for (const name of ["resourceKey", "resourceCost", "oncePerMessage", "surfaceTestResult",
+      "surfaceMeleePool", "selectionType", "selectionMin", "selectionMax", "recalculate"]) {
+      form.querySelector(`[name="${name}"]`)?.addEventListener("change", () => this._persist(form));
+    }
+    for (const name of ["availabilityScript", "executeScript"]) {
+      form.querySelector(`code-mirror[name="${name}"]`)?.addEventListener("change", () => {
+        clearTimeout(this._cmSaveTimer);
+        this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
+      });
+    }
 
     form.querySelector(".ns-se-save-btn")?.addEventListener("click", async () => {
       await this._persist(form);
@@ -155,9 +184,12 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
 
     form.querySelector(".ns-copy-snippet-btn")?.addEventListener("click", () => {
       const defs = this._freshEffect.system?.actionDefs ?? [];
-      const id = defs[this.defIndex]?.id ?? "";
+      const definition = defs[this.defIndex];
+      const id = definition?.id ?? "";
       if (!id) return;
-      const snippet = `args.actions.push("${id}");`;
+      const snippet = (definition.type ?? "melee") === "result"
+        ? `this.addAction(args, "${id}");`
+        : `args.actions.push("${id}");`;
       navigator.clipboard.writeText(snippet).then(() => ui.notifications.info(`Skopiowano snippet`));
     });
 
@@ -202,6 +234,10 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     };
 
     d.name           = read("name");
+    d.type           = read("type") || "melee";
+    d.img            = read("img");
+    d.tooltip        = read("tooltip");
+    d.mode           = read("mode") || "queue";
     d.damage         = _buildDamage(read("damageCount"), read("damageType"));
     d.successCost    = readNum("successCost");
     d.minDice        = readNum("minDice");
@@ -210,6 +246,19 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
 
     const cmEl = form.querySelector('code-mirror[name="onHitScript"]');
     if (cmEl !== null && cmEl !== undefined) d.onHitScript = cmEl.value ?? d.onHitScript;
+    d.resource = { key: String(read("resourceKey") ?? "").trim(), cost: Math.max(0, readNum("resourceCost") ?? 0) };
+    d.usage = { oncePerMessage: form.querySelector('[name="oncePerMessage"]')?.checked ?? true };
+    d.result ??= {};
+    d.result.surfaces = {
+      testResult: { enabled: form.querySelector('[name="surfaceTestResult"]')?.checked ?? false, selection: { type: "none", min: 0, max: 0 } },
+      meleePool: {
+        enabled: form.querySelector('[name="surfaceMeleePool"]')?.checked ?? false,
+        selection: { type: read("selectionType") || "die", min: Math.max(0, readNum("selectionMin") ?? 0), max: Math.max(0, readNum("selectionMax") ?? 0) }
+      }
+    };
+    d.result.recalculate = form.querySelector('[name="recalculate"]')?.checked ?? true;
+    d.result.availabilityScript = form.querySelector('code-mirror[name="availabilityScript"]')?.value ?? "";
+    d.result.executeScript = form.querySelector('code-mirror[name="executeScript"]')?.value ?? "";
 
     await effect.update({ "system.actionDefs": defs });
     this.effect = this._freshEffect;

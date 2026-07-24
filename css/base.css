@@ -5703,6 +5703,14 @@ body.theme-dark {
     line-height: 1.8rem;
 }
 
+.neuroshima.effect .ns-actiondefs-hint {
+    margin: 0 0 0.55rem;
+    padding: 0.55rem 0.65rem;
+    border-left: 3px solid rgba(178, 151, 92, 0.75);
+    background: rgba(178, 151, 92, 0.08);
+    line-height: 1.4;
+}
+
 /* ===== Script Editor Popup ===== */
 
 .neuroshima.script-editor .window-content {
@@ -8837,6 +8845,180 @@ button.jam-toggle-btn.header-control {
     text-align: center;
 }
 
+/* Action Definition editor — separate, readable cards for legacy melee tricks
+   and the newer result-card actions. */
+.neuroshima.script-editor .ns-actiondef-editor {
+    gap: 0.7rem;
+}
+
+.neuroshima.script-editor .ns-actiondef-intro,
+.neuroshima.script-editor .ns-actiondef-section > header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.neuroshima.script-editor .ns-actiondef-intro {
+    flex: 0 0 auto;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid rgba(178, 151, 92, 0.45);
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgba(178, 151, 92, 0.13), transparent);
+}
+
+.neuroshima.script-editor .ns-actiondef-intro > i {
+    width: 30px;
+    text-align: center;
+    font-size: 1.25rem;
+    color: #c7aa68;
+}
+
+.neuroshima.script-editor .ns-actiondef-intro p,
+.neuroshima.script-editor .ns-actiondef-section header p {
+    margin: 2px 0 0;
+    font-size: 0.78rem;
+    opacity: 0.72;
+}
+
+.neuroshima.script-editor .ns-actiondef-section {
+    padding: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.neuroshima.script-editor .ns-actiondef-section[hidden] {
+    display: none !important;
+}
+
+.neuroshima.script-editor .ns-actiondef-section > header {
+    margin-bottom: 0.7rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.neuroshima.script-editor .ns-actiondef-step {
+    display: grid;
+    place-items: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(178, 151, 92, 0.22);
+    color: #d5bd82;
+    font-weight: 700;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid .form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin: 0;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid .form-group > label {
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid .form-fields {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid input[type="text"],
+.neuroshima.script-editor .ns-actiondef-grid input[type="number"],
+.neuroshima.script-editor .ns-actiondef-grid select {
+    min-width: 0;
+    height: 30px;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid input[type="text"],
+.neuroshima.script-editor .ns-actiondef-grid select {
+    width: 100%;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid input[type="number"] {
+    width: 64px;
+    text-align: center;
+}
+
+.neuroshima.script-editor .ns-actiondef-grid .hint {
+    margin: 0;
+    min-height: 2.1em;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    opacity: 0.65;
+}
+
+.neuroshima.script-editor .ns-checkbox-list {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.neuroshima.script-editor .ns-checkbox-list label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 400;
+}
+
+.neuroshima.script-editor .ns-damage-fields input,
+.neuroshima.script-editor .ns-range-fields input,
+.neuroshima.script-editor .ns-selection-fields input,
+.neuroshima.script-editor .ns-resource-fields input[type="number"] {
+    flex: 0 0 64px;
+}
+
+.neuroshima.script-editor .ns-damage-fields select,
+.neuroshima.script-editor .ns-selection-fields select,
+.neuroshima.script-editor .ns-resource-fields input[type="text"] {
+    flex: 1;
+}
+
+.neuroshima.script-editor .ns-actiondef-check .form-fields {
+    min-height: 30px;
+}
+
+.neuroshima.script-editor .ns-actiondef-snippet-row {
+    display: flex;
+    gap: 6px;
+}
+
+.neuroshima.script-editor .ns-actiondef-snippet-row input {
+    flex: 1;
+    min-width: 0;
+    font-family: monospace;
+    font-size: 0.78rem;
+}
+
+.neuroshima.script-editor .ns-actiondef-snippet-row button {
+    flex: 0 0 36px;
+}
+
+.neuroshima.script-editor .ns-actiondef-section .ns-script-code-group {
+    margin: 0;
+}
+
+.neuroshima.script-editor .ns-actiondef-section .ns-script-code-group + .ns-script-code-group {
+    margin-top: 0.8rem;
+}
+
+@media (max-width: 620px) {
+    .neuroshima.script-editor .ns-actiondef-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* point-allocation-dialog  */
 .neuroshima.point-allocation-dialog .window-content {
   padding: 12px;
@@ -8981,4 +9163,33 @@ button.jam-toggle-btn.header-control {
 
 .point-allocation-footer button {
   min-height: 36px;
+}
+
+/* Declarative Active Effect actions shared by all result cards. */
+.neuroshima.roll-card .ns-effect-actions {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(180, 180, 160, .35);
+}
+
+.neuroshima.roll-card .ns-effect-action {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  text-align: left;
+}
+
+.neuroshima.roll-card .ns-effect-action img {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  object-fit: cover;
+}
+
+.neuroshima.roll-card .ns-effect-action.is-used {
+  opacity: .55;
 }

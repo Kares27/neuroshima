@@ -262,7 +262,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const tabsByType = {
       disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
-      trait: ["description", "effects"],
+      trait: ["description", "resources", "effects"],
       gear: ["description", "stats", "resources", "effects"],
       "vehicle-mod": ["description", "stats", "resources", "effects"],
       "vehicle-damage": ["description", "stats", "effects"],
@@ -1044,7 +1044,7 @@ export class NeuroshimaItemSheet extends HandlebarsApplicationMixin(ItemSheetV2)
     const tabsByType = {
       disease: ["description", "stats", "resources", "effects"],
       trick: ["description", "resources", "effects"],
-      trait: ["description", "effects"],
+      trait: ["description", "resources", "effects"],
       gear: ["description", "stats", "resources", "effects"],
       "vehicle-mod": ["description", "stats", "resources", "effects"],
       "vehicle-damage": ["description", "stats", "effects"],

@@ -444,6 +444,9 @@ export class TraitData extends foundry.abstract.TypeDataModel {
         initial: "origin",
         choices: ["origin", "profession"]
       }),
+      // Named counters consumed by Active Effect result actions. Keeping them on the
+      // Trait makes the resource survive chat-card rerenders and world reloads.
+      resources: new fields.ArrayField(new fields.ObjectField(), { initial: [] }),
       ...testsSchema()
     };
   }

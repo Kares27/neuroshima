@@ -921,7 +921,11 @@ export class DuelActionPipeline {
           const entry = extraActionsArr[i];
           if (typeof entry === "string") {
             const effectDefs = script.effect?.system?.actionDefs ?? [];
-            const localMatch = (d) => d.id === entry || d.name === entry;
+            // Result-card actions share actionDefs with melee tricks, but must
+            // never enter the duel pipeline. Missing type is legacy melee.
+            const localMatch = (d) =>
+              (d.type ?? "melee") === "melee" &&
+              (d.id === entry || d.name === entry);
             const def = effectDefs.find(localMatch) ?? lookupActionDef(entry);
             extraActionsArr[i] = def ? foundry.utils.deepClone(def) : null;
             if (!def) game.neuroshima?.log("[getMeleeActions] actionDef not found:", entry);
@@ -1431,7 +1435,9 @@ async function _buildActionFromDefHelper(script, triggerArgs, extraActionsArr) {
  */
 export function _makeActionDefLookup(actor) {
   return (idOrName) => {
-    const match = (d) => d.id === idOrName || d.name === idOrName;
+    const match = (d) =>
+      (d.type ?? "melee") === "melee" &&
+      (d.id === idOrName || d.name === idOrName);
     for (const effect of (actor.effects ?? [])) {
       const def = (effect.system?.actionDefs ?? []).find(match);
       if (def) return foundry.utils.deepClone(def);

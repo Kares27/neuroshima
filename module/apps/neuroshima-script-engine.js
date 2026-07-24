@@ -1270,6 +1270,27 @@ export class NeuroshimaScript {
     return true;
   }
 
+  /**
+   * Add a declarative result action to the current roll without copying its
+   * executable script into chat flags. The runtime resolves `id` from this
+   * script's current ActiveEffect when the player presses the button.
+   *
+   * @param {object} args Trigger arguments (normally the current `args`).
+   * @param {string} id Stable id from effect.system.actionDefs.
+   * @param {object} [overrides] Presentation-only overrides for this card.
+   */
+  addAction(args, id, overrides = {}) {
+    if (!args || !id || !this.effect?.uuid) return false;
+    const target = args.rollData ?? args.test?.result?.rollData ?? args;
+    const additions = target.effectActionAdditions ??= [];
+    additions.push({
+      effectUuid: this.effect.uuid,
+      actionId: String(id),
+      overrides: foundry.utils.deepClone(overrides)
+    });
+    return true;
+  }
+
   // ── Ammo refund helpers ───────────────────────────────────────────────────
 
   /**

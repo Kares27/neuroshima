@@ -1,81 +1,190 @@
-
-<div class="ns-script-editor-body">
-    <div class="ns-editor-fields ns-actiondef-fields">
-
-        <div class="form-group">
-            <label>Nazwa</label>
-            <div class="form-fields">
-                <input type="text" name="name" value="{{actionDef.name}}" placeholder="np. Boa – Pochwycenie">
-            </div>
+<div class="ns-script-editor-body ns-actiondef-editor">
+    <div class="ns-actiondef-intro">
+        <i class="{{#if (eq actionDef.type "result")}}fa-solid fa-bolt{{else}}fa-solid fa-swords{{/if}}"></i>
+        <div>
+            <strong>Definicja akcji efektu</strong>
+            <p>Akcja walki wręcz jest sztuczką używaną w pojedynku. Akcja wyniku pojawia się na karcie wykonanego rzutu.</p>
         </div>
-
-        <div class="form-group">
-            <label data-tooltip="Typ i liczba ran zadawanych przy trafieniu. Wybierz — (brak) gdy sztuczka nie zadaje obrażeń, a jedynie uruchamia onHitScript.">Obrażenia</label>
-            <div class="form-fields" style="gap:4px">
-                <input type="number" name="damageCount" value="{{actionDef.damageCount}}" min="1" max="9" step="1" style="width:52px" {{#if (eq actionDef.damageType "—")}}disabled{{/if}}>
-                <select name="damageType">
-                    <option value="—" {{#if (eq actionDef.damageType "—")}}selected{{/if}}>— (brak)</option>
-                    {{#each damageTypeOptions}}
-                    <option value="{{this.value}}" {{#if (eq ../actionDef.damageType this.value)}}selected{{/if}}>{{this.label}}</option>
-                    {{/each}}
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label data-tooltip="Minimalna liczba sukcesów wymagana do aktywacji tej akcji w kolejce. Przy wartości 0 akcja pojawia się jako samodzielny przycisk ataku, nie jako kolejka.">Koszt suk.</label>
-            <div class="form-fields">
-                <input type="number" name="successCost" value="{{actionDef.successCost}}" min="0" step="1" style="width:80px">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label data-tooltip="Minimalna liczba zadeklarowanych kości wymagana do pojawienia się przycisku tej akcji.">Min kości</label>
-            <div class="form-fields">
-                <input type="number" name="minDice" value="{{actionDef.minDice}}" min="0" step="1" style="width:80px">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label data-tooltip="Maksymalna liczba zadeklarowanych kości, przy której przycisk tej akcji jest jeszcze aktywny.">Maks kości</label>
-            <div class="form-fields">
-                <input type="number" name="maxDice" value="{{actionDef.maxDice}}" min="0" step="1" style="width:80px">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label data-tooltip="Gdy zaznaczone: onHitScript odpala się natychmiast po trafieniu — w trakcie trwania duela, zanim gracz kliknie &quot;Nałóż obrażenia&quot;. Przydatne do efektów aktywnych przez resztę walki (np. Pochwycenie Boa).">Natychmiastowy</label>
-            <div class="form-fields">
-                <input type="checkbox" name="immediateOnHit" {{#if actionDef.immediateOnHit}}checked{{/if}}>
-            </div>
-        </div>
-
     </div>
 
     <div class="ns-editor-scroll-area">
+        <section class="ns-actiondef-section">
+            <header>
+                <span class="ns-actiondef-step">1</span>
+                <div><strong>Podstawowe informacje</strong><p>Nazwa i grafika widoczne dla gracza.</p></div>
+            </header>
+
+            <div class="ns-actiondef-grid ns-actiondef-grid--identity">
+                <div class="form-group">
+                    <label>Nazwa</label>
+                    <div class="form-fields"><input type="text" name="name" value="{{actionDef.name}}" placeholder="np. Pochwycenie"></div>
+                    <p class="hint">Krótka nazwa przycisku lub sztuczki.</p>
+                </div>
+                <div class="form-group">
+                    <label>Typ akcji</label>
+                    <div class="form-fields">
+                        <select name="type">
+                            <option value="melee" {{#if (eq actionDef.type "melee")}}selected{{/if}}>Sztuczka walki wręcz</option>
+                            <option value="result" {{#if (eq actionDef.type "result")}}selected{{/if}}>Akcja na wyniku rzutu</option>
+                        </select>
+                    </div>
+                    <p class="hint">Stare definicje bez typu są traktowane jak sztuczki walki wręcz.</p>
+                </div>
+                <div class="form-group">
+                    <label>Ikona</label>
+                    <div class="form-fields"><input type="text" name="img" value="{{actionDef.img}}" placeholder="icons/svg/upgrade.svg"></div>
+                    <p class="hint">Opcjonalna ścieżka do grafiki. Bez niej używana jest ikona efektu lub przedmiotu.</p>
+                </div>
+                <div class="form-group">
+                    <label>Podpowiedź</label>
+                    <div class="form-fields"><input type="text" name="tooltip" value="{{actionDef.tooltip}}" placeholder="Co robi ta akcja?"></div>
+                    <p class="hint">Opis pokazywany po najechaniu na akcję.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="ns-actiondef-section" data-action-kind="melee" {{#unless (eq actionDef.type "melee")}}hidden{{/unless}}>
+            <header>
+                <span class="ns-actiondef-step">2</span>
+                <div><strong>Parametry sztuczki</strong><p>Warunki pokazania i koszt akcji w pojedynku.</p></div>
+            </header>
+
+            <div class="ns-actiondef-grid ns-actiondef-grid--stats">
+                <div class="form-group">
+                    <label>Tryb</label>
+                    <div class="form-fields">
+                        <select name="mode">
+                            <option value="queue" {{#if (eq actionDef.mode "queue")}}selected{{/if}}>Kolejka — koszt sukcesów</option>
+                            <option value="standalone" {{#if (eq actionDef.mode "standalone")}}selected{{/if}}>Samodzielna akcja</option>
+                        </select>
+                    </div>
+                    <p class="hint">Kolejka opłaca sztuczkę sukcesami; samodzielna akcja jest osobnym wyborem ataku.</p>
+                </div>
+                <div class="form-group">
+                    <label>Obrażenia</label>
+                    <div class="form-fields ns-damage-fields">
+                        <input type="number" name="damageCount" value="{{actionDef.damageCount}}" min="1" max="9" step="1" {{#if (eq actionDef.damageType "—")}}disabled{{/if}}>
+                        <select name="damageType">
+                            <option value="—" {{#if (eq actionDef.damageType "—")}}selected{{/if}}>— (brak)</option>
+                            {{#each damageTypeOptions}}
+                            <option value="{{this.value}}" {{#if (eq ../actionDef.damageType this.value)}}selected{{/if}}>{{this.label}}</option>
+                            {{/each}}
+                        </select>
+                    </div>
+                    <p class="hint">Wybierz „brak”, jeżeli całą mechanikę obsługuje skrypt trafienia.</p>
+                </div>
+                <div class="form-group">
+                    <label>Koszt sukcesów</label>
+                    <div class="form-fields"><input type="number" name="successCost" value="{{actionDef.successCost}}" min="0" step="1"></div>
+                    <p class="hint">Minimalna liczba sukcesów potrzebna do zakolejkowania sztuczki.</p>
+                </div>
+                <div class="form-group">
+                    <label>Zakres kości</label>
+                    <div class="form-fields ns-range-fields">
+                        <input type="number" name="minDice" value="{{actionDef.minDice}}" min="0" step="1" data-tooltip="Minimalna liczba zadeklarowanych kości">
+                        <span>–</span>
+                        <input type="number" name="maxDice" value="{{actionDef.maxDice}}" min="0" step="1" data-tooltip="Maksymalna liczba zadeklarowanych kości">
+                    </div>
+                    <p class="hint">Akcja jest dostępna tylko dla deklaracji mieszczącej się w tym zakresie.</p>
+                </div>
+                <div class="form-group ns-actiondef-check">
+                    <label>Natychmiast po trafieniu</label>
+                    <div class="form-fields"><input type="checkbox" name="immediateOnHit" {{#if actionDef.immediateOnHit}}checked{{/if}}></div>
+                    <p class="hint">Uruchamia skrypt podczas rozstrzygania segmentu, zamiast czekać na „Nałóż obrażenia”.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="ns-actiondef-section" data-action-kind="result" {{#unless (eq actionDef.type "result")}}hidden{{/unless}}>
+            <header>
+                <span class="ns-actiondef-step">2</span>
+                <div><strong>Dostępność na kartach</strong><p>Określ, gdzie przycisk się pojawi i czy gracz wybiera kości.</p></div>
+            </header>
+
+            <div class="ns-actiondef-grid ns-actiondef-grid--result">
+                <div class="form-group">
+                    <label>Rodzaje kart</label>
+                    <div class="form-fields ns-checkbox-list">
+                        <label><input type="checkbox" name="surfaceTestResult" {{#if actionDef.result.surfaces.testResult.enabled}}checked{{/if}}> Wynik zwykłego testu</label>
+                        <label><input type="checkbox" name="surfaceMeleePool" {{#if actionDef.result.surfaces.meleePool.enabled}}checked{{/if}}> Pula walki wręcz</label>
+                    </div>
+                    <p class="hint">Możesz udostępnić tę samą akcję na obu powierzchniach.</p>
+                </div>
+                <div class="form-group">
+                    <label>Wybór z puli melee</label>
+                    <div class="form-fields ns-selection-fields">
+                        <select name="selectionType">
+                            <option value="none" {{#if (eq actionDef.result.surfaces.meleePool.selection.type "none")}}selected{{/if}}>Bez wyboru kości</option>
+                            <option value="die" {{#if (eq actionDef.result.surfaces.meleePool.selection.type "die")}}selected{{/if}}>Wybór kości</option>
+                        </select>
+                        <input type="number" name="selectionMin" min="0" value="{{actionDef.result.surfaces.meleePool.selection.min}}" data-tooltip="Minimum wybranych kości">
+                        <span>–</span>
+                        <input type="number" name="selectionMax" min="0" value="{{actionDef.result.surfaces.meleePool.selection.max}}" data-tooltip="Maksimum wybranych kości">
+                    </div>
+                    <p class="hint">Wybrane indeksy są dostępne w <code>ctx.selection</code>.</p>
+                </div>
+                <div class="form-group">
+                    <label>Zasób Cechy</label>
+                    <div class="form-fields ns-resource-fields">
+                        <input type="text" name="resourceKey" value="{{actionDef.resource.key}}" placeholder="np. przerzut">
+                        <input type="number" name="resourceCost" min="0" value="{{actionDef.resource.cost}}" data-tooltip="Koszt użycia">
+                    </div>
+                    <p class="hint">Pusty klucz oznacza brak kosztu. Zasób jest odejmowany dopiero po poprawnym wykonaniu skryptu.</p>
+                </div>
+                <div class="form-group ns-actiondef-check">
+                    <label>Raz na kartę</label>
+                    <div class="form-fields"><input type="checkbox" name="oncePerMessage" {{#if actionDef.usage.oncePerMessage}}checked{{/if}}></div>
+                    <p class="hint">Po wykonaniu przycisk zostaje oznaczony jako wykorzystany.</p>
+                </div>
+                <div class="form-group ns-actiondef-check">
+                    <label>Przelicz wynik</label>
+                    <div class="form-fields"><input type="checkbox" name="recalculate" {{#if actionDef.result.recalculate}}checked{{/if}}></div>
+                    <p class="hint">Po skrypcie aktualizuje sukcesy i ponownie renderuje kartę.</p>
+                </div>
+            </div>
+        </section>
 
         {{#if actionDef.id}}
-        <div class="form-group ns-actiondef-snippet-group">
-            <label data-tooltip="Wklej ten kod w skrypcie getMeleeActions aby dodać tę akcję. Przycisk kopiuje snippet do schowka.">Push snippet</label>
-            <div class="form-fields" style="gap:4px">
-                <input type="text" readonly value='args.actions.push("{{actionDef.id}}");' style="font-family:monospace;font-size:11px;flex:1">
-                <button type="button" class="ns-copy-snippet-btn" data-tooltip="Kopiuj snippet do schowka" style="flex:0 0 auto">
-                    <i class="fa-solid fa-copy"></i>
-                </button>
+        <section class="ns-actiondef-section ns-actiondef-reference">
+            <header>
+                <span class="ns-actiondef-step"><i class="fa-solid fa-link"></i></span>
+                <div><strong>Odwołanie ze skryptu</strong><p>ID pozostaje niezmienne po zapisaniu.</p></div>
+            </header>
+            <div class="ns-actiondef-snippet-row">
+                <input type="text" readonly value='{{#if (eq actionDef.type "result")}}this.addAction(args, "{{actionDef.id}}");{{else}}args.actions.push("{{actionDef.id}}");{{/if}}'>
+                <button type="button" class="ns-copy-snippet-btn" data-tooltip="Kopiuj odpowiedni fragment kodu"><i class="fa-solid fa-copy"></i></button>
             </div>
-        </div>
+        </section>
         {{/if}}
 
-        <div class="form-group stacked ns-script-code-group">
-            <label>onHitScript</label>
-            <code-mirror name="onHitScript" language="javascript" indent="4">{{actionDef.onHitScript}}</code-mirror>
-        </div>
+        <section class="ns-actiondef-section" data-action-kind="melee" {{#unless (eq actionDef.type "melee")}}hidden{{/unless}}>
+            <header>
+                <span class="ns-actiondef-step">3</span>
+                <div><strong>Skrypt trafienia</strong><p>Opcjonalny kod uruchamiany, gdy sztuczka trafi.</p></div>
+            </header>
+            <div class="form-group stacked ns-script-code-group">
+                <label>onHitScript <span class="hint">Dostępne są m.in. <code>args.actor</code>, <code>args.target</code>, <code>args.state</code> i <code>args.hit</code>.</span></label>
+                <code-mirror name="onHitScript" language="javascript" indent="4">{{actionDef.onHitScript}}</code-mirror>
+            </div>
+        </section>
 
+        <section class="ns-actiondef-section" data-action-kind="result" {{#unless (eq actionDef.type "result")}}hidden{{/unless}}>
+            <header>
+                <span class="ns-actiondef-step">3</span>
+                <div><strong>Skrypty akcji wyniku</strong><p>Kod jest pobierany z aktywnego efektu dopiero w chwili użycia.</p></div>
+            </header>
+            <div class="form-group stacked ns-script-code-group">
+                <label>availabilityScript <span class="hint">Zwróć <code>false</code>, aby ukryć akcję. Brak wartości oznacza dostępność.</span></label>
+                <code-mirror name="availabilityScript" language="javascript" indent="4">{{actionDef.result.availabilityScript}}</code-mirror>
+            </div>
+            <div class="form-group stacked ns-script-code-group">
+                <label>executeScript <span class="hint">Użyj <code>ctx.dice</code>, <code>ctx.result</code>, <code>ctx.actor</code> i <code>ctx.selection</code>.</span></label>
+                <code-mirror name="executeScript" language="javascript" indent="4">{{actionDef.result.executeScript}}</code-mirror>
+            </div>
+        </section>
     </div>
 
     <footer class="form-footer">
-        <button type="button" class="ns-se-save-btn">
-            <i class="fa-solid fa-floppy-disk"></i> Zapisz i zamknij
-        </button>
+        <button type="button" class="ns-se-save-btn"><i class="fa-solid fa-floppy-disk"></i> Zapisz i zamknij</button>
     </footer>
 </div>

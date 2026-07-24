@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
 
 /**
  * Extended ChatMessage class with a unified API for rendering chat cards.
@@ -110,6 +111,9 @@ export class NeuroshimaChatMessage extends ChatMessage {
           }
           case "engageBeastTarget":
             await this.onEngageBeastTarget(event, message);
+            break;
+          case "executeEffectAction":
+            await EffectActionRuntime.chooseAndExecute(message, btn.dataset.instanceId);
             break;
         }
       });
@@ -1441,6 +1445,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Renders a skill/attribute test card.
    */
   static async renderRoll(rollData, actor, roll) {
+    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", rollData.effectActionAdditions);
     const template = "systems/neuroshima/templates/chat/roll-card.hbs";
     const content = await this._renderTemplate(template, {
       ...rollData,
@@ -1474,6 +1479,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Renders an initiative test card.
    */
   static async renderInitiativeRoll(rollData, actor, roll) {
+    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", rollData.effectActionAdditions);
     const template = "systems/neuroshima/templates/chat/initiative-roll-card.hbs";
     
     // Pobranie danych o celach (dla inicjatywy zwarcia)
@@ -1529,6 +1535,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Renders a weapon test card.
    */
   static async renderWeaponRoll(rollData, actor, roll) {
+    const effectSurface = rollData.isMelee ? "meleePool" : "testResult";
+    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, effectSurface, rollData.effectActionAdditions);
     const template = rollData.isMelee 
       ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
       : "systems/neuroshima/templates/chat/weapon-roll-card.hbs";

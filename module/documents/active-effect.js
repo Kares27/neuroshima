@@ -575,6 +575,7 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
       actionDefs: new fields.ArrayField(
         new fields.SchemaField({
           id:                      new fields.StringField({ initial: "",    blank: true }),
+          type:                    new fields.StringField({ initial: "melee", choices: ["melee", "result"] }),
           name:                    new fields.StringField({ initial: "",    blank: true }),
           img:                     new fields.StringField({ initial: "",    blank: true }),
           tooltip:                 new fields.StringField({ initial: "",    blank: true }),
@@ -591,6 +592,9 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
           effectTiming:            new fields.StringField({ initial: "",    blank: true }),
           effectTarget:            new fields.StringField({ initial: "",    blank: true }),
           applyEffectsAutomatically: new fields.BooleanField({ initial: true }),
+          resource:                new fields.ObjectField({ nullable: true, initial: null }),
+          usage:                   new fields.ObjectField({ nullable: true, initial: null }),
+          result:                  new fields.ObjectField({ nullable: true, initial: null }),
         }),
         { initial: [] }
       ),

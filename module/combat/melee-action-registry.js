@@ -222,7 +222,9 @@ export class MeleeActionRegistry {
    * @returns {MeleeAction}
    */
   static normalizeEffectAction(entry, availableSuccesses = 0) {
-    const successCost = entry.successCost ?? 0;
+    // Legacy definitions have no mode and retain their stored successCost.
+    // The explicit standalone mode always behaves as a zero-success action.
+    const successCost = entry.mode === "standalone" ? 0 : (entry.successCost ?? 0);
     const effectIds   = Array.isArray(entry.effectIds) ? entry.effectIds : [];
     return {
       id:                       entry.id             ?? `trick-${foundry.utils.randomID(8)}`,
@@ -262,7 +264,10 @@ export class MeleeActionRegistry {
   static normalizeEffectActions(rawEntries, availableSuccesses = 0) {
     if (!Array.isArray(rawEntries)) return [];
     return rawEntries
-      .filter(e => e != null)
+      // actionDefs is shared with result-card actions. Only the explicit new
+      // "result" discriminator is excluded; all legacy/custom descriptors
+      // (including descriptors without type) remain fully compatible.
+      .filter(e => e != null && e.type !== "result")
       .map(e => MeleeActionRegistry.normalizeEffectAction(e, availableSuccesses));
   }
 
