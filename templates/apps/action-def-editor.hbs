@@ -103,9 +103,19 @@
 
             <div class="ns-actiondef-grid ns-actiondef-grid--result">
                 <div class="form-group">
+                    <label>Sposób udostępniania</label>
+                    <div class="form-fields">
+                        <select name="injection">
+                            <option value="automatic" {{#if (eq actionDef.result.injection "automatic")}}selected{{/if}}>Automatycznie na wybranych kartach</option>
+                            <option value="script" {{#if (eq actionDef.result.injection "script")}}selected{{/if}}>Tylko po dodaniu ze skryptu</option>
+                        </select>
+                    </div>
+                    <p class="hint">Tryb skryptowy wymaga wywołania <code>this.addAction(args, ID)</code>.</p>
+                </div>
+                <div class="form-group">
                     <label>Rodzaje kart</label>
                     <div class="form-fields ns-checkbox-list">
-                        <label><input type="checkbox" name="surfaceTestResult" {{#if actionDef.result.surfaces.testResult.enabled}}checked{{/if}}> Wynik zwykłego testu</label>
+                        <label><input type="checkbox" name="surfaceTestResult" {{#if actionDef.result.surfaces.testResult.enabled}}checked{{/if}}> Karta testu</label>
                         <label><input type="checkbox" name="surfaceMeleePool" {{#if actionDef.result.surfaces.meleePool.enabled}}checked{{/if}}> Pula walki wręcz</label>
                     </div>
                     <p class="hint">Możesz udostępnić tę samą akcję na obu powierzchniach.</p>
@@ -148,7 +158,7 @@
         <section class="ns-actiondef-section ns-actiondef-reference">
             <header>
                 <span class="ns-actiondef-step"><i class="fa-solid fa-link"></i></span>
-                <div><strong>Odwołanie ze skryptu</strong><p>ID pozostaje niezmienne po zapisaniu.</p></div>
+                <div><strong>Dodanie ze skryptu</strong><p>Dla akcji warunkowych lub ustawionych jako „Tylko po dodaniu ze skryptu”.</p></div>
             </header>
             <div class="ns-actiondef-snippet-row">
                 <input type="text" readonly value='{{#if (eq actionDef.type "result")}}this.addAction(args, "{{actionDef.id}}");{{else}}args.actions.push("{{actionDef.id}}");{{/if}}'>
@@ -180,6 +190,12 @@
             <div class="form-group stacked ns-script-code-group">
                 <label>executeScript <span class="hint">Użyj <code>ctx.dice</code>, <code>ctx.result</code>, <code>ctx.actor</code> i <code>ctx.selection</code>.</span></label>
                 <code-mirror name="executeScript" language="javascript" indent="4">{{actionDef.result.executeScript}}</code-mirror>
+                <details class="hint">
+                    <summary>Dostępne API</summary>
+                    <p><strong>Kości:</strong> <code>ctx.dice.rolled</code>, <code>effective</code>, <code>selected</code>, <code>get(index)</code>, <code>replace(index, value, options)</code>, <code>copy(source, target)</code>.</p>
+                    <p><strong>Wynik:</strong> <code>addSuccesses(amount)</code>, <code>addSuccessPoints(amount)</code>, <code>forceSuccess()</code>, <code>forceFailure()</code>, <code>annotate(text)</code>.</p>
+                    <p><strong>Dokumenty:</strong> <code>ctx.actor</code>, <code>effect</code>, <code>sourceItem</code>, <code>message</code>, <code>rollData</code>, <code>resource</code>. Dostępne są też helpery <code>this</code> silnika skryptów.</p>
+                </details>
             </div>
         </section>
     </div>

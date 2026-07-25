@@ -62,6 +62,7 @@
             <span class="value"><strong>{{#if isOpen}}{{successPoints}}{{else}}{{successCount}}{{/if}}</strong></span>
         </div>
     </footer>
+    {{> "systems/neuroshima/templates/chat/parts/effect-actions.hbs"}}
     {{#if annotations}}
     <div class="roll-annotations">
         {{#each annotations}}
@@ -69,5 +70,4 @@
         {{/each}}
     </div>
     {{/if}}
-    {{> "systems/neuroshima/templates/chat/parts/effect-actions.hbs"}}
 </div>

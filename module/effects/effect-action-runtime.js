@@ -1,4 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
+import { NeuroshimaDice } from "../helpers/dice.js";
+import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
 
 /**
  * Runtime registry for result actions declared by Active Effects.
@@ -29,9 +31,11 @@ export class EffectActionRuntime {
         const surfaceConfig = raw.result?.surfaces?.[surface];
         if (!surfaceConfig?.enabled) continue;
 
-        const ctx = this._context({ actor, effect, action: raw, rollData, surface, preview: true });
+        if ((raw.result?.injection ?? "automatic") !== "automatic") continue;
+        const resource = await this._resource(effect, raw.resource);
+        const ctx = this._context({ actor, effect, action: raw, rollData, surface, preview: true, resource });
         if (!(await this._available(raw, ctx))) continue;
-        entries.push(await this._reference(effect, raw, surface, surfaceConfig));
+        entries.push(await this._reference(effect, raw, surface, surfaceConfig, resource));
       }
     }
 
@@ -41,13 +45,16 @@ export class EffectActionRuntime {
       const effect = addition.effectUuid ? await fromUuid(addition.effectUuid) : null;
       const raw = effect?.system?.actionDefs?.find(def => def.id === addition.actionId);
       if (!effect || !raw || (raw.type ?? "melee") !== "result") continue;
-      const ref = await this._reference(effect, raw, surface, raw.result?.surfaces?.[surface] ?? {});
+      const resource = await this._resource(effect, raw.resource);
+      const ctx = this._context({ actor, effect, action: raw, rollData, surface, preview: true, resource });
+      if (!(await this._available(raw, ctx))) continue;
+      const ref = await this._reference(effect, raw, surface, raw.result?.surfaces?.[surface] ?? {}, resource);
       entries.push(foundry.utils.mergeObject(ref, addition.overrides ?? {}, { inplace: false }));
     }
     return Array.from(new Map(entries.map(entry => [entry.instanceId, entry])).values());
   }
 
-  static async _reference(effect, action, surface, surfaceConfig) {
+  static async _reference(effect, action, surface, surfaceConfig, resolvedResource = null) {
     const sourceItem = await this._sourceItem(effect);
     const tooltip = action.tooltip
       ? await foundry.applications.ux.TextEditor.enrichHTML(action.tooltip, {
@@ -65,7 +72,9 @@ export class EffectActionRuntime {
       img: action.img || sourceItem?.img || effect.img,
       tooltipHtml: tooltip,
       selection: surfaceConfig.selection ?? { type: "none" },
-      resource: action.resource ?? null,
+      resource: this._resourceContext(action.resource, resolvedResource),
+      disabled: Number(action.resource?.cost ?? 0) > 0
+        && (!resolvedResource || Number(resolvedResource.entry.value) < Number(action.resource.cost)),
       oncePerMessage: action.usage?.oncePerMessage !== false,
       used: false
     };
@@ -105,11 +114,23 @@ export class EffectActionRuntime {
     }
 
     const ctx = this._context({
-      actor, effect, action, rollData, surface: ref.surface, message, selection, preview: false
+      actor, effect, action, rollData, surface: ref.surface, message, selection, preview: false, resource
     });
+    if (!(await this._available(action, ctx))) {
+      return ui.notifications.warn("Ta akcja nie jest już dostępna.");
+    }
     const code = action.result?.executeScript?.trim();
     try {
-      if (code) await (new AsyncFunction("ctx", `"use strict";\n${code}`))(ctx);
+      if (code) {
+        const script = new NeuroshimaScript({
+          trigger: "internalAction",
+          label: action.name || effect.name,
+          code: "const ctx = args.actionContext;\n" + code
+        }, effect);
+        await script.execute({
+          actor, item: ctx.sourceItem, rollData, test: { result: { rollData } }, actionContext: ctx
+        });
+      }
       if (action.result?.recalculate !== false) this._recalculate(rollData);
       if (cost) await this._spend(resource, cost);
       if (ref.oncePerMessage) ref.used = true;
@@ -130,7 +151,7 @@ export class EffectActionRuntime {
     const selection = ref?.selection ?? {};
     if (selection.type !== "die") return this.execute(message, instanceId, []);
 
-    const values = rollData.modifiedResults ?? rollData.rawResults ?? [];
+    const values = this._effectiveDice(rollData);
     const min = Math.max(0, Number(selection.min ?? 0));
     const max = Math.max(min, Number(selection.max ?? values.length));
     const fields = values.map((value, index) =>
@@ -181,24 +202,74 @@ export class EffectActionRuntime {
     await resource.item.update({ "system.resources": resources });
   }
 
-  static _context({ actor, effect, action, rollData, surface, message = null, selection = [], preview }) {
+  static _rolledDice(rollData) {
+    return [...(rollData.rolledResults ?? rollData.rawResults ?? [])].map(Number);
+  }
+
+  static _effectiveDice(rollData) {
+    if (Array.isArray(rollData.modifiedResults) && rollData.modifiedResults.length) {
+      return rollData.modifiedResults.map(die => Number(die?.modified ?? die?.original ?? die));
+    }
+    return (rollData.rawResults ?? []).map(Number);
+  }
+
+  static _resourceContext(config, resource) {
+    const entry = resource?.entry;
+    return {
+      exists: !!resource,
+      key: config?.key ?? "",
+      value: Number(entry?.value ?? 0),
+      min: Number(entry?.min ?? 0),
+      max: Number(entry?.max ?? 0),
+      cost: Math.max(0, Number(config?.cost ?? 0))
+    };
+  }
+
+  static _context({ actor, effect, action, rollData, surface, message = null, selection = [], preview, resource = null }) {
     const selected = Array.isArray(selection) ? selection.map(Number).filter(Number.isInteger) : [];
+    const replace = (index, value, options = {}) => {
+      index = Number(index);
+      value = Number(value);
+      if (!Array.isArray(rollData.rawResults) || !Number.isInteger(index)) return false;
+      if (index < 0 || index >= rollData.rawResults.length || !Number.isFinite(value)) return false;
+      rollData.rolledResults ??= [...rollData.rawResults];
+      rollData.diceChanges ??= [];
+      value = Math.clamp(Math.trunc(value), 1, 20);
+      const oldValue = rollData.rawResults[index];
+      if (oldValue === value) return false;
+      rollData.rawResults[index] = value;
+      rollData.diceChanges.push({
+        type: options.type ?? "replace", targetIndex: index,
+        sourceIndex: Number.isInteger(options.sourceIndex) ? options.sourceIndex : null,
+        oldValue, newValue: value, label: options.label ?? action.name ?? effect.name,
+        icon: options.icon ?? "fas fa-pen", effectUuid: effect.uuid
+      });
+      return true;
+    };
     return {
       actor, effect, sourceItem: effect?.parent?.documentName === "Item" ? effect.parent : null,
       action, message, surface, preview, rollData, selection: selected,
+      resource: this._resourceContext(action.resource, resource),
       dice: {
-        values: rollData.modifiedResults ?? rollData.rawResults ?? [],
+        rolled: this._rolledDice(rollData),
+        effective: this._effectiveDice(rollData),
+        values: this._effectiveDice(rollData),
         selected,
-        get: index => (rollData.modifiedResults ?? rollData.rawResults ?? [])[index],
-        set: (index, value) => {
-          const values = rollData.modifiedResults ??= [...(rollData.rawResults ?? [])];
-          values[index] = Number(value);
-        }
+        get: index => this._effectiveDice(rollData)[index],
+        replace,
+        set: replace,
+        copy: (source, target, options = {}) =>
+          replace(target, this._effectiveDice(rollData)[Number(source)], { ...options, type: "copy", sourceIndex: Number(source) })
       },
       result: {
         addSuccesses: amount => {
           rollData.effectActionSuccessBonus = Number(rollData.effectActionSuccessBonus ?? 0) + Number(amount ?? 0);
         },
+        addSuccessPoints: amount => {
+          rollData.effectActionSuccessPointsBonus = Number(rollData.effectActionSuccessPointsBonus ?? 0) + Number(amount ?? 0);
+        },
+        forceSuccess: () => { rollData.effectActionForcedSuccess = true; },
+        forceFailure: () => { rollData.effectActionForcedSuccess = false; },
         setSuccess: value => { rollData.effectActionForcedSuccess = Boolean(value); },
         annotate: (label, value = "") => {
           const suffix = value === "" ? "" : `: ${String(value)}`;
@@ -209,14 +280,25 @@ export class EffectActionRuntime {
   }
 
   static _recalculate(data) {
+    if (data.diceChanges?.length) {
+      NeuroshimaDice.recalculateRollTestAfterScripts({ result: { rollData: data } });
+    }
     const bonus = Number(data.effectActionSuccessBonus ?? 0);
+    const pointsBonus = Number(data.effectActionSuccessPointsBonus ?? 0);
     if (bonus) {
       data.successCount = Math.max(0, Number(data.successCount ?? 0) + bonus);
       data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + bonus);
     }
-    if (data.effectActionForcedSuccess !== undefined) data.isSuccess = data.effectActionForcedSuccess;
-    else if (bonus > 0 && Number(data.successCount) > 0) data.isSuccess = true;
+    if (pointsBonus) data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + pointsBonus);
+    if (data.effectActionForcedSuccess !== undefined) {
+      data.success = data.effectActionForcedSuccess;
+      data.isSuccess = data.effectActionForcedSuccess;
+    } else {
+      data.isSuccess = Boolean(data.success);
+      if (bonus > 0 && Number(data.successCount) > 0) data.success = data.isSuccess = true;
+    }
     data.effectActionSuccessBonus = 0;
+    data.effectActionSuccessPointsBonus = 0;
   }
 
   static async _updateMessage(message, rollData) {

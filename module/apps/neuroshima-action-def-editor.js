@@ -110,6 +110,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       },
       availabilityScript: "", executeScript: "", recalculate: true
     };
+    raw.result.injection ??= "automatic";
     const { damageCount, damageType } = _parseDamage(raw.damage);
     const actionDef = { ...raw, damageCount, damageType };
     actionDef.onHitScript    = (actionDef.onHitScript ?? "").trimEnd();
@@ -166,7 +167,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       clearTimeout(this._cmSaveTimer);
       this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
     });
-    for (const name of ["resourceKey", "resourceCost", "oncePerMessage", "surfaceTestResult",
+    for (const name of ["resourceKey", "resourceCost", "oncePerMessage", "injection", "surfaceTestResult",
       "surfaceMeleePool", "selectionType", "selectionMin", "selectionMax", "recalculate"]) {
       form.querySelector(`[name="${name}"]`)?.addEventListener("change", () => this._persist(form));
     }
@@ -249,6 +250,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     d.resource = { key: String(read("resourceKey") ?? "").trim(), cost: Math.max(0, readNum("resourceCost") ?? 0) };
     d.usage = { oncePerMessage: form.querySelector('[name="oncePerMessage"]')?.checked ?? true };
     d.result ??= {};
+    d.result.injection = read("injection") || "automatic";
     d.result.surfaces = {
       testResult: { enabled: form.querySelector('[name="surfaceTestResult"]')?.checked ?? false, selection: { type: "none", min: 0, max: 0 } },
       meleePool: {

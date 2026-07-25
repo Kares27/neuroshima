@@ -3,10 +3,10 @@
   {{#each effectActions}}
   <button type="button" class="ns-effect-action {{#if used}}is-used{{/if}}"
           data-action="executeEffectAction" data-instance-id="{{instanceId}}"
-          {{#if used}}disabled{{/if}} {{#if tooltipHtml}}data-tooltip="{{tooltipHtml}}"{{/if}}>
+          {{#if (or used disabled)}}disabled{{/if}} {{#if tooltipHtml}}data-tooltip="{{tooltipHtml}}"{{/if}}>
     {{#if img}}<img src="{{img}}" alt="">{{else}}<i class="fas fa-bolt"></i>{{/if}}
     <span class="ns-effect-action__name">{{name}}</span>
-    {{#if resource.key}}<span class="ns-effect-action__cost">−{{resource.cost}}</span>{{/if}}
+    {{#if resource.key}}<span class="ns-effect-action__cost">{{resource.value}}{{#if resource.max}}/{{resource.max}}{{/if}}</span>{{/if}}
   </button>
   {{/each}}
 </section>
