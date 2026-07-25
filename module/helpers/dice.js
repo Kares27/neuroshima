@@ -804,6 +804,7 @@ export class NeuroshimaDice {
         damage: damageValue,
         piercing: ammoPiercing,
         isJamming,
+        jammingThreshold,
         firedDespiteJam: canFireDespiteJam,
         bestResult,
         modifiedResults,
@@ -922,7 +923,8 @@ export class NeuroshimaDice {
   /** Re-evaluate a Roll Test once after all scripts have declared die changes. */
   static recalculateRollTestAfterScripts(test) {
     const data = test?.result?.rollData;
-    if (!data?.diceChanges?.length) return;
+    if (!data || (!data.diceChanges?.length && !data.forceRecalculate)) return;
+    delete data.forceRecalculate;
 
     const results = [...data.rawResults];
     let totalShift = Number(data.finalDifficultyShift ?? 0);
@@ -3127,6 +3129,21 @@ export class NeuroshimaDice {
       deviationMetres,
       distance,
       distancePenalty,
+      rawResults,
+      rolledResults: [...rawResults],
+      baseStat: attributeValue - attributeBonus,
+      attributeBonus,
+      baseSkill: skillValue - skillBonus,
+      skillBonus,
+      stat: attributeValue,
+      penalties: {
+        mod: modifier + scriptModifier,
+        wounds: woundPenalty,
+        armor: armorPenalty,
+        disease: diseasePenalty,
+        distance: distancePenalty
+      },
+      baseDifficulty,
       blastZones,
       templateRadius,
       rollMode

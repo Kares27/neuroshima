@@ -1,1 +1,8 @@
 2026/07/25-09:37:09.768 5218 Delete type=3 #1
+2026/07/25-15:39:14.830 2acc Compacting 3@0 + 0@1 files
+2026/07/25-15:39:14.846 2acc Generated table #883@0: 307 keys, 209121 bytes
+2026/07/25-15:39:14.846 2acc Compacted 3@0 + 0@1 files => 209121 bytes
+2026/07/25-15:39:14.849 2acc compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/07/25-15:39:14.849 2acc Delete type=2 #874
+2026/07/25-15:39:14.849 2acc Delete type=2 #876
+2026/07/25-15:39:14.849 2acc Delete type=2 #880

@@ -169,6 +169,7 @@ export class NeuroshimaScript {
     this.code = scriptData.code || "";
     this.runIfDisabled = scriptData.runIfDisabled ?? false;
     this.deleteAfterRun = scriptData.deleteAfterRun ?? false;
+    this.throwOnError = scriptData.throwOnError ?? false;
     this.hideScript = scriptData.hideScript || "";
     this.activateScript = scriptData.activateScript || "";
     this.submissionScript = scriptData.submissionScript || "";
@@ -3311,6 +3312,7 @@ export class NeuroshimaScript {
         console.error(`Neuroshima | Script Error [${this.label}]:`, e);
         ui.notifications.error(`Script Error [${this.label}]: ${e.message}`);
       }
+      if (this.throwOnError) throw e;
     } finally {
       this._currentArgs = prev;
       NeuroshimaScriptRunner._currentMeleeActionSourceEffectUuid = prevMeleeActionUuid;

@@ -1,17 +1,82 @@
-<section class="neuroshima edit-roll-dialog">
-    <div class="form-group">
-        <label>{{localize "NEUROSHIMA.Roll.TestType"}}</label>
-        <div class="form-fields">
-            <select name="isOpen">
-                <option value="false" {{#unless rollData.isOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.Roll.ClosedTest"}}</option>
-                <option value="true" {{#if rollData.isOpen}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.OpenTest"}}</option>
-            </select>
+<section class="ns-roll-editor">
+    <header class="ns-roll-editor__intro">
+        <span class="ns-roll-editor__icon"><i class="fas fa-dice-d20"></i></span>
+        <div>
+            <strong>Edycja danych rzutu</strong>
+            <p>Wynik, próg i sukcesy zostaną obliczone ponownie.</p>
         </div>
+    </header>
+
+    <div class="ns-roll-editor__sections">
+        <section class="ns-roll-editor__section">
+            <h3><i class="fas fa-dice-d20"></i> Test i kości</h3>
+            <h4>Parametry testu</h4>
+            <div class="ns-roll-editor__row ns-roll-editor__row--stacked">
+                <label for="ns-edit-is-open">Rodzaj testu</label>
+                <select id="ns-edit-is-open" name="isOpen">
+                    <option value="false" {{#unless rollData.isOpen}}selected{{/unless}}>{{localize "NEUROSHIMA.Roll.ClosedTest"}}</option>
+                    <option value="true" {{#if rollData.isOpen}}selected{{/if}}>{{localize "NEUROSHIMA.Roll.OpenTest"}}</option>
+                </select>
+            </div>
+            <div class="ns-roll-editor__row ns-roll-editor__row--stacked">
+                <label for="ns-edit-difficulty">Trudność bazowa</label>
+                <select id="ns-edit-difficulty" name="difficultyKey">
+                    {{#each difficulties}}
+                    <option value="{{key}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+                    {{/each}}
+                </select>
+            </div>
+            <h4>Wyniki kości</h4>
+            {{#each dice}}
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-die-{{index}}">Kość {{displayIndex}}</label>
+                <input id="ns-edit-die-{{index}}" type="number" name="die{{index}}" value="{{value}}" min="1" max="20" step="1">
+            </div>
+            {{/each}}
+        </section>
+
+        <section class="ns-roll-editor__section">
+            <h3><i class="fas fa-user-gear"></i> Parametry i kary</h3>
+            <h4>Parametry postaci</h4>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-stat">Współczynnik</label>
+                <input id="ns-edit-stat" type="number" name="baseStat" value="{{rollData.baseStat}}" step="1">
+            </div>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-skill">Umiejętność</label>
+                <input id="ns-edit-skill" type="number" name="baseSkill" value="{{rollData.baseSkill}}" min="0" step="1">
+            </div>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-stat-bonus">Bonus Współczynnika</label>
+                <input id="ns-edit-stat-bonus" type="number" name="attributeBonus" value="{{rollData.attributeBonus}}" step="1">
+            </div>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-skill-bonus">Bonus Umiejętności</label>
+                <input id="ns-edit-skill-bonus" type="number" name="skillBonus" value="{{rollData.skillBonus}}" step="1">
+            </div>
+            <h4>Kary</h4>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-mod">Modyfikator ogólny</label>
+                <input id="ns-edit-mod" type="number" name="penaltyMod" value="{{rollData.penalties.mod}}" step="1">
+            </div>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-wounds">Rany</label>
+                <input id="ns-edit-wounds" type="number" name="penaltyWounds" value="{{rollData.penalties.wounds}}" step="1">
+            </div>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-armor">Pancerz</label>
+                <input id="ns-edit-armor" type="number" name="penaltyArmor" value="{{rollData.penalties.armor}}" step="1">
+            </div>
+            <div class="ns-roll-editor__row">
+                <label for="ns-edit-disease">Choroba</label>
+                <input id="ns-edit-disease" type="number" name="penaltyDisease" value="{{rollData.penalties.disease}}" step="1">
+            </div>
+        </section>
     </div>
 
-    <footer class="sheet-footer flexrow flex-center">
+    <footer class="ns-roll-editor__footer">
         <button type="submit" name="submit" class="save-button">
-            <i class="fas fa-save"></i> {{localize "SETTINGS.Save"}}
+            <i class="fas fa-floppy-disk"></i> Zapisz i przelicz
         </button>
     </footer>
 </section>

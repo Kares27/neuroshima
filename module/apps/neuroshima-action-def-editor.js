@@ -101,16 +101,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     };
     raw.type ??= "melee";
     raw.mode ??= (Number(raw.successCost ?? 0) > 0 ? "queue" : "standalone");
-    raw.resource ??= { key: "", cost: 0 };
-    raw.usage ??= { oncePerMessage: true };
-    raw.result ??= {
-      surfaces: {
-        testResult: { enabled: true, selection: { type: "none", min: 0, max: 0 } },
-        meleePool: { enabled: false, selection: { type: "die", min: 1, max: 1 } }
-      },
-      availabilityScript: "", executeScript: "", recalculate: true
-    };
-    raw.result.injection ??= "automatic";
+    raw.executeScript ??= raw.result?.executeScript ?? "";
     const { damageCount, damageType } = _parseDamage(raw.damage);
     const actionDef = { ...raw, damageCount, damageType };
     actionDef.onHitScript    = (actionDef.onHitScript ?? "").trimEnd();
@@ -167,11 +158,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
       clearTimeout(this._cmSaveTimer);
       this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
     });
-    for (const name of ["resourceKey", "resourceCost", "oncePerMessage", "injection", "surfaceTestResult",
-      "surfaceMeleePool", "selectionType", "selectionMin", "selectionMax", "recalculate"]) {
-      form.querySelector(`[name="${name}"]`)?.addEventListener("change", () => this._persist(form));
-    }
-    for (const name of ["availabilityScript", "executeScript"]) {
+    for (const name of ["executeScript"]) {
       form.querySelector(`code-mirror[name="${name}"]`)?.addEventListener("change", () => {
         clearTimeout(this._cmSaveTimer);
         this._cmSaveTimer = setTimeout(() => this._persist(form), 400);
@@ -247,20 +234,14 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
 
     const cmEl = form.querySelector('code-mirror[name="onHitScript"]');
     if (cmEl !== null && cmEl !== undefined) d.onHitScript = cmEl.value ?? d.onHitScript;
-    d.resource = { key: String(read("resourceKey") ?? "").trim(), cost: Math.max(0, readNum("resourceCost") ?? 0) };
-    d.usage = { oncePerMessage: form.querySelector('[name="oncePerMessage"]')?.checked ?? true };
-    d.result ??= {};
-    d.result.injection = read("injection") || "automatic";
-    d.result.surfaces = {
-      testResult: { enabled: form.querySelector('[name="surfaceTestResult"]')?.checked ?? false, selection: { type: "none", min: 0, max: 0 } },
-      meleePool: {
-        enabled: form.querySelector('[name="surfaceMeleePool"]')?.checked ?? false,
-        selection: { type: read("selectionType") || "die", min: Math.max(0, readNum("selectionMin") ?? 0), max: Math.max(0, readNum("selectionMax") ?? 0) }
-      }
-    };
-    d.result.recalculate = form.querySelector('[name="recalculate"]')?.checked ?? true;
-    d.result.availabilityScript = form.querySelector('code-mirror[name="availabilityScript"]')?.value ?? "";
-    d.result.executeScript = form.querySelector('code-mirror[name="executeScript"]')?.value ?? "";
+    if (d.type === "result") {
+      defs[this.defIndex] = {
+        id: d.id,
+        type: "result",
+        name: d.name,
+        executeScript: form.querySelector('code-mirror[name="executeScript"]')?.value ?? ""
+      };
+    }
 
     await effect.update({ "system.actionDefs": defs });
     this.effect = this._freshEffect;

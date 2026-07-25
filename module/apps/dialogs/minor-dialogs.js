@@ -1,5 +1,7 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 import { NeuroshimaDice } from "../../helpers/dice.js";
+import { NEUROSHIMA } from "../../config.js";
+import { EffectActionRuntime } from "../../effects/effect-action-runtime.js";
 
 export class AmmunitionLoadingDialog {
   static async wait({ ammo, magazine }) {
@@ -124,11 +126,11 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         tag: "form",
         classes: ["neuroshima", "edit-roll-dialog"],
         window: {
-            title: "NEUROSHIMA | Edit Roll",
-            resizable: false
+            title: "NEUROSHIMA | Edycja rzutu",
+            resizable: true
         },
         position: {
-            width: 350,
+            width: 460,
             height: "auto"
         },
         form: {
@@ -144,17 +146,198 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     };
 
     async _prepareContext(options) {
-        const flags = this.message.getFlag("neuroshima", "rollData");
+        const flags = foundry.utils.deepClone(
+          this.message.getFlag("neuroshima", "rollData")
+          ?? this.message.getFlag("neuroshima", "grenadeRoll")
+          ?? {}
+        );
+        flags.rawResults ??= (flags.modifiedResults ?? []).map(die => die.original);
+        const messageType = this.message.getFlag("neuroshima", "messageType");
+        const storedBasePenalty = Number(flags.penalties?.base);
+        const storedDifficultyLabel = flags.baseDifficultyLabel ?? flags.baseDifficulty?.label;
+        const difficultyKey = messageType === "healingRoll"
+          ? Object.entries(NEUROSHIMA.difficulties)
+            .find(([, difficulty]) => difficulty.label === storedDifficultyLabel)?.[0] ?? "average"
+          : Number.isFinite(storedBasePenalty)
+            ? Object.entries(NEUROSHIMA.difficulties)
+              .find(([, difficulty]) => Number(difficulty.min) === storedBasePenalty)?.[0] ?? "average"
+            : "average";
+        flags.baseDifficulty ??= NeuroshimaDice.getDifficultyFromPercent(Number(flags.totalPenalty ?? 0));
+        flags.baseStat ??= flags.stat
+          ?? (Number(flags.target ?? 0) - Number(flags.baseDifficulty?.mod ?? 0));
+        flags.baseSkill ??= flags.skill ?? 0;
+        flags.attributeBonus ??= 0;
+        flags.skillBonus ??= 0;
+        flags.penalties ??= {};
+        for (const key of ["mod", "wounds", "armor", "disease"]) flags.penalties[key] ??= 0;
+        if (messageType === "healingRoll") {
+          flags.penalties.mod = Number(flags.penalties.mod) - Number(NEUROSHIMA.difficulties[difficultyKey]?.min ?? 0);
+        }
         return {
-            rollData: flags
+            rollData: flags,
+            dice: (flags?.rawResults ?? []).map((value, index) => ({
+              index,
+              displayIndex: index + 1,
+              value: Number.isFinite(Number(value)) ? Number(value) : ""
+            })),
+            difficulties: Object.entries(NEUROSHIMA.difficulties).map(([key, difficulty]) => ({
+              key, label: game.i18n.localize(difficulty.label), selected: key === difficultyKey
+            }))
         };
     }
 
     static async #onSubmit(event, form, formData) {
         const data = formData.object;
         const message = this.message;
-        const isOpen = data.isOpen === "true";
-        
-        await NeuroshimaDice.updateRollMessage(message, isOpen);
+        const messageType = message.getFlag("neuroshima", "messageType");
+        const isGrenade = !message.getFlag("neuroshima", "rollData")
+          && !!message.getFlag("neuroshima", "grenadeRoll");
+        const beforeData = foundry.utils.deepClone(
+          isGrenade
+            ? message.getFlag("neuroshima", "grenadeRoll")
+            : message.getFlag("neuroshima", "rollData") ?? {}
+        );
+
+        const updated = foundry.utils.deepClone(beforeData);
+        updated.rawResults ??= (updated.modifiedResults ?? []).map(die => die.original);
+        updated.rawResults = (updated.rawResults ?? []).map((value, index) =>
+          Math.clamp(Number(data[`die${index}`] ?? value), 1, 20)
+        );
+        if (Array.isArray(updated.results)) updated.results = [...updated.rawResults];
+        updated.rolledResults = [...updated.rawResults];
+        updated.isOpen = data.isOpen === "true";
+        updated.baseStat = Number(data.baseStat ?? updated.baseStat ?? 0);
+        updated.baseSkill = Number(data.baseSkill ?? updated.baseSkill ?? 0);
+        updated.attributeBonus = Number(data.attributeBonus ?? 0);
+        updated.skillBonus = Number(data.skillBonus ?? 0);
+        updated.stat = updated.baseStat + updated.attributeBonus;
+        updated.skill = updated.baseSkill + updated.skillBonus;
+        if (updated.isWeapon) {
+          updated.isCombat = true;
+          updated.isDefending = updated.isMelee && updated.meleeAction === "defense";
+        }
+        updated.penalties = {
+          ...(updated.penalties ?? {}),
+          mod: Number(data.penaltyMod ?? 0),
+          wounds: Number(data.penaltyWounds ?? 0),
+          armor: Number(data.penaltyArmor ?? 0),
+          disease: Number(data.penaltyDisease ?? 0),
+          base: Number(NEUROSHIMA.difficulties[data.difficultyKey]?.min ?? 0)
+        };
+        updated.penalty = updated.totalPenalty = Object.values(updated.penalties)
+          .reduce((sum, value) => sum + (Number(value) || 0), 0);
+        updated.baseDifficulty = foundry.utils.deepClone(
+          NeuroshimaDice.getDifficultyFromPercent(updated.totalPenalty)
+        );
+        updated.baseDifficultyLabel = updated.baseDifficulty.label;
+        if (isGrenade) {
+          this._recalculateGrenade(updated);
+        } else if (messageType === "healingRoll") {
+          this._recalculateHealing(updated);
+        } else if (updated.isWeapon && !updated.isMelee) {
+          let totalShift = Number(updated.finalDifficultyShift ?? 0);
+          if (game.settings.get("neuroshima", "allowCombatShift")) {
+            totalShift -= NeuroshimaDice.getSkillShift(updated.skill);
+            totalShift += NeuroshimaDice.getDiceShift(updated.rawResults);
+          }
+          const finalDifficulty = NeuroshimaDice._getShiftedDifficulty(updated.baseDifficulty, totalShift);
+          updated.target = updated.stat + Number(finalDifficulty.mod ?? 0);
+          updated.difficultyLabel = finalDifficulty.label;
+          updated.bestResult = Math.min(...updated.rawResults);
+          let jamThreshold = Number(updated.jammingThreshold);
+          if (!Number.isFinite(jamThreshold)) {
+            const actor = game.actors.get(updated.actorId);
+            jamThreshold = Number(actor?.items.get(updated.weaponId)?.system?.jamming ?? 20);
+          }
+          updated.jammingThreshold = jamThreshold;
+          updated.isJamming = updated.bestResult >= jamThreshold;
+        } else {
+          updated.diceChanges = [];
+          updated.forceRecalculate = true;
+          NeuroshimaDice.recalculateRollTestAfterScripts({ result: { rollData: updated } });
+          updated.isSuccess = updated.success;
+        }
+        if (!updated.annotations?.includes("Rzut edytowany przez MG")) {
+          (updated.annotations ??= []).push("Rzut edytowany przez MG");
+        }
+
+        const snapshot = rollData => ({
+          rawResults: rollData.rawResults,
+          baseStat: rollData.baseStat,
+          baseSkill: rollData.baseSkill,
+          attributeBonus: rollData.attributeBonus,
+          skillBonus: rollData.skillBonus,
+          penalties: rollData.penalties,
+          baseDifficulty: rollData.baseDifficulty,
+          isOpen: rollData.isOpen
+        });
+        const history = foundry.utils.deepClone(
+          message.getFlag("neuroshima", "rollEditHistory") ?? []
+        );
+        history.push({
+          userId: game.user.id,
+          timestamp: Date.now(),
+          before: snapshot(beforeData),
+          after: snapshot(updated)
+        });
+        await message.update({ "flags.neuroshima.rollEditHistory": history });
+        if (isGrenade) {
+          const content = await foundry.applications.handlebars.renderTemplate(
+            "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
+            updated
+          );
+          await message.update({ content, "flags.neuroshima.grenadeRoll": updated });
+        } else if (updated.isWeapon && !updated.isMelee) {
+          await message.update({ "flags.neuroshima.rollData": updated });
+          await NeuroshimaDice.updateRollMessage(message, updated.isOpen);
+        } else {
+          await EffectActionRuntime.rerenderMessage(message, updated);
+        }
+    }
+
+    static _recalculateGrenade(data) {
+      const dice = data.rawResults.map((value, index) => ({
+        original: value, modified: value, index, isSuccess: false, ignored: false
+      }));
+      const evaluated = {
+        target: data.stat + Number(data.baseDifficulty?.mod ?? 0),
+        skill: Number(data.skill ?? 0)
+      };
+      NeuroshimaDice._evaluateClosedTest(evaluated, dice);
+      data.target = evaluated.target;
+      data.modifiedResults = evaluated.modifiedResults;
+      data.successCount = Number(evaluated.successCount ?? 0);
+      data.success = data.isSuccess = data.autoSuccess === true || !!evaluated.success;
+      data.isCritSuccess = !!evaluated.isCritSuccess;
+      data.isCritFailure = !!evaluated.isCritFailure;
+      const failureMargin = data.isSuccess ? 0 : Math.max(0, 3 - data.successCount);
+      const distanceFactor = Number(data.distance ?? 0) <= 10 ? 1 : Math.ceil(Number(data.distance) / 10);
+      data.failureMargin = failureMargin;
+      data.deviationMetres = data.isSuccess ? 0 : failureMargin * distanceFactor;
+    }
+
+    static _recalculateHealing(data) {
+      const finalDifficulty = NeuroshimaDice._getShiftedDifficulty(
+        data.baseDifficulty,
+        -NeuroshimaDice.getSkillShift(Number(data.skill ?? 0))
+      );
+      const dice = data.rawResults.map((value, index) => ({
+        original: value, modified: value, index, isSuccess: false, ignored: false
+      }));
+      const evaluated = {
+        target: Number(data.stat ?? 0) + Number(finalDifficulty.mod ?? 0),
+        skill: Number(data.skill ?? 0),
+        dieReductionBonus: Number(data.dieReductionBonus ?? 0)
+      };
+      NeuroshimaDice._evaluateClosedTest(evaluated, dice);
+      data.target = data.testTarget = evaluated.target;
+      data.ptMod = Number(finalDifficulty.mod ?? 0);
+      data.difficultyLabel = finalDifficulty.label;
+      data.modifiedResults = evaluated.modifiedResults;
+      data.successCount = Number(evaluated.successCount ?? 0);
+      data.successPoints = data.successCount;
+      data.success = data.isSuccess = data.autoSuccess === true || !!evaluated.success;
+      data.isCritSuccess = !!evaluated.isCritSuccess;
+      data.isCritFailure = !!evaluated.isCritFailure;
     }
 }

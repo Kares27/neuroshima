@@ -1585,30 +1585,20 @@ Hooks.on("renderTokenHUD", (hud, html) => {
 // Add context menu options for chat messages
 Hooks.on("getChatMessageContextOptions", (html, options) => {
     options.push({
-        name: "NEUROSHIMA.Roll.SwitchToOpen",
-        icon: '<i class="fas fa-eye"></i>',
+        name: "Edytuj rzut",
+        icon: '<i class="fas fa-pen"></i>',
         condition: li => {
             const message = game.messages.get(li.dataset.messageId);
             const flags = message?.getFlag("neuroshima", "rollData");
-            return flags && !flags.isOpen && game.user.isGM;
+            const grenade = message?.getFlag("neuroshima", "grenadeRoll");
+            const type = message?.getFlag("neuroshima", "messageType");
+            return game.user.isGM && (!!grenade || (
+              !!flags && ["roll", "initiative", "weapon", "healingRoll"].includes(type)
+            ));
         },
         callback: li => {
             const message = game.messages.get(li.dataset.messageId);
-            NeuroshimaDice.updateRollMessage(message, true);
-        }
-    });
-
-    options.push({
-        name: "NEUROSHIMA.Roll.SwitchToClosed",
-        icon: '<i class="fas fa-eye-slash"></i>',
-        condition: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const flags = message?.getFlag("neuroshima", "rollData");
-            return flags && flags.isOpen && game.user.isGM;
-        },
-        callback: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            NeuroshimaDice.updateRollMessage(message, false);
+            new EditRollDialog(message).render(true);
         }
     });
 
