@@ -757,7 +757,7 @@ args.actions.push({
 <div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
 <pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"morale"</span>) <span class="kw">return</span>;
 <span class="kw">if</span> (!args.test?.context?.suppressionFire) <span class="kw">return</span>;
-args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
+args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></pre>
 </div>
 </div>
 </section>
@@ -1615,7 +1615,7 @@ args.actions.<span class="fn">push</span>(wykonczenie);</code></pre>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">preRollTest</span> Skrypt testu</div>
 <pre><code><span class="kw">if</span> (args.test?.context?.skillKey !== <span class="str">"climbing"</span>) <span class="kw">return</span>;
-args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
+args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></pre>
 </div>
 </div>
 </section>

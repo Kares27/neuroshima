@@ -1,5 +1,7 @@
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaDice } from "../../helpers/dice.js";
+import { NeuroshimaTest } from "../../tests/neuroshima-test.js";
+import { TestRunner } from "../../tests/test-runner.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -142,12 +144,63 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         const fame = this.rollOptions.fame;
         const threshold = repValue + fame;
 
-        const roll = new Roll("1d100");
-        await roll.evaluate();
-        const result = roll.total;
-        const isSuccess = result <= threshold;
-
         const label = this.reputationItem?.name ?? game.i18n.localize("NEUROSHIMA.Reputation.Title");
+        const test = new NeuroshimaTest({
+            type: "reputation",
+            subtype: "simple",
+            actor: this.actor,
+            item: this.reputationItem,
+            attribute: { key: "reputation", value: threshold, name: label },
+            preData: {
+                label,
+                penalties: {},
+                annotations: []
+            },
+            context: {
+                eventArgs: { reputationItem: this.reputationItem }
+            }
+        });
+        await TestRunner.run(test, {
+            prepare: current => Object.assign(current.result.data, {
+                label,
+                stat: Number(current.attribute?.value ?? threshold),
+                skill: 0,
+                target: Number(current.attribute?.value ?? threshold),
+                rawResults: [],
+                rolledResults: [],
+                modifiedResults: [],
+                success: false,
+                successCount: 0,
+                successPoints: 0,
+                isOpen: false,
+                isReputationRoll: true,
+                rollMode
+            }),
+            roll: async () => {
+                const roll = await new Roll("1d100").evaluate();
+                return { roll, rawResults: [Number(roll.total)] };
+            },
+            evaluate: current => {
+                const result = Number(current.result.data.rawResults[0]);
+                const target = Number(current.result.data.target);
+                current.result.data.rolledResults = [result];
+                current.result.data.modifiedResults = [{
+                    original: result,
+                    modified: result,
+                    isSuccess: result <= target,
+                    ignored: false,
+                    index: 0
+                }];
+                current.result.data.success = result <= target;
+                current.result.data.successCount = result <= target ? 1 : 0;
+                current.result.data.successPoints = target - result;
+            }
+        });
+        const rollData = test.toLegacyData();
+        if (rollData.cancelled) return;
+        const result = Number(rollData.rawResults[0] ?? 0);
+        const finalThreshold = Number(rollData.target ?? threshold);
+        const isSuccess = rollData.success === true;
         const speaker = ChatMessage.getSpeaker({ actor: this.actor });
 
         const successText = isSuccess
@@ -165,7 +218,7 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
     </div>
     <div class="roll-outcome">
         <div class="roll-dice-result">${result}</div>
-        <div class="roll-threshold">${game.i18n.localize("NEUROSHIMA.Roll.Target")}: ${threshold} (${game.i18n.localize("NEUROSHIMA.Reputation.Value")}: ${repValue} + ${game.i18n.localize("NEUROSHIMA.Reputation.Fame")}: ${fame})</div>
+        <div class="roll-threshold">${game.i18n.localize("NEUROSHIMA.Roll.Target")}: ${finalThreshold} (${game.i18n.localize("NEUROSHIMA.Reputation.Value")}: ${repValue} + ${game.i18n.localize("NEUROSHIMA.Reputation.Fame")}: ${fame})</div>
         <div class="roll-status">${successText}</div>
     </div>
 </div>`;
@@ -173,7 +226,7 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         await ChatMessage.create({
             content,
             speaker,
-            rolls: [roll],
+            rolls: test.result.roll ? [test.result.roll] : [],
             rollMode,
             type: CONST.CHAT_MESSAGE_TYPES?.ROLL ?? 5
         });
@@ -204,7 +257,12 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
             attributeBonus: 0,
             skillBonus: 0,
             rollMode,
-            chatMessage: false
+            chatMessage: false,
+            options: {
+                rollType: "reputation",
+                subtype: "skill",
+                item: this.reputationItem
+            }
         });
 
         if (!result) return;

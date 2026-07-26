@@ -534,14 +534,37 @@ export class NeuroshimaChatMessage extends ChatMessage {
       const translated = game.i18n.localize(loc);
       const label = data.title || (translated !== loc ? translated : data.testKey);
 
-      const dialog = new NeuroshimaSkillRollDialog({ actor, stat, skill, label, isSkill: true, skillKey: data.testKey, currentAttribute: attrKey, lastRoll, resultCallback });
+      const dialog = new NeuroshimaSkillRollDialog({
+        actor,
+        stat,
+        skill,
+        label,
+        isSkill: true,
+        skillKey: data.testKey,
+        currentAttribute: attrKey,
+        lastRoll,
+        resultCallback,
+        testType: "required",
+        testSubtype: "skill"
+      });
       dialog.render(true);
     } else if (data.testType === "attribute") {
       const stat = actor.system?.attributeTotals?.[data.testKey] ?? 0;
       const attrDef = NEUROSHIMA.attributes?.[data.testKey];
       const label = data.title || (attrDef?.label ? game.i18n.localize(attrDef.label) : data.testKey);
 
-      const dialog = new NeuroshimaSkillRollDialog({ actor, stat, skill: 0, label, isSkill: false, currentAttribute: data.testKey, lastRoll, resultCallback });
+      const dialog = new NeuroshimaSkillRollDialog({
+        actor,
+        stat,
+        skill: 0,
+        label,
+        isSkill: false,
+        currentAttribute: data.testKey,
+        lastRoll,
+        resultCallback,
+        testType: "required",
+        testSubtype: "attribute"
+      });
       dialog.render(true);
     }
   }

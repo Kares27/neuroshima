@@ -15,6 +15,9 @@ import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
+import { NeuroshimaTest } from "./module/tests/neuroshima-test.js";
+import { TestRunner } from "./module/tests/test-runner.js";
+import { TestRules } from "./module/tests/test-rules.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { NeuroshimaMeleeCombat } from "./module/combat/combat.js";
 import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
@@ -40,7 +43,7 @@ import { HealingApp } from "./module/apps/healing-app.js";
 import { showHealingRollDialog } from "./module/apps/dialogs/healing-roll-dialog.js";
 import { TraitBrowserApp } from "./module/apps/trait-browser.js";
 import { registerRadiationHooks } from "./module/region-behaviors/danger-zone.js";
-import { registerMigrationHook, normalizeAll, normalizeActor } from "./module/helpers/migration.js";
+import { registerMigrationHook, normalizeAll, normalizeActor, auditEffectTriggers } from "./module/helpers/migration.js";
 import { RadiationZoneBehaviorType } from "./module/region-behaviors/radiation-zone.js";
 import { GMToolkitApp } from "./module/apps/gm/gm-toolkit.js";
 import { GMAddXPApp } from "./module/apps/gm/gm-xp-app.js";
@@ -244,6 +247,9 @@ Hooks.once('init', async function() {
         PointAllocationDialog,
         NeuroshimaChoiceRouter,
         NeuroshimaDice,
+        NeuroshimaTest,
+        TestRunner,
+        TestRules,
         CombatHelper,
         NeuroshimaMeleeCombat,
         HealingApp,
@@ -299,7 +305,7 @@ Hooks.once('init', async function() {
             isDebug: true,
             label: "Debug Attribute Roll"
         }),
-        migration: { normalizeAll, normalizeActor },
+        migration: { normalizeAll, normalizeActor, auditEffectTriggers },
         applyDamage: async (actor, config = {}) => {
             const {
                 damage         = "L",

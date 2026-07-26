@@ -17,6 +17,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     this.label = options.label;
     this.isSkill = options.isSkill ?? false;
     this.skillKey = options.skillKey ?? "";
+    this.testType = options.testType ?? null;
+    this.testSubtype = options.testSubtype ?? null;
 
     const lastRoll =
       options.lastRoll
@@ -147,6 +149,23 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     }
 
     return baseAttributeKey;
+  }
+
+  _resolveEffectiveSkill(scriptFields = {}) {
+    const requestedKey = scriptFields.skillKey;
+    const key = requestedKey && (
+      this.actor.system.skills?.[requestedKey]
+      || (requestedKey === "experience" && this.actor.type === "creature")
+    )
+      ? requestedKey
+      : this.skillKey;
+    if (!this.isSkill || !key || key === this.skillKey) {
+      return { key: this.skillKey || null, value: Number(this.skill ?? 0) };
+    }
+    const value = key === "experience" && this.actor.type === "creature"
+      ? Number(this.actor.system.experience ?? 0)
+      : Number(this.actor.system.skills?.[key]?.value ?? 0);
+    return { key, value };
   }
 
   async _prepareContext(options) {
@@ -687,6 +706,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
      */
     const currentAttribute =
       this._resolveEffectiveAttributeKey(sf);
+    const currentSkill = this._resolveEffectiveSkill(sf);
 
     const actorArmorPenalty =
       this.actor.system.combat?.totalArmorPenalty
@@ -734,7 +754,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
     const totalSkill =
       (
-        this.skill
+        currentSkill.value
         || 0
       )
       + skillBonus;
@@ -917,6 +937,8 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
     const currentAttribute =
       this._resolveEffectiveAttributeKey(sf);
+    const currentSkill =
+      this._resolveEffectiveSkill(sf);
 
     const actorArmorPenalty =
       this.actor.system.combat?.totalArmorPenalty
@@ -962,9 +984,9 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
           )
         : 0;
 
-    const submissionOptions = {
-      skipPreRollTest: true
-    };
+    const submissionOptions = {};
+    if (this.testType) submissionOptions.rollType = this.testType;
+    if (this.testSubtype) submissionOptions.subtype = this.testSubtype;
 
     for (
       const dialogModifier
@@ -1027,7 +1049,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
     NeuroshimaDice.rollTest({
       stat: finalStat,
-      skill: this.skill,
+      skill: currentSkill.value,
       penalties: {
         mod:combinedModifier,
         base: NEUROSHIMA.difficulties[ baseDiffKey]?.min || 0,
@@ -1065,8 +1087,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         sf.annotations || [],
 
       skillKey:
-        this.skillKey
-        || null,
+        currentSkill.key,
 
       /*
        * Do właściwego rzutu trafia również

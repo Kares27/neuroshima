@@ -246,6 +246,27 @@
   </table>
   <div class="callout warning"><strong>Zgodność:</strong> <code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code> oraz przejściowe nazwy <code>preWeaponTest</code>, <code>weaponTest</code> i <code>postWeaponTest</code> są obsługiwane tylko dla istniejących efektów. Nowe skrypty powinny używać <code>preRollWeaponTest</code> / <code>rollWeaponTest</code>.</div>
   <p>Każdy trigger otrzymuje zwykłe <code>args</code> właściwe dla danej fazy. Wspólne informacje wykonania są dodatkowo dostępne jako <code>args.eventContext</code> i <code>this.triggerContext</code>; nie zastępują one domenowego <code>args.context</code>.</p>
+  <div class="callout info">
+    <strong>Jeden obiekt testu:</strong> od <code>preRollTest</code> do <code>rollTest</code>
+    skrypty otrzymują tę samą instancję <code>args.test</code>. Typ znajduje się w
+    <code>args.test.rollType</code>, podtyp w <code>args.test.subtype</code>, używany
+    Item w <code>args.test.item</code>, a stabilny wynik w <code>args.test.result</code>.
+    Dotyczy to testów cechy, umiejętności, inicjatywy, broni, granatu i leczenia.
+  </div>
+  <p>
+    Wymuszanie sukcesu jest jawne:
+    <code>args.test.forceSuccess({mode: "keepRoll"})</code> zachowuje rzut kośćmi,
+    natomiast <code>args.test.forceSuccess({mode: "skipRoll"})</code> pomija
+    <code>Roll.evaluate()</code>. Oba tryby tworzą ten sam kształt
+    <code>args.test.result</code> i dochodzą do triggera wyniku.
+    Dawne <code>args.test.preData.autoSuccess = true</code> pozostaje adapterem
+    zgodności dla trybu <code>skipRoll</code>.
+  </p>
+  <p>
+    Efekt z <code>Document Type: Item</code> uruchomi się tylko wtedy, gdy
+    <code>args.test.item</code> jest dokładnie jego Itemem. Nie uruchamia się w
+    teście aktora bez Itemu.
+  </p>
 </section>
 
 <!-- SECTION 1 -->
@@ -654,7 +675,7 @@ args.fields.finalDifficultyShift += <span class="num">1</span>;
 args.fields.maximumDifficulty = <span class="str">"hard"</span>;</code></pre>
 
   <h4>Automatyczny sukces z normalnym rzutem</h4>
-  <p><code>args.fields.autoSuccess</code> należy do wyzwalacza <code>dialog</code>. W przeciwieństwie do <code>args.test.preData.autoSuccess</code> z <code>preRollTest</code> nie pomija rzutu: karta czatu i wynik kości powstają normalnie, ale system traktuje test jako udany.</p>
+  <p><code>args.fields.autoSuccess</code> należy do wyzwalacza <code>dialog</code> i odpowiada <code>args.test.forceSuccess({mode: "keepRoll"})</code>: karta czatu i wynik kości powstają normalnie, ale system traktuje test jako udany.</p>
   <pre><code><span class="cmt">// Rzuć i pokaż kości, lecz niezależnie od nich uznaj test za udany.</span>
 args.fields.autoSuccess = <span class="kw">true</span>;</code></pre>
 
@@ -924,9 +945,9 @@ args.options.useSpecialCharmResolve = <span class="kw">true</span>;</code></pre>
     <tr><td>args.test.preData.penalties</td><td>object</td><td>Kary: <code>{ mod, wounds, armor, base, disease }</code> — modyfikuj <code>args.test.preData.penalties.mod += 20</code> (działa dla obu typów)</td></tr>
     <tr><td>args.test.preData.skillBonus</td><td>number</td><td>Bonus do umiejętności — modyfikuj bezpośrednio (działa dla obu typów)</td></tr>
     <tr><td>args.test.preData.attributeBonus</td><td>number</td><td>Bonus do atrybutu — modyfikuj bezpośrednio (działa dla obu typów)</td></tr>
-    <tr><td>args.test.preData.label</td><td>string</td><td>Etykieta rzutu (read-only, tylko testy umiejętności)</td></tr>
-    <tr><td>args.test.preData.autoSuccess</td><td>boolean</td><td><strong>Ustaw na true</strong> aby pominąć rzut i uznać za sukces (tylko testy umiejętności)</td></tr>
-    <tr><td>args.test.preData.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować rzut (tylko testy umiejętności)</td></tr>
+    <tr><td>args.test.preData.label</td><td>string</td><td>Etykieta rzutu</td></tr>
+    <tr><td>args.test.forceSuccess({mode})</td><td>function</td><td>Wymusza sukces w trybie <code>keepRoll</code> albo <code>skipRoll</code> dla każdego rodzaju testu</td></tr>
+    <tr><td>args.test.preData.cancelled</td><td>boolean</td><td><strong>Ustaw na true</strong> aby całkowicie anulować dowolny test</td></tr>
     <tr><td>args.test.preData.annotations</td><td>string[]</td><td>Tablica adnotacji wyświetlanych pod wynikiem rzutu. <strong>Dodawaj przez helper</strong> <code>this.addAnnotation(text)</code></td></tr>
     <tr><td>args.test.preData.dieManualBonus</td><td>number</td><td>Liczba oczek do rozdysponowania przez gracza w UI czatu. Modyfikuj bezpośrednio: <code>args.test.preData.dieManualBonus = 2</code></td></tr>
     <tr><td>args.test.preData.dieReductionBonus</td><td>number</td><td>Automatyczna redukcja kości pomijająca slider umiejętności. Modyfikuj bezpośrednio: <code>args.test.preData.dieReductionBonus += 1</code></td></tr>
@@ -958,7 +979,7 @@ args.test.preData.penalties.mod += <span class="num">10</span>;
     <pre><code><span class="cmt">// args.test.weapon brak = test umiejętności/atrybutu.</span>
 <span class="kw">if</span> (args.test.weapon) <span class="kw">return</span>;
 <span class="kw">if</span> (args.test.context.skillKey !== <span class="str">"painResistance"</span>) <span class="kw">return</span>;
-args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
+args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></pre>
   </div>
 
   <h3 id="trigger-preRollWeaponTest">preRollWeaponTest — <em>Pre-Roll Weapon Test</em></h3>
@@ -968,7 +989,7 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
   <h3 id="trigger-rollTest">rollTest — <em>Roll Test (post-roll)</em></h3>
   <p>Uruchamiany <em>po</em> rzucie kośćmi — gdy surowe kości są już znane. Pozwala reagować na wynik, dodawać adnotacje oraz kontrolowanie zastępować/kopiować kości przed finalnym renderem. <strong>Nie zmieniaj tutaj atrybutów ani kar</strong> — do tego służy <code>preRollTest</code>. Do zmian kości używaj helperów, nie mutuj ręcznie obiektu <code>Roll</code>.</p>
   <div class="callout info">
-    <strong>Uwaga:</strong> Trigger <code>rollTest</code> jest wołany tylko gdy rzut doszedł do skutku (nie został anulowany, nie było auto-sukcesu). Sprawdź <code>args.test.result.isSuccess</code> aby rozróżnić wynik.
+    <strong>Uwaga:</strong> Trigger <code>rollTest</code> nie jest wołany po anulowaniu testu. Jest natomiast wołany dla obu trybów wymuszonego sukcesu; <code>args.test.result.skipped</code> wskazuje, czy pominięto sam rzut. Sprawdź <code>args.test.result.isSuccess</code> aby rozróżnić wynik.
   </div>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -2978,7 +2999,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
     <pre><code><span class="cmt">// Jeśli rzut dotyczy odporności na ból i rana to D — auto-sukces
 // args.test.context.skillKey === "painResistance" lub sprawdź label</span>
 <span class="kw">if</span> (args.test.context.skillKey === <span class="str">"painResistance"</span> || args.test.preData.label?.includes(<span class="str">"Ból"</span>)) {
-  args.test.preData.autoSuccess = <span class="kw">true</span>;
+  args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });
 }</code></pre>
   </div>
 
@@ -2993,7 +3014,7 @@ args.damageType = <span class="kw">this</span>.<span class="fn">increaseDamageTy
     </p>
     <pre><code><span class="cmt">// autoSuccess + annotation → własna wiadomość w chacie</span>
 <span class="kw">if</span> (args.test.context.skillKey === <span class="str">"painResistance"</span>) {
-  args.test.preData.autoSuccess = <span class="kw">true</span>;
+  args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });
   args.test.preData.annotation  = <span class="str">"Niewrażliwość na lekkie rany — test zbędny"</span>;
 }</code></pre>
   </div>
@@ -5966,7 +5987,7 @@ console.<span class="fn">log</span>(<span class="var">diceRoll</span>.total);
   </tbody></table>
   <pre><code><span class="cmt">// Czy aktor ma sztuczkę "Hartowanie"? (przykład dla preRollTest)</span>
 <span class="kw">if</span> (<span class="kw">this</span>.actor.<span class="fn">hasTrick</span>(<span class="str">"Hartowanie"</span>)) {
-  args.test.preData.autoSuccess = <span class="kw">true</span>;
+  args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });
 }
 
 <span class="cmt">// Pobierz wszystkie wyposażone pancerze</span>

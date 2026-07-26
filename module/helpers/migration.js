@@ -35,7 +35,7 @@
  *   4. Update normalizeAll() / normalizeActor() if applicable.
  */
 
-const CURRENT_SCHEMA_VERSION = "1.3";
+const CURRENT_SCHEMA_VERSION = "1.4";
 
 export function registerMigrationHook() {
     Hooks.once("ready", async () => {
@@ -59,6 +59,7 @@ export function registerMigrationHook() {
             if (!_versionGte(stored, "1.1")) await _migrate_1_0_to_1_1();
             if (!_versionGte(stored, "1.2")) await _migrate_1_1_to_1_2();
             if (!_versionGte(stored, "1.3")) await _migrate_1_2_to_1_3();
+            if (!_versionGte(stored, "1.4")) await _migrate_1_3_to_1_4();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -341,7 +342,6 @@ async function _migrate_1_1_to_1_2() {
 const EFFECT_TRIGGER_RENAMES_1_3 = Object.freeze({
     preWeaponTest: "preRollWeaponTest",
     weaponTest: "rollWeaponTest",
-    postWeaponTest: "rollWeaponTest",
     postRollTest: "rollTest",
     postApplyDamage: "applyDamage",
     postTakeDamage: "takeDamage",
@@ -376,6 +376,74 @@ async function _migrate_1_2_to_1_3() {
         for (const item of actor.items) await _migrateDocumentEffects(item);
     }
     for (const item of _allWorldItems()) await _migrateDocumentEffects(item);
+}
+
+// Migration 1.3 -> 1.4 deliberately performs no trigger rename. In particular,
+// postWeaponTest cannot be converted losslessly to rollWeaponTest because its
+// argument contract is different. The runtime adapter keeps both forms alive.
+async function _migrate_1_3_to_1_4() {
+    console.log("Neuroshima | Running migration 1.3 -> 1.4 (test pipeline audit)");
+    const report = auditEffectTriggers();
+    console.info("Neuroshima | Active Effect trigger migration report", report);
+    if (report.legacy.postWeaponTest > 0) {
+        ui.notifications.info(
+            `Neuroshima | Zachowano ${report.legacy.postWeaponTest} skrypt(ów) postWeaponTest przez adapter zgodności.`
+        );
+    }
+}
+
+export function auditEffectTriggers() {
+    const report = {
+        documents: 0,
+        effects: 0,
+        scripts: 0,
+        triggers: {},
+        legacy: {
+            preWeaponShot: 0,
+            weaponJam: 0,
+            postWeaponShot: 0,
+            preWeaponTest: 0,
+            weaponTest: 0,
+            postWeaponTest: 0,
+            postRollTest: 0
+        },
+        possiblePreviouslyMigratedPostWeaponScripts: []
+    };
+    const documents = [];
+    for (const actor of _allActors()) {
+        documents.push(actor, ...(actor.items ?? []));
+    }
+    documents.push(..._allWorldItems());
+
+    for (const document of documents) {
+        report.documents += 1;
+        for (const effect of document.effects ?? []) {
+            report.effects += 1;
+            for (const script of effect._source?.system?.scriptData ?? []) {
+                report.scripts += 1;
+                const trigger = script?.trigger ?? "manual";
+                report.triggers[trigger] = (report.triggers[trigger] ?? 0) + 1;
+                if (Object.hasOwn(report.legacy, trigger)) report.legacy[trigger] += 1;
+
+                // Migration 1.3 briefly rewrote postWeaponTest. We cannot prove
+                // provenance, but code using its old top-level args is reported.
+                const code = String(script?.code ?? "");
+                if (
+                    trigger === "rollWeaponTest"
+                    && /args\.(isSuccess|isJamming|hitBullets|bulletsFired|successPoints)/.test(code)
+                    && !/args\.test\b/.test(code)
+                ) {
+                    report.possiblePreviouslyMigratedPostWeaponScripts.push({
+                        document: document.uuid,
+                        effect: effect.uuid,
+                        scriptId: script.id ?? null,
+                        label: script.label ?? ""
+                    });
+                }
+            }
+        }
+    }
+    return report;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

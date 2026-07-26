@@ -612,7 +612,6 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     };
 
     const submissionOptions = await this._runSubmissionScripts();
-    submissionOptions.skipPreRollTest = true;
     this.close();
 
     if (this.isPoolRoll && this.onPoolRoll) {

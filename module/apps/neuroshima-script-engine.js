@@ -4,6 +4,7 @@ import {
   LEGACY_EFFECT_TRIGGERS,
   createTriggerContext
 } from "../effects/effect-trigger-schema.js";
+import { matchesItemDocumentScope } from "../effects/effect-scope.js";
 
 /**
  * Thin wrapper around a roll result that normalises both a Foundry Roll object
@@ -3440,19 +3441,19 @@ export class NeuroshimaScript {
  *                    args.test.preData.penalties    — { mod, wounds, armor, base, disease } (mutable)
  *                    args.test.preData.skillBonus   — extra skill bonus (mutable)
  *                    args.test.preData.attributeBonus — extra attribute bonus (mutable)
- *                    args.test.preData.autoSuccess  — set true → skip roll, count as success
+ *                    args.test.forceSuccess({mode}) — keepRoll or skipRoll
  *                    args.test.preData.cancelled    — set true → abort the roll entirely
  *                    args.test.preData.annotations  — string[] shown in chat
  *                    args.test.context.attributeKey — raw attribute key string
  *                    args.test.context.skillKey     — raw skill key string
- *                    Use: args.test.preData.autoSuccess = true   → skip roll, count as success
+ *                    Use: args.test.forceSuccess({ mode: "skipRoll" }) → skip roll, count as success
  *                         args.test.preData.cancelled = true     → abort the roll entirely
  *                         this.addAnnotation("text")             → custom annotation shown in chat
  *                         args.test.preData.penalties.mod -= 20  → reduce total penalty by 20%
  *                         args.test.attribute.value += 2         → boost attribute value
  *                         args.test.skill.value += 1             → boost skill rank
  *
- * rollTest         — Roll Test (post-roll): runs AFTER dice have been rolled (not called if cancelled/autoSuccess)
+ * rollTest         — Roll Test (result): runs after evaluation or skipRoll (not called if cancelled)
  *                    args.test                          — the entire test object
  *                    args.test.actor                    — the rolling actor
  *                    args.test.attribute                — { key, value, name } or null
@@ -4990,7 +4991,12 @@ export class NeuroshimaScriptRunner {
 
     const seen = new Set(canonicalScripts.map(script => this._scriptIdentity(script)));
     for (const legacyTrigger of [...new Set(legacyTriggers)]) {
-      const legacyScripts = this.getScripts(actor, legacyTrigger);
+      const legacyScripts = this.getScripts(actor, legacyTrigger)
+        .filter(script => this._matchesItemDocumentScope(
+          script,
+          publicTrigger,
+          metadata.item ?? args.item ?? args.weapon
+        ));
       for (const script of legacyScripts) {
         const identity = this._scriptIdentity(script);
         if (seen.has(identity)) continue;
@@ -5038,7 +5044,12 @@ export class NeuroshimaScriptRunner {
     const legacyArgs = args;
     legacyArgs.trigger = trigger;
     legacyArgs.eventContext = context;
-    for (const script of this.getScripts(args.actor, trigger)) {
+    for (const script of this.getScripts(args.actor, trigger)
+      .filter(script => this._matchesItemDocumentScope(
+        script,
+        event,
+        metadata.item ?? args.item ?? args.weapon
+      ))) {
       await this._executeScriptWithCompatibility(script, trigger, legacyArgs);
     }
     return context;
@@ -5070,19 +5081,7 @@ export class NeuroshimaScriptRunner {
   }
 
   static _matchesItemDocumentScope(script, trigger, usedItem = null) {
-    const itemScopedTriggers = new Set([
-      "preRollTest", "preRollWeaponTest", "rollTest", "rollWeaponTest",
-      "preOpposedAttacker", "opposedAttacker", "calculateOpposedDamage",
-      "preApplyDamage", "applyDamage"
-    ]);
-    if (!itemScopedTriggers.has(trigger)) return true;
-    const effect = script.effect;
-    const parentItem = effect?.parent?.documentName === "Item" ? effect.parent : null;
-    if (!parentItem) return true;
-    const documentType = effect.getFlag?.("neuroshima", "documentType") ?? "actor";
-    if (documentType !== "item") return true;
-    if (!usedItem) return true;
-    return parentItem.uuid === usedItem.uuid;
+    return matchesItemDocumentScope(script, trigger, usedItem);
   }
 
   /**
@@ -5210,27 +5209,6 @@ export class NeuroshimaScriptRunner {
     game.neuroshima?.log?.(`[manual] fired`, { _actor: resolvedActor.name, effect: effect.name, label: scriptData.label ?? "" });
     const script = new NeuroshimaScript(scriptData, effect);
     await script.execute({ actor: resolvedActor, item: effect.parent?.documentName === "Item" ? effect.parent : null });
-  }
-
-  /**
-   * Run preRollTest scripts and return result flags.
-   * @param {Actor} actor
-   * @param {Object} rollArgs - Current roll parameters
-   * @returns {Promise<{autoSuccess: boolean, cancelled: boolean}>}
-   */
-  static async runPreRollTest(actor, rollArgs) {
-    if (!actor) return { autoSuccess: false, cancelled: false };
-    const { stat, skill, skillBonus = 0, attributeBonus = 0, penalties = {}, label = "", attributeKey = null, skillKey = null, options = {} } = rollArgs;
-    const test = {
-      actor,
-      attribute: attributeKey ? { key: attributeKey, value: stat, name: game.i18n.localize(`NEUROSHIMA.attributes.${attributeKey}`) || attributeKey } : null,
-      skill: skillKey ? { key: skillKey, value: skill, name: game.i18n.localize(`NEUROSHIMA.skills.${skillKey}`) || skillKey } : null,
-      item: options.item ?? null,
-      preData: { penalties: { ...penalties }, skillBonus, attributeBonus, label, autoSuccess: false, cancelled: false, annotations: [] },
-      context: { attributeKey, skillKey, options },
-    };
-    await this.execute("preRollTest", { actor, test });
-    return { autoSuccess: !!test.preData.autoSuccess, cancelled: !!test.preData.cancelled };
   }
 
   static DIFFICULTY_ORDER = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];

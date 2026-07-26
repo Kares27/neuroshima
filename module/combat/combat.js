@@ -17,6 +17,8 @@
  */
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import { NeuroshimaTest } from "../tests/neuroshima-test.js";
+import { TestRunner } from "../tests/test-runner.js";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
@@ -4487,15 +4489,76 @@ export class MeleeResolution {
     attacker.usedDice.push(...selectedIndices);
 
     const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, encounter.crowding[attack.defenderId]?.dexPenalty || 0, "defense");
-    const freeRoll = new Roll(`${diceCount}d20`);
-    await freeRoll.evaluate();
-
-    const freeSuccesses = freeRoll.terms[0].results.filter(r => r.result <= defenderTarget).length;
-    const diceHtml = freeRoll.terms[0].results.map(r =>
-      `<span class="die ${r.result <= defenderTarget ? "success" : "failure"}">${r.result}</span>`
+    const defenderActor = fromUuidSync(defender.actorUuid);
+    const freeTest = new NeuroshimaTest({
+      type: "weapon",
+      subtype: "meleeFreeDefense",
+      actor: defenderActor,
+      attribute: { key: "dexterity", value: defenderTarget },
+      preData: {
+        diceCount,
+        label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.Defense"),
+        penalties: {},
+        annotations: []
+      },
+      context: {
+        isMelee: true,
+        meleeAction: "defense",
+        encounterId: encounter.id,
+        eventArgs: { encounter, attack }
+      }
+    });
+    await TestRunner.run(freeTest, {
+      prepare: current => Object.assign(current.result.data, {
+        label: current.preData.label,
+        target: Number(current.attribute?.value ?? defenderTarget),
+        diceCount: Math.min(
+          selectedIndices.length,
+          Math.max(1, Number(current.preData.diceCount ?? diceCount))
+        ),
+        rawResults: [],
+        rolledResults: [],
+        modifiedResults: [],
+        success: false,
+        successCount: 0,
+        successPoints: 0,
+        isOpen: false,
+        isMelee: true,
+        meleeAction: "defense"
+      }),
+      roll: async current => {
+        const freeRoll = await new Roll(`${current.result.data.diceCount}d20`).evaluate();
+        return {
+          roll: freeRoll,
+          rawResults: freeRoll.terms[0].results.map(result => Number(result.result))
+        };
+      },
+      evaluate: current => {
+        const data = current.result.data;
+        data.rolledResults = [...data.rawResults];
+        data.modifiedResults = data.rawResults.map((result, index) => ({
+          original: result,
+          modified: result,
+          index,
+          ignored: false,
+          isSuccess: result <= data.target && result !== 20,
+          isNat1: result === 1,
+          isNat20: result === 20
+        }));
+        data.successCount = data.modifiedResults.filter(result => result.isSuccess).length;
+        data.successPoints = data.successCount;
+        data.success = data.successCount >= data.diceCount;
+      }
+    });
+    const freeData = freeTest.toLegacyData();
+    if (freeData.cancelled) return;
+    const freeSuccesses = Number(freeData.successCount ?? 0);
+    const finalDiceCount = Number(freeData.diceCount ?? diceCount);
+    const diceHtml = freeData.modifiedResults.map(result =>
+      `<span class="die ${result.isSuccess ? "success" : "failure"}">${result.modified}</span>`
     ).join(" ");
 
-    if (freeSuccesses >= diceCount) {
+    if (freeSuccesses >= finalDiceCount) {
       encounter.log.push({
         type: "block",
         turn: encounter.turnState.turn,
@@ -4509,7 +4572,7 @@ export class MeleeResolution {
         segment: encounter.turnState.segment,
         text: game.i18n.format("NEUROSHIMA.MeleeDuel.LogExtraAttackHit", { attacker: attacker.name, defender: defender.name, s: diceCount, dice: diceHtml })
       });
-      await this.applyDamage(encounter, attack.attackerId, attack.defenderId, diceCount, selectedIndices[0]);
+      await this.applyDamage(encounter, attack.attackerId, attack.defenderId, finalDiceCount, selectedIndices[0]);
     }
   }
 
