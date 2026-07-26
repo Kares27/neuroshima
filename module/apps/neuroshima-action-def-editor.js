@@ -61,6 +61,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     this.effect = effect;
     this.defIndex = index;
     this._cmSaveTimer = null;
+    this._persistQueue = Promise.resolve();
   }
 
   static DEFAULT_OPTIONS = {
@@ -166,6 +167,7 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
     }
 
     form.querySelector(".ns-se-save-btn")?.addEventListener("click", async () => {
+      clearTimeout(this._cmSaveTimer);
       await this._persist(form);
       await this.close();
     });
@@ -209,7 +211,12 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
    * @param {HTMLElement} form - Root element of the rendered application.
    * @returns {Promise<void>}
    */
-  async _persist(form) {
+  _persist(form) {
+    this._persistQueue = this._persistQueue.then(() => this._persistNow(form));
+    return this._persistQueue;
+  }
+
+  async _persistNow(form) {
     const effect = this._freshEffect;
     const defs = foundry.utils.deepClone(effect.system?.actionDefs ?? []);
     if (!defs[this.defIndex]) return;
@@ -245,5 +252,12 @@ export class NeuroshimaActionDefEditor extends HandlebarsApplicationMixin(foundr
 
     await effect.update({ "system.actionDefs": defs });
     this.effect = this._freshEffect;
+  }
+
+  async close(options = {}) {
+    clearTimeout(this._cmSaveTimer);
+    if (this.element?.isConnected) await this._persist(this.element);
+    await this._persistQueue;
+    return super.close(options);
   }
 }

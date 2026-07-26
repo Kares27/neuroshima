@@ -151,7 +151,9 @@
         <li><a href="#dialog">dialog — Dialog</a></li>
         <li><a href="#trigger-prepareData">prepareData — Prepare Data</a></li>
         <li><a href="#trigger-preRollTest">preRollTest — Pre-Roll Test</a></li>
+        <li><a href="#trigger-preRollWeaponTest">preRollWeaponTest — Pre-Roll Weapon Test</a></li>
         <li><a href="#trigger-rollTest">rollTest — Roll Test (post-roll)</a></li>
+        <li><a href="#trigger-rollWeaponTest">rollWeaponTest — Roll Weapon Test</a></li>
         <li><a href="#trigger-getInitiativeFormula">getInitiativeFormula — Get Initiative Formula</a></li>
         <li><a href="#trigger-preWeaponShot">preWeaponShot — Pre-Weapon Shot</a></li>
         <li><a href="#trigger-weaponJam">weaponJam — Weapon Jam</a></li>
@@ -160,7 +162,8 @@
         <li><a href="#trigger-applyDamage">applyDamage — Apply Damage</a></li>
         <li><a href="#trigger-preTakeDamage">preTakeDamage — Pre-Take Damage</a></li>
         <li><a href="#trigger-takeDamage">takeDamage — Take Damage</a></li>
-        <li><a href="#trigger-armorCalculation">armorCalculation — Armour Calculation</a></li>
+        <li><a href="#trigger-preAPCalc">preAPCalc — Pre-Armour Calculation</a></li>
+        <li><a href="#trigger-APCalc">APCalc — Armour Calculation</a></li>
         <li><a href="#guide-roll-to-chat">Rzuty kością — porównanie metod (rollToChat / deferRollToChat / rollDice)</a></li>
         <li><a href="#guide-roll-results">Praca z wieloma kośćmi — RollResult</a></li>
         <li><a href="#trigger-equipToggle">equipToggle — Equip Toggle</a></li>
@@ -228,6 +231,22 @@
     </li>
   </ol>
 </nav>
+
+<section id="trigger-lifecycle-v2">
+  <h2 class="section-title">Aktualny lifecycle testów — układ WFRP</h2>
+  <p>Trigger wybiera się bezpośrednio w dropdownie Active Effect. Nie są wymagane dodatkowe filtry kontekstu. Tak jak w WFRP test ma dwie granice: <code>preRollTest</code> przed rzutem oraz <code>rollTest</code> po obliczeniu wyniku. Podtyp dokłada własną parę triggerów, ale nie zastępuje pary wspólnej.</p>
+  <table>
+    <thead><tr><th>Trigger</th><th>Moment</th><th>Przeznaczenie</th></tr></thead>
+    <tbody>
+      <tr><td>preRollTest</td><td>przed Roll.evaluate()</td><td>Zmiana parametrów zwykłego testu, anulowanie lub auto-sukces.</td></tr>
+      <tr><td>rollTest</td><td>po rzucie, przed finalizacją</td><td>Modyfikacja i ponowne przeliczenie wyniku testu.</td></tr>
+      <tr><td>preRollWeaponTest</td><td>po preRollTest, przed rzutem broni</td><td>Kości, kary, bonusy i anulowanie testu broni.</td></tr>
+      <tr><td>rollWeaponTest</td><td>po rollTest</td><td>Wynik, trafienia, zacięcie, amunicja i obrażenia konkretnej broni.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout warning"><strong>Zgodność:</strong> <code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code> oraz przejściowe nazwy <code>preWeaponTest</code>, <code>weaponTest</code> i <code>postWeaponTest</code> są obsługiwane tylko dla istniejących efektów. Nowe skrypty powinny używać <code>preRollWeaponTest</code> / <code>rollWeaponTest</code>.</div>
+  <p>Każdy trigger otrzymuje zwykłe <code>args</code> właściwe dla danej fazy. Wspólne informacje wykonania są dodatkowo dostępne jako <code>args.eventContext</code> i <code>this.triggerContext</code>; nie zastępują one domenowego <code>args.context</code>.</p>
+</section>
 
 <!-- SECTION 1 -->
 <section id="overview">
@@ -493,7 +512,7 @@
       <tr><td>Dane <strong>SYNC</strong></td><td><code>prepareData</code></td><td>Synchroniczne przygotowanie danych pochodnych aktora.</td></tr>
       <tr><td>Dialog i test</td><td><code>dialog</code>, <code>preRollTest</code>, <code>rollTest</code>, <code>getInitiativeFormula</code></td><td>Modyfikacja dialogu, testu przed rzutem i reakcja po rzucie.</td></tr>
       <tr><td>Strzał</td><td><code>preWeaponShot</code>, <code>weaponJam</code>, <code>postWeaponShot</code></td><td>Zacięcie, amunicja i wynik strzału.</td></tr>
-      <tr><td>Obrażenia</td><td><code>preApplyDamage</code>, <code>applyDamage</code>, <code>preTakeDamage</code>, <code>takeDamage</code>, <code>armorCalculation</code> <strong>SYNC</strong></td><td>Kolejne etapy od strony atakującego i obrońcy.</td></tr>
+      <tr><td>Obrażenia</td><td><code>preApplyDamage</code>, <code>preTakeDamage</code>, <code>preAPCalc</code>, <code>APCalc</code>, <code>applyDamage</code>, <code>takeDamage</code></td><td>Etap wstępny, redukcja pancerzem oraz końcowa granica przed zapisem dokumentu.</td></tr>
       <tr><td>Walka</td><td><code>startCombat</code>, <code>updateCombat</code>, <code>startRound</code>, <code>startTurn</code>, <code>endTurn</code>, <code>endRound</code>, <code>endCombat</code></td><td>Cykl Combat Foundry.</td></tr>
       <tr><td>Stan świata</td><td><code>worldTimeUpdate</code>, <code>preApplyCondition</code>, <code>applyCondition</code></td><td>Czas świata i kondycje.</td></tr>
       <tr><td>Melee — pula/opposed</td><td><code>preMeleePool</code>, <code>preOpposedAttacker</code>, <code>preOpposedDefender</code>, <code>opposedAttacker</code>, <code>opposedDefender</code>, <code>meleeUpdate</code></td><td>Modyfikacja puli i kompatybilny pipeline rozstrzygania.</td></tr>
@@ -942,6 +961,9 @@ args.test.preData.penalties.mod += <span class="num">10</span>;
 args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
   </div>
 
+  <h3 id="trigger-preRollWeaponTest">preRollWeaponTest — <em>Pre-Roll Weapon Test</em></h3>
+  <p>Uruchamiany wyłącznie dla broni, bezpośrednio po wspólnym <code>preRollTest</code>. Otrzymuje ten sam <code>args.test</code>. Efekt z <code>Document Type: Item</code> uruchamia się tylko wtedy, gdy test używa dokładnie tej broni.</p>
+
   <!-- rollTest -->
   <h3 id="trigger-rollTest">rollTest — <em>Roll Test (post-roll)</em></h3>
   <p>Uruchamiany <em>po</em> rzucie kośćmi — gdy surowe kości są już znane. Pozwala reagować na wynik, dodawać adnotacje oraz kontrolowanie zastępować/kopiować kości przed finalnym renderem. <strong>Nie zmieniaj tutaj atrybutów ani kar</strong> — do tego służy <code>preRollTest</code>. Do zmian kości używaj helperów, nie mutuj ręcznie obiektu <code>Roll</code>.</p>
@@ -998,6 +1020,9 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
 }</code></pre>
   </div>
 
+  <h3 id="trigger-rollWeaponTest">rollWeaponTest — <em>Roll Weapon Test</em></h3>
+  <p>Uruchamiany wyłącznie dla broni, bezpośrednio po wspólnym <code>rollTest</code>. Wynik zawiera także dane specyficzne dla Neuroshimy: trafione pociski, zacięcie, Punkty Przewagi, obrażenia oraz osobny pomocniczy rzut 1k20 na lokację. Melee, ranged i thrown korzystają z tego samego triggera; rodzaj odczytasz z <code>args.eventContext.subtype</code>.</p>
+
   <!-- getInitiativeFormula -->
   <h3 id="trigger-getInitiativeFormula">getInitiativeFormula — <em>Get Initiative Formula</em></h3>
   <p>Uruchamiany po rzucie na inicjatywę, <em>przed</em> zapisaniem wartości do trackera walki. Pozwala zmodyfikować finalną liczbę Punktów Przewagi (successPoints) która trafi do kolejności inicjatywy.</p>
@@ -1028,11 +1053,12 @@ args.test.preData.autoSuccess = <span class="kw">true</span>;</code></pre>
   <div class="callout info" style="font-family:monospace;font-size:0.88em;margin-bottom:1rem;">
     Kolejność wykonania dla każdego trafienia:<br>
     <strong>preApplyDamage</strong> (attacker) →
-    <strong>applyDamage</strong> (attacker) →
-    <em>[armor reduction]</em> →
     <strong>preTakeDamage</strong> (defender) →
-    <em>[pain resistance]</em> →
-    <strong>takeDamage</strong> (defender)
+    <strong>preAPCalc</strong> / <strong>APCalc</strong> →
+    <em>[armor reduction]</em> →
+    <strong>applyDamage</strong> (attacker) →
+    <strong>takeDamage</strong> (defender) →
+    <em>[zapis ran i pain resistance]</em>
   </div>
 
   <!-- preApplyDamage -->
@@ -1058,21 +1084,21 @@ args.attackData.damageMelee3 = <span class="kw">this</span>.<span class="fn">inc
 
   <!-- applyDamage -->
   <h3 id="trigger-applyDamage">applyDamage — <em>Apply Damage</em> <span class="badge" style="background:var(--accent-blue,#4a9eff)">ATTACKER</span></h3>
-  <p>Uruchamiany na aktorze <strong>zadającym</strong> obrażenia, <strong>po</strong> wyborze finalnego typu obrażeń, ale <strong>przed</strong> redukcją pancerza obrońcy. Odpala się dla każdego źródła obrażeń z poznanym atakującym. Skrypty mogą nadpisać wybrany typ obrażeń ustawiając <code>args.attackData.damageOverride</code>. Analogiczny do WFRP4e <em>applyDamage</em>.</p>
+  <p>Uruchamiany na aktorze <strong>zadającym</strong> obrażenia po wszystkich redukcjach, ale <strong>przed</strong> aktualizacją dokumentu obrońcy. Otrzymuje tę samą mutowalną listę <code>args.wounds</code> co końcowy <code>takeDamage</code>. Do zmiany profilu przed pancerzem służy <code>preApplyDamage</code>.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
     <tr><td>args.actor</td><td>Actor</td><td>Aktor ATAKUJĄCY</td></tr>
     <tr><td>args.defenderActor</td><td>Actor</td><td>Aktor otrzymujący to trafienie</td></tr>
     <tr><td>args.weapon</td><td>Item|null</td><td>Broń atakującego (<code>null</code> = gołe pięści)</td></tr>
     <tr><td>args.location</td><td>string</td><td>Lokacja trafienia</td></tr>
-    <tr><td>args.attackData</td><td>object</td><td><code>attackData.damageType</code> — wybrany typ (read); <code>attackData.damageOverride</code> — ustaw aby nadpisać</td></tr>
+    <tr><td>args.attackData</td><td>object</td><td>Dane źródłowego ataku</td></tr>
+    <tr><td>args.wounds</td><td>Array</td><td>Finalne rany po pancerzu, jeszcze przed zapisem dokumentu</td></tr>
   </tbody></table>
   <div class="callout info">Klucze typów obrażeń: <code>"D"</code> draśnięcie, <code>"sD"</code> silne draśnięcie, <code>"L"</code> rana lekka, <code>"sL"</code> silna lekka, <code>"C"</code> rana ciężka, <code>"K"</code> kalectwo.</div>
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">applyDamage</span> Śmiercionośna amunicja — ranged upgrade C→K po wyborze tieru</div>
-    <pre><code><span class="cmt">// applyDamage — fires after damage type is selected; use damageOverride to replace it.</span>
-<span class="kw">if</span> (!args.attackData.isMelee &amp;&amp; args.attackData.damageType === <span class="str">"C"</span>) {
-  args.attackData.damageOverride = <span class="str">"K"</span>; <span class="cmt">// eskaluj do kalectwa</span>
+    <div class="example-header"><span class="trigger-badge">applyDamage</span> Reakcja atakującego na ranę, która przeszła przez pancerz</div>
+    <pre><code><span class="kw">if</span> (args.wounds.<span class="fn">some</span>(w =&gt; w.damageType === <span class="str">"K"</span>)) {
+  <span class="kw">this</span>.<span class="fn">addAnnotation</span>(<span class="str">"Atak spowodował kalectwo"</span>);
 }</code></pre>
   </div>
 
@@ -1141,8 +1167,12 @@ args.piercing = <span class="num">0</span>;</code></pre>
 }</code></pre>
   </div>
 
-  <!-- armorCalculation -->
-  <h3 id="trigger-armorCalculation">armorCalculation — <em>Armour Calculation</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <h3 id="trigger-preAPCalc">preAPCalc — <em>Pre-Armour Calculation</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <p>Uruchamiany po utworzeniu kontekstu trafienia, przed zebraniem efektywnego SP. Pozwala zmienić <code>args.location</code>, <code>args.damageType</code>, <code>args.piercing</code> lub <code>args.damageCategory</code> przed właściwym obliczeniem pancerza.</p>
+
+  <!-- APCalc -->
+  <h3 id="trigger-APCalc">APCalc — <em>Armour Calculation</em> <span class="badge" style="color:var(--accent-err)">SYNC</span></h3>
+  <div class="callout warning"><strong>Zgodność:</strong> istniejące efekty zapisane jako <code>armorCalculation</code> nadal uruchamiają się w tym samym miejscu. Dla nowych efektów wybieraj <code>APCalc</code>.</div>
   <p>Uruchamiany podczas obliczania redukcji pancerza dla trafienia. Pozwala modyfikować efektywne SP zbroi.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>

@@ -4122,12 +4122,12 @@ export class MeleeResolution {
     const defenderActorDoc = defenderActor?.actor || defenderActor;
     if (attackerActorDoc) {
       const atkArgs = { actor: attackerActorDoc, participant: attacker, encounter: updated, difficultyTarget: attackerTarget, mode: "attack" };
-      await NeuroshimaScriptRunner.execute("preOpposedAttacker", atkArgs);
+      await NeuroshimaScriptRunner.executeEvent("preOpposedAttacker", atkArgs);
       attackerTarget = atkArgs.difficultyTarget;
     }
     if (defenderActorDoc) {
       const defArgs = { actor: defenderActorDoc, participant: defender, encounter: updated, difficultyTarget: defenderTarget, mode: "defense" };
-      await NeuroshimaScriptRunner.execute("preOpposedDefender", defArgs);
+      await NeuroshimaScriptRunner.executeEvent("preOpposedDefender", defArgs);
       defenderTarget = defArgs.difficultyTarget;
     }
 
@@ -4209,12 +4209,12 @@ export class MeleeResolution {
     };
     if (attackerActorDoc) {
       const atkArgs = { ...postResultBase, actor: attackerActorDoc, resultType, blockDamageShift: 0 };
-      await NeuroshimaScriptRunner.execute("opposedAttacker", atkArgs);
+      await NeuroshimaScriptRunner.executeEvent("opposedAttacker", atkArgs);
       resultType = atkArgs.resultType;
     }
     if (defenderActorDoc) {
       const defArgs = { ...postResultBase, actor: defenderActorDoc, resultType, blockDamageShift: 0 };
-      await NeuroshimaScriptRunner.execute("opposedDefender", defArgs);
+      await NeuroshimaScriptRunner.executeEvent("opposedDefender", defArgs);
       resultType = defArgs.resultType;
     }
 
@@ -5977,7 +5977,7 @@ export class MeleeTurnService {
         attackTarget: p.attackTargetSnapshot, defenseTarget: p.defenseTargetSnapshot
       });
 
-      await NeuroshimaScriptRunner.execute("preMeleePool", {
+      await NeuroshimaScriptRunner.executeLegacy("preMeleePool", {
         actor,
         encounter: updated,
         participant: p,

@@ -380,7 +380,14 @@ export class CombatHelper {
     // Analogous to WFRP4e preApplyDamage. Fires for ALL attack sources with a known attacker.
     if (attackerActor) {
         game.neuroshima?.log("[preApplyDamage] fired on attacker", { attacker: attackerActor.name, location });
-        await NeuroshimaScriptRunner.execute("preApplyDamage", { actor: attackerActor, defenderActor: actor, weapon: attackerWeapon, location, attackData });
+        await NeuroshimaScriptRunner.executeEvent("preApplyDamage", {
+          actor: attackerActor,
+          defenderActor: actor,
+          weapon: attackerWeapon,
+          location,
+          attackData,
+          role: "source"
+        }, { metadata: { role: "source", item: attackerWeapon, damage: attackData } });
     }
     
     // For melee, select the appropriate damage field (damageMelee1/2/3) based on spDifference
@@ -421,6 +428,22 @@ export class CombatHelper {
         game.neuroshima.log(`Melee: spDifference=${spDifference}, selected damage profile=${damageType} (from ${initialDamageType})`);
     }
 
+    if (attackerActor && options.isOpposed) {
+      const opposedDamageArgs = {
+        actor: attackerActor,
+        defenderActor: actor,
+        weapon: attackerWeapon,
+        damageType,
+        spDifference,
+        attackData,
+        opposedTest: options.opposedTest ?? attackData.opposedResult ?? null
+      };
+      await NeuroshimaScriptRunner.executeEvent("calculateOpposedDamage", opposedDamageArgs, {
+        metadata: { role: "source", item: attackerWeapon, damage: opposedDamageArgs }
+      });
+      damageType = opposedDamageArgs.damageType ?? damageType;
+    }
+
     // Neuroshima location rule: a hit to the head increases damage by one
     // category. Apply it after selecting the melee tier, but before attacker
     // applyDamage scripts and armor. The damage track itself clamps at K/sK.
@@ -434,17 +457,9 @@ export class CombatHelper {
         });
     }
 
-    // applyDamage (ATTACKER side) — fires after damage type is selected for this hit, but
-    // before armor reduction on the defender. Scripts can set attackData.damageOverride to
-    // replace the selected damage type, or modify attackData fields for downstream effects.
-    // Analogous to WFRP4e applyDamage. Fires for ALL attack sources with a known attacker.
-    if (attackerActor) {
-        attackData.damageType = damageType;
-        game.neuroshima?.log("[applyDamage] fired on attacker", { attacker: attackerActor.name, damageType, location });
-        await NeuroshimaScriptRunner.execute("applyDamage", { actor: attackerActor, defenderActor: actor, weapon: attackerWeapon, location, attackData });
-        damageType = attackData.damageOverride || attackData.damageType || damageType;
-        delete attackData.damageOverride;
-    }
+    // Store the selected pre-mitigation type in the shared attack context.
+    // The final applyDamage trigger runs later, after armour calculation.
+    attackData.damageType = damageType;
 
     const sourceInfo = `<p><em>Source: ${attackData.label || "Weapon"} ${options.attackerMessageId ? `(${options.attackerMessageId})` : ""}</em></p>`;
     
@@ -468,7 +483,11 @@ export class CombatHelper {
     // preTakeDamage (DEFENDER side): scripts can modify damageType, piercing, or push extra wounds
     // before armor reduction is applied. Analogous to WFRP4e preTakeDamage.
     const preArgs = { actor, location, damageType, piercing, rawWounds, ...attackContext };
-    await NeuroshimaScriptRunner.execute("preTakeDamage", preArgs);
+    preArgs.role = "target";
+    await NeuroshimaScriptRunner.executeEvent("preTakeDamage", preArgs, {
+      legacyTriggers: ["preTakeDamage"],
+      metadata: { role: "target", item: attackerWeapon, damage: attackData }
+    });
     damageType = preArgs.damageType;
     piercing   = preArgs.piercing;
 
@@ -583,13 +602,39 @@ export class CombatHelper {
     if (rawWounds.length > 0 || reducedProjectiles > 0) {
         let results = [];
         let woundIds = [];
+
+        // Final damage boundary: mitigation is complete, document updates have
+        // not happened yet. Source-side scripts run before target-side scripts.
+        const finalDamageArgs = {
+          actor,
+          attackerActor,
+          weapon: attackerWeapon,
+          location,
+          damageType,
+          attackData,
+          wounds: rawWounds,
+          reducedProjectiles,
+          reducedDetails
+        };
+        if (attackerActor) {
+          await NeuroshimaScriptRunner.executeEvent("applyDamage", {
+            ...finalDamageArgs,
+            actor: attackerActor,
+            defenderActor: actor,
+            role: "source"
+          }, {
+            metadata: { role: "source", item: attackerWeapon, damage: finalDamageArgs }
+          });
+        }
+        finalDamageArgs.role = "target";
+        await NeuroshimaScriptRunner.executeEvent("takeDamage", finalDamageArgs, {
+          metadata: { role: "target", item: attackerWeapon, damage: finalDamageArgs }
+        });
         
         if (rawWounds.length > 0) {
             // takeDamage (DEFENDER side): fires after armor reduction but BEFORE pain resistance.
             // Analogous to WFRP4e takeDamage. Scripts can still block (forceSkip) or auto-pass
             // pain resistance (forcePassed) on individual wounds in this mutable array.
-            const scriptArgs = { actor, wounds: rawWounds, location };
-            await NeuroshimaScriptRunner.execute("takeDamage", scriptArgs);
             const filteredWounds = rawWounds.filter(w => !w.forceSkip);
 
             const damageResult = await game.neuroshima.NeuroshimaDice.applyDamage(actor, {
@@ -651,6 +696,33 @@ export class CombatHelper {
     const VEHICLE_DMG_MAP = isWeakPoint ? VEHICLE_DMG_MAP_WEAKPOINT : VEHICLE_DMG_MAP_BASE;
     const durBase     = (actor.system.attributes?.durability ?? 0) + (actor.system.modifiers?.durability ?? 0);
     const sourceLabel = attackData.label || game.i18n.localize("NEUROSHIMA.Items.Fields.None");
+    const attackerActor = attackData.actorId ? game.actors.get(attackData.actorId) : null;
+    const attackerWeapon = attackerActor && attackData.weaponId
+      ? attackerActor.items.get(attackData.weaponId)
+      : null;
+
+    if (attackerActor) {
+      await NeuroshimaScriptRunner.executeEvent("preApplyDamage", {
+        actor: attackerActor,
+        defenderActor: actor,
+        weapon: attackerWeapon,
+        location,
+        attackData,
+        role: "source"
+      }, {
+        metadata: { role: "source", item: attackerWeapon, damage: attackData }
+      });
+    }
+    await NeuroshimaScriptRunner.executeEvent("preTakeDamage", {
+      actor,
+      attackerActor,
+      weapon: attackerWeapon,
+      location,
+      attackData,
+      role: "target"
+    }, {
+      metadata: { role: "target", item: attackerWeapon, damage: attackData }
+    });
 
     // Build list of bullets to process (handles burst fire)
     let bullets;
@@ -705,13 +777,21 @@ export class CombatHelper {
         if (vIdx !== -1 && vIdx < vTiers.length - 1) vehicleDmgTypeFinal = vTiers[vIdx + 1];
       }
 
-      const vArmorArgs = { actor, location, damageType: vehicleDmgTypeFinal, sp: rawSP, piercing, bonusSP: 0 };
-      NeuroshimaScriptRunner.executeSync("armorCalculation", vArmorArgs);
+      const vPreArmorArgs = { actor, location, damageType: vehicleDmgTypeFinal, piercing };
+      NeuroshimaScriptRunner.executeEventSync("preAPCalc", vPreArmorArgs, {
+        metadata: { role: "target", damage: vPreArmorArgs }
+      });
+      vehicleDmgTypeFinal = vPreArmorArgs.damageType ?? vehicleDmgTypeFinal;
+      const vArmorArgs = { actor, location, damageType: vehicleDmgTypeFinal, sp: rawSP, piercing: vPreArmorArgs.piercing ?? piercing, bonusSP: 0 };
+      NeuroshimaScriptRunner.executeEventSync("APCalc", vArmorArgs, {
+        legacyTriggers: ["armorCalculation"],
+        metadata: { role: "target", damage: vArmorArgs }
+      });
       const armorSP = (vArmorArgs.sp ?? rawSP) + (vArmorArgs.bonusSP ?? 0);
 
       const vConfig = NEUROSHIMA.vehicleDamageConfiguration;
       const origPoints = vConfig[vehicleDmgTypeFinal]?.damagePoints ?? 1;
-      const actualReduction = this.computeActualReduction(armorSP, piercing);
+      const actualReduction = this.computeActualReduction(armorSP, vArmorArgs.piercing);
       const reducedPoints = Math.max(0, origPoints - actualReduction);
       const vOrder = ["VL", "VC", "VK"];
       const reducedEntry = Object.entries(vConfig).find(([, cfg]) => cfg.damagePoints === reducedPoints);
@@ -775,6 +855,28 @@ export class CombatHelper {
       });
     }
 
+    const finalVehicleDamage = { attackData, results, negatedItems, itemsToCreate, location };
+    if (attackerActor) {
+      await NeuroshimaScriptRunner.executeEvent("applyDamage", {
+        actor: attackerActor,
+        defenderActor: actor,
+        weapon: attackerWeapon,
+        role: "source",
+        ...finalVehicleDamage
+      }, {
+        metadata: { role: "source", item: attackerWeapon, damage: finalVehicleDamage }
+      });
+    }
+    await NeuroshimaScriptRunner.executeEvent("takeDamage", {
+      actor,
+      attackerActor,
+      weapon: attackerWeapon,
+      role: "target",
+      ...finalVehicleDamage
+    }, {
+      metadata: { role: "target", item: attackerWeapon, damage: finalVehicleDamage }
+    });
+
     // Create all damage items at once
     let woundIds = [];
     if (itemsToCreate.length > 0) {
@@ -782,11 +884,12 @@ export class CombatHelper {
       woundIds = created.map(i => i.id);
     }
 
+    const damageResult = { attackData, results, negatedItems, woundIds, location };
     // Delegate chat rendering to NeuroshimaChatMessage
     await NeuroshimaChatMessage.renderVehicleDamage(actor, results, negatedItems, woundIds, sourceLabel);
 
     game.neuroshima.groupEnd();
-    return { woundIds };
+    return damageResult;
   }
 
   /**
@@ -1323,6 +1426,22 @@ export class CombatHelper {
    * @private
    */
   static reduceArmorDamageWithDetails(actor, location, damageType, piercing, context = {}, damageCategory = "physical") {
+    const preArmorArgs = {
+      actor,
+      location,
+      damageType,
+      piercing,
+      damageCategory,
+      ...context
+    };
+    NeuroshimaScriptRunner.executeEventSync("preAPCalc", preArmorArgs, {
+      metadata: { role: "target", damage: preArmorArgs }
+    });
+    location = preArmorArgs.location ?? location;
+    damageType = preArmorArgs.damageType ?? damageType;
+    piercing = Number(preArmorArgs.piercing ?? piercing);
+    damageCategory = preArmorArgs.damageCategory ?? damageCategory;
+
     const reductionData = {
       originalDamage: damageType,
       piercing: piercing,
@@ -1360,7 +1479,10 @@ export class CombatHelper {
       pendingChatRolls: [],
       ...context
     };
-    NeuroshimaScriptRunner.executeSync("armorCalculation", armorArgs);
+    NeuroshimaScriptRunner.executeEventSync("APCalc", armorArgs, {
+      legacyTriggers: ["armorCalculation"],
+      metadata: { role: "target", damage: armorArgs }
+    });
     totalArmorRating = (armorArgs.sp ?? totalArmorRating) + (armorArgs.bonusSP ?? 0);
     reductionData.totalArmor = totalArmorRating;
 

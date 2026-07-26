@@ -586,6 +586,7 @@ export class NeuroshimaActiveEffectData extends foundry.abstract.TypeDataModel {
           maxDice:                 new fields.NumberField({ initial: 3, integer: true, min: 0 }),
           immediateOnHit:          new fields.BooleanField({ initial: false }),
           onHitScript:             new fields.StringField({ initial: "",    blank: true }),
+          executeScript:           new fields.StringField({ initial: "",    blank: true }),
           condition:               new fields.ObjectField({ nullable: true, initial: null }),
           onHit:                   new fields.ObjectField({ nullable: true, initial: null }),
           effectIds:               new fields.ArrayField(new fields.StringField({ blank: true }), { initial: [] }),

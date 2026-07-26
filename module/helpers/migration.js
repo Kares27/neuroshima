@@ -35,7 +35,7 @@
  *   4. Update normalizeAll() / normalizeActor() if applicable.
  */
 
-const CURRENT_SCHEMA_VERSION = "1.2";
+const CURRENT_SCHEMA_VERSION = "1.3";
 
 export function registerMigrationHook() {
     Hooks.once("ready", async () => {
@@ -58,6 +58,7 @@ export function registerMigrationHook() {
         try {
             if (!_versionGte(stored, "1.1")) await _migrate_1_0_to_1_1();
             if (!_versionGte(stored, "1.2")) await _migrate_1_1_to_1_2();
+            if (!_versionGte(stored, "1.3")) await _migrate_1_2_to_1_3();
 
             await game.settings.set("neuroshima", "schemaVersion", CURRENT_SCHEMA_VERSION);
             ui.notifications.info(game.i18n.localize("NEUROSHIMA.Migration.Done"));
@@ -334,6 +335,49 @@ async function _migrate_1_1_to_1_2() {
     }
 }
 
+// Migration 1.2 -> 1.3: normalise effect trigger names to the WFRP-style
+// preX/X lifecycle. Shot-specific legacy triggers intentionally remain intact
+// because their old argument contracts are narrower than rollWeaponTest.
+const EFFECT_TRIGGER_RENAMES_1_3 = Object.freeze({
+    preWeaponTest: "preRollWeaponTest",
+    weaponTest: "rollWeaponTest",
+    postWeaponTest: "rollWeaponTest",
+    postRollTest: "rollTest",
+    postApplyDamage: "applyDamage",
+    postTakeDamage: "takeDamage",
+    armorCalculation: "APCalc"
+});
+
+async function _migrateEffectTriggerNames(effect) {
+    const scripts = effect._source?.system?.scriptData;
+    if (!Array.isArray(scripts) || scripts.length === 0) return false;
+
+    let changed = false;
+    const migrated = scripts.map(script => {
+        const trigger = EFFECT_TRIGGER_RENAMES_1_3[script?.trigger];
+        if (!trigger) return script;
+        changed = true;
+        return { ...script, trigger };
+    });
+    if (changed) await effect.update({ "system.scriptData": migrated });
+    return changed;
+}
+
+async function _migrateDocumentEffects(document) {
+    for (const effect of document.effects ?? []) {
+        await _migrateEffectTriggerNames(effect);
+    }
+}
+
+async function _migrate_1_2_to_1_3() {
+    console.log("Neuroshima | Running migration 1.2 -> 1.3 (effect trigger lifecycle)");
+    for (const actor of _allActors()) {
+        await _migrateDocumentEffects(actor);
+        for (const item of actor.items) await _migrateDocumentEffects(item);
+    }
+    for (const item of _allWorldItems()) await _migrateDocumentEffects(item);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function _versionGte(a, b) {
@@ -362,6 +406,8 @@ export async function normalizeActor(actor) {
     for (const item of actor.items) {
         try { await _repairStoredSystemData(item); } catch (_) {}
     }
+    await _migrateDocumentEffects(actor);
+    for (const item of actor.items) await _migrateDocumentEffects(item);
 }
 
 /**
@@ -387,6 +433,8 @@ export async function normalizeAll() {
             for (const item of actor.items) {
                 try { await _repairStoredSystemData(item); } catch (_) {}
             }
+            await _migrateDocumentEffects(actor);
+            for (const item of actor.items) await _migrateDocumentEffects(item);
         } catch (err) {
             console.warn(`Neuroshima | Normalization failed for actor "${actor.name}":`, err);
         }
@@ -396,6 +444,7 @@ export async function normalizeAll() {
         try {
             await _migrate_1_1_normalizeWorldItemMods(item);
             await _repairStoredSystemData(item);
+            await _migrateDocumentEffects(item);
         } catch (err) {
             console.warn(`Neuroshima | Normalization failed for world item "${item.name}":`, err);
         }

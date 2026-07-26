@@ -260,6 +260,12 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         if (!updated.annotations?.includes("Rzut edytowany przez MG")) {
           (updated.annotations ??= []).push("Rzut edytowany przez MG");
         }
+        const editedActor = game.actors.get(updated.actorId);
+        const editedItem = editedActor?.items.get(updated.weaponId ?? updated.itemId);
+        await NeuroshimaDice.runStoredRollResultEffects(editedActor, updated, {
+          item: editedItem ?? null,
+          edited: true
+        });
 
         const snapshot = rollData => ({
           rawResults: rollData.rawResults,

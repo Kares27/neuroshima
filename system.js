@@ -114,14 +114,6 @@ Hooks.once('init', async function() {
         });
         if (game.user.isGM) {
             await NeuroshimaScriptRunner.runUpdateCombat(combat, updates);
-            const turnChanged = foundry.utils.hasProperty(updates, "turn") || foundry.utils.hasProperty(updates, "round");
-            if (turnChanged && combat.started) {
-                const prevCombatantId = combat.previous?.combatantId;
-                const prevCombatant = prevCombatantId ? combat.combatants.get(prevCombatantId) : null;
-                if (prevCombatant) await NeuroshimaScriptRunner.runEndTurn(combat, prevCombatant);
-                const currCombatant = combat.combatant;
-                if (currCombatant) await NeuroshimaScriptRunner.runStartTurn(combat, currCombatant);
-            }
         }
     });
 
@@ -213,6 +205,9 @@ Hooks.once('init', async function() {
         const forward = options?.direction === 1 || updates?.round > (options?.previousRound ?? 0);
         game.neuroshima?.log("[hook:combatRound]", { round: combat.round, forward, updates, direction: options?.direction });
         if (forward) {
+            if ((options?.previousRound ?? 0) > 0) {
+                await NeuroshimaScriptRunner.runEndRound(combat, options.previousRound);
+            }
             await NeuroshimaScriptRunner.expireEffects(combat);
             await NeuroshimaScriptRunner.runStartRound(combat);
             for (const combatant of combat.combatants) {

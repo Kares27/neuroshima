@@ -315,12 +315,14 @@ export class DuelLifecycle {
       const atk = duel.attackerActor;
       const def = duel.defenderActor;
       if (atk) {
-        await NeuroshimaScriptRunner.execute("onDuelStart",
-          { ...buildBaseArgs(duel, atk, null) });
+        await NeuroshimaScriptRunner.executeEvent("onDuelStart",
+          { ...buildBaseArgs(duel, atk, null) },
+          { legacyTriggers: ["onDuelStart"], metadata: { duel, role: "attacker", mutable: false } });
       }
       if (def) {
-        await NeuroshimaScriptRunner.execute("onDuelStart",
-          { ...buildBaseArgs(duel, def, null) });
+        await NeuroshimaScriptRunner.executeEvent("onDuelStart",
+          { ...buildBaseArgs(duel, def, null) },
+          { legacyTriggers: ["onDuelStart"], metadata: { duel, role: "defender", mutable: false } });
       }
     } catch (err) {
       game.neuroshima?.log("[DuelLifecycle.start] error", err);
@@ -345,12 +347,14 @@ export class DuelLifecycle {
       const atk = duel.attackerActor;
       const def = duel.defenderActor;
       if (atk) {
-        await NeuroshimaScriptRunner.execute("onDuelSegmentStart",
-          { ...buildBaseArgs(duel, atk, segment) });
+        await NeuroshimaScriptRunner.executeEvent("onDuelSegmentStart",
+          { ...buildBaseArgs(duel, atk, segment) },
+          { legacyTriggers: ["onDuelSegmentStart"], metadata: { duel, segment, role: "attacker" } });
       }
       if (def) {
-        await NeuroshimaScriptRunner.execute("onDuelSegmentStart",
-          { ...buildBaseArgs(duel, def, segment) });
+        await NeuroshimaScriptRunner.executeEvent("onDuelSegmentStart",
+          { ...buildBaseArgs(duel, def, segment) },
+          { legacyTriggers: ["onDuelSegmentStart"], metadata: { duel, segment, role: "defender" } });
       }
     } catch (err) {
       game.neuroshima?.log("[DuelLifecycle.segmentStart] error", err);
@@ -375,7 +379,6 @@ export class DuelLifecycle {
   static async segmentResolve(duel, segment, legacyContext = null) {
     const _isHitOutcome = ["hit", "takeover", "draw"].includes(segment.outcome);
     const _hasAction    = !!(duel.actions?.declared);
-    if (!_isHitOutcome && !_hasAction) return;
     try {
       const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
 
@@ -393,19 +396,19 @@ export class DuelLifecycle {
                       : segment.outcome === "takeover" ? "onMeleeTakeover"
                       : "onMeleeBlock";
         if (atk) {
-          await NeuroshimaScriptRunner.execute(trigger, {
+          await NeuroshimaScriptRunner.executeLegacy(trigger, {
             ...buildSegmentArgs(duel, atk, segment), ...extraBC, isAttacker: true
           });
         }
         if (def) {
-          await NeuroshimaScriptRunner.execute(trigger, {
+          await NeuroshimaScriptRunner.executeLegacy(trigger, {
             ...buildSegmentArgs(duel, def, segment), ...extraBC, isAttacker: false
           });
         }
       }
 
       const declaredAction = duel.actions?.declared ?? null;
-      if (declaredAction) {
+      if (_hasAction && declaredAction) {
         const actionTrigger = (segment.outcome === "hit" || segment.outcome === "draw")
           ? "onMeleeActionHit" : "onMeleeActionMiss";
         await declaredAction.executeTrigger(actionTrigger,
@@ -440,7 +443,9 @@ export class DuelLifecycle {
           mode:           "attack",
           isAttacker:     true
         };
-        await NeuroshimaScriptRunner.execute("preOpposedAttacker", _args);
+        await NeuroshimaScriptRunner.executeEvent("preOpposedAttacker", _args, {
+          metadata: { duel, segment, role: "attacker" }
+        });
         ctx.successMod = (_args.participant?.successMod ?? 0) + (typeof _args.successMod === "number" ? _args.successMod - 0 : 0);
       }
     } catch (err) {
@@ -474,7 +479,9 @@ export class DuelLifecycle {
           mode:            "defense",
           isAttacker:      false
         };
-        await NeuroshimaScriptRunner.execute("preOpposedDefender", _args);
+        await NeuroshimaScriptRunner.executeEvent("preOpposedDefender", _args, {
+          metadata: { duel, segment, role: "defender" }
+        });
         const _pCtx = _args.participant ?? _args.defender ?? ctx;
         ctx.successMod      = (_pCtx.successMod      ?? 0);
         ctx.blockDamageShift = (_pCtx.blockDamageShift ?? 0);
@@ -508,12 +515,12 @@ export class DuelLifecycle {
         state:         state ?? duel
       };
       if (atk) {
-        await NeuroshimaScriptRunner.execute("meleeUpdate", {
+        await NeuroshimaScriptRunner.executeLegacy("meleeUpdate", {
           ..._baseArgs, actor: atk, isAttacker: true
         });
       }
       if (def) {
-        await NeuroshimaScriptRunner.execute("meleeUpdate", {
+        await NeuroshimaScriptRunner.executeLegacy("meleeUpdate", {
           ..._baseArgs, actor: def, isAttacker: false
         });
       }
@@ -544,13 +551,19 @@ export class DuelLifecycle {
         defenderId: duel.defenderTokenUuid || duel.defenderUuid
       };
       if (atk) {
-        await NeuroshimaScriptRunner.execute("beforeMeleeAction", {
+        await NeuroshimaScriptRunner.executeEvent("beforeMeleeAction", {
           ...buildSegmentArgs(duel, atk, segment), ...extraBC, isAttacker: true
+        }, {
+          legacyTriggers: ["beforeMeleeAction"],
+          metadata: { duel, segment, action: duel.actions?.declared ?? null, role: "attacker" }
         });
       }
       if (def) {
-        await NeuroshimaScriptRunner.execute("beforeMeleeAction", {
+        await NeuroshimaScriptRunner.executeEvent("beforeMeleeAction", {
           ...buildSegmentArgs(duel, def, segment), ...extraBC, isAttacker: false
+        }, {
+          legacyTriggers: ["beforeMeleeAction"],
+          metadata: { duel, segment, action: duel.actions?.declared ?? null, role: "defender" }
         });
       }
     } catch (err) {
@@ -578,13 +591,19 @@ export class DuelLifecycle {
         defenderId: duel.defenderTokenUuid || duel.defenderUuid
       };
       if (atk) {
-        await NeuroshimaScriptRunner.execute("afterMeleeAction", {
+        await NeuroshimaScriptRunner.executeEvent("afterMeleeAction", {
           ...buildSegmentArgs(duel, atk, segment), ...extraBC, isAttacker: true
+        }, {
+          legacyTriggers: ["afterMeleeAction"],
+          metadata: { duel, segment, action: duel.actions?.declared ?? null, outcome: segment.outcome, role: "attacker", mutable: false }
         });
       }
       if (def) {
-        await NeuroshimaScriptRunner.execute("afterMeleeAction", {
+        await NeuroshimaScriptRunner.executeEvent("afterMeleeAction", {
           ...buildSegmentArgs(duel, def, segment), ...extraBC, isAttacker: false
+        }, {
+          legacyTriggers: ["afterMeleeAction"],
+          metadata: { duel, segment, action: duel.actions?.declared ?? null, outcome: segment.outcome, role: "defender", mutable: false }
         });
       }
     } catch (err) {
@@ -617,11 +636,11 @@ export class DuelLifecycle {
         defenderId: rd.defenderUuid || rd.defenderTokenUuid
       };
       if (attackerActor) {
-        await NeuroshimaScriptRunner.execute("beforeMeleeDamage",
+        await NeuroshimaScriptRunner.executeLegacy("beforeMeleeDamage",
           { ...base, actor: attackerActor, isAttacker: true });
       }
       if (defenderActor) {
-        await NeuroshimaScriptRunner.execute("beforeMeleeDamage",
+        await NeuroshimaScriptRunner.executeLegacy("beforeMeleeDamage",
           { ...base, actor: defenderActor, isAttacker: false });
       }
     } catch (err) {
@@ -650,11 +669,11 @@ export class DuelLifecycle {
         defenderId: rd.defenderUuid || rd.defenderTokenUuid
       };
       if (attackerActor) {
-        await NeuroshimaScriptRunner.execute("afterMeleeDamage",
+        await NeuroshimaScriptRunner.executeLegacy("afterMeleeDamage",
           { ...base, actor: attackerActor, isAttacker: true });
       }
       if (defenderActor) {
-        await NeuroshimaScriptRunner.execute("afterMeleeDamage",
+        await NeuroshimaScriptRunner.executeLegacy("afterMeleeDamage",
           { ...base, actor: defenderActor, isAttacker: false });
       }
     } catch (err) {
@@ -680,12 +699,14 @@ export class DuelLifecycle {
       const atk = duel.attackerActor;
       const def = duel.defenderActor;
       if (atk) {
-        await NeuroshimaScriptRunner.execute("onDuelEnd",
-          { ...buildBaseArgs(duel, atk, null) });
+        await NeuroshimaScriptRunner.executeEvent("onDuelEnd",
+          { ...buildBaseArgs(duel, atk, null) },
+          { legacyTriggers: ["onDuelEnd"], metadata: { duel, role: "attacker", mutable: false } });
       }
       if (def) {
-        await NeuroshimaScriptRunner.execute("onDuelEnd",
-          { ...buildBaseArgs(duel, def, null) });
+        await NeuroshimaScriptRunner.executeEvent("onDuelEnd",
+          { ...buildBaseArgs(duel, def, null) },
+          { legacyTriggers: ["onDuelEnd"], metadata: { duel, role: "defender", mutable: false } });
       }
     } catch (err) {
       game.neuroshima?.log("[DuelLifecycle.end] error", err);
@@ -943,12 +964,38 @@ export class DuelActionPipeline {
           }
         }
       }
+
+      // Canonical declarative actions use the same registry builder without
+      // requiring the legacy getMeleeActions trigger.
+      const canonicalActionScripts = NeuroshimaScriptRunner
+        .getScripts(ownerActor, "collectMeleeActions")
+        .filter(script => script.useActionDef && script.actionDef);
+      for (const script of canonicalActionScripts) {
+        const prevLength = extraActionsArr.length;
+        try {
+          await _buildActionFromDefHelper(script, triggerArgs, extraActionsArr);
+        } catch (err) {
+          game.neuroshima?.log("[duel.actions.collect] actionDef error", err);
+        }
+        for (let i = prevLength; i < extraActionsArr.length; i++) {
+          const resolved = extraActionsArr[i];
+          if (!resolved || typeof resolved !== "object") continue;
+          if (resolved.name) {
+            resolved.name = NeuroshimaScriptRunner._resolveItemRef(
+              resolved.name, script.effect?.parent ?? null, script.effect ?? null
+            );
+          }
+          if (!resolved._effectUuid && script.effect?.uuid) {
+            resolved._effectUuid = script.effect.uuid;
+          }
+        }
+      }
       for (let i = extraActionsArr.length - 1; i >= 0; i--) {
         if (extraActionsArr[i] == null) extraActionsArr.splice(i, 1);
       }
 
       try {
-        await NeuroshimaScriptRunner.execute("collectMeleeActions", {
+        await NeuroshimaScriptRunner.executeEvent("collectMeleeActions", {
           actor:                ownerActor,
           duel,
           state:                duel,
@@ -958,6 +1005,9 @@ export class DuelActionPipeline {
           uncommittedDice:      uncommittedDiceCount,
           uncommittedSuccesses: uncommittedSuccessCount,
           lookupActionDef
+        }, {
+          legacyTriggers: ["collectMeleeActions"],
+          metadata: { duel, mutable: true }
         });
       } catch (err) {
         game.neuroshima?.log("[collectMeleeActions] trigger error", err);
@@ -1840,7 +1890,7 @@ export class DuelSegmentEngine {
             if (_oaActor) {
               const _oaResultType  = outcome === "hit" ? "hit" : outcome === "takeover" ? "takeover" : "block";
               const _ownerManeuver = isOwnerAttacker ? (state.attackerManeuver ?? null) : (state.defenderManeuver ?? null);
-              await NeuroshimaScriptRunner.execute("opposedAttacker", {
+              await NeuroshimaScriptRunner.executeEvent("opposedAttacker", {
                 actor: _oaActor,
                 resultType: _oaResultType,
                 diceCount: N,
@@ -1902,7 +1952,7 @@ export class DuelSegmentEngine {
               defenderSuccesses: responderEffective,
               blockDamageShift: 0
             };
-            await NeuroshimaScriptRunner.execute("opposedDefender", _oppArgs);
+            await NeuroshimaScriptRunner.executeEvent("opposedDefender", _oppArgs);
             const _bds = (_oppArgs.defender.blockDamageShift || 0) + (_oppArgs.blockDamageShift || 0) + _preBlockDmgShift;
             if (_bds !== 0) {
               if (!state.blockDamageShiftByActor) state.blockDamageShiftByActor = {};
@@ -1925,7 +1975,7 @@ export class DuelSegmentEngine {
             if (_oaActor) {
               const _oaResultType  = outcome === "hit" ? "hit" : outcome === "takeover" ? "takeover" : "block";
               const _ownerManeuver = isOwnerAttacker ? (state.attackerManeuver ?? null) : (state.defenderManeuver ?? null);
-              await NeuroshimaScriptRunner.execute("opposedAttacker", {
+              await NeuroshimaScriptRunner.executeEvent("opposedAttacker", {
                 actor: _oaActor,
                 resultType: _oaResultType,
                 diceCount: N,
@@ -2106,7 +2156,7 @@ export class DuelSegmentEngine {
       for (const doc of [atkDoc, defDoc]) {
         const actor = doc?.actor ?? doc;
         if (!actor) continue;
-        await NeuroshimaScriptRunner.execute("meleeUpdate", {
+        await NeuroshimaScriptRunner.executeLegacy("meleeUpdate", {
           actor, phase: "turn-end",
           encounter: null, encounterId: null,
           participant: null, participantId: null,

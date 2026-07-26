@@ -1,4 +1,9 @@
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
+import {
+  EFFECT_TRIGGERS,
+  LEGACY_EFFECT_TRIGGERS,
+  createTriggerContext
+} from "../effects/effect-trigger-schema.js";
 
 /**
  * Thin wrapper around a roll result that normalises both a Foundry Roll object
@@ -255,6 +260,11 @@ export class NeuroshimaScript {
    */
   get meleeAction() {
     return this._currentArgs?.action ?? null;
+  }
+
+  /** Stable lifecycle information for the currently executing trigger. */
+  get triggerContext() {
+    return this._currentArgs?.eventContext ?? null;
   }
 
   /**
@@ -4010,59 +4020,8 @@ export class NeuroshimaScript {
  *   VL  VC  VK                     (vehicle damage)
  */
 export class NeuroshimaScriptRunner {
-  static TRIGGERS = {
-    manual:           "Manually Invoked",
-    immediate:        "Immediate",
-    dialog:           "Dialog",
-    prepareData:      "Prepare Data",
-    getInitiativeFormula: "Get Initiative Formula",
-    preRollTest:      "Pre-Roll Test",
-    rollTest:         "Roll Test",
-    preApplyDamage:   "Pre-Apply Damage",
-    applyDamage:      "Apply Damage",
-    preTakeDamage:    "Pre-Take Damage",
-    takeDamage:       "Take Damage",
-    armorCalculation: "Armour Calculation",
-    equipToggle:      "Equip Toggle",
-    startCombat:      "Start Combat",
-    updateCombat:     "Update Combat",
-    startRound:       "Start Round",
-    startTurn:        "Start Turn",
-    endTurn:          "End Turn",
-    endRound:         "End Round",
-    endCombat:        "End Combat",
-    createToken:      "Create Token",
-    applyEffect:      "Effect Applied",
-    deleteEffect:     "Effect Deleted",
-    preWeaponShot:    "Pre-Weapon Shot",
-    weaponJam:        "Weapon Jam",
-    postWeaponShot:   "Post-Weapon Shot",
-    worldTimeUpdate:  "World Time Update",
-    preApplyCondition:      "Pre-Apply Condition",
-    applyCondition:         "Apply Condition",
-    preMeleePool:           "Pre-Melee Pool",
-    preOpposedAttacker:     "Pre-Opposed Attacker",
-    preOpposedDefender:     "Pre-Opposed Defender",
-    getMeleeActions:        "Get Melee Actions",
-    collectMeleeActions:    "Collect Melee Actions",
-    opposedAttacker:        "Opposed Attacker",
-    opposedDefender:        "Opposed Defender",
-    onMeleeHit:             "On Melee Hit",
-    onMeleeBlock:           "On Melee Block",
-    onMeleeTakeover:        "On Melee Takeover",
-    beforeMeleeAction:      "Before Melee Action",
-    afterMeleeAction:       "After Melee Action",
-    beforeMeleeDamage:      "Before Melee Damage",
-    afterMeleeDamage:       "After Melee Damage",
-    onMeleeActionHit:       "On Melee Action Hit",
-    onMeleeActionMiss:      "On Melee Action Miss",
-    onMeleeActionQueued:    "On Melee Action Queued",
-    onMeleeActionResolved:  "On Melee Action Resolved",
-    onDuelStart:            "On Duel Start",
-    onDuelSegmentStart:     "On Duel Segment Start",
-    onDuelEnd:              "On Duel End",
-    meleeUpdate:            "Melee Update"
-  };
+  static TRIGGERS = EFFECT_TRIGGERS;
+  static LEGACY_TRIGGERS = LEGACY_EFFECT_TRIGGERS;
 
   static _currentMeleeActionSourceEffectUuid = null;
 
@@ -4947,11 +4906,20 @@ export class NeuroshimaScriptRunner {
    * @returns {Object}
    */
   static _triggerArgsForLog(args) {
-    const { actor, token, targetActor, ...rest } = args;
+    const { actor, token, targetActor, context, eventContext, ...rest } = args;
     const out = { ...rest };
     if (actor)       out._actor       = actor.name;
     if (token)       out._token       = token.name ?? token.id;
     if (targetActor) out._targetActor = targetActor.name;
+    if (context) {
+      out._context = {
+        schemaVersion: context.schemaVersion,
+        trigger: context.trigger,
+        legacyTrigger: context.legacyTrigger,
+        hasTest: !!context.test,
+        hasResult: !!context.result
+      };
+    }
     return out;
   }
 
@@ -4984,6 +4952,137 @@ export class NeuroshimaScriptRunner {
         await script.execute(args);
       }
     }
+  }
+
+  /**
+   * Execute one canonical lifecycle event and, when requested by the callsite,
+   * its legacy aliases. Canonical scripts are always executed once, even when
+   * several old triggers used to describe the same lifecycle boundary.
+   *
+   * New scripts receive the stable context as both args.context and
+   * args.eventContext. Legacy scripts keep their original args shape and gain
+   * the context additively.
+   */
+  static async executeEvent(event, args = {}, {
+    legacyTriggers = [],
+    metadata = {}
+  } = {}) {
+    const actor = args.actor;
+    if (!actor) return null;
+    const publicTrigger = this._resolvePublicTrigger(event, args, metadata);
+    if (!Object.hasOwn(EFFECT_TRIGGERS, publicTrigger)) {
+      throw new Error(`Unknown Neuroshima effect trigger: ${publicTrigger}`);
+    }
+
+    const context = createTriggerContext(publicTrigger, args, metadata);
+    const eventArgs = args;
+    eventArgs.trigger = publicTrigger;
+    eventArgs.eventContext = context;
+
+    game.neuroshima?.log?.(`[${publicTrigger}] fired`, this._triggerArgsForLog(eventArgs));
+
+    const canonicalScripts = this.getScripts(actor, publicTrigger)
+      .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
+      .filter(script => !(publicTrigger === "collectMeleeActions" && script.useActionDef));
+    for (const script of canonicalScripts) {
+      await this._executeScriptWithCompatibility(script, event, eventArgs);
+    }
+
+    const seen = new Set(canonicalScripts.map(script => this._scriptIdentity(script)));
+    for (const legacyTrigger of [...new Set(legacyTriggers)]) {
+      const legacyScripts = this.getScripts(actor, legacyTrigger);
+      for (const script of legacyScripts) {
+        const identity = this._scriptIdentity(script);
+        if (seen.has(identity)) continue;
+        seen.add(identity);
+        context.legacyTrigger = legacyTrigger;
+        await this._executeScriptWithCompatibility(script, legacyTrigger, eventArgs);
+      }
+    }
+    context.legacyTrigger = null;
+    return context;
+  }
+
+  static _resolvePublicTrigger(event, args = {}, metadata = {}) {
+    if (Object.hasOwn(EFFECT_TRIGGERS, event)) return event;
+    const type = metadata.type ?? args.test?.rollType ?? null;
+    const role = metadata.role ?? args.role ?? null;
+    const aliases = {
+      "roll.before": "preRollTest",
+      "roll.evaluate": type === "weapon" ? "rollWeaponTest" : "rollTest",
+      "roll.after": type === "weapon" ? "rollWeaponTest" : "rollTest",
+      "damage.before": role === "source" ? "preApplyDamage" : "preTakeDamage",
+      "damage.mitigate": "APCalc",
+      "damage.after": role === "source" ? "applyDamage" : "takeDamage",
+      "duel.start": "onDuelStart",
+      "duel.segment.before": "onDuelSegmentStart",
+      "duel.segment.after": role === "defender" ? "opposedDefender" : "opposedAttacker",
+      "duel.action.before": "beforeMeleeAction",
+      "duel.action.after": "afterMeleeAction",
+      "duel.end": "onDuelEnd",
+      "duel.actions.collect": "collectMeleeActions"
+    };
+    return aliases[event] ?? event;
+  }
+
+  /**
+   * Compatibility-only dispatch for an old trigger whose execution semantics
+   * cannot be migrated losslessly yet (for example weaponJam).
+   */
+  static async executeLegacy(trigger, args = {}, metadata = {}) {
+    const event = LEGACY_EFFECT_TRIGGERS[trigger] ?? trigger;
+    const context = createTriggerContext(event, args, {
+      ...metadata,
+      legacyTrigger: trigger
+    });
+    const legacyArgs = args;
+    legacyArgs.trigger = trigger;
+    legacyArgs.eventContext = context;
+    for (const script of this.getScripts(args.actor, trigger)) {
+      await this._executeScriptWithCompatibility(script, trigger, legacyArgs);
+    }
+    return context;
+  }
+
+  static async _executeScriptWithCompatibility(script, trigger, args) {
+    if (trigger === "takeDamage" && Array.isArray(args.wounds)) {
+      const before = args.wounds.map(w => ({
+        forcePassed: w.forcePassed,
+        annotation: w.annotation
+      }));
+      await script.execute(args);
+      args.wounds.forEach((wound, index) => {
+        if (wound.forcePassed && !before[index].forcePassed && !wound.effectName) {
+          wound.effectName = script.effect?.name ?? "";
+        }
+        const previous = before[index].annotation;
+        if (wound.annotation && previous && wound.annotation !== previous) {
+          wound.annotation = `${previous}\n${wound.annotation}`;
+        }
+      });
+      return;
+    }
+    await script.execute(args);
+  }
+
+  static _scriptIdentity(script) {
+    return `${script.effect?.uuid ?? "effect"}:${script.id ?? script._sourceIdx ?? script.label ?? "script"}`;
+  }
+
+  static _matchesItemDocumentScope(script, trigger, usedItem = null) {
+    const itemScopedTriggers = new Set([
+      "preRollTest", "preRollWeaponTest", "rollTest", "rollWeaponTest",
+      "preOpposedAttacker", "opposedAttacker", "calculateOpposedDamage",
+      "preApplyDamage", "applyDamage"
+    ]);
+    if (!itemScopedTriggers.has(trigger)) return true;
+    const effect = script.effect;
+    const parentItem = effect?.parent?.documentName === "Item" ? effect.parent : null;
+    if (!parentItem) return true;
+    const documentType = effect.getFlag?.("neuroshima", "documentType") ?? "actor";
+    if (documentType !== "item") return true;
+    if (!usedItem) return true;
+    return parentItem.uuid === usedItem.uuid;
   }
 
   /**
@@ -5048,6 +5147,42 @@ export class NeuroshimaScriptRunner {
     for (const script of scripts) {
       script.executeSync(args);
     }
+  }
+
+  static executeEventSync(event, args = {}, {
+    legacyTriggers = [],
+    metadata = {}
+  } = {}) {
+    const actor = args.actor;
+    if (!actor) return null;
+    const publicTrigger = this._resolvePublicTrigger(event, args, metadata);
+    if (!Object.hasOwn(EFFECT_TRIGGERS, publicTrigger)) {
+      throw new Error(`Unknown Neuroshima effect trigger: ${publicTrigger}`);
+    }
+
+    const context = createTriggerContext(publicTrigger, args, metadata);
+    const eventArgs = args;
+    eventArgs.trigger = publicTrigger;
+    eventArgs.eventContext = context;
+    const canonicalScripts = this.getScripts(actor, publicTrigger)
+      .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
+      .filter(script => !(publicTrigger === "collectMeleeActions" && script.useActionDef));
+    const seen = new Set();
+    for (const script of canonicalScripts) {
+      seen.add(this._scriptIdentity(script));
+      script.executeSync(eventArgs);
+    }
+    for (const legacyTrigger of [...new Set(legacyTriggers)]) {
+      for (const script of this.getScripts(actor, legacyTrigger)) {
+        const identity = this._scriptIdentity(script);
+        if (seen.has(identity)) continue;
+        seen.add(identity);
+        context.legacyTrigger = legacyTrigger;
+        script.executeSync(eventArgs);
+      }
+    }
+    context.legacyTrigger = null;
+    return context;
   }
 
   /**
@@ -5332,90 +5467,11 @@ export class NeuroshimaScriptRunner {
       });
     }
     /**/ 
-      const hasCachedPreRollModifiers =
-    Array.isArray(
-      options.preRollModifiers
-    );
-
-  const preRollModifiers =
-    hasCachedPreRollModifiers
-      ? foundry.utils.deepClone(
-          options.preRollModifiers
-        )
+    // preRollTest belongs to the real roll lifecycle. Dialog preview must not
+    // execute it on a synthetic test, otherwise side effects run twice.
+    const preRollModifiers = Array.isArray(options.preRollModifiers)
+      ? foundry.utils.deepClone(options.preRollModifiers)
       : [];
-
-  if (!hasCachedPreRollModifiers) {
-    const preRollTestScripts =
-      this.getScripts(
-        actor,
-        "preRollTest"
-      );
-
-    for (
-      const script
-      of preRollTestScripts
-    ) {
-      const syntheticTest = {
-        actor,
-
-        preData: {
-          penalties: {
-            mod: 0,
-            wounds: 0,
-            armor: 0,
-            base: 0
-          },
-
-          skillBonus: 0,
-          attributeBonus: 0,
-          autoSuccess: false,
-          cancelled: false,
-          annotations: []
-        },
-
-        context: {
-          ...rollContext
-        }
-      };
-
-      try {
-        await script.execute({
-          actor,
-          test:
-            syntheticTest
-        });
-      } catch (error) {
-        console.error(
-          `Neuroshima | preRollTest script error on "${script.label}":`,
-          error
-        );
-
-        continue;
-      }
-
-      const value =
-        Number(
-          syntheticTest
-            .preData
-            .penalties
-            .mod
-          ?? 0
-        );
-
-      const label =
-        syntheticTest
-          .preData
-          .annotations
-          ?.[0]
-        ?? script.label
-        ?? "preRollTest";
-
-      preRollModifiers.push({
-        label,
-        value
-      });
-    }
-  }
 
     const scriptFields = { modifier: 0, attributeBonus: 0, skillBonus: 0, armorDelta: 0, woundDelta: 0, diseasePenalty: 0, weaponModifier: 0, difficulty: null, hitLocation: null, difficultyShift: 0, finalDifficultyShift: 0, maximumDifficulty: null, autoSuccess: false, annotations: [], damageShift: 0, damageShift1: 0, damageShift2: 0, damageShift3: 0, healingModifierAll: 0, healingModifier: {}, healingDifficulty: {}, healingModBreakdown: [], attributeKey: null, skillKey: null, skillLabel: null, dieManualBonus: 0, dieReductionBonus: 0 };
     const modBreakdown = [], attrBreakdown = [], skillBreakdown = [];
@@ -5678,13 +5734,13 @@ export class NeuroshimaScriptRunner {
    * Run endRound scripts for all combatants at the end of a round.
    * @param {Combat} combat
    */
-  static async runEndRound(combat) {
+  static async runEndRound(combat, round = combat.round) {
     const actors = new Set();
     for (const combatant of combat.combatants) {
       const actor = combatant.actor;
       if (!actor || actors.has(actor.id)) continue;
       actors.add(actor.id);
-      await this.execute("endRound", { actor, combat, round: combat.round });
+      await this.execute("endRound", { actor, combat, round });
     }
   }
 

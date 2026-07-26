@@ -74,10 +74,13 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     // For getMeleeActions in dialog mode, submissionScript runs when modifier is checked and Attack clicked.
     const showSubmissionScript = scriptData.trigger === "dialog" ||
       (scriptData.trigger === "getMeleeActions" && scriptData.isDialogScript);
-
+    const triggers = { ...NeuroshimaScriptRunner.TRIGGERS };
+    if (!Object.hasOwn(triggers, scriptData.trigger)) {
+      triggers[scriptData.trigger] = `[Legacy] ${scriptData.trigger}`;
+    }
     return {
       scriptData,
-      triggers: NeuroshimaScriptRunner.TRIGGERS,
+      triggers,
       index: this.scriptIndex,
       showDialogSubScripts,
       isMeleeActionsScript,
