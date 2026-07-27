@@ -360,7 +360,7 @@ test("weapon penalty breakdown includes weapon and movement keys", async () => {
   assert.equal(instance.result.penalties.movingTarget, 4);
 });
 
-test("tooltip contains final target penalties and dice changes", async () => {
+test("tooltip is compact and keeps the threshold after domain sections", async () => {
   const instance = rangedFixture({ threshold: 20 });
   await instance.roll({ sendToChat: false });
   instance.replaceDie(0, 14, { label: "<Effect & Test>" });
@@ -368,9 +368,21 @@ test("tooltip contains final target penalties and dice changes", async () => {
   const tooltip = instance.getDataTooltip();
   assert.match(tooltip, /Tooltip\.Target/);
   assert.match(tooltip, /Tooltip\.Weapon/);
-  assert.match(tooltip, /Tooltip\.Die/);
-  assert.match(tooltip, /&lt;Effect &amp; Test&gt;/);
-  assert.doesNotMatch(tooltip, /&amp;lt;/);
+  assert.match(tooltip, /class="ns-roll-tooltip"/);
+  assert.match(tooltip, /ns-roll-tooltip__section-number">01/);
+  assert.match(tooltip, /is-emphasized/);
+  assert.match(tooltip, /is-subrow/);
+  assert.doesNotMatch(tooltip, /Tooltip\.(?:Die|FinalAttribute|FinalSkill|FinalDifficulty|DifficultyShift)/);
+  assert.equal((tooltip.match(/Tooltip\.BaseDifficulty/g) ?? []).length, 1);
+  assert.ok(tooltip.lastIndexOf("Tooltip.Target") > tooltip.lastIndexOf("Tooltip.WeaponSection"));
+
+  const escaped = instance.constructor.renderTooltipSections([{
+    title: "<Title>",
+    rows: [{ label: "<Label>", value: "<Effect & Test>" }]
+  }]);
+  assert.match(escaped, /&lt;Title&gt;/);
+  assert.match(escaped, /&lt;Effect &amp; Test&gt;/);
+  assert.doesNotMatch(escaped, /&amp;lt;/);
 });
 
 test("getChatData exposes isReroll and isEdited", async () => {

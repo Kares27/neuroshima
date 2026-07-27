@@ -190,16 +190,43 @@ export class NeuroshimaTestBase {
   static dieSides = 20;
 
   static renderTooltipSections(sections = []) {
-    return sections
-      .filter(section => section.rows?.length)
-      .map(section => [
-        `<strong>${escapeTooltip(game.i18n.localize(section.title))}</strong>`,
-        ...section.rows.map(row =>
-          `${escapeTooltip(game.i18n.localize(row.label))}: `
-          + `${escapeTooltip(row.signed ? signed(row.value) : row.value)}`
-        )
-      ].join("<br>"))
-      .join("<hr>");
+    const allowedStates = new Set(["penalty", "bonus", "success", "failure", "ignored"]);
+    const visibleSections = sections.filter(section => section.rows?.length);
+    const orderedSections = [
+      ...visibleSections.filter(section => section.kind !== "threshold"),
+      ...visibleSections.filter(section => section.kind === "threshold")
+    ];
+    const renderedSections = orderedSections
+      .map((section, sectionIndex) => {
+        const sectionClasses = ["ns-roll-tooltip__section"];
+        if (section.kind === "threshold") sectionClasses.push("ns-roll-tooltip__section--threshold");
+        const rows = section.rows.map(row => {
+          const rowClasses = ["ns-roll-tooltip__row"];
+          if (allowedStates.has(row.state)) rowClasses.push(`is-${row.state}`);
+          if (row.emphasis === true) rowClasses.push("is-emphasized");
+          if (row.indent === true) rowClasses.push("is-subrow");
+          return [
+            `<div class="${rowClasses.join(" ")}">`,
+            `<dt class="ns-roll-tooltip__label">${escapeTooltip(game.i18n.localize(row.label))}</dt>`,
+            `<dd class="ns-roll-tooltip__value">${escapeTooltip(row.signed ? signed(row.value) : row.value)}</dd>`,
+            "</div>"
+          ].join("");
+        }).join("");
+        const header = section.kind === "threshold" ? "" : [
+          '<header class="ns-roll-tooltip__section-header">',
+          `<span class="ns-roll-tooltip__section-number">${String(sectionIndex + 1).padStart(2, "0")}</span>`,
+          `<h3 class="ns-roll-tooltip__section-title">${escapeTooltip(game.i18n.localize(section.title))}</h3>`,
+          "</header>"
+        ].join("");
+        return [
+          `<section class="${sectionClasses.join(" ")}">`,
+          header,
+          `<dl class="ns-roll-tooltip__rows">${rows}</dl>`,
+          "</section>"
+        ].join("");
+      })
+      .join("");
+    return `<div class="ns-roll-tooltip">${renderedSections}</div>`;
   }
 
   constructor(data = {}, actor = null) {
@@ -600,48 +627,50 @@ export class NeuroshimaTestBase {
       movingTarget: "NEUROSHIMA.Tooltip.MovingTarget"
     };
     const penaltyRows = Object.entries(result.penalties ?? {})
-      .filter(([, value]) => Number(value) !== 0)
+      .filter(([key, value]) => key !== "base" && Number(value) !== 0)
       .map(([key, value]) => ({
         label: penaltyLabels[key] ?? key,
-        value: `${signed(value)}%`
+        value: `${signed(value)}%`,
+        state: Number(value) > 0 ? "penalty" : "bonus"
       }));
-    const diceRows = (result.modifiedResults ?? []).map((die, index) => {
-      const changes = (result.diceChanges ?? [])
-        .filter(change => Number(change.targetIndex) === index)
-        .map(change => change.label || change.type)
-        .filter(Boolean);
-      return {
-        label: game.i18n.format("NEUROSHIMA.Tooltip.Die", { index: index + 1 }),
-        value: [
-          die.original,
-          die.modified !== die.original ? `→ ${die.modified}` : "",
-          die.ignored
-            ? game.i18n.localize("NEUROSHIMA.Tooltip.Ignored")
-            : die.isSuccess
-              ? game.i18n.localize("NEUROSHIMA.Tooltip.Success")
-              : game.i18n.localize("NEUROSHIMA.Tooltip.Failure"),
-          changes.length ? `(${changes.join(", ")})` : ""
-        ].filter(Boolean).join(" ")
-      };
-    });
     return [
       {
         title: "NEUROSHIMA.Tooltip.Test",
         rows: [
           { label: "NEUROSHIMA.Tooltip.BaseAttribute", value: result.baseStat ?? 0 },
-          { label: "NEUROSHIMA.Tooltip.AttributeBonus", value: result.attributeBonus ?? 0, signed: true },
-          { label: "NEUROSHIMA.Tooltip.FinalAttribute", value: result.stat ?? 0 },
+          {
+            label: "NEUROSHIMA.Tooltip.AttributeBonus",
+            value: result.attributeBonus ?? 0,
+            signed: true,
+            indent: true,
+            state: Number(result.attributeBonus ?? 0) > 0
+              ? "bonus"
+              : Number(result.attributeBonus ?? 0) < 0 ? "penalty" : null
+          },
           { label: "NEUROSHIMA.Tooltip.BaseSkill", value: result.baseSkill ?? 0 },
-          { label: "NEUROSHIMA.Tooltip.SkillBonus", value: result.skillBonus ?? 0, signed: true },
-          { label: "NEUROSHIMA.Tooltip.FinalSkill", value: result.skill ?? 0 },
-          { label: "NEUROSHIMA.Tooltip.BaseDifficulty", value: game.i18n.localize(result.baseDifficultyLabel ?? "") },
-          { label: "NEUROSHIMA.Tooltip.FinalDifficulty", value: game.i18n.localize(result.difficultyLabel ?? "") },
-          { label: "NEUROSHIMA.Tooltip.DifficultyShift", value: result.finalDifficultyShift ?? 0, signed: true },
-          { label: "NEUROSHIMA.Tooltip.Target", value: result.target ?? result.testTarget ?? 0 }
+          {
+            label: "NEUROSHIMA.Tooltip.SkillBonus",
+            value: result.skillBonus ?? 0,
+            signed: true,
+            indent: true,
+            state: Number(result.skillBonus ?? 0) > 0
+              ? "bonus"
+              : Number(result.skillBonus ?? 0) < 0 ? "penalty" : null
+          },
+          { label: "NEUROSHIMA.Tooltip.BaseDifficulty", value: game.i18n.localize(result.baseDifficultyLabel ?? "") }
         ]
       },
       { title: "NEUROSHIMA.Tooltip.Penalties", rows: penaltyRows },
-      { title: "NEUROSHIMA.Tooltip.Dice", rows: diceRows }
+      {
+        kind: "threshold",
+        rows: [
+          {
+            label: "NEUROSHIMA.Tooltip.Target",
+            value: result.target ?? result.testTarget ?? 0,
+            emphasis: true
+          }
+        ]
+      }
     ];
   }
 
@@ -836,7 +865,14 @@ export class HealingTest extends SkillTest {
         title: "NEUROSHIMA.Tooltip.HealingSection",
         rows: [
           { label: "NEUROSHIMA.Tooltip.Wounds", value: this.result.woundName ?? "" },
-          { label: "NEUROSHIMA.Tooltip.Modifier", value: this.result.healingEffect?.penaltyChange ?? 0, signed: true }
+          {
+            label: "NEUROSHIMA.Tooltip.Modifier",
+            value: this.result.healingEffect?.penaltyChange ?? 0,
+            signed: true,
+            state: Number(this.result.healingEffect?.penaltyChange ?? 0) > 0
+              ? "penalty"
+              : Number(this.result.healingEffect?.penaltyChange ?? 0) < 0 ? "bonus" : null
+          }
         ]
       }
     ];
@@ -980,10 +1016,13 @@ export class PercentileTest extends NeuroshimaTestBase {
   getTooltipSections() {
     return [
       {
-        title: "NEUROSHIMA.Tooltip.Test",
+        kind: "threshold",
         rows: [
-          { label: "NEUROSHIMA.Tooltip.Target", value: this.result.target ?? 0 },
-          { label: "NEUROSHIMA.Tooltip.Die", value: this.result.rawResults?.[0] ?? 0 }
+          {
+            label: "NEUROSHIMA.Tooltip.Target",
+            value: this.result.target ?? 0,
+            emphasis: true
+          }
         ]
       }
     ];

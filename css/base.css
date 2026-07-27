@@ -3484,8 +3484,221 @@ li.chat-message.message.flexcol > .message-content {
     padding-top: 2px;
 }
 
-.neuroshima-roll-tooltip {
-    min-width: 150px;
+/* Roll report tooltip mounted globally by Foundry through data-tooltip-html. */
+#tooltip:has(.ns-roll-tooltip) {
+    width: 310px;
+    max-width: min(310px, calc(100vw - 24px));
+    max-height: min(620px, calc(100vh - 24px));
+    padding: 0;
+    overflow: auto;
+    border: 1px solid #5b5143;
+    border-left: 4px solid #a02e2e;
+    border-radius: 3px;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.018) 0,
+            rgba(255, 255, 255, 0.018) 1px,
+            transparent 1px,
+            transparent 5px
+        ),
+        linear-gradient(145deg, #1a171b 0%, #111015 72%);
+    color: #e9e2d3;
+    box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.56),
+        inset 0 0 28px rgba(0, 0, 0, 0.22);
+    text-align: left;
+}
+
+.ns-roll-tooltip {
+    --ns-roll-tooltip-text: #e9e2d3;
+    --ns-roll-tooltip-muted: #aaa397;
+    --ns-roll-tooltip-red: #a02e2e;
+    --ns-roll-tooltip-gold: #b59a62;
+    --ns-roll-tooltip-green: #78a36f;
+    --ns-roll-tooltip-failure: #c76b67;
+    color: var(--ns-roll-tooltip-text);
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.ns-roll-tooltip__section {
+    padding: 8px 10px 9px;
+    border-bottom: 1px solid rgba(181, 154, 98, 0.22);
+}
+
+.ns-roll-tooltip__section:last-child {
+    border-bottom: 0;
+}
+
+.ns-roll-tooltip__section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 7px;
+}
+
+.ns-roll-tooltip__section-number {
+    flex: 0 0 auto;
+    min-width: 24px;
+    padding: 2px 4px 1px;
+    border: 1px solid rgba(181, 154, 98, 0.52);
+    color: var(--ns-roll-tooltip-gold);
+    font-family: "SpecialElite", "Special Elite", serif;
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.7px;
+    text-align: center;
+}
+
+.ns-roll-tooltip__section-title {
+    min-width: 0;
+    margin: 0;
+    color: var(--ns-roll-tooltip-text);
+    font-family: "SpecialElite", "Special Elite", serif;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0.75px;
+    text-transform: uppercase;
+}
+
+.ns-roll-tooltip__section-header::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    margin-left: 2px;
+    background: linear-gradient(90deg, rgba(181, 154, 98, 0.48), transparent);
+}
+
+.ns-roll-tooltip__rows {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+}
+
+.ns-roll-tooltip__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(82px, 0.9fr) minmax(72px, 1.1fr);
+    gap: 9px;
+    align-items: baseline;
+    min-width: 0;
+    padding: 4px 6px;
+    border-left: 2px solid transparent;
+}
+
+.ns-roll-tooltip__row:nth-child(odd) {
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.ns-roll-tooltip__label,
+.ns-roll-tooltip__value {
+    min-width: 0;
+    margin: 0;
+}
+
+.ns-roll-tooltip__label {
+    color: var(--ns-roll-tooltip-muted);
+    overflow-wrap: anywhere;
+}
+
+.ns-roll-tooltip__value {
+    color: var(--ns-roll-tooltip-text);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.ns-roll-tooltip__row.is-emphasized {
+    margin: 0;
+    padding: 7px 8px 6px;
+    border: 1px solid rgba(160, 46, 46, 0.68);
+    border-left: 3px solid var(--ns-roll-tooltip-red);
+    background: linear-gradient(90deg, rgba(160, 46, 46, 0.22), rgba(160, 46, 46, 0.05));
+    box-shadow: inset 0 0 12px rgba(160, 46, 46, 0.08);
+}
+
+.ns-roll-tooltip__row.is-emphasized .ns-roll-tooltip__label {
+    color: #d9cbb1;
+    font-family: "SpecialElite", "Special Elite", serif;
+    letter-spacing: 0.35px;
+}
+
+.ns-roll-tooltip__row.is-emphasized .ns-roll-tooltip__value {
+    color: #fff3dc;
+    font-size: 14px;
+}
+
+.ns-roll-tooltip__row.is-penalty {
+    border-left-color: rgba(199, 107, 103, 0.68);
+}
+
+.ns-roll-tooltip__row.is-penalty .ns-roll-tooltip__value,
+.ns-roll-tooltip__row.is-failure .ns-roll-tooltip__value {
+    color: var(--ns-roll-tooltip-failure);
+}
+
+.ns-roll-tooltip__row.is-bonus {
+    border-left-color: rgba(181, 154, 98, 0.66);
+}
+
+.ns-roll-tooltip__row.is-bonus .ns-roll-tooltip__value {
+    color: #cfb878;
+}
+
+.ns-roll-tooltip__row.is-success {
+    border-left-color: rgba(120, 163, 111, 0.68);
+}
+
+.ns-roll-tooltip__row.is-success .ns-roll-tooltip__value {
+    color: var(--ns-roll-tooltip-green);
+}
+
+.ns-roll-tooltip__row.is-failure {
+    border-left-color: rgba(199, 107, 103, 0.68);
+}
+
+.ns-roll-tooltip__row.is-ignored {
+    border-left-color: rgba(170, 163, 151, 0.42);
+    opacity: 0.62;
+}
+
+.ns-roll-tooltip__row.is-ignored .ns-roll-tooltip__value {
+    color: var(--ns-roll-tooltip-muted);
+    text-decoration: line-through;
+    text-decoration-color: rgba(170, 163, 151, 0.45);
+}
+
+.ns-roll-tooltip__row.is-subrow {
+    padding-left: 18px;
+}
+
+.ns-roll-tooltip__row.is-subrow .ns-roll-tooltip__label {
+    color: #918b80;
+    font-size: 11px;
+}
+
+.ns-roll-tooltip__section--threshold {
+    padding: 8px 10px 10px;
+    background: rgba(160, 46, 46, 0.045);
+}
+
+@media (max-width: 420px) {
+    #tooltip:has(.ns-roll-tooltip) {
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+    }
+
+    .ns-roll-tooltip__section {
+        padding-inline: 9px;
+    }
+
+    .ns-roll-tooltip__row {
+        grid-template-columns: minmax(78px, 0.8fr) minmax(70px, 1.2fr);
+        gap: 8px;
+    }
 }
 
 /* === PATIENT CARD === */
