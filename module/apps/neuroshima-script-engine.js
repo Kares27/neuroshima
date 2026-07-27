@@ -209,6 +209,11 @@ export class NeuroshimaScript {
     return this._executingItem ?? (this.effect?.parent?.documentName === "Item" ? this.effect.parent : null);
   }
 
+  get isRecalculation() {
+    const test = this._currentArgs?.test;
+    return test?.context?.edited === true || test?.context?.reroll === true;
+  }
+
   /**
    * Ask the Actor's designated decision-maker to choose one list entry.
    * Rows support value/label plus optional description, img, tooltipHtml and
@@ -312,55 +317,22 @@ export class NeuroshimaScript {
     args.dialogModifiers.push({ label, modifier: Number(modifier) || 0, description });
   }
 
-  /** Resolve mutable Roll Test data and initialise its change history. */
-  _getRollTestData(args) {
-    const data = args?.test?.result;
-    if (!data || !Array.isArray(data.rawResults)) return null;
-    data.rolledResults ??= [...data.rawResults];
-    data.diceChanges ??= [];
-    return data;
-  }
-
   /** Declare a replacement of one effective Roll Test die. */
-  replaceTestDie(args, targetIndex, newValue, options = {}) {
-    const data = this._getRollTestData(args);
-    targetIndex = Number(targetIndex);
-    newValue = Number(newValue);
-    if (!data || !Number.isInteger(targetIndex)) return false;
-    if (targetIndex < 0 || targetIndex >= data.rawResults.length) return false;
-    if (!Number.isFinite(newValue)) return false;
-
-    newValue = Math.clamp(Math.trunc(newValue), 1, 20);
-    const oldValue = data.rawResults[targetIndex];
-    if (oldValue === newValue) return false;
-
-    data.rawResults[targetIndex] = newValue;
-    data.diceChanges.push({
-      type: options.type ?? "replace",
-      targetIndex,
-      sourceIndex: Number.isInteger(options.sourceIndex) ? options.sourceIndex : null,
-      oldValue,
-      newValue,
+  replaceTestDie(args, index, value, options = {}) {
+    return args?.test?.replaceDie?.(index, value, {
+      ...options,
       label: options.label ?? this.effect?.name ?? this.label ?? "Effect",
-      icon: options.icon ?? "fas fa-pen",
-      effectUuid: this.effect?.uuid ?? null
-    });
-    return true;
+      effectUuid: options.effectUuid ?? this.effect?.uuid ?? null
+    }) ?? false;
   }
 
   /** Declare copying the current effective value of one Roll Test die to another. */
   copyTestDie(args, sourceIndex, targetIndex, options = {}) {
-    const data = this._getRollTestData(args);
-    sourceIndex = Number(sourceIndex);
-    if (!data || !Number.isInteger(sourceIndex)) return false;
-    if (sourceIndex < 0 || sourceIndex >= data.rawResults.length) return false;
-
-    return this.replaceTestDie(args, targetIndex, data.rawResults[sourceIndex], {
+    return args?.test?.copyDie?.(sourceIndex, targetIndex, {
       ...options,
-      type: "copy",
-      sourceIndex,
-      icon: options.icon ?? "fas fa-copy"
-    });
+      label: options.label ?? this.effect?.name ?? this.label ?? "Effect",
+      effectUuid: options.effectUuid ?? this.effect?.uuid ?? null
+    }) ?? false;
   }
 
   // ── Location helpers ─────────────────────────────────────────────────────
@@ -823,7 +795,7 @@ export class NeuroshimaScript {
    * @param {Actor}  [actor] - Defaults to this.actor.
    *
    * @example
-   * // meleeUpdate phase "segment-advance" — consume Wiatrak initiative reclaim:
+   * // afterMeleeAction — consume the initiative reclaim:
    * if (!this.isActiveForMelee(args)) return;
    * args.encounter.turnState.initiativeOwnerId = myId;
    * this.deactivateForMelee(args);
@@ -958,7 +930,7 @@ export class NeuroshimaScript {
    * if (opp?.maneuver === "fullDefense") { ... }
    *
    * @example
-   * // meleeUpdate — inspect opponent's pool
+   * // afterMeleeAction — inspect opponent's pool
    * const opp = this.getMeleeOpponentParticipant();
    * if (opp && opp.pool.some(v => v === 1)) { ... }
    */
@@ -992,7 +964,7 @@ export class NeuroshimaScript {
    * return opp?.type !== "beast";
    *
    * @example
-   * // meleeUpdate — apply a wound to the opponent at turn-end
+   * // afterMeleeAction — apply a wound to the opponent
    * const opp = this.getMeleeOpponentActor();
    * if (opp) await this.applyWound("D", "torso", opp);
    */
@@ -1110,14 +1082,18 @@ export class NeuroshimaScript {
    * Negative delta makes it EASIER to jam (threshold moves down).
    *
    * @param {Object} args  - The args object from a preRollWeaponTest trigger.
-   * @param {number} delta - Amount to add to `args.jammingThreshold`.
+   * @param {number} delta - Amount added to `args.test.preData.jammingThreshold`.
    *
    * @example
    * // In preRollWeaponTest — Rusznikarstwo passive: weapon is +3 harder to jam
    * this.modifyJammingThreshold(args, 3);
    */
   modifyJammingThreshold(args, delta) {
-    if (typeof args?.jammingThreshold === "number") args.jammingThreshold += delta;
+    const test = args?.test;
+    if (!test) return false;
+    const current = Number(test.preData.jammingThreshold ?? test.item?.system?.jamming ?? 20);
+    test.preData.jammingThreshold = current + Number(delta ?? 0);
+    return true;
   }
 
   /**
@@ -1144,9 +1120,12 @@ export class NeuroshimaScript {
    * }
    */
   allowShotDespiteJam(args, count = 1) {
-    if (!args) return;
-    args.canFireDespiteJam = true;
-    args.despiteJamBullets = Math.floor(Math.max(1, count));
+    const test = args?.test;
+    if (!test) return false;
+    test.preData.firedDespiteJam = true;
+    test.preData.despiteJamBullets = Math.max(1, Math.floor(Number(count) || 1));
+    test.markDirty("fireDespiteJam");
+    return true;
   }
 
   /**
@@ -1160,12 +1139,18 @@ export class NeuroshimaScript {
    * this.clearWeaponJam(args);
    */
   clearWeaponJam(args) {
-    if (args) args.clearJam = true;
+    const test = args?.test;
+    if (!test) return false;
+    test.preData.forceNoJam = true;
+    test.preData.forceJam = false;
+    test.preData.firedDespiteJam = false;
+    test.markDirty("clearJam");
+    return true;
   }
 
   /**
    * In a `preRollWeaponTest` script, prevent the weapon from jamming this shot entirely.
-   * Equivalent to setting `args.forceNoJam = true`.
+   * Stores the control state in `args.test.preData.forceNoJam`.
    *
    * @param {Object} args - The args object from a preRollWeaponTest trigger.
    *
@@ -1174,12 +1159,15 @@ export class NeuroshimaScript {
    * this.preventWeaponJam(args);
    */
   preventWeaponJam(args) {
-    if (args) args.forceNoJam = true;
+    if (!args?.test) return false;
+    args.test.preData.forceNoJam = true;
+    args.test.preData.forceJam = false;
+    return true;
   }
 
   /**
    * In a `preRollWeaponTest` script, force the weapon to jam regardless of the dice.
-   * Equivalent to setting `args.forceJam = true`.
+   * Stores the control state in `args.test.preData.forceJam`.
    *
    * @param {Object} args - The args object from a preRollWeaponTest trigger.
    *
@@ -1188,7 +1176,10 @@ export class NeuroshimaScript {
    * this.forceWeaponJam(args);
    */
   forceWeaponJam(args) {
-    if (args) args.forceJam = true;
+    if (!args?.test) return false;
+    args.test.preData.forceJam = true;
+    args.test.preData.forceNoJam = false;
+    return true;
   }
 
   /**
@@ -1226,22 +1217,16 @@ export class NeuroshimaScript {
    *   this.clearWeaponJam(args);
    * }
    */
-  isStandardJam(argsOrResult, min = 1, max = 20) {
-    const bestResult = typeof argsOrResult === "number" ? argsOrResult : argsOrResult?.bestResult;
-    if (bestResult === undefined || bestResult === null) return false;
+  isStandardJam(args, min = 1, max = 20) {
+    const result = args?.test?.result;
+    if (!result) return false;
     const lo = Math.min(min, max);
     const hi = Math.max(min, max);
-    const inRange = bestResult >= lo && bestResult <= hi;
-    if (typeof argsOrResult !== "object" || argsOrResult === null) return inRange;
-    if (typeof argsOrResult.wouldSucceed === "boolean") {
-      const result = inRange && argsOrResult.wouldSucceed;
-      game.neuroshima?.log?.("[isStandardJam]", {
-        bestResult, range: `[${lo},${hi}]`, inRange,
-        wouldSucceed: argsOrResult.wouldSucceed, result
-      });
-      return result;
-    }
-    return inRange;
+    const best = Number(result.bestResult);
+    return result.isJamming === true
+      && result.wouldSucceed === true
+      && best >= lo
+      && best <= hi;
   }
 
   /**
@@ -1261,22 +1246,16 @@ export class NeuroshimaScript {
    */
   addAnnotation(text) {
     const args = this._currentArgs;
-    if (!args || text === undefined || text === null) return false;
-
-    // Keep this order explicit: trigger-local arrays are authoritative, while
-    // fields.annotations is the persistent bridge from dialog/submission to roll.
-    const candidates = [
-      args.fields?.annotations,
-      args.test?.preData?.annotations,
-      args.test?.result?.annotations
-    ];
-    const annotations = candidates.find(Array.isArray);
-    if (!annotations) return false;
-
-    const annotation = String(text).trim();
-    if (!annotation) return false;
-    annotations.push(annotation);
-    return true;
+    const annotation = String(text ?? "").trim();
+    if (!args || !annotation) return false;
+    if (Array.isArray(args.fields?.annotations)) {
+      if (!args.fields.annotations.includes(annotation)) args.fields.annotations.push(annotation);
+      return true;
+    }
+    const test = args.test;
+    if (!test) return false;
+    const phase = args.eventContext?.phase === "pre" ? "pre" : "result";
+    return test.addAnnotation(annotation, { phase });
   }
 
   /**
@@ -1306,7 +1285,7 @@ export class NeuroshimaScript {
   /**
    * Refund the last `count` bullets from the roll's bulletSequence back into the magazine / ammo item.
    * Works for both magazine-based and direct-ammo (thrown) weapons.
-   * Call inside `rollWeaponTest` or any other trigger that has access to `rollData`.
+   * Call inside `rollWeaponTest` or another trigger that receives `args.test`.
    *
    * @param {NeuroshimaTestBase} test - The current `args.test`.
    * @param {number} count     - Number of bullets to refund (taken from the tail of bulletSequence).
@@ -3338,11 +3317,10 @@ export class NeuroshimaScript {
   /**
    * Executes `dialogCode` — the pre-roll modifier script used by getMeleeActions+isDialogScript.
    * `dialogCode` runs in the weapon roll dialog phase and may modify args.fields.* (e.g. difficultyShift).
-   * Falls back to `code` when `dialogCode` is empty (backward-compat).
    * @param {object} args - dialog modifier args (actor, fields, rollType, weapon, isPreRollContext …)
    */
   async executeDialogCode(args = {}) {
-    const src = this.dialogCode || this.code;
+    const src = this.dialogCode;
     if (!src) return;
     return this._executeCode(src, args);
   }
@@ -3432,7 +3410,7 @@ export class NeuroshimaScript {
  *                    args.test.result                   — full roll result object
  *                    args.test.result.isSuccess         — boolean (read-only)
  *                    args.test.result.successCount      — number of successes (read-only)
- *                    args.test.result.roll              — the Foundry Roll object (read-only)
+ *                    args.test.diceRoll                 — the Foundry Roll object (read-only)
  *                    args.test.result.annotations       — string[] (push to add annotations)
  *                    args.test.context.label            — roll label
  *                    args.test.context.attributeKey     — raw attribute key string
@@ -3517,12 +3495,9 @@ export class NeuroshimaScript {
  * preRollWeaponTest — runs before a weapon test, including jamming preparation.
  *                    Allows scripts to shift the jam threshold or force/prevent jamming entirely.
  *                    Never fires for melee weapons.
- *                    args: { actor, weapon, jammingThreshold, ammoJamming, bestResult,
- *                            forceNoJam, forceJam }
- *                    Use: args.jammingThreshold += N  → raise threshold (harder to jam)
- *                         args.jammingThreshold -= N  → lower threshold (easier to jam)
- *                         args.forceNoJam = true      → weapon cannot jam this shot
- *                         args.forceJam   = true      → weapon always jams this shot
+ *                    args: { actor, item, test, context, eventContext }
+ *                    Use the jamming helpers below; control fields are stored
+ *                    only in args.test.preData.
  *                    Helpers: this.modifyJammingThreshold(args, delta)
  *                             this.preventWeaponJam(args)
  *                             this.forceWeaponJam(args)
@@ -3531,12 +3506,9 @@ export class NeuroshimaScript {
  * rollWeaponTest    — receives the completed weapon result, including jamming state.
  *                    Allows scripts to allow firing despite the jam, or clear the jam.
  *                    Never fires for melee weapons.
- *                    args: { actor, weapon, bestResult, jammingThreshold, wouldSucceed,
- *                            canFireDespiteJam, clearJam, despiteJamBullets }
- *                    Use: args.canFireDespiteJam = true → consume ammo and fire despite jam
- *                              (weapon stays jammed — needs repair; implements "It Will Work!")
- *                         args.clearJam = true          → jam is cancelled entirely (normal shot,
- *                              also clears pre-existing system.jammed flag on the weapon)
+ *                    args: { actor, item, test, context, eventContext }
+ *                    Helpers update args.test.preData and request a controlled
+ *                    recalculation of the current result.
  *                    Helpers: this.allowShotDespiteJam(args, count=1)
  *                             this.clearWeaponJam(args)
  *                             this.isStandardJam(args, min=1, max=20) → inRange AND wouldSucceed
@@ -3545,8 +3517,7 @@ export class NeuroshimaScript {
  * rollWeaponTest    — runs after the full ranged or melee weapon test is resolved.
  *                    Fires even if the weapon jammed (isJamming may be true).
  *                    Never fires for melee weapons.
- *                    args: { actor, weapon, isSuccess, isJamming, firedDespiteJam,
- *                            despiteJamBullets, hitBullets, bulletsFired, successPoints, rollData }
+ *                    args: { actor, item, test, context, eventContext }
  *                    Use: apply conditions/effects to shooter based on shot result,
  *                         send custom chat messages, trigger secondary effects.
  *
@@ -3594,27 +3565,10 @@ export class NeuroshimaScript {
  *                         notify chat, apply additional penalties for a specific condition)
  *
  * preRollWeaponTest — canonical pre-roll hook for melee and ranged weapon tests.
- *                    3k20 dice were set. New effects use preRollWeaponTest and restrict
- *                    themselves with args.test.rollClass === "MeleeWeaponTest".
- *                    The following contract is documented only for compatibility:
- *                    fires BEFORE the
- *                    pool is committed and visible to the opponent. Allows modifying snapshot
- *                    target values (attackTargetSnapshot, defenseTargetSnapshot) and skill/action.
- *                    Fires only for the participant who just rolled.
- *                    Analogous to WFRP4e's preRollTest but scoped to the melee pool roll.
- *                    args: { actor, encounter, participant, meleeAction, maneuver }
- *                    participant.id         — participant's key in encounter.participants map
- *                    participant.attackTargetSnapshot   — mutable: shift attacker's difficulty
- *                    participant.defenseTargetSnapshot  — mutable: shift defender's difficulty
- *                    participant.damageShift            — NOT mutable here (overwritten after trigger)
- *                    meleeAction            — "attack" | "defense" (which dialog the player used)
- *                    maneuver               — selected maneuver string (e.g. "fury", "fullDefense")
- *                    Use: args.participant.attackTargetSnapshot += N  → raise attack threshold
- *                         args.participant.defenseTargetSnapshot += N → raise defense threshold
- *                         args.participant.skillKey = "shooting"      → Gunfight: use Shooting skill
- *                    Note: do NOT write args.participant.damageShift here — it is overwritten
- *                    after the trigger fires. Use preOpposedAttacker for damage modifiers.
- *                    Example: Ośmiornica — args.participant.defenseTargetSnapshot -= 2
+ *                    Receives { actor, item, test, context, eventContext } before dice evaluation.
+ *                    Modify args.test.preData and call args.test.markDirty() when the change must
+ *                    be recomputed. Restrict melee-only effects with
+ *                    args.test.rollClass === "MeleeWeaponTest".
  *
  * preOpposedAttacker — Pre-Opposed Attacker: runs at the START of melee exchange resolution,
  *                    on the ATTACKER before success/failure is calculated.
@@ -3756,58 +3710,13 @@ export class NeuroshimaScript {
  *                    wins — initiative changes sides). Same args shape as onMeleeHit.
  *                    Note: for takeover, hitEntry on context is null.
  *
- * meleeUpdate       — Melee Lifecycle Update: fires at KEY transition points in the melee turn
- *                    state machine — analogous to Foundry's `updateCombat` hook but for the
- *                    internal melee encounter lifecycle. Fires for EVERY active participant actor.
- *                    args: { actor, encounter (mutable), encounterId, phase, participant, participantId }
- *                    ── phase values ──────────────────────────────────────────────────────────
- *                    "turn-start"       — new melee turn has been set up (pools reset, initiative
- *                                         order sorted, _effects cleared). Use for per-turn setup.
- *                                         Fires BEFORE the new state is persisted.
- *                    "pool-ready"       — BOTH participants have submitted their 3k20 rolls and the
- *                                         pool is committed. Fires before any exchange resolves.
- *                                         Use to react to the dice pool composition.
- *                    "attack-committed" — the current attacker has declared which die/dice they
- *                                         are committing for this exchange. Fires before resolution.
- *                                         args.encounter.currentExchange.declaredDiceCount is set.
- *                    "exchange-resolved"— fires on all participants after damage is applied but
- *                                         BEFORE the segment pointer advances. Ideal for tricks
- *                                         that count per-exchange hits or apply per-exchange riders.
- *                                         args.encounter.currentExchange.lastResult is set to the
- *                                         resolved resultType ("hit", "block", "takeover").
- *                    "segment-advance"  — all exchanges in this segment are done; segment pointer
- *                                         is about to increment. Scripts can modify
- *                                         args.encounter.turnState.initiativeOwnerId before the
- *                                         state is saved.
- *                    "turn-end"         — all 3 segments exhausted; melee TURN is about to reset.
- *                                         Apply end-of-turn effects (fatigue, markers) here.
- *                                         Fires BEFORE startNewTurn resets pool data.
- *                    ── encounter._effects namespace ──────────────────────────────────────────
- *                    Scripts should use args.encounter._effects.{key} to pass state between
- *                    triggers (e.g. opposedAttacker → meleeUpdate).  The engine never reads
- *                    this namespace — it is reserved exclusively for effect scripts.
- *                    _effects is cleared automatically at each turn-start.
- *                    ── participantId vs participant ──────────────────────────────────────────
- *                    args.participantId — string key in encounter.participants map for this actor
- *                    args.participant   — the participant data object (same as encounter.participants[participantId])
- *                    ── Example: Wiatrak (initiative reclaim after fury takeover) ─────────────
- *                    // opposedAttacker — mark reclaim intent using args.attackerId directly:
- *                      if (args.resultType !== "takeover") return;
- *                      if (this.getMeleeManeuver() !== "fury") return;
- *                      if (!this.isActiveForMelee(args)) return;
- *                      args.encounter._effects = args.encounter._effects || {};
- *                      args.encounter._effects.wiatrakReclaim = args.attackerId;
- *
- *                    // meleeUpdate — execute the reclaim / apply fatigue using args.participantId:
- *                      if (args.phase === "segment-advance") {
- *                        if (args.encounter._effects?.wiatrakReclaim !== args.participantId) return;
- *                        args.encounter.turnState.initiativeOwnerId = args.participantId;
- *                        delete args.encounter._effects.wiatrakReclaim;
- *                      } else if (args.phase === "turn-end") {
- *                        if (!this.isActiveForMelee(args)) return;
- *                        await this.sendMessage("<b>Wiatrak:</b> +20% kary ze zmęczenia.");
- *                        this.deactivateForMelee(args);
- *                      }
+ * afterMeleeAction  — fires for both duel participants immediately after a melee segment
+ *                    has been resolved and the outcome trigger has completed.
+ *                    args: { actor, duel, segment, isAttacker, attackerActor, defenderActor,
+ *                            outcome, action, declaredAction, diceCount, attackerSuccesses,
+ *                            defenderSuccesses, hitEntry, hits, state, eventContext }
+ *                    Treat the resolved segment as read-only. Use `beforeMeleeAction` for
+ *                    controlled pre-resolution changes and the damage hooks for wound changes.
  *
  * Context available inside every script (via `this`):
  *   this.effect                    — The ActiveEffect owning this script
@@ -4056,7 +3965,7 @@ export class NeuroshimaScriptRunner {
    * Two code paths are supported:
    *  • Regular `dialog` trigger: dm.isMeleePreRoll=false  → runs script.code via execute().
    *  • getMeleeActions+isDialogScript (pre-roll phase): dm.isMeleePreRoll=true  → runs script.dialogCode
-   *    (with fallback to code if dialogCode is empty) via executeDialogCode().
+   *    via executeDialogCode().
    *    `code` in that case is the *passive* getMeleeActions push-to-actions script and must NOT
    *    run here — it fires separately on the duel card.
    *
@@ -4287,7 +4196,7 @@ export class NeuroshimaScriptRunner {
 
     actions: [],
 
-    flags: {},
+    flags: liveContext.scriptFlags ?? rc.scriptFlags ?? {},
     fields,
     // Direct access is kept for consistency with weapon/test triggers.
     annotations: fields.annotations,
@@ -5246,6 +5155,7 @@ export class NeuroshimaScriptRunner {
     };
     game.neuroshima?.log?.(`[dialog] fired`, { _actor: actor.name, ...rollContext, _targets: targetActors.map(a => a?.name) });
 
+    const scriptFlags = options.scriptFlags ?? rollContext.scriptFlags ?? {};
     const allScriptEntries = [];
 
     const ownScripts = this.getScripts(actor, "dialog").filter(s => !s.targeter);
@@ -5281,7 +5191,7 @@ export class NeuroshimaScriptRunner {
       const effectId = script.effect?.id
         ? (sourceActor !== actor ? `target_${sourceActor.id}_${script.effect.id}_${idx}` : `${script.effect.id}_${idx}`)
         : `${sourceActor.id}_script_${idx}`;
-      const flags = {};
+      const flags = scriptFlags;
       const isTargetScript = sourceActor !== actor;
       // isMeleePreRoll=true: this getMeleeActions+isDialogScript entry runs with dialog context.
       // Pass weapon/weaponId explicitly so hideScript can check the weapon (args.state is not
@@ -5364,7 +5274,8 @@ export class NeuroshimaScriptRunner {
         armorPenalty: actor.system.combat?.totalArmorPenalty || 0,
         woundPenalty: actor.system.combat?.totalWoundPenalty || 0,
         distance: rollContext.distance || 0,
-        distanceModifier: rollContext.distanceModifier || 0
+        distanceModifier: rollContext.distanceModifier || 0,
+        scriptFlags
       });
       scriptFields.modifier += result.modifier || 0;
       scriptFields.attributeBonus += result.attributeBonus || 0;
@@ -5621,26 +5532,6 @@ export class NeuroshimaScriptRunner {
       if (!actor || actors.has(actor.id)) continue;
       actors.add(actor.id);
       await this.execute("updateCombat", { actor, combat, updates });
-    }
-  }
-
-  /**
-   * Run meleeUpdate scripts for all active participants in a melee encounter.
-   * Fires at key lifecycle transition points: "segment-advance", "turn-end", "turn-start".
-   * The encounter object is passed as mutable — scripts may modify turnState before it is saved.
-   * @param {string} encounterId
-   * @param {object} encounter  Mutable encounter data (deepClone in progress, not yet saved)
-   * @param {string} phase      "segment-advance" | "turn-end" | "turn-start"
-   */
-  static async runMeleeUpdate(encounterId, encounter, phase) {
-    for (const [participantId, p] of Object.entries(encounter.participants)) {
-      if (!p.isActive) continue;
-      const doc = fromUuidSync(p.actorUuid);
-      const actor = doc?.actor || doc;
-      if (!actor) continue;
-      await this.execute("meleeUpdate", {
-        actor, encounter, encounterId, phase, participant: p, participantId
-      });
     }
   }
 

@@ -337,126 +337,18 @@ async function _migrate_1_1_to_1_2() {
     }
 }
 
-// Migration 1.2 -> 1.3: normalise effect trigger names to the WFRP-style
-// preX/X lifecycle. Shot-specific legacy triggers intentionally remain intact
-// because their old argument contracts are narrower than rollWeaponTest.
-const EFFECT_TRIGGER_RENAMES_1_3 = Object.freeze({
-    preWeaponTest: "preRollWeaponTest",
-    weaponTest: "rollWeaponTest",
-    postRollTest: "rollTest",
-    postApplyDamage: "applyDamage",
-    postTakeDamage: "takeDamage",
-    armorCalculation: "APCalc"
-});
+// Versions 1.3-1.5 intentionally do not rewrite Active Effect trigger names.
+// The test pipeline uses only the canonical lifecycle and does not keep runtime
+// adapters or silent data migrations for obsolete trigger contracts.
+async function _migrate_1_2_to_1_3() {}
+async function _migrate_1_3_to_1_4() {}
+async function _migrate_1_4_to_1_5() {}
 
-async function _migrateEffectTriggerNames(effect) {
-    const scripts = effect._source?.system?.scriptData;
-    if (!Array.isArray(scripts) || scripts.length === 0) return false;
-
-    let changed = false;
-    const migrated = scripts.map(script => {
-        const trigger = EFFECT_TRIGGER_RENAMES_1_3[script?.trigger];
-        if (!trigger) return script;
-        changed = true;
-        return { ...script, trigger };
-    });
-    if (changed) await effect.update({ "system.scriptData": migrated });
-    return changed;
-}
-
-async function _migrateDocumentEffects(document) {
-    for (const effect of document.effects ?? []) {
-        await _migrateEffectTriggerNames(effect);
-    }
-}
-
-async function _migrate_1_2_to_1_3() {
-    console.log("Neuroshima | Running migration 1.2 -> 1.3 (effect trigger lifecycle)");
-    for (const actor of _allActors()) {
-        await _migrateDocumentEffects(actor);
-        for (const item of actor.items) await _migrateDocumentEffects(item);
-    }
-    for (const item of _allWorldItems()) await _migrateDocumentEffects(item);
-}
-
-// Migration 1.3 -> 1.4 deliberately performs no trigger rename. In particular,
-// postWeaponTest cannot be converted losslessly to rollWeaponTest because its
-// argument contract is different. The runtime adapter keeps both forms alive.
-async function _migrate_1_3_to_1_4() {
-    console.log("Neuroshima | Running migration 1.3 -> 1.4 (test pipeline audit)");
-    const report = auditEffectTriggers();
-    console.info("Neuroshima | Active Effect trigger migration report", report);
-    if (report.legacy.postWeaponTest > 0) {
-        ui.notifications.info(
-            `Neuroshima | Zachowano ${report.legacy.postWeaponTest} skrypt(ów) postWeaponTest przez adapter zgodności.`
-        );
-    }
-}
-
-// Only aliases with an equivalent argument contract are rewritten. Ambiguous
-// weapon hooks stay stored under their old names and are served by the runtime
-// compatibility adapter; the audit report makes them visible to the GM.
-const SAFE_TRIGGER_RENAMES_1_5 = Object.freeze({
-    invoke: "manual",
-    oneTime: "immediate",
-    addItems: "immediate",
-    applyEffect: "immediate",
-    prefillDialog: "dialog",
-    targetPrefillDialog: "dialog",
-    preWeaponTest: "preRollWeaponTest",
-    weaponTest: "rollWeaponTest",
-    postRollTest: "rollTest",
-    armorCalculation: "APCalc",
-    postApplyDamage: "applyDamage",
-    postTakeDamage: "takeDamage",
-    preMeleePool: "preRollWeaponTest",
-    collectMeleeActions: "getMeleeActions",
-    onDuelStart: "startDuel",
-    onDuelSegmentStart: "startDuelSegment",
-    onDuelEnd: "endDuel"
-});
-
-async function _migrateEffectTriggers_1_5(effect) {
-    const scripts = effect._source?.system?.scriptData;
-    if (!Array.isArray(scripts) || !scripts.length) return false;
-    let changed = false;
-    const migrated = scripts.map(script => {
-        const trigger = SAFE_TRIGGER_RENAMES_1_5[script?.trigger];
-        if (!trigger) return script;
-        changed = true;
-        return { ...script, trigger };
-    });
-    if (changed) await effect.update({ "system.scriptData": migrated });
-    return changed;
-}
-
-async function _migrate_1_4_to_1_5() {
-    console.log("Neuroshima | Running migration 1.4 -> 1.5 (canonical effect triggers)");
-    for (const actor of _allActors()) {
-        for (const effect of actor.effects ?? []) await _migrateEffectTriggers_1_5(effect);
-        for (const item of actor.items ?? []) {
-            for (const effect of item.effects ?? []) await _migrateEffectTriggers_1_5(effect);
-        }
-    }
-    for (const item of _allWorldItems()) {
-        for (const effect of item.effects ?? []) await _migrateEffectTriggers_1_5(effect);
-    }
-    console.info("Neuroshima | Remaining legacy trigger audit", auditEffectTriggers());
-}
-
+/** Return a read-only inventory of canonical Active Effect triggers in use. */
 export function auditEffectTriggers() {
-    const report = {
-        documents: 0,
-        effects: 0,
-        scripts: 0,
-        triggers: {},
-        legacy: {},
-        possiblePreviouslyMigratedPostWeaponScripts: []
-    };
+    const report = { documents: 0, effects: 0, scripts: 0, triggers: {} };
     const documents = [];
-    for (const actor of _allActors()) {
-        documents.push(actor, ...(actor.items ?? []));
-    }
+    for (const actor of _allActors()) documents.push(actor, ...(actor.items ?? []));
     documents.push(..._allWorldItems());
 
     for (const document of documents) {
@@ -467,29 +359,11 @@ export function auditEffectTriggers() {
                 report.scripts += 1;
                 const trigger = script?.trigger ?? "manual";
                 report.triggers[trigger] = (report.triggers[trigger] ?? 0) + 1;
-                if (Object.hasOwn(report.legacy, trigger)) report.legacy[trigger] += 1;
-
-                // Migration 1.3 briefly rewrote postWeaponTest. We cannot prove
-                // provenance, but code using its old top-level args is reported.
-                const code = String(script?.code ?? "");
-                if (
-                    trigger === "rollWeaponTest"
-                    && /args\.(isSuccess|isJamming|hitBullets|bulletsFired|successPoints)/.test(code)
-                    && !/args\.test\b/.test(code)
-                ) {
-                    report.possiblePreviouslyMigratedPostWeaponScripts.push({
-                        document: document.uuid,
-                        effect: effect.uuid,
-                        scriptId: script.id ?? null,
-                        label: script.label ?? ""
-                    });
-                }
             }
         }
     }
     return report;
 }
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function _versionGte(a, b) {
@@ -518,12 +392,6 @@ export async function normalizeActor(actor) {
     for (const item of actor.items) {
         try { await _repairStoredSystemData(item); } catch (_) {}
     }
-    await _migrateDocumentEffects(actor);
-    for (const item of actor.items) await _migrateDocumentEffects(item);
-    for (const effect of actor.effects ?? []) await _migrateEffectTriggers_1_5(effect);
-    for (const item of actor.items) {
-        for (const effect of item.effects ?? []) await _migrateEffectTriggers_1_5(effect);
-    }
 }
 
 /**
@@ -549,12 +417,6 @@ export async function normalizeAll() {
             for (const item of actor.items) {
                 try { await _repairStoredSystemData(item); } catch (_) {}
             }
-            await _migrateDocumentEffects(actor);
-            for (const item of actor.items) await _migrateDocumentEffects(item);
-            for (const effect of actor.effects ?? []) await _migrateEffectTriggers_1_5(effect);
-            for (const item of actor.items) {
-                for (const effect of item.effects ?? []) await _migrateEffectTriggers_1_5(effect);
-            }
         } catch (err) {
             console.warn(`Neuroshima | Normalization failed for actor "${actor.name}":`, err);
         }
@@ -564,8 +426,6 @@ export async function normalizeAll() {
         try {
             await _migrate_1_1_normalizeWorldItemMods(item);
             await _repairStoredSystemData(item);
-            await _migrateDocumentEffects(item);
-            for (const effect of item.effects ?? []) await _migrateEffectTriggers_1_5(effect);
         } catch (err) {
             console.warn(`Neuroshima | Normalization failed for world item "${item.name}":`, err);
         }

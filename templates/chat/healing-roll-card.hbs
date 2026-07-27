@@ -1,6 +1,14 @@
-<div class="neuroshima roll-card healing-batch-report" data-patient-uuid="{{patientRef.uuid}}" data-medic-uuid="{{medicRef.uuid}}">
+<div class="neuroshima roll-card healing-batch-report"
+     data-patient-uuid="{{patientRef.uuid}}"
+     data-medic-uuid="{{medicRef.uuid}}"
+     {{#if showTooltip}}
+     data-tooltip-html="{{dataTooltip}}"
+     data-tooltip-direction="LEFT"
+     {{/if}}>
     <header class="roll-header">
         <div class="weapon-title">
+            {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
+            {{#if isEdited}}<span class="edited-tag">[{{localize "NEUROSHIMA.Roll.Edited"}}]</span> {{/if}}
             {{localize "NEUROSHIMA.HealingRequest.HealingResults"}}: {{patientActor.name}}
         </div>
     </header>

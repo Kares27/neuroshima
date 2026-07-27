@@ -107,6 +107,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       this.unselectedModifierIds,
       targetActors,
       {
+        scriptFlags: this._scriptFlags,
         resolveFinalContext: ({ scriptFields: sf }) => {
           const effectiveDifficulty = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
             ? sf.difficulty
@@ -279,6 +280,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     };
     const attributeKey = this.weapon.system.attribute || "dexterity";
     const skillKey = this.weapon.system.skill || "throwing";
+    const submissionOptions = await this._runSubmissionScripts(this.weapon, {});
     const test = new GrenadeTest({
       actor: this.actor,
       item: this.weapon,
@@ -318,10 +320,14 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
           distancePenalty: Number(params.distancePenalty ?? 0),
           blastZones: [...(this.weapon.system.blastZones ?? [])]
         },
-        eventArgs: {}
+        options: submissionOptions,
+        eventArgs: { options: submissionOptions }
       }
     });
-    if (params.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
+    if (params.autoSuccess === true) {
+      test.forceSuccess({ mode: "keepRoll" });
+      test.context.basePreData = foundry.utils.deepClone(test.preData);
+    }
     await test.roll();
     const result = { ...test.result, message: test.message };
 

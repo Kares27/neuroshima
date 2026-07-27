@@ -4375,7 +4375,6 @@ export class MeleeResolution {
     }
 
     // exchange-resolved: fires on all participants after damage is applied, before segment advances
-    await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "exchange-resolved");
     updated.lastExchangeResult = null;
 
     // Auto-advance segment
@@ -4384,12 +4383,10 @@ export class MeleeResolution {
     updated.turnState.segmentCost = 0;
 
     if (newSeg > 3) {
-      await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "turn-end");
       await MeleeStore.updateEncounter(id, updated);
       await MeleeTurnService.startNewTurn(id);
     } else {
       updated.turnState.segment = newSeg;
-      await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "segment-advance");
       updated.turnState.phase = "primary-attack-selection";
       updated.turnState.selectionTurn = updated.turnState.initiativeOwnerId;
       await MeleeStore.updateEncounter(id, updated);
@@ -5869,7 +5866,6 @@ export class MeleeTurnService {
     }
 
     game.neuroshima?.log("Starting new turn for melee encounter", { id, turn: updated.turnState.turn });
-    await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "turn-start");
     await MeleeStore.updateEncounter(id, updated);
 
     // MANEUVER — Conditions persist across turns within the same encounter.
@@ -6072,7 +6068,6 @@ export class MeleeTurnService {
 
       this.updateCrowding(updated);
 
-      await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "pool-ready");
 
       // Go directly to attack selection — targets were already chosen before pool roll
       updated.turnState.phase = "primary-attack-selection";
@@ -6337,7 +6332,6 @@ export class MeleeTurnService {
     updated.turnState.phase = "primary-defense-selection";
     updated.turnState.selectionTurn = exchange.defenderId;
 
-    await NeuroshimaScriptRunner.runMeleeUpdate(id, updated, "attack-committed");
     await MeleeStore.updateEncounter(id, updated);
   }
 

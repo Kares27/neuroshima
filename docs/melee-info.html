@@ -160,19 +160,19 @@
       
       <div class="timeline-item">
         <span class="timeline-step">1</span>
-        <span class="timeline-title">meleeUpdate (phase: "turn-start")</span>
+        <span class="timeline-title">afterMeleeAction (phase: "turn-start")</span>
         <div class="timeline-desc">Następuje reset puli kości uczestników oraz wyczyszczenie efektów tymczasowych w przestrzeni nazw <code>encounter._effects</code>.</div>
       </div>
       
       <div class="timeline-item">
         <span class="timeline-step">2</span>
-        <span class="timeline-title">preMeleePool (3k20 Roll)</span>
+        <span class="timeline-title">preRollWeaponTest (3k20 Roll)</span>
         <div class="timeline-desc">Gracz wykonuje rzut 3k20. Na tym etapie skrypty mogą modyfikować parametry <code>attackTargetSnapshot</code> oraz <code>defenseTargetSnapshot</code> uczestnika.</div>
       </div>
       
       <div class="timeline-item">
         <span class="timeline-step">3</span>
-        <span class="timeline-title">meleeUpdate (phase: "pool-ready")</span>
+        <span class="timeline-title">afterMeleeAction (phase: "pool-ready")</span>
         <div class="timeline-desc">Obie pule kości (ataku i obrony) zostają ostatecznie zatwierdzone i przygotowane do podziału na segmenty.</div>
       </div>
     </div>
@@ -182,7 +182,7 @@
       
       <div class="timeline-item">
         <span class="timeline-step">4</span>
-        <span class="timeline-title">meleeUpdate (phase: "attack-committed")</span>
+        <span class="timeline-title">afterMeleeAction (phase: "attack-committed")</span>
         <div class="timeline-desc">Atakujący deklaruje liczbę kości przeznaczonych na dany segment.</div>
       </div>
       
@@ -224,13 +224,13 @@
       
       <div class="timeline-item">
         <span class="timeline-step">11</span>
-        <span class="timeline-title">meleeUpdate (phase: "exchange-resolved")</span>
+        <span class="timeline-title">afterMeleeAction (phase: "exchange-resolved")</span>
         <div class="timeline-desc">Kalkulacje dla danego segmentu zostały zakończone i zapisane w stanie pojedynku.</div>
       </div>
       
       <div class="timeline-item">
         <span class="timeline-step">12</span>
-        <span class="timeline-title">meleeUpdate (phase: "segment-advance")</span>
+        <span class="timeline-title">afterMeleeAction (phase: "segment-advance")</span>
         <div class="timeline-desc">Następuje przejście indeksu segmentu do przodu.</div>
       </div>
     </div>
@@ -240,7 +240,7 @@
       
       <div class="timeline-item">
         <span class="timeline-step">13</span>
-        <span class="timeline-title">meleeUpdate (phase: "turn-end")</span>
+        <span class="timeline-title">afterMeleeAction (phase: "turn-end")</span>
         <div class="timeline-desc">Uruchamiane pod koniec tury pojedynku, tuż przed zresetowaniem całego stanu kości i przygotowaniem nowej rundy.</div>
       </div>
     </div>
@@ -269,7 +269,7 @@
 
   <div class="trigger-grid">
     <div class="trigger-card">
-      <div class="trigger-name">preMeleePool</div>
+      <div class="trigger-name">preRollWeaponTest</div>
       <div class="trigger-desc">Odpala się po rzucie inicjującym 3k20, przed ostatecznym zatwierdzeniem puli.</div>
       <div class="args-list">
         <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Uczestnik wykonujący rzut</span></div>
@@ -381,7 +381,7 @@
     </div>
 
     <div class="trigger-card">
-      <div class="trigger-name">meleeUpdate</div>
+      <div class="trigger-name">afterMeleeAction</div>
       <div class="trigger-desc">Odpala się w kluczowych punktach przejścia cyklu życia pojedynku. Wywoływany u wszystkich uczestników.</div>
       <div class="args-list">
         <div class="arg"><span class="arg-name">actor</span><span class="arg-type">Actor</span><span class="arg-desc">Uczestnik walki</span></div>
@@ -724,7 +724,7 @@
   </div>
 
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">meleeUpdate</span> Wzorzec 6: Efekt per tura / Wiatrak</div>
+    <div class="example-header"><span class="trigger-badge">afterMeleeAction</span> Wzorzec 6: Efekt per tura / Wiatrak</div>
     <pre><code><span class="cmt">// Przykład: Wiatrak — odzyskanie inicjatywy w fazie segment-advance</span>
 <span class="kw">if</span> (<span class="var">args</span>.phase === <span class="str">"segment-advance"</span>) {
   <span class="kw">if</span> (<span class="var">args</span>.encounter._effects?.wiatrakReclaim !== <span class="var">args</span>.participantId) <span class="kw">return</span>;
@@ -756,7 +756,7 @@
       </tr>
       <tr>
         <td>Zmień próg sukcesów w puli 3k20</td>
-        <td>preMeleePool</td>
+        <td>preRollWeaponTest</td>
       </tr>
       <tr>
         <td>Zmień próg sukcesów ataku w konkretnym segmencie</td>
@@ -792,7 +792,7 @@
       </tr>
       <tr>
         <td>Działania na koniec tury, przechodzenie segmentów, stany inter-trigger</td>
-        <td>meleeUpdate</td>
+        <td>afterMeleeAction</td>
       </tr>
       <tr>
         <td>Aplikacja natychmiastowego efektu bezpośrednio przy rozstrzyganiu starcia</td>

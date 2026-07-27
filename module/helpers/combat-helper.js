@@ -2,7 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { getEffectiveArmorResistances } from "./mod-helpers.js";
-import { AttributeTest, SkillTest, NeuroshimaTestBase } from "../tests.mjs";
+import { AttributeTest, SkillTest } from "../tests.mjs";
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -534,7 +534,7 @@ export class CombatHelper {
         dice:          diceResults.join(", "),
         modifiedResults: evalData.modifiedResults,
         target:        durBase,
-        tooltip: NeuroshimaTestBase.tooltipFromResult(evalData),
+        tooltip: new AttributeTest({ result: evalData }).getDataTooltip(),
         tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
           modifiedResults: evalData.modifiedResults,
           target: durBase,
@@ -784,7 +784,10 @@ export class CombatHelper {
           eventArgs: { damageType: wound.damageType, location, sourceInfo }
         }
       });
-      if (wound.forcePassed === true) test.forceSuccess({ mode: "skipRoll" });
+      if (wound.forcePassed === true) {
+        test.forceSuccess({ mode: "skipRoll" });
+        test.context.basePreData = foundry.utils.deepClone(test.preData);
+      }
       await test.roll({ commit: false });
       const data = test.result;
       const passed = data.success === true;
@@ -806,7 +809,7 @@ export class CombatHelper {
         isCritSuccess: data.isCritSuccess,
         isCritFailure: data.isCritFailure,
         annotation: wound.annotation || null,
-        tooltip: NeuroshimaTestBase.tooltipFromResult(data),
+        tooltip: new SkillTest({ result: data }).getDataTooltip(),
         tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml(data)
       });
       processedWounds.push({

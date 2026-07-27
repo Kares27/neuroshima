@@ -1342,7 +1342,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const newResult = test.result;
 
     if (newResult) {
-        const serializedTests = foundry.utils.deepClone(flags.tests || []);
+        const serializedMessageTest = foundry.utils.deepClone(flags.test);
+        const serializedTests = serializedMessageTest?.context?.batchTests ?? [];
         const results = serializedTests.map(stored => stored.result);
         const idx = results.findIndex(r => r.woundId === woundId);
         if (idx !== -1) {
@@ -1368,10 +1369,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
             const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
             const content = await this._renderTemplate(template, context);
 
-            await message.update({
-                content,
-                "flags.neuroshima.tests": serializedTests
-            });
+            const primaryTest = foundry.utils.deepClone(serializedTests[0]);
+            primaryTest.context ??= {};
+            primaryTest.context.batchTests = serializedTests;
+            await message.update({ content, "flags.neuroshima.test": primaryTest });
         }
     }
   }
@@ -1388,7 +1389,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const patient = await fromUuid(patientUuid);
     if (!patient) return;
 
-    const serializedTests = message.getFlag("neuroshima", "tests") || [];
+    const serializedTests =
+      message.getFlag("neuroshima", "test")?.context?.batchTests ?? [];
     const results = serializedTests.map(test => test.result);
     const healingMethod = message.getFlag("neuroshima", "healingMethod");
     const extraData = message.getFlag("neuroshima", "extraData") || {};
@@ -1509,6 +1511,11 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     const gmUserIds  = game.users.filter(u => u.isGM).map(u => u.id);
     const whisperIds = [...new Set([medicUserId, ...gmUserIds].filter(Boolean))];
+
+    const serializedTests = tests.map(test => test.toData());
+    const primaryTest = foundry.utils.deepClone(serializedTests[0]);
+    primaryTest.context ??= {};
+    primaryTest.context.batchTests = serializedTests;
 
     return this.create({
       user: game.user.id,
@@ -1657,6 +1664,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
         game.neuroshima?.error("renderHealingBatchTests: tests is not an array", tests);
         return;
     }
+    if (tests.length === 0) return;
     const results = tests.map(test => test.result);
 
     const successCount = results.filter(r => r.isSuccess).length;
@@ -1674,6 +1682,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
       failedCount,
       successTooltip,
       failedTooltip,
+      dataTooltip: tests.map(test => test.getDataTooltip()).filter(Boolean).join("<hr>"),
+      showTooltip: tests.some(test => test.canShowTooltip()),
+      isReroll: tests.some(test => test.context.reroll === true),
+      isEdited: tests.some(test => test.context.edited === true),
       annotations: extraData.annotations || [],
       patientRef: { uuid: patientActor.uuid },
       medicRef: { uuid: medicActor?.uuid },
@@ -1690,7 +1702,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: "healingBatchReport",
-          tests: tests.map(test => test.toData()),
+          test: primaryTest,
           healingMethod: method,
           patientUuid: patientActor.uuid,
           medicUuid: medicActor?.uuid,

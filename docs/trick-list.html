@@ -782,11 +782,11 @@ args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></p
 <h3>18. Czuły spust</h3>
 <p><strong>Wymagania:</strong> Percepcja 14+, Broń maszynowa 4+</p>
 <p><strong>Mechanika:</strong> Bohater może przerwać zadeklarowaną długą serię po 1 segmencie oddając krótką, ogień ciągły po 1 segmencie oddając krótką lub po 2 segmentach oddając długą. Oszczędza naboje.</p>
-<div class="callout info"><strong>Implementacja:</strong> GM zawsze widzi opcje <strong>„Zmniejsz Serię"</strong> / <strong>„Zwiększ Serię"</strong> w PPM menu czatu. Gracz widzi je tylko gdy efekt sztuczki wywoła <code>this.grantBurstShift(args)</code> po strzale — trigger <code>postWeaponShot</code>.</div>
+<div class="callout info"><strong>Implementacja:</strong> GM zawsze widzi opcje <strong>„Zmniejsz Serię"</strong> / <strong>„Zwiększ Serię"</strong> w PPM menu czatu. Gracz widzi je tylko gdy efekt sztuczki wywoła <code>this.grantBurstShift(args)</code> po strzale — trigger <code>rollWeaponTest</code>.</div>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">postWeaponShot</span> Skrypt efektu Czuły spust</div>
-<pre><code><span class="cmt">// Trigger: postWeaponShot
+<div class="example-header"><span class="trigger-badge">rollWeaponTest</span> Skrypt efektu Czuły spust</div>
+<pre><code><span class="cmt">// Trigger: rollWeaponTest
 // Gdy oddano serię (burstLevel >= 1), odblokuj graczowi opcje Zmniejsz/Zwiększ Serię w PPM.</span>
 <span class="kw">if</span> (args.test.result.burstLevel < <span class="num">1</span>) <span class="kw">return</span>;
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">grantBurstShift</span>(args);</code></pre>
@@ -938,7 +938,7 @@ args.fields.attributeBonus += <span class="num">3</span>;
 
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Nałóż zmęczenie i usuń marker (faza turn-end)</div>
+<div class="example-header"><span class="trigger-badge">afterMeleeAction</span> Nałóż zmęczenie i usuń marker (faza turn-end)</div>
 <pre><code><span class="cmt">// Odpala się gdy melee tura kończy się (3 segmenty wyczerpane).</span>
 <span class="cmt">// Nie używamy endTurn (Foundry tracker) — tu chodzi o koniec melee tury.</span>
 <span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
@@ -1001,7 +1001,7 @@ args.fields.attributeBonus += <span class="num">3</span>;
 </div>
 
 <h4 class="script-label">Efekt nr 2 — „Garda – Aktywna" (transferType: other)</h4>
-<p class="example-desc">Persistent marker — aktywny przez całą wymianę melee (wszystkie 3 segmenty tury), usuwany dopiero w fazie <code>turn-end</code>. Wymaga <strong>dwóch skryptów</strong>: <code>opposedDefender</code> (ustawia redukcję obrażeń) i <code>meleeUpdate</code> (sprzątanie). Silnik persystuje wartość <code>blockDamageShift</code> w <code>state.blockDamageShiftByActor</code> — działa nawet jeśli marker wygaśnie w środku wymiany. Silnik rozdzielczości <code>_shiftDamageTypeUnclamped</code> obniża typ obrażeń o 1 poziom: C→L, L→D, D→brak obrażeń.</p>
+<p class="example-desc">Persistent marker — aktywny przez całą wymianę melee (wszystkie 3 segmenty tury), usuwany dopiero w fazie <code>turn-end</code>. Wymaga <strong>dwóch skryptów</strong>: <code>opposedDefender</code> (ustawia redukcję obrażeń) i <code>afterMeleeAction</code> (sprzątanie). Silnik persystuje wartość <code>blockDamageShift</code> w <code>state.blockDamageShiftByActor</code> — działa nawet jeśli marker wygaśnie w środku wymiany. Silnik rozdzielczości <code>_shiftDamageTypeUnclamped</code> obniża typ obrażeń o 1 poziom: C→L, L→D, D→brak obrażeń.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">opposedDefender</span> Ustaw blockDamageShift (dla każdego segmentu wymiany)</div>
@@ -1011,7 +1011,7 @@ args.fields.attributeBonus += <span class="num">3</span>;
 args.participant.blockDamageShift = -<span class="num">1</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Usuń marker na koniec tury melee</div>
+<div class="example-header"><span class="trigger-badge">afterMeleeAction</span> Usuń marker na koniec tury melee</div>
 <pre><code><span class="cmt">// Sprzątanie — usuń marker gdy wymiana skończona.</span>
 <span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">deleteEffect</span>();</code></pre>
@@ -1070,7 +1070,7 @@ args.participant.blockDamageShift = -<span class="num">1</span>;</code></pre>
 <div class="callout info">
   <strong>Implementacja: 1 AE (<code>transferType: self</code>) z 2 skryptami.</strong><br>
   Skrypt <code>dialog</code> zastępuje umiejętność i ustawia flagę aktywacji na aktorze.<br>
-  Skrypt <code>preMeleePool</code> sprawdza flagę i ustawia <code>participant.cannotTargetOpponentDice = true</code> — silnik blokuje kierowanie punktów umiejętności na kości oponenta w <code>allocateSkill()</code>. Flaga jest jednorazowa — czyszczona przez <code>preMeleePool</code> zaraz po odczycie.
+  Skrypt <code>preRollWeaponTest</code> sprawdza flagę i ustawia <code>participant.cannotTargetOpponentDice = true</code> — silnik blokuje kierowanie punktów umiejętności na kości oponenta w <code>allocateSkill()</code>. Flaga jest jednorazowa — czyszczona przez <code>preRollWeaponTest</code> zaraz po odczycie.
 </div>
 
 <div class="ns-trick-scripts">
@@ -1087,11 +1087,11 @@ args.fields.skillKey = <span class="str">"pistols"</span>;
 <span class="cmt">// Kompensujemy różnicę — efektywna wartość umiejętności w rzucie = Pistolety.</span>
 <span class="kw">const</span> <span class="var">pistols</span> = <span class="kw">this</span>.<span class="fn">getSkill</span>(<span class="str">"pistols"</span>);
 args.fields.skillBonus += <span class="var">pistols</span> - (args.skill?.value ?? <span class="num">0</span>);
-<span class="cmt">// Ustaw flagę aktywacji — preMeleePool ją odczyta i wyczyści.</span>
+<span class="cmt">// Ustaw flagę aktywacji — preRollWeaponTest ją odczyta i wyczyści.</span>
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preMeleePool</span> Zablokuj kierowanie umiejętności na kości przeciwnika</div>
+<div class="example-header"><span class="trigger-badge">preRollWeaponTest</span> Zablokuj kierowanie umiejętności na kości przeciwnika</div>
 <pre><code><span class="cmt">// Odpala się po rzucie 3k20, przed zapisaniem puli w encounter store.</span>
 <span class="kw">if</span> (!<span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>)) <span class="kw">return</span>;
 <span class="cmt">// Jednorazowe — wyczyść flagę natychmiast po odczycie.</span>
@@ -1107,7 +1107,7 @@ args.participant.cannotTargetOpponentDice = <span class="kw">true</span>;</code>
   <strong>Jak działa <code>cannotTargetOpponentDice</code>:</strong> Właściwość ustawiona na obiekcie uczestnika jest zapisywana w MeleeStore. Metoda <code>allocateSkill()</code> (<code>melee-turn-service.js</code> linia 910) sprawdza ją przed próbą kierowania punktów na kości oponenta — jeśli <code>true</code>, operacja jest odrzucana. Gracz może nadal obniżać własne kości (samodzielne Podwójne Działanie).
 </div>
 <div class="callout warning">
-  <strong>Ograniczenie applyDuelBatch:</strong> Wyzwalacz <code>preMeleePool</code> odpala się <strong>tylko w NeuroshimaCombat</strong> (pełny system starcia) — po wygenerowaniu puli kości, przed jej zapisaniem w store. W systemie kart czatu (<code>applyDuelBatch</code>) nie ma fazy generowania puli — kości są rzucane bezpośrednio w dialogu i <code>preMeleePool</code> nie jest wywoływany. Gunfight działa w kartach czatu tylko przez skrypt dialogowy (zmiana klucza umiejętności). Reguła <code>cannotTargetOpponentDice</code> nie ma zastosowania w kartach czatu.
+  <strong>Ograniczenie applyDuelBatch:</strong> Wyzwalacz <code>preRollWeaponTest</code> odpala się <strong>tylko w NeuroshimaCombat</strong> (pełny system starcia) — po wygenerowaniu puli kości, przed jej zapisaniem w store. W systemie kart czatu (<code>applyDuelBatch</code>) nie ma fazy generowania puli — kości są rzucane bezpośrednio w dialogu i <code>preRollWeaponTest</code> nie jest wywoływany. Gunfight działa w kartach czatu tylko przez skrypt dialogowy (zmiana klucza umiejętności). Reguła <code>cannotTargetOpponentDice</code> nie ma zastosowania w kartach czatu.
 </div>
 </section>
 
@@ -2204,8 +2204,8 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
   <strong>AE „Wiatrak"</strong> (<code>transferType: self</code>) — cztery wyzwalacze:<br>
   <code>dialog</code> — checkbox przed rzutem (Bijatyka + atak). Ustawia flagę <code>_active</code> na efekcie.<br>
   <code>opposedAttacker</code> — jeśli Furia + takeover i flaga aktywna, ustawia <code>_reclaim</code> na efekcie.<br>
-  <code>meleeUpdate / segment-advance</code> — przywraca <code>args.state.initiativeOwnerSide</code> gdy <code>_reclaim</code> ustawiona; czyści flagę.<br>
-  <code>meleeUpdate / turn-end</code> — nakłada AE zmęczenia przez <code>applyEffects</code>, wysyła powiadomienie, czyści <code>_active</code>.<br>
+  <code>afterMeleeAction / segment-advance</code> — przywraca <code>args.state.initiativeOwnerSide</code> gdy <code>_reclaim</code> ustawiona; czyści flagę.<br>
+  <code>afterMeleeAction / turn-end</code> — nakłada AE zmęczenia przez <code>applyEffects</code>, wysyła powiadomienie, czyści <code>_active</code>.<br>
   <strong>AE „Wiatrak — Kara Zmęczenia"</strong> (<code>transferType: other</code>) — bierny efekt +20% zmęczenia nakładany przez skrypt <code>turn-end</code>.<br>
   <strong>Brak zmian silnika</strong> — całość przez wyzwalacze i effect flags (karty duelowe: <code>args.encounter = null</code>).
 </div>
@@ -2230,11 +2230,11 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 <span class="kw">if</span> (<span class="kw">this</span>.<span class="fn">getMeleeManeuver</span>() !== <span class="str">"fury"</span>) <span class="kw">return</span>;
 <span class="cmt">// Guard: Wiatrak must have been activated in the dialog this turn.</span>
 <span class="kw">if</span> (!<span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_active"</span>)) <span class="kw">return</span>;
-<span class="cmt">// Zapisz flagę odzysku do odczytu przez meleeUpdate "segment-advance".</span>
+<span class="cmt">// Zapisz flagę odzysku do odczytu przez afterMeleeAction "segment-advance".</span>
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">setFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_reclaim"</span>, <span class="kw">true</span>);</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Odzysk inicjatywy (segment-advance) / powiadomienie o zmęczeniu (turn-end)</div>
+<div class="example-header"><span class="trigger-badge">afterMeleeAction</span> Odzysk inicjatywy (segment-advance) / powiadomienie o zmęczeniu (turn-end)</div>
 <pre><code><span class="kw">if</span> (args.phase === <span class="str">"segment-advance"</span>) {
   <span class="kw">if</span> (!<span class="kw">this</span>.effect.<span class="fn">getFlag</span>(<span class="str">"neuroshima"</span>, <span class="str">"_reclaim"</span>)) <span class="kw">return</span>;
   args.state.initiativeOwnerSide = args.isAttacker ? <span class="str">"attacker"</span> : <span class="str">"defender"</span>;
@@ -2308,7 +2308,7 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 <div class="callout info">
   <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
   <strong>AE nr 1</strong> — <em>„Wyczekanie"</em> (<code>transferType: self</code>): checkbox w dialogu (tylko gdy brak inicjatywy). Kod aplikuje marker AE nr 2.<br>
-  <strong>AE nr 2</strong> — <em>„Wyczekanie – Bonus Ataku"</em> (<code>transferType: other</code>): marker. <code>preMeleePool</code> — gdy obrona: -2 do <code>defenseTargetSnapshot</code>. <code>opposedDefender</code> — gdy takeover: bezpośrednio +4 do <code>attackTargetSnapshot</code> obrońcy (w tej samej turze). <code>meleeUpdate "turn-end"</code> — usuwa marker na koniec tury.
+  <strong>AE nr 2</strong> — <em>„Wyczekanie – Bonus Ataku"</em> (<code>transferType: other</code>): marker. <code>preRollWeaponTest</code> — gdy obrona: -2 do <code>defenseTargetSnapshot</code>. <code>opposedDefender</code> — gdy takeover: bezpośrednio +4 do <code>attackTargetSnapshot</code> obrońcy (w tej samej turze). <code>afterMeleeAction "turn-end"</code> — usuwa marker na koniec tury.
 </div>
 
 <h4 class="script-label">Efekt nr 1 — „Wyczekanie" (transferType: self)</h4>
@@ -2321,7 +2321,7 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Aplikuj marker AE nr 2</div>
-<pre><code><span class="cmt">// Kara -2 Zr w obronie zostanie nałożona przez preMeleePool markera (AE nr 2).</span>
+<pre><code><span class="cmt">// Kara -2 Zr w obronie zostanie nałożona przez preRollWeaponTest markera (AE nr 2).</span>
 <span class="cmt">// Aplikuj marker — AE nr 2 (index 1).</span>
 <span class="kw">const</span> <span class="var">marker</span> = <span class="kw">this</span>.item?.effects.contents[<span class="num">1</span>];
 <span class="kw">if</span> (<span class="var">marker</span>) <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">applyEffects</span>(<span class="var">marker</span>, [<span class="kw">this</span>.actor]);</code></pre>
@@ -2329,10 +2329,10 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 </div>
 
 <h4 class="script-label">Efekt nr 2 — „Wyczekanie – Bonus Ataku" (transferType: other)</h4>
-<p class="example-desc">Marker aplikowany przez AE nr 1. <code>preMeleePool</code> nakłada -2 wyłącznie na <code>defenseTargetSnapshot</code> (nie dotyka ataku). Gdy obrońca przejmuje inicjatywę — <code>opposedDefender</code> bezpośrednio ustawia +4 do <code>attackTargetSnapshot</code> tej samej tury. Marker usuwa się na końcu tury przez <code>meleeUpdate "turn-end"</code>.</p>
+<p class="example-desc">Marker aplikowany przez AE nr 1. <code>preRollWeaponTest</code> nakłada -2 wyłącznie na <code>defenseTargetSnapshot</code> (nie dotyka ataku). Gdy obrońca przejmuje inicjatywę — <code>opposedDefender</code> bezpośrednio ustawia +4 do <code>attackTargetSnapshot</code> tej samej tury. Marker usuwa się na końcu tury przez <code>afterMeleeAction "turn-end"</code>.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preMeleePool</span> -2 Zr w obronie tej tury</div>
+<div class="example-header"><span class="trigger-badge">preRollWeaponTest</span> -2 Zr w obronie tej tury</div>
 <pre><code><span class="cmt">// Kara dotyczy tylko fazy obrony — nie wpływa na snapshot ataku.</span>
 <span class="kw">if</span> (args.meleeAction !== <span class="str">"defend"</span>) <span class="kw">return</span>;
 args.participant.defenseTargetSnapshot = (args.participant.defenseTargetSnapshot ?? <span class="num">10</span>) - <span class="num">2</span>;</code></pre>
@@ -2345,7 +2345,7 @@ args.participant.defenseTargetSnapshot = (args.participant.defenseTargetSnapshot
 args.defender.attackTargetSnapshot = (args.defender.attackTargetSnapshot ?? <span class="num">10</span>) + <span class="num">4</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Usuń marker na koniec melee tury (faza turn-end)</div>
+<div class="example-header"><span class="trigger-badge">afterMeleeAction</span> Usuń marker na koniec melee tury (faza turn-end)</div>
 <pre><code><span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
 <span class="kw">await</span> <span class="kw">this</span>.effect.<span class="fn">delete</span>();</code></pre>
 </div>
@@ -2411,7 +2411,7 @@ args.defender.attackTargetSnapshot = (args.defender.attackTargetSnapshot ?? <spa
 <div class="callout info">
   <strong>Implementacja: 1 Item (Sztuczka) z 2 Active Effects.</strong><br>
   <strong>AE nr 1</strong> — <em>„Zasłona"</em> (<code>transferType: self</code>): checkbox w dialogu melee. Kod daje +2 Zr i aplikuje marker AE nr 2.<br>
-  <strong>AE nr 2</strong> — <em>„Zasłona – Kara Następnej Tury"</em> (<code>transferType: other</code>): marker. <code>meleeUpdate "turn-end"</code> — ustawia <code>args.participant.zaslonaKaraPending = true</code> (prop na uczestniku, przeżywa reset tury, bez flag). <code>preMeleePool</code> — gdy prop aktywny: -2 do <code>attackTargetSnapshot</code> i <code>defenseTargetSnapshot</code>, usuwa marker i czyści prop.
+  <strong>AE nr 2</strong> — <em>„Zasłona – Kara Następnej Tury"</em> (<code>transferType: other</code>): marker. <code>afterMeleeAction "turn-end"</code> — ustawia <code>args.participant.zaslonaKaraPending = true</code> (prop na uczestniku, przeżywa reset tury, bez flag). <code>preRollWeaponTest</code> — gdy prop aktywny: -2 do <code>attackTargetSnapshot</code> i <code>defenseTargetSnapshot</code>, usuwa marker i czyści prop.
 </div>
 
 <h4 class="script-label">Efekt nr 1 — „Zasłona" (transferType: self)</h4>
@@ -2434,14 +2434,14 @@ args.fields.attributeBonus += <span class="num">2</span>;
 <p class="example-desc">Marker aplikowany przez AE nr 1. Na koniec melee tury zapisuje pending-prop na uczestniku; przy przygotowaniu puli w następnej turze aplikuje -2 do ataku i obrony i usuwa siebie. Bez flag.</p>
 <div class="ns-trick-scripts">
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">meleeUpdate</span> Zapisz pending na uczestniku na koniec melee tury (faza turn-end)</div>
+<div class="example-header"><span class="trigger-badge">afterMeleeAction</span> Zapisz pending na uczestniku na koniec melee tury (faza turn-end)</div>
 <pre><code><span class="cmt">// Koniec melee tury — zaznacz że kara ma zadziałać przy rzucie puli następnej tury.</span>
 <span class="cmt">// args.participant jest referencją zapisywaną w store — przeżywa startNewTurn.</span>
 <span class="kw">if</span> (args.phase !== <span class="str">"turn-end"</span>) <span class="kw">return</span>;
 args.participant.zaslonaKaraPending = <span class="kw">true</span>;</code></pre>
 </div>
 <div class="example-block">
-<div class="example-header"><span class="trigger-badge">preMeleePool</span> Zastosuj -2 Zr do ataku i obrony następnej tury</div>
+<div class="example-header"><span class="trigger-badge">preRollWeaponTest</span> Zastosuj -2 Zr do ataku i obrony następnej tury</div>
 <pre><code><span class="cmt">// Kara działa tylko gdy pending-prop ustawiony przez turn-end (nie w bieżącej turze).</span>
 <span class="kw">if</span> (!args.participant.zaslonaKaraPending) <span class="kw">return</span>;
 <span class="cmt">// -2 do snapshotu ataku i obrony (niższa Zr = trudniejszy rzut).</span>

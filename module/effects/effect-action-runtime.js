@@ -151,7 +151,7 @@ export class EffectActionRuntime {
         addSuccessPoints: amount => test.addSuccessPoints(amount),
         forceSuccess: () => test.forceSuccess(),
         forceFailure: () => test.forceFailure(),
-        annotate: text => test.annotate(text)
+        addAnnotation: text => test.addAnnotation(text)
       }
     };
   }

@@ -157,6 +157,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       this.unselectedModifierIds,
       targetActors,
       {
+        scriptFlags: this._scriptFlags,
         resolveFinalContext: ({ scriptFields: sf }) => {
           const commonModifier = userModifier
             + (sf.modifier || 0)
@@ -407,6 +408,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
 
     const attrValue = medicActor.system.attributeTotals?.[selectedAttr];
 
+    const submissionOptions = await this._runSubmissionScripts(this.item ?? null, {});
     const tests = [];
     for (const woundConfig of woundConfigs) {
       const test = HealingTest.forWound({
@@ -422,6 +424,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
         dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
         dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0)
       });
+      test.context.options = submissionOptions;
       await test.roll({ sendToChat: false });
       if (!test.preData.cancelled) tests.push(test);
     }

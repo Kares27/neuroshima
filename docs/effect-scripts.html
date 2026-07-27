@@ -53,12 +53,19 @@ args.test.forceSuccess();
 // args.test.forceFailure();
 
 // Adnotacja widoczna na karcie
-args.test.annotate("Premia z aktywnego efektu");</code></pre>
+args.test.addAnnotation("Premia z aktywnego efektu");</code></pre>
 
   <p>Nie zapisuj dokumentów Foundry w <code>preData</code> ani
     <code>context</code>; używaj UUID. Nie uruchamiaj ręcznie przeliczenia ani
     renderowania karty — pipeline zrobi to po oznaczeniu testu jako
     <code>dirty</code>.</p>
+
+  <h2>Trwałe operacje</h2>
+  <p>Triggery nadal wykonują modyfikatory podczas edycji i przerzutu. Skrypt,
+    który aktualizuje dokument lub tworzy trwały efekt, musi sam zabezpieczyć
+    side effect:</p>
+  <pre><code>if (this.isRecalculation) return;
+// trwała aktualizacja dokumentu</code></pre>
 
   <h2>Dialog testu</h2>
   <pre><code>// W triggerze dialog można wymusić sukces:

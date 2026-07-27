@@ -4,11 +4,15 @@
 
     <header class="roll-header">
         <div class="actor-image-container"
-            data-tooltip="{{dataTooltip}}"
-            data-tooltip-direction="LEFT">
+            {{#if showTooltip}}
+            data-tooltip-html="{{dataTooltip}}"
+            data-tooltip-direction="LEFT"
+            {{/if}}>
             <img src="{{actorImg}}" width="32" height="32" />
         </div>
         <div class="header-details">
+            {{#if isReroll}}<span class="reroll-tag">[{{localize "NEUROSHIMA.Roll.Reroll"}}]</span> {{/if}}
+            {{#if isEdited}}<span class="edited-tag">[{{localize "NEUROSHIMA.Roll.Edited"}}]</span> {{/if}}
             <div class="weapon-title">{{label}}</div>
             <div class="test-info">
                 {{localize difficultyLabel}}

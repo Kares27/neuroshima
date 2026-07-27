@@ -317,6 +317,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       this.unselectedModifierIds,
       targetActors,
       {
+        scriptFlags: this._scriptFlags,
         resolveFinalContext: ({ scriptFields: sf }) => {
           const effectiveDifficulty = (sf.difficulty && this.userEntry.baseDifficulty === undefined)
             ? sf.difficulty
@@ -1001,8 +1002,10 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
       await dialogModifier._script.runSubmission({
         actor: this.actor,
+        item: this.item ?? null,
         options: submissionOptions,
-        fields: sf
+        fields: sf,
+        flags: this._scriptFlags
       });
     }
 
@@ -1075,7 +1078,10 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
         eventArgs: submissionOptions
       }
     });
-    if (sf.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
+    if (sf.autoSuccess === true) {
+      test.forceSuccess({ mode: "keepRoll" });
+      test.context.basePreData = foundry.utils.deepClone(test.preData);
+    }
     await test.roll();
     if (this.resultCallback) {
       await this.resultCallback({

@@ -1581,7 +1581,8 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         icon: '<i class="fas fa-pen"></i>',
         condition: li => {
             const { testData } = getMessageTestContext(li);
-            return game.user.isGM && Boolean(testData?.preData?.rollClass);
+            const TestClass = game.neuroshima.tests?.[testData?.preData?.rollClass];
+            return game.user.isGM && TestClass?.editableByGM === true;
         },
         callback: async li => {
             const { message, testData } = getMessageTestContext(li);
@@ -1816,12 +1817,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
 
             if (hasSelected) {
                 const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
-                const rawResults = [...test.result.rawResults];
-                const rerolled = await new Roll(`${selected.size}d20`).evaluate();
-                [...selected].sort((a, b) => a - b).forEach((index, offset) => {
-                    rawResults[index] = Number(rerolled.terms[0].results[offset].result);
-                });
-                await test.edit({ rawResults });
+                await test.rerollDice([...selected], { previousMessage: message });
                 await message.setFlag("neuroshima", "rerolled", true);
                 return;
             }

@@ -94,6 +94,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       this.unselectedModifierIds,
       targetActors,
       {
+        scriptFlags: this._scriptFlags,
         resolveFinalContext: ({ scriptFields: sf }) => {
           const effectiveDifficulty = (sf.difficulty && this.userEntry.difficulty === undefined)
             ? sf.difficulty
@@ -331,7 +332,13 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const submissionOptions = {};
     for (const dm of this._dialogModifiers) {
       if (!dm.activated || !dm._script?.submissionScript) continue;
-      await dm._script.runSubmission({ actor: this.actor, options: submissionOptions, fields: this._scriptFields });
+      await dm._script.runSubmission({
+        actor: this.actor,
+        item: this.item ?? null,
+        options: submissionOptions,
+        fields: this._scriptFields,
+        flags: this._scriptFlags
+      });
     }
 
     const rollData = {
@@ -452,7 +459,10 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
         rollMode: rollData.rollMode
       }
     });
-    if (rollData.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
+    if (rollData.autoSuccess === true) {
+      test.forceSuccess({ mode: "keepRoll" });
+      test.context.basePreData = foundry.utils.deepClone(test.preData);
+    }
     await test.roll();
     if (this._onRollCallback) await this._onRollCallback(test.result, test);
     return test.result;

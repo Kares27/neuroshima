@@ -150,7 +150,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         const messageType = this.message.getFlag("neuroshima", "messageType");
         const storedBasePenalty = Number(flags.penalties?.base);
         const storedDifficultyLabel = flags.baseDifficultyLabel ?? flags.baseDifficulty?.label;
-        const difficultyKey = messageType === "healingRoll"
+        const difficultyKey = messageType === "healing"
           ? Object.entries(NEUROSHIMA.difficulties)
             .find(([, difficulty]) => difficulty.label === storedDifficultyLabel)?.[0] ?? "average"
           : Number.isFinite(storedBasePenalty)
@@ -167,7 +167,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         flags.skillBonus ??= 0;
         flags.penalties ??= {};
         for (const key of ["mod", "wounds", "armor", "disease"]) flags.penalties[key] ??= 0;
-        if (messageType === "healingRoll") {
+        if (messageType === "healing") {
           flags.penalties.mod = Number(flags.penalties.mod) - Number(NEUROSHIMA.difficulties[difficultyKey]?.min ?? 0);
         }
         return {
@@ -186,7 +186,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     static async #onSubmit(event, form, formData) {
         const data = formData.object;
         const rawResults = (this.test.result.rawResults ?? []).map((value, index) =>
-          Math.clamp(Number(data[`die${index}`] ?? value), 1, 20)
+          Math.clamp(Number(data[`die${index}`] ?? value), 1, this.test.constructor.dieSides)
         );
         await this.test.edit({
           rawResults,
@@ -203,10 +203,10 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
               armor: Number(data.penaltyArmor ?? 0),
               disease: Number(data.penaltyDisease ?? 0)
             },
-            annotations: [
+            annotations: [...new Set([
               ...(this.test.preData.annotations ?? []),
               "Rzut edytowany przez MG"
-            ]
+            ])]
           }
         }, { message: this.message });
     }

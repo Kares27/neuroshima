@@ -26,6 +26,7 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     this.selectedModifierIds   = new Set();
     this.unselectedModifierIds = new Set();
     this._dialogModifiers      = [];
+    this._scriptFlags          = {};
     this._scriptFields         = {
       modifier: 0, attributeBonus: 0, skillBonus: 0,
       armorDelta: 0, woundDelta: 0, diseasePenalty: 0,
@@ -143,8 +144,22 @@ export class NeuroshimaRollDialogBase extends HandlebarsApplicationMixin(Applica
     this.render();
   }
 
+  async _runSubmissionScripts(item = null, submissionOptions = {}) {
+    for (const modifier of this._dialogModifiers ?? []) {
+      if (!modifier.activated || !modifier._script?.submissionScript) continue;
+      await modifier._script.runSubmission({
+        actor: this.actor,
+        item,
+        options: submissionOptions,
+        fields: this._scriptFields,
+        flags: this._scriptFlags
+      });
+    }
+    return submissionOptions;
+  }
+
   /**
-   * Factory that wraps the dialog in a Promise.
+   * Static constructor that wraps the dialog in a Promise.
    * Resolve with the roll result when the user clicks Roll;
    * resolve with null on cancel or window close.
    *

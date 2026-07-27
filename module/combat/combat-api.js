@@ -477,33 +477,6 @@ export class DuelLifecycle {
   }
 
   /**
-   * Odpal meleeUpdate dla obu uczestników duela w kontekście karty duelowej.
-   * Używany do faz: "attack-committed", "exchange-resolved", "segment-advance", "turn-end".
-   *
-   * @param {string}      phase   - faza lifecycle
-   * @param {DuelContext} duel
-   * @param {object}      [state] - mutable state (do odczytu przez skrypty)
-   * @returns {Promise<void>}
-   */
-  static async meleeUpdate(phase, duel, state = null) {
-    try {
-      const { NeuroshimaScriptRunner } = await import("../apps/neuroshima-script-engine.js");
-      const atk = duel.attackerActor;
-      const def = duel.defenderActor;
-      const _baseArgs = {
-        phase,
-        encounter:     null,
-        encounterId:   null,
-        participant:   null,
-        participantId: null,
-        state:         state ?? duel
-      };
-    } catch (err) {
-      game.neuroshima?.log("[DuelLifecycle.meleeUpdate] error", err);
-    }
-  }
-
-  /**
    * Odpal beforeMeleeAction dla obu uczestników.
    * Wywoływany PRZED obliczeniem outcome — args.segment.outcome jest null.
    * Skrypty mogą modyfikować state/duel.hits przed rozstrzygnięciem.
@@ -655,7 +628,7 @@ export class DuelLifecycle {
    * Odpal onDuelEnd dla obu uczestników.
    * Wywoływany gdy state.status === "done" (wszystkie kości wyczerpane).
    *
-   * Działa OBOK istniejącego meleeUpdate "turn-end" (pool-based compat).
+   * Działa obok zakończenia fazy tury w systemie pul.
    *
    * Args dla scriptera:
    *   args.duel (z duel.hits[], duel.netSuccesses), args.segment = null
@@ -1572,7 +1545,6 @@ export class DuelDeclarationEngine {
         N: diceIndices.length, ownerAction: declaredAction, ownerDiceIndices: diceIndices
       })
     );
-    await DuelLifecycle.meleeUpdate("attack-committed", _commitDuel, state);
     await onRender(message, state);
     return true;
   }
@@ -1670,7 +1642,7 @@ export class MeleeActionContext {
  *   • rejestrację hitów w state.hits
  *   • triggery: preOpposedAttacker, preOpposedDefender, opposedAttacker, opposedDefender
  *   • cykl DuelLifecycle: beforeAction → segmentResolve → afterAction
- *   • meleeUpdate: "exchange-resolved", "segment-advance"
+ *   • fazy rozstrzygnięcia wymiany i przejścia segmentu
  *   • akumulację trick queue
  *   • ustalenie wyniku końcowego i zapis flagi opposedResult
  *   • trigger onDuelEnd przez DuelLifecycle.end
@@ -2000,7 +1972,6 @@ export class DuelSegmentEngine {
         });
         await DuelLifecycle.segmentResolve(_duel, _segment, _ctx);
         await DuelLifecycle.afterAction(_duel, _segment, _ctx);
-        await DuelLifecycle.meleeUpdate("exchange-resolved", _duel, state);
       }
 
       if (isOwnerAttacker) {
@@ -2045,7 +2016,6 @@ export class DuelSegmentEngine {
     if (hasNext) {
       state.currentSegment = nextSegment;
       state.waitingFor     = "initiativeOwner";
-      await DuelLifecycle.meleeUpdate("segment-advance", DuelContext.fromFlag(state), state);
     } else {
       state.status     = "done";
       state.waitingFor = null;

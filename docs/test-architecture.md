@@ -96,7 +96,7 @@ Każdy trigger testu otrzymuje jeden kontrakt:
 
 Skrypt czyta i modyfikuje `args.test.preData`, `args.test.result` albo korzysta
 z metod testu: `replaceDie`, `addSuccesses`, `addSuccessPoints`, `forceSuccess`,
-`forceFailure` i `annotate`. Zmiany wyniku oznaczają test jako `dirty`, po czym
+`forceFailure` i `addAnnotation`. Zmiany wyniku oznaczają test jako `dirty`, po czym
 pipeline wykonuje jedno kontrolowane przeliczenie.
 
 ## Chat, edycja i przerzut
