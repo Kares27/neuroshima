@@ -1,7 +1,6 @@
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaDice } from "../../helpers/dice.js";
 import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
-import { TestRunner } from "../../tests/test-runner.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -157,45 +156,11 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
                 annotations: []
             },
             context: {
+                rollMode,
                 eventArgs: { reputationItem: this.reputationItem }
             }
         });
-        await TestRunner.run(test, {
-            prepare: current => Object.assign(current.result.data, {
-                label,
-                stat: Number(current.attribute?.value ?? threshold),
-                skill: 0,
-                target: Number(current.attribute?.value ?? threshold),
-                rawResults: [],
-                rolledResults: [],
-                modifiedResults: [],
-                success: false,
-                successCount: 0,
-                successPoints: 0,
-                isOpen: false,
-                isReputationRoll: true,
-                rollMode
-            }),
-            roll: async () => {
-                const roll = await new Roll("1d100").evaluate();
-                return { roll, rawResults: [Number(roll.total)] };
-            },
-            evaluate: current => {
-                const result = Number(current.result.data.rawResults[0]);
-                const target = Number(current.result.data.target);
-                current.result.data.rolledResults = [result];
-                current.result.data.modifiedResults = [{
-                    original: result,
-                    modified: result,
-                    isSuccess: result <= target,
-                    ignored: false,
-                    index: 0
-                }];
-                current.result.data.success = result <= target;
-                current.result.data.successCount = result <= target ? 1 : 0;
-                current.result.data.successPoints = target - result;
-            }
-        });
+        await test.roll();
         const rollData = test.toLegacyData();
         if (rollData.cancelled) return;
         const result = Number(rollData.rawResults[0] ?? 0);
@@ -228,7 +193,14 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
             speaker,
             rolls: test.result.roll ? [test.result.roll] : [],
             rollMode,
-            type: CONST.CHAT_MESSAGE_TYPES?.ROLL ?? 5
+            type: CONST.CHAT_MESSAGE_TYPES?.ROLL ?? 5,
+            flags: {
+                neuroshima: {
+                    messageType: "reputation",
+                    test: test.serialize(),
+                    rollData
+                }
+            }
         });
     }
 
@@ -259,8 +231,10 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
             rollMode,
             chatMessage: false,
             options: {
-                rollType: "reputation",
-                subtype: "skill",
+                // The optional legacy "skill" mode is mechanically a 3d20
+                // SkillTest. ReputationTest is reserved for the 1d100 family.
+                rollType: "skill",
+                subtype: "reputation",
                 item: this.reputationItem
             }
         });

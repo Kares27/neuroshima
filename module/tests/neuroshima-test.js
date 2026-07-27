@@ -14,9 +14,11 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
     attribute = null,
     skill = null,
     preData = {},
+    rollData = null,
+    result = null,
     context = {}
   } = {}) {
-    super({ type, subtype, actor, item, targets, attribute, skill, preData, context });
+    super({ type, subtype, actor, item, targets, attribute, skill, preData, rollData, result, context });
   }
 
   async prepare() {

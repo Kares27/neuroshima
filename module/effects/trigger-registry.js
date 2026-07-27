@@ -97,6 +97,27 @@ export const LEGACY_TRIGGER_ALIASES = Object.freeze({
   opposedTest: "opposedAttacker"
 });
 
+// Aliases whose historical argument contract is compatible with the canonical
+// event. Shot/jam/post-weapon and preMeleePool remain explicit because they
+// represent narrower boundaries and receive dedicated compatibility args.
+export const AUTO_LEGACY_TRIGGER_ALIASES = Object.freeze(
+  Object.fromEntries(Object.entries(LEGACY_TRIGGER_ALIASES).filter(([legacy]) => ![
+    "preWeaponShot",
+    "weaponJam",
+    "postWeaponShot",
+    "postWeaponTest",
+    "preMeleePool",
+    "collectMeleeActions",
+    "opposedTest"
+  ].includes(legacy)))
+);
+
+export function automaticLegacyTriggersFor(canonical) {
+  return Object.entries(AUTO_LEGACY_TRIGGER_ALIASES)
+    .filter(([, target]) => target === canonical)
+    .map(([legacy]) => legacy);
+}
+
 export class TriggerRegistry {
   static #entries = new Map(definitions.map(([id, label, group, mode, scope]) => [
     id, Object.freeze({ id, label, group, mode, scope: Object.freeze(scope), public: true })

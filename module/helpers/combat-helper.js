@@ -374,6 +374,20 @@ export class CombatHelper {
     const attackerActor = attackData.actorId ? game.actors.get(attackData.actorId) : null;
     const attackerWeapon = attackerActor && attackData.weaponId ? attackerActor.items.get(attackData.weaponId) : null;
 
+    // Pure calculation phase. These synchronous triggers may alter the
+    // in-memory outgoing packet, but cannot update Foundry documents.
+    if (attackerActor) {
+      NeuroshimaScriptRunner.executeEventSync("computeApplyDamageModifiers", {
+        actor: attackerActor,
+        defenderActor: actor,
+        weapon: attackerWeapon,
+        location,
+        attackData,
+        damage: attackData,
+        role: "source"
+      }, { metadata: { role: "source", item: attackerWeapon, damage: attackData } });
+    }
+
     // preApplyDamage (ATTACKER side) — fires before damage type selection.
     // Scripts can modify attackData.damageMelee1/2/3 (melee) or attackData.damage (ranged/thrown)
     // to influence which damage type will ultimately be selected for this hit.
@@ -482,8 +496,11 @@ export class CombatHelper {
 
     // preTakeDamage (DEFENDER side): scripts can modify damageType, piercing, or push extra wounds
     // before armor reduction is applied. Analogous to WFRP4e preTakeDamage.
-    const preArgs = { actor, location, damageType, piercing, rawWounds, ...attackContext };
+    const preArgs = { actor, location, damageType, piercing, rawWounds, attackData, ...attackContext };
     preArgs.role = "target";
+    NeuroshimaScriptRunner.executeEventSync("computeTakeDamageModifiers", preArgs, {
+      metadata: { role: "target", item: attackerWeapon, damage: attackData }
+    });
     await NeuroshimaScriptRunner.executeEvent("preTakeDamage", preArgs, {
       legacyTriggers: ["preTakeDamage"],
       metadata: { role: "target", item: attackerWeapon, damage: attackData }

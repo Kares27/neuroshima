@@ -1,4 +1,5 @@
 import { NEUROSHIMA } from "../config.js";
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 /**
  * Data model for Neuroshima Actors.
@@ -196,6 +197,12 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
               this.thresholds[key][diffKey] = totalValue + (diffValue.mod || 0);
           }
       }
+      NeuroshimaScriptRunner.executeEventSync("computeCharacteristics", {
+        actor,
+        preparedData: system,
+        characteristics: this.attributeTotals,
+        thresholds: this.thresholds
+      });
 
       // 2. Skill Totals (base + effect bonus)
       this.skillTotals = {};
@@ -206,11 +213,14 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       }
 
       // 3. Combat Stats (Penalties and Damage)
+      const damageArgs = {
+        actor,
+        preparedData: system,
+        wounds: items.filter(item => item.type === "wound"),
+        combat: this.combat
+      };
+      NeuroshimaScriptRunner.executeEventSync("preWoundCalc", damageArgs);
       const combatUpdates = {
-          totalArmorPenalty: items.reduce((total, i) => {
-              if (i.type === "armor" && i.system.equipped) return total + (i.system.armor?.penalty || 0);
-              return total;
-          }, 0) + (Number(system.combat?.armorPenaltyBonus) || 0) + (Number(system.combat?.generalPenalty) || 0),
           totalWoundPenalty: items.reduce((total, i) => {
               if (i.type === "wound" && i.system.isActive) return total + (i.system.penalty || 0);
               return total;
@@ -230,6 +240,31 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       for (let [key, value] of Object.entries(combatUpdates)) {
           this.combat[key] = value;
       }
+      damageArgs.combat = this.combat;
+      NeuroshimaScriptRunner.executeEventSync("woundCalc", damageArgs);
+      NeuroshimaScriptRunner.executeEventSync("calculateSize", {
+        actor,
+        preparedData: system,
+        size: system.size
+      });
+      const armorArgs = {
+        actor,
+        preparedData: system,
+        armor: items.filter(item => item.type === "armor"),
+        combat: this.combat
+      };
+      NeuroshimaScriptRunner.executeEventSync("preAPCalc", armorArgs);
+      this.combat.totalArmorPenalty = items.reduce((total, item) => {
+        if (item.type === "armor" && item.system.equipped) {
+          return total + (item.system.armor?.penalty || 0);
+        }
+        return total;
+      }, 0) + (Number(system.combat?.armorPenaltyBonus) || 0)
+        + (Number(system.combat?.generalPenalty) || 0);
+      NeuroshimaScriptRunner.executeEventSync("APCalc", {
+        ...armorArgs,
+        combat: this.combat
+      });
   }
 
   _applyPostDerivedActiveEffectValue(key, baseValue) {
@@ -365,6 +400,11 @@ export class NeuroshimaActorData extends foundry.abstract.TypeDataModel {
       else if (system.encumbrance.pct >= 75) color = "#a05800";
       else if (system.encumbrance.pct >= 50) color = "#8c8000";
       system.encumbrance.color = color;
+      NeuroshimaScriptRunner.executeEventSync("computeEncumbrance", {
+        actor,
+        preparedData: system,
+        encumbrance: system.encumbrance
+      });
 
     } catch (err) {
       if (game.settings.get("neuroshima", "debugMode")) console.error("Neuroshima 1.5 | Error in _preparePostEffects:", err);

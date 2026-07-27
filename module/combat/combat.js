@@ -18,7 +18,7 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { NeuroshimaTestFactory } from "../tests/test-factory.js";
-import { TestRunner } from "../tests/test-runner.js";
+import { MeleeOpposedResolver } from "../tests/opposed/melee-opposed-resolver.js";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
@@ -1448,11 +1448,11 @@ export class MeleeOpposedChat {
     const attackerActor = attackerDoc?.actor ?? attackerDoc;
 
     const mode = data.mode;
-    const attackDice = data.attackModified;
+    let attackDice = data.attackModified;
     const attackTarget = data.attackTarget;
-    const attackSuccesses = data.attackSuccesses;
+    let attackSuccesses = data.attackSuccesses;
 
-    const defenseDice = (defenseResult.modifiedResults || []).map(r => ({
+    let defenseDice = (defenseResult.modifiedResults || []).map(r => ({
       original: r.original,
       modified: r.modified,
       isSuccess: r.isSuccess,
@@ -1460,8 +1460,43 @@ export class MeleeOpposedChat {
       isNat20: r.isNat20 ?? (r.original === 20)
     }));
     const defenseTarget = defenseResult.target;
-    const defenseSuccesses = defenseResult.successPoints
+    let defenseSuccesses = defenseResult.successPoints
       ?? defenseDice.filter(r => r.isSuccess).length;
+
+    // Legacy opposed cards store plain roll data. Rehydrate both sides as
+    // completed MeleeWeaponTests so the canonical opposed lifecycle and Active
+    // Effect triggers are identical for old and newly-created cards.
+    const attackerTest = NeuroshimaTestFactory.create({
+      classId: "meleeWeapon",
+      actor: attackerActor,
+      item: attackerActor?.items?.get(data.weaponId) ?? null,
+      rollData: {
+        modifiedResults: attackDice,
+        successCount: attackSuccesses,
+        successPoints: attackSuccesses,
+        success: attackSuccesses > 0
+      }
+    });
+    const defenderTest = NeuroshimaTestFactory.create({
+      classId: "meleeWeapon",
+      actor: defenderActor,
+      item: defenderActor?.items?.get(defenseResult.weaponId) ?? null,
+      rollData: {
+        ...defenseResult,
+        modifiedResults: defenseDice,
+        successCount: defenseSuccesses,
+        successPoints: defenseSuccesses
+      }
+    });
+    const opposed = new MeleeOpposedResolver(attackerTest, defenderTest, {
+      mode,
+      context: { messageId, pending }
+    });
+    const opposedResult = await opposed.resolve();
+    attackDice = opposedResult.attacker.dice;
+    defenseDice = opposedResult.defender.dice;
+    attackSuccesses = opposedResult.attacker.successes;
+    defenseSuccesses = opposedResult.defender.successes;
 
     const attackerName = attackerActor?.name ?? "Attacker";
     const defenderName = defenderActor.name;
@@ -4508,7 +4543,7 @@ export class MeleeResolution {
         eventArgs: { encounter, attack }
       }
     });
-    await TestRunner.run(freeTest, {
+    await freeTest.roll({
       prepare: current => Object.assign(current.result.data, {
         label: current.preData.label,
         target: Number(current.attribute?.value ?? defenderTarget),

@@ -1,3 +1,5 @@
+import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+
 /**
  * Extended Item document class for Neuroshima 1.5.
  *
@@ -14,6 +16,17 @@
  *   `containerId` flag (DnD5e-style container pattern).
  */
 export class NeuroshimaItem extends Item {
+  prepareBaseData() {
+    if (this.actor) {
+      NeuroshimaScriptRunner.executeEventSync("prePrepareItem", {
+        actor: this.actor,
+        item: this,
+        preparedData: this.system
+      });
+    }
+    super.prepareBaseData();
+  }
+
   /**
    * Set default icons, localise the item name, and — for weapons — prompt for weapon type.
    * For tricks added to characters / NPCs: deduct XP via the XP dialog (cancellable).
@@ -200,6 +213,16 @@ export class NeuroshimaItem extends Item {
         }
       }
       system.effectiveCost = Math.max(0, effectiveCost);
+    }
+
+    if (this.actor) {
+      const args = {
+        actor: this.actor,
+        item: this,
+        preparedData: this.system
+      };
+      NeuroshimaScriptRunner.executeEventSync("prepareItem", args);
+      NeuroshimaScriptRunner.executeEventSync("prepareOwned", args);
     }
   }
 

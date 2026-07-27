@@ -2346,7 +2346,7 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
   </table>
 
   <div class="example-block">
-    <div class="example-header"><span class="trigger-badge">collectMeleeActions</span> Dodanie akcji z rejestru</div>
+    <div class="example-header"><span class="trigger-badge">getMeleeActions</span> Dodanie akcji z rejestru</div>
     <pre><code><span class="kw">const</span> <span class="var">def</span> = args.<span class="fn">lookupActionDef</span>(<span class="str">"my-action-id"</span>);
 <span class="kw">if</span> (<span class="var">def</span> &amp;&amp; args.uncommittedSuccesses &gt;= (<span class="var">def</span>.successCost ?? <span class="num">0</span>)) {
   args.actions.<span class="fn">push</span>(foundry.utils.<span class="fn">deepClone</span>(<span class="var">def</span>));
@@ -2363,9 +2363,9 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
   </div>
 
   <div class="callout warn">
-    <strong>Nie mieszaj dwóch modeli akcji:</strong> <code>getMeleeActions</code> może nadal
-    definiować akcję oraz jej modyfikator dialogowy, natomiast
-    <code>collectMeleeActions</code> jest docelowym globalnym punktem rozszerzania listy.
+    <strong>Nie mieszaj dwóch modeli akcji:</strong> <code>getMeleeActions</code> jest
+    publicznym punktem definiowania akcji i jej modyfikatora dialogowego.
+    <code>collectMeleeActions</code> pozostaje wyłącznie ukrytym aliasem dla zapisanych efektów.
     Logikę konkretnej zadeklarowanej sztuczki umieszczaj w triggerach
     <code>onMeleeAction*</code>; pasywne reakcje obu walczących w triggerach
     <code>onMeleeHit/Block/Takeover</code>.
@@ -2373,9 +2373,96 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
 
 </section>
 
+<section id="canonical-trigger-reference">
+  <h2 class="section-title">3b. Pozostałe publiczne triggery — aktualny kontrakt</h2>
+  <div class="callout info">
+    Wszystkie poniższe identyfikatory pochodzą bezpośrednio z
+    <code>TriggerRegistry</code>. Triggery przygotowania i obliczeń są synchroniczne:
+    wolno w nich zmieniać przekazany model w pamięci, ale nie wolno używać
+    <code>await</code> ani aktualizować dokumentów.
+  </div>
+
+  <h3 id="trigger-dialog">dialog — <em>Dialog</em></h3>
+  <p>Przed pokazaniem dialogu testu. Modyfikuj <code>args.fields</code>; ustawienie
+    <code>args.fields.autoSuccess = true</code> wymusza udany test.</p>
+  <h3 id="trigger-preUpdateDocument">preUpdateDocument — <em>Pre-Update Document</em></h3>
+  <p>Przed zapisem Actor, Item lub ActiveEffect. Dostępne są dokument i
+    <code>args.updateData</code>; trigger może zmienić przygotowaną aktualizację.</p>
+  <h3 id="trigger-update">update — <em>On Update</em></h3>
+  <p>Po zatwierdzeniu aktualizacji dokumentu. Służy do reakcji, nie do ponownego
+    przeliczania tego samego dokumentu.</p>
+
+  <h3 id="trigger-prePrepareData">prePrepareData — <em>Pre-Prepare Data</em></h3>
+  <p>Pierwsza synchroniczna faza Aktora; <code>args.preparedData</code> wskazuje na
+    jego model systemowy.</p>
+  <h3 id="trigger-prePrepareItems">prePrepareItems — <em>Pre-Prepare Actor Items</em></h3>
+  <p>Przed wykorzystaniem owned Itemów w obliczeniach Aktora. Dostępne:
+    <code>args.items</code> i <code>args.preparedData</code>.</p>
+  <h3 id="trigger-prePrepareItem">prePrepareItem — <em>Pre-Prepare Item</em></h3>
+  <p>Przed bazowym przygotowaniem owned Itemu.</p>
+  <h3 id="trigger-prepareItem">prepareItem — <em>Prepare Item</em></h3>
+  <p>Po obliczeniu pól pochodnych Itemu, między innymi wagi i efektywnego kosztu.</p>
+  <h3 id="trigger-prepareOwned">prepareOwned — <em>Prepare Owned Data (For Items)</em></h3>
+  <p>Końcowa faza Itemu należącego do Aktora.</p>
+  <h3 id="trigger-computeCharacteristics">computeCharacteristics — <em>Compute Characteristics</em></h3>
+  <p>Po utworzeniu <code>attributeTotals</code> i progów trudności, przed obliczeniami
+    zależnymi. Modyfikuj <code>args.characteristics</code>.</p>
+  <h3 id="trigger-computeEncumbrance">computeEncumbrance — <em>Compute Encumbrance</em></h3>
+  <p>Po policzeniu udźwigu. Modyfikuj <code>args.encumbrance</code>.</p>
+  <h3 id="trigger-preWoundCalc">preWoundCalc — <em>Pre-Wound Calculation</em></h3>
+  <p>Przed zsumowaniem aktywnych ran i ich kar.</p>
+  <h3 id="trigger-woundCalc">woundCalc — <em>Wound Calculation</em></h3>
+  <p>Po zapisaniu obliczonych kar oraz punktów obrażeń do <code>args.combat</code>.</p>
+  <h3 id="trigger-calculateSize">calculateSize — <em>Size Calculation</em></h3>
+  <p>Po ranach, przed obliczeniem pancerza. Dostępne <code>args.size</code>.</p>
+
+  <h3 id="trigger-computeApplyDamageModifiers">computeApplyDamageModifiers — <em>Compute Apply Damage Modifiers</em></h3>
+  <p>Synchroniczna, czysta faza modyfikacji wychodzącego
+    <code>args.attackData</code>, przed <code>preApplyDamage</code>.</p>
+  <h3 id="trigger-computeTakeDamageModifiers">computeTakeDamageModifiers — <em>Compute Take Damage Modifiers</em></h3>
+  <p>Synchroniczna faza celu przed <code>preTakeDamage</code>. Można zmienić
+    <code>damageType</code>, <code>piercing</code> i pakiet obrażeń.</p>
+  <h3 id="trigger-calculateOpposedDamage">calculateOpposedDamage — <em>Calculate Opposed Damage</em></h3>
+  <p>Po rozstrzygnięciu testu przeciwstawnego, przed zastosowaniem obrażeń.
+    Dostępne: <code>attackerTest</code>, <code>defenderTest</code>,
+    <code>opposedTest</code> i <code>damage</code>.</p>
+
+  <h3 id="trigger-deleteEffect">deleteEffect — <em>Effect Deleted</em></h3>
+  <p>Po usunięciu ActiveEffect. Dostępne są <code>actor</code>, <code>item</code>
+    i usunięty <code>effect</code>.</p>
+  <h3 id="trigger-startCombat">startCombat — <em>Start Combat</em></h3>
+  <p>Jednorazowo przy rozpoczęciu Combat.</p>
+  <h3 id="trigger-startRound">startRound — <em>Start Round</em></h3>
+  <p>Na początku każdej nowej rundy.</p>
+  <h3 id="trigger-startTurn">startTurn — <em>Start Turn</em></h3>
+  <p>Przed działaniami bieżącego Combatanta.</p>
+  <h3 id="trigger-endTurn">endTurn — <em>End Turn</em></h3>
+  <p>Po zakończeniu tury poprzedniego Combatanta.</p>
+  <h3 id="trigger-endRound">endRound — <em>End Round</em></h3>
+  <p>Po ostatniej turze rundy, przed kolejnym <code>startRound</code>.</p>
+  <h3 id="trigger-endCombat">endCombat — <em>End Combat</em></h3>
+  <p>Przy zakończeniu i usunięciu aktywnej walki.</p>
+
+  <h3 id="trigger-beforeMeleeAction">beforeMeleeAction — <em>Before Melee Action</em></h3>
+  <p>Przed rozpatrzeniem zadeklarowanej akcji melee.</p>
+  <h3 id="trigger-afterMeleeAction">afterMeleeAction — <em>After Melee Action</em></h3>
+  <p>Po ustaleniu wyniku akcji melee.</p>
+  <h3 id="trigger-beforeMeleeDamage">beforeMeleeDamage — <em>Before Melee Damage</em></h3>
+  <p>Przed każdym trafieniem. <code>args.hit.cancelled = true</code> anuluje tylko
+    bieżące trafienie.</p>
+  <h3 id="trigger-afterMeleeDamage">afterMeleeDamage — <em>After Melee Damage</em></h3>
+  <p>Po zastosowaniu pojedynczego trafienia; <code>args.batch</code> zawiera wynik.</p>
+  <h3 id="trigger-startDuel">startDuel — <em>Start Duel</em></h3>
+  <p>Po utworzeniu stanu pojedynku.</p>
+  <h3 id="trigger-startDuelSegment">startDuelSegment — <em>Start Duel Segment</em></h3>
+  <p>Przed rozstrzygnięciem segmentu pojedynku.</p>
+  <h3 id="trigger-endDuel">endDuel — <em>End Duel</em></h3>
+  <p>Po zakończeniu pojedynku i ustaleniu końcowego stanu.</p>
+</section>
+
 <!-- PREDEFINED KEYS -->
 <section id="predefined-keys">
-  <h2 class="section-title">3b. Predefiniowane klucze</h2>
+  <h2 class="section-title">3c. Predefiniowane klucze</h2>
   <p>Poniżej zebrane są wszystkie klucze używane w systemie Neuroshima 1.5. Używaj ich w skryptach do odnoszenia się do atrybutów, umiejętności i pól itemów — np. <code>args.actor.system.skills.brawl.value</code> lub <code>args.skillKey === "climbing"</code>.</p>
 
   <!-- ATTRIBUTES — Character / NPC / Creature -->

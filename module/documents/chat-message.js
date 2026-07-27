@@ -1470,7 +1470,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async renderRoll(rollData, actor, roll) {
     const serializedTest = rollData.testData ?? null;
     delete rollData.testData;
-    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", rollData.effectActionAdditions);
+    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", [
+      ...(rollData.effectActionAdditions ?? []),
+      ...(rollData.resultActions ?? [])
+    ]);
     const template = "systems/neuroshima/templates/chat/roll-card.hbs";
     const content = await this._renderTemplate(template, {
       ...rollData,
@@ -1507,7 +1510,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async renderInitiativeRoll(rollData, actor, roll) {
     const serializedTest = rollData.testData ?? null;
     delete rollData.testData;
-    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", rollData.effectActionAdditions);
+    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", [
+      ...(rollData.effectActionAdditions ?? []),
+      ...(rollData.resultActions ?? [])
+    ]);
     const template = "systems/neuroshima/templates/chat/initiative-roll-card.hbs";
     
     // Pobranie danych o celach (dla inicjatywy zwarcia)
@@ -1567,7 +1573,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const serializedTest = rollData.testData ?? null;
     delete rollData.testData;
     const effectSurface = rollData.isMelee ? "meleePool" : "testResult";
-    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, effectSurface, rollData.effectActionAdditions);
+    rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, effectSurface, [
+      ...(rollData.effectActionAdditions ?? []),
+      ...(rollData.resultActions ?? [])
+    ]);
     const template = rollData.isMelee 
       ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
       : "systems/neuroshima/templates/chat/weapon-roll-card.hbs";

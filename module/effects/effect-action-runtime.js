@@ -56,7 +56,14 @@ export class EffectActionRuntime {
     }
 
     const sourceItem = await this._sourceItem(effect);
-    const ctx = this._context({ actor, effect, sourceItem, action, rollData, surface: ref.surface, message });
+    const serialized = message.getFlag("neuroshima", "test");
+    const test = serialized?.classId
+      ? await NeuroshimaTestFactory.fromData({ ...serialized, rollData })
+      : null;
+    const ctx = this._context({
+      actor, effect, sourceItem, action, rollData,
+      surface: ref.surface, message, test
+    });
     const code = String(action.executeScript ?? action.result?.executeScript ?? "").trim();
     try {
       if (code) {
@@ -68,17 +75,15 @@ export class EffectActionRuntime {
         }, effect);
         const result = await script.execute({
           actor, item: sourceItem, rollData,
-          test: { result: { rollData } },
+          test: test ?? { result: { rollData } },
           actionContext: ctx
         });
         if (result === false) return;
       }
-      const serialized = message.getFlag("neuroshima", "test");
-      if (serialized?.classId) {
-        const test = await NeuroshimaTestFactory.fromData({ ...serialized, rollData });
-        test._lifecycleOptions.recalculate = () => this._recalculate(rollData);
+      if (test) {
         test.markDirty("effectAction");
         await test.recalculate();
+        await test.applyResultOverrides();
       } else {
         this._recalculate(rollData);
       }
@@ -120,7 +125,7 @@ export class EffectActionRuntime {
     return (rollData.rawResults ?? []).map(Number);
   }
 
-  static _context({ actor, effect, sourceItem, action, rollData, surface, message }) {
+  static _context({ actor, effect, sourceItem, action, rollData, surface, message, test = null }) {
     const replace = (index, value, options = {}) => {
       index = Number(index);
       value = Number(value);
@@ -146,7 +151,7 @@ export class EffectActionRuntime {
     };
 
     return {
-      actor, effect, sourceItem, item: sourceItem, action, message, surface, rollData,
+      actor, effect, sourceItem, item: sourceItem, action, message, surface, rollData, test,
       dice: {
         rolled: this._rolledDice(rollData),
         effective: this._effectiveDice(rollData),

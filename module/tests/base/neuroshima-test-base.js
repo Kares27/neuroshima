@@ -124,6 +124,14 @@ export class NeuroshimaTestBase {
     });
   }
 
+  runSyncTrigger(trigger, { phase = null, legacyTriggers = [] } = {}) {
+    if (!this.actor || this.context.isDebug) return null;
+    return this.getScriptRunner().executeEventSync(trigger, this.triggerArgs(), {
+      legacyTriggers,
+      metadata: this.triggerMetadata(phase)
+    });
+  }
+
   async runPreEffects() {
     this.phase = "preRollTest";
     await this.runTrigger("preRollTest", { phase: "pre" });
@@ -175,6 +183,24 @@ export class NeuroshimaTestBase {
   }
   async postTest() {}
 
+  async applyResultOverrides() {
+    const data = this.result.data;
+    const successBonus = Number(data.effectActionSuccessBonus ?? 0);
+    const pointsBonus = Number(data.effectActionSuccessPointsBonus ?? 0);
+    if (successBonus) {
+      data.successCount = Math.max(0, Number(data.successCount ?? 0) + successBonus);
+      if (!data.isOpen) data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + successBonus);
+    }
+    if (pointsBonus) data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + pointsBonus);
+    if (data.effectActionForcedSuccess !== undefined) {
+      data.success = data.isSuccess = data.effectActionForcedSuccess === true;
+    } else if (successBonus > 0 && Number(data.successCount) > 0) {
+      data.success = data.isSuccess = true;
+    }
+    data.effectActionSuccessBonus = 0;
+    data.effectActionSuccessPointsBonus = 0;
+  }
+
   async commitSideEffects(commit = true) {
     if (this._sideEffectsCommitted) return;
     this._sideEffectsCommitted = true;
@@ -193,6 +219,7 @@ export class NeuroshimaTestBase {
     await this.transformations.apply(this);
     await this.resolveResultActions();
     if (this.needsRecalculation()) await this.recalculate();
+    await this.applyResultOverrides();
     if (this._lifecycleOptions.synchronize) {
       await this._lifecycleOptions.synchronize(this, before);
     }

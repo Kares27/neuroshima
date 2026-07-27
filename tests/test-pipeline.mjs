@@ -4,11 +4,15 @@ import { NeuroshimaTest } from "../module/tests/neuroshima-test.js";
 import { TestRunner } from "../module/tests/test-runner.js";
 import { matchesItemDocumentScope } from "../module/effects/effect-scope.js";
 import { NeuroshimaTestFactory } from "../module/tests/test-factory.js";
-import { TriggerRegistry } from "../module/effects/trigger-registry.js";
+import { TriggerRegistry, automaticLegacyTriggersFor } from "../module/effects/trigger-registry.js";
+import { MeleeOpposedResolver } from "../module/tests/opposed/melee-opposed-resolver.js";
+import { RangedWeaponTest } from "../module/tests/attack/ranged-weapon-test.js";
+import { AttackTest } from "../module/tests/attack/attack-test.js";
 
 const NeuroshimaScriptRunner = {
   executeEvent: async () => {},
-  executeLegacy: async () => {}
+  executeLegacy: async () => {},
+  executeEventSync: () => {}
 };
 TestRunner.scriptRunner = NeuroshimaScriptRunner;
 
@@ -258,6 +262,201 @@ test("trigger registry exposes exactly 55 public triggers and hides aliases", ()
   assert.equal(TriggerRegistry.canonical("preMeleePool"), "preRollWeaponTest");
   assert.equal(TriggerRegistry.isLegacy("collectMeleeActions"), true);
   assert.equal(Object.hasOwn(TriggerRegistry.publicOptions(), "preMeleePool"), false);
+});
+
+test("only contract-compatible legacy aliases dispatch automatically", () => {
+  assert.ok(automaticLegacyTriggersFor("rollTest").includes("postRollTest"));
+  assert.ok(!automaticLegacyTriggersFor("getMeleeActions").includes("collectMeleeActions"));
+  assert.ok(!automaticLegacyTriggersFor("rollWeaponTest").includes("weaponJam"));
+  assert.ok(!automaticLegacyTriggersFor("preRollWeaponTest").includes("preMeleePool"));
+});
+
+test("reputation percentile class computes and recalculates its own result", async () => {
+  const subject = NeuroshimaTestFactory.create({
+    type: "reputation",
+    attribute: { value: 45 },
+    preData: { label: "Reputacja" }
+  });
+  await subject.prepare();
+  subject.result.data.rawResults = [40];
+  await subject.computeResult();
+  assert.equal(subject.result.isSuccess, true);
+  subject.result.data.rawResults = [60];
+  await subject.recalculate();
+  assert.equal(subject.result.isSuccess, false);
+  assert.equal(subject.result.successPoints, -15);
+});
+
+test("ranged weapon recalculate rebuilds jam, hits and result from changed dice", async () => {
+  const subject = NeuroshimaTestFactory.create({ type: "weapon", subtype: "ranged" });
+  subject.result.data = {
+    isWeapon: true,
+    rawResults: [4, 12, 17],
+    target: 10,
+    skill: 2,
+    isOpen: true,
+    jammingThreshold: 18,
+    bulletsFired: 3,
+    bulletSequence: [
+      { damage: "L", piercing: 0 },
+      { damage: "L", piercing: 0 },
+      { damage: "L", piercing: 0 }
+    ]
+  };
+  await subject.recalculate();
+  assert.equal(subject.result.isSuccess, true);
+  assert.equal(subject.result.data.isJamming, false);
+  assert.equal(subject.result.data.hitBullets, 3);
+  subject.result.data.rawResults = [18, 19, 20];
+  await subject.recalculate();
+  assert.equal(subject.result.data.isJamming, true);
+  assert.equal(subject.result.data.hitBullets, 0);
+});
+
+test("result overrides are applied after domain recalculation", async () => {
+  const subject = NeuroshimaTestFactory.create({ type: "attribute" });
+  subject.result.data = {
+    success: false, successCount: 0, successPoints: 0,
+    effectActionSuccessBonus: 1
+  };
+  await subject.applyResultOverrides();
+  assert.equal(subject.result.isSuccess, true);
+  assert.equal(subject.result.successCount, 1);
+});
+
+test("melee weapon recalculates its pool without using the ranged resolver", async () => {
+  const subject = NeuroshimaTestFactory.create({ type: "weapon", subtype: "melee" });
+  subject.result.data = {
+    rawResults: [5, 11, 18],
+    target: 10,
+    skill: 1,
+    isOpen: false,
+    meleeAction: "attack"
+  };
+  await subject.recalculate();
+  assert.equal(subject.classId, "meleeWeapon");
+  assert.equal(subject.result.successCount, 2);
+  assert.equal(subject.result.isSuccess, true);
+  assert.equal(subject.opposedResult.dice.length, 3);
+});
+
+test("grenade domain result owns deviation and blast calculations", () => {
+  const subject = NeuroshimaTestFactory.create({
+    type: "grenade",
+    context: {
+      options: {
+        grenadeData: {
+          distance: 24,
+          distancePenalty: 12,
+          blastZones: [{ radius: 2 }, { radius: 5 }]
+        }
+      }
+    }
+  });
+  subject.result.data = { success: false, successCount: 1 };
+  subject.computeGrenadeResult();
+  assert.equal(subject.result.data.failureMargin, 2);
+  assert.equal(subject.result.data.deviationMetres, 6);
+  assert.equal(subject.result.data.templateRadius, 5);
+});
+
+test("initiative formula is finalized inside InitiativeTest", () => {
+  const subject = NeuroshimaTestFactory.create({ type: "initiative", actor: {} });
+  subject._scriptRunner = NeuroshimaScriptRunner;
+  subject.result.data = { successPoints: 3 };
+  NeuroshimaScriptRunner.executeEventSync = (_trigger, args) => {
+    args.initiative += 2;
+  };
+  subject.computeInitiative();
+  assert.equal(subject.result.data.initiative, 5);
+  assert.equal(subject.result.successPoints, 5);
+  NeuroshimaScriptRunner.executeEventSync = () => {};
+});
+
+test("melee opposed resolver composes completed tests and fires both sides", async () => {
+  const events = [];
+  NeuroshimaScriptRunner.executeEvent = async trigger => events.push(trigger);
+  const attacker = NeuroshimaTestFactory.create({
+    classId: "meleeWeapon",
+    actor: { id: "attacker" },
+    rollData: {
+      success: true,
+      successCount: 2,
+      successPoints: 2,
+      modifiedResults: [
+        { modified: 4, isSuccess: true },
+        { modified: 8, isSuccess: true }
+      ]
+    }
+  });
+  const defender = NeuroshimaTestFactory.create({
+    classId: "meleeWeapon",
+    actor: { id: "defender" },
+    rollData: {
+      success: true,
+      successCount: 1,
+      successPoints: 1,
+      modifiedResults: [{ modified: 6, isSuccess: true }]
+    }
+  });
+  attacker._scriptRunner = defender._scriptRunner = NeuroshimaScriptRunner;
+  const resolver = new MeleeOpposedResolver(attacker, defender);
+  const result = await resolver.resolve();
+  assert.equal(result.winner, "attacker");
+  assert.equal(result.hits[0].tier, 1);
+  assert.deepEqual(events, [
+    "preOpposedAttacker",
+    "preOpposedDefender",
+    "opposedAttacker",
+    "opposedDefender"
+  ]);
+});
+
+test("ranged ammunition planning is LIFO and does not mutate the magazine", () => {
+  const contents = [
+    { name: "standard", quantity: 2, overrides: {} },
+    { name: "special", quantity: 2, overrides: { enabled: true, damage: "C", piercing: 2 } }
+  ];
+  const magazine = { type: "magazine", system: { contents } };
+  const actor = { items: new Map([["mag", magazine]]) };
+  const weapon = {
+    name: "rifle",
+    system: {
+      weaponType: "ranged",
+      magazine: "mag",
+      damage: "L",
+      piercing: 0,
+      jamming: 20
+    }
+  };
+  const plan = RangedWeaponTest.planAmmunition(actor, weapon, 3);
+  assert.equal(plan.bulletsFired, 3);
+  assert.deepEqual(plan.bulletSequence.map(bullet => bullet.name), ["special", "special", "standard"]);
+  assert.equal(plan.damage, "C");
+  assert.equal(plan.piercing, 2);
+  assert.equal(contents[1].quantity, 2);
+});
+
+test("attack damage profiles apply the head shift once and clamp at K", () => {
+  const subject = new AttackTest({
+    item: {
+      system: {
+        damageMelee1: "C",
+        damageMelee2: "K",
+        damageMelee3: "sK"
+      }
+    }
+  });
+  const profiles = subject.computeMeleeDamageProfiles({ location: "head" });
+  assert.deepEqual(profiles, ["K", "K", "sK"]);
+  assert.equal(subject.result.data.headDamageApplied, true);
+});
+
+test("weapon burst planning preserves single, short and full fire rates", () => {
+  const weapon = { system: { weaponType: "ranged", fireRate: 7 } };
+  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 0), 1);
+  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 1), 3);
+  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 2), 7);
 });
 
 let failures = 0;

@@ -159,6 +159,19 @@ class NeuroshimaConditionCheckContext {
  */
 export class NeuroshimaActor extends Actor {
   /**
+   * Synchronous opening phase of actor data preparation. Preparation scripts
+   * may only mutate the in-memory model passed in args; document updates are
+   * deliberately unsupported in this lifecycle.
+   */
+  prepareBaseData() {
+    NeuroshimaScriptRunner.executeEventSync("prePrepareData", {
+      actor: this,
+      preparedData: this.system
+    });
+    super.prepareBaseData();
+  }
+
+  /**
    * Apply default token settings and system-specific icons before the actor is created.
    *
    * Sets `prototypeToken.sight.enabled = true` for all actor types and
@@ -202,9 +215,39 @@ export class NeuroshimaActor extends Actor {
    * @override
    */
   prepareDerivedData() {
+    NeuroshimaScriptRunner.executeEventSync("prePrepareItems", {
+      actor: this,
+      items: this.items,
+      preparedData: this.system
+    });
     super.prepareDerivedData();
     this.system._preparePostEffects?.();
-    NeuroshimaScriptRunner.executeSync("prepareData", { actor: this });
+    const args = {
+      actor: this,
+      preparedData: this.system,
+      characteristics: this.system.attributeTotals ?? this.system.attributes,
+      encumbrance: this.system.encumbrance,
+      wounds: this.system.combat,
+      size: this.system.size,
+      armor: this.system.armor ?? this.system.combat?.armor
+    };
+    // Home bases and vehicles use independent data models without the shared
+    // character calculation pipeline. They still expose every public
+    // preparation boundary in the documented order.
+    if (["homeBase", "vehicle"].includes(this.type)) {
+      for (const trigger of [
+        "computeCharacteristics",
+        "computeEncumbrance",
+        "preWoundCalc",
+        "woundCalc"
+      ]) {
+        NeuroshimaScriptRunner.executeEventSync(trigger, args);
+      }
+      NeuroshimaScriptRunner.executeEventSync("calculateSize", args);
+      NeuroshimaScriptRunner.executeEventSync("preAPCalc", args);
+      NeuroshimaScriptRunner.executeEventSync("APCalc", args);
+    }
+    NeuroshimaScriptRunner.executeEventSync("prepareData", args);
   }
 
   /**
@@ -607,17 +650,26 @@ export class NeuroshimaActor extends Actor {
    * @returns {Promise<void>}
    */
   async addCondition(key, value = 1) {
-    const condDef = getConditions().find(c => c.key === key);
+    let condDef = getConditions().find(c => c.key === key);
     game.neuroshima?.log(`[addCondition] key="${key}" condDef:`, condDef ? { type: condDef.type, scriptsCount: condDef.scripts?.length ?? 0, scripts: condDef.scripts } : "NOT FOUND");
     if (!condDef) return;
 
     // preApplyCondition — allow scripts to cancel condition application (e.g. immunity)
-    const preArgs = { actor: this, conditionKey: key, condDef, cancel: false };
-    await NeuroshimaScriptRunner.execute("preApplyCondition", preArgs);
+    const preArgs = { actor: this, conditionKey: key, condition: condDef, condDef, value, cancel: false };
+    await NeuroshimaScriptRunner.executeEvent("preApplyCondition", preArgs, {
+      metadata: { condition: condDef }
+    });
     if (preArgs.cancel) {
       game.neuroshima?.log(`[addCondition] preApplyCondition cancelled condition "${key}"`);
       return;
     }
+    const originalKey = key;
+    key = preArgs.conditionKey ?? key;
+    value = Number(preArgs.value ?? value);
+    condDef = (key !== originalKey ? getConditions().find(condition => condition.key === key) : null)
+      ?? preArgs.condition
+      ?? getConditions().find(condition => condition.key === key)
+      ?? condDef;
 
     let result;
     if (condDef.type !== "int") {
@@ -639,7 +691,14 @@ export class NeuroshimaActor extends Actor {
     }
 
     // applyCondition — react after condition has been applied
-    await NeuroshimaScriptRunner.execute("applyCondition", { actor: this, conditionKey: key, condDef });
+    await NeuroshimaScriptRunner.executeEvent("applyCondition", {
+      actor: this,
+      conditionKey: key,
+      condition: condDef,
+      condDef,
+      value,
+      result
+    }, { metadata: { condition: condDef } });
     game.neuroshima?.log(`[addCondition] applyCondition fired for "${key}"`);
 
     return result;

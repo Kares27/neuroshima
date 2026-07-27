@@ -5,7 +5,7 @@ import {
   createTriggerContext
 } from "../effects/effect-trigger-schema.js";
 import { matchesItemDocumentScope } from "../effects/effect-scope.js";
-import { TriggerRegistry } from "../effects/trigger-registry.js";
+import { TriggerRegistry, automaticLegacyTriggersFor } from "../effects/trigger-registry.js";
 
 /**
  * Thin wrapper around a roll result that normalises both a Foundry Roll object
@@ -1296,11 +1296,23 @@ export class NeuroshimaScript {
     if (!args || !id || !this.effect?.uuid) return false;
     const target = args.rollData ?? args.test?.result?.rollData ?? args;
     const additions = target.effectActionAdditions ??= [];
-    additions.push({
+    const addition = {
       effectUuid: this.effect.uuid,
       actionId: String(id),
       overrides: foundry.utils.deepClone(overrides)
-    });
+    };
+    additions.push(addition);
+    // ResultActionRegistry is the lifecycle authority. Chat rendering consumes
+    // the serialized descriptor later; the executable script itself is always
+    // resolved from the live ActiveEffect by EffectActionRuntime.
+    args.test?.actions?.register?.(
+      `${addition.effectUuid}::${addition.actionId}`,
+      {
+        label: overrides.name ?? String(id),
+        ...addition,
+        execute: async () => false
+      }
+    );
     return true;
   }
 
@@ -3624,7 +3636,11 @@ export class NeuroshimaScript {
  *                    Use: react to a condition being applied (e.g. fire secondary effects,
  *                         notify chat, apply additional penalties for a specific condition)
  *
- * preMeleePool      — Pre-Melee Pool: fires AFTER the actor's 3k20 dice are set but BEFORE the
+ * preMeleePool      — LEGACY ONLY. Historical pool-snapshot hook fired AFTER the actor's
+ *                    3k20 dice were set. New effects use preRollWeaponTest and restrict
+ *                    themselves with args.test.classId === "meleeWeapon".
+ *                    The following contract is documented only for compatibility:
+ *                    fires BEFORE the
  *                    pool is committed and visible to the opponent. Allows modifying snapshot
  *                    target values (attackTargetSnapshot, defenseTargetSnapshot) and skill/action.
  *                    Fires only for the participant who just rolled.
@@ -4992,7 +5008,11 @@ export class NeuroshimaScriptRunner {
     }
 
     const seen = new Set(canonicalScripts.map(script => this._scriptIdentity(script)));
-    for (const legacyTrigger of [...new Set(legacyTriggers)]) {
+    const compatibleLegacy = [
+      ...automaticLegacyTriggersFor(publicTrigger),
+      ...legacyTriggers
+    ];
+    for (const legacyTrigger of [...new Set(compatibleLegacy)]) {
       const legacyScripts = this.getScripts(actor, legacyTrigger)
         .filter(script => this._matchesItemDocumentScope(
           script,
@@ -5174,7 +5194,11 @@ export class NeuroshimaScriptRunner {
       seen.add(this._scriptIdentity(script));
       script.executeSync(eventArgs);
     }
-    for (const legacyTrigger of [...new Set(legacyTriggers)]) {
+    const compatibleLegacy = [
+      ...automaticLegacyTriggersFor(publicTrigger),
+      ...legacyTriggers
+    ];
+    for (const legacyTrigger of [...new Set(compatibleLegacy)]) {
       for (const script of this.getScripts(actor, legacyTrigger)) {
         const identity = this._scriptIdentity(script);
         if (seen.has(identity)) continue;
