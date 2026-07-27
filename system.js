@@ -16,10 +16,18 @@ import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.j
 import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
 import {
+    NEUROSHIMA_TESTS,
+    NeuroshimaTestBase,
     NeuroshimaTest,
-    TestRules,
-    NeuroshimaTestFactory,
-    TestClassRegistry
+    AttributeTest,
+    SkillTest,
+    HealingTest,
+    InitiativeTest,
+    ReputationTest,
+    RangedWeaponTest,
+    MeleeWeaponTest,
+    GrenadeTest,
+    TestRules
 } from "./module/tests.mjs";
 import { TriggerRegistry } from "./module/effects/trigger-registry.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
@@ -59,34 +67,6 @@ import { GMReputationApp } from "./module/apps/gm/gm-reputation-app.js";
 import { NeuroshimaCombatTracker, NeuroshimaTokenRuler, MeleeVanillaChat, MeleeOpposedChat } from "./module/combat/combat.js";
 import { MeleeCombatApp } from "./module/apps/melee-combat-app.js";
 
-
-function _applyBurstLevelToDOM(messageIdOrEl, level, rollData) {
-    let root;
-    if (messageIdOrEl instanceof HTMLElement) {
-        root = messageIdOrEl;
-    } else {
-        root = ui.chat?.element?.querySelector(`[data-message-id="${messageIdOrEl}"]`)
-            ?? document.querySelector(`[data-message-id="${messageIdOrEl}"]`);
-    }
-    console.log("[NS] _applyBurstLevelToDOM", { messageIdOrEl: messageIdOrEl instanceof HTMLElement ? "<HTMLElement>" : messageIdOrEl, level, rootFound: !!root });
-    if (!root) return;
-
-    const rof = rollData?.fireRate ?? 1;
-    const originalFired = rollData?.bulletsFired ?? Infinity;
-    const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
-    const newBullets = Math.min(levelBullets[level] ?? 1, originalFired);
-    const newLabel = game.i18n.localize(NEUROSHIMA.burstLabels[level] ?? NEUROSHIMA.burstLabels[0]);
-
-    const burstLabelEl = root.querySelector(".burst-label");
-    if (burstLabelEl) burstLabelEl.textContent = newLabel;
-
-    const bulletsRow = root.querySelector(".js-bullets-row");
-    const bulletsValue = root.querySelector(".js-bullets-value");
-    if (bulletsValue) {
-        bulletsValue.textContent = newBullets;
-        if (bulletsRow) bulletsRow.style.display = newBullets > 1 ? "" : "none";
-    }
-}
 
 // System initialization
 Hooks.once('init', async function() {
@@ -179,17 +159,6 @@ Hooks.once('init', async function() {
         });
     });
 
-    Hooks.on("updateChatMessage", (message, changes) => {
-        const hasBurstChange = changes?.flags?.neuroshima?.burstReducedTo !== undefined
-            || foundry.utils.getProperty(changes, "flags.neuroshima.burstReducedTo") !== undefined;
-        if (!hasBurstChange) return;
-        const flags = message.getFlag("neuroshima", "rollData");
-        if (!flags?.isWeapon || flags.isMelee) return;
-
-        const newLevel = message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0;
-        _applyBurstLevelToDOM(message.id, newLevel, flags);
-    });
-
     // Script triggers: combat lifecycle
     Hooks.on("combatStart", async (combat) => {
         if (!game.user.isGM) return;
@@ -251,9 +220,17 @@ Hooks.once('init', async function() {
         PointAllocationDialog,
         NeuroshimaChoiceRouter,
         NeuroshimaDice,
+        tests: NEUROSHIMA_TESTS,
+        NeuroshimaTestBase,
         NeuroshimaTest,
-        NeuroshimaTestFactory,
-        TestClassRegistry,
+        AttributeTest,
+        SkillTest,
+        HealingTest,
+        InitiativeTest,
+        ReputationTest,
+        RangedWeaponTest,
+        MeleeWeaponTest,
+        GrenadeTest,
         TriggerRegistry,
         TestRules,
         CombatHelper,
@@ -294,23 +271,22 @@ Hooks.once('init', async function() {
         openPayoutApp: () => GMPayoutApp.open(),
         openReputationApp: () => GMReputationApp.open(),
         openDebugRoll: () => new DebugRollDialog().render(true),
-        debugSkillRoll: (skillValue, statValue, penalty, isOpen, dice) => NeuroshimaDice.rollTest({
-            skill: skillValue,
-            stat: statValue,
-            penalty: penalty,
-            isOpen: isOpen,
-            fixedDice: dice,
-            isDebug: true,
-            label: "Debug Skill Roll"
-        }),
-        debugAttributeRoll: (statValue, penalty, isOpen, dice) => NeuroshimaDice.rollTest({
-            stat: statValue,
-            penalty: penalty,
-            isOpen: isOpen,
-            fixedDice: dice,
-            isDebug: true,
-            label: "Debug Attribute Roll"
-        }),
+        debugSkillRoll: async (skill, stat, penalty, isOpen, dice) => {
+            const test = new SkillTest({
+                preData: { label: "Debug Skill Roll", stat, skill, penalties: { mod: penalty }, isOpen, fixedDice: dice },
+                context: { isDebug: true }
+            });
+            await test.roll();
+            return test;
+        },
+        debugAttributeRoll: async (stat, penalty, isOpen, dice) => {
+            const test = new AttributeTest({
+                preData: { label: "Debug Attribute Roll", stat, penalties: { mod: penalty }, isOpen, fixedDice: dice },
+                context: { isDebug: true }
+            });
+            await test.roll();
+            return test;
+        },
         migration: { normalizeAll, normalizeActor, auditEffectTriggers },
         applyDamage: async (actor, config = {}) => {
             const {
@@ -430,9 +406,6 @@ Hooks.once('init', async function() {
     Handlebars.registerHelper('ifThen', (c, a, b) => c ? a : b);
     Handlebars.registerHelper('meleeDieUsed', (list, index) => list?.includes(index));
     Handlebars.registerHelper('meleeDieSelected', (list, index) => list?.includes(index));
-    Handlebars.registerHelper('neuroshimaRollTooltip', (rollData) => {
-        return NeuroshimaDice.buildRollTooltip(rollData);
-    });
     Handlebars.registerHelper('nsItemPreviewTooltip', buildItemPreviewTooltip);
     Handlebars.registerHelper('nsGearTypeLabel', (gearType) => {
         if (!gearType || gearType === "misc") return "";
@@ -1589,23 +1562,31 @@ Hooks.on("renderTokenHUD", (hud, html) => {
     });
 });
 
+function getMessageTestContext(li) {
+    const message = game.messages.get(li.dataset.messageId);
+    const testData = message?.getFlag("neuroshima", "test");
+    return {
+        message,
+        testData,
+        preData: testData?.preData ?? null,
+        result: testData?.result ?? null,
+        context: testData?.context ?? null
+    };
+}
+
 // Add context menu options for chat messages
 Hooks.on("getChatMessageContextOptions", (html, options) => {
     options.push({
         name: "Edytuj rzut",
         icon: '<i class="fas fa-pen"></i>',
         condition: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const flags = message?.getFlag("neuroshima", "rollData");
-            const grenade = message?.getFlag("neuroshima", "grenadeRoll");
-            const type = message?.getFlag("neuroshima", "messageType");
-            return game.user.isGM && (!!grenade || (
-              !!flags && ["roll", "initiative", "weapon", "healingRoll"].includes(type)
-            ));
+            const { testData } = getMessageTestContext(li);
+            return game.user.isGM && Boolean(testData?.preData?.rollClass);
         },
-        callback: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            new EditRollDialog(message).render(true);
+        callback: async li => {
+            const { message, testData } = getMessageTestContext(li);
+            const test = await NeuroshimaTestBase.recreate(testData);
+            new EditRollDialog(message, test).render(true);
         }
     });
 
@@ -1613,18 +1594,16 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         name: "NEUROSHIMA.Roll.RefundAmmo",
         icon: '<i class="fas fa-undo"></i>',
         condition: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const flags = message?.getFlag("neuroshima", "rollData");
+            const { message, result } = getMessageTestContext(li);
             const alreadyRefunded = message?.getFlag("neuroshima", "ammoRefunded");
-            
-            // Refund availability depends on the configured role
             if (!CombatHelper.canPerformCombatAction()) return false;
-            
-            return flags?.isWeapon && (flags.bulletSequence?.length > 0) && !alreadyRefunded;
+            return result?.isWeapon && !result.isMelee
+              && result.bulletSequence?.length > 0 && !alreadyRefunded;
         },
-        callback: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            CombatHelper.refundAmmunition(message);
+        callback: async li => {
+            const { message, testData } = getMessageTestContext(li);
+            const test = await NeuroshimaTestBase.recreate(testData);
+            if (test instanceof RangedWeaponTest) await test.refundAmmunition(message);
         }
     });
 
@@ -1632,27 +1611,22 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         name: "NEUROSHIMA.Roll.DecreaseBurst",
         icon: '<i class="fas fa-minus-circle"></i>',
         condition: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const flags = message?.getFlag("neuroshima", "rollData");
-            if (!flags?.isWeapon || flags.isMelee) return false;
-            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
+            const { message, result } = getMessageTestContext(li);
+            if (!result?.isWeapon || result.isMelee) return false;
+            const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? result.burstLevel ?? 0;
             if (currentLevel < 1) return false;
             if (message.getFlag("neuroshima", "ammoRefunded")) return false;
             return game.user.isGM || message.getFlag("neuroshima", "burstShiftGranted");
         },
         callback: async li => {
-            const message = game.messages.get(li.dataset.messageId);
-            if (!message) { console.error("[NS] DecreaseBurst: message not found", li.dataset); return; }
-            const flags = message.getFlag("neuroshima", "rollData");
-            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
+            const { message, testData, result } = getMessageTestContext(li);
+            const test = await NeuroshimaTestBase.recreate(testData);
+            if (!(test instanceof RangedWeaponTest)) return;
+            const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? result.burstLevel ?? 0;
             const targetLevel = Math.max(0, currentLevel - 1);
-            console.log("[NS] DecreaseBurst", { messageId: message.id, currentLevel, targetLevel, burstLevel: flags.burstLevel });
-            const refunded = await CombatHelper.refundBurstLevel(message, targetLevel);
+            await test.setBurstLevel(targetLevel);
+            await test.updateMessage(message);
             await message.setFlag("neuroshima", "burstReducedTo", targetLevel);
-            _applyBurstLevelToDOM(message.id, targetLevel, flags);
-            if (refunded > 0) {
-                ui.notifications.info(game.i18n.format("NEUROSHIMA.Roll.BurstDecreased", { count: refunded }));
-            }
         }
     });
 
@@ -1660,26 +1634,24 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         name: "NEUROSHIMA.Roll.IncreaseBurst",
         icon: '<i class="fas fa-plus-circle"></i>',
         condition: li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const flags = message?.getFlag("neuroshima", "rollData");
-            if (!flags?.isWeapon || flags.isMelee) return false;
-            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
-            const originalLevel = flags.burstLevel ?? 0;
+            const { message, testData, result } = getMessageTestContext(li);
+            if (!result?.isWeapon || result.isMelee) return false;
+            const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? result.burstLevel ?? 0;
+            const originalLevel = testData?.preData?.originalBurstLevel ?? result.burstLevel ?? 0;
             if (currentLevel >= originalLevel) return false;
             if (message.getFlag("neuroshima", "ammoRefunded")) return false;
             return game.user.isGM || message.getFlag("neuroshima", "burstShiftGranted");
         },
         callback: async li => {
-            const message = game.messages.get(li.dataset.messageId);
-            const flags = message.getFlag("neuroshima", "rollData");
-            const currentLevel = (message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0);
-            const originalLevel = flags.burstLevel ?? 0;
+            const { message, testData, result } = getMessageTestContext(li);
+            const test = await NeuroshimaTestBase.recreate(testData);
+            if (!(test instanceof RangedWeaponTest)) return;
+            const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? result.burstLevel ?? 0;
+            const originalLevel = testData?.preData?.originalBurstLevel ?? result.burstLevel ?? 0;
             const targetLevel = Math.min(originalLevel, currentLevel + 1);
-            const consumed = await CombatHelper.increaseBurstLevel(message, targetLevel);
-            if (consumed > 0) {
+            if (await test.setBurstLevel(targetLevel)) {
+                await test.updateMessage(message);
                 await message.setFlag("neuroshima", "burstReducedTo", targetLevel);
-                _applyBurstLevelToDOM(message.id, targetLevel, flags);
-                ui.notifications.info(game.i18n.format("NEUROSHIMA.Roll.BurstIncreased", { count: consumed }));
             }
         }
     });
@@ -1791,7 +1763,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         icon: '<i class="fas fa-arrow-rotate-left"></i>',
         condition: li => {
             const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "rollData");
+            const rollData = message?.getFlag("neuroshima", "test")?.result;
             const messageType = message?.getFlag("neuroshima", "messageType");
             
             if (!rollData) return false;
@@ -1805,7 +1777,7 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "rollData");
+            const rollData = message?.getFlag("neuroshima", "test")?.result;
             const messageType = message?.getFlag("neuroshima", "messageType");
             const actor = game.actors.get(rollData?.actorId);
             
@@ -1843,8 +1815,14 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             if (!confirmed) return;
 
             if (hasSelected) {
-                const { NeuroshimaDice } = await import("./module/helpers/dice.js");
-                await NeuroshimaDice.partialRerollTest(message, [...selected]);
+                const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
+                const rawResults = [...test.result.rawResults];
+                const rerolled = await new Roll(`${selected.size}d20`).evaluate();
+                [...selected].sort((a, b) => a - b).forEach((index, offset) => {
+                    rawResults[index] = Number(rerolled.terms[0].results[offset].result);
+                });
+                await test.edit({ rawResults });
+                await message.setFlag("neuroshima", "rerolled", true);
                 return;
             }
 
@@ -1859,61 +1837,21 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                     return;
                 }
 
-                if (!rollData.isJamming) {
-                    await CombatHelper.refundAmmunition(message);
-                }
-
                 try {
-                    await game.neuroshima.NeuroshimaDice.rollWeaponTest({
-                        weapon: weapon,
-                        actor: actor,
-                        aimingLevel: rollData.aimingLevel || 0,
-                        burstLevel: rollData.burstLevel || 0,
-                        difficulty: rollData.difficulty || "average",
-                        hitLocation: rollData.hitLocation || "random",
-                        modifier: rollData.modifier || 0,
-                        applyArmor: rollData.applyArmor !== false,
-                        applyWounds: rollData.applyWounds !== false,
-                        isOpen: rollData.isOpen || false,
-                        skillBonus: rollData.skillBonus || 0,
-                        attributeBonus: rollData.attributeBonus || 0,
-                        distance: rollData.distance || 0,
-                        meleeAction: rollData.meleeAction || "attack",
-                        isReroll: true,
-                        rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
-                    });
+                    const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
+                    await test.reroll({ previousMessage: message });
                     await message.setFlag("neuroshima", "rerolled", true);
                 } finally { game.neuroshima?.groupEnd(); }
             } else if (messageType === "initiative") {
                 try {
-                    await game.neuroshima.NeuroshimaDice.rollInitiative({
-                        actor: actor,
-                        attribute: rollData.attributeKey || "dexterity",
-                        skill: rollData.skillKey || "",
-                        useSkill: !!(rollData.skillKey),
-                        modifier: rollData.penalties?.mod || 0,
-                        skillBonus: rollData.skillBonus || 0,
-                        attributeBonus: rollData.attributeBonus || 0,
-                        rollMode: rollData.rollMode || game.settings.get("core", "rollMode"),
-                        isReroll: true
-                    });
+                    const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
+                    await test.reroll({ previousMessage: message });
                     await message.setFlag("neuroshima", "rerolled", true);
                 } finally { game.neuroshima?.groupEnd(); }
             } else {
                 try {
-                    await game.neuroshima.NeuroshimaDice.rollTest({
-                        actor: actor,
-                        label: rollData.label,
-                        stat: rollData.baseStat,
-                        skill: rollData.baseSkill,
-                        skillBonus: rollData.skillBonus || 0,
-                        attributeBonus: rollData.attributeBonus || 0,
-                        penalties: rollData.penalties || { mod: 0, wounds: 0, armor: 0 },
-                        isOpen: rollData.isOpen,
-                        isCombat: rollData.isCombat || false,
-                        isReroll: true,
-                        rollMode: rollData.rollMode || game.settings.get("core", "rollMode")
-                    });
+                    const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
+                    await test.reroll({ previousMessage: message });
                     await message.setFlag("neuroshima", "rerolled", true);
                 } finally { game.neuroshima?.groupEnd(); }
             }
@@ -1926,12 +1864,12 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         condition: li => {
             if (!game.user.isGM) return false;
             const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "rollData");
+            const rollData = message?.getFlag("neuroshima", "test")?.result;
             return !!(rollData?.isMelee && rollData?.meleeAction === "attack");
         },
         callback: async li => {
             const message = game.messages.get(li.dataset.messageId);
-            const rollData = message?.getFlag("neuroshima", "rollData");
+            const rollData = message?.getFlag("neuroshima", "test")?.result;
             if (!rollData?.isMelee) return;
 
             let defenderUuid = null;
@@ -2049,15 +1987,6 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     // Initialize Neuroshima chat actions dispatcher
     NeuroshimaChatMessage.onChatAction(html);
 
-    // Restore burst label if burst level was reduced via context menu
-    const burstReducedTo = message.getFlag("neuroshima", "burstReducedTo");
-    if (burstReducedTo !== undefined && burstReducedTo !== null) {
-        const flags = message.getFlag("neuroshima", "rollData");
-        if (flags?.isWeapon && !flags.isMelee) {
-            _applyBurstLevelToDOM(html, burstReducedTo, flags);
-        }
-    }
-
     // Melee Vanilla Chat (default mode only)
     if ((game.settings.get("neuroshima", "meleeCombatType") || "default") === "default") {
         MeleeVanillaChat.onRender(html, message);
@@ -2150,7 +2079,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     const rollCard = html.querySelector(".neuroshima.roll-card, .neuroshima.weapon-roll-card, .neuroshima.melee-roll-card");
     if (rollCard) {
         const messageType = message?.getFlag("neuroshima", "messageType");
-        const rollData = message?.getFlag("neuroshima", "rollData");
+        const rollData = message?.getFlag("neuroshima", "test")?.result;
         if ((messageType === "roll" || messageType === "weapon" || messageType === "initiative") && rollData) {
             const actor = game.actors.get(rollData.actorId);
             const canReroll = game.user.isGM || actor?.isOwner;
@@ -2195,7 +2124,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     const trickRollCard = html.querySelector(".neuroshima.roll-card");
     if (trickRollCard) {
         const trickMsgType = message?.getFlag("neuroshima", "messageType");
-        const trickRollData = message?.getFlag("neuroshima", "rollData");
+        const trickRollData = message?.getFlag("neuroshima", "test")?.result;
         if ((trickMsgType === "roll" || trickMsgType === "initiative") && trickRollData) {
             const trickBonus = trickRollData.dieManualBonus || 0;
             const trickUsed  = message?.getFlag("neuroshima", "trickBonusUsed");
@@ -2390,7 +2319,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             let actors = [];
             
             if (activeTab === "targets") {
-                const snapshotTargets = message.getFlag("neuroshima", "rollData")?.snapshotTargets ?? [];
+                const snapshotTargets = message.getFlag("neuroshima", "test")?.result?.snapshotTargets ?? [];
                 if (snapshotTargets.length > 0) {
                     const resolved = await Promise.all(snapshotTargets.map(async t => {
                         if (t.uuid) {
@@ -2436,7 +2365,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
             event.preventDefault();
             if (btn.disabled) return;
 
-            const rollData = message.getFlag("neuroshima", "rollData") ?? {};
+            const rollData = message.getFlag("neuroshima", "test")?.result ?? {};
             const actorId = rollData.actorId;
 
             if (isSuccessCorrection) {
@@ -2509,7 +2438,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     if (fireCorrectionApplied) {
         const correctedHits = message.getFlag("neuroshima", "correctedHits") ?? 0;
         const fireCorrectionIsSuccess = message.getFlag("neuroshima", "fireCorrectionIsSuccess") ?? false;
-        const rollDataFC = message.getFlag("neuroshima", "rollData") ?? {};
+        const rollDataFC = message.getFlag("neuroshima", "test")?.result ?? {};
 
         if (fireCorrectionIsSuccess) {
             const fcBtn = html.querySelector(".fire-correction-button");
@@ -2682,7 +2611,7 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
     const rollTooltipOwnerVisibility = game.settings.get("neuroshima", "rollTooltipOwnerVisibility");
     
     // Get actor ID from message flags
-    const actorId = message.flags?.neuroshima?.rollData?.actorId;
+    const actorId = message.flags?.neuroshima?.test?.result?.actorId;
     let actor = null;
     if (actorId) {
         actor = game.actors.get(actorId);
@@ -2716,7 +2645,7 @@ function updateCardTargets(card, tab, message) {
 
     if (tab === "targets") {
         emptyLabel = game.i18n.localize("NEUROSHIMA.Roll.NoTargets");
-        const snapshotTargets = message?.getFlag("neuroshima", "rollData")?.snapshotTargets ?? [];
+        const snapshotTargets = message?.getFlag("neuroshima", "test")?.result?.snapshotTargets ?? [];
         if (snapshotTargets.length > 0) {
             for (const t of snapshotTargets) {
                 html += `<div class="target-item">
@@ -2897,7 +2826,7 @@ function initializeSocketlib() {
         }
         const blastZones = templateDoc.getFlag("neuroshima", "grenadeBlastZones") ?? [];
         const message    = game.messages.get(messageId);
-        const actorId    = message?.getFlag("neuroshima", "grenadeRoll")?.actorId;
+        const actorId    = message?.getFlag("neuroshima", "test")?.result?.actorId;
         const actor      = actorId ? game.actors.get(actorId) : null;
         game.neuroshima.log("computeGrenadeBlast (via socket)", { templateId, messageId, blastZonesCount: blastZones.length, hasActor: !!actor, hasMessage: !!message });
         const { NeuroshimaChatMessage } = await import("./module/documents/chat-message.js");
@@ -3480,7 +3409,7 @@ Hooks.on("createMeasuredTemplate", async (templateDoc, options, userId) => {
         const blastZones = templateDoc.getFlag("neuroshima", "grenadeBlastZones") ?? [];
         const messageId  = templateDoc.getFlag("neuroshima", "grenadeMessageId");
         const message    = game.messages.get(messageId);
-        const actorId    = message?.getFlag("neuroshima", "grenadeRoll")?.actorId;
+        const actorId    = message?.getFlag("neuroshima", "test")?.result?.actorId;
         const actor      = actorId ? game.actors.get(actorId) : null;
         game.neuroshima.log("createMeasuredTemplate | granat", { templateId: templateDoc.id, isGM: game.user.isGM, blastZonesCount: blastZones.length, messageId, hasActor: !!actor });
         const { NeuroshimaChatMessage } = await import("./module/documents/chat-message.js");

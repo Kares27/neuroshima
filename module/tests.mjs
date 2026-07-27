@@ -1,10 +1,5 @@
 import { NEUROSHIMA } from "./config.js";
 
-// --------------------------------------------------
-// Rules and evaluators
-// --------------------------------------------------
-
-// Source consolidated from tests/test-rules.js
 export const DIFFICULTY_ORDER = Object.freeze([
   "easy", "average", "problematic", "hard", "veryHard",
   "damnHard", "luck", "masterful", "grandmasterful"
@@ -16,9 +11,7 @@ export class TestRules {
     const found = Object.values(NEUROSHIMA.difficulties)
       .find(difficulty => value >= difficulty.min && value <= difficulty.max);
     if (found) return found;
-    return value < 0
-      ? NEUROSHIMA.difficulties.easy
-      : NEUROSHIMA.difficulties.grandmasterful;
+    return value < 0 ? NEUROSHIMA.difficulties.easy : NEUROSHIMA.difficulties.grandmasterful;
   }
 
   static skillShift(skill) {
@@ -28,358 +21,250 @@ export class TestRules {
 
   static diceShift(results = []) {
     return results.reduce((shift, result) => {
-      if (result === 1) return shift - 1;
-      if (result === 20) return shift + 1;
+      if (Number(result) === 1) return shift - 1;
+      if (Number(result) === 20) return shift + 1;
       return shift;
     }, 0);
   }
 
   static shiftDifficulty(base, shift = 0) {
-    if (!base) return NEUROSHIMA.difficulties.average;
     const key = DIFFICULTY_ORDER.find(entry => NEUROSHIMA.difficulties[entry] === base)
-      ?? DIFFICULTY_ORDER.find(entry => NEUROSHIMA.difficulties[entry]?.label === base.label)
+      ?? DIFFICULTY_ORDER.find(entry => NEUROSHIMA.difficulties[entry]?.label === base?.label)
       ?? "average";
-    const index = DIFFICULTY_ORDER.indexOf(key);
-    const shifted = Math.max(0, Math.min(DIFFICULTY_ORDER.length - 1, index + Number(shift ?? 0)));
-    return NEUROSHIMA.difficulties[DIFFICULTY_ORDER[shifted]] ?? base;
+    const index = Math.clamp(DIFFICULTY_ORDER.indexOf(key) + Number(shift ?? 0), 0, DIFFICULTY_ORDER.length - 1);
+    return NEUROSHIMA.difficulties[DIFFICULTY_ORDER[index]];
   }
 
   static clampMaximumDifficulty(difficulty, maximumDifficulty) {
     if (!difficulty || !maximumDifficulty) return difficulty;
     const maximumIndex = DIFFICULTY_ORDER.indexOf(maximumDifficulty);
-    if (maximumIndex < 0) return difficulty;
-    const currentIndex = DIFFICULTY_ORDER.findIndex(
-      key => NEUROSHIMA.difficulties[key] === difficulty
-        || NEUROSHIMA.difficulties[key]?.label === difficulty.label
+    const currentIndex = DIFFICULTY_ORDER.findIndex(key =>
+      NEUROSHIMA.difficulties[key] === difficulty
+      || NEUROSHIMA.difficulties[key]?.label === difficulty.label
     );
-    return currentIndex > maximumIndex
-      ? (NEUROSHIMA.difficulties[maximumDifficulty] ?? difficulty)
+    return maximumIndex >= 0 && currentIndex > maximumIndex
+      ? NEUROSHIMA.difficulties[maximumDifficulty]
       : difficulty;
   }
 }
 
-// Source consolidated from tests/evaluators.js
-function orderedDice(rawResults = []) {
-  return rawResults.map((value, index) => ({
+function diceObjects(results = []) {
+  return results.map((value, index) => ({
     original: Number(value),
-    index,
     modified: Number(value),
-    isSuccess: false,
+    index,
     ignored: false,
+    isSuccess: false,
     isNat1: Number(value) === 1,
     isNat20: Number(value) === 20
   }));
 }
 
-export class Closed3d20Evaluator {
-  evaluate(data, rawResults) {
-    const dice = orderedDice(rawResults);
-    const target = Number(data.target ?? 0);
-    const skill = Number(data.skill ?? 0);
-    const reduction = Number(data.dieReductionBonus ?? 0);
-    const sorted = [...dice].sort((a, b) => a.original - b.original);
-
-    for (const die of sorted) {
-      die.cost = die.original <= target ? 0 : (die.original === 20 ? 999 : die.original - target);
-    }
-    sorted.sort((a, b) => a.cost - b.cost);
-
-    let pool = skill + reduction;
-    for (const die of sorted) {
-      if (die.original === 20) continue;
-      const spent = pool > 0
-        ? Math.min(pool, die.cost, Math.max(0, die.original - 1))
-        : 0;
-      pool -= spent;
-      die.modified = die.original - spent;
-      die.isSuccess = die.modified <= target;
-    }
-
-    if (pool > 0) {
-      const successes = sorted.filter(die => die.isSuccess && die.original !== 1);
-      while (pool > 0 && successes.some(die => die.modified > 1)) {
-        successes.sort((a, b) => b.modified - a.modified);
-        successes[0].modified -= 1;
-        pool -= 1;
-      }
-    }
-
-    data.modifiedResults = [...dice].sort((a, b) => a.index - b.index);
-    data.successCount = data.modifiedResults.filter(die => die.isSuccess).length;
-    data.success = data.successCount >= 2;
-    const spent = skill + reduction - pool;
-    data.skillUsed = Math.min(skill, spent);
-    data.remainingSkill = skill - data.skillUsed;
-    data.isCritSuccess = data.successCount === 3;
-    data.isCritFailure = data.successCount === 0 && dice.some(die => die.original === 20);
-    return data;
+function evaluateClosed3d20(data, results) {
+  const dice = diceObjects(results);
+  const target = Number(data.target ?? 0);
+  const skill = Number(data.skill ?? 0);
+  const reduction = Number(data.dieReductionBonus ?? 0);
+  const sorted = [...dice].map(die => ({
+    ...die,
+    cost: die.original <= target ? 0 : (die.original === 20 ? 999 : die.original - target)
+  })).sort((a, b) => a.cost - b.cost);
+  let pool = skill + reduction;
+  for (const die of sorted) {
+    if (die.original === 20) continue;
+    const spent = Math.min(pool, die.cost, Math.max(0, die.original - 1));
+    pool -= spent;
+    die.modified = die.original - spent;
+    die.isSuccess = die.modified <= target;
   }
+  const byIndex = sorted.sort((a, b) => a.index - b.index);
+  return {
+    modifiedResults: byIndex,
+    successCount: byIndex.filter(die => die.isSuccess).length,
+    success: byIndex.filter(die => die.isSuccess).length >= 2,
+    successPoints: byIndex.filter(die => die.isSuccess).length,
+    skillUsed: skill + reduction - pool,
+    remainingSkill: Math.max(0, skill - (skill + reduction - pool)),
+    isCritSuccess: byIndex.every(die => die.isSuccess),
+    isCritFailure: byIndex.every(die => !die.isSuccess) && byIndex.some(die => die.isNat20)
+  };
 }
 
-export class Defense3d20Evaluator {
-  evaluate(data, rawResults) {
-    const target = Number(data.target ?? 0);
-    data.modifiedResults = orderedDice(rawResults).map(die => ({
-      ...die,
-      isSuccess: die.original <= target && die.original !== 20
-    }));
-    data.successCount = data.modifiedResults.filter(die => die.isSuccess).length;
-    data.success = data.successCount >= 2;
-    data.isCritSuccess = data.successCount === 3;
-    data.isCritFailure = data.successCount === 0
-      && data.modifiedResults.some(die => die.original === 20);
-    return data;
-  }
+function evaluateDefense3d20(data, results) {
+  const target = Number(data.target ?? 0);
+  const modifiedResults = diceObjects(results).map(die => ({
+    ...die,
+    isSuccess: die.original <= target && die.original !== 20
+  }));
+  const successCount = modifiedResults.filter(die => die.isSuccess).length;
+  return {
+    modifiedResults,
+    successCount,
+    successPoints: successCount,
+    success: successCount >= 2,
+    isCritSuccess: successCount === modifiedResults.length,
+    isCritFailure: successCount === 0 && modifiedResults.some(die => die.isNat20)
+  };
 }
 
-export class Open3d20Evaluator {
-  evaluate(data, rawResults) {
-    if (!Array.isArray(rawResults) || rawResults.length < 2 || rawResults.length > 3) {
-      throw new RangeError("Open3d20Evaluator requires exactly two or three dice");
-    }
-    const dice = orderedDice(rawResults);
-    const sorted = [...dice].sort((a, b) => a.original - b.original);
-    const ignored = sorted.length === 3 ? sorted[2] : null;
+function evaluateOpen3d20(data, results) {
+  if (![2, 3].includes(results.length)) {
+    throw new RangeError("Open tests require exactly two or three dice");
+  }
+  const target = Number(data.target ?? 0);
+  const skill = Number(data.skill ?? 0);
+  const reduction = Number(data.dieReductionBonus ?? 0);
+  const dice = diceObjects(results);
+  const active = [...dice].sort((a, b) => a.original - b.original).slice(0, 2);
+  if (dice.length === 3) {
+    const ignored = dice.find(die => !active.includes(die));
     if (ignored) ignored.ignored = true;
-
-    const first = sorted[0];
-    const second = sorted[1];
-    let pool = Number(data.skill ?? 0) + Number(data.dieReductionBonus ?? 0);
-    const match = second.original === 20
-      ? 0
-      : Math.min(pool, second.original - first.original, Math.max(0, second.original - 1));
-    second.modified -= match;
-    pool -= match;
-
-    while (pool > 0 && (
-      (first.modified > 1 && first.original !== 20)
-      || (second.modified > 1 && second.original !== 20)
-    )) {
-      if (first.modified > 1 && first.original !== 20 && pool > 0) {
-        first.modified -= 1;
-        pool -= 1;
-      }
-      if (second.modified > 1 && second.original !== 20 && pool > 0) {
-        second.modified -= 1;
-        pool -= 1;
-      }
-    }
-
-    const target = Number(data.target ?? 0);
-    first.isSuccess = first.modified <= target && first.original !== 20;
-    second.isSuccess = second.modified <= target && second.original !== 20;
-    data.successPoints = target - Math.max(first.modified, second.modified);
-    data.successCount = data.successPoints;
-    data.success = data.successPoints >= 0;
-    data.modifiedResults = [...dice].sort((a, b) => a.index - b.index);
-    return data;
   }
+  for (const die of active) {
+    die.modified = Math.max(1, die.original - skill - reduction);
+    die.isSuccess = die.modified <= target && die.original !== 20;
+  }
+  const successCount = active.filter(die => die.isSuccess).length;
+  const successPoints = active.reduce((sum, die) =>
+    sum + (die.isSuccess ? Math.max(0, target - die.modified + 1) : 0), 0);
+  return {
+    modifiedResults: dice.sort((a, b) => a.index - b.index),
+    successCount,
+    successPoints,
+    success: successCount > 0,
+    isCritSuccess: active.some(die => die.isNat1),
+    isCritFailure: active.every(die => die.isNat20)
+  };
 }
 
-// --------------------------------------------------
-// Infrastructure
-// --------------------------------------------------
-
-// Source consolidated from tests/test-result.js
-/**
- * Stable, mutable result shared by every phase of a Neuroshima test.
- *
- * `data` is the canonical mutable payload rendered by chat cards.
- * New code should use TestResult properties; `rollData` exists only as a
- * compatibility view for existing effect scripts.
- */
-export class TestResult {
-  constructor(data = {}) {
-    this.data = data;
-    this.roll = null;
-    this.cancelled = false;
-    this.skipped = false;
-    this.forceSuccessMode = null;
-    this.annotations = Array.isArray(data.annotations) ? data.annotations : [];
-    this.tags = new Set();
-  }
-
-  get rollData() { return this.data; }
-  get isSuccess() { return this.data.success === true; }
-  set isSuccess(value) { this.data.success = value === true; }
-  get successCount() { return Number(this.data.successCount ?? 0); }
-  set successCount(value) { this.data.successCount = Number(value ?? 0); }
-  get successPoints() { return Number(this.data.successPoints ?? 0); }
-  set successPoints(value) { this.data.successPoints = Number(value ?? 0); }
-
-  forceSuccess(mode) {
-    this.forceSuccessMode = mode;
-    this.data.autoSuccess = true;
-    this.data.success = true;
-    this.data.successCount = Math.max(1, Number(this.data.successCount ?? 0));
-    if (this.data.isOpen) {
-      this.data.successPoints = Math.max(0, Number(this.data.successPoints ?? 0));
-    }
-  }
-
+function evaluateRangedAttack(data, results) {
+  const target = Number(data.target ?? 0);
+  const skill = Number(data.skill ?? 0);
+  const reduction = Number(data.dieReductionBonus ?? 0);
+  const bestResult = Math.min(...results.map(Number));
+  const modifiedBest = Math.max(1, bestResult - skill - reduction);
+  const overflow = target - modifiedBest;
+  const success = data.isOpen ? overflow >= 0 : modifiedBest <= target && bestResult !== 20;
+  return {
+    bestResult,
+    modifiedResults: results.map((value, index) => {
+      const modified = Math.max(1, Number(value) - skill - reduction);
+      return {
+        original: Number(value), modified, index,
+        isSuccess: data.isOpen ? target - modified >= 0 : modified <= target && Number(value) !== 20,
+        isBest: Number(value) === bestResult,
+        isNat1: Number(value) === 1,
+        isNat20: Number(value) === 20,
+        ignored: false
+      };
+    }),
+    success,
+    successCount: success ? (data.isOpen ? Math.max(1, overflow + 1) : 1) : 0,
+    successPoints: success ? Math.max(1, overflow + 1) : 0,
+    isCritSuccess: bestResult === 1,
+    isCritFailure: bestResult === 20
+  };
 }
 
-// Source consolidated from tests/test-transformation.js
-export class TestTransformationQueue {
-  constructor() {
-    this._entries = [];
-  }
-
-  add(transform, { id = null, priority = 0 } = {}) {
-    if (typeof transform !== "function") return;
-    this._entries.push({ transform, id, priority });
-  }
-
-  async apply(test) {
-    const entries = [...this._entries].sort((a, b) => a.priority - b.priority);
-    this._entries.length = 0;
-    for (const entry of entries) await entry.transform(test);
-  }
+function clone(value) {
+  return foundry.utils.deepClone(value ?? {});
 }
 
-export class SideEffectQueue {
-  constructor() {
-    this._entries = [];
-  }
-
-  add(effect, { id = null, priority = 0 } = {}) {
-    if (typeof effect !== "function") return;
-    this._entries.push({ effect, id, priority });
-  }
-
-  async commit(test) {
-    const entries = [...this._entries].sort((a, b) => a.priority - b.priority);
-    this._entries.length = 0;
-    for (const entry of entries) await entry.effect(test);
-  }
-
-  clear() {
-    this._entries.length = 0;
-  }
-}
-
-// Source consolidated from tests/result-action-registry.js
-/**
- * Actions made available by a resolved test (damage, jam, healing, etc.).
- * Registration is separate from execution so previews and cancelled tests
- * cannot accidentally mutate documents.
- */
-export class ResultActionRegistry {
-  constructor() {
-    this._actions = new Map();
-    this._pending = new Set();
-    this._waiters = [];
-  }
-
-  register(id, action) {
-    if (!id || typeof action?.execute !== "function") return;
-    this._actions.set(id, { id, label: id, ...action });
-    if (action.requiresResolution) this._pending.add(id);
-  }
-
-  get(id) { return this._actions.get(id) ?? null; }
-  list() { return [...this._actions.values()]; }
-
-  async execute(id, test, payload = {}) {
-    const action = this.get(id);
-    if (!action) throw new Error(`Unknown test result action: ${id}`);
-    const result = await action.execute(test, payload);
-    if (result !== false) this.resolve(id);
-    return result;
-  }
-
-  resolve(id) {
-    this._pending.delete(id);
-    if (!this._pending.size) this._flushWaiters();
-  }
-
-  dismiss(id) { this.resolve(id); }
-  dismissAll() {
-    this._pending.clear();
-    this._flushWaiters();
-  }
-
-  get pending() { return [...this._pending]; }
-
-  waitForResolution() {
-    // Most existing actions are post-render and therefore non-blocking.
-    // New staged actions opt in with requiresResolution:true.
-    if (!this._pending.size) return Promise.resolve();
-    return new Promise(resolve => this._waiters.push(resolve));
-  }
-
-  serialize() {
-    return this.list().map(({ execute, ...action }) => ({
-      ...action,
-      pending: this._pending.has(action.id)
-    }));
-  }
-
-  _flushWaiters() {
-    for (const resolve of this._waiters.splice(0)) resolve();
-  }
-}
-
-// --------------------------------------------------
-// Base tests
-// --------------------------------------------------
-
-// Source consolidated from tests/base/neuroshima-test-base.js
-function serializable(value, seen = new WeakSet()) {
-  if (value == null || ["string", "number", "boolean"].includes(typeof value)) return value;
-  if (typeof value === "function") return undefined;
-  if (typeof value !== "object") return String(value);
-  if (value.documentName && value.uuid) return { uuid: value.uuid, documentName: value.documentName };
-  if (seen.has(value)) return undefined;
-  seen.add(value);
-  if (Array.isArray(value)) return value.map(entry => serializable(entry, seen)).filter(entry => entry !== undefined);
-  const output = {};
-  for (const [key, entry] of Object.entries(value)) {
-    const converted = serializable(entry, seen);
-    if (converted !== undefined) output[key] = converted;
-  }
-  return output;
-}
-
-/**
- * Infrastructure shared by every test family. It deliberately contains no
- * 3d20 or percentile rules: subclasses own calculation and recalculation.
- */
 export class NeuroshimaTestBase {
-  static classId = "base";
-
-  constructor({
-    type = "base", subtype = null, actor = null, item = null, targets = [],
-    attribute = null, skill = null, preData = {}, rollData = null,
-    result = null, context = {}
-  } = {}) {
-    this.rollType = type;
-    this.subtype = subtype;
-    this.actor = actor;
-    this.item = item;
-    this.targets = [...targets];
-    this.attribute = attribute;
-    this.skill = skill;
-    this.preData = { cancelled: false, autoSuccess: false, annotations: [], ...preData };
-    this.rollData = rollData ?? {};
-    this.context = { ...context };
-    this.result = result instanceof TestResult
-      ? result
-      : new TestResult({ annotations: [...(this.preData.annotations ?? [])] });
-    if (rollData) this.result.data = rollData;
-    this.transformations = new TestTransformationQueue();
-    this.sideEffects = new SideEffectQueue();
-    this.actions = new ResultActionRegistry();
-    this.phase = "created";
-    this.dirty = false;
-    this._forcedSuccess = null;
-    this._sideEffectsCommitted = false;
-    this._scriptRunner = null;
+  static tooltipFromResult(result = {}) {
+    const penalties = result.penalties ?? {};
+    return [
+      `<strong>${game.i18n.localize("NEUROSHIMA.Attributes.Attributes")}:</strong> ${result.baseStat ?? result.stat ?? 0}`,
+      `<strong>${game.i18n.localize("NEUROSHIMA.Items.Fields.Skill")}:</strong> ${result.baseSkill ?? result.skill ?? 0}`,
+      `<strong>${game.i18n.localize("NEUROSHIMA.Roll.TotalModifier")}:</strong> ${result.totalPenalty ?? result.penalty ?? 0}%`,
+      `<strong>${game.i18n.localize("NEUROSHIMA.Roll.Target")}:</strong> ${result.testTarget ?? result.target ?? 0}`,
+      Object.entries(penalties).filter(([, value]) => Number(value) !== 0)
+        .map(([key, value]) => `${key}: ${value}%`).join("<br>")
+    ].filter(Boolean).join("<br>");
   }
 
-  get classId() { return this.constructor.classId; }
-  get type() { return this.rollType; }
-  get weapon() { return this.item; }
+  constructor(data = {}, actor = null) {
+    this.actor = actor ?? data.actor ?? null;
+    this.item = data.item ?? null;
+    this.targets = Array.from(data.targets ?? []);
+    this.diceRoll = null;
+    const attribute = data.attribute ?? {};
+    const skill = data.skill ?? {};
+    this.data = {
+      preData: {
+        rollClass: this.constructor.name,
+        actorUuid: this.actor?.uuid ?? null,
+        itemUuid: this.item?.uuid ?? null,
+        targetUuids: this.targets.map(target => target?.uuid ?? target).filter(Boolean),
+        cancelled: false,
+        annotations: [],
+        stat: Number(attribute.value ?? data.preData?.stat ?? 0),
+        skill: Number(skill.value ?? data.preData?.skill ?? 0),
+        attributeKey: attribute.key ?? data.preData?.attributeKey ?? null,
+        skillKey: skill.key ?? data.preData?.skillKey ?? null,
+        ...clone(data.preData)
+      },
+      result: {
+        rawResults: [],
+        rolledResults: [],
+        modifiedResults: [],
+        success: false,
+        successCount: 0,
+        successPoints: 0,
+        isCritSuccess: false,
+        isCritFailure: false,
+        annotations: [],
+        ...clone(data.result)
+      },
+      context: {
+        rollMode: null,
+        reroll: false,
+        edited: false,
+        previousResult: null,
+        previousMessageId: null,
+        dirty: false,
+        ...clone(data.context)
+      }
+    };
+  }
+
+  static fromData(data, actor = null) {
+    return new this(data, actor);
+  }
+
+  static async recreate(data) {
+    const rollClass = data?.preData?.rollClass;
+    if (!rollClass) throw new Error("Serialized test has no preData.rollClass");
+    const TestClass = game.neuroshima.tests?.[rollClass];
+    if (typeof TestClass !== "function"
+      || !(TestClass === NeuroshimaTestBase || TestClass.prototype instanceof NeuroshimaTestBase)) {
+      throw new Error(`Unknown Neuroshima test class: ${rollClass}`);
+    }
+    const actor = data.preData.actorUuid ? await fromUuid(data.preData.actorUuid) : null;
+    const item = data.preData.itemUuid ? await fromUuid(data.preData.itemUuid) : null;
+    const targets = (await Promise.all(
+      (data.preData.targetUuids ?? []).map(uuid => fromUuid(uuid))
+    )).filter(Boolean);
+    const test = TestClass.fromData({
+      preData: clone(data.preData),
+      result: clone(data.result),
+      context: clone(data.context),
+      item,
+      targets
+    }, actor);
+    await test.restoreDocuments();
+    return test;
+  }
+
+  get preData() { return this.data.preData; }
+  get result() { return this.data.result; }
+  get context() { return this.data.context; }
+  get rollClass() { return this.constructor.name; }
+  get itemUuid() { return this.item?.uuid ?? this.preData.itemUuid ?? null; }
+  get messageType() { return "roll"; }
+  get chatTemplate() { return "systems/neuroshima/templates/chat/roll-card.hbs"; }
+
+  async restoreDocuments() {}
 
   cancel(reason = null) {
     this.preData.cancelled = true;
@@ -387,493 +272,412 @@ export class NeuroshimaTestBase {
   }
 
   markDirty(reason = null) {
-    this.dirty = true;
+    this.context.dirty = true;
     if (reason) (this.context.dirtyReasons ??= []).push(reason);
   }
 
-  reset() {
-    this.phase = "created";
-    this.dirty = false;
-    this._sideEffectsCommitted = false;
-  }
-
   forceSuccess({ mode = "keepRoll", annotation = null } = {}) {
-    if (!["keepRoll", "skipRoll"].includes(mode)) {
-      throw new Error(`Unsupported force-success mode: ${mode}`);
-    }
-    this._forcedSuccess = mode;
-    this.preData.autoSuccess = true;
-    if (annotation) this.preData.annotations.push(annotation);
+    this.preData.resultModifiers ??= {};
+    this.preData.resultModifiers.forcedSuccess = true;
+    if (mode === "skipRoll") this.preData.skipRoll = true;
+    if (annotation) this.annotate(annotation);
+    this.markDirty("forceSuccess");
   }
 
-  addTransformation(transform, options = {}) { this.transformations.add(transform, options); }
-  queueSideEffect(effect, options = {}) { this.sideEffects.add(effect, options); }
+  forceFailure() {
+    this.preData.resultModifiers ??= {};
+    this.preData.resultModifiers.forcedSuccess = false;
+    this.markDirty("forceFailure");
+  }
 
-  getScriptRunner() {
-    const runner = this._scriptRunner ?? globalThis.game?.neuroshima?.NeuroshimaScriptRunner;
-    if (!runner) throw new Error("NeuroshimaScriptRunner is not available");
-    return runner;
+  addSuccesses(amount) {
+    this.preData.resultModifiers ??= {};
+    this.preData.resultModifiers.successes =
+      Number(this.preData.resultModifiers.successes ?? 0) + Number(amount ?? 0);
+    this.markDirty("addSuccesses");
+  }
+
+  addSuccessPoints(amount) {
+    this.preData.resultModifiers ??= {};
+    this.preData.resultModifiers.successPoints =
+      Number(this.preData.resultModifiers.successPoints ?? 0) + Number(amount ?? 0);
+    this.markDirty("addSuccessPoints");
+  }
+
+  replaceDie(index, value, details = {}) {
+    index = Number(index);
+    if (!Number.isInteger(index) || index < 0 || index >= this.result.rawResults.length) return false;
+    const next = Math.clamp(Number(value), 1, 20);
+    const oldValue = this.result.rawResults[index];
+    if (!Number.isFinite(next) || oldValue === next) return false;
+    this.result.rawResults[index] = next;
+    (this.result.diceChanges ??= []).push({
+      type: details.type ?? "replace",
+      targetIndex: index,
+      sourceIndex: details.sourceIndex ?? null,
+      oldValue,
+      newValue: next,
+      label: details.label ?? "",
+      icon: details.icon ?? "fas fa-pen",
+      effectUuid: details.effectUuid ?? null
+    });
+    this.markDirty("replaceDie");
+    return true;
+  }
+
+  annotate(text) {
+    const annotation = String(text ?? "").trim();
+    if (!annotation) return false;
+    (this.result.annotations ??= []).push(annotation);
+    return true;
+  }
+
+  applyResultModifiers() {
+    const modifiers = this.preData.resultModifiers ?? {};
+    this.result.successCount = Math.max(
+      0, Number(this.result.successCount ?? 0) + Number(modifiers.successes ?? 0)
+    );
+    this.result.successPoints = Math.max(
+      0, Number(this.result.successPoints ?? 0) + Number(modifiers.successPoints ?? 0)
+    );
+    if (modifiers.forcedSuccess !== undefined) {
+      this.result.success = modifiers.forcedSuccess === true;
+    }
+    this.result.isSuccess = this.result.success === true;
   }
 
   triggerArgs() {
     return {
-      ...(this.context.eventArgs ?? {}),
       actor: this.actor,
       item: this.item,
-      weapon: this.item,
       test: this,
       context: this.context,
-      eventContext: this.context.eventContext ?? {},
-      rollData: this.result.rollData,
-      roll: this.result.roll
+      eventContext: {}
     };
   }
 
-  triggerMetadata(phase) {
-    return {
-      type: this.rollType, subtype: this.subtype, item: this.item, test: this,
-      roll: this.result.roll, result: this.result.rollData, phase,
-      reroll: this.context.reroll === true, edited: this.context.edited === true,
-      tags: [...this.result.tags]
-    };
-  }
-
-  async runTrigger(trigger, { phase = null } = {}) {
+  async runTrigger(trigger, metadata = {}) {
     if (!this.actor || this.context.isDebug) return;
-    return this.getScriptRunner().executeEvent(
+    return game.neuroshima.NeuroshimaScriptRunner.executeEvent(
       trigger,
       this.triggerArgs(),
-      { metadata: this.triggerMetadata(phase) }
+      {
+        metadata: {
+          test: this,
+          item: this.item,
+          reroll: this.context.reroll === true,
+          edited: this.context.edited === true,
+          ...metadata
+        }
+      }
     );
   }
 
-  runSyncTrigger(trigger, { phase = null } = {}) {
-    if (!this.actor || this.context.isDebug) return null;
-    return this.getScriptRunner().executeEventSync(
+  runSyncTrigger(trigger, metadata = {}, args = this.triggerArgs()) {
+    if (!this.actor || this.context.isDebug) return;
+    return game.neuroshima.NeuroshimaScriptRunner.executeEventSync(
       trigger,
-      this.triggerArgs(),
-      { metadata: this.triggerMetadata(phase) }
+      args,
+      {
+        metadata: {
+          test: this,
+          item: this.item,
+          reroll: this.context.reroll === true,
+          edited: this.context.edited === true,
+          ...metadata
+        }
+      }
     );
   }
 
   async runPreEffects() {
-    this.phase = "preRollTest";
     await this.runTrigger("preRollTest", { phase: "pre" });
   }
 
   async runPostEffects() {
-    this.phase = "rollTest";
     await this.runTrigger("rollTest", { phase: "result" });
   }
 
-  async begin() {
-    await this.runPreEffects();
-    if (this.preData.cancelled) {
-      this.phase = "cancelled";
-      this.result.cancelled = true;
-      this.sideEffects.clear();
-      return false;
-    }
-    this.result.annotations = this.preData.annotations;
-    return true;
-  }
-
-  async prepare() {}
-  async rollDice() {}
-  async computeResult(_rolled) {}
-  async resolveDomain(_rolled) {}
-  async recalculate() {
-    this.dirty = false;
-    return this.result;
-  }
-  needsRecalculation() {
-    return this.dirty;
-  }
-  async resolveResultActions() {
-    return this.actions.waitForResolution?.(this);
-  }
-  async postTest() {}
-
-  async applyResultOverrides() {
-    const data = this.result.data;
-    const successBonus = Number(data.effectActionSuccessBonus ?? 0);
-    const pointsBonus = Number(data.effectActionSuccessPointsBonus ?? 0);
-    if (successBonus) {
-      data.successCount = Math.max(0, Number(data.successCount ?? 0) + successBonus);
-      if (!data.isOpen) data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + successBonus);
-    }
-    if (pointsBonus) data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + pointsBonus);
-    if (data.effectActionForcedSuccess !== undefined) {
-      data.success = data.isSuccess = data.effectActionForcedSuccess === true;
-    } else if (successBonus > 0 && Number(data.successCount) > 0) {
-      data.success = data.isSuccess = true;
-    }
-    data.effectActionSuccessBonus = 0;
-    data.effectActionSuccessPointsBonus = 0;
-  }
-
-  async commitSideEffects(commit = true) {
-    if (this._sideEffectsCommitted) return;
-    this._sideEffectsCommitted = true;
-    if (commit) await this.sideEffects.commit(this);
-    else this.sideEffects.clear();
-  }
-
-  async finish({ commit = true } = {}) {
-    await this.runPostEffects();
-    await this.transformations.apply(this);
-    await this.resolveResultActions();
-    if (this.needsRecalculation()) await this.recalculate();
-    await this.applyResultOverrides();
-    if (this._forcedSuccess) this.result.forceSuccess(this._forcedSuccess);
-    this.phase = "postTest";
-    await this.postTest();
-    this.phase = "commit";
-    await this.commitSideEffects(commit);
-    this.phase = "complete";
-    return this.result;
-  }
-
-  async roll({ commit = true } = {}) {
-    if (!await this.begin()) return this.result;
-    this.phase = "prepare";
-    await this.prepare();
-    if (this.preData.cancelled) {
-      this.phase = "cancelled";
-      this.result.cancelled = true;
-      this.sideEffects.clear();
-      return this.result;
-    }
-    if (this.preData.autoSuccess && !this._forcedSuccess) this.forceSuccess({ mode: "skipRoll" });
-
-    if (this._forcedSuccess !== "skipRoll") {
-      this.phase = "roll";
-      const rolled = await this.rollDice();
-      this.phase = "evaluate";
-      await this.computeResult(rolled);
-      this.phase = "resolve";
-      await this.resolveDomain(rolled);
-    } else {
-      this.result.skipped = true;
-      this.result.data.rawResults ??= [];
-      this.result.data.rolledResults ??= [];
-      this.result.data.modifiedResults ??= [];
-    }
-    if (this._forcedSuccess) this.result.forceSuccess(this._forcedSuccess);
-    return this.finish({ commit });
-  }
-
-  serialize() {
-    return {
-      classId: this.classId,
-      actorUuid: this.actor?.uuid ?? null,
-      itemUuid: this.item?.uuid ?? null,
-      targetUuids: this.targets.map(target => target?.uuid ?? target).filter(Boolean),
-      type: this.rollType,
-      subtype: this.subtype,
-      attribute: serializable(this.attribute),
-      skill: serializable(this.skill),
-      preData: serializable(this.preData),
-      rollData: serializable(this.result.rollData),
-      context: serializable(this.context),
-      phase: this.phase
+  resetResult() {
+    const preserved = {
+      diceChanges: clone(this.result.diceChanges ?? []),
+      effectActions: clone(this.result.effectActions ?? []),
+      resultActions: clone(this.result.resultActions ?? [])
+    };
+    this.data.result = {
+      rawResults: [],
+      rolledResults: [],
+      modifiedResults: [],
+      success: false,
+      successCount: 0,
+      successPoints: 0,
+      isCritSuccess: false,
+      isCritFailure: false,
+      annotations: [...(this.preData.annotations ?? [])],
+      ...preserved
     };
   }
 
-  async updateMessage(message) {
+  async prepare() { throw new Error(`${this.rollClass}.prepare() is not implemented`); }
+  async rollDice() { throw new Error(`${this.rollClass}.rollDice() is not implemented`); }
+  async computeResult() { throw new Error(`${this.rollClass}.computeResult() is not implemented`); }
+  async resolveDomain() {}
+
+  async recalculate() {
+    await this.computeResult();
+    await this.resolveDomain();
+    this.context.dirty = false;
+    return this;
+  }
+
+  async postTest() {}
+
+  async roll({ message = null, sendToChat = true } = {}) {
+    await this.runPreEffects();
+    if (this.preData.cancelled) return this;
+    this.resetResult();
+    await this.prepare();
+    if (this.preData.cancelled) return this;
+    if (this.preData.skipRoll) {
+      this.result.rawResults = [...(this.preData.fixedDice ?? [])];
+      this.result.rolledResults = [...this.result.rawResults];
+    } else {
+      await this.rollDice();
+    }
+    await this.computeResult();
+    await this.resolveDomain();
+    await this.runPostEffects();
+    if (this.context.dirty) await this.recalculate();
+    await this.postTest();
+    if (sendToChat) this.message = await this.sendToChat({ message });
+    return this;
+  }
+
+  async edit({ preData = {}, rawResults = null } = {}, { message = null } = {}) {
+    this.context.previousResult = clone(this.result);
+    this.context.edited = true;
+    this.context.reroll = false;
+    foundry.utils.mergeObject(this.preData, preData, { inplace: true });
+    if (Array.isArray(rawResults)) this.preData.fixedDice = [...rawResults];
+    return this.roll({ message, sendToChat: true });
+  }
+
+  async reroll({ previousMessage = null, replaceMessage = false } = {}) {
+    this.context.previousResult = clone(this.result);
+    this.context.previousMessageId = previousMessage?.id ?? null;
+    this.context.reroll = true;
+    this.context.edited = false;
+    delete this.preData.fixedDice;
+    return this.roll({ message: replaceMessage ? previousMessage : null, sendToChat: true });
+  }
+
+  getDataTooltip() {
+    return this.constructor.tooltipFromResult(this.result);
+  }
+
+  canShowTooltip() {
+    const minimum = game.settings.get("neuroshima", "rollTooltipMinRole");
+    return game.user.role >= minimum
+      || (game.settings.get("neuroshima", "rollTooltipOwnerVisibility") && this.actor?.isOwner);
+  }
+
+  async getChatData() {
+    return {
+      ...clone(this.result),
+      config: NEUROSHIMA,
+      dataTooltip: this.getDataTooltip(),
+      showTooltip: this.canShowTooltip(),
+      isGM: game.user.isGM
+    };
+  }
+
+  async sendToChat({ message = null } = {}) {
     const { NeuroshimaChatMessage } = await import("./documents/chat-message.js");
-    return NeuroshimaChatMessage.updateTestMessage(message, this);
+    return NeuroshimaChatMessage.renderTest(this, { message });
+  }
+
+  async updateMessage(message) {
+    return this.sendToChat({ message });
+  }
+
+  toData() {
+    this.preData.rollClass = this.rollClass;
+    this.preData.actorUuid = this.actor?.uuid ?? this.preData.actorUuid ?? null;
+    this.preData.itemUuid = this.item?.uuid ?? this.preData.itemUuid ?? null;
+    this.preData.targetUuids = this.targets.map(target => target?.uuid ?? target).filter(Boolean);
+    return clone(this.data);
   }
 }
 
-// Source consolidated from tests/neuroshima-test.js
 export class NeuroshimaTest extends NeuroshimaTestBase {
-  static classId = "test";
-
-  constructor({
-    type = "attribute",
-    subtype = null,
-    actor = null,
-    item = null,
-    targets = [],
-    attribute = null,
-    skill = null,
-    preData = {},
-    rollData = null,
-    result = null,
-    context = {}
-  } = {}) {
-    super({ type, subtype, actor, item, targets, attribute, skill, preData, rollData, result, context });
-  }
+  get diceCount() { return 3; }
 
   async prepare() {
-    const data = this.result.data;
-    const currentStat = Number(this.attribute?.value ?? 0);
-    const currentSkill = Number(this.skill?.value ?? 0);
-    const penalties = this.preData.penalties ?? {};
-    const finalSkill = currentSkill + Number(this.preData.skillBonus ?? 0);
-    const finalStat = currentStat + Number(this.preData.attributeBonus ?? 0);
-    const totalPenalty = Object.values(penalties)
-      .reduce((sum, value) => sum + (Number.isFinite(Number(value)) ? Number(value) : 0), 0);
-    const baseDifficulty = TestRules.difficultyFromPercent(totalPenalty);
-    const defending = this.context.meleeAction === "defense";
-    const finalIsOpen = defending && !this.context.isInitiative ? false : this.context.isOpen === true;
-    Object.assign(data, {
-      label: this.preData.label ?? "",
-      stat: finalStat,
-      skill: finalSkill,
-      skillBonus: Number(this.preData.skillBonus ?? 0),
-      attributeBonus: Number(this.preData.attributeBonus ?? 0),
-      finalDifficultyShift: Number(this.preData.finalDifficultyShift ?? 0),
-      maximumDifficulty: this.preData.maximumDifficulty ?? null,
-      autoSuccess: this._forcedSuccess !== null,
-      baseStat: currentStat,
-      baseSkill: currentSkill,
-      baseDifficulty,
-      penalties,
-      penalty: totalPenalty,
-      totalPenalty,
-      baseDifficultyLabel: baseDifficulty.label,
-      isOpen: finalIsOpen,
-      isCombat: this.context.isCombat === true,
-      isDefending: defending,
-      isReroll: this.context.reroll === true,
-      isDebug: this.context.isDebug === true,
-      rollMode: this.context.rollMode,
-      rawResults: [], rolledResults: [], diceChanges: [], modifiedResults: [],
-      success: false, successCount: 0, successPoints: 0,
-      isCritSuccess: false, isCritFailure: false,
-      isGM: globalThis.game?.user?.isGM === true,
-      actorId: this.actor?.id, actorImg: this.actor?.img,
-      attributeKey: this.attribute?.key ?? null,
-      skillKey: this.skill?.key ?? null,
-      dieManualBonus: Number(this.preData.dieManualBonus ?? 0),
-      dieReductionBonus: Number(this.preData.dieReductionBonus ?? 0),
-      annotations: this.result.annotations
-    });
+    const penalties = clone(this.preData.penalties ?? {});
+    this.result.label = this.preData.label ?? "";
+    this.result.baseStat = Number(this.preData.stat ?? 0);
+    this.result.baseSkill = Number(this.preData.skill ?? 0);
+    this.result.attributeBonus = Number(this.preData.attributeBonus ?? 0);
+    this.result.skillBonus = Number(this.preData.skillBonus ?? 0);
+    this.result.stat = this.result.baseStat + this.result.attributeBonus;
+    this.result.skill = this.result.baseSkill + this.result.skillBonus;
+    this.result.penalties = penalties;
+    this.result.totalPenalty = Object.values(penalties)
+      .reduce((sum, value) => sum + Number(value || 0), 0);
+    this.result.baseDifficulty = TestRules.difficultyFromPercent(this.result.totalPenalty);
+    this.result.baseDifficultyLabel = this.result.baseDifficulty.label;
+    this.result.isOpen = this.preData.isOpen === true || this.context.isOpen === true;
+    this.result.isCombat = this.preData.isCombat === true || this.context.isCombat === true;
+    this.result.dieManualBonus = Number(this.preData.dieManualBonus ?? 0);
+    this.result.dieReductionBonus = Number(this.preData.dieReductionBonus ?? 0);
+    this.result.actorId = this.actor?.id ?? null;
+    this.result.actorImg = this.actor?.img ?? null;
+    this.result.rollMode = this.context.rollMode;
   }
 
   async rollDice() {
-    const roll = new Roll("3d20");
-    await roll.evaluate();
-    const fixed = this.context.fixedDice;
-    if (Array.isArray(fixed) && fixed.length === 3) {
-      roll.terms[0].results.forEach((result, index) => { result.result = Number(fixed[index]); });
-      roll._total = roll.terms[0].results.reduce((sum, result) => sum + result.result, 0);
+    const fixed = this.preData.fixedDice;
+    if (Array.isArray(fixed)) {
+      this.result.rawResults = fixed.map(Number);
+      this.result.rolledResults = [...this.result.rawResults];
+      this.diceRoll = null;
+      return;
     }
-    const rawResults = roll.terms[0].results.map(result => Number(result.result));
-    this.result.roll = roll;
-    this.result.data.rawResults = rawResults;
-    this.result.data.rolledResults = [...rawResults];
-    return { roll, rawResults };
+    this.diceRoll = await new Roll(`${this.diceCount}d20`).evaluate();
+    this.result.rawResults = this.diceRoll.terms[0].results.map(result => Number(result.result));
+    this.result.rolledResults = [...this.result.rawResults];
   }
 
-  async computeResult(rolled = null) {
-    const data = this.result.data;
-    let shift = Number(data.finalDifficultyShift ?? 0);
-    const allowCombatShift = globalThis.game?.settings?.get("neuroshima", "allowCombatShift") ?? true;
-    if ((!data.isCombat || allowCombatShift) && this.context.applySkillDifficultyShift !== false) {
-      shift -= TestRules.skillShift(data.skill);
+  async computeResult() {
+    let shift = Number(this.preData.finalDifficultyShift ?? 0);
+    if (this.preData.applySkillDifficultyShift !== false
+      && this.context.applySkillDifficultyShift !== false) {
+      shift -= TestRules.skillShift(this.result.skill);
     }
-    if ((!data.isCombat || allowCombatShift) && this.context.applyDiceDifficultyShift !== false) {
-      shift += TestRules.diceShift(data.rawResults);
+    if (this.preData.applyDiceDifficultyShift !== false
+      && this.context.applyDiceDifficultyShift !== false) {
+      shift += TestRules.diceShift(this.result.rawResults);
     }
     const difficulty = TestRules.clampMaximumDifficulty(
-      TestRules.shiftDifficulty(data.baseDifficulty, shift),
-      data.maximumDifficulty
+      TestRules.shiftDifficulty(this.result.baseDifficulty, shift),
+      this.preData.maximumDifficulty
     );
-    data.difficultyLabel = difficulty.label;
-    data.ptMod = difficulty.mod;
-    data.target = Number(data.stat ?? 0) + Number(data.ptMod ?? 0);
-    if (data.isOpen) new Open3d20Evaluator().evaluate(data, data.rawResults);
-    else if (data.isDefending) new Defense3d20Evaluator().evaluate(data, data.rawResults);
-    else new Closed3d20Evaluator().evaluate(data, data.rawResults);
-    this.applyManualDieReductions();
-    this.result.tags.add(data.isOpen ? "open" : "closed");
-    this.result.tags.add(data.success ? "success" : "failure");
-    return this.result;
+    this.result.finalDifficultyShift = shift;
+    this.result.difficultyLabel = difficulty.label;
+    this.result.ptMod = difficulty.mod;
+    this.result.target = this.result.stat + Number(difficulty.mod ?? 0);
+    const evaluated = this.result.isOpen
+      ? evaluateOpen3d20(this.result, this.result.rawResults)
+      : evaluateClosed3d20(this.result, this.result.rawResults);
+    Object.assign(this.result, evaluated);
+    this.applyResultModifiers();
+    return this;
   }
-
-  /**
-   * Persistent per-die reductions used by result actions and melee tricks.
-   * Keeping them in rollData lets every rerender/reload use the same class
-   * recalculation instead of a second evaluator in the chat helper.
-   */
-  applyManualDieReductions() {
-    const data = this.result.data;
-    const reductions = data.manualDieReductions ?? {};
-    if (!Object.values(reductions).some(value => Number(value) > 0)) return;
-    for (const die of data.modifiedResults ?? []) {
-      const reduction = Math.max(0, Number(reductions[die.index] ?? 0));
-      if (!reduction || die.ignored) continue;
-      die.modified = Math.max(1, Number(die.modified) - reduction);
-      die.isSuccess = die.original !== 20 && die.modified <= data.target;
-      die.showModified = true;
-    }
-    const active = (data.modifiedResults ?? []).filter(die => !die.ignored);
-    data.successCount = active.filter(die => die.isSuccess).length;
-    if (data.isOpen) {
-      const highest = active.length ? Math.max(...active.map(die => die.modified)) : 0;
-      data.success = active.length > 0 && active.every(die => die.isSuccess);
-      data.successPoints = data.success ? Math.max(0, Number(data.target) - highest) : 0;
-      data.isCritSuccess = false;
-      data.isCritFailure = false;
-    } else {
-      data.success = data.successCount >= 2;
-      data.successPoints = data.successCount;
-      data.isCritSuccess = data.successCount === 3;
-      data.isCritFailure = data.successCount === 0
-        && active.some(die => die.original === 20);
-    }
-  }
-
-  async recalculate() {
-    if (!this.result.data.rawResults?.length) return this.result;
-    await this.computeResult();
-    if (this._forcedSuccess || this.result.data.autoSuccess) {
-      this.result.forceSuccess(this._forcedSuccess ?? "keepRoll");
-    }
-    this.dirty = false;
-    return this.result;
-  }
-
-  needsRecalculation() {
-    return super.needsRecalculation()
-      || Boolean(this.result.data.forceRecalculate)
-      || Boolean(this.result.data.diceChanges?.length);
-  }
-
 }
 
-// --------------------------------------------------
-// Standard tests
-// --------------------------------------------------
-
-// Source consolidated from tests/standard/attribute-test.js
 export class AttributeTest extends NeuroshimaTest {
-  static classId = "attribute";
-  constructor(data = {}) { super({ ...data, type: "attribute" }); }
-}
-
-// Source consolidated from tests/standard/skill-test.js
-export class SkillTest extends NeuroshimaTest {
-  static classId = "skill";
-  constructor(data = {}) { super({ ...data, type: data.type ?? "skill" }); }
-}
-
-// Source consolidated from tests/standard/healing-test.js
-export class HealingTest extends SkillTest {
-  static classId = "healing";
-
-  constructor(data = {}) {
-    super({ ...data, type: "healing" });
-    this.patient = data.patient ?? data.context?.patientActor ?? null;
-    this.wound = data.wound ?? data.context?.wound ?? null;
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "attribute";
   }
+}
+
+export class SkillTest extends NeuroshimaTest {
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "skill";
+  }
+}
+
+export class HealingTest extends SkillTest {
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "healing";
+    this.patient = data.patient ?? null;
+    this.wound = data.wound ?? null;
+  }
+
+  get messageType() { return "healing"; }
+  get chatTemplate() { return "systems/neuroshima/templates/chat/healing-roll-card.hbs"; }
 
   static forWound({
-    medicActor,
-    patientActor,
-    healingMethod,
-    woundConfig,
-    stat = null,
-    skillBonus = 0,
-    attributeBonus = 0,
-    autoSuccess = false,
-    annotations = [],
-    dieManualBonus = 0,
-    dieReductionBonus = 0,
-    reroll = false
+    medicActor, patientActor, healingMethod, woundConfig, stat = null,
+    skillBonus = 0, attributeBonus = 0, autoSuccess = false, annotations = [],
+    dieManualBonus = 0, dieReductionBonus = 0, reroll = false
   }) {
-    const skillName = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
-    const baseStat = stat ?? (
-      Number(medicActor.system.attributes?.dexterity ?? 0)
-      + Number(medicActor.system.modifiers?.dexterity ?? 0)
-    );
-    const skillValue = Number(medicActor.system.skills?.[skillName]?.value ?? 0);
-    const difficulty = NEUROSHIMA.difficulties?.[woundConfig.difficulty || "average"]
-      ?? NEUROSHIMA.difficulties?.average
-      ?? { min: 0 };
+    const skillKey = healingMethod === "firstAid" ? "firstAid" : "woundTreatment";
     const wound = patientActor.items?.get(woundConfig.woundId) ?? null;
-
-    return new this({
-      actor: medicActor,
+    const difficulty = NEUROSHIMA.difficulties?.[woundConfig.difficulty || "average"]
+      ?? NEUROSHIMA.difficulties.average;
+    const test = new this({
+      item: wound,
       patient: patientActor,
       wound,
-      attribute: { key: "dexterity", value: baseStat },
-      skill: { key: skillName, value: skillValue },
       preData: {
         label: woundConfig.woundName,
-        penalties: {
-          mod: Number(difficulty.min ?? 0) + Number(woundConfig.modifier ?? 0)
-        },
+        stat: stat ?? Number(medicActor.system.attributeTotals?.dexterity ?? 0),
+        skill: Number(medicActor.system.skills?.[skillKey]?.value ?? 0),
+        attributeKey: "dexterity",
+        skillKey,
+        patientUuid: patientActor.uuid,
+        woundUuid: wound?.uuid ?? null,
+        healingMethod,
+        woundConfig: clone(woundConfig),
+        penalties: { mod: Number(difficulty.min ?? 0) + Number(woundConfig.modifier ?? 0) },
         skillBonus,
         attributeBonus,
         finalDifficultyShift: Number(woundConfig.failedAttempts ?? 0)
           + Number(woundConfig.difficultyShift ?? 0),
-        autoSuccess,
         annotations,
         dieManualBonus,
-        dieReductionBonus
+        dieReductionBonus,
+        resultModifiers: autoSuccess ? { forcedSuccess: true } : {}
       },
-      context: {
-        reroll,
-        isOpen: false,
-        rollType: "healing",
-        healingMethod,
-        patientActor,
-        wound,
-        woundConfig,
-        eventArgs: { patientActor, wound }
-      }
-    });
+      context: { reroll, isOpen: false, rollType: "healing" }
+    }, medicActor);
+    return test;
+  }
+
+  async restoreDocuments() {
+    this.patient = this.preData.patientUuid ? await fromUuid(this.preData.patientUuid) : null;
+    this.wound = this.preData.woundUuid ? await fromUuid(this.preData.woundUuid) : null;
+  }
+
+  async getChatData() {
+    return {
+      ...await super.getChatData(),
+      patientRef: { uuid: this.preData.patientUuid },
+      medicRef: { uuid: this.preData.actorUuid }
+    };
   }
 
   async resolveDomain() {
-    const config = this.context.woundConfig ?? {};
-    const data = this.result.data;
-    const wound = this.wound ?? this.patient?.items?.get(config.woundId);
-    const calculated = wound ? [this.computeHealingResult(wound, data.successCount, config)] : [];
-
-    Object.assign(data, {
-      woundId: config.woundId,
-      woundName: config.woundName,
-      damageType: config.damageType,
+    const config = this.preData.woundConfig ?? {};
+    const wound = this.wound ?? (this.preData.woundUuid ? await fromUuid(this.preData.woundUuid) : null);
+    Object.assign(this.result, {
+      woundId: config.woundId ?? wound?.id,
+      woundName: config.woundName ?? wound?.name,
+      damageType: config.damageType ?? wound?.system?.damageType,
       difficulty: config.difficulty,
-      testTarget: data.target,
-      isSuccess: data.success === true,
-      finalStat: data.stat,
-      skillShift: -TestRules.skillShift(data.skill),
-      diceShift: TestRules.diceShift(data.rawResults),
-      healingEffect: calculated[0] ?? null
+      testTarget: this.result.target,
+      isSuccess: this.result.success === true,
+      finalStat: this.result.stat,
+      skillShift: -TestRules.skillShift(this.result.skill),
+      diceShift: TestRules.diceShift(this.result.rawResults),
+      healingEffect: wound ? this.computeHealingResult(wound, this.result.successCount, config) : null
     });
-    return this.result;
   }
 
-  computeHealingResult(wound, successCount, config = this.context.woundConfig ?? {}) {
-    const success = Number(successCount) >= 2;
-    const firstAid = this.context.healingMethod === "firstAid";
-    let penaltyChange = success
-      ? (firstAid ? -5 : (config.hadFirstAid ? -10 : -15))
-      : 5;
-    penaltyChange += Number(config.healingModifier ?? 0);
-    const modifierOnFailure = globalThis.game?.settings?.get(
-      "neuroshima", "healingScriptModifierOnFailure"
-    ) ?? false;
-    if (success || modifierOnFailure) {
-      penaltyChange += Number(config.scriptHealingModifier ?? 0);
+  computeHealingResult(wound, successCount, config = {}) {
+    const success = Number(successCount) >= 2 || this.result.success === true;
+    const firstAid = this.preData.healingMethod === "firstAid";
+    let change = success ? (firstAid ? -5 : (config.hadFirstAid ? -10 : -15)) : 5;
+    change += Number(config.healingModifier ?? 0);
+    if (success || game.settings.get("neuroshima", "healingScriptModifierOnFailure")) {
+      change += Number(config.scriptHealingModifier ?? 0);
     }
     const oldPenalty = Number(wound.system?.penalty ?? 0);
-    let newPenalty = Math.max(0, oldPenalty + penaltyChange);
-    if (success && !(globalThis.game?.settings?.get("neuroshima", "allowRepeatedHealing") ?? false)) {
-      const originalPenalty = Number(wound.system?.originalPenalty ?? oldPenalty);
-      if (firstAid) {
-        const remaining = Math.max(0, 5 - Number(wound.system?.firstAidHealingApplied ?? 0));
-        newPenalty = Math.max(oldPenalty - remaining, newPenalty);
-      }
-      newPenalty = Math.max(originalPenalty - 15, newPenalty);
-    }
-    newPenalty = Math.max(0, newPenalty);
+    const newPenalty = Math.max(0, oldPenalty + change);
     return {
       woundId: wound.id,
       woundName: wound.name,
@@ -885,396 +689,280 @@ export class HealingTest extends SkillTest {
       isSuccess: success
     };
   }
-
-  async recalculate() {
-    await super.recalculate();
-    await this.resolveDomain();
-    return this.result;
-  }
 }
 
-// Source consolidated from tests/standard/initiative-test.js
 export class InitiativeTest extends NeuroshimaTest {
-  static classId = "initiative";
-  constructor(data = {}) { super({ ...data, type: "initiative" }); }
-
-  async computeResult(rolled = null) {
-    await super.computeResult(rolled);
-    this.computeInitiative();
-    return this.result;
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "initiative";
+    this.combatant = data.combatant ?? null;
   }
 
-  async recalculate() {
-    await super.recalculate();
-    // super.recalculate() invokes the polymorphic computeResult(), therefore
-    // the initiative trigger has already been included in the final contract.
-    return this.result;
+  get messageType() { return "initiative"; }
+  get chatTemplate() { return "systems/neuroshima/templates/chat/initiative-roll-card.hbs"; }
+
+  async restoreDocuments() {
+    this.combatant = this.preData.combatantUuid ? await fromUuid(this.preData.combatantUuid) : null;
   }
 
-  computeInitiative() {
+  async computeResult() {
+    await super.computeResult();
     const args = this.triggerArgs();
     args.initiative = Number(this.result.successPoints ?? 0);
-    args.successPoints = args.initiative; // compatibility for existing scripts
-    if (this.actor && !this.context.isDebug) {
-      this.getScriptRunner().executeEventSync("getInitiativeFormula", args, {
-        metadata: this.triggerMetadata("calculate")
-      });
-    }
-    const finalValue = Number(args.initiative ?? args.successPoints ?? 0);
-    this.result.data.initiative = finalValue;
-    this.result.data.successPoints = finalValue;
+    this.runSyncTrigger("getInitiativeFormula", { phase: "calculate" }, args);
+    this.result.initiative = Number(args.initiative ?? this.result.successPoints ?? 0);
+    this.result.isInitiative = true;
+    return this;
   }
 
   async postTest() {
-    await super.postTest();
-    const combatant = this.context.combatant ?? this.context.eventArgs?.combatant;
-    // Melee initiative belongs to the duel subsystem and must not overwrite
-    // the regular Combat tracker initiative.
-    if (this.subtype === "melee" || !combatant?.update || this.context.isDebug
-      || this.context.reroll === true || this.context.edited === true) return;
-    const initiative = Number(this.result.data.initiative ?? this.result.successPoints ?? 0);
-    this.queueSideEffect(() => combatant.update({ initiative }), {
-      id: "update-combatant-initiative"
+    if (!this.combatant || this.context.reroll || this.context.edited
+      || this.preData.subtype === "melee") return;
+    await this.combatant.update({ initiative: this.result.initiative });
+  }
+
+  async getChatData() {
+    const data = await super.getChatData();
+    data.meleeTargets = (await Promise.all(
+      (this.preData.targetUuids ?? []).map(uuid => fromUuid(uuid))
+    )).filter(Boolean).map(document => {
+      const actor = document.actor ?? document;
+      return { id: actor.id, name: actor.name, img: actor.img };
     });
+    data.isVanillaMelee = false;
+    return data;
   }
 }
 
-// --------------------------------------------------
-// Percentile tests
-// --------------------------------------------------
-
-// Source consolidated from tests/percentile/percentile-test.js
 export class PercentileTest extends NeuroshimaTestBase {
-  static classId = "percentile";
-  constructor(data = {}) { super({ ...data, type: data.type ?? "percentile" }); }
-
-  async rollDice() {
-    const roll = await new Roll("1d100").evaluate();
-    const rawResults = [Number(roll.total)];
-    this.result.roll = roll;
-    this.result.data.rawResults = rawResults;
-    return { roll, rawResults };
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "percentile";
   }
 
-  async recalculate() {
-    await this.computeResult();
-    if (this._forcedSuccess || this.result.data.autoSuccess) {
-      this.result.forceSuccess(this._forcedSuccess ?? "keepRoll");
-    }
-    this.dirty = false;
-    return this.result;
-  }
-
-  needsRecalculation() {
-    return super.needsRecalculation()
-      || Boolean(this.result.data.forceRecalculate)
-      || Boolean(this.result.data.diceChanges?.length);
-  }
-}
-
-// Source consolidated from tests/percentile/reputation-test.js
-export class ReputationTest extends PercentileTest {
-  static classId = "reputation";
-  constructor(data = {}) { super({ ...data, type: "reputation" }); }
+  get diceCount() { return 1; }
 
   async prepare() {
-    const target = Number(this.attribute?.value ?? this.preData.target ?? 0);
-    Object.assign(this.result.data, {
-      label: this.preData.label ?? this.item?.name ?? "",
-      stat: target,
-      skill: 0,
-      target,
-      rawResults: [],
-      rolledResults: [],
-      modifiedResults: [],
-      success: false,
-      successCount: 0,
-      successPoints: 0,
-      isOpen: false,
-      isReputationRoll: true,
-      rollMode: this.context.rollMode
-    });
+    this.result.label = this.preData.label ?? "";
+    this.result.target = Number(this.preData.target ?? this.preData.stat ?? 0);
+    this.result.rollMode = this.context.rollMode;
+    this.result.actorId = this.actor?.id ?? null;
+    this.result.actorImg = this.actor?.img ?? null;
   }
 
-  async computeResult(rolled = null) {
-    const data = this.result.data;
-    const result = Number(data.rawResults?.[0] ?? 0);
-    const target = Number(data.target ?? 0);
-    const success = result <= target;
-    data.rolledResults = [result];
-    data.modifiedResults = [{
-      original: result, modified: result, isSuccess: success,
-      ignored: false, index: 0
-    }];
-    data.success = success;
-    data.successCount = success ? 1 : 0;
-    data.successPoints = target - result;
-    this.result.tags.add("percentile");
-    this.result.tags.add(success ? "success" : "failure");
-    return this.result;
+  async rollDice() {
+    if (Array.isArray(this.preData.fixedDice)) {
+      this.result.rawResults = [Number(this.preData.fixedDice[0])];
+      return;
+    }
+    this.diceRoll = await new Roll("1d100").evaluate();
+    this.result.rawResults = [Number(this.diceRoll.total)];
+  }
+
+  async computeResult() {
+    const value = Number(this.result.rawResults[0] ?? 0);
+    const success = value <= Number(this.result.target ?? 0);
+    Object.assign(this.result, {
+      rolledResults: [value],
+      modifiedResults: [{ original: value, modified: value, isSuccess: success, ignored: false, index: 0 }],
+      success,
+      isSuccess: success,
+      successCount: success ? 1 : 0,
+      successPoints: Number(this.result.target ?? 0) - value
+    });
+    this.applyResultModifiers();
+    return this;
   }
 }
 
-// --------------------------------------------------
-// Attack tests
-// --------------------------------------------------
+export class ReputationTest extends PercentileTest {
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "reputation";
+  }
+}
 
-// Source consolidated from tests/attack/attack-test.js
 export class AttackTest extends NeuroshimaTest {
-  static classId = "attack";
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = data.preData?.type ?? "attack";
+  }
 
   static shiftDamageType(type, steps = 0) {
-    if (!steps) return type;
-    const regular = ["D", "L", "C", "K"];
-    const bruise = ["sD", "sL", "sC", "sK"];
-    const track = String(type ?? "").startsWith("s") ? bruise : regular;
+    const track = String(type ?? "").startsWith("s")
+      ? ["sD", "sL", "sC", "sK"]
+      : ["D", "L", "C", "K"];
     const index = track.indexOf(type);
     if (index < 0) return type;
-    return track[Math.min(track.length - 1, Math.max(0, index + Number(steps)))];
+    return track[Math.clamp(index + Number(steps ?? 0), 0, track.length - 1)];
   }
 
   static locationFromRoll(value) {
-    const rolled = Number(value);
-    const entry = Object.entries(NEUROSHIMA.bodyLocations).find(([, data]) => (
-      Array.isArray(data.roll) && rolled >= data.roll[0] && rolled <= data.roll[1]
-    ));
-    return entry?.[0] ?? "torso";
+    return Object.entries(NEUROSHIMA.bodyLocations).find(([, location]) =>
+      Array.isArray(location.roll)
+      && Number(value) >= location.roll[0]
+      && Number(value) <= location.roll[1]
+    )?.[0] ?? "torso";
   }
 
-  async computeHitLocation(requested = this.context.hitLocation ?? "torso") {
+  async computeHitLocation(requested = this.preData.hitLocation ?? "torso") {
     if (requested !== "random") {
-      this.result.data.finalLocation = requested;
+      this.result.finalLocation = requested;
       return requested;
     }
-    const locationRoll = await new Roll("1d20").evaluate();
-    const location = this.constructor.locationFromRoll(locationRoll.total);
-    this.result.data.locationRoll = locationRoll.total;
-    this.result.data.finalLocation = location;
-    (this.result.data.auxiliaryRolls ??= []).push({
-      type: "hitLocation",
-      formula: locationRoll.formula ?? "1d20",
-      result: locationRoll.total,
-      value: location
-    });
+    const roll = await new Roll("1d20").evaluate();
+    const location = this.constructor.locationFromRoll(roll.total);
+    this.result.locationRoll = roll.total;
+    this.result.finalLocation = location;
     return location;
   }
 
-  computeMeleeDamageProfiles({
-    location = this.result.data.finalLocation,
-    damageShift = 0,
-    damageShift1 = 0,
-    damageShift2 = 0,
-    damageShift3 = 0
-  } = {}) {
+  computeMeleeDamageProfiles(location = this.result.finalLocation) {
     const system = this.item?.system ?? {};
-    const headShift = location === "head" ? 1 : 0;
-    const profiles = [
-      this.constructor.shiftDamageType(system.damageMelee1 || "D", damageShift + damageShift1 + headShift),
-      this.constructor.shiftDamageType(system.damageMelee2 || system.damageMelee1 || "D", damageShift + damageShift2 + headShift),
-      this.constructor.shiftDamageType(system.damageMelee3 || system.damageMelee2 || system.damageMelee1 || "D", damageShift + damageShift3 + headShift)
-    ];
-    Object.assign(this.result.data, {
+    const head = location === "head" ? 1 : 0;
+    const base = Number(this.preData.damageShift ?? this.context.damageShift ?? 0);
+    const profiles = [1, 2, 3].map(index => {
+      const type = system[`damageMelee${index}`]
+        || system[`damageMelee${Math.max(1, index - 1)}`]
+        || "D";
+      return this.constructor.shiftDamageType(
+        type,
+        base + Number(this.preData[`damageShift${index}`] ?? this.context[`damageShift${index}`] ?? 0) + head
+      );
+    });
+    Object.assign(this.result, {
       damageMelee1: profiles[0],
       damageMelee2: profiles[1],
       damageMelee3: profiles[2],
       damage: profiles.join("/"),
       damageProfilesResolved: true,
-      headDamageApplied: headShift === 1
+      headDamageApplied: head === 1
     });
-    return profiles;
   }
 }
 
-// Source consolidated from tests/attack/weapon-test.js
 export class WeaponTest extends AttackTest {
-  static classId = "weapon";
-  constructor(data = {}) { super({ ...data, type: "weapon" }); }
-
-  /**
-   * Compatibility constructor for the historical flat dialog payload. The
-   * concrete subclass is selected before this method is called, so callers no
-   * longer branch over weapon types outside TestFactory.
-   */
-  async prepare() {
-    await super.prepare();
-    const data = this.result.data;
-    data.isWeapon = true;
-    data.label = this.preData.label ?? this.item?.name ?? "";
-    data.weaponId = this.item?.id ?? null;
-    data.actorId = this.actor?.id ?? null;
-    data.actorImg = this.actor?.img ?? null;
-    data.weaponType = this.item?.system?.weaponType ?? this.subtype;
-    data.isMelee = this.context.isMelee === true;
-    data.meleeAction = this.context.isMelee ? (this.context.meleeAction ?? "attack") : null;
-    data.maneuver = this.context.maneuver ?? "none";
-    data.rollMode = this.context.rollMode;
-    data.targets = this.context.isMelee ? [...this.targets] : [];
-    data.applyArmor = this.context.applyArmor;
-    data.applyWounds = this.context.applyWounds;
-    data.damageShift = Number(this.context.damageShift ?? 0);
-    data.burstLevel = Number(this.context.burstLevel ?? 0);
-    data.distance = Number(this.context.distance ?? 0);
-    data.isReroll = this.context.reroll === true;
-    data.diceCount = Math.min(3, Math.max(
-      1,
-      Math.floor(Number(this.preData.diceCount ?? 3))
-    ));
-    data.jammingThreshold = Number(
-      this.preData.jammingThreshold
-      ?? this.item?.system?.jammingThreshold
-      ?? 20
-    );
-    data.bulletsFired = Math.max(0, Number(this.preData.bulletsFired ?? 0));
-    data.bulletSequence = this.preData.bulletSequence ?? [];
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "weapon";
   }
 
-  async rollDice() {
-    const diceCount = Number(this.result.data.diceCount ?? 3);
-    const roll = new Roll(`${diceCount}d20`);
-    await roll.evaluate();
-    const fixed = this.context.fixedDice;
-    if (Array.isArray(fixed) && fixed.length === diceCount) {
-      roll.terms[0].results.forEach((result, index) => { result.result = Number(fixed[index]); });
-      roll._total = roll.terms[0].results.reduce((sum, result) => sum + result.result, 0);
-    }
-    const rawResults = roll.terms[0].results.map(result => Number(result.result));
-    this.result.roll = roll;
-    this.result.data.rawResults = rawResults;
-    this.result.data.rolledResults = [...rawResults];
-    return { roll, rawResults };
+  get messageType() { return "weapon"; }
+  get chatTemplate() {
+    return this.result.isMelee
+      ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
+      : "systems/neuroshima/templates/chat/weapon-roll-card.hbs";
   }
-
-  async resolveDomain(rolled = null) {
-    await super.resolveDomain(rolled);
-    const location = await this.computeHitLocation(
-      this.context.hitLocation ?? this.preData.hitLocation ?? "torso"
-    );
-    this.result.data.hitLocation = this.context.hitLocation ?? location;
-    this.result.data.locationLabel = globalThis.game?.i18n?.localize?.(
-      NEUROSHIMA.bodyLocations?.[location]?.label ?? location
-    ) ?? location;
-    return this.result;
+  get diceCount() {
+    return Math.clamp(Number(this.preData.diceCount ?? 3), 1, 3);
   }
 
   async runPreEffects() {
     await super.runPreEffects();
-    if (!this.preData.cancelled) {
-      await this.runTrigger("preRollWeaponTest", { phase: "pre" });
-    }
-  }
-
-  triggerArgs() {
-    const args = super.triggerArgs();
-    const data = this.result.data;
-    Object.assign(args, {
-      weapon: this.item,
-      firedDespiteJam: data.firedDespiteJam === true,
-      despiteJamBullets: data.despiteJamBullets ?? null,
-      annotations: this.result.annotations,
-      options: this.context.options ?? {}
-    });
-    Object.defineProperties(args, {
-      isSuccess: {
-        enumerable: true,
-        get: () => data.success === true,
-        set: value => { data.success = data.isSuccess = value === true; }
-      },
-      isJamming: {
-        enumerable: true,
-        get: () => data.isJamming === true,
-        set: value => { data.isJamming = data.jamming = value === true; }
-      },
-      hitBullets: {
-        enumerable: true,
-        get: () => data.hitBullets,
-        set: value => { data.hitBullets = Number(value ?? 0); }
-      },
-      bulletsFired: {
-        enumerable: true,
-        get: () => data.bulletsFired,
-        set: value => { data.bulletsFired = Number(value ?? 0); }
-      },
-      successPoints: {
-        enumerable: true,
-        get: () => data.successPoints,
-        set: value => { data.successPoints = Number(value ?? 0); }
-      }
-    });
-    return args;
+    if (!this.preData.cancelled) await this.runTrigger("preRollWeaponTest", { phase: "pre" });
   }
 
   async runPostEffects() {
     await super.runPostEffects();
     await this.runTrigger("rollWeaponTest", { phase: "result" });
-    this.markDirty("rollWeaponTest");
   }
 
-  async postTest() {
-    await super.postTest();
+  async prepare() {
+    await super.prepare();
+    Object.assign(this.result, {
+      isWeapon: true,
+      label: this.preData.label ?? this.item?.name ?? "",
+      weaponId: this.item?.id ?? null,
+      weaponType: this.item?.system?.weaponType ?? null,
+      isMelee: this.preData.isMelee === true || this.context.isMelee === true,
+      meleeAction: this.preData.meleeAction ?? this.context.meleeAction ?? null,
+      maneuver: this.preData.maneuver ?? this.context.maneuver ?? "none",
+      diceCount: this.diceCount,
+      burstLevel: Number(this.preData.burstLevel ?? this.context.burstLevel ?? 0),
+      distance: Number(this.preData.distance ?? this.context.distance ?? 0),
+      jammingThreshold: Number(this.preData.jammingThreshold ?? this.item?.system?.jamming ?? 20),
+      bulletsFired: Number(this.preData.bulletsFired ?? 0),
+      bulletSequence: clone(this.preData.bulletSequence ?? [])
+    });
+  }
+
+  async resolveDomain() {
+    const location = await this.computeHitLocation(this.preData.hitLocation ?? this.context.hitLocation ?? "torso");
+    this.result.hitLocation = this.preData.hitLocation ?? this.context.hitLocation ?? location;
+    this.result.locationLabel = game.i18n.localize(NEUROSHIMA.bodyLocations?.[location]?.label ?? location);
+  }
+
+  getDataTooltip() {
+    return [
+      super.getDataTooltip(),
+      `<strong>${game.i18n.localize("NEUROSHIMA.Roll.BulletsFired")}:</strong> ${this.result.bulletsFired ?? 0}`,
+      `<strong>${game.i18n.localize("NEUROSHIMA.Roll.Jamming")}:</strong> ${this.result.isJamming ? game.i18n.localize("Yes") : game.i18n.localize("No")}`
+    ].join("<br>");
+  }
+
+  async getChatData() {
+    if (!this.result.isMelee) {
+      this.result.snapshotTargets = [...(game.user.targets ?? [])]
+        .map(token => token.actor ? ({
+          id: token.actor.id,
+          uuid: token.actor.uuid,
+          name: token.actor.name,
+          img: token.document?.texture?.src || token.actor.img
+        }) : null)
+        .filter(Boolean);
+    }
+    const data = await super.getChatData();
+    data.meleeTargets = this.result.isMelee
+      ? (await Promise.all((this.preData.targetUuids ?? []).map(uuid => fromUuid(uuid))))
+        .filter(Boolean).map(document => {
+          const actor = document.actor ?? document;
+          return { id: actor.id, name: actor.name, img: actor.img };
+        })
+      : [];
+    data.isVanillaMelee = false;
+    return data;
   }
 }
 
-// Source consolidated from tests/attack/ranged-weapon-test.js
 export class RangedWeaponTest extends WeaponTest {
-  static classId = "rangedWeapon";
-  constructor(data = {}) { super({ ...data, subtype: data.subtype ?? "ranged" }); }
-
   static bulletsForBurst(weapon, burstLevel = 0) {
     if (weapon?.system?.weaponType === "thrown") return 1;
-    const fireRate = Math.max(1, Number(weapon?.system?.fireRate ?? 1));
-    switch (Number(burstLevel)) {
-      case 1: return fireRate;
-      case 2: return fireRate * 3;
-      case 3: return fireRate * 6;
-      default: return 1;
-    }
+    const rate = Math.max(1, Number(weapon?.system?.fireRate ?? 1));
+    return [1, rate, rate * 3, rate * 6][Number(burstLevel)] ?? 1;
   }
 
   static pelletDamageAtDistance(ranges, distance = 0) {
-    if (!ranges) return "D";
     for (const key of ["range1", "range2", "range3", "range4"]) {
-      const range = ranges[key];
-      if (range && Number(distance) <= Number(range.distance)) return range.damage;
+      if (ranges?.[key] && Number(distance) <= Number(ranges[key].distance)) return ranges[key].damage;
     }
     return "D";
   }
 
-  /**
-   * Build an immutable firing plan. Reading inventory is allowed here, but no
-   * Item is updated until WeaponTest commits its queued side effects.
-   */
-  static planAmmunition(actor, weapon, requestedBullets) {
-    const isRanged = weapon.system.weaponType === "ranged";
-    const isThrown = weapon.system.weaponType === "thrown";
-    const magazineId = weapon.system.magazine;
-    const magazine = magazineId ? actor.items.get(magazineId) : null;
+  static planAmmunition(actor, weapon, requested) {
+    const magazineId = weapon?.system?.magazine;
+    const magazine = magazineId ? actor?.items?.get(magazineId) : null;
     const plan = {
       valid: true,
-      isRanged,
-      isThrown,
       magazine,
       magazineId,
       magazineUpdateData: null,
       ammoItem: null,
       ammoItemQuantity: null,
-      bulletsFired: requestedBullets,
+      bulletsFired: requested,
       bulletSequence: [],
-      damage: weapon.system.damage || "0",
-      piercing: weapon.system.piercing || 0,
-      jamming: weapon.system.jamming || 20,
-      damageCategory: weapon.system.damageCategory ?? "physical",
-      exhaustedDuringBurst: false
+      damage: weapon?.system?.damage ?? "D",
+      piercing: Number(weapon?.system?.piercing ?? 0),
+      jamming: Number(weapon?.system?.jamming ?? 20),
+      damageCategory: weapon?.system?.damageCategory ?? "physical"
     };
-
-    if ((isRanged || isThrown) && !magazine && !weapon.system.skipMagazineCheck) {
+    if (!magazine && !weapon?.system?.skipMagazineCheck) {
       plan.valid = false;
       plan.reason = "noMagazine";
       return plan;
     }
-
     if (magazine?.type === "magazine") {
-      const contents = structuredClone(magazine.system.contents || []);
-      let remaining = requestedBullets;
+      const contents = clone(magazine.system.contents ?? []);
+      let remaining = requested;
       const consumed = [];
       while (remaining > 0 && contents.length) {
         const stack = contents.at(-1);
@@ -1284,9 +972,8 @@ export class RangedWeaponTest extends WeaponTest {
         remaining -= quantity;
         if (stack.quantity <= 0) contents.pop();
       }
-      plan.bulletsFired = requestedBullets - remaining;
+      plan.bulletsFired = requested - remaining;
       plan.magazineUpdateData = contents;
-      plan.exhaustedDuringBurst = remaining > 0;
       for (const stack of consumed) {
         for (let index = 0; index < stack.quantity; index++) {
           const overrides = stack.overrides ?? {};
@@ -1296,563 +983,370 @@ export class RangedWeaponTest extends WeaponTest {
             piercing: overrides.enabled && overrides.piercing != null ? overrides.piercing : plan.piercing,
             jamming: overrides.enabled && overrides.jamming != null ? overrides.jamming : plan.jamming,
             isPellet: overrides.isPellet === true,
-            pelletCount: overrides.isPellet ? Number(overrides.pelletCount ?? 1) : 1,
-            pelletRanges: overrides.isPellet ? overrides.pelletRanges : null
+            pelletCount: Number(overrides.pelletCount ?? 1),
+            pelletRanges: overrides.pelletRanges ?? null
           });
         }
       }
-    } else if (isThrown && magazineId) {
-      const ammo = actor.items.get(magazineId);
-      plan.ammoItem = ammo?.type === "ammo" ? ammo : null;
-      if (plan.ammoItem && Number(plan.ammoItem.system.quantity) > 0) {
-        const system = plan.ammoItem.system;
-        const override = system.isOverride === true;
-        plan.bulletsFired = 1;
-        plan.ammoItemQuantity = Number(system.quantity) - 1;
-        plan.bulletSequence = [{
-          name: plan.ammoItem.name,
-          damage: override && system.overrideDamage ? system.damage : plan.damage,
-          piercing: override && system.overridePiercing ? system.piercing : plan.piercing,
-          jamming: override && system.overrideJamming ? system.jamming : plan.jamming,
-          isPellet: system.isPellet === true,
-          pelletCount: system.isPellet ? Number(system.pelletCount ?? 1) : 1,
-          pelletRanges: system.isPellet ? system.pelletRanges : null
-        }];
-        if (override && system.overrideDamageCategory) {
-          plan.damageCategory = system.damageCategory ?? "physical";
-        }
-      } else {
-        plan.bulletsFired = 0;
-      }
-    }
-
-    if (!plan.bulletSequence.length && plan.bulletsFired > 0 && weapon.system.skipMagazineCheck) {
-      const bullet = {
+    } else if (weapon?.system?.skipMagazineCheck) {
+      plan.bulletSequence = Array.from({ length: requested }, () => ({
         name: weapon.name,
         damage: plan.damage,
         piercing: plan.piercing,
         jamming: plan.jamming,
-        isPellet: false,
-        pelletCount: 1,
-        pelletRanges: null
-      };
-      plan.bulletSequence = Array.from({ length: plan.bulletsFired }, () => ({ ...bullet }));
-    }
-
-    if (plan.bulletSequence.length) {
-      plan.damage = plan.bulletSequence[0].damage;
-      plan.piercing = plan.bulletSequence[0].piercing;
-      plan.jamming = Math.min(...plan.bulletSequence.map(bullet => Number(bullet.jamming ?? 20)));
+        isPellet: false
+      }));
     }
     return plan;
   }
 
   async prepare() {
     await super.prepare();
+    if (this.result.isOpen && this.diceCount < 2) {
+      this.cancel("openTestRequiresTwoDice");
+      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Roll.OpenTestRequiresTwoDice"));
+      return;
+    }
     if (!this.actor || !this.item) return;
     const requested = Number(this.preData.bulletsFired)
-      || this.constructor.bulletsForBurst(this.item, this.context.burstLevel);
+      || this.constructor.bulletsForBurst(this.item, this.result.burstLevel);
     const plan = this.constructor.planAmmunition(this.actor, this.item, requested);
-    this.context.ammunitionPlan = plan;
+    this._ammunitionPlan = plan;
     if (!plan.valid) {
       this.cancel(plan.reason);
       return;
     }
-    Object.assign(this.result.data, {
+    Object.assign(this.result, {
       bulletsFired: plan.bulletsFired,
       bulletSequence: plan.bulletSequence,
       damage: plan.damage,
       piercing: plan.piercing,
       damageCategory: plan.damageCategory,
-      jammingThreshold: Math.min(
-        Number(this.item.system.jamming ?? 20),
-        Number(plan.jamming ?? 20)
-      ),
-      burstHitStep: Number(this.context.burstHitStep ?? 1),
-      distance: Number(this.context.distance ?? 0)
+      jammingThreshold: Math.min(Number(this.item.system.jamming ?? 20), Number(plan.jamming ?? 20)),
+      burstHitStep: Number(this.preData.burstHitStep ?? this.context.burstHitStep ?? 1),
+      magazineId: plan.magazineId,
+      fireRate: Number(this.item.system.fireRate ?? 1)
     });
-    this.result.data.actionLabel = globalThis.game?.i18n?.localize?.(
-      NEUROSHIMA.burstLabels[this.context.burstLevel] ?? NEUROSHIMA.burstLabels[0]
-    ) ?? "";
-    this.result.data.magazineId = plan.magazineId;
-    this.result.data.ammoId = plan.isThrown ? plan.magazineId : null;
-    this.result.data.fireRate = Number(this.item.system.fireRate ?? 1);
-
-    if (plan.magazine?.type === "magazine" && plan.magazineUpdateData) {
-      this.queueSideEffect(current => {
-        const data = current.result.data;
-        if (data.isJamming && !data.firedDespiteJam) return;
-        return plan.magazine.update({ "system.contents": plan.magazineUpdateData });
-      }, { id: "consume-magazine" });
-    } else if (plan.ammoItem && plan.bulletsFired > 0) {
-      this.queueSideEffect(current => {
-        const data = current.result.data;
-        if (data.isJamming && !data.firedDespiteJam) return;
-        return plan.ammoItem.update({ "system.quantity": plan.ammoItemQuantity });
-      }, { id: "consume-thrown-ammo" });
-    }
-    this.queueSideEffect(current => {
-      const jammed = current.result.data.isJamming === true;
-      if (jammed === (this.item.system.jammed === true)) return;
-      return this.item.update({ "system.jammed": jammed });
-    }, { id: "update-weapon-jam", priority: 100 });
   }
 
-  async computeResult(rolled = null) {
-    await super.computeResult(rolled);
-    await this.recalculate();
+  async computeResult() {
+    await super.computeResult();
+    const evaluated = evaluateRangedAttack(this.result, this.result.rawResults);
+    Object.assign(this.result, evaluated);
+    const jammed = this.result.forceNoJam === true
+      ? false
+      : this.result.forceJam === true
+        || Number(this.result.bestResult) >= Number(this.result.jammingThreshold ?? 20);
+    const mayFire = !jammed || this.result.firedDespiteJam === true;
+    const sequence = this.result.bulletSequence ?? [];
+    const limit = this.result.firedDespiteJam
+      ? Math.min(this.result.bulletsFired, Number(this.result.despiteJamBullets ?? 1))
+      : this.result.bulletsFired;
+    const hits = [];
+    if (this.result.success && mayFire) {
+      for (let index = 0; index < limit; index++) {
+        if (this.result.successPoints <= Math.floor(index / Math.max(1, this.result.burstHitStep))) break;
+        const bullet = sequence[index] ?? sequence[0];
+        if (!bullet) break;
+        hits.push({
+          ...bullet,
+          damage: bullet.isPellet
+            ? this.constructor.pelletDamageAtDistance(bullet.pelletRanges, this.result.distance)
+            : bullet.damage,
+          successPoints: bullet.isPellet
+            ? Math.min(Number(bullet.pelletCount ?? 1), this.result.successPoints)
+            : 1,
+          shellIndex: index + 1
+        });
+      }
+    }
+    Object.assign(this.result, {
+      isJamming: jammed,
+      jamming: jammed,
+      hitBulletsData: hits,
+      hitBullets: hits.length,
+      isCritFailure: this.result.isCritFailure || jammed
+    });
     this.computeFireCorrection();
-    return this.result;
+    this.applyResultModifiers();
+    return this;
   }
 
   computeFireCorrection() {
-    const data = this.result.data;
-    const enabled = globalThis.game?.settings?.get("neuroshima", "fireCorrection") === true;
-    if (!enabled || data.isJamming || Number(this.context.burstLevel) <= 0 || data.bulletsFired <= 0) {
-      data.fireCorrectionData = null;
-      return null;
+    if (!game.settings.get("neuroshima", "fireCorrection")
+      || this.result.isJamming || this.result.burstLevel <= 0) {
+      this.result.fireCorrectionData = null;
+      return;
     }
-    if (!data.success) {
-      const modifiedBest = Math.max(
-        1,
-        Number(data.bestResult) - Number(data.skill) - Number(data.dieReductionBonus ?? 0)
-      );
-      const failureMargin = modifiedBest - Number(data.target);
-      data.fireCorrectionData = failureMargin > 0 ? {
-        failureMargin,
-        totalCorrectionCost: failureMargin * 3,
-        bulletsFired: data.bulletsFired,
-        canCorrect: failureMargin * 3 < data.bulletsFired,
-        isSuccessCorrection: false
-      } : null;
-    } else {
-      const remainingForCorrection = data.bulletsFired - data.hitBullets;
-      const maxCorrectionHits = Math.floor(remainingForCorrection / 4);
-      data.fireCorrectionData = {
-        failureMargin: 0,
-        totalCorrectionCost: 3,
-        bulletsFired: data.bulletsFired,
-        hitBullets: data.hitBullets,
-        remainingForCorrection,
-        maxCorrectionHits,
-        canCorrect: maxCorrectionHits > 0,
-        isSuccessCorrection: true
-      };
-    }
-    return data.fireCorrectionData;
+    this.result.fireCorrectionData = {
+      bulletsFired: this.result.bulletsFired,
+      hitBullets: this.result.hitBullets,
+      remainingForCorrection: this.result.bulletsFired - this.result.hitBullets,
+      canCorrect: this.result.bulletsFired - this.result.hitBullets >= 4,
+      isSuccessCorrection: this.result.success === true
+    };
   }
 
-  /**
-   * Rebuild every value derived from the attack dice. This method is pure with
-   * respect to Foundry documents: ammunition and jam updates remain queued
-   * side effects of the original roll.
-   */
-  async recalculate() {
-    const data = this.result.data;
-    const results = [...(data.rawResults ?? data.results ?? [])].map(Number);
-    if (!results.length) return this.result;
+  async postTest() {
+    if (this.context.edited || this.context.reroll || this.preData.cancelled) return;
+    this._ammunitionPlan = this.constructor.planAmmunition(
+      this.actor,
+      this.item,
+      Number(this.result.bulletsFired ?? 0)
+    );
+    await this.consumeAmmunition();
+    await this.updateJamState();
+  }
 
-    const target = Number(data.target ?? 0);
-    const skill = Number(data.skill ?? 0);
-    const bestResult = Math.min(...results);
-    const dieReductionBonus = Number(data.dieReductionBonus ?? 0);
-    const modifiedBest = Math.max(1, bestResult - skill - dieReductionBonus);
-    const overflow = target - modifiedBest;
-    const isOpen = data.isOpen === true;
-    let success = isOpen ? overflow >= 0 : modifiedBest <= target && bestResult !== 20;
-    let successPoints = isOpen ? Math.max(0, overflow) : (success ? 1 : 0);
-    if (data.autoSuccess) {
-      success = true;
-      successPoints = Math.max(1, successPoints);
+  async consumeAmmunition() {
+    const plan = this._ammunitionPlan;
+    if (!plan || (this.result.isJamming && !this.result.firedDespiteJam)) return;
+    if (plan.magazine?.type === "magazine" && plan.magazineUpdateData) {
+      await plan.magazine.update({ "system.contents": plan.magazineUpdateData });
+    } else if (plan.ammoItem && plan.ammoItemQuantity != null) {
+      await plan.ammoItem.update({ "system.quantity": plan.ammoItemQuantity });
     }
+  }
 
-    const forcedJam = data.forceJam === true;
-    const preventedJam = data.forceNoJam === true;
-    const threshold = Number(data.jammingThreshold ?? 20);
-    let jammed = preventedJam ? false : forcedJam || bestResult >= threshold;
-    if (data.jamWasCleared === true) jammed = false;
-    const mayFire = !jammed || data.firedDespiteJam === true;
-    const pp = success ? Math.max(data.autoSuccess ? 1 : 0, overflow + 1) : 0;
-    const sequence = data.bulletSequence ?? data.hitBulletsData ?? [];
-    const hitSequence = [];
-    let pelletHits = 0;
-    const pelletLimit = globalThis.game?.settings?.get("neuroshima", "usePelletCountLimit") ?? true;
-    const bulletsFired = Math.max(0, Number(data.bulletsFired ?? 0));
+  async updateJamState() {
+    if (!this.item || this.item.system.jammed === this.result.isJamming) return;
+    await this.item.update({ "system.jammed": this.result.isJamming });
+  }
 
-    if (success && mayFire) {
-      const shotLimit = data.firedDespiteJam
-        ? Math.min(bulletsFired, Number(data.despiteJamBullets) > 0
-          ? Number(data.despiteJamBullets)
-          : 1)
-        : bulletsFired;
-      const burstHitStep = Math.max(1, Number(data.burstHitStep ?? 1));
-      for (let index = 0; index < shotLimit; index++) {
-        if (pp <= Math.floor(index / burstHitStep)) break;
-        const bullet = sequence[index] ?? sequence[0];
-        if (!bullet) break;
-        if (bullet.isPellet) {
-          const capacity = Math.max(0, Number(bullet.pelletCount ?? 1) - index);
-          let count = Math.max(0, pp - index);
-          if (pelletLimit || count > capacity) count = Math.min(count, capacity);
-          if (count > 0) {
-            pelletHits += count;
-            hitSequence.push({
-              ...bullet,
-              damage: this.constructor.pelletDamageAtDistance(bullet.pelletRanges, data.distance),
-              successPoints: count,
-              shellIndex: index + 1
-            });
-          }
-        } else {
-          hitSequence.push({ ...bullet, successPoints: 1, shellIndex: index + 1 });
-        }
+  async refundAmmunition(message) {
+    if (message.getFlag("neuroshima", "ammoRefunded")) return false;
+    const sequence = this.result.bulletSequence ?? [];
+    if (!sequence.length) return false;
+    const magazine = this.result.magazineId ? this.actor?.items?.get(this.result.magazineId) : null;
+    if (magazine?.type === "magazine") {
+      const contents = clone(magazine.system.contents ?? []);
+      for (const bullet of sequence) {
+        const stack = contents.find(entry => entry.name === bullet.name);
+        if (stack) stack.quantity = Number(stack.quantity ?? 0) + 1;
+        else contents.push({ name: bullet.name, quantity: 1 });
       }
+      await magazine.update({ "system.contents": contents });
     }
+    await message.setFlag("neuroshima", "ammoRefunded", true);
+    return true;
+  }
 
-    data.bestResult = bestResult;
-    data.modifiedResults = results.map((value, index) => ({
-      original: value,
-      modified: Math.max(1, value - skill - dieReductionBonus),
-      isSuccess: isOpen
-        ? target - Math.max(1, value - skill - dieReductionBonus) >= 0
-        : Math.max(1, value - skill - dieReductionBonus) <= target && value !== 20,
-      isBest: value === bestResult,
-      isNat1: value === 1,
-      isNat20: value === 20,
-      index
-    }));
-    data.success = data.isSuccess = success;
-    data.successPoints = successPoints;
-    data.successCount = success ? (isOpen ? successPoints : 1) : 0;
-    data.isJamming = data.jamming = jammed;
-    data.hitBulletsData = hitSequence;
-    data.hitBullets = hitSequence.length;
-    data.totalPelletSP = pelletHits;
-    data.isCritSuccess = bestResult === 1;
-    data.isCritFailure = bestResult === 20 || jammed;
-    delete data.forceRecalculate;
-    this.result.tags.delete("success");
-    this.result.tags.delete("failure");
-    this.result.tags.delete("jam");
-    this.result.tags.add(success ? "success" : "failure");
-    if (jammed) this.result.tags.add("jam");
-    this.dirty = false;
-    return this.result;
+  static _isSameAmmo(stack, bullet) {
+    if (!stack || !bullet || stack.name !== bullet.name) return false;
+    const overrides = stack.overrides ?? {};
+    return (overrides.damage ?? null) === (bullet.damage ?? null)
+      && Number(overrides.piercing ?? 0) === Number(bullet.piercing ?? 0)
+      && Number(overrides.jamming ?? 20) === Number(bullet.jamming ?? 20)
+      && Boolean(overrides.isPellet) === Boolean(bullet.isPellet);
+  }
+
+  async refundBurstLevel(targetLevel) {
+    const currentLevel = Number(this.result.burstLevel ?? this.preData.burstLevel ?? 0);
+    const level = Math.clamp(Number(targetLevel), 0, currentLevel);
+    const currentBullets = this.constructor.bulletsForBurst(this.item, currentLevel);
+    const targetBullets = this.constructor.bulletsForBurst(this.item, level);
+    const count = Math.max(0, Math.min(currentBullets - targetBullets, this.result.bulletSequence?.length ?? 0));
+    if (!count) return 0;
+    const bullets = this.result.bulletSequence.slice(-count);
+    const magazine = this.result.magazineId ? this.actor?.items?.get(this.result.magazineId) : null;
+    if (magazine?.type === "magazine") {
+      const contents = clone(magazine.system.contents ?? []);
+      for (const bullet of [...bullets].reverse()) {
+        const stack = contents.at(-1);
+        if (this.constructor._isSameAmmo(stack, bullet)) stack.quantity = Number(stack.quantity ?? 0) + 1;
+        else contents.push({
+          name: bullet.name,
+          img: bullet.img ?? "systems/neuroshima/assets/img/ammo.svg",
+          quantity: 1,
+          overrides: {
+            enabled: true,
+            damage: bullet.damage,
+            piercing: bullet.piercing,
+            jamming: bullet.jamming,
+            isPellet: bullet.isPellet,
+            pelletCount: bullet.pelletCount,
+            pelletRanges: bullet.pelletRanges
+          }
+        });
+      }
+      await magazine.update({ "system.contents": contents });
+    } else {
+      const ammo = this.result.ammoId ? this.actor?.items?.get(this.result.ammoId) : null;
+      if (!ammo) return 0;
+      await ammo.update({ "system.quantity": Number(ammo.system.quantity ?? 0) + count });
+    }
+    return count;
+  }
+
+  async increaseBurstLevel(targetLevel) {
+    const currentLevel = Number(this.result.burstLevel ?? this.preData.burstLevel ?? 0);
+    const originalLevel = Number(this.preData.originalBurstLevel ?? this.preData.burstLevel ?? currentLevel);
+    const level = Math.clamp(Number(targetLevel), currentLevel, originalLevel);
+    const count = this.constructor.bulletsForBurst(this.item, level)
+      - this.constructor.bulletsForBurst(this.item, currentLevel);
+    if (count <= 0) return 0;
+    const plan = this.constructor.planAmmunition(this.actor, this.item, count);
+    if (!plan.valid || plan.bulletsFired !== count) return 0;
+    if (plan.magazine?.type === "magazine") {
+      await plan.magazine.update({ "system.contents": plan.magazineUpdateData });
+    } else if (plan.ammoItem) {
+      await plan.ammoItem.update({ "system.quantity": plan.ammoItemQuantity });
+    }
+    return count;
+  }
+
+  async setBurstLevel(level) {
+    const current = Number(this.result.burstLevel ?? this.preData.burstLevel ?? 0);
+    const target = Math.clamp(Number(level), 0, Number(this.preData.originalBurstLevel ?? current));
+    const changed = target < current
+      ? await this.refundBurstLevel(target)
+      : await this.increaseBurstLevel(target);
+    if (target !== current && changed <= 0) return false;
+    this.preData.originalBurstLevel ??= current;
+    this.preData.burstLevel = target;
+    this.result.burstLevel = this.preData.burstLevel;
+    this.markDirty("burstLevel");
+    await this.recalculate();
+    return true;
   }
 }
 
-// Source consolidated from tests/attack/melee-weapon-test.js
 export class MeleeWeaponTest extends WeaponTest {
-  static classId = "meleeWeapon";
-  constructor(data = {}) { super({ ...data, subtype: data.subtype ?? "melee" }); }
+  async prepare() {
+    this.preData.isMelee = true;
+    await super.prepare();
+    this.result.isMelee = true;
+    this.result.meleeAction = this.preData.meleeAction ?? this.context.meleeAction ?? "attack";
+  }
 
-  async computeResult(rolled = null) {
-    await super.computeResult(rolled);
-    await this.recalculate();
-    return this.result;
+  async computeResult() {
+    await super.computeResult();
+    const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction") === true;
+    const defense = this.result.meleeAction === "defense";
+    const evaluated = defense
+      ? evaluateDefense3d20(this.result, this.result.rawResults)
+      : doubleSkill && !this.result.isOpen
+        ? {
+            ...evaluateDefense3d20(this.result, this.result.rawResults),
+            success: this.result.rawResults.some(value => Number(value) <= this.result.target && Number(value) !== 20)
+          }
+        : this.result.isOpen
+          ? evaluateOpen3d20(this.result, this.result.rawResults)
+          : evaluateClosed3d20(this.result, this.result.rawResults);
+    Object.assign(this.result, evaluated);
+    this.applyResultModifiers();
+    return this;
+  }
+
+  async resolveDomain() {
+    await super.resolveDomain();
+    this.computeMeleeDamageProfiles(this.result.finalLocation);
+    Object.assign(this.result, {
+      isMelee: true,
+      meleeAction: this.preData.meleeAction ?? this.context.meleeAction ?? "attack",
+      piercing: Number(this.item?.system?.piercing ?? 0),
+      hitBullets: this.result.success ? 1 : 0,
+      hitBulletsData: this.result.success ? [{
+        damage: this.result.damage,
+        piercing: Number(this.item?.system?.piercing ?? 0),
+        successPoints: 1,
+        isPellet: false
+      }] : []
+    });
   }
 
   get opposedResult() {
     return {
-      success: this.result.isSuccess,
+      success: this.result.success,
       successes: this.result.successCount,
       successPoints: this.result.successPoints,
-      dice: this.result.rollData?.modifiedResults ?? []
+      dice: this.result.modifiedResults ?? []
     };
-  }
-
-  async resolveDomain(rolled = null) {
-    await super.resolveDomain(rolled);
-    this.computeMeleeDamageProfiles({
-      location: this.result.data.finalLocation,
-      damageShift: Number(this.context.damageShift ?? 0),
-      damageShift1: Number(this.context.damageShift1 ?? 0),
-      damageShift2: Number(this.context.damageShift2 ?? 0),
-      damageShift3: Number(this.context.damageShift3 ?? 0)
-    });
-    this.result.data.isMelee = true;
-    this.result.data.meleeAction = this.context.meleeAction ?? "attack";
-    this.result.data.piercing = Number(this.item?.system?.piercing ?? 0);
-    this.result.data.hitBullets = this.result.data.success ? 1 : 0;
-    this.result.data.hitBulletsData = this.result.data.success ? [{
-      damage: this.result.data.damage,
-      piercing: this.result.data.piercing,
-      successPoints: 1,
-      isPellet: false
-    }] : [];
-    return this.result;
-  }
-
-  async recalculate() {
-    const data = this.result.data;
-    const rawResults = [...(data.rawResults ?? data.results ?? [])].map(Number);
-    if (!rawResults.length) return this.result;
-    const evaluated = {
-      target: Number(data.target ?? 0),
-      skill: Number(data.skill ?? 0),
-      dieReductionBonus: Number(data.dieReductionBonus ?? 0)
-    };
-    const doubleSkill = globalThis.game?.settings?.get("neuroshima", "doubleSkillAction") === true;
-    if (doubleSkill && !data.isOpen) {
-      evaluated.modifiedResults = rawResults.map((value, index) => ({
-        original: value,
-        modified: value,
-        isSuccess: value <= evaluated.target && value !== 20,
-        isNat1: value === 1,
-        isNat20: value === 20,
-        index
-      }));
-      evaluated.successCount = evaluated.modifiedResults.filter(die => die.isSuccess).length;
-      evaluated.successPoints = evaluated.successCount;
-      evaluated.success = evaluated.successCount > 0;
-      evaluated.skillUsed = 0;
-      evaluated.remainingSkill = evaluated.skill;
-      evaluated.isCritSuccess = rawResults.includes(1);
-      evaluated.isCritFailure = rawResults.includes(20);
-    } else if (data.isOpen) new Open3d20Evaluator().evaluate(evaluated, rawResults);
-    else if (data.isDefending || data.meleeAction === "defense") {
-      new Defense3d20Evaluator().evaluate(evaluated, rawResults);
-    } else {
-      new Closed3d20Evaluator().evaluate(evaluated, rawResults);
-    }
-    data.modifiedResults = evaluated.modifiedResults;
-    data.success = data.isSuccess = data.autoSuccess === true || evaluated.success === true;
-    data.successCount = Number(evaluated.successCount ?? 0);
-    data.successPoints = data.isOpen
-      ? Number(evaluated.successPoints ?? 0)
-      : data.successCount;
-    data.skillUsed = evaluated.skillUsed;
-    data.remainingSkill = evaluated.remainingSkill;
-    data.isCritSuccess = Boolean(evaluated.isCritSuccess);
-    data.isCritFailure = Boolean(evaluated.isCritFailure);
-    data.hitBullets = data.success ? 1 : 0;
-    data.hitBulletsData = data.success ? [{
-      damage: data.damage,
-      piercing: Number(data.piercing ?? this.item?.system?.piercing ?? 0),
-      successPoints: 1,
-      isPellet: false
-    }] : [];
-    delete data.forceRecalculate;
-    this.result.tags.delete("success");
-    this.result.tags.delete("failure");
-    this.result.tags.add(data.success ? "success" : "failure");
-    this.dirty = false;
-    return this.result;
   }
 }
 
-// Source consolidated from tests/attack/grenade-test.js
 export class GrenadeTest extends AttackTest {
-  static classId = "grenade";
-  constructor(data = {}) { super({ ...data, type: "grenade" }); }
-
-  /** Evaluate the grenade-specific outcome after the shared attack result. */
-  async computeResult(rolled = null) {
-    await super.computeResult(rolled);
-    this.computeGrenadeResult();
-    return this.result;
+  constructor(data = {}, actor = null) {
+    super(data, actor);
+    this.preData.type = "grenade";
   }
 
-  async recalculate() {
-    await super.recalculate();
-    return this.result;
-  }
+  get messageType() { return "grenade"; }
+  get chatTemplate() { return "systems/neuroshima/templates/chat/grenade-roll-card.hbs"; }
 
-  computeGrenadeResult() {
-    const data = this.result.data;
-    const domain = this.context.options?.grenadeData ?? this.context.grenadeData ?? {};
-    const distance = Number(domain.distance ?? data.distance ?? 0);
-    const successCount = Number(data.successCount ?? 0);
-    const success = data.success === true;
-    const failureMargin = success ? 0 : Math.max(0, 3 - successCount);
-    const distanceFactor = distance <= 10 ? 1 : Math.ceil(distance / 10);
-    const blastZones = [...(domain.blastZones ?? data.blastZones ?? [])]
+  async computeResult() {
+    await super.computeResult();
+    const domain = this.preData.grenadeData ?? this.context.grenadeData ?? {};
+    const distance = Number(domain.distance ?? this.result.distance ?? 0);
+    const failureMargin = this.result.success ? 0 : Math.max(0, 3 - this.result.successCount);
+    const zones = [...(domain.blastZones ?? this.result.blastZones ?? [])]
       .sort((a, b) => Number(a.radius) - Number(b.radius));
-    Object.assign(data, {
+    Object.assign(this.result, {
       isGrenade: true,
-      isSuccess: success,
-      actorId: this.actor?.id,
+      isSuccess: this.result.success,
       weaponId: this.item?.id,
-      actorImg: this.actor?.prototypeToken?.texture?.src ?? this.actor?.img,
       failureMargin,
-      deviationMetres: success ? 0 : failureMargin * distanceFactor,
+      deviationMetres: this.result.success ? 0 : failureMargin * (distance <= 10 ? 1 : Math.ceil(distance / 10)),
       distance,
-      distancePenalty: Number(domain.distancePenalty ?? data.distancePenalty ?? 0),
-      blastZones,
-      templateRadius: blastZones.length
-        ? Math.max(...blastZones.map(zone => Number(zone.radius) || 0))
-        : 0
+      distancePenalty: Number(domain.distancePenalty ?? 0),
+      blastZones: zones,
+      templateRadius: zones.length ? Math.max(...zones.map(zone => Number(zone.radius) || 0)) : 0
     });
+    return this;
   }
 
-  /**
-   * Consuming the thrown Item is a commit-time side effect. Recalculation,
-   * preview and result actions can therefore never consume extra grenades.
-   */
   async postTest() {
-    await super.postTest();
-    if (!this.item?.actor || this.result.cancelled
-      || this.context.reroll === true || this.context.edited === true) return;
-    const current = Number(this.item.system?.quantity ?? 1);
-    const quantity = Math.max(0, current - 1);
-    this.queueSideEffect(
-      () => this.item.update({ "system.quantity": quantity }),
-      { id: `consume-grenade:${this.item.uuid ?? this.item.id}`, document: this.item }
-    );
-    this.result.data.remainingQuantity = quantity;
+    if (this.context.edited || this.context.reroll || !this.item?.actor) return;
+    const quantity = Math.max(0, Number(this.item.system.quantity ?? 1) - 1);
+    await this.item.update({ "system.quantity": quantity });
+    this.result.remainingQuantity = quantity;
   }
 }
 
-// --------------------------------------------------
-// Opposed tests
-// --------------------------------------------------
-
-// Source consolidated from tests/opposed/melee-opposed-resolver.js
-/**
- * Composition of two completed melee tests. It never rolls dice and never
- * updates documents; callers remain responsible for presenting and applying
- * the resulting hits.
- */
 export class MeleeOpposedResolver {
   constructor(attackerTest, defenderTest, { mode = "opposedSuccesses", context = {} } = {}) {
     this.attackerTest = attackerTest;
     this.defenderTest = defenderTest;
     this.mode = mode;
     this.context = context;
-    this.result = null;
-  }
-
-  get triggerArgs() {
-    return {
-      actor: this.attackerTest.actor,
-      defenderActor: this.defenderTest.actor,
-      item: this.attackerTest.item,
-      test: this.attackerTest,
-      attackerTest: this.attackerTest,
-      defenderTest: this.defenderTest,
-      opposedTest: this,
-      context: this.context
-    };
   }
 
   async resolve() {
-    const runner = this.attackerTest.getScriptRunner();
-    await runner.executeEvent("preOpposedAttacker", this.triggerArgs, {
-      metadata: { role: "source", item: this.attackerTest.item, opposedTest: this }
-    });
-    await runner.executeEvent("preOpposedDefender", {
-      ...this.triggerArgs,
-      actor: this.defenderTest.actor,
-      item: this.defenderTest.item
-    }, {
-      metadata: { role: "target", item: this.defenderTest.item, opposedTest: this }
-    });
-
-    // Pre-opposed scripts may alter either completed result.
-    if (this.attackerTest.needsRecalculation()) await this.attackerTest.recalculate();
-    if (this.defenderTest.needsRecalculation()) await this.defenderTest.recalculate();
-
+    await this.attackerTest.runTrigger("preOpposedAttacker", { phase: "pre", role: "attacker" });
+    await this.defenderTest.runTrigger("preOpposedDefender", { phase: "pre", role: "defender" });
     const attacker = this.attackerTest.opposedResult;
     const defender = this.defenderTest.opposedResult;
-    const hits = [];
-    if (this.mode === "opposedPips") {
-      const length = Math.max(attacker.dice.length, defender.dice.length);
-      for (let index = 0; index < length; index++) {
-        const attackDie = attacker.dice[index];
-        const defenseDie = defender.dice[index];
-        if (attackDie?.isSuccess
-          && (!defenseDie?.isSuccess || attackDie.modified < defenseDie.modified)) {
-          hits.push({ tier: index + 1 });
-        }
-      }
-    } else {
-      const difference = Number(attacker.successes ?? 0) - Number(defender.successes ?? 0);
-      if (difference > 0) hits.push({ tier: Math.min(3, difference) });
-    }
-
-    this.result = {
-      mode: this.mode,
+    const attackerValue = this.mode === "opposedSuccesses" ? attacker.successes : attacker.successPoints;
+    const defenderValue = this.mode === "opposedSuccesses" ? defender.successes : defender.successPoints;
+    const difference = Number(attackerValue ?? 0) - Number(defenderValue ?? 0);
+    const result = {
+      winner: difference > 0 ? "attacker" : difference < 0 ? "defender" : "draw",
+      difference: Math.abs(difference),
       attacker,
       defender,
-      difference: Number(attacker.successes ?? 0) - Number(defender.successes ?? 0),
-      winner: hits.length ? "attacker" : "defender",
-      hits
+      mode: this.mode
     };
-
-    await runner.executeEvent("opposedAttacker", this.triggerArgs, {
-      metadata: { role: "source", item: this.attackerTest.item, opposedTest: this }
-    });
-    await runner.executeEvent("opposedDefender", {
-      ...this.triggerArgs,
-      actor: this.defenderTest.actor,
-      item: this.defenderTest.item
-    }, {
-      metadata: { role: "target", item: this.defenderTest.item, opposedTest: this }
-    });
-    return this.result;
-  }
-
-  async calculateDamage(damage = {}) {
-    const args = { ...this.triggerArgs, damage };
-    await this.attackerTest.getScriptRunner().executeEvent("calculateOpposedDamage", args, {
-      metadata: { role: "source", item: this.attackerTest.item, opposedTest: this, damage }
-    });
-    return args.damage;
+    this.attackerTest.context.opposedResult = result;
+    this.defenderTest.context.opposedResult = result;
+    await this.attackerTest.runTrigger("opposedAttacker", { phase: "result", role: "attacker" });
+    await this.defenderTest.runTrigger("opposedDefender", { phase: "result", role: "defender" });
+    await this.attackerTest.runTrigger("calculateOpposedDamage", { phase: "damage", role: "attacker" });
+    return result;
   }
 }
 
-// --------------------------------------------------
-// Factory
-// --------------------------------------------------
-
-// Source consolidated from tests/test-class-registry.js
-export const TestClassRegistry = new Map();
-
-export function registerTestClass(TestClass) {
-  if (!TestClass?.classId) throw new Error("A test class requires static classId");
-  TestClassRegistry.set(TestClass.classId, TestClass);
-  return TestClass;
-}
-
-[
-  NeuroshimaTest, AttributeTest, SkillTest, HealingTest, InitiativeTest,
-  AttackTest, WeaponTest, RangedWeaponTest, MeleeWeaponTest, GrenadeTest,
-  PercentileTest, ReputationTest
-].forEach(registerTestClass);
-
-// Source consolidated from tests/test-factory.js
-export class NeuroshimaTestFactory {
-  static resolveClassId(data = {}) {
-    if (data.classId && TestClassRegistry.has(data.classId)) return data.classId;
-    const type = data.type ?? data.rollType ?? "attribute";
-    const subtype = data.subtype ?? null;
-    if (type === "weapon") {
-      return ["melee", "meleeFreeDefense"].includes(subtype) ? "meleeWeapon" : "rangedWeapon";
-    }
-    return {
-      attribute: "attribute", skill: "skill", healing: "healing",
-      initiative: "initiative", grenade: "grenade", reputation: "reputation"
-    }[type] ?? "test";
-  }
-
-  static create(data = {}) {
-    const classId = this.resolveClassId(data);
-    const TestClass = TestClassRegistry.get(classId);
-    if (!TestClass) throw new Error(`Unknown Neuroshima test class: ${classId}`);
-    return new TestClass(data);
-  }
-
-  static async fromData(data = {}) {
-    if (!data.classId || !TestClassRegistry.has(data.classId)) {
-      throw new Error(`Unknown or missing serialized Neuroshima test class: ${data.classId ?? "<missing>"}`);
-    }
-    const actor = data.actor ?? (data.actorUuid ? await fromUuid(data.actorUuid) : null);
-    const item = data.item ?? (data.itemUuid ? await fromUuid(data.itemUuid) : null);
-    const targets = data.targets ?? await Promise.all(
-      (data.targetUuids ?? []).map(uuid => fromUuid(uuid))
-    );
-    const test = this.create({ ...data, actor, item, targets, rollData: data.rollData });
-    test.phase = data.phase ?? "complete";
-    return test;
-  }
-}
+export const NEUROSHIMA_TESTS = Object.freeze({
+  NeuroshimaTestBase,
+  NeuroshimaTest,
+  AttributeTest,
+  SkillTest,
+  HealingTest,
+  InitiativeTest,
+  PercentileTest,
+  ReputationTest,
+  AttackTest,
+  WeaponTest,
+  RangedWeaponTest,
+  MeleeWeaponTest,
+  GrenadeTest
+});

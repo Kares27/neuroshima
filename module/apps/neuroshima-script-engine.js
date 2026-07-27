@@ -314,7 +314,7 @@ export class NeuroshimaScript {
 
   /** Resolve mutable Roll Test data and initialise its change history. */
   _getRollTestData(args) {
-    const data = args?.test?.result?.rollData;
+    const data = args?.test?.result;
     if (!data || !Array.isArray(data.rawResults)) return null;
     data.rolledResults ??= [...data.rawResults];
     data.diceChanges ??= [];
@@ -1096,7 +1096,7 @@ export class NeuroshimaScript {
    *
    * @example
    * // In preRollWeaponTest — extra penalty if weapon was already jammed
-   * if (this.getWeaponJammedState(args.weapon)) {
+   * if (this.getWeaponJammedState(args.item)) {
    *   this.notification("Weapon was already jammed!", "warn");
    * }
    */
@@ -1133,7 +1133,7 @@ export class NeuroshimaScript {
    * // Trick "It Will Work!" — 1 shot, hits only if the roll would have succeeded
    * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args);
-   *   this.addAnnotation(`It Will Work! [${args.weapon.name}] fires one last shot.`);
+   *   this.addAnnotation(`It Will Work! [${args.item.name}] fires one last shot.`);
    * }
    *
    * @example
@@ -1266,12 +1266,9 @@ export class NeuroshimaScript {
     // Keep this order explicit: trigger-local arrays are authoritative, while
     // fields.annotations is the persistent bridge from dialog/submission to roll.
     const candidates = [
-      args.annotations,
       args.fields?.annotations,
       args.test?.preData?.annotations,
-      args.test?.result?.annotations,
-      args.test?.result?.rollData?.annotations,
-      args.rollData?.annotations
+      args.test?.result?.annotations
     ];
     const annotations = candidates.find(Array.isArray);
     if (!annotations) return false;
@@ -1293,7 +1290,7 @@ export class NeuroshimaScript {
    */
   addAction(args, id, overrides = {}) {
     if (!args || !id || !this.effect?.uuid) return false;
-    const target = args.rollData ?? args.test?.result?.rollData ?? args;
+    const target = args.test?.result ?? args;
     const additions = target.effectActionAdditions ??= [];
     const addition = {
       effectUuid: this.effect.uuid,
@@ -1301,17 +1298,6 @@ export class NeuroshimaScript {
       overrides: foundry.utils.deepClone(overrides)
     };
     additions.push(addition);
-    // ResultActionRegistry is the lifecycle authority. Chat rendering consumes
-    // the serialized descriptor later; the executable script itself is always
-    // resolved from the live ActiveEffect by EffectActionRuntime.
-    args.test?.actions?.register?.(
-      `${addition.effectUuid}::${addition.actionId}`,
-      {
-        label: overrides.name ?? String(id),
-        ...addition,
-        execute: async () => false
-      }
-    );
     return true;
   }
 
@@ -1322,63 +1308,27 @@ export class NeuroshimaScript {
    * Works for both magazine-based and direct-ammo (thrown) weapons.
    * Call inside `rollWeaponTest` or any other trigger that has access to `rollData`.
    *
-   * @param {Object} rollData  - The `args.rollData` reference from the trigger.
+   * @param {NeuroshimaTestBase} test - The current `args.test`.
    * @param {number} count     - Number of bullets to refund (taken from the tail of bulletSequence).
    * @returns {Promise<number>} Actual number of bullets refunded.
    *
    * @example
    * // In rollWeaponTest — refund the difference between fired and short-burst bullets
-   * const rof   = args.weapon.system.fireRate || 1;
+   * const rof   = args.item.system.fireRate || 1;
    * const extra = args.bulletsFired - rof;
-   * if (extra > 0) await this.refundBullets(args.rollData, extra);
+   * if (extra > 0) this.refundBullets(args.test, extra);
    */
-  async refundBullets(rollData, count) {
-    if (!rollData || count <= 0) return 0;
-    const seq = rollData.bulletSequence ?? [];
+  refundBullets(test, count) {
+    if (!test?.result || count <= 0) return 0;
+    const result = test.result;
+    const seq = result.bulletSequence ?? [];
     const refundCount = Math.min(count, seq.length);
     if (refundCount === 0) return 0;
-
-    const actor = this.actor ?? this._currentArgs?.actor;
-    if (!actor) return 0;
-
-    const toRefund = seq.slice(seq.length - refundCount).reverse();
-
-    if (rollData.magazineId) {
-      const mag = actor.items.get(rollData.magazineId);
-      if (mag?.type === "magazine") {
-        const contents = JSON.parse(JSON.stringify(mag.system.contents || []));
-        for (const b of toRefund) {
-          const last = contents[contents.length - 1];
-          if (last?.name === b.name) {
-            last.quantity += 1;
-          } else {
-            contents.push({
-              name: b.name,
-              img: b.img || "systems/neuroshima/assets/img/ammo.svg",
-              quantity: 1,
-              overrides: {
-                enabled: b.damage !== undefined,
-                damage: b.damage,
-                piercing: b.piercing,
-                jamming: b.jamming,
-                isPellet: b.isPellet,
-                pelletCount: b.pelletCount,
-                pelletRanges: b.pelletRanges
-              }
-            });
-          }
-        }
-        await mag.update({ "system.contents": contents });
-        return refundCount;
-      }
-    } else if (rollData.ammoId) {
-      const ammo = actor.items.get(rollData.ammoId);
-      if (ammo?.type === "ammo") {
-        await ammo.update({ "system.quantity": ammo.system.quantity + refundCount });
-        return refundCount;
-      }
-    }
-    return 0;
+    result.bulletSequence = seq.slice(0, -refundCount);
+    result.bulletsFired = Math.max(0, Number(result.bulletsFired ?? seq.length) - refundCount);
+    test.preData.bulletsFired = result.bulletsFired;
+    test.markDirty("refundBullets");
+    return refundCount;
   }
 
   /**
@@ -1387,30 +1337,36 @@ export class NeuroshimaScript {
    * level 3 = continuous fire (`rof*9`).
    * Calculates the difference and calls `refundBullets`.
    *
-   * @param {Object} rollData     - The `args.rollData` reference from the trigger.
+   * @param {NeuroshimaTestBase} test - The current `args.test`.
    * @param {number} targetLevel  - Desired burst level (0=single, 1=short, 2=long).
    * @returns {Promise<number>} Actual number of bullets refunded.
    *
    * @example
    * // In rollWeaponTest — automatically downgrade to short burst
-   * if (args.rollData.burstLevel >= 2) {
-   *   const refunded = await this.refundBurstLevel(args.rollData, 1);
+   * if (args.test.result.burstLevel >= 2) {
+   *   const refunded = this.refundBurstLevel(args.test, 1);
    *   if (refunded > 0) await this.sendMessage(`<strong>Seria skrócona:</strong> zwrócono ${refunded} naboi.`);
    * }
    *
    * @example
    * // Downgrade to single shot
-   * const refunded = await this.refundBurstLevel(args.rollData, 0);
+   * const refunded = this.refundBurstLevel(args.test, 0);
    */
-  async refundBurstLevel(rollData, targetLevel) {
-    if (!rollData) return 0;
-    const rof = rollData.fireRate ?? 1;
-    const bulletsFired = rollData.bulletsFired ?? (rollData.bulletSequence?.length ?? 0);
+  refundBurstLevel(test, targetLevel) {
+    if (!test?.result) return 0;
+    const result = test.result;
+    const rof = result.fireRate ?? 1;
+    const bulletsFired = result.bulletsFired ?? (result.bulletSequence?.length ?? 0);
     const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
     const targetBullets = levelBullets[Math.max(0, Math.min(3, targetLevel))] ?? 1;
     const refundCount = bulletsFired - targetBullets;
     if (refundCount <= 0) return 0;
-    return this.refundBullets(rollData, refundCount);
+    const refunded = this.refundBullets(test, refundCount);
+    if (refunded > 0) {
+      test.preData.burstLevel = Math.clamp(Number(targetLevel), 0, 3);
+      result.burstLevel = test.preData.burstLevel;
+    }
+    return refunded;
   }
 
   /**
@@ -1424,25 +1380,25 @@ export class NeuroshimaScript {
    * (they already see the options), but it serves as explicit documentation and
    * also extends access in cases where ownership is absent (allied NPC, etc.).
    *
-   * @param {Object} args - The trigger args object (must contain `args.rollData`).
+   * @param {Object} args - The trigger args object containing `args.test`.
    * @returns {Promise<void>}
    *
    * @example
    * // rollWeaponTest — Czuły Spust: grant burst shift and notify the player
-   * if (args.rollData.burstLevel >= 1) {
+   * if (args.test.result.burstLevel >= 1) {
    *   await this.grantBurstShift(args);
    * }
    *
    * @example
    * // rollWeaponTest — grant only when firing a burst (not single shot)
-   * if (args.rollData.burstLevel >= 2) {
+   * if (args.test.result.burstLevel >= 2) {
    *   await this.grantBurstShift(args);
    *   await this.sendMessage("<strong>Czuły spust:</strong> możesz zmniejszyć serię w menu kontekstowym karty czatu.");
    * }
    */
   async grantBurstShift(args) {
-    if (args?.rollData) {
-      args.rollData.burstShiftGranted = true;
+    if (args?.test?.result) {
+      args.test.result.burstShiftGranted = true;
       return;
     }
     const messageId = args?.messageId;
@@ -3473,7 +3429,7 @@ export class NeuroshimaScript {
  *                    args.test.attribute                — { key, value, name } or null
  *                    args.test.skill                    — { key, value, name } or null
  *                    args.test.item                     — item used (if any)
- *                    args.test.result.rollData          — full roll result object (read-only)
+ *                    args.test.result                   — full roll result object
  *                    args.test.result.isSuccess         — boolean (read-only)
  *                    args.test.result.successCount      — number of successes (read-only)
  *                    args.test.result.roll              — the Foundry Roll object (read-only)
@@ -3639,7 +3595,7 @@ export class NeuroshimaScript {
  *
  * preRollWeaponTest — canonical pre-roll hook for melee and ranged weapon tests.
  *                    3k20 dice were set. New effects use preRollWeaponTest and restrict
- *                    themselves with args.test.classId === "meleeWeapon".
+ *                    themselves with args.test.rollClass === "MeleeWeaponTest".
  *                    The following contract is documented only for compatibility:
  *                    fires BEFORE the
  *                    pool is committed and visible to the opponent. Allows modifying snapshot
@@ -3936,9 +3892,9 @@ export class NeuroshimaScript {
  *   this.clearWeaponJam(args)                  — clear the jam in rollWeaponTest
  *   this.isStandardJam(args, min=1, max=20)    — true if bestResult in [min,max] AND wouldSucceed; swaps min/max if inverted
  *
- * Burst shift / ammo helpers (use in rollWeaponTest; rollData = args.rollData):
- *   await this.refundBullets(rollData, count)  — return last `count` bullets from bulletSequence to the magazine/ammo item
- *   await this.refundBurstLevel(rollData, targetLevel)
+ * Burst shift / ammo helpers (use in rollWeaponTest; test = args.test):
+ *   this.refundBullets(args.test, count) — reduce pending ammunition before postTest
+ *   this.refundBurstLevel(args.test, targetLevel)
  *                                              — refund bullets so effective burst level = targetLevel (0=single, 1=short, 2=long)
  *   await this.grantBurstShift(args)           — flag the chat message so any user sees "Zmniejsz/Zwiększ Serię" in context menu
  *
@@ -4992,7 +4948,7 @@ export class NeuroshimaScriptRunner {
     game.neuroshima?.log?.(`[${publicTrigger}] fired`, this._triggerArgsForLog(eventArgs));
 
     const canonicalScripts = this.getScripts(actor, publicTrigger)
-      .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
+      .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item))
       .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
     for (const script of canonicalScripts) {
       await this._executeScript(script, event, eventArgs);
@@ -5001,26 +4957,8 @@ export class NeuroshimaScriptRunner {
     return context;
   }
 
-  static _resolvePublicTrigger(event, args = {}, metadata = {}) {
-    if (Object.hasOwn(EFFECT_TRIGGERS, event)) return event;
-    const type = metadata.type ?? args.test?.rollType ?? null;
-    const role = metadata.role ?? args.role ?? null;
-    const aliases = {
-      "roll.before": "preRollTest",
-      "roll.evaluate": type === "weapon" ? "rollWeaponTest" : "rollTest",
-      "roll.after": type === "weapon" ? "rollWeaponTest" : "rollTest",
-      "damage.before": role === "source" ? "preApplyDamage" : "preTakeDamage",
-      "damage.mitigate": "APCalc",
-      "damage.after": role === "source" ? "applyDamage" : "takeDamage",
-      "duel.start": "startDuel",
-      "duel.segment.before": "startDuelSegment",
-      "duel.segment.after": role === "defender" ? "opposedDefender" : "opposedAttacker",
-      "duel.action.before": "beforeMeleeAction",
-      "duel.action.after": "afterMeleeAction",
-      "duel.end": "endDuel",
-      "duel.actions.collect": "getMeleeActions"
-    };
-    return TriggerRegistry.canonical(aliases[event] ?? event);
+  static _resolvePublicTrigger(event) {
+    return event;
   }
 
   static async _executeScript(script, trigger, args) {
@@ -5130,7 +5068,7 @@ export class NeuroshimaScriptRunner {
     eventArgs.trigger = publicTrigger;
     eventArgs.eventContext = context;
     const canonicalScripts = this.getScripts(actor, publicTrigger)
-      .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
+      .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item))
       .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
     for (const script of canonicalScripts) {
       script.executeSync(eventArgs);

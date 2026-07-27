@@ -418,6 +418,7 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const test = new InitiativeTest({
       subtype: this.isMelee ? "melee" : "standard",
       actor: this.actor,
+      combatant: rollData.combatant ?? null,
       attribute: {
         key: attributeKey,
         value: Number(this.actor.system.attributeTotals?.[attributeKey] ?? 10) + chargeBonus
@@ -430,6 +431,8 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
         dieManualBonus: Number(rollData.dieManualBonus ?? 0),
         dieReductionBonus: Number(rollData.dieReductionBonus ?? 0),
         maximumDifficulty: rollData.maximumDifficulty ?? null,
+        subtype: this.isMelee ? "melee" : "standard",
+        combatantUuid: rollData.combatant?.uuid ?? null,
         annotations: [...(rollData.annotations ?? [])],
         penalties: {
           base: Number(NEUROSHIMA.difficulties[rollData.difficulty]?.min ?? 0),
@@ -446,17 +449,13 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
       context: {
         isOpen: true,
         isInitiative: true,
-        rollMode: rollData.rollMode,
-        combatant: rollData.combatant ?? null,
-        eventArgs: { combatant: rollData.combatant ?? null }
+        rollMode: rollData.rollMode
       }
     });
     if (rollData.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
     await test.roll();
-    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-    await NeuroshimaChatMessage.renderInitiativeRoll(test);
-    if (this._onRollCallback) await this._onRollCallback(test.result.data, test);
-    return test.result.data;
+    if (this._onRollCallback) await this._onRollCallback(test.result, test);
+    return test.result;
   }
 
   _onCancel(event, target) {

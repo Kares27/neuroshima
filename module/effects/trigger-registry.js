@@ -79,7 +79,6 @@ export class TriggerRegistry {
 
   static get size() { return this.#entries.size; }
   static get(id) { return this.#entries.get(id) ?? null; }
-  static canonical(id) { return id; }
   static entries() { return [...this.#entries.values()]; }
   static publicOptions() {
     return Object.freeze(Object.fromEntries(this.entries().map(entry => [entry.id, entry.label])));

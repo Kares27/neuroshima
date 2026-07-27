@@ -1048,8 +1048,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     this.close();
 
     const TestClass = currentSkill.key ? SkillTest : AttributeTest;
-    const test = new TestClass({
-      actor: this.actor,
+    const test = this.actor._setupTest(TestClass, {
       attribute: { key: currentAttribute || null, value: finalStat },
       skill: { key: currentSkill.key || null, value: Number(currentSkill.value ?? 0) },
       preData: {
@@ -1078,16 +1077,14 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
     });
     if (sf.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
     await test.roll();
-    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-    await NeuroshimaChatMessage.renderRoll(test);
     if (this.resultCallback) {
       await this.resultCallback({
-        isSuccess: test.result.isSuccess,
+        isSuccess: test.result.success,
         successes: test.result.successCount,
         test
       });
     }
-    return test.result.data;;
+    return test.result;
   }
 
   _onCancel(event, target) {

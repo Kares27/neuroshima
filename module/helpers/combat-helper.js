@@ -2,7 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { getEffectiveArmorResistances } from "./mod-helpers.js";
-import { NeuroshimaTestFactory, SkillTest } from "../tests.mjs";
+import { AttributeTest, SkillTest, NeuroshimaTestBase } from "../tests.mjs";
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -20,331 +20,6 @@ export class CombatHelper {
     const index = track.indexOf(type);
     if (index < 0) return type;
     return track[Math.clamp(index + Number(steps || 0), 0, track.length - 1)];
-  }
-
-  /**
-   * Refund ammunition consumed during a weapon roll.
-   * @param {ChatMessage} message The roll chat message.
-   * @returns {Promise<boolean>} Success status.
-   */
-  static async refundAmmunition(message) {
-    const flags = message.getFlag("neuroshima", "test")?.rollData;
-    
-    game.neuroshima.group("CombatHelper | refundAmmunition");
-    game.neuroshima.log("Parametry refundacji:", {
-      hasFlags: !!flags,
-      isWeapon: flags?.isWeapon,
-      actorId: flags?.actorId,
-      bulletSequenceLength: flags?.bulletSequence?.length,
-      magazineId: flags?.magazineId,
-      ammoId: flags?.ammoId
-    });
-
-    if (!flags || !flags.isWeapon) {
-      game.neuroshima.log("Error: No flags or message is not a weapon roll");
-      game.neuroshima.groupEnd();
-      return false;
-    }
-    
-    const actor = game.actors.get(flags.actorId);
-    if (!actor) {
-      game.neuroshima.log("Error: Actor not found", { actorId: flags.actorId });
-      game.neuroshima.groupEnd();
-      return false;
-    }
-
-    game.neuroshima.log("Actor found:", {
-      name: actor.name,
-      type: actor.type,
-      itemsCount: actor.items.size,
-      allItemIds: Array.from(actor.items.keys())
-    });
-
-    const bulletSequence = flags.bulletSequence;
-    if (!bulletSequence || bulletSequence.length === 0) {
-      game.neuroshima.log("Error: No bullet sequence data (bulletSequence empty)");
-      game.neuroshima.groupEnd();
-      return false;
-    }
-
-    // If burst level was already reduced, only refund bullets still active (not yet returned)
-    const burstReducedTo = message.getFlag("neuroshima", "burstReducedTo");
-    let activeSequence = bulletSequence;
-    if (burstReducedTo !== undefined && burstReducedTo !== null) {
-      const rof = flags.fireRate ?? 1;
-      const originalBulletsFired = flags.bulletsFired ?? bulletSequence.length;
-      const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
-      const activeBullets = Math.min(levelBullets[burstReducedTo] ?? originalBulletsFired, originalBulletsFired);
-      activeSequence = bulletSequence.slice(0, activeBullets);
-    }
-
-    game.neuroshima.log("Bullet sequence to refund:", { total: bulletSequence.length, active: activeSequence.length });
-
-    // Refund active bullets in reverse order (LIFO)
-    const refundSequence = [...activeSequence].reverse();
-
-    const magazineId = flags.magazineId;
-    const ammoId = flags.ammoId;
-
-    game.neuroshima.log("Refund attempt:", { magazineId, ammoId });
-
-    if (magazineId) {
-        const magazine = actor.items.get(magazineId);
-        game.neuroshima.log("Looking for magazine:", {
-          magazineId,
-          found: !!magazine,
-          type: magazine?.type,
-          magazineInActorItems: Array.from(actor.items.keys()).includes(magazineId)
-        });
-
-        if (magazine && magazine.type === "magazine") {
-            const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
-            game.neuroshima.log("Contents before refund:", contents);
-            
-            for (const bullet of refundSequence) {
-                const lastStack = contents[contents.length - 1];
-                const canMerge = this._isSameAmmo(lastStack, bullet);
-                
-                game.neuroshima.log("Refunding bullet:", { 
-                  bulletName: bullet.name, 
-                  canMerge,
-                  lastStackBefore: lastStack ? { name: lastStack.name, quantity: lastStack.quantity } : null
-                });
-
-                if (canMerge) {
-                    lastStack.quantity += 1;
-                    game.neuroshima.log("Increased quantity:", { 
-                      name: lastStack.name, 
-                      newQuantity: lastStack.quantity 
-                    });
-                } else {
-                    const newStack = {
-                        name: bullet.name,
-                        img: bullet.img || "systems/neuroshima/assets/img/ammo.svg",
-                        quantity: 1,
-                        overrides: {
-                            enabled: bullet.overrides?.enabled ?? (bullet.damage !== undefined),
-                            damage: bullet.damage,
-                            piercing: bullet.piercing,
-                            jamming: bullet.jamming,
-                            isPellet: bullet.isPellet,
-                            pelletCount: bullet.pelletCount,
-                            pelletRanges: bullet.pelletRanges
-                        }
-                    };
-                    contents.push(newStack);
-                    game.neuroshima.log("Added new stack:", newStack);
-                }
-            }
-            
-            game.neuroshima.log("Contents after refund:", contents);
-            
-            try {
-                await magazine.update({ "system.contents": contents });
-                game.neuroshima.log("Magazine updated, new contents:", magazine.system.contents);
-            } catch (e) {
-                game.neuroshima.error("Error updating magazine:", e);
-                game.neuroshima.groupEnd();
-                return false;
-            }
-            
-            ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.AmmoRefunded", { 
-                amount: activeSequence.length, 
-                name: magazine.name 
-            }));
-
-            await message.setFlag("neuroshima", "ammoRefunded", true);
-            game.neuroshima.groupEnd();
-            return true;
-        }
-    } else if (ammoId) {
-        // Handle thrown weapons (direct ammo consumption)
-        const ammo = actor.items.get(ammoId);
-        game.neuroshima.log("Thrown ammo:", { found: !!ammo, type: ammo?.type });
-
-        if (ammo && ammo.type === "ammo") {
-            const oldQuantity = ammo.system.quantity;
-            const newQuantity = oldQuantity + activeSequence.length;
-            game.neuroshima.log("Updating ammo quantity:", { oldQuantity, newQuantity });
-
-            await ammo.update({ "system.quantity": newQuantity });
-            
-            ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.AmmoRefunded", { 
-                amount: activeSequence.length, 
-                name: ammo.name 
-            }));
-
-            await message.setFlag("neuroshima", "ammoRefunded", true);
-            game.neuroshima.groupEnd();
-            return true;
-        }
-    }
-
-    game.neuroshima.log("Error: Magazine or ammo not found");
-    game.neuroshima.groupEnd();
-    return false;
-  }
-
-  /**
-   * Reduce the burst level of a weapon roll from its chat message, refunding excess bullets.
-   * Single shot (level 0) = 1 bullet, Short (level 1) = rof bullets, Long (level 2) = rof*3,
-   * Continuous (level 3) = rof*9.
-   * @param {ChatMessage} message      The roll chat message containing rollData flags.
-   * @param {number}      targetLevel  Desired burst level (0=single, 1=short, 2=long).
-   * @returns {Promise<number>} Number of bullets actually refunded, or 0 on failure.
-   */
-  static async refundBurstLevel(message, targetLevel) {
-    const flags = message.getFlag("neuroshima", "test")?.rollData;
-    if (!flags?.isWeapon) return 0;
-
-    const actor = game.actors.get(flags.actorId);
-    if (!actor) return 0;
-
-    const bulletSequence = flags.bulletSequence ?? [];
-    if (bulletSequence.length === 0) return 0;
-
-    const rof = flags.fireRate ?? 1;
-    const originalBulletsFired = flags.bulletsFired ?? bulletSequence.length;
-    const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0;
-    const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
-    const currentBullets = Math.min(levelBullets[currentLevel] ?? originalBulletsFired, originalBulletsFired);
-    const targetBullets = Math.min(levelBullets[Math.max(0, Math.min(3, targetLevel))] ?? 1, currentBullets);
-    const refundCount = currentBullets - targetBullets;
-    if (refundCount <= 0) return 0;
-
-    // Slice only from the portion of bulletSequence that is still "active":
-    // bullets at the tail (index >= originalBulletsFired - currentBullets) were already refunded.
-    const alreadyRefunded = originalBulletsFired - currentBullets;
-    const effectiveEnd = bulletSequence.length - alreadyRefunded;
-    const toRefund = [...bulletSequence].slice(effectiveEnd - refundCount, effectiveEnd).reverse();
-    const magazineId = flags.magazineId;
-    const ammoId = flags.ammoId;
-
-    if (magazineId) {
-      const magazine = actor.items.get(magazineId);
-      if (magazine?.type === "magazine") {
-        const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
-        for (const bullet of toRefund) {
-          const lastStack = contents[contents.length - 1];
-          if (this._isSameAmmo(lastStack, bullet)) {
-            lastStack.quantity += 1;
-          } else {
-            contents.push({
-              name: bullet.name,
-              img: bullet.img || "systems/neuroshima/assets/img/ammo.svg",
-              quantity: 1,
-              overrides: {
-                enabled: bullet.damage !== undefined,
-                damage: bullet.damage,
-                piercing: bullet.piercing,
-                jamming: bullet.jamming,
-                isPellet: bullet.isPellet,
-                pelletCount: bullet.pelletCount,
-                pelletRanges: bullet.pelletRanges
-              }
-            });
-          }
-        }
-        await magazine.update({ "system.contents": contents });
-        return refundCount;
-      }
-    } else if (ammoId) {
-      const ammo = actor.items.get(ammoId);
-      if (ammo?.type === "ammo") {
-        await ammo.update({ "system.quantity": ammo.system.quantity + refundCount });
-        return refundCount;
-      }
-    }
-    return 0;
-  }
-
-  /**
-   * Increase the burst level of a weapon roll by one step, consuming bullets from the magazine.
-   * Can only restore up to the original fired burstLevel (cannot exceed what was declared).
-   * Single shot (level 0) = 1 bullet, Short (level 1) = rof bullets, Long (level 2) = rof*3,
-   * Continuous (level 3) = rof*9.
-   * @param {ChatMessage} message      The roll chat message containing rollData flags.
-   * @param {number}      targetLevel  Desired burst level to restore to (e.g. currentLevel + 1).
-   * @returns {Promise<number>} Number of bullets actually consumed, or 0 on failure.
-   */
-  static async increaseBurstLevel(message, targetLevel) {
-    const flags = message.getFlag("neuroshima", "test")?.rollData;
-    if (!flags?.isWeapon) return 0;
-
-    const actor = game.actors.get(flags.actorId);
-    if (!actor) return 0;
-
-    const rof = flags.fireRate ?? 1;
-    const currentLevel = message.getFlag("neuroshima", "burstReducedTo") ?? flags.burstLevel ?? 0;
-    const originalLevel = flags.burstLevel ?? 0;
-    const clampedTarget = Math.max(0, Math.min(originalLevel, targetLevel));
-    const levelBullets = { 0: 1, 1: rof, 2: rof * 3, 3: rof * 9 };
-    const currentBullets = levelBullets[currentLevel] ?? 1;
-    const targetBullets = levelBullets[clampedTarget] ?? 1;
-    const consumeCount = targetBullets - currentBullets;
-    if (consumeCount <= 0) return 0;
-
-    const magazineId = flags.magazineId;
-    const ammoId = flags.ammoId;
-
-    if (magazineId) {
-      const magazine = actor.items.get(magazineId);
-      if (magazine?.type === "magazine") {
-        const contents = JSON.parse(JSON.stringify(magazine.system.contents || []));
-        let remaining = consumeCount;
-        while (remaining > 0 && contents.length > 0) {
-          const last = contents[contents.length - 1];
-          if (last.quantity <= remaining) {
-            remaining -= last.quantity;
-            contents.pop();
-          } else {
-            last.quantity -= remaining;
-            remaining = 0;
-          }
-        }
-        if (remaining > 0) return 0;
-        await magazine.update({ "system.contents": contents });
-        return consumeCount;
-      }
-    } else if (ammoId) {
-      const ammo = actor.items.get(ammoId);
-      if (ammo?.type === "ammo") {
-        if ((ammo.system.quantity ?? 0) < consumeCount) return 0;
-        await ammo.update({ "system.quantity": ammo.system.quantity - consumeCount });
-        return consumeCount;
-      }
-    }
-    return 0;
-  }
-
-  /**
-   * Compare two ammo stacks or a stack and a bullet definition to see if they are identical.
-   * @private
-   */
-  static _isSameAmmo(stack, bullet) {
-    if (!stack || !bullet) return false;
-    if (stack.name !== bullet.name) return false;
-    
-    // Magazine stack uses 'overrides' property, bullet from sequence is flat or has 'overrides'
-    const sO = stack.overrides || {};
-    const bO = bullet.overrides || bullet; 
-    
-    // Check key combat properties for merging
-    const sameDamage = (sO.damage ?? "L") === (bO.damage ?? "L");
-    const samePiercing = (sO.piercing ?? 0) === (bO.piercing ?? 0);
-    const sameJamming = (sO.jamming ?? 20) === (bO.jamming ?? 20);
-    const samePellet = (!!sO.isPellet) === (!!bO.isPellet);
-    
-    let samePelletStats = true;
-    if (samePellet && !!sO.isPellet) {
-        samePelletStats = (sO.pelletCount ?? 1) === (bO.pelletCount ?? 1);
-        // Deep comparison of pelletRanges if needed, but usually pelletCount is enough for same-named ammo
-        if (samePelletStats && sO.pelletRanges && bO.pelletRanges) {
-            samePelletStats = JSON.stringify(sO.pelletRanges) === JSON.stringify(bO.pelletRanges);
-        }
-    }
-    
-    return sameDamage && samePiercing && sameJamming && samePellet && samePelletStats;
   }
 
   /**
@@ -824,8 +499,7 @@ export class CombatHelper {
       const cfg = NEUROSHIMA.vehicleDamageConfiguration[effectiveDmgType];
 
       // Durability test — 3d20, no skill, ≥2 successes
-      const durabilityTest = NeuroshimaTestFactory.create({
-        type: "attribute",
+      const durabilityTest = new AttributeTest({
         actor,
         attribute: { key: "durability", value: durBase },
         skill: { key: null, value: 0 },
@@ -840,8 +514,8 @@ export class CombatHelper {
           eventArgs: { location, damageType: effectiveDmgType }
         }
       });
-      await durabilityTest.roll();
-      const evalData = durabilityTest.result.data;
+      await durabilityTest.roll({ sendToChat: false });
+      const evalData = durabilityTest.result;
       const diceResults = evalData.rawResults;
       const isPassed = evalData.success;
 
@@ -860,10 +534,7 @@ export class CombatHelper {
         dice:          diceResults.join(", "),
         modifiedResults: evalData.modifiedResults,
         target:        durBase,
-        tooltip:       game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(
-          evalData,
-          game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTest")
-        ),
+        tooltip: NeuroshimaTestBase.tooltipFromResult(evalData),
         tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml({
           modifiedResults: evalData.modifiedResults,
           target: durBase,
@@ -924,7 +595,7 @@ export class CombatHelper {
    * @returns {Promise<void>}
    */
   static async applyDamage(message, actors) {
-    let flags = message.getFlag("neuroshima", "test")?.rollData;
+    let flags = message.getFlag("neuroshima", "test")?.result;
     const opposedResult = message.getFlag("neuroshima", "opposedResult");
     const attackMessageId = message.getFlag("neuroshima", "attackMessageId");
 
@@ -934,7 +605,7 @@ export class CombatHelper {
     if (!flags && opposedResult && attackMessageId) {
         const attackMessage = game.messages.get(attackMessageId);
         if (attackMessage) {
-            flags = attackMessage.getFlag("neuroshima", "test")?.rollData;
+            flags = attackMessage.getFlag("neuroshima", "test")?.result;
             if (flags) {
                 flags = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
                     opposedResult: opposedResult
@@ -1110,12 +781,12 @@ export class CombatHelper {
           subtype: wound.damageType,
           applySkillDifficultyShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
           applyDiceDifficultyShift: true,
-          eventArgs: { wound, damageType: wound.damageType, location, sourceInfo }
+          eventArgs: { damageType: wound.damageType, location, sourceInfo }
         }
       });
       if (wound.forcePassed === true) test.forceSuccess({ mode: "skipRoll" });
       await test.roll({ commit: false });
-      const data = test.result.data;
+      const data = test.result;
       const passed = data.success === true;
       const penalty = Number(woundConfig.penalties?.[passed ? 0 : 1] ?? 0);
       results.push({
@@ -1135,7 +806,7 @@ export class CombatHelper {
         isCritSuccess: data.isCritSuccess,
         isCritFailure: data.isCritFailure,
         annotation: wound.annotation || null,
-        tooltip: game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(data, wound.name),
+        tooltip: NeuroshimaTestBase.tooltipFromResult(data),
         tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml(data)
       });
       processedWounds.push({
@@ -1474,7 +1145,6 @@ export class CombatHelper {
       context: { isOpen: false, rollType: "painResistance" }
     });
     await test.roll();
-    await NeuroshimaChatMessage.renderRoll(test);
     return test;
   }
 

@@ -1,6 +1,5 @@
-import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
-import { NeuroshimaTestFactory } from "../tests.mjs";
+import { NeuroshimaTestBase } from "../tests.mjs";
 
 /**
  * Runtime for post-roll actions declared by Active Effects.
@@ -40,11 +39,11 @@ export class EffectActionRuntime {
 
   static async execute(message, instanceId) {
     const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
-    if (!serialized?.classId) {
+    if (!serialized?.preData?.rollClass) {
       return ui.notifications.warn("Ta karta nie zawiera testu w nowym formacie.");
     }
-    const test = await NeuroshimaTestFactory.fromData(serialized);
-    const rollData = test.result.data;
+    const test = await NeuroshimaTestBase.recreate(serialized);
+    const rollData = test.result;
     const ref = (rollData.effectActions ?? []).find(entry => entry.instanceId === instanceId);
     if (!ref) return ui.notifications.warn("Ta akcja nie jest już dostępna na tej karcie.");
     if (ref.used) return ui.notifications.warn("Ta akcja została już użyta.");
@@ -80,9 +79,7 @@ export class EffectActionRuntime {
         });
         if (result === false) return;
       }
-      test.markDirty("effectAction");
-      await test.recalculate();
-      await test.applyResultOverrides();
+      if (test.context.dirty) await test.recalculate();
       ref.used = true;
       await test.updateMessage(message);
     } catch (error) {
@@ -127,23 +124,13 @@ export class EffectActionRuntime {
       value = Number(value);
       if (!Array.isArray(rollData.rawResults) || !Number.isInteger(index)) return false;
       if (index < 0 || index >= rollData.rawResults.length || !Number.isFinite(value)) return false;
-      rollData.rolledResults ??= [...rollData.rawResults];
-      rollData.diceChanges ??= [];
-      value = Math.clamp(Math.trunc(value), 1, 20);
-      const oldValue = rollData.rawResults[index];
-      if (oldValue === value) return false;
-      rollData.rawResults[index] = value;
-      rollData.diceChanges.push({
+      return test.replaceDie(index, value, {
         type: options.type ?? "replace",
-        targetIndex: index,
         sourceIndex: Number.isInteger(options.sourceIndex) ? options.sourceIndex : null,
-        oldValue,
-        newValue: value,
         label: options.label ?? action.name ?? effect.name,
         icon: options.icon ?? "fas fa-pen",
         effectUuid: effect.uuid
       });
-      return true;
     };
 
     return {
@@ -160,18 +147,11 @@ export class EffectActionRuntime {
           })
       },
       result: {
-        addSuccesses: amount => {
-          rollData.effectActionSuccessBonus = Number(rollData.effectActionSuccessBonus ?? 0) + Number(amount ?? 0);
-        },
-        addSuccessPoints: amount => {
-          rollData.effectActionSuccessPointsBonus = Number(rollData.effectActionSuccessPointsBonus ?? 0) + Number(amount ?? 0);
-        },
-        forceSuccess: () => { rollData.effectActionForcedSuccess = true; },
-        forceFailure: () => { rollData.effectActionForcedSuccess = false; },
-        annotate: text => {
-          const annotation = String(text ?? "").trim();
-          if (annotation) (rollData.annotations ??= []).push(annotation);
-        }
+        addSuccesses: amount => test.addSuccesses(amount),
+        addSuccessPoints: amount => test.addSuccessPoints(amount),
+        forceSuccess: () => test.forceSuccess(),
+        forceFailure: () => test.forceFailure(),
+        annotate: text => test.annotate(text)
       }
     };
   }
@@ -206,33 +186,4 @@ export class EffectActionRuntime {
     return picked;
   }
 
-  static async rerenderMessage(message, test) {
-    const rollData = test.result.data;
-    const type = message.getFlag("neuroshima", "messageType");
-    const actor = game.actors.get(rollData.actorId);
-    const minTooltipRole = game.settings.get("neuroshima", "rollTooltipMinRole");
-    const showTooltip = game.user.role >= minTooltipRole
-      || (game.settings.get("neuroshima", "rollTooltipOwnerVisibility") && actor?.isOwner);
-    const template = type === "initiative"
-      ? "systems/neuroshima/templates/chat/initiative-roll-card.hbs"
-      : type === "healingRoll"
-        ? "systems/neuroshima/templates/chat/healing-roll-card.hbs"
-      : rollData.isMelee
-        ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
-        : type === "weapon"
-          ? "systems/neuroshima/templates/chat/weapon-roll-card.hbs"
-          : "systems/neuroshima/templates/chat/roll-card.hbs";
-    const content = await foundry.applications.handlebars.renderTemplate(template, {
-      ...rollData,
-      config: NEUROSHIMA,
-      isGM: game.user.isGM,
-      showTooltip,
-      patientRef: { uuid: rollData.patientActor?.uuid },
-      medicRef: { uuid: actor?.uuid }
-    });
-    await message.update({
-      content,
-      "flags.neuroshima.test": test.serialize()
-    });
-  }
 }

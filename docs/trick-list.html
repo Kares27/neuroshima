@@ -583,7 +583,7 @@ args.actions.push({
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.weapon?.system?.rangedSubtype !== <span class="str">"pistols"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.item?.system?.rangedSubtype !== <span class="str">"pistols"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -788,7 +788,7 @@ args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></p
 <div class="example-header"><span class="trigger-badge">postWeaponShot</span> Skrypt efektu Czuły spust</div>
 <pre><code><span class="cmt">// Trigger: postWeaponShot
 // Gdy oddano serię (burstLevel >= 1), odblokuj graczowi opcje Zmniejsz/Zwiększ Serię w PPM.</span>
-<span class="kw">if</span> (args.rollData.burstLevel < <span class="num">1</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (args.test.result.burstLevel < <span class="num">1</span>) <span class="kw">return</span>;
 <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">grantBurstShift</span>(args);</code></pre>
 </div>
 </div>
@@ -808,7 +808,7 @@ args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></p
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.weapon?.system?.rangedSubtype !== <span class="str">"sling"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.item?.system?.rangedSubtype !== <span class="str">"sling"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -824,7 +824,7 @@ args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></p
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj jeśli nie strzelasz z łuku</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span> || args.weapon?.system?.rangedSubtype !== <span class="str">"bow"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.test.preData.subtype !== <span class="str">"ranged"</span> || args.item?.system?.rangedSubtype !== <span class="str">"bow"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Połowa kary za dystans</div>
@@ -880,7 +880,7 @@ args.test.forceSuccess({ mode: <span class="str">"skipRoll"</span> });</code></p
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj jeśli nie rzucasz nożem</div>
-<pre><code><span class="kw">return</span> args.rollType !== <span class="str">"ranged"</span> || args.weapon?.system?.rangedSubtype !== <span class="str">"knife"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.test.preData.subtype !== <span class="str">"ranged"</span> || args.item?.system?.rangedSubtype !== <span class="str">"knife"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Połowa kary za dystans</div>
@@ -1077,7 +1077,7 @@ args.participant.blockDamageShift = -<span class="num">1</span>;</code></pre>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy ataku wręcz pistoletem/rewolwerem</div>
 <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">const</span> <span class="var">sub</span> = args.weapon?.system?.rangedSubtype;
+<span class="kw">const</span> <span class="var">sub</span> = args.item?.system?.rangedSubtype;
 <span class="kw">return</span> <span class="var">sub</span> !== <span class="str">"pistols"</span> && <span class="var">sub</span> !== <span class="str">"revolver"</span>;</code></pre>
 </div>
 <div class="example-block">
@@ -1884,7 +1884,7 @@ args.fields.diceBonus = (args.fields.diceBonus ?? <span class="num">0</span>) + 
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
 <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">const</span> <span class="var">s</span> = args.weapon?.system?.meleeSubtype;
+<span class="kw">const</span> <span class="var">s</span> = args.item?.system?.meleeSubtype;
 <span class="kw">return</span> ![<span class="str">"sword"</span>, <span class="str">"club"</span>, <span class="str">"polearm"</span>].includes(<span class="var">s</span>);</code></pre>
 </div>
 <div class="example-block">
@@ -1941,7 +1941,7 @@ args.actions.push({
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
 <pre><code><span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">const</span> <span class="var">skill</span> = args.weapon?.system?.skill;
+<span class="kw">const</span> <span class="var">skill</span> = args.item?.system?.skill;
 <span class="kw">return</span> <span class="var">skill</span> !== <span class="kw">undefined</span> && <span class="var">skill</span> !== <span class="str">"brawl"</span>;</code></pre>
 </div>
 <div class="example-block">
@@ -1980,7 +1980,7 @@ args.actions.push({
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
 <pre><code><span class="kw">return</span> args.skill?.key !== <span class="str">"rifles"</span>
-  || args.weapon?.system?.rangedSubtype !== <span class="str">"sniperRifles"</span>;</code></pre>
+  || args.item?.system?.rangedSubtype !== <span class="str">"sniperRifles"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -2094,7 +2094,7 @@ args.fields.attributeBonus += <span class="num">3</span>;</code></pre>
 <div class="ns-trick-scripts">
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Ukryj w dialogu</div>
-<pre><code><span class="kw">return</span> args.weapon?.system?.rangedSubtype !== <span class="str">"shotgun"</span>;</code></pre>
+<pre><code><span class="kw">return</span> args.item?.system?.rangedSubtype !== <span class="str">"shotgun"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Skrypt dialogu</div>
@@ -2215,7 +2215,7 @@ args.fields.skillBonus += Math.<span class="fn">floor</span>(<span class="var">s
 <div class="example-header"><span class="trigger-badge">dialog Hide Script</span> Pokaż tylko przy ataku melee (Bijatyka)</div>
 <pre><code><span class="cmt">// Wiatrak requires a melee attack roll with a brawl (Bijatyka) weapon.</span>
 <span class="kw">if</span> (args.rollType !== <span class="str">"melee"</span> || args.meleeAction !== <span class="str">"attack"</span>) <span class="kw">return</span> <span class="kw">true</span>;
-<span class="kw">return</span> args.weapon?.system?.skill !== <span class="str">"brawl"</span>;</code></pre>
+<span class="kw">return</span> args.item?.system?.skill !== <span class="str">"brawl"</span>;</code></pre>
 </div>
 <div class="example-block">
 <div class="example-header"><span class="trigger-badge">dialog Dialog Script</span> Zarejestruj aktywację Wiatraku</div>

@@ -34,23 +34,6 @@ export class NeuroshimaDice {
     rollData.isPellet = hits.some(hit => hit.isPellet);
   }
 
-  static buildRollTooltip(data) {
-    if (!data) return "";
-    const localize = key => game.i18n.localize(key);
-    const penalties = data.penalties ?? {};
-    const totalPenalty = data.totalPenalty ?? data.penalty ?? 0;
-    return [
-      `<strong>${localize("NEUROSHIMA.Attributes.Attributes")}:</strong> ${data.baseStat ?? data.stat ?? 0}`,
-      `<strong>${localize("NEUROSHIMA.Items.Fields.Skill")}:</strong> ${data.baseSkill ?? data.skill ?? 0}`,
-      `<strong>${localize("NEUROSHIMA.Roll.TotalModifier")}:</strong> ${totalPenalty}%`,
-      `<strong>${localize("NEUROSHIMA.Roll.BaseDifficulty")}:</strong> ${localize(data.baseDifficultyLabel ?? data.difficultyLabel ?? "")}`,
-      `<strong>${localize("NEUROSHIMA.Roll.Target")}:</strong> ${data.testTarget ?? data.target ?? 0}`,
-      penalties.mod || penalties.wounds || penalties.armor
-        ? `<small>${[penalties.mod, penalties.wounds, penalties.armor].map(Number).filter(Boolean).join("% / ")}%</small>`
-        : ""
-    ].filter(Boolean).join("<br>");
-  }
-
   static buildDiceTooltipHtml(data) {
     if (!data?.modifiedResults?.length) return "";
     const dice = data.modifiedResults.map((die, index) => {
@@ -60,10 +43,4 @@ export class NeuroshimaDice {
     return `<div class="neuroshima roll-card tooltip-inline"><div class="dice-results-grid">${dice}</div><footer class="roll-outcome"><strong>${game.i18n.localize("NEUROSHIMA.Roll.Target")}:</strong> ${data.target ?? 0}</footer></div>`;
   }
 
-  static _buildOpenTestTooltip(data) {
-    return this.buildRollTooltip(data);
-  }
-  static _buildClosedTestTooltip(data) {
-    return this.buildRollTooltip(data);
-  }
 }

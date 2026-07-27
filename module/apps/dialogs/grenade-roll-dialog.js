@@ -318,14 +318,12 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
           distancePenalty: Number(params.distancePenalty ?? 0),
           blastZones: [...(this.weapon.system.blastZones ?? [])]
         },
-        eventArgs: { weapon: this.weapon }
+        eventArgs: {}
       }
     });
     if (params.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
     await test.roll();
-    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-    const message = await NeuroshimaChatMessage.renderGrenadeRoll(test);
-    const result = { ...test.result.data, message };
+    const result = { ...test.result, message: test.message };
 
     if (result?.remainingQuantity === 0) {
       ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: this.weapon.name }));

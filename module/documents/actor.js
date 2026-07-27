@@ -1,4 +1,10 @@
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
+import {
+  AttributeTest,
+  SkillTest,
+  RangedWeaponTest,
+  MeleeWeaponTest
+} from "../tests.mjs";
 
 import { getConditions } from "../apps/config/condition-config.js";
 
@@ -158,6 +164,24 @@ class NeuroshimaConditionCheckContext {
  * - `applyEffect` / `applyEffectByUuid` — unified API for applying effects by UUID or raw data.
  */
 export class NeuroshimaActor extends Actor {
+  _setupTest(TestClass, data = {}) {
+    return new TestClass(data, this);
+  }
+
+  setupAttributeTest(data = {}) {
+    return this._setupTest(AttributeTest, data);
+  }
+
+  setupSkillTest(data = {}) {
+    return this._setupTest(SkillTest, data);
+  }
+
+  setupWeaponTest(item, data = {}) {
+    const isMelee = item?.system?.weaponType === "melee";
+    const TestClass = isMelee ? MeleeWeaponTest : RangedWeaponTest;
+    return this._setupTest(TestClass, { ...data, item });
+  }
+
   /**
    * Synchronous opening phase of actor data preparation. Preparation scripts
    * may only mutate the in-memory model passed in args; document updates are

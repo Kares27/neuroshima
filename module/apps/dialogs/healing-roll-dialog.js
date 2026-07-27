@@ -422,8 +422,8 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
         dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
         dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0)
       });
-      await test.roll();
-      if (!test.result.cancelled) tests.push(test);
+      await test.roll({ sendToChat: false });
+      if (!test.preData.cancelled) tests.push(test);
     }
     const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
     await NeuroshimaChatMessage.renderHealingBatchTests(

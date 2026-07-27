@@ -1,120 +1,73 @@
-<!doctype html>
-<html lang="pl">
-<head>
-  <meta charset="utf-8">
-  <title>Neuroshima — skrypty Active Effects</title>
-  <style>
-    body{max-width:1100px;margin:2rem auto;padding:0 1.5rem;font:16px/1.55 system-ui;color:#26231f}
-    h1,h2,h3{line-height:1.2} code,pre{font-family:ui-monospace,monospace}
-    pre{padding:1rem;overflow:auto;background:#1d1d20;color:#eee;border-radius:.4rem}
-    table{width:100%;border-collapse:collapse}th,td{padding:.55rem;border:1px solid #bbb;text-align:left;vertical-align:top}
-    .note{padding:.8rem 1rem;border-left:4px solid #8b5a2b;background:#f4eee6}
-  </style>
-</head>
-<body>
-<h1>Skrypty Active Effects</h1>
-<p>Dokument opisuje aktualny, kanoniczny interfejs systemu. Skrypty testów pracują na konkretnej
-instancji klasy z <code>module/tests.mjs</code>. Nie istnieje równoległy płaski wynik ani wyzwalacze
-zgodności wstecznej.</p>
+<article class="neuroshima effect-script-reference">
+  <h1>Skrypty efektów — testy</h1>
 
-<h2>Cykl testu</h2>
-<pre><code>preRollTest
-  → prepare / roll / evaluate / resolve
-  → rollTest
-  → transformacje i ponowne obliczenie
-  → akcje wyniku
-  → skutki uboczne
-  → zapis test.serialize() na karcie czatu</code></pre>
-<p>Dla broni cykl dodatkowo wywołuje <code>preRollWeaponTest</code> przed rzutem oraz
-<code>rollWeaponTest</code> po obliczeniu wyniku. Te cztery nazwy są jedynymi publicznymi
-wyzwalaczami testów.</p>
+  <p>Triggery testów korzystają z jednego kontraktu: <code>args.actor</code>,
+    <code>args.item</code>, <code>args.test</code>, <code>args.context</code>
+    i <code>args.eventContext</code>.</p>
 
-<h2>Wyzwalacze</h2>
-<table>
-<thead><tr><th>Grupa</th><th>Wyzwalacze</th></tr></thead>
-<tbody>
-<tr><td>Dokument</td><td><code>manual</code>, <code>immediate</code>, <code>dialog</code>,
-<code>preUpdateDocument</code>, <code>update</code>, <code>equipToggle</code></td></tr>
-<tr><td>Dane</td><td><code>prePrepareData</code>, <code>prePrepareItems</code>,
-<code>prepareData</code>, <code>prepareOwned</code>, <code>computeCharacteristics</code>,
-<code>computeEncumbrance</code>, <code>preWoundCalc</code>, <code>woundCalc</code>,
-<code>calculateSize</code>, <code>preAPCalc</code>, <code>APCalc</code>,
-<code>prePrepareItem</code>, <code>prepareItem</code></td></tr>
-<tr><td>Test</td><td><code>preRollTest</code>, <code>rollTest</code>,
-<code>preRollWeaponTest</code>, <code>rollWeaponTest</code></td></tr>
-<tr><td>Obrażenia</td><td><code>preApplyDamage</code>, <code>applyDamage</code>,
-<code>preTakeDamage</code>, <code>takeDamage</code>, <code>computeTakeDamageModifiers</code>,
-<code>computeApplyDamageModifiers</code></td></tr>
-<tr><td>Pojedynek</td><td><code>preOpposedAttacker</code>, <code>preOpposedDefender</code>,
-<code>opposedAttacker</code>, <code>opposedDefender</code>, <code>calculateOpposedDamage</code>,
-<code>getMeleeActions</code>, <code>beforeMeleeAction</code>, <code>afterMeleeAction</code>,
-<code>beforeMeleeDamage</code>, <code>afterMeleeDamage</code>, <code>startDuel</code>,
-<code>startDuelSegment</code>, <code>endDuel</code></td></tr>
-<tr><td>Walka</td><td><code>createToken</code>, <code>deleteEffect</code>,
-<code>startCombat</code>, <code>startRound</code>, <code>startTurn</code>,
-<code>updateCombat</code>, <code>endTurn</code>, <code>endRound</code>, <code>endCombat</code></td></tr>
-</tbody>
-</table>
+  <h2>Kolejność triggerów</h2>
+  <ol>
+    <li><code>preRollTest</code></li>
+    <li><code>preRollWeaponTest</code> — tylko broń</li>
+    <li>rzut i obliczenie wyniku</li>
+    <li><code>rollTest</code></li>
+    <li><code>rollWeaponTest</code> — tylko broń</li>
+  </ol>
 
-<h2>Argumenty testu</h2>
-<p>W wyzwalaczach testowych najważniejsze są:</p>
-<table>
-<thead><tr><th>Pole</th><th>Znaczenie</th></tr></thead>
-<tbody>
-<tr><td><code>args.actor</code></td><td>Aktor wykonujący test.</td></tr>
-<tr><td><code>args.item</code> / <code>args.weapon</code></td><td>Przedmiot testu, jeżeli istnieje.</td></tr>
-<tr><td><code>args.test</code></td><td>Konkretna instancja klasy testu.</td></tr>
-<tr><td><code>args.rollData</code></td><td>Ten sam mutowalny obiekt co <code>args.test.result.data</code>.</td></tr>
-<tr><td><code>args.eventContext</code></td><td>Metadane: typ, podtyp, faza, reroll i edycja.</td></tr>
-</tbody>
-</table>
+  <h2>Dane testu</h2>
+  <table>
+    <tr><th>Pole</th><th>Znaczenie</th></tr>
+    <tr><td><code>args.test.preData</code></td><td>Dane wejściowe i modyfikatory.</td></tr>
+    <tr><td><code>args.test.result</code></td><td>Aktualny wynik, kości, sukcesy, PP, obrażenia i adnotacje.</td></tr>
+    <tr><td><code>args.test.context</code></td><td>Stan wykonania, w tym <code>reroll</code> i <code>edited</code>.</td></tr>
+    <tr><td><code>args.test.rollClass</code></td><td>Nazwa rzeczywistej klasy testu.</td></tr>
+  </table>
 
-<h3>Modyfikacja przed rzutem</h3>
-<pre><code>// Trigger: preRollTest
+  <h2>Triggery przed rzutem</h2>
+  <pre><code>// Premia do cechy i umiejętności
 args.test.preData.attributeBonus =
   Number(args.test.preData.attributeBonus ?? 0) + 2;
-args.test.preData.annotations.push("Premia +2 do cechy");</code></pre>
+args.test.preData.skillBonus =
+  Number(args.test.preData.skillBonus ?? 0) + 1;
 
-<h3>Modyfikacja wyniku</h3>
-<pre><code>// Trigger: rollTest
-args.rollData.effectActionSuccessBonus =
-  Number(args.rollData.effectActionSuccessBonus ?? 0) + 1;
-args.test.markDirty("effect-success-bonus");
-this.addAnnotation("Dodatkowy sukces z efektu");</code></pre>
+// Ostateczne przesunięcie trudności
+args.test.preData.finalDifficultyShift =
+  Number(args.test.preData.finalDifficultyShift ?? 0) - 1;
 
-<h2>Skrypt Dialog</h2>
-<p><code>args.fields</code> opisuje wartości wejściowe dialogu. Dostępne są między innymi:
-<code>attributeBonus</code>, <code>skillBonus</code>, <code>modifier</code>,
-<code>finalDifficulty</code>, <code>maximumDifficulty</code>, <code>autoSuccess</code>,
-<code>annotations</code> oraz modyfikatory kości.</p>
-<pre><code>// Trigger: dialog
-args.fields.maximumDifficulty = "hard";
+// Test nie może stać się trudniejszy niż Hard
+args.test.preData.maximumDifficulty = "hard";
+
+// Automatyczny sukces z zachowaniem normalnego rzutu
+args.test.forceSuccess();</code></pre>
+
+  <h2>Triggery po rzucie</h2>
+  <pre><code>// Zmiana pojedynczej kości
+args.test.replaceDie(0, 1);
+
+// Modyfikacja sukcesów i Punktów Przewagi
+args.test.addSuccesses(1);
+args.test.addSuccessPoints(2);
+
+// Wymuszenie rezultatu
+args.test.forceSuccess();
+// args.test.forceFailure();
+
+// Adnotacja widoczna na karcie
+args.test.annotate("Premia z aktywnego efektu");</code></pre>
+
+  <p>Nie zapisuj dokumentów Foundry w <code>preData</code> ani
+    <code>context</code>; używaj UUID. Nie uruchamiaj ręcznie przeliczenia ani
+    renderowania karty — pipeline zrobi to po oznaczeniu testu jako
+    <code>dirty</code>.</p>
+
+  <h2>Dialog testu</h2>
+  <pre><code>// W triggerze dialog można wymusić sukces:
 args.fields.autoSuccess = true;
+
+// Ograniczyć maksymalną trudność:
+args.fields.maximumDifficulty = "hard";
+
+// Dodać adnotację:
 args.fields.annotations ??= [];
-args.fields.annotations.push("Automatyczny sukces z Cechy");</code></pre>
-<p><code>maximumDifficulty</code> jest twardym sufitem końcowej trudności: nawet jeżeli suma
-modyfikatorów wskazuje <em>Luck</em> lub <em>Very Hard</em>, wynik zostanie ograniczony do
-ustawionego poziomu. <code>finalDifficulty</code> ustawia końcowy poziom testu.</p>
-
-<h2>Adnotacje</h2>
-<pre><code>this.addAnnotation("Tekst widoczny na karcie rzutu");</code></pre>
-<p>Helper zapisuje adnotację w kanonicznym obiekcie testu. Działa w <code>dialog</code>,
-<code>preRollTest</code>, <code>rollTest</code>, <code>preRollWeaponTest</code> i
-<code>rollWeaponTest</code>.</p>
-
-<h2>Immediate i usuwanie</h2>
-<p>Opcja „Usuń skrypt po wykonaniu” dotyczy wyłącznie skryptu z wyzwalaczem
-<code>immediate</code>. Po udanym wykonaniu usuwana jest konkretna definicja skryptu, nie cały
-Active Effect. Operacje dropu czekają na zakończenie wszystkich skryptów Immediate, zanim
-otworzą kolejny wybór użytkownika.</p>
-
-<h2>Karta czatu i akcje wyniku</h2>
-<p>Karta testu zapisuje wyłącznie <code>flags.neuroshima.test = test.serialize()</code>.
-Po kliknięciu akcji system odtwarza dokładną klasę przez <code>NeuroshimaTestFactory.fromData</code>,
-wykonuje zmianę, przelicza test i zapisuje nową serializację. Brak <code>classId</code> oznacza
-nieprawidłową kartę — system nie zgaduje rodzaju testu.</p>
-
-<div class="note"><strong>Ważne:</strong> test otwarty wymaga dokładnie dwóch albo trzech kości.
-Jedna kość i więcej niż trzy kości są odrzucane przez evaluator.</div>
-</body>
-</html>
+args.fields.annotations.push("Modyfikator z dialogu");</code></pre>
+</article>

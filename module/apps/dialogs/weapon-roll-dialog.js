@@ -5,6 +5,7 @@ import { getDistancePenalty } from "../config/distance-config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 import {
+  NeuroshimaTestBase,
   MeleeWeaponTest,
   RangedWeaponTest,
   TestRules
@@ -636,9 +637,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       let rolledTest;
       try {
         rolledTest = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
-        rawResult = rolledTest.result.data;
+        rawResult = rolledTest.result;
         Object.defineProperty(rawResult, "roll", {
-          value: rolledTest.result.roll,
+          value: rolledTest.roll,
           configurable: true,
           enumerable: false
         });
@@ -653,8 +654,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
           .filter(Boolean);
         let rollMessage = null;
         try {
-          const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-          rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rolledTest);
+          rollMessage = rolledTest.message;
         } catch (err) {
           console.error("Neuroshima | Pool roll: failed to render weapon roll card:", err);
         }
@@ -671,9 +671,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     }
 
     const test = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
-    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-    await NeuroshimaChatMessage.renderWeaponRoll(test);
-    return test.result.data;
+    return test.result;
   }
 
   async _executeWeaponTest(params) {
@@ -709,8 +707,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const diceCount = isMelee
       ? Math.min(3, Math.max(1, Number(params.meleeDiceCount ?? 3)))
       : Math.min(3, Math.max(1, Number(params.aimingLevel ?? 0) + 1));
-    const test = new TestClass({
-      actor,
+    const test = actor._setupTest(TestClass, {
       item: weapon,
       targets: params.targets ?? [],
       attribute: {
@@ -737,6 +734,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         dieManualBonus: Number(params.dieManualBonus ?? 0),
         dieReductionBonus: Number(params.dieReductionBonus ?? 0),
         maximumDifficulty: params.maximumDifficulty ?? null,
+        fixedDice: Array.isArray(params.fixedDice) ? [...params.fixedDice] : null,
         bulletsFired: isMelee ? 0 : RangedWeaponTest.bulletsForBurst(weapon, params.burstLevel),
         annotations: [...(params.annotations ?? [])]
       },
@@ -758,18 +756,15 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         damageShift2: Number(params.damageShift2 ?? 0),
         damageShift3: Number(params.damageShift3 ?? 0),
         reroll: params.isReroll === true,
-        fixedDice: Array.isArray(params.fixedDice) ? [...params.fixedDice] : null,
         rollMode: params.rollMode,
         options: params.options ?? {},
-        eventArgs: { weapon, options: params.options ?? {} }
+        eventArgs: { options: params.options ?? {} }
       }
     });
     if (params.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
     await test.roll();
-    const data = test.result.data;
-    data.tooltip = data.isOpen
-      ? NeuroshimaDice._buildOpenTestTooltip(data, params.weapon?.name)
-      : NeuroshimaDice._buildClosedTestTooltip(data, params.weapon?.name);
+    const data = test.result;
+    data.tooltip = NeuroshimaTestBase.tooltipFromResult(data);
     NeuroshimaDice._groupHitsData(data);
     return test;
   }

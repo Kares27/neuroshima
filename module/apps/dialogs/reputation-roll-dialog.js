@@ -153,51 +153,10 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
             },
             context: {
                 rollMode,
-                eventArgs: { reputationItem: this.reputationItem }
+                eventArgs: {}
             }
         });
         await test.roll();
-        const rollData = test.result.data;
-        if (rollData.cancelled) return;
-        const result = Number(rollData.rawResults[0] ?? 0);
-        const finalThreshold = Number(rollData.target ?? threshold);
-        const isSuccess = rollData.success === true;
-        const speaker = ChatMessage.getSpeaker({ actor: this.actor });
-
-        const successText = isSuccess
-            ? `<span class="roll-success">${game.i18n.localize("NEUROSHIMA.Roll.Success")}</span>`
-            : `<span class="roll-failure">${game.i18n.localize("NEUROSHIMA.Roll.Failure")}</span>`;
-
-        const content = `
-<div class="neuroshima roll-result reputation-roll-result">
-    <div class="roll-card-header">
-        <img src="${this.actor?.img ?? ""}" class="roll-actor-img" title="${this.actor?.name ?? ""}"/>
-        <div class="header-details">
-            <h3>${label}</h3>
-            <div class="roll-mode-info">${game.i18n.localize("NEUROSHIMA.Reputation.SimpleRoll")}</div>
-        </div>
-    </div>
-    <div class="roll-outcome">
-        <div class="roll-dice-result">${result}</div>
-        <div class="roll-threshold">${game.i18n.localize("NEUROSHIMA.Roll.Target")}: ${finalThreshold} (${game.i18n.localize("NEUROSHIMA.Reputation.Value")}: ${repValue} + ${game.i18n.localize("NEUROSHIMA.Reputation.Fame")}: ${fame})</div>
-        <div class="roll-status">${successText}</div>
-    </div>
-</div>`;
-
-        await ChatMessage.create({
-            content,
-            speaker,
-            rolls: test.result.roll ? [test.result.roll] : [],
-            rollMode,
-            type: CONST.CHAT_MESSAGE_TYPES?.ROLL ?? 5,
-            flags: {
-                neuroshima: {
-                    messageType: "reputation",
-                    test: test.serialize(),
-                    rollData
-                }
-            }
-        });
     }
 
     async _performSkillRoll(data, rollMode) {
@@ -227,15 +186,14 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
           },
           context: { isOpen, rollMode }
         });
-        await test.roll();
-        const result = test.result.data;
+        await test.roll({ sendToChat: false });
+        const result = test.result;
         result.isReputationRoll = true;
         result.repRepValue = repValue;
         result.repFame = fame;
         result.repBonus = repBonus;
 
-        const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-        await NeuroshimaChatMessage.renderRoll(test);
+        await test.sendToChat();
     }
 
     async _onCancel(event, target) {

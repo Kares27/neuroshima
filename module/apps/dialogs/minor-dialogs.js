@@ -1,7 +1,5 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
-import { TestRules, NeuroshimaTestFactory } from "../../tests.mjs";
 import { NEUROSHIMA } from "../../config.js";
-import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 
 export class AmmunitionLoadingDialog {
   static async wait({ ammo, magazine }) {
@@ -116,9 +114,10 @@ export class RestDialog {
 }
 
 export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
-    constructor(message, options={}) {
+    constructor(message, test, options={}) {
         super(options);
         this.message = message;
+        this.test = test;
     }
 
     static DEFAULT_OPTIONS = {
@@ -146,9 +145,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
     };
 
     async _prepareContext(options) {
-        const flags = foundry.utils.deepClone(
-          this.message.getFlag("neuroshima", "test")?.rollData ?? {}
-        );
+        const flags = foundry.utils.deepClone(this.test.result);
         flags.rawResults ??= (flags.modifiedResults ?? []).map(die => die.original);
         const messageType = this.message.getFlag("neuroshima", "messageType");
         const storedBasePenalty = Number(flags.penalties?.base);
@@ -160,7 +157,9 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
             ? Object.entries(NEUROSHIMA.difficulties)
               .find(([, difficulty]) => Number(difficulty.min) === storedBasePenalty)?.[0] ?? "average"
             : "average";
-        flags.baseDifficulty ??= TestRules.difficultyFromPenalty(Number(flags.totalPenalty ?? 0));
+        flags.baseDifficulty ??= foundry.utils.deepClone(
+          NEUROSHIMA.difficulties[difficultyKey] ?? NEUROSHIMA.difficulties.average
+        );
         flags.baseStat ??= flags.stat
           ?? (Number(flags.target ?? 0) - Number(flags.baseDifficulty?.mod ?? 0));
         flags.baseSkill ??= flags.skill ?? 0;
@@ -186,87 +185,30 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     static async #onSubmit(event, form, formData) {
         const data = formData.object;
-        const message = this.message;
-        const messageType = message.getFlag("neuroshima", "messageType");
-        const isGrenade = messageType === "grenade";
-        const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
-        if (!serialized?.classId) {
-          return ui.notifications.warn("Ta karta nie zawiera testu w nowym formacie.");
-        }
-        const beforeData = foundry.utils.deepClone(serialized.rollData);
-
-        const updated = foundry.utils.deepClone(beforeData);
-        updated.rawResults ??= (updated.modifiedResults ?? []).map(die => die.original);
-        updated.rawResults = (updated.rawResults ?? []).map((value, index) =>
+        const rawResults = (this.test.result.rawResults ?? []).map((value, index) =>
           Math.clamp(Number(data[`die${index}`] ?? value), 1, 20)
         );
-        if (Array.isArray(updated.results)) updated.results = [...updated.rawResults];
-        updated.rolledResults = [...updated.rawResults];
-        updated.isOpen = data.isOpen === "true";
-        updated.baseStat = Number(data.baseStat ?? updated.baseStat ?? 0);
-        updated.baseSkill = Number(data.baseSkill ?? updated.baseSkill ?? 0);
-        updated.attributeBonus = Number(data.attributeBonus ?? 0);
-        updated.skillBonus = Number(data.skillBonus ?? 0);
-        updated.stat = updated.baseStat + updated.attributeBonus;
-        updated.skill = updated.baseSkill + updated.skillBonus;
-        if (updated.isWeapon) {
-          updated.isCombat = true;
-          updated.isDefending = updated.isMelee && updated.meleeAction === "defense";
-        }
-        updated.penalties = {
-          ...(updated.penalties ?? {}),
-          mod: Number(data.penaltyMod ?? 0),
-          wounds: Number(data.penaltyWounds ?? 0),
-          armor: Number(data.penaltyArmor ?? 0),
-          disease: Number(data.penaltyDisease ?? 0),
-          base: Number(NEUROSHIMA.difficulties[data.difficultyKey]?.min ?? 0)
-        };
-        updated.penalty = updated.totalPenalty = Object.values(updated.penalties)
-          .reduce((sum, value) => sum + (Number(value) || 0), 0);
-        updated.baseDifficulty = foundry.utils.deepClone(
-          TestRules.difficultyFromPenalty(updated.totalPenalty)
-        );
-        updated.baseDifficultyLabel = updated.baseDifficulty.label;
-        if (!updated.annotations?.includes("Rzut edytowany przez MG")) {
-          (updated.annotations ??= []).push("Rzut edytowany przez MG");
-        }
-        const editedActor = game.actors.get(updated.actorId);
-        const editedItem = editedActor?.items.get(updated.weaponId ?? updated.itemId);
-        const test = await NeuroshimaTestFactory.fromData({
-          ...serialized,
-          actor: editedActor,
-          item: editedItem ?? null,
-          rollData: updated
-        });
-        test._scriptRunner = NeuroshimaScriptRunner;
-        test.context.edited = true;
-        test.context.isOpen = updated.isOpen;
-        test.markDirty("gm-roll-edit");
-        await test.recalculate();
-        await test.finish({ commit: false });
-        Object.assign(updated, test.result.data);
-
-        const snapshot = rollData => ({
-          rawResults: rollData.rawResults,
-          baseStat: rollData.baseStat,
-          baseSkill: rollData.baseSkill,
-          attributeBonus: rollData.attributeBonus,
-          skillBonus: rollData.skillBonus,
-          penalties: rollData.penalties,
-          baseDifficulty: rollData.baseDifficulty,
-          isOpen: rollData.isOpen
-        });
-        const history = foundry.utils.deepClone(
-          message.getFlag("neuroshima", "rollEditHistory") ?? []
-        );
-        history.push({
-          userId: game.user.id,
-          timestamp: Date.now(),
-          before: snapshot(beforeData),
-          after: snapshot(updated)
-        });
-        await message.update({ "flags.neuroshima.rollEditHistory": history });
-        await test.updateMessage(message);
+        await this.test.edit({
+          rawResults,
+          preData: {
+            stat: Number(data.baseStat ?? 0),
+            skill: Number(data.baseSkill ?? 0),
+            attributeBonus: Number(data.attributeBonus ?? 0),
+            skillBonus: Number(data.skillBonus ?? 0),
+            isOpen: data.isOpen === "true",
+            penalties: {
+              base: Number(NEUROSHIMA.difficulties[data.difficultyKey]?.min ?? 0),
+              mod: Number(data.penaltyMod ?? 0),
+              wounds: Number(data.penaltyWounds ?? 0),
+              armor: Number(data.penaltyArmor ?? 0),
+              disease: Number(data.penaltyDisease ?? 0)
+            },
+            annotations: [
+              ...(this.test.preData.annotations ?? []),
+              "Rzut edytowany przez MG"
+            ]
+          }
+        }, { message: this.message });
     }
 
 }

@@ -834,8 +834,6 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
           context: { isOpen: true, healingMethod: isFirstAid ? "firstAid" : "woundTreatment" }
         });
         await test.roll();
-        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
-        await NeuroshimaChatMessage.renderRoll(test);
 
         game.neuroshima?.log("Test executed, waiting for result");
         game.neuroshima?.groupEnd();

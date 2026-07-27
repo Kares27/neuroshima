@@ -1,92 +1,189 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-globalThis.foundry ??= { utils: {
-  deepClone: value => structuredClone(value),
-  mergeObject: (target, source) => Object.assign(target, source)
-}};
-globalThis.game ??= {
-  settings: { get: () => false },
-  i18n: { localize: key => key }
-};
-globalThis.fromUuid ??= async () => null;
+Math.clamp ??= (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
 
+const deepClone = value => structuredClone(value ?? {});
+globalThis.foundry = {
+  utils: {
+    deepClone,
+    mergeObject(target, source) {
+      for (const [key, value] of Object.entries(source ?? {})) {
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          target[key] ??= {};
+          this.mergeObject(target[key], value);
+        } else target[key] = value;
+      }
+      return target;
+    }
+  }
+};
+globalThis.game = {
+  neuroshima: {
+    NeuroshimaScriptRunner: {
+      async executeEvent() {},
+      executeEventSync() {}
+    }
+  },
+  i18n: { localize: key => key },
+  settings: {
+    get: (_scope, key) => ({
+      rollTooltipMinRole: 0,
+      rollTooltipOwnerVisibility: false,
+      doubleSkillAction: false,
+      fireCorrection: false
+    })[key]
+  },
+  user: { role: 4, isGM: true }
+};
+globalThis.ui = { notifications: { warn() {} } };
+globalThis.fromUuid = async uuid => documents.get(uuid) ?? null;
+
+let dice = [2, 8, 15];
+globalThis.Roll = class {
+  constructor() {
+    this.terms = [{ results: [] }];
+  }
+  async evaluate() {
+    this.terms[0].results = dice.map(result => ({ result }));
+    return this;
+  }
+};
+
+const documents = new Map();
 const {
-  TestRules,
-  Closed3d20Evaluator,
-  Open3d20Evaluator,
+  NEUROSHIMA_TESTS,
   NeuroshimaTestBase,
   SkillTest,
+  WeaponTest,
+  AttackTest,
   RangedWeaponTest,
-  GrenadeTest,
-  HealingTest,
-  MeleeOpposedResolver,
-  NeuroshimaTestFactory
+  MeleeWeaponTest
 } = await import("../module/tests.mjs");
+game.neuroshima.tests = NEUROSHIMA_TESTS;
 
-const silentRunner = {
-  executeEvent: async () => null,
-  executeEventSync: () => null
-};
-
-test("closed evaluator resolves three dice", () => {
-  const data = new Closed3d20Evaluator().evaluate({ target: 10, skill: 0 }, [5, 11, 20]);
-  assert.equal(data.successCount, 1);
-  assert.equal(data.success, false);
-});
-
-test("open evaluator accepts only two or three dice", () => {
-  const evaluator = new Open3d20Evaluator();
-  assert.throws(() => evaluator.evaluate({ target: 10 }, [5]), RangeError);
-  assert.doesNotThrow(() => evaluator.evaluate({ target: 10 }, [5, 12]));
-  assert.doesNotThrow(() => evaluator.evaluate({ target: 10 }, [5, 12, 18]));
-  assert.throws(() => evaluator.evaluate({ target: 10 }, [1, 2, 3, 4]), RangeError);
-});
-
-test("maximum difficulty clamps the final band", () => {
-  const luck = globalThis.NEUROSHIMA?.difficulties?.luck;
-  const hard = globalThis.NEUROSHIMA?.difficulties?.hard;
-  if (luck && hard) assert.equal(TestRules.clampMaximumDifficulty(luck, "hard"), hard);
-  else assert.ok(TestRules.clampMaximumDifficulty);
-});
-
-test("base lifecycle uses only canonical triggers", async () => {
-  const events = [];
-  class ProbeTest extends NeuroshimaTestBase {
-    static classId = "probe";
-    async rollDice() { return [1, 2, 3]; }
-    async computeResult(values) { this.result.data.rawResults = values; }
-  }
-  const subject = new ProbeTest({ actor: { uuid: "Actor.test" } });
-  subject._scriptRunner = {
-    executeEvent: async trigger => events.push(trigger),
-    executeEventSync: () => null
+function actorFixture() {
+  return {
+    id: "actor",
+    uuid: "Actor.actor",
+    img: "actor.webp",
+    isOwner: true,
+    items: new Map()
   };
-  await subject.roll({ commit: false });
-  assert.deepEqual(events, ["preRollTest", "rollTest"]);
+}
+
+test("concrete tests inherit from base", () => {
+  assert.ok(new SkillTest() instanceof NeuroshimaTestBase);
+  assert.ok(new RangedWeaponTest() instanceof WeaponTest);
+  assert.ok(new MeleeWeaponTest() instanceof AttackTest);
 });
 
-test("serialized tests require an exact registered class", async () => {
-  await assert.rejects(
-    NeuroshimaTestFactory.fromData({ type: "skill", rollData: {} }),
-    /missing serialized Neuroshima test class/
-  );
-  const subject = new SkillTest({
-    actor: { uuid: "Actor.test" },
-    attribute: { key: "dexterity", value: 12 },
-    skill: { key: "firstAid", value: 4 },
-    rollData: { rawResults: [2, 8, 15] }
-  });
-  subject._scriptRunner = silentRunner;
-  const serialized = subject.serialize();
-  const restored = await NeuroshimaTestFactory.fromData({ ...serialized, actor: subject.actor });
-  assert.equal(restored.constructor, SkillTest);
-  assert.deepEqual(restored.result.data.rawResults, [2, 8, 15]);
+test("test recreates from rollClass", async () => {
+  const actor = actorFixture();
+  documents.set(actor.uuid, actor);
+  const original = new SkillTest({
+    preData: { stat: 12, skill: 4 },
+    result: { rawResults: [2, 8, 15] }
+  }, actor);
+  const recreated = await NeuroshimaTestBase.recreate(original.toData());
+  assert.ok(recreated instanceof SkillTest);
+  assert.deepEqual(recreated.result.rawResults, [2, 8, 15]);
 });
 
-test("factory exposes concrete attack and healing classes", () => {
-  assert.ok(new RangedWeaponTest() instanceof RangedWeaponTest);
-  assert.ok(new GrenadeTest() instanceof GrenadeTest);
-  assert.ok(new HealingTest() instanceof HealingTest);
-  assert.equal(typeof MeleeOpposedResolver.prototype.resolve, "function");
+test("weapon triggers follow WFRP order", async () => {
+  const actor = actorFixture();
+  const weapon = {
+    id: "weapon",
+    uuid: "Actor.actor.Item.weapon",
+    name: "Rifle",
+    system: {
+      weaponType: "ranged",
+      skipMagazineCheck: true,
+      fireRate: 1,
+      damage: "L",
+      piercing: 0,
+      jamming: 20
+    },
+    async update() {}
+  };
+  const events = [];
+  const instance = new RangedWeaponTest({
+    item: weapon,
+    preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15], bulletsFired: 1 }
+  }, actor);
+  instance.sendToChat = async () => null;
+  instance.runTrigger = async trigger => events.push(trigger);
+  await instance.roll({ sendToChat: false });
+  assert.deepEqual(events, ["preRollTest", "preRollWeaponTest", "rollTest", "rollWeaponTest"]);
+});
+
+test("editing weapon roll does not consume ammunition twice", async () => {
+  const actor = actorFixture();
+  let updates = 0;
+  const magazine = {
+    id: "magazine",
+    type: "magazine",
+    system: { contents: [{ name: "Ammo", quantity: 3 }] },
+    async update() { updates += 1; }
+  };
+  actor.items.set(magazine.id, magazine);
+  const weapon = {
+    id: "weapon",
+    uuid: "Actor.actor.Item.weapon",
+    name: "Rifle",
+    system: { weaponType: "ranged", magazine: magazine.id, fireRate: 1, damage: "L", piercing: 0, jamming: 20 },
+    async update() {}
+  };
+  const instance = new RangedWeaponTest({
+    item: weapon,
+    preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15], bulletsFired: 1 }
+  }, actor);
+  instance.sendToChat = async () => null;
+  await instance.roll({ sendToChat: false });
+  const afterRoll = updates;
+  await instance.edit({ rawResults: [1, 2, 3] });
+  assert.equal(updates, afterRoll);
+});
+
+test("open ranged test with one die is cancelled", async () => {
+  class OneDieRangedTest extends RangedWeaponTest {
+    get diceCount() { return 1; }
+  }
+  const instance = new OneDieRangedTest({
+    preData: { stat: 12, skill: 4, isOpen: true, fixedDice: [2] }
+  }, actorFixture());
+  instance.runTrigger = async () => {};
+  await instance.roll({ sendToChat: false });
+  assert.equal(instance.preData.cancelled, true);
+});
+
+test("test supplies chat tooltip", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15] },
+    context: { isDebug: true }
+  }, actorFixture());
+  instance.sendToChat = async () => null;
+  await instance.roll({ sendToChat: false });
+  const context = await instance.getChatData();
+  assert.equal(typeof context.dataTooltip, "string");
+  assert.match(context.dataTooltip, /Target|Cel/);
+});
+
+test("reroll and edit preserve lifecycle state without resource side effects", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 12, skill: 4, fixedDice: [2, 8, 15] },
+    context: { isDebug: true }
+  }, actorFixture());
+  instance.sendToChat = async () => null;
+  await instance.roll({ sendToChat: false });
+  await instance.edit({ rawResults: [1, 2, 3] });
+  assert.equal(instance.context.edited, true);
+  assert.deepEqual(instance.result.rawResults, [1, 2, 3]);
+  assert.ok(instance.context.previousResult);
+
+  dice = [4, 5, 6];
+  await instance.reroll();
+  assert.equal(instance.context.reroll, true);
+  assert.equal(instance.context.edited, false);
+  assert.deepEqual(instance.result.rawResults, [4, 5, 6]);
 });
