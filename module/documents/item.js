@@ -360,6 +360,14 @@ export class NeuroshimaItem extends Item {
    */
   async _preUpdate(changed, options, userId) {
     await super._preUpdate(changed, options, userId);
+    const actor = this.actor;
+    if (actor) {
+      const args = { actor, item: this, document: this, updateData: changed, options, userId, cancel: false };
+      await NeuroshimaScriptRunner.executeEvent("preUpdateDocument", args, {
+        metadata: { item: this, document: this, updateData: changed }
+      });
+      if (args.cancel) return false;
+    }
 
     // Capture the current containerId before any flag change so _onUpdate can
     // re-render the former parent container on all clients (DnD5e pattern).
@@ -469,8 +477,8 @@ export class NeuroshimaItem extends Item {
    *
    * @override
    */
-  _onUpdate(data, options, userId) {
-    super._onUpdate(data, options, userId);
+  async _onUpdate(data, options, userId) {
+    await super._onUpdate(data, options, userId);
 
     const actor = this.parent;
     if (actor?.documentName === "Actor") {
@@ -484,6 +492,14 @@ export class NeuroshimaItem extends Item {
 
     if (game.user.id !== userId) return;
     if (!actor || actor.documentName !== "Actor") return;
+    await NeuroshimaScriptRunner.executeEvent("update", {
+      actor,
+      item: this,
+      document: this,
+      updateData: data,
+      options,
+      userId
+    }, { metadata: { item: this, document: this, updateData: data } });
 
     const equippedChanged = foundry.utils.hasProperty(data, "system.equipped");
     if (equippedChanged) {

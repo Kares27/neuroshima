@@ -106,9 +106,43 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
     if (data.isOpen) new Open3d20Evaluator().evaluate(data, data.rawResults);
     else if (data.isDefending) new Defense3d20Evaluator().evaluate(data, data.rawResults);
     else new Closed3d20Evaluator().evaluate(data, data.rawResults);
+    this.applyManualDieReductions();
     this.result.tags.add(data.isOpen ? "open" : "closed");
     this.result.tags.add(data.success ? "success" : "failure");
     return this.result;
+  }
+
+  /**
+   * Persistent per-die reductions used by result actions and legacy tricks.
+   * Keeping them in rollData lets every rerender/reload use the same class
+   * recalculation instead of a second evaluator in the chat helper.
+   */
+  applyManualDieReductions() {
+    const data = this.result.data;
+    const reductions = data.manualDieReductions ?? {};
+    if (!Object.values(reductions).some(value => Number(value) > 0)) return;
+    for (const die of data.modifiedResults ?? []) {
+      const reduction = Math.max(0, Number(reductions[die.index] ?? 0));
+      if (!reduction || die.ignored) continue;
+      die.modified = Math.max(1, Number(die.modified) - reduction);
+      die.isSuccess = die.original !== 20 && die.modified <= data.target;
+      die.showModified = true;
+    }
+    const active = (data.modifiedResults ?? []).filter(die => !die.ignored);
+    data.successCount = active.filter(die => die.isSuccess).length;
+    if (data.isOpen) {
+      const highest = active.length ? Math.max(...active.map(die => die.modified)) : 0;
+      data.success = active.length > 0 && active.every(die => die.isSuccess);
+      data.successPoints = data.success ? Math.max(0, Number(data.target) - highest) : 0;
+      data.isCritSuccess = false;
+      data.isCritFailure = false;
+    } else {
+      data.success = data.successCount >= 2;
+      data.successPoints = data.successCount;
+      data.isCritSuccess = data.successCount === 3;
+      data.isCritFailure = data.successCount === 0
+        && active.some(die => die.original === 20);
+    }
   }
 
   async recalculate() {

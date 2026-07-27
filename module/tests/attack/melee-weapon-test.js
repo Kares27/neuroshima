@@ -20,6 +20,28 @@ export class MeleeWeaponTest extends WeaponTest {
     };
   }
 
+  async resolveDomain(rolled = null) {
+    await super.resolveDomain(rolled);
+    this.computeMeleeDamageProfiles({
+      location: this.result.data.finalLocation,
+      damageShift: Number(this.context.damageShift ?? 0),
+      damageShift1: Number(this.context.damageShift1 ?? 0),
+      damageShift2: Number(this.context.damageShift2 ?? 0),
+      damageShift3: Number(this.context.damageShift3 ?? 0)
+    });
+    this.result.data.isMelee = true;
+    this.result.data.meleeAction = this.context.meleeAction ?? "attack";
+    this.result.data.piercing = Number(this.item?.system?.piercing ?? 0);
+    this.result.data.hitBullets = this.result.data.success ? 1 : 0;
+    this.result.data.hitBulletsData = this.result.data.success ? [{
+      damage: this.result.data.damage,
+      piercing: this.result.data.piercing,
+      successPoints: 1,
+      isPellet: false
+    }] : [];
+    return this.result;
+  }
+
   async recalculate() {
     if (this._lifecycleOptions.recalculate) return super.recalculate();
     const data = this.result.data;
@@ -30,7 +52,24 @@ export class MeleeWeaponTest extends WeaponTest {
       skill: Number(data.skill ?? 0),
       dieReductionBonus: Number(data.dieReductionBonus ?? 0)
     };
-    if (data.isOpen) new Open3d20Evaluator().evaluate(evaluated, rawResults);
+    const doubleSkill = globalThis.game?.settings?.get("neuroshima", "doubleSkillAction") === true;
+    if (doubleSkill && !data.isOpen) {
+      evaluated.modifiedResults = rawResults.map((value, index) => ({
+        original: value,
+        modified: value,
+        isSuccess: value <= evaluated.target && value !== 20,
+        isNat1: value === 1,
+        isNat20: value === 20,
+        index
+      }));
+      evaluated.successCount = evaluated.modifiedResults.filter(die => die.isSuccess).length;
+      evaluated.successPoints = evaluated.successCount;
+      evaluated.success = evaluated.successCount > 0;
+      evaluated.skillUsed = 0;
+      evaluated.remainingSkill = evaluated.skill;
+      evaluated.isCritSuccess = rawResults.includes(1);
+      evaluated.isCritFailure = rawResults.includes(20);
+    } else if (data.isOpen) new Open3d20Evaluator().evaluate(evaluated, rawResults);
     else if (data.isDefending || data.meleeAction === "defense") {
       new Defense3d20Evaluator().evaluate(evaluated, rawResults);
     } else {
@@ -46,6 +85,13 @@ export class MeleeWeaponTest extends WeaponTest {
     data.remainingSkill = evaluated.remainingSkill;
     data.isCritSuccess = Boolean(evaluated.isCritSuccess);
     data.isCritFailure = Boolean(evaluated.isCritFailure);
+    data.hitBullets = data.success ? 1 : 0;
+    data.hitBulletsData = data.success ? [{
+      damage: data.damage,
+      piercing: Number(data.piercing ?? this.item?.system?.piercing ?? 0),
+      successPoints: 1,
+      isPellet: false
+    }] : [];
     delete data.forceRecalculate;
     this.result.tags.delete("success");
     this.result.tags.delete("failure");

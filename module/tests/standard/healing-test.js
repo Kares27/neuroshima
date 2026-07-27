@@ -72,15 +72,8 @@ export class HealingTest extends SkillTest {
   async resolveDomain() {
     const config = this.context.woundConfig ?? {};
     const data = this.result.data;
-    const calculated = globalThis.game?.neuroshima?.HealingApp?.calculateHealingResults?.(
-      this.patient,
-      [config.woundId],
-      data.successCount,
-      this.context.healingMethod,
-      config.hadFirstAid,
-      config.healingModifier,
-      config.scriptHealingModifier ?? 0
-    ) ?? [];
+    const wound = this.wound ?? this.patient?.items?.get(config.woundId);
+    const calculated = wound ? [this.computeHealingResult(wound, data.successCount, config)] : [];
 
     Object.assign(data, {
       woundId: config.woundId,
@@ -95,6 +88,42 @@ export class HealingTest extends SkillTest {
       healingEffect: calculated[0] ?? null
     });
     return this.result;
+  }
+
+  computeHealingResult(wound, successCount, config = this.context.woundConfig ?? {}) {
+    const success = Number(successCount) >= 2;
+    const firstAid = this.context.healingMethod === "firstAid";
+    let penaltyChange = success
+      ? (firstAid ? -5 : (config.hadFirstAid ? -10 : -15))
+      : 5;
+    penaltyChange += Number(config.healingModifier ?? 0);
+    const modifierOnFailure = globalThis.game?.settings?.get(
+      "neuroshima", "healingScriptModifierOnFailure"
+    ) ?? false;
+    if (success || modifierOnFailure) {
+      penaltyChange += Number(config.scriptHealingModifier ?? 0);
+    }
+    const oldPenalty = Number(wound.system?.penalty ?? 0);
+    let newPenalty = Math.max(0, oldPenalty + penaltyChange);
+    if (success && !(globalThis.game?.settings?.get("neuroshima", "allowRepeatedHealing") ?? false)) {
+      const originalPenalty = Number(wound.system?.originalPenalty ?? oldPenalty);
+      if (firstAid) {
+        const remaining = Math.max(0, 5 - Number(wound.system?.firstAidHealingApplied ?? 0));
+        newPenalty = Math.max(oldPenalty - remaining, newPenalty);
+      }
+      newPenalty = Math.max(originalPenalty - 15, newPenalty);
+    }
+    newPenalty = Math.max(0, newPenalty);
+    return {
+      woundId: wound.id,
+      woundName: wound.name,
+      damageType: wound.system?.damageType ?? "D",
+      oldPenalty,
+      newPenalty,
+      penaltyChange: newPenalty - oldPenalty,
+      wasFullyHealed: newPenalty === 0,
+      isSuccess: success
+    };
   }
 
   async recalculate() {

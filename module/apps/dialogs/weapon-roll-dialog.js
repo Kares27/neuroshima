@@ -4,6 +4,7 @@ import { NeuroshimaDice } from "../../helpers/dice.js";
 import { getDistancePenalty } from "../config/distance-config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
+import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
 
 /**
  * Dialog for weapon rolls (ranged and melee).
@@ -617,7 +618,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     if (this.isPoolRoll && this.onPoolRoll) {
       let rawResult;
       try {
-        rawResult = await game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
+        rawResult = await this._executeWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
       } catch (err) {
         console.error("Neuroshima | Pool roll: rollWeaponTest failed:", err);
       }
@@ -646,7 +647,17 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       return this.onPoolRoll(rawResult);
     }
 
-    return game.neuroshima.NeuroshimaDice.rollWeaponTest({ ...rollData, options: submissionOptions });
+    return this._executeWeaponTest({ ...rollData, options: submissionOptions });
+  }
+
+  async _executeWeaponTest(params) {
+    const subtype = params.weapon?.system?.weaponType === "melee"
+      ? "melee"
+      : (params.weapon?.system?.weaponType === "thrown" ? "thrown" : "ranged");
+    const TestClass = NeuroshimaTestFactory.create({ type: "weapon", subtype }).constructor;
+    const test = TestClass.fromLegacyParameters(params);
+    await test.roll();
+    return NeuroshimaDice.renderWeaponTestResult(test, params);
   }
 
   _onCancel(event, target) {

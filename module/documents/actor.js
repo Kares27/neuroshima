@@ -305,11 +305,6 @@ export class NeuroshimaActor extends Actor {
 
     const initiativeValue = Number(result.successPoints);
 
-    if (combatant) {
-        game.neuroshima.log(`Updating combatant ${combatant.id} initiative to ${initiativeValue}`);
-        await combatant.update({ initiative: initiativeValue });
-    }
-
     return initiativeValue;
   }
 
@@ -775,6 +770,11 @@ export class NeuroshimaActor extends Actor {
   async _preUpdate(changed, options, user) {
     const result = await super._preUpdate(changed, options, user);
     if (result === false) return false;
+    const args = { actor: this, document: this, updateData: changed, options, user, cancel: false };
+    await NeuroshimaScriptRunner.executeEvent("preUpdateDocument", args, {
+      metadata: { document: this, updateData: changed }
+    });
+    if (args.cancel) return false;
   }
 
   /**
@@ -785,6 +785,15 @@ export class NeuroshimaActor extends Actor {
    */
   async _onUpdate(changed, options, userId) {
     await super._onUpdate(changed, options, userId);
+    if (userId === game.userId) {
+      await NeuroshimaScriptRunner.executeEvent("update", {
+        actor: this,
+        document: this,
+        updateData: changed,
+        options,
+        userId
+      }, { metadata: { document: this, updateData: changed } });
+    }
     if (userId === game.userId && game.user.isGM) {
       await this._checkAutoConditions();
     }

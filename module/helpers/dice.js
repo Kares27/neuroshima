@@ -6,7 +6,6 @@ import { NeuroshimaTestFactory } from "../tests/test-factory.js";
 import { Closed3d20Evaluator, Defense3d20Evaluator, Open3d20Evaluator } from "../tests/evaluators.js";
 import { TestRules } from "../tests/test-rules.js";
 import { HealingTest } from "../tests/standard/healing-test.js";
-import { AttackTest } from "../tests/attack/attack-test.js";
 
 /**
  * Helper class for Neuroshima 1.5 dice rolling logic.
@@ -106,7 +105,9 @@ export class NeuroshimaDice {
         skillKey: skill,
         options: {
             rollType: "initiative",
-            subtype: isMeleeInitiative ? "melee" : "standard"
+            subtype: isMeleeInitiative ? "melee" : "standard",
+            combatant: params.combatant ?? null,
+            eventArgs: { combatant: params.combatant ?? null }
         }
     });
 
@@ -154,921 +155,40 @@ export class NeuroshimaDice {
       type: "weapon",
       subtype
     }).constructor;
-    return TestClass.rollFromLegacy(params, normalized => this._rollWeaponMechanics(normalized));
+    const test = await TestClass.rollFromLegacy(params);
+    return this.renderWeaponTestResult(test, params);
   }
 
   /**
-   * Transitional mechanical evaluator for the legacy flat argument contract.
-   * New code enters through WeaponTest.rollFromLegacy()/test.roll(); keeping
-   * this implementation private prevents dialogs from becoming lifecycle
-   * owners while the calculation is decomposed into class methods.
-   * @private
+   * Presentation adapter for an already completed concrete WeaponTest.
+   * It performs no dice or domain calculations.
    */
-  static async _rollWeaponMechanics(params) {
-    const { 
-        weapon, 
-        actor, 
-        aimingLevel, 
-        burstLevel, 
-        difficulty, 
-        hitLocation, 
-        modifier, 
-        applyArmor, 
-        applyWounds, 
-        applyDisease = true,
-        diseasePenalty: rawDiseasePenalty = 0,
-        isOpen, 
-        skillBonus = 0, 
-        attributeBonus = 0, 
-        distance = 0,
-        distancePenalty = 0,
-        meleeAction = "attack", 
-        maneuver = "none",
-        tempoLevel = 0,
-        meleeDiceCount = 3,
-        damageShift = 0,
-        damageShift1 = 0,
-        damageShift2 = 0,
-        damageShift3 = 0,
-        isReroll = false, 
-        chatMessage = true, 
-        dieManualBonus = 0,
-        dieReductionBonus = 0,
-        maximumDifficulty = null,
-        burstHitStep = 1,
-        autoSuccess = false,
-        annotations = [],
-        rollMode = game.settings.get("core", "rollMode"),
-        options = {}
-    } = params;
-    
-    // Open log group for this weapon roll
-    game.neuroshima.group("Initializing weapon roll");
-    game.neuroshima.log("Roll input parameters:", params);
-
-    let bulletSequence = [];
-    
-    // Apply maneuver modifiers
-    let effectiveAttributeBonus = attributeBonus;
-    let effectiveDifficulty = difficulty;
-    
-    const isMelee = weapon.system.weaponType === "melee";
-    
-    if (isMelee) {
-        if (maneuver === "fury" && meleeAction === "attack") {
-            effectiveAttributeBonus += 2;
-        } else if (maneuver === "fullDefense" && meleeAction === "defense") {
-            effectiveAttributeBonus += 2;
-        } else if (maneuver === "increasedTempo") {
-            const baseDiffObj = NEUROSHIMA.difficulties[difficulty] || NEUROSHIMA.difficulties.average;
-            const shifted = this._getShiftedDifficulty(baseDiffObj, tempoLevel);
-            // Find key for shifted difficulty
-            effectiveDifficulty = Object.keys(NEUROSHIMA.difficulties).find(k => NEUROSHIMA.difficulties[k].label === shifted.label) || difficulty;
-        }
-    }
-
-    // 1. Compute percentage penalties (base difficulty, wounds, armor, location, disease)
-    const basePenalty = NEUROSHIMA.difficulties[effectiveDifficulty]?.min || 0;
-    const armorPenalty = applyArmor ? (actor.system.combat?.totalArmorPenalty || 0) : 0;
-    const woundPenalty = applyWounds ? (actor.system.combat?.totalWoundPenalty || 0) : 0;
-    const diseasePenalty = applyDisease ? (rawDiseasePenalty || 0) : 0;
-    
-    // Weapon bonus for melee
-    let weaponBonus = 0;
-    const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
-    if (isMelee) {
-        weaponBonus = meleeAction === "attack" ? (weapon.system.attackBonus || 0) : (weapon.system.defenseBonus || 0);
-    }
-
-    const locationPenalty = this.getLocationPenalty(weapon.system.weaponType, hitLocation);
-    const totalPenalty = basePenalty + modifier + armorPenalty + woundPenalty + diseasePenalty + locationPenalty + distancePenalty;
-
-    game.neuroshima.log("Kalkulacja kar (%)", {
-        basePenalty,
-        effectiveDifficulty,
-        modifier,
-        armorPenalty,
-        woundPenalty,
-        locationPenalty,
-        distancePenalty,
-        totalPenalty,
-        weaponBonus,
-        effectiveAttributeBonus
-    });
-
-    // 2. Aiming level and dice count
-    // Ranged weapons: 1-3 dice depending on aiming level (best die wins).
-    // Melee: 1-3 dice depending on meleeDiceCount (default 3).
-    let diceCount = isMelee ? Math.min(3, Math.max(1, meleeDiceCount || 3)) : (aimingLevel + 1);
-    let effectiveSkillBonus = skillBonus;
-    let effectiveAutoSuccess = autoSuccess;
-    const preRollAnnotations = [...(Array.isArray(annotations) ? annotations : [])].filter(Boolean);
-    const weaponSubtype = isMelee
-      ? "melee"
-      : (weapon.system.weaponType === "thrown" ? "thrown" : "ranged");
-    const weaponTest = NeuroshimaTestFactory.create({
-      type: "weapon",
-      subtype: weaponSubtype,
-      actor,
-      item: weapon,
-      targets: params.targets ?? [],
-      attribute: {
-        key: weapon.system.attribute ?? "dexterity",
-        value: Number(actor.system.attributeTotals?.[weapon.system.attribute] ?? 10)
-      },
-      skill: {
-        key: weapon.system.skill ?? null,
-        value: Number(actor.system.skills?.[weapon.system.skill]?.value ?? 0)
-      },
-      preData: {
-        diceCount,
-        penalties: {
-          mod: 0,
-          wounds: woundPenalty,
-          armor: armorPenalty,
-          base: basePenalty,
-          disease: diseasePenalty,
-          location: locationPenalty,
-          distance: distancePenalty
-        },
-        skillBonus: effectiveSkillBonus,
-        attributeBonus: effectiveAttributeBonus,
-        dieManualBonus,
-        dieReductionBonus,
-        maximumDifficulty,
-        annotations: preRollAnnotations
-      },
-      context: {
-        isMelee,
-        meleeAction,
-        skillKey: weapon.system.skill,
-        reroll: isReroll,
-        options,
-        eventArgs: { weapon }
-      }
-    });
-    if (autoSuccess === true) weaponTest.forceSuccess({ mode: "keepRoll" });
-    if (!await weaponTest.begin()) {
-      game.neuroshima.groupEnd();
-      return weaponTest.toLegacyData();
-    }
-    if (weaponTest.preData.autoSuccess && !weaponTest._forcedSuccess) {
-      weaponTest.forceSuccess({ mode: "skipRoll" });
-      Object.assign(weaponTest.result.data, {
-        label: weapon.name,
-        isWeapon: true,
-        isMelee,
-        success: true,
-        isSuccess: true,
-        successCount: 1,
-        successPoints: 1,
-        rawResults: [],
-        rolledResults: [],
-        modifiedResults: [],
-        annotations: weaponTest.preData.annotations,
-        isOpen: false,
-        rollMode
-      });
-      weaponTest.result.skipped = true;
-      weaponTest.result.forceSuccess("skipRoll");
-      await weaponTest.finish();
-      const skippedData = weaponTest.toLegacyData();
-      game.neuroshima.groupEnd();
-      if (!chatMessage) return skippedData;
-      return NeuroshimaChatMessage.renderWeaponRoll(skippedData, actor, null);
-    }
-    diceCount = Math.max(1, Math.floor(Number(weaponTest.preData.diceCount) || diceCount));
-    effectiveSkillBonus = Number(weaponTest.preData.skillBonus ?? effectiveSkillBonus);
-    effectiveAttributeBonus = Number(weaponTest.preData.attributeBonus ?? effectiveAttributeBonus);
-    effectiveAutoSuccess = weaponTest._forcedSuccess !== null;
-    const effectiveDieReductionBonus = Number(
-      weaponTest.preData.dieReductionBonus ?? dieReductionBonus ?? 0
-    );
-    const effectiveDieManualBonus = Number(
-      weaponTest.preData.dieManualBonus ?? dieManualBonus ?? 0
-    );
-    const effectiveMaximumDifficulty =
-      weaponTest.preData.maximumDifficulty ?? maximumDifficulty;
-    const effectiveWeaponPenalties = weaponTest.preData.penalties ?? {};
-    const effectiveTotalPenalty = Number(modifier ?? 0)
-      + Object.values(effectiveWeaponPenalties).reduce(
-        (sum, value) => sum + (Number.isFinite(Number(value)) ? Number(value) : 0),
-        0
-      );
-    
-    // Compute base damage (will be updated later for ranged ammo)
-    const _shiftDamageType = AttackTest.shiftDamageType;
-    let resolvedMeleeDamage = null;
-    let damageValue = isMelee
-        ? [weapon.system.damageMelee1, weapon.system.damageMelee2, weapon.system.damageMelee3]
-            .filter(d => d)
-            .map(d => _shiftDamageType(d, damageShift))
-            .join("/")
-        : (weapon.system.damage || "0");
-
-    // Roll the dice
-    const roll = new Roll(`${diceCount}d20`);
-    await roll.evaluate();
-    
-    // Collect results and find the best die (lowest value)
-    const results = roll.terms[0].results.map(r => r.result);
-    const rawResults = [...results];
-    const bestResult = Math.min(...results);
-
-    // Final open/closed state — melee always uses a closed 3d20 test
-    let finalIsOpen = isOpen;
-    if (isMelee) {
-        finalIsOpen = false;
-    }
-
-    game.neuroshima.log("Dice roll results", {
-        weaponType: weapon.system.weaponType,
-        diceCount,
-        results,
-        bestResult,
-        finalIsOpen
-    });
-
-    // 3. Hit location — roll randomly if 'random' was selected
-    let finalLocation = hitLocation;
-    let locationRoll = null;
-    if (hitLocation === "random") {
-        locationRoll = await new Roll("1d20").evaluate();
-        const rollVal = locationRoll.total;
-        finalLocation = AttackTest.locationFromRoll(rollVal);
-        game.neuroshima.log("Hit location rolled", { roll: rollVal, location: finalLocation });
-    }
-
-    if (isMelee) {
-        resolvedMeleeDamage = weaponTest.computeMeleeDamageProfiles({
-            location: finalLocation,
-            damageShift,
-            damageShift1,
-            damageShift2,
-            damageShift3
-        });
-        damageValue = resolvedMeleeDamage.join("/");
-        game.neuroshima.log("Resolved melee damage profiles", {
-            finalLocation,
-            headShift: finalLocation === "head" ? 1 : 0,
-            damageShift,
-            damageShift1,
-            damageShift2,
-            damageShift3,
-            resolvedMeleeDamage
-        });
-    }
-
-    // 4. Burst fire — determine number of bullets fired
-    let bulletsFired = weaponTest.constructor.bulletsForBurst?.(weapon, burstLevel)
-      ?? this.getBulletsFired(weapon, burstLevel);
-    const burstLabel = game.i18n.localize(NEUROSHIMA.burstLabels[burstLevel] || NEUROSHIMA.burstLabels[0]);
-
-    game.neuroshima.log("Planning burst sequence", { bulletsFired, burstType: burstLabel });
-
-    // 4.1. Concrete ranged class plans ammunition without mutating documents.
-    const isRanged = weapon.system.weaponType === "ranged";
-    const isThrown = weapon.system.weaponType === "thrown";
-    const ammoPlan = isMelee ? {
-      valid: true,
-      bulletsFired: 0,
-      bulletSequence: [],
-      damage: weapon.system.damage,
-      piercing: weapon.system.piercing || 0,
-      jamming: weapon.system.jamming || 20,
-      damageCategory: weapon.system.damageCategory ?? "physical",
-      magazineId: null,
-      magazine: null,
-      magazineUpdateData: null
-    } : weaponTest.constructor.planAmmunition(actor, weapon, bulletsFired);
-    if (!ammoPlan.valid) {
-        ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.NoMagazineSelected"));
-        game.neuroshima.log("Rzut przerwany: brak wybranego magazynka");
-        game.neuroshima.groupEnd();
-        return;
-    }
-    bulletsFired = ammoPlan.bulletsFired;
-    bulletSequence = ammoPlan.bulletSequence;
-    let ammoDamage = ammoPlan.damage;
-    let ammoPiercing = ammoPlan.piercing;
-    let ammoJamming = ammoPlan.jamming;
-    let ammoDamageCategory = ammoPlan.damageCategory;
-    const magazineId = ammoPlan.magazineId;
-    const magazine = ammoPlan.magazine;
-    const magazineUpdateData = ammoPlan.magazineUpdateData;
-    if (bulletSequence.length) damageValue = ammoDamage;
-    if (ammoPlan.exhaustedDuringBurst) {
-      ui.notifications.warn(game.i18n.localize("NEUROSHIMA.Notifications.OutOfAmmoDuringBurst"));
-    }
-
-    // 5. Compute skill value and success threshold.
-    const baseDifficulty = this.getDifficultyFromPercent(effectiveTotalPenalty);
-
-    let skillValue = 0;
-    let skillKey = params.skillKeyOverride || weaponTest.skill?.key || weapon.system.skill;
-    if (
-      skillKey
-      && skillKey !== "experience"
-      && !actor.system.skills?.[skillKey]
-    ) {
-      skillKey = weapon.system.skill;
-    }
-    if (!skillKey || skillKey === "none") {
-        const attrGroups = NEUROSHIMA.skillConfiguration[weapon.system.attribute || "dexterity"] || {};
-        const firstGroup = Object.values(attrGroups)[0] || [];
-        skillKey = firstGroup[0] || "";
-    }
-    if (skillKey && skillKey !== "none") {
-        const isCreature = actor?.type === "creature";
-        const scriptedSkill = skillKey === weaponTest.skill?.key
-          ? Number(weaponTest.skill?.value)
-          : NaN;
-        const baseSkill = Number.isFinite(scriptedSkill)
-          ? scriptedSkill
-          : (skillKey === "experience" && isCreature)
-            ? (actor.system.experience ?? 0)
-            : (actor.system.skills[skillKey]?.value || 0);
-        skillValue = baseSkill + effectiveSkillBonus;
-        if (isMelee) {
-            if (bonusMode === "skill" || bonusMode === "both") skillValue += weaponBonus;
-        } else {
-            skillValue += weaponBonus;
-        }
-    }
-
-    let totalShift = 0;
-    const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
-    if (allowCombatShift) {
-        if (!isMelee) totalShift -= this.getSkillShift(skillValue);
-        totalShift += this.getDiceShift(results);
-    }
-
-    const shiftedDifficulty = this._getShiftedDifficulty(baseDifficulty, totalShift);
-    const finalDiff = this.clampMaximumDifficulty(shiftedDifficulty, effectiveMaximumDifficulty);
-
-    const attributeKey = weaponTest.attribute?.key || weapon.system.attribute || "dexterity";
-    const scriptedAttribute = attributeKey === weaponTest.attribute?.key
-      ? Number(weaponTest.attribute?.value)
-      : NaN;
-    const baseAttr = Number.isFinite(scriptedAttribute)
-      ? scriptedAttribute
-      : Number(
-          actor.system.attributeTotals?.[attributeKey]
-          ?? actor.system.attributes?.[attributeKey]
-          ?? 10
-        );
-    let finalStat = baseAttr + effectiveAttributeBonus;
-    if (isMelee && (bonusMode === "attribute" || bonusMode === "both")) finalStat += weaponBonus;
-    const target = finalStat + finalDiff.mod;
-
-    game.neuroshima.log("Difficulty and Slider calculation", {
-        baseDifficulty: baseDifficulty.label,
-        sliderShift: totalShift,
-        finalDifficulty: finalDiff.label,
-        successThreshold: target,
-        skillValue,
-        finalStat
-    });
-
-    // Preliminary success check for jam trigger evaluation
-    const _jamModified = Math.max(1, bestResult - skillValue);
-    const jamWouldSucceed = !isMelee && bestResult !== 20 && _jamModified <= target;
-    game.neuroshima.log("[JamCheck] jamWouldSucceed calculation", {
-        isMelee,
-        bestResult,
-        skillValue,
-        modifiedResult: _jamModified,
-        target,
-        jamWouldSucceed
-    });
-
-    // 5.1 Weapon jam check
-    const weaponJammingValue = weapon.system.jamming || 20;
-    let jammingThreshold = Math.min(weaponJammingValue, ammoJamming);
-
-    // preWeaponShot: scripts can shift the threshold or force/prevent jamming
-    const rollAnnotations = [];
-    const preJamArgs = { actor, weapon, jammingThreshold, ammoJamming, bestResult, forceNoJam: false, forceJam: false, annotations: rollAnnotations, options };
-    if (!isMelee) {
-        await NeuroshimaScriptRunner.executeLegacy("preWeaponShot", preJamArgs, {
-            type: "weapon",
-            subtype: isThrown ? "thrown" : "ranged",
-            item: weapon,
-            result: { results, bestResult }
-        });
-    }
-    jammingThreshold = preJamArgs.jammingThreshold;
-
-    // Jam is checked against the BEST die (lowest roll) before any skill modifier is applied.
-    let isJamming = isMelee        ? false
-                  : preJamArgs.forceNoJam ? false
-                  : preJamArgs.forceJam   ? true
-                  : (bestResult >= jammingThreshold);
-
-    // weaponJam: scripts can allow firing despite jam, or clear the jam entirely
-    let canFireDespiteJam = false;
-    let despiteJamBullets  = null;
-    let jamWasCleared = false;
-    if (isJamming) {
-        const jamArgs = { actor, weapon, bestResult, jammingThreshold, wouldSucceed: jamWouldSucceed, canFireDespiteJam: false, clearJam: false, despiteJamBullets: null, annotations: rollAnnotations, options };
-        await NeuroshimaScriptRunner.executeLegacy("weaponJam", jamArgs, {
-            type: "weapon",
-            subtype: isThrown ? "thrown" : "ranged",
-            item: weapon,
-            result: { results, bestResult, isJamming: true },
-            tags: ["weapon", "jam"]
-        });
-        canFireDespiteJam = jamArgs.canFireDespiteJam;
-        if (jamArgs.clearJam) { isJamming = false; jamWasCleared = true; }
-        if (canFireDespiteJam && typeof jamArgs.despiteJamBullets === "number" && jamArgs.despiteJamBullets > 0) {
-            despiteJamBullets = Math.floor(jamArgs.despiteJamBullets);
-        }
-    }
-
-    // Queue the planned ammunition update unconditionally. The side effect
-    // checks the final, recalculated jam state at commit time, so a result
-    // action may still cause or clear a jam without consuming ammo twice.
-    if (magazine && magazine.type === "magazine" && magazineUpdateData) {
-            weaponTest.queueSideEffect(
-              current => {
-                const finalData = current.result.data;
-                if (finalData.isJamming && !finalData.firedDespiteJam) return;
-                return magazine.update({ "system.contents": magazineUpdateData });
-              },
-              { id: "consume-magazine" }
-            );
-    } else if (weapon.system.weaponType === "thrown" && magazineId && bulletsFired > 0) {
-            const ammoItem = actor.items.get(magazineId);
-            if (ammoItem && ammoItem.type === "ammo") {
-                weaponTest.queueSideEffect(
-                  current => {
-                    const finalData = current.result.data;
-                    if (finalData.isJamming && !finalData.firedDespiteJam) return;
-                    return ammoItem.update({ "system.quantity": ammoItem.system.quantity - 1 });
-                  },
-                  { id: "consume-thrown-ammo" }
-                );
-            }
-    }
-
-    let modifiedResults = [];
-    let isSuccess = false;
-    let successPoints = 0;
-    let successCount = 0;
-    let hitBullets = 0;
-    let finalHitSequence = [];
-
-    let totalPelletSP = 0;
-
-    // Evaluate results by weapon type (Melee = 3d20 closed, Ranged = best of X)
-    if (isMelee) {
-        game.neuroshima.log("Starting Melee evaluation (3d20)");
-        const diceObjects = results.map((v, i) => ({
-            original: v,
-            index: i,
-            modified: v,
-            isSuccess: false,
-            ignored: false
-        }));
-
-        const evalData = { target, skill: skillValue, dieReductionBonus: effectiveDieReductionBonus };
-        
-        if (finalIsOpen) {
-            this._evaluateOpenTest(evalData, diceObjects);
-            successPoints = evalData.successPoints;
-            isSuccess = evalData.success;
-            modifiedResults = evalData.modifiedResults;
-        } else {
-            const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
-            if (doubleSkill) {
-                evalData.modifiedResults = diceObjects.map(d => ({
-                    ...d,
-                    modified: d.original,
-                    isSuccess: d.original <= target && d.original !== 20,
-                    isNat1: d.original === 1,
-                    isNat20: d.original === 20
-                }));
-                const succCount = evalData.modifiedResults.filter(r => r.isSuccess).length;
-                successPoints = succCount;
-                isSuccess = succCount > 0;
-                successCount = succCount;
-            } else {
-                this._evaluateClosedTest(evalData, diceObjects);
-                successPoints = evalData.successCount;
-                isSuccess = evalData.successCount > 0;
-                successCount = evalData.successCount;
-            }
-            modifiedResults = evalData.modifiedResults;
-        }
-        
-        // Dialog auto-success preserves the rolled dice but overrides the final verdict.
-        if (effectiveAutoSuccess) isSuccess = true;
-
-        if (isSuccess) {
-            hitBullets = 1;
-            finalHitSequence = [{
-                damage: damageValue,
-                piercing: ammoPiercing,
-                successPoints: 1,
-                isPellet: false
-            }];
-        }
-    } else {
-        game.neuroshima.log("Starting Ranged evaluation (best die)");
-        modifiedResults = results.map((v, i) => {
-            const modified = Math.max(1, v - skillValue - effectiveDieReductionBonus);
-            const succ = finalIsOpen ? (target - modified >= 0) : (modified <= target && v !== 20);
-            return {
-                original: v,
-                modified: modified,
-                isSuccess: succ,
-                isBest: v === bestResult,
-                isNat1: v === 1,
-                isNat20: v === 20,
-                index: i
-            };
-        });
-
-        // Advantage Points for ranged weapons: Target - (Best die - Skill)
-        const modifiedBest = Math.max(1, bestResult - skillValue - effectiveDieReductionBonus);
-        const overflow = target - modifiedBest;
-        
-        if (finalIsOpen) {
-            isSuccess = overflow >= 0;
-            successPoints = overflow;
-        } else {
-            isSuccess = modifiedBest <= target && bestResult !== 20;
-            successPoints = isSuccess ? 1 : 0;
-        }
-
-        if (effectiveAutoSuccess) {
-            isSuccess = true;
-            successPoints = Math.max(1, successPoints);
-        }
-
-        // A forced success always provides at least one AP, so it can produce a normal hit.
-        const pp = isSuccess ? Math.max(effectiveAutoSuccess ? 1 : 0, overflow + 1) : 0;
-
-        // Evaluate hits in the burst (individually per bullet)
-        if (isSuccess && (!isJamming || canFireDespiteJam)) {
-            const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
-            let totalPelletHits = 0;
-
-            // If a script set a bullet limit for despite-jam firing, cap the loop.
-            // When canFireDespiteJam=true with no helper (despiteJamBullets=null), default to 1 bullet.
-            const effectiveBullets = canFireDespiteJam
-                ? Math.min(bulletsFired, despiteJamBullets ?? 1)
-                : bulletsFired;
-
-            // Iterate over every fired bullet (casing)
-            for (let j = 0; j < effectiveBullets; j++) {
-                // Bullet j hits only when our Advantage Points (pp) exceed floor(j / burstHitStep).
-                // burstHitStep=1 (default): 1 AP per bullet. burstHitStep=2: 1 AP per 2 bullets (double hits).
-                if (pp <= Math.floor(j / Math.max(1, burstHitStep ?? 1))) break; 
-
-                const bullet = bulletSequence[j];
-                if (!bullet) break;
-
-                if (bullet.isPellet) {
-                    // PELLET LOGIC for this specific casing
-                    const basePelletDamage = this.getPelletDamageAtDistance(bullet.pelletRanges, distance);
-                    
-                    // Each subsequent burst bullet (j) reduces max pellets per shell by j.
-                    // pp - j is the available Advantage Points for this specific shell.
-                    const capacityPenalty = j;
-                    const maxPelletsInShell = Math.max(0, (bullet.pelletCount || 1) - capacityPenalty);
-                    
-                    // Pellet count is the lesser of remaining AP and current shell capacity
-                    let pelletsForThisShell = Math.max(0, pp - j);
-                    
-                    // Always cap to physical pellets in the shell (reduced by burst penalty);
-                    // optionally apply the pellet count limit setting.
-                    if (usePelletCountLimit || pelletsForThisShell > maxPelletsInShell) {
-                        pelletsForThisShell = Math.min(pelletsForThisShell, maxPelletsInShell);
-                    }
-
-                    if (pelletsForThisShell > 0) {
-                        totalPelletHits += pelletsForThisShell;
-                        finalHitSequence.push({
-                            ...bullet,
-                            damage: basePelletDamage,
-                            successPoints: pelletsForThisShell,
-                            shellIndex: j + 1
-                        });
-                    }
-                } else {
-                    // Standard bullet logic
-                    // Ensure damage and piercing are explicitly preserved for different ammo types
-                    const bulletDamage = bullet.damage !== undefined ? bullet.damage : ammoDamage;
-                    const bulletPiercing = bullet.piercing !== undefined ? bullet.piercing : ammoPiercing;
-                    
-                    game.neuroshima.log(`Standardowy pocisk ${j + 1}`, {
-                      bullet: bullet,
-                      bulletDamage,
-                      bulletPiercing,
-                      fallbackDamage: ammoDamage,
-                      fallbackPiercing: ammoPiercing
-                    });
-                    
-                    finalHitSequence.push({
-                        ...bullet,
-                        damage: bulletDamage,
-                        piercing: bulletPiercing,
-                        successPoints: 1, 
-                        shellIndex: j + 1
-                    });
-                }
-            }
-
-            // Commit hit results
-            hitBullets = finalHitSequence.length;
-            totalPelletSP = totalPelletHits;
-        } else {
-            hitBullets = 0;
-            totalPelletSP = 0;
-        }
-    }
-
-    game.neuroshima.log("Final test result", { isSuccess, successPoints, isJamming, hitBullets, jammingOnDie: results[0] });
-
-    // 6a. Korygowanie Ognia (Fire Correction) — tylko dla nieudanej serii dystansowej
-    let fireCorrectionData = null;
-    const fireCorrectionEnabled = game.settings.get("neuroshima", "fireCorrection");
-    if (fireCorrectionEnabled && !isMelee && !isJamming && burstLevel > 0 && bulletsFired > 0) {
-        if (!isSuccess) {
-            const modifiedBest = Math.max(1, bestResult - skillValue);
-            const failureMargin = modifiedBest - target;
-            if (failureMargin > 0) {
-                const totalCorrectionCost = failureMargin * 3;
-                const canCorrect = totalCorrectionCost < bulletsFired;
-                fireCorrectionData = { failureMargin, totalCorrectionCost, bulletsFired, canCorrect, isSuccessCorrection: false };
-                game.neuroshima.log("Fire Correction (failure)", fireCorrectionData);
-            }
-        } else {
-            const remainingForCorrection = bulletsFired - hitBullets;
-            const maxCorrectionHits = Math.floor(remainingForCorrection / 4);
-            const canCorrect = maxCorrectionHits > 0;
-            fireCorrectionData = { failureMargin: 0, totalCorrectionCost: 3, bulletsFired, hitBullets, remainingForCorrection, maxCorrectionHits, canCorrect, isSuccessCorrection: true };
-            game.neuroshima.log("Korygowanie Ognia (sukces — dodatkowe trafienia)", fireCorrectionData);
-        }
-    }
-
-    // 6. Build chat card roll data
-    const rollData = {
-        label: weapon.name,
-        actionLabel: burstLabel,
-        isWeapon: true,
-        isMelee,
-        meleeAction: isMelee ? (params.meleeAction || "attack") : null,
-        damageMelee1: isMelee ? resolvedMeleeDamage?.[0] : null,
-        damageMelee2: isMelee ? resolvedMeleeDamage?.[1] : null,
-        damageMelee3: isMelee ? resolvedMeleeDamage?.[2] : null,
-        damageProfilesResolved: isMelee,
-        headDamageApplied: isMelee && finalLocation === "head",
-        damageShift: isMelee ? (damageShift || 0) : 0,
-        targets: isMelee ? (params.targets ?? []) : [],
-        weaponId: weapon.id,
-        beastItemId: weapon.beastItemId ?? null,
-        actorId: actor.id,
-        actorImg: actor.img,
-        damage: damageValue,
-        piercing: ammoPiercing,
-        isJamming,
-        jammingThreshold,
-        firedDespiteJam: canFireDespiteJam,
-        bestResult,
-        modifiedResults,
-        results,
-        rawResults,
-        target,
-        skill: skillValue,
-        baseSkill: skillValue - effectiveSkillBonus,
-        skillBonus: effectiveSkillBonus,
-        baseStat: finalStat - effectiveAttributeBonus,
-        attributeBonus: effectiveAttributeBonus,
-        attributeKey,
-        skillKey,
-        stat: finalStat,
-        maneuver,
-        tempoLevel,
-        isReroll,
-        success: isSuccess,
-        isSuccess,
-        autoSuccess: effectiveAutoSuccess === true,
-        successCount: isMelee ? successCount : successPoints,
-        successPoints,
-        hitBullets,
-        totalPelletSP: totalPelletSP || 0,
-        isPellet: !!bulletSequence[0]?.isPellet,
-        isOpen: finalIsOpen,
-        applyArmor,
-        applyWounds,
-        hitLocation,
-        modifier,
-        weaponId: weapon.id,
-        actorId: actor.id,
-        finalLocation,
-        locationLabel: NEUROSHIMA.bodyLocations[finalLocation]?.label || finalLocation,
-        locationRoll: locationRoll?.total,
-        bulletsFired,
-        totalPenalty: effectiveTotalPenalty,
-        baseDifficultyLabel: NEUROSHIMA.difficulties[effectiveDifficulty]?.label || finalDiff.label,
-        difficultyLabel: finalDiff.label,
-        isCritSuccess: bestResult === 1,
-        isCritFailure: (bestResult === 20 || isJamming),
-        showTooltip: true,
-        burstLevel,
-        aimingLevel,
-        distance,
-        rollMode,
-        debugMode: game.settings.get("neuroshima", "debugMode"),
-        magazineId: (isRanged || isThrown) ? weapon.system.magazine : null,
-        ammoId: (isThrown) ? weapon.system.magazine : null,
-        penalties: {
-            ...effectiveWeaponPenalties,
-            mod: Number(modifier ?? 0) + Number(effectiveWeaponPenalties.mod ?? 0)
-        },
-        bulletSequence: bulletSequence || [],
-        hitBulletsData: finalHitSequence,
-        fireCorrectionData,
-        damageCategory: ammoDamageCategory,
-        dieManualBonus: effectiveDieManualBonus,
-        dieReductionBonus: effectiveDieReductionBonus,
-        fireRate: weapon.system.fireRate || 1
-    };
-    attachRollContract(rollData, {
-        type: "weapon",
-        subtype: isMelee ? "melee" : (isThrown ? "thrown" : "ranged"),
-        actor,
-        item: weapon,
-        roll,
-        auxiliary: locationRoll ? [{
-            type: "hitLocation",
-            formula: locationRoll.formula ?? "1d20",
-            result: locationRoll.total,
-            value: finalLocation
-        }] : [],
-        tags: [
-            isSuccess ? "success" : "failure",
-            ...(isJamming ? ["jam"] : []),
-            ...(finalIsOpen ? ["open"] : ["closed"])
-        ]
-    });
-
-    // Generate rich tooltip for weapon test
-    if (finalIsOpen) {
-        rollData.tooltip = this._buildOpenTestTooltip(rollData, weapon.name);
-    } else {
-        rollData.tooltip = this._buildClosedTestTooltip(rollData, weapon.name);
-    }
-
-    // Group hits with identical damage/piercing for compact display
+  static async renderWeaponTestResult(test, params) {
+    const subtype = test.subtype;
+    const rollData = test.toLegacyData();
+    if (test.result.cancelled) return rollData;
+    rollData.tooltip = rollData.isOpen
+      ? this._buildOpenTestTooltip(rollData, params.weapon?.name)
+      : this._buildClosedTestTooltip(rollData, params.weapon?.name);
     this._groupHitsData(rollData);
-
-    weaponTest.result.data = rollData;
-    weaponTest.result.roll = roll;
-    weaponTest.result.annotations = [...preRollAnnotations, ...rollAnnotations].filter(Boolean);
-    weaponTest.result.tags.add(finalIsOpen ? "open" : "closed");
-    weaponTest.result.tags.add(isSuccess ? "success" : "failure");
-    if (isJamming) weaponTest.result.tags.add("jam");
-    Object.assign(weaponTest.context.eventArgs, {
-      isSuccess,
-      isJamming,
-      firedDespiteJam: canFireDespiteJam,
-      despiteJamBullets,
-      hitBullets,
-      bulletsFired,
-      successPoints,
-      rollData,
-      annotations: rollAnnotations,
-      options
-    });
-
-    // Document mutations are committed only after result scripts finish.
-    weaponTest.queueSideEffect(async current => {
-      const finalJam = current.result.data.isJamming === true;
-      if (isMelee) return;
-      if (finalJam) {
-        await weapon.update({ "system.jammed": true });
-      } else if (weapon.system.jammed && (isReroll || jamWasCleared)) {
-        await weapon.update({ "system.jammed": false });
-      }
-    }, { id: "update-weapon-jam", priority: 100 });
-
-    await weaponTest.finish({
-      synchronize: (current, before) => {
-        const data = current.result.data;
-        const compatibility = current.context.eventArgs;
-        if (compatibility.isSuccess !== isSuccess) {
-          data.success = compatibility.isSuccess === true;
-          data.isSuccess = compatibility.isSuccess === true;
-        }
-        if (compatibility.isJamming !== isJamming) {
-          data.isJamming = compatibility.isJamming === true;
-        }
-        if (compatibility.successPoints !== successPoints) {
-          data.successPoints = Number(compatibility.successPoints ?? 0);
-        }
-        if (compatibility.hitBullets !== hitBullets) {
-          data.hitBullets = Number(compatibility.hitBullets ?? 0);
-        }
-        if (compatibility.bulletsFired !== bulletsFired) {
-          data.bulletsFired = Number(compatibility.bulletsFired ?? 0);
-        }
-        if (data.success !== before.isSuccess) data.isSuccess = data.success === true;
-        else data.success = data.isSuccess === true;
-        data.successCount = Number(data.successCount ?? data.successPoints ?? 0);
-        data.successPoints = Number(data.successPoints ?? 0);
-        this._groupHitsData(data);
-      },
-      legacyAfter: [
-        ...(!isMelee ? [{
-          trigger: "postWeaponShot",
-          args: current => ({
-            actor,
-            weapon,
-            isSuccess: current.result.isSuccess,
-            isJamming: current.result.data.isJamming === true,
-            firedDespiteJam: canFireDespiteJam,
-            despiteJamBullets,
-            hitBullets: current.result.data.hitBullets,
-            bulletsFired: current.result.data.bulletsFired,
-            successPoints: current.result.successPoints,
-            rollData: current.result.data,
-            annotations: rollAnnotations,
-            options
-          })
-        }] : []),
-        {
-          trigger: "postWeaponTest",
-          args: current => ({
-            actor,
-            weapon,
-            isSuccess: current.result.isSuccess,
-            isJamming: current.result.data.isJamming === true,
-            firedDespiteJam: canFireDespiteJam,
-            despiteJamBullets,
-            hitBullets: current.result.data.hitBullets,
-            bulletsFired: current.result.data.bulletsFired,
-            successPoints: current.result.successPoints,
-            rollData: current.result.data,
-            annotations: rollAnnotations,
-            options
-          })
-        }
-      ]
-    });
-
-    isSuccess = rollData.isSuccess ?? isSuccess;
-    isJamming = rollData.isJamming ?? isJamming;
-    successPoints = rollData.successPoints ?? successPoints;
-    hitBullets = rollData.hitBullets ?? hitBullets;
-    bulletsFired = rollData.bulletsFired ?? bulletsFired;
-    this._groupHitsData(rollData);
-    rollData.annotations = weaponTest.result.annotations;
     attachRollContract(rollData, {
       type: "weapon",
-      subtype: weaponSubtype,
-      actor,
-      item: weapon,
-      roll,
-      auxiliary: locationRoll ? [{
-        type: "hitLocation",
-        formula: locationRoll.formula ?? "1d20",
-        result: locationRoll.total,
-        value: finalLocation
-      }] : [],
-      tags: [...weaponTest.result.tags]
+      subtype,
+      actor: params.actor,
+      item: params.weapon,
+      roll: test.result.roll,
+      auxiliary: rollData.auxiliaryRolls ?? [],
+      tags: [...test.result.tags]
     });
-
-    game.neuroshima.log("Generowanie karty czatu", rollData);
-    game.neuroshima.groupEnd();
-
-    // In v1.5 melee is managed by MeleeDuel and the combat tracker.
-    // The standard chat card is rendered only when the roll has not been
-    // intercepted by pool-roll logic (chatMessage: false).
-    if (!chatMessage) {
-        return {
-            ...rollData,
-            roll
-        };
-    }
-
-    const rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rollData, actor, roll);
-
-    if (rollMessage) {
-        const flags = rollMessage.getFlag("neuroshima", "rollData") ?? {};
-        flags.messageId = rollMessage.id;
-        await rollMessage.setFlag("neuroshima", "rollData", flags);
-        if (rollData.burstShiftGranted) {
-            await rollMessage.setFlag("neuroshima", "burstShiftGranted", true);
-        }
-    }
-
-    return rollMessage;
+    if (params.chatMessage === false) return { ...rollData, roll: test.result.roll };
+    return NeuroshimaChatMessage.renderWeaponRoll(rollData, params.actor, test.result.roll);
   }
 
-  /** Re-evaluate a Roll Test once after all scripts have declared die changes. */
+  /**
+   * Re-evaluate an old, unserialized roll card. New cards restore their
+   * concrete test class instead; this is compatibility-only.
+   * @deprecated
+   */
   static recalculateRollTestAfterScripts(test) {
     const data = test?.result?.rollData;
     if (!data || (!data.diceChanges?.length && !data.forceRecalculate)) return;
@@ -1178,8 +298,9 @@ export class NeuroshimaDice {
     test.result.data = rollData;
     test.result.annotations = rollData.annotations ?? [];
     const dataIsSuccess = rollData.isSuccess;
+    test.markDirty(edited ? "gm-roll-edit" : (reroll ? "reroll" : "stored-result"));
+    await test.recalculate();
     await test.finish({
-      recalculate: current => this.recalculateRollTestAfterScripts(current),
       synchronize: (current, before) => {
         const data = current.result.data;
         if (data.isWeapon && data.isSuccess !== dataIsSuccess) {
@@ -1419,6 +540,8 @@ export class NeuroshimaDice {
         meleeAction,
         fixedDice,
         rollMode,
+        combatant: options.combatant ?? null,
+        eventArgs: options.eventArgs ?? {},
         applySkillDifficultyShift: options.applySkillDifficultyShift,
         applyDiceDifficultyShift: options.applyDiceDifficultyShift
       }
@@ -1526,169 +649,56 @@ export class NeuroshimaDice {
    * Re-evaluate a roll message (e.g. switching between Open/Closed test).
    */
   static async updateRollMessage(message, isOpen) {
-    const flags = message.getFlag("neuroshima", "rollData");
-    if (!flags) return;
-
-    const actor = game.actors.get(flags.actorId);
+    const stored = foundry.utils.deepClone(message.getFlag("neuroshima", "rollData"));
+    if (!stored) return;
+    const actor = game.actors.get(stored.actorId);
     if (!actor) return;
 
-    const results = flags.results || flags.rawResults;
-    if (!results) return;
-
-    const skillValue = flags.skill;
-    const target = flags.target;
-
-    let successPoints = 0;
-    let successCount = 0;
-    let isSuccess = false;
-    let modifiedResults = [];
-    let hitBullets = 0;
-    let totalPelletSP = 0;
-    let finalHitSequence = [];
-
-    const isWeapon = flags.isWeapon;
-    const isMelee = flags.isMelee;
-    const isJamming = flags.jamming === true || flags.isJamming === true;
-
-    // Standard Roll or Melee weapon (both use 3 dice and pool points)
-    if (!isWeapon || isMelee) {
-        const diceObjects = results.map((v, i) => ({
-            original: v,
-            index: i,
-            modified: v,
-            isSuccess: false,
-            ignored: false
-        }));
-
-        const evalData = { target, skill: skillValue };
-        if (isOpen) {
-            this._evaluateOpenTest(evalData, diceObjects);
-            successPoints = evalData.successPoints;
-            isSuccess = evalData.success;
-        } else {
-            this._evaluateClosedTest(evalData, diceObjects);
-            successCount = evalData.successCount;
-            successPoints = evalData.successCount;
-            isSuccess = evalData.success;
-        }
-        modifiedResults = evalData.modifiedResults;
-        if (flags.autoSuccess) isSuccess = true;
-
-        if (isWeapon && isSuccess) {
-            hitBullets = 1;
-            finalHitSequence = [{
-                damage: flags.damage || "L",
-                piercing: flags.piercing || 0,
-                successPoints: 1,
-                isPellet: false
-            }];
-        }
-    } else {
-        // Ranged/Thrown weapon logic
-        const bestResult = Math.min(...results);
-        modifiedResults = results.map((v, i) => {
-            const modified = Math.max(1, v - skillValue);
-            const succ = isOpen ? (target - modified >= 0) : (modified <= target && v !== 20);
-            return {
-                original: v,
-                modified: modified,
-                isSuccess: succ,
-                isBest: v === bestResult,
-                isNat1: v === 1,
-                isNat20: v === 20,
-                index: i
-            };
+    const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
+    const test = serialized?.classId
+      ? await NeuroshimaTestFactory.fromData({ ...serialized, actor, rollData: stored })
+      : NeuroshimaTestFactory.create({
+          type: stored.testType ?? (stored.isWeapon ? "weapon" : "skill"),
+          subtype: stored.testSubtype ?? (stored.isMelee ? "melee" : null),
+          actor,
+          item: actor.items.get(stored.weaponId ?? stored.itemId) ?? null,
+          rollData: stored,
+          context: { isOpen }
         });
+    test._scriptRunner = NeuroshimaScriptRunner;
+    test.context.isOpen = isOpen;
+    test.result.data.isOpen = isOpen;
+    test.markDirty("chat-open-mode");
+    await test.recalculate();
+    await test.applyResultOverrides();
 
-        const modifiedBest = Math.max(1, bestResult - skillValue);
-        const overflow = target - modifiedBest;
-        
-        if (isOpen) {
-            isSuccess = overflow >= 0;
-            successPoints = overflow;
-        } else {
-            isSuccess = modifiedBest <= target && bestResult !== 20;
-            successPoints = isSuccess ? 1 : 0;
-            successCount = isSuccess ? 1 : 0;
-        }
-
-        if (flags.autoSuccess) {
-            isSuccess = true;
-            successPoints = Math.max(1, successPoints);
-        }
-        const pp = isSuccess ? Math.max(flags.autoSuccess ? 1 : 0, overflow + 1) : 0;
-
-        if (isSuccess && !isJamming) {
-            const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
-            let totalPelletHits = 0;
-            const originalSequence = flags.bulletSequence || flags.hitBulletsData || [];
-
-            for (let j = 0; j < flags.bulletsFired; j++) {
-                if (pp <= j) break;
-                
-                const bullet = originalSequence[j] || originalSequence[0]; 
-                if (!bullet) break;
-
-                if (bullet.isPellet) {
-                    const pelletsForThisShell = usePelletCountLimit 
-                        ? Math.clamp(pp - j, 0, bullet.pelletCount || 1) 
-                        : (pp - j);
-
-                    if (pelletsForThisShell > 0) {
-                        totalPelletHits += pelletsForThisShell;
-                        finalHitSequence.push({
-                            ...bullet,
-                            successPoints: pelletsForThisShell,
-                            shellIndex: j + 1
-                        });
-                    }
-                } else {
-                    finalHitSequence.push({
-                        ...bullet,
-                        successPoints: 1,
-                        shellIndex: j + 1
-                    });
-                }
-            }
-            hitBullets = finalHitSequence.length;
-            totalPelletSP = totalPelletHits;
-        }
-    }
-
-    const updatedData = foundry.utils.mergeObject(flags, {
-        isOpen,
-        isSuccess,
-        isJamming,
-        successPoints,
-        successCount,
-        modifiedResults,
-        hitBullets,
-        totalPelletSP,
-        hitBulletsData: finalHitSequence,
-        debugMode: game.settings.get("neuroshima", "debugMode")
-    });
-
-    const template = isMelee
-        ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
-        : (isWeapon
+    const updatedData = test.toLegacyData();
+    updatedData.debugMode = game.settings.get("neuroshima", "debugMode");
+    const messageType = message.getFlag("neuroshima", "messageType");
+    const template = messageType === "initiative"
+      ? "systems/neuroshima/templates/chat/initiative-roll-card.hbs"
+      : messageType === "grenade"
+        ? "systems/neuroshima/templates/chat/grenade-roll-card.hbs"
+        : updatedData.isMelee
+          ? "systems/neuroshima/templates/chat/melee-roll-card.hbs"
+          : updatedData.isWeapon
             ? "systems/neuroshima/templates/chat/weapon-roll-card.hbs"
-            : "systems/neuroshima/templates/chat/roll-card.hbs");
-
+            : "systems/neuroshima/templates/chat/roll-card.hbs";
     const showTooltip = NeuroshimaChatMessage._canShowTooltip(actor);
     const content = await foundry.applications.handlebars.renderTemplate(template, {
-        ...updatedData,
-        config: NEUROSHIMA,
-        showTooltip,
-        damageTooltipLabel: isWeapon ? NeuroshimaChatMessage._getDamageTooltip(updatedData.damage) : "",
-        isGM: game.user.isGM
+      ...updatedData,
+      config: NEUROSHIMA,
+      showTooltip,
+      damageTooltipLabel: updatedData.isWeapon
+        ? NeuroshimaChatMessage._getDamageTooltip(updatedData.damage)
+        : "",
+      isGM: game.user.isGM
     });
-
-    const serializedTest = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
-    if (serializedTest) serializedTest.rollData = updatedData;
     await message.update({
       content,
-      flags: { neuroshima: { rollData: updatedData, test: serializedTest } }
+      flags: { neuroshima: { rollData: updatedData, test: test.serialize() } }
     });
+    return updatedData;
   }
 
   /**
@@ -1724,91 +734,32 @@ export class NeuroshimaDice {
       change => !selectedSet.has(change.targetIndex)
     );
 
-    const { target, skill: skillValue, isOpen, isWeapon, isMelee } = flags;
-    const isJamming = flags.jamming === true || flags.isJamming === true;
-
-    let successPoints = 0, successCount = 0, isSuccess = false;
-    let modifiedResults = [];
-    let hitBullets = 0, totalPelletSP = 0, finalHitSequence = [];
-
-    if (!isWeapon || isMelee) {
-      const diceObjects = rawResults.map((v, i) => ({
-        original: v, index: i, modified: v, isSuccess: false, ignored: false
-      }));
-      const evalData = { target, skill: skillValue };
-      if (isOpen) {
-        this._evaluateOpenTest(evalData, diceObjects);
-        successPoints = evalData.successPoints;
-        isSuccess = evalData.success;
-      } else {
-        this._evaluateClosedTest(evalData, diceObjects);
-        successCount = evalData.successCount;
-        successPoints = evalData.successCount;
-        isSuccess = evalData.success;
-      }
-      modifiedResults = evalData.modifiedResults;
-      if (flags.autoSuccess) isSuccess = true;
-      if (isWeapon && isSuccess) {
-        hitBullets = 1;
-        finalHitSequence = [{ damage: flags.damage || "L", piercing: flags.piercing || 0, successPoints: 1, isPellet: false }];
-      }
-    } else {
-      const bestResult = Math.min(...rawResults);
-      modifiedResults = rawResults.map((v, i) => {
-        const modified = Math.max(1, v - skillValue);
-        const succ = isOpen ? (target - modified >= 0) : (modified <= target && v !== 20);
-        return { original: v, modified, isSuccess: succ, isBest: v === bestResult, isNat1: v === 1, isNat20: v === 20, index: i };
-      });
-      const modifiedBest = Math.max(1, bestResult - skillValue);
-      const overflow = target - modifiedBest;
-      if (isOpen) {
-        isSuccess = overflow >= 0;
-        successPoints = overflow;
-      } else {
-        isSuccess = modifiedBest <= target && bestResult !== 20;
-        successPoints = isSuccess ? 1 : 0;
-        successCount = isSuccess ? 1 : 0;
-      }
-      if (flags.autoSuccess) {
-        isSuccess = true;
-        successPoints = Math.max(1, successPoints);
-      }
-      if (isSuccess && !isJamming) {
-        const usePelletCountLimit = game.settings.get("neuroshima", "usePelletCountLimit");
-        const pp = Math.max(flags.autoSuccess ? 1 : 0, overflow + 1);
-        const originalSequence = flags.bulletSequence || flags.hitBulletsData || [];
-        let totalPelletHits = 0;
-        for (let j = 0; j < flags.bulletsFired; j++) {
-          if (pp <= j) break;
-          const bullet = originalSequence[j] || originalSequence[0];
-          if (!bullet) break;
-          if (bullet.isPellet) {
-            const pelletsForThisShell = usePelletCountLimit ? Math.clamp(pp - j, 0, bullet.pelletCount || 1) : (pp - j);
-            if (pelletsForThisShell > 0) { totalPelletHits += pelletsForThisShell; finalHitSequence.push({ ...bullet, successPoints: pelletsForThisShell, shellIndex: j + 1 }); }
-          } else {
-            finalHitSequence.push({ ...bullet, successPoints: 1, shellIndex: j + 1 });
-          }
-        }
-        hitBullets = finalHitSequence.length;
-        totalPelletSP = totalPelletHits;
-      }
-    }
-
     const messageType = message.getFlag("neuroshima", "messageType");
-    const isInitiative = messageType === "initiative";
-
-    const updatedData = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
-      rawResults, rolledResults, diceChanges, isSuccess, isJamming, successPoints, successCount,
-      modifiedResults, hitBullets, totalPelletSP, hitBulletsData: finalHitSequence,
-      isReroll: true,
-      debugMode: game.settings.get("neuroshima", "debugMode")
-    });
+    const rerolledItem = actor.items.get(flags.weaponId ?? flags.itemId) ?? null;
+    const stored = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
+      rawResults, rolledResults, diceChanges, isReroll: true
+    }, { inplace: false });
+    const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
+    const test = serialized?.classId
+      ? await NeuroshimaTestFactory.fromData({ ...serialized, actor, item: rerolledItem, rollData: stored })
+      : NeuroshimaTestFactory.create({
+          type: stored.testType ?? (stored.isWeapon ? "weapon" : "skill"),
+          subtype: stored.testSubtype ?? (stored.isMelee ? "melee" : null),
+          actor, item: rerolledItem, rollData: stored, context: { reroll: true }
+        });
+    test._scriptRunner = NeuroshimaScriptRunner;
+    test.context.reroll = true;
+    test.result.roll = roll;
+    test.markDirty("partial-reroll");
+    await test.recalculate();
+    await test.finish({ commit: false });
+    const updatedData = test.toLegacyData();
+    updatedData.isReroll = true;
+    updatedData.debugMode = game.settings.get("neuroshima", "debugMode");
     this.applyDiceChangePresentation(updatedData);
-    const rerolledItem = actor.items.get(updatedData.weaponId ?? updatedData.itemId);
-    await this.runStoredRollResultEffects(actor, updatedData, {
-      item: rerolledItem ?? null,
-      reroll: true
-    });
+    const isInitiative = messageType === "initiative";
+    const isMelee = updatedData.isMelee === true;
+    const isWeapon = updatedData.isWeapon === true;
 
     const template = isInitiative
       ? "systems/neuroshima/templates/chat/initiative-roll-card.hbs"
@@ -1827,8 +778,6 @@ export class NeuroshimaDice {
     });
 
     const rollMode = updatedData.rollMode || game.settings.get("core", "rollMode");
-    const serializedTest = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
-    if (serializedTest) serializedTest.rollData = updatedData;
     const chatData = {
       user: message.author?.id ?? game.user.id,
       speaker: message.speaker,
@@ -1838,7 +787,7 @@ export class NeuroshimaDice {
       flags: {
         neuroshima: {
           messageType,
-          test: serializedTest,
+          test: test.serialize(),
           rollData: updatedData
         }
       }
@@ -1857,161 +806,55 @@ export class NeuroshimaDice {
    * @param {Object}      reductions  - Map of dieIndex → reduction amount, e.g. { 0: 1, 2: 1 }
    */
   static async applyTrickDieBonus(message, reductions) {
-    const flags = message.getFlag("neuroshima", "rollData");
-    if (!flags) return;
-
-    const hasReductions = Object.values(reductions).some(v => v > 0);
-    if (!hasReductions) return;
-
-    const rawResults = [...(flags.rawResults || [])].map(v => (typeof v === "object" && v !== null ? (v.value ?? v) : v));
-    const actor = game.actors.get(flags.actorId);
-    if (!actor) return;
-
-    const { target, skill: skillValue, isOpen } = flags;
-
-    const diceObjects = rawResults.map((v, i) => ({
-      original: v, index: i, modified: v, isSuccess: false, ignored: false
-    }));
-
-    const evalData = { target, skill: skillValue };
-    let successPoints = 0, successCount = 0, isSuccess = false, isCritSuccess = false, isCritFailure = false;
-
-    if (isOpen) {
-      this._evaluateOpenTest(evalData, diceObjects);
-      successPoints = evalData.successPoints ?? 0;
-      isSuccess     = evalData.success ?? false;
-    } else {
-      this._evaluateClosedTest(evalData, diceObjects);
-      successCount  = evalData.successCount ?? 0;
-      successPoints = successCount;
-      isSuccess     = evalData.success ?? false;
-      isCritSuccess = evalData.isCritSuccess ?? false;
-      isCritFailure = evalData.isCritFailure ?? false;
-    }
-
-    const modifiedResults = evalData.modifiedResults;
-
-    for (const [idxStr, amount] of Object.entries(reductions)) {
-      const idx = parseInt(idxStr);
-      if (idx < 0 || idx >= modifiedResults.length || amount <= 0) continue;
-      if (modifiedResults[idx].ignored) continue;
-      modifiedResults[idx].modified = Math.max(1, modifiedResults[idx].modified - amount);
-      modifiedResults[idx].isSuccess = modifiedResults[idx].modified <= target && modifiedResults[idx].original !== 20;
-      modifiedResults[idx].showModified = true;
-    }
-
-    if (isOpen) {
-      const activeDice = modifiedResults.filter(d => !d.ignored);
-      const higherModified = activeDice.length ? Math.max(...activeDice.map(d => d.modified)) : 0;
-      successPoints = target - higherModified;
-      isSuccess = activeDice.length > 0 && activeDice.every(d => d.isSuccess);
-      isCritSuccess = false;
-      isCritFailure = false;
-    } else {
-      const successes = modifiedResults.filter(r => r.isSuccess).length;
-      successCount  = successes;
-      successPoints = successes;
-      isSuccess     = successes >= 2;
-      isCritSuccess = successes === 3;
-      isCritFailure = successes === 0 && diceObjects.some(d => d.original === 20);
-    }
-    if (flags.autoSuccess) isSuccess = true;
-
-    const updatedData = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
-      rawResults, isSuccess, successPoints, successCount, modifiedResults,
-      isCritSuccess, isCritFailure,
-      isTrickBonus: true,
-      dieManualBonus: 0,
-      debugMode: game.settings.get("neuroshima", "debugMode")
-    });
-
-    const showTooltip = NeuroshimaChatMessage._canShowTooltip(actor);
-    const content = await foundry.applications.handlebars.renderTemplate(
-      "systems/neuroshima/templates/chat/roll-card.hbs",
-      { ...updatedData, config: NEUROSHIMA, showTooltip, isGM: game.user.isGM }
-    );
-
-    const originalMessageType = message.getFlag("neuroshima", "messageType") || "roll";
-    await message.update({
-      content,
-      flags: {
-        neuroshima: {
-          messageType:          originalMessageType,
-          rollData:             updatedData,
-          trickBonusUsed:       true,
-          trickBonusReductions: reductions
-        }
-      }
-    });
+    if (!Object.values(reductions ?? {}).some(value => Number(value) > 0)) return;
+    return this._setTrickDieReductions(message, reductions, true);
   }
 
-  /**
-   * Reset a previously applied trick die bonus, restoring the original roll result.
-   * @param {ChatMessage} message
-   */
+  /** Reset a previously applied trick die bonus through class recalculation. */
   static async resetTrickDieBonus(message) {
-    const flags = message.getFlag("neuroshima", "rollData");
-    if (!flags) return;
+    const reductions = message.getFlag("neuroshima", "trickBonusReductions") ?? {};
+    if (!Object.values(reductions).some(value => Number(value) > 0)) return;
+    return this._setTrickDieReductions(message, {}, false, reductions);
+  }
 
-    const reductions = message.getFlag("neuroshima", "trickBonusReductions") || {};
-    const originalBonus = Object.values(reductions).reduce((sum, v) => sum + (v || 0), 0);
-    if (originalBonus <= 0) return;
-
-    const rawResults = [...(flags.rawResults || [])].map(v => (typeof v === "object" && v !== null ? (v.value ?? v) : v));
-    const actor = game.actors.get(flags.actorId);
+  static async _setTrickDieReductions(message, reductions, enabled, previous = reductions) {
+    const stored = foundry.utils.deepClone(message.getFlag("neuroshima", "rollData"));
+    if (!stored) return;
+    const actor = game.actors.get(stored.actorId);
     if (!actor) return;
-
-    const { target, skill: skillValue, isOpen } = flags;
-
-    const diceObjects = rawResults.map((v, i) => ({
-      original: v, index: i, modified: v, isSuccess: false, ignored: false
-    }));
-
-    const evalData = { target, skill: skillValue };
-    let successPoints = 0, successCount = 0, isSuccess = false, isCritSuccess = false, isCritFailure = false;
-
-    if (isOpen) {
-      this._evaluateOpenTest(evalData, diceObjects);
-      successPoints = evalData.successPoints ?? 0;
-      isSuccess     = evalData.success ?? false;
-    } else {
-      this._evaluateClosedTest(evalData, diceObjects);
-      successCount  = evalData.successCount ?? 0;
-      successPoints = successCount;
-      isSuccess     = evalData.success ?? false;
-      isCritSuccess = evalData.isCritSuccess ?? false;
-      isCritFailure = evalData.isCritFailure ?? false;
-    }
-    if (flags.autoSuccess) isSuccess = true;
-
-    const modifiedResults = evalData.modifiedResults;
-
-    const updatedData = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
-      rawResults, isSuccess, successPoints, successCount, modifiedResults,
-      isCritSuccess, isCritFailure,
-      isTrickBonus:  false,
-      dieManualBonus: originalBonus,
-      debugMode:     game.settings.get("neuroshima", "debugMode")
-    });
-
+    stored.manualDieReductions = { ...reductions };
+    stored.isTrickBonus = enabled;
+    stored.dieManualBonus = enabled
+      ? 0
+      : Object.values(previous).reduce((sum, value) => sum + Number(value || 0), 0);
+    const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
+    const test = serialized?.classId
+      ? await NeuroshimaTestFactory.fromData({ ...serialized, actor, rollData: stored })
+      : NeuroshimaTestFactory.create({ type: "skill", actor, rollData: stored });
+    test._scriptRunner = NeuroshimaScriptRunner;
+    test.markDirty(enabled ? "trick-die-bonus" : "reset-trick-die-bonus");
+    await test.recalculate();
+    await test.applyResultOverrides();
+    const updatedData = test.toLegacyData();
+    updatedData.debugMode = game.settings.get("neuroshima", "debugMode");
     const showTooltip = NeuroshimaChatMessage._canShowTooltip(actor);
     const content = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/roll-card.hbs",
       { ...updatedData, config: NEUROSHIMA, showTooltip, isGM: game.user.isGM }
     );
-
-    const originalMessageType = message.getFlag("neuroshima", "messageType") || "roll";
     await message.update({
       content,
       flags: {
         neuroshima: {
-          messageType:          originalMessageType,
-          rollData:             updatedData,
-          trickBonusUsed:       false,
-          trickBonusReductions: null
+          messageType: message.getFlag("neuroshima", "messageType") || "roll",
+          rollData: updatedData,
+          test: test.serialize(),
+          trickBonusUsed: enabled,
+          trickBonusReductions: enabled ? reductions : null
         }
       }
     });
+    return updatedData;
   }
 
   /**
@@ -2626,88 +1469,40 @@ export class NeuroshimaDice {
    * @returns {Promise<Object>} Roll result data
    */
   static async rollGrenade(params) {
-    const {
-      actor,
-      weapon,
-      distance = 0,
-      distancePenalty: providedDistancePenalty = null,
-      modifier = 0,
-      scriptModifier = 0,
-      attributeBonus = 0,
-      skillBonus = 0,
-      armorPenalty = 0,
-      useWoundPenalty = true,
-      useDiseasePenalty = true,
-      diseasePenalty: rawDiseasePenalty = 0,
-      autoSuccess = false,
-      annotations = [],
-      rollMode = game.settings.get("core", "rollMode"),
-      chatMessage = true
-    } = params;
+    const normalized = { ...params };
+    if (normalized.distancePenalty == null) {
+      const build = Number(normalized.actor?.system?.attributes?.constitution ?? 0);
+      normalized.distancePenalty = this.getGrenadePenalty(
+        normalized.distance ?? 0,
+        build,
+        null,
+        normalized.weapon?.system?.useBuildBonus !== false
+      );
+    }
+    normalized.rollMode ??= game.settings.get("core", "rollMode");
+    const test = NeuroshimaTestFactory.create({
+      type: "grenade",
+      subtype: "throw"
+    }).constructor.fromLegacyParameters(normalized);
+    await test.roll();
+    return this.renderGrenadeTestResult(test, normalized);
+  }
 
-    const data = weapon.system;
-    const build = Number(actor.system?.attributes?.constitution ?? 0);
-    const distancePenalty = providedDistancePenalty
-      ?? this.getGrenadePenalty(distance, build, null, data.useBuildBonus !== false);
-    const woundPenalty = useWoundPenalty
-      ? Number(actor.system?.combat?.totalWoundPenalty ?? 0)
-      : 0;
-    const diseasePenalty = useDiseasePenalty ? Number(rawDiseasePenalty ?? 0) : 0;
-    const attributeKey = data.attribute || "dexterity";
-    const skillKey = data.skill || "throwing";
-    const stat = actor.system?.attributeTotals?.[attributeKey]
-      ?? actor.system?.attributes?.[attributeKey]
-      ?? 0;
-    const skill = actor.system?.skills?.[skillKey]?.value ?? 0;
-
-    const chatData = await this.rollTest({
-      stat,
-      skill,
-      penalties: {
-        mod: Number(modifier ?? 0) + Number(scriptModifier ?? 0),
-        armor: Number(armorPenalty ?? 0),
-        wounds: woundPenalty,
-        disease: diseasePenalty,
-        distance: Number(distancePenalty ?? 0)
-      },
-      isOpen: false,
-      actor,
-      item: weapon,
-      attributeKey,
-      skillKey,
-      attributeBonus,
-      skillBonus,
-      autoSuccess,
-      annotations,
-      rollMode,
-      chatMessage: false,
-      label: weapon.name,
-      options: {
-        rollType: "grenade",
-        subtype: "throw",
-        item: weapon,
-        eventArgs: { weapon },
-        applySkillDifficultyShift: false,
-        applyDiceDifficultyShift: false,
-        grenadeData: {
-          distance,
-          distancePenalty,
-          blastZones: [...(data.blastZones ?? [])]
-        }
-      }
-    });
-
-    if (chatData.cancelled || !chatMessage) return chatData;
+  /** Presentation-only adapter for a completed GrenadeTest. */
+  static async renderGrenadeTestResult(test, params = {}) {
+    const chatData = test.toLegacyData();
+    if (test.result.cancelled || params.chatMessage === false) {
+      return { ...chatData, roll: test.result.roll };
+    }
     const serializedTest = chatData.testData ?? null;
-    delete chatData.testData;
     const html = await foundry.applications.handlebars.renderTemplate(
       "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
       chatData
     );
     const message = await ChatMessage.create({
       content: html,
-      speaker: ChatMessage.getSpeaker({ actor }),
-      rollMode,
+      speaker: ChatMessage.getSpeaker({ actor: test.actor }),
+      rollMode: params.rollMode ?? test.context.rollMode,
       flags: {
         neuroshima: {
           messageType: "grenade",

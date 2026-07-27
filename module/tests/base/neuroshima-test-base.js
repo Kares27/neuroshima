@@ -238,6 +238,12 @@ export class NeuroshimaTestBase {
     if (!await this.begin(options)) return this.result;
     this.phase = "prepare";
     await this.prepare();
+    if (this.preData.cancelled) {
+      this.phase = "cancelled";
+      this.result.cancelled = true;
+      this.sideEffects.clear();
+      return this.result;
+    }
     if (this.preData.autoSuccess && !this._forcedSuccess) this.forceSuccess({ mode: "skipRoll" });
 
     if (this._forcedSuccess !== "skipRoll") {

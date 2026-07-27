@@ -1,4 +1,4 @@
-import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
+import { NeuroshimaScript, NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 
 export class NeuroshimaActiveEffect extends ActiveEffect {
   /**
@@ -93,6 +93,18 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
       const equipTransfer = mergedFlags.equipTransfer ?? false;
       changes.transfer = !equipTransfer && (transferType === "owningDocument" && documentType === "actor");
     }
+    const actor = this.actor;
+    if (actor) {
+      const item = this.parent?.documentName === "Item" ? this.parent : null;
+      const args = {
+        actor, item, effect: this, document: this,
+        updateData: changes, options, user, cancel: false
+      };
+      await NeuroshimaScriptRunner.executeEvent("preUpdateDocument", args, {
+        metadata: { item, effect: this, document: this, updateData: changes }
+      });
+      if (args.cancel) return false;
+    }
   }
 
   /**
@@ -147,16 +159,24 @@ export class NeuroshimaActiveEffect extends ActiveEffect {
    * Only the owning client (`game.user.id === user`) performs the sync to avoid races.
    * @override
    */
-  _onUpdate(data, options, user) {
-    super._onUpdate(data, options, user);
+  async _onUpdate(data, options, user) {
+    await super._onUpdate(data, options, user);
     this._scripts = null;
     if (game.user.id !== user) return;
+    const actor = this.actor;
+    const item = this.parent?.documentName === "Item" ? this.parent : null;
+    if (actor) {
+      await NeuroshimaScriptRunner.executeEvent("update", {
+        actor, item, effect: this, document: this,
+        updateData: data, options, userId: user
+      }, { metadata: { item, effect: this, document: this, updateData: data } });
+    }
     const isItemEffect = this.parent?.documentName === "Item";
     const isEquipTransfer = this.getFlag("neuroshima", "equipTransfer") === true;
     if (!isItemEffect || !isEquipTransfer) return;
-    const actor = this.parent.actor;
-    if (!actor) return;
-    const copy = actor.effects.find(
+    const ownerActor = this.parent.actor;
+    if (!ownerActor) return;
+    const copy = ownerActor.effects.find(
       e => e.getFlag("neuroshima", "fromEquipTransfer") === true
         && (e.getFlag("neuroshima", "sourceEffectId") === this.id || e.id === this.id)
     );

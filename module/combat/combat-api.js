@@ -315,12 +315,12 @@ export class DuelLifecycle {
       const atk = duel.attackerActor;
       const def = duel.defenderActor;
       if (atk) {
-        await NeuroshimaScriptRunner.executeEvent("onDuelStart",
+        await NeuroshimaScriptRunner.executeEvent("startDuel",
           { ...buildBaseArgs(duel, atk, null) },
           { legacyTriggers: ["onDuelStart"], metadata: { duel, role: "attacker", mutable: false } });
       }
       if (def) {
-        await NeuroshimaScriptRunner.executeEvent("onDuelStart",
+        await NeuroshimaScriptRunner.executeEvent("startDuel",
           { ...buildBaseArgs(duel, def, null) },
           { legacyTriggers: ["onDuelStart"], metadata: { duel, role: "defender", mutable: false } });
       }
@@ -347,12 +347,12 @@ export class DuelLifecycle {
       const atk = duel.attackerActor;
       const def = duel.defenderActor;
       if (atk) {
-        await NeuroshimaScriptRunner.executeEvent("onDuelSegmentStart",
+        await NeuroshimaScriptRunner.executeEvent("startDuelSegment",
           { ...buildBaseArgs(duel, atk, segment) },
           { legacyTriggers: ["onDuelSegmentStart"], metadata: { duel, segment, role: "attacker" } });
       }
       if (def) {
-        await NeuroshimaScriptRunner.executeEvent("onDuelSegmentStart",
+        await NeuroshimaScriptRunner.executeEvent("startDuelSegment",
           { ...buildBaseArgs(duel, def, segment) },
           { legacyTriggers: ["onDuelSegmentStart"], metadata: { duel, segment, role: "defender" } });
       }
@@ -699,12 +699,12 @@ export class DuelLifecycle {
       const atk = duel.attackerActor;
       const def = duel.defenderActor;
       if (atk) {
-        await NeuroshimaScriptRunner.executeEvent("onDuelEnd",
+        await NeuroshimaScriptRunner.executeEvent("endDuel",
           { ...buildBaseArgs(duel, atk, null) },
           { legacyTriggers: ["onDuelEnd"], metadata: { duel, role: "attacker", mutable: false } });
       }
       if (def) {
-        await NeuroshimaScriptRunner.executeEvent("onDuelEnd",
+        await NeuroshimaScriptRunner.executeEvent("endDuel",
           { ...buildBaseArgs(duel, def, null) },
           { legacyTriggers: ["onDuelEnd"], metadata: { duel, role: "defender", mutable: false } });
       }

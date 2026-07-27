@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaDice } from "../../helpers/dice.js";
+import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
 
 export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
@@ -241,7 +242,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     const useDisease      = !!data.useDiseasePenalty;
     const sf              = this._scriptFields ?? {};
 
-    const result = await NeuroshimaDice.rollGrenade({
+    const params = {
       actor:              this.actor,
       weapon:             this.weapon,
       distance,
@@ -257,16 +258,17 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       scriptModifier:     sf.modifier || 0,
       autoSuccess:        sf.autoSuccess === true,
       annotations:        sf.annotations || []
-    });
+    };
+    const TestClass = NeuroshimaTestFactory.create({
+      type: "grenade",
+      subtype: "throw"
+    }).constructor;
+    const test = TestClass.fromLegacyParameters(params);
+    await test.roll();
+    const result = await NeuroshimaDice.renderGrenadeTestResult(test, params);
 
-    const grenade = this.weapon;
-    if (grenade?.actor) {
-      const qty    = grenade.system.quantity ?? 1;
-      const newQty = Math.max(0, qty - 1);
-      await grenade.update({ "system.quantity": newQty });
-      if (newQty === 0) {
-        ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: grenade.name }));
-      }
+    if (result?.remainingQuantity === 0) {
+      ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: this.weapon.name }));
     }
 
     await this.close();

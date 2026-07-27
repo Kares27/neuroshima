@@ -367,13 +367,13 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
 
     this.close();
 
-    const result = await this._performRoll({ ...rollData, options: submissionOptions });
+    const result = await this._performRoll({
+      ...rollData,
+      combatant: this.combatant ?? null,
+      options: submissionOptions
+    });
 
     game.neuroshima?.log("Initiative roll completed", { actor: this.actor.name, successPoints: result?.successPoints, rollData });
-
-    if (this.combatant && !this.isMelee) {
-      await this.combatant.update({ initiative: result.successPoints });
-    }
 
     if (this.isMelee && result && this.meleeMode === "initiate") {
       if (!this.duelId && !this.encounterId && this.targets && this.targets.length === 1) {

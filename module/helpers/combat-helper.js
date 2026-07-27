@@ -2,6 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { getEffectiveArmorResistances } from "./mod-helpers.js";
+import { NeuroshimaTestFactory } from "../tests/test-factory.js";
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -825,16 +826,25 @@ export class CombatHelper {
       const cfg = NEUROSHIMA.vehicleDamageConfiguration[effectiveDmgType];
 
       // Durability test — 3d20, no skill, ≥2 successes
-      const durRoll = new Roll("3d20");
-      await durRoll.evaluate();
-      const diceResults = durRoll.terms[0].results.map(r => r.result);
-      const diceObjects = diceResults.map((v, i) => ({
-        original: v, index: i, modified: v,
-        isSuccess: false, ignored: false,
-        isNat1: v === 1, isNat20: v === 20
-      }));
-      const evalData = { target: durBase, stat: durBase, skill: 0 };
-      game.neuroshima.NeuroshimaDice._evaluateClosedTest(evalData, diceObjects);
+      const durabilityTest = NeuroshimaTestFactory.create({
+        type: "attribute",
+        actor,
+        attribute: { key: "durability", value: durBase },
+        skill: { key: null, value: 0 },
+        preData: {
+          label: game.i18n.localize("NEUROSHIMA.Vehicle.DurabilityTest"),
+          penalties: {}
+        },
+        context: {
+          isOpen: false,
+          applySkillDifficultyShift: false,
+          applyDiceDifficultyShift: false,
+          eventArgs: { location, damageType: effectiveDmgType }
+        }
+      });
+      await durabilityTest.roll();
+      const evalData = durabilityTest.result.data;
+      const diceResults = evalData.rawResults;
       const isPassed = evalData.success;
 
       const sprawnoscLoss  = isPassed ? cfg.sprawnoscPassed  : cfg.sprawnoscFailed;

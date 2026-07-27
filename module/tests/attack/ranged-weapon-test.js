@@ -1,4 +1,5 @@
 import { WeaponTest } from "./weapon-test.js";
+import { NEUROSHIMA } from "../../config.js";
 
 export class RangedWeaponTest extends WeaponTest {
   static classId = "rangedWeapon";
@@ -7,9 +8,21 @@ export class RangedWeaponTest extends WeaponTest {
   static bulletsForBurst(weapon, burstLevel = 0) {
     if (weapon?.system?.weaponType === "thrown") return 1;
     const fireRate = Math.max(1, Number(weapon?.system?.fireRate ?? 1));
-    if (Number(burstLevel) <= 0) return 1;
-    if (Number(burstLevel) === 1) return Math.min(3, fireRate);
-    return fireRate;
+    switch (Number(burstLevel)) {
+      case 1: return fireRate;
+      case 2: return fireRate * 3;
+      case 3: return fireRate * 6;
+      default: return 1;
+    }
+  }
+
+  static pelletDamageAtDistance(ranges, distance = 0) {
+    if (!ranges) return "D";
+    for (const key of ["range1", "range2", "range3", "range4"]) {
+      const range = ranges[key];
+      if (range && Number(distance) <= Number(range.distance)) return range.damage;
+    }
+    return "D";
   }
 
   /**
@@ -120,10 +133,169 @@ export class RangedWeaponTest extends WeaponTest {
     return plan;
   }
 
+  async prepare() {
+    await super.prepare();
+    if (!this.actor || !this.item) return;
+    const requested = Number(this.preData.bulletsFired)
+      || this.constructor.bulletsForBurst(this.item, this.context.burstLevel);
+    const plan = this.constructor.planAmmunition(this.actor, this.item, requested);
+    this.context.ammunitionPlan = plan;
+    if (!plan.valid) {
+      this.cancel(plan.reason);
+      return;
+    }
+    Object.assign(this.result.data, {
+      bulletsFired: plan.bulletsFired,
+      bulletSequence: plan.bulletSequence,
+      damage: plan.damage,
+      piercing: plan.piercing,
+      damageCategory: plan.damageCategory,
+      jammingThreshold: Math.min(
+        Number(this.item.system.jamming ?? 20),
+        Number(plan.jamming ?? 20)
+      ),
+      burstHitStep: Number(this.context.burstHitStep ?? 1),
+      distance: Number(this.context.distance ?? 0)
+    });
+    this.result.data.actionLabel = globalThis.game?.i18n?.localize?.(
+      NEUROSHIMA.burstLabels[this.context.burstLevel] ?? NEUROSHIMA.burstLabels[0]
+    ) ?? "";
+    this.result.data.magazineId = plan.magazineId;
+    this.result.data.ammoId = plan.isThrown ? plan.magazineId : null;
+    this.result.data.fireRate = Number(this.item.system.fireRate ?? 1);
+
+    if (plan.magazine?.type === "magazine" && plan.magazineUpdateData) {
+      this.queueSideEffect(current => {
+        const data = current.result.data;
+        if (data.isJamming && !data.firedDespiteJam) return;
+        return plan.magazine.update({ "system.contents": plan.magazineUpdateData });
+      }, { id: "consume-magazine" });
+    } else if (plan.ammoItem && plan.bulletsFired > 0) {
+      this.queueSideEffect(current => {
+        const data = current.result.data;
+        if (data.isJamming && !data.firedDespiteJam) return;
+        return plan.ammoItem.update({ "system.quantity": plan.ammoItemQuantity });
+      }, { id: "consume-thrown-ammo" });
+    }
+    this.queueSideEffect(current => {
+      const jammed = current.result.data.isJamming === true;
+      if (jammed === (this.item.system.jammed === true)) return;
+      return this.item.update({ "system.jammed": jammed });
+    }, { id: "update-weapon-jam", priority: 100 });
+  }
+
   async computeResult(rolled = null) {
     await super.computeResult(rolled);
+    const data = this.result.data;
+    const bestResult = Math.min(...(data.rawResults ?? []));
+    const preJamArgs = {
+      actor: this.actor,
+      weapon: this.item,
+      jammingThreshold: data.jammingThreshold,
+      ammoJamming: this.context.ammunitionPlan?.jamming ?? data.jammingThreshold,
+      bestResult,
+      forceNoJam: false,
+      forceJam: false,
+      annotations: this.result.annotations,
+      options: this.context.options ?? {}
+    };
+    await this.getScriptRunner().executeLegacy("preWeaponShot", preJamArgs, {
+      type: "weapon",
+      subtype: this.subtype,
+      item: this.item,
+      result: data
+    });
+    data.jammingThreshold = Number(preJamArgs.jammingThreshold ?? data.jammingThreshold);
+    data.forceNoJam = preJamArgs.forceNoJam === true;
+    data.forceJam = preJamArgs.forceJam === true;
     await this.recalculate();
+    if (data.isJamming) {
+      const jamArgs = {
+        actor: this.actor,
+        weapon: this.item,
+        bestResult,
+        jammingThreshold: data.jammingThreshold,
+        wouldSucceed: data.success === true,
+        canFireDespiteJam: false,
+        clearJam: false,
+        despiteJamBullets: null,
+        annotations: this.result.annotations,
+        options: this.context.options ?? {}
+      };
+      await this.getScriptRunner().executeLegacy("weaponJam", jamArgs, {
+        type: "weapon",
+        subtype: this.subtype,
+        item: this.item,
+        result: data,
+        tags: ["weapon", "jam"]
+      });
+      data.firedDespiteJam = jamArgs.canFireDespiteJam === true;
+      data.despiteJamBullets = jamArgs.despiteJamBullets;
+      data.jamWasCleared = jamArgs.clearJam === true;
+      await this.recalculate();
+    }
+    this.computeFireCorrection();
     return this.result;
+  }
+
+  computeFireCorrection() {
+    const data = this.result.data;
+    const enabled = globalThis.game?.settings?.get("neuroshima", "fireCorrection") === true;
+    if (!enabled || data.isJamming || Number(this.context.burstLevel) <= 0 || data.bulletsFired <= 0) {
+      data.fireCorrectionData = null;
+      return null;
+    }
+    if (!data.success) {
+      const modifiedBest = Math.max(
+        1,
+        Number(data.bestResult) - Number(data.skill) - Number(data.dieReductionBonus ?? 0)
+      );
+      const failureMargin = modifiedBest - Number(data.target);
+      data.fireCorrectionData = failureMargin > 0 ? {
+        failureMargin,
+        totalCorrectionCost: failureMargin * 3,
+        bulletsFired: data.bulletsFired,
+        canCorrect: failureMargin * 3 < data.bulletsFired,
+        isSuccessCorrection: false
+      } : null;
+    } else {
+      const remainingForCorrection = data.bulletsFired - data.hitBullets;
+      const maxCorrectionHits = Math.floor(remainingForCorrection / 4);
+      data.fireCorrectionData = {
+        failureMargin: 0,
+        totalCorrectionCost: 3,
+        bulletsFired: data.bulletsFired,
+        hitBullets: data.hitBullets,
+        remainingForCorrection,
+        maxCorrectionHits,
+        canCorrect: maxCorrectionHits > 0,
+        isSuccessCorrection: true
+      };
+    }
+    return data.fireCorrectionData;
+  }
+
+  async postTest() {
+    const data = this.result.data;
+    const args = {
+      actor: this.actor,
+      weapon: this.item,
+      isSuccess: data.success === true,
+      isJamming: data.isJamming === true,
+      firedDespiteJam: data.firedDespiteJam === true,
+      despiteJamBullets: data.despiteJamBullets ?? null,
+      hitBullets: data.hitBullets,
+      bulletsFired: data.bulletsFired,
+      successPoints: data.successPoints,
+      rollData: data,
+      annotations: this.result.annotations,
+      options: this.context.options ?? {}
+    };
+    await this.getScriptRunner().executeLegacy("postWeaponShot", args, {
+      type: "weapon", subtype: this.subtype, item: this.item, result: data
+    });
+    this.synchronizeLegacyResultArgs(args);
+    await super.postTest();
   }
 
   /**
@@ -140,7 +312,8 @@ export class RangedWeaponTest extends WeaponTest {
     const target = Number(data.target ?? 0);
     const skill = Number(data.skill ?? 0);
     const bestResult = Math.min(...results);
-    const modifiedBest = Math.max(1, bestResult - skill);
+    const dieReductionBonus = Number(data.dieReductionBonus ?? 0);
+    const modifiedBest = Math.max(1, bestResult - skill - dieReductionBonus);
     const overflow = target - modifiedBest;
     const isOpen = data.isOpen === true;
     let success = isOpen ? overflow >= 0 : modifiedBest <= target && bestResult !== 20;
@@ -164,19 +337,28 @@ export class RangedWeaponTest extends WeaponTest {
     const bulletsFired = Math.max(0, Number(data.bulletsFired ?? 0));
 
     if (success && mayFire) {
-      const shotLimit = data.firedDespiteJam && Number(data.despiteJamBullets) > 0
-        ? Math.min(bulletsFired, Number(data.despiteJamBullets))
+      const shotLimit = data.firedDespiteJam
+        ? Math.min(bulletsFired, Number(data.despiteJamBullets) > 0
+          ? Number(data.despiteJamBullets)
+          : 1)
         : bulletsFired;
-      for (let index = 0; index < shotLimit && pp > index; index++) {
+      const burstHitStep = Math.max(1, Number(data.burstHitStep ?? 1));
+      for (let index = 0; index < shotLimit; index++) {
+        if (pp <= Math.floor(index / burstHitStep)) break;
         const bullet = sequence[index] ?? sequence[0];
         if (!bullet) break;
         if (bullet.isPellet) {
-          const count = pelletLimit
-            ? Math.clamp(pp - index, 0, Number(bullet.pelletCount ?? 1))
-            : pp - index;
+          const capacity = Math.max(0, Number(bullet.pelletCount ?? 1) - index);
+          let count = Math.max(0, pp - index);
+          if (pelletLimit || count > capacity) count = Math.min(count, capacity);
           if (count > 0) {
             pelletHits += count;
-            hitSequence.push({ ...bullet, successPoints: count, shellIndex: index + 1 });
+            hitSequence.push({
+              ...bullet,
+              damage: this.constructor.pelletDamageAtDistance(bullet.pelletRanges, data.distance),
+              successPoints: count,
+              shellIndex: index + 1
+            });
           }
         } else {
           hitSequence.push({ ...bullet, successPoints: 1, shellIndex: index + 1 });
@@ -187,10 +369,10 @@ export class RangedWeaponTest extends WeaponTest {
     data.bestResult = bestResult;
     data.modifiedResults = results.map((value, index) => ({
       original: value,
-      modified: Math.max(1, value - skill),
+      modified: Math.max(1, value - skill - dieReductionBonus),
       isSuccess: isOpen
-        ? target - Math.max(1, value - skill) >= 0
-        : Math.max(1, value - skill) <= target && value !== 20,
+        ? target - Math.max(1, value - skill - dieReductionBonus) >= 0
+        : Math.max(1, value - skill - dieReductionBonus) <= target && value !== 20,
       isBest: value === bestResult,
       isNat1: value === 1,
       isNat20: value === 20,

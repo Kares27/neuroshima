@@ -8,6 +8,8 @@ import { TriggerRegistry, automaticLegacyTriggersFor } from "../module/effects/t
 import { MeleeOpposedResolver } from "../module/tests/opposed/melee-opposed-resolver.js";
 import { RangedWeaponTest } from "../module/tests/attack/ranged-weapon-test.js";
 import { AttackTest } from "../module/tests/attack/attack-test.js";
+import { HealingTest } from "../module/tests/standard/healing-test.js";
+import { GrenadeTest } from "../module/tests/attack/grenade-test.js";
 
 const NeuroshimaScriptRunner = {
   executeEvent: async () => {},
@@ -214,6 +216,28 @@ test("item-scoped effects require the exact used item", () => {
   );
 });
 
+test("persistent trick reductions are owned by class recalculation", async () => {
+  const subject = new NeuroshimaTest({
+    context: {
+      applyDiceDifficultyShift: false,
+      applySkillDifficultyShift: false
+    },
+    rollData: {
+      rawResults: [8, 11, 18],
+      stat: 10,
+      baseDifficulty: { label: "average", mod: 0 },
+      finalDifficultyShift: 0,
+      skill: 0,
+      isOpen: false,
+      manualDieReductions: { 1: 2 }
+    }
+  });
+  await subject.recalculate();
+  assert.equal(subject.result.data.modifiedResults[1].modified, 9);
+  assert.equal(subject.result.data.successCount, 2);
+  assert.equal(subject.result.data.success, true);
+});
+
 test("factory selects stable concrete test classes", () => {
   assert.equal(NeuroshimaTestFactory.create({ type: "attribute" }).classId, "attribute");
   assert.equal(NeuroshimaTestFactory.create({ type: "skill" }).classId, "skill");
@@ -262,6 +286,11 @@ test("trigger registry exposes exactly 55 public triggers and hides aliases", ()
   assert.equal(TriggerRegistry.canonical("preMeleePool"), "preRollWeaponTest");
   assert.equal(TriggerRegistry.isLegacy("collectMeleeActions"), true);
   assert.equal(Object.hasOwn(TriggerRegistry.publicOptions(), "preMeleePool"), false);
+  for (const entry of TriggerRegistry.entries()) {
+    assert.ok(["sync", "async"].includes(entry.mode), `${entry.id} has a valid mode`);
+    assert.ok(entry.scope.length > 0, `${entry.id} declares its document scope`);
+    assert.equal(entry.public, true, `${entry.id} is public`);
+  }
 });
 
 test("only contract-compatible legacy aliases dispatch automatically", () => {
@@ -373,6 +402,25 @@ test("initiative formula is finalized inside InitiativeTest", () => {
   NeuroshimaScriptRunner.executeEventSync = () => {};
 });
 
+test("initiative test owns and commits the combatant update once", async () => {
+  let updates = 0;
+  const combatant = {
+    update: async change => {
+      updates += 1;
+      assert.equal(change.initiative, 4);
+    }
+  };
+  const subject = NeuroshimaTestFactory.create({
+    type: "initiative",
+    context: { combatant }
+  });
+  subject.result.data = { initiative: 4, successPoints: 4 };
+  await subject.postTest();
+  await subject.commitSideEffects();
+  await subject.commitSideEffects();
+  assert.equal(updates, 1);
+});
+
 test("melee opposed resolver composes completed tests and fires both sides", async () => {
   const events = [];
   NeuroshimaScriptRunner.executeEvent = async trigger => events.push(trigger);
@@ -455,8 +503,279 @@ test("attack damage profiles apply the head shift once and clamp at K", () => {
 test("weapon burst planning preserves single, short and full fire rates", () => {
   const weapon = { system: { weaponType: "ranged", fireRate: 7 } };
   assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 0), 1);
-  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 1), 3);
-  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 2), 7);
+  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 1), 7);
+  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 2), 21);
+  assert.equal(RangedWeaponTest.bulletsForBurst(weapon, 3), 42);
+});
+
+test("ranged pellet golden master applies shell capacity, range damage and burst step", async () => {
+  const subject = NeuroshimaTestFactory.create({ type: "weapon", subtype: "ranged" });
+  subject.result.data = {
+    rawResults: [1, 10, 15],
+    target: 10,
+    skill: 0,
+    isOpen: true,
+    jammingThreshold: 20,
+    bulletsFired: 2,
+    burstHitStep: 2,
+    distance: 4,
+    bulletSequence: Array.from({ length: 2 }, () => ({
+      isPellet: true,
+      pelletCount: 4,
+      pelletRanges: {
+        range1: { distance: 5, damage: "C" },
+        range2: { distance: 10, damage: "L" },
+        range3: { distance: 20, damage: "D" },
+        range4: { distance: 30, damage: "D" }
+      }
+    }))
+  };
+  await subject.recalculate();
+  assert.equal(subject.result.data.hitBullets, 2);
+  assert.equal(subject.result.data.totalPelletSP, 7);
+  assert.deepEqual(
+    subject.result.data.hitBulletsData.map(hit => [hit.damage, hit.successPoints]),
+    [["C", 4], ["C", 3]]
+  );
+});
+
+test("jam golden master limits despite-jam fire to one bullet by default", async () => {
+  const subject = NeuroshimaTestFactory.create({ type: "weapon", subtype: "ranged" });
+  subject.result.data = {
+    rawResults: [18],
+    target: 20,
+    skill: 0,
+    isOpen: true,
+    jammingThreshold: 18,
+    firedDespiteJam: true,
+    bulletsFired: 4,
+    bulletSequence: Array.from({ length: 4 }, () => ({ damage: "L" }))
+  };
+  await subject.recalculate();
+  assert.equal(subject.result.data.isJamming, true);
+  assert.equal(subject.result.data.hitBullets, 1);
+});
+
+test("legacy weapon payload is executed by the concrete class lifecycle", async () => {
+  const previousGame = globalThis.game;
+  const PreviousRoll = globalThis.Roll;
+  globalThis.game = {
+    settings: {
+      get: (_scope, key) => ({
+        meleeBonusMode: "attribute",
+        allowCombatShift: true,
+        usePelletCountLimit: true,
+        doubleSkillAction: false
+      })[key]
+    },
+    i18n: { localize: value => value },
+    neuroshima: { NeuroshimaScriptRunner }
+  };
+  globalThis.Roll = class {
+    constructor(formula) {
+      this.formula = formula;
+      const count = Number.parseInt(formula, 10);
+      this.terms = [{ results: Array.from({ length: count }, () => ({ result: 10 })) }];
+    }
+    async evaluate() { return this; }
+  };
+  const weapon = {
+    id: "weapon",
+    name: "Karabin",
+    system: {
+      weaponType: "ranged",
+      attribute: "dexterity",
+      skill: "shooting",
+      damage: "L",
+      piercing: 0,
+      jamming: 20,
+      fireRate: 3,
+      skipMagazineCheck: true
+    },
+    update: async () => {}
+  };
+  const actor = {
+    id: "actor",
+    img: "actor.webp",
+    type: "character",
+    system: {
+      attributeTotals: { dexterity: 12 },
+      skills: { shooting: { value: 2 } },
+      combat: { totalArmorPenalty: 0, totalWoundPenalty: 0 }
+    },
+    items: new Map()
+  };
+  const subject = RangedWeaponTest.fromLegacyParameters({
+    actor,
+    weapon,
+    difficulty: "average",
+    aimingLevel: 2,
+    burstLevel: 1,
+    hitLocation: "torso",
+    fixedDice: [2, 10, 18]
+  });
+  subject._scriptRunner = NeuroshimaScriptRunner;
+  await subject.roll();
+  assert.equal(subject.classId, "rangedWeapon");
+  assert.deepEqual(subject.result.data.rawResults, [2, 10, 18]);
+  assert.equal(subject.result.data.bulletsFired, 3);
+  assert.equal(subject.result.isSuccess, true);
+  assert.equal(subject.phase, "complete");
+  globalThis.game = previousGame;
+  globalThis.Roll = PreviousRoll;
+});
+
+test("direct ranged lifecycle commits ammunition exactly once", async () => {
+  const previousGame = globalThis.game;
+  const PreviousRoll = globalThis.Roll;
+  let magazineUpdates = 0;
+  globalThis.game = {
+    settings: {
+      get: (_scope, key) => ({
+        meleeBonusMode: "attribute",
+        allowCombatShift: true,
+        usePelletCountLimit: true,
+        doubleSkillAction: false,
+        fireCorrection: false
+      })[key]
+    },
+    i18n: { localize: value => value },
+    neuroshima: { NeuroshimaScriptRunner }
+  };
+  globalThis.Roll = class {
+    constructor(formula) {
+      this.formula = formula;
+      const count = Number.parseInt(formula, 10);
+      this.terms = [{ results: Array.from({ length: count }, () => ({ result: 2 })) }];
+    }
+    async evaluate() { return this; }
+  };
+  const magazine = {
+    type: "magazine",
+    system: {
+      contents: [{ name: "standard", quantity: 5, overrides: {} }]
+    },
+    update: async () => { magazineUpdates += 1; }
+  };
+  const weapon = {
+    id: "weapon",
+    name: "PM",
+    system: {
+      weaponType: "ranged",
+      attribute: "dexterity",
+      skill: "shooting",
+      damage: "L",
+      piercing: 0,
+      jamming: 20,
+      fireRate: 3,
+      magazine: "magazine"
+    },
+    update: async () => {}
+  };
+  const actor = {
+    id: "actor",
+    type: "character",
+    system: {
+      attributeTotals: { dexterity: 12 },
+      skills: { shooting: { value: 1 } },
+      combat: {}
+    },
+    items: new Map([["magazine", magazine]])
+  };
+  const subject = RangedWeaponTest.fromLegacyParameters({
+    actor,
+    weapon,
+    difficulty: "average",
+    aimingLevel: 2,
+    burstLevel: 1,
+    hitLocation: "torso",
+    fixedDice: [2, 5, 8]
+  });
+  subject._scriptRunner = NeuroshimaScriptRunner;
+  await subject.roll();
+  await subject.commitSideEffects();
+  assert.equal(magazineUpdates, 1);
+  assert.equal(magazine.system.contents[0].quantity, 5);
+  globalThis.game = previousGame;
+  globalThis.Roll = PreviousRoll;
+});
+
+test("healing golden master owns first-aid and treatment calculations", () => {
+  const wound = {
+    id: "wound",
+    name: "Rana ciężka",
+    system: {
+      penalty: 20,
+      originalPenalty: 20,
+      damageType: "C",
+      firstAidHealingApplied: 0
+    }
+  };
+  const firstAid = new HealingTest({ context: { healingMethod: "firstAid" } });
+  const treatment = new HealingTest({ context: { healingMethod: "woundTreatment" } });
+  assert.equal(firstAid.computeHealingResult(wound, 2).newPenalty, 15);
+  assert.equal(firstAid.computeHealingResult(wound, 1).newPenalty, 25);
+  assert.equal(treatment.computeHealingResult(wound, 2, { hadFirstAid: false }).newPenalty, 5);
+  assert.equal(treatment.computeHealingResult(wound, 2, { hadFirstAid: true }).newPenalty, 10);
+});
+
+test("grenade lifecycle consumes one item only at commit", async () => {
+  const previousGame = globalThis.game;
+  const PreviousRoll = globalThis.Roll;
+  let updates = 0;
+  const item = {
+    id: "grenade",
+    uuid: "Actor.actor.Item.grenade",
+    name: "Granat",
+    actor: {},
+    system: {
+      quantity: 2,
+      attribute: "dexterity",
+      skill: "throwing",
+      blastZones: [{ radius: 3 }]
+    },
+    async update(change) {
+      updates += 1;
+      this.system.quantity = change["system.quantity"];
+    }
+  };
+  const actor = {
+    id: "actor",
+    img: "actor.webp",
+    system: {
+      attributeTotals: { dexterity: 12 },
+      attributes: { constitution: 10 },
+      skills: { throwing: { value: 1 } },
+      combat: { totalWoundPenalty: 0 }
+    }
+  };
+  globalThis.game = {
+    settings: { get: () => true },
+    user: { isGM: false },
+    neuroshima: { NeuroshimaScriptRunner }
+  };
+  globalThis.Roll = class {
+    constructor(formula) {
+      this.formula = formula;
+      this.terms = [{ results: [2, 6, 14].map(result => ({ result })) }];
+    }
+    async evaluate() { return this; }
+  };
+  const subject = GrenadeTest.fromLegacyParameters({
+    actor,
+    weapon: item,
+    distance: 12,
+    distancePenalty: 10
+  });
+  subject._scriptRunner = NeuroshimaScriptRunner;
+  await subject.roll();
+  await subject.recalculate();
+  await subject.commitSideEffects();
+  assert.equal(updates, 1);
+  assert.equal(item.system.quantity, 1);
+  assert.equal(subject.result.data.distance, 12);
+  globalThis.game = previousGame;
+  globalThis.Roll = PreviousRoll;
 });
 
 let failures = 0;

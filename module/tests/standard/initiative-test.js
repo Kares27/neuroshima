@@ -30,4 +30,17 @@ export class InitiativeTest extends NeuroshimaTest {
     this.result.data.initiative = finalValue;
     this.result.data.successPoints = finalValue;
   }
+
+  async postTest() {
+    await super.postTest();
+    const combatant = this.context.combatant ?? this.context.eventArgs?.combatant;
+    // Melee initiative belongs to the duel subsystem and must not overwrite
+    // the regular Combat tracker initiative.
+    if (this.subtype === "melee" || !combatant?.update || this.context.isDebug
+      || this.context.reroll === true || this.context.edited === true) return;
+    const initiative = Number(this.result.data.initiative ?? this.result.successPoints ?? 0);
+    this.queueSideEffect(() => combatant.update({ initiative }), {
+      id: "update-combatant-initiative"
+    });
+  }
 }

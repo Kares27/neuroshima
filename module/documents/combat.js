@@ -63,8 +63,6 @@ export class NeuroshimaCombat extends Combat {
   async rollInitiative(ids, {formula, updateTurn=true, messageOptions={}}={}) {
     const combatantIds = typeof ids === "string" ? [ids] : ids;
 
-    const updates = [];
-
     for (const id of combatantIds) {
       const combatant = this.combatants.get(id);
       if (!combatant?.actor) continue;
@@ -74,12 +72,6 @@ export class NeuroshimaCombat extends Combat {
       game.neuroshima.log(`Initiative roll for ${combatant.name}:`, initiativeValue);
 
       if (initiativeValue === null || initiativeValue === undefined) continue;
-
-      updates.push({ _id: id, initiative: initiativeValue });
-    }
-
-    if (updates.length > 0) {
-      await this.updateEmbeddedDocuments("Combatant", updates);
     }
 
     if (updateTurn) {
