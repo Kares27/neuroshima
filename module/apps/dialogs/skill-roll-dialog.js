@@ -1,7 +1,7 @@
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
-import { NeuroshimaDice } from "../../helpers/dice.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
+import { AttributeTest, SkillTest, TestRules } from "../../tests.mjs";
 
 /**
  * Dialog for skill/attribute rolls.
@@ -333,7 +333,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
                 useWoundPenalty ? actorWoundPenalty + (sf.woundDelta || 0) : 0,
                 useDiseasePenalty ? actorDiseasePenalty + (sf.diseasePenalty || 0) : 0
               ],
-              skillShift: NeuroshimaDice.getSkillShift(totalSkill)
+              skillShift: TestRules.skillShift(totalSkill)
             })
           };
         }
@@ -760,7 +760,7 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       + skillBonus;
 
     const skillShift =
-      NeuroshimaDice.getSkillShift(
+      TestRules.skillShift(
         totalSkill
       );
 
@@ -798,12 +798,12 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
       + diseasePenalty;
 
     const penaltyDiff =
-      NeuroshimaDice.getDifficultyFromPercent(
+      TestRules.difficultyFromPercent(
         totalPenalty
       );
 
-    const finalDiff = NeuroshimaDice.clampMaximumDifficulty(
-      NeuroshimaDice._getShiftedDifficulty(
+    const finalDiff = TestRules.clampMaximumDifficulty(
+      TestRules.shiftDifficulty(
         penaltyDiff,
         -skillShift
           + Number(sf.finalDifficultyShift ?? 0)
@@ -1047,91 +1047,47 @@ export class NeuroshimaSkillRollDialog extends NeuroshimaRollDialogBase {
 
     this.close();
 
-    NeuroshimaDice.rollTest({
-      stat: finalStat,
-      skill: currentSkill.value,
-      penalties: {
-        mod:combinedModifier,
-        base: NEUROSHIMA.difficulties[ baseDiffKey]?.min || 0,
-        armor:armorPenalty,
-        wounds:woundPenalty,
-        disease:diseasePenalty
+    const TestClass = currentSkill.key ? SkillTest : AttributeTest;
+    const test = new TestClass({
+      actor: this.actor,
+      attribute: { key: currentAttribute || null, value: finalStat },
+      skill: { key: currentSkill.key || null, value: Number(currentSkill.value ?? 0) },
+      preData: {
+        label: this.label,
+        skillBonus: combinedSkillBonus,
+        attributeBonus: combinedAttrBonus,
+        finalDifficultyShift: Number(sf.finalDifficultyShift ?? 0),
+        maximumDifficulty: sf.maximumDifficulty || null,
+        annotations: [...(sf.annotations || [])],
+        dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
+        dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0),
+        penalties: {
+          mod: combinedModifier,
+          base: NEUROSHIMA.difficulties[baseDiffKey]?.min || 0,
+          armor: armorPenalty,
+          wounds: woundPenalty,
+          disease: diseasePenalty
+        }
       },
-
-      isOpen:
-        isOpen === true
-        || isOpen === "true",
-
-      label:
-        this.label,
-
-      actor:
-        this.actor,
-
-      skillBonus:
-        combinedSkillBonus,
-
-      attributeBonus:
-        combinedAttrBonus,
-
-      finalDifficultyShift:
-        Number(sf.finalDifficultyShift ?? 0),
-
-      maximumDifficulty:
-        sf.maximumDifficulty || null,
-
-      autoSuccess:
-        sf.autoSuccess === true,
-
-      annotations:
-        sf.annotations || [],
-
-      skillKey:
-        currentSkill.key,
-
-      /*
-       * Do właściwego rzutu trafia również
-       * prawdziwy klucz użytego Współczynnika.
-       */
-      attributeKey:
-        currentAttribute
-        || null,
-
-      rollMode,
-
-      dieManualBonus:
-        (
-          Number(
-            this.userEntry.dieManualBonus
-            ?? 0
-          )
-          || 0
-        )
-        + (
-          sf.dieManualBonus
-          || 0
-        ),
-
-      dieReductionBonus:
-        (
-          Number(
-            this.userEntry.dieReductionBonus
-            ?? 0
-          )
-          || 0
-        )
-        + (
-          sf.dieReductionBonus
-          || 0
-        ),
-
-      options:
-        submissionOptions,
-
-      resultCallback:
-        this.resultCallback
-        ?? null
+      context: {
+        isOpen: isOpen === true || isOpen === "true",
+        rollMode,
+        options: submissionOptions,
+        eventArgs: submissionOptions
+      }
     });
+    if (sf.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
+    await test.roll();
+    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
+    await NeuroshimaChatMessage.renderRoll(test);
+    if (this.resultCallback) {
+      await this.resultCallback({
+        isSuccess: test.result.isSuccess,
+        successes: test.result.successCount,
+        test
+      });
+    }
+    return test.result.data;;
   }
 
   _onCancel(event, target) {

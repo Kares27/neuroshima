@@ -1,12 +1,17 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { EffectActionRuntime } from "../effects/effect-action-runtime.js";
+import { HealingTest } from "../tests.mjs";
 
 /**
  * Extended ChatMessage class with a unified API for rendering chat cards.
  * Provides a clean interface for creating and rendering all message types.
  */
 export class NeuroshimaChatMessage extends ChatMessage {
+
+  static async updateTestMessage(message, test) {
+    return EffectActionRuntime.rerenderMessage(message, test);
+  }
 
   /**
    * Main chat card action dispatcher.
@@ -145,7 +150,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Initiates a melee duel based on a weapon roll.
    */
   static async onStartMeleeDuel(event, message) {
-    const flags = message.getFlag("neuroshima", "rollData");
+    const flags = message.getFlag("neuroshima", "test")?.rollData;
     if (!flags || !flags.isMelee) return;
 
     const attackerId = flags.actorId;
@@ -761,7 +766,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
   static async placeGrenadeTemplateAt(message, point) {
     if (!canvas?.scene) return;
 
-    const grenadeData = message.getFlag("neuroshima", "grenadeRoll");
+    const grenadeData = message.getFlag("neuroshima", "test")?.rollData;
     if (!grenadeData) return;
 
     const radius     = Number(grenadeData.templateRadius ?? 0);
@@ -815,7 +820,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       return;
     }
 
-    const grenadeData = message.getFlag("neuroshima", "grenadeRoll");
+    const grenadeData = message.getFlag("neuroshima", "test")?.rollData;
     if (!grenadeData) return;
 
     const radius     = Number(grenadeData.templateRadius ?? 0);
@@ -1026,19 +1031,22 @@ export class NeuroshimaChatMessage extends ChatMessage {
     game.neuroshima.log("Wyniki wybuchu", { rawResultsCount: rawResults.length });
 
     if (sourceMessage) {
-      const origData = sourceMessage.getFlag("neuroshima", "grenadeRoll") ?? {};
+      const serializedTest = foundry.utils.deepClone(sourceMessage.getFlag("neuroshima", "test"));
+      if (!serializedTest?.classId) throw new Error("Grenade card does not contain a serialized test");
+      const origData = serializedTest.rollData;
       const updatedChatData = {
         ...origData,
         blastResults: rawResults,
         damageApplied: false
       };
+      serializedTest.rollData = updatedChatData;
       const newContent = await this._renderTemplate(
         "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
         updatedChatData
       );
       await sourceMessage.update({
         content: newContent,
-        "flags.neuroshima.grenadeRoll": updatedChatData,
+        "flags.neuroshima.test": serializedTest,
         "flags.neuroshima.grenadeResults": rawResults,
         "flags.neuroshima.damageApplied": false
       });
@@ -1090,7 +1098,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     }
 
     const grenadeResults = message.getFlag("neuroshima", "grenadeResults")
-      ?? message.getFlag("neuroshima", "grenadeRoll")?.blastResults
+      ?? message.getFlag("neuroshima", "test")?.rollData?.blastResults
       ?? [];
     if (!grenadeResults.length) return;
 
@@ -1100,7 +1108,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const { CombatHelper } = await import("../helpers/combat-helper.js");
 
     const grenadeLabel = message.getFlag("neuroshima", "grenadeLabel")
-      ?? message.getFlag("neuroshima", "grenadeRoll")?.label
+      ?? message.getFlag("neuroshima", "test")?.rollData?.label
       ?? game.i18n.localize("NEUROSHIMA.Items.Type.Weapon");
 
     const NS         = game.neuroshima?.config ?? {};
@@ -1234,16 +1242,18 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
     await message.setFlag("neuroshima", "damageApplied", true);
 
-    const grenadeRollData = message.getFlag("neuroshima", "grenadeRoll");
-    if (grenadeRollData) {
+    const serializedTest = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
+    const grenadeRollData = serializedTest?.rollData;
+    if (serializedTest?.classId && grenadeRollData) {
       const updatedData = { ...grenadeRollData, damageApplied: true };
+      serializedTest.rollData = updatedData;
       const newContent = await this._renderTemplate(
         "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
         updatedData
       );
       await message.update({
         content: newContent,
-        "flags.neuroshima.grenadeRoll": updatedData
+        "flags.neuroshima.test": serializedTest
       });
     } else {
       btn.textContent = "✓ " + game.i18n.localize("NEUROSHIMA.Grenade.BlastDamageApplied");
@@ -1279,28 +1289,28 @@ export class NeuroshimaChatMessage extends ChatMessage {
         return;
     }
 
-    // Trigger reroll via NeuroshimaDice
-    const { NeuroshimaDice } = await import("../helpers/dice.js");
-    const newResult = await NeuroshimaDice.rerollHealingTest(
-        medic, 
-        patient, 
-        method, 
-        woundConfig,
-        extraData.stat,
-        extraData.skillBonus,
-        extraData.attributeBonus,
-        extraData.autoSuccess === true
-    );
+    const test = HealingTest.forWound({
+      medicActor: medic,
+      patientActor: patient,
+      healingMethod: method,
+      woundConfig,
+      stat: extraData.stat,
+      skillBonus: extraData.skillBonus,
+      attributeBonus: extraData.attributeBonus,
+      autoSuccess: extraData.autoSuccess === true,
+      annotations: extraData.annotations || [],
+      reroll: true
+    });
+    await test.roll();
+    const newResult = test.result.data;
 
     if (newResult) {
-        // Update the results list in the message
-        const results = [...(flags.results || [])];
+        const serializedTests = foundry.utils.deepClone(flags.tests || []);
+        const results = serializedTests.map(stored => stored.rollData);
         const idx = results.findIndex(r => r.woundId === woundId);
         if (idx !== -1) {
-            results[idx] = {
-                ...results[idx],
-                ...newResult
-            };
+            serializedTests[idx] = test.serialize();
+            results[idx] = newResult;
             
             const successCount = results.filter(r => r.isSuccess).length;
             const failedCount = results.length - successCount;
@@ -1323,7 +1333,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
 
             await message.update({
                 content,
-                "flags.neuroshima.results": results
+                "flags.neuroshima.tests": serializedTests
             });
         }
     }
@@ -1341,7 +1351,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
     const patient = await fromUuid(patientUuid);
     if (!patient) return;
 
-    const results = message.getFlag("neuroshima", "results") || [];
+    const serializedTests = message.getFlag("neuroshima", "tests") || [];
+    const results = serializedTests.map(test => test.rollData);
     const healingMethod = message.getFlag("neuroshima", "healingMethod");
     const extraData = message.getFlag("neuroshima", "extraData") || {};
     const isFirstAid = healingMethod === "firstAid";
@@ -1467,9 +1478,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
   /**
    * Renders a skill/attribute test card.
    */
-  static async renderRoll(rollData, actor, roll) {
-    const serializedTest = rollData.testData ?? null;
-    delete rollData.testData;
+  static async renderRoll(test) {
+    const rollData = test.result.data;
+    const actor = test.actor;
+    const roll = test.result.roll;
     rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", [
       ...(rollData.effectActionAdditions ?? []),
       ...(rollData.resultActions ?? [])
@@ -1491,11 +1503,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: this.TYPES.ROLL,
-          test: serializedTest,
-          rollData: {
-            ...rollData,
-            rollMode: rollMode
-          }
+          test: test.serialize()
         }
       }
     };
@@ -1507,9 +1515,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
   /**
    * Renders an initiative test card.
    */
-  static async renderInitiativeRoll(rollData, actor, roll) {
-    const serializedTest = rollData.testData ?? null;
-    delete rollData.testData;
+  static async renderInitiativeRoll(test) {
+    const rollData = test.result.data;
+    const actor = test.actor;
+    const roll = test.result.roll;
     rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", [
       ...(rollData.effectActionAdditions ?? []),
       ...(rollData.resultActions ?? [])
@@ -1553,11 +1562,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: this.TYPES.INITIATIVE,
-          test: serializedTest,
-          rollData: {
-            ...rollData,
-            rollMode: rollMode
-          }
+          test: test.serialize()
         }
       }
     };
@@ -1569,9 +1574,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
   /**
    * Renders a weapon test card.
    */
-  static async renderWeaponRoll(rollData, actor, roll) {
-    const serializedTest = rollData.testData ?? null;
-    delete rollData.testData;
+  static async renderWeaponRoll(test) {
+    const rollData = test.result.data;
+    const actor = test.actor;
+    const roll = test.result.roll;
     const effectSurface = rollData.isMelee ? "meleePool" : "testResult";
     rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, effectSurface, [
       ...(rollData.effectActionAdditions ?? []),
@@ -1624,6 +1630,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
     });
 
     const rollMode = rollData.rollMode || game.settings.get("core", "rollMode");
+    const serializedTest = test.serialize();
+    serializedTest.rollData.snapshotTargets = snapshotTargets;
     const chatData = {
       user: game.user.id,
       speaker: ChatMessage.getSpeaker({ actor }),
@@ -1633,16 +1641,36 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: this.TYPES.WEAPON,
-          test: serializedTest,
-          rollData: {
-            ...rollData,
-            rollMode,
-            snapshotTargets
-          }
+          test: serializedTest
         }
       }
     };
 
+    ChatMessage.applyRollMode(chatData, rollMode);
+    return this.create(chatData);
+  }
+
+  /** Render a completed GrenadeTest using the single serialized test flag. */
+  static async renderGrenadeRoll(test) {
+    const data = test.result.data;
+    const content = await this._renderTemplate(
+      "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
+      data
+    );
+    const rollMode = data.rollMode || game.settings.get("core", "rollMode");
+    const chatData = {
+      user: game.user.id,
+      speaker: ChatMessage.getSpeaker({ actor: test.actor }),
+      content,
+      rolls: test.result.roll ? [test.result.roll] : [],
+      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
+      flags: {
+        neuroshima: {
+          messageType: "grenade",
+          test: test.serialize()
+        }
+      }
+    };
     ChatMessage.applyRollMode(chatData, rollMode);
     return this.create(chatData);
   }
@@ -1806,48 +1834,16 @@ export class NeuroshimaChatMessage extends ChatMessage {
   }
 
   /**
-   * Renders a healing roll card.
-   */
-  static async renderHealingRoll(medicActor, rollData) {
-    const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
-    
-    const context = {
-      ...rollData,
-      patientRef: { uuid: rollData.patientActor?.uuid },
-      medicRef: { uuid: medicActor?.uuid },
-      config: NEUROSHIMA
-    };
-
-    const content = await this._renderTemplate(template, context);
-    
-    return this.create({
-      user: game.user.id,
-      speaker: ChatMessage.getSpeaker({ actor: medicActor }),
-      content,
-      style: CONST.CHAT_MESSAGE_STYLES.OTHER,
-      flags: {
-        neuroshima: {
-          messageType: "healingRoll",
-          rollData: {
-            ...rollData,
-            medicId: medicActor?.id,
-            patientId: rollData.patientActor?.id
-          }
-        }
-      }
-    });
-  }
-
-  /**
    * Renderuje raport zbiorczy z leczenia wielu ran.
    */
-  static async renderHealingBatchResults(medicActor, patientActor, results, method, extraData = {}) {
+  static async renderHealingBatchTests(medicActor, patientActor, tests, method, extraData = {}) {
     const template = "systems/neuroshima/templates/chat/healing-roll-card.hbs";
-    
-    if (!Array.isArray(results)) {
-        game.neuroshima?.error("renderHealingBatchResults: results is not an array", results);
+
+    if (!Array.isArray(tests)) {
+        game.neuroshima?.error("renderHealingBatchTests: tests is not an array", tests);
         return;
     }
+    const results = tests.map(test => test.result.data);
 
     const successCount = results.filter(r => r.isSuccess).length;
     const failedCount = results.filter(r => !r.isSuccess).length;
@@ -1880,7 +1876,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: "healingBatchReport",
-          results,
+          tests: tests.map(test => test.serialize()),
           healingMethod: method,
           patientUuid: patientActor.uuid,
           medicUuid: medicActor?.uuid,

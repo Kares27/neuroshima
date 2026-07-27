@@ -4,7 +4,23 @@ import { NeuroshimaDice } from "../../helpers/dice.js";
 import { getDistancePenalty } from "../config/distance-config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
-import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
+import {
+  MeleeWeaponTest,
+  RangedWeaponTest,
+  TestRules
+} from "../../tests.mjs";
+
+function measureDistance(first, second) {
+  if (!first || !second) return 0;
+  const a = first.center || first;
+  const b = second.center || second;
+  return canvas.grid.measurePath([{ x: a.x, y: a.y }, { x: b.x, y: b.y }]).distance;
+}
+
+function calculateLocationPenalty(weaponType, locationKey) {
+  if (["random", "torso"].includes(locationKey)) return 0;
+  return Number(NEUROSHIMA.bodyLocations?.[locationKey]?.modifiers?.[weaponType] ?? 0);
+}
 
 /**
  * Dialog for weapon rolls (ranged and melee).
@@ -128,7 +144,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       const actorToken = canvas.tokens.placeables.find(t => t.actor?.id === this.actor.id && (t.controlled || !canvas.tokens.controlled.length));
       const targetToken = Array.from(targets)[0];
       if (actorToken && targetToken) {
-        distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, targetToken);
+        distance = measureDistance(actorToken, targetToken);
       }
     }
     const distancePenalty = this.userEntry.distancePenalty ?? (
@@ -176,7 +192,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         const effectiveHitLocation = (sf.hitLocation && this.userEntry.hitLocation === undefined)
           ? sf.hitLocation
           : hitLocation;
-        const locationPenalty = NeuroshimaDice.getLocationPenalty(this.weapon.system.weaponType, effectiveHitLocation);
+        const locationPenalty = calculateLocationPenalty(this.weapon.system.weaponType, effectiveHitLocation);
         const weaponModifier = this.userEntry.weaponModifier
           ?? ((this.weapon?.system?.weaponModifier ?? 0) + (sf.weaponModifier || 0));
         const isMelee = this.rollType === "melee";
@@ -190,7 +206,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
           const baseSkill = skillKey === "experience" && _isCreature
             ? (this.actor.system.experience ?? 0)
             : (this.actor.system.skills?.[skillKey]?.value || 0);
-          skillShift = NeuroshimaDice.getSkillShift(baseSkill + userSkillBonus + (sf.skillBonus || 0));
+          skillShift = TestRules.skillShift(baseSkill + userSkillBonus + (sf.skillBonus || 0));
         }
         return {
           finalDifficulty: NeuroshimaScriptRunner.resolveFinalDifficultyKey({
@@ -378,7 +394,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const bulletsCountDisplay = html.querySelector('.bullets-count');
     if (name === 'burstLevel') {
       if (burstDisplay) burstDisplay.innerText = value;
-      if (bulletsCountDisplay) bulletsCountDisplay.innerText = game.neuroshima.NeuroshimaDice.getBulletsFired(this.weapon, value);
+      if (bulletsCountDisplay) bulletsCountDisplay.innerText = RangedWeaponTest.bulletsForBurst(this.weapon, value);
     }
     const tempoDisplay = html.querySelector('.tempo-display');
     const tempoShiftDisplay = html.querySelector('.tempo-shift');
@@ -428,19 +444,19 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       if ((maneuver === 'fury' && action === 'attack') || (maneuver === 'fullDefense' && action === 'defense')) weaponBonus += 2;
     }
 
-    const locationPenalty = game.neuroshima.NeuroshimaDice.getLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
+    const locationPenalty = calculateLocationPenalty(this.weapon.system.weaponType, formData.hitLocation);
     const totalPct = basePenalty + modifier + armorPenalty + woundPenalty + diseasePenalty + weaponModifier + locationPenalty + distancePenalty;
 
     const totalElement = html.querySelector('.total-modifier');
     if (totalElement) totalElement.innerText = `${totalPct}%`;
 
-    const actualDiff = game.neuroshima.NeuroshimaDice.getDifficultyFromPercent(totalPct);
+    const actualDiff = TestRules.difficultyFromPercent(totalPct);
     // Effective tempo shift = whichever is higher: the condition value forced by the opponent
     // OR the level the user has chosen via the increasedTempo maneuver selector.
     const effectiveTempoShift = Math.max(this._conditionTempo, maneuver === 'increasedTempo' ? tempoLevel : 0);
     let displayDiff = actualDiff;
     if (isMelee && effectiveTempoShift > 0) {
-      displayDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, effectiveTempoShift);
+      displayDiff = TestRules.shiftDifficulty(actualDiff, effectiveTempoShift);
     }
 
     const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
@@ -461,9 +477,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         : 0;
       let skillValue = baseSkillValue + skillBonus;
       if (bonusMode === "skill" || bonusMode === "both") skillValue += weaponBonus;
-      const shift = game.neuroshima.NeuroshimaDice.getSkillShift(skillValue);
+      const shift = TestRules.skillShift(skillValue);
       if (shift !== 0) {
-        const shifted = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, -shift);
+        const shifted = TestRules.shiftDifficulty(actualDiff, -shift);
         previewLevelLabel = `${game.i18n.localize(displayDiff.label)} → ${game.i18n.localize(shifted.label)}`;
       }
     }
@@ -476,7 +492,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     let activeDiff  = actualDiff;
 
     if (isMelee && effectiveTempoShift > 0) {
-      activeDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, effectiveTempoShift);
+      activeDiff = TestRules.shiftDifficulty(actualDiff, effectiveTempoShift);
     }
     if (allowCombatShift && !isMelee) {
       let skillKey2 = this._scriptFields?.skillKey || this.weapon.system.skill;
@@ -490,9 +506,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         : 0;
       let sv = baseSkill2 + skillBonus;
       if (bonusMode === "skill" || bonusMode === "both") sv += weaponBonus;
-      activeDiff = game.neuroshima.NeuroshimaDice._getShiftedDifficulty(actualDiff, -game.neuroshima.NeuroshimaDice.getSkillShift(sv));
+      activeDiff = TestRules.shiftDifficulty(actualDiff, -TestRules.skillShift(sv));
     }
-    activeDiff = game.neuroshima.NeuroshimaDice.clampMaximumDifficulty(
+    activeDiff = TestRules.clampMaximumDifficulty(
       activeDiff,
       this._scriptFields?.maximumDifficulty
     );
@@ -514,7 +530,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
     const burstDisplay       = html.querySelector('.burst-display');
     const bulletsCountDisplay= html.querySelector('.bullets-count');
     if (burstDisplay)        burstDisplay.innerText = burstLevel;
-    if (bulletsCountDisplay) bulletsCountDisplay.innerText = game.neuroshima.NeuroshimaDice.getBulletsFired(this.weapon, burstLevel);
+    if (bulletsCountDisplay) bulletsCountDisplay.innerText = RangedWeaponTest.bulletsForBurst(this.weapon, burstLevel);
 
     const tempoDisplay     = html.querySelector('.tempo-display');
     const tempoShiftDisplay= html.querySelector('.tempo-shift');
@@ -617,8 +633,15 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
 
     if (this.isPoolRoll && this.onPoolRoll) {
       let rawResult;
+      let rolledTest;
       try {
-        rawResult = await this._executeWeaponTest({ ...rollData, options: submissionOptions, chatMessage: false });
+        rolledTest = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
+        rawResult = rolledTest.result.data;
+        Object.defineProperty(rawResult, "roll", {
+          value: rolledTest.result.roll,
+          configurable: true,
+          enumerable: false
+        });
       } catch (err) {
         console.error("Neuroshima | Pool roll: rollWeaponTest failed:", err);
       }
@@ -631,7 +654,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
         let rollMessage = null;
         try {
           const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-          rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rawResult, this.actor, rawResult.roll);
+          rollMessage = await NeuroshimaChatMessage.renderWeaponRoll(rolledTest);
         } catch (err) {
           console.error("Neuroshima | Pool roll: failed to render weapon roll card:", err);
         }
@@ -647,17 +670,108 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       return this.onPoolRoll(rawResult);
     }
 
-    return this._executeWeaponTest({ ...rollData, options: submissionOptions });
+    const test = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
+    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
+    await NeuroshimaChatMessage.renderWeaponRoll(test);
+    return test.result.data;
   }
 
   async _executeWeaponTest(params) {
-    const subtype = params.weapon?.system?.weaponType === "melee"
-      ? "melee"
-      : (params.weapon?.system?.weaponType === "thrown" ? "thrown" : "ranged");
-    const TestClass = NeuroshimaTestFactory.create({ type: "weapon", subtype }).constructor;
-    const test = TestClass.fromLegacyParameters(params);
+    const { actor, weapon } = params;
+    const isMelee = weapon.system.weaponType === "melee";
+    const TestClass = isMelee ? MeleeWeaponTest : RangedWeaponTest;
+    const meleeAction = params.meleeAction ?? "attack";
+    const maneuver = params.maneuver ?? "none";
+    const bonusMode = game.settings.get("neuroshima", "meleeBonusMode") || "attribute";
+    const weaponBonus = isMelee
+      ? Number(meleeAction === "defense" ? weapon.system.defenseBonus : weapon.system.attackBonus)
+      : 0;
+    let attributeBonus = Number(params.attributeBonus ?? 0);
+    let skillBonus = Number(params.skillBonus ?? 0);
+    if (isMelee && maneuver === "fury" && meleeAction === "attack") attributeBonus += 2;
+    if (isMelee && maneuver === "fullDefense" && meleeAction === "defense") attributeBonus += 2;
+    if (isMelee && ["attribute", "both"].includes(bonusMode)) attributeBonus += weaponBonus;
+    if (isMelee && ["skill", "both"].includes(bonusMode)) skillBonus += weaponBonus;
+    let difficulty = NEUROSHIMA.difficulties[params.difficulty]
+      ?? NEUROSHIMA.difficulties.average;
+    if (isMelee && maneuver === "increasedTempo") {
+      difficulty = TestRules.shiftDifficulty(difficulty, Number(params.tempoLevel ?? 0));
+    }
+    const location = params.hitLocation ?? "torso";
+    const locationPenalty = ["random", "torso"].includes(location)
+      ? 0
+      : Number(NEUROSHIMA.bodyLocations[location]?.modifiers?.[weapon.system.weaponType] ?? 0);
+    const attributeKey = weapon.system.attribute ?? "dexterity";
+    const skillKey = params.skillKeyOverride ?? weapon.system.skill ?? null;
+    const skillValue = skillKey === "experience" && actor.type === "creature"
+      ? Number(actor.system.experience ?? 0)
+      : Number(actor.system.skills?.[skillKey]?.value ?? 0);
+    const diceCount = isMelee
+      ? Math.min(3, Math.max(1, Number(params.meleeDiceCount ?? 3)))
+      : Math.min(3, Math.max(1, Number(params.aimingLevel ?? 0) + 1));
+    const test = new TestClass({
+      actor,
+      item: weapon,
+      targets: params.targets ?? [],
+      attribute: {
+        key: attributeKey,
+        value: Number(actor.system.attributeTotals?.[attributeKey]
+          ?? actor.system.attributes?.[attributeKey]
+          ?? 10)
+      },
+      skill: { key: skillKey, value: skillValue },
+      preData: {
+        label: weapon.name,
+        diceCount,
+        penalties: {
+          base: Number(difficulty.min ?? 0),
+          mod: Number(params.modifier ?? 0),
+          armor: params.applyArmor ? Number(actor.system.combat?.totalArmorPenalty ?? 0) : 0,
+          wounds: params.applyWounds ? Number(actor.system.combat?.totalWoundPenalty ?? 0) : 0,
+          disease: params.applyDisease === false ? 0 : Number(params.diseasePenalty ?? 0),
+          location: locationPenalty,
+          distance: Number(params.distancePenalty ?? 0)
+        },
+        skillBonus,
+        attributeBonus,
+        dieManualBonus: Number(params.dieManualBonus ?? 0),
+        dieReductionBonus: Number(params.dieReductionBonus ?? 0),
+        maximumDifficulty: params.maximumDifficulty ?? null,
+        bulletsFired: isMelee ? 0 : RangedWeaponTest.bulletsForBurst(weapon, params.burstLevel),
+        annotations: [...(params.annotations ?? [])]
+      },
+      context: {
+        isCombat: true,
+        isMelee,
+        isOpen: isMelee ? false : params.isOpen === true,
+        applySkillDifficultyShift: !isMelee,
+        meleeAction,
+        maneuver,
+        hitLocation: location,
+        burstLevel: Number(params.burstLevel ?? 0),
+        burstHitStep: Number(params.burstHitStep ?? 1),
+        distance: Number(params.distance ?? 0),
+        applyArmor: params.applyArmor === true,
+        applyWounds: params.applyWounds === true,
+        damageShift: Number(params.damageShift ?? 0),
+        damageShift1: Number(params.damageShift1 ?? 0),
+        damageShift2: Number(params.damageShift2 ?? 0),
+        damageShift3: Number(params.damageShift3 ?? 0),
+        reroll: params.isReroll === true,
+        fixedDice: Array.isArray(params.fixedDice) ? [...params.fixedDice] : null,
+        rollMode: params.rollMode,
+        options: params.options ?? {},
+        eventArgs: { weapon, options: params.options ?? {} }
+      }
+    });
+    if (params.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
     await test.roll();
-    return NeuroshimaDice.renderWeaponTestResult(test, params);
+    const data = test.result.data;
+    data.tooltip = data.isOpen
+      ? NeuroshimaDice._buildOpenTestTooltip(data, params.weapon?.name)
+      : NeuroshimaDice._buildClosedTestTooltip(data, params.weapon?.name);
+    NeuroshimaDice._groupHitsData(data);
+    return test;
   }
 
   _onCancel(event, target) {

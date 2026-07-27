@@ -75,9 +75,6 @@ export class NeuroshimaScriptEditor extends HandlebarsApplicationMixin(foundry.a
     const showSubmissionScript = scriptData.trigger === "dialog" ||
       (scriptData.trigger === "getMeleeActions" && scriptData.isDialogScript);
     const triggers = { ...NeuroshimaScriptRunner.TRIGGERS };
-    if (!Object.hasOwn(triggers, scriptData.trigger)) {
-      triggers[scriptData.trigger] = `[Legacy] ${scriptData.trigger}`;
-    }
     return {
       scriptData,
       triggers,

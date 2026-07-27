@@ -1,5 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
 import { getEffectiveRadiationResistance } from "../helpers/mod-helpers.js";
+import { CombatHelper } from "../helpers/combat-helper.js";
 
 /**
  * Derives wound damage type from a numeric radiation level.
@@ -54,8 +55,7 @@ async function _applyRadiationWound(actor, config) {
         : "NEUROSHIMA.RadiationWound.Light";
     const nameOverride = game.i18n.localize(nameKey);
 
-    const { NeuroshimaDice } = game.neuroshima;
-    const result = await NeuroshimaDice.applyDamage(actor, {
+    const result = await CombatHelper.applyDamage(actor, {
         // damageCategory: "radiation" is kept as an internal wound tag for identification
         // purposes (e.g. first-aid scripts, hooks). It is NOT part of the damage-reduction
         // resistance system and is not displayed in damageCategories config.

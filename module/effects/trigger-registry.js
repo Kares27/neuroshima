@@ -72,64 +72,14 @@ const definitions = [
   ["endDuel", "End Duel", "neuroshima", ASYNC, ["actor", "item"]]
 ];
 
-export const LEGACY_TRIGGER_ALIASES = Object.freeze({
-  invoke: "manual",
-  oneTime: "immediate",
-  addItems: "immediate",
-  applyEffect: "immediate",
-  prefillDialog: "dialog",
-  targetPrefillDialog: "dialog",
-  preWeaponShot: "preRollWeaponTest",
-  preWeaponTest: "preRollWeaponTest",
-  weaponTest: "rollWeaponTest",
-  weaponJam: "rollWeaponTest",
-  postWeaponShot: "rollWeaponTest",
-  postWeaponTest: "rollWeaponTest",
-  postRollTest: "rollTest",
-  armorCalculation: "APCalc",
-  postApplyDamage: "applyDamage",
-  postTakeDamage: "takeDamage",
-  preMeleePool: "preRollWeaponTest",
-  collectMeleeActions: "getMeleeActions",
-  onDuelStart: "startDuel",
-  onDuelSegmentStart: "startDuelSegment",
-  onDuelEnd: "endDuel",
-  opposedTest: "opposedAttacker"
-});
-
-// Aliases whose historical argument contract is compatible with the canonical
-// event. Shot/jam/post-weapon and preMeleePool remain explicit because they
-// represent narrower boundaries and receive dedicated compatibility args.
-export const AUTO_LEGACY_TRIGGER_ALIASES = Object.freeze(
-  Object.fromEntries(Object.entries(LEGACY_TRIGGER_ALIASES).filter(([legacy]) => ![
-    "preWeaponShot",
-    "weaponJam",
-    "postWeaponShot",
-    "postWeaponTest",
-    "preMeleePool",
-    "collectMeleeActions",
-    "opposedTest"
-  ].includes(legacy)))
-);
-
-export function automaticLegacyTriggersFor(canonical) {
-  return Object.entries(AUTO_LEGACY_TRIGGER_ALIASES)
-    .filter(([, target]) => target === canonical)
-    .map(([legacy]) => legacy);
-}
-
 export class TriggerRegistry {
   static #entries = new Map(definitions.map(([id, label, group, mode, scope]) => [
     id, Object.freeze({ id, label, group, mode, scope: Object.freeze(scope), public: true })
   ]));
 
   static get size() { return this.#entries.size; }
-  static get(id, { resolveLegacy = true } = {}) {
-    const canonical = resolveLegacy ? (LEGACY_TRIGGER_ALIASES[id] ?? id) : id;
-    return this.#entries.get(canonical) ?? null;
-  }
-  static canonical(id) { return LEGACY_TRIGGER_ALIASES[id] ?? id; }
-  static isLegacy(id) { return Object.hasOwn(LEGACY_TRIGGER_ALIASES, id); }
+  static get(id) { return this.#entries.get(id) ?? null; }
+  static canonical(id) { return id; }
   static entries() { return [...this.#entries.values()]; }
   static publicOptions() {
     return Object.freeze(Object.fromEntries(this.entries().map(entry => [entry.id, entry.label])));

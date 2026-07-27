@@ -257,19 +257,14 @@ export class NeuroshimaActor extends Actor {
    */
   async rollInitiativeDialog(rollOptions = {}) {
     const { NeuroshimaInitiativeRollDialog } = await import("../apps/dialogs/initiative-roll-dialog.js");
-    const { NeuroshimaDice } = await import("../helpers/dice.js");
 
     return new Promise((resolve) => {
       let resolved = false;
       const dialog = new NeuroshimaInitiativeRollDialog({
         actor: this,
         ...rollOptions,
-        onRoll: async (data) => {
+        onRoll: async (result) => {
           resolved = true;
-          const result = await NeuroshimaDice.rollInitiative({
-            ...data,
-            actor: this
-          });
           resolve(result);
           return result;
         },

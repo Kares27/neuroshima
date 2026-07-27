@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
+import { InitiativeTest, TestRules } from "../../tests.mjs";
 
 /**
  * Dialog for unified initiative rolls.
@@ -276,12 +277,12 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
     const finalSkill = skillValue + (useSkill ? skillBonus : 0);
     const skillShift = (finalSkill <= 0) ? -1 : Math.floor(finalSkill / 4);
 
-    const baseDifficulty = game.neuroshima.NeuroshimaDice.getDifficultyFromPercent(totalPct);
+    const baseDifficulty = TestRules.difficultyFromPercent(totalPct);
     const order = ["easy", "average", "problematic", "hard", "veryHard", "damnHard", "luck", "masterful", "grandmasterful"];
     const baseDiffKey = Object.keys(NEUROSHIMA.difficulties).find(key => NEUROSHIMA.difficulties[key].label === baseDifficulty.label);
     const baseDiffIndex = order.indexOf(baseDiffKey);
     const shiftedIndex = Math.max(0, Math.min(order.length - 1, baseDiffIndex - skillShift));
-    const shiftedDifficulty = game.neuroshima.NeuroshimaDice.clampMaximumDifficulty(
+    const shiftedDifficulty = TestRules.clampMaximumDifficulty(
       NEUROSHIMA.difficulties[order[shiftedIndex]],
       sf.maximumDifficulty
     );
@@ -406,8 +407,56 @@ export class NeuroshimaInitiativeRollDialog extends NeuroshimaRollDialogBase {
   }
 
   async _performRoll(rollData) {
-    if (this._onRollCallback) return this._onRollCallback(rollData);
-    return game.neuroshima.NeuroshimaDice.rollInitiative({ ...rollData, actor: this.actor });
+    const attributeKey = rollData.attribute ?? "dexterity";
+    const skillKey = rollData.useSkill ? rollData.skill : null;
+    const chargeBonus = rollData.maneuver === "charge"
+      ? Number(rollData.chargeLevel || 2)
+      : 0;
+    const skillValue = skillKey === "experience" && this.actor.type === "creature"
+      ? Number(this.actor.system.experience ?? 0)
+      : Number(this.actor.system.skills?.[skillKey]?.value ?? 0);
+    const test = new InitiativeTest({
+      subtype: this.isMelee ? "melee" : "standard",
+      actor: this.actor,
+      attribute: {
+        key: attributeKey,
+        value: Number(this.actor.system.attributeTotals?.[attributeKey] ?? 10) + chargeBonus
+      },
+      skill: { key: skillKey, value: skillValue },
+      preData: {
+        label: game.i18n.localize("NEUROSHIMA.MeleeOpposed.InitiativeTest"),
+        attributeBonus: Number(rollData.attributeBonus ?? 0),
+        skillBonus: Number(rollData.skillBonus ?? 0),
+        dieManualBonus: Number(rollData.dieManualBonus ?? 0),
+        dieReductionBonus: Number(rollData.dieReductionBonus ?? 0),
+        maximumDifficulty: rollData.maximumDifficulty ?? null,
+        annotations: [...(rollData.annotations ?? [])],
+        penalties: {
+          base: Number(NEUROSHIMA.difficulties[rollData.difficulty]?.min ?? 0),
+          mod: Number(rollData.modifier ?? 0),
+          armor: rollData.useArmorPenalty
+            ? Number(this.actor.system.combat?.totalArmorPenalty ?? 0)
+            : 0,
+          wounds: rollData.useWoundPenalty
+            ? Number(this.actor.system.combat?.totalWoundPenalty ?? 0)
+            : 0,
+          disease: rollData.useDiseasePenalty ? Number(rollData.diseasePenalty ?? 0) : 0
+        }
+      },
+      context: {
+        isOpen: true,
+        isInitiative: true,
+        rollMode: rollData.rollMode,
+        combatant: rollData.combatant ?? null,
+        eventArgs: { combatant: rollData.combatant ?? null }
+      }
+    });
+    if (rollData.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
+    await test.roll();
+    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
+    await NeuroshimaChatMessage.renderInitiativeRoll(test);
+    if (this._onRollCallback) await this._onRollCallback(test.result.data, test);
+    return test.result.data;
   }
 
   _onCancel(event, target) {

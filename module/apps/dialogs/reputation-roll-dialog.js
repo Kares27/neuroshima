@@ -1,6 +1,5 @@
 import { NEUROSHIMA } from "../../config.js";
-import { NeuroshimaDice } from "../../helpers/dice.js";
-import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
+import { ReputationTest, SkillTest, TestRules } from "../../tests.mjs";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -88,8 +87,6 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         if (this.rollOptions.testMode !== "skill") return;
 
         const el = this.element;
-        const NeuroshimaDice = game.neuroshima?.NeuroshimaDice;
-        if (!NeuroshimaDice) return;
 
         const repValue = this.rollOptions.repValue;
         const fame = this.rollOptions.fame;
@@ -103,7 +100,7 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
             const baseDiff = NEUROSHIMA.difficulties[difficultyKey];
             const totalPenalty = (baseDiff?.min || 0) + modifier;
 
-            const finalDiff = NeuroshimaDice.getDifficultyFromPercent(totalPenalty);
+            const finalDiff = TestRules.difficultyFromPercent(totalPenalty);
             const finalTarget = combinedStat + (finalDiff.mod || 0);
 
             el.querySelector(".rep-total-modifier")?.replaceChildren(
@@ -144,8 +141,7 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         const threshold = repValue + fame;
 
         const label = this.reputationItem?.name ?? game.i18n.localize("NEUROSHIMA.Reputation.Title");
-        const test = NeuroshimaTestFactory.create({
-            type: "reputation",
+        const test = new ReputationTest({
             subtype: "simple",
             actor: this.actor,
             item: this.reputationItem,
@@ -161,7 +157,7 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
             }
         });
         await test.roll();
-        const rollData = test.toLegacyData();
+        const rollData = test.result.data;
         if (rollData.cancelled) return;
         const result = Number(rollData.rawResults[0] ?? 0);
         const finalThreshold = Number(rollData.target ?? threshold);
@@ -214,40 +210,32 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
 
         const label = this.reputationItem?.name ?? game.i18n.localize("NEUROSHIMA.Reputation.Title");
 
-        const result = await game.neuroshima.NeuroshimaDice.rollTest({
-            stat: repValue + fame + repBonus,
-            skill: 0,
+        const test = new SkillTest({
+          subtype: "reputation",
+          actor: this.actor,
+          item: this.reputationItem,
+          attribute: { key: "reputation", value: repValue + fame + repBonus },
+          skill: { key: null, value: 0 },
+          preData: {
+            label,
             penalties: {
                 mod: modifier,
                 base: NEUROSHIMA.difficulties[difficulty]?.min ?? 0,
                 armor: 0,
                 wounds: 0
-            },
-            isOpen,
-            label,
-            actor: this.actor,
-            attributeBonus: 0,
-            skillBonus: 0,
-            rollMode,
-            chatMessage: false,
-            options: {
-                // The optional legacy "skill" mode is mechanically a 3d20
-                // SkillTest. ReputationTest is reserved for the 1d100 family.
-                rollType: "skill",
-                subtype: "reputation",
-                item: this.reputationItem
             }
+          },
+          context: { isOpen, rollMode }
         });
-
-        if (!result) return;
-
+        await test.roll();
+        const result = test.result.data;
         result.isReputationRoll = true;
         result.repRepValue = repValue;
         result.repFame = fame;
         result.repBonus = repBonus;
 
         const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
-        await NeuroshimaChatMessage.renderRoll(result, this.actor, result.roll);
+        await NeuroshimaChatMessage.renderRoll(test);
     }
 
     async _onCancel(event, target) {

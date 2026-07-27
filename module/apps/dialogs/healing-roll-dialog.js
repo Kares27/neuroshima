@@ -1,7 +1,7 @@
 import { NEUROSHIMA } from "../../config.js";
-import { NeuroshimaDice } from "../../helpers/dice.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
+import { HealingTest, TestRules } from "../../tests.mjs";
 
 /**
  * Helper: Get healing difficulty based on wound damage type from world settings.
@@ -325,7 +325,7 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
       const selDiffKey = html.querySelector(`[name="difficulty-${dt}"]`)?.value ?? group.difficulty;
       const diffData   = NEUROSHIMA.difficulties[selDiffKey] || NEUROSHIMA.difficulties.average;
       const totalPct   = (diffData.min || 0) + diffModifier;
-      const adjusted   = NeuroshimaDice.getDifficultyFromPercent(totalPct);
+      const adjusted   = TestRules.difficultyFromPercent(totalPct);
       const adjustedKey = Object.entries(NEUROSHIMA.difficulties).find(([, v]) => v === adjusted)?.[0] ?? selDiffKey;
       const totalShift  = sfDiffShift + (sfHealDiff[dt] || 0);
       const shiftedKey  = totalShift ? NeuroshimaScriptRunner.shiftDifficultyKey(adjustedKey, totalShift) : adjustedKey;
@@ -407,19 +407,32 @@ export class NeuroshimaHealingRollDialog extends NeuroshimaRollDialogBase {
 
     const attrValue = medicActor.system.attributeTotals?.[selectedAttr];
 
-    await NeuroshimaDice.rollBatchHealingTests({
+    const tests = [];
+    for (const woundConfig of woundConfigs) {
+      const test = HealingTest.forWound({
+        medicActor,
+        patientActor: this.patientActor,
+        healingMethod,
+        woundConfig,
+        stat: attrValue,
+        skillBonus,
+        attributeBonus,
+        autoSuccess: sf.autoSuccess === true,
+        annotations: sf.annotations || [],
+        dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
+        dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0)
+      });
+      await test.roll();
+      if (!test.result.cancelled) tests.push(test);
+    }
+    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
+    await NeuroshimaChatMessage.renderHealingBatchTests(
       medicActor,
-      patientActor: this.patientActor,
+      this.patientActor,
+      tests,
       healingMethod,
-      woundConfigs,
-      stat: attrValue,
-      skillBonus,
-      attributeBonus,
-      autoSuccess: sf.autoSuccess === true,
-      annotations: sf.annotations || [],
-      dieManualBonus: (Number(this.userEntry.dieManualBonus ?? 0) || 0) + (sf.dieManualBonus || 0),
-      dieReductionBonus: (Number(this.userEntry.dieReductionBonus ?? 0) || 0) + (sf.dieReductionBonus || 0)
-    });
+      { woundConfigs, stat: attrValue, skillBonus, attributeBonus }
+    );
 
     await this.close();
   }

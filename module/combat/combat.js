@@ -17,8 +17,7 @@
  */
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { NeuroshimaTestFactory } from "../tests/test-factory.js";
-import { MeleeOpposedResolver } from "../tests/opposed/melee-opposed-resolver.js";
+import { NeuroshimaTestFactory, MeleeOpposedResolver, TestRules } from "../tests.mjs";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
 import { DuelContext, DuelSegmentContext, DuelLifecycle, MeleeAction, DuelActionPipeline, DuelDamageEngine, DuelDeclarationEngine, DuelSegmentEngine, DuelBeastActionEngine } from "./combat-api.js";
@@ -528,12 +527,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
             actor,
             isMelee:    true,
             meleeMode:  "melee-tab",
-            onRoll:     async (rollData) => {
-                const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
-                    ...rollData,
-                    actor,
-                    isMeleeInitiative: true
-                });
+            onRoll:     async (result) => {
                 if (result) {
                     await this._updateFighterInitiative(resolvedGroupId, uuid, result.successPoints);
                     await actor.update({ "system.combat.meleeInitiative": result.successPoints }).catch(() => {});
@@ -569,12 +563,7 @@ export class NeuroshimaCombatTracker extends foundry.applications.sidebar.tabs.C
                         actor,
                         isMelee:    true,
                         meleeMode:  "melee-tab",
-                        onRoll:     async (rollData) => {
-                            const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
-                                ...rollData,
-                                actor,
-                                isMeleeInitiative: true
-                            });
+                        onRoll:     async (result) => {
                             if (result) {
                                 fighter.initiative = result.successPoints;
                                 dirty = true;
@@ -1432,7 +1421,7 @@ export class MeleeOpposedChat {
    * @param {string} messageId      Handler chat-message ID
    * @param {Object} pending
    * @param {Actor}  defenderActor
-   * @param {Object} defenseResult  Raw result from NeuroshimaDice.rollWeaponTest
+   * @param {Object} defenseResult  Result of the defender's concrete test
    */
   static async resolveOpposed(messageId, pending, defenderActor, defenseResult) {
     const message = game.messages.get(messageId);
@@ -4452,14 +4441,13 @@ export class MeleeResolution {
    * `mod` (always ≤ 0) is added to the target, lowering it and making successes rarer.
    */
   static getEffectiveTarget(participant, tempoLevel, dexPenalty, mode = "attack") {
-    const { NeuroshimaDice } = game.neuroshima;
     let target = mode === "attack" ? (participant.attackTargetSnapshot || 10) : (participant.defenseTargetSnapshot || 10);
 
     target -= dexPenalty;
 
     if (tempoLevel === 0) return target;
-    const baseDiffObj = NeuroshimaDice.getDifficultyFromPercent(0);
-    const shifted = NeuroshimaDice._getShiftedDifficulty(baseDiffObj, tempoLevel);
+    const baseDiffObj = TestRules.difficultyFromPercent(0);
+    const shifted = TestRules.shiftDifficulty(baseDiffObj, tempoLevel);
     return target + shifted.mod;
   }
 
@@ -4539,53 +4527,13 @@ export class MeleeResolution {
       context: {
         isMelee: true,
         meleeAction: "defense",
+        fixedDice: null,
         encounterId: encounter.id,
         eventArgs: { encounter, attack }
       }
     });
-    await freeTest.roll({
-      prepare: current => Object.assign(current.result.data, {
-        label: current.preData.label,
-        target: Number(current.attribute?.value ?? defenderTarget),
-        diceCount: Math.min(
-          selectedIndices.length,
-          Math.max(1, Number(current.preData.diceCount ?? diceCount))
-        ),
-        rawResults: [],
-        rolledResults: [],
-        modifiedResults: [],
-        success: false,
-        successCount: 0,
-        successPoints: 0,
-        isOpen: false,
-        isMelee: true,
-        meleeAction: "defense"
-      }),
-      roll: async current => {
-        const freeRoll = await new Roll(`${current.result.data.diceCount}d20`).evaluate();
-        return {
-          roll: freeRoll,
-          rawResults: freeRoll.terms[0].results.map(result => Number(result.result))
-        };
-      },
-      evaluate: current => {
-        const data = current.result.data;
-        data.rolledResults = [...data.rawResults];
-        data.modifiedResults = data.rawResults.map((result, index) => ({
-          original: result,
-          modified: result,
-          index,
-          ignored: false,
-          isSuccess: result <= data.target && result !== 20,
-          isNat1: result === 1,
-          isNat20: result === 20
-        }));
-        data.successCount = data.modifiedResults.filter(result => result.isSuccess).length;
-        data.successPoints = data.successCount;
-        data.success = data.successCount >= data.diceCount;
-      }
-    });
-    const freeData = freeTest.toLegacyData();
+    await freeTest.roll();
+    const freeData = freeTest.result.data;
     if (freeData.cancelled) return;
     const freeSuccesses = Number(freeData.successCount ?? 0);
     const finalDiceCount = Number(freeData.diceCount ?? diceCount);
@@ -6057,9 +6005,7 @@ export class MeleeTurnService {
         const armorPenalty = actor.system.combat?.totalArmorPenalty || 0;
         const woundPenalty = actor.system.combat?.totalWoundPenalty || 0;
         const totalPct = armorPenalty + woundPenalty;
-        const diffMod = game.neuroshima?.NeuroshimaDice
-          ? (game.neuroshima.NeuroshimaDice.getDifficultyFromPercent?.(totalPct)?.mod ?? 0)
-          : 0;
+        const diffMod = TestRules.difficultyFromPercent(totalPct)?.mod ?? 0;
 
         let attackManeuverBonus = 0;
         let defenseManeuverBonus = 0;
@@ -6075,14 +6021,6 @@ export class MeleeTurnService {
         attackTarget: p.attackTargetSnapshot, defenseTarget: p.defenseTargetSnapshot
       });
 
-      await NeuroshimaScriptRunner.executeLegacy("preMeleePool", {
-        actor,
-        encounter: updated,
-        participant: p,
-        meleeAction,
-        maneuver,
-        activatedTricks
-      });
     }
 
     p.pool = results;

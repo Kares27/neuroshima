@@ -1,8 +1,6 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
-import { NeuroshimaDice } from "../../helpers/dice.js";
+import { TestRules, NeuroshimaTestFactory } from "../../tests.mjs";
 import { NEUROSHIMA } from "../../config.js";
-import { EffectActionRuntime } from "../../effects/effect-action-runtime.js";
-import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
 
 export class AmmunitionLoadingDialog {
@@ -149,9 +147,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
 
     async _prepareContext(options) {
         const flags = foundry.utils.deepClone(
-          this.message.getFlag("neuroshima", "rollData")
-          ?? this.message.getFlag("neuroshima", "grenadeRoll")
-          ?? {}
+          this.message.getFlag("neuroshima", "test")?.rollData ?? {}
         );
         flags.rawResults ??= (flags.modifiedResults ?? []).map(die => die.original);
         const messageType = this.message.getFlag("neuroshima", "messageType");
@@ -164,7 +160,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
             ? Object.entries(NEUROSHIMA.difficulties)
               .find(([, difficulty]) => Number(difficulty.min) === storedBasePenalty)?.[0] ?? "average"
             : "average";
-        flags.baseDifficulty ??= NeuroshimaDice.getDifficultyFromPercent(Number(flags.totalPenalty ?? 0));
+        flags.baseDifficulty ??= TestRules.difficultyFromPenalty(Number(flags.totalPenalty ?? 0));
         flags.baseStat ??= flags.stat
           ?? (Number(flags.target ?? 0) - Number(flags.baseDifficulty?.mod ?? 0));
         flags.baseSkill ??= flags.skill ?? 0;
@@ -192,14 +188,12 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         const data = formData.object;
         const message = this.message;
         const messageType = message.getFlag("neuroshima", "messageType");
-        const isGrenade = messageType === "grenade"
-          || (!message.getFlag("neuroshima", "rollData")
-            && !!message.getFlag("neuroshima", "grenadeRoll"));
-        const beforeData = foundry.utils.deepClone(
-          isGrenade
-            ? message.getFlag("neuroshima", "grenadeRoll")
-            : message.getFlag("neuroshima", "rollData") ?? {}
-        );
+        const isGrenade = messageType === "grenade";
+        const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
+        if (!serialized?.classId) {
+          return ui.notifications.warn("Ta karta nie zawiera testu w nowym formacie.");
+        }
+        const beforeData = foundry.utils.deepClone(serialized.rollData);
 
         const updated = foundry.utils.deepClone(beforeData);
         updated.rawResults ??= (updated.modifiedResults ?? []).map(die => die.original);
@@ -230,7 +224,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         updated.penalty = updated.totalPenalty = Object.values(updated.penalties)
           .reduce((sum, value) => sum + (Number(value) || 0), 0);
         updated.baseDifficulty = foundry.utils.deepClone(
-          NeuroshimaDice.getDifficultyFromPercent(updated.totalPenalty)
+          TestRules.difficultyFromPenalty(updated.totalPenalty)
         );
         updated.baseDifficultyLabel = updated.baseDifficulty.label;
         if (!updated.annotations?.includes("Rzut edytowany przez MG")) {
@@ -238,33 +232,19 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
         }
         const editedActor = game.actors.get(updated.actorId);
         const editedItem = editedActor?.items.get(updated.weaponId ?? updated.itemId);
-        const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
-        const test = serialized?.classId
-          ? await NeuroshimaTestFactory.fromData({
-              ...serialized,
-              actor: editedActor,
-              item: editedItem ?? null,
-              rollData: updated
-            })
-          : NeuroshimaTestFactory.create({
-              type: isGrenade
-                ? "grenade"
-                : (messageType === "healingRoll"
-                  ? "healing"
-                  : (updated.isWeapon ? "weapon" : "skill")),
-              subtype: updated.testSubtype ?? (updated.isMelee ? "melee" : null),
-              actor: editedActor,
-              item: editedItem ?? null,
-              rollData: updated,
-              context: { edited: true, isOpen: updated.isOpen }
-            });
+        const test = await NeuroshimaTestFactory.fromData({
+          ...serialized,
+          actor: editedActor,
+          item: editedItem ?? null,
+          rollData: updated
+        });
         test._scriptRunner = NeuroshimaScriptRunner;
         test.context.edited = true;
         test.context.isOpen = updated.isOpen;
         test.markDirty("gm-roll-edit");
         await test.recalculate();
         await test.finish({ commit: false });
-        Object.assign(updated, test.toLegacyData());
+        Object.assign(updated, test.result.data);
 
         const snapshot = rollData => ({
           rawResults: rollData.rawResults,
@@ -286,18 +266,7 @@ export class EditRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
           after: snapshot(updated)
         });
         await message.update({ "flags.neuroshima.rollEditHistory": history });
-        if (isGrenade) {
-          const content = await foundry.applications.handlebars.renderTemplate(
-            "systems/neuroshima/templates/chat/grenade-roll-card.hbs",
-            updated
-          );
-          await message.update({ content, "flags.neuroshima.grenadeRoll": updated });
-        } else if (updated.isWeapon && !updated.isMelee) {
-          await message.update({ "flags.neuroshima.rollData": updated });
-          await NeuroshimaDice.updateRollMessage(message, updated.isOpen);
-        } else {
-          await EffectActionRuntime.rerenderMessage(message, updated);
-        }
+        await test.updateMessage(message);
     }
 
 }

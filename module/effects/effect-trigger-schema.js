@@ -4,14 +4,11 @@
  * Naming follows the WFRP-style lifecycle: preX -> X. A trigger is a concrete
  * dropdown choice; scripts do not need separate context filters.
  */
-import { TriggerRegistry, LEGACY_TRIGGER_ALIASES } from "./trigger-registry.js";
+import { TriggerRegistry } from "./trigger-registry.js";
 
 export const EFFECT_TRIGGER_SCHEMA_VERSION = 4;
 
 export const EFFECT_TRIGGERS = TriggerRegistry.publicOptions();
-
-// Read-only compatibility names. They are not shown for new scripts.
-export const LEGACY_EFFECT_TRIGGERS = LEGACY_TRIGGER_ALIASES;
 
 export function createTriggerContext(trigger, args = {}, metadata = {}) {
   return {
@@ -34,7 +31,6 @@ export function createTriggerContext(trigger, args = {}, metadata = {}) {
     segment: metadata.segment ?? args.segment ?? null,
     context: args.context ?? args.test?.context ?? null,
     eventContext: args.eventContext ?? null,
-    phase: metadata.phase ?? null,
-    legacyTrigger: metadata.legacyTrigger ?? null
+    phase: metadata.phase ?? null
   };
 }

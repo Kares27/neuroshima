@@ -1,5 +1,5 @@
 
-import { NeuroshimaDice } from "../../helpers/dice.js";
+import { CombatHelper } from "../../helpers/combat-helper.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 
@@ -188,7 +188,7 @@ export class GMApplyDamageApp extends HandlebarsApplicationMixin(ApplicationV2) 
         for (const actorId of this._selectedActors) {
             const actor = game.actors.get(actorId);
             if (!actor) continue;
-            await NeuroshimaDice.applyDamage(actor, {
+            await CombatHelper.applyDamage(actor, {
                 wounds:              rawWounds,
                 location:            this._location,
                 source,

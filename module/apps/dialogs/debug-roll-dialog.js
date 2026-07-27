@@ -1,5 +1,5 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
-import { NeuroshimaDice } from "../../helpers/dice.js";
+import { SkillTest } from "../../tests.mjs";
 
 /**
  * Dialog for testing roll logic with manual parameters and dice results.
@@ -49,19 +49,24 @@ export class DebugRollDialog extends HandlebarsApplicationMixin(ApplicationV2) {
             return r.total;
         }));
 
-        await NeuroshimaDice.rollTest({
-            stat: Number(data.stat),
-            skill: Number(data.skill),
+        const test = new SkillTest({
+          attribute: { key: "debug", value: Number(data.stat) },
+          skill: { key: "debug", value: Number(data.skill) },
+          preData: {
+            label: "DEBUG ROLL",
             penalties: {
                 mod: Number(data.penalty),
                 wounds: 0,
                 armor: 0
-            },
+            }
+          },
+          context: {
             isOpen: !!data.isOpen,
             isCombat: !!data.isCombat,
             isDebug: true,
-            fixedDice: fixedDice,
-            label: "DEBUG ROLL"
+            fixedDice
+          }
         });
+        await test.roll();
     }
 }

@@ -339,11 +339,6 @@ export class NeuroshimaEffectSheet extends BaseEffectSheet {
     context.scripts      = foundry.utils.deepClone(this.document.system?.scriptData ?? []);
     context.actionDefs   = foundry.utils.deepClone(this.document.system?.actionDefs ?? []);
     context.triggers     = { ...NeuroshimaScriptRunner.TRIGGERS };
-    for (const script of context.scripts) {
-      if (!Object.hasOwn(context.triggers, script.trigger)) {
-        context.triggers[script.trigger] = `[Legacy] ${script.trigger}`;
-      }
-    }
     context.transferType = this.document.getFlag("neuroshima", "transferType") ?? "owningDocument";
     context.documentType = this.document.getFlag("neuroshima", "documentType") ?? "actor";
     context.equipTransfer = this.document.getFlag("neuroshima", "equipTransfer") ?? false;

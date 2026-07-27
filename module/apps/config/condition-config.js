@@ -43,9 +43,8 @@ if (maxHP > 0 && this.totalDamagePoints >= maxHP) await this.apply();`
         code: `// Bleeding: deals 1 Light wound per bleeding stack at the start of the actor's turn.
 const stacks = this.actor.getConditionValue("bleeding");
 if (stacks <= 0) return;
-const { NeuroshimaDice } = game.neuroshima;
 for (let i = 0; i < stacks; i++) {
-  await NeuroshimaDice.applyDamage(this.actor, { damageType: "L", location: "torso", source: "Krwawienie" });
+  await this.applyWound("L", "torso", this.actor);
 }
 await this.sendMessage(\`<strong>Krwawienie (\${stacks}×)</strong>: \${stacks} rana/rany Lekka/Lekkie.\`);`
       }

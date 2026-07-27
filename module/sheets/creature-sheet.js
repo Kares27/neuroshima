@@ -211,8 +211,7 @@ export class NeuroshimaCreatureSheet extends NeuroshimaBaseActorSheet {
               pendingId: existingPending.id,
               weaponId: item.id,
               targets: [targetUuid],
-              onRoll: async (rollData) => {
-                const result = await game.neuroshima.NeuroshimaDice.rollInitiative({ ...rollData, actor: this.document, isMeleeInitiative: true });
+              onRoll: async (result) => {
                 const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
                 await NeuroshimaMeleeCombat.respondToMeleePending(existingPending.id, result.successPoints, item.id);
                 return result;

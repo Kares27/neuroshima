@@ -35,8 +35,6 @@
  *   4. Update normalizeAll() / normalizeActor() if applicable.
  */
 
-import { LEGACY_TRIGGER_ALIASES } from "../effects/trigger-registry.js";
-
 const CURRENT_SCHEMA_VERSION = "1.5";
 
 export function registerMigrationHook() {
@@ -452,7 +450,7 @@ export function auditEffectTriggers() {
         effects: 0,
         scripts: 0,
         triggers: {},
-        legacy: Object.fromEntries(Object.keys(LEGACY_TRIGGER_ALIASES).map(trigger => [trigger, 0])),
+        legacy: {},
         possiblePreviouslyMigratedPostWeaponScripts: []
     };
     const documents = [];

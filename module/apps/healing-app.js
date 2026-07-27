@@ -1,6 +1,7 @@
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
+import { HealingTest } from "../tests.mjs";
 
 /**
  * Application V2 dla panelu leczenia pacjenta
@@ -818,19 +819,23 @@ export class HealingApp extends HandlebarsApplicationMixin(ApplicationV2) {
             skill: skillValue
         });
 
-        // Execute test
-        await NeuroshimaDice.rollTest({
-            stat: finalStat,
-            skill: skillValue,
+        const test = new HealingTest({
+          actor: medicActor,
+          attribute: { key: "cleverness", value: finalStat },
+          skill: { key: skillKey, value: skillValue },
+          preData: {
+            label: healingMethod.methodLabel,
             penalties: {
                 mod: NEUROSHIMA.difficulties[baseDifficultyKey]?.min || 0,
                 wounds: 0,
                 armor: 0
-            },
-            isOpen: true,
-            label: healingMethod.methodLabel,
-            actor: medicActor
+            }
+          },
+          context: { isOpen: true, healingMethod: isFirstAid ? "firstAid" : "woundTreatment" }
         });
+        await test.roll();
+        const { NeuroshimaChatMessage } = await import("../documents/chat-message.js");
+        await NeuroshimaChatMessage.renderRoll(test);
 
         game.neuroshima?.log("Test executed, waiting for result");
         game.neuroshima?.groupEnd();

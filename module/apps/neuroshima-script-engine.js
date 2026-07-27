@@ -1,11 +1,10 @@
 import { NeuroshimaChoiceRouter } from "../helpers/choice-router.js";
 import {
   EFFECT_TRIGGERS,
-  LEGACY_EFFECT_TRIGGERS,
   createTriggerContext
 } from "../effects/effect-trigger-schema.js";
 import { matchesItemDocumentScope } from "../effects/effect-scope.js";
-import { TriggerRegistry, automaticLegacyTriggersFor } from "../effects/trigger-registry.js";
+import { TriggerRegistry } from "../effects/trigger-registry.js";
 
 /**
  * Thin wrapper around a roll result that normalises both a Foundry Roll object
@@ -775,7 +774,7 @@ export class NeuroshimaScript {
   /**
    * Mark this effect as "activated for the current melee turn" for the given actor.
    * Stores the actor's participant ID under `encounter._effects._tricks[effect.id]`.
-   * Call this in a `dialog` script (or `preMeleePool`) when the player opts in to a trick.
+   * Call this in a `dialog` script (or `preRollWeaponTest`) when the player opts in to a trick.
    * The activation is automatically cleared on `turn-start` (encounter._effects reset).
    * @param {Actor} [actor] - Defaults to this.actor.
    * @returns {boolean} true if the activation was recorded, false if no active encounter found.
@@ -1090,13 +1089,13 @@ export class NeuroshimaScript {
 
   /**
    * Return whether the weapon is currently in the jammed state (from a previous shot).
-   * Useful in `preWeaponShot` or `weaponJam` scripts to check if the weapon was already jammed
+   * Useful in `preRollWeaponTest` or `rollWeaponTest` scripts to check whether the weapon is jammed
    * before this shot began.
    * @param {Item} weapon
    * @returns {boolean}
    *
    * @example
-   * // In preWeaponShot — extra penalty if weapon was already jammed
+   * // In preRollWeaponTest — extra penalty if weapon was already jammed
    * if (this.getWeaponJammedState(args.weapon)) {
    *   this.notification("Weapon was already jammed!", "warn");
    * }
@@ -1106,15 +1105,15 @@ export class NeuroshimaScript {
   }
 
   /**
-   * Shift the effective jamming threshold in a `preWeaponShot` script.
+   * Shift the effective jamming threshold in a `preRollWeaponTest` script.
    * Positive delta makes the weapon HARDER to jam (threshold moves up).
    * Negative delta makes it EASIER to jam (threshold moves down).
    *
-   * @param {Object} args  - The args object from a preWeaponShot trigger.
+   * @param {Object} args  - The args object from a preRollWeaponTest trigger.
    * @param {number} delta - Amount to add to `args.jammingThreshold`.
    *
    * @example
-   * // In preWeaponShot — Rusznikarstwo passive: weapon is +3 harder to jam
+   * // In preRollWeaponTest — Rusznikarstwo passive: weapon is +3 harder to jam
    * this.modifyJammingThreshold(args, 3);
    */
   modifyJammingThreshold(args, delta) {
@@ -1122,11 +1121,11 @@ export class NeuroshimaScript {
   }
 
   /**
-   * In a `weaponJam` script, allow the actor to fire despite the jam.
+   * In a `rollWeaponTest` script, allow the actor to fire despite the jam.
    * The weapon is still jammed (needs repair), ammo is consumed and
    * hit evaluation runs normally (shot hits if the roll would have succeeded).
    *
-   * @param {Object} args          - The args object from a weaponJam trigger.
+   * @param {Object} args          - The args object from a rollWeaponTest trigger.
    * @param {number} [count=1]     - Maximum number of bullets allowed to fire despite the jam.
    *                                 Defaults to 1. Pass higher value for bursts.
    *
@@ -1151,13 +1150,13 @@ export class NeuroshimaScript {
   }
 
   /**
-   * In a `weaponJam` script, clear the jam so the weapon fires normally.
+   * In a `rollWeaponTest` script, clear the jam so the weapon fires normally.
    * No jam is recorded and the shot proceeds as if it never happened.
    *
-   * @param {Object} args - The args object from a weaponJam trigger.
+   * @param {Object} args - The args object from a rollWeaponTest trigger.
    *
    * @example
-   * // In weaponJam — Lucky Malfunction: jam is ignored entirely
+   * // In rollWeaponTest — Lucky Malfunction: jam is ignored entirely
    * this.clearWeaponJam(args);
    */
   clearWeaponJam(args) {
@@ -1165,13 +1164,13 @@ export class NeuroshimaScript {
   }
 
   /**
-   * In a `preWeaponShot` script, prevent the weapon from jamming this shot entirely.
+   * In a `preRollWeaponTest` script, prevent the weapon from jamming this shot entirely.
    * Equivalent to setting `args.forceNoJam = true`.
    *
-   * @param {Object} args - The args object from a preWeaponShot trigger.
+   * @param {Object} args - The args object from a preRollWeaponTest trigger.
    *
    * @example
-   * // In preWeaponShot — Reliable Weapon passive: weapon cannot jam
+   * // In preRollWeaponTest — Reliable Weapon passive: weapon cannot jam
    * this.preventWeaponJam(args);
    */
   preventWeaponJam(args) {
@@ -1179,13 +1178,13 @@ export class NeuroshimaScript {
   }
 
   /**
-   * In a `preWeaponShot` script, force the weapon to jam regardless of the dice.
+   * In a `preRollWeaponTest` script, force the weapon to jam regardless of the dice.
    * Equivalent to setting `args.forceJam = true`.
    *
-   * @param {Object} args - The args object from a preWeaponShot trigger.
+   * @param {Object} args - The args object from a preRollWeaponTest trigger.
    *
    * @example
-   * // In preWeaponShot — Wadliwa Amunicja: weapon always jams this shot
+   * // In preRollWeaponTest — Wadliwa Amunicja: weapon always jams this shot
    * this.forceWeaponJam(args);
    */
   forceWeaponJam(args) {
@@ -1249,12 +1248,12 @@ export class NeuroshimaScript {
    * Append a short annotation to the roll result card.
    * Annotations appear below the roll-outcome footer.
    * Available whenever the trigger exposes a roll annotation collection, including
-   * `dialog`, `preRollTest`, `rollTest`, `preWeaponShot`, `weaponJam`, and
-   * `postWeaponShot`. Dialog annotations are carried into the eventual roll card.
+   * `dialog`, `preRollTest`, `rollTest`, `preRollWeaponTest`, and
+   * `rollWeaponTest`. Dialog annotations are carried into the eventual roll card.
    * @param {string} text - Annotation text to display.
    *
    * @example
-   * // In weaponJam — inform the player that the trick allowed a shot through
+   * // In rollWeaponTest — inform the player that the trick allowed a shot through
    * if (this.isStandardJam(args, 11, 18)) {
    *   this.allowShotDespiteJam(args);
    *   this.addAnnotation("It Will Work! Weapon fires one last shot despite the jam.");
@@ -1321,14 +1320,14 @@ export class NeuroshimaScript {
   /**
    * Refund the last `count` bullets from the roll's bulletSequence back into the magazine / ammo item.
    * Works for both magazine-based and direct-ammo (thrown) weapons.
-   * Call inside `postWeaponShot` or any other trigger that has access to `rollData`.
+   * Call inside `rollWeaponTest` or any other trigger that has access to `rollData`.
    *
    * @param {Object} rollData  - The `args.rollData` reference from the trigger.
    * @param {number} count     - Number of bullets to refund (taken from the tail of bulletSequence).
    * @returns {Promise<number>} Actual number of bullets refunded.
    *
    * @example
-   * // In postWeaponShot — refund the difference between fired and short-burst bullets
+   * // In rollWeaponTest — refund the difference between fired and short-burst bullets
    * const rof   = args.weapon.system.fireRate || 1;
    * const extra = args.bulletsFired - rof;
    * if (extra > 0) await this.refundBullets(args.rollData, extra);
@@ -1393,7 +1392,7 @@ export class NeuroshimaScript {
    * @returns {Promise<number>} Actual number of bullets refunded.
    *
    * @example
-   * // In postWeaponShot — automatically downgrade to short burst
+   * // In rollWeaponTest — automatically downgrade to short burst
    * if (args.rollData.burstLevel >= 2) {
    *   const refunded = await this.refundBurstLevel(args.rollData, 1);
    *   if (refunded > 0) await this.sendMessage(`<strong>Seria skrócona:</strong> zwrócono ${refunded} naboi.`);
@@ -1419,7 +1418,7 @@ export class NeuroshimaScript {
    * Once set, the "Zmniejsz Serię" / "Zwiększ Serię" context-menu options become
    * visible to ANY logged-in user (not just the actor owner or GM).
    *
-   * Typical use: call this inside a `postWeaponShot` trick script to signal that
+   * Typical use: call this inside a `rollWeaponTest` trick script to signal that
    * the trick (e.g. Czuły Spust) grants the owning player burst control.
    * If the player is already the actor owner the call is a no-op for access
    * (they already see the options), but it serves as explicit documentation and
@@ -1429,13 +1428,13 @@ export class NeuroshimaScript {
    * @returns {Promise<void>}
    *
    * @example
-   * // postWeaponShot — Czuły Spust: grant burst shift and notify the player
+   * // rollWeaponTest — Czuły Spust: grant burst shift and notify the player
    * if (args.rollData.burstLevel >= 1) {
    *   await this.grantBurstShift(args);
    * }
    *
    * @example
-   * // postWeaponShot — grant only when firing a burst (not single shot)
+   * // rollWeaponTest — grant only when firing a burst (not single shot)
    * if (args.rollData.burstLevel >= 2) {
    *   await this.grantBurstShift(args);
    *   await this.sendMessage("<strong>Czuły spust:</strong> możesz zmniejszyć serię w menu kontekstowym karty czatu.");
@@ -1701,11 +1700,13 @@ export class NeuroshimaScript {
    * await this.applyWound("L", "head");
    * await this.applyWound("C", args.location ?? "torso");
    */
-  applyWound(damageType, location = "torso", actor) {
+  async applyWound(damageType, location = "torso", actor) {
     const target = actor ?? this.actor;
-    const { NeuroshimaDice } = game.neuroshima ?? {};
-    return NeuroshimaDice.applyDamage(target, { damageType, location, source: this.effect?.name ?? "" })
-      .then(r => r.wounds[0]);
+    const { CombatHelper } = await import("../helpers/combat-helper.js");
+    const result = await CombatHelper.applyDamage(target, {
+      damageType, location, source: this.effect?.name ?? ""
+    });
+    return result.wounds[0];
   }
 
   // ── Disease helpers ───────────────────────────────────────────────────────
@@ -3557,7 +3558,7 @@ export class NeuroshimaScript {
  * endCombat        — End Combat: runs when combat ends (once per actor)
  *                    args: { actor, combat }
  *
- * preWeaponShot    — Pre-Weapon Shot: runs BEFORE jamming is evaluated for a ranged shot.
+ * preRollWeaponTest — runs before a weapon test, including jamming preparation.
  *                    Allows scripts to shift the jam threshold or force/prevent jamming entirely.
  *                    Never fires for melee weapons.
  *                    args: { actor, weapon, jammingThreshold, ammoJamming, bestResult,
@@ -3571,7 +3572,7 @@ export class NeuroshimaScript {
  *                             this.forceWeaponJam(args)
  *                             this.getWeaponJammingThreshold(weapon)
  *
- * weaponJam        — Weapon Jam: runs ONLY when a jam is detected, before ammo is withheld.
+ * rollWeaponTest    — receives the completed weapon result, including jamming state.
  *                    Allows scripts to allow firing despite the jam, or clear the jam.
  *                    Never fires for melee weapons.
  *                    args: { actor, weapon, bestResult, jammingThreshold, wouldSucceed,
@@ -3585,7 +3586,7 @@ export class NeuroshimaScript {
  *                             this.isStandardJam(args, min=1, max=20) → inRange AND wouldSucceed
  *                             this.getWeaponJammedState(weapon) → was weapon already jammed?
  *
- * postWeaponShot   — Post-Weapon Shot: runs AFTER the full ranged shot is resolved.
+ * rollWeaponTest    — runs after the full ranged or melee weapon test is resolved.
  *                    Fires even if the weapon jammed (isJamming may be true).
  *                    Never fires for melee weapons.
  *                    args: { actor, weapon, isSuccess, isJamming, firedDespiteJam,
@@ -3636,7 +3637,7 @@ export class NeuroshimaScript {
  *                    Use: react to a condition being applied (e.g. fire secondary effects,
  *                         notify chat, apply additional penalties for a specific condition)
  *
- * preMeleePool      — LEGACY ONLY. Historical pool-snapshot hook fired AFTER the actor's
+ * preRollWeaponTest — canonical pre-roll hook for melee and ranged weapon tests.
  *                    3k20 dice were set. New effects use preRollWeaponTest and restrict
  *                    themselves with args.test.classId === "meleeWeapon".
  *                    The following contract is documented only for compatibility:
@@ -3925,17 +3926,17 @@ export class NeuroshimaScript {
  *   this.sendMessage(html, data?)    — Create a chat message (async)
  *   this.isInCombat(actor?)          — true if actor is in any combat (tracker OR active melee duel)
  *
- * Weapon / Jamming helpers (use in preWeaponShot / weaponJam / postWeaponShot triggers):
+ * Weapon / Jamming helpers (use in preRollWeaponTest / rollWeaponTest):
  *   this.getWeaponJammingThreshold(weapon)     — weapon's raw jamming value (default 20)
  *   this.getWeaponJammedState(weapon)          — true if weapon.system.jammed (from previous shot)
- *   this.modifyJammingThreshold(args, delta)   — shift threshold in preWeaponShot (+harder, -easier)
- *   this.preventWeaponJam(args)                — forceNoJam = true (preWeaponShot)
- *   this.forceWeaponJam(args)                  — forceJam = true (preWeaponShot)
- *   this.allowShotDespiteJam(args, count=1)    — canFireDespiteJam = true + bullet limit (weaponJam)
- *   this.clearWeaponJam(args)                  — clearJam = true, also clears system.jammed (weaponJam)
+ *   this.modifyJammingThreshold(args, delta)   — shift threshold in preRollWeaponTest
+ *   this.preventWeaponJam(args)                — forceNoJam = true in preRollWeaponTest
+ *   this.forceWeaponJam(args)                  — forceJam = true in preRollWeaponTest
+ *   this.allowShotDespiteJam(args, count=1)    — allow a limited shot in rollWeaponTest
+ *   this.clearWeaponJam(args)                  — clear the jam in rollWeaponTest
  *   this.isStandardJam(args, min=1, max=20)    — true if bestResult in [min,max] AND wouldSucceed; swaps min/max if inverted
  *
- * Burst shift / ammo helpers (use in postWeaponShot; rollData = args.rollData):
+ * Burst shift / ammo helpers (use in rollWeaponTest; rollData = args.rollData):
  *   await this.refundBullets(rollData, count)  — return last `count` bullets from bulletSequence to the magazine/ammo item
  *   await this.refundBurstLevel(rollData, targetLevel)
  *                                              — refund bullets so effective burst level = targetLevel (0=single, 1=short, 2=long)
@@ -4039,7 +4040,6 @@ export class NeuroshimaScript {
  */
 export class NeuroshimaScriptRunner {
   static TRIGGERS = EFFECT_TRIGGERS;
-  static LEGACY_TRIGGERS = LEGACY_EFFECT_TRIGGERS;
 
   static _currentMeleeActionSourceEffectUuid = null;
 
@@ -4933,7 +4933,6 @@ export class NeuroshimaScriptRunner {
       out._context = {
         schemaVersion: context.schemaVersion,
         trigger: context.trigger,
-        legacyTrigger: context.legacyTrigger,
         hasTest: !!context.test,
         hasResult: !!context.result
       };
@@ -4973,18 +4972,10 @@ export class NeuroshimaScriptRunner {
   }
 
   /**
-   * Execute one canonical lifecycle event and, when requested by the callsite,
-   * its legacy aliases. Canonical scripts are always executed once, even when
-   * several old triggers used to describe the same lifecycle boundary.
-   *
-   * New scripts receive the stable context as both args.context and
-   * args.eventContext. Legacy scripts keep their original args shape and gain
-   * the context additively.
+   * Execute one canonical lifecycle event. Every matching script runs once and
+   * receives the stable metadata through `args.eventContext`.
    */
-  static async executeEvent(event, args = {}, {
-    legacyTriggers = [],
-    metadata = {}
-  } = {}) {
+  static async executeEvent(event, args = {}, { metadata = {} } = {}) {
     const actor = args.actor;
     if (!actor) return null;
     const publicTrigger = this._resolvePublicTrigger(event, args, metadata);
@@ -5004,30 +4995,9 @@ export class NeuroshimaScriptRunner {
       .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
       .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
     for (const script of canonicalScripts) {
-      await this._executeScriptWithCompatibility(script, event, eventArgs);
+      await this._executeScript(script, event, eventArgs);
     }
 
-    const seen = new Set(canonicalScripts.map(script => this._scriptIdentity(script)));
-    const compatibleLegacy = [
-      ...automaticLegacyTriggersFor(publicTrigger),
-      ...legacyTriggers
-    ];
-    for (const legacyTrigger of [...new Set(compatibleLegacy)]) {
-      const legacyScripts = this.getScripts(actor, legacyTrigger)
-        .filter(script => this._matchesItemDocumentScope(
-          script,
-          publicTrigger,
-          metadata.item ?? args.item ?? args.weapon
-        ));
-      for (const script of legacyScripts) {
-        const identity = this._scriptIdentity(script);
-        if (seen.has(identity)) continue;
-        seen.add(identity);
-        context.legacyTrigger = legacyTrigger;
-        await this._executeScriptWithCompatibility(script, legacyTrigger, eventArgs);
-      }
-    }
-    context.legacyTrigger = null;
     return context;
   }
 
@@ -5053,31 +5023,7 @@ export class NeuroshimaScriptRunner {
     return TriggerRegistry.canonical(aliases[event] ?? event);
   }
 
-  /**
-   * Compatibility-only dispatch for an old trigger whose execution semantics
-   * cannot be migrated losslessly yet (for example weaponJam).
-   */
-  static async executeLegacy(trigger, args = {}, metadata = {}) {
-    const event = LEGACY_EFFECT_TRIGGERS[trigger] ?? trigger;
-    const context = createTriggerContext(event, args, {
-      ...metadata,
-      legacyTrigger: trigger
-    });
-    const legacyArgs = args;
-    legacyArgs.trigger = trigger;
-    legacyArgs.eventContext = context;
-    for (const script of this.getScripts(args.actor, trigger)
-      .filter(script => this._matchesItemDocumentScope(
-        script,
-        event,
-        metadata.item ?? args.item ?? args.weapon
-      ))) {
-      await this._executeScriptWithCompatibility(script, trigger, legacyArgs);
-    }
-    return context;
-  }
-
-  static async _executeScriptWithCompatibility(script, trigger, args) {
+  static async _executeScript(script, trigger, args) {
     if (trigger === "takeDamage" && Array.isArray(args.wounds)) {
       const before = args.wounds.map(w => ({
         forcePassed: w.forcePassed,
@@ -5170,10 +5116,7 @@ export class NeuroshimaScriptRunner {
     }
   }
 
-  static executeEventSync(event, args = {}, {
-    legacyTriggers = [],
-    metadata = {}
-  } = {}) {
+  static executeEventSync(event, args = {}, { metadata = {} } = {}) {
     const actor = args.actor;
     if (!actor) return null;
     const publicTrigger = this._resolvePublicTrigger(event, args, metadata);
@@ -5189,25 +5132,9 @@ export class NeuroshimaScriptRunner {
     const canonicalScripts = this.getScripts(actor, publicTrigger)
       .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
       .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
-    const seen = new Set();
     for (const script of canonicalScripts) {
-      seen.add(this._scriptIdentity(script));
       script.executeSync(eventArgs);
     }
-    const compatibleLegacy = [
-      ...automaticLegacyTriggersFor(publicTrigger),
-      ...legacyTriggers
-    ];
-    for (const legacyTrigger of [...new Set(compatibleLegacy)]) {
-      for (const script of this.getScripts(actor, legacyTrigger)) {
-        const identity = this._scriptIdentity(script);
-        if (seen.has(identity)) continue;
-        seen.add(identity);
-        context.legacyTrigger = legacyTrigger;
-        script.executeSync(eventArgs);
-      }
-    }
-    context.legacyTrigger = null;
     return context;
   }
 

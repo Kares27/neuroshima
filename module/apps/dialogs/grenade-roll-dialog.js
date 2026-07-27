@@ -1,8 +1,26 @@
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaScriptRunner } from "../neuroshima-script-engine.js";
-import { NeuroshimaDice } from "../../helpers/dice.js";
-import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
+import { GrenadeTest, TestRules } from "../../tests.mjs";
 import { NeuroshimaRollDialogBase } from "./roll-dialog-base.js";
+
+function measureDistance(first, second) {
+  if (!first || !second) return 0;
+  const a = first.center || first;
+  const b = second.center || second;
+  return canvas.grid.measurePath([{ x: a.x, y: a.y }, { x: b.x, y: b.y }]).distance;
+}
+
+function grenadePenalty(distance, build, useBuildBonus) {
+  const config = game.neuroshima?.config ?? NEUROSHIMA;
+  const baseRange = config.grenadeBaseRange ?? 10;
+  if (distance <= baseRange) return 0;
+  const raw = Math.round((distance - baseRange) * (config.grenadeDistanceMultiplier ?? 3));
+  const tier = useBuildBonus
+    ? config.grenadeConstitutionBonuses?.find(entry =>
+        build >= entry.minBuild && build <= entry.maxBuild)
+    : null;
+  return Math.max(0, raw - Number(tier?.bonus ?? 0));
+}
 
 export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
   constructor(options = {}) {
@@ -67,14 +85,14 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     if (targets.size > 0 && this.userEntry.distance === undefined) {
       const actorToken = canvas.tokens?.placeables?.find(t => t.actor?.id === actor?.id);
       const targetToken = Array.from(targets)[0];
-      if (actorToken && targetToken && game.neuroshima?.NeuroshimaDice?.measureDistance) {
-        distance = game.neuroshima.NeuroshimaDice.measureDistance(actorToken, targetToken);
+      if (actorToken && targetToken) {
+        distance = measureDistance(actorToken, targetToken);
       }
     }
 
     const build        = actor?.system?.attributes?.constitution ?? 0;
     const useBuildBonus = wData.useBuildBonus !== false;
-    const distancePenalty = this.userEntry.distancePenalty ?? NeuroshimaDice.getGrenadePenalty(distance, build, null, useBuildBonus);
+    const distancePenalty = this.userEntry.distancePenalty ?? grenadePenalty(distance, build, useBuildBonus);
 
     const weaponAttrKey  = wData.attribute || "dexterity";
     const weaponSkillKey = wData.skill || "throwing";
@@ -196,7 +214,7 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
     if (totalEl) totalEl.textContent = `${totalPct >= 0 ? "+" : ""}${totalPct}%`;
 
     const NEUROSHIMA = game.neuroshima?.config ?? {};
-    const baseDiff = NeuroshimaDice.getDifficultyFromPercent(totalPct);
+    const baseDiff = TestRules.difficultyFromPercent(totalPct);
     const diffLabel = baseDiff ? game.i18n.localize(baseDiff.label) : "-";
     const finalDiffEl = html.querySelector('.final-difficulty');
     if (finalDiffEl) finalDiffEl.textContent = diffLabel;
@@ -259,13 +277,55 @@ export class NeuroshimaGrenadeRollDialog extends NeuroshimaRollDialogBase {
       autoSuccess:        sf.autoSuccess === true,
       annotations:        sf.annotations || []
     };
-    const TestClass = NeuroshimaTestFactory.create({
-      type: "grenade",
-      subtype: "throw"
-    }).constructor;
-    const test = TestClass.fromLegacyParameters(params);
+    const attributeKey = this.weapon.system.attribute || "dexterity";
+    const skillKey = this.weapon.system.skill || "throwing";
+    const test = new GrenadeTest({
+      actor: this.actor,
+      item: this.weapon,
+      attribute: {
+        key: attributeKey,
+        value: Number(this.actor.system.attributeTotals?.[attributeKey]
+          ?? this.actor.system.attributes?.[attributeKey]
+          ?? 0)
+      },
+      skill: {
+        key: skillKey,
+        value: Number(this.actor.system.skills?.[skillKey]?.value ?? 0)
+      },
+      preData: {
+        label: this.weapon.name,
+        attributeBonus: Number(params.attributeBonus ?? 0),
+        skillBonus: Number(params.skillBonus ?? 0),
+        annotations: [...(params.annotations ?? [])],
+        penalties: {
+          mod: Number(params.modifier ?? 0) + Number(params.scriptModifier ?? 0),
+          armor: Number(params.armorPenalty ?? 0),
+          wounds: params.useWoundPenalty
+            ? Number(this.actor.system.combat?.totalWoundPenalty ?? 0)
+            : 0,
+          disease: params.useDiseasePenalty ? Number(params.diseasePenalty ?? 0) : 0,
+          distance: Number(params.distancePenalty ?? 0)
+        }
+      },
+      context: {
+        isOpen: false,
+        isCombat: true,
+        rollMode: params.rollMode,
+        applySkillDifficultyShift: false,
+        applyDiceDifficultyShift: false,
+        grenadeData: {
+          distance: Number(params.distance ?? 0),
+          distancePenalty: Number(params.distancePenalty ?? 0),
+          blastZones: [...(this.weapon.system.blastZones ?? [])]
+        },
+        eventArgs: { weapon: this.weapon }
+      }
+    });
+    if (params.autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
     await test.roll();
-    const result = await NeuroshimaDice.renderGrenadeTestResult(test, params);
+    const { NeuroshimaChatMessage } = await import("../../documents/chat-message.js");
+    const message = await NeuroshimaChatMessage.renderGrenadeRoll(test);
+    const result = { ...test.result.data, message };
 
     if (result?.remainingQuantity === 0) {
       ui.notifications.warn(game.i18n.format("NEUROSHIMA.Grenade.QuantityEmpty", { name: this.weapon.name }));

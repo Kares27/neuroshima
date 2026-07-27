@@ -2968,12 +2968,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
         actor: actor,
         skill: "", // Player selects in dialog
         isMeleeInitiative: true,
-        onRoll: async (rollData) => {
-            const rollResult = await game.neuroshima.NeuroshimaDice.rollInitiative({
-                ...rollData,
-                actor: actor,
-                chatMessage: true // Show this roll in chat
-            });
+        onRoll: async (rollResult) => {
             
             // Save the initiative result on the actor
             game.neuroshima.log("Aktualizacja inicjatywy melee:", {
@@ -3057,12 +3052,7 @@ export class NeuroshimaActorSheet extends NeuroshimaBaseActorSheet {
           isMelee: true,
           meleeMode: "respond",
           pendingId,
-          onRoll: async (rollData) => {
-              const result = await game.neuroshima.NeuroshimaDice.rollInitiative({
-                  ...rollData,
-                  actor: this.document,
-                  isMeleeInitiative: true
-              });
+          onRoll: async (result) => {
               
               const { NeuroshimaMeleeCombat } = await import("../combat/combat.js");
               await NeuroshimaMeleeCombat.respondToMeleePending(pendingId, result.successPoints);

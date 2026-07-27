@@ -1,7 +1,6 @@
 import { NEUROSHIMA } from "../config.js";
-import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
-import { NeuroshimaTestFactory } from "../tests/test-factory.js";
+import { NeuroshimaTestFactory } from "../tests.mjs";
 
 /**
  * Runtime for post-roll actions declared by Active Effects.
@@ -40,7 +39,12 @@ export class EffectActionRuntime {
   }
 
   static async execute(message, instanceId) {
-    const rollData = foundry.utils.deepClone(message.getFlag("neuroshima", "rollData") ?? {});
+    const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
+    if (!serialized?.classId) {
+      return ui.notifications.warn("Ta karta nie zawiera testu w nowym formacie.");
+    }
+    const test = await NeuroshimaTestFactory.fromData(serialized);
+    const rollData = test.result.data;
     const ref = (rollData.effectActions ?? []).find(entry => entry.instanceId === instanceId);
     if (!ref) return ui.notifications.warn("Ta akcja nie jest już dostępna na tej karcie.");
     if (ref.used) return ui.notifications.warn("Ta akcja została już użyta.");
@@ -56,10 +60,6 @@ export class EffectActionRuntime {
     }
 
     const sourceItem = await this._sourceItem(effect);
-    const serialized = message.getFlag("neuroshima", "test");
-    const test = serialized?.classId
-      ? await NeuroshimaTestFactory.fromData({ ...serialized, rollData })
-      : null;
     const ctx = this._context({
       actor, effect, sourceItem, action, rollData,
       surface: ref.surface, message, test
@@ -75,20 +75,16 @@ export class EffectActionRuntime {
         }, effect);
         const result = await script.execute({
           actor, item: sourceItem, rollData,
-          test: test ?? { result: { rollData } },
+          test,
           actionContext: ctx
         });
         if (result === false) return;
       }
-      if (test) {
-        test.markDirty("effectAction");
-        await test.recalculate();
-        await test.applyResultOverrides();
-      } else {
-        this._recalculate(rollData);
-      }
+      test.markDirty("effectAction");
+      await test.recalculate();
+      await test.applyResultOverrides();
       ref.used = true;
-      await this.rerenderMessage(message, rollData);
+      await test.updateMessage(message);
     } catch (error) {
       console.error(`Neuroshima | executeScript failed for ${action.id}`, error);
       ui.notifications.error(`Nie udało się wykonać akcji: ${error.message}`);
@@ -210,28 +206,8 @@ export class EffectActionRuntime {
     return picked;
   }
 
-  static _recalculate(data) {
-    if (data.diceChanges?.length) {
-      NeuroshimaDice.recalculateRollTestAfterScripts({ result: { rollData: data } });
-    }
-    const bonus = Number(data.effectActionSuccessBonus ?? 0);
-    const pointsBonus = Number(data.effectActionSuccessPointsBonus ?? 0);
-    if (bonus) {
-      data.successCount = Math.max(0, Number(data.successCount ?? 0) + bonus);
-      data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + bonus);
-    }
-    if (pointsBonus) data.successPoints = Math.max(0, Number(data.successPoints ?? 0) + pointsBonus);
-    if (data.effectActionForcedSuccess !== undefined) {
-      data.success = data.isSuccess = data.effectActionForcedSuccess;
-    } else {
-      data.isSuccess = Boolean(data.success);
-      if (bonus > 0 && Number(data.successCount) > 0) data.success = data.isSuccess = true;
-    }
-    data.effectActionSuccessBonus = 0;
-    data.effectActionSuccessPointsBonus = 0;
-  }
-
-  static async rerenderMessage(message, rollData) {
+  static async rerenderMessage(message, test) {
+    const rollData = test.result.data;
     const type = message.getFlag("neuroshima", "messageType");
     const actor = game.actors.get(rollData.actorId);
     const minTooltipRole = game.settings.get("neuroshima", "rollTooltipMinRole");
@@ -254,12 +230,9 @@ export class EffectActionRuntime {
       patientRef: { uuid: rollData.patientActor?.uuid },
       medicRef: { uuid: actor?.uuid }
     });
-    const testData = message.getFlag("neuroshima", "test");
-    if (testData) testData.rollData = rollData;
     await message.update({
       content,
-      "flags.neuroshima.rollData": rollData,
-      "flags.neuroshima.test": testData
+      "flags.neuroshima.test": test.serialize()
     });
   }
 }

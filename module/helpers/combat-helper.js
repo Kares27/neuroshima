@@ -2,7 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { getEffectiveArmorResistances } from "./mod-helpers.js";
-import { NeuroshimaTestFactory } from "../tests/test-factory.js";
+import { NeuroshimaTestFactory, SkillTest } from "../tests.mjs";
 
 /**
  * Helper class for Neuroshima 1.5 combat-related automation.
@@ -28,7 +28,7 @@ export class CombatHelper {
    * @returns {Promise<boolean>} Success status.
    */
   static async refundAmmunition(message) {
-    const flags = message.getFlag("neuroshima", "rollData");
+    const flags = message.getFlag("neuroshima", "test")?.rollData;
     
     game.neuroshima.group("CombatHelper | refundAmmunition");
     game.neuroshima.log("Parametry refundacji:", {
@@ -194,7 +194,7 @@ export class CombatHelper {
    * @returns {Promise<number>} Number of bullets actually refunded, or 0 on failure.
    */
   static async refundBurstLevel(message, targetLevel) {
-    const flags = message.getFlag("neuroshima", "rollData");
+    const flags = message.getFlag("neuroshima", "test")?.rollData;
     if (!flags?.isWeapon) return 0;
 
     const actor = game.actors.get(flags.actorId);
@@ -268,7 +268,7 @@ export class CombatHelper {
    * @returns {Promise<number>} Number of bullets actually consumed, or 0 on failure.
    */
   static async increaseBurstLevel(message, targetLevel) {
-    const flags = message.getFlag("neuroshima", "rollData");
+    const flags = message.getFlag("neuroshima", "test")?.rollData;
     if (!flags?.isWeapon) return 0;
 
     const actor = game.actors.get(flags.actorId);
@@ -503,7 +503,6 @@ export class CombatHelper {
       metadata: { role: "target", item: attackerWeapon, damage: attackData }
     });
     await NeuroshimaScriptRunner.executeEvent("preTakeDamage", preArgs, {
-      legacyTriggers: ["preTakeDamage"],
       metadata: { role: "target", item: attackerWeapon, damage: attackData }
     });
     damageType = preArgs.damageType;
@@ -655,7 +654,7 @@ export class CombatHelper {
             // pain resistance (forcePassed) on individual wounds in this mutable array.
             const filteredWounds = rawWounds.filter(w => !w.forceSkip);
 
-            const damageResult = await game.neuroshima.NeuroshimaDice.applyDamage(actor, {
+            const damageResult = await this.applyDamage(actor, {
                 wounds: filteredWounds,
                 location,
                 source: sourceInfo,
@@ -802,7 +801,6 @@ export class CombatHelper {
       vehicleDmgTypeFinal = vPreArmorArgs.damageType ?? vehicleDmgTypeFinal;
       const vArmorArgs = { actor, location, damageType: vehicleDmgTypeFinal, sp: rawSP, piercing: vPreArmorArgs.piercing ?? piercing, bonusSP: 0 };
       NeuroshimaScriptRunner.executeEventSync("APCalc", vArmorArgs, {
-        legacyTriggers: ["armorCalculation"],
         metadata: { role: "target", damage: vArmorArgs }
       });
       const armorSP = (vArmorArgs.sp ?? rawSP) + (vArmorArgs.bonusSP ?? 0);
@@ -926,7 +924,7 @@ export class CombatHelper {
    * @returns {Promise<void>}
    */
   static async applyDamage(message, actors) {
-    let flags = message.getFlag("neuroshima", "rollData");
+    let flags = message.getFlag("neuroshima", "test")?.rollData;
     const opposedResult = message.getFlag("neuroshima", "opposedResult");
     const attackMessageId = message.getFlag("neuroshima", "attackMessageId");
 
@@ -936,7 +934,7 @@ export class CombatHelper {
     if (!flags && opposedResult && attackMessageId) {
         const attackMessage = game.messages.get(attackMessageId);
         if (attackMessage) {
-            flags = attackMessage.getFlag("neuroshima", "rollData");
+            flags = attackMessage.getFlag("neuroshima", "test")?.rollData;
             if (flags) {
                 flags = foundry.utils.mergeObject(foundry.utils.deepClone(flags), {
                     opposedResult: opposedResult
@@ -1064,11 +1062,145 @@ export class CombatHelper {
     game.neuroshima.groupEnd();
   }
 
-  /**
-   * @deprecated Use `NeuroshimaDice.processPainResistance` directly.
-   */
   static async processPainResistance(actor, rawWounds, location, sourceInfo) {
-    return game.neuroshima.NeuroshimaDice.processPainResistance(actor, rawWounds, location, sourceInfo);
+    const config = game.neuroshima?.config ?? NEUROSHIMA;
+    const skillKey = "painResistance";
+    const statKey = "charisma";
+    const skillValue = Number(actor.system.skills?.[skillKey]?.value ?? 0);
+    const statValue = Number(
+      actor.system.attributeTotals?.[statKey]
+      ?? actor.system.attributes?.[statKey]
+      ?? 10
+    );
+    const results = [];
+    const processedWounds = [];
+
+    for (const wound of rawWounds) {
+      const woundConfig = config.woundConfiguration?.[wound.damageType] ?? {};
+      if (!woundConfig.difficulty) {
+        const penalty = Number(woundConfig.penalties?.[0] ?? 160);
+        results.push({
+          name: wound.name, damageType: wound.damageType, isPassed: false,
+          isCritical: true, penalty, modifiedResults: [], annotation: wound.annotation || null
+        });
+        processedWounds.push({
+          name: wound.name,
+          type: "wound",
+          system: {
+            location, damageType: wound.damageType,
+            damageCategory: wound.damageCategory ?? "physical",
+            penalty, description: sourceInfo
+          }
+        });
+        continue;
+      }
+
+      const test = new SkillTest({
+        actor,
+        attribute: { key: statKey, value: statValue },
+        skill: { key: skillKey, value: skillValue },
+        preData: {
+          label: game.i18n.localize("NEUROSHIMA.Skills.painResistance"),
+          penalties: { base: Number(woundConfig.difficulty.min ?? 0) },
+          annotations: [wound.annotation].filter(Boolean)
+        },
+        context: {
+          isOpen: false,
+          rollType: "painResistance",
+          subtype: wound.damageType,
+          applySkillDifficultyShift: game.settings.get("neuroshima", "allowPainResistanceShift"),
+          applyDiceDifficultyShift: true,
+          eventArgs: { wound, damageType: wound.damageType, location, sourceInfo }
+        }
+      });
+      if (wound.forcePassed === true) test.forceSuccess({ mode: "skipRoll" });
+      await test.roll({ commit: false });
+      const data = test.result.data;
+      const passed = data.success === true;
+      const penalty = Number(woundConfig.penalties?.[passed ? 0 : 1] ?? 0);
+      results.push({
+        name: wound.name,
+        damageType: wound.damageType,
+        baseDifficulty: woundConfig.difficulty.label,
+        difficulty: data.difficultyLabel,
+        isPassed: passed,
+        forcePassed: wound.forcePassed === true,
+        penalty,
+        dice: data.rawResults,
+        modifiedResults: data.modifiedResults,
+        successPoints: data.successPoints,
+        target: data.target,
+        skill: skillValue,
+        isCritical: false,
+        isCritSuccess: data.isCritSuccess,
+        isCritFailure: data.isCritFailure,
+        annotation: wound.annotation || null,
+        tooltip: game.neuroshima.NeuroshimaDice._buildClosedTestTooltip(data, wound.name),
+        tooltipHtml: game.neuroshima.NeuroshimaDice.buildDiceTooltipHtml(data)
+      });
+      processedWounds.push({
+        name: wound.name,
+        type: "wound",
+        system: {
+          location, damageType: wound.damageType,
+          damageCategory: wound.damageCategory ?? "physical",
+          penalty, description: sourceInfo
+        }
+      });
+    }
+    return { processedWounds, results };
+  }
+
+  static async applyDamage(actor, {
+    damageType = "L", wounds, location = "torso", source = "", nameOverride,
+    penaltyOverride, additionalSystem = {}, withPainResistance = false,
+    withHooks = false, forcePassed = false, annotation = null, suppressChat = false
+  } = {}) {
+    let rawWounds = wounds ? [...wounds] : [{
+      name: nameOverride ?? game.i18n.localize(`NEUROSHIMA.DamageType.${damageType}`),
+      damageType, forcePassed, annotation
+    }];
+    if (withHooks) {
+      const args = { actor, wounds: rawWounds, location, role: "target" };
+      await NeuroshimaScriptRunner.executeEvent("takeDamage", args, {
+        metadata: { role: "target", damage: args }
+      });
+      rawWounds = rawWounds.filter(wound => !wound.forceSkip);
+    }
+    if (!rawWounds.length) return { wounds: [], results: [], woundIds: [] };
+
+    let results = [];
+    let documents;
+    if (withPainResistance && penaltyOverride == null) {
+      const pain = await this.processPainResistance(actor, rawWounds, location, source);
+      results = pain.results;
+      documents = pain.processedWounds;
+    } else {
+      documents = rawWounds.map(wound => ({
+        name: wound.name ?? nameOverride ?? game.i18n.localize(`NEUROSHIMA.DamageType.${wound.damageType}`),
+        type: "wound",
+        system: {
+          location,
+          damageType: wound.damageType,
+          damageCategory: wound.damageCategory ?? "physical",
+          penalty: penaltyOverride ?? NEUROSHIMA.woundConfiguration?.[wound.damageType]?.penalties?.[0] ?? 20,
+          description: source
+        }
+      }));
+    }
+    documents = documents.map(document => ({
+      ...document,
+      system: {
+        isActive: true, isHealing: false,
+        ...document.system, ...additionalSystem
+      }
+    }));
+    const created = await actor.createEmbeddedDocuments("Item", documents);
+    const woundIds = created.map(wound => wound.id);
+    if (!suppressChat && withPainResistance && results.length) {
+      await NeuroshimaChatMessage.renderPainResistance(actor, results, woundIds, 0, []);
+    }
+    return { wounds: created, results, woundIds, location };
   }
 
   /**
@@ -1332,13 +1464,18 @@ export class CombatHelper {
     // Notify the user
     ui.notifications.info(game.i18n.format("NEUROSHIMA.Notifications.TriggeringPainResistance", { name: actor.name }));
 
-    return game.neuroshima.NeuroshimaDice.rollTest({
-        skill: skillValue,
-        stat: statValue,
-        label: game.i18n.localize("NEUROSHIMA.Skills.painResistance"),
-        actor: actor,
-        isOpen: false // Usually a closed test
+    const test = new SkillTest({
+      actor,
+      attribute: { key: statKey, value: statValue },
+      skill: { key: skillKey, value: skillValue },
+      preData: {
+        label: game.i18n.localize("NEUROSHIMA.Skills.painResistance")
+      },
+      context: { isOpen: false, rollType: "painResistance" }
     });
+    await test.roll();
+    await NeuroshimaChatMessage.renderRoll(test);
+    return test;
   }
 
   /**
@@ -1507,7 +1644,6 @@ export class CombatHelper {
       ...context
     };
     NeuroshimaScriptRunner.executeEventSync("APCalc", armorArgs, {
-      legacyTriggers: ["armorCalculation"],
       metadata: { role: "target", damage: armorArgs }
     });
     totalArmorRating = (armorArgs.sp ?? totalArmorRating) + (armorArgs.bonusSP ?? 0);
