@@ -15,11 +15,12 @@ import { NeuroshimaItemSheet } from "./module/sheets/item-sheet.js";
 import { NeuroshimaEffectSheet } from "./module/sheets/neuroshima-effect-sheet.js";
 import { NeuroshimaScriptRunner } from "./module/apps/neuroshima-script-engine.js";
 import { NeuroshimaDice } from "./module/helpers/dice.js";
-import { NeuroshimaTest } from "./module/tests/neuroshima-test.js";
-import { TestRunner } from "./module/tests/test-runner.js";
-import { TestRules } from "./module/tests/test-rules.js";
-import { NeuroshimaTestFactory } from "./module/tests/test-factory.js";
-import { TestClassRegistry } from "./module/tests/test-class-registry.js";
+import {
+    NeuroshimaTest,
+    TestRules,
+    NeuroshimaTestFactory,
+    TestClassRegistry
+} from "./module/tests.mjs";
 import { TriggerRegistry } from "./module/effects/trigger-registry.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { NeuroshimaMeleeCombat } from "./module/combat/combat.js";
@@ -254,7 +255,6 @@ Hooks.once('init', async function() {
         NeuroshimaTestFactory,
         TestClassRegistry,
         TriggerRegistry,
-        TestRunner,
         TestRules,
         CombatHelper,
         NeuroshimaMeleeCombat,
