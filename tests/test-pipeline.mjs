@@ -3,6 +3,8 @@ import { Closed3d20Evaluator, Open3d20Evaluator } from "../module/tests/evaluato
 import { NeuroshimaTest } from "../module/tests/neuroshima-test.js";
 import { TestRunner } from "../module/tests/test-runner.js";
 import { matchesItemDocumentScope } from "../module/effects/effect-scope.js";
+import { NeuroshimaTestFactory } from "../module/tests/test-factory.js";
+import { TriggerRegistry } from "../module/effects/trigger-registry.js";
 
 const NeuroshimaScriptRunner = {
   executeEvent: async () => {},
@@ -206,6 +208,56 @@ test("item-scoped effects require the exact used item", () => {
     matchesItemDocumentScope(script, "rollTest", item),
     true
   );
+});
+
+test("factory selects stable concrete test classes", () => {
+  assert.equal(NeuroshimaTestFactory.create({ type: "attribute" }).classId, "attribute");
+  assert.equal(NeuroshimaTestFactory.create({ type: "skill" }).classId, "skill");
+  assert.equal(NeuroshimaTestFactory.create({ type: "initiative" }).classId, "initiative");
+  assert.equal(
+    NeuroshimaTestFactory.create({ type: "weapon", subtype: "ranged" }).classId,
+    "rangedWeapon"
+  );
+  assert.equal(
+    NeuroshimaTestFactory.create({ type: "weapon", subtype: "melee" }).classId,
+    "meleeWeapon"
+  );
+  assert.equal(NeuroshimaTestFactory.create({ type: "reputation" }).classId, "reputation");
+});
+
+test("weapon trigger order is inherited by the concrete class", async () => {
+  const events = [];
+  NeuroshimaScriptRunner.executeEvent = async trigger => events.push(trigger);
+  const subject = NeuroshimaTestFactory.create({
+    actor: {}, type: "weapon", subtype: "ranged"
+  });
+  await TestRunner.run(subject, {
+    roll: async () => ({ roll: {}, rawResults: [5, 10, 15] }),
+    evaluate: current => { current.result.data.success = true; }
+  });
+  assert.equal(subject.classId, "rangedWeapon");
+  assert.deepEqual(events, [
+    "preRollTest", "preRollWeaponTest", "rollTest", "rollWeaponTest"
+  ]);
+});
+
+test("serialized tests preserve their stable class id", () => {
+  const subject = NeuroshimaTestFactory.create({
+    type: "weapon", subtype: "melee", preData: { autoSuccess: true }
+  });
+  const serialized = subject.serialize();
+  assert.equal(serialized.classId, "meleeWeapon");
+  assert.equal(serialized.preData.autoSuccess, true);
+  assert.equal(subject.toLegacyData().testClassId, "meleeWeapon");
+});
+
+test("trigger registry exposes exactly 55 public triggers and hides aliases", () => {
+  assert.equal(TriggerRegistry.size, 55);
+  assert.equal(TriggerRegistry.get("preRollWeaponTest").mode, "async");
+  assert.equal(TriggerRegistry.get("prePrepareData").mode, "sync");
+  assert.equal(TriggerRegistry.canonical("preMeleePool"), "preRollWeaponTest");
+  assert.equal(TriggerRegistry.isLegacy("collectMeleeActions"), true);
+  assert.equal(Object.hasOwn(TriggerRegistry.publicOptions(), "preMeleePool"), false);
 });
 
 let failures = 0;

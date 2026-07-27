@@ -174,7 +174,7 @@
         <li><a href="#trigger-worldTimeUpdate">worldTimeUpdate — World Time Update</a></li>
         <li><a href="#trigger-preApplyCondition">preApplyCondition — Pre-Apply Condition</a></li>
         <li><a href="#trigger-applyCondition">applyCondition — Apply Condition</a></li>
-        <li><a href="#trigger-preMeleePool">preMeleePool — Pre-Melee Pool</a></li>
+        <li><a href="#trigger-preMeleePool">Legacy: preMeleePool → preRollWeaponTest</a></li>
         <li><a href="#trigger-preOpposedAttacker">preOpposedAttacker — Pre-Opposed Attacker</a></li>
         <li><a href="#trigger-preOpposedDefender">preOpposedDefender — Pre-Opposed Defender</a></li>
         <li><a href="#trigger-opposedAttacker">opposedAttacker — Opposed Attacker</a></li>
@@ -536,11 +536,11 @@
       <tr><td>Obrażenia</td><td><code>preApplyDamage</code>, <code>preTakeDamage</code>, <code>preAPCalc</code>, <code>APCalc</code>, <code>applyDamage</code>, <code>takeDamage</code></td><td>Etap wstępny, redukcja pancerzem oraz końcowa granica przed zapisem dokumentu.</td></tr>
       <tr><td>Walka</td><td><code>startCombat</code>, <code>updateCombat</code>, <code>startRound</code>, <code>startTurn</code>, <code>endTurn</code>, <code>endRound</code>, <code>endCombat</code></td><td>Cykl Combat Foundry.</td></tr>
       <tr><td>Stan świata</td><td><code>worldTimeUpdate</code>, <code>preApplyCondition</code>, <code>applyCondition</code></td><td>Czas świata i kondycje.</td></tr>
-      <tr><td>Melee — pula/opposed</td><td><code>preMeleePool</code>, <code>preOpposedAttacker</code>, <code>preOpposedDefender</code>, <code>opposedAttacker</code>, <code>opposedDefender</code>, <code>meleeUpdate</code></td><td>Modyfikacja puli i kompatybilny pipeline rozstrzygania.</td></tr>
-      <tr><td>Melee — akcje</td><td><code>getMeleeActions</code>, <code>collectMeleeActions</code>, <code>onMeleeActionHit</code>, <code>onMeleeActionMiss</code>, <code>onMeleeActionQueued</code>, <code>onMeleeActionResolved</code></td><td>Definicje i cykl życia deklarowanych sztuczek.</td></tr>
+      <tr><td>Melee — pula/opposed</td><td><code>preRollTest</code>, <code>preRollWeaponTest</code>, <code>preOpposedAttacker</code>, <code>preOpposedDefender</code>, <code>opposedAttacker</code>, <code>opposedDefender</code></td><td>Pula korzysta z klasy <code>MeleeWeaponTest</code>; sprawdzaj <code>args.test.classId === "meleeWeapon"</code>.</td></tr>
+      <tr><td>Melee — akcje</td><td><code>getMeleeActions</code>, <code>beforeMeleeAction</code>, <code>afterMeleeAction</code>, <code>beforeMeleeDamage</code>, <code>afterMeleeDamage</code></td><td>Definicje i cykl życia deklarowanych sztuczek. <code>collectMeleeActions</code> jest ukrytym aliasem legacy.</td></tr>
       <tr><td>Melee — segment</td><td><code>beforeMeleeAction</code>, <code>onMeleeHit</code>, <code>onMeleeBlock</code>, <code>onMeleeTakeover</code>, <code>afterMeleeAction</code></td><td>Rozstrzygnięcie segmentu dla obu uczestników.</td></tr>
       <tr><td>Melee — obrażenia</td><td><code>beforeMeleeDamage</code>, <code>afterMeleeDamage</code></td><td>Przed i po aplikacji pojedynczego trafienia melee.</td></tr>
-      <tr><td>Melee — pojedynek</td><td><code>onDuelStart</code>, <code>onDuelSegmentStart</code>, <code>onDuelEnd</code></td><td>Cykl całej karty pojedynku.</td></tr>
+      <tr><td>Melee — pojedynek</td><td><code>startDuel</code>, <code>startDuelSegment</code>, <code>endDuel</code></td><td>Cykl całej karty pojedynku. Nazwy <code>onDuel*</code> pozostają aliasami legacy.</td></tr>
     </tbody>
   </table>
 
@@ -1858,7 +1858,11 @@ args.piercing = <span class="num">0</span>;</code></pre>
 
 
 
-  <h3 id="trigger-preMeleePool">preMeleePool — <em>Pre-Melee Pool</em></h3>
+  <h3 id="trigger-preMeleePool">preMeleePool — <em>legacy alias</em></h3>
+  <div class="callout warning"><strong>Deprecated:</strong> nowe efekty powinny używać
+    <code>preRollWeaponTest</code> i sprawdzać
+    <code>args.test.classId === "meleeWeapon"</code>. Stara nazwa jest wykonywana
+    wyłącznie dla zgodności zapisanych efektów.</div>
   <p>Uruchamiany <strong>po</strong> tym jak aktor rzucił 3k20 (wyniki są znane), ale <strong>przed</strong> zatwierdzeniem puli i jej widocznością dla przeciwnika. Odpala się tylko na aktorze który właśnie rzucał. Pozwala modyfikować progi trudności snapshotu ataku/obrony oraz klucz umiejętności.</p>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>
@@ -2326,8 +2330,8 @@ args.fields.difficultyShift += <span class="num">1</span>;</code></pre>
   <table>
     <thead><tr><th>Trigger</th><th>Zakres i moment</th><th>Najważniejsze argumenty</th></tr></thead>
     <tbody>
-      <tr><td><code>collectMeleeActions</code></td><td>Globalny; po zebraniu akcji z <code>getMeleeActions</code>. Dopisz definicje do mutowalnej tablicy <code>args.actions</code>.</td><td><code>actor</code>, <code>duel</code>, <code>state</code>, <code>actions</code>, <code>uncommittedDice</code>, <code>uncommittedSuccesses</code>, <code>lookupActionDef</code></td></tr>
-      <tr><td><code>onDuelStart</code></td><td>Dla obu aktorów, raz po utworzeniu karty pojedynku.</td><td><code>duel</code>, <code>isAttacker</code>, <code>attackerActor</code>, <code>defenderActor</code>; <code>segment</code> ma wartość <code>null</code></td></tr>
+      <tr><td><code>getMeleeActions</code></td><td>Jedyny publiczny punkt zbierania akcji. Dopisz definicje do mutowalnej tablicy <code>args.actions</code>.</td><td><code>actor</code>, <code>duel</code>, <code>state</code>, <code>actions</code>, <code>uncommittedDice</code>, <code>uncommittedSuccesses</code>, <code>lookupActionDef</code></td></tr>
+      <tr><td><code>startDuel</code></td><td>Dla obu aktorów, raz po utworzeniu karty pojedynku.</td><td><code>duel</code>, <code>isAttacker</code>, <code>attackerActor</code>, <code>defenderActor</code>; <code>segment</code> ma wartość <code>null</code></td></tr>
       <tr><td><code>onDuelSegmentStart</code></td><td>Dla obu aktorów, gdy właściciel inicjatywy zatwierdzi kości segmentu.</td><td>argumenty bazowe oraz <code>segment</code></td></tr>
       <tr><td><code>beforeMeleeAction</code></td><td>Dla obu aktorów przed ustaleniem wyniku segmentu.</td><td><code>duel</code>, <code>segment</code>, <code>action</code>, <code>isAttacker</code>; <code>segment.outcome</code> jest jeszcze <code>null</code></td></tr>
       <tr><td><code>onMeleeHit</code>, <code>onMeleeBlock</code>, <code>onMeleeTakeover</code></td><td>Globalne, dla obu aktorów, po ustaleniu odpowiednio trafienia, remisu/bloku lub przejęcia inicjatywy.</td><td><code>outcome</code>, <code>action</code>, <code>diceCount</code>, <code>attackerSuccesses</code>, <code>defenderSuccesses</code>, <code>hitEntry</code>, <code>hits</code></td></tr>

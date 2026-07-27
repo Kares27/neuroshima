@@ -5,6 +5,7 @@ import {
   createTriggerContext
 } from "../effects/effect-trigger-schema.js";
 import { matchesItemDocumentScope } from "../effects/effect-scope.js";
+import { TriggerRegistry } from "../effects/trigger-registry.js";
 
 /**
  * Thin wrapper around a roll result that normalises both a Foundry Roll object
@@ -4974,6 +4975,7 @@ export class NeuroshimaScriptRunner {
     if (!Object.hasOwn(EFFECT_TRIGGERS, publicTrigger)) {
       throw new Error(`Unknown Neuroshima effect trigger: ${publicTrigger}`);
     }
+    TriggerRegistry.assertMode(publicTrigger, "async");
 
     const context = createTriggerContext(publicTrigger, args, metadata);
     const eventArgs = args;
@@ -4984,7 +4986,7 @@ export class NeuroshimaScriptRunner {
 
     const canonicalScripts = this.getScripts(actor, publicTrigger)
       .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
-      .filter(script => !(publicTrigger === "collectMeleeActions" && script.useActionDef));
+      .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
     for (const script of canonicalScripts) {
       await this._executeScriptWithCompatibility(script, event, eventArgs);
     }
@@ -5020,15 +5022,15 @@ export class NeuroshimaScriptRunner {
       "damage.before": role === "source" ? "preApplyDamage" : "preTakeDamage",
       "damage.mitigate": "APCalc",
       "damage.after": role === "source" ? "applyDamage" : "takeDamage",
-      "duel.start": "onDuelStart",
-      "duel.segment.before": "onDuelSegmentStart",
+      "duel.start": "startDuel",
+      "duel.segment.before": "startDuelSegment",
       "duel.segment.after": role === "defender" ? "opposedDefender" : "opposedAttacker",
       "duel.action.before": "beforeMeleeAction",
       "duel.action.after": "afterMeleeAction",
-      "duel.end": "onDuelEnd",
-      "duel.actions.collect": "collectMeleeActions"
+      "duel.end": "endDuel",
+      "duel.actions.collect": "getMeleeActions"
     };
-    return aliases[event] ?? event;
+    return TriggerRegistry.canonical(aliases[event] ?? event);
   }
 
   /**
@@ -5158,6 +5160,7 @@ export class NeuroshimaScriptRunner {
     if (!Object.hasOwn(EFFECT_TRIGGERS, publicTrigger)) {
       throw new Error(`Unknown Neuroshima effect trigger: ${publicTrigger}`);
     }
+    TriggerRegistry.assertMode(publicTrigger, "sync");
 
     const context = createTriggerContext(publicTrigger, args, metadata);
     const eventArgs = args;
@@ -5165,7 +5168,7 @@ export class NeuroshimaScriptRunner {
     eventArgs.eventContext = context;
     const canonicalScripts = this.getScripts(actor, publicTrigger)
       .filter(script => this._matchesItemDocumentScope(script, publicTrigger, metadata.item ?? args.item ?? args.weapon))
-      .filter(script => !(publicTrigger === "collectMeleeActions" && script.useActionDef));
+      .filter(script => !(publicTrigger === "getMeleeActions" && script.useActionDef));
     const seen = new Set();
     for (const script of canonicalScripts) {
       seen.add(this._scriptIdentity(script));

@@ -17,7 +17,7 @@
  */
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
-import { NeuroshimaTest } from "../tests/neuroshima-test.js";
+import { NeuroshimaTestFactory } from "../tests/test-factory.js";
 import { TestRunner } from "../tests/test-runner.js";
 import { MeleeActionRegistry } from "./melee-action-registry.js";
 import { MeleeActionRunner }   from "./melee-action-runner.js";
@@ -4490,7 +4490,7 @@ export class MeleeResolution {
 
     const defenderTarget = this.getEffectiveTarget(defender, tempoLevel, encounter.crowding[attack.defenderId]?.dexPenalty || 0, "defense");
     const defenderActor = fromUuidSync(defender.actorUuid);
-    const freeTest = new NeuroshimaTest({
+    const freeTest = NeuroshimaTestFactory.create({
       type: "weapon",
       subtype: "meleeFreeDefense",
       actor: defenderActor,

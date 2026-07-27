@@ -18,6 +18,9 @@ import { NeuroshimaDice } from "./module/helpers/dice.js";
 import { NeuroshimaTest } from "./module/tests/neuroshima-test.js";
 import { TestRunner } from "./module/tests/test-runner.js";
 import { TestRules } from "./module/tests/test-rules.js";
+import { NeuroshimaTestFactory } from "./module/tests/test-factory.js";
+import { TestClassRegistry } from "./module/tests/test-class-registry.js";
+import { TriggerRegistry } from "./module/effects/trigger-registry.js";
 import { CombatHelper } from "./module/helpers/combat-helper.js";
 import { NeuroshimaMeleeCombat } from "./module/combat/combat.js";
 import { buildRef, resolveRef } from "./module/helpers/mod-helpers.js";
@@ -248,6 +251,9 @@ Hooks.once('init', async function() {
         NeuroshimaChoiceRouter,
         NeuroshimaDice,
         NeuroshimaTest,
+        NeuroshimaTestFactory,
+        TestClassRegistry,
+        TriggerRegistry,
         TestRunner,
         TestRules,
         CombatHelper,

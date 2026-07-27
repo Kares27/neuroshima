@@ -2,7 +2,7 @@ import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaChatMessage } from "../documents/chat-message.js";
 import { NeuroshimaScriptRunner } from "../apps/neuroshima-script-engine.js";
 import { attachRollContract } from "../dice/roll-contract.js";
-import { NeuroshimaTest } from "../tests/neuroshima-test.js";
+import { NeuroshimaTestFactory } from "../tests/test-factory.js";
 import { TestRunner } from "../tests/test-runner.js";
 import { Closed3d20Evaluator, Defense3d20Evaluator, Open3d20Evaluator } from "../tests/evaluators.js";
 import { TestRules } from "../tests/test-rules.js";
@@ -256,7 +256,7 @@ export class NeuroshimaDice {
     const weaponSubtype = isMelee
       ? "melee"
       : (weapon.system.weaponType === "thrown" ? "thrown" : "ranged");
-    const weaponTest = new NeuroshimaTest({
+    const weaponTest = NeuroshimaTestFactory.create({
       type: "weapon",
       subtype: weaponSubtype,
       actor,
@@ -1249,7 +1249,7 @@ export class NeuroshimaDice {
     if (rollData.success === undefined && rollData.isSuccess !== undefined) {
       rollData.success = !!rollData.isSuccess;
     }
-    const test = new NeuroshimaTest({
+    const test = NeuroshimaTestFactory.create({
       type: rollData.testType ?? rollData.contract?.type ?? (rollData.isWeapon ? "weapon" : "skill"),
       subtype: rollData.testSubtype ?? rollData.contract?.subtype ?? null,
       actor,
@@ -1467,7 +1467,7 @@ export class NeuroshimaDice {
     dieReductionBonus = 0
   } = {}) {
     const type = options.rollType ?? (isInitiative ? "initiative" : (skillKey ? "skill" : "attribute"));
-    const test = new NeuroshimaTest({
+    const test = NeuroshimaTestFactory.create({
       type,
       subtype: options.subtype ?? null,
       actor,
@@ -1502,7 +1502,11 @@ export class NeuroshimaDice {
         isCombat,
         isOpen,
         isInitiative,
-        meleeAction
+        meleeAction,
+        fixedDice,
+        rollMode,
+        applySkillDifficultyShift: options.applySkillDifficultyShift,
+        applyDiceDifficultyShift: options.applyDiceDifficultyShift
       }
     });
 
@@ -1511,104 +1515,7 @@ export class NeuroshimaDice {
     if (forceSuccessMode) test.forceSuccess({ mode: forceSuccessMode });
     else if (autoSuccess === true) test.forceSuccess({ mode: "keepRoll" });
 
-    const closedEvaluator = new Closed3d20Evaluator();
-    const defenseEvaluator = new Defense3d20Evaluator();
-    const openEvaluator = new Open3d20Evaluator();
-
-    await TestRunner.run(test, {
-      prepare: current => {
-        const currentStat = Number(current.attribute?.value ?? stat ?? 0);
-        const currentSkill = Number(current.skill?.value ?? skill ?? 0);
-        const currentPenalties = current.preData.penalties ?? penalties;
-        const finalSkill = currentSkill + Number(current.preData.skillBonus ?? 0);
-        const finalStat = currentStat + Number(current.preData.attributeBonus ?? 0);
-        const totalPenalty = Object.values(currentPenalties ?? {})
-          .reduce((sum, value) => sum + (Number.isFinite(Number(value)) ? Number(value) : 0), 0);
-        const baseDifficulty = TestRules.difficultyFromPercent(totalPenalty);
-        const defending = meleeAction === "defense";
-        const finalIsOpen = defending && !isInitiative ? false : isOpen;
-
-        Object.assign(current.result.data, {
-          label: current.preData.label ?? label,
-          stat: finalStat,
-          skill: finalSkill,
-          skillBonus: Number(current.preData.skillBonus ?? 0),
-          attributeBonus: Number(current.preData.attributeBonus ?? 0),
-          finalDifficultyShift: Number(current.preData.finalDifficultyShift ?? 0),
-          maximumDifficulty: current.preData.maximumDifficulty ?? maximumDifficulty,
-          autoSuccess: current._forcedSuccess !== null,
-          baseStat: currentStat,
-          baseSkill: currentSkill,
-          baseDifficulty,
-          penalties: currentPenalties,
-          penalty: totalPenalty,
-          totalPenalty,
-          baseDifficultyLabel: baseDifficulty.label,
-          isOpen: finalIsOpen,
-          isCombat,
-          isDefending: defending,
-          isReroll,
-          isDebug,
-          rollMode,
-          rawResults: [],
-          rolledResults: [],
-          diceChanges: [],
-          modifiedResults: [],
-          success: false,
-          successCount: 0,
-          successPoints: 0,
-          isCritSuccess: false,
-          isCritFailure: false,
-          isGM: game.user.isGM,
-          actorId: actor?.id,
-          actorImg: actor?.img,
-          attributeKey: current.attribute?.key ?? attributeKey,
-          skillKey: current.skill?.key ?? skillKey,
-          dieManualBonus: Number(current.preData.dieManualBonus ?? 0),
-          dieReductionBonus: Number(current.preData.dieReductionBonus ?? 0),
-          annotations: current.result.annotations
-        });
-      },
-      roll: async current => {
-        const roll = new Roll("3d20");
-        await roll.evaluate();
-        if (Array.isArray(fixedDice) && fixedDice.length === 3) {
-          roll.terms[0].results.forEach((result, index) => {
-            result.result = Number(fixedDice[index]);
-          });
-          roll._total = roll.terms[0].results.reduce((sum, result) => sum + result.result, 0);
-        }
-        const rawResults = roll.terms[0].results.map(result => Number(result.result));
-        current.result.data.rawResults = rawResults;
-        current.result.data.rolledResults = [...rawResults];
-        return { roll, rawResults };
-      },
-      evaluate: current => {
-        const data = current.result.data;
-        let shift = Number(data.finalDifficultyShift ?? 0);
-        const allowCombatShift = game.settings.get("neuroshima", "allowCombatShift");
-        if ((!isCombat || allowCombatShift) && options.applySkillDifficultyShift !== false) {
-          shift -= TestRules.skillShift(data.skill);
-        }
-        if ((!isCombat || allowCombatShift) && options.applyDiceDifficultyShift !== false) {
-          shift += TestRules.diceShift(data.rawResults);
-        }
-        const difficulty = TestRules.clampMaximumDifficulty(
-          TestRules.shiftDifficulty(data.baseDifficulty, shift),
-          data.maximumDifficulty
-        );
-        data.difficultyLabel = difficulty.label;
-        data.ptMod = difficulty.mod;
-        data.target = Number(data.stat ?? 0) + Number(data.ptMod ?? 0);
-
-        if (data.isOpen) openEvaluator.evaluate(data, data.rawResults);
-        else if (data.isDefending) defenseEvaluator.evaluate(data, data.rawResults);
-        else closedEvaluator.evaluate(data, data.rawResults);
-
-        current.result.tags.add(data.isOpen ? "open" : "closed");
-        current.result.tags.add(data.success ? "success" : "failure");
-      },
-      recalculate: current => this.recalculateRollTestAfterScripts(current),
+    await test.roll({
       synchronize: (current, before) => this.synchronizeRollTestResult(current, before),
       legacyAfter: ["postRollTest"]
     });
@@ -2010,6 +1917,7 @@ export class NeuroshimaDice {
       flags: {
         neuroshima: {
           messageType,
+          test: message.getFlag("neuroshima", "test") ?? null,
           rollData: updatedData
         }
       }

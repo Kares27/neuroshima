@@ -1468,6 +1468,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Renders a skill/attribute test card.
    */
   static async renderRoll(rollData, actor, roll) {
+    const serializedTest = rollData.testData ?? null;
+    delete rollData.testData;
     rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", rollData.effectActionAdditions);
     const template = "systems/neuroshima/templates/chat/roll-card.hbs";
     const content = await this._renderTemplate(template, {
@@ -1486,6 +1488,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: this.TYPES.ROLL,
+          test: serializedTest,
           rollData: {
             ...rollData,
             rollMode: rollMode
@@ -1502,6 +1505,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Renders an initiative test card.
    */
   static async renderInitiativeRoll(rollData, actor, roll) {
+    const serializedTest = rollData.testData ?? null;
+    delete rollData.testData;
     rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, "testResult", rollData.effectActionAdditions);
     const template = "systems/neuroshima/templates/chat/initiative-roll-card.hbs";
     
@@ -1542,6 +1547,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: this.TYPES.INITIATIVE,
+          test: serializedTest,
           rollData: {
             ...rollData,
             rollMode: rollMode
@@ -1558,6 +1564,8 @@ export class NeuroshimaChatMessage extends ChatMessage {
    * Renders a weapon test card.
    */
   static async renderWeaponRoll(rollData, actor, roll) {
+    const serializedTest = rollData.testData ?? null;
+    delete rollData.testData;
     const effectSurface = rollData.isMelee ? "meleePool" : "testResult";
     rollData.effectActions = await EffectActionRuntime.collect(actor, rollData, effectSurface, rollData.effectActionAdditions);
     const template = rollData.isMelee 
@@ -1616,6 +1624,7 @@ export class NeuroshimaChatMessage extends ChatMessage {
       flags: {
         neuroshima: {
           messageType: this.TYPES.WEAPON,
+          test: serializedTest,
           rollData: {
             ...rollData,
             rollMode,

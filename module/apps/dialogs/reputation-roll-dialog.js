@@ -1,6 +1,6 @@
 import { NEUROSHIMA } from "../../config.js";
 import { NeuroshimaDice } from "../../helpers/dice.js";
-import { NeuroshimaTest } from "../../tests/neuroshima-test.js";
+import { NeuroshimaTestFactory } from "../../tests/test-factory.js";
 import { TestRunner } from "../../tests/test-runner.js";
 
 const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
@@ -145,7 +145,7 @@ export class ReputationRollDialog extends HandlebarsApplicationMixin(Application
         const threshold = repValue + fame;
 
         const label = this.reputationItem?.name ?? game.i18n.localize("NEUROSHIMA.Reputation.Title");
-        const test = new NeuroshimaTest({
+        const test = NeuroshimaTestFactory.create({
             type: "reputation",
             subtype: "simple",
             actor: this.actor,

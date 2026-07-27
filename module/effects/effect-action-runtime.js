@@ -1,6 +1,7 @@
 import { NEUROSHIMA } from "../config.js";
 import { NeuroshimaDice } from "../helpers/dice.js";
 import { NeuroshimaScript } from "../apps/neuroshima-script-engine.js";
+import { NeuroshimaTestFactory } from "../tests/test-factory.js";
 
 /**
  * Runtime for post-roll actions declared by Active Effects.
@@ -72,7 +73,15 @@ export class EffectActionRuntime {
         });
         if (result === false) return;
       }
-      this._recalculate(rollData);
+      const serialized = message.getFlag("neuroshima", "test");
+      if (serialized?.classId) {
+        const test = await NeuroshimaTestFactory.fromData({ ...serialized, rollData });
+        test._lifecycleOptions.recalculate = () => this._recalculate(rollData);
+        test.markDirty("effectAction");
+        await test.recalculate();
+      } else {
+        this._recalculate(rollData);
+      }
       ref.used = true;
       await this.rerenderMessage(message, rollData);
     } catch (error) {
@@ -240,6 +249,12 @@ export class EffectActionRuntime {
       patientRef: { uuid: rollData.patientActor?.uuid },
       medicRef: { uuid: actor?.uuid }
     });
-    await message.update({ content, "flags.neuroshima.rollData": rollData });
+    const testData = message.getFlag("neuroshima", "test");
+    if (testData) testData.rollData = rollData;
+    await message.update({
+      content,
+      "flags.neuroshima.rollData": rollData,
+      "flags.neuroshima.test": testData
+    });
   }
 }

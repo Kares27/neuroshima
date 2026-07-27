@@ -995,7 +995,10 @@ export class DuelActionPipeline {
       }
 
       try {
-        await NeuroshimaScriptRunner.executeEvent("collectMeleeActions", {
+        // collectMeleeActions is now a hidden legacy alias. Canonical
+        // getMeleeActions scripts were already executed above, so dispatching
+        // the canonical event here would run them twice.
+        await NeuroshimaScriptRunner.executeLegacy("collectMeleeActions", {
           actor:                ownerActor,
           duel,
           state:                duel,
@@ -1005,10 +1008,7 @@ export class DuelActionPipeline {
           uncommittedDice:      uncommittedDiceCount,
           uncommittedSuccesses: uncommittedSuccessCount,
           lookupActionDef
-        }, {
-          legacyTriggers: ["collectMeleeActions"],
-          metadata: { duel, mutable: true }
-        });
+        }, { duel, mutable: true });
       } catch (err) {
         game.neuroshima?.log("[collectMeleeActions] trigger error", err);
       }
