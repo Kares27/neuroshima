@@ -61,6 +61,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
 
     this.isPoolRoll = options.isPoolRoll || false;
     this.onPoolRoll = options.onRoll;
+    this.meleePoolLink = foundry.utils.deepClone(options.meleePoolLink ?? null);
     this.crowdingDexPenalty = options.crowdingDexPenalty || 0;
     this.chargeDexPenalty   = options.chargeDexPenalty   || 0;
     this.rollOptions.gradCios = options.gradCios ?? false;
@@ -624,7 +625,8 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       annotations:     sf?.annotations || [],
       burstHitStep:    sf?.burstHitStep ?? 1,
       rollMode:        formData.rollMode,
-      skillKeyOverride: sf?.skillKey || null
+      skillKeyOverride: sf?.skillKey || null,
+      meleePoolLink: foundry.utils.deepClone(this.meleePoolLink ?? null)
     };
 
     const submissionOptions = await this._runSubmissionScripts();
@@ -665,7 +667,7 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
           });
         }
       }
-      return this.onPoolRoll(rawResult);
+      return this.onPoolRoll(rolledTest?.result ?? rawResult, rolledTest);
     }
 
     const test = await this._executeWeaponTest({ ...rollData, options: submissionOptions });
@@ -743,6 +745,9 @@ export class NeuroshimaWeaponRollDialog extends NeuroshimaRollDialogBase {
       context: {
         isCombat: true,
         isMelee,
+        meleePoolLink: foundry.utils.deepClone(
+          params.meleePoolLink ?? this.meleePoolLink ?? null
+        ),
         isOpen: isMelee ? false : params.isOpen === true,
         applySkillDifficultyShift: !isMelee,
         meleeAction,

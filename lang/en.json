@@ -817,6 +817,9 @@
             "AttackerConfirmed": "Attacker confirmed — waiting for defender…",
             "DefenderConfirmed": "Defender confirmed — waiting for attacker…"
         },
+        "Melee": {
+            "PoolMutationLocked": "This melee pool has already been selected or used and can no longer be changed."
+        },
         "MeleeDuel": {
             "Title": "Duels",
             "PhaseRollPool": "3k20 Pool Roll",

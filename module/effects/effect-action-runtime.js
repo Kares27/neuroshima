@@ -11,6 +11,7 @@ import { NeuroshimaTestBase } from "../tests.mjs";
 export class EffectActionRuntime {
   static SURFACE_TEST = "testResult";
   static SURFACE_MELEE = "meleePool";
+  static _inFlight = new Set();
 
   static async collect(_actor, _rollData, surface = this.SURFACE_TEST, additions = []) {
     const entries = [];
@@ -38,6 +39,10 @@ export class EffectActionRuntime {
   }
 
   static async execute(message, instanceId) {
+    const lockId = `${message.id}::${instanceId}`;
+    if (this._inFlight.has(lockId)) {
+      return ui.notifications.warn("Ta akcja jest już wykonywana.");
+    }
     const serialized = foundry.utils.deepClone(message.getFlag("neuroshima", "test"));
     if (!serialized?.preData?.rollClass) {
       return ui.notifications.warn("Ta karta nie zawiera testu w nowym formacie.");
@@ -46,7 +51,9 @@ export class EffectActionRuntime {
     const rollData = test.result;
     const ref = (rollData.effectActions ?? []).find(entry => entry.instanceId === instanceId);
     if (!ref) return ui.notifications.warn("Ta akcja nie jest już dostępna na tej karcie.");
-    if (ref.used) return ui.notifications.warn("Ta akcja została już użyta.");
+    if (ref.used || (test.context.usedResultActions ?? []).includes(instanceId)) {
+      return ui.notifications.warn("Ta akcja została już użyta.");
+    }
 
     const effect = await fromUuid(ref.sourceEffectUuid);
     const action = effect?.system?.actionDefs?.find(def => def.id === ref.actionId);
@@ -59,12 +66,37 @@ export class EffectActionRuntime {
     }
 
     const sourceItem = await this._sourceItem(effect);
+    const validation = await test.validateLinkedMutation();
+    if (!validation.ok) {
+      return ui.notifications.warn("Nie można już zmienić tej puli walki.");
+    }
+    const diceApi = test.getDiceApi();
+    const resultApi = test.getResultApi();
     const ctx = this._context({
       actor, effect, sourceItem, action, rollData,
-      surface: ref.surface, message, test
+      surface: ref.surface, message, test, diceApi, resultApi
     });
     const code = String(action.executeScript ?? action.result?.executeScript ?? "").trim();
+    const checkpoint = test.toData();
+    this._inFlight.add(lockId);
+    let claimed = false;
     try {
+      if (game.neuroshima?.socket) {
+        const claim = await game.neuroshima.socket.executeAsGM(
+          "claimResultAction",
+          message.id,
+          instanceId,
+          game.user.id
+        );
+        if (!claim?.ok) {
+          return ui.notifications.warn(
+            claim?.reason === "already-used"
+              ? "Ta akcja została już użyta."
+              : "Ta akcja jest już wykonywana."
+          );
+        }
+        claimed = true;
+      }
       if (code) {
         const script = new NeuroshimaScript({
           trigger: "internalAction",
@@ -75,16 +107,50 @@ export class EffectActionRuntime {
         const result = await script.execute({
           actor, item: sourceItem, rollData,
           test,
+          context: test.context,
+          eventContext: {
+            phase: "result-action",
+            actionId: action.id,
+            instanceId
+          },
+          dice: diceApi,
+          result: resultApi,
+          links: {
+            meleePool: foundry.utils.deepClone(test.context.meleePoolLink ?? null)
+          },
           actionContext: ctx
         });
         if (result === false) return;
       }
       if (test.context.dirty) await test.recalculate();
-      ref.used = true;
+      const syncResult = await test.syncLinkedState({
+        reason: `result-action:${action.id}`
+      });
+      if (!syncResult.ok) {
+        test.data = foundry.utils.deepClone(checkpoint);
+        return ui.notifications.warn("Nie udało się zsynchronizować zmiany z walką melee.");
+      }
+      test.context.usedResultActions ??= [];
+      if (!test.context.usedResultActions.includes(instanceId)) {
+        test.context.usedResultActions.push(instanceId);
+      }
+      const currentRef = (test.result.effectActions ?? [])
+        .find(entry => entry.instanceId === instanceId);
+      if (currentRef) currentRef.used = true;
       await test.updateMessage(message);
     } catch (error) {
+      test.data = foundry.utils.deepClone(checkpoint);
       console.error(`Neuroshima | executeScript failed for ${action.id}`, error);
       ui.notifications.error(`Nie udało się wykonać akcji: ${error.message}`);
+    } finally {
+      if (claimed && game.neuroshima?.socket) {
+        await game.neuroshima.socket.executeAsGM(
+          "releaseResultAction",
+          message.id,
+          instanceId
+        );
+      }
+      this._inFlight.delete(lockId);
     }
   }
 
@@ -118,42 +184,49 @@ export class EffectActionRuntime {
     return (rollData.rawResults ?? []).map(Number);
   }
 
-  static _context({ actor, effect, sourceItem, action, rollData, surface, message, test = null }) {
-    const replace = (index, value, options = {}) => {
-      index = Number(index);
-      value = Number(value);
-      if (!Array.isArray(rollData.rawResults) || !Number.isInteger(index)) return false;
-      if (index < 0 || index >= rollData.rawResults.length || !Number.isFinite(value)) return false;
-      return test.replaceDie(index, value, {
+  static _context({
+    actor,
+    effect,
+    sourceItem,
+    action,
+    rollData,
+    surface,
+    message,
+    test = null,
+    diceApi = test?.getDiceApi(),
+    resultApi = test?.getResultApi()
+  }) {
+    const replace = (index, value, options = {}) =>
+      diceApi.replace(index, value, {
         type: options.type ?? "replace",
         sourceIndex: Number.isInteger(options.sourceIndex) ? options.sourceIndex : null,
         label: options.label ?? action.name ?? effect.name,
         icon: options.icon ?? "fas fa-pen",
         effectUuid: effect.uuid
       });
-    };
 
+    Object.assign(diceApi, {
+      effective: this._effectiveDice(rollData),
+      replace,
+      copy: (source, target, options = {}) =>
+        test.copyDie(source, target, {
+          ...options,
+          type: "copy",
+          sourceIndex: Number(source),
+          label: options.label ?? action.name ?? effect.name,
+          icon: options.icon ?? "fas fa-copy",
+          effectUuid: effect.uuid
+        })
+    });
     return {
       actor, effect, sourceItem, item: sourceItem, action, message, surface, rollData, test,
-      dice: {
-        rolled: this._rolledDice(rollData),
-        effective: this._effectiveDice(rollData),
-        get: index => this._effectiveDice(rollData)[Number(index)],
-        choose: options => this._chooseDice(rollData, options),
-        replace,
-        copy: (source, target, options = {}) =>
-          replace(target, this._effectiveDice(rollData)[Number(source)], {
-            ...options, type: "copy", sourceIndex: Number(source)
-          })
-      },
-      result: {
-        addSuccesses: amount => test.addSuccesses(amount),
-        addSuccessPoints: amount => test.addSuccessPoints(amount),
-        forceSuccess: () => test.forceSuccess(),
-        forceFailure: () => test.forceFailure(),
-        addAnnotation: text => test.addAnnotation(text)
-      }
+      dice: diceApi,
+      result: resultApi
     };
+  }
+
+  static chooseDice(rollData, options = {}) {
+    return this._chooseDice(rollData, options);
   }
 
   static async _chooseDice(rollData, { min = 1, max = 1, filter = null, prompt = "Wybierz kości." } = {}) {

@@ -231,18 +231,26 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
         s3: pWeapon?.system?.damageMelee3 || "C"
       };
 
-      // Effective pool display (uses modifiedPool when doubleSkill OFF, raw pool when ON)
+      // The serialized test snapshot is canonical; legacy arrays are only fallbacks.
       const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
       const _allocPhases = ["awaiting-pool-rolls", "primary-attack-selection", "primary-defense-selection"];
-      if (doubleSkill && _allocPhases.includes(phase) && p.pool.length > 0) {
-        p.effectivePool = p.pool.map((v, i) => {
+      const snapshot = p.poolSnapshot;
+      const rawPool = snapshot?.rawResults ?? p.pool ?? [];
+      const canonicalDice = snapshot?.modifiedResults ?? [];
+      if (doubleSkill && _allocPhases.includes(phase) && rawPool.length > 0) {
+        p.effectivePool = rawPool.map((v, i) => {
           const reduction = (p.selfReductions || [])[i] || 0;
           const gain = (p.opponentGains || [])[i] || 0;
           const effective = v - reduction + gain;
           // For doubleSkill allocation phase: success is determined live against current target
-          const isNat20 = v === 20;
+          const isNat20 = canonicalDice.length
+            ? canonicalDice[i]?.isNat20 === true
+            : Number(v) === 20;
+          const isNat1 = canonicalDice.length
+            ? canonicalDice[i]?.isNat1 === true
+            : Number(v) === 1;
           const isSuccess = !isNat20 && effective <= p.currentEffectiveTarget;
-          return { raw: v, effective, reduction, gain, isSuccess, isNat20 };
+          return { raw: v, effective, reduction, gain, isSuccess, isNat1, isNat20 };
         });
         const selfSpent = (p.selfReductions || []).reduce((a, b) => a + b, 0);
         const oppSpent = Object.values(p.spentOnOpponent || {})
@@ -268,17 +276,18 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
           })()
         })).filter(s => s.remaining > 0);
       } else {
-        const mp = p.modifiedPool;
-        const dr = p.dieResults;
-        p.effectivePool = (p.pool || []).map((v, i) => {
+        const mp = snapshot ? canonicalDice.map(die => Number(die.modified)) : p.modifiedPool;
+        const dr = snapshot ? canonicalDice : p.dieResults;
+        p.effectivePool = rawPool.map((v, i) => {
           const effective = mp && mp[i] !== undefined ? mp[i] : v;
           // Prefer stored per-die flags from the roll (exact match to chat card).
           // Fall back to live comparison if dieResults not available.
-          const isNat20  = v === 20;
+          const isNat20 = dr ? dr[i]?.isNat20 === true : Number(v) === 20;
+          const isNat1 = dr ? dr[i]?.isNat1 === true : Number(v) === 1;
           const isSuccess = dr
             ? (dr[i]?.isSuccess ?? false)
             : (!isNat20 && effective <= p.currentEffectiveTarget);
-          return { raw: v, effective, reduction: 0, gain: 0, isSuccess, isNat20 };
+          return { raw: v, effective, reduction: 0, gain: 0, isSuccess, isNat1, isNat20 };
         });
         p.skillRemaining = 0;
         p.isAllocationPhase = false;
@@ -533,11 +542,18 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
       ? (p.chargeLevel ?? 0) : 0;
 
     const { NeuroshimaWeaponRollDialog } = await import("./dialogs/weapon-roll-dialog.js");
+    const meleePoolLink = {
+      encounterId: this.encounterId,
+      participantId,
+      turn: Number(encounter.turnState?.turn ?? 1),
+      revision: foundry.utils.randomID()
+    };
     const dialog = new NeuroshimaWeaponRollDialog({
       actor,
       weapon,
       rollType: "melee",
       isPoolRoll: true,
+      meleePoolLink,
       crowdingDexPenalty,
       chargeDexPenalty,
       onClose: () => {
@@ -545,10 +561,10 @@ export class MeleeCombatApp extends HandlebarsApplicationMixin(ApplicationV2) {
           this._openPoolDialogs.delete(participantId);
         }
       },
-      onRoll: async (rollResult) => {
+      onRoll: async (rollResult, test) => {
         this._openPoolDialogs.delete(participantId);
-        if (!rollResult) return;
-        await MeleeTurnService.setPool(this.encounterId, participantId, rollResult);
+        if (!rollResult || !test) return;
+        await MeleeTurnService.setPool(this.encounterId, participantId, test);
       }
     });
     this._openPoolDialogs.set(participantId, dialog);

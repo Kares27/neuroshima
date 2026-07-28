@@ -1571,6 +1571,11 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
         callback: async li => {
             const { message, testData } = getMessageTestContext(li);
             const test = await NeuroshimaTestBase.recreate(testData);
+            const validation = await test.validateLinkedMutation();
+            if (!validation.ok) {
+                test.rejectLinkedMutation(validation);
+                return;
+            }
             new EditRollDialog(message, test).render(true);
         }
     });
@@ -1770,6 +1775,12 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                 ui.notifications.error("Nie można znaleźć wymaganych danych do przerzutu");
                 return;
             }
+            const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
+            const validation = await test.validateLinkedMutation();
+            if (!validation.ok) {
+                test.rejectLinkedMutation(validation);
+                return;
+            }
 
             const selected = window._nsRerollSelectedMap?.get(message.id);
             const hasSelected = selected?.size > 0;
@@ -1800,7 +1811,6 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
             if (!confirmed) return;
 
             if (hasSelected) {
-                const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
                 await test.rerollDice([...selected], { previousMessage: message });
                 await message.setFlag("neuroshima", "rerolled", true);
                 return;
@@ -1818,19 +1828,16 @@ Hooks.on("getChatMessageContextOptions", (html, options) => {
                 }
 
                 try {
-                    const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
                     await test.reroll({ previousMessage: message });
                     await message.setFlag("neuroshima", "rerolled", true);
                 } finally { game.neuroshima?.groupEnd(); }
             } else if (messageType === "initiative") {
                 try {
-                    const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
                     await test.reroll({ previousMessage: message });
                     await message.setFlag("neuroshima", "rerolled", true);
                 } finally { game.neuroshima?.groupEnd(); }
             } else {
                 try {
-                    const test = await NeuroshimaTestBase.recreate(message.getFlag("neuroshima", "test"));
                     await test.reroll({ previousMessage: message });
                     await message.setFlag("neuroshima", "rerolled", true);
                 } finally { game.neuroshima?.groupEnd(); }
@@ -2761,6 +2768,76 @@ function initializeSocketlib() {
         const combat = game.combat;
         if (!combat) return;
         return combat.setFlag("neuroshima", key, value);
+    });
+
+    // Atomic, GM-authoritative update of a melee pool snapshot. The service
+    // re-reads current Combat flags before checking turn, revision and locks.
+    game.neuroshima.socket.register("syncMeleePoolSnapshot", async payload => {
+        const { MeleeTurnService } = await import("./module/combat/combat.js");
+        return MeleeTurnService.commitPoolSnapshot(
+            payload.link,
+            payload.snapshot,
+            { reason: payload.reason, userId: payload.userId }
+        );
+    });
+
+    game.neuroshima.socket.register("setMeleePoolFromTest", async payload => {
+        const [{ MeleeTurnService }, { NeuroshimaTestBase }] = await Promise.all([
+            import("./module/combat/combat.js"),
+            import("./module/tests.mjs")
+        ]);
+        let testOrResult = payload.result;
+        if (payload.testData) {
+            testOrResult = await NeuroshimaTestBase.recreate(payload.testData);
+            if (payload.messageId) testOrResult.message = { id: payload.messageId };
+        }
+        return MeleeTurnService.setPool(
+            payload.encounterId,
+            payload.participantId,
+            testOrResult
+        );
+    });
+
+    let resultActionClaimQueue = Promise.resolve();
+    const withResultActionClaimLock = operation => {
+        const current = resultActionClaimQueue.catch(() => {}).then(operation);
+        resultActionClaimQueue = current;
+        return current;
+    };
+
+    game.neuroshima.socket.register("claimResultAction", async (messageId, instanceId, userId) => {
+        return withResultActionClaimLock(async () => {
+            const message = game.messages.get(messageId);
+            if (!message) return { ok: false, reason: "message-missing" };
+            const testData = message.getFlag("neuroshima", "test");
+            if ((testData?.context?.usedResultActions ?? []).includes(instanceId)) {
+                return { ok: false, reason: "already-used" };
+            }
+            const now = Date.now();
+            const claims = foundry.utils.deepClone(
+                message.getFlag("neuroshima", "resultActionClaims") ?? {}
+            );
+            for (const [id, claim] of Object.entries(claims)) {
+                if (now - Number(claim?.timestamp ?? 0) > 30000) delete claims[id];
+            }
+            if (claims[instanceId]) return { ok: false, reason: "in-flight" };
+            claims[instanceId] = { userId, timestamp: now };
+            await message.setFlag("neuroshima", "resultActionClaims", claims);
+            return { ok: true };
+        });
+    });
+
+    game.neuroshima.socket.register("releaseResultAction", async (messageId, instanceId) => {
+        return withResultActionClaimLock(async () => {
+            const message = game.messages.get(messageId);
+            if (!message) return false;
+            const claims = foundry.utils.deepClone(
+                message.getFlag("neuroshima", "resultActionClaims") ?? {}
+            );
+            delete claims[instanceId];
+            await message.setFlag("neuroshima", "resultActionClaims", claims);
+            return true;
+        });
     });
 
     // Combat Flag Proxy - Allows players to unset flags on the Combat document

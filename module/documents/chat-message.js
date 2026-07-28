@@ -11,7 +11,8 @@ import { renderTooltipSections } from "../helpers/tooltip-renderer.js";
 export class NeuroshimaChatMessage extends ChatMessage {
 
   static async renderTest(test, { message = null } = {}) {
-    test.result.effectActions = await EffectActionRuntime.collect(
+    const usedActions = new Set(test.context.usedResultActions ?? []);
+    const effectActions = await EffectActionRuntime.collect(
       test.actor,
       test.result,
       test.result.isMelee ? "meleePool" : "testResult",
@@ -20,6 +21,10 @@ export class NeuroshimaChatMessage extends ChatMessage {
         ...(test.result.resultActions ?? [])
       ]
     );
+    for (const action of effectActions) {
+      action.used = usedActions.has(action.instanceId);
+    }
+    test.result.effectActions = effectActions;
     const context = await test.getChatData();
     const content = await this._renderTemplate(test.chatTemplate, context);
     const update = {

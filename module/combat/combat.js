@@ -1153,6 +1153,11 @@ export class MeleeEncounter {
       weaponId: data.weaponId,
       initiative: data.initiative,
       pool: [],
+      poolSnapshot: null,
+      poolRevision: null,
+      poolMessageId: null,
+      dieResults: null,
+      modifiedPool: null,
       usedDice: [],
       skillSpent: 0,
       maneuver: "none",
@@ -4399,9 +4404,15 @@ export class MeleeResolution {
    * Falls back to modifiedPool (doubleSkill OFF auto-applied skill), then raw pool.
    */
   static _getEffectiveDieVal(participant, idx) {
-    if (participant.modifiedPool?.[idx] !== undefined) return participant.modifiedPool[idx];
     const raw = participant.pool[idx];
-    return raw - (participant.selfReductions?.[idx] || 0) + (participant.opponentGains?.[idx] || 0);
+    if (game.settings.get("neuroshima", "doubleSkillAction")) {
+      return raw
+        - (participant.selfReductions?.[idx] || 0)
+        + (participant.opponentGains?.[idx] || 0);
+    }
+    return participant.poolSnapshot?.modifiedResults?.[idx]?.modified
+      ?? participant.modifiedPool?.[idx]
+      ?? raw;
   }
 
   /**
@@ -4416,7 +4427,10 @@ export class MeleeResolution {
       return participant.dieResults[idx]?.isSuccess ?? false;
     }
     const val = this._getEffectiveDieVal(participant, idx);
-    return participant.pool[idx] !== 20 && val <= target;
+    const die = participant.poolSnapshot?.modifiedResults?.[idx]
+      ?? participant.dieResults?.[idx];
+    const isNat20 = die ? die.isNat20 === true : Number(participant.pool[idx]) === 20;
+    return !isNat20 && val <= target;
   }
 
   /**
@@ -5426,35 +5440,42 @@ export class MeleeTurnCard {
       }
 
       // Build effectivePool — same logic as MeleeCombatApp._prepareContext
-      const mp = p.modifiedPool;
-      const dr = p.dieResults;
+      const snapshot = p.poolSnapshot;
+      const rawPool = snapshot?.rawResults ?? p.pool ?? [];
+      const canonicalDice = snapshot?.modifiedResults ?? [];
+      const mp = snapshot
+        ? canonicalDice.map(die => Number(die.modified))
+        : p.modifiedPool;
+      const dr = snapshot ? canonicalDice : p.dieResults;
 
-      if (doubleSkill && p.pool.length > 0) {
+      if (doubleSkill && rawPool.length > 0) {
         const selfSpent = (p.selfReductions || []).reduce((a, b) => a + b, 0);
         const oppSpent = Object.values(p.spentOnOpponent || {})
           .reduce((sum, arr) => sum + arr.reduce((a, b) => a + b, 0), 0);
         p.skillRemaining = (p.skillBudget || 0) - selfSpent - oppSpent;
         p.isAllocationPhase = true;
 
-        p.effectivePool = p.pool.map((v, i) => {
+        p.effectivePool = rawPool.map((v, i) => {
           const reduction = (p.selfReductions || [])[i] || 0;
           const gain = (p.opponentGains || [])[i] || 0;
           const effective = v - reduction + gain;
-          const isNat20 = v === 20;
+          const isNat20 = dr ? dr[i]?.isNat20 === true : Number(v) === 20;
+          const isNat1 = dr ? dr[i]?.isNat1 === true : Number(v) === 1;
           const isSuccess = !isNat20 && effective <= p.currentEffectiveTarget;
-          return { raw: v, effective, isSuccess, isNat20, index: i };
+          return { raw: v, effective, isSuccess, isNat1, isNat20, index: i };
         });
       } else {
         p.skillRemaining = 0;
         p.isAllocationPhase = false;
 
-        p.effectivePool = (p.pool || []).map((v, i) => {
+        p.effectivePool = rawPool.map((v, i) => {
           const effective = mp && mp[i] !== undefined ? mp[i] : v;
-          const isNat20 = v === 20;
+          const isNat20 = dr ? dr[i]?.isNat20 === true : Number(v) === 20;
+          const isNat1 = dr ? dr[i]?.isNat1 === true : Number(v) === 1;
           const isSuccess = dr
             ? (dr[i]?.isSuccess ?? false)
             : (!isNat20 && effective <= p.currentEffectiveTarget);
-          return { raw: v, effective, isSuccess, isNat20, index: i };
+          return { raw: v, effective, isSuccess, isNat1, isNat20, index: i };
         });
       }
 
@@ -5621,19 +5642,26 @@ export class MeleeTurnCard {
       ? (p.chargeLevel ?? 0) : 0;
 
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
+    const meleePoolLink = {
+      encounterId,
+      participantId,
+      turn: Number(encounter.turnState?.turn ?? 1),
+      revision: foundry.utils.randomID()
+    };
 
     const dialog = new NeuroshimaWeaponRollDialog({
       actor,
       weapon,
       rollType: "melee",
       isPoolRoll: true,
+      meleePoolLink,
       crowdingDexPenalty,
       chargeDexPenalty,
       onClose: () => {},
-      onRoll: async (rollResult) => {
+      onRoll: async (rollResult, test) => {
         game.neuroshima?.log("[melee-turn-card.onRoll] callback fired", { encounterId, participantId, maneuver: rollResult?.maneuver, tempoLevel: rollResult?.tempoLevel });
-        if (!rollResult) return;
-        await MeleeTurnService.setPool(encounterId, participantId, rollResult);
+        if (!rollResult || !test) return;
+        await MeleeTurnService.setPool(encounterId, participantId, test);
       }
     });
 
@@ -5667,6 +5695,21 @@ export class MeleeTurnCard {
  * Handles turn transitions, segment resets, and maneuver application for Melee Encounters.
  */
 export class MeleeTurnService {
+  static _poolMutationQueues = new Map();
+
+  static async _queuePoolMutation(encounterId, operation) {
+    const previous = this._poolMutationQueues.get(encounterId) ?? Promise.resolve();
+    const current = previous.catch(() => {}).then(operation);
+    this._poolMutationQueues.set(encounterId, current);
+    try {
+      return await current;
+    } finally {
+      if (this._poolMutationQueues.get(encounterId) === current) {
+        this._poolMutationQueues.delete(encounterId);
+      }
+    }
+  }
+
   /**
    * Maps maneuver string values (from pool-roll dialog) to their condition key.
    * Tempo and Szarża are tracked separately via tempoLevel / chargeLevel.
@@ -5812,11 +5855,24 @@ export class MeleeTurnService {
     updated.turnState.segmentCost = 0;
     updated.turnState.selectionTurn = null;
     updated._effects = {};
+    updated.currentExchange = {
+      attackerId: null,
+      defenderId: null,
+      declaredAction: null,
+      declaredDiceCount: 0,
+      attackerSelectedDice: [],
+      defenderSelectedDice: [],
+      resolutionType: "normal"
+    };
 
     // Reset pool data for all participants
     for (const pId in updated.participants) {
       const p = updated.participants[pId];
       p.pool = [];
+      p.poolSnapshot = null;
+      p.poolRevision = null;
+      p.poolMessageId = null;
+      p.dieResults = null;
       p.modifiedPool = null;
       p.skillBudget = 0;
       p.selfReductions = [];
@@ -5882,9 +5938,11 @@ export class MeleeTurnService {
    *
    * @param {string} id            Encounter ID
    * @param {string} participantId Participant ID
-   * @param {object} rollResult    Raw result object from NeuroshimaWeaponRollDialog.onRoll / onPoolRoll.
+   * @param {NeuroshimaTestBase|object} testOrResult Full test (preferred) or a legacy result object.
    *   Recognised fields:
-   *   - results              {number[]}   Raw dice [d1,d2,d3]
+   *   - rawResults           {number[]}   Current dice after controlled replacements
+   *   - rolledResults        {number[]}   Values actually rolled
+   *   - results              {number[]}   Legacy raw-dice compatibility field
    *   - modifiedResults      {object[]}   Per-die objects with `.modified`, `.original`, `.isSuccess`
    *   - maneuver             {string}     "none"|"fury"|"fullDefense"|…
    *   - tempoLevel           {number}
@@ -5896,16 +5954,164 @@ export class MeleeTurnService {
    *   - damageShift1/2/3     {number}
    *   - activatedMeleePreRollMods {string[]} UUIDs of effects activated via dialog tricks
    */
-  static async setPool(id, participantId, rollResult) {
-    const toNum = r => typeof r === "object" ? (r.value ?? r.result ?? r.original ?? Number(r)) : Number(r);
-    const results       = (rollResult.results || []).map(toNum);
-    const modifiedPool  = (rollResult.modifiedResults || []).map(r =>
-      typeof r === "object" ? toNum({ value: r.modified ?? r.original }) : toNum(r)
-    );
-    const dieResults    = (rollResult.modifiedResults || []).map(r => ({
-      isSuccess: typeof r === "object" ? (r.isSuccess ?? false) : false,
-      isNat20:   typeof r === "object" ? (r.original === 20) : false
+  static buildPoolSnapshot(test, { messageId = null } = {}) {
+    const result = test?.result ?? test ?? {};
+    const link = test?.context?.meleePoolLink ?? result.meleePoolLink ?? null;
+    const rolledResults = (
+      result.rolledResults ?? result.rawResults ?? result.results ?? []
+    ).map(Number);
+    const rawResults = (
+      result.rawResults ?? result.results ?? result.rolledResults ?? []
+    ).map(Number);
+    const supplied = Array.isArray(result.modifiedResults) ? result.modifiedResults : [];
+    const modifiedResults = rawResults.map((raw, index) => {
+      const die = supplied[index] ?? {};
+      return {
+        index: Number(die?.index ?? index),
+        original: Number(die?.original ?? raw),
+        modified: Number(die?.modified ?? die?.original ?? raw),
+        isSuccess: die?.isSuccess === true,
+        isNat1: die?.isNat1 === true,
+        isNat20: die?.isNat20 === true,
+        ignored: die?.ignored === true
+      };
+    });
+    return {
+      revision: link?.revision ?? null,
+      turn: Number(link?.turn ?? 0),
+      messageId: messageId ?? test?.message?.id ?? null,
+      rolledResults,
+      rawResults,
+      modifiedResults,
+      diceChanges: foundry.utils.deepClone(result.diceChanges ?? []),
+      target: Number(result.target ?? 0),
+      success: result.success === true,
+      successCount: Number(result.successCount ?? 0),
+      successPoints: Number(result.successPoints ?? 0)
+    };
+  }
+
+  static applyPoolSnapshot(participant, snapshot) {
+    participant.poolSnapshot = foundry.utils.deepClone(snapshot);
+    participant.pool = [...snapshot.rawResults];
+    participant.modifiedPool = snapshot.modifiedResults.map(die => Number(die.modified));
+    participant.dieResults = snapshot.modifiedResults.map(die => ({
+      isSuccess: die.isSuccess === true,
+      isNat1: die.isNat1 === true,
+      isNat20: die.isNat20 === true,
+      ignored: die.ignored === true
     }));
+    participant.poolRevision = snapshot.revision;
+    participant.poolMessageId = snapshot.messageId;
+    return participant;
+  }
+
+  static getPoolMutationLock(encounter, participantId) {
+    const participant = encounter?.participants?.[participantId];
+    if (!participant) return { locked: true, reason: "participant-missing" };
+    if ((participant.usedDice ?? []).length > 0) {
+      return { locked: true, reason: "dice-already-used" };
+    }
+    const exchange = encounter.currentExchange ?? {};
+    const selectedByAttacker = (
+      exchange.attackerId === participantId
+      || encounter.turnState?.selectionTurn === participantId
+    ) ? (exchange.attackerSelectedDice ?? []).length : 0;
+    const selectedByDefender = exchange.defenderId === participantId
+      ? (exchange.defenderSelectedDice ?? []).length
+      : 0;
+    if (selectedByAttacker > 0 || selectedByDefender > 0) {
+      return { locked: true, reason: "dice-already-selected" };
+    }
+    const allowedPhases = new Set([
+      "awaiting-pool-rolls",
+      "target-selection",
+      "primary-attack-selection"
+    ]);
+    if (!allowedPhases.has(encounter.turnState?.phase)) {
+      return { locked: true, reason: "phase-locked" };
+    }
+    return { locked: false, reason: null };
+  }
+
+  static async syncPoolFromTest(test, { reason = "test-update" } = {}) {
+    const link = test?.context?.meleePoolLink;
+    if (!link) return { ok: true, skipped: true, reason: "not-linked" };
+    const snapshot = this.buildPoolSnapshot(test, {
+      messageId: test.message?.id ?? null
+    });
+    if (!game.user.isGM && game.neuroshima?.socket) {
+      return game.neuroshima.socket.executeAsGM("syncMeleePoolSnapshot", {
+        link: foundry.utils.deepClone(link),
+        snapshot,
+        reason,
+        userId: game.user.id
+      });
+    }
+    return this.commitPoolSnapshot(link, snapshot, { reason, userId: game.user.id });
+  }
+
+  static async commitPoolSnapshot(link, snapshot, {
+    reason = "test-update",
+    userId = game.user.id
+  } = {}) {
+    return this._queuePoolMutation(link.encounterId, () =>
+      this._commitPoolSnapshot(link, snapshot, { reason, userId })
+    );
+  }
+
+  static async _commitPoolSnapshot(link, snapshot, {
+    reason = "test-update",
+    userId = game.user.id
+  } = {}) {
+    const encounter = MeleeStore.getEncounter(link.encounterId);
+    if (!encounter) return { ok: false, reason: "encounter-missing" };
+    const participant = encounter.participants?.[link.participantId];
+    if (!participant) return { ok: false, reason: "participant-missing" };
+    if (Number(link.turn) !== Number(encounter.turnState?.turn)) {
+      return { ok: false, reason: "stale-turn" };
+    }
+    if (participant.poolRevision && participant.poolRevision !== link.revision) {
+      return { ok: false, reason: "stale-revision" };
+    }
+    const lock = this.getPoolMutationLock(encounter, link.participantId);
+    if (lock.locked) return { ok: false, reason: lock.reason };
+
+    const updated = foundry.utils.deepClone(encounter);
+    const updatedParticipant = updated.participants[link.participantId];
+    const normalizedSnapshot = foundry.utils.deepClone(snapshot);
+    normalizedSnapshot.messageId ??= participant.poolMessageId ?? null;
+    this.applyPoolSnapshot(updatedParticipant, normalizedSnapshot);
+    updatedParticipant.lastPoolMutation = {
+      reason,
+      userId,
+      timestamp: Date.now()
+    };
+    await MeleeStore.updateEncounter(link.encounterId, updated);
+    return { ok: true, snapshot: normalizedSnapshot };
+  }
+
+  static async setPool(id, participantId, testOrResult) {
+    if (!game.user.isGM && game.neuroshima?.socket) {
+      const test = testOrResult?.result && testOrResult?.context ? testOrResult : null;
+      return game.neuroshima.socket.executeAsGM("setMeleePoolFromTest", {
+        encounterId: id,
+        participantId,
+        testData: test?.toData?.() ?? null,
+        result: test ? null : foundry.utils.deepClone(testOrResult ?? {}),
+        messageId: test?.message?.id ?? null
+      });
+    }
+    return this._queuePoolMutation(id, () => this._setPool(id, participantId, testOrResult));
+  }
+
+  static async _setPool(id, participantId, testOrResult) {
+    const test = testOrResult?.result && testOrResult?.context ? testOrResult : null;
+    const rollResult = test?.result ?? testOrResult ?? {};
+    const toNum = r => typeof r === "object" ? (r.value ?? r.result ?? r.original ?? Number(r)) : Number(r);
+    const results       = (
+      rollResult.rawResults ?? rollResult.results ?? rollResult.rolledResults ?? []
+    ).map(toNum);
     const maneuver      = rollResult.maneuver || "none";
     const tempoLevel    = rollResult.tempoLevel || 0;
     const attributeBonus = rollResult.attributeBonus || 0;
@@ -5928,6 +6134,15 @@ export class MeleeTurnService {
       game.neuroshima?.log("[MeleeTurnService.setPool] encounter not found, aborting", { id });
       return;
     }
+    const link = test?.context?.meleePoolLink;
+    if (link && (
+      link.encounterId !== id
+      || link.participantId !== participantId
+      || Number(link.turn) !== Number(encounter.turnState?.turn)
+    )) {
+      game.neuroshima?.warn("[MeleeTurnService.setPool] stale or mismatched melee link", { link, id, participantId });
+      return false;
+    }
 
     const updated = foundry.utils.deepClone(encounter);
     const p = updated.participants[participantId];
@@ -5935,6 +6150,19 @@ export class MeleeTurnService {
       game.neuroshima?.log("[MeleeTurnService.setPool] participant not found, aborting", { participantId, available: Object.keys(updated.participants) });
       return;
     }
+    if (link && p.poolRevision && p.poolRevision !== link.revision) {
+      game.neuroshima?.warn("[MeleeTurnService.setPool] newer pool revision already exists", {
+        participantId,
+        currentRevision: p.poolRevision,
+        attemptedRevision: link.revision
+      });
+      return false;
+    }
+
+    const snapshot = this.buildPoolSnapshot(test ?? rollResult, {
+      messageId: test?.message?.id ?? null
+    });
+    this.applyPoolSnapshot(p, snapshot);
 
     // Fetch actor to read weapon bonuses for snapshot
     const doc = fromUuidSync(p.actorUuid);
@@ -6012,7 +6240,6 @@ export class MeleeTurnService {
 
     }
 
-    p.pool = results;
     p.maneuver = maneuver;
     p.tempoLevel = tempoLevel;
     p.damageShift = damageShift || 0;
@@ -6025,18 +6252,15 @@ export class MeleeTurnService {
     p.damageMelee3 = damageMelee3;
     p.usedDice = [];
     p.skillSpent = 0;
-    // Store per-die success flags from the roll (canonical source of truth matching chat card).
-    p.dieResults = dieResults?.length === results.length ? dieResults : null;
 
     const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction");
     if (doubleSkill) {
-      p.modifiedPool = null;
       p.skillBudget = skillBudget;
       p.selfReductions = new Array(results.length).fill(0);
       p.opponentGains = new Array(results.length).fill(0);
       p.spentOnOpponent = {};
     } else {
-      p.modifiedPool = modifiedPool?.length === results.length ? modifiedPool : null;
+      // Compatibility arrays are always derived from the canonical snapshot.
       p.skillBudget = 0;
       p.selfReductions = [];
       p.opponentGains = [];
@@ -6078,6 +6302,7 @@ export class MeleeTurnService {
     game.neuroshima?.log("Setting pool for participant", { id, participantId, results, maneuver, attributeBonus });
     await MeleeStore.updateEncounter(id, updated);
     await this._applyParticipantManeuverConditions(updated, participantId);
+    return true;
   }
 
   /**
@@ -6257,14 +6482,10 @@ export class MeleeTurnService {
     if (!p) return;
 
     // Count successes so the GM can see them in chat
-    const dr = p.dieResults;
-    const mp = p.modifiedPool;
     const target = p.attackTargetSnapshot != null ? p.attackTargetSnapshot : (p.targetValue ?? 10);
-    const successCount = selectedDice.filter(i => {
-      if (dr) return dr[i]?.isSuccess ?? false;
-      const val = mp ? mp[i] : p.pool[i];
-      return p.pool[i] !== 20 && val <= target;
-    }).length;
+    const successCount = selectedDice
+      .filter(i => MeleeResolution._isDieSuccess(p, i, target))
+      .length;
 
     p.usedDice.push(...selectedDice);
 
@@ -6402,10 +6623,23 @@ export class MeleeTurnService {
     updated.turnState.segmentCost = 0;
     updated.turnState.selectionTurn = null;
     updated._effects = {};
+    updated.currentExchange = {
+      attackerId: null,
+      defenderId: null,
+      declaredAction: null,
+      declaredDiceCount: 0,
+      attackerSelectedDice: [],
+      defenderSelectedDice: [],
+      resolutionType: "normal"
+    };
 
     for (const pId in updated.participants) {
       const p = updated.participants[pId];
       p.pool = [];
+      p.poolSnapshot = null;
+      p.poolRevision = null;
+      p.poolMessageId = null;
+      p.dieResults = null;
       p.modifiedPool = null;
       p.skillBudget = 0;
       p.selfReductions = [];
@@ -6965,14 +7199,19 @@ export class MeleeVanillaChat {
     const crowd = encounter.crowding[pId] || {};
     const dexPenalty = crowd.dexPenalty || 0;
 
-    const effectivePool = (p.pool || []).map((v, i) => {
-      const mp = p.modifiedPool;
+    const snapshot = p.poolSnapshot;
+    const rawPool = snapshot?.rawResults ?? p.pool ?? [];
+    const canonicalDice = snapshot?.modifiedResults ?? [];
+    const effectivePool = rawPool.map((v, i) => {
+      const mp = snapshot ? canonicalDice.map(die => die.modified) : p.modifiedPool;
       const effective = mp && mp[i] !== undefined ? mp[i] : v;
-      const isNat20 = v === 20;
-      const isSuccess = p.dieResults
-        ? (p.dieResults[i]?.isSuccess ?? false)
+      const dieResult = snapshot ? canonicalDice[i] : p.dieResults?.[i];
+      const isNat20 = dieResult ? dieResult.isNat20 === true : Number(v) === 20;
+      const isNat1 = dieResult ? dieResult.isNat1 === true : Number(v) === 1;
+      const isSuccess = dieResult
+        ? (dieResult.isSuccess === true)
         : (!isNat20 && effective <= ((p.attackTargetSnapshot ?? p.targetValue ?? 10) - dexPenalty));
-      return { raw: v, effective, isSuccess, isNat20, index: i };
+      return { raw: v, effective, isSuccess, isNat1, isNat20, index: i };
     });
 
     return {
@@ -7038,27 +7277,37 @@ export class MeleeVanillaChat {
 
     const attackerSelectedDice = exchange.attackerSelectedDice || [];
 
-    const attackerPool = (attacker.pool || []).map((v, i) => {
-      const mp = attacker.modifiedPool;
+    const attackerSnapshot = attacker.poolSnapshot;
+    const attackerRawPool = attackerSnapshot?.rawResults ?? attacker.pool ?? [];
+    const attackerDice = attackerSnapshot?.modifiedResults ?? [];
+    const attackerPool = attackerRawPool.map((v, i) => {
+      const mp = attackerSnapshot ? attackerDice.map(die => die.modified) : attacker.modifiedPool;
       const eff = mp?.[i] !== undefined ? mp[i] : v;
-      const isNat20 = v === 20;
-      const isSuccess = attacker.dieResults
-        ? (attacker.dieResults[i]?.isSuccess ?? false)
+      const dieResult = attackerSnapshot ? attackerDice[i] : attacker.dieResults?.[i];
+      const isNat20 = dieResult ? dieResult.isNat20 === true : Number(v) === 20;
+      const isNat1 = dieResult ? dieResult.isNat1 === true : Number(v) === 1;
+      const isSuccess = dieResult
+        ? (dieResult.isSuccess === true)
         : (!isNat20 && eff <= atkTarget);
       const isUsed = (attacker.usedDice || []).includes(i);
       const isSelected = attackerSelectedDice.includes(i);
-      return { raw: v, effective: eff, isSuccess, isNat20, isUsed, isSelected, index: i };
+      return { raw: v, effective: eff, isSuccess, isNat1, isNat20, isUsed, isSelected, index: i };
     });
 
-    const defenderPool = (defender.pool || []).map((v, i) => {
-      const mp = defender.modifiedPool;
+    const defenderSnapshot = defender.poolSnapshot;
+    const defenderRawPool = defenderSnapshot?.rawResults ?? defender.pool ?? [];
+    const defenderDice = defenderSnapshot?.modifiedResults ?? [];
+    const defenderPool = defenderRawPool.map((v, i) => {
+      const mp = defenderSnapshot ? defenderDice.map(die => die.modified) : defender.modifiedPool;
       const eff = mp?.[i] !== undefined ? mp[i] : v;
-      const isNat20 = v === 20;
-      const isSuccess = defender.dieResults
-        ? (defender.dieResults[i]?.isSuccess ?? false)
+      const dieResult = defenderSnapshot ? defenderDice[i] : defender.dieResults?.[i];
+      const isNat20 = dieResult ? dieResult.isNat20 === true : Number(v) === 20;
+      const isNat1 = dieResult ? dieResult.isNat1 === true : Number(v) === 1;
+      const isSuccess = dieResult
+        ? (dieResult.isSuccess === true)
         : (!isNat20 && eff <= defTarget);
       const isUsed = (defender.usedDice || []).includes(i);
-      return { raw: v, effective: eff, isSuccess, isNat20, isUsed, index: i };
+      return { raw: v, effective: eff, isSuccess, isNat1, isNat20, isUsed, index: i };
     });
 
     const atkDoc = fromUuidSync(attacker.actorUuid);
@@ -7174,19 +7423,26 @@ export class MeleeVanillaChat {
       ? (p.chargeLevel ?? 0) : 0;
 
     const { NeuroshimaWeaponRollDialog } = await import("../apps/dialogs/weapon-roll-dialog.js");
+    const meleePoolLink = {
+      encounterId,
+      participantId,
+      turn: Number(encounter.turnState?.turn ?? 1),
+      revision: foundry.utils.randomID()
+    };
 
     const dialog = new NeuroshimaWeaponRollDialog({
       actor,
       weapon,
       rollType: "melee",
       isPoolRoll: true,
+      meleePoolLink,
       crowdingDexPenalty,
       chargeDexPenalty,
       onClose: () => {},
-      onRoll: async (rollResult) => {
+      onRoll: async (rollResult, test) => {
         game.neuroshima?.log("[melee-vanilla-chat.onRoll] callback fired", { encounterId, participantId, maneuver: rollResult?.maneuver, tempoLevel: rollResult?.tempoLevel });
-        if (!rollResult) return;
-        await MeleeTurnService.setPool(encounterId, participantId, rollResult);
+        if (!rollResult || !test) return;
+        await MeleeTurnService.setPool(encounterId, participantId, test);
       }
     });
     dialog.render(true);

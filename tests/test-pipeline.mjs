@@ -4,15 +4,34 @@ import assert from "node:assert/strict";
 Math.clamp ??= (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
 
 const deepClone = value => structuredClone(value ?? {});
+const settingOverrides = {};
 globalThis.foundry = {
   applications: {
+    sidebar: {
+      tabs: {
+        CombatTracker: class {
+          static DEFAULT_OPTIONS = {};
+        }
+      }
+    },
     api: {
       ApplicationV2: class {},
       HandlebarsApplicationMixin: Base => class extends Base {}
     }
   },
+  canvas: {
+    placeables: {
+      tokens: {
+        TokenRuler: class {
+          static DEFAULT_OPTIONS = {};
+        }
+      }
+    }
+  },
   utils: {
     deepClone,
+    randomID: () => `revision-${Math.random().toString(36).slice(2)}`,
+    escapeHTML: value => String(value),
     mergeObject(target, source) {
       for (const [key, value] of Object.entries(source ?? {})) {
         if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -31,6 +50,7 @@ globalThis.ChatMessage = class {
   static getSpeaker({ actor } = {}) {
     return { actor: actor?.id ?? null };
   }
+  static applyRollMode() {}
 };
 globalThis.CONST = { CHAT_MESSAGE_STYLES: { OTHER: 0 } };
 globalThis.game = {
@@ -48,7 +68,7 @@ globalThis.game = {
     format: (key, data) => `${key.replace("{index}", data?.index ?? "")}`
   },
   settings: {
-    get: (_scope, key) => ({
+    get: (_scope, key) => key in settingOverrides ? settingOverrides[key] : ({
       rollTooltipMinRole: 0,
       rollTooltipOwnerVisibility: false,
       doubleSkillAction: false,
@@ -57,8 +77,9 @@ globalThis.game = {
   },
   user: { id: "user", role: 4, isGM: true }
 };
-globalThis.ui = { notifications: { warn() {} } };
+globalThis.ui = { notifications: { warn() {}, error() {} } };
 globalThis.fromUuid = async uuid => documents.get(uuid) ?? null;
+globalThis.fromUuidSync = uuid => documents.get(uuid) ?? null;
 
 let dice = [2, 8, 15];
 globalThis.Roll = class {
@@ -96,6 +117,12 @@ const {
   collectSkillEffectSources
 } = await import("../module/helpers/tooltip-renderer.js");
 const { NeuroshimaChatMessage } = await import("../module/documents/chat-message.js");
+const { EffectActionRuntime } = await import("../module/effects/effect-action-runtime.js");
+const {
+  MeleeResolution,
+  MeleeStore,
+  MeleeTurnService
+} = await import("../module/combat/combat.js");
 game.neuroshima.tests = NEUROSHIMA_TESTS;
 
 function actorFixture() {
@@ -150,7 +177,13 @@ test("weapon triggers follow WFRP order", async () => {
   instance.sendToChat = async () => null;
   instance.runTrigger = async trigger => events.push(trigger);
   await instance.roll({ sendToChat: false });
-  assert.deepEqual(events, ["preRollTest", "preRollWeaponTest", "rollTest", "rollWeaponTest"]);
+  assert.deepEqual(events, [
+    "preRollTest",
+    "preRollWeaponTest",
+    "afterRollDice",
+    "rollTest",
+    "rollWeaponTest"
+  ]);
 });
 
 test("editing weapon roll does not consume ammunition twice", async () => {
@@ -910,3 +943,403 @@ test("percentile edit menu is disabled until dedicated editor exists", () => {
   assert.equal(PercentileTest.editableByGM, false);
   assert.equal(PercentileTest.dieSides, 100);
 });
+
+function installMeleeEncounter({
+  phase = "awaiting-pool-rolls",
+  turn = 1,
+  revision = "revision-1",
+  usedDice = [],
+  attackerSelectedDice = [],
+  defenderSelectedDice = []
+} = {}) {
+  let encounters = {
+    encounter: {
+      id: "encounter",
+      turnState: { turn, phase, selectionTurn: "participant" },
+      currentExchange: {
+        attackerId: "participant",
+        defenderId: "opponent",
+        attackerSelectedDice,
+        defenderSelectedDice
+      },
+      participants: {
+        participant: {
+          id: "participant",
+          actorUuid: "Actor.actor",
+          pool: [2, 8, 15],
+          modifiedPool: [2, 8, 15],
+          dieResults: [],
+          poolRevision: revision,
+          poolMessageId: "message",
+          usedDice
+        },
+        opponent: {
+          id: "opponent",
+          pool: [],
+          usedDice: []
+        }
+      }
+    }
+  };
+  game.combat = {
+    getFlag: (_scope, key) => key === "meleeEncounters" ? encounters : null,
+    async setFlag(_scope, key, value) {
+      if (key === "meleeEncounters") encounters = value;
+      return value;
+    }
+  };
+  return () => encounters.encounter;
+}
+
+async function linkedTest(rawResults = [2, 8, 15], {
+  revision = "revision-1",
+  turn = 1,
+  open = false
+} = {}) {
+  const instance = new SkillTest({
+    preData: { stat: 10, skill: 0, fixedDice: rawResults, isOpen: open },
+    context: {
+      isDebug: true,
+      isOpen: open,
+      meleePoolLink: {
+        encounterId: "encounter",
+        participantId: "participant",
+        turn,
+        revision
+      }
+    }
+  }, actorFixture());
+  instance.sendToChat = async ({ message } = {}) => message ?? { id: "message" };
+  await instance.roll({ sendToChat: false });
+  return instance;
+}
+
+test("melee pool uses rawResults after rollTest replacement", async () => {
+  const instance = await linkedTest([1, 14, 18]);
+  instance.replaceDie(1, 1, { type: "effect" });
+  await instance.recalculate();
+  const participant = {};
+  MeleeTurnService.applyPoolSnapshot(
+    participant,
+    MeleeTurnService.buildPoolSnapshot(instance)
+  );
+  assert.deepEqual(participant.pool, [1, 1, 18]);
+  assert.deepEqual(participant.poolSnapshot.rolledResults, [1, 14, 18]);
+});
+
+test("result action synchronizes changed die to melee encounter", async () => {
+  const getEncounter = installMeleeEncounter();
+  const instance = await linkedTest();
+  MeleeTurnService.applyPoolSnapshot(
+    getEncounter().participants.participant,
+    MeleeTurnService.buildPoolSnapshot(instance, { messageId: "message" })
+  );
+  instance.replaceDie(1, 1, { type: "amen" });
+  const committed = await instance.commitMutation({ reason: "result-action:amen" });
+  assert.equal(committed.ok, true);
+  assert.deepEqual(getEncounter().participants.participant.pool, [2, 1, 15]);
+  assert.equal(getEncounter().participants.participant.modifiedPool[1], 1);
+  assert.equal(typeof getEncounter().participants.participant.dieResults[1].isSuccess, "boolean");
+});
+
+test("GM edit synchronizes melee pool", async () => {
+  const getEncounter = installMeleeEncounter();
+  const instance = await linkedTest();
+  MeleeTurnService.applyPoolSnapshot(
+    getEncounter().participants.participant,
+    MeleeTurnService.buildPoolSnapshot(instance, { messageId: "message" })
+  );
+  await instance.edit(
+    { rawResults: [1, 3, 19] },
+    { message: { id: "message" } }
+  );
+  assert.deepEqual(getEncounter().participants.participant.pool, [1, 3, 19]);
+});
+
+test("partial reroll synchronizes melee pool", async () => {
+  const getEncounter = installMeleeEncounter();
+  const instance = await linkedTest();
+  MeleeTurnService.applyPoolSnapshot(
+    getEncounter().participants.participant,
+    MeleeTurnService.buildPoolSnapshot(instance, { messageId: "message" })
+  );
+  dice = [4];
+  await instance.rerollDice([1], { previousMessage: { id: "message" } });
+  assert.deepEqual(getEncounter().participants.participant.pool, [2, 4, 15]);
+});
+
+test("melee pool mutation is rejected after die selection", async () => {
+  installMeleeEncounter({ attackerSelectedDice: [0] });
+  const instance = await linkedTest();
+  assert.deepEqual(await instance.validateLinkedMutation(), {
+    ok: false,
+    reason: "dice-already-selected"
+  });
+});
+
+test("melee pool mutation is rejected after die use", async () => {
+  installMeleeEncounter({ usedDice: [0] });
+  const instance = await linkedTest();
+  assert.deepEqual(await instance.validateLinkedMutation(), {
+    ok: false,
+    reason: "dice-already-used"
+  });
+});
+
+test("stale melee roll card cannot modify new turn pool", async () => {
+  installMeleeEncounter({ turn: 2 });
+  const instance = await linkedTest([2, 8, 15], { turn: 1 });
+  assert.equal((await instance.validateLinkedMutation()).reason, "stale-turn");
+});
+
+test("old pool revision cannot overwrite newer roll", async () => {
+  installMeleeEncounter({ revision: "revision-2" });
+  const instance = await linkedTest([2, 8, 15], { revision: "revision-1" });
+  assert.equal((await instance.validateLinkedMutation()).reason, "stale-revision");
+});
+
+test("replaced die value 1 is not natural one", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 10, skill: 0, fixedDice: [14, 18, 19] },
+    context: { isDebug: true }
+  }, actorFixture());
+  await instance.roll({ sendToChat: false });
+  instance.replaceDie(0, 1, { type: "amen" });
+  await instance.recalculate();
+  assert.equal(instance.result.modifiedResults[0].isNat1, false);
+  assert.deepEqual(instance.result.rolledResults, [14, 18, 19]);
+});
+
+test("GM edited one can count as natural result", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 10, skill: 0, fixedDice: [14, 18, 19] },
+    context: { isDebug: true }
+  }, actorFixture());
+  instance.sendToChat = async () => null;
+  await instance.roll({ sendToChat: false });
+  await instance.edit({ rawResults: [1, 18, 19] });
+  assert.equal(instance.result.modifiedResults[0].isNat1, true);
+  assert.equal(instance.result.rolledResults[0], 1);
+});
+
+test("addSuccesses reconciles closed test success", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 1, skill: 0, fixedDice: [10, 11, 12] },
+    context: { isDebug: true }
+  }, actorFixture());
+  await instance.roll({ sendToChat: false });
+  instance.addSuccesses(2);
+  await instance.recalculate();
+  assert.equal(instance.result.success, true);
+  assert.equal(instance.result.isSuccess, true);
+});
+
+test("addSuccesses updates open test result", async () => {
+  const instance = new SkillTest({
+    preData: { stat: 1, skill: 0, fixedDice: [10, 11], isOpen: true },
+    context: { isDebug: true, isOpen: true }
+  }, actorFixture());
+  await instance.roll({ sendToChat: false });
+  instance.addSuccesses(1);
+  await instance.recalculate();
+  assert.equal(instance.result.success, true);
+});
+
+test("used result action stays used after card rerender", async () => {
+  const instance = await linkedTest();
+  instance.context.usedResultActions = ["effect::action::meleePool"];
+  const originalCollect = EffectActionRuntime.collect;
+  const originalRender = NeuroshimaChatMessage._renderTemplate;
+  const originalCreate = NeuroshimaChatMessage.create;
+  EffectActionRuntime.collect = async () => [{
+    instanceId: "effect::action::meleePool",
+    used: false
+  }];
+  NeuroshimaChatMessage._renderTemplate = async () => "<div></div>";
+  NeuroshimaChatMessage.create = async data => data;
+  try {
+    await NeuroshimaChatMessage.renderTest(instance);
+    assert.equal(instance.result.effectActions[0].used, true);
+  } finally {
+    EffectActionRuntime.collect = originalCollect;
+    NeuroshimaChatMessage._renderTemplate = originalRender;
+    NeuroshimaChatMessage.create = originalCreate;
+  }
+});
+
+test("result action resource is consumed only once", async () => {
+  const actor = actorFixture();
+  actor.documentName = "Actor";
+  actor.resource = 0;
+  documents.set(actor.uuid, actor);
+  const effect = {
+    uuid: "ActiveEffect.amen",
+    name: "Amen",
+    parent: actor,
+    disabled: false,
+    isSuppressed: false,
+    system: {
+      actionDefs: [{
+        id: "amen",
+        type: "result",
+        name: "Amen",
+        executeScript: "args.actor.resource += 1;"
+      }]
+    }
+  };
+  documents.set(effect.uuid, effect);
+  const instance = new SkillTest({
+    preData: { stat: 10, skill: 0, fixedDice: [2, 8, 15] },
+    result: {
+      effectActions: [{
+        instanceId: "ActiveEffect.amen::amen::testResult",
+        sourceEffectUuid: effect.uuid,
+        actionId: "amen",
+        surface: "testResult",
+        used: false
+      }]
+    },
+    context: { isDebug: true }
+  }, actor);
+  await instance.roll({ sendToChat: false });
+  instance.result.effectActions = [{
+    instanceId: "ActiveEffect.amen::amen::testResult",
+    sourceEffectUuid: effect.uuid,
+    actionId: "amen",
+    surface: "testResult",
+    used: false
+  }];
+  const serialized = instance.toData();
+  let stored = deepClone(serialized);
+  const message = {
+    id: "action-message",
+    author: { id: game.user.id },
+    getFlag(_scope, key) {
+      if (key === "test") return stored;
+      return null;
+    },
+    async update(data) {
+      stored = deepClone(data["flags.neuroshima.test"]);
+    }
+  };
+  const originalSocket = game.neuroshima.socket;
+  const originalRender = NeuroshimaChatMessage._renderTemplate;
+  let claimed = false;
+  game.neuroshima.socket = {
+    async executeAsGM(action) {
+      if (action === "claimResultAction") {
+        if (claimed) return { ok: false, reason: "in-flight" };
+        claimed = true;
+        return { ok: true };
+      }
+      if (action === "releaseResultAction") {
+        claimed = false;
+        return true;
+      }
+      return null;
+    }
+  };
+  NeuroshimaChatMessage._renderTemplate = async () => "<div></div>";
+  try {
+    await Promise.all([
+      EffectActionRuntime.execute(message, "ActiveEffect.amen::amen::testResult"),
+      EffectActionRuntime.execute(message, "ActiveEffect.amen::amen::testResult")
+    ]);
+  } finally {
+    game.neuroshima.socket = originalSocket;
+    NeuroshimaChatMessage._renderTemplate = originalRender;
+  }
+  assert.equal(actor.resource, 1);
+});
+
+test("non-GM melee synchronization is delegated to the authoritative client", async () => {
+  const instance = await linkedTest();
+  const originalIsGM = game.user.isGM;
+  const originalSocket = game.neuroshima.socket;
+  let payload = null;
+  game.user.isGM = false;
+  game.neuroshima.socket = {
+    async executeAsGM(action, data) {
+      assert.equal(action, "syncMeleePoolSnapshot");
+      payload = data;
+      return { ok: true, snapshot: data.snapshot };
+    }
+  };
+  try {
+    const result = await MeleeTurnService.syncPoolFromTest(instance, {
+      reason: "multi-client-test"
+    });
+    assert.equal(result.ok, true);
+  } finally {
+    game.user.isGM = originalIsGM;
+    game.neuroshima.socket = originalSocket;
+  }
+  assert.equal(payload.link.revision, "revision-1");
+  assert.equal(payload.reason, "multi-client-test");
+  assert.deepEqual(payload.snapshot.rawResults, [2, 8, 15]);
+});
+
+for (const doubleSkillAction of [false, true]) {
+  test(`melee pool snapshot supports doubleSkillAction = ${doubleSkillAction}`, async () => {
+    settingOverrides.doubleSkillAction = doubleSkillAction;
+    try {
+      const actor = {
+        ...actorFixture(),
+        system: {
+          attributeTotals: { dexterity: 10 },
+          skills: { melee: { value: 4 } },
+          combat: {}
+        }
+      };
+      const weapon = {
+        id: "melee",
+        uuid: "Actor.actor.Item.melee",
+        name: "Knife",
+        system: {
+          weaponType: "melee",
+          attribute: "dexterity",
+          skill: "melee",
+          attackBonus: 0,
+          defenseBonus: 0,
+          damageMelee1: "D",
+          damageMelee2: "L",
+          damageMelee3: "C",
+          piercing: 0
+        }
+      };
+      const instance = new MeleeWeaponTest({
+        item: weapon,
+        preData: { stat: 10, skill: 4, fixedDice: [2, 12, 19] },
+        context: { isDebug: true, isMelee: true, meleeAction: "attack" }
+      }, actor);
+      await instance.roll({ sendToChat: false });
+      const snapshot = MeleeTurnService.buildPoolSnapshot(instance);
+      assert.deepEqual(snapshot.rawResults, [2, 12, 19]);
+      assert.equal(snapshot.modifiedResults.length, 3);
+      assert.equal(snapshot.modifiedResults[0].isSuccess, true);
+      const participant = {
+        pool: [...snapshot.rawResults],
+        poolSnapshot: snapshot,
+        modifiedPool: snapshot.modifiedResults.map(die => die.modified),
+        dieResults: snapshot.modifiedResults,
+        selfReductions: [0, 5, 0],
+        opponentGains: [0, 0, 0]
+      };
+      if (doubleSkillAction) {
+        assert.equal(MeleeResolution._getEffectiveDieVal(participant, 1), 7);
+        assert.equal(MeleeResolution._isDieSuccess(participant, 1, 10), true);
+      } else {
+        assert.equal(
+          MeleeResolution._getEffectiveDieVal(participant, 1),
+          snapshot.modifiedResults[1].modified
+        );
+        assert.equal(
+          MeleeResolution._isDieSuccess(participant, 1, 10),
+          snapshot.modifiedResults[1].isSuccess
+        );
+      }
+    } finally {
+      delete settingOverrides.doubleSkillAction;
+    }
+  });
+}

@@ -1233,7 +1233,7 @@ export class NeuroshimaScript {
    * Append a short annotation to the roll result card.
    * Annotations appear below the roll-outcome footer.
    * Available whenever the trigger exposes a roll annotation collection, including
-   * `dialog`, `preRollTest`, `rollTest`, `preRollWeaponTest`, and
+   * `dialog`, `preRollTest`, `afterRollDice`, `rollTest`, `preRollWeaponTest`, and
    * `rollWeaponTest`. Dialog annotations are carried into the eventual roll card.
    * @param {string} text - Annotation text to display.
    *
@@ -3398,8 +3398,16 @@ export class NeuroshimaScript {
  *                         args.test.preData.cancelled = true     → abort the roll entirely
  *                         this.addAnnotation("text")             → custom annotation shown in chat
  *                         args.test.preData.penalties.mod -= 20  → reduce total penalty by 20%
- *                         args.test.attribute.value += 2         → boost attribute value
- *                         args.test.skill.value += 1             → boost skill rank
+ *                         args.test.preData.stat += 2            → boost attribute value
+ *                         args.test.preData.skill += 1           → boost skill rank
+ *
+ * afterRollDice    — After Roll Dice: runs after dice are stored, before evaluation
+ *                    args.dice.rolled               — immutable values actually rolled
+ *                    args.dice.raw                  — current values used by evaluation
+ *                    args.dice.replace(index, value, options?)
+ *                    args.dice.copy(source, target, options?)
+ *                    args.result.addAnnotation(text)
+ *                    Natural 1/20 and dice difficulty shift always use rolled values.
  *
  * rollTest         — Roll Test (result): runs after evaluation or skipRoll (not called if cancelled)
  *                    args.test                          — the entire test object
@@ -3417,6 +3425,11 @@ export class NeuroshimaScript {
  *                    args.test.context.skillKey         — raw skill key string
  *                    Use: react to success/failure, add chat annotations, apply conditions
  *                         this.addAnnotation("text")             → shown under roll result in chat
+ *
+ * All test phases and result actions expose the same top-level API:
+ * args.actor, args.item, args.test, args.context, args.eventContext,
+ * args.dice, args.result, and args.links. Result-action ctx.dice/ctx.result
+ * reference the same API objects as args.dice/args.result.
  *
  * ── Cztery wyzwalacze obrażeń (wzorowane na WFRP4e) ──────────────────────────
  *

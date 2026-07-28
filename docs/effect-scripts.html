@@ -151,6 +151,7 @@
         <li><a href="#dialog">dialog — Dialog</a></li>
         <li><a href="#trigger-prepareData">Triggery przygotowania danych (SYNC)</a></li>
         <li><a href="#trigger-preRollTest">preRollTest / preRollWeaponTest</a></li>
+        <li><a href="#trigger-afterRollDice">afterRollDice — po rzucie, przed oceną</a></li>
         <li><a href="#trigger-rollTest">rollTest / rollWeaponTest</a></li>
         <li><a href="#trigger-getInitiativeFormula">getInitiativeFormula — Get Initiative Formula</a></li>
         <li><a href="#trigger-preRollWeaponTest">preRollWeaponTest — faza przed rzutem broni</a></li>
@@ -292,7 +293,7 @@
     <div class="ctx-row"><span class="ctx-name">this.trigger</span><span class="ctx-type">string</span><span class="ctx-desc">Nazwa wyzwalacza który uruchomił ten skrypt</span></div>
     <div class="ctx-row"><span class="ctx-name">this.token</span><span class="ctx-type">TokenDocument | null</span><span class="ctx-desc">Pierwszy token aktora na aktywnej scenie (null jeśli brak)</span></div>
     <div class="ctx-row"><span class="ctx-name">this.notification(msg, type?)</span><span class="ctx-type">void</span><span class="ctx-desc">Pokazuje powiadomienie UI. type: "info" | "warn" | "error"</span></div>
-    <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Zwraca <code>true</code>, gdy bieżący wyzwalacz udostępnia adnotacje. Działa w <code>dialog</code>, <code>preRollTest</code>, <code>preRollWeaponTest</code>, <code>rollTest</code> i <code>rollWeaponTest</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">this.addAnnotation(text)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Dodaje krótką adnotację wyświetlaną pod wynikiem rzutu na karcie czatu. Zwraca <code>true</code>, gdy bieżący wyzwalacz udostępnia test. Działa w <code>dialog</code> oraz wszystkich fazach testu, w tym <code>afterRollDice</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">await this.roll(formula, data?, options?)</span><span class="ctx-type">Promise&lt;Roll&gt;</span><span class="ctx-desc">Rzut kością. <code>options: { flavor, rollMode, toMessage, speaker }</code> — gdy <code>flavor</code> lub <code>toMessage:true</code>, wynik trafia do chatu z flavorem i speakerem aktora. <strong>Tylko w triggerach ASYNC.</strong></span></div>
     <div class="ctx-row"><span class="ctx-name">this.rollToChat(count, sides, options?)</span><span class="ctx-type">number[] | Promise&lt;Roll&gt;</span><span class="ctx-desc"><strong>Ujednolicony rzut kością — działa w SYNC i ASYNC.</strong> W triggerze SYNC (<code>APCalc</code>) zachowuje się jak <code>deferRollToChat</code>: wykonuje rzut natychmiast i zwraca <code>number[]</code>, wpis na czat jest odroczony. W triggerze ASYNC działa jak <code>this.roll</code> i zwraca <code>Promise&lt;Roll&gt;</code>. Możesz bezpiecznie pisać <code>await this.rollToChat(...)</code> w obu kontekstach. Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
     <div class="ctx-row"><span class="ctx-name">this.deferRollToChat(count, sides, options?)</span><span class="ctx-type">number[]</span><span class="ctx-desc">Rzut synchroniczny — wynik dostępny natychmiast jako <code>number[]</code>. Wpis na czat z flavorem odroczony do momentu zakończenia wszystkich kalkulacji. <strong>Tylko w triggerach SYNC</strong> (<code>APCalc</code>). Opcje: <code>{ flavor, rollMode, speaker }</code>.</span></div>
@@ -460,7 +461,15 @@
   </div>
 
   <h3>Argumenty <code>args</code></h3>
-  <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Publiczne zdarzenia otrzymują także <code>args.eventContext</code> z identyfikatorem triggera, fazą, trybem wykonania, zakresem i metadanymi. Triggery testowe udostępniają aktualną klasę testu w <code>args.test</code>.</p>
+  <p>Obiekt <code>args</code> jest zawsze przekazywany jako parametr funkcji skryptu. Publiczne zdarzenia otrzymują także <code>args.eventContext</code> z identyfikatorem triggera, fazą, trybem wykonania, zakresem i metadanymi. Wszystkie fazy testowe oraz akcje wyniku używają wspólnego kontraktu: <code>args.actor</code>, <code>args.item</code>, <code>args.test</code>, <code>args.context</code>, <code>args.eventContext</code>, <code>args.dice</code>, <code>args.result</code> i <code>args.links</code>.</p>
+  <div class="context-box">
+    <div class="ctx-row"><span class="ctx-name">args.dice.rolled / raw / modified</span><span class="ctx-type">array</span><span class="ctx-desc"><code>rolled</code> to niezmienny rzeczywisty rzut, <code>raw</code> to aktualne wartości po zamianach, a <code>modified</code> zawiera wynik oceny i wykorzystanie umiejętności.</span></div>
+    <div class="ctx-row"><span class="ctx-name">args.dice.replace(index, value, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Kontrolowana zamiana kości z historią w <code>diceChanges</code>. Wartość ustawiona na 1 nie staje się naturalną jedynką.</span></div>
+    <div class="ctx-row"><span class="ctx-name">args.dice.copy(source, target, options?)</span><span class="ctx-type">boolean</span><span class="ctx-desc">Kopiuje aktualną wartość kości i oznacza test do ponownego przeliczenia.</span></div>
+    <div class="ctx-row"><span class="ctx-name">await args.dice.choose(options)</span><span class="ctx-type">Promise&lt;number[] | null&gt;</span><span class="ctx-desc">Otwiera kontrolowany wybór indeksów kości; szczególnie użyteczne w akcjach wyniku.</span></div>
+    <div class="ctx-row"><span class="ctx-name">args.result</span><span class="ctx-type">API</span><span class="ctx-desc">Metody <code>addSuccesses</code>, <code>addSuccessPoints</code>, <code>forceSuccess</code>, <code>forceFailure</code> i <code>addAnnotation</code>.</span></div>
+    <div class="ctx-row"><span class="ctx-name">args.links.meleePool</span><span class="ctx-type">object | null</span><span class="ctx-desc">Trwały link puli melee: encounter, uczestnik, tura i rewizja. System synchronizuje powiązaną kartę automatycznie.</span></div>
+  </div>
   <div class="callout warning">
     <strong>Modyfikowanie args:</strong> Większość wyzwalaczy przekazuje <code>args</code> przez referencję.
     Modyfikując właściwości, zmieniasz wartości używane przez system.
@@ -482,7 +491,7 @@
 
   <div class="callout info">
     <strong>Źródło prawdy:</strong> poniższa lista odpowiada dokładnie
-    <code>TriggerRegistry</code> w schemacie v4. Nazwy triggerów są czułe na wielkość liter.
+    <code>TriggerRegistry</code> w schemacie v5. Nazwy triggerów są czułe na wielkość liter.
     Triggery oznaczone jako <strong>SYNC</strong> nie mogą używać <code>await</code> ani operacji
     zapisujących dokumenty; w pozostałych skryptach można korzystać z API asynchronicznego.
   </div>
@@ -492,7 +501,7 @@
       <tr><td>Dokumenty</td><td><code>manual</code>, <code>immediate</code>, <code>dialog</code>, <code>preUpdateDocument</code>, <code>update</code>, <code>equipToggle</code></td><td>Ręczne wykonanie, utworzenie efektu, dialog oraz aktualizacja dokumentów.</td></tr>
       <tr><td>Dane aktora <strong>SYNC</strong></td><td><code>prePrepareData</code>, <code>prePrepareItems</code>, <code>prepareData</code>, <code>prepareOwned</code>, <code>computeCharacteristics</code>, <code>computeEncumbrance</code></td><td>Synchroniczne przygotowanie danych pochodnych aktora i jego itemów.</td></tr>
       <tr><td>Rany i pancerz <strong>SYNC</strong></td><td><code>preWoundCalc</code>, <code>woundCalc</code>, <code>calculateSize</code>, <code>preAPCalc</code>, <code>APCalc</code>, <code>prePrepareItem</code>, <code>prepareItem</code></td><td>Obliczenia ran, rozmiaru, pancerza oraz danych pojedynczego itemu.</td></tr>
-      <tr><td>Testy</td><td><code>preRollTest</code>, <code>preRollWeaponTest</code>, <code>rollTest</code>, <code>rollWeaponTest</code></td><td>Cykl klas TestRoll przed obliczeniem i po utworzeniu wyniku.</td></tr>
+      <tr><td>Testy</td><td><code>preRollTest</code>, <code>preRollWeaponTest</code>, <code>afterRollDice</code>, <code>rollTest</code>, <code>rollWeaponTest</code></td><td>Cykl klas testu przed rzutem, bezpośrednio po losowaniu oraz po utworzeniu wyniku.</td></tr>
       <tr><td>Obrażenia</td><td><code>preApplyDamage</code>, <code>applyDamage</code>, <code>preTakeDamage</code>, <code>takeDamage</code>, <code>computeApplyDamageModifiers</code>, <code>computeTakeDamageModifiers</code></td><td>Etapy atakującego i obrońcy; triggery <code>compute*</code> są synchroniczne.</td></tr>
       <tr><td>Warunki</td><td><code>preApplyCondition</code>, <code>applyCondition</code></td><td>Kontrola przed nałożeniem stanu i reakcja po jego nałożeniu.</td></tr>
       <tr><td>Testy przeciwstawne</td><td><code>preOpposedAttacker</code>, <code>preOpposedDefender</code>, <code>opposedAttacker</code>, <code>opposedDefender</code>, <code>calculateOpposedDamage</code>, <code>getInitiativeFormula</code></td><td>Rozstrzygnięcie testu przeciwstawnego, obrażeń i inicjatywy.</td></tr>
@@ -942,6 +951,24 @@ args.test.preData.penalties.mod += <span class="num">10</span>;
 args.test.<span class="fn">forceSuccess</span>({ mode: <span class="str">"keepRoll"</span>, annotation: <span class="str">"Automatyczny sukces"</span> });</code></pre>
   </div>
 
+  <!-- afterRollDice -->
+  <h3 id="trigger-afterRollDice">afterRollDice — <em>po rzucie, przed oceną</em></h3>
+  <p>Uruchamia się po zapisaniu <code>rolledResults</code> i <code>rawResults</code>, ale przed obliczeniem trudności, sukcesów i <code>modifiedResults</code>. To właściwa faza dla efektów, które mają zobaczyć rzeczywiście wyrzucone kości i kontrolowanie zmienić ich aktualną wartość.</p>
+  <div class="callout info">
+    <strong>Naturalne wyniki:</strong> reguły naturalnej 1/20 oraz przesunięcie trudności korzystają z <code>rolledResults</code>. Zamiana przez <code>args.dice.replace()</code> zmienia <code>rawResults</code>, lecz nie fałszuje naturalnego wyniku.
+  </div>
+  <div class="example-block">
+    <div class="example-header"><span class="trigger-badge">afterRollDice</span> Zamiana jednej kości przed oceną</div>
+    <pre><code><span class="kw">const</span> <span class="var">index</span> = args.dice.raw.<span class="fn">findIndex</span>(<span class="var">value</span> =&gt; <span class="var">value</span> &gt; <span class="num">15</span>);
+<span class="kw">if</span> (<span class="var">index</span> &gt;= <span class="num">0</span>) {
+  args.dice.<span class="fn">replace</span>(<span class="var">index</span>, <span class="num">10</span>, {
+    type: <span class="str">"effect"</span>,
+    label: <span class="kw">this</span>.effect.name
+  });
+  args.result.<span class="fn">addAnnotation</span>(<span class="str">"Kość zmieniona przed oceną"</span>);
+}</code></pre>
+  </div>
+
   <!-- rollTest -->
   <h3 id="trigger-rollTest">rollTest — <em>Roll Test (post-roll)</em></h3>
   <p>Uruchamiany <em>po</em> rzucie kośćmi — gdy surowe kości są już znane. Pozwala reagować na wynik, dodawać adnotacje oraz kontrolowanie zastępować lub kopiować kości przez <code>test.replaceDie()</code>, <code>test.copyDie()</code>, <code>this.replaceTestDie()</code> i <code>this.copyTestDie()</code>. <strong>Nie zmieniaj tutaj wejściowych kar</strong> — do tego służy faza pre-roll.</p>
@@ -977,11 +1004,11 @@ args.test.<span class="fn">forceSuccess</span>({ mode: <span class="str">"keepRo
 
   <div class="example-block">
     <div class="example-header"><span class="trigger-badge">rollTest</span> Bezpieczne skopiowanie najlepszej kości</div>
-    <pre><code><span class="kw">const</span> <span class="var">dice</span> = args.test.result.rawResults ?? [];
+    <pre><code><span class="kw">const</span> <span class="var">dice</span> = args.dice.raw ?? [];
 <span class="kw">if</span> (<span class="var">dice</span>.length &lt; <span class="num">2</span>) <span class="kw">return</span>;
 <span class="kw">const</span> <span class="var">bestIndex</span>  = <span class="var">dice</span>.<span class="fn">indexOf</span>(Math.<span class="fn">min</span>(...<span class="var">dice</span>));
 <span class="kw">const</span> <span class="var">worstIndex</span> = <span class="var">dice</span>.<span class="fn">indexOf</span>(Math.<span class="fn">max</span>(...<span class="var">dice</span>));
-<span class="kw">this</span>.<span class="fn">copyTestDie</span>(args, <span class="var">bestIndex</span>, <span class="var">worstIndex</span>, {
+args.dice.<span class="fn">copy</span>(<span class="var">bestIndex</span>, <span class="var">worstIndex</span>, {
   label: <span class="kw">this</span>.effect.name,
   icon: <span class="str">"fas fa-copy"</span>
 });</code></pre>
@@ -1603,7 +1630,7 @@ args.piercing = <span class="num">0</span>;</code></pre>
 
   <!-- rollWeaponTest -->
   <h3 id="trigger-weapon-lifecycle">WeaponTest — <em>pełny cykl testu broni</em></h3>
-  <p>Kolejność efektów to <code>preRollTest</code> → <code>preRollWeaponTest</code> → obliczenie → <code>rollTest</code> → <code>rollWeaponTest</code>. Ten sam obiekt <code>args.test</code> przenosi dane przez wszystkie fazy.</p>
+  <p>Kolejność efektów to <code>preRollTest</code> → <code>preRollWeaponTest</code> → rzut kośćmi → <code>afterRollDice</code> → obliczenie → <code>rollTest</code> → <code>rollWeaponTest</code>. Ten sam obiekt <code>args.test</code> przenosi dane przez wszystkie fazy.</p>
   <div class="callout warning">Przy przerzucie i edycji test odtwarza bazowe <code>preData</code>, dzięki czemu modyfikatory pre-roll nie kumulują się ponownie.</div>
   <table>
     <tbody><tr><th>Argument</th><th>Typ</th><th>Opis</th></tr>

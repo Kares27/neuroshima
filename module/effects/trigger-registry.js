@@ -38,6 +38,7 @@ const definitions = [
   // Tests.
   ["preRollTest", "Pre-Roll Test", "tests", ASYNC, ["actor", "item"]],
   ["preRollWeaponTest", "Pre-Roll Weapon Test", "tests", ASYNC, ["actor", "item"]],
+  ["afterRollDice", "After Rolling Dice", "tests", ASYNC, ["actor", "item"]],
   ["rollTest", "Roll Test", "tests", ASYNC, ["actor", "item"]],
   ["rollWeaponTest", "Roll Weapon Test", "tests", ASYNC, ["actor", "item"]],
 

@@ -49,20 +49,21 @@ export class TestRules {
   }
 }
 
-function diceObjects(results = []) {
-  return results.map((value, index) => ({
+function diceObjects(rawResults = [], rolledResults = rawResults) {
+  return rawResults.map((value, index) => ({
+    rolled: Number(rolledResults[index] ?? value),
     original: Number(value),
     modified: Number(value),
     index,
     ignored: false,
     isSuccess: false,
-    isNat1: Number(value) === 1,
-    isNat20: Number(value) === 20
+    isNat1: Number(rolledResults[index] ?? value) === 1,
+    isNat20: Number(rolledResults[index] ?? value) === 20
   }));
 }
 
-function evaluateClosed3d20(data, results) {
-  const dice = diceObjects(results);
+function evaluateClosed3d20(data, results, rolledResults = results) {
+  const dice = diceObjects(results, rolledResults);
   const target = Number(data.target ?? 0);
   const skill = Number(data.skill ?? 0);
   const reduction = Number(data.dieReductionBonus ?? 0);
@@ -91,9 +92,9 @@ function evaluateClosed3d20(data, results) {
   };
 }
 
-function evaluateDefense3d20(data, results) {
+function evaluateDefense3d20(data, results, rolledResults = results) {
   const target = Number(data.target ?? 0);
-  const modifiedResults = diceObjects(results).map(die => ({
+  const modifiedResults = diceObjects(results, rolledResults).map(die => ({
     ...die,
     isSuccess: die.original <= target && die.original !== 20
   }));
@@ -108,14 +109,14 @@ function evaluateDefense3d20(data, results) {
   };
 }
 
-function evaluateOpen3d20(data, results) {
+function evaluateOpen3d20(data, results, rolledResults = results) {
   if (![2, 3].includes(results.length)) {
     throw new RangeError("Open tests require exactly two or three dice");
   }
   const target = Number(data.target ?? 0);
   const skill = Number(data.skill ?? 0);
   const reduction = Number(data.dieReductionBonus ?? 0);
-  const dice = diceObjects(results);
+  const dice = diceObjects(results, rolledResults);
   const active = [...dice].sort((a, b) => a.original - b.original).slice(0, 2);
   if (dice.length === 3) {
     const ignored = dice.find(die => !active.includes(die));
@@ -138,7 +139,7 @@ function evaluateOpen3d20(data, results) {
   };
 }
 
-function evaluateRangedAttack(data, results) {
+function evaluateRangedAttack(data, results, rolledResults = results) {
   const target = Number(data.target ?? 0);
   const skill = Number(data.skill ?? 0);
   const reduction = Number(data.dieReductionBonus ?? 0);
@@ -148,22 +149,23 @@ function evaluateRangedAttack(data, results) {
   const success = data.isOpen ? overflow >= 0 : modifiedBest <= target && bestResult !== 20;
   return {
     bestResult,
-    modifiedResults: results.map((value, index) => {
+    modifiedResults: diceObjects(results, rolledResults).map((die, index) => {
+      const value = die.original;
       const modified = Math.max(1, Number(value) - skill - reduction);
       return {
-        original: Number(value), modified, index,
+        ...die, original: Number(value), modified, index,
         isSuccess: data.isOpen ? target - modified >= 0 : modified <= target && Number(value) !== 20,
         isBest: Number(value) === bestResult,
-        isNat1: Number(value) === 1,
-        isNat20: Number(value) === 20,
         ignored: false
       };
     }),
     success,
     successCount: success ? (data.isOpen ? Math.max(1, overflow + 1) : 1) : 0,
     successPoints: success ? Math.max(1, overflow + 1) : 0,
-    isCritSuccess: bestResult === 1,
-    isCritFailure: bestResult === 20
+    isCritSuccess: diceObjects(results, rolledResults)
+      .some(die => die.original === bestResult && die.isNat1),
+    isCritFailure: diceObjects(results, rolledResults)
+      .some(die => die.original === bestResult && die.isNat20)
   };
 }
 
@@ -409,8 +411,55 @@ export class NeuroshimaTestBase {
     );
     if (modifiers.forcedSuccess !== undefined) {
       this.result.success = modifiers.forcedSuccess === true;
+    } else {
+      this.reconcileSuccess();
     }
     this.result.isSuccess = this.result.success === true;
+  }
+
+  evaluateSuccessState() {
+    return Number(this.result.successCount ?? 0) > 0;
+  }
+
+  reconcileSuccess() {
+    this.result.success = this.evaluateSuccessState();
+    this.result.isSuccess = this.result.success === true;
+    return this.result.success;
+  }
+
+  getDiceApi() {
+    const test = this;
+    return {
+      get rolled() {
+        return [...(test.result.rolledResults ?? test.result.rawResults ?? [])].map(Number);
+      },
+      get raw() {
+        return [...(test.result.rawResults ?? [])].map(Number);
+      },
+      get modified() {
+        return clone(test.result.modifiedResults ?? []);
+      },
+      get: index => Number(
+        test.result.modifiedResults?.[Number(index)]?.modified
+        ?? test.result.rawResults?.[Number(index)]
+      ),
+      replace: (index, value, options = {}) => test.replaceDie(index, value, options),
+      copy: (source, target, options = {}) => test.copyDie(source, target, options),
+      choose: async options => {
+        const { EffectActionRuntime } = await import("./effects/effect-action-runtime.js");
+        return EffectActionRuntime.chooseDice(test.result, options);
+      }
+    };
+  }
+
+  getResultApi() {
+    return {
+      addSuccesses: amount => this.addSuccesses(amount),
+      addSuccessPoints: amount => this.addSuccessPoints(amount),
+      forceSuccess: options => this.forceSuccess(options),
+      forceFailure: () => this.forceFailure(),
+      addAnnotation: (text, options) => this.addAnnotation(text, options)
+    };
   }
 
   triggerArgs() {
@@ -419,7 +468,12 @@ export class NeuroshimaTestBase {
       item: this.item,
       test: this,
       context: this.context,
-      eventContext: {}
+      eventContext: {},
+      dice: this.getDiceApi(),
+      result: this.getResultApi(),
+      links: {
+        meleePool: clone(this.context.meleePoolLink ?? null)
+      }
     };
   }
 
@@ -466,6 +520,13 @@ export class NeuroshimaTestBase {
 
   async runPostEffects() {
     await this.runTrigger("rollTest", { phase: "result" });
+  }
+
+  async runDiceEffects() {
+    await this.runTrigger("afterRollDice", {
+      phase: "dice",
+      stage: "before-evaluation"
+    });
   }
 
   resetResult({ preserveActions = true, preserveDiceChanges = false } = {}) {
@@ -515,6 +576,7 @@ export class NeuroshimaTestBase {
     } else {
       await this.rollDice();
     }
+    await this.runDiceEffects();
     await this.computeResult();
     await this.resolveDomain();
     await this.runPostEffects();
@@ -525,6 +587,8 @@ export class NeuroshimaTestBase {
   }
 
   async edit({ preData = {}, rawResults = null } = {}, { message = null } = {}) {
+    const validation = await this.validateLinkedMutation();
+    if (!validation.ok) return this.rejectLinkedMutation(validation);
     this.context.previousResult = clone(this.result);
     const previousRaw = [...(this.result.rawResults ?? [])];
     this.context.edited = true;
@@ -550,31 +614,46 @@ export class NeuroshimaTestBase {
         }]
       );
     }
+    edited.message = message ?? this.message ?? null;
+    const syncResult = await edited.syncLinkedState({ reason: "gm-edit" });
+    if (!syncResult.ok) throw new Error(`Melee pool sync failed: ${syncResult.reason}`);
     edited.message = await edited.sendToChat({ message });
     return edited;
   }
 
   async reroll({ previousMessage = null, replaceMessage = false } = {}) {
+    const validation = await this.validateLinkedMutation();
+    if (!validation.ok) return this.rejectLinkedMutation(validation);
     this.context.previousResult = clone(this.result);
     this.context.previousMessageId = previousMessage?.id ?? null;
     this.context.reroll = true;
     this.context.edited = false;
     this.restoreBasePreData();
     delete this.preData.fixedDice;
-    return this.roll({
-      message: replaceMessage ? previousMessage : null,
-      sendToChat: true,
+    delete this.preData.fixedRolledDice;
+    const rerolled = await this.roll({
+      sendToChat: false,
       restoreInput: false
     });
+    rerolled.message = previousMessage ?? this.message ?? null;
+    const syncResult = await rerolled.syncLinkedState({ reason: "reroll" });
+    if (!syncResult.ok) throw new Error(`Melee pool sync failed: ${syncResult.reason}`);
+    rerolled.message = await rerolled.sendToChat({
+      message: replaceMessage ? previousMessage : null
+    });
+    return rerolled;
   }
 
   async rerollDice(indices, { previousMessage = null, replaceMessage = false } = {}) {
+    const validation = await this.validateLinkedMutation();
+    if (!validation.ok) return this.rejectLinkedMutation(validation);
     const unique = [...new Set((indices ?? []).map(Number))]
       .filter(index => Number.isInteger(index) && index >= 0 && index < this.result.rawResults.length)
       .sort((a, b) => a - b);
     if (!unique.length) return this;
     const oldRaw = [...this.result.rawResults];
     const nextRaw = [...oldRaw];
+    const nextRolled = [...(this.result.rolledResults ?? oldRaw)];
     this.context.previousResult = clone(this.result);
     this.context.previousMessageId = previousMessage?.id ?? null;
     this.context.reroll = true;
@@ -582,9 +661,11 @@ export class NeuroshimaTestBase {
     const rerolled = await new Roll(`${unique.length}d${this.dieSides}`).evaluate();
     unique.forEach((index, offset) => {
       nextRaw[index] = Number(rerolled.terms[0].results[offset].result);
+      nextRolled[index] = nextRaw[index];
     });
     this.restoreBasePreData();
     this.preData.fixedDice = nextRaw;
+    this.preData.fixedRolledDice = nextRolled;
     const rerolledTest = await this.roll({
       sendToChat: false,
       restoreInput: false
@@ -599,10 +680,59 @@ export class NeuroshimaTestBase {
       icon: "fas fa-arrow-rotate-left",
       effectUuid: null
     }));
+    rerolledTest.message = previousMessage ?? this.message ?? null;
+    const syncResult = await rerolledTest.syncLinkedState({ reason: "partial-reroll" });
+    if (!syncResult.ok) throw new Error(`Melee pool sync failed: ${syncResult.reason}`);
     rerolledTest.message = await rerolledTest.sendToChat({
       message: replaceMessage ? previousMessage : null
     });
     return rerolledTest;
+  }
+
+  async validateLinkedMutation() {
+    const link = this.context?.meleePoolLink;
+    if (!link) return { ok: true, skipped: true, reason: "not-linked" };
+    const { MeleeStore, MeleeTurnService } = await import("./combat/combat.js");
+    const encounter = MeleeStore.getEncounter(link.encounterId);
+    if (!encounter) return { ok: false, reason: "encounter-missing" };
+    const participant = encounter.participants?.[link.participantId];
+    if (!participant) return { ok: false, reason: "participant-missing" };
+    if (Number(link.turn) !== Number(encounter.turnState?.turn)) {
+      return { ok: false, reason: "stale-turn" };
+    }
+    if (participant.poolRevision && participant.poolRevision !== link.revision) {
+      return { ok: false, reason: "stale-revision" };
+    }
+    const lock = MeleeTurnService.getPoolMutationLock(encounter, link.participantId);
+    return { ok: !lock.locked, reason: lock.reason };
+  }
+
+  rejectLinkedMutation(validation = {}) {
+    ui.notifications.warn(
+      game.i18n.localize("NEUROSHIMA.Melee.PoolMutationLocked")
+      || "Pula walki została już użyta i nie może zostać zmieniona."
+    );
+    return { ok: false, reason: validation.reason };
+  }
+
+  async syncLinkedState({ reason = "test-update" } = {}) {
+    if (!this.context?.meleePoolLink) {
+      return { ok: true, skipped: true, reason: "not-linked" };
+    }
+    const { MeleeTurnService } = await import("./combat/combat.js");
+    return MeleeTurnService.syncPoolFromTest(this, { reason });
+  }
+
+  async commitMutation({ message = null, reason = "mutation", validate = true } = {}) {
+    if (validate) {
+      const validation = await this.validateLinkedMutation();
+      if (!validation.ok) return validation;
+    }
+    if (this.context.dirty) await this.recalculate();
+    const sync = await this.syncLinkedState({ reason });
+    if (!sync.ok) return sync;
+    if (message) this.message = await this.updateMessage(message);
+    return { ok: true, message: this.message ?? message };
   }
 
   buildDieChangeTooltip(index, changes = []) {
@@ -752,6 +882,11 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
   static editableByGM = true;
   get diceCount() { return 3; }
 
+  evaluateSuccessState() {
+    if (this.result.isOpen) return Number(this.result.successCount ?? 0) > 0;
+    return Number(this.result.successCount ?? 0) >= 2;
+  }
+
   async prepare() {
     const penalties = clone(this.preData.penalties ?? {});
     this.result.label = this.preData.label ?? "";
@@ -779,7 +914,9 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
     const fixed = this.preData.fixedDice;
     if (Array.isArray(fixed)) {
       this.result.rawResults = fixed.map(Number);
-      this.result.rolledResults = [...this.result.rawResults];
+      this.result.rolledResults = Array.isArray(this.preData.fixedRolledDice)
+        ? this.preData.fixedRolledDice.map(Number)
+        : [...this.result.rawResults];
       this.diceRoll = null;
       return;
     }
@@ -796,7 +933,11 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
     }
     if (this.preData.applyDiceDifficultyShift !== false
       && this.context.applyDiceDifficultyShift !== false) {
-      shift += TestRules.diceShift(this.result.rawResults);
+      shift += TestRules.diceShift(
+        this.result.rolledResults?.length
+          ? this.result.rolledResults
+          : this.result.rawResults
+      );
     }
     const difficulty = TestRules.clampMaximumDifficulty(
       TestRules.shiftDifficulty(this.result.baseDifficulty, shift),
@@ -807,8 +948,8 @@ export class NeuroshimaTest extends NeuroshimaTestBase {
     this.result.ptMod = difficulty.mod;
     this.result.target = this.result.stat + Number(difficulty.mod ?? 0);
     const evaluated = this.result.isOpen
-      ? evaluateOpen3d20(this.result, this.result.rawResults)
-      : evaluateClosed3d20(this.result, this.result.rawResults);
+      ? evaluateOpen3d20(this.result, this.result.rawResults, this.result.rolledResults)
+      : evaluateClosed3d20(this.result, this.result.rawResults, this.result.rolledResults);
     Object.assign(this.result, evaluated);
     this.applyResultModifiers();
     return this;
@@ -1067,6 +1208,10 @@ export class PercentileTest extends NeuroshimaTestBase {
 
   get diceCount() { return 1; }
 
+  evaluateSuccessState() {
+    return Number(this.result.rawResults?.[0] ?? 0) <= Number(this.result.target ?? 0);
+  }
+
   async prepare() {
     this.result.label = this.preData.label ?? "";
     this.result.target = Number(this.preData.target ?? this.preData.stat ?? 0);
@@ -1078,18 +1223,31 @@ export class PercentileTest extends NeuroshimaTestBase {
   async rollDice() {
     if (Array.isArray(this.preData.fixedDice)) {
       this.result.rawResults = [Number(this.preData.fixedDice[0])];
+      this.result.rolledResults = Array.isArray(this.preData.fixedRolledDice)
+        ? [Number(this.preData.fixedRolledDice[0])]
+        : [...this.result.rawResults];
       return;
     }
     this.diceRoll = await new Roll("1d100").evaluate();
     this.result.rawResults = [Number(this.diceRoll.total)];
+    this.result.rolledResults = [...this.result.rawResults];
   }
 
   async computeResult() {
     const value = Number(this.result.rawResults[0] ?? 0);
     const success = value <= Number(this.result.target ?? 0);
     Object.assign(this.result, {
-      rolledResults: [value],
-      modifiedResults: [{ original: value, modified: value, isSuccess: success, ignored: false, index: 0 }],
+      rolledResults: this.result.rolledResults?.length ? this.result.rolledResults : [value],
+      modifiedResults: [{
+        rolled: Number(this.result.rolledResults?.[0] ?? value),
+        original: value,
+        modified: value,
+        isSuccess: success,
+        isNat1: Number(this.result.rolledResults?.[0] ?? value) === 1,
+        isNat20: Number(this.result.rolledResults?.[0] ?? value) === 100,
+        ignored: false,
+        index: 0
+      }],
       success,
       isSuccess: success,
       successCount: success ? 1 : 0,
@@ -1306,6 +1464,10 @@ export class WeaponTest extends AttackTest {
 }
 
 export class RangedWeaponTest extends WeaponTest {
+  evaluateSuccessState() {
+    return Number(this.result.successCount ?? 0) > 0;
+  }
+
   static canShiftBurst(result, user = game.user) {
     return user?.isGM === true || result?.burstShiftGranted === true;
   }
@@ -1416,8 +1578,15 @@ export class RangedWeaponTest extends WeaponTest {
 
   async computeResult() {
     await super.computeResult();
-    const evaluated = evaluateRangedAttack(this.result, this.result.rawResults);
+    const evaluated = evaluateRangedAttack(
+      this.result,
+      this.result.rawResults,
+      this.result.rolledResults
+    );
     Object.assign(this.result, evaluated);
+    // Ranged domain resolution (hits and ammunition sequence) must see the
+    // final forced/additive success state, not the unmodified evaluator value.
+    this.applyResultModifiers();
     const forceNoJam = this.preData.forceNoJam === true;
     const forceJam = this.preData.forceJam === true;
     const firedDespiteJam = this.preData.firedDespiteJam === true;
@@ -1469,7 +1638,6 @@ export class RangedWeaponTest extends WeaponTest {
       isCritFailure: this.result.isCritFailure || jammed
     });
     this.computeFireCorrection();
-    this.applyResultModifiers();
     return this;
   }
 
@@ -1613,6 +1781,17 @@ export class RangedWeaponTest extends WeaponTest {
 }
 
 export class MeleeWeaponTest extends WeaponTest {
+  evaluateSuccessState() {
+    const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction") === true;
+    if (this.result.meleeAction === "defense") {
+      return Number(this.result.successCount ?? 0) >= 2;
+    }
+    if (doubleSkill && !this.result.isOpen) {
+      return Number(this.result.successCount ?? 0) > 0;
+    }
+    return super.evaluateSuccessState();
+  }
+
   async prepare() {
     this.preData.isMelee = true;
     await super.prepare();
@@ -1625,15 +1804,15 @@ export class MeleeWeaponTest extends WeaponTest {
     const doubleSkill = game.settings.get("neuroshima", "doubleSkillAction") === true;
     const defense = this.result.meleeAction === "defense";
     const evaluated = defense
-      ? evaluateDefense3d20(this.result, this.result.rawResults)
+      ? evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults)
       : doubleSkill && !this.result.isOpen
         ? {
-            ...evaluateDefense3d20(this.result, this.result.rawResults),
+            ...evaluateDefense3d20(this.result, this.result.rawResults, this.result.rolledResults),
             success: this.result.rawResults.some(value => Number(value) <= this.result.target && Number(value) !== 20)
           }
         : this.result.isOpen
-          ? evaluateOpen3d20(this.result, this.result.rawResults)
-          : evaluateClosed3d20(this.result, this.result.rawResults);
+          ? evaluateOpen3d20(this.result, this.result.rawResults, this.result.rolledResults)
+          : evaluateClosed3d20(this.result, this.result.rawResults, this.result.rolledResults);
     Object.assign(this.result, evaluated);
     this.applyResultModifiers();
     return this;

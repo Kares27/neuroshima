@@ -824,6 +824,9 @@
             "AttackerConfirmed": "Atakujący potwierdził — oczekiwanie na obrońcę…",
             "DefenderConfirmed": "Obrońca potwierdził — oczekiwanie na atakującego…"
         },
+        "Melee": {
+            "PoolMutationLocked": "Pula walki została już wybrana lub użyta i nie może zostać zmieniona."
+        },
         "MeleeDuel": {
             "Title": "Pojedynki",
             "Phase": {

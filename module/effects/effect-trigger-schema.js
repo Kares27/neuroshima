@@ -6,7 +6,7 @@
  */
 import { TriggerRegistry } from "./trigger-registry.js";
 
-export const EFFECT_TRIGGER_SCHEMA_VERSION = 4;
+export const EFFECT_TRIGGER_SCHEMA_VERSION = 5;
 
 export const EFFECT_TRIGGERS = TriggerRegistry.publicOptions();
 
